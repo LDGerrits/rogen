@@ -1,3 +1,4 @@
+import { failureReason } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -5,18 +6,18 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	FileSystemService,
-	failureReason,
+	FileReader,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
-import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
 import { InitQuestions, Layout, SharedCode } from "./init-questions.js";
-import { PlaceFolder } from "./place-folder.js";
+import { PlaceFolder, PlaceFolders } from "./place-folder.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
+import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { ProjectTemplate, TemplatePlan } from "./template-plan.js";
@@ -65,10 +66,92 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
-		private readonly fileSystemService: FileSystemService
+		private readonly fileSystemService: FileReader,
+		private readonly placeFolders: PlaceFolders
 	) {}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
+		const { directory, questions } = this;
+		const identity = await this.askIdentity();
+		if (identity.isErr()) return identity;
+		if (identity.value === undefined) return ok(undefined);
+		const { layout, name, language, darklua, configSet } = identity.value;
+
+		const shared: SharedCode | undefined =
+			layout === "several"
+				? await questions.sharedCode(directory, language)
+				: await questions
+						.rootDirs(directory, language)
+						.then((rootDirs) => rootDirs && { rootDirs });
+		if (shared === undefined) return ok(undefined);
+		const { rootDirs, templateDir } = shared;
+
+		const outputs = configSet.outputFiles;
+		const chosen = await questions.template(directory, outputs);
+		if (chosen === undefined) return ok(undefined);
+		const template = await this.resolveTemplate(chosen, templateDir);
+		if (template.isErr()) return template;
+
+		let syncDir = configSet.syncDir;
+		if (darklua) {
+			const answer = await questions.syncDir(directory);
+			if (answer === undefined) return ok(undefined);
+			syncDir = answer;
+		}
+
+		const mounts =
+			template.value.kind === "use"
+				? []
+				: await questions.mounts(directory, language);
+		if (mounts === undefined) return ok(undefined);
+
+		const routes = await questions.routes(
+			language,
+			derivedRoutesOf(template.value, rootDirs)
+		);
+		if (routes === undefined) return ok(undefined);
+
+		const modes = await questions.modes(directory, language);
+		if (modes === undefined) return ok(undefined);
+
+		const places =
+			layout === "several"
+				? await this.askPlaces(identity.value, rootDirs, outputs)
+				: [];
+		if (places === undefined) return ok(undefined);
+
+		const outDir = language.compiler?.outDir;
+		return ok({
+			name,
+			language,
+			darklua,
+			rootDirs: [...rootDirs],
+			...(syncDir && { syncDir }),
+			...(outDir && { outDir }),
+			template: template.value,
+			...(templateDir && { templateDir }),
+			mounts,
+			routes: routes.routes,
+			fallback: routes.fallback,
+			places,
+			...(modes && { modes }),
+		});
+	}
+
+	/** Who the project is: whether it has places, its name, language and Darklua, and that its config files are free. */
+	private async askIdentity(): Promise<
+		Result<
+			| {
+					readonly layout: Layout;
+					readonly name: string;
+					readonly language: Language;
+					readonly darklua: Darklua | undefined;
+					readonly configSet: ConfigSet;
+			  }
+			| undefined,
+			Diagnostic[]
+		>
+	> {
 		const { directory, questions } = this;
 		const firstRun = !directory.hasDefaultConfig;
 
@@ -93,98 +176,67 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const configSet = new ConfigSet(name, language, darklua);
 		const conflicts = directory.checkFree(configSet.configFiles);
 		if (conflicts.length > 0) return err(conflicts);
+		return ok({ layout, name, language, darklua, configSet });
+	}
 
-		const shared: SharedCode | undefined =
-			layout === "several"
-				? await questions.sharedCode(directory, language)
-				: await questions
-						.rootDirs(directory, language)
-						.then((rootDirs) => rootDirs && { rootDirs });
-		if (shared === undefined) return ok(undefined);
-		const { rootDirs, templateDir } = shared;
-
-		const outputs = configSet.outputFiles;
-		const chosen = await questions.template(directory, outputs);
-		if (chosen === undefined) return ok(undefined);
-		let template: ProjectTemplate;
-		const sharedTemplate = templateDir && `${templateDir}/${TEMPLATE_FILE}`;
+	/** The template as the project gets it: a copied file is read, and a new one gives way to the shared template already there. */
+	private async resolveTemplate(
+		chosen: TemplateChoice,
+		templateDir: string | undefined
+	): Promise<Result<ProjectTemplate, Diagnostic[]>> {
 		if (chosen.kind === "copy") {
 			const copied = await this.readTemplate(chosen.from);
-			if (copied.isErr()) return err(copied.error);
-			template = { ...chosen, content: copied.value };
-		} else if (
+			return copied.isErr()
+				? err(copied.error)
+				: ok({ ...chosen, content: copied.value });
+		}
+		const shared = templateDir && `${templateDir}/${TEMPLATE_FILE}`;
+		if (
 			chosen.kind === "new" &&
-			sharedTemplate &&
+			shared &&
 			(await this.fileSystemService.exists(
-				path.join(directory.path, sharedTemplate)
+				path.join(this.directory.path, shared)
 			))
 		)
-			template = { kind: "use", file: sharedTemplate };
-		else template = chosen;
+			return ok({ kind: "use", file: shared });
+		return ok(chosen);
+	}
 
-		let syncDir = configSet.syncDir;
-		if (darklua) {
-			const answer = await questions.syncDir(directory);
-			if (answer === undefined) return ok(undefined);
-			syncDir = answer;
-		}
-
-		const mounts =
-			template.kind === "use"
-				? []
-				: await questions.mounts(directory, language);
-		if (mounts === undefined) return ok(undefined);
-
-		const routes = await questions.routes(
-			language,
-			derivedRoutesOf(template, rootDirs)
-		);
-		if (routes === undefined) return ok(undefined);
-
-		const modes = await questions.modes(directory, language);
-		if (modes === undefined) return ok(undefined);
-
-		let places: readonly ProjectPlace[] = [];
-		if (layout === "several") {
-			const answer = await questions.places(directory, {
-				rootDirs,
-				filesFor: (place) =>
-					new ConfigSet(place, language, darklua).placeFiles,
-				reserved: new Set([
-					...configSet.configFiles,
-					...outputs,
-					TEMPLATE_FILE,
-				]),
-			});
-			if (answer === undefined) return ok(undefined);
-			places = await Promise.all(
-				answer.map(async (place) => ({
-					name: place,
-					folder: await PlaceFolder.read(
-						this.fileSystemService,
-						directory.path,
-						ConfigSet.placeFolderIn(directory, place, rootDirs)
-					),
-				}))
-			);
-		}
-
-		const outDir = language.compiler?.outDir;
-		return ok({
-			name,
+	/** The places of a project that shares code, each with what its folder already holds. */
+	private async askPlaces(
+		{
+			configSet,
 			language,
 			darklua,
-			rootDirs: [...rootDirs],
-			...(syncDir && { syncDir }),
-			...(outDir && { outDir }),
-			template,
-			...(templateDir && { templateDir }),
-			mounts,
-			routes: routes.routes,
-			fallback: routes.fallback,
-			places,
-			...(modes && { modes }),
+		}: {
+			configSet: ConfigSet;
+			language: Language;
+			darklua: Darklua | undefined;
+		},
+		rootDirs: readonly string[],
+		outputs: readonly string[]
+	): Promise<readonly ProjectPlace[] | undefined> {
+		const { directory } = this;
+		const answer = await this.questions.places(directory, {
+			rootDirs,
+			filesFor: (place) =>
+				new ConfigSet(place, language, darklua).placeFiles,
+			reserved: new Set([
+				...configSet.configFiles,
+				...outputs,
+				TEMPLATE_FILE,
+			]),
 		});
+		if (answer === undefined) return undefined;
+		return Promise.all(
+			answer.map(async (place) => ({
+				name: place,
+				folder: await this.placeFolders.read(
+					directory.path,
+					PlaceFolder.pathIn(directory, place, rootDirs)
+				),
+			}))
+		);
 	}
 
 	/** The file a `copy` template choice copies, as it is. */
@@ -252,7 +304,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const ports: number[] = [];
 		const places = choices.places.map(({ name, folder }): PlaceChoices => {
-			const servePort = ConfigSet.freePort(ports);
+			const servePort = PlacePlan.freePort(ports);
 			ports.push(servePort);
 			return {
 				name,
@@ -298,7 +350,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		configSet: ConfigSet
 	): void {
 		const { compiler } = configSet.language;
-		configSet.planSteps(builder, this.directory, {
+		configSet.planSteps(builder, this.directory.path, {
 			compileCommand: compiler?.compileCommand,
 			processed: compiler ? [outDir ?? compiler.defaultOutDir] : rootDirs,
 			syncDir,

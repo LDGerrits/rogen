@@ -18,6 +18,26 @@ export interface ServerMessage {
 	readonly text: string;
 }
 
+/** Where a server's own settings put it, which apply when the project file sets nothing. */
+export interface ServerDefaults {
+	readonly host?: string;
+	readonly port?: number;
+}
+
+/** A top-level `key = value` of a flat TOML file, as Argon's settings are written. */
+function topLevelValue(text: string, key: string): string | undefined {
+	for (const raw of text.split(/\r?\n/)) {
+		const line = raw.trim();
+		if (line.startsWith("[")) return undefined;
+		const entry =
+			/^([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\d+))\s*(#.*)?$/.exec(
+				line
+			);
+		if (entry?.[1] === key) return entry[2] ?? entry[3] ?? entry[4];
+	}
+	return undefined;
+}
+
 interface SyncServerFields {
 	readonly id: string;
 	readonly name: string;
@@ -37,8 +57,12 @@ interface SyncServerFields {
 	readonly noise: readonly RegExp[];
 	/** Debug detail it appends to a record. */
 	readonly clutter: readonly RegExp[];
-	/** Its own settings files that may set `host` and `port`, the first found winning. */
-	readonly settingsFiles: (projectDir: string, userHome: string) => string[];
+	/** Its own settings, which may set `host` and `port`; none for a server with no such file. */
+	readonly settings?: {
+		/** The files that may hold them, the first found winning. */
+		readonly files: (projectDir: string, userHome: string) => string[];
+		readonly read: (text: string) => ServerDefaults;
+	};
 	readonly readInfo: (
 		server: SyncServer,
 		value: Readonly<Record<string, unknown>>
@@ -63,7 +87,6 @@ export class SyncServer {
 		logRecord: /^\[(?<level>[A-Z]+)\s*[^\]]*\]\s?(?<text>.*)$/,
 		noise: [/^Rojo server listening:$/, /^(Address|Port):/, /^Visit http/],
 		clutter: [],
-		settingsFiles: () => [],
 		readInfo: (server, value) => {
 			const project = text(value.projectName);
 			const version = text(value.serverVersion);
@@ -96,10 +119,19 @@ export class SyncServer {
 			/^Warning! Top level project file was deleted/,
 		],
 		clutter: [/, source: .*$/, /\s\[[\w:]+:\d+\]$/],
-		settingsFiles: (projectDir, userHome) => [
-			path.join(projectDir, "argon.toml"),
-			path.join(userHome, ".argon", "config.toml"),
-		],
+		settings: {
+			files: (projectDir, userHome) => [
+				path.join(projectDir, "argon.toml"),
+				path.join(userHome, ".argon", "config.toml"),
+			],
+			read: (settings) => {
+				const port = Number(topLevelValue(settings, "port"));
+				return {
+					host: topLevelValue(settings, "host"),
+					port: Number.isInteger(port) && port > 0 ? port : undefined,
+				};
+			},
+		},
 		readInfo: (server, value) => {
 			const project = text(value.name);
 			const version = text(value.version);
@@ -175,7 +207,12 @@ export class SyncServer {
 
 	/** The settings files that may set where it listens when the project file doesn't: beside the project file, then the user's own. */
 	settingsFiles(projectDir: string, userHome: string): string[] {
-		return this.fields.settingsFiles(projectDir, userHome);
+		return this.fields.settings?.files(projectDir, userHome) ?? [];
+	}
+
+	/** Where the settings in `settings` put it. */
+	defaultsIn(settings: string): ServerDefaults {
+		return this.fields.settings?.read(settings) ?? {};
 	}
 
 	/** The value `serverArgs` give the host flag, if any. */

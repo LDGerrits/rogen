@@ -1,6 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { joinPosix, toPosix } from "../../base/path.js";
+import { isObject } from "../../base/objects.js";
+import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import {
 	capitalized,
 	joinedWithAnd,
@@ -9,6 +10,7 @@ import {
 import {
 	Diagnostic,
 	DiagnosticFix,
+	DiagnosticRelated,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
@@ -19,13 +21,41 @@ import {
 	scriptFate,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { instanceKey } from "../rojo/rojo-project.js";
+import { RojoNode, instanceKey } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
-import { MisspellingKind, MisspellingOf, NotedName } from "./name-reader.js";
+import {
+	MisspellingKind,
+	MisspellingOf,
+	NotedName,
+} from "./misspelling-finder.js";
 import { MissingInstances } from "./missing-instances.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
+
+const ROJO_NODE_FIELDS: ReadonlySet<string> = new Set([
+	"$className",
+	"$path",
+	"$properties",
+	"$attributes",
+	"$ignoreUnknownInstances",
+	"$id",
+]);
+
+/** The instance paths of the nodes of `node` whose key starts with `$` without being one of Rojo's fields. */
+function reservedKeys(
+	node: RojoNode,
+	at: readonly string[]
+): (readonly string[])[] {
+	return Object.entries(node).flatMap(([key, value]) => {
+		if (!isObject(value) || ROJO_NODE_FIELDS.has(key)) return [];
+		const here = [...at, key];
+		return [
+			...(key.startsWith("$") ? [here] : []),
+			...reservedKeys(value, here),
+		];
+	});
+}
 
 /** A rename for every noted name that has one, not only the names a message lists. */
 function renames(
@@ -54,6 +84,7 @@ export class BuildValidator {
 			...this.missingRootDir(),
 			...this.rootDirNamedAfterKey(),
 			...this.unresolvedLink(),
+			...this.extensionCase(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
@@ -65,6 +96,7 @@ export class BuildValidator {
 			...this.serverCodeShipped(),
 			...this.deadScript(),
 			...this.buriedScriptSuffix(),
+			...this.reservedName(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
 			...this.templateClash(),
@@ -82,7 +114,7 @@ export class BuildValidator {
 				warningDiagnostic(
 					"scan.missingRootDir",
 					{ resource: root.rootDir },
-					"this root dir does not exist, so it contributes nothing."
+					"this root dir does not exist or is not a folder, so it contributes nothing."
 				)
 			);
 	}
@@ -102,11 +134,9 @@ export class BuildValidator {
 					key,
 					kind: this.config.keys.kindOf(key),
 					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
-					parent:
-						relativeParent !== "" &&
-						!relativeParent.startsWith("..")
-							? relativeParent
-							: undefined,
+					parent: isInside(parent, configDir)
+						? relativeParent
+						: undefined,
 				},
 			];
 		});
@@ -145,16 +175,12 @@ export class BuildValidator {
 			line: `  ${shown} ("${key}" ${kind})`,
 		}));
 		return [
-			warningDiagnostic(
+			this.grouped(
 				"scan.rootDirNamedAfterKey",
-				{ resource: this.config.file },
-				[
-					`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
-					...items.map(({ line }) => line),
-					...fixes,
-				].join("\n"),
-				[],
-				items.map(({ resource, message }) => ({ resource, message }))
+				`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
+				items.map(({ line }) => line),
+				items.map(({ resource, message }) => ({ resource, message })),
+				fixes
 			),
 		];
 	}
@@ -169,6 +195,30 @@ export class BuildValidator {
 					"scan.unresolvedLink",
 					{ resource: link },
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
+				)
+			);
+	}
+
+	private extensionCase(): Diagnostic[] {
+		return this.placement.leftOut
+			.withStatus("extensionCase")
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([file, { rename }]) =>
+				warningDiagnostic(
+					"scan.extensionCase",
+					{ resource: file },
+					`Rojo reads an extension only in lowercase, so it ignores this file. Rename it to ${rename}.`,
+					[
+						{
+							rename: {
+								from: file,
+								to: path.posix.join(
+									path.posix.dirname(file),
+									rename
+								),
+							},
+						},
+					]
 				)
 			);
 	}
@@ -278,17 +328,15 @@ export class BuildValidator {
 			message: hint(resource, misspelt),
 		}));
 		return [
-			warningDiagnostic(
+			this.grouped(
 				code,
-				{ resource: this.config.file },
-				[
-					headline(noted.size),
-					...items.map(
-						({ resource, message }) => `  ${resource} (${message})`
-					),
-				].join("\n"),
-				renames(noted),
-				items
+				headline(noted.size),
+				items.map(
+					({ resource, message }) => `  ${resource} (${message})`
+				),
+				items,
+				[],
+				renames(noted)
 			),
 		];
 	}
@@ -324,8 +372,7 @@ export class BuildValidator {
 			);
 			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
-				this.placement.readings.entryAt(file.entry.source)
-					.scriptSuffix !== undefined;
+				this.placement.readingOf(file).scriptSuffix !== undefined;
 			return ignored.length > 0 &&
 				!isScript &&
 				!isServerOnlyService(file.instancePath[0])
@@ -358,16 +405,14 @@ export class BuildValidator {
 				? `a "@${routeKeys[0]}" marker file`
 				: `a marker file that restates their route (${routeKeys.map((key) => `"@${key}"`).join(" or ")})`;
 		return [
-			warningDiagnostic(
+			this.grouped(
 				"route.serverCodeShipped",
-				{ resource: this.config.file },
+				`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
+				listed,
+				related,
 				[
-					`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
-					...listed,
 					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code, or keep ${many ? "them" : "it"} there with ${marker} in ${many ? "their" : "its"} folder.`,
-				].join("\n"),
-				[],
-				related
+				]
 			),
 		];
 	}
@@ -393,23 +438,37 @@ export class BuildValidator {
 		);
 		const many = dead.length > 1;
 		return [
-			warningDiagnostic(
+			this.grouped(
 				"tree.deadScript",
-				{ resource: this.config.file },
-				[
-					`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
-					...listed,
-					WHERE_SCRIPTS_RUN,
-				].join("\n"),
-				[],
-				related
+				`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
+				listed,
+				related,
+				[WHERE_SCRIPTS_RUN]
 			),
 		];
 	}
 
+	/** One warning about the config for a group of things: `headline`, a line for each of `lines`, then the `tail`; `related` names the files for a program. */
+	private grouped(
+		code: string,
+		headline: string,
+		lines: readonly string[],
+		related: readonly DiagnosticRelated[],
+		tail: readonly string[] = [],
+		fixes: readonly DiagnosticFix[] = []
+	): Diagnostic {
+		return warningDiagnostic(
+			code,
+			{ resource: this.config.file },
+			[headline, ...lines, ...tail].join("\n"),
+			fixes,
+			related
+		);
+	}
+
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
 		return scriptRunOf(
-			this.placement.readings.entryAt(file.entry.source).scriptSuffix,
+			this.placement.readingOf(file).scriptSuffix,
 			!this.placement.template.disablesLegacyScripts,
 			this.assembly.meta.runContextOf(file.entry.source)
 		);
@@ -434,6 +493,51 @@ export class BuildValidator {
 					]
 				: []
 		);
+	}
+
+	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
+	private reservedName(): Diagnostic[] {
+		const { routed, leftOut } = this.placement;
+		return reservedKeys(this.assembly.tree.tree, []).flatMap((key) => {
+			const under = routed.filter(
+				({ entry, instancePath }) =>
+					leftOut.get(entry.source)?.status !== "pruned" &&
+					key.every((name, index) => instancePath[index] === name)
+			);
+			const file =
+				under.find(
+					({ instancePath }) => instancePath.length === key.length
+				) ?? under[0];
+			if (!file) return [];
+			const fileName = path.posix.basename(file.entry.source);
+			const renamable =
+				file.instancePath.length === key.length &&
+				file.init === undefined &&
+				fileName.startsWith("$") &&
+				fileName.length > 1;
+			return [
+				warningDiagnostic(
+					"tree.reservedName",
+					{ resource: file.entry.source },
+					`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
+					renamable
+						? [
+								{
+									rename: {
+										from: file.entry.source,
+										to: path.posix.join(
+											path.posix.dirname(
+												file.entry.source
+											),
+											fileName.slice(1)
+										),
+									},
+								},
+							]
+						: []
+				),
+			];
+		});
 	}
 
 	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */

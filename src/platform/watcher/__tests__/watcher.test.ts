@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import { MemoryWatcher } from "../memory-watcher.js";
-import { isIgnored } from "../watcher.js";
+import { WatchFilter, isIgnored } from "../watcher.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { FileType } from "../../fs/file-system-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
@@ -117,10 +117,7 @@ describe("MemoryWatcher", () => {
 
 		await memoryFs.createDirectory("src");
 		await memoryFs.createDirectory("tests");
-		await watcher.watch([
-			"src",
-			"tests",
-		]);
+		await watcher.watch(["src", "tests"]);
 
 		await memoryFs.writeFile("src/main.ts", "");
 		await memoryFs.writeFile("tests/main.test.ts", "");
@@ -197,5 +194,32 @@ describe("isIgnored", () => {
 
 	it("should not match anything when nothing is ignored", () => {
 		expect(isIgnored("/repo/out", [])).toBe(false);
+	});
+});
+
+describe("WatchFilter", () => {
+	const filter = new WatchFilter(["/repo/src"], {
+		ignored: ["/repo/src/out"],
+		shallow: ["/repo"],
+	});
+
+	it("should report what lies in the watched paths", () => {
+		expect(filter.reports("/repo/src/a/B.luau")).toBe(true);
+	});
+
+	it("should report the entries of a shallow directory, but not what lies below its subfolders", () => {
+		expect(filter.reports("/repo/default.rogen.json")).toBe(true);
+		expect(filter.reports("/repo/places/x.json")).toBe(false);
+	});
+
+	it("should report nothing outside what is watched, or ignored", () => {
+		expect(filter.reports("/elsewhere/a.luau")).toBe(false);
+		expect(filter.reports("/repo/src/out/a.luau")).toBe(false);
+	});
+
+	it("should skip what is ignored or beyond a shallow directory, wherever a walk is", () => {
+		expect(filter.skips("/repo/src/out")).toBe(true);
+		expect(filter.skips("/repo/places/x.json")).toBe(true);
+		expect(filter.skips("/repo/src/a")).toBe(false);
 	});
 });

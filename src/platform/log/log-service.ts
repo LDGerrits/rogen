@@ -27,12 +27,14 @@ export interface LogService {
 	note(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
+	/** A step with its lines under it, written at any level but off, for what the user asked for. */
+	section(title: string, body?: string): void;
 	success(message: string): void;
 	outro(message: string): void;
 	/** Closes the frame `intro` opened with `message`; does nothing when none is open. */
 	closeFrame(message: string): void;
-	/** Written as `file:line:col - severity: message` with no severity prefix of its own, so editors and CI can parse it. */
-	diagnostic(diagnostic: Diagnostic): void;
+	/** Written as `file:line:col - severity: message` with no severity prefix of its own, so editors and CI can parse it. One that `failing` made the run fail is written wherever errors are. */
+	diagnostic(diagnostic: Diagnostic, failing?: boolean): void;
 }
 
 export const LogService = createServiceIdentifier<LogService>("logService");

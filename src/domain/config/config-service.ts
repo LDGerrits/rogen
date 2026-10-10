@@ -2,8 +2,70 @@ import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import {
+	OptionDescriptor,
+	OptionValues,
+} from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ConfigOptionValues, ResolvedConfig } from "./config.js";
+import { ResolvedConfig } from "./config.js";
+
+const VariantOption = {
+	name: "variant",
+	type: "string",
+	placeholder: "name",
+	multiple: true,
+	description: "Turns a variant on, beyond those the mode lists.",
+} as const satisfies OptionDescriptor;
+
+const NoVariantOption = {
+	name: "no-variant",
+	type: "string",
+	placeholder: "name",
+	multiple: true,
+	description: "Turns a variant off, whatever turned it on.",
+} as const satisfies OptionDescriptor;
+
+const ModeOption = {
+	name: "mode",
+	type: "string",
+	placeholder: "name",
+	description: "Picks the mode every config that declares modes builds in.",
+} as const satisfies OptionDescriptor;
+
+/** The positional words that name the configs a command reads. */
+export const ConfigArguments = [
+	{
+		name: "config",
+		description:
+			"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
+		isOptional: true,
+		isVariadic: true,
+	},
+] as const;
+
+/** The flags that say which mode is active and which variants are on in the configs a command reads. */
+export const ConfigSelectionOptions = [
+	ModeOption,
+	VariantOption,
+	NoVariantOption,
+] as const satisfies readonly OptionDescriptor[];
+
+export const OutFileOption = {
+	name: "out-file",
+	short: "o",
+	type: "string",
+	placeholder: "path",
+	description: "Overrides outFile, for one config.",
+} as const satisfies OptionDescriptor;
+
+/** The flags that override the configs a command builds. */
+export const ConfigOptions = [
+	OutFileOption,
+	...ConfigSelectionOptions,
+] as const satisfies readonly OptionDescriptor[];
+
+/** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
+export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
 
 interface ConfigEntryFields {
 	readonly file: string;
@@ -56,21 +118,30 @@ export interface ConfigReload {
 	readonly notices: readonly ConfigNotice[];
 }
 
-/** The configs one invocation picked. The caller owns it, and only `reload` changes it. */
+/** The configs one invocation picked, as a command that reads them once sees them. */
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
-	/** Every file the selected configs read: their chains and templates. */
-	readonly files: ReadonlySet<string>;
+	/** The configs that build now: a broken entry's last valid version, or none. */
+	readonly configs: readonly ResolvedConfig[];
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with configs when it has none. */
 	readonly home: string;
-	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
-	readonly directory: string | undefined;
-
-	/** Whether `reload` should hear of a change to `file`. */
-	concerns(file: string): boolean;
 
 	/** The configs, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
+}
+
+/** A selection that follows its files: the caller owns it, and only `reload` changes it. */
+export interface ReloadableSelection extends ConfigSelection {
+	/** Every file the selected configs read: their chains and templates. */
+	readonly files: ReadonlySet<string>;
+	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
+	readonly directory: string | undefined;
+
+	/** Whether a selected config reads `file`, however its path is written: a watcher reports POSIX paths on every system. */
+	reads(file: string): boolean;
+
+	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config that came to the folder. */
+	concerns(file: string): boolean;
 
 	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `directory` first adds and drops the configs that came and went. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
@@ -103,7 +174,7 @@ export interface ConfigService {
 	select(
 		refs: readonly string[],
 		options: ConfigOptionValues
-	): Promise<Result<ConfigSelection, Error>>;
+	): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above the working directory that has configs. */
 	findEnclosing(): Promise<EnclosingConfigs | undefined>;
 	/** Loads one config file as `select` would, without overrides and outside any selection. */

@@ -31,7 +31,7 @@ describeWithRojo("end to end", () => {
 		}
 		if (!fs.existsSync(expectedFile)) {
 			throw new Error(
-				`Missing ${expectedFile}; run "UPDATE_E2E=1 npm test".`
+				`Missing ${expectedFile}; run "npm run test:e2e:update".`
 			);
 		}
 		expect(transcript).toBe(fs.readFileSync(expectedFile, "utf8"));

@@ -1,13 +1,15 @@
 import path from "path";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { holdsCode } from "../toolchain/toolchain.js";
-import { TEMPLATE_FILE } from "./config-set.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { PLACES_DIR } from "../toolchain/toolchain.js";
+import { InitDirectory } from "./init-directory.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
 
 const SOURCE_DIR = "src";
 
 /** The folder a place owns: its code in `src` with its template beside it, or, when the folder already holds code outside a `src`, the folder itself with the template beside the folder, so that code never moves. */
 export class PlaceFolder {
-	private constructor(
+	constructor(
 		/** Relative to the directory `init` runs in. */
 		readonly path: string,
 		/** Whether it holds code but no `src`, which keeps it as the root dir. */
@@ -16,23 +18,26 @@ export class PlaceFolder {
 		readonly hasTemplate: boolean
 	) {}
 
-	/** What `folder` already holds in `directory`. */
-	static async read(
-		fileSystemService: FileSystemService,
-		directory: string,
-		folder: string
-	): Promise<PlaceFolder> {
-		const absolute = path.join(directory, folder);
-		const code =
-			!(await fileSystemService.exists(
-				path.join(absolute, SOURCE_DIR)
-			)) && (await holdsCode(fileSystemService, absolute));
-		const template = PlaceFolder.templateOf(folder, code);
-		return new PlaceFolder(
-			folder,
-			code,
-			await fileSystemService.exists(path.join(directory, template))
-		);
+	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
+	static pathOf(
+		name: string,
+		sharedRootDirs: readonly string[] = []
+	): string {
+		const [rootDir] = sharedRootDirs;
+		const shared = rootDir?.replace(/\/src$/, "");
+		const container = shared && path.posix.dirname(shared);
+		return `${container && container !== "." ? container : PLACES_DIR}/${name}`;
+	}
+
+	/** Where a new project's place named `name` keeps its files: the folder `init` found it in, else beside the shared folder. */
+	static pathIn(
+		directory: InitDirectory,
+		name: string,
+		sharedRootDirs: readonly string[]
+	): string {
+		return directory.workspace.places.includes(name)
+			? PlaceFolder.pathOf(name)
+			: PlaceFolder.pathOf(name, sharedRootDirs);
 	}
 
 	/** A folder as a new project's places start: empty. */
@@ -50,9 +55,33 @@ export class PlaceFolder {
 		return PlaceFolder.templateOf(this.path, this.holdsCode);
 	}
 
-	private static templateOf(folder: string, code: boolean): string {
+	static templateOf(folder: string, code: boolean): string {
 		return code
 			? `${folder}.${TEMPLATE_FILE}`
 			: `${folder}/${TEMPLATE_FILE}`;
+	}
+}
+
+/** Reads what the folders of a place already hold. */
+export class PlaceFolders {
+	constructor(
+		private readonly fileSystemService: FileReader,
+		private readonly toolchainService: ToolchainService
+	) {}
+
+	/** What `folder` already holds in `directory`. */
+	async read(directory: string, folder: string): Promise<PlaceFolder> {
+		const absolute = path.join(directory, folder);
+		const code =
+			!(await this.fileSystemService.exists(
+				path.join(absolute, SOURCE_DIR)
+			)) && (await this.toolchainService.holdsCode(absolute));
+		return new PlaceFolder(
+			folder,
+			code,
+			await this.fileSystemService.exists(
+				path.join(directory, PlaceFolder.templateOf(folder, code))
+			)
+		);
 	}
 }

@@ -5,6 +5,7 @@ import {
 	joinedWithAnd,
 	listLimited,
 	plural,
+	unlistedNote,
 } from "../strings.js";
 
 describe("capitalized", () => {
@@ -39,11 +40,22 @@ describe("plural", () => {
 	});
 });
 
+describe("unlistedNote", () => {
+	it("should use the singular verb for one", () => {
+		expect(unlistedNote(1)).toBe("1 more like it isn't listed.");
+	});
+
+	it("should use the plural verb for more", () => {
+		expect(unlistedNote(2)).toBe("2 more like it aren't listed.");
+	});
+});
+
 describe("closestMatches", () => {
 	it("should give every candidate as close as the closest, in the order given", () => {
-		expect(closestMatches("serer", ["sever", "client", "server"])).toEqual(
-			["sever", "server"]
-		);
+		expect(closestMatches("serer", ["sever", "client", "server"])).toEqual([
+			"sever",
+			"server",
+		]);
 	});
 
 	it("should give only the closest when one is nearer", () => {

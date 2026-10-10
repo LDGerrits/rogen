@@ -22,6 +22,16 @@ export interface CaseSpec {
 	readonly output?: readonly FramedCommand[];
 }
 
+/** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
+const SPEC_KEYS: Record<keyof CaseSpec, true> = {
+	steps: true,
+	cwd: true,
+	links: true,
+	rojo: true,
+	show: true,
+	output: true,
+};
+
 /** The output of these is the same frame in nearly every case, so it is left out of a transcript unless the case lists the command under `output`. The unit tests of the command own its wording. */
 const FRAMED_COMMANDS = ["build", "init"] as const;
 
@@ -161,6 +171,12 @@ function readSpec(caseDir: string): CaseSpec {
 	const spec: CaseSpec = fs.existsSync(file)
 		? JSON.parse(fs.readFileSync(file, "utf8"))
 		: {};
+	for (const key of Object.keys(spec)) {
+		if (!(key in SPEC_KEYS))
+			throw new Error(
+				`${file}: "${key}" is not a case option; they are ${Object.keys(SPEC_KEYS).join(", ")}.`
+			);
+	}
 	for (const command of spec.output ?? []) {
 		if (!FRAMED_COMMANDS.includes(command))
 			throw new Error(
@@ -372,7 +388,7 @@ export async function eventually(
 }
 
 /** A `rogen` command that keeps running, `watch` unless `command` says otherwise. */
-export class WatchSession {
+export class RunningRogen {
 	private readonly child: ChildProcess;
 	readonly exited: Promise<number | null>;
 	private _output = "";

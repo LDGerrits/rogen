@@ -11,11 +11,17 @@ export class NativeLifecycleService
 	declare readonly _serviceBrand: undefined;
 
 	private readonly _onWillShutdown = this._register(new Emitter<void>());
-	readonly onWillShutdown: Event<void> = this._onWillShutdown.event;
+	private listening = false;
 
-	constructor() {
-		super();
+	/** Takes over the signals once something listens, so a run that never listens still dies of them. */
+	readonly onWillShutdown: Event<void> = (listener, disposables) => {
+		this.listenForSignals();
+		return this._onWillShutdown.event(listener, disposables);
+	};
 
+	private listenForSignals(): void {
+		if (this.listening) return;
+		this.listening = true;
 		// `once`, so a second signal falls through to the default and kills a stuck process.
 		const listener = () => this._onWillShutdown.fire();
 		for (const signal of SHUTDOWN_SIGNALS) {

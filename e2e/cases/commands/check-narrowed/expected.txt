@@ -1,0 +1,30 @@
+$ rogen check src/F/Shared/Good.luau
+exit 0
+stderr:
+  warning: Checked as far as the build gets: it stops on src/F/Shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.
+
+$ rogen check src/F/Shared/Good.luau --json
+exit 0
+stdout:
+  {
+    "diagnostics": [],
+    "stoppedBy": [
+      {
+        "file": "<dir>/src/F/Shared/Bad@server.luau",
+        "severity": "error",
+        "code": "route.ignoredAt",
+        "message": "\"@server\" does nothing here, because the \"shared\" route already governs this file. Remove it, or move the file out of the \"shared\" route's files.",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-ignoredat"
+      }
+    ]
+  }
+
+$ rogen check src/F/Shared/Bad@server.luau
+exit 1
+stdout:
+  src/F/Shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
+
+$ rogen check
+exit 1
+stdout:
+  src/F/Shared/Bad@server.luau - error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)

@@ -1,21 +1,13 @@
-import path from "path";
-import { DeferredPromise } from "../../base/async.js";
-import { AbstractDisposable, DisposableStore } from "../../base/disposable.js";
-import { onUnexpectedError } from "../../base/errors.js";
+import { DeferredPromise, Sequencer } from "../../base/async.js";
+import { AbstractDisposable } from "../../base/disposable.js";
+import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
-import {
-	errorDiagnostic,
-	isError,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	ChildProcess,
-	ProcessExit,
-	ProcessService,
-} from "../../platform/process/process-service.js";
+import { ProcessService } from "../../platform/process/process-service.js";
+import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
-import { buildableConfig } from "../config/config-service.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import { ServedConfigs } from "./serve.js";
 import {
@@ -26,46 +18,12 @@ import {
 	ServerSaid,
 	ServerStop,
 	ServingServer,
+	isRunning,
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
-import { ServerOutput } from "./server-output.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
-
-/** How often a started server is asked whether it serves yet, at first and at most. */
-const READY_POLL_MS = { first: 200, max: 1_000 };
-
-/** The exit codes of a program that Ctrl+C or a termination request ended: 128 plus the signal on POSIX, `STATUS_CONTROL_C_EXIT` on Windows. */
-const INTERRUPTED_CODES: ReadonlySet<number> = new Set([130, 143, 0xc000013a]);
-const INTERRUPTING_SIGNALS: ReadonlySet<string> = new Set([
-	"SIGINT",
-	"SIGTERM",
-]);
-
-const wasInterrupted = ({ code, signal }: ProcessExit) =>
-	(signal !== null && INTERRUPTING_SIGNALS.has(signal)) ||
-	(code !== null && INTERRUPTED_CODES.has(code));
-
-/** An exit code as its platform shows it: Windows status codes, such as a crash's, in hex. */
-const exitCodeText = (code: number) =>
-	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
-
-/** A server the session started, by the config it serves. */
-interface StartedServer {
-	readonly target: ServeTarget;
-	readonly child: ChildProcess;
-	/** Its output reader and listeners, disposed once it is stopped on purpose. */
-	readonly store: DisposableStore;
-	exited: boolean;
-	/** Stopped on purpose, as its config no longer wants it there; its exit is no failure. */
-	retiring: boolean;
-	/** The write of its record, once it answered. */
-	record?: Promise<void>;
-	/** The next time its port is asked whether it answers yet. */
-	readyTimer?: ReturnType<typeof setTimeout>;
-}
-
-const builtOutcomes: ReadonlySet<string> = new Set(["wrote", "unchanged"]);
+import { StartedServer } from "./started-server.js";
 
 /** A watch of the plan's configs, and a server for each config to serve that nothing else serves, kept in step with the configs as they change. */
 export class CoreServeSession
@@ -93,19 +51,19 @@ export class CoreServeSession
 	private readonly servers = new Map<string, StartedServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */
 	private readonly retirements = new Set<Promise<void>>();
-	/** The address of each config a server the session didn't start serves. */
-	private readonly servedElsewhere = new Map<string, string>();
+	/** The configs whose server can't be started at the address they were last seen at, so what the session said of them is said once. */
+	private readonly declined = new Map<
+		string,
+		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
+	>();
 	/** The configs whose latest build wrote their project file, which a new server can serve. */
 	private readonly built = new Set<string>();
-	/** The address each config to serve was refused at, so a refusal is said once. */
-	private readonly refused = new Map<string, string>();
 	private launched = false;
-	private reconciling: Promise<void> = Promise.resolve();
+	private readonly reconciling = new Sequencer();
 	/** The first round of builds, or the error that ended it before it said anything. */
 	private readonly firstUpdate = new DeferredPromise<
 		WatchUpdate | Error | undefined
 	>();
-	private readonly timers = new Set<ReturnType<typeof setTimeout>>();
 	private stopping = false;
 	private stopped: Promise<void> | undefined;
 
@@ -122,16 +80,17 @@ export class CoreServeSession
 		this._register(
 			watch.onDidUpdate((update) => {
 				for (const { build } of update.reports)
-					if (builtOutcomes.has(build.outcome))
-						this.built.add(build.config.file);
+					if (isWritten(build)) this.built.add(build.config.file);
 					else this.built.delete(build.config.file);
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);
 				this._onDidUpdate.fire(update);
 				if (this.launched)
-					this.reconciling = this.reconciling
-						.then(() => this.reconcile())
-						.catch((error) => this._onDidError.fire(error));
+					this.reconciling
+						.queue(() => this.reconcile())
+						.catch((error) =>
+							this._onDidError.fire(ErrorUtils.fromUnknown(error))
+						);
 			})
 		);
 		this._register(
@@ -158,7 +117,10 @@ export class CoreServeSession
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		for (const target of this.plan.toStart) this.launch(target);
 		for (const { config, address } of this.plan.running)
-			this.servedElsewhere.set(config.file, address.toString());
+			this.declined.set(config.file, {
+				kind: "elsewhere",
+				address: address.toString(),
+			});
 		this.launched = true;
 		return ok(undefined);
 	}
@@ -169,15 +131,13 @@ export class CoreServeSession
 		this.stopped ??= (async () => {
 			if (!this.firstUpdate.isSettled)
 				this.firstUpdate.complete(undefined);
-			for (const timer of this.timers) clearTimeout(timer);
-			this.timers.clear();
 			const servers = [...this.servers.values()];
 			await Promise.all([
-				...servers.map(({ child }) => child.terminate()),
+				...servers.map((server) => server.terminate()),
 				...this.retirements,
 			]);
 			await Promise.allSettled(
-				servers.map((server) => this.unrecord(server))
+				servers.map((server) => server.unrecord())
 			);
 			await this.watch.stop();
 		})();
@@ -187,16 +147,14 @@ export class CoreServeSession
 	/** Ends the servers if `stop` wasn't awaited, then drops the subscriptions. */
 	override [Symbol.dispose](): void {
 		this.stop().catch(onUnexpectedError);
-		for (const { store } of this.servers.values()) store[Symbol.dispose]();
+		for (const server of this.servers.values()) server[Symbol.dispose]();
 		super[Symbol.dispose]();
 	}
 
 	/** Starts a server for each config to serve now that has none, and stops those whose config is gone or extended. */
 	private async reconcile(): Promise<void> {
 		const served = new ServedConfigs(
-			this.plan.selection.entries.flatMap(
-				(entry) => buildableConfig(entry) ?? []
-			),
+			this.plan.selection.configs,
 			this.plan.named
 		);
 		const wanted = new Set(served.configs.map(({ file }) => file));
@@ -209,9 +167,8 @@ export class CoreServeSession
 					present.has(file) ? "extended" : "removed"
 				);
 		}
-		for (const known of [this.servedElsewhere, this.refused])
-			for (const file of [...known.keys()])
-				if (!wanted.has(file)) known.delete(file);
+		for (const file of [...this.declined.keys()])
+			if (!wanted.has(file)) this.declined.delete(file);
 		for (const config of served.configs) {
 			if (this.stopping) return;
 			await this.follow(config, served);
@@ -236,23 +193,15 @@ export class CoreServeSession
 		const holder = others.find(
 			(other) => other.address.port === target.address.port
 		);
-		const refusedHere = this.refused.get(config.file) === address;
-		const elsewhere = this.servedElsewhere.get(config.file) === address;
-		if (!holder && (refusedHere || elsewhere)) {
-			// Only a port that freed up, or a change of the server on it, changes anything, and one probe tells.
-			const state = await this.probe.probe(target.address, tool.server);
-			const ownProject =
-				state.kind === "serving" &&
-				state.info.project === target.project;
-			if (elsewhere && ownProject) return;
-			if (
-				refusedHere &&
-				!elsewhere &&
-				state.kind !== "free" &&
-				!ownProject
-			)
-				return;
-		}
+		const prior = this.declined.get(config.file);
+		const declinedHere =
+			prior?.address === address ? prior.kind : undefined;
+		if (
+			!holder &&
+			declinedHere &&
+			(await this.stillDeclined(target, declinedHere))
+		)
+			return;
 		// Its own server holds the port when only the host moved, so the port has nothing else to tell.
 		const samePort = started?.target.address.port === target.address.port;
 		const checked = holder
@@ -266,30 +215,56 @@ export class CoreServeSession
 						served.sharesName(target.project)
 					);
 		if (this.stopping) return;
+		await this.settle(target, started, declinedHere, checked);
+	}
+
+	/** Says what came of checking `target`, and acts on it: a refusal is said once, a server already serving it is left be, and else the server moves or starts. */
+	private async settle(
+		target: ServeTarget,
+		started: StartedServer | undefined,
+		declinedHere: "refused" | "elsewhere" | undefined,
+		checked: Result<ServeTarget, Diagnostic>
+	): Promise<void> {
+		const { file } = target.config;
+		const address = target.address.toString();
 		if (checked.isErr()) {
-			if (!refusedHere)
+			if (declinedHere !== "refused")
 				this._onDidChange.fire({
 					kind: "refused",
 					target,
 					diagnostic: checked.error,
 				});
-			this.refused.set(config.file, address);
-			this.servedElsewhere.delete(config.file);
+			this.declined.set(file, { kind: "refused", address });
 			return;
 		}
-		this.refused.delete(config.file);
 		if (started) await this.retire(started, "moved");
-		if (checked.value.running) {
-			if (!elsewhere)
+		if (isRunning(checked.value)) {
+			if (declinedHere !== "elsewhere")
 				this._onDidChange.fire({
 					kind: "running",
 					target: checked.value,
 				});
-			this.servedElsewhere.set(config.file, address);
+			this.declined.set(file, { kind: "elsewhere", address });
 			return;
 		}
-		this.servedElsewhere.delete(config.file);
+		this.declined.delete(file);
 		this.launch(checked.value);
+	}
+
+	/** Whether the server at `target`'s address is still as it was when `kind` was declined: only a port that freed up, or a change of the server on it, changes anything, and one probe tells. */
+	private async stillDeclined(
+		target: ServeTarget,
+		kind: "refused" | "elsewhere"
+	): Promise<boolean> {
+		const state = await this.probe.probe(
+			target.address,
+			this.plan.tool.server
+		);
+		const ownProject =
+			state.kind === "serving" && state.info.project === target.project;
+		return kind === "elsewhere"
+			? ownProject
+			: state.kind !== "free" && !ownProject;
 	}
 
 	private async retire(
@@ -297,17 +272,8 @@ export class CoreServeSession
 		reason: "removed" | "extended" | "moved"
 	): Promise<void> {
 		const { target } = server;
-		server.retiring = true;
 		this.servers.delete(target.config.file);
-		if (server.readyTimer) {
-			clearTimeout(server.readyTimer);
-			this.timers.delete(server.readyTimer);
-		}
-		const retired = (async () => {
-			await server.child.terminate();
-			await this.unrecord(server);
-			server.store[Symbol.dispose]();
-		})();
+		const retired = server.retire();
 		this.retirements.add(retired);
 		try {
 			await retired;
@@ -317,121 +283,21 @@ export class CoreServeSession
 		this._onDidChange.fire({ kind: "retired", target, reason });
 	}
 
-	/** Drops the record of `server`, once its write is done, so no late write outlives it. */
-	private async unrecord(server: StartedServer): Promise<void> {
-		if (!server.record) return;
-		await server.record;
-		await this.records.remove(server.target.address).catch(() => undefined);
-	}
-
 	private launch(target: ServeTarget): void {
 		if (this.stopping) return;
-		const { tool, serverArgs, selection } = this.plan;
-		const store = new DisposableStore();
-		const child = store.add(
-			this.processService.spawn(
-				tool.file,
-				tool.server.serveArgs(
-					path.relative(selection.home, target.config.outFile),
-					serverArgs
-				),
-				{ cwd: selection.home }
-			)
-		);
-		const server: StartedServer = {
+		const server = new StartedServer(
 			target,
-			child,
-			store,
-			exited: false,
-			retiring: false,
-		};
+			this.plan,
+			this.processService,
+			this.probe,
+			this.records,
+			{
+				served: (serving) => this._onDidServe.fire(serving),
+				said: (said) => this._onDidSay.fire(said),
+				stopped: (stop) => this._onDidStop.fire(stop),
+				failed: (error) => this._onDidError.fire(error),
+			}
+		);
 		this.servers.set(target.config.file, server);
-		const output = store.add(new ServerOutput(tool.server));
-		let said = false;
-		store.add(child.onDidOutput((text) => output.write(text)));
-		store.add(
-			output.onDidMessage((message) => {
-				if (message.severity !== "debug") said = true;
-				this._onDidSay.fire({ target, message });
-			})
-		);
-		store.add(
-			child.onDidExit((exit) => {
-				server.exited = true;
-				output.end();
-				if (!this.stopping && !server.retiring)
-					this.reportStop(target, exit, said);
-			})
-		);
-		this.awaitReady(server, READY_POLL_MS.first);
-	}
-
-	/** Asks the server's port until it answers for the project, while it runs. */
-	private awaitReady(server: StartedServer, delay: number): void {
-		const { target } = server;
-		const timer = setTimeout(() => {
-			this.timers.delete(timer);
-			this.probe
-				.probe(target.address, this.plan.tool.server)
-				.then((state) => {
-					if (this.stopping || server.exited || server.retiring)
-						return;
-					if (
-						state.kind === "serving" &&
-						state.info.project === target.project
-					) {
-						server.record = this.records
-							.write(
-								target.address,
-								state.info,
-								target.config.outFile
-							)
-							.catch((error) => this._onDidError.fire(error));
-						this._onDidServe.fire({ target, info: state.info });
-						return;
-					}
-					this.awaitReady(
-						server,
-						Math.min(delay * 2, READY_POLL_MS.max)
-					);
-				})
-				.catch((error) => this._onDidError.fire(error));
-		}, delay);
-		this.timers.add(timer);
-		server.readyTimer = timer;
-	}
-
-	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */
-	private reportStop(
-		target: ServeTarget,
-		exit: ProcessExit,
-		said: boolean
-	): void {
-		const interrupted = wasInterrupted(exit);
-		const { server } = this.plan.tool;
-		const { label, file } = target.config;
-		const failure =
-			exit.error !== undefined
-				? errorDiagnostic(
-						"serve.serverExited",
-						{ resource: file },
-						`${server.name} couldn't start to serve ${label}: ${exit.error.message}`
-					)
-				: !interrupted && exit.code !== 0
-					? errorDiagnostic(
-							"serve.serverExited",
-							{ resource: file },
-							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}${said ? "; see what it said above." : ", without saying why."}`
-						)
-					: undefined;
-		this._onDidStop.fire({
-			target,
-			exit,
-			interrupted,
-			failure,
-			...(failure && {
-				exitCode: exit.code !== null && exit.code !== 0 ? exit.code : 1,
-			}),
-		});
 	}
 }

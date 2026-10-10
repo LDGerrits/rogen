@@ -1,3 +1,4 @@
+import { ErrorUtils } from "../../base/errors.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
 export enum FileType {
@@ -15,18 +16,22 @@ export function isDirectoryType(type: FileType): boolean {
 	return (type & FileType.Directory) !== 0;
 }
 
-export interface FileSystemService {
-	readonly _serviceBrand: undefined;
-
+/** What a consumer that only looks at files needs. */
+export interface FileReader {
 	exists(filePath: string): Promise<boolean>;
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;
 
-	/** A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
+	/** The entries in order of name, as text, whatever order the system lists them in. A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
 	readDirectory(filePath: string): Promise<[string, FileType][]>;
-	createDirectory(filePath: string): Promise<void>;
 
 	readFile(filePath: string): Promise<string>;
+}
+
+export interface FileSystemService extends FileReader {
+	readonly _serviceBrand: undefined;
+
+	createDirectory(filePath: string): Promise<void>;
 	writeFile(filePath: string, content: string): Promise<void>;
 
 	delete(filePath: string, recursive?: boolean): Promise<void>;
@@ -40,7 +45,7 @@ export interface FileSystemService {
 
 /** The codes a file system rejects with, as Node's own errors carry them. */
 export type FileSystemErrorCode =
-	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP";
+	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP" | "EINVAL";
 
 /** An error shaped like Node's, so a caller checks `code` alike on every file system. */
 export function fileSystemError(
@@ -51,16 +56,30 @@ export function fileSystemError(
 	return Object.assign(new Error(message, { cause }), { code });
 }
 
-/** Whether `error` says the path isn't there, by its code and not its wording. */
-export function isMissingPath(error: Error): boolean {
-	return (error as { code?: unknown }).code === "ENOENT";
+/** Why renaming onto `existing` is refused, as Node refuses it: a path in the way unless told to overwrite, and a directory in the way always. */
+export function renameRefusal(
+	existing: FileType | undefined,
+	overwrite: boolean,
+	source: string,
+	destination: string
+): Error | undefined {
+	if (existing === undefined) return undefined;
+	if (!overwrite)
+		return fileSystemError(
+			"EEXIST",
+			`EEXIST: file already exists, rename '${source}' -> '${destination}'`
+		);
+	if (existing === FileType.Directory)
+		return fileSystemError(
+			"EISDIR",
+			`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
+		);
+	return undefined;
 }
 
-/** Why a file system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
-export function failureReason(error: Error): string {
-	return error.message
-		.replace(/^[A-Z][A-Z0-9]+: /, "")
-		.replace(/, [a-z]+( '.*')?$/, "");
+/** Whether `error` says the path isn't there, by its code and not its wording. */
+export function isMissingPath(error: Error): boolean {
+	return ErrorUtils.hasCode(error, "ENOENT");
 }
 
 export const FileSystemService =

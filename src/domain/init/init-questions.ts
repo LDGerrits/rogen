@@ -4,7 +4,11 @@ import {
 	PromptChoice,
 	PromptService,
 } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	DEFAULT_CONFIG_STEM,
+	configFileName,
+} from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
 import {
 	Language,
@@ -12,15 +16,22 @@ import {
 	MountCandidate,
 	PLACES_DIR,
 } from "../toolchain/toolchain.js";
-import { ConfigSet, TEMPLATE_FILE } from "./config-set.js";
+import { ConfigSet } from "./config-set.js";
+import { PlaceFolder } from "./place-folder.js";
 import { HOOK_SCRIPT_FILE } from "./hook-target.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { TemplateChoice } from "./starter-template.js";
+import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
 
 export type Layout = "one" | "several";
-export type Addition = "place" | "extending" | "separate" | "agent" | "hook";
+/** One thing `init` can add beside the configs here, and what adding it does. */
+export interface AdditionOption<T> {
+	readonly id: string;
+	readonly label: string;
+	readonly hint: string;
+	readonly addition: T;
+}
 
 export interface NameQuestion {
 	readonly message: string;
@@ -80,58 +91,23 @@ export class InitQuestions {
 		});
 	}
 
-	/** What to add beside `default.rogen.json`; a run that can't ask adds a place, as Enter does. */
-	/** What to add beside the configs here; a place or an extending config only beside `default.rogen.json`. */
-	async whatToAdd(
+	/** What to add beside the configs here, among `options`, which are never empty; a run that can't ask takes the first, as Enter does. */
+	async whatToAdd<T>(
 		hasDefault: boolean,
-		agentFile?: string,
-		hookAgents: readonly string[] = []
-	): Promise<Addition | undefined> {
-		const first: Addition = hasDefault ? "place" : "separate";
-		if (!this.interactive) return first;
-		return this.promptService.select<Addition>({
-			message: `${hasDefault ? ConfigSet.DEFAULT_FILE : "A config"} exists. What do you want to add?`,
-			choices: [
-				...(hasDefault
-					? [
-							{
-								value: "place" as const,
-								label: "A place",
-								hint: "another Roblox place that shares default's code",
-							},
-							{
-								value: "extending" as const,
-								label: "A config that extends default",
-								hint: "the same game with other variants or excludes",
-							},
-						]
-					: []),
-				{
-					value: "separate",
-					label: "A separate config",
-					hint: "answers every question again",
-				},
-				...(agentFile
-					? [
-							{
-								value: "agent" as const,
-								label: "Agent instructions",
-								hint: `Rogen's rules for coding agents, in ${agentFile}`,
-							},
-						]
-					: []),
-				...(hookAgents.length > 0
-					? [
-							{
-								value: "hook" as const,
-								label: "Agent hook",
-								hint: `reports Rogen warnings to ${joinedWithAnd(hookAgents)}`,
-							},
-						]
-					: []),
-			],
-			initialValue: first,
+		options: readonly AdditionOption<T>[]
+	): Promise<T | undefined> {
+		const [first] = options;
+		if (!this.interactive) return first.addition;
+		const id = await this.promptService.select<string>({
+			message: `${hasDefault ? DEFAULT_CONFIG_FILE : "A config"} exists. What do you want to add?`,
+			choices: options.map(({ id, label, hint }) => ({
+				value: id,
+				label,
+				hint,
+			})),
+			initialValue: first.id,
 		});
+		return options.find((option) => option.id === id)?.addition;
 	}
 
 	/** Whether to add Rogen's rules to the agent file; a run that can't ask adds them, as Enter does. */
@@ -163,7 +139,7 @@ export class InitQuestions {
 		if (!this.interactive) return initial;
 
 		const found = workspace.places
-			.map((name) => ConfigSet.placeFolderOf(name))
+			.map((name) => PlaceFolder.pathOf(name))
 			.join(", ");
 		return this.promptService.select<Layout>({
 			message: "What are you setting up?",
@@ -191,7 +167,7 @@ export class InitQuestions {
 			validate: (value) => {
 				const trimmed = value.trim();
 				if (trimmed === "") return "Enter a name.";
-				const parsed = ConfigSet.parseName([trimmed]);
+				const parsed = ConfigSet.checkName(trimmed);
 				if (parsed.isErr()) return parsed.error.message;
 				const taken = filesFor(trimmed).find((file) =>
 					directory.has(file)
@@ -348,7 +324,7 @@ export class InitQuestions {
 		directory: InitDirectory,
 		outputs: readonly string[]
 	): Promise<TemplateChoice | undefined> {
-		const candidates = ConfigSet.handWrittenProjectFiles(directory);
+		const candidates = directory.handWrittenProjectFiles;
 		if (directory.has(TEMPLATE_FILE) || candidates.length === 0) {
 			return { kind: "new" };
 		}
@@ -536,20 +512,20 @@ export class InitQuestions {
 			(place) =>
 				!directory.placeFolderProblem(
 					rootDirs,
-					ConfigSet.placeFolderIn(directory, place, rootDirs)
+					PlaceFolder.pathIn(directory, place, rootDirs)
 				)
 		);
 		if (!this.interactive) return found;
 
 		const answer = await this.promptService.text({
 			message: "Places",
-			description: `Each place gets <name>.rogen.json, and its own folder, ${ConfigSet.placeFolderOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
+			description: `Each place gets <name>.rogen.json, and its own folder, ${PlaceFolder.pathOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
 			placeholder: found.length > 0 ? found.join(", ") : "lobby",
 			validate: (value) => {
 				const names = splitList(value);
 				if (names.length === 0) return "Enter at least one place.";
 				for (const [index, place] of names.entries()) {
-					const parsed = ConfigSet.parseName([place]);
+					const parsed = ConfigSet.checkName(place);
 					if (parsed.isErr()) return parsed.error.message;
 					if (names.indexOf(place) !== index) {
 						return `${place} is listed twice.`;
@@ -564,7 +540,7 @@ export class InitQuestions {
 					}
 					const problem = directory.placeFolderProblem(
 						rootDirs,
-						ConfigSet.placeFolderIn(directory, place, rootDirs)
+						PlaceFolder.pathIn(directory, place, rootDirs)
 					);
 					if (problem) return problem;
 				}
@@ -580,7 +556,7 @@ export class InitQuestions {
 		base: BaseConfig,
 		placeName: string
 	): Promise<string | undefined> {
-		const placeholder = ConfigSet.placeFolderOf(placeName, base.rootDirs);
+		const placeholder = PlaceFolder.pathOf(placeName, base.rootDirs);
 		if (!this.interactive) return placeholder;
 		const folder = await this.promptService.text({
 			message: "Place folder",

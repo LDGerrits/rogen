@@ -1,5 +1,5 @@
 import path from "path";
-import { FileSystemService } from "../fs/file-system-service.js";
+import { FileReader } from "../fs/file-system-service.js";
 import { ProductService } from "./product-service.js";
 
 interface PackageJson {
@@ -13,7 +13,7 @@ export class CoreProductService implements ProductService {
 
 	/** `installDir` is where the program runs from; its nearest package.json names the version, unless the build baked `bakedVersion` in, as a compiled binary has no package.json beside it. */
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly installDir: string,
 		private readonly bakedVersion?: string
 	) {}

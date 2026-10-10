@@ -60,6 +60,43 @@ describe("check command", () => {
 			await writeConfig("default.rogen.json", { routes: ROUTES });
 		});
 
+		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+			});
+			await write(
+				"src/F/Shared/Good.luau",
+				"src/F/Shared/Bad@server.luau"
+			);
+
+			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([]);
+			expect(logService.texts("warn")).toEqual([
+				"Checked as far as the build gets: it stops on src/F/Shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.",
+			]);
+		});
+
+		it("should list what stops the build in the JSON document, beside the findings", async () => {
+			await writeConfig("default.rogen.json", {
+				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+			});
+			await write(
+				"src/F/Shared/Good.luau",
+				"src/F/Shared/Bad@server.luau"
+			);
+
+			await run({ _: ["src/F/Shared/Good.luau"], json: true });
+
+			expect(
+				JSON.parse(printed()[0]) as { stoppedBy: { code: string }[] }
+			).toMatchObject({
+				diagnostics: [],
+				stoppedBy: [{ code: "route.ignoredAt" }],
+			});
+		});
+
 		it("should print the findings as output, not as warnings", async () => {
 			await write("src/Save@sever.luau");
 
@@ -216,7 +253,7 @@ describe("check command", () => {
 			await run({});
 
 			expect(printed()).toEqual([
-				"missing - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)",
+				"missing - warning: this root dir does not exist or is not a folder, so it contributes nothing. (scan.missingRootDir)",
 			]);
 		});
 

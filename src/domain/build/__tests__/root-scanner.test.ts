@@ -64,6 +64,30 @@ describe("RootScanner", () => {
 			store[Symbol.dispose]();
 		});
 
+		describe("the project file it writes", () => {
+			it("should be left out when a root dir holds it", async () => {
+				await write("src/A.luau", "src/game.project.json");
+				const index = await newIndex().list([abs("src")]);
+				const config = configOf({
+					rootDirs: [abs("src")],
+					exclude: [],
+					outFile: abs("src/game.project.json"),
+				});
+
+				const [root] = builderOf(fs, index)
+					.place(config)
+					.unwrap().roots;
+
+				expect(files(root)).toEqual(["script:A.luau"]);
+				expect(
+					root.leftOut.get(toPosix(abs("src/game.project.json")))
+				).toEqual({
+					status: "excluded",
+					pattern: "game.project.json",
+				});
+			});
+		});
+
 		describe("recognised files", () => {
 			it("should keep scripts, models and data files, and record their kind", async () => {
 				await write(
@@ -164,14 +188,21 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:A.luau"]);
 			});
 
-			it("should match extensions in any case", async () => {
-				await write("src/A.LUAU", "src/B.Rbxm");
+			it("should leave out a file whose extension is not in lowercase, as Rojo does, and name the file Rojo reads", async () => {
+				await write("src/A.LUAU", "src/B.Rbxm", "src/C.MODEL.JSON");
 
 				const { roots } = await scan();
 
-				expect(files(roots[0])).toEqual([
-					"script:A.LUAU",
-					"model:B.Rbxm",
+				expect(files(roots[0])).toEqual([]);
+				expect(
+					[...roots[0].leftOut].map(([file, why]) => [
+						file,
+						why.status === "extensionCase" && why.rename,
+					])
+				).toEqual([
+					[abs("src/A.LUAU"), "A.luau"],
+					[abs("src/B.Rbxm"), "B.rbxm"],
+					[abs("src/C.MODEL.JSON"), "C.model.json"],
 				]);
 			});
 

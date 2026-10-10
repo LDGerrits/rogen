@@ -18,7 +18,13 @@ import { TemplateChoice } from "../starter-template.js";
 import { StartingRoutes } from "../starting-routes.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
+import {
+	directory,
+	directoryOf,
+	legacyPlan,
+	placeFoldersOf,
+	planOf,
+} from "./init-fixtures.js";
 
 const LUAU_ROUTES = {
 	Server: "ServerScriptService",
@@ -62,7 +68,8 @@ const defaultProjectChoices = async (
 			givenName: name === "default" ? undefined : name,
 		}),
 		new InitQuestions(new MockPromptService([], false), false),
-		fileSystem
+		fileSystem,
+		placeFoldersOf(fileSystem)
 	);
 	const choices = (await setup.ask()).unwrap() as ProjectChoices;
 	return withPlaces ? choices : { ...choices, places: [] };
@@ -89,7 +96,8 @@ const planProject = ({
 		new ProjectSetup(
 			target,
 			new InitQuestions(new MockPromptService([], false), false),
-			new MemoryFileSystemService()
+			new MemoryFileSystemService(),
+			placeFoldersOf()
 		),
 		{
 			...choices,
@@ -130,7 +138,8 @@ const directoriesOf = async (
 		new ProjectSetup(
 			target,
 			new InitQuestions(new MockPromptService([], false), false),
-			new MemoryFileSystemService()
+			new MemoryFileSystemService(),
+			placeFoldersOf()
 		),
 		choices,
 		target
@@ -1656,7 +1665,8 @@ describe("ConfigSet.parseName", () => {
 		const setup = new ProjectSetup(
 			directoryOf({ existing: ["default.project.json"] }),
 			new InitQuestions(new MockPromptService([], false), false),
-			new MemoryFileSystemService()
+			new MemoryFileSystemService(),
+			placeFoldersOf()
 		);
 
 		const asked = await setup.ask();
@@ -1678,7 +1688,8 @@ describe("ConfigSet.parseName", () => {
 		const setup = new ProjectSetup(
 			directoryOf({ existing: ["default.project.json"] }),
 			new InitQuestions(new MockPromptService([], false), false),
-			fileSystem
+			fileSystem,
+			placeFoldersOf(fileSystem)
 		);
 
 		const asked = await setup.ask();

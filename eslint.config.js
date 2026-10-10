@@ -2,7 +2,7 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 import jestPlugin from "eslint-plugin-jest";
 import { defineConfig } from "eslint/config";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 
 // What each layer must not import.
 const layersAbove = {
@@ -58,6 +58,18 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 	}
 }
 
+for (const [layer, layerModules] of Object.entries(modules)) {
+	for (const [name, files] of Object.entries(layerModules)) {
+		for (const file of files) {
+			if (!existsSync(`src/${layer}/${name}/${file}.ts`)) {
+				throw new Error(
+					`modules.${layer}.${name} lists ${file}, which src/${layer}/${name}/${file}.ts does not hold.`
+				);
+			}
+		}
+	}
+}
+
 // Modules that only the composition root imports, so that dropping one is deleting its folder and a line of main.ts.
 const MAIN_ONLY_MODULES = ["legacy"];
 
@@ -103,7 +115,7 @@ const internalsPatterns = (layer, module, depth) => [
 		: []),
 ];
 
-// Platform contract files are ports; the files named for how they fulfil one are the outermost ring (ADR-0009).
+// Platform contract files are ports; the files named for how they fulfil one are the outermost ring.
 const IMPLEMENTATION_PREFIXES = [
 	"core",
 	"console",

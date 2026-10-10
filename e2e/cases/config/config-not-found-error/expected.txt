@@ -1,4 +1,4 @@
 $ rogen build
 exit 1
 stderr:
-  error: No *.rogen.json found in <dir>. Run "rogen init" to create one.
+  error: No *.rogen.json found in <dir>. Run 'rogen init' to create one.

@@ -1,15 +1,19 @@
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	warningDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
-import { ModeCheck } from "./mode-check.js";
-import { Placement, Placer } from "./placement.js";
+import { MissingInstances } from "./missing-instances.js";
+import { Placement } from "./placement.js";
+import { Placer } from "./placer.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 
@@ -23,34 +27,36 @@ export interface BuiltConfig {
 	readonly readFiles: readonly string[];
 }
 
-/** What `examine` found for one config. */
-export interface ExaminedConfig {
-	readonly placement: Placement;
-	/** The tree and the files read to assemble it; absent when a meta or assembly error stopped it. */
-	readonly assembled?: {
-		readonly tree: RojoTree;
-		readonly readFiles: readonly string[];
-	};
-	/** The errors that stopped assembly, else the warnings the build raises (without the sync dir's). */
-	readonly diagnostics: readonly Diagnostic[];
-}
+/** What `examine` found for one config: it assembled, with the warnings the build raises (without the sync dir's), or a meta or assembly error stopped it. */
+export type ExaminedConfig =
+	| {
+			readonly kind: "assembled";
+			readonly placement: Placement;
+			readonly tree: RojoTree;
+			/** The files read to assemble the tree. */
+			readonly readFiles: readonly string[];
+			readonly warnings: readonly Diagnostic[];
+	  }
+	| {
+			readonly kind: "stopped";
+			readonly placement: Placement;
+			readonly errors: readonly Diagnostic[];
+	  };
 
 /** Builds one config from an index, phase by phase, so `run` and `locate` place files the same way. */
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
 	private readonly assembler: TreeAssembler;
 	private readonly syncDirCheck: SyncDirCheck;
-	private readonly modeCheck: ModeCheck;
 
 	constructor(
-		fileSystemService: FileSystemService,
+		fileSystemService: FileReader,
 		private readonly index: IndexReader,
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.metaReader = new MetaReader(fileSystemService);
 		this.assembler = new TreeAssembler();
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
-		this.modeCheck = new ModeCheck(index, tools);
 	}
 
 	/** Places `config`'s files; its caller checked that it declares routes. */
@@ -65,22 +71,24 @@ export class ConfigBuilder {
 	): Promise<Result<BuiltConfig, DiagnosticsError>> {
 		const examined = await this.examine(config);
 		if (examined.isErr()) return examined;
-		const { placement, assembled, diagnostics } = examined.value;
-		if (!assembled) return err(new DiagnosticsError(diagnostics));
+		const examinedConfig = examined.value;
+		if (examinedConfig.kind === "stopped")
+			return err(new DiagnosticsError(examinedConfig.errors));
+		const { placement, tree, readFiles, warnings } = examinedConfig;
 		return ok({
 			config,
-			tree: assembled.tree,
+			tree,
 			summary: placement.summary(),
 			findings: {
-				warnings: diagnostics,
+				warnings,
 				syncWarnings:
 					syncWarnings ?? (await this.syncDirCheck.check(placement)),
 			},
-			readFiles: assembled.readFiles,
+			readFiles,
 		});
 	}
 
-	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the error is in `diagnostics`. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -90,17 +98,48 @@ export class ConfigBuilder {
 		const assembled = await this.assemble(placement.value);
 		if (assembled.isErr())
 			return ok({
+				kind: "stopped",
 				placement: placement.value,
-				diagnostics: assembled.error,
+				errors: assembled.error,
 			});
 		const { meta, assembly } = assembled.value;
 		return ok({
+			kind: "assembled",
 			placement: placement.value,
-			assembled: { tree: assembly.tree, readFiles: meta.files },
-			diagnostics: [
+			tree: assembly.tree,
+			readFiles: meta.files,
+			warnings: [
+				...meta.warnings,
 				...new BuildValidator(assembly).validate(),
-				...this.modeCheck.check(config, placement.value),
+				...this.modeWarnings(config, placement.value),
 			],
+		});
+	}
+
+	/** Places `config` in every mode it declares but isn't built in, and warns of what a build there would lose. Rogen reads names only, so every build can check every mode. `active` is where the build placed `config`, whose own gaps are already reported. */
+	private modeWarnings(
+		config: ResolvedConfig,
+		active: Placement
+	): Diagnostic[] {
+		const others = config.modes.filter((mode) => mode !== config.mode);
+		if (others.length === 0) return [];
+		const known = new Set(
+			new MissingInstances(active).find().map(({ instance }) => instance)
+		);
+		return others.flatMap((mode) => {
+			const view = config.inMode(mode);
+			if (!view) return [];
+			const placed = this.place(view);
+			if (placed.isErr()) {
+				return placed.error.map(({ resource, position, message }) =>
+					warningDiagnostic(
+						"mode.clash",
+						{ resource, position },
+						`${message} (in mode "${mode}")`
+					)
+				);
+			}
+			return new MissingInstances(placed.value).modeDiagnostics(known);
 		});
 	}
 

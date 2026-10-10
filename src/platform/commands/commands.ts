@@ -1,4 +1,5 @@
-import { Disposable } from "../../base/disposable.js";
+import { DeferredPromise } from "../../base/async.js";
+import { Disposable, DisposableStore } from "../../base/disposable.js";
 import { ReportedError } from "../../base/errors.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -11,6 +12,7 @@ import {
 	ServicesAccessor,
 	createServiceIdentifier,
 } from "../instantiation/instantiation.js";
+import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 
@@ -20,12 +22,14 @@ export interface CommandService {
 		commandId: string,
 		line: CommandLine
 	): Promise<Result<void, Error>>;
+	/** Every registered command, by id. */
+	getCommands(): ReadonlyMap<string, Command>;
 }
 
 export const CommandService =
 	createServiceIdentifier<CommandService>("commandService");
 
-export type CommandHandler = (
+type CommandHandler = (
 	accessor: ServicesAccessor,
 	line: CommandLine
 ) => Promise<Result<void, Error>>;
@@ -36,7 +40,7 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
-export interface CommandMetadata<
+interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
 	readonly description: string;
@@ -59,7 +63,7 @@ export interface CommandMetadata<
 }
 
 export interface CommandRegistry {
-	/** @throws Error if `id` is already registered, or no handler is given. */
+	/** @throws Error if `id` is already registered. */
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
@@ -96,12 +100,6 @@ class CoreCommandRegistry implements CommandRegistry {
 
 	registerCommand(command: Command): Disposable {
 		const { id } = command;
-
-		if (!command.handler) {
-			throw new Error(
-				`Command "${id}" was registered without a handler.`
-			);
-		}
 
 		if (this.commands.has(id)) {
 			throw new Error(`Command "${id}" is already registered.`);
@@ -160,7 +158,7 @@ export const Extensions = {
 Registry.add(Extensions.Commands, new CoreCommandRegistry());
 
 /** What a command is, as `rogen help` and the argument parser read it. */
-export interface CommandDescriptor<
+interface CommandDescriptor<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
 	readonly id: string;
@@ -178,6 +176,25 @@ export abstract class AbstractCommand<
 		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
 
+	/** Settles when the process is asked to shut down. The subscription is `store`'s, and made at once, so a request during the awaits that follow still counts. */
+	protected untilShutdown(
+		accessor: ServicesAccessor,
+		store: DisposableStore
+	): DeferredPromise<void> {
+		const shutdown = new DeferredPromise<void>();
+		store.add(
+			accessor
+				.get(LifecycleService)
+				.onWillShutdown(() => shutdown.complete())
+		);
+		return shutdown;
+	}
+
+	/** The run failed with `failure`, which it has already told the user in full, so only the exit code is left to set. */
+	protected reported(failure: Error): Result<void, Error> {
+		return err(new ReportedError(failure));
+	}
+
 	/** Prints the run's one JSON document. A run that failed passes `failure`, which then only sets the exit code, since the document says what went wrong. */
 	protected printJson(
 		logService: LogService,
@@ -185,7 +202,7 @@ export abstract class AbstractCommand<
 		failure?: Error
 	): Result<void, Error> {
 		logService.print(formatJsonDocument(document));
-		return failure ? err(new ReportedError(failure)) : ok(undefined);
+		return failure ? this.reported(failure) : ok(undefined);
 	}
 }
 

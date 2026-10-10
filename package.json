@@ -46,6 +46,8 @@
 		"test:e2e": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.e2e.config.js",
 		"test:e2e:update": "node scripts/summarize-transcripts.ts --update",
 		"test:e2e:diff": "node scripts/summarize-transcripts.ts",
+		"typecheck": "tsc -p e2e && tsc -p scripts",
+		"check": "npm run lint && npm run build && npm run typecheck && npm test",
 		"lint": "eslint .",
 		"generate:schema": "tsx scripts/generate-schema.ts",
 		"generate:services": "tsx scripts/generate-services.ts",
@@ -56,7 +58,6 @@
 		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen",
 		"version": "tsx scripts/sync-version.ts"
 	},
-	"main": "dist/index.js",
 	"bin": {
 		"rogen": "dist/bundle.cjs"
 	},

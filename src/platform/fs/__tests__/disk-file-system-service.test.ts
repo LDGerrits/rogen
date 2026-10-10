@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { FileType } from "../file-system-service.js";
 import { DiskFileSystemService } from "../disk-file-system-service.js";
 
 describe("DiskFileSystemService", () => {
@@ -54,6 +55,31 @@ describe("DiskFileSystemService", () => {
 					path.join(dir, "b.txt")
 				)
 			).rejects.toMatchObject({ code: "ENOENT" });
+		});
+	});
+
+	describe("readDirectory", () => {
+		const canDenyAccess =
+			process.platform !== "win32" && process.getuid?.() !== 0;
+
+		it("should list a link to a place it may not look into as a bare link", async () => {
+			if (!canDenyAccess) return;
+			const locked = path.join(dir, "locked");
+			fs.mkdirSync(locked);
+			fs.writeFileSync(path.join(locked, "secret.txt"), "");
+			fs.symlinkSync(
+				path.join(locked, "secret.txt"),
+				path.join(dir, "link")
+			);
+			fs.chmodSync(locked, 0o000);
+			try {
+				expect(await disk.readDirectory(dir)).toContainEqual([
+					"link",
+					FileType.SymbolicLink,
+				]);
+			} finally {
+				fs.chmodSync(locked, 0o755);
+			}
 		});
 	});
 });

@@ -1,5 +1,12 @@
 import { safeStringify } from "./json.js";
 
+/** Why a system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
+export function failureReason(error: Error): string {
+	const code = /^[A-Z][A-Z0-9]+: /;
+	if (!code.test(error.message)) return error.message;
+	return error.message.replace(code, "").replace(/, [a-z]+( '.*')?$/, "");
+}
+
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
 		// Use the object string instead of instanceof to
@@ -31,8 +38,19 @@ export const ErrorUtils = {
 		);
 	},
 
-	toString(error: Error): string {
-		return error.stack ? error.stack : error.message;
+	/** Whether `error` is a failed system call: its code is an errno such as `EACCES`, which the environment causes and a bug does not. */
+	isSystemError(error: unknown): error is Error & { readonly code: string } {
+		return (
+			error instanceof Error &&
+			"code" in error &&
+			typeof error.code === "string" &&
+			/^E[A-Z0-9]+$/.test(error.code)
+		);
+	},
+
+	/** `cause` as an error that says what failed and why: `Failed to write a.json: permission denied`. */
+	wrap(what: string, cause: Error): Error {
+		return new Error(`${what}: ${failureReason(cause)}`, { cause });
 	},
 };
 

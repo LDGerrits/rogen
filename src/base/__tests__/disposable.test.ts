@@ -44,6 +44,36 @@ describe("DisposableStore", () => {
 
 		expect(disposable[Symbol.dispose]).toHaveBeenCalledTimes(1);
 	});
+
+	it("should dispose the rest when one disposable throws, then rethrow", () => {
+		const store = new DisposableStore();
+		const failure = new Error("failed");
+		const after = { [Symbol.dispose]: jest.fn() };
+
+		store.add({
+			[Symbol.dispose]: () => {
+				throw failure;
+			},
+		});
+		store.add(after);
+
+		expect(() => store[Symbol.dispose]()).toThrow(failure);
+		expect(after[Symbol.dispose]).toHaveBeenCalledTimes(1);
+	});
+
+	it("should throw every failure together when several disposables throw", () => {
+		const store = new DisposableStore();
+		const throwing = () => ({
+			[Symbol.dispose]: () => {
+				throw new Error("failed");
+			},
+		});
+
+		store.add(throwing());
+		store.add(throwing());
+
+		expect(() => store[Symbol.dispose]()).toThrow(AggregateError);
+	});
 });
 
 describe("AbstractDisposable", () => {

@@ -1,6 +1,8 @@
 import { formatJsonFile } from "../../base/json.js";
 import { capitalized } from "../../base/strings.js";
-import { defaultOutFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_FILE } from "../config/config.js";
+import { projectFileName } from "../rojo/rojo-project.js";
+import { SyncServer } from "../serve/serve.js";
 import { CompiledPlace, Darklua, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig, InitDirectory } from "./init-directory.js";
@@ -20,6 +22,13 @@ export interface PlaceChoices {
 
 /** What one place writes and says, which a place added later and every place of a new project share. */
 export class PlacePlan {
+	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
+	static freePort(taken: readonly number[]): number {
+		let port = SyncServer.ROJO.defaultPort + 1;
+		while (taken.includes(port)) port++;
+		return port;
+	}
+
 	readonly configSet: ConfigSet;
 	private readonly folder: PlaceFolder;
 	private readonly servePort: number;
@@ -48,7 +57,7 @@ export class PlacePlan {
 						rootDirs: this.rootDirs,
 						sharedRootDirs: base.rootDirs,
 						outDir: this.outDir,
-						projectFile: defaultOutFileName(name),
+						projectFile: projectFileName(name),
 					})
 				: undefined;
 	}
@@ -60,7 +69,7 @@ export class PlacePlan {
 		configSet.planConfigs(
 			builder,
 			{
-				extends: ConfigSet.reference(ConfigSet.DEFAULT_FILE),
+				extends: ConfigSet.reference(DEFAULT_CONFIG_FILE),
 				rootDirs: [folder.rootDir],
 				template: folder.template,
 			},
@@ -87,7 +96,7 @@ export class PlacePlan {
 		sourcemap = true
 	): void {
 		const { configSet, rootDirs, syncDir, compiled, outDir } = this;
-		configSet.planSteps(builder, this.directory, {
+		configSet.planSteps(builder, this.directory.path, {
 			compileCommand: compiled?.compileCommand,
 			serveCommand,
 			processed: outDir ? [outDir] : rootDirs,

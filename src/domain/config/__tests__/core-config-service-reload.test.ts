@@ -138,6 +138,22 @@ describe("CoreConfigService", () => {
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
+		it("should report a config whose routes only changed order, since their order is their precedence", async () => {
+			await write("/repo/default.rogen.json", {
+				rootDirs: ["a"],
+				routes: { server: "ServerScriptService", client: "StarterGui" },
+			});
+			await start();
+
+			await write("/repo/default.rogen.json", {
+				rootDirs: ["a"],
+				routes: { client: "StarterGui", server: "ServerScriptService" },
+			});
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
+
+			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
+		});
+
 		it("should keep the same config when a reload loads it unchanged, even after it broke", async () => {
 			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
 			await start();

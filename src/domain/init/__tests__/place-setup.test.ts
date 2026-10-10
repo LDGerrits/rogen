@@ -15,7 +15,13 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { BaseConfigReader } from "../base-config-reader.js";
 import { PlaceFolder } from "../place-folder.js";
 import { PlaceSetup } from "../place-setup.js";
-import { directory, directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
+import {
+	directory,
+	directoryOf,
+	legacyPlan,
+	placeFoldersOf,
+	planOf,
+} from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = { hasSrc: true };
 const darklua: WorkspaceSpec = { ...luau, darkluaConfig: ".darklua.json" };
@@ -42,7 +48,7 @@ const plan = (
 			target,
 			ok(base),
 			new InitQuestions(new MockPromptService([], false), false),
-			new MemoryFileSystemService()
+			placeFoldersOf()
 		),
 		{
 			...choices,
@@ -133,7 +139,7 @@ describe("PlaceSetup", () => {
 					target,
 					ok({ rootDirs: ["src"] }),
 					new InitQuestions(new MockPromptService([], false), false),
-					new MemoryFileSystemService()
+					placeFoldersOf()
 				),
 				{
 					...choices,

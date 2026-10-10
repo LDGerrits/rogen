@@ -108,6 +108,34 @@ describe("MetaReader", () => {
 			]);
 		});
 
+		it("should warn of a mistyped field in a folder's meta, and of the same file once", async () => {
+			await fs.writeFile(
+				abs("src/Combat/init.meta.json"),
+				'{ "classname": "Actor" }'
+			);
+			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
+
+			const index = await indexOf(store, fs, [abs("src")]);
+			const built = await new MetaReader(fs).read(
+				placeFiles(
+					index,
+					configOf({
+						rootDirs: [abs("src")],
+						exclude: [],
+						variants: {},
+					}),
+					syncTools
+				).unwrap()
+			);
+
+			expect(built.unwrap().warnings).toMatchObject([
+				{
+					code: "meta.unknownField",
+					resource: abs("src/Combat/init.meta.json"),
+				},
+			]);
+		});
+
 		it("should skip a file's meta and an excluded folder's", async () => {
 			await fs.writeFile(abs("src/Save.meta.json"), "{ broken");
 			await fs.writeFile(abs("src/legacy/init.meta.json"), "{ broken");

@@ -1,12 +1,10 @@
+import { failureReason } from "../../base/errors.js";
 import { randomUUID } from "crypto";
 import { stableStringify } from "../../base/json.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	FileSystemService,
-	failureReason,
-} from "../../platform/fs/file-system-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RojoTree } from "../rojo/rojo-project.js";
 import { OutputFile } from "./build.js";
 

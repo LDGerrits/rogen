@@ -273,6 +273,37 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("what to add", () => {
+		const valuesListed = async (existing: string[]) => {
+			await write("default.rogen.json", "{}");
+			for (const file of existing) await write(file);
+			const prompts = new MockPromptService([CANCEL]);
+			let values: string[] = [];
+			const original = prompts.select.bind(prompts);
+			prompts.select = ((options: Parameters<typeof original>[0]) => {
+				values = options.choices.map(({ value }) => value);
+				return original(options);
+			}) as typeof prompts.select;
+			await serviceFor(prompts).plan([]);
+			return values;
+		};
+
+		it("should offer a place and an extending config beside default, and agent instructions until they are there", async () => {
+			expect(await valuesListed([])).toEqual([
+				"place",
+				"extending",
+				"separate",
+				"agent",
+			]);
+			expect(await valuesListed(["AGENTS.md"])).toContain("agent");
+		});
+
+		it("should offer the hook only where an agent is in use", async () => {
+			expect(await valuesListed([])).not.toContain("hook");
+			expect(await valuesListed([".claude/keep"])).toContain("hook");
+		});
+	});
+
 	describe("agent hook", () => {
 		const SCRIPT = ".agents/hooks/rogen-check.sh";
 		const CLAUDE = ".claude/settings.json";

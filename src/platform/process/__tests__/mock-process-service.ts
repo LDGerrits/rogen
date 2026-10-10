@@ -45,13 +45,22 @@ export class MockChildProcess
 		this.exit({ code: null, signal: "SIGTERM" });
 		return this.exitedWith!;
 	}
+
+	override [Symbol.dispose](): void {
+		void this.terminate();
+		super[Symbol.dispose]();
+	}
 }
 export class MockProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly spawned: MockChildProcess[] = [];
-	readonly execs: { file: string; args: readonly string[]; cwd: string }[] =
-		[];
+	readonly execs: {
+		file: string;
+		args: readonly string[];
+		cwd: string;
+		signal?: AbortSignal;
+	}[] = [];
 
 	constructor(
 		readonly installed: Map<string, string> = new Map(),
@@ -65,9 +74,14 @@ export class MockProcessService implements ProcessService {
 	async exec(
 		file: string,
 		args: readonly string[],
-		options: { readonly cwd: string }
+		options: { readonly cwd: string; readonly signal?: AbortSignal }
 	): Promise<Result<ProcessOutput, Error>> {
-		this.execs.push({ file, args, cwd: options.cwd });
+		this.execs.push({
+			file,
+			args,
+			cwd: options.cwd,
+			signal: options.signal,
+		});
 		const output = this.outputs.get(file);
 		return output ? ok(output) : err(new Error(`spawn ${file} ENOENT`));
 	}

@@ -1,0 +1,10 @@
+$ rogen build -q
+exit 0
+
+$ rogen build -q --deny-warnings
+exit 1
+stderr:
+  later - warning: this root dir does not exist or is not a folder, so it contributes nothing. (scan.missingRootDir)
+
+written:
+  default.project.json

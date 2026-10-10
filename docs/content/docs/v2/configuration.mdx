@@ -5,7 +5,7 @@ description: Every field of a *.rogen.json config file.
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A **config** is a `<name>.rogen.json` file that describes one tree and the project file it builds. When you don't name one, Rogen uses `default.rogen.json`. Comments and trailing commas are fine.
+A **config** is a `<name>.rogen.json` file that describes one tree and the project file it builds. When you don't name one, a command reads every `*.rogen.json` in the folder. Comments and trailing commas are fine.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">

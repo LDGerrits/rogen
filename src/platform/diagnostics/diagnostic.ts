@@ -1,5 +1,10 @@
 import path from "path";
-import { relativeTo, toNative, toPosix } from "../../base/path.js";
+import {
+	containsPath,
+	relativeTo,
+	toNative,
+	toPosix,
+} from "../../base/path.js";
 import { DOCS_URL } from "../product/product-service.js";
 
 export enum DiagnosticSeverity {
@@ -123,22 +128,30 @@ export function messageRelativeTo(message: string, cwd: string): string {
 }
 
 /** `message` ending in `(code)`: on its first line, since a grouped diagnostic lists its related entries on the lines after it. */
-export function messageWithCode(message: string, code: string): string {
+function messageWithCode(message: string, code: string): string {
 	const end = message.indexOf("\n");
 	return end === -1
 		? `${message} (${code})`
 		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
 }
 
-/** With `cwd`, the resource and any path in the message are written relative to it. */
-export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
-	const { position, severity } = diagnostic;
+/** `error: message (code)`, with any path in the message written relative to `cwd`. */
+export function diagnosticSummary(
+	diagnostic: Diagnostic,
+	cwd?: string
+): string {
 	const message = messageWithCode(
 		cwd === undefined
 			? diagnostic.message
 			: stripDirectory(diagnostic.message, cwd),
 		diagnostic.code
 	);
+	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}`;
+}
+
+/** With `cwd`, the resource and any path in the message are written relative to it. */
+export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
+	const { position } = diagnostic;
 	const resource =
 		cwd === undefined
 			? toNative(diagnostic.resource)
@@ -146,7 +159,7 @@ export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const where = position
 		? `${resource}:${position.line}:${position.column}`
 		: resource;
-	return `${where} - ${SEVERITY_LABELS[severity]}: ${message}`;
+	return `${where} - ${diagnosticSummary(diagnostic, cwd)}`;
 }
 
 export interface DiagnosticJson {
@@ -188,23 +201,26 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 				message: item.message,
 			})),
 		}),
-		...(fixes && {
-			fixes: fixes.map((fix) =>
-				isRenameFix(fix)
-					? {
-							rename: {
-								from: toNative(fix.rename.from),
-								to: toNative(fix.rename.to),
-							},
-						}
-					: {
-							run: {
-								command: fix.run.command,
-								cwd: toNative(fix.run.cwd),
-							},
-						}
-			),
-		}),
+		...(fixes && { fixes: fixes.map(fixToJson) }),
+	};
+}
+
+/** A fix with native paths, as a `--json` run prints it. */
+export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
+	if (isRenameFix(fix)) {
+		return {
+			rename: {
+				from: toNative(fix.rename.from),
+				to: toNative(fix.rename.to),
+			},
+		};
+	}
+	fix satisfies RunFix;
+	return {
+		run: {
+			command: fix.run.command,
+			cwd: toNative(fix.run.cwd),
+		},
 	};
 }
 
@@ -214,15 +230,118 @@ export function renderDiagnostics(diagnostics: readonly Diagnostic[]): string {
 		.join("\n");
 }
 
+/** What makes two diagnostics one as the user reads them; with `anywhere`, a diagnostic about a file is the same wherever the file is. */
+export function diagnosticKey(
+	diagnostic: Diagnostic,
+	anywhere?: string
+): string {
+	return renderDiagnostic(
+		diagnostic.resource === anywhere
+			? { ...diagnostic, resource: "" }
+			: diagnostic
+	);
+}
+
+/** `diagnostics` once each, in order. */
+export function uniqueDiagnostics(
+	diagnostics: readonly Diagnostic[]
+): Diagnostic[] {
+	return [
+		...new Map(
+			diagnostics.map((diagnostic) => [
+				diagnosticKey(diagnostic),
+				diagnostic,
+			])
+		).values(),
+	];
+}
+
 /** The diagnostics of `after` that `before` didn't hold, compared as the user reads them. */
 export function newDiagnostics(
 	before: readonly Diagnostic[],
 	after: readonly Diagnostic[]
 ): Diagnostic[] {
-	const seen = new Set(
-		before.map((diagnostic) => renderDiagnostic(diagnostic))
-	);
-	return after.filter(
-		(diagnostic) => !seen.has(renderDiagnostic(diagnostic))
-	);
+	const seen = new Set(before.map((diagnostic) => diagnosticKey(diagnostic)));
+	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
+}
+
+/** The document a `--json` run prints for `diagnostics`. */
+export function diagnosticsJson(diagnostics: readonly Diagnostic[]): {
+	readonly diagnostics: DiagnosticJson[];
+} {
+	return { diagnostics: diagnostics.map(diagnosticToJson) };
+}
+
+/** `diagnostic` as it reads about one related file: that file's message, and only the fixes that rename it. */
+function narrowedTo(
+	diagnostic: Omit<Diagnostic, "related">,
+	{ resource, message }: DiagnosticRelated
+): Diagnostic {
+	return {
+		...diagnostic,
+		resource,
+		position: undefined,
+		message,
+		fixes: diagnostic.fixes?.filter(
+			(fix) =>
+				isRenameFix(fix) &&
+				toPosix(fix.rename.from) === toPosix(resource)
+		),
+	};
+}
+
+/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
+export function diagnosticsAbout(
+	diagnostics: readonly Diagnostic[],
+	source: string
+): Diagnostic[] {
+	const target = toPosix(source);
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		const entries = (related ?? []).filter(
+			({ resource }) => toPosix(resource) === target
+		);
+		if (entries.length > 0)
+			return entries.map((entry) =>
+				narrowedTo(rest, { ...entry, resource: source })
+			);
+		// A group is about its related files; its own resource is the config.
+		return !related?.length && toPosix(diagnostic.resource) === target
+			? [rest]
+			: [];
+	});
+}
+
+/** The diagnostics about `target`, inside it, or about a folder it lies in; a grouped one is cut to the entries that do. */
+export function diagnosticsReaching(
+	diagnostics: readonly Diagnostic[],
+	target: string
+): Diagnostic[] {
+	const posixTarget = toPosix(target);
+	const reaches = (resource: string) => {
+		const posix = toPosix(resource);
+		return (
+			containsPath(posixTarget, posix) || containsPath(posix, posixTarget)
+		);
+	};
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		if (related?.length)
+			return related
+				.filter(({ resource }) => reaches(resource))
+				.map((entry) => narrowedTo(rest, entry));
+		return reaches(diagnostic.resource) ? [rest] : [];
+	});
+}
+
+/** Every diagnostic once per file it is about: a grouped one becomes an entry per related file, and any other stays as it is. */
+export function diagnosticsPerFile(
+	diagnostics: readonly Diagnostic[]
+): Diagnostic[] {
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		return related?.length
+			? related.map((entry) => narrowedTo(rest, entry))
+			: [rest];
+	});
 }

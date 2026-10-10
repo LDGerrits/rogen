@@ -134,7 +134,7 @@ describe("BuildTemplate", () => {
 					instancePath: ["ReplicatedStorage", "Vendor", "Lib"],
 					folderNodes: [
 						{
-							dir: "Vendor",
+							folder: `${abs("src")}/Vendor`,
 							instancePath: ["ReplicatedStorage", "Vendor"],
 						},
 					],

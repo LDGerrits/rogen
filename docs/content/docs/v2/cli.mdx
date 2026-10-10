@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [name…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` prints usage. Whatever follows names configs: `rogen build lobby` builds `lobby.rogen.json`, and a name with a `/` or ending in `.json` is a path, as in `rogen build places/lobby.rogen.json`. With no names, a command reads every `*.rogen.json` in the folder. Run from a folder with none, `build`, `watch`, `serve`, `list` and `where` use the configs of the nearest folder above that has any, and the text output says which (`rogen build · default, lobby · in ../..`). Config names resolve in that folder; paths (config paths, `where` paths, `-o`) stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command, and a bare `rogen` prints usage. Whatever follows names configs: `rogen build lobby` builds `lobby.rogen.json`, and a name with a `/` or ending in `.json` is a path, as in `rogen build places/lobby.rogen.json`. With no names, a command reads every `*.rogen.json` in the folder. Run from a folder with none, `build`, `watch`, `serve`, `list`, `where` and `check` use the configs of the nearest folder above that has any, and the text output says which (`rogen build · default, lobby · in ../..`). Config names resolve in that folder; paths (config paths, `where` paths, `-o`) stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
@@ -102,7 +102,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
-A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
+A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0.
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
@@ -116,7 +116,7 @@ src/Hud/Client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Hud/Hud · route C
   no require by this path: StarterPlayerScripts is cloned into each player
 ```
 
-Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
+Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. For a file you name, that includes the diagnostics about a folder it lies in, such as a misspelt route folder; a directory's listing leaves them to `check`. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
 
 ```
 $ rogen where src/Inventory/Save@sever.luau
@@ -154,7 +154,7 @@ $ rogen where places/lobby/Lobby/Server/Queue.luau
 lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
 ```
 
-A config that doesn't load answers nothing: `where` prints the answers of the configs that do, then the broken config's errors, and exits 1.
+A config that doesn't load answers nothing, and neither does one without routes or one that writes the same file as another: `where` prints the answers of the other configs, then the errors, and exits 1.
 
 `where --json` keeps every config's entry, `outside` included. `where` accepts `--mode`, `--variant`, `--no-variant` and `--json`.
 
@@ -167,7 +167,9 @@ $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
 src/Inventory/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
 ```
 
-Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. Whatever paths you give, what stops `build` fails the check: a config that doesn't load, one without routes, or two that write the same file.
+Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. A diagnostic is about a path when it names the path, something inside it, or a folder the path lies in: a misspelt folder (`route.folderTypo`) is reported for every file in it and for the folder above it. Whatever paths you give, three things fail the check, because they stop a config's build before any file is placed: a config that doesn't load, one without routes, or two that write the same file.
+
+An error that stops the build because of another file does not fail the check of a path it isn't about. The check passes, and says how far it got: `Checked as far as the build gets: it stops on src/F/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.` On stderr, so a hook stays green for the files it was given; with `--json` the document gains `"stoppedBy"`, the same diagnostics as `"diagnostics"` has.
 
 With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing root dir, an empty sync dir) names the config or folder it is about.
 
@@ -179,7 +181,7 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 ### `init [name]`
 
-Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
+Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua, your package manager and a test runner (Jest or TestEZ in `package.json`, `wally.toml` or `pesde.toml`), and writes what it found into the config. With a test runner, it adds `dev` and `prod` modes, and `prod` leaves the specs out (see [Modes](/docs/v2/core-concepts/modes)). This is the only time Rogen detects anything; builds just do what the config says.
 
 In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config, and with other configs but no default, a separate config. Either way it also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, so `rogen init lobby -y` adds a place in `places/lobby`, beside the shared code: its code in `places/lobby/src`, and a template with its name and the first free `servePort` above 34872. See [Multi-Place](/docs/v2/setups/multi-place).
 
@@ -220,7 +222,7 @@ An override changes a config value for one run. Anything you want every time bel
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
 | `-v, --verbose` | Prints debug output. |
-| `-q, --quiet` | Prints errors only, plus anything you explicitly asked for. |
+| `-q, --quiet` | Prints errors only, plus anything you explicitly asked for and anything that makes the run fail, such as the warnings `--deny-warnings` turns into errors. |
 
 `-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do. `--mode` applies to every config that declares modes, ignores the ones that don't, and is an error if none declare any. Naming a mode with `--variant` is an error that points at `--mode`. `--variant` never turns another variant off: for two variants of a [conflict group](/docs/v2/core-concepts/variants#conflicts), turn the first off with `--no-variant`.
 
@@ -229,8 +231,8 @@ An override changes a config value for one run. Anything you want every time bel
 | Code | Meaning |
 |---|---|
 | `0` | The command did its job, warnings included (unless `build --deny-warnings` is given). `serve` exits 0 after Ctrl+C, or when every config is already served. |
-| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, any warning under `build --deny-warnings`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
-| `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`, words after `--` on a command other than `serve`, two served configs on one port), or a name that doesn't exist (a config, a variant or a help topic). |
+| `1` | The project is wrong: an invalid config, a `--mode` that a config with modes does not declare, build errors, a failed write, a cancelled `init`, any warning under `build --deny-warnings`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
+| `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`, words after `--` on a command other than `serve`, two served configs on one port), or a name that no config declares or that doesn't exist (a config, a variant, a mode or a help topic). |
 
 When a server stops on its own, `serve` exits with the server's code. `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
 
@@ -318,7 +320,7 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 
 `outcome` is `wrote`, `unchanged` or `notWritten`. A config that declares modes also has `mode`, the one it built in. If any config fails, nothing is written. Each entry's `diagnostics` is complete on its own: a warning that several configs share appears under each of them, while the text output prints it once and `--deny-warnings` counts it once.
 
-A config that doesn't load is an entry like the others: `outFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
+A config that doesn't load is an entry like the others: `outFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. So is a config without routes, or one of two that write the same file: its `diagnostics` hold [`route.noRoutes`](/docs/v2/diagnostics#route-noroutes) or [`output.sameOutFile`](/docs/v2/diagnostics#output-sameoutfile). Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
 
 ### `serve --json`
 
@@ -347,7 +349,7 @@ An object with a `diagnostics` array: the entries described above, one per diagn
 
 ### `where --json`
 
-An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of any config that didn't load (the exit code is then 1) and is empty otherwise. `locations` has one entry per config that loaded and path, each with `config`, `status` and `source`, plus:
+An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of any config that didn't load, has no routes or writes the same file as another (the exit code is then 1), and is empty otherwise. `locations` has one entry per other config and path, each with `config`, `status` and `source`, plus:
 
 | `status` | Fields |
 |---|---|

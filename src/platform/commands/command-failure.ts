@@ -38,6 +38,12 @@ export class CommandFailure {
 		if (command) this.logService.closeFrame(`${command} failed.`);
 	}
 
+	/** Tells the user why the run failed, and returns the exit code it ends with. */
+	finish(error: Error, command?: string): number {
+		this.report(error, command);
+		return exitCodeOf(error);
+	}
+
 	/** Keeps `--json`'s one document when the run threw; the stack is still the caller's to print, on stderr. */
 	reportCrash(error: unknown): void {
 		if (!this.json) return;

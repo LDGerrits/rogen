@@ -1,4 +1,5 @@
 import { compareStrings } from "../../base/collections.js";
+import { unlistedNote } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -20,21 +21,25 @@ const LISTED = 10;
 export class MissingInstances {
 	constructor(private readonly placement: Placement) {}
 
-	/** One warning per kind of gap: variants alone leave a file out, or a mode does. With `named`, every gap is told as the mode's, since another mode's switches decide it, except those of `known` instances, which another warning already reports. */
-	diagnostics(
-		named = false,
-		known: ReadonlySet<string> = new Set()
-	): Diagnostic[] {
+	/** One warning per kind of gap: variants alone leave a file out, or a mode does. */
+	diagnostics(): Diagnostic[] {
 		const { config } = this.placement;
-		const missing = this.find().filter(
-			({ instance }) => !known.has(instance)
-		);
+		const missing = this.find();
 		const ofMode = (gap: MissingInstance) =>
-			named || gap.variants.some((key) => config.keys.isMode(key));
+			gap.variants.some((key) => config.keys.isMode(key));
 		return [
 			this.variantGaps(missing.filter((gap) => !ofMode(gap))),
 			this.modeGaps(missing.filter(ofMode)),
 		].flatMap((diagnostic) => diagnostic ?? []);
+	}
+
+	/** One warning for the gaps in a mode the build isn't in, told as the mode's since its switches decide them, except those of `known` instances, which another warning already reports. */
+	modeDiagnostics(known: ReadonlySet<string>): Diagnostic[] {
+		const missing = this.find().filter(
+			({ instance }) => !known.has(instance)
+		);
+		const gap = this.modeGaps(missing);
+		return gap ? [gap] : [];
 	}
 
 	private variantGaps(
@@ -78,9 +83,7 @@ export class MissingInstances {
 					`  ${instance} (${variants.join(", ")})`
 			);
 		const unlisted = missing.length - lines.length;
-		return unlisted > 0
-			? [...lines, `  ${unlisted} more like it aren't listed.`]
-			: lines;
+		return unlisted > 0 ? [...lines, `  ${unlistedNote(unlisted)}`] : lines;
 	}
 
 	/** The outermost such instances, sorted. */
@@ -91,8 +94,11 @@ export class MissingInstances {
 			for (const node of [
 				...file.folderNodes.map(({ instancePath }) => instancePath),
 				file.instancePath,
-			])
-				givers.set(node, [...(givers.get(node) ?? []), file]);
+			]) {
+				const files = givers.get(node) ?? [];
+				files.push(file);
+				givers.set(node, files);
+			}
 
 		const missing: (readonly string[])[] = [];
 		const result: { instance: string; variants: string[] }[] = [];

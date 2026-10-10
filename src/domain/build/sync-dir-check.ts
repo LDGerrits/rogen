@@ -1,12 +1,12 @@
 import path from "path";
-import { ancestors, toPosix } from "../../base/path.js";
+import { ancestors, stemOf, toPosix } from "../../base/path.js";
 import { listLimited } from "../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	FileSystemService,
+	FileReader,
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -22,19 +22,30 @@ interface EmittedTops {
 	readonly synced: boolean;
 }
 
+/** What one check of a placement reads: its sync dir, and what its root dirs emit. */
+interface SyncDirRun {
+	readonly placement: Placement;
+	readonly syncDir: string;
+	readonly emittedTops: ReadonlyMap<string, EmittedTops>;
+}
+
 /** Checks what the sync dir holds against what the build expects there, which only changes when the compiler runs. */
 export class SyncDirCheck {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** Warns when the sync dir lacks what the tools should have written for the root dirs and their meta files. */
 	async check(placement: Placement): Promise<Diagnostic[]> {
 		const { syncDir } = placement.layout;
 		if (syncDir === undefined) return [];
-		const emitted = await this.emittedTops(placement);
+		const run: SyncDirRun = {
+			placement,
+			syncDir,
+			emittedTops: await this.emittedTops(placement),
+		};
 		return [
-			...(await this.nothingEmitted(placement, syncDir, emitted)),
-			...(await this.metaNotSynced(placement, syncDir, emitted)),
-			...(await this.dataFileConverted(placement, syncDir, emitted)),
+			...(await this.nothingEmitted(run)),
+			...(await this.metaNotSynced(run)),
+			...(await this.dataFileConverted(run)),
 		];
 	}
 
@@ -52,11 +63,11 @@ export class SyncDirCheck {
 	}
 
 	/** Warns once per root dir whose top-level entries have no emitted counterpart under `syncDir`. */
-	private async nothingEmitted(
-		{ config, layout }: Placement,
-		syncDir: string,
-		emittedTops: ReadonlyMap<string, EmittedTops>
-	): Promise<Diagnostic[]> {
+	private async nothingEmitted({
+		placement: { config, layout },
+		syncDir,
+		emittedTops,
+	}: SyncDirRun): Promise<Diagnostic[]> {
 		const shown = (target: string) =>
 			layout.relativeToProject(target) || ".";
 		const warnings: Diagnostic[] = [];
@@ -99,12 +110,12 @@ export class SyncDirCheck {
 	}
 
 	/** Warns once for claimed meta with no copy under `syncDir`, skipping root dirs `nothingEmitted` reports. */
-	private async metaNotSynced(
-		placement: Placement,
-		syncDir: string,
-		emittedTops: ReadonlyMap<string, EmittedTops>
-	): Promise<Diagnostic[]> {
-		const { config, layout, roots } = placement;
+	private async metaNotSynced({
+		placement,
+		syncDir,
+		emittedTops,
+	}: SyncDirRun): Promise<Diagnostic[]> {
+		const { config, layout } = placement;
 		const unclaimed = new Set(
 			placement.unclaimedMeta().map(({ path }) => path)
 		);
@@ -114,25 +125,19 @@ export class SyncDirCheck {
 		let converted = 0;
 		let conversion: MetaReplacement | undefined;
 
-		for (const root of roots) {
-			if (!emittedTops.get(root.rootDir)?.synced) continue;
-			for (const metaFile of root.metaFiles) {
-				const source = path.join(root.rootDir, metaFile);
-				if (unclaimed.has(toPosix(source))) continue;
-				const emitted = layout.emittedPath(source);
-				if (await this.fileSystemService.exists(emitted)) continue;
-				missing.push(toPosix(source));
-				const stem = emitted.slice(0, -RojoFile.META_SUFFIX.length);
-				for (const replacement of replacements)
-					if (
-						await this.fileSystemService.exists(
-							`${stem}${replacement.suffix}`
-						)
-					) {
-						conversion ??= replacement;
-						if (replacement === conversion) converted++;
-						break;
-					}
+		for (const { rootDir, file: source } of placement.metaFiles) {
+			if (!emittedTops.get(rootDir)?.synced) continue;
+			if (unclaimed.has(toPosix(source))) continue;
+			const emitted = layout.emittedPath(source);
+			if (await this.fileSystemService.exists(emitted)) continue;
+			missing.push(toPosix(source));
+			const replacement = await this.replacementAt(
+				emitted.slice(0, -RojoFile.META_SUFFIX.length),
+				replacements
+			);
+			if (replacement) {
+				conversion ??= replacement;
+				if (replacement === conversion) converted++;
 			}
 		}
 		if (missing.length === 0) return [];
@@ -151,11 +156,11 @@ export class SyncDirCheck {
 	}
 
 	/** Warns once for data files whose emitted path is missing while a `.lua` with the same stem exists: a processor converted them, so Rojo finds nothing, or a module, where it expects the data. */
-	private async dataFileConverted(
-		placement: Placement,
-		syncDir: string,
-		emittedTops: ReadonlyMap<string, EmittedTops>
-	): Promise<Diagnostic[]> {
+	private async dataFileConverted({
+		placement,
+		syncDir,
+		emittedTops,
+	}: SyncDirRun): Promise<Diagnostic[]> {
 		const { config, layout, files } = placement;
 		const replacements = layout.dataReplacements;
 		if (replacements.length === 0) return [];
@@ -173,13 +178,15 @@ export class SyncDirCheck {
 				path.join(entry.rootDir, entry.relativePath)
 			);
 			if (await this.fileSystemService.exists(expected)) continue;
-			const base = expected.slice(0, -path.extname(expected).length);
-			for (const { suffix, note } of replacements) {
-				const found = `${base}${suffix}`;
-				if (!(await this.fileSystemService.exists(found))) continue;
-				converted.push({ source: entry.source, expected, found, note });
-				break;
-			}
+			const base = stemOf(expected);
+			const replacement = await this.replacementAt(base, replacements);
+			if (replacement)
+				converted.push({
+					source: entry.source,
+					expected,
+					found: `${base}${replacement.suffix}`,
+					note: replacement.note,
+				});
 		}
 		if (converted.length === 0) return [];
 
@@ -200,6 +207,21 @@ export class SyncDirCheck {
 				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(syncDir) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note} Copy the data files unchanged into the sync dir after it runs, or require them as modules.`
 			),
 		];
+	}
+
+	/** The first of `replacements` whose file, `stem` and its suffix, exists. */
+	private async replacementAt<T extends { readonly suffix: string }>(
+		stem: string,
+		replacements: readonly T[]
+	): Promise<T | undefined> {
+		for (const replacement of replacements)
+			if (
+				await this.fileSystemService.exists(
+					`${stem}${replacement.suffix}`
+				)
+			)
+				return replacement;
+		return undefined;
 	}
 
 	/** Skips dot-files, which are mostly markers a compiler never emits. */

@@ -4,11 +4,16 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
-	FileSystemService,
+	FileReader,
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { CONFIG_SUFFIX, configFileName, configLabel } from "./config.js";
+import {
+	CONFIG_SUFFIX,
+	configFileName,
+	configLabel,
+	isConfigFileName,
+} from "./config.js";
 import { EnclosingConfigs } from "./config-service.js";
 
 /** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
@@ -29,7 +34,7 @@ export interface DiscoveredConfigs {
 /** Finds which config files a command reads: in the working directory, else in the nearest folder above that has any. */
 export class ConfigDiscovery {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {}
 
@@ -115,7 +120,7 @@ export class ConfigDiscovery {
 			? ok(enclosing)
 			: err(
 					new Error(
-						`No *${CONFIG_SUFFIX} found in ${cwd}. Run "rogen init" to create one.`
+						`No *${CONFIG_SUFFIX} found in ${cwd}. Run 'rogen init' to create one.`
 					)
 				);
 	}
@@ -148,7 +153,7 @@ export class ConfigDiscovery {
 			? `Did you mean "${suggestion}"?`
 			: labels.length > 0
 				? `Configs here: ${labels.join(", ")}.`
-				: `Run "rogen init" to create one.`;
+				: `Run 'rogen init' to create one.`;
 		return new UsageError(
 			`Config "${name}" not found: looked for ${candidate}. ${hint}`
 		);
@@ -157,9 +162,7 @@ export class ConfigDiscovery {
 
 function configFileNames(entries: readonly [string, FileType][]): string[] {
 	return entries
-		.filter(
-			([name, type]) => isFileType(type) && name.endsWith(CONFIG_SUFFIX)
-		)
+		.filter(([name, type]) => isFileType(type) && isConfigFileName(name))
 		.map(([name]) => name)
 		.sort();
 }

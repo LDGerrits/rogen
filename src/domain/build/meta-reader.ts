@@ -1,17 +1,23 @@
+import { failureReason } from "../../base/errors.js";
 import path from "path";
 import { dirnamePosix, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import {
-	FileSystemService,
-	failureReason,
+	FileReader,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
-import { RojoFile, RojoMeta, RojoMetaFields } from "../rojo/rojo.js";
+import {
+	RojoFile,
+	RojoMeta,
+	ParsedMeta,
+	RojoScriptSuffix,
+} from "../rojo/rojo.js";
 import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
@@ -24,7 +30,9 @@ export class BuildMeta {
 		/** The `RunContext` a script's own meta sets, by the script's source. */
 		private readonly runContexts: ReadonlyMap<string, unknown>,
 		/** The script metas read for a run context; a folder meta counts through `folderMeta`. */
-		private readonly scriptMetaFiles: readonly string[]
+		private readonly scriptMetaFiles: readonly string[],
+		/** What the metas read say that is not a reason to stop. */
+		readonly warnings: readonly Diagnostic[] = []
 	) {}
 
 	/** The meta files whose contents the build read, which a change to must rebuild it. */
@@ -41,55 +49,58 @@ export class BuildMeta {
 	}
 }
 
+/** How the `RunContext` of one script is found: from a folder meta that reaches it, or from the meta beside it. */
+interface ScriptMetaSource {
+	readonly entry: RoutedFile["entry"];
+	readonly scriptSuffix: RojoScriptSuffix | undefined;
+	readonly fromFolder?: {
+		readonly metaFile: string;
+		readonly runContext: unknown;
+	};
+	/** The meta beside the script, when one exists that no folder meta is. */
+	readonly sibling?: string;
+}
+
 /** Reads the meta files a placed build needs, once, before it is assembled. */
 export class MetaReader {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** Fails on a folder meta Rojo would refuse, and on a RunContext Rojo can't set on a ModuleScript; a script meta that can't be read sets no run context, since the build only warns with it. */
 	async read(placement: Placement): Promise<Result<BuildMeta, Diagnostic[]>> {
-		const problems = new DiagnosticCollector();
-		const folderMeta: FolderMeta[] = [];
-		for (const root of placement.roots) {
-			for (const metaFile of root.metaFiles) {
-				if (path.posix.basename(metaFile) !== RojoFile.INIT_META)
-					continue;
-				const file = path.join(root.rootDir, metaFile);
-				const parsed = await this.readMeta(file);
-				if (parsed.isErr()) {
-					problems.add(parsed.error);
-					continue;
-				}
-				folderMeta.push(
-					new FolderMeta(
-						file,
-						root.rootDir,
-						dirnamePosix(toPosix(metaFile)),
-						parsed.value
-					)
-				);
-			}
-		}
-		if (problems.hasErrors) return err([...problems.diagnostics]);
+		const folders = await this.readFolderMetas(placement);
+		if (folders.isErr()) return folders;
+		const folderMeta = folders.value.metas;
 
-		const runContexts = new Map<string, unknown>();
-		const scriptMetaFiles: string[] = [];
-		const metaFiles = new Set(
-			placement.roots.flatMap((root) =>
-				root.metaFiles.map((file) => path.join(root.rootDir, file))
+		const sources = this.scriptMetaSources(placement, folderMeta);
+		// A meta beside several scripts is read for the first.
+		const siblings = [
+			...new Set(sources.flatMap(({ sibling }) => sibling ?? [])),
+		];
+		const parsed = new Map(
+			await Promise.all(
+				siblings.map(
+					async (file) => [file, await this.readMeta(file)] as const
+				)
 			)
 		);
-		for (const file of placement.files) {
-			const { entry } = file;
-			const { kind, scriptSuffix } = placement.readings.entryAt(
-				entry.source
-			);
-			if (kind !== "script") continue;
-			const set = await this.runContextMeta(
-				file,
-				folderMeta,
-				metaFiles,
-				scriptMetaFiles
-			);
+
+		const problems = new DiagnosticCollector();
+		const runContexts = new Map<string, unknown>();
+		const claimed = new Set<string>();
+		for (const { entry, scriptSuffix, fromFolder, sibling } of sources) {
+			let set: { metaFile: string; runContext: unknown } | undefined =
+				fromFolder;
+			if (!set && sibling && !claimed.has(sibling)) {
+				claimed.add(sibling);
+				const meta = parsed.get(sibling);
+				set = meta?.isOk()
+					? {
+							metaFile: sibling,
+							runContext:
+								meta.value.fields.properties?.RunContext,
+						}
+					: undefined;
+			}
 			if (!set) continue;
 			runContexts.set(entry.source, set.runContext);
 			if (scriptSuffix === undefined && set.runContext !== undefined)
@@ -100,47 +111,104 @@ export class MetaReader {
 				);
 		}
 		if (problems.hasErrors) return err([...problems.diagnostics]);
-		return ok(new BuildMeta(folderMeta, runContexts, scriptMetaFiles));
+		const typos = [
+			...folders.value.typos,
+			...[...parsed.values()].flatMap((meta) =>
+				meta.isOk() ? meta.value.typos : []
+			),
+		];
+		return ok(
+			new BuildMeta(
+				folderMeta,
+				runContexts,
+				siblings,
+				uniqueDiagnostics(typos)
+			)
+		);
 	}
 
-	/** The meta that sets a script's `RunContext`: the meta of the folder an init script becomes, copied onto it, then of the directory Rojo reads it through, over the script's own. */
-	private async runContextMeta(
-		{ entry, init }: RoutedFile,
-		folderMeta: readonly FolderMeta[],
-		metaFiles: ReadonlySet<string>,
-		scriptMetaFiles: string[]
-	): Promise<{ metaFile: string; runContext: unknown } | undefined> {
-		if (init) {
-			for (const dir of [init.becomes, init.sitsIn]) {
+	/** Every folder's `init.meta.json`, read together; fails on one Rojo would refuse. */
+	private async readFolderMetas(
+		placement: Placement
+	): Promise<
+		Result<
+			{ metas: FolderMeta[]; typos: readonly Diagnostic[] },
+			Diagnostic[]
+		>
+	> {
+		const candidates = placement.metaFiles.filter(
+			({ relativePath }) =>
+				path.posix.basename(relativePath) === RojoFile.INIT_META
+		);
+		const parsed = await Promise.all(
+			candidates.map(({ file }) => this.readMeta(file))
+		);
+		const problems = new DiagnosticCollector();
+		const folderMeta: FolderMeta[] = [];
+		candidates.forEach(({ rootDir, relativePath, file }, index) => {
+			const meta = parsed[index];
+			if (meta.isErr()) problems.add(meta.error);
+			else
+				folderMeta.push(
+					new FolderMeta(
+						file,
+						rootDir,
+						dirnamePosix(toPosix(relativePath)),
+						meta.value.fields
+					)
+				);
+		});
+		return problems.hasErrors
+			? err([...problems.diagnostics])
+			: ok({
+					metas: folderMeta,
+					typos: parsed.flatMap((meta) =>
+						meta.isOk() ? meta.value.typos : []
+					),
+				});
+	}
+
+	/** For each script, where its `RunContext` comes from: the meta of the folder an init script becomes, copied onto it, then of the directory Rojo reads it through, over the script's own. */
+	private scriptMetaSources(
+		placement: Placement,
+		folderMeta: readonly FolderMeta[]
+	): ScriptMetaSource[] {
+		const metaFiles = new Set(placement.metaFiles.map(({ file }) => file));
+		return placement.files.flatMap((file): ScriptMetaSource[] => {
+			const { entry, init } = file;
+			const { kind, scriptSuffix } = placement.readingOf(file);
+			if (kind !== "script") return [];
+			for (const dir of init ? [init.becomes, init.sitsIn] : []) {
 				const meta = folderMeta.find(({ folder }) => folder === dir);
 				if (meta?.properties?.RunContext !== undefined)
-					return {
-						metaFile: meta.file,
-						runContext: meta.properties.RunContext,
-					};
+					return [
+						{
+							entry,
+							scriptSuffix,
+							fromFolder: {
+								metaFile: meta.file,
+								runContext: meta.properties.RunContext,
+							},
+						},
+					];
 			}
-		}
-		const metaFile = path.join(
-			entry.rootDir,
-			path.dirname(entry.relativePath),
-			new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
-		);
-		if (
-			!metaFiles.has(metaFile) ||
-			scriptMetaFiles.includes(metaFile) ||
-			folderMeta.some((meta) => meta.file === metaFile)
-		)
-			return undefined;
-		scriptMetaFiles.push(metaFile);
-		const parsed = await this.readMeta(metaFile);
-		return parsed.isOk()
-			? { metaFile, runContext: parsed.value.properties?.RunContext }
-			: undefined;
+			const beside = path.join(
+				entry.rootDir,
+				path.dirname(entry.relativePath),
+				new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
+			);
+			const sibling =
+				metaFiles.has(beside) &&
+				!folderMeta.some((meta) => meta.file === beside)
+					? beside
+					: undefined;
+			return [{ entry, scriptSuffix, sibling }];
+		});
 	}
 
 	private async readMeta(
 		file: string
-	): Promise<Result<RojoMetaFields, Diagnostic[]>> {
+	): Promise<Result<ParsedMeta, Diagnostic[]>> {
 		const text = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)
 		);

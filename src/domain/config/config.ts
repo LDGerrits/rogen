@@ -1,17 +1,16 @@
 import path from "path";
 import { formatJsonFile, safeStringify } from "../../base/json.js";
-import { commonAncestor, isInside, toPosix } from "../../base/path.js";
 import {
-	OptionDescriptor,
-	OptionValues,
-} from "../../platform/environment/args.js";
+	commonAncestor,
+	isInside,
+	samePath,
+	toPosix,
+} from "../../base/path.js";
 import { Target } from "../roblox/roblox.js";
 import {
 	NodeClash,
-	PROJECT_SUFFIX,
 	ParsedProjectFile,
 	RojoProject,
-	projectFileName,
 } from "../rojo/rojo-project.js";
 
 /** What a mode changes about a build: which variants it turns on and which files are left out. */
@@ -35,54 +34,18 @@ export interface RogenConfig {
 	readonly outFile?: string;
 }
 
-const VariantOption = {
-	name: "variant",
-	type: "string",
-	placeholder: "name",
-	multiple: true,
-	description: "Turns a variant on, beyond those the mode lists.",
-} as const satisfies OptionDescriptor;
+/** Anything that holds config values by field name, such as a config model or the chain of them. */
+export interface ConfigValues {
+	getValue<T>(section?: string | readonly string[]): T | undefined;
+}
 
-const NoVariantOption = {
-	name: "no-variant",
-	type: "string",
-	placeholder: "name",
-	multiple: true,
-	description: "Turns a variant off, whatever turned it on.",
-} as const satisfies OptionDescriptor;
-
-export const ModeOption = {
-	name: "mode",
-	type: "string",
-	placeholder: "name",
-	description: "Picks the mode every config that declares modes builds in.",
-} as const satisfies OptionDescriptor;
-
-/** The flags that say which mode is active and which variants are on in the configs a command reads. */
-export const ConfigSelectionOptions = [
-	ModeOption,
-	VariantOption,
-	NoVariantOption,
-] as const satisfies readonly OptionDescriptor[];
-
-export const OutFileOption = {
-	name: "out-file",
-	short: "o",
-	type: "string",
-	placeholder: "path",
-	description: "Overrides outFile, for one config.",
-} as const satisfies OptionDescriptor;
-
-/** The flags that override the configs a command builds. */
-export const ConfigOptions = [
-	OutFileOption,
-	ModeOption,
-	VariantOption,
-	NoVariantOption,
-] as const satisfies readonly OptionDescriptor[];
-
-/** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
-export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
+/** What `values` holds under the top-level field `key`, typed as the config declares it. */
+export function fieldOf<K extends keyof RogenConfig>(
+	values: ConfigValues,
+	key: K
+): RogenConfig[K] {
+	return values.getValue<RogenConfig[K]>(key);
+}
 
 export const CONFIG_SUFFIX = ".rogen.json";
 export const DEFAULT_CONFIG_STEM = "default";
@@ -90,20 +53,16 @@ export const DEFAULT_CONFIG_STEM = "default";
 export const configFileName = (stem: string): string =>
 	`${stem}${CONFIG_SUFFIX}`;
 
+/** The config a project starts with. */
+export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
+
+/** Whether `fileName` is the name of a config file. */
+export const isConfigFileName = (fileName: string): boolean =>
+	fileName.endsWith(CONFIG_SUFFIX);
+
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
-
-/** The project file a config named `label` writes unless its `outFile` says otherwise. */
-export const defaultOutFileName = (label: string): string =>
-	projectFileName(label);
-
-/** The label of the config that writes `fileName` by default, when it is named the way a default output is. */
-export function labelOfDefaultOutFile(fileName: string): string | undefined {
-	return fileName.endsWith(PROJECT_SUFFIX)
-		? fileName.slice(0, -PROJECT_SUFFIX.length)
-		: undefined;
-}
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
@@ -136,10 +95,7 @@ export function rootDirOverlap(
 	index: number
 ): RootDirOverlap | undefined {
 	const rootDir = rootDirs[index];
-	// Compared as paths, since a case-insensitive file system makes `src` and `Src` one folder.
-	const first = rootDirs.findIndex(
-		(other) => path.relative(other, rootDir) === ""
-	);
+	const first = rootDirs.findIndex((other) => samePath(other, rootDir));
 	if (first !== index) return { kind: "duplicate" };
 	const outer = rootDirs.find((other) => isInside(rootDir, other));
 	return outer === undefined ? undefined : { kind: "nested", outer };
@@ -325,13 +281,13 @@ export interface ResolvedConfigFields {
 	/** Every declared variant to whether it is on, in the active mode with the command line applied. */
 	readonly variants: Readonly<Record<string, boolean>>;
 	/** Groups of variants of which at most one is on. */
-	readonly conflicts?: readonly (readonly string[])[];
+	readonly conflicts: readonly (readonly string[])[];
 	/** The globs left out in the active mode, which drop scanned files and template mounts alike. */
 	readonly exclude: readonly string[];
 	/** The active mode; none when the config declares no modes. */
 	readonly mode?: string;
-	/** Every mode the config declares, in declaration order; none by default. */
-	readonly modeViews?: ReadonlyMap<string, ModeView>;
+	/** Every mode the config declares, in declaration order. */
+	readonly modeViews: ReadonlyMap<string, ModeView>;
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
@@ -366,8 +322,8 @@ export class ResolvedConfig {
 		this.variants = fields.variants;
 		this.exclude = fields.exclude;
 		this.mode = fields.mode;
-		this.conflicts = fields.conflicts ?? [];
-		this.modes = [...(fields.modeViews?.keys() ?? [])];
+		this.conflicts = fields.conflicts;
+		this.modes = [...fields.modeViews.keys()];
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;
@@ -386,7 +342,7 @@ export class ResolvedConfig {
 
 	/** The same config with `mode` active, or `undefined` when it declares no such mode. */
 	inMode(mode: string): ResolvedConfig | undefined {
-		const view = this.fields.modeViews?.get(mode);
+		const view = this.fields.modeViews.get(mode);
 		return (
 			view &&
 			new ResolvedConfig({

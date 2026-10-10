@@ -1,6 +1,6 @@
 import path from "path";
 import { isMatch } from "../../base/glob.js";
-import { contains, isInside, joinPosix, toPosix } from "../../base/path.js";
+import { contains, isInside, samePath, toPosix } from "../../base/path.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -24,13 +24,30 @@ export interface TemplateMount {
 	readonly node: readonly string[];
 }
 
+/** A mount of the template that `exclude` drops, with the glob that does. */
+export interface DroppedMount extends TemplateMount {
+	readonly pattern: string;
+}
+
 /** The paths the template's own `$path`s mount, which Rojo reads and Rogen leaves alone, and the places a mount can't go. */
 export class TemplateMounts {
 	constructor(
 		private readonly mounts: readonly TemplateMount[],
 		/** The template file, which every mount error points at; none without a template. */
-		private readonly file: string | undefined
+		private readonly file: string | undefined,
+		/** The mounts `exclude` dropped, which are never built. */
+		private readonly dropped: readonly DroppedMount[]
 	) {}
+
+	/** The mount at `absolutePath` or above it, which makes Rojo read it. */
+	covering(absolutePath: string): TemplateMount | undefined {
+		return this.mounts.find((mount) => contains(mount.path, absolutePath));
+	}
+
+	/** The mount `exclude` dropped at `absolutePath` or above it. */
+	droppedCovering(absolutePath: string): DroppedMount | undefined {
+		return this.dropped.find((mount) => contains(mount.path, absolutePath));
+	}
 
 	/** Every mounted path, as an absolute POSIX path. */
 	get paths(): string[] {
@@ -44,9 +61,7 @@ export class TemplateMounts {
 
 	/** The mount at `absolutePath`, compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
 	at(absolutePath: string): TemplateMount | undefined {
-		return this.mounts.find(
-			(mount) => path.relative(mount.path, absolutePath) === ""
-		);
+		return this.mounts.find((mount) => samePath(mount.path, absolutePath));
 	}
 
 	/** A mount at a root dir or above one would hand the whole root dir to Rojo, leaving Rogen nothing to place there. */
@@ -101,7 +116,9 @@ export class BuildTemplate {
 			},
 			generatedContainer
 		);
-		this.project.removeNodes((target) => this.isDropped(target));
+		this.project.removeNodes(
+			(target) => this.droppingGlob(target) !== undefined
+		);
 		if (template && this.templateDir !== layout.projectDir) {
 			this.project.mapPaths((target) => this.rebase(target));
 		}
@@ -114,28 +131,35 @@ export class BuildTemplate {
 	}
 
 	/** Whether `exclude` drops the node that mounts `target`, a `$path` as the template wrote it: excluded means never built, mounted or scanned. */
-	private isDropped(target: string): boolean {
+	private droppingGlob(target: string): string | undefined {
 		const mounted = toPosix(path.resolve(this.templateDir, target));
-		return this.config.exclude.some((glob) => isMatch(mounted, glob));
+		return this.config.exclude.find((glob) => isMatch(mounted, glob));
 	}
 
 	private mountsOf(
 		project: NonNullable<ResolvedConfig["template"]>["project"] | undefined
 	): TemplateMounts {
-		return new TemplateMounts(
-			(project?.getPaths() ?? [])
-				.filter(
-					({ path: rojoPath }) =>
-						!this.isDropped(rojoPathTarget(rojoPath))
-				)
-				.map(({ path: rojoPath, instancePath }) => ({
+		const all = (project?.getPaths() ?? []).map(
+			({ path: rojoPath, instancePath }) => ({
+				target: rojoPathTarget(rojoPath),
+				mount: {
 					path: path.resolve(
 						this.templateDir,
 						rojoPathTarget(rojoPath)
 					),
 					node: instancePath,
-				})),
-			this.templateFile
+				},
+			})
+		);
+		return new TemplateMounts(
+			all
+				.filter(({ target }) => this.droppingGlob(target) === undefined)
+				.map(({ mount }) => mount),
+			this.templateFile,
+			all.flatMap(({ target, mount }) => {
+				const pattern = this.droppingGlob(target);
+				return pattern === undefined ? [] : [{ ...mount, pattern }];
+			})
 		);
 	}
 
@@ -164,7 +188,7 @@ export class BuildTemplate {
 		readonly entry: { readonly source: string; readonly rootDir: string };
 		readonly instancePath: readonly string[];
 		readonly folderNodes: readonly {
-			readonly dir: string;
+			readonly folder: string;
 			readonly instancePath: readonly string[];
 		}[];
 	}):
@@ -184,9 +208,7 @@ export class BuildTemplate {
 		);
 		return {
 			node,
-			source: folder
-				? joinPosix(file.entry.rootDir, folder.dir)
-				: file.entry.source,
+			source: folder ? folder.folder : file.entry.source,
 		};
 	}
 

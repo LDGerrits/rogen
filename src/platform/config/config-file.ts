@@ -1,3 +1,4 @@
+import { failureReason } from "../../base/errors.js";
 import { JSONSchema } from "../../base/json-schema.js";
 import { JsoncNode } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -7,11 +8,7 @@ import {
 	DiagnosticPosition,
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
-import {
-	FileSystemService,
-	failureReason,
-	isMissingPath,
-} from "../fs/file-system-service.js";
+import { FileReader, isMissingPath } from "../fs/file-system-service.js";
 import {
 	JsoncDocumentReader,
 	WrongTypeAdvisor,
@@ -25,22 +22,27 @@ export interface ConfigFile {
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
 }
 
-export interface ConfigFileFailure {
-	/** `unreadable` when the file couldn't be read at all, `invalid` when what it holds is wrong. */
-	readonly kind: "unreadable" | "invalid";
-	readonly diagnostics: readonly Diagnostic[];
-	/** When `unreadable`: the file isn't there, rather than there and unreadable. */
-	readonly missing?: boolean;
-	/** When `unreadable`: why, without a Node error code. */
-	readonly reason?: string;
-}
+/** Why a config file didn't load: it couldn't be read at all, or what it holds is wrong. */
+export type ConfigFileFailure =
+	| {
+			readonly kind: "unreadable";
+			readonly diagnostics: readonly Diagnostic[];
+			/** The file isn't there, rather than there and unreadable. */
+			readonly missing: boolean;
+			/** Why, without a Node error code. */
+			readonly reason: string;
+	  }
+	| {
+			readonly kind: "invalid";
+			readonly diagnostics: readonly Diagnostic[];
+	  };
 
 /** Reads config files and checks them against `schema`. */
 export class ConfigFileReader {
 	private readonly documents: JsoncDocumentReader;
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly schema: JSONSchema,
 		advise?: WrongTypeAdvisor
 	) {

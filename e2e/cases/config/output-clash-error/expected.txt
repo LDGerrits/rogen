@@ -1,4 +1,7 @@
 $ rogen build a b
 exit 1
+stdout: (not shown)
 stderr:
+  error: game.project.json · not written
   game.project.json - error: "a.rogen.json" and "b.rogen.json" write the same file, game.project.json. Give each its own "outFile". (output.sameOutFile)
+  error: game.project.json · not written · same errors as a

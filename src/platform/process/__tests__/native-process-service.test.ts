@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { ProcessExit } from "../process-service.js";
-import { NativeProcessService } from "../native-process-service.js";
+import { NativeProcessService, launch } from "../native-process-service.js";
 
 const node = process.execPath;
 
@@ -159,6 +159,62 @@ describe("NativeProcessService", () => {
 
 			expect(await exitOf(child)).toEqual({ code: 0, signal: null });
 			child[Symbol.dispose]();
+		});
+	});
+
+	describe("launch", () => {
+		const env = { ComSpec: "cmd.exe" };
+
+		it("should run a batch file through cmd.exe with each argument quoted", () => {
+			const run = launch(
+				"C:\\tools\\rojo.cmd",
+				["serve", "a b"],
+				env,
+				true
+			);
+
+			expect(run.unwrap()).toMatchObject({
+				command: "cmd.exe",
+				args: [
+					"/d",
+					"/s",
+					"/c",
+					'""C:\\tools\\rojo.cmd" "serve" "a b""',
+				],
+				windowsVerbatimArguments: true,
+			});
+		});
+
+		it("should refuse an argument cmd.exe would expand as a variable, and say which", () => {
+			const run = launch("rojo.bat", ["serve", "100%PATH%x"], env, true);
+
+			expect(run.isErr() && run.error.message).toContain('"100%PATH%x"');
+		});
+
+		it("should refuse a batch file whose own path would be expanded", () => {
+			const run = launch("C:\\%TOOLS%\\rojo.cmd", ["serve"], env, true);
+
+			expect(run.isErr() && run.error.message).toContain("%TOOLS%");
+		});
+
+		it("should pass percent signs that are not around a name", () => {
+			expect(
+				launch("rojo.cmd", ["50% of 60%", "100%%"], env, true).isOk()
+			).toBe(true);
+		});
+
+		it("should pass a percent sign that names no variable", () => {
+			expect(launch("rojo.cmd", ["50%"], env, true).isOk()).toBe(true);
+		});
+
+		it("should pass any argument to a program that is not a batch file", () => {
+			expect(
+				launch("rojo.exe", ["100%PATH%x"], env, true).unwrap()
+			).toEqual({
+				command: "rojo.exe",
+				args: ["100%PATH%x"],
+				windowsVerbatimArguments: false,
+			});
 		});
 	});
 });

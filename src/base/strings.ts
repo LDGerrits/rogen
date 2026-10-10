@@ -1,7 +1,7 @@
 import { stripVTControlCharacters } from "util";
 
 export function capitalized(text: string): string {
-	return text[0].toUpperCase() + text.slice(1);
+	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** The first `limit` of `items` joined by commas, then an ellipsis when there are more. */
@@ -13,6 +13,11 @@ export function listLimited(items: readonly string[], limit: number): string {
 /** `count` and `noun`, adding an s unless there is one: `1 file`, `3 files`. */
 export function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+/** Says how many entries of a capped list were left out: `1 more like it isn't listed.` */
+export function unlistedNote(count: number): string {
+	return `${count} more like it ${count === 1 ? "isn't" : "aren't"} listed.`;
 }
 
 /** Edits between `a` and `b`, counting two swapped neighbours as one. */
@@ -72,13 +77,17 @@ export function closestMatches(
 
 /** `a`, `a and b`, `a, b and c`. */
 export function joinedWithAnd(items: readonly string[]): string {
-	if (items.length <= 1) return items.join("");
-	return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+	return joinedWith(items, "and");
 }
 
+/** `a`, `a or b`, `a, b or c`. */
 export function joinedWithOr(items: readonly string[]): string {
+	return joinedWith(items, "or");
+}
+
+function joinedWith(items: readonly string[], word: string): string {
 	if (items.length <= 1) return items.join("");
-	return `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`;
+	return `${items.slice(0, -1).join(", ")} ${word} ${items[items.length - 1]}`;
 }
 
 /** The first line of `text` with something on it, trimmed and without terminal colours. */

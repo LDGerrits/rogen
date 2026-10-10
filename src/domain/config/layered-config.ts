@@ -1,4 +1,5 @@
 import path from "path";
+import { escapedGlobPrefix } from "../../base/glob.js";
 import { isObject } from "../../base/objects.js";
 import { toPosix } from "../../base/path.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
@@ -15,6 +16,7 @@ import {
 	configMergePolicies,
 	configPathForms,
 } from "./config-schema.js";
+import { fieldOf } from "./config.js";
 import { VariantSwitch, switchVariants } from "./variant-switch.js";
 
 /** Per-invocation values that sit above every layer of a config's chain. */
@@ -97,19 +99,11 @@ export class LayeredConfig {
 				.map((name) => [name, overrides.variants[name]])
 		);
 
-		this.modes = Object.keys(
-			this.chain.getValue<Record<string, unknown>>("modes") ?? {}
+		this.modes = Object.keys(fieldOf(this.chain, "modes") ?? {});
+		this.modeChoice = LayeredConfig.choiceOf(
+			overrides.mode,
+			fieldOf(this.chain, "mode")
 		);
-		const written = this.chain.getValue<string | undefined>("mode");
-		this.modeChoice = {
-			name: overrides.mode ?? written,
-			source:
-				overrides.mode !== undefined
-					? "cli"
-					: written !== undefined
-						? "config"
-						: undefined,
-		};
 		this.mode =
 			this.modeChoice.name !== undefined &&
 			this.modes.includes(this.modeChoice.name)
@@ -158,7 +152,7 @@ export class LayeredConfig {
 	templates(): { file: string; location: DiagnosticLocation }[] {
 		const named = new Map<string, DiagnosticLocation>();
 		this.layers.forEach((layer, index) => {
-			const file = layer.getValue<string | undefined>("template");
+			const file = fieldOf(layer, "template");
 			if (typeof file !== "string") return;
 			named.delete(file);
 			named.set(file, this.positionIn(index, ["template"]));
@@ -171,8 +165,8 @@ export class LayeredConfig {
 		const path = LayeredConfig.pathOf(section);
 		const { source } = this.config.inspect(path);
 		if (source?.tier !== "layer") return { resource: this.leaf.file };
-		if (source.index === this.files.length && this.mode !== undefined)
-			return this.locateIn(this.chain, ["modes", this.mode, ...path]);
+		if (this.inModeLayer(source.index))
+			return this.locateMode(this.mode, ...section);
 		return this.locateIn(this.config, path);
 	}
 
@@ -189,19 +183,8 @@ export class LayeredConfig {
 	locateEntry(field: string, index: number): DiagnosticLocation {
 		const entry = this.config.entries([field])[index];
 		if (entry?.source.tier !== "layer") return { resource: this.leaf.file };
-		if (
-			entry.source.index === this.files.length &&
-			this.mode !== undefined
-		) {
-			const inMode = ["modes", this.mode, field];
-			const written = this.chain.entries(inMode)[entry.index];
-			return written?.source.tier === "layer"
-				? this.positionIn(written.source.index, [
-						...inMode,
-						String(written.index),
-					])
-				: { resource: this.leaf.file };
-		}
+		if (this.inModeLayer(entry.source.index))
+			return this.locateModeEntry(this.mode, field, entry.index);
 		return this.positionIn(entry.source.index, [
 			field,
 			String(entry.index),
@@ -222,6 +205,11 @@ export class LayeredConfig {
 					String(entry.index),
 				])
 			: { resource: this.leaf.file };
+	}
+
+	/** Whether the layer at `index` is the active mode's, which `config` stacks after the chain's files. */
+	private inModeLayer(index: number): this is { readonly mode: string } {
+		return index === this.files.length && this.mode !== undefined;
 	}
 
 	private locateIn(
@@ -257,6 +245,17 @@ export class LayeredConfig {
 		);
 	}
 
+	/** The command line's mode over the one the config writes. */
+	private static choiceOf(
+		requested: string | undefined,
+		written: string | undefined
+	): ModeChoice {
+		if (requested !== undefined) return { name: requested, source: "cli" };
+		return written !== undefined
+			? { name: written, source: "config" }
+			: { name: undefined, source: undefined };
+	}
+
 	private static cliModel(
 		overrides: ConfigOverrides,
 		cwd: string
@@ -290,7 +289,19 @@ export class LayeredConfig {
 			if (!Array.isArray(value)) return value;
 			return form === "paths"
 				? value.map((entry) => path.resolve(dir, entry))
-				: value.map((glob) => path.posix.join(toPosix(dir), glob));
+				: value.map((glob) =>
+						path.posix.join(escapedGlobPrefix(toPosix(dir)), glob)
+					);
+		};
+		const resolveFields = (
+			body: Record<string, unknown>,
+			each: Readonly<Record<string, PathForm>>
+		) => {
+			const resolved = { ...body };
+			for (const [field, fieldForm] of Object.entries(each))
+				if (field in body)
+					resolved[field] = resolve(body[field], fieldForm);
+			return resolved;
 		};
 		const result = { ...contents };
 		for (const [key, form] of Object.entries(configPathForms)) {
@@ -304,27 +315,7 @@ export class LayeredConfig {
 			result[key] = Object.fromEntries(
 				Object.entries(value).map(([name, body]) => [
 					name,
-					isObject(body)
-						? {
-								...body,
-								...Object.fromEntries(
-									Object.entries(form.each).flatMap(
-										([field, fieldForm]) =>
-											field in body
-												? [
-														[
-															field,
-															resolve(
-																body[field],
-																fieldForm
-															),
-														],
-													]
-												: []
-									)
-								),
-							}
-						: body,
+					isObject(body) ? resolveFields(body, form.each) : body,
 				])
 			);
 		}

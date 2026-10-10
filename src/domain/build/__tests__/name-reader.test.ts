@@ -3,8 +3,8 @@ import {
 	Misspelling,
 	MisspellingKind,
 	MisspellingOf,
-	NameReader,
-} from "../name-reader.js";
+} from "../misspelling-finder.js";
+import { NameReader } from "../name-reader.js";
 
 const ROUTES = new Set(["server", "client", "shared"]);
 const ROUTE_KEYS = new DeclaredKeys(ROUTES, []);
@@ -492,7 +492,10 @@ describe("NameReader folder", () => {
 
 	it("should note a route key after a folder's dot as a misspelling", () => {
 		expect(
-			misspelt(new NameReader(ALL_KEYS).folder("Queue.server"), "dotRoute")
+			misspelt(
+				new NameReader(ALL_KEYS).folder("Queue.server"),
+				"dotRoute"
+			)
 		).toMatchObject({ key: "server" });
 	});
 
@@ -552,6 +555,45 @@ describe("NameReader folder", () => {
 			outrankedName: "Inventory",
 			misspellings: [],
 		});
+	});
+});
+
+describe("NameReader folder typo", () => {
+	it("should offer the one rename that fixes a folder one edit from a route key", () => {
+		const keys = new DeclaredKeys(new Set(["server"]), []);
+
+		expect(misspelt(readerOf(keys).folder("Sever"), "folderTypo")).toEqual({
+			kind: "folderTypo",
+			text: "Sever",
+			key: "server",
+			respelling: { start: 0, written: "Sever", spelling: "Server" },
+		});
+	});
+
+	it("should offer no rename when two route keys are as close", () => {
+		const keys = new DeclaredKeys(new Set(["bests", "tests"]), []);
+
+		const typo = misspelt(readerOf(keys).folder("rests"), "folderTypo");
+
+		expect(typo?.key).toBe("bests");
+		expect(typo?.respelling).toBeUndefined();
+	});
+
+	it("should offer no rename when two variants are as close, and write the variant without a dot", () => {
+		const keys = new DeclaredKeys(new Set(), ["mocks", "locks"]);
+
+		const typo = misspelt(readerOf(keys).folder("rocks"), "variantTypo");
+
+		expect(typo).toMatchObject({ variant: "mocks", bare: true });
+		expect(typo?.respelling).toBeUndefined();
+	});
+
+	it("should not offer a key shorter than four letters", () => {
+		const keys = new DeclaredKeys(new Set(["abc"]), []);
+
+		expect(
+			misspelt(readerOf(keys).folder("abd"), "folderTypo")
+		).toBeUndefined();
 	});
 });
 
@@ -615,12 +657,12 @@ describe("NameReader routes in one name", () => {
 	});
 
 	it("should read a bare @key before another as a route, and alone as a name", () => {
-		expect(
-			[...readerOf(ALL_KEYS).suffixes("@client@server").matchedKeys]
-		).toEqual(["server", "client"]);
-		expect(
-			[...readerOf(ALL_KEYS).suffixes("@server").matchedKeys]
-		).toEqual([]);
+		expect([
+			...readerOf(ALL_KEYS).suffixes("@client@server").matchedKeys,
+		]).toEqual(["server", "client"]);
+		expect([...readerOf(ALL_KEYS).suffixes("@server").matchedKeys]).toEqual(
+			[]
+		);
 	});
 });
 

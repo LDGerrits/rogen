@@ -9,7 +9,7 @@ export function generateSchema(
 	outDir: string,
 	version: string,
 	published: readonly string[]
-): string[] {
+): readonly string[] {
 	const content = JSON.stringify(configSchema, null, "\t");
 	const channels = schemaChannels(version, published);
 	for (const channel of channels) {

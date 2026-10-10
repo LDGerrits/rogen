@@ -1,14 +1,20 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
+import { samePath } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { ServeAddress, ServerInfo, SyncServer } from "./serve.js";
+import {
+	ServeAddress,
+	ServerDefaults,
+	ServerInfo,
+	SyncServer,
+} from "./serve.js";
 import { ServeTarget, ServeTool } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
@@ -16,30 +22,10 @@ import { ServerRecords } from "./server-record.js";
 /** How many ports past a taken one are tried for a free one to suggest. */
 const FREE_PORT_SEARCH = 20;
 
-/** A top-level `key = value` of a flat TOML file, as Argon's settings are written. */
-function topLevelValue(text: string, key: string): string | undefined {
-	for (const raw of text.split(/\r?\n/)) {
-		const line = raw.trim();
-		if (line.startsWith("[")) return undefined;
-		const entry =
-			/^([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\d+))\s*(#.*)?$/.exec(
-				line
-			);
-		if (entry?.[1] === key) return entry[2] ?? entry[3] ?? entry[4];
-	}
-	return undefined;
-}
-
-/** Where a server's own settings put it, which apply when the project file sets nothing. */
-interface ServerDefaults {
-	readonly host?: string;
-	readonly port?: number;
-}
-
 /** Where each config is served, and whether its port is free for it, when a serve starts and whenever its configs change. */
 export class ServePorts {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly userHome: string
@@ -109,8 +95,7 @@ export class ServePorts {
 			holder?.project === target.project &&
 			!sharedName &&
 			(!elsewhere ||
-				path.resolve(elsewhere.projectFile) ===
-					path.resolve(target.config.outFile));
+				samePath(elsewhere.projectFile, target.config.outFile));
 		if (ownServer) return ok({ ...target, running: holder });
 		return err(
 			await this.portTaken(
@@ -145,11 +130,7 @@ export class ServePorts {
 			} catch {
 				continue;
 			}
-			const port = Number(topLevelValue(text, "port"));
-			return {
-				host: topLevelValue(text, "host"),
-				port: Number.isInteger(port) && port > 0 ? port : undefined,
-			};
+			return server.defaultsIn(text);
 		}
 		return {};
 	}

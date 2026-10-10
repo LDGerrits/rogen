@@ -1,5 +1,5 @@
 import { Sequencer } from "../../base/async.js";
-import { dirnamePosix, toPosix } from "../../base/path.js";
+import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
 import { UsageError } from "../../base/errors.js";
 import { compareStrings } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -9,7 +9,7 @@ import {
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { CONFIG_SUFFIX, ResolvedConfig } from "./config.js";
+import { ResolvedConfig, isConfigFileName } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -17,7 +17,7 @@ import {
 	ConfigEntry,
 	ConfigNotice,
 	ConfigReload,
-	ConfigSelection,
+	ReloadableSelection,
 	buildableConfig,
 } from "./config-service.js";
 
@@ -32,9 +32,10 @@ export interface PickedFolder {
 }
 
 /** The configs one invocation picked, each loading and reloading itself. */
-export class CoreConfigSelection implements ConfigSelection {
+export class CoreConfigSelection implements ReloadableSelection {
 	private readonly reloads = new Sequencer();
 	private _files: ReadonlySet<string>;
+	private filePaths: PathSet;
 
 	private constructor(
 		private managed: readonly ManagedConfig[],
@@ -44,6 +45,7 @@ export class CoreConfigSelection implements ConfigSelection {
 		private readonly folder: PickedFolder | undefined
 	) {
 		this._files = this.readFiles();
+		this.filePaths = new PathSet(this._files);
 	}
 
 	/** Loads `files` with `overrides`; fails when a variant or mode override is declared by none of them. */
@@ -63,7 +65,15 @@ export class CoreConfigSelection implements ConfigSelection {
 			undeclaredMode(managed, overrides);
 		return problem
 			? err(problem)
-			: ok(new CoreConfigSelection(managed, loader, overrides, home, folder));
+			: ok(
+					new CoreConfigSelection(
+						managed,
+						loader,
+						overrides,
+						home,
+						folder
+					)
+				);
 	}
 
 	get entries(): readonly ConfigEntry[] {
@@ -78,26 +88,34 @@ export class CoreConfigSelection implements ConfigSelection {
 		return this.folder?.directory;
 	}
 
+	reads(file: string): boolean {
+		return this.filePaths.has(file);
+	}
+
 	concerns(file: string): boolean {
-		if (this._files.has(file)) return true;
+		if (this.reads(file)) return true;
 		const posixFile = toPosix(file);
 		return (
 			this.folder !== undefined &&
-			posixFile.endsWith(CONFIG_SUFFIX) &&
+			isConfigFileName(posixFile) &&
 			dirnamePosix(posixFile) === toPosix(this.folder.directory)
 		);
+	}
+
+	get configs(): ResolvedConfig[] {
+		return this.entries.flatMap((entry) => buildableConfig(entry) ?? []);
 	}
 
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError> {
 		const errors = this.entries.flatMap(errorsOf);
 		return errors.length > 0
 			? err(new DiagnosticsError(errors))
-			: ok(this.entries.flatMap((entry) => buildableConfig(entry) ?? []));
+			: ok([...this.configs]);
 	}
 
 	reload(files: readonly string[]): Promise<ConfigReload> {
 		return this.reloads.queue(async () => {
-			const changedFiles = new Set(files);
+			const changedFiles = new PathSet(files);
 			const membership = await this.followFolder();
 			const reloaded = await Promise.all(
 				this.managed
@@ -114,6 +132,7 @@ export class CoreConfigSelection implements ConfigSelection {
 					})
 			);
 			this._files = this.readFiles();
+			this.filePaths = new PathSet(this._files);
 			const added = membership.added.map((config) => ({
 				file: config.file,
 				changed: buildableConfig(config.entry) !== undefined,

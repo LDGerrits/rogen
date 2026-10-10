@@ -7,11 +7,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SyncServer } from "./serve.js";
 import { ServeTool } from "./serve-service.js";
-import { ToolchainFile } from "./toolchain-file.js";
+import { ToolManifest } from "./tool-manifest.js";
 
 /** How long `--version` may take; a toolchain manager may download the tool first. */
 const VERSION_TIMEOUT_MS = 60_000;
@@ -20,13 +20,18 @@ interface Candidate {
 	readonly server: SyncServer;
 	/** The name it runs as. */
 	readonly command: string;
-	readonly manifest?: ToolchainFile;
+	readonly manifest?: ToolManifest;
+}
+
+/** A candidate a toolchain file pins. */
+interface PinnedCandidate extends Candidate {
+	readonly manifest: ToolManifest;
 }
 
 /** Finds the sync server a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
 export class ServerFinder {
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly processService: ProcessService
 	) {}
 
@@ -34,11 +39,12 @@ export class ServerFinder {
 	async find(
 		directory: string,
 		wanted: SyncServer | undefined,
-		resource: string
+		resource: string,
+		signal?: AbortSignal
 	): Promise<Result<ServeTool, DiagnosticsError>> {
 		const manifests = await this.manifestsFor(directory);
 		const servers = wanted ? [wanted] : SyncServer.ALL;
-		const pinned = servers.flatMap((server): Candidate[] => {
+		const pinned = servers.flatMap((server): PinnedCandidate[] => {
 			for (const manifest of manifests) {
 				const command = manifest.nameOf(server.repository);
 				if (command) return [{ server, command, manifest }];
@@ -71,26 +77,27 @@ export class ServerFinder {
 			chosen.file,
 			directory,
 			manifests,
-			resource
+			resource,
+			signal
 		);
 		if (version.isErr()) return version;
 		return ok({
 			server: chosen.candidate.server,
 			file: chosen.file,
 			version: version.value,
-			passedOver: other?.candidate.server,
+			passedOver: pinned.length > 0 ? other?.candidate.server : undefined,
 		});
 	}
 
 	/** The toolchain files of `directory` and every folder above it, the nearest first. */
-	private async manifestsFor(directory: string): Promise<ToolchainFile[]> {
-		const manifests: ToolchainFile[] = [];
+	private async manifestsFor(directory: string): Promise<ToolManifest[]> {
+		const manifests: ToolManifest[] = [];
 		for (const dir of [directory, ...ancestors(directory)]) {
-			for (const fileName of ToolchainFile.FILE_NAMES) {
+			for (const fileName of ToolManifest.FILE_NAMES) {
 				const file = path.join(dir, fileName);
 				if (!(await this.fileSystemService.exists(file))) continue;
 				try {
-					const manifest = ToolchainFile.parse(
+					const manifest = ToolManifest.parse(
 						file,
 						await this.fileSystemService.readFile(file)
 					);
@@ -108,12 +115,14 @@ export class ServerFinder {
 		candidate: Candidate,
 		file: string,
 		directory: string,
-		manifests: readonly ToolchainFile[],
-		resource: string
+		manifests: readonly ToolManifest[],
+		resource: string,
+		signal?: AbortSignal
 	): Promise<Result<string, DiagnosticsError>> {
 		const output = await this.processService.exec(file, ["--version"], {
 			cwd: directory,
 			timeout: VERSION_TIMEOUT_MS,
+			signal,
 		});
 		const printed = output.isOk()
 			? (firstLine(output.value.stderr) ?? firstLine(output.value.stdout))
@@ -141,16 +150,16 @@ export class ServerFinder {
 		);
 	}
 
-	private notInstalled({ server, command, manifest }: Candidate) {
-		const file = manifest!.file;
+	private notInstalled({ server, command, manifest }: PinnedCandidate) {
+		const { file } = manifest;
 		return errorDiagnostic(
 			"serve.notInstalled",
 			{ resource: file },
-			`${path.basename(file)} pins ${server.name} as ${command}, but it isn't installed. Run '${manifest!.installCommand}'.`,
+			`${path.basename(file)} pins ${server.name} as ${command}, but it isn't installed. Run '${manifest.installCommand}'.`,
 			[
 				{
 					run: {
-						command: manifest!.installCommand,
+						command: manifest.installCommand,
 						cwd: path.dirname(file),
 					},
 				},
@@ -160,7 +169,7 @@ export class ServerFinder {
 
 	private noServer(
 		directory: string,
-		manifests: readonly ToolchainFile[],
+		manifests: readonly ToolManifest[],
 		wanted: SyncServer | undefined,
 		resource: string
 	) {
@@ -187,7 +196,7 @@ export class ServerFinder {
 	private pinFix(
 		server: SyncServer,
 		directory: string,
-		manifests: readonly ToolchainFile[]
+		manifests: readonly ToolManifest[]
 	): Extract<DiagnosticFix, { run: unknown }> | undefined {
 		const [nearest] = manifests;
 		const command = nearest

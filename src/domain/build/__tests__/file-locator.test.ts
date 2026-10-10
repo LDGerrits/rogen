@@ -126,6 +126,7 @@ describe("CoreBuildService.locate", () => {
 			`${save}:12: attempt to index nil`,
 			`${save}:12:5: attempt to index nil`,
 			`${save}:12:5 - error: bad`,
+			`${save}:`,
 		])("should read %j as the file", async (arg) => {
 			await write(save);
 
@@ -298,6 +299,61 @@ describe("CoreBuildService.locate", () => {
 				node: ["ReplicatedStorage", "Vendor"],
 			},
 		]);
+	});
+
+	describe("a folder the template mounts outside the root dirs", () => {
+		const template = {
+			file: abs("template.project.json"),
+			project: {
+				name: "game",
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Packages: { $path: "Packages" },
+						DevPackages: { $path: "DevPackages" },
+					},
+				},
+			},
+		};
+
+		beforeEach(() => write("Packages/A.luau", "DevPackages/B.luau"));
+
+		it("should be said to be mounted, with the files in it", async () => {
+			expect(
+				await locate(["Packages", "Packages/A.luau"], { template })
+			).toMatchObject([
+				{
+					status: "mounted",
+					source: abs("Packages"),
+					node: ["ReplicatedStorage", "Packages"],
+				},
+				{
+					status: "mounted",
+					source: abs("Packages/A.luau"),
+					node: ["ReplicatedStorage", "Packages"],
+				},
+			]);
+		});
+
+		it("should be said to be excluded when exclude drops its mount, as it does in a mode", async () => {
+			expect(
+				await locate(["DevPackages", "DevPackages/B.luau"], {
+					template,
+					exclude: [toPosix(abs("DevPackages"))],
+				})
+			).toMatchObject([
+				{
+					status: "excluded",
+					source: abs("DevPackages"),
+					pattern: toPosix(abs("DevPackages")),
+				},
+				{
+					status: "excluded",
+					source: abs("DevPackages/B.luau"),
+					pattern: toPosix(abs("DevPackages")),
+				},
+			]);
+		});
 	});
 
 	it("should name the file that replaced another at the same instance", async () => {
@@ -964,16 +1020,5 @@ describe("CoreBuildService.locate", () => {
 		expect(located.unwrap().files).toMatchObject([
 			{ status: "placed", source: abs("src/A.luau"), exists: true },
 		]);
-	});
-
-	it("should fail with the build's errors", async () => {
-		await write("src/A.luau");
-		const config = configOf({ routes: {} });
-
-		const result = await locateIn(buildService(), config);
-
-		expect(
-			result.isErr() && result.error.diagnostics.map(({ code }) => code)
-		).toEqual(["route.noRoutes"]);
 	});
 });

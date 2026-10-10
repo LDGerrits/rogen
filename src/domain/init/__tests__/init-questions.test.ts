@@ -16,7 +16,12 @@ import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
-import { DirectorySpec, directory, directoryOf } from "./init-fixtures.js";
+import {
+	DirectorySpec,
+	directory,
+	directoryOf,
+	placeFoldersOf,
+} from "./init-fixtures.js";
 
 type Context = Omit<DirectorySpec, "givenName">;
 
@@ -32,7 +37,8 @@ const askInitChoices = async (
 	const setup = new ProjectSetup(
 		directoryOf({ ...context, givenName: name }),
 		new InitQuestions(prompts, prompts.isInteractive),
-		fileSystem
+		fileSystem,
+		placeFoldersOf(fileSystem)
 	);
 	return setup.ask();
 };
@@ -782,7 +788,8 @@ describe("InitQuestions askProject", () => {
 						existing: ["default.project.json"],
 					}),
 					new InitQuestions(prompts, prompts.isInteractive),
-					fileSystem
+					fileSystem,
+					placeFoldersOf(fileSystem)
 				).ask();
 			};
 
@@ -1205,50 +1212,41 @@ describe("InitQuestions addAgentHook", () => {
 });
 
 describe("InitQuestions whatToAdd", () => {
-	const valuesListed = async (
-		hasDefault: boolean,
-		agentFile?: string,
-		hookAgents?: readonly string[]
-	) => {
-		const prompts = new MockPromptService([ACCEPT_DEFAULT]);
-		let values: string[] = [];
-		const original = prompts.select.bind(prompts);
-		prompts.select = ((options: Parameters<typeof original>[0]) => {
-			values = options.choices.map(({ value }) => value);
-			return original(options);
-		}) as typeof prompts.select;
-		await new InitQuestions(prompts, true).whatToAdd(
-			hasDefault,
-			agentFile,
-			hookAgents
-		);
-		return values;
-	};
+	const options = [
+		{ id: "first", label: "First", hint: "the first", addition: 1 },
+		{ id: "second", label: "Second", hint: "the second", addition: 2 },
+	];
 
-	it("should list the hook only where it is offered", async () => {
-		expect(await valuesListed(true, "AGENTS.md", ["Codex"])).toContain(
-			"hook"
+	it("should answer with the addition the user picks", async () => {
+		const questions = new InitQuestions(
+			new MockPromptService(["second"]),
+			true
 		);
-		expect(await valuesListed(true, "AGENTS.md", [])).not.toContain("hook");
-		expect(await valuesListed(true)).not.toContain("hook");
+
+		expect(await questions.whatToAdd(true, options)).toBe(2);
 	});
 
-	it("should offer a place and an extending config only beside default", async () => {
-		expect(await valuesListed(true)).toEqual([
-			"place",
-			"extending",
-			"separate",
-		]);
-		expect(await valuesListed(false, "AGENTS.md")).toEqual([
-			"separate",
-			"agent",
-		]);
+	it("should preselect the first", async () => {
+		const questions = new InitQuestions(
+			new MockPromptService([ACCEPT_DEFAULT]),
+			true
+		);
+
+		expect(await questions.whatToAdd(true, options)).toBe(1);
 	});
 
-	it("should add a separate config when it can't ask and there is no default", async () => {
+	it("should take the first when it can't ask", async () => {
 		const questions = new InitQuestions(new MockPromptService([]), false);
 
-		expect(await questions.whatToAdd(false)).toBe("separate");
-		expect(await questions.whatToAdd(true)).toBe("place");
+		expect(await questions.whatToAdd(false, options)).toBe(1);
+	});
+
+	it("should answer nothing when the user cancels", async () => {
+		const questions = new InitQuestions(
+			new MockPromptService([CANCEL]),
+			true
+		);
+
+		expect(await questions.whatToAdd(true, options)).toBeUndefined();
 	});
 });

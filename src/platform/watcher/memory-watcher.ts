@@ -1,19 +1,11 @@
 import { DisposableStore } from "../../base/disposable.js";
-import { containsPosix, toPosix } from "../../base/path.js";
+import { toPosix } from "../../base/path.js";
 import { MemoryFileSystemService } from "../fs/memory-file-system-service.js";
 import { LogService } from "../log/log-service.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
-import {
-	IgnoredPath,
-	isBeyondShallow,
-	isIgnored,
-	WatchOptions,
-} from "./watcher.js";
+import { WatchFilter, WatchOptions } from "./watcher.js";
 
 export class MemoryWatcher extends AbstractWatcher {
-	private watched: readonly string[] = [];
-	private shallow: readonly string[] = [];
-	private ignored: readonly IgnoredPath[] = [];
 	private watchDisposables: DisposableStore | null = null;
 
 	constructor(
@@ -27,33 +19,16 @@ export class MemoryWatcher extends AbstractWatcher {
 		paths: readonly string[],
 		options: WatchOptions
 	): Promise<void> {
-		this.ignored = options.ignored ?? [];
-		this.watched = paths.map(toPosix);
-		this.shallow = (options.shallow ?? []).map(toPosix);
-
+		const filter = new WatchFilter(paths, options);
 		this.watchDisposables = new DisposableStore();
 
 		this.memoryFs.onDidMutateFile((change) => {
-			const normalizedChangePath = toPosix(change.path);
-			if (isIgnored(normalizedChangePath, this.ignored)) return;
-
-			const isWatched =
-				[...this.watched, ...this.shallow].some((watched) =>
-					containsPosix(watched, normalizedChangePath)
-				) &&
-				!isBeyondShallow(
-					normalizedChangePath,
-					this.watched,
-					this.shallow
-				);
-
-			if (isWatched) {
-				this.fireChange({
-					type: change.type,
-					path: normalizedChangePath,
-					fileType: change.fileType,
-				});
-			}
+			if (!filter.reports(change.path)) return;
+			this.fireChange({
+				type: change.type,
+				path: toPosix(change.path),
+				fileType: change.fileType,
+			});
 		}, this.watchDisposables);
 	}
 
@@ -62,8 +37,5 @@ export class MemoryWatcher extends AbstractWatcher {
 			this.watchDisposables[Symbol.dispose]();
 			this.watchDisposables = null;
 		}
-		this.watched = [];
-		this.shallow = [];
-		this.ignored = [];
 	}
 }

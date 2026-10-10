@@ -19,19 +19,22 @@ export class DisposableStore implements Disposable {
 		if (this.isDisposed) return;
 		this.isDisposed = true;
 
+		const failures: unknown[] = [];
 		for (const disposable of this.disposables) {
-			disposable[Symbol.dispose]();
+			try {
+				disposable[Symbol.dispose]();
+			} catch (error) {
+				failures.push(error);
+			}
 		}
 		this.disposables.clear();
+		if (failures.length === 1) throw failures[0];
+		if (failures.length > 1)
+			throw new AggregateError(failures, "Several disposables failed.");
 	}
 }
 
-/**
- * Abstract base class for a disposable object.
- *
- * Subclasses can `_register` disposables that will be automatically
- * cleaned up when this object is disposed of.
- */
+/** A disposable whose subclasses `_register` what is disposed with it. */
 export abstract class AbstractDisposable implements Disposable {
 	protected readonly _store = new DisposableStore();
 

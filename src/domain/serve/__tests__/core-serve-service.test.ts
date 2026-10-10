@@ -115,6 +115,12 @@ describe("CoreServeService", () => {
 			expect(servePlan.toStart).toHaveLength(1);
 		});
 
+		it("should refuse a server it doesn't know", async () => {
+			expect(await errorOf({ server: "lune" })).toEqual(
+				new UsageError('--tool takes rojo or argon, not "lune".')
+			);
+		});
+
 		it("should serve the synced config of a Darklua setup, not the source-rooted one", async () => {
 			await memFs.writeFile(
 				"/repo/sync.rogen.json",
@@ -234,13 +240,13 @@ describe("CoreServeService", () => {
 				'host = "0.0.0.0"\nport = 8100\n'
 			);
 
-			expect(served(await plan({ server: SyncServer.ARGON }))).toEqual([
+			expect(served(await plan({ server: "argon" }))).toEqual([
 				["default", "0.0.0.0:8100"],
 			]);
 
 			await memFs.writeFile("/repo/argon.toml", "port = 8200 # mine\n");
 
-			expect(served(await plan({ server: SyncServer.ARGON }))).toEqual([
+			expect(served(await plan({ server: "argon" }))).toEqual([
 				["default", "localhost:8200"],
 			]);
 		});
@@ -439,6 +445,51 @@ describe("CoreServeService", () => {
 			);
 		});
 
+		it("should name no port to run on when none of the next twenty is free", async () => {
+			await memFs.writeFile(
+				"/repo/game.project.json",
+				template({ servePort: 34900 })
+			);
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ template: "game.project.json" })
+			);
+			for (let port = 34900; port <= 34920; port++) {
+				requests.responses.set(`http://127.0.0.1:${port}/api/rojo`, {
+					status: 404,
+					contentType: "text/plain",
+					body: new Uint8Array(),
+				});
+			}
+
+			const error = (await errorOf()) as DiagnosticsError;
+
+			expect(error.diagnostics[0].message).toContain(
+				"or run 'rogen serve default -- --port <port>'."
+			);
+			expect(error.diagnostics[0].fixes ?? []).toEqual([]);
+		});
+
+		it("should name no port to run on when the port is the last one", async () => {
+			await memFs.writeFile(
+				"/repo/game.project.json",
+				template({ servePort: 65535 })
+			);
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ template: "game.project.json" })
+			);
+			requests.responses.set("http://127.0.0.1:65535/api/rojo", {
+				status: 404,
+				contentType: "text/plain",
+				body: new Uint8Array(),
+			});
+
+			const error = (await errorOf()) as DiagnosticsError;
+
+			expect(error.diagnostics[0].message).toContain("--port <port>");
+		});
+
 		it("should fail with a broken config's errors before looking for a server", async () => {
 			await memFs.writeFile("/repo/default.rogen.json", '{"nope": 1}');
 
@@ -626,39 +677,6 @@ describe("CoreServeService", () => {
 			expect(said).toEqual(["error: Port in use", "stopped"]);
 			expect(stops[0].failure?.message).toBe(
 				"Rojo stopped serving default with exit code 1; see what it said above."
-			);
-		});
-
-		it("should show a Windows status code in hex", async () => {
-			await start();
-
-			processes.spawned[0].exit({ code: 0xc0000005, signal: null });
-
-			expect(stops[0].failure?.message).toBe(
-				"Rojo stopped serving default with exit code 0xC0000005, without saying why."
-			);
-		});
-
-		it("should not count a server that Ctrl+C ended as a failure", async () => {
-			await start();
-
-			processes.spawned[0].exit({ code: 130, signal: null });
-
-			expect(stops[0].interrupted).toBe(true);
-			expect(stops[0].failure).toBeUndefined();
-		});
-
-		it("should report a server that couldn't start", async () => {
-			await start();
-
-			processes.spawned[0].exit({
-				code: null,
-				signal: null,
-				error: new Error("spawn /bin/rojo EACCES"),
-			});
-
-			expect(stops[0].failure?.message).toBe(
-				"Rojo couldn't start to serve default: spawn /bin/rojo EACCES"
 			);
 		});
 

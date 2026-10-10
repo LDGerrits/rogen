@@ -6,8 +6,7 @@ import {
 	SCHEMA_URL,
 	configFileName,
 	configLabel,
-	defaultOutFileName,
-	labelOfDefaultOutFile,
+	fieldOf,
 	rootDirOverlap,
 	schemaUrlFor,
 } from "../config.js";
@@ -23,17 +22,20 @@ describe("domain/config/config", () => {
 		});
 	});
 
-	describe("defaultOutFileName and labelOfDefaultOutFile", () => {
-		it("should name the project file a config writes by default", () => {
-			expect(defaultOutFileName("lobby")).toBe("lobby.project.json");
+	describe("fieldOf", () => {
+		const values = {
+			getValue: <T>(section?: string | readonly string[]) =>
+				(section === "mode" ? "dev" : undefined) as T | undefined,
+		};
+
+		it("should read a field the values hold, as the config declares it", () => {
+			const mode: string | undefined = fieldOf(values, "mode");
+
+			expect(mode).toBe("dev");
 		});
 
-		it("should take the label back out of a default output", () => {
-			expect(labelOfDefaultOutFile("lobby.project.json")).toBe("lobby");
-		});
-
-		it("should not read a label out of a file that isn't a project file", () => {
-			expect(labelOfDefaultOutFile("lobby.json")).toBeUndefined();
+		it("should give undefined for a field they lack", () => {
+			expect(fieldOf(values, "syncDir")).toBeUndefined();
 		});
 	});
 

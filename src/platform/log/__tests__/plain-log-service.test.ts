@@ -31,6 +31,36 @@ describe("PlainLogService", () => {
 		jest.restoreAllMocks();
 	});
 
+	it("should print a section as a title with its lines indented under it, although only errors are asked for", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Error);
+
+		logService.section(
+			"default.rogen.json",
+			"root dirs: src\nsync dir: out"
+		);
+
+		expect(out).toEqual([
+			"default.rogen.json",
+			"  root dirs: src\n  sync dir: out",
+		]);
+	});
+
+	it("should print a warning that fails the run although only errors are asked for", () => {
+		const logService = new PlainLogService();
+		logService.setLevel(LogLevel.Error);
+		const warning = warningDiagnostic(
+			"x.y",
+			{ resource: "/repo/a" },
+			"odd."
+		);
+
+		logService.diagnostic(warning);
+		logService.diagnostic(warning, true);
+
+		expect(errors).toEqual(["/repo/a - warning: odd. (x.y)"]);
+	});
+
 	it("should print a diagnostic without a second severity prefix", () => {
 		const logService = new PlainLogService();
 

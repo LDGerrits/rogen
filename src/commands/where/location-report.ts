@@ -1,4 +1,5 @@
 import { groupBy } from "../../base/collections.js";
+import { unescapedGlob } from "../../base/glob.js";
 import path from "path";
 import { relativeTo, toNative, toPosix } from "../../base/path.js";
 import {
@@ -6,22 +7,20 @@ import {
 	FileLocation,
 	InstanceFix,
 	Locations,
-	diagnosticsAbout,
-} from "../../domain/build/build.js";
-import {
-	requireExpression,
-	whyNotRequirable,
-} from "../../domain/roblox/roblox.js";
-import { RojoFile } from "../../domain/rojo/rojo.js";
+	requireOf,
+	requirementOf,
+} from "../../domain/build/build-service.js";
 import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,
 	DiagnosticJson,
-	DiagnosticSeverity,
+	diagnosticSummary,
+	diagnosticsAbout,
+	diagnosticsReaching,
 	diagnosticToJson,
-	messageRelativeTo,
-	messageWithCode,
+	fixToJson,
 } from "../../platform/diagnostics/diagnostic.js";
+import { LogService } from "../../platform/log/log-service.js";
 
 /** The mode a config built in, and every mode it declares. */
 interface ModeContext {
@@ -32,12 +31,14 @@ interface ModeContext {
 /** What one config says: where a path lands, or that no file places an instance. A location also holds the diagnostics a build raises about its path. */
 type Answer =
 	| {
+			readonly kind: "file";
 			readonly label: string;
 			readonly location: FileLocation;
 			readonly mode: ModeContext;
 			readonly diagnostics: readonly Diagnostic[];
 	  }
 	| {
+			readonly kind: "instance";
 			readonly label: string;
 			readonly instance: string;
 			/** Absolute POSIX folders a new file for it goes in. */
@@ -47,7 +48,16 @@ type Answer =
 	  };
 
 const sourceOf = (answer: Answer): string =>
-	"location" in answer ? answer.location.source : answer.instance;
+	answer.kind === "file" ? answer.location.source : answer.instance;
+
+/** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
+function patternRelativeTo(cwd: string, escaped: string): string {
+	const pattern = unescapedGlob(escaped);
+	if (!/^([A-Za-z]:)?\//.test(pattern)) return pattern;
+	const rooted = (posixPath: string) =>
+		posixPath.startsWith("/") ? posixPath : `/${posixPath}`;
+	return path.posix.relative(rooted(toPosix(cwd)), rooted(pattern)) || ".";
+}
 
 /** One line: the path, where it lands, and why. */
 function describeLocation(
@@ -106,10 +116,15 @@ function outcomeOf(
 		case "mounted":
 			return `mounted · the template mounts it at ${instanceKey(location.node)}`;
 		case "excluded":
-			// A glob keeps its slashes, which path.relative would turn into backslashes on Windows.
-			return `excluded · matches ${path.posix.relative(toPosix(cwd), location.pattern) || "."}`;
+			return `excluded · matches ${patternRelativeTo(cwd, location.pattern)}`;
 		case "skipped":
 			return "skipped · the link loops or points at nothing";
+		case "extensionCase":
+			return "not an instance · its extension is not in lowercase";
+		case "blocked":
+			return location.own
+				? `not placed · it has an error (${location.by.code})`
+				: `not placed · the build stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
 		case "outside":
 			return "outside the root dirs";
 		case "ignored":
@@ -121,27 +136,6 @@ function outcomeOf(
 		case "empty":
 			return "empty · no file in it places";
 	}
-}
-
-/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
-function requireOf(location: FileLocation): string | undefined {
-	return location.status === "placed" &&
-		new RojoFile(path.posix.basename(location.source)).isLuauModule
-		? requireExpression(location.instancePath)
-		: undefined;
-}
-
-/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
-function requirementOf(location: FileLocation): string | undefined {
-	if (location.status !== "placed" || !location.named) return undefined;
-	const file = new RojoFile(path.posix.basename(location.source));
-	if (!file.isLuau) return undefined;
-	if (!file.isLuauModule)
-		return "no require by this path: a script runs on its own and is not a module";
-	const expression = requireExpression(location.instancePath);
-	if (expression) return `require(${expression})`;
-	const reason = whyNotRequirable(location.instancePath);
-	return reason && `no require by this path: ${reason}`;
 }
 
 /** The fields a location adds to its source and status in the JSON form. */
@@ -169,11 +163,20 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 			};
 		case "replaced":
 			return { by: toNative(location.by) };
+		case "extensionCase":
+			return { rename: location.rename };
+		case "blocked":
+			return {
+				blockedBy: {
+					file: toNative(location.by.resource),
+					code: location.by.code,
+				},
+			};
 		case "displaced":
 		case "mounted":
 			return { node: location.node };
 		case "excluded":
-			return { pattern: location.pattern };
+			return { pattern: unescapedGlob(location.pattern) };
 		case "unrouted":
 		case "skipped":
 		case "outside":
@@ -185,7 +188,7 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 }
 
 const isOutside = (answer: Answer): boolean =>
-	"location" in answer && answer.location.status === "outside";
+	answer.kind === "file" && answer.location.status === "outside";
 
 /** A path outside one config's root dirs is no news when another config places it. */
 function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
@@ -227,17 +230,30 @@ export class LocationReport {
 			names: new Set(config.modes),
 		};
 		const answer = (location: FileLocation): Answer => ({
+			kind: "file",
 			label,
 			location,
 			mode,
-			diagnostics: diagnosticsAbout(diagnostics, location.source),
+			diagnostics:
+				location.status === "placed" && location.named
+					? diagnosticsReaching(diagnostics, location.source)
+					: diagnosticsAbout(diagnostics, location.source),
 		});
 		return [
 			...locations.map(answer),
-			...instances.flatMap(({ reference, files, folders, fixes }) =>
-				files.length > 0
-					? files.map(answer)
-					: [{ label, instance: reference.text, folders, fixes }]
+			...instances.flatMap(
+				({ reference, files, folders, fixes }): Answer[] =>
+					files.length > 0
+						? files.map(answer)
+						: [
+								{
+									kind: "instance",
+									label,
+									instance: reference.text,
+									folders,
+									fixes,
+								},
+							]
 			),
 		];
 	}
@@ -262,14 +278,14 @@ export class LocationReport {
 			const requires = [
 				...new Set(
 					answers.flatMap((answer) =>
-						"location" in answer
+						answer.kind === "file"
 							? (requireOf(answer.location) ?? [])
 							: []
 					)
 				),
 			];
 			const requirements = answers.map((answer) =>
-				"location" in answer
+				answer.kind === "file"
 					? requirementOf(answer.location)
 					: undefined
 			);
@@ -298,6 +314,24 @@ export class LocationReport {
 		});
 	}
 
+	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires show only with `verbose`. */
+	print(logService: LogService, verbose: boolean): void {
+		const blocks = this.blocks();
+		if (blocks.length === 0) {
+			const empty = this.emptyLine();
+			if (empty) logService.print(empty);
+			return;
+		}
+		for (const block of blocks) {
+			logService.print(block.lines.join("\n"));
+			if (block.requireLines.length > 0)
+				logService.note(block.requireLines.join("\n"));
+			else if (verbose)
+				for (const expression of block.requires)
+					logService.debug(`require: ${expression}`);
+		}
+	}
+
 	/** What to say when there is nothing to list because no root dir holds a file; `undefined` when no config answered at all. */
 	emptyLine(): string | undefined {
 		const rootDirs = [
@@ -319,10 +353,10 @@ export class LocationReport {
 			.flat()
 			.map((answer) => ({
 				config: answer.label,
-				...("location" in answer && answer.mode.active
+				...(answer.kind === "file" && answer.mode.active
 					? { mode: answer.mode.active }
 					: {}),
-				...("location" in answer
+				...(answer.kind === "file"
 					? {
 							source: toNative(answer.location.source),
 							status: answer.location.status,
@@ -340,12 +374,9 @@ export class LocationReport {
 								),
 							}),
 							...(answer.fixes.length > 0 && {
-								fixes: answer.fixes.map(({ rename }) => ({
-									rename: {
-										from: toNative(rename.from),
-										to: toNative(rename.to),
-									},
-								})),
+								fixes: answer.fixes.map(({ rename }) =>
+									fixToJson({ rename })
+								),
 							}),
 							diagnostics: [],
 						}),
@@ -365,10 +396,9 @@ export class LocationReport {
 
 	/** One indented line for each diagnostic about the answer's path: its severity, what it says about the path and its code, which `rogen help <code>` explains. */
 	private noted(answer: Answer): string[] {
-		if (!("location" in answer)) return [];
+		if (answer.kind !== "file") return [];
 		return answer.diagnostics.map(
-			({ severity, message, code }) =>
-				`  ${severity === DiagnosticSeverity.Error ? "error" : "warning"}: ${messageWithCode(messageRelativeTo(message, this.cwd), code)}`
+			(diagnostic) => `  ${diagnosticSummary(diagnostic, this.cwd)}`
 		);
 	}
 
@@ -410,7 +440,7 @@ export class LocationReport {
 	}
 
 	private describe(answer: Answer): string {
-		return "location" in answer
+		return answer.kind === "file"
 			? describeLocation(answer.location, answer.mode, this.cwd)
 			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders, answer.fixes)}`;
 	}

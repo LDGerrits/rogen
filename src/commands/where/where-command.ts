@@ -1,7 +1,10 @@
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ConfigSelectionOptions } from "../../domain/config/config.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+
+import {
+	ConfigSelectionOptions,
+	ConfigService,
+} from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -61,27 +64,10 @@ registerCommand(
 			if (located.isErr()) return located;
 
 			const report = new LocationReport(cwd, located.value);
-			const failure =
-				report.errors.length > 0
-					? new DiagnosticsError(report.errors)
-					: undefined;
+			const failure = DiagnosticsError.of(report.errors);
 			if (line.options.json)
 				return this.printJson(logService, report.json(), failure);
-			const blocks = report.blocks();
-			const empty = report.emptyLine();
-			if (blocks.length === 0) {
-				if (empty) logService.print(empty);
-			} else {
-				for (const block of blocks) {
-					logService.print(block.lines.join("\n"));
-					if (block.requireLines.length > 0)
-						logService.note(block.requireLines.join("\n"));
-					// A listing doesn't show the requires, which a person only asks to see.
-					else if (line.options.verbose)
-						for (const expression of block.requires)
-							logService.debug(`require: ${expression}`);
-				}
-			}
+			report.print(logService, Boolean(line.options.verbose));
 			return failure ? err(failure) : ok(undefined);
 		}
 	}

@@ -2,7 +2,9 @@ import {
 	FileType,
 	FileSystemService,
 	fileSystemError,
+	renameRefusal,
 } from "./file-system-service.js";
+import { compareStrings } from "../../base/collections.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
@@ -186,14 +188,14 @@ export class MemoryFileSystemService
 				`ENOTDIR: not a directory, scandir '${filePath}'`
 			);
 		}
-		return Array.from((node as DirectoryNode).entries.entries()).map(
-			([name, child]): [string, FileType] => [
+		return Array.from((node as DirectoryNode).entries.entries())
+			.sort(([a], [b]) => compareStrings(a, b))
+			.map(([name, child]): [string, FileType] => [
 				name,
 				this._leadsBack(filePath, child)
 					? FileType.SymbolicLink
 					: this._typeOf(child),
-			]
-		);
+			]);
 	}
 
 	/** Whether a link to a directory leads back to the directory it is in or one of its ancestors, so nothing descends into it. */
@@ -292,7 +294,9 @@ export class MemoryFileSystemService
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
 		const parts = splitPath(filePath);
 		const name = parts.pop();
-		const parent = this._lookup(parts.join("/"));
+		const { node: parent, failure } = this._walk(parts.join("/"), true);
+		if (failure === "ENOTDIR" || parent?.type === FileType.File)
+			throw walkError("ENOTDIR", "rm", filePath);
 		if (!name || parent?.type !== FileType.Directory) return;
 		const target = parent.entries.get(name);
 		if (!target) return;
@@ -314,24 +318,24 @@ export class MemoryFileSystemService
 		destination: string,
 		overwrite: boolean = false
 	): Promise<void> {
-		const node = this._lookup(source, false, false) as Node;
 		const from = toPosix(source);
 		const to = toPosix(destination);
 		if (from === to) return;
+		const node = this._lookup(source, false, false) as Node;
+		if (containsPosix(from, to))
+			throw fileSystemError(
+				"EINVAL",
+				`EINVAL: invalid argument, rename '${source}' -> '${destination}'`
+			);
 
 		const existing = this._lookup(destination, true, false);
-		if (existing && !overwrite) {
-			throw fileSystemError(
-				"EEXIST",
-				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
-			);
-		}
-		if (existing?.type === FileType.Directory) {
-			throw fileSystemError(
-				"EISDIR",
-				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
-			);
-		}
+		const refusal = renameRefusal(
+			existing?.type,
+			overwrite,
+			source,
+			destination
+		);
+		if (refusal) throw refusal;
 
 		const target = this._lookupParent(destination, true);
 		this._lookupParent(source).entries.delete(from.split("/").pop()!);

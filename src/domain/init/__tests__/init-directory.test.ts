@@ -23,18 +23,20 @@ describe("domain/init/init-directory", () => {
 			});
 		});
 
-		describe("projectFilesWithoutConfig", () => {
-			it("should list project files no config beside them writes", () => {
+		describe("handWrittenProjectFiles", () => {
+			it("should list project files no config beside them writes, but for the template", () => {
 				const target = directoryOf({
 					existing: [
 						"game.project.json",
 						"other.project.json",
 						"other.rogen.json",
 						"notes.json",
+						"template.project.json",
+						"lobby.template.project.json",
 					],
 				});
 
-				expect(target.projectFilesWithoutConfig).toEqual([
+				expect(target.handWrittenProjectFiles).toEqual([
 					"game.project.json",
 				]);
 			});

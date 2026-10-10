@@ -1046,6 +1046,56 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("an instance named with a leading $", () => {
+			const reserved = async () =>
+				(await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "tree.reservedName"
+					);
+
+			it("should warn of a file Rojo would key with a $, and propose the name without it", async () => {
+				await write("src/$Config.luau", "src/Fine.luau");
+
+				expect(await reserved()).toMatchObject([
+					{
+						resource: abs("src/$Config.luau"),
+						message: expect.stringContaining(
+							'"ReplicatedStorage/shared/$Config"'
+						),
+						fixes: [
+							{
+								rename: {
+									from: abs("src/$Config.luau"),
+									to: abs("src/Config.luau"),
+								},
+							},
+						],
+					},
+				]);
+			});
+
+			it("should warn once of a folder a project key names, with no rename to propose", async () => {
+				await write(
+					"src/Fine.luau",
+					"src/$Kit/A.luau",
+					"src/$Kit/B.luau"
+				);
+
+				const warnings = await reserved();
+
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0].resource).toBe(abs("src/$Kit/A.luau"));
+				expect(warnings[0].fixes ?? []).toEqual([]);
+			});
+
+			it("should leave a $ inside a name, and a file Rojo reads from a folder it was given whole, alone", async () => {
+				await write("src/Cost$.luau", "src/Kit/$Inner.luau");
+
+				expect(await reserved()).toEqual([]);
+			});
+		});
+
 		describe("instances no variant gives", () => {
 			const missing = async (
 				variants: Record<string, boolean>,
@@ -1072,6 +1122,22 @@ describe("BuildValidator rules", () => {
 				expect(others).toEqual([]);
 				expect(warning.message).toContain(
 					"ReplicatedStorage/shared/Analytics/Service (dev, prod)"
+				);
+			});
+
+			it("should list ten of the instances and count the rest", async () => {
+				await write(
+					...Array.from({ length: 11 }, (_, index) => [
+						`src/Kit${index}/dev/Service.luau`,
+						`src/Kit${index}/prod/Service.luau`,
+					]).flat()
+				);
+
+				const [warning] = await missing({ dev: false, prod: false });
+
+				expect(warning.message).toContain("11 instances are missing");
+				expect(warning.message).toContain(
+					"  1 more like it isn't listed."
 				);
 			});
 

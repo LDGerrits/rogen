@@ -2,9 +2,30 @@ import { jest } from "@jest/globals";
 import {
 	ErrorUtils,
 	ReportedError,
+	failureReason,
 	onUnexpectedError,
 	setUnexpectedErrorHandler,
 } from "../errors.js";
+
+describe("ErrorUtils.isSystemError", () => {
+	it("should accept an error carrying an errno code", () => {
+		expect(
+			ErrorUtils.isSystemError(
+				Object.assign(new Error("denied"), { code: "EACCES" })
+			)
+		).toBe(true);
+	});
+
+	it.each([
+		new Error("plain"),
+		Object.assign(new Error("odd"), { code: "ERR_INVALID_ARG_TYPE_X" }),
+		Object.assign(new Error("odd"), { code: "ERR_X" }),
+		Object.assign(new Error("odd"), { code: 13 }),
+		{ code: "EACCES" },
+	])("should not accept %s", (error) => {
+		expect(ErrorUtils.isSystemError(error)).toBe(false);
+	});
+});
 
 describe("ErrorUtils.hasCode", () => {
 	it("should match an error whose code is one of those given", () => {
@@ -114,5 +135,40 @@ describe("ReportedError", () => {
 		expect(reported.message).toBe("No config found.");
 		expect(reported.cause).toBe(cause);
 		expect(reported).toBeInstanceOf(Error);
+	});
+});
+
+describe("failureReason", () => {
+	it.each([
+		[
+			"ENOENT: no such file or directory, open '/x'",
+			"no such file or directory",
+		],
+		["EACCES: permission denied, open '/x'", "permission denied"],
+		[
+			"EISDIR: illegal operation on a directory, read",
+			"illegal operation on a directory",
+		],
+		[
+			"EISDIR: illegal operation on a directory, read '/x'",
+			"illegal operation on a directory",
+		],
+		["disk full", "disk full"],
+		["not found, retry", "not found, retry"],
+	])("should give the reason of %j without its code", (message, reason) => {
+		expect(failureReason(new Error(message))).toBe(reason);
+	});
+});
+
+describe("ErrorUtils.wrap", () => {
+	it("should say what failed and why, without the code, and keep the cause", () => {
+		const cause = new Error("EACCES: permission denied, open '/x'");
+
+		const wrapped = ErrorUtils.wrap("Failed to write a.json", cause);
+
+		expect(wrapped.message).toBe(
+			"Failed to write a.json: permission denied"
+		);
+		expect(wrapped.cause).toBe(cause);
 	});
 });

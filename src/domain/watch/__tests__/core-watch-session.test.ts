@@ -7,7 +7,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import {
-	ConfigSelection,
+	ReloadableSelection,
 	buildableConfig,
 } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
@@ -23,7 +23,7 @@ describe("CoreWatchSession", () => {
 	let fs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let configService: CoreConfigService;
-	let selection: ConfigSelection;
+	let selection: ReloadableSelection;
 	let store: DisposableStore;
 	let updates: WatchUpdate[];
 	let errors: Error[];
@@ -128,6 +128,12 @@ describe("CoreWatchSession", () => {
 			summary: { roots: [{ files: 1 }] },
 		});
 		expect(await fs.exists("/repo/default.project.json")).toBe(true);
+	});
+
+	it("should refuse to start twice, which would report every update twice", async () => {
+		const session = await start();
+
+		await expect(session.start()).rejects.toThrow("A watch starts once.");
 	});
 
 	it("should rebuild only the configs whose root dirs hold a change", async () => {

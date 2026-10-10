@@ -95,17 +95,6 @@ describe("CommandRegistry", () => {
 				/already registered/
 			);
 		});
-
-		it("should throw for a command without a handler", () => {
-			const broken = {
-				id: "foo",
-				metadata: { description: "missing handler" },
-			} as unknown as Command;
-
-			expect(() => registry.registerCommand(broken)).toThrow(
-				/without a handler/
-			);
-		});
 	});
 
 	describe("getCommand", () => {

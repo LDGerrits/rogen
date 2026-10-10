@@ -3,16 +3,18 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ConfigOptionValues, OutFileOption } from "./config.js";
+
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
 import {
 	ConfigEntry,
 	ConfigFileCheck,
-	ConfigSelection,
+	ConfigOptionValues,
+	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
+	OutFileOption,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -53,7 +55,7 @@ export class CoreConfigService implements ConfigService {
 	async select(
 		refs: readonly string[],
 		options: ConfigOptionValues
-	): Promise<Result<ConfigSelection, Error>> {
+	): Promise<Result<ReloadableSelection, Error>> {
 		const discovered = await this.discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 

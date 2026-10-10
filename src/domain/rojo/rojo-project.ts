@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "util";
-import { isObject } from "../../base/objects.js";
+import { getOwn, isObject, setOwn } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
 
@@ -112,6 +112,8 @@ export interface ProjectFile {
 	readonly name?: unknown;
 	readonly globIgnorePaths?: unknown;
 	readonly emitLegacyScripts?: unknown;
+	readonly servePort?: unknown;
+	readonly serveAddress?: unknown;
 }
 
 /** A project file read from disk, whose other fields pass through untouched. */
@@ -124,10 +126,16 @@ const plainContainer: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
 
 /** The suffix of a Rojo project file, such as `default.project.json`. */
-export const PROJECT_SUFFIX = ".project.json";
+const PROJECT_SUFFIX = ".project.json";
 
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
+
+/** The stem of a Rojo project file's name, or `undefined` when the name isn't a project file's. */
+export const stemOfProjectFile = (fileName: string): string | undefined =>
+	fileName.endsWith(PROJECT_SUFFIX)
+		? fileName.slice(0, -PROJECT_SUFFIX.length)
+		: undefined;
 
 /** A Rojo project file being edited; the owner decides what an ancestor created on its behalf looks like. */
 export class RojoProject<T extends ProjectFile = RojoTree> {
@@ -189,17 +197,18 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 
 	/** The port Rojo serves the project on, when the project sets a valid one. */
 	get servePort(): number | undefined {
-		const { servePort } = this.project as { servePort?: unknown };
-		return Number.isInteger(servePort) &&
-			(servePort as number) > 0 &&
-			(servePort as number) < 65536
-			? (servePort as number)
+		const { servePort } = this.project;
+		return typeof servePort === "number" &&
+			Number.isInteger(servePort) &&
+			servePort > 0 &&
+			servePort < 65536
+			? servePort
 			: undefined;
 	}
 
 	/** The address Rojo listens on, when the project sets one. */
 	get serveAddress(): string | undefined {
-		const { serveAddress } = this.project as { serveAddress?: unknown };
+		const { serveAddress } = this.project;
 		return typeof serveAddress === "string" && serveAddress !== ""
 			? serveAddress
 			: undefined;
@@ -249,7 +258,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		let current: unknown = this.project.tree;
 		for (const segment of instancePath) {
 			if (!isObject(current)) return undefined;
-			current = current[segment];
+			current = getOwn(current, segment);
 		}
 		return isObject(current) ? current : undefined;
 	}
@@ -259,7 +268,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		if (instancePath.length === 0) return;
 		const parent = this.ensureNode(instancePath.slice(0, -1));
 		const leaf = instancePath[instancePath.length - 1];
-		const existing = parent[leaf];
+		const existing = getOwn(parent, leaf);
 		const updated: RojoNode = {
 			...(isObject(existing) ? existing : {}),
 			...data,
@@ -268,7 +277,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			delete updated.$className;
 			delete updated.$ignoreUnknownInstances;
 		}
-		parent[leaf] = updated;
+		setOwn(parent, leaf, updated);
 	}
 
 	/** Every `$path` in the tree, depth first, the root's included. */
@@ -340,11 +349,11 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			at: readonly string[]
 		) => {
 			for (const [key, value] of childNodes(from)) {
-				const existing = node[key];
+				const existing = getOwn(node, key);
 				const here = [...at, key];
 				if (value.$path !== undefined) {
 					if (existing === undefined) {
-						node[key] = value;
+						setOwn(node, key, value);
 						added.push(...pathsBelow(value, here));
 					} else {
 						skipped.push(...pathsBelow(value, here));
@@ -357,7 +366,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 						: {};
 					const before = added.length;
 					merge(container, value, here);
-					if (added.length > before) node[key] = container;
+					if (added.length > before) setOwn(node, key, container);
 				}
 			}
 		};
@@ -379,11 +388,11 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			at: readonly string[]
 		) => {
 			for (const [key, value] of Object.entries(from)) {
-				const existing = node[key];
+				const existing = getOwn(node, key);
 				if (!key.startsWith("$")) {
 					if (isObject(existing) && isObject(value))
 						merge(existing, value, [...at, key]);
-					else node[key] = value;
+					else setOwn(node, key, value);
 				} else if (
 					KEYED_FIELDS.has(key) &&
 					isObject(existing) &&
@@ -398,7 +407,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 								instancePath: at,
 								field: `${key}.${name}`,
 							});
-						existing[name] = field;
+						setOwn(existing, name, field);
 					}
 				} else {
 					if (
@@ -406,7 +415,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 						!isDeepStrictEqual(existing, value)
 					)
 						clashes.push({ instancePath: at, field: key });
-					node[key] = value;
+					setOwn(node, key, value);
 				}
 			}
 		};
@@ -434,17 +443,19 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	private ensureNode(instancePath: readonly string[]): RojoNode {
 		let current = this.project.tree;
 		instancePath.forEach((segment, depth) => {
-			const next = current[segment];
+			const next = getOwn(current, segment);
 			if (next === undefined) {
-				current[segment] = this.createContainer(
-					instancePath.slice(0, depth + 1)
+				setOwn(
+					current,
+					segment,
+					this.createContainer(instancePath.slice(0, depth + 1))
 				);
 			} else if (!isObject(next)) {
 				throw new Error(
 					`Can't insert below "${instanceKey(instancePath.slice(0, depth + 1))}": it isn't a node.`
 				);
 			}
-			current = current[segment] as RojoNode;
+			current = getOwn(current, segment) as RojoNode;
 		});
 		return current;
 	}

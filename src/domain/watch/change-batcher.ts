@@ -1,3 +1,4 @@
+import { RunOnceScheduler } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import {
@@ -10,6 +11,8 @@ export interface ChangeBurst {
 	readonly dropped: number;
 	/** How many it follows before it gives up. */
 	readonly threshold: number;
+	/** Whether the burst has stopped, so `dropped` counts the changes since the first report. */
+	readonly ended: boolean;
 }
 
 export interface ChangeBatcherOptions {
@@ -22,10 +25,12 @@ const DEFAULT_OPTIONS: ChangeBatcherOptions = {
 	debounceMs: 100,
 };
 
-/** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead. */
+/** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead, then one more when a burst that goes on has stopped. */
 export class ChangeBatcher extends AbstractDisposable {
 	private buffer: FileChange[] = [];
-	private flushTimer: ReturnType<typeof setTimeout> | undefined;
+	/** Within a burst: the changes dropped since the overflow was reported. */
+	private droppedInBurst: number | undefined;
+	private readonly flush: RunOnceScheduler;
 
 	private readonly _onDidEmitChanges = this._register(
 		new Emitter<FileChange[]>()
@@ -43,9 +48,17 @@ export class ChangeBatcher extends AbstractDisposable {
 		private readonly options: ChangeBatcherOptions = DEFAULT_OPTIONS
 	) {
 		super();
+		this.flush = this._register(
+			new RunOnceScheduler(() => this.flushBuffer(), options.debounceMs)
+		);
 	}
 
 	queueEvents(changes: readonly FileChange[]): void {
+		if (this.droppedInBurst !== undefined) {
+			this.droppedInBurst += changes.length;
+			this.flush.schedule();
+			return;
+		}
 		// Not `push(...changes)`: a burst can be larger than the call stack allows.
 		for (const change of changes) this.buffer.push(change);
 
@@ -55,19 +68,28 @@ export class ChangeBatcher extends AbstractDisposable {
 			this._onDidOverflow.fire({
 				dropped,
 				threshold: this.options.burstThreshold,
+				ended: false,
 			});
+			this.droppedInBurst = 0;
+			this.flush.schedule();
 			return;
 		}
 
-		clearTimeout(this.flushTimer);
-		this.flushTimer = setTimeout(
-			() => this.flushBuffer(),
-			this.options.debounceMs
-		);
+		this.flush.schedule();
 	}
 
 	private flushBuffer(): void {
-		this.flushTimer = undefined;
+		if (this.droppedInBurst !== undefined) {
+			const dropped = this.droppedInBurst;
+			this.droppedInBurst = undefined;
+			if (dropped > 0)
+				this._onDidOverflow.fire({
+					dropped,
+					threshold: this.options.burstThreshold,
+					ended: true,
+				});
+			return;
+		}
 		const normalized = normalizeFileChanges(this.buffer);
 		this.buffer = [];
 		if (normalized.length > 0) {
@@ -76,13 +98,12 @@ export class ChangeBatcher extends AbstractDisposable {
 	}
 
 	private clearBuffer(): void {
-		clearTimeout(this.flushTimer);
-		this.flushTimer = undefined;
+		this.flush.cancel();
 		this.buffer = [];
 	}
 
 	override [Symbol.dispose](): void {
-		this.clearBuffer();
+		this.buffer = [];
 		super[Symbol.dispose]();
 	}
 }

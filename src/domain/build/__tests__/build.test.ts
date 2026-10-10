@@ -11,7 +11,6 @@ import {
 	OutputFile,
 	UnloadedBuild,
 	WrittenBuild,
-	diagnosticsAbout,
 } from "../build.js";
 import { abs, configOf } from "./fixtures.js";
 
@@ -101,6 +100,25 @@ describe("domain/build/build", () => {
 		it("should not fail a run whose configs all built", () => {
 			expect(new BuildRun([written(lobby, [shared])]).failed).toBe(false);
 		});
+
+		it("should give the failure of a run: its errors, or its warnings only when they are denied", () => {
+			const error = errorDiagnostic(
+				"x.error",
+				{ resource: abs("src/A.luau") },
+				"broken"
+			);
+			const warned = new BuildRun([written(lobby, [shared])]);
+			const broken = new BuildRun([new FailedBuild(lobby, [error])]);
+
+			expect(warned.failure(false)).toBeUndefined();
+			expect(warned.failure(true)?.message).toBe(
+				"1 warning denied by --deny-warnings."
+			);
+			expect(broken.failure(false)).toMatchObject({
+				diagnostics: [error],
+			});
+			expect(new BuildRun([]).failure(true)).toBeUndefined();
+		});
 	});
 
 	describe("OutputFile", () => {
@@ -121,68 +139,6 @@ describe("domain/build/build", () => {
 					staged(path.resolve("/repo", "other.project.json"), "a1b2")
 				)
 			).toBe(false);
-		});
-	});
-
-	describe("diagnosticsAbout", () => {
-		const own = warningDiagnostic(
-			"x.own",
-			{ resource: "/repo/src/A.luau" },
-			"own"
-		);
-		const group = warningDiagnostic(
-			"x.group",
-			{ resource: "/repo/default.rogen.json" },
-			"2 files:\n  src/A.luau\n  src/B.luau",
-			[
-				{
-					rename: {
-						from: "/repo/src/A.luau",
-						to: "/repo/src/a.luau",
-					},
-				},
-				{
-					rename: {
-						from: "/repo/src/B.luau",
-						to: "/repo/src/b.luau",
-					},
-				},
-			],
-			[
-				{ resource: "/repo/src/A.luau", message: "A is odd" },
-				{ resource: "/repo/src/B.luau", message: "B is odd" },
-			]
-		);
-
-		it("should keep a diagnostic whose resource is the path", () => {
-			expect(diagnosticsAbout([own], "/repo/src/A.luau")).toEqual([own]);
-			expect(diagnosticsAbout([own], "/repo/src/B.luau")).toEqual([]);
-		});
-
-		it("should narrow a grouped one to the entry that names the path, with its own fixes", () => {
-			expect(diagnosticsAbout([group], "/repo/src/B.luau")).toMatchObject(
-				[
-					{
-						code: "x.group",
-						resource: "/repo/src/B.luau",
-						message: "B is odd",
-						fixes: [
-							{
-								rename: {
-									from: "/repo/src/B.luau",
-									to: "/repo/src/b.luau",
-								},
-							},
-						],
-					},
-				]
-			);
-		});
-
-		it("should say nothing of the config a group is filed under", () => {
-			expect(
-				diagnosticsAbout([group], "/repo/default.rogen.json")
-			).toEqual([]);
 		});
 	});
 

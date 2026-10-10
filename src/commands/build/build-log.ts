@@ -1,5 +1,5 @@
 import { relativeTo } from "../../base/path.js";
-import { joinedWithAnd, plural } from "../../base/strings.js";
+import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
 import {
 	BuildRun,
 	BuildSummary,
@@ -26,7 +26,7 @@ function withListCapped(diagnostic: Diagnostic): Diagnostic {
 		message: [
 			headline,
 			...lines.slice(0, LISTED_PER_CODE),
-			`  ${unlisted} more like it aren't listed.`,
+			`  ${unlistedNote(unlisted)}`,
 			...lines.slice(count),
 		].join("\n"),
 	};
@@ -53,7 +53,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 			? [
 					{
 						...diagnostic,
-						message: `${diagnostic.message} ${unlisted} more like it ${unlisted === 1 ? "isn't" : "aren't"} listed.`,
+						message: `${diagnostic.message} ${unlistedNote(unlisted)}`,
 					},
 				]
 			: [withListCapped(diagnostic)];
@@ -89,15 +89,20 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		({ key, target, files }) =>
 			`route ${key} -> ${target}: ${plural(files, "file")}`
 	);
-	const variants = summary.variants.map(({ variant, on, files }) =>
+	const switched = (
+		kind: string,
+		name: string,
+		on: boolean,
+		files: number
+	) =>
 		on
-			? `variant ${variant} on: ${plural(files, "file")}`
-			: `variant ${variant} off: ${plural(files, "file")} left out`
+			? `${kind} ${name} on: ${plural(files, "file")}`
+			: `${kind} ${name} off: ${plural(files, "file")} left out`;
+	const variants = summary.variants.map(({ variant, on, files }) =>
+		switched("variant", variant, on, files)
 	);
 	const modes = summary.modes.map(({ mode, on, files }) =>
-		on
-			? `mode ${mode} on: ${plural(files, "file")}`
-			: `mode ${mode} off: ${plural(files, "file")} left out`
+		switched("mode", mode, on, files)
 	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
@@ -178,7 +183,8 @@ export class BuildLog {
 						: undefined,
 					sameNote("errors", errors.sameAs),
 					sameNote("warnings", warnings.sameAs)
-				)
+				),
+				denyWarnings
 			);
 		}
 		if (run.failed) this.logService.closeFrame("build failed.");
@@ -186,15 +192,16 @@ export class BuildLog {
 	}
 
 	/** Heads the lines about one config, when a run builds several. */
-	heading(label: string): void {
+	private heading(label: string): void {
 		this.logService.step(label);
 	}
 
-	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`. */
+	/** One config's line for what the run did to its project file, ending in `note` if given, then `diagnostics`, which `failing` makes the run fail. */
 	outcome(
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
-		note?: string
+		note?: string,
+		failing = false
 	): void {
 		const line = (outcome: string) =>
 			[
@@ -230,16 +237,21 @@ export class BuildLog {
 				this.logService.error(line("not loaded"));
 				break;
 		}
-		this.diagnostics(diagnostics);
+		this.diagnostics(diagnostics, failing);
 	}
 
-	diagnostics(diagnostics: readonly Diagnostic[]): void {
+	/** `failing` when the diagnostics are what fails the run, as every warning is under `--deny-warnings`. */
+	diagnostics(diagnostics: readonly Diagnostic[], failing = false): void {
 		for (const diagnostic of capped(diagnostics))
-			this.logService.diagnostic(diagnostic);
+			this.logService.diagnostic(diagnostic, failing);
 	}
 
 	/** Closes the output of a build that wrote every config, counting its warnings. */
-	end(configs: number, warnings: number, denyWarnings: boolean): void {
+	private end(
+		configs: number,
+		warnings: number,
+		denyWarnings: boolean
+	): void {
 		const built = `Built ${plural(configs, "config")}`;
 		this.logService.outro(
 			warnings === 0

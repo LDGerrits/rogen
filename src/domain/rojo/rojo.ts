@@ -2,7 +2,11 @@ import path from "path";
 import { JSONSchema } from "../../base/json-schema.js";
 import { stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { closestMatch } from "../../base/strings.js";
+import {
+	Diagnostic,
+	warningDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileType,
 	isDirectoryType,
@@ -63,15 +67,29 @@ export class RojoFile {
 	}
 
 	get isMeta(): boolean {
-		return this.name.toLowerCase().endsWith(RojoFile.META_SUFFIX);
+		return this.name.endsWith(RojoFile.META_SUFFIX);
+	}
+
+	/** The name with an extension Rojo would read written as it reads it, when only the letter case keeps Rojo from reading the file: Rojo ignores `Foo.LUAU` and `Foo.MODEL.JSON`. */
+	get lowercasedExtension(): string | undefined {
+		if (this.kind !== undefined || this.isMeta) return undefined;
+		if (this.name.toLowerCase().endsWith(".d.ts")) return undefined;
+		const fixed = this.name.replace(
+			/(\.(?:meta|model|project))?\.[^.]+$/i,
+			(suffix) => suffix.toLowerCase()
+		);
+		return fixed !== this.name &&
+			(new RojoFile(fixed).kind !== undefined ||
+				new RojoFile(fixed).isMeta)
+			? fixed
+			: undefined;
 	}
 
 	/** What Rojo turns the file into, or `undefined` when it isn't an instance on its own. */
 	get kind(): RojoFileKind | undefined {
-		const lower = this.name.toLowerCase();
-		if (lower.endsWith(".d.ts") || this.isMeta) return undefined;
+		if (this.name.endsWith(".d.ts") || this.isMeta) return undefined;
 
-		const extension = path.extname(lower);
+		const extension = path.extname(this.name);
 		if (RojoFile.SCRIPT_EXTENSIONS.includes(extension)) return "script";
 		if (MODEL_EXTENSIONS.includes(extension)) return "model";
 		if (DATA_EXTENSIONS.includes(extension)) return "data";
@@ -80,7 +98,7 @@ export class RojoFile {
 
 	/** Whether the file is Luau source, which Rojo reads as it is; a `.ts` source is compiled first. */
 	get isLuau(): boolean {
-		const extension = path.extname(this.name).toLowerCase();
+		const extension = path.extname(this.name);
 		return extension === ".luau" || extension === ".lua";
 	}
 
@@ -98,16 +116,18 @@ export class RojoFile {
 	get instanceName(): string {
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
 		if (this.kind !== "data") return this.stem;
-		return this.stem.endsWith(".model")
+		return this.isJson && this.stem.endsWith(".model")
 			? this.stem.slice(0, -".model".length)
 			: this.stem;
 	}
 
 	/** Rojo only reads `.model` and `.project` as a suffix on `.json` files. */
 	get dataName(): string {
-		return path.extname(this.name).toLowerCase() === ".json"
-			? RojoFile.dataNameOf(this.stem)
-			: this.stem;
+		return this.isJson ? RojoFile.dataNameOf(this.stem) : this.stem;
+	}
+
+	private get isJson(): boolean {
+		return path.extname(this.name) === ".json";
 	}
 
 	/** The name Rojo reads the file's `.meta.json` under, or none for a file that takes no meta. */
@@ -149,6 +169,12 @@ const META_SCHEMA: JSONSchema = {
 	},
 };
 
+/** What a `.meta.json` sets, and what is wrong with it short of making Rojo refuse it. */
+export interface ParsedMeta {
+	readonly fields: RojoMetaFields;
+	readonly typos: readonly Diagnostic[];
+}
+
 /** A `.meta.json` as Rojo reads it. */
 export class RojoMeta {
 	private static readonly documents = new JsoncDocumentReader({
@@ -156,22 +182,34 @@ export class RojoMeta {
 		noun: "a meta file",
 	});
 
-	/** The fields `text` sets, or why Rojo would refuse `file`. */
-	static parse(
-		text: string,
-		file: string
-	): Result<RojoMetaFields, Diagnostic[]> {
+	/** The fields `text` sets, with a warning for each that is a slip from one Rojo reads, such as `classname`; or why Rojo would refuse `file`. A field that resembles none, such as `$schema`, is left alone. */
+	static parse(text: string, file: string): Result<ParsedMeta, Diagnostic[]> {
 		const document = RojoMeta.documents.read(text, file, META_SCHEMA);
 		if (document.isErr()) return err(document.error);
 
-		const { value } = document.value;
-		return ok(
-			Object.fromEntries(
-				Object.keys(META_SCHEMA.properties ?? {})
+		const { root, value } = document.value;
+		const known = Object.keys(META_SCHEMA.properties ?? {});
+		return ok({
+			fields: Object.fromEntries(
+				known
 					.filter((key) => value[key] !== undefined)
 					.map((key) => [key, value[key]])
-			) as RojoMetaFields
-		);
+			) as RojoMetaFields,
+			typos: root.properties.flatMap(({ name, line, column }) => {
+				const suggestion = known.includes(name)
+					? undefined
+					: closestMatch(name, known);
+				return suggestion
+					? [
+							warningDiagnostic(
+								"meta.unknownField",
+								{ resource: file, position: { line, column } },
+								`unknown field "${name}"; Rojo ignores it. Did you mean "${suggestion}"?`
+							),
+						]
+					: [];
+			}),
+		});
 	}
 
 	/** The fields `meta` adds to a project's `node`, by Rojo's precedence: a field the project sets wins, and properties merge with the project's winning. */

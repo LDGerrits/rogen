@@ -1,0 +1,27 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  src/Save.LUAU - warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Save.luau. (scan.extensionCase)
+  src/Stats.JSON - warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Stats.json. (scan.extensionCase)
+
+$ rogen where src/Save.LUAU
+exit 0
+stdout:
+  src/Save.LUAU -> not an instance · its extension is not in lowercase
+    warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Save.luau. (scan.extensionCase)
+
+$ rogen check
+exit 1
+stdout:
+  src/Save.LUAU - warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Save.luau. (scan.extensionCase)
+  src/Stats.JSON - warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Stats.json. (scan.extensionCase)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Load: ModuleScript  <- src/Load.luau

@@ -377,19 +377,55 @@ describe("serve command", () => {
 		});
 	});
 
-	it("should print a failure as one JSON line", async () => {
+	it("should say which server it picked when both are pinned", async () => {
+		await memFs.writeFile(
+			"/repo/rokit.toml",
+			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.0"\n'
+		);
+		processes.installed.set("argon", "/bin/argon");
+		processes.outputs.set("/bin/argon", {
+			code: 0,
+			stdout: "argon 2.0.0",
+			stderr: "",
+		});
+
+		void serve();
+		await settle();
+
+		expect(logService.lines).toContainEqual(
+			"info: Both rojo and argon are pinned; serving with rojo (--tool argon to switch)."
+		);
+	});
+
+	it("should print a config that broke while serving as a notice line", async () => {
+		void serve([], { json: true });
+		await settle();
+
+		await memFs.writeFile("/repo/default.rogen.json", '{"nope": 1}');
+		await settle();
+
+		expect(printed()).toContainEqual({
+			notice: expect.objectContaining({
+				kind: "broken",
+				file: "/repo/default.rogen.json",
+				keptLastValid: true,
+				diagnostics: [expect.objectContaining({ severity: "error" })],
+			}),
+		});
+	});
+
+	it("should leave a failure before it served to be reported", async () => {
 		processes.installed.clear();
 
-		const result = await serve([], { json: true });
+		const error = await failureOf(serve([], { json: true }));
 
-		expect(exitCodeOf((result as { error: Error }).error)).toBe(1);
-		expect(printed()).toEqual([
-			{
-				diagnostics: [
-					expect.objectContaining({ code: "serve.notInstalled" }),
-				],
-			},
-		]);
+		expect(error).toMatchObject({
+			diagnostics: [
+				expect.objectContaining({ code: "serve.notInstalled" }),
+			],
+		});
+		expect(exitCodeOf(error)).toBe(1);
+		expect(printed()).toEqual([]);
 	});
 
 	it("should print a stop as JSON, then the failure", async () => {
@@ -432,7 +468,7 @@ describe("serve command", () => {
 	it("should refuse a server it doesn't know", async () => {
 		const error = await failureOf(serve([], { tool: "lune" }));
 
-		expect((error as ReportedError).cause).toEqual(
+		expect(error).toEqual(
 			new UsageError('--tool takes rojo or argon, not "lune".')
 		);
 		expect(exitCodeOf(error)).toBe(2);
@@ -481,5 +517,30 @@ describe("serve command", () => {
 				line.includes("route.markerClash")
 			)
 		).toHaveLength(1);
+	});
+
+	it("should end the JSON lines with the build's errors when the first build fails", async () => {
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: {
+					server: "ServerScriptService",
+					client: "StarterPlayer/StarterPlayerScripts",
+				},
+			})
+		);
+		await memFs.writeFile("/repo/src/X/@server", "");
+		await memFs.writeFile("/repo/src/X/@client", "");
+
+		const error = await failureOf(serve([], { json: true }));
+
+		expect(exitCodeOf(error)).toBe(1);
+		expect(processes.spawned).toEqual([]);
+		expect(printed().at(-1)).toEqual({
+			diagnostics: [
+				expect.objectContaining({ code: "route.markerClash" }),
+			],
+		});
 	});
 });

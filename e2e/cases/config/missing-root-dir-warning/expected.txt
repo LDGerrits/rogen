@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  later - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)
+  later - warning: this root dir does not exist or is not a folder, so it contributes nothing. (scan.missingRootDir)
 
 written:
   default.project.json

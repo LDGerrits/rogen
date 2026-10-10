@@ -88,7 +88,7 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 		store = new DisposableStore();
 		changed = [];
 		store.add(
-			fixture.watcher.onDidChangeFile((changes: FileChange[]) =>
+			fixture.watcher.onDidChangeFile((changes: readonly FileChange[]) =>
 				changed.push(...changes.map((change) => change.path))
 			)
 		);

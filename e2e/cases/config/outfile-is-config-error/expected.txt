@@ -1,0 +1,6 @@
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:7:13 - error: the output file other.rogen.json is named like a config, and a build would overwrite it. Set "outFile" to a .project.json path. (config.outFileIsConfig)

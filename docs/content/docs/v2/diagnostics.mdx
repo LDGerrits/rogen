@@ -122,6 +122,16 @@ default.rogen.json:11:14 - error: the output file default.project.json is also t
 
 Rename the template to `template.project.json`, or set `outFile` to another path. See [Template](/docs/v2/core-concepts/output#template).
 
+### `config.outFileIsConfig` [#config-outfileisconfig]
+
+Error. The project file the config writes is named like a config, so a build would overwrite a config.
+
+```
+default.rogen.json:3:14 - error: the output file /repo/default.rogen.json is named like a config, and a build would overwrite it. Set "outFile" to a .project.json path. (config.outFileIsConfig)
+```
+
+Set `outFile` to a path that ends in `.project.json`. `-o` follows the same rule.
+
 ### `config.duplicateRootDir` [#config-duplicaterootdir]
 
 Error. One directory appears twice in `rootDirs`, so every file in it would belong to both entries.
@@ -314,13 +324,23 @@ default.rogen.json:7:13 - error: "StarterPlayerScripts" is not a supported servi
 
 Start the target with a service, then any folders: `"StarterPlayer/StarterPlayerScripts"`, `"ReplicatedStorage/Shared"`. See [Targets](/docs/v2/core-concepts/routing#targets).
 
+### `roblox.invalidFolder` [#roblox-invalidfolder]
+
+Error. A route's target has a folder with no name, `.` or `..`, which would make an instance of that name.
+
+```
+default.rogen.json:7:13 - error: the target "ServerScriptService/" has an empty folder name; write each folder between single slashes, such as "ServerScriptService/Folder". (roblox.invalidFolder)
+```
+
+Remove the extra slash, or name the folder. See [Targets](/docs/v2/core-concepts/routing#targets).
+
 ### `route.noRoutes` [#route-noroutes]
 
 Error. The config declares no `routes`, so no file can be placed. Rogen never picks a destination on its own.
 
 ```
 default.rogen.json - error: no routes declared, so nothing can be placed. (route.noRoutes)
-Add a "routes" map — `rogen init` writes a starting set.
+Add a "routes" map; 'rogen init' writes a starting set.
 ```
 
 Add a `routes` map. `rogen init` writes `server`, `client`, `shared` and `*`. See [Routing](/docs/v2/core-concepts/routing).
@@ -482,6 +502,16 @@ Rename one of the files, as the message says. The warning is the preview: `rogen
 
 ## Tree
 
+### `tree.reservedName` [#tree-reservedname]
+
+Warning. The project file gets an instance whose key starts with `$`, which Rojo reserves for its own fields. Rojo keeps the instance but warns of it on every build and serve.
+
+```
+src/$Config.luau - warning: the project file gets the instance "ReplicatedStorage/shared/$Config", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename the file without the $. (tree.reservedName)
+```
+
+Rename the file or folder without the `$`. A `$` inside a name, as in `Cost$`, is fine, and so is a file inside a folder that Rogen gives to Rojo whole as one `$path`.
+
 ### `tree.instanceClash` [#tree-instanceclash]
 
 Warning. Two plain files become the same instance, such as `Types.lua` and `Types.luau`. One takes the instance and the other is left out.
@@ -579,7 +609,7 @@ Fix the file's permissions, or run the build again. See [Metadata Files](/docs/v
 
 ### `meta.invalidSyntax` [#meta-invalidsyntax]
 
-Error. A `.meta.json` file isn't valid JSONC.
+Error. A folder's `init.meta.json` isn't valid JSONC. Rogen merges a folder's meta into the project file, so it reads that one; Rojo reads the meta of a single file, and reports its errors itself.
 
 ```
 src/Combat/init.meta.json:3:1 - error: invalid JSONC: expected '}'. (meta.invalidSyntax)
@@ -589,7 +619,7 @@ Fix the syntax at the line and column shown. See [Metadata Files](/docs/v2/core-
 
 ### `meta.notAnObject` [#meta-notanobject]
 
-Error. A `.meta.json` file holds a JSON value that isn't an object.
+Error. A folder's `init.meta.json` holds a JSON value that isn't an object.
 
 ```
 src/Combat/init.meta.json:1:1 - error: a meta file must be a JSON object. (meta.notAnObject)
@@ -599,7 +629,7 @@ Wrap the fields in `{ }`. See [Metadata Files](/docs/v2/core-concepts/project-la
 
 ### `meta.wrongType` [#meta-wrongtype]
 
-Error. A field in a `.meta.json` file holds the wrong kind of value.
+Error. A field in a folder's `init.meta.json` holds the wrong kind of value.
 
 ```
 src/Combat/init.meta.json:4:16 - error: "attributes": expected an object, found an array. (meta.wrongType)
@@ -609,10 +639,10 @@ Give the field the type the message names, as Rojo's meta format expects. See [M
 
 ### `meta.unknownField` [#meta-unknownfield]
 
-Error. A `.meta.json` file has a field Rojo doesn't read, often a typo.
+Warning. A meta file has a field that is a slip from one Rojo reads, such as `classname` for `className`. Rojo ignores a field it doesn't know without a word, so the property never applies. A field that resembles none, such as `$schema`, is left alone.
 
 ```
-src/Combat/init.meta.json:2:2 - error: unknown field "classname". Did you mean "className"? (meta.unknownField)
+src/Combat/init.meta.json:2:3 - warning: unknown field "classname"; Rojo ignores it. Did you mean "className"? (meta.unknownField)
 ```
 
 Rename it to the field suggested, or remove it. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
@@ -701,13 +731,23 @@ Name the script `.server` or `.client`, or remove `RunContext`. See [Rojo's Scri
 
 ### `scan.missingRootDir` [#scan-missingrootdir]
 
-Warning. A directory in `rootDirs` doesn't exist, so it contributes nothing.
+Warning. A directory in `rootDirs` doesn't exist, or is a file, so it contributes nothing.
 
 ```
-later - warning: this root dir does not exist, so it contributes nothing. (scan.missingRootDir)
+later - warning: this root dir does not exist or is not a folder, so it contributes nothing. (scan.missingRootDir)
 ```
 
 Create it, or remove it from `rootDirs`. The path is relative to the config that sets it. See [Configuration](/docs/v2/configuration#fields).
+
+### `scan.extensionCase` [#scan-extensioncase]
+
+Warning. A file's extension is written with capital letters, so Rojo doesn't read it and the file is not an instance. Rogen leaves it out of the tree as Rojo does.
+
+```
+src/Save.LUAU - warning: Rojo reads an extension only in lowercase, so it ignores this file. Rename it to Save.luau. (scan.extensionCase)
+```
+
+Rename the file as the message says. The same holds for `.JSON`, `.MODEL.JSON` and every other extension Rojo reads.
 
 ### `scan.rootDirNamedAfterKey` [#scan-rootdirnamedafterkey]
 

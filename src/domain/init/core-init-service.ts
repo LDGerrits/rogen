@@ -1,21 +1,19 @@
-import path from "path";
+import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_STEM, configFileName } from "../config/config.js";
+import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
-import { Addition, InitQuestions } from "./init-questions.js";
-import { AgentFile } from "./agent-file.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
+import { InitQuestions } from "./init-questions.js";
+import { AgentReader } from "./agent-reader.js";
+import { InitWriter } from "./init-writer.js";
 import { AgentSetup } from "./agent-setup.js";
-import { AgentHooks, AgentInUse } from "./agent-hooks.js";
-import { HOOK_SCRIPT_FILE, HOOK_TARGETS } from "./hook-target.js";
 import {
 	InitOptions,
 	InitPlan,
@@ -23,32 +21,15 @@ import {
 	InitWritten,
 } from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
-import { PlaceSetup } from "./place-setup.js";
+import { Asking, InitAdditions, asking } from "./init-additions.js";
+import { PlaceFolders } from "./place-folder.js";
 import { ProjectSetup } from "./project-setup.js";
-import { ExtendingConfigSetup } from "./extending-config-setup.js";
-
-/** A setup's questions, whose answers come back bound to the setup that plans them; `undefined` when the user cancelled. */
-type Asking = () => Promise<
-	Result<((builder: InitPlanBuilder) => void) | undefined, Diagnostic[]>
->;
-
-/** An addition picked from What to add: the pick is the yes, so there is nothing left to ask. */
-const chosen =
-	(plan: (builder: InitPlanBuilder) => void): Asking =>
-	async () =>
-		ok(plan);
-
-function asking<C>(setup: Setup<C>): Asking {
-	return async () =>
-		(await setup.ask()).map((choices) =>
-			choices === undefined
-				? undefined
-				: (builder: InitPlanBuilder) => setup.plan(choices, builder)
-		);
-}
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
+
+	private readonly agentReader: AgentReader;
+	private readonly writer: InitWriter;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -56,7 +37,10 @@ export class CoreInitService implements InitService {
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService
-	) {}
+	) {
+		this.agentReader = new AgentReader(fileSystemService);
+		this.writer = new InitWriter(fileSystemService);
+	}
 
 	async plan(
 		names: readonly string[],
@@ -105,14 +89,11 @@ export class CoreInitService implements InitService {
 		);
 		if (listing.isErr()) {
 			return err(
-				new Error(
-					`Failed to read ${directory}: ${listing.error.message}`,
-					{ cause: listing.error }
-				)
+				ErrorUtils.wrap(`Failed to read ${directory}`, listing.error)
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
-		const base = entries.has(configFileName(DEFAULT_CONFIG_STEM))
+		const base = entries.has(DEFAULT_CONFIG_FILE)
 			? await new BaseConfigReader(this.configService, directory).read(
 					entries
 				)
@@ -147,14 +128,19 @@ export class CoreInitService implements InitService {
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
+		const placeFolders = new PlaceFolders(
+			this.fileSystemService,
+			this.toolchainService
+		);
 		const projectSetup = new ProjectSetup(
 			directory,
 			questions,
-			this.fileSystemService
+			this.fileSystemService,
+			placeFolders
 		);
-		const agentFile = await this.agentFileIn(directory);
+		const agentFile = await this.agentReader.fileIn(directory);
 		if (agentFile.isErr()) return agentFile;
-		const hooks = await this.agentHooksIn(directory);
+		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
 		// A first init starts a project; beside configs, the user says what to add.
 		if (!directory.hasConfigs)
@@ -164,38 +150,20 @@ export class CoreInitService implements InitService {
 				asking(projectSetup),
 				asking(new AgentSetup(agentFile.value, hooks.value, questions))
 			);
-		const { base } = directory;
-		const offered = agentFile.value.hasBlock
-			? undefined
-			: agentFile.value.fileName;
-		const additions: Partial<Record<Addition, () => Asking>> = {
-			...(base && {
-				place: () =>
-					asking(
-						new PlaceSetup(
-							directory,
-							base,
-							questions,
-							this.fileSystemService
-						)
-					),
-				extending: () =>
-					asking(new ExtendingConfigSetup(directory, questions)),
-			}),
-			separate: () => asking(projectSetup),
-			agent: () =>
-				chosen((builder) => builder.addAgentFile(agentFile.value)),
-			hook: () => chosen((builder) => builder.addAgentHook(hooks.value)),
-		};
+		const options = new InitAdditions(
+			directory,
+			questions,
+			placeFolders,
+			projectSetup,
+			agentFile.value,
+			hooks.value
+		).options();
 		const addition = await questions.whatToAdd(
-			base !== undefined,
-			offered,
-			hooks.value.agents
+			directory.base !== undefined,
+			options
 		);
 		if (addition === undefined) return ok(undefined);
-		const ask = additions[addition];
-		if (!ask) throw new Error(`${addition} can't be added here.`);
-		return this.planWith(directory, questions, ask());
+		return this.planWith(directory, questions, addition);
 	}
 
 	/** Asks each setup its questions in turn, then plans what the answers write. */
@@ -218,110 +186,10 @@ export class CoreInitService implements InitService {
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}
 
-	private async agentFileIn(
-		directory: InitDirectory
-	): Promise<Result<AgentFile, Error>> {
-		const texts = new Map<string, string | undefined>();
-		for (const fileName of AgentFile.FILE_NAMES) {
-			const text = await this.readIfThere(
-				directory,
-				fileName,
-				directory.has(fileName)
-			);
-			if (text.isErr()) return text;
-			texts.set(fileName, text.value);
-		}
-		return ok(AgentFile.choose((fileName) => texts.get(fileName)));
-	}
-
-	private async agentHooksIn(
-		directory: InitDirectory
-	): Promise<Result<AgentHooks, Error>> {
-		const inUse: AgentInUse[] = [];
-		for (const target of HOOK_TARGETS) {
-			const signs = await Promise.all(
-				target.signs.map((sign) =>
-					this.fileSystemService.exists(
-						path.join(directory.path, sign)
-					)
-				)
-			);
-			if (!signs.includes(true)) continue;
-			const text = await this.readIfThere(directory, target.settingsFile);
-			if (text.isErr()) return text;
-			inUse.push({ target, text: text.value });
-		}
-		return ok(
-			new AgentHooks({
-				scriptExists: await this.fileSystemService.exists(
-					path.join(directory.path, HOOK_SCRIPT_FILE)
-				),
-				inUse,
-			})
-		);
-	}
-
-	/** The text of `fileName`, or `undefined` when it isn't there. Fails on a file it can't read rather than take it for missing, which would write over it. */
-	private async readIfThere(
-		directory: InitDirectory,
-		fileName: string,
-		there?: boolean
-	): Promise<Result<string | undefined, Error>> {
-		const file = path.join(directory.path, fileName);
-		if (!(there ?? (await this.fileSystemService.exists(file))))
-			return ok(undefined);
-		const text = await tryWithAsync(() =>
-			this.fileSystemService.readFile(file)
-		);
-		return text.isErr()
-			? err(
-					new Error(
-						`Failed to read ${fileName}: ${text.error.message}`,
-						{ cause: text.error }
-					)
-				)
-			: text;
-	}
-
-	async write(
+	write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void
 	): Promise<Result<void, Error>> {
-		for (const file of plan.files) {
-			const { fileName, content } = file;
-			const written = await tryWithAsync(() =>
-				this.fileSystemService.writeFile(
-					path.join(plan.directory, fileName),
-					content
-				)
-			);
-			if (written.isErr()) {
-				return err(
-					new Error(
-						`Failed to write ${fileName}: ${written.error.message}`,
-						{ cause: written.error }
-					)
-				);
-			}
-			onWritten({ kind: "file", file });
-		}
-		for (const directory of plan.directories) {
-			const created = await tryWithAsync(async () => {
-				const target = path.join(plan.directory, directory);
-				if (await this.fileSystemService.exists(target)) return false;
-				await this.fileSystemService.createDirectory(target);
-				return true;
-			});
-			if (created.isErr()) {
-				return err(
-					new Error(
-						`Failed to create ${directory}: ${created.error.message}`,
-						{ cause: created.error }
-					)
-				);
-			}
-			if (created.value) onWritten({ kind: "directory", directory });
-		}
-		return ok(undefined);
+		return this.writer.write(plan, onWritten);
 	}
 }

@@ -1,5 +1,8 @@
 import path from "path";
-import { FileLocation, InstanceLocation } from "../../../domain/build/build.js";
+import {
+	FileLocation,
+	InstanceLocation,
+} from "../../../domain/build/build-service.js";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
 import {
@@ -9,7 +12,6 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { LocationReport } from "../location-report.js";
 
-/** A report of what each labelled config said; `everyFile` when no path was asked about. */
 const reportOf = (
 	configs: [
 		label: string,
@@ -278,6 +280,36 @@ describe("LocationReport", () => {
 				})
 			).toBe("src/A.spec.luau -> excluded · matches **/*.spec.luau");
 		});
+
+		it.each([
+			["*.rogen.json", "*.rogen.json"],
+			["C:/repo/**/*.spec.luau", "**/*.spec.luau"],
+		])(
+			"should keep a glob of Rogen's own as it is and make a drive glob relative to the working directory: %s",
+			(pattern, shown) => {
+				const report = new LocationReport("C:\\repo", {
+					everyFile: false,
+					errors: [],
+					configs: [
+						{
+							config: mockConfig({}),
+							files: [
+								{
+									status: "excluded",
+									source: "C:/repo/src/A.luau",
+									exists: true,
+									pattern,
+								},
+							],
+							instances: [],
+							diagnostics: [],
+						},
+					],
+				});
+
+				expect(report.lines()[0]).toContain(`matches ${shown}`);
+			}
+		);
 
 		it.each<[FileLocation, string]>([
 			[

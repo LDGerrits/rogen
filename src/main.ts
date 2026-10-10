@@ -5,10 +5,7 @@ import {
 	CommandService,
 	Extensions,
 } from "./platform/commands/commands.js";
-import {
-	CommandFailure,
-	exitCodeOf,
-} from "./platform/commands/command-failure.js";
+import { CommandFailure } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import { JsonOption, hasFlag, parseArgs } from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
@@ -82,8 +79,9 @@ async function main(): Promise<void> {
 
 		// Read from the raw line, so a parse error is reported the way the flags ask.
 		const json = hasFlag(rawArgs, JsonOption);
+		const options = argsResult.isOk() ? argsResult.value.line.options : {};
 		const environment = new NativeEnvironmentService(
-			{ ...(argsResult.isOk() && argsResult.value.line.options), json },
+			{ ...options, json },
 			process.cwd()
 		);
 		const logService: LogService = environment.isPlain
@@ -93,8 +91,7 @@ async function main(): Promise<void> {
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
-			failure.report(argsResult.error);
-			process.exitCode = exitCodeOf(argsResult.error);
+			process.exitCode = failure.finish(argsResult.error);
 			return;
 		}
 		const { command, line } = argsResult.value;
@@ -176,7 +173,11 @@ async function main(): Promise<void> {
 			)
 		);
 
-		const commandService = new CoreCommandService(services, logService);
+		const commandService = new CoreCommandService(
+			services,
+			logService,
+			commandRegistry
+		);
 		services.set(CommandService, commandService);
 
 		const result = await commandService
@@ -186,12 +187,9 @@ async function main(): Promise<void> {
 				throw error;
 			});
 
-		if (result.isErr()) {
-			failure.report(result.error, command);
-			process.exitCode = exitCodeOf(result.error);
-		} else {
-			process.exitCode = 0;
-		}
+		process.exitCode = result.isErr()
+			? failure.finish(result.error, command)
+			: 0;
 	} finally {
 		disposables[Symbol.dispose]();
 	}

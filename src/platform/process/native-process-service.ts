@@ -21,32 +21,70 @@ const KILL_GRACE_MS = 5_000;
 const DRAIN_MS = 250;
 
 /** Windows runs a batch file only through its shell. */
-const needsShell = (file: string) => isWindows && /\.(cmd|bat)$/i.test(file);
+const needsShell = (file: string, windows: boolean) =>
+	windows && /\.(cmd|bat)$/i.test(file);
 
 /** An argument as `cmd.exe` reads it back as one word. */
 const shellQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
 
-/** Runs a batch file through `cmd.exe` with the line quoted here, which Node's own `shell` option warns against. */
-function launch(
-	file: string,
-	args: readonly string[]
-): {
+/** `cmd.exe` expands `%NAME%` even inside quotes, and nothing escapes it there. */
+const expandedByShell = (arg: string) => /%[^%\s]+%/.test(arg);
+
+interface Launch {
 	readonly command: string;
 	readonly args: string[];
 	readonly windowsVerbatimArguments: boolean;
-} {
-	return needsShell(file)
-		? {
-				command: process.env.ComSpec ?? "cmd.exe",
-				args: [
-					"/d",
-					"/s",
-					"/c",
-					`"${[file, ...args].map(shellQuoted).join(" ")}"`,
-				],
-				windowsVerbatimArguments: true,
-			}
-		: { command: file, args: [...args], windowsVerbatimArguments: false };
+}
+
+/** Runs a batch file through `cmd.exe` with the line quoted here, which Node's own `shell` option warns against; fails for an argument that `cmd.exe` would rewrite. */
+export function launch(
+	file: string,
+	args: readonly string[],
+	env: NodeJS.ProcessEnv,
+	windows = isWindows
+): Result<Launch, Error> {
+	if (!needsShell(file, windows))
+		return ok({
+			command: file,
+			args: [...args],
+			windowsVerbatimArguments: false,
+		});
+	const expanded = [file, ...args].find(expandedByShell);
+	if (expanded !== undefined)
+		return err(
+			new Error(
+				`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
+			)
+		);
+	return ok({
+		command: env.ComSpec ?? "cmd.exe",
+		args: [
+			"/d",
+			"/s",
+			"/c",
+			`"${[file, ...args].map(shellQuoted).join(" ")}"`,
+		],
+		windowsVerbatimArguments: true,
+	});
+}
+
+/** A process that never started: it has already failed with `error`. */
+class FailedChildProcess extends AbstractDisposable implements ChildProcess {
+	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
+	readonly onDidOutput: Event<string> = this._register(new Emitter<string>())
+		.event;
+	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
+	private readonly exit: ProcessExit;
+
+	constructor(error: Error) {
+		super();
+		this.exit = { code: null, signal: null, error };
+		queueMicrotask(() => this._onDidExit.fire(this.exit));
+	}
+
+	terminate(): Promise<ProcessExit> {
+		return Promise.resolve(this.exit);
+	}
 }
 
 class NativeChildProcess extends AbstractDisposable implements ChildProcess {
@@ -158,9 +196,15 @@ export class NativeProcessService implements ProcessService {
 	exec(
 		file: string,
 		args: readonly string[],
-		options: { readonly cwd: string; readonly timeout: number }
+		options: {
+			readonly cwd: string;
+			readonly timeout: number;
+			readonly signal?: AbortSignal;
+		}
 	): Promise<Result<ProcessOutput, Error>> {
-		const run = launch(file, args);
+		const launched = launch(file, args, this.env);
+		if (launched.isErr()) return Promise.resolve(launched);
+		const run = launched.value;
 		return new Promise((resolve) => {
 			childProcess.execFile(
 				run.command,
@@ -170,6 +214,7 @@ export class NativeProcessService implements ProcessService {
 					env: this.env,
 					windowsVerbatimArguments: run.windowsVerbatimArguments,
 					timeout: options.timeout,
+					signal: options.signal,
 					windowsHide: true,
 				},
 				(error, stdout, stderr) => {
@@ -194,7 +239,9 @@ export class NativeProcessService implements ProcessService {
 		args: readonly string[],
 		options: SpawnOptions
 	): ChildProcess {
-		const run = launch(file, args);
+		const launched = launch(file, args, this.env);
+		if (launched.isErr()) return new FailedChildProcess(launched.error);
+		const run = launched.value;
 		return new NativeChildProcess(
 			childProcess.spawn(run.command, run.args, {
 				cwd: options.cwd,

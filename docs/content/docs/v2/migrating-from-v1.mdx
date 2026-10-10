@@ -176,7 +176,7 @@ A v1 mode that only flipped tags is now a v2 [mode](/docs/v2/core-concepts/modes
 
 | v1 | v2 |
 |---|---|
-| `.rogen.json`, or the first `*.rogen.json` | `default.rogen.json`, or the only `*.rogen.json`. Every config is `<name>.rogen.json` |
+| `.rogen.json`, or the first `*.rogen.json` | every `*.rogen.json` in the folder; `init` writes `default.rogen.json`. Every config is `<name>.rogen.json` |
 | `source` | `rootDirs` |
 | modes (`luau`, `ts`, `darklua`, custom) | one config per tree, each its own `<name>.rogen.json` |
 | a mode's `build` | `syncDir` |

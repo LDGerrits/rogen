@@ -1,9 +1,11 @@
+import { failureReason } from "../../base/errors.js";
 import path from "path";
 import { Disposable } from "../../base/disposable.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	ConfigFile,
+	ConfigFileFailure,
 	ConfigFileReader,
 } from "../../platform/config/config-file.js";
 import { Config } from "../../platform/config/config-models.js";
@@ -14,14 +16,18 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
-	FileSystemService,
-	failureReason,
+	FileReader,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RojoProject } from "../rojo/rojo-project.js";
 import { configSchema, configWrongTypeAdvice } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
-import { CONFIG_SUFFIX, ResolvedConfig, ResolvedTemplate } from "./config.js";
+import {
+	CONFIG_SUFFIX,
+	ResolvedConfig,
+	ResolvedTemplate,
+	fieldOf,
+} from "./config.js";
 import { ConfigOverrides, LayeredConfig } from "./layered-config.js";
 import { ConfigValidator } from "./config-validator.js";
 
@@ -53,7 +59,7 @@ export class ConfigLoader {
 	private readonly fileChecks = new Set<ConfigFileCheck>();
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {
 		this.reader = new ConfigFileReader(
@@ -127,6 +133,27 @@ export class ConfigLoader {
 		};
 	}
 
+	/** What a config of the chain that failed to load says: a missing or unreadable `extends` target is told at the config that names it. */
+	private async failureDiagnostics(
+		failure: ConfigFileFailure,
+		current: string,
+		written: string,
+		referrer: DiagnosticLocation | undefined
+	): Promise<Diagnostic[]> {
+		if (failure.kind === "invalid")
+			return [...failure.diagnostics, ...(await this.hintsFor(current))];
+		if (!referrer) return [...failure.diagnostics];
+		return [
+			errorDiagnostic(
+				"config.extendsUnreadable",
+				referrer,
+				failure.missing
+					? `"extends" target "${written}" does not exist (looked for ${current}). Paths are relative to this config.`
+					: `"extends" target "${written}" could not be read: ${failure.reason}.`
+			),
+		];
+	}
+
 	private async readChain(file: string): Promise<ConfigChain> {
 		const files: string[] = [];
 		const layers: ConfigFile[] = [];
@@ -155,33 +182,21 @@ export class ConfigLoader {
 			files.push(current);
 			const loaded = await this.reader.read(current);
 			if (loaded.isErr()) {
-				const { kind, diagnostics, missing, reason } = loaded.error;
 				return {
 					files,
 					layers,
-					diagnostics:
-						referrer && kind === "unreadable"
-							? [
-									errorDiagnostic(
-										"config.extendsUnreadable",
-										referrer,
-										missing
-											? `"extends" target "${written}" does not exist (looked for ${current}). Paths are relative to this config.`
-											: `"extends" target "${written}" could not be read: ${reason}.`
-									),
-								]
-							: kind === "invalid"
-								? [
-										...diagnostics,
-										...(await this.hintsFor(current)),
-									]
-								: diagnostics,
+					diagnostics: await this.failureDiagnostics(
+						loaded.error,
+						current,
+						written,
+						referrer
+					),
 				};
 			}
 
 			const layer = loaded.value;
 			layers.push(layer);
-			const parent = layer.model.getValue<string>("extends");
+			const parent = fieldOf(layer.model, "extends");
 			if (parent === undefined) return { files, layers, diagnostics: [] };
 			written = parent;
 

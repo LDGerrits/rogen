@@ -4,6 +4,8 @@ import {
 	Diagnostic,
 	DiagnosticSeverity,
 	diagnosticToJson,
+	diagnosticsAbout,
+	diagnosticsReaching,
 	renderDiagnostic,
 	warningDiagnostic,
 } from "../diagnostic.js";
@@ -222,6 +224,124 @@ describe("platform/diagnostics/diagnostic", () => {
 			expect(diagnosticToJson(diagnostic).url).toBe(
 				`${DOCS_URL}/diagnostics#route-dotroute`
 			);
+		});
+	});
+
+	describe("diagnosticsAbout", () => {
+		const own = warningDiagnostic(
+			"x.own",
+			{ resource: "/repo/src/A.luau" },
+			"own"
+		);
+		const group = warningDiagnostic(
+			"x.group",
+			{ resource: "/repo/default.rogen.json" },
+			"2 files:\n  src/A.luau\n  src/B.luau",
+			[
+				{
+					rename: {
+						from: "/repo/src/A.luau",
+						to: "/repo/src/a.luau",
+					},
+				},
+				{
+					rename: {
+						from: "/repo/src/B.luau",
+						to: "/repo/src/b.luau",
+					},
+				},
+			],
+			[
+				{ resource: "/repo/src/A.luau", message: "A is odd" },
+				{ resource: "/repo/src/B.luau", message: "B is odd" },
+			]
+		);
+
+		it("should keep a diagnostic whose resource is the path", () => {
+			expect(diagnosticsAbout([own], "/repo/src/A.luau")).toEqual([own]);
+			expect(diagnosticsAbout([own], "/repo/src/B.luau")).toEqual([]);
+		});
+
+		it("should narrow a grouped one to the entry that names the path, with its own fixes", () => {
+			expect(diagnosticsAbout([group], "/repo/src/B.luau")).toMatchObject(
+				[
+					{
+						code: "x.group",
+						resource: "/repo/src/B.luau",
+						message: "B is odd",
+						fixes: [
+							{
+								rename: {
+									from: "/repo/src/B.luau",
+									to: "/repo/src/b.luau",
+								},
+							},
+						],
+					},
+				]
+			);
+		});
+
+		it("should say nothing of the config a group is filed under", () => {
+			expect(
+				diagnosticsAbout([group], "/repo/default.rogen.json")
+			).toEqual([]);
+		});
+	});
+
+	describe("diagnosticsReaching", () => {
+		const about = (resource: string, code = "x.y") =>
+			warningDiagnostic(code, { resource }, "odd");
+
+		it("should keep one about the path, one inside it and one about a folder it lies in", () => {
+			const file = about("/repo/src/F/A.luau", "x.file");
+			const inside = about("/repo/src/F/Sever", "x.inside");
+			const above = about("/repo/src/F", "x.above");
+
+			expect(
+				diagnosticsReaching(
+					[file, inside, above],
+					"/repo/src/F/A.luau"
+				).map(({ code }) => code)
+			).toEqual(["x.file", "x.above"]);
+			expect(
+				diagnosticsReaching([file, inside, above], "/repo/src/F").map(
+					({ code }) => code
+				)
+			).toEqual(["x.file", "x.inside", "x.above"]);
+		});
+
+		it("should leave out one about a sibling, and one filed under a config", () => {
+			expect(
+				diagnosticsReaching(
+					[
+						about("/repo/src/F/B.luau"),
+						about("/repo/src/Fx/A.luau"),
+						about("/repo/default.rogen.json"),
+					],
+					"/repo/src/F/A.luau"
+				)
+			).toEqual([]);
+		});
+
+		it("should narrow a grouped one to the entries that reach the path", () => {
+			const group = warningDiagnostic(
+				"x.group",
+				{ resource: "/repo/default.rogen.json" },
+				"3 files",
+				[],
+				[
+					{ resource: "/repo/src/F/A.luau", message: "A" },
+					{ resource: "/repo/src/F/B.luau", message: "B" },
+					{ resource: "/repo/src/G/C.luau", message: "C" },
+				]
+			);
+
+			expect(
+				diagnosticsReaching([group], "/repo/src/F").map(
+					({ message }) => message
+				)
+			).toEqual(["A", "B"]);
 		});
 	});
 });

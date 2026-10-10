@@ -3,14 +3,11 @@ import { DisposableStore } from "../../base/disposable.js";
 import {
 	ErrorUtils,
 	ExitCodeError,
-	ReportedError,
-	UsageError,
+	onUnexpectedError,
 } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigOptions } from "../../domain/config/config.js";
-import { SyncServer } from "../../domain/serve/serve.js";
+import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
-	ServePlan,
 	ServerStop,
 	ServeService,
 	ServeSession,
@@ -27,9 +24,8 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ServeLog } from "./serve-log.js";
+import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
 
 const ToolOption = {
 	name: "tool",
@@ -89,56 +85,44 @@ registerCommand(
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
-			const json = Boolean(line.options.json);
-			const log = new ServeLog(
-				accessor.get(LogService),
-				accessor.get(EnvironmentService).cwd,
-				json
-			);
-			const failed = (error: Error) => {
-				log.failure(error);
-				return err(new ReportedError(error));
-			};
 
 			// Subscribed first, so Ctrl+C while the server or the ports are checked still stops the run.
 			const store = new DisposableStore();
-			const shutdown = new DeferredPromise<void>();
-			store.add(
-				accessor
-					.get(LifecycleService)
-					.onWillShutdown(() => shutdown.complete())
-			);
+			const shutdown = this.untilShutdown(accessor, store);
+			const stopChecks = new AbortController();
+			void shutdown.p.then(() => stopChecks.abort());
 			try {
-				const server = this.serverOf(line);
-				if (server.isErr()) return failed(server.error);
 				const plan = await serveService.prepare({
+					signal: stopChecks.signal,
 					refs: line.positionals,
 					options: line.options,
-					server: server.value,
+					server: line.options.tool,
 					serverArgs: line.passthrough ?? [],
 				});
 				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.
 				if (shutdown.isSettled) return ok(undefined);
-				if (plan.isErr()) return failed(plan.error);
+				if (plan.isErr()) return plan;
 
-				log.begin(plan.value);
-				if (plan.value.toStart.length === 0) {
+				const log: ServeReporter = line.options.json
+					? new ServeJsonLog(accessor.get(LogService), plan.value)
+					: new ServeLog(
+							accessor.get(LogService),
+							accessor.get(EnvironmentService).cwd,
+							plan.value
+						);
+				log.begin();
+				if (plan.value.isIdle) {
 					log.end(
 						"Nothing to start: every config is already served, so nothing is built or watched here."
 					);
 					return ok(undefined);
 				}
 				const session = serveService.serve(plan.value);
-				if (session.isErr()) return failed(session.error);
+				if (session.isErr()) return session;
 				store.add(session.value);
-				return await this.serve(
-					session.value,
-					plan.value,
-					log,
-					shutdown
-				);
+				return await this.serve(session.value, log, shutdown);
 			} catch (error) {
-				return failed(ErrorUtils.fromUnknown(error));
+				return err(ErrorUtils.fromUnknown(error));
 			} finally {
 				store[Symbol.dispose]();
 			}
@@ -147,8 +131,7 @@ registerCommand(
 		/** Runs `session` until shutdown or until a server stops, and answers with the server's exit code when it failed. */
 		private async serve(
 			session: ServeSession,
-			plan: ServePlan,
-			log: ServeLog,
+			log: ServeReporter,
 			shutdown: DeferredPromise<void>
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
@@ -156,61 +139,42 @@ registerCommand(
 			store.add(session.onDidUpdate((update) => log.update(update)));
 			store.add(session.onDidError((error) => log.error(error)));
 			store.add(session.onDidServe((serving) => log.serving(serving)));
-			store.add(session.onDidSay((said) => log.said(said, plan)));
-			store.add(
-				session.onDidChange((change) => log.changed(change, plan))
-			);
+			store.add(session.onDidSay((said) => log.said(said)));
+			store.add(session.onDidChange((change) => log.changed(change)));
 			store.add(
 				session.onDidStop((stop) => {
-					log.stopped(stop, plan);
-					if (!stopped.isSettled) stopped.complete(stop);
+					log.stopped(stop);
+					stopped.complete(stop);
 				})
 			);
-			void shutdown.p.then(() => session.stop());
+			void shutdown.p.then(() => session.stop()).catch(onUnexpectedError);
 			try {
 				const started = await session.start();
 				if (started.isErr()) {
-					log.failure(started.error, true);
-					return err(new ReportedError(started.error));
+					log.abort(started.error);
+					return this.reported(started.error);
 				}
 				const stop = await Promise.race([
 					shutdown.p.then(() => undefined),
 					stopped.p,
 				]);
 				await session.stop();
-				if (!stop) log.shutdown(plan, session.targets);
+				if (!stop) log.shutdown(session.targets);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return ok(undefined);
 				}
 				log.end("serve failed.");
-				return err(
-					new ReportedError(
-						new ExitCodeError(
-							stop.exitCode ?? 1,
-							new DiagnosticsError([stop.failure])
-						)
+				return this.reported(
+					new ExitCodeError(
+						stop.exitCode,
+						new DiagnosticsError([stop.failure])
 					)
 				);
 			} finally {
 				await session.stop();
 				store[Symbol.dispose]();
 			}
-		}
-
-		private serverOf(
-			line: ServeLine
-		): Result<SyncServer | undefined, UsageError> {
-			const id = line.options.tool;
-			if (id === undefined) return ok(undefined);
-			const server = SyncServer.byId(id);
-			return server
-				? ok(server)
-				: err(
-						new UsageError(
-							`--tool takes ${SyncServer.ALL.map(({ id }) => id).join(" or ")}, not "${id}".`
-						)
-					);
 		}
 	}
 );

@@ -1,8 +1,11 @@
 import path from "path";
 import {
+	PathSet,
 	ancestors,
 	commonAncestor,
 	contains,
+	containsPath,
+	pathKey,
 	containsPosix,
 	dirnamePosix,
 	isInside,
@@ -10,12 +13,37 @@ import {
 	normalizeDir,
 	outermostDirs,
 	relativeTo,
+	samePath,
 	stemOf,
 	toNative,
 	toPosix,
 } from "../path.js";
 
+describe("PathSet", () => {
+	it("should find a path written with either kind of separator", () => {
+		const files = new PathSet(["C:\\repo\\default.rogen.json"]);
+
+		expect(files.has("C:/repo/default.rogen.json")).toBe(true);
+		expect(files.has("C:\\repo\\default.rogen.json")).toBe(true);
+	});
+
+	it("should not find a path it was not given", () => {
+		expect(new PathSet(["/repo/a.json"]).has("/repo/b.json")).toBe(false);
+	});
+});
+
 describe("Path", () => {
+	describe("samePath", () => {
+		it("should accept paths that resolve to one place", () => {
+			expect(samePath("/repo/src", "/repo/src/")).toBe(true);
+			expect(samePath("/repo/src", "/repo/other/../src")).toBe(true);
+		});
+
+		it("should refuse another path", () => {
+			expect(samePath("/repo/src", "/repo/src/a")).toBe(false);
+		});
+	});
+
 	describe("toPosix", () => {
 		it("should convert Windows backslashes to forward slashes", () => {
 			const mockWindowsPath = `src${path.sep}core${path.sep}module.ts`;
@@ -118,6 +146,11 @@ describe("normalizeDir", () => {
 			expect(contains(abs("src"), abs("src/shared"))).toBe(true);
 		});
 
+		it("should take the same folder written another way as the same", () => {
+			expect(contains(abs("src"), `${abs("src")}${path.sep}`)).toBe(true);
+			expect(contains(`${abs("src")}${path.sep}`, abs("src"))).toBe(true);
+		});
+
 		it("should reject a sibling and a parent", () => {
 			expect(contains(abs("src"), abs("src-extra"))).toBe(false);
 			expect(contains(abs("src/shared"), abs("src"))).toBe(false);
@@ -133,6 +166,40 @@ describe("normalizeDir", () => {
 		it("should reject a sibling that shares a prefix, and a parent", () => {
 			expect(containsPosix("src", "src-extra")).toBe(false);
 			expect(containsPosix("src/shared", "src")).toBe(false);
+		});
+	});
+
+	describe("containsPath", () => {
+		it("should compare as text where the file system tells letter cases apart", () => {
+			expect(containsPath("/repo/Src", "/repo/Src/a", false)).toBe(true);
+			expect(containsPath("/repo/Src", "/repo/src/a", false)).toBe(false);
+		});
+
+		it("should ignore letter case where the file system does", () => {
+			expect(containsPath("C:/Repo/Src", "c:/repo/src/a", true)).toBe(
+				true
+			);
+			expect(containsPath("C:/Repo/Src", "c:/repo/src", true)).toBe(true);
+			expect(containsPath("C:/Repo/Src", "c:/repo/src-extra", true)).toBe(
+				false
+			);
+		});
+	});
+
+	describe("pathKey", () => {
+		it("should be one string for the paths that name one file", () => {
+			expect(pathKey("/repo/src/../Out.json", false)).toBe(
+				path.resolve("/repo/Out.json")
+			);
+			expect(pathKey("/repo/Out.json", true)).toBe(
+				pathKey("/repo/out.JSON", true)
+			);
+		});
+
+		it("should tell letter cases apart unless asked not to", () => {
+			expect(pathKey("/repo/Out.json", false)).not.toBe(
+				pathKey("/repo/out.json", false)
+			);
 		});
 	});
 
@@ -188,6 +255,15 @@ describe("normalizeDir", () => {
 
 		it("should be the shared parent of sibling directories", () => {
 			expect(commonAncestor([abs("core"), abs("lobby")])).toBe(abs("."));
+		});
+
+		it("should tell letter cases apart unless asked not to", () => {
+			expect(commonAncestor([abs("Core/a"), abs("core/b")], false)).toBe(
+				abs(".")
+			);
+			expect(commonAncestor([abs("Core/a"), abs("core/b")], true)).toBe(
+				abs("Core")
+			);
 		});
 
 		it("should be the deepest directory containing every one", () => {

@@ -81,16 +81,14 @@ export class CoreIndexService implements IndexService {
 		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
 	}
 
-	/** `undefined` when the directory doesn't exist, or, with `mayBeReplaced`, is no longer a directory. */
+	/** `undefined` when the directory doesn't exist or is not a directory: a root dir that is a file, or a folder replaced by one. */
 	private async readDirectory(
-		dir: string,
-		mayBeReplaced = false
+		dir: string
 	): Promise<[string, FileType][] | undefined> {
 		try {
 			return await this.fileSystemService.readDirectory(dir);
 		} catch (error) {
-			if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
-			if (mayBeReplaced && ErrorUtils.hasCode(error, "ENOTDIR"))
+			if (ErrorUtils.hasCode(error, "ENOENT", "ENOTDIR"))
 				return undefined;
 			throw error;
 		}
@@ -104,7 +102,7 @@ export class CoreIndexService implements IndexService {
 		const listings = new Map<string, Map<string, FileType> | undefined>();
 		const listingOf = async (dir: string) => {
 			if (!listings.has(dir)) {
-				const entries = await this.readDirectory(dir, true);
+				const entries = await this.readDirectory(dir);
 				listings.set(dir, entries && new Map(entries));
 			}
 			return listings.get(dir);
@@ -164,7 +162,11 @@ function deleteEntry(
 	name: string
 ): void {
 	const type = draft.get(posixDir)?.get(name);
-	if (type === undefined) return;
+	// A root dir has no listed parent, but is listed itself.
+	if (type === undefined) {
+		draft.remove(joinPosix(posixDir, name));
+		return;
+	}
 	draft.edit(posixDir).delete(name);
 	if (isDirectoryType(type)) draft.remove(joinPosix(posixDir, name));
 }

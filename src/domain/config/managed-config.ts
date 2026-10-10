@@ -1,3 +1,4 @@
+import { PathSet } from "../../base/path.js";
 import { Config } from "../../platform/config/config-models.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
@@ -38,7 +39,8 @@ export class ManagedConfig {
 		return this._modes;
 	}
 
-	reads(changed: ReadonlySet<string>): boolean {
+	/** Whether it reads one of `changed`. */
+	reads(changed: PathSet): boolean {
 		return this._files.some((file) => changed.has(file));
 	}
 

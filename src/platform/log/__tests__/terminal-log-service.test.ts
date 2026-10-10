@@ -54,6 +54,32 @@ describe("TerminalLogService", () => {
 		]);
 	});
 
+	it("should draw a section as a step with its lines under it, although only errors are asked for", () => {
+		const logService = new TerminalLogService();
+		logService.setLevel(LogLevel.Error);
+
+		logService.section("default.rogen.json", "root dirs: src");
+
+		expect(drawn().split("\n").filter(Boolean)).toEqual([
+			"│",
+			"◇  default.rogen.json",
+			"│  root dirs: src",
+		]);
+	});
+
+	it("should draw a warning that fails the run although only errors are asked for", () => {
+		const logService = new TerminalLogService();
+		logService.setLevel(LogLevel.Error);
+		const warning = warningDiagnostic("x.y", { resource: "/repo/a" }, "w");
+
+		logService.diagnostic(warning);
+		logService.diagnostic(warning, true);
+
+		expect(drawn().split("\n").filter(Boolean)).toEqual([
+			"│  ▲ /repo/a - warning: w (x.y)",
+		]);
+	});
+
 	it("should close an open frame after the error", () => {
 		const logService = new TerminalLogService();
 

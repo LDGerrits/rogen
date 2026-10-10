@@ -1,13 +1,10 @@
-import { ReportedError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
-import {
-	diagnosticsAbout,
-	diagnosticsPerFile,
-} from "../../domain/build/build.js";
+import { relativeTo } from "../../base/path.js";
+import { Result, ok } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ConfigSelectionOptions } from "../../domain/config/config.js";
+
 import {
-	ConfigSelection,
+	ConfigSelectionOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import {
@@ -15,9 +12,10 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
-	Diagnostic,
 	diagnosticToJson,
+	diagnosticsJson,
 	renderDiagnostic,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
@@ -66,69 +64,35 @@ registerCommand(
 			// The positionals are paths, so every config here is read.
 			const selection = await configService.select([], line.options);
 			if (selection.isErr()) return selection;
-			const found =
+			const found = await buildService.diagnose(
+				selection.value,
 				line.positionals.length > 0
-					? await this.aboutPaths(
-							buildService,
-							selection.value,
-							line.positionals,
-							cwd
-						)
-					: await this.aboutProject(buildService, selection.value);
+					? { args: line.positionals, cwd }
+					: undefined
+			);
 			if (found.isErr()) return found;
 
-			const failure =
-				found.value.length > 0
-					? new DiagnosticsError(found.value)
-					: undefined;
+			const failure = DiagnosticsError.of(found.value.diagnostics);
+			const stoppedBy = uniqueDiagnostics(found.value.stoppedBy);
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					{
-						diagnostics: (failure?.diagnostics ?? []).map(
-							diagnosticToJson
-						),
+						...diagnosticsJson(failure?.diagnostics ?? []),
+						...(stoppedBy.length > 0 && {
+							stoppedBy: stoppedBy.map(diagnosticToJson),
+						}),
 					},
 					failure
 				);
-			if (!failure) return ok(undefined);
 			// The findings are what was asked for, so they go to stdout and survive --quiet.
-			for (const diagnostic of failure.diagnostics)
+			for (const diagnostic of failure?.diagnostics ?? [])
 				logService.print(renderDiagnostic(diagnostic, cwd));
-			return err(new ReportedError(failure));
-		}
-
-		/** What a build raises about each path, narrowed to it, and why any config didn't load. */
-		private async aboutPaths(
-			buildService: BuildService,
-			selection: ConfigSelection,
-			args: readonly string[],
-			cwd: string
-		): Promise<Result<Diagnostic[], Error>> {
-			const located = await buildService.locate(selection, {
-				args,
-				cwd,
-			});
-			if (located.isErr()) return located;
-			return ok([
-				...located.value.errors,
-				...located.value.configs.flatMap(({ files, diagnostics }) =>
-					files.flatMap(({ source }) =>
-						diagnosticsAbout(diagnostics, source)
-					)
-				),
-			]);
-		}
-
-		/** What a build of every config raises, without writing it. */
-		private async aboutProject(
-			buildService: BuildService,
-			selection: ConfigSelection
-		): Promise<Result<Diagnostic[], Error>> {
-			const run = await buildService.check(selection);
-			return run.isErr()
-				? run
-				: ok(diagnosticsPerFile(run.value.diagnostics));
+			if (stoppedBy.length > 0)
+				logService.warn(
+					`Checked as far as the build gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
+				);
+			return failure ? this.reported(failure) : ok(undefined);
 		}
 	}
 );

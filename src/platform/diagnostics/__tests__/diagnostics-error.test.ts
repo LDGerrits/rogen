@@ -19,6 +19,13 @@ describe("platform/diagnostics/diagnostics-error", () => {
 			);
 		});
 
+		it("should be made from diagnostics only when there are some", () => {
+			expect(DiagnosticsError.of([])).toBeUndefined();
+			expect(DiagnosticsError.of(diagnostics)?.diagnostics).toEqual(
+				diagnostics
+			);
+		});
+
 		it("should keep the diagnostics it was made from", () => {
 			expect(new DiagnosticsError(diagnostics).diagnostics).toEqual(
 				diagnostics

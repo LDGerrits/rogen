@@ -34,6 +34,14 @@ describe("CoreIndexService", () => {
 			expect(listing.hasEntry("src", "missing.ts")).toBe(false);
 		});
 
+		it("should list a root that is a file as nothing", async () => {
+			await memoryFs.writeFile("afile", "");
+
+			listing = await indexService.list(["afile"]);
+
+			expect(listing.getEntries("afile")).toBeUndefined();
+		});
+
 		it("should leave a listing as it was while another is listed", async () => {
 			await memoryFs.writeFile("old/a.ts", "");
 			await memoryFs.writeFile("new/b.ts", "");
@@ -241,6 +249,20 @@ describe("CoreIndexService", () => {
 			await memoryFs.writeFile("src/a.luau", "");
 			await memoryFs.writeFile("shared/b.luau", "");
 			listing = await indexService.list(["src"]);
+		});
+
+		it("should drop a listed root dir that is deleted, although no parent lists it", async () => {
+			await memoryFs.delete("src", true);
+
+			listing = await indexService.update(listing, [
+				{
+					type: FileChangeType.DELETED,
+					path: "src",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(listing.getEntries("src")).toBeUndefined();
 		});
 
 		it("should record an added link to its own parent as only a link, as a rescan does", async () => {

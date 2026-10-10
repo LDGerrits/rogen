@@ -1,9 +1,23 @@
 import path from "path";
+import { isWindows } from "./platform.js";
 
 const POSIX_SEP = path.posix.sep;
 
 export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
+}
+
+/** Paths found however they are written: a watcher reports POSIX paths on every system. */
+export class PathSet {
+	private readonly posix: ReadonlySet<string>;
+
+	constructor(files: Iterable<string>) {
+		this.posix = new Set([...files].map(toPosix));
+	}
+
+	has(file: string): boolean {
+		return this.posix.has(toPosix(file));
+	}
 }
 
 /** `filePath` as the platform writes it, the form a path is printed in. */
@@ -24,6 +38,11 @@ export function joinPosix(...segments: string[]): string {
 export function dirnamePosix(relativePath: string): string {
 	const dir = path.posix.dirname(relativePath);
 	return dir === "." ? "" : dir;
+}
+
+/** Whether two paths name one place, compared as paths, since a case-insensitive file system makes `Src` and `src` one folder. */
+export function samePath(a: string, b: string): boolean {
+	return path.relative(a, b) === "";
 }
 
 /** Whether `dir` lies strictly inside `parent`; both must be absolute. */
@@ -53,14 +72,31 @@ export function* ancestors(filePath: string): Generator<string> {
 	}
 }
 
-/** Whether `child` is `parent` or lies inside it; both must be absolute. */
+/** Whether `child` is `parent` or lies inside it; both must be absolute, and may be written with either kind of separator. */
 export function contains(parent: string, child: string): boolean {
-	return child === parent || isInside(child, parent);
+	return samePath(child, parent) || isInside(child, parent);
 }
 
 /** Whether the POSIX path `child` is `parent` or lies under it, compared as text. */
 export function containsPosix(parent: string, child: string): boolean {
 	return child === parent || child.startsWith(`${parent}/`);
+}
+
+/** As `containsPosix`, but a file system that ignores letter case (Windows') makes `Src` and `src` one folder. */
+export function containsPath(
+	parent: string,
+	child: string,
+	caseInsensitive = isWindows
+): boolean {
+	return caseInsensitive
+		? containsPosix(parent.toLowerCase(), child.toLowerCase())
+		: containsPosix(parent, child);
+}
+
+/** The absolute form of `filePath` that is one string for every way of writing it, for use as a key. */
+export function pathKey(filePath: string, caseInsensitive = isWindows): string {
+	const resolved = path.resolve(filePath);
+	return caseInsensitive ? resolved.toLowerCase() : resolved;
 }
 
 /** `dirs` without repeats and without any dir that lies inside another, in their first order. */
@@ -82,7 +118,10 @@ export function stemOf(fileName: string): string {
 }
 
 /** The deepest directory containing every one of `dirs`. All paths must be absolute. Throws when `dirs` is empty. */
-export function commonAncestor(dirs: readonly string[]): string {
+export function commonAncestor(
+	dirs: readonly string[],
+	caseInsensitive = isWindows
+): string {
 	if (dirs.length === 0) {
 		throw new Error("commonAncestor needs at least one directory.");
 	}
@@ -95,7 +134,11 @@ export function commonAncestor(dirs: readonly string[]): string {
 	for (const dir of dirs.slice(1)) {
 		const segments = split(dir);
 		const length = shared.findIndex(
-			(segment, index) => segments[index] !== segment
+			(segment, index) =>
+				segments[index] === undefined ||
+				(caseInsensitive
+					? segments[index].toLowerCase() !== segment.toLowerCase()
+					: segments[index] !== segment)
 		);
 		shared = shared.slice(0, length === -1 ? shared.length : length);
 	}

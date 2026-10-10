@@ -1,25 +1,21 @@
-import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	DEFAULT_CONFIG_STEM,
 	RogenConfig,
 	configFileName,
-	defaultOutFileName,
 } from "../config/config.js";
-import { SyncServer } from "../serve/serve.js";
-import { Darklua, Language, PLACES_DIR } from "../toolchain/toolchain.js";
-import { InitDirectory } from "./init-directory.js";
+import { projectFileName } from "../rojo/rojo-project.js";
+import {
+	Darklua,
+	DetectedWorkspace,
+	Language,
+} from "../toolchain/toolchain.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-
-/** The template project file `init` starts, which the configs it writes name. */
-export const TEMPLATE_FILE = "template.project.json";
+import { TEMPLATE_FILE } from "./starter-template.js";
 
 /** The names `init` writes for one config name; a Darklua repo without a compiler gets the named config, rooted at the source for luau-lsp and Darklua, and a synced one to serve. */
 export class ConfigSet {
-	/** The config a project starts with. */
-	static readonly DEFAULT_FILE = configFileName(DEFAULT_CONFIG_STEM);
-
 	constructor(
 		readonly name: string,
 		readonly language: Language,
@@ -27,51 +23,23 @@ export class ConfigSet {
 		readonly darklua: Darklua | undefined
 	) {}
 
+	/** The names `init` writes for a config called `name`, in the language and Darklua setup `workspace` uses. */
+	static in(workspace: DetectedWorkspace, name: string): ConfigSet {
+		return new ConfigSet(
+			name,
+			workspace.language,
+			workspace.detectedDarklua
+		);
+	}
+
 	/** The stem of the synced config beside `name`'s source-rooted one. */
 	static syncStemOf(name: string): string {
 		return name === DEFAULT_CONFIG_STEM ? "sync" : `${name}-sync`;
 	}
 
-	/** Project files in `directory` that no config beside them writes, other than the template. */
-	static handWrittenProjectFiles(directory: InitDirectory): string[] {
-		return directory.projectFilesWithoutConfig.filter(
-			(file) =>
-				file !== TEMPLATE_FILE && !file.endsWith(`.${TEMPLATE_FILE}`)
-		);
-	}
-
 	/** `extends` as init writes it: relative, and explicitly so. */
 	static reference(file: string): string {
 		return `./${file}`;
-	}
-
-	/** Where a place named `name` keeps its files: beside the shared folder when that sits in a folder of its own, as `places/shared` does, else in `places`. */
-	static placeFolderOf(
-		name: string,
-		sharedRootDirs: readonly string[] = []
-	): string {
-		const [rootDir] = sharedRootDirs;
-		const shared = rootDir?.replace(/\/src$/, "");
-		const container = shared && path.posix.dirname(shared);
-		return `${container && container !== "." ? container : PLACES_DIR}/${name}`;
-	}
-
-	/** Where a new project's place named `name` keeps its files: the folder `init` found it in, else beside the shared folder. */
-	static placeFolderIn(
-		directory: InitDirectory,
-		name: string,
-		sharedRootDirs: readonly string[]
-	): string {
-		return directory.workspace.places.includes(name)
-			? ConfigSet.placeFolderOf(name)
-			: ConfigSet.placeFolderOf(name, sharedRootDirs);
-	}
-
-	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
-	static freePort(taken: readonly number[]): number {
-		let port = SyncServer.ROJO.defaultPort + 1;
-		while (taken.includes(port)) port++;
-		return port;
 	}
 
 	/** The glob that matches a language's spec files. */
@@ -89,7 +57,11 @@ export class ConfigSet {
 		if (names.length > 1) {
 			return err(new UsageError("init takes at most one config name."));
 		}
-		const [name = DEFAULT_CONFIG_STEM] = names;
+		return ConfigSet.checkName(names[0] ?? DEFAULT_CONFIG_STEM);
+	}
+
+	/** `name` as a config name `init` can write. */
+	static checkName(name: string): Result<string, Error> {
 		if (name.trim() === "") {
 			return err(new UsageError("A config name can't be empty."));
 		}
@@ -100,7 +72,30 @@ export class ConfigSet {
 				)
 			);
 		}
-		if (defaultOutFileName(name) === TEMPLATE_FILE) {
+		if (name !== name.trim()) {
+			return err(
+				new UsageError(
+					`"${name}" is not a valid config name: it can't start or end with a space.`
+				)
+			);
+		}
+		if (name.endsWith(".json")) {
+			return err(
+				new UsageError(
+					`"${name}" is not a valid config name: a name ending in .json is read as a path.`
+				)
+			);
+		}
+		// eslint-disable-next-line no-control-regex
+		const unfit = /[<>:"|?*\u0000-\u001f]/.exec(name);
+		if (unfit) {
+			return err(
+				new UsageError(
+					`"${name}" is not a valid config name: it can't contain ${unfit[0] < " " ? "control characters" : `"${unfit[0]}"`}.`
+				)
+			);
+		}
+		if (projectFileName(name) === TEMPLATE_FILE) {
 			return err(
 				new UsageError(
 					`"${name}" is not a valid config name: it would write over ${TEMPLATE_FILE}.`
@@ -143,7 +138,7 @@ export class ConfigSet {
 	}
 
 	get outputFiles(): string[] {
-		return this.stems.map(defaultOutFileName);
+		return this.stems.map(projectFileName);
 	}
 
 	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but named configs share a port, so they are named. */
@@ -175,7 +170,7 @@ export class ConfigSet {
 	/** The commands that build and serve the set: a compiler's own, serving the configs, then what Darklua needs to read `processed` into `syncDir`. */
 	planSteps(
 		builder: InitPlanBuilder,
-		directory: InitDirectory,
+		directory: string,
 		{
 			compileCommand,
 			serveCommand = this.serveCommand,
@@ -198,11 +193,18 @@ export class ConfigSet {
 		);
 		if (darklua && syncDir) {
 			builder.addDarkluaCommands(
-				...darklua.processCommands(directory.path, processed, syncDir)
+				...darklua.processCommands(directory, processed, syncDir)
 			);
 		}
 		if (darklua && this.sourced && sourcemap) {
-			builder.addSourcemapSteps(defaultOutFileName(this.name), darklua);
+			const projectFile = projectFileName(this.name);
+			const command = darklua.sourcemapCommand(projectFile);
+			// luau-lsp keeps the sourcemap Darklua reads current from the default project; any other needs its own watch.
+			if (projectFile === projectFileName(DEFAULT_CONFIG_STEM))
+				builder.addEdit(
+					`Darklua reads sourcemap.json, which luau-lsp keeps current from ${projectFile}. Without luau-lsp, run: ${command}`
+				);
+			else builder.addRun(command);
 		}
 	}
 
@@ -212,7 +214,7 @@ export class ConfigSet {
 			configFileName(this.name),
 			...(this.syncFile ? [this.syncFile] : []),
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			defaultOutFileName(this.name),
+			projectFileName(this.name),
 		];
 	}
 }

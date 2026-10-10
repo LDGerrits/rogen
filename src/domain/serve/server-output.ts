@@ -1,4 +1,5 @@
 import { stripVTControlCharacters } from "util";
+import { RunOnceScheduler } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { ServerMessage, SyncServer } from "./serve.js";
@@ -37,20 +38,22 @@ export class ServerOutput extends AbstractDisposable {
 
 	private partial = "";
 	private pending: PendingRecord | undefined;
-	private timer: ReturnType<typeof setTimeout> | undefined;
+	private readonly quiet: RunOnceScheduler;
 	private last: { readonly key: string; readonly at: number } | undefined;
 
 	constructor(private readonly server: SyncServer) {
 		super();
+		this.quiet = this._register(
+			new RunOnceScheduler(() => this.flush(), RECORD_QUIET_MS)
+		);
 	}
 
 	write(text: string): void {
 		const lines = (this.partial + text).split(/\r?\n/);
 		this.partial = lines.pop()!;
 		for (const line of lines) this.read(stripVTControlCharacters(line));
-		clearTimeout(this.timer);
-		if (this.pending)
-			this.timer = setTimeout(() => this.flush(), RECORD_QUIET_MS);
+		this.quiet.cancel();
+		if (this.pending) this.quiet.schedule();
 	}
 
 	/** Passes on what is left, once the server has stopped printing. */
@@ -58,11 +61,6 @@ export class ServerOutput extends AbstractDisposable {
 		if (this.partial) this.read(stripVTControlCharacters(this.partial));
 		this.partial = "";
 		this.flush();
-	}
-
-	override [Symbol.dispose](): void {
-		clearTimeout(this.timer);
-		super[Symbol.dispose]();
 	}
 
 	private read(line: string): void {
@@ -87,7 +85,7 @@ export class ServerOutput extends AbstractDisposable {
 	}
 
 	private flush(): void {
-		clearTimeout(this.timer);
+		this.quiet.cancel();
 		const record = this.pending;
 		this.pending = undefined;
 		if (!record) return;

@@ -1,9 +1,12 @@
-import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigOptions } from "../../domain/config/config.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+
+import {
+	ConfigArguments,
+	ConfigOptions,
+	ConfigService,
+} from "../../domain/config/config-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
 import {
 	AbstractCommand,
@@ -12,7 +15,6 @@ import {
 import { CommandLine } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
-import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { WatchLog } from "./watch-log.js";
 
@@ -24,15 +26,7 @@ registerCommand(
 				metadata: {
 					description:
 						"Builds, then rebuilds whenever sources or configs change.",
-					args: [
-						{
-							name: "config",
-							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
-							isOptional: true,
-							isVariadic: true,
-						},
-					],
+					args: ConfigArguments,
 					options: ConfigOptions,
 					examples: [
 						"rogen watch",
@@ -50,48 +44,49 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const configService = accessor.get(ConfigService);
 			const watchService = accessor.get(WatchService);
-			const lifecycleService = accessor.get(LifecycleService);
 			const log = new WatchLog(
 				logService,
 				accessor.get(EnvironmentService).cwd
 			);
 
-			const selection = await configService.select(
-				line.positionals,
-				line.options
-			);
-			if (selection.isErr()) return selection;
-			const watched = watchService.watch(selection.value);
-			if (watched.isErr()) return watched;
-			// The watch started, so every config is valid.
-			log.begin(
-				selection.value.requireValid().unwrap(),
-				selection.value.home
-			);
-
+			// Subscribed first, so Ctrl+C while the configs load still stops the run.
 			const store = new DisposableStore();
-			const shutdown = new DeferredPromise<void>();
-			const session = store.add(watched.value);
+			const shutdown = this.untilShutdown(accessor, store);
 			try {
-				store.add(
-					lifecycleService.onWillShutdown(() => shutdown.complete())
+				const selection = await configService.select(
+					line.positionals,
+					line.options
 				);
+				if (selection.isErr()) return selection;
+				const watched = watchService.watch(selection.value);
+				if (watched.isErr()) return watched;
+				const session = store.add(watched.value);
+				if (shutdown.isSettled) return ok(undefined);
+				// The watch started, so every config is valid.
+				log.begin(
+					selection.value.requireValid().unwrap(),
+					selection.value.home
+				);
+
 				store.add(session.onDidUpdate((update) => log.update(update)));
 				store.add(
 					session.onDidError((error) =>
 						logService.error(error.message)
 					)
 				);
-				await session.start();
-				await shutdown.p;
+				try {
+					await session.start();
+					await shutdown.p;
+				} finally {
+					await session.stop();
+				}
+				log.end();
+				return ok(undefined);
 			} catch (error) {
 				return err(ErrorUtils.fromUnknown(error));
 			} finally {
-				await session.stop();
 				store[Symbol.dispose]();
 			}
-			log.end();
-			return ok(undefined);
 		}
 	}
 );

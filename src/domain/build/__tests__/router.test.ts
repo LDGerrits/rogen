@@ -207,7 +207,7 @@ describe("Router", () => {
 				expect(file.folderNodes).toEqual([
 					{
 						instancePath: ["ServerScriptService", "Combat"],
-						dir: "Combat",
+						folder: `${abs("src")}/Combat`,
 					},
 					{
 						instancePath: [
@@ -215,7 +215,7 @@ describe("Router", () => {
 							"Combat",
 							"Moves",
 						],
-						dir: "Combat/(group)/server/dev/Moves",
+						folder: `${abs("src")}/Combat/(group)/server/dev/Moves`,
 					},
 				]);
 			});
@@ -232,7 +232,7 @@ describe("Router", () => {
 							"shared",
 							"Inventory",
 						],
-						dir: "Inventory",
+						folder: `${abs("src")}/Inventory`,
 					},
 				]);
 			});
@@ -257,6 +257,18 @@ describe("Router", () => {
 				await write(
 					"src/Inventory/Save@server.luau",
 					"src/Inventory/Load@client.luau"
+				);
+
+				expect(await paths()).toEqual([
+					"StarterPlayer/StarterPlayerScripts/Inventory/Load",
+					"ServerScriptService/Inventory/Save",
+				]);
+			});
+
+			it("should strip an @key suffix that Rojo's own suffix of the same route follows", async () => {
+				await write(
+					"src/Inventory/Save@server.server.luau",
+					"src/Inventory/Load@client.client.luau"
 				);
 
 				expect(await paths()).toEqual([
@@ -453,7 +465,11 @@ describe("Router", () => {
 				expect(
 					result.isErr() &&
 						result.error.diagnostics.map(
-							({ code, resource, message }) => [code, resource, message]
+							({ code, resource, message }) => [
+								code,
+								resource,
+								message,
+							]
 						)
 				).toEqual([
 					[
@@ -485,7 +501,9 @@ describe("Router", () => {
 				);
 
 				const result = (
-					await route({ variants: { mock: true, dev: true, prod: false } })
+					await route({
+						variants: { mock: true, dev: true, prod: false },
+					})
 				).unwrap();
 
 				expect(
@@ -570,10 +588,16 @@ describe("Router", () => {
 				);
 
 				expect(await errors()).toEqual([
-					["route.ignoredAt", abs("src/ReplicatedFirst/Queue@client")],
+					[
+						"route.ignoredAt",
+						abs("src/ReplicatedFirst/Queue@client"),
+					],
 					["route.ignoredAt", abs("src/server/@client")],
 					["route.ignoredAt", abs("src/server/Net/@client")],
-					["route.ignoredAt", abs("src/server/Store/init@client.luau")],
+					[
+						"route.ignoredAt",
+						abs("src/server/Store/init@client.luau"),
+					],
 					["route.ignoredAt", abs("src/server/Ui@client")],
 					["route.ignoredAt", abs("src/server/Util@client.luau")],
 				]);
@@ -625,10 +649,9 @@ describe("Router", () => {
 
 				expect(
 					result.isErr() &&
-						result.error.diagnostics.map(({ resource, message }) => [
-							resource,
-							message,
-						])
+						result.error.diagnostics.map(
+							({ resource, message }) => [resource, message]
+						)
 				).toEqual([
 					[
 						abs("src/server/Net@client@ReplicatedFirst"),
@@ -684,7 +707,10 @@ describe("Router", () => {
 
 				expect(await errors({ variants: { mock: false } })).toEqual([]);
 				expect(await errors({ variants: { mock: true } })).toEqual([
-					["route.ignoredAt", abs("src/server/Util.mock@client.luau")],
+					[
+						"route.ignoredAt",
+						abs("src/server/Util.mock@client.luau"),
+					],
 				]);
 			});
 
@@ -1079,7 +1105,9 @@ describe("Router", () => {
 					"src/Other/(.mock@server)/C.luau"
 				);
 
-				const result = (await route({ variants: { mock: true } })).unwrap();
+				const result = (
+					await route({ variants: { mock: true } })
+				).unwrap();
 
 				expect(
 					result.files.map((file) => file.instancePath.join("/"))
@@ -1102,7 +1130,9 @@ describe("Router", () => {
 							code,
 							resource,
 						])
-				).toEqual([["route.ignoredAt", abs("src/server/.mock@client")]]);
+				).toEqual([
+					["route.ignoredAt", abs("src/server/.mock@client")],
+				]);
 			});
 
 			it("should make an init script in a key-only folder the folder above, and refuse one with no folder above", async () => {
@@ -1423,7 +1453,9 @@ describe("Router", () => {
 				expect(warnings).toHaveLength(12);
 				expect(warnings[11].resource).toBe(abs("src/F21.luau"));
 				expect(
-					warnings.some(({ message }) => message.includes("more like it"))
+					warnings.some(({ message }) =>
+						message.includes("more like it")
+					)
 				).toBe(false);
 			});
 

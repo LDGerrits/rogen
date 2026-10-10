@@ -1,0 +1,1 @@
+{ "rootDirs": ["src"], "routes": { "*": "ReplicatedStorage/shared" }, "template": "template.project.json", "modes": { "dev": {}, "prod": { "exclude": ["DevPackages"] } }, "mode": "dev" }

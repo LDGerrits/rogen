@@ -1,19 +1,16 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
-import { toPosix } from "../../base/path.js";
+import { pathKey, toPosix } from "../../base/path.js";
+import { plural } from "../../base/strings.js";
 import {
 	Diagnostic,
-	DiagnosticRelated,
-	RenameFix,
 	errorDiagnostic,
-	isRenameFix,
-	renderDiagnostic,
+	diagnosticKey,
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result, err, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig, configLabel } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { InstanceReference } from "../roblox/roblox.js";
 
 /** How a route or variant key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "suffix";
@@ -32,7 +29,9 @@ export type ScanLeftOut =
 	/** The template mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
 	| { readonly status: "mounted"; readonly node: readonly string[] }
 	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
-	| { readonly status: "skipped" };
+	| { readonly status: "skipped" }
+	/** Rojo ignores it, since only the letter case of its extension keeps it from being read; `rename` is the file name that Rojo reads. */
+	| { readonly status: "extensionCase"; readonly rename: string };
 
 /** Why the build leaves a path out of the tree, in the words `where` reports it. */
 export type LeftOut =
@@ -86,6 +85,11 @@ export interface BuildSummary {
 	readonly replaced: number;
 	/** Left out because the template defines their node. */
 	readonly displaced: number;
+}
+
+/** Whether `build` wrote its project file, or found it unchanged. */
+export function isWritten(build: ConfigBuild): build is WrittenBuild {
+	return build.outcome === "wrote" || build.outcome === "unchanged";
 }
 
 /** What a run did for a config that loaded: the one record the build, the watch and every presenter read. Narrow it on `outcome`; each kind holds what its outcome has. */
@@ -198,6 +202,15 @@ export class FailedBuild extends AbstractConfigBuild {
 	) {
 		super(config, findings, errors);
 	}
+
+	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier build of this version found. */
+	static before(
+		config: ResolvedConfig,
+		errors: readonly Diagnostic[],
+		syncWarnings?: readonly Diagnostic[]
+	): FailedBuild {
+		return new FailedBuild(config, errors, { warnings: [], syncWarnings });
+	}
 }
 
 /** What a build found before it was written or failed. */
@@ -240,10 +253,9 @@ export class SharedDiagnostics {
 	): SharedPart {
 		const owners = new Set<string>();
 		const fresh = diagnostics.filter((diagnostic) => {
-			const key = renderDiagnostic(
-				this.sameAcrossConfigs && diagnostic.resource === configFile
-					? { ...diagnostic, resource: "" }
-					: diagnostic
+			const key = diagnosticKey(
+				diagnostic,
+				this.sameAcrossConfigs ? configFile : undefined
 			);
 			const owner = this.raisedBy.get(key);
 			if (owner === undefined) this.raisedBy.set(key, label);
@@ -303,6 +315,16 @@ export class BuildRun {
 		);
 	}
 
+	/** Why the run fails: an error, or, when warnings are denied, a warning it says. */
+	failure(denyWarnings: boolean): Error | undefined {
+		if (this.errors.length > 0) return new DiagnosticsError(this.errors);
+		return denyWarnings && this.warningCount > 0
+			? new Error(
+					`${plural(this.warningCount, "warning")} denied by --deny-warnings.`
+				)
+			: undefined;
+	}
+
 	/** What the run says, config by config: its fresh warnings, then its fresh errors. */
 	get diagnostics(): Diagnostic[] {
 		return this.shares.flatMap(({ warnings, errors }) => [
@@ -310,66 +332,6 @@ export class BuildRun {
 			...errors.fresh,
 		]);
 	}
-}
-
-interface Located {
-	/** An absolute POSIX path. */
-	readonly source: string;
-	/** Whether the path is there now, rather than only placed as it would be once created. */
-	readonly exists: boolean;
-}
-
-export interface PlacedLocation extends Located {
-	readonly status: "placed";
-	readonly instancePath: readonly string[];
-	/** The other nodes an init script is, where its folder becomes a node in another route; only a copied init script has them. */
-	readonly alsoAt?: readonly (readonly string[])[];
-	readonly route: string;
-	readonly routeMatch: RouteMatch;
-	/** The active variants the file carries. */
-	readonly variants: readonly VariantMatch[];
-	/** A `^` on its name or a folder's took it straight to the route's target. */
-	readonly hoisted?: boolean;
-	/** The path was named as a file, and not found in a folder or behind an instance. */
-	readonly named?: true;
-}
-
-export interface UnplacedLocation extends Located {
-	/** `ignored` exists but isn't an instance. */
-	readonly status: "outside" | "ignored" | "missing" | "empty";
-	/** A `missing` path that is named as a folder, by ending in a separator. */
-	readonly folder?: true;
-}
-
-/** Where a path lands in the tree, or why it lands nowhere. */
-export type FileLocation =
-	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
-
-/** The files placed at an instance or inside it; none when no file places it. */
-export interface InstanceLocation {
-	readonly reference: InstanceReference;
-	readonly files: readonly PlacedLocation[];
-	/** When no file places it: the absolute POSIX folders a new file for it goes in. */
-	readonly folders: readonly string[];
-	/** When no file places it: the renames of files that would, from the diagnostics that propose them. */
-	readonly fixes: readonly InstanceFix[];
-}
-
-/** A rename, proposed by the diagnostic `code`, after which a file places the instance. Paths are absolute POSIX. */
-export interface InstanceFix {
-	readonly code: string;
-	readonly rename: RenameFix["rename"];
-}
-
-/** Where `locate` found things in one config. */
-export interface ConfigLocations {
-	readonly config: ResolvedConfig;
-	/** One per path argument; every file when no argument was given. */
-	readonly files: readonly FileLocation[];
-	/** One per instance argument. */
-	readonly instances: readonly InstanceLocation[];
-	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
-	readonly diagnostics: readonly Diagnostic[];
 }
 
 /** What a sync tool writes in place of a `.meta.json`. */
@@ -402,16 +364,6 @@ export interface SyncTool {
 	readonly dataReplacement?: DataReplacement;
 }
 
-/** What `locate` found, config by config. */
-export interface Locations {
-	/** No path or instance was asked about, so `files` holds every file. */
-	readonly everyFile: boolean;
-	/** The configs that load; each answers for itself. */
-	readonly configs: readonly ConfigLocations[];
-	/** Why the configs that didn't load did not answer. */
-	readonly errors: readonly Diagnostic[];
-}
-
 /** The project file a config writes, and the staging files its writes go through. */
 export class OutputFile {
 	constructor(readonly path: string) {}
@@ -431,67 +383,15 @@ export class OutputFile {
 	}
 }
 
-/** `diagnostic` as it reads about one related file: that file's message, and only the fixes that rename it. */
-function narrowedTo(
-	diagnostic: Omit<Diagnostic, "related">,
-	{ resource, message }: DiagnosticRelated
-): Diagnostic {
-	return {
-		...diagnostic,
-		resource,
-		position: undefined,
-		message,
-		fixes: diagnostic.fixes?.filter(
-			(fix) =>
-				isRenameFix(fix) &&
-				toPosix(fix.rename.from) === toPosix(resource)
-		),
-	};
-}
-
-/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
-export function diagnosticsAbout(
-	diagnostics: readonly Diagnostic[],
-	source: string
-): Diagnostic[] {
-	const target = toPosix(source);
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		const entries = (related ?? []).filter(
-			({ resource }) => toPosix(resource) === target
-		);
-		if (entries.length > 0)
-			return entries.map((entry) =>
-				narrowedTo(rest, { ...entry, resource: source })
-			);
-		// A group is about its related files; its own resource is the config.
-		return !related?.length && toPosix(diagnostic.resource) === target
-			? [rest]
-			: [];
-	});
-}
-
-/** Every diagnostic once per file it is about: a grouped one becomes an entry per related file, and any other stays as it is. */
-export function diagnosticsPerFile(
-	diagnostics: readonly Diagnostic[]
-): Diagnostic[] {
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		return related?.length
-			? related.map((entry) => narrowedTo(rest, entry))
-			: [rest];
-	});
-}
-
 /** Nothing can be placed without a route. */
-export function missingRoutes(config: ResolvedConfig): Diagnostic[] {
+function missingRoutes(config: ResolvedConfig): Diagnostic[] {
 	return config.routes.size > 0
 		? []
 		: [
 				errorDiagnostic(
 					"route.noRoutes",
 					{ resource: config.file },
-					'no routes declared, so nothing can be placed.\nAdd a "routes" map — `rogen init` writes a starting set.'
+					"no routes declared, so nothing can be placed.\nAdd a \"routes\" map; 'rogen init' writes a starting set."
 				),
 			];
 }
@@ -506,11 +406,7 @@ export class BuildSet {
 	private readonly blockers: readonly Blocker[];
 
 	constructor(readonly configs: readonly ResolvedConfig[]) {
-		const byOutFile = groupBy(
-			configs,
-			({ outFile }) => path.resolve(outFile),
-			({ file }) => file
-		);
+		const byOutFile = groupBy(configs, ({ outFile }) => pathKey(outFile));
 		this.blockers = [
 			...configs.flatMap((config) =>
 				missingRoutes(config).map((diagnostic) => ({
@@ -519,15 +415,19 @@ export class BuildSet {
 				}))
 			),
 			...[...byOutFile]
-				.filter(([, files]) => files.length > 1)
-				.map(([outFile, files]) => ({
-					diagnostic: errorDiagnostic(
-						"output.sameOutFile",
-						{ resource: outFile },
-						`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
-					),
-					files,
-				})),
+				.filter(([, sharing]) => sharing.length > 1)
+				.map(([, sharing]) => {
+					const outFile = path.resolve(sharing[0].outFile);
+					const files = sharing.map(({ file }) => file);
+					return {
+						diagnostic: errorDiagnostic(
+							"output.sameOutFile",
+							{ resource: outFile },
+							`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
+						),
+						files,
+					};
+				}),
 		];
 	}
 
@@ -539,6 +439,25 @@ export class BuildSet {
 		return set.diagnostics.length > 0
 			? err(new DiagnosticsError([...set.diagnostics]))
 			: ok(set);
+	}
+
+	/** The configs of `selection` that load, as a set, and the others as builds that didn't. */
+	static partition(selection: ConfigSelection): {
+		readonly set: BuildSet;
+		readonly unloaded: readonly UnloadedBuild[];
+	} {
+		return {
+			set: new BuildSet(
+				selection.entries.flatMap((entry) =>
+					entry.status === "valid" ? [entry.config] : []
+				)
+			),
+			unloaded: selection.entries.flatMap((entry) =>
+				entry.status === "broken"
+					? [new UnloadedBuild(entry.file, entry.errors)]
+					: []
+			),
+		};
 	}
 
 	/** Each problem once, in the order it is reported. */
@@ -560,5 +479,16 @@ export class BuildSet {
 
 	configOf(file: string): ResolvedConfig | undefined {
 		return this.configs.find((config) => config.file === file);
+	}
+
+	/** The configs no problem blocks. */
+	get buildable(): ResolvedConfig[] {
+		const blocked = this.blockedFiles;
+		return this.configs.filter(({ file }) => !blocked.has(file));
+	}
+
+	/** Every root directory of every config that can be built, which one listing covers. */
+	get rootDirs(): string[] {
+		return this.buildable.flatMap(({ rootDirs }) => rootDirs);
 	}
 }

@@ -43,7 +43,7 @@ export type MergePolicy =
 export type MergePolicies = Readonly<Record<string, MergePolicy>>;
 
 /** One entry of a list that tiers add to, with where it was written. */
-export interface ConfigEntry<T> {
+export interface ListEntry<T> {
 	readonly value: T;
 	readonly source: ConfigSource;
 	/** Its position in the list of the tier that wrote it. */
@@ -86,7 +86,7 @@ export class Config {
 	 * An entry a later tier repeats moves to the later position. The default
 	 * applies only when no layer or the command line sets the list.
 	 */
-	entries<T>(section: ConfigSection): ConfigEntry<T>[] {
+	entries<T>(section: ConfigSection): ListEntry<T>[] {
 		const tiers: { source: ConfigSource; list: T[] | undefined }[] = [
 			...this.layers.map((layer, index) => ({
 				source: { tier: "layer", index } as const,
@@ -104,7 +104,7 @@ export class Config {
 			});
 		}
 
-		let result: ConfigEntry<T>[] = [];
+		let result: ListEntry<T>[] = [];
 		for (const { source, list } of tiers) {
 			if (!list) continue;
 			result = result.filter(({ value }) => !list.includes(value));
@@ -115,8 +115,9 @@ export class Config {
 		return result;
 	}
 
-	getValue<T>(section?: ConfigSection): T {
-		return this.getConsolidatedModel().getValue<T>(section) as T;
+	/** The merged value at `section`; `undefined` when no tier sets it. */
+	getValue<T>(section?: ConfigSection): T | undefined {
+		return this.getConsolidatedModel().getValue<T>(section);
 	}
 
 	inspect<T>(section: ConfigSection): ConfigValue<T> {
@@ -142,9 +143,8 @@ export class Config {
 			if (
 				safeStringify(this.getValue(key)) !==
 				safeStringify(other.getValue(key))
-			) {
+			)
 				return false;
-			}
 		}
 		return true;
 	}

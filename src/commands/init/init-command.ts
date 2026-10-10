@@ -1,5 +1,5 @@
 import path from "path";
-import { CancelledError, ReportedError } from "../../base/errors.js";
+import { CancelledError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
@@ -21,7 +21,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
-import { BuildReport } from "../build/build-report.js";
+import { buildReport } from "../build/build-report.js";
 
 const InitOptions = [
 	{
@@ -129,7 +129,7 @@ registerCommand(
 			if (plan.configs.length === 0) return ok(new BuildRun([]));
 			const selection = await configService.select(plan.configs, {});
 			if (selection.isErr()) return selection;
-			return buildService.build(selection.value);
+			return ok(await buildService.build(selection.value));
 		}
 
 		private async writeAsText(
@@ -166,7 +166,7 @@ registerCommand(
 				logService.outro(
 					`Wrote ${plural(plan.files.length, "file")}, but the build failed. Fix the config and run rogen build.`
 				);
-				return err(new ReportedError(new DiagnosticsError(errors)));
+				return this.reported(new DiagnosticsError(errors));
 			}
 
 			logService.step("Next steps");
@@ -194,44 +194,33 @@ registerCommand(
 				files.push(file);
 				if (item.file.addition !== undefined) appended.push(file);
 			});
+			const document = (rest: Record<string, unknown>) => ({
+				files,
+				appended,
+				directories,
+				...rest,
+			});
 			if (written.isErr())
 				return this.printJson(
 					logService,
-					{
-						files,
-						appended,
-						directories,
-						error: written.error.message,
-					},
+					document({ error: written.error.message }),
 					written.error
 				);
 			const built = await buildConfigs(plan);
 			if (built.isErr())
 				return this.printJson(
 					logService,
-					{
-						files,
-						appended,
-						directories,
-						error: built.error.message,
-					},
+					document({ error: built.error.message }),
 					built.error
 				);
-			const report = new BuildReport();
-			for (const build of built.value.builds)
-				report.add(build, foundBy(build));
-			const { errors } = built.value;
 			return this.printJson(
 				logService,
-				{
-					files,
-					appended,
-					directories,
-					built: report.json().configs,
+				document({
+					built: buildReport(built.value.builds, foundBy).configs,
 					notes: plan.notes,
 					nextSteps: plan.nextSteps,
-				},
-				errors.length > 0 ? new DiagnosticsError(errors) : undefined
+				}),
+				DiagnosticsError.of(built.value.errors)
 			);
 		}
 	}

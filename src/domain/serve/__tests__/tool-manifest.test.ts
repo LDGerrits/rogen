@@ -1,8 +1,8 @@
-import { ToolchainFile } from "../toolchain-file.js";
+import { ToolManifest } from "../tool-manifest.js";
 
-const parse = (file: string, text: string) => ToolchainFile.parse(file, text)!;
+const parse = (file: string, text: string) => ToolManifest.parse(file, text)!;
 
-describe("ToolchainFile", () => {
+describe("ToolManifest", () => {
 	describe("parse", () => {
 		it("should read Rokit's and Aftman's owner/repo@version entries", () => {
 			const manifest = parse(
@@ -45,7 +45,7 @@ describe("ToolchainFile", () => {
 
 		it("should not read a file of another name", () => {
 			expect(
-				ToolchainFile.parse("/repo/wally.toml", "[tools]\n")
+				ToolManifest.parse("/repo/wally.toml", "[tools]\n")
 			).toBeUndefined();
 		});
 	});

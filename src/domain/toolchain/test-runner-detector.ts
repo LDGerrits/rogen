@@ -1,5 +1,5 @@
 import path from "path";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 
 /** A test runner's name, as `init` says it, and how a package source names it: as a whole path segment, so `ts-jest` is no runner. */
 const RUNNERS = [
@@ -13,7 +13,7 @@ const TOML_STRING = /"([^"]*)"/g;
 
 /** The test runner a workspace's package manifests name, which tells that it has specs a release can leave out. */
 export class TestRunnerDetector {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** The first runner a manifest in `cwd` depends on, or `undefined` when none does. */
 	async detect(cwd: string): Promise<string | undefined> {

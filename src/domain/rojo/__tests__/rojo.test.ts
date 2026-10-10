@@ -1,3 +1,4 @@
+import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import {
 	RojoFile,
@@ -23,13 +24,15 @@ describe("domain/rojo/rojo", () => {
 				["Notes.txt", "data"],
 				["Config.yaml", "data"],
 				["Config.yml", "data"],
-				["SAVE.LUAU", "script"],
 			])("should read %s as a %s", (name, kind) => {
 				expect(new RojoFile(name).kind).toBe(kind);
 			});
 
 			it.each([
 				"Types.d.ts",
+				"SAVE.LUAU",
+				"Save.Json",
+				"Save.META.JSON",
 				"Save.meta.json",
 				"init.meta.json",
 				"Notes.md",
@@ -78,11 +81,28 @@ describe("domain/rojo/rojo", () => {
 		});
 
 		describe("isMeta", () => {
-			it("should accept a meta file in any case and reject other JSON", () => {
+			it("should accept a meta file in lowercase only, and reject other JSON", () => {
 				expect(new RojoFile("Save.meta.json").isMeta).toBe(true);
 				expect(new RojoFile(RojoFile.INIT_META).isMeta).toBe(true);
-				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(true);
+				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(false);
 				expect(new RojoFile("Save.json").isMeta).toBe(false);
+			});
+		});
+
+		describe("lowercasedExtension", () => {
+			it.each([
+				["Save.LUAU", "Save.luau"],
+				["Save.Rbxm", "Save.rbxm"],
+				["Save.JSON", "Save.json"],
+				["Save.MODEL.JSON", "Save.model.json"],
+				["Save.Project.Json", "Save.project.json"],
+				["Save.META.JSON", "Save.meta.json"],
+				["Save.Server.luau", undefined],
+				["Save.luau", undefined],
+				["Notes.MD", undefined],
+				["Types.D.TS", undefined],
+			])("should read %s as %s", (name, fixed) => {
+				expect(new RojoFile(name).lowercasedExtension).toBe(fixed);
 			});
 		});
 
@@ -183,6 +203,17 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("dataName", () => {
+			it.each([
+				["Crate.model.json", "Crate"],
+				["Outer.project.json", "Outer"],
+				["Data.model.toml", "Data.model"],
+				["Names.project.csv", "Names.project"],
+			])("should name %s as %s", (fileName, name) => {
+				expect(new RojoFile(fileName).dataName).toBe(name);
+			});
+		});
+
 		describe("instanceName", () => {
 			it.each([
 				["Save.server.luau", "Save"],
@@ -191,6 +222,7 @@ describe("domain/rojo/rojo", () => {
 				["Crate.model.json", "Crate"],
 				["Config.json", "Config"],
 				["Gun.rbxm", "Gun"],
+				["Data.model.toml", "Data.model"],
 			])("should name %s as %s", (fileName, name) => {
 				expect(new RojoFile(fileName).instanceName).toBe(name);
 			});
@@ -242,7 +274,7 @@ describe("domain/rojo/rojo", () => {
 					"/repo/A.meta.json"
 				);
 
-				expect(parsed.unwrap()).toEqual({
+				expect(parsed.unwrap().fields).toEqual({
 					className: "Actor",
 					properties: { RunContext: "Client" },
 				});
@@ -254,6 +286,49 @@ describe("domain/rojo/rojo", () => {
 				expect(parsed.isErr() && parsed.error).toMatchObject([
 					{ code: "meta.notAnObject" },
 				]);
+			});
+		});
+
+		describe("typos", () => {
+			const typosOf = (text: string, file: string) => {
+				const parsed = RojoMeta.parse(text, file);
+				return parsed.isOk() ? parsed.value.typos : [];
+			};
+
+			it("should warn of a field that is one slip from a field Rojo reads, where it is written", () => {
+				const warnings = typosOf(
+					'{\n  "classname": "Actor",\n  "attributs": {}\n}',
+					"/repo/A.meta.json"
+				);
+
+				expect(warnings).toMatchObject([
+					{
+						code: "meta.unknownField",
+						severity: DiagnosticSeverity.Warning,
+						resource: "/repo/A.meta.json",
+						position: { line: 2, column: 3 },
+						message:
+							'unknown field "classname"; Rojo ignores it. Did you mean "className"?',
+					},
+					{
+						message:
+							'unknown field "attributs"; Rojo ignores it. Did you mean "attributes"?',
+					},
+				]);
+			});
+
+			it("should stay silent about a field that resembles none, such as $schema", () => {
+				expect(
+					typosOf(
+						'{ "$schema": "x", "comment": "y", "className": "Actor" }',
+						"/repo/A.meta.json"
+					)
+				).toEqual([]);
+			});
+
+			it("should not warn when the meta can't be read at all", () => {
+				expect(typosOf("{bad", "/repo/A.meta.json")).toEqual([]);
+				expect(typosOf("[]", "/repo/A.meta.json")).toEqual([]);
 			});
 		});
 

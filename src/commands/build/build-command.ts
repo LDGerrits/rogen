@@ -1,13 +1,15 @@
-import { ReportedError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
-import { ConfigOptions } from "../../domain/config/config.js";
-import { ConfigService } from "../../domain/config/config-service.js";
+
+import {
+	ConfigArguments,
+	ConfigOptions,
+	ConfigService,
+} from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	CommandLine,
@@ -17,7 +19,7 @@ import {
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
-import { BuildReport } from "./build-report.js";
+import { buildReport } from "./build-report.js";
 
 const DenyWarningsOption = {
 	name: "deny-warnings",
@@ -39,15 +41,7 @@ registerCommand(
 				metadata: {
 					description:
 						"Writes the project file of each config here, or of the named ones.",
-					args: [
-						{
-							name: "config",
-							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
-							isOptional: true,
-							isVariadic: true,
-						},
-					],
+					args: ConfigArguments,
 					options: BuildOptions,
 					unknownWordOffer: "To build a config",
 					examples: [
@@ -75,28 +69,22 @@ registerCommand(
 			);
 			if (selection.isErr()) return selection;
 
-			const built = await buildService.build(selection.value);
-			if (built.isErr()) return built;
-			const run = built.value;
+			const run = await buildService.build(selection.value);
 
 			const denyWarnings = Boolean(line.options["deny-warnings"]);
-			const failure =
-				run.errors.length > 0
-					? new DiagnosticsError(run.errors)
-					: denyWarnings && run.warningCount > 0
-						? new Error("--deny-warnings")
-						: undefined;
-			if (line.options.json) {
-				const report = new BuildReport();
-				for (const build of run.builds) report.add(build);
-				return this.printJson(logService, report.json(), failure);
-			}
+			const failure = run.failure(denyWarnings);
+			if (line.options.json)
+				return this.printJson(
+					logService,
+					buildReport(run.builds),
+					failure
+				);
 			new BuildLog(logService, cwd).report(
 				run,
 				selection.value.home,
 				denyWarnings
 			);
-			return failure ? err(new ReportedError(failure)) : ok(undefined);
+			return failure ? this.reported(failure) : ok(undefined);
 		}
 	}
 );

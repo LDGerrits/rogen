@@ -1,15 +1,19 @@
 import path from "path";
 import { Result } from "../../../base/result.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import { FileSystemService } from "../../../platform/fs/file-system-service.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	WorkspaceSpec,
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
-import { TEMPLATE_FILE } from "../config-set.js";
+import { TEMPLATE_FILE } from "../starter-template.js";
 import { BaseConfig, InitDirectory } from "../init-directory.js";
 import { InitPlanBuilder, Setup } from "../init-plan-builder.js";
 import { InitPlan, NextSteps } from "../init-service.js";
+import { PlaceFolders } from "../place-folder.js";
 
 export const directory = path.resolve("/mock/my-game");
 
@@ -21,6 +25,10 @@ export interface DirectorySpec {
 	readonly base?: Result<BaseConfig, Diagnostic[]>;
 	readonly path?: string;
 }
+
+export const placeFoldersOf = (
+	fileSystem: FileSystemService = new MemoryFileSystemService()
+) => new PlaceFolders(fileSystem, new CoreToolchainService(fileSystem));
 
 export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 	return new InitDirectory(

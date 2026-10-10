@@ -1,5 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
-import { closestMatch } from "../../base/strings.js";
+import { closestMatch, joinedWithOr } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -47,13 +47,8 @@ export type ScriptRun =
 /** Where scripts are kept for code to clone out, so a script there that never runs isn't a mistake. */
 const SCRIPT_STORAGE_SERVICE = "ServerStorage";
 
-const orList = (items: readonly string[]): string =>
-	items.length > 1
-		? `${items.slice(0, -1).join(", ")} or ${items[items.length - 1]}`
-		: items.join("");
-
 /** Where each kind of script runs, as a sentence for a warning about one that doesn't. */
-export const WHERE_SCRIPTS_RUN = `A Script runs in ${orList(SERVER_SCRIPT_SERVICES)}, and a LocalScript in ${orList([...PLAYER_SCRIPT_CONTAINERS, ...CLIENT_SCRIPT_SERVICES])}. A Script with RunContext Client never runs in ${orList(SERVER_ONLY_SERVICES.filter((service) => service !== SCRIPT_STORAGE_SERVICE))}, which clients can't see.`;
+export const WHERE_SCRIPTS_RUN = `A Script runs in ${joinedWithOr(SERVER_SCRIPT_SERVICES)}, and a LocalScript in ${joinedWithOr([...PLAYER_SCRIPT_CONTAINERS, ...CLIENT_SCRIPT_SERVICES])}. A Script with RunContext Client never runs in ${joinedWithOr(SERVER_ONLY_SERVICES.filter((service) => service !== SCRIPT_STORAGE_SERVICE))}, which clients can't see.`;
 
 /** What becomes of a script that runs as `run` at `instancePath`: it runs, it is stored for code to clone out, or it never runs. */
 export function scriptFate(
@@ -64,20 +59,27 @@ export function scriptFate(
 	return instancePath[0] === SCRIPT_STORAGE_SERVICE ? "stored" : "neverRuns";
 }
 
+/** Whether `instancePath` starts at StarterPlayer's or the character's script container. */
+function isPlayerScriptContainer(instancePath: readonly string[]): boolean {
+	const [service, child] = instancePath;
+	return (
+		service === "StarterPlayer" && PLAYER_SCRIPT_CONTAINERS.includes(child)
+	);
+}
+
 /** Whether a script that runs as `run` ever runs at `instancePath`, as Roblox documents it; no script runs from ServerStorage. */
 function scriptRunsAt(
 	run: ScriptRun,
 	instancePath: readonly string[]
 ): boolean {
-	const [service, child] = instancePath;
+	const [service] = instancePath;
 	switch (run) {
 		case "Script":
 			return SERVER_SCRIPT_SERVICES.includes(service);
 		case "LocalScript":
 			return (
 				CLIENT_SCRIPT_SERVICES.includes(service) ||
-				(service === "StarterPlayer" &&
-					PLAYER_SCRIPT_CONTAINERS.includes(child))
+				isPlayerScriptContainer(instancePath)
 			);
 		case "Server":
 			return service !== SCRIPT_STORAGE_SERVICE;
@@ -114,6 +116,18 @@ export class Target {
 				),
 			]);
 		}
+		const unnamed = folders.find(
+			(folder) => folder === "" || folder === "." || folder === ".."
+		);
+		if (unnamed !== undefined) {
+			return err([
+				errorDiagnostic(
+					"roblox.invalidFolder",
+					location,
+					`the target "${text}" has ${unnamed === "" ? "an empty folder name" : `"${unnamed}" as a folder name`}; write each folder between single slashes, such as "${service}/Folder".`
+				),
+			]);
+		}
 		return ok(new Target(service, folders));
 	}
 
@@ -130,10 +144,7 @@ export class Target {
 
 	/** Whether the target is StarterPlayer's or the character's script container, where scripts run only with legacy run contexts. */
 	get isPlayerScripts(): boolean {
-		return (
-			this.service === "StarterPlayer" &&
-			PLAYER_SCRIPT_CONTAINERS.includes(this.folders[0])
-		);
+		return isPlayerScriptContainer(this.instancePath);
 	}
 
 	toString(): string {
@@ -215,14 +226,9 @@ export function requireExpression(
 
 /** The class of a node Rogen creates to hold children: services and StarterPlayer's script containers keep their own, the rest are folders. */
 export function containerClassName(instancePath: readonly string[]): string {
-	const [service, child] = instancePath;
-	if (instancePath.length === 1) return service;
-	if (
-		instancePath.length === 2 &&
-		service === "StarterPlayer" &&
-		PLAYER_SCRIPT_CONTAINERS.includes(child)
-	)
-		return child;
+	if (instancePath.length === 1) return instancePath[0];
+	if (instancePath.length === 2 && isPlayerScriptContainer(instancePath))
+		return instancePath[1];
 	return "Folder";
 }
 

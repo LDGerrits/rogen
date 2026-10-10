@@ -1,0 +1,18 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  src/$Config.luau - warning: the project file gets the instance "ReplicatedStorage/shared/$Config", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename the file without the $. (tree.reservedName)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+exit 0
+stdout:
+  {"name":"project","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"shared","className":"Folder","children":[{"name":"$Config","className":"ModuleScript","filePaths":["src/$Config.luau"]},{"name":"Fine","className":"ModuleScript","filePaths":["src/Fine.luau"]}]}]}]}
+stderr:
+  [WARN  librojo::project] Keys starting with '$' are reserved by Rojo to ensure forward compatibility.
+  [WARN  librojo::project] This project uses the key '$Config', which should be renamed.
+  [WARN  librojo::project] Keys starting with '$' are reserved by Rojo to ensure forward compatibility.
+  [WARN  librojo::project] This project uses the key '$Config', which should be renamed.

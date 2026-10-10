@@ -71,6 +71,7 @@ describe("ChangeBatcher", () => {
 		expect(reconListener).toHaveBeenCalledWith({
 			dropped: 6,
 			threshold: 5,
+			ended: false,
 		});
 	});
 
@@ -82,5 +83,45 @@ describe("ChangeBatcher", () => {
 		}));
 
 		expect(() => batcher.queueEvents(massiveArray)).not.toThrow();
+	});
+
+	it("should report a burst that goes on once when it starts and once when it stops, not once per threshold", () => {
+		const overflowListener = jest.fn();
+		batcher.onDidOverflow(overflowListener);
+		const change = (i: number) => ({
+			type: FileChangeType.ADDED,
+			path: `src/file_${i}.ts`,
+			fileType: FileType.File,
+		});
+
+		batcher.queueEvents(Array.from({ length: 6 }, (_, i) => change(i)));
+		for (let i = 0; i < 40; i++) batcher.queueEvents([change(i)]);
+		expect(overflowListener).toHaveBeenCalledTimes(1);
+
+		jest.advanceTimersByTime(100);
+
+		expect(overflowListener).toHaveBeenCalledTimes(2);
+		expect(overflowListener).toHaveBeenLastCalledWith({
+			dropped: 40,
+			threshold: 5,
+			ended: true,
+		});
+	});
+
+	it("should follow changes one by one again once a burst has stopped", () => {
+		const changeListener = jest.fn();
+		batcher.onDidEmitChanges(changeListener);
+		const change = {
+			type: FileChangeType.UPDATED,
+			path: "src/a.ts",
+			fileType: FileType.File,
+		};
+
+		batcher.queueEvents(Array.from({ length: 6 }, () => change));
+		jest.advanceTimersByTime(100);
+		batcher.queueEvents([change]);
+		jest.advanceTimersByTime(100);
+
+		expect(changeListener).toHaveBeenCalledWith([change]);
 	});
 });

@@ -1,5 +1,10 @@
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	diagnosticsPerFile,
+	diagnosticsReaching,
+	uniqueDiagnostics,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
@@ -8,19 +13,26 @@ import { ConfigSelection } from "../config/config-service.js";
 import {
 	BuildRun,
 	BuildSet,
+	ConfigBuild,
 	FailedBuild,
 	LoadedBuild,
-	Locations,
 	OutputFile,
 	SyncTool,
-	UnloadedBuild,
 	UnwrittenBuild,
 	WrittenBuild,
 } from "./build.js";
-import { BuildService, LocateTargets } from "./build-service.js";
+import {
+	BuildService,
+	Diagnosed,
+	LocateTargets,
+	Locations,
+} from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { Locator } from "./locator.js";
 import { OutputWriter } from "./output-writer.js";
+
+/** A config built in memory, or the reason it wasn't. */
+type Attempt = BuiltConfig | FailedBuild;
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -36,59 +48,37 @@ export class CoreBuildService implements BuildService {
 		this.writer = new OutputWriter(fileSystemService);
 	}
 
-	build(
-		selection: ConfigSelection
-	): Promise<Result<BuildRun, DiagnosticsError>> {
+	build(selection: ConfigSelection): Promise<BuildRun> {
 		return this.buildAll(selection, true);
 	}
 
-	check(
-		selection: ConfigSelection
-	): Promise<Result<BuildRun, DiagnosticsError>> {
+	/** Builds every selected config as `build` does, and writes nothing: the same builds with the same diagnostics, each config that built cleanly left as not written. */
+	check(selection: ConfigSelection): Promise<BuildRun> {
 		return this.buildAll(selection, false);
 	}
 
 	private async buildAll(
 		selection: ConfigSelection,
 		write: boolean
-	): Promise<Result<BuildRun, DiagnosticsError>> {
-		const unloaded = selection.entries.flatMap((entry) =>
-			entry.status === "broken"
-				? [new UnloadedBuild(entry.file, entry.errors)]
-				: []
+	): Promise<BuildRun> {
+		const { set, unloaded } = BuildSet.partition(selection);
+		const listing = await this.indexService.list(set.rootDirs);
+		const attempts = await this.attempt(
+			set,
+			set.configs.map((config) => ({ config, syncWarnings: undefined })),
+			listing
 		);
-		const set = new BuildSet(
-			selection.entries.flatMap((entry) =>
-				entry.status === "valid" ? [entry.config] : []
-			)
-		);
-		if (set.diagnostics.length > 0)
-			return err(
-				new DiagnosticsError([
-					...unloaded.flatMap(({ errors }) => errors),
-					...set.diagnostics,
-				])
-			);
-		const { configs } = set;
-		const listing = await this.indexService.list(
-			configs.flatMap(({ rootDirs }) => rootDirs)
-		);
-		const built = await this.run(
-			configs.map((config) => ({ config, syncWarnings: undefined })),
-			listing,
+		const settled = await this.settle(
+			attempts,
 			unloaded.map(({ label }) => label),
 			write
 		);
 		// Selection order, each config's build beside the ones that didn't load.
-		const loaded = [...built];
-		return ok(
-			new BuildRun(
-				selection.entries.map(
-					(entry) =>
-						unloaded.find(({ file }) => file === entry.file) ??
-						loaded.shift()!
-				)
-			)
+		const builds = new Map<string, ConfigBuild>(
+			[...unloaded, ...settled].map((build) => [build.file, build])
+		);
+		return new BuildRun(
+			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])
 		);
 	}
 
@@ -103,13 +93,12 @@ export class CoreBuildService implements BuildService {
 		// The sync dir changes only with the config or its compiler, so an answer for this version still holds.
 		const syncWarnings =
 			previous?.config === config ? previous.syncWarnings : undefined;
-		const blocked = set.blocking(file);
-		if (blocked.length > 0)
-			return new FailedBuild(config, blocked, {
-				warnings: [],
-				syncWarnings,
-			});
-		const [build] = await this.run([{ config, syncWarnings }], listing);
+		const attempts = await this.attempt(
+			set,
+			[{ config, syncWarnings }],
+			listing
+		);
+		const [build] = await this.settle(attempts, [], true);
 		return build;
 	}
 
@@ -117,27 +106,22 @@ export class CoreBuildService implements BuildService {
 		selection: ConfigSelection,
 		targets?: LocateTargets
 	): Promise<Result<Locations, DiagnosticsError>> {
-		const errors = selection.entries.flatMap((entry) =>
-			entry.status === "broken" ? entry.errors : []
-		);
-		const set = new BuildSet(
+		// What stops a config's build stops its answer too: it would describe a project that can't be built.
+		const { set } = BuildSet.partition(selection);
+		const errors = uniqueDiagnostics(
 			selection.entries.flatMap((entry) =>
-				entry.status === "valid" ? [entry.config] : []
+				entry.status === "broken"
+					? entry.errors
+					: set.blocking(entry.config.file)
 			)
 		);
-		// What stops a build stops the answer too: it would describe a project that can't be built.
-		if (set.diagnostics.length > 0)
-			return err(new DiagnosticsError([...errors, ...set.diagnostics]));
-		const { configs } = set;
 
-		const listing = await this.indexService.list(
-			configs.flatMap(({ rootDirs }) => rootDirs)
-		);
+		const listing = await this.indexService.list(set.rootDirs);
 		const located = await new Locator(
 			this.fileSystemService,
 			listing,
 			this.syncTools
-		).locate(configs, targets);
+		).locate(set.buildable, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
@@ -145,37 +129,90 @@ export class CoreBuildService implements BuildService {
 		return ok({ ...located.value, errors });
 	}
 
-	/** Builds every config from `listing`, then writes them in order unless one failed, `unloaded` names a config that didn't load, or `write` is off. */
-	private async run(
+	async diagnose(
+		selection: ConfigSelection,
+		targets?: LocateTargets
+	): Promise<Result<Diagnosed, DiagnosticsError>> {
+		if (!targets || targets.args.length === 0) {
+			const { diagnostics } = await this.check(selection);
+			return ok({
+				diagnostics: diagnosticsPerFile(diagnostics),
+				stoppedBy: [],
+			});
+		}
+		const located = await this.locate(selection, targets);
+		return located.map(({ errors, configs }) => {
+			const files = configs.flatMap((config) =>
+				config.files.map((file) => ({ file, config }))
+			);
+			return {
+				diagnostics: [
+					...errors,
+					...files.flatMap(({ file, config }) =>
+						diagnosticsReaching(config.diagnostics, file.source)
+					),
+				],
+				stoppedBy: files.flatMap(({ file }) =>
+					file.status === "blocked" && !file.own ? [file.by] : []
+				),
+			};
+		});
+	}
+
+	/** Builds each config from `listing` in memory, in order; one `set` blocks fails without building. */
+	private async attempt(
+		set: BuildSet,
 		configs: readonly {
 			readonly config: ResolvedConfig;
 			readonly syncWarnings: readonly Diagnostic[] | undefined;
 		}[],
-		listing: IndexReader,
-		unloaded: readonly string[] = [],
-		write = true
-	): Promise<LoadedBuild[]> {
-		const builder = this.builderOf(listing);
-		const attempts: (BuiltConfig | FailedBuild)[] = [];
+		listing: IndexReader
+	): Promise<Attempt[]> {
+		const builder = new ConfigBuilder(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		);
+		const attempts: Attempt[] = [];
 		for (const { config, syncWarnings } of configs) {
+			const blocked = set.blocking(config.file);
+			if (blocked.length > 0) {
+				attempts.push(
+					FailedBuild.before(config, blocked, syncWarnings)
+				);
+				continue;
+			}
 			const result = await builder.build(config, syncWarnings);
 			attempts.push(
 				result.isOk()
 					? result.value
-					: new FailedBuild(config, result.error.diagnostics, {
-							warnings: [],
-							syncWarnings,
-						})
+					: FailedBuild.before(
+							config,
+							result.error.diagnostics,
+							syncWarnings
+						)
 			);
 		}
+		return attempts;
+	}
+
+	/** Writes the built configs in order unless one failed, `unloaded` names a config that didn't load, or `write` is off. */
+	private async settle(
+		attempts: readonly Attempt[],
+		unloaded: readonly string[],
+		write: boolean
+	): Promise<LoadedBuild[]> {
+		const built = attempts.filter(
+			(attempt): attempt is BuiltConfig =>
+				!(attempt instanceof FailedBuild)
+		);
 		const failed = [
 			...unloaded,
 			...attempts.flatMap((attempt) =>
 				attempt instanceof FailedBuild ? [attempt.config.label] : []
 			),
 		];
-		if (failed.length === 0 && write)
-			return this.writeInOrder(attempts as BuiltConfig[]);
+		if (failed.length === 0 && write) return this.writeInOrder(built);
 		return attempts.map((attempt) =>
 			attempt instanceof FailedBuild
 				? attempt
@@ -230,9 +267,5 @@ export class CoreBuildService implements BuildService {
 			readFiles,
 			blockedBy
 		);
-	}
-
-	private builderOf(index: IndexReader): ConfigBuilder {
-		return new ConfigBuilder(this.fileSystemService, index, this.syncTools);
 	}
 }

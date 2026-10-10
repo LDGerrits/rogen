@@ -1,13 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
+import { compareStrings } from "../../base/collections.js";
 import { ErrorUtils } from "../../base/errors.js";
 import {
 	FileType,
 	FileSystemService,
 	fileSystemError,
+	renameRefusal,
 } from "./file-system-service.js";
 
-const UNRESOLVED_CODES = ["ENOENT", "ENOTDIR", "ELOOP"];
+const UNRESOLVED_CODES = [
+	"ENOENT",
+	"ENOTDIR",
+	"ELOOP",
+	"EACCES",
+	"EPERM",
+	"ENAMETOOLONG",
+	"EINVAL",
+];
 
 /** Whether `target` is a link that nothing may descend into: one to nothing, or back to an ancestor, which would list the tree again forever. Synchronous, because a watcher's filter can't wait. */
 export function isUnfollowableLink(target: string): boolean {
@@ -71,6 +81,7 @@ export class DiskFileSystemService implements FileSystemService {
 		const dirents = await fs.promises.readdir(filePath, {
 			withFileTypes: true,
 		});
+		dirents.sort((a, b) => compareStrings(a.name, b.name));
 		return Promise.all(
 			dirents.map(async (dirent): Promise<[string, FileType]> => {
 				if (dirent.isSymbolicLink()) {
@@ -146,19 +157,15 @@ export class DiskFileSystemService implements FileSystemService {
 				if (ErrorUtils.hasCode(error, "ENOENT")) return undefined;
 				throw error;
 			});
-		if (existing && !overwrite) {
-			throw fileSystemError(
-				"EEXIST",
-				`EEXIST: file already exists, rename '${source}' -> '${destination}'`
-			);
-		}
-		// Refused outright: the system would move a directory onto an empty one, but not onto a full one.
-		if (existing?.isDirectory()) {
-			throw fileSystemError(
-				"EISDIR",
-				`EISDIR: illegal operation on a directory, rename '${source}' -> '${destination}'`
-			);
-		}
+		const refusal = renameRefusal(
+			existing?.isDirectory()
+				? FileType.Directory
+				: existing && FileType.File,
+			overwrite,
+			source,
+			destination
+		);
+		if (refusal) throw refusal;
 		await this.createDirectory(path.dirname(destination));
 		await fs.promises.rename(source, destination);
 	}

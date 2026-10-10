@@ -1,19 +1,23 @@
-import { UsageError } from "../../base/errors.js";
+import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { Result, err } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import { CommandLine, HELP_COMMAND } from "../environment/args.js";
 import { ServicesAccessor } from "../instantiation/instantiation.js";
 import { LogService } from "../log/log-service.js";
-import { Registry } from "../registry/registry.js";
-import { CommandRegistry, CommandService, Extensions } from "./commands.js";
+import { Command, CommandRegistry, CommandService } from "./commands.js";
 
 export class CoreCommandService implements CommandService {
 	declare readonly _serviceBrand: undefined;
 
 	constructor(
 		private readonly accessor: ServicesAccessor,
-		private readonly logService: LogService
+		private readonly logService: LogService,
+		private readonly registry: CommandRegistry
 	) {}
+
+	getCommands(): ReadonlyMap<string, Command> {
+		return this.registry.getCommands();
+	}
 
 	async executeCommand(
 		commandId: string,
@@ -21,11 +25,12 @@ export class CoreCommandService implements CommandService {
 	): Promise<Result<void, Error>> {
 		this.logService.trace("CommandService#executeCommand", commandId);
 
-		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
-		const command = registry.getCommand(commandId);
+		const command = this.registry.getCommand(commandId);
 
 		if (!command)
-			return err(new UsageError(unknownCommand(commandId, registry)));
+			return err(
+				new UsageError(unknownCommand(commandId, this.registry))
+			);
 		if (line.passthrough?.length && !command.metadata.passthrough) {
 			return err(
 				new UsageError(
@@ -34,14 +39,18 @@ export class CoreCommandService implements CommandService {
 			);
 		}
 
-		return command.handler(this.accessor, line);
+		try {
+			return await command.handler(this.accessor, line);
+		} catch (error) {
+			if (ErrorUtils.isSystemError(error)) return err(error);
+			throw error;
+		}
 	}
 }
 
 /** What to say of `commandId`: the version flag, the command it's closest to, or what the command that offers to take the word would do with it. */
 function unknownCommand(commandId: string, registry: CommandRegistry): string {
 	const prefix = `Unknown command "${commandId}".`;
-	// `version` was a command once; the flag does its job now.
 	if (commandId === "version")
 		return `${prefix} Did you mean 'rogen --version'?`;
 	const commands = registry.getCommands();

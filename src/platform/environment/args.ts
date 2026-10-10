@@ -164,9 +164,17 @@ function findOptionProblem(
 		}
 		const missing =
 			token.value === undefined ||
+			token.value === "" ||
 			(!token.inlineValue && token.value.startsWith("-"));
 		if (option.type === "string" && missing) {
 			return `Option '${token.rawName}' needs a value.`;
+		}
+		if (
+			option.type === "string" &&
+			/^-[^-]/.test(token.rawName) &&
+			token.value?.startsWith("=")
+		) {
+			return `Option '${token.rawName}' takes its value after a space, not after '='.`;
 		}
 	}
 	return undefined;

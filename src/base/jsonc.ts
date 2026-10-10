@@ -63,6 +63,7 @@ export function parseJsonc(text: string): JsoncDocument {
 	const source =
 		text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text;
 	const errors: ParseError[] = [];
+	const positionAt = positionsIn(source);
 
 	let tree: Node | undefined;
 	let value: unknown;
@@ -71,7 +72,7 @@ export function parseJsonc(text: string): JsoncDocument {
 		tree = parseTree(source, errors, { allowTrailingComma: true });
 		if (tree) {
 			value = getNodeValue(tree);
-			root = toJsoncNode(tree, source);
+			root = toJsoncNode(tree, positionAt);
 		}
 	} catch (error) {
 		if (!(error instanceof RangeError)) throw error;
@@ -94,7 +95,7 @@ export function parseJsonc(text: string): JsoncDocument {
 		errors: withoutRepeats(
 			errors.map((error) => ({
 				message: describeSyntaxError(error.error),
-				...positionAt(source, error.offset),
+				...positionAt(error.offset),
 			}))
 		),
 	};
@@ -111,8 +112,8 @@ function withoutRepeats(errors: readonly JsoncError[]): JsoncError[] {
 	});
 }
 
-function toJsoncNode(node: Node, source: string): JsoncNode {
-	const position = positionAt(source, node.offset);
+function toJsoncNode(node: Node, positionAt: PositionAt): JsoncNode {
+	const position = positionAt(node.offset);
 	switch (node.type) {
 		case "object":
 			return {
@@ -123,8 +124,8 @@ function toJsoncNode(node: Node, source: string): JsoncNode {
 					if (!key || !value) return [];
 					return {
 						name: String(key.value),
-						...positionAt(source, key.offset),
-						value: toJsoncNode(value, source),
+						...positionAt(key.offset),
+						value: toJsoncNode(value, positionAt),
 					};
 				}),
 			};
@@ -133,7 +134,7 @@ function toJsoncNode(node: Node, source: string): JsoncNode {
 				...position,
 				kind: "array",
 				items: (node.children ?? []).map((item) =>
-					toJsoncNode(item, source)
+					toJsoncNode(item, positionAt)
 				),
 			};
 		case "string":
@@ -150,9 +151,23 @@ function describeSyntaxError(code: ParseErrorCode): string {
 	return SYNTAX_MESSAGES[printParseErrorCode(code)] ?? "syntax error";
 }
 
-function positionAt(text: string, offset: number): JsoncPosition {
-	const lines = text.slice(0, offset).split("\n");
-	return { line: lines.length, column: lines[lines.length - 1].length + 1 };
+type PositionAt = (offset: number) => JsoncPosition;
+
+/** Finds the line of an offset by binary search over the line starts, which are listed once. */
+function positionsIn(text: string): PositionAt {
+	const lineStarts = [0];
+	for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1))
+		lineStarts.push(i + 1);
+	return (offset) => {
+		let low = 0;
+		let high = lineStarts.length - 1;
+		while (low < high) {
+			const middle = (low + high + 1) >> 1;
+			if (lineStarts[middle] <= offset) low = middle;
+			else high = middle - 1;
+		}
+		return { line: low + 1, column: offset - lineStarts[low] + 1 };
+	};
 }
 
 export function parse(text: string): Result<unknown, Error> {

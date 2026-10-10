@@ -217,8 +217,8 @@ describe("build command", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(diagnostic.mock.calls).toMatchObject([
-			[{ message: expect.stringContaining("doesn't exist yet") }],
-			[{ code: "meta.wrongType" }],
+			[{ message: expect.stringContaining("doesn't exist yet") }, false],
+			[{ code: "meta.wrongType" }, false],
 		]);
 	});
 

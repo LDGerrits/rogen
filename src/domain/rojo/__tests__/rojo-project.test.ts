@@ -4,10 +4,26 @@ import {
 	RojoProject,
 	InstanceMap,
 	RojoTree,
+	projectFileName,
+	stemOfProjectFile,
 } from "../rojo-project.js";
 
 const folders: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
+
+describe("project file names", () => {
+	it("should name the project file of a stem", () => {
+		expect(projectFileName("lobby")).toBe("lobby.project.json");
+	});
+
+	it("should take the stem back out of a project file's name", () => {
+		expect(stemOfProjectFile("lobby.project.json")).toBe("lobby");
+	});
+
+	it("should not read a stem out of a file that isn't a project file", () => {
+		expect(stemOfProjectFile("lobby.json")).toBeUndefined();
+	});
+});
 
 describe("RojoProject", () => {
 	let baseTree: RojoTree;
@@ -574,5 +590,23 @@ describe("InstanceMap", () => {
 			[["B"], 2],
 		]);
 		expect([...map.values()]).toEqual([3, 2]);
+	});
+
+	describe("a node named like a prototype", () => {
+		it("should be inserted, found and written like any other", () => {
+			const project = new RojoProject(
+				{ name: "t", tree: { $className: "DataModel" } },
+				folders
+			);
+
+			project.insertNode(["ReplicatedStorage", "__proto__"], {
+				$path: "src/__proto__.luau",
+			});
+
+			expect(project.getNode(["ReplicatedStorage", "__proto__"])).toEqual(
+				{ $path: "src/__proto__.luau" }
+			);
+			expect(JSON.stringify(project.getTree())).toContain('"__proto__"');
+		});
 	});
 });

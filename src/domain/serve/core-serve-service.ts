@@ -6,11 +6,15 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
-import { ConfigOptionValues } from "../config/config.js";
-import { ConfigSelection, ConfigService } from "../config/config-service.js";
+
+import {
+	ConfigOptionValues,
+	ReloadableSelection,
+	ConfigService,
+} from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
-import { ServedConfigs } from "./serve.js";
+import { ServedConfigs, SyncServer } from "./serve.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
@@ -54,6 +58,8 @@ export class CoreServeService implements ServeService {
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
+		const server = CoreServeService.serverOf(request.server);
+		if (server.isErr()) return server;
 		const selected = await this.select(request.refs, request.options);
 		if (selected.isErr()) return selected;
 		const { selection, named } = selected.value;
@@ -64,8 +70,9 @@ export class CoreServeService implements ServeService {
 
 		const tool = await this.finder.find(
 			selection.home,
-			request.server,
-			served[0]?.file ?? selection.home
+			server.value,
+			served[0]?.file ?? selection.home,
+			request.signal
 		);
 		if (tool.isErr()) return tool;
 
@@ -114,6 +121,20 @@ export class CoreServeService implements ServeService {
 		);
 	}
 
+	private static serverOf(
+		id: string | undefined
+	): Result<SyncServer | undefined, UsageError> {
+		if (id === undefined) return ok(undefined);
+		const server = SyncServer.byId(id);
+		return server
+			? ok(server)
+			: err(
+					new UsageError(
+						`--tool takes ${SyncServer.ALL.map(({ id }) => id).join(" or ")}, not "${id}".`
+					)
+				);
+	}
+
 	/** Every config here is watched, so no project file goes stale, and `refs` pick what is served. A named config from elsewhere, or a broken one here, leaves the named configs watched on their own. */
 	private async select(
 		refs: readonly string[],
@@ -121,7 +142,7 @@ export class CoreServeService implements ServeService {
 	): Promise<
 		Result<
 			{
-				readonly selection: ConfigSelection;
+				readonly selection: ReloadableSelection;
 				readonly named?: ReadonlySet<string>;
 			},
 			Error
