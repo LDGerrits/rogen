@@ -81,6 +81,9 @@ npm run test:watch
 # Check for linting errors
 npm run lint
 
+# Type-check the end-to-end tests and the scripts, which `npm run build` leaves out
+npm run typecheck
+
 # Fix linting errors automatically
 npm run lint:fix
 ```
@@ -94,5 +97,7 @@ Test a rule where it lives, and assert it once:
 Script prompts by question, as in `new MockPromptService({ Language: "roblox-ts" })`, so that every question you don't name takes its default. A question with no default, a named answer no question takes, or a question asked twice fails the test. A new question then breaks only the tests about the order of the questions. Use a list of answers only when the order is what the test checks.
 
 While working, run `npm run test:changed`, the folder you touched (`npm run test:unit -- src/domain/init`) or `npm run test:unit` (about 5 seconds). To include what you already committed, run `npm run test:unit -- --changedSince=origin/main`. None of these run the end-to-end cases, which only the bundle can affect: `npm run test:e2e` builds the bundle and runs it against Rojo. Run `npm test`, which runs both, before you open a pull request.
+
+Some source files are generated: the help texts from `help/*.md`, the agent rules and hook from the skill, the service list and the config schema. When a test says one is out of date, run the matching script (`npm run generate:help`, `generate:agent-block`, `generate:agent-hook`, `generate:services` or `generate:schema`) and commit the result.
 
 When you change output on purpose, `npm run test:e2e:update` regenerates the end-to-end transcripts and sums up what changed, as the edited words and the number of transcripts each is in. Check that list instead of every diff; a line that only one or two transcripts have is the one to read.

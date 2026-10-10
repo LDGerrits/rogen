@@ -46,6 +46,7 @@
 		"test:e2e": "node --experimental-vm-modules --disable-warning=ExperimentalWarning node_modules/jest/bin/jest.js --config jest.e2e.config.js",
 		"test:e2e:update": "node scripts/summarize-transcripts.ts --update",
 		"test:e2e:diff": "node scripts/summarize-transcripts.ts",
+		"typecheck": "tsc -p e2e && tsc -p scripts",
 		"lint": "eslint .",
 		"generate:schema": "tsx scripts/generate-schema.ts",
 		"generate:services": "tsx scripts/generate-services.ts",
