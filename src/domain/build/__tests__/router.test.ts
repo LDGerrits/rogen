@@ -1300,6 +1300,32 @@ describe("Router", () => {
 				);
 			});
 
+			it("should leave a clash in a folder above it, or an @ an outer route ignores, to that error", async () => {
+				await write(
+					"src/A/Service.luau",
+					"src/A/mock/@server",
+					"src/A/mock/@client",
+					"src/A/mock/dev/Service.luau",
+					"src/server/Save@client.luau",
+					"src/server/Save.mock.luau"
+				);
+
+				const result = await route({
+					variants: { mock: true, dev: true },
+				});
+
+				expect(
+					result.isErr() &&
+						result.error.diagnostics.map(({ code, resource }) => [
+							code,
+							resource,
+						])
+				).toEqual([
+					["route.markerClash", abs("src/A/mock")],
+					["route.ignoredAt", abs("src/server/Save@client.luau")],
+				]);
+			});
+
 			it("should accept a variant beside plain files when it lands with one of them, or with nothing beside it", async () => {
 				await write(
 					"src/Types.luau",
@@ -1309,7 +1335,11 @@ describe("Router", () => {
 					"src/A/server/X.mock.luau",
 					"src/C/Probe.mock@server.luau",
 					"src/Analytics.mock/Service.luau",
-					"src/Analytics/Service.luau"
+					"src/Analytics/Service.luau",
+					"src/D/(Internals)/Foo.mock.luau",
+					"src/D/Internals/Foo.luau",
+					"src/E/^Net/Http.mock.luau",
+					"src/E/Net/Http.luau"
 				);
 
 				expect(await elsewhere(true)).toEqual([]);

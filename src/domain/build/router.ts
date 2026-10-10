@@ -218,7 +218,7 @@ export class Router {
 		this.keys = config.keys;
 	}
 
-	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the directories whose markers disagree. */
+	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; the directories whose markers disagree; and the variant files that land apart from the plain file beside them. */
 	route(roots: readonly ScannedRoot[]): Routing {
 		const routing: Routing = {
 			routed: [],
@@ -247,37 +247,37 @@ export class Router {
 
 	/** A variant file is an alternative of the plain file beside it, so it has to land where one of those does. */
 	private landingElsewhere(routed: readonly RoutedFile[]): LandsElsewhere[] {
-		const besides = groupBy(routed, ({ entry }) => this.besideKeyOf(entry));
-		return routed.flatMap((file) => {
-			if (file.variants.length === 0) return [];
-			const plain = (
-				besides.get(this.besideKeyOf(file.entry)) ?? []
-			).filter((other) => other.variants.length === 0);
-			const lands = instanceKey(file.instancePath);
-			return plain.length > 0 &&
-				plain.every(
-					(other) => instanceKey(other.instancePath) !== lands
-				)
-				? [{ file, plain: plain[0] }]
-				: [];
-		});
+		const found: LandsElsewhere[] = [];
+		for (const beside of groupBy(routed, (file) =>
+			this.besideKeyOf(file)
+		).values()) {
+			const plain = beside.filter((file) => file.variants.length === 0);
+			const landings = new Set(
+				plain.map(({ instancePath }) => instanceKey(instancePath))
+			);
+			if (plain.length > 0)
+				for (const file of beside)
+					if (!landings.has(instanceKey(file.instancePath)))
+						found.push({ file, plain: plain[0] });
+		}
+		return found;
 	}
 
-	/** Where a file sits with its variants off: its directory without variant folders or the variants on its folders, and its instance name with every key off. */
-	private besideKeyOf(entry: ScannedFile): string {
-		const read = this.readings.entryAt(entry.source);
-		const dirs = read.folders.flatMap((folder) =>
-			folder.variants.length > 0 &&
-			folder.keptName === undefined &&
-			folder.route === undefined
-				? []
-				: [folder.outrankedName]
-		);
-		const { name } = this.leafName(
-			read.kind,
-			NameReader.withoutSpans(read.stem, read.match.spans)
-		);
-		return joinPosix(entry.rootDir, ...dirs, name);
+	/** Where a file sits with its variants off: its directory without variant folders or the variants on its folders, and its instance name, or none for an init script. */
+	private besideKeyOf({ entry, instancePath, init }: RoutedFile): string {
+		const dirs = this.readings
+			.entryAt(entry.source)
+			.folders.flatMap((folder) =>
+				folder.variants.length > 0 &&
+				folder.keptName === undefined &&
+				folder.route === undefined
+					? []
+					: [
+							`${folder.invisible ? "()" : ""}${folder.hoisted ? "^" : ""}${folder.outrankedName}`,
+						]
+			);
+		const name = init ? "" : instancePath[instancePath.length - 1];
+		return `${joinPosix(entry.rootDir, ...dirs)}\n${name}`;
 	}
 
 	/** Adds `entry` to `routing` as what it turns out to be: hoisted, an init script without a folder, or a routed or unrouted file. */

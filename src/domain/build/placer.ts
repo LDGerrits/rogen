@@ -64,19 +64,15 @@ export class Placer {
 		} = new Router(this.config, readings, this.layout.initNames).route(
 			roots
 		);
-		const clashErrors = this.markerClashErrors(markerClashes);
-		const initErrors = [
-			...this.withoutFolderErrors(withoutFolder),
-			...this.hoistedInitErrors(hoistedInits),
-			...this.landsElsewhereErrors(landsElsewhere, markerClashes),
-		];
 		const routeErrors = [
-			...clashErrors,
+			...this.markerClashErrors(markerClashes),
 			...this.ignoredAtErrors(
 				routed.filter((file) => !this.template.displacing(file)),
 				markerClashes
 			),
-			...initErrors,
+			...this.withoutFolderErrors(withoutFolder),
+			...this.hoistedInitErrors(hoistedInits),
+			...this.landsElsewhereErrors(landsElsewhere, markerClashes),
 		];
 		const routedNodes = this.initScripts.withCopies(routed, toCopy);
 		const applied = this.variants.apply(routedNodes);
@@ -209,19 +205,19 @@ export class Placer {
 		});
 	}
 
-	/** A variant that lands apart from the plain file beside it replaces nothing, so both would ship. A clash or an ignored `@` is that error's. */
+	/** A variant that lands apart from the plain file beside it replaces nothing, so both would ship. A clash in a folder above it is that error's. */
 	private landsElsewhereErrors(
 		landsElsewhere: readonly LandsElsewhere[],
 		markerClashes: readonly MarkerClash[]
 	): Diagnostic[] {
-		const clashing = new Set(markerClashes.map(({ dir }) => dir));
 		return landsElsewhere
-			.filter(
-				({ file, plain }) =>
-					!clashing.has(path.posix.dirname(file.entry.source)) &&
-					file.ignoredAts.length === 0 &&
-					plain.ignoredAts.length === 0
-			)
+			.filter(({ file }) => {
+				const dir = path.posix.dirname(file.entry.source);
+				return !markerClashes.some(
+					(clash) =>
+						dir === clash.dir || dir.startsWith(`${clash.dir}/`)
+				);
+			})
 			.map(({ file, plain }) =>
 				errorDiagnostic(
 					"variant.landsElsewhere",

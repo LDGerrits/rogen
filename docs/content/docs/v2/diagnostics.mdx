@@ -397,7 +397,7 @@ Error. Two marker files in one folder name different routes, such as `@server` b
 src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)
 ```
 
-Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. Where a file lands never depends on which variants are on, so init scripts of two variants, even ones that are never on together, can't send their folder to two places. Route the folder once, and put the files that only one variant sends elsewhere in a variant folder with its own marker, such as `Combat/dev/@server`. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
