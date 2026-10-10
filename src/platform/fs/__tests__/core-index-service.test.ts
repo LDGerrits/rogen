@@ -251,6 +251,20 @@ describe("CoreIndexService", () => {
 			listing = await indexService.list(["src"]);
 		});
 
+		it("should drop a listed root dir that is deleted, although no parent lists it", async () => {
+			await memoryFs.delete("src", true);
+
+			listing = await indexService.update(listing, [
+				{
+					type: FileChangeType.DELETED,
+					path: "src",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(listing.getEntries("src")).toBeUndefined();
+		});
+
 		it("should record an added link to its own parent as only a link, as a rescan does", async () => {
 			await memoryFs.createSymbolicLink("src", "src/Loop");
 

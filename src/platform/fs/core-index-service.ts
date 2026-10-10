@@ -162,7 +162,11 @@ function deleteEntry(
 	name: string
 ): void {
 	const type = draft.get(posixDir)?.get(name);
-	if (type === undefined) return;
+	// A root dir has no listed parent, but is listed itself.
+	if (type === undefined) {
+		draft.remove(joinPosix(posixDir, name));
+		return;
+	}
 	draft.edit(posixDir).delete(name);
 	if (isDirectoryType(type)) draft.remove(joinPosix(posixDir, name));
 }
