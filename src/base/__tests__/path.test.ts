@@ -144,6 +144,11 @@ describe("normalizeDir", () => {
 			expect(contains(abs("src"), abs("src/shared"))).toBe(true);
 		});
 
+		it("should take the same folder written another way as the same", () => {
+			expect(contains(abs("src"), `${abs("src")}${path.sep}`)).toBe(true);
+			expect(contains(`${abs("src")}${path.sep}`, abs("src"))).toBe(true);
+		});
+
 		it("should reject a sibling and a parent", () => {
 			expect(contains(abs("src"), abs("src-extra"))).toBe(false);
 			expect(contains(abs("src/shared"), abs("src"))).toBe(false);

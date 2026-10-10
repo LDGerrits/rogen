@@ -71,9 +71,9 @@ export function* ancestors(filePath: string): Generator<string> {
 	}
 }
 
-/** Whether `child` is `parent` or lies inside it; both must be absolute. */
+/** Whether `child` is `parent` or lies inside it; both must be absolute, and may be written with either kind of separator. */
 export function contains(parent: string, child: string): boolean {
-	return child === parent || isInside(child, parent);
+	return samePath(child, parent) || isInside(child, parent);
 }
 
 /** Whether the POSIX path `child` is `parent` or lies under it, compared as text. */
