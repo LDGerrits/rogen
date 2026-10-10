@@ -55,3 +55,34 @@ export function isIgnored(
 		return containsPosix(toPosix(entry), posixTarget);
 	});
 }
+
+/** What a watch of `paths` with `options` looks at, decided the same way by every watcher. */
+export class WatchFilter {
+	private readonly paths: readonly string[];
+	private readonly shallow: readonly string[];
+	private readonly ignored: readonly IgnoredPath[];
+
+	constructor(paths: readonly string[], options: WatchOptions) {
+		this.paths = paths.map(toPosix);
+		this.shallow = (options.shallow ?? []).map(toPosix);
+		this.ignored = options.ignored ?? [];
+	}
+
+	/** Whether the watch leaves `target` out, however far a walk has got: it is ignored, or lies beyond a shallow directory. */
+	skips(target: string): boolean {
+		return (
+			isIgnored(target, this.ignored) ||
+			isBeyondShallow(target, this.paths, this.shallow)
+		);
+	}
+
+	/** Whether a change at `target` is reported: it lies in what is watched and the watch doesn't skip it. */
+	reports(target: string): boolean {
+		const posixTarget = toPosix(target);
+		return (
+			[...this.paths, ...this.shallow].some((watched) =>
+				containsPosix(watched, posixTarget)
+			) && !this.skips(posixTarget)
+		);
+	}
+}
