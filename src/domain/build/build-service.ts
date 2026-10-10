@@ -53,9 +53,15 @@ export interface UnplacedLocation extends Located {
 	readonly folder?: true;
 }
 
+/** The path can't be placed because the build of its config stops on an error; `by` is the first of them. */
+export interface BlockedLocation extends Located {
+	readonly status: "blocked";
+	readonly by: Diagnostic;
+}
+
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
-	PlacedLocation | (LeftOut & Located) | UnplacedLocation;
+	PlacedLocation | (LeftOut & Located) | UnplacedLocation | BlockedLocation;
 
 /** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
 export function requireOf(location: FileLocation): string | undefined {
@@ -121,6 +127,13 @@ export interface LocateTargets {
 	readonly cwd: string;
 }
 
+/** What `diagnose` found. */
+export interface Diagnosed {
+	readonly diagnostics: readonly Diagnostic[];
+	/** The errors that stopped a config's build short of the paths asked about, which are not about those paths: what was checked is only as far as the build gets. */
+	readonly stoppedBy: readonly Diagnostic[];
+}
+
 /** Builds configs from the index and writes them; `build`, `rebuild` and `locate` place files the same way. */
 export interface BuildService {
 	readonly _serviceBrand: undefined;
@@ -138,11 +151,11 @@ export interface BuildService {
 		previous?: LoadedBuild
 	): Promise<LoadedBuild>;
 
-	/** What a build raises about each of `targets.args`, narrowed to that path, and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` and `check` do. */
+	/** What a build raises about each of `targets.args` (see `diagnosticsReaching`), and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` and `check` do. */
 	diagnose(
 		selection: ConfigSelection,
 		targets?: LocateTargets
-	): Promise<Result<Diagnostic[], DiagnosticsError>>;
+	): Promise<Result<Diagnosed, DiagnosticsError>>;
 
 	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load answers nothing, and its errors come back beside the answers of the rest. Fails when the configs that load can't be built together, as `build` does. */
 	locate(

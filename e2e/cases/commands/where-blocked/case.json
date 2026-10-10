@@ -1,0 +1,1 @@
+{ "steps": [["where", "src/F/Shared/Good.luau", "src/F/Shared/Bad@server.luau"], ["where", "src/F/Shared/Good.luau", "--json"]], "rojo": false }

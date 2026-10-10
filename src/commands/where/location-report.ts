@@ -16,6 +16,7 @@ import {
 	DiagnosticJson,
 	diagnosticSummary,
 	diagnosticsAbout,
+	diagnosticsReaching,
 	diagnosticToJson,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic.js";
@@ -120,6 +121,11 @@ function outcomeOf(
 			return "skipped · the link loops or points at nothing";
 		case "extensionCase":
 			return "not an instance · its extension is not in lowercase";
+		case "blocked":
+			return diagnosticsReaching([location.by], location.source).length >
+				0
+				? `not placed · it has an error (${location.by.code})`
+				: `not placed · the build stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
 		case "outside":
 			return "outside the root dirs";
 		case "ignored":
@@ -160,6 +166,13 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 			return { by: toNative(location.by) };
 		case "extensionCase":
 			return { rename: location.rename };
+		case "blocked":
+			return {
+				blockedBy: {
+					file: toNative(location.by.resource),
+					code: location.by.code,
+				},
+			};
 		case "displaced":
 		case "mounted":
 			return { node: location.node };
@@ -222,7 +235,10 @@ export class LocationReport {
 			label,
 			location,
 			mode,
-			diagnostics: diagnosticsAbout(diagnostics, location.source),
+			diagnostics:
+				location.status === "placed" && location.named
+					? diagnosticsReaching(diagnostics, location.source)
+					: diagnosticsAbout(diagnostics, location.source),
 		});
 		return [
 			...locations.map(answer),

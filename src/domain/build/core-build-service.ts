@@ -1,8 +1,8 @@
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsAbout,
 	diagnosticsPerFile,
+	diagnosticsReaching,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -20,7 +20,12 @@ import {
 	UnwrittenBuild,
 	WrittenBuild,
 } from "./build.js";
-import { BuildService, LocateTargets, Locations } from "./build-service.js";
+import {
+	BuildService,
+	Diagnosed,
+	LocateTargets,
+	Locations,
+} from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { Locator } from "./locator.js";
 import { OutputWriter } from "./output-writer.js";
@@ -133,22 +138,34 @@ export class CoreBuildService implements BuildService {
 	async diagnose(
 		selection: ConfigSelection,
 		targets?: LocateTargets
-	): Promise<Result<Diagnostic[], DiagnosticsError>> {
+	): Promise<Result<Diagnosed, DiagnosticsError>> {
 		if (!targets || targets.args.length === 0) {
 			const run = await this.check(selection);
-			return run.map(({ diagnostics }) =>
-				diagnosticsPerFile(diagnostics)
-			);
+			return run.map(({ diagnostics }) => ({
+				diagnostics: diagnosticsPerFile(diagnostics),
+				stoppedBy: [],
+			}));
 		}
 		const located = await this.locate(selection, targets);
-		return located.map(({ errors, configs }) => [
-			...errors,
-			...configs.flatMap(({ files, diagnostics }) =>
-				files.flatMap(({ source }) =>
-					diagnosticsAbout(diagnostics, source)
-				)
-			),
-		]);
+		return located.map(({ errors, configs }) => {
+			const files = configs.flatMap((config) =>
+				config.files.map((file) => ({ file, config }))
+			);
+			return {
+				diagnostics: [
+					...errors,
+					...files.flatMap(({ file, config }) =>
+						diagnosticsReaching(config.diagnostics, file.source)
+					),
+				],
+				stoppedBy: files.flatMap(({ file }) =>
+					file.status === "blocked" &&
+					diagnosticsReaching([file.by], file.source).length === 0
+						? [file.by]
+						: []
+				),
+			};
+		});
 	}
 
 	/** Builds each config from `listing` in memory, in order. */

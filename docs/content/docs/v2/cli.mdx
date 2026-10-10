@@ -102,7 +102,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
-A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), or `outside the root dirs`.
+A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0.
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
@@ -116,7 +116,7 @@ src/Hud/Client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Hud/Hud · route C
   no require by this path: StarterPlayerScripts is cloned into each player
 ```
 
-Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
+Under a path's line, `where` prints each warning or error a build would raise about it, with its code, so you see a stray `@` or a script that never runs before you build. Warnings about the sync dir are left out, since they are about your compiler's output and not a path. For a file you name, that includes the diagnostics about a folder it lies in, such as a misspelt route folder; a directory's listing leaves them to `check`. A path that doesn't exist yet gets the warnings it would get once created, and exit stays 0: `where` answers a question, it doesn't judge the project.
 
 ```
 $ rogen where src/Inventory/Save@sever.luau
@@ -167,7 +167,9 @@ $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
 src/Inventory/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
 ```
 
-Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. Whatever paths you give, what stops `build` fails the check: a config that doesn't load, one without routes, or two that write the same file.
+Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic that several configs share prints once, and one about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the sync dir's warnings are left out, as in `where`. A diagnostic is about a path when it names the path, something inside it, or a folder the path lies in: a misspelt folder (`route.folderTypo`) is reported for every file in it and for the folder above it. Whatever paths you give, three things fail the check, because they stop `build` before any file is placed: a config that doesn't load, one without routes, or two that write the same file.
+
+An error that stops the build because of another file does not fail the check of a path it isn't about. The check passes, and says how far it got: `Checked as far as the build gets: it stops on src/F/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.` On stderr, so a hook stays green for the files it was given; with `--json` the document gains `"stoppedBy"`, the same diagnostics as `"diagnostics"` has.
 
 With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing root dir, an empty sync dir) names the config or folder it is about.
 

@@ -583,6 +583,110 @@ describe("CoreBuildService", () => {
 		});
 	});
 
+	describe("a file whose neighbour stops the build", () => {
+		const routes = {
+			shared: "ReplicatedStorage/Shared",
+			server: "ServerScriptService",
+			"*": "ReplicatedStorage/Shared",
+		};
+		const ignoredAt = "src/F/Shared/Bad@server.luau";
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("src/F/Shared/Good.luau"), "");
+			await fs.writeFile(abs(ignoredAt), "");
+		});
+
+		it("should tell the path it can't place that the build stops on the neighbour", async () => {
+			const result = (
+				await locateIn(buildServiceOfFs(), configOf({ routes }), {
+					args: ["src/F/Shared/Good.luau"],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(result.files).toMatchObject([
+				{
+					source: toPosix(abs("src/F/Shared/Good.luau")),
+					exists: true,
+					status: "blocked",
+					by: {
+						code: "route.ignoredAt",
+						resource: toPosix(abs(ignoredAt)),
+					},
+				},
+			]);
+		});
+
+		it("should tell the path with the error that the error is its own", async () => {
+			const result = (
+				await locateIn(buildServiceOfFs(), configOf({ routes }), {
+					args: [ignoredAt],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(result.files[0]).toMatchObject({
+				status: "blocked",
+				by: { resource: toPosix(abs(ignoredAt)) },
+			});
+			expect(result.diagnostics).toMatchObject([
+				{ code: "route.ignoredAt" },
+			]);
+		});
+
+		it("should check a path as far as the build gets, and say what stops it", async () => {
+			const found = (
+				await buildServiceOfFs().diagnose(
+					selectionOf(configOf({ routes })),
+					{ args: ["src/F/Shared/Good.luau"], cwd: abs() }
+				)
+			).unwrap();
+
+			expect(found.diagnostics).toEqual([]);
+			expect(found.stoppedBy).toMatchObject([
+				{ code: "route.ignoredAt" },
+			]);
+		});
+
+		it("should report the error as the path's own, not as what stops the build", async () => {
+			const found = (
+				await buildServiceOfFs().diagnose(
+					selectionOf(configOf({ routes })),
+					{ args: [ignoredAt], cwd: abs() }
+				)
+			).unwrap();
+
+			expect(found.diagnostics).toMatchObject([
+				{ code: "route.ignoredAt" },
+			]);
+			expect(found.stoppedBy).toEqual([]);
+		});
+	});
+
+	describe("diagnose", () => {
+		it("should report a misspelt folder against a file in it, and against the folder above that", async () => {
+			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			const routes = {
+				server: "ServerScriptService",
+				"*": "ReplicatedStorage",
+			};
+			const diagnose = async (arg: string) =>
+				(
+					await buildServiceOfFs().diagnose(
+						selectionOf(configOf({ routes })),
+						{ args: [arg], cwd: abs() }
+					)
+				).unwrap().diagnostics;
+
+			expect(await diagnose("src/F/Sever/A.luau")).toMatchObject([
+				{ code: "route.folderTypo" },
+			]);
+			expect(await diagnose("src/F")).toMatchObject([
+				{ code: "route.folderTypo" },
+			]);
+		});
+	});
+
 	describe("build refusing a selection", () => {
 		const entryOf = (
 			spec: ResolvedConfigSpec = {},

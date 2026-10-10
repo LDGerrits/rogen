@@ -71,6 +71,63 @@ describe("where command", () => {
 		]);
 	});
 
+	describe("when an error elsewhere stops the build", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", {
+				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+			});
+			await write(
+				"src/F/Shared/Good.luau",
+				"src/F/Shared/Bad@server.luau"
+			);
+		});
+
+		it("should say what stops it, and still succeed", async () => {
+			const result = await run({ _: ["src/F/Shared/Good.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/F/Shared/Good.luau -> not placed · the build stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
+			]);
+		});
+
+		it("should call the error the file's own when it is", async () => {
+			await run({ _: ["src/F/Shared/Bad@server.luau"] });
+
+			expect(printed()[0]).toBe(
+				"src/F/Shared/Bad@server.luau -> not placed · it has an error (route.ignoredAt)"
+			);
+			expect(printed()[1]).toContain("route.ignoredAt");
+		});
+
+		it("should name the error in the JSON document", async () => {
+			await run({ _: ["src/F/Shared/Good.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n")).locations[0]).toMatchObject(
+				{
+					status: "blocked",
+					blockedBy: {
+						file: "/repo/src/F/Shared/Bad@server.luau",
+						code: "route.ignoredAt",
+					},
+				}
+			);
+		});
+	});
+
+	it("should show the misspelt folder a named file lies in, but not under a directory's files", async () => {
+		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await write("src/F/Sever/A.luau");
+
+		await run({ _: ["src/F/Sever/A.luau"] });
+		const named = printed();
+		logService.clear();
+		await run({ _: ["src/F"] });
+
+		expect(named.join("\n")).toContain("route.folderTypo");
+		expect(printed().join("\n")).not.toContain("route.folderTypo");
+	});
+
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
 		await writeConfig("default.rogen.json", {
 			rootDirs: ["."],

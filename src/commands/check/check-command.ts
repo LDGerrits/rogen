@@ -1,4 +1,6 @@
+import { relativeTo } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
 import {
@@ -10,8 +12,10 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
+	diagnosticToJson,
 	diagnosticsJson,
 	renderDiagnostic,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
@@ -68,18 +72,27 @@ registerCommand(
 			);
 			if (found.isErr()) return found;
 
-			const failure = DiagnosticsError.of(found.value);
+			const failure = DiagnosticsError.of(found.value.diagnostics);
+			const stoppedBy = uniqueDiagnostics(found.value.stoppedBy);
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					diagnosticsJson(failure?.diagnostics ?? []),
+					{
+						...diagnosticsJson(failure?.diagnostics ?? []),
+						...(stoppedBy.length > 0 && {
+							stoppedBy: stoppedBy.map(diagnosticToJson),
+						}),
+					},
 					failure
 				);
-			if (!failure) return ok(undefined);
 			// The findings are what was asked for, so they go to stdout and survive --quiet.
-			for (const diagnostic of failure.diagnostics)
+			for (const diagnostic of failure?.diagnostics ?? [])
 				logService.print(renderDiagnostic(diagnostic, cwd));
-			return this.reported(failure);
+			if (stoppedBy.length > 0)
+				logService.warn(
+					`Checked as far as the build gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
+				);
+			return failure ? this.reported(failure) : ok(undefined);
 		}
 	}
 );

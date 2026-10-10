@@ -4,6 +4,7 @@ import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
+	diagnosticsReaching,
 	isRenameFix,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -69,7 +70,16 @@ export class Locator {
 		let diagnostics: readonly Diagnostic[] = [];
 		if (paths.length > 0) {
 			const planned = await this.locatePaths(config, paths, folders);
-			if (planned.isErr()) return err(planned.error);
+			if (planned.isErr()) {
+				if (instances.length > 0) return err(planned.error);
+				const { diagnostics: stopped } = planned.error;
+				return ok({
+					config,
+					files: await this.blocked(paths, stopped),
+					instances: [],
+					diagnostics: stopped,
+				});
+			}
 			({ files, diagnostics } = planned.value);
 			if (instances.length === 0)
 				return ok({ config, files, instances: [], diagnostics });
@@ -98,6 +108,29 @@ export class Locator {
 			diagnostics:
 				paths.length > 0 ? diagnostics : existing.value.diagnostics,
 		});
+	}
+
+	/** The answer for `paths` when the build of the config stops on `errors`: none can be placed, and each is told the error that is about it, else the first. */
+	private async blocked(
+		paths: readonly string[],
+		errors: readonly Diagnostic[]
+	): Promise<FileLocation[]> {
+		return Promise.all(
+			paths.map(async (target): Promise<FileLocation> => {
+				const source = toPosix(target);
+				const [first] = errors;
+				return {
+					source,
+					exists: await this.fileSystemService.exists(target),
+					status: "blocked",
+					by:
+						errors.find(
+							(error) =>
+								diagnosticsReaching([error], source).length > 0
+						) ?? first,
+				};
+			})
+		);
 	}
 
 	/** Where `paths` land, placing the ones that don't exist yet as if they did. */

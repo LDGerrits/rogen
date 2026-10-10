@@ -1,5 +1,10 @@
 import path from "path";
-import { relativeTo, toNative, toPosix } from "../../base/path.js";
+import {
+	containsPosix,
+	relativeTo,
+	toNative,
+	toPosix,
+} from "../../base/path.js";
 import { DOCS_URL } from "../product/product-service.js";
 
 export enum DiagnosticSeverity {
@@ -304,6 +309,29 @@ export function diagnosticsAbout(
 		return !related?.length && toPosix(diagnostic.resource) === target
 			? [rest]
 			: [];
+	});
+}
+
+/** The diagnostics that concern `target`, a file or a folder: about it, about something inside it, or about a folder it lies in, since a misspelt folder is about every file in it. A grouped one is cut down to the entries that reach `target`. */
+export function diagnosticsReaching(
+	diagnostics: readonly Diagnostic[],
+	target: string
+): Diagnostic[] {
+	const posixTarget = toPosix(target);
+	const reaches = (resource: string) => {
+		const posix = toPosix(resource);
+		return (
+			containsPosix(posixTarget, posix) ||
+			containsPosix(posix, posixTarget)
+		);
+	};
+	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
+		const { related, ...rest } = diagnostic;
+		if (related?.length)
+			return related
+				.filter(({ resource }) => reaches(resource))
+				.map((entry) => narrowedTo(rest, entry));
+		return reaches(diagnostic.resource) ? [rest] : [];
 	});
 }
 
