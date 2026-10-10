@@ -2,6 +2,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 
 import {
+	ConfigArguments,
 	ConfigEntry,
 	ConfigSelection,
 	ConfigSelectionOptions,
@@ -40,15 +41,7 @@ registerCommand(
 				metadata: {
 					description:
 						"Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.",
-					args: [
-						{
-							name: "config",
-							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
-							isOptional: true,
-							isVariadic: true,
-						},
-					],
+					args: ConfigArguments,
 					options: ListOptions,
 					examples: ["rogen list", "rogen list --json"],
 				},

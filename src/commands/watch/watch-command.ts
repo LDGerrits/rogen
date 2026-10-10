@@ -3,6 +3,7 @@ import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 
 import {
+	ConfigArguments,
 	ConfigOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
@@ -25,15 +26,7 @@ registerCommand(
 				metadata: {
 					description:
 						"Builds, then rebuilds whenever sources or configs change.",
-					args: [
-						{
-							name: "config",
-							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
-							isOptional: true,
-							isVariadic: true,
-						},
-					],
+					args: ConfigArguments,
 					options: ConfigOptions,
 					examples: [
 						"rogen watch",

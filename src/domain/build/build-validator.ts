@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
-import { joinPosix, toPosix } from "../../base/path.js";
+import { isInside, joinPosix, toPosix } from "../../base/path.js";
 import {
 	capitalized,
 	joinedWithAnd,
@@ -107,11 +107,9 @@ export class BuildValidator {
 					key,
 					kind: this.config.keys.kindOf(key),
 					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
-					parent:
-						relativeParent !== "" &&
-						!relativeParent.startsWith("..")
-							? relativeParent
-							: undefined,
+					parent: isInside(parent, configDir)
+						? relativeParent
+						: undefined,
 				},
 			];
 		});

@@ -8,7 +8,6 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { ProcessService } from "../../platform/process/process-service.js";
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
-import { buildableConfig } from "../config/config-service.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import { ServedConfigs } from "./serve.js";
 import {
@@ -155,9 +154,7 @@ export class CoreServeSession
 	/** Starts a server for each config to serve now that has none, and stops those whose config is gone or extended. */
 	private async reconcile(): Promise<void> {
 		const served = new ServedConfigs(
-			this.plan.selection.entries.flatMap(
-				(entry) => buildableConfig(entry) ?? []
-			),
+			this.plan.selection.configs,
 			this.plan.named
 		);
 		const wanted = new Set(served.configs.map(({ file }) => file));

@@ -32,6 +32,17 @@ export const ModeOption = {
 	description: "Picks the mode every config that declares modes builds in.",
 } as const satisfies OptionDescriptor;
 
+/** The positional words that name the configs a command reads. */
+export const ConfigArguments = [
+	{
+		name: "config",
+		description:
+			"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
+		isOptional: true,
+		isVariadic: true,
+	},
+] as const;
+
 /** The flags that say which mode is active and which variants are on in the configs a command reads. */
 export const ConfigSelectionOptions = [
 	ModeOption,
@@ -50,9 +61,7 @@ export const OutFileOption = {
 /** The flags that override the configs a command builds. */
 export const ConfigOptions = [
 	OutFileOption,
-	ModeOption,
-	VariantOption,
-	NoVariantOption,
+	...ConfigSelectionOptions,
 ] as const satisfies readonly OptionDescriptor[];
 
 /** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
@@ -112,6 +121,8 @@ export interface ConfigReload {
 /** The configs one invocation picked. The caller owns it, and only `reload` changes it. */
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
+	/** The configs that build now: a broken entry's last valid version, or none. */
+	readonly configs: readonly ResolvedConfig[];
 	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with configs when it has none. */

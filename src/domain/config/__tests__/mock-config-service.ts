@@ -164,6 +164,10 @@ export class MockConfigSelection implements ConfigSelection {
 		this.files = new Set(entries.map(({ file }) => file));
 	}
 
+	get configs(): ResolvedConfig[] {
+		return this.entries.flatMap((entry) => buildableConfig(entry) ?? []);
+	}
+
 	reads(file: string): boolean {
 		return this.files.has(file);
 	}
@@ -178,7 +182,7 @@ export class MockConfigSelection implements ConfigSelection {
 		);
 		return errors.length > 0
 			? err(new DiagnosticsError(errors))
-			: ok(this.entries.flatMap((entry) => buildableConfig(entry) ?? []));
+			: ok([...this.configs]);
 	}
 
 	async reload(): Promise<ConfigReload> {

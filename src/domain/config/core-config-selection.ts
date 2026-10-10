@@ -102,11 +102,15 @@ export class CoreConfigSelection implements ConfigSelection {
 		);
 	}
 
+	get configs(): ResolvedConfig[] {
+		return this.entries.flatMap((entry) => buildableConfig(entry) ?? []);
+	}
+
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError> {
 		const errors = this.entries.flatMap(errorsOf);
 		return errors.length > 0
 			? err(new DiagnosticsError(errors))
-			: ok(this.entries.flatMap((entry) => buildableConfig(entry) ?? []));
+			: ok([...this.configs]);
 	}
 
 	reload(files: readonly string[]): Promise<ConfigReload> {

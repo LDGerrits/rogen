@@ -7,12 +7,7 @@ import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildSet } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
-import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigNotice,
-	ConfigSelection,
-	buildableConfig,
-} from "../config/config-service.js";
+import { ConfigNotice, ConfigSelection } from "../config/config-service.js";
 import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";
 import { WatchedConfig } from "./watched-config.js";
 import { WatchPlan } from "./watch-plan.js";
@@ -59,13 +54,7 @@ export class CoreWatchSession
 	) {
 		super();
 		this.batcher = this._register(new ChangeBatcher());
-		this.plan = new WatchPlan(this.currentConfigs);
-	}
-
-	private get currentConfigs(): ResolvedConfig[] {
-		return this.selection.entries.flatMap(
-			(entry) => buildableConfig(entry) ?? []
-		);
+		this.plan = new WatchPlan(this.selection.configs);
 	}
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
@@ -94,7 +83,7 @@ export class CoreWatchSession
 		await this.watchPlan();
 		this.announce(
 			{ kind: "initial" },
-			this.currentConfigs.map(({ file }) => this.queueRebuild(file))
+			this.selection.configs.map(({ file }) => this.queueRebuild(file))
 		);
 		this.started = true;
 	}
@@ -254,7 +243,7 @@ export class CoreWatchSession
 
 	/** Whether the plan changed enough to restart the watcher and reindex. */
 	private async refreshPlan(): Promise<boolean> {
-		this.plan = new WatchPlan(this.currentConfigs);
+		this.plan = new WatchPlan(this.selection.configs);
 		if (this.watchKey() === this.activeWatch) return false;
 		await this.watchPlan();
 		return true;
@@ -263,7 +252,7 @@ export class CoreWatchSession
 	/** Re-checks the configs as a set, and returns the config files whose block was lifted or put on. */
 	private refreshSet(): string[] {
 		const before = this.set.blockedFiles;
-		this.set = new BuildSet(this.currentConfigs);
+		this.set = new BuildSet(this.selection.configs);
 		const after = this.set.blockedFiles;
 		return [...new Set([...before, ...after])].filter(
 			(file) => before.has(file) !== after.has(file)
@@ -272,7 +261,7 @@ export class CoreWatchSession
 
 	/** Drops what the session knows of configs that left the selection. */
 	private forgetRemoved(): void {
-		const current = new Set(this.currentConfigs.map(({ file }) => file));
+		const current = new Set(this.selection.configs.map(({ file }) => file));
 		for (const file of this.watched.keys())
 			if (!current.has(file)) this.watched.delete(file);
 	}
@@ -334,7 +323,9 @@ export class CoreWatchSession
 		const affected = new Set([
 			...reloaded,
 			...reblocked,
-			...(reindexed ? this.currentConfigs.map(({ file }) => file) : []),
+			...(reindexed
+				? this.selection.configs.map(({ file }) => file)
+				: []),
 			...sourceChanges.flatMap((change) =>
 				this.plan.configsFor(change.path)
 			),
@@ -359,7 +350,7 @@ export class CoreWatchSession
 			this.listing = await this.indexService.list(this.plan.roots);
 		this.announce(
 			{ kind: "burst", ...burst },
-			this.currentConfigs.map(({ file }) => this.queueRebuild(file))
+			this.selection.configs.map(({ file }) => this.queueRebuild(file))
 		);
 	}
 }

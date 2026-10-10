@@ -1,5 +1,5 @@
 import path from "path";
-import { ancestors, toPosix } from "../../base/path.js";
+import { ancestors, stemOf, toPosix } from "../../base/path.js";
 import { listLimited } from "../../base/strings.js";
 import {
 	Diagnostic,
@@ -181,7 +181,7 @@ export class SyncDirCheck {
 				path.join(entry.rootDir, entry.relativePath)
 			);
 			if (await this.fileSystemService.exists(expected)) continue;
-			const base = expected.slice(0, -path.extname(expected).length);
+			const base = stemOf(expected);
 			const replacement = await this.replacementAt(base, replacements);
 			if (replacement)
 				converted.push({

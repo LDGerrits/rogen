@@ -2,6 +2,7 @@ import { Result, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
 import {
+	ConfigArguments,
 	ConfigOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
@@ -40,15 +41,7 @@ registerCommand(
 				metadata: {
 					description:
 						"Writes the project file of each config here, or of the named ones.",
-					args: [
-						{
-							name: "config",
-							description:
-								"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
-							isOptional: true,
-							isVariadic: true,
-						},
-					],
+					args: ConfigArguments,
 					options: BuildOptions,
 					unknownWordOffer: "To build a config",
 					examples: [
