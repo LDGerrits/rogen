@@ -1,13 +1,13 @@
 import { toNative } from "../../base/path.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import {
-	ServeChange,
+	ServeChangeEvent,
 	ServePlan,
-	RunningTarget,
+	ServedTarget,
 	ServeTarget,
-	ServerSaid,
-	ServerStop,
-	ServingServer,
+	ServerOutputEvent,
+	ServerExitEvent,
+	ServerReadyEvent,
 } from "../../domain/serve/serve-service.js";
 import { ServerInfo } from "../../domain/serve/serve.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
@@ -15,7 +15,11 @@ import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { buildEntry } from "../build/build-report.js";
 import { WatchLog } from "../watch/watch-log.js";
-import { diagnosticToJson, diagnosticsJson, failureToJson } from "../../platform/diagnostics/diagnostic-json.js";
+import {
+	diagnosticToJson,
+	diagnosticsJson,
+	failureToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 
 /** Who serves `info`'s project, as a person reads it: `Rojo 7.7.1`. */
 const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;
@@ -25,11 +29,11 @@ export interface ServeReporter {
 	/** Opens the output: the configs served, the server, and those a server already serves. */
 	begin(): void;
 	update(update: WatchUpdate): void;
-	serving(serving: ServingServer): void;
-	said(said: ServerSaid): void;
-	stopped(stop: ServerStop): void;
+	serving(serving: ServerReadyEvent): void;
+	said(said: ServerOutputEvent): void;
+	stopped(stop: ServerExitEvent): void;
 	/** How the servers followed the configs as they changed. */
-	changed(change: ServeChange): void;
+	changed(change: ServeChangeEvent): void;
 	/** Says each server running at the end was stopped because the run was asked to stop. */
 	shutdown(targets: readonly ServeTarget[]): void;
 	error(error: Error): void;
@@ -59,7 +63,7 @@ export class ServeLog implements ServeReporter {
 
 	begin(): void {
 		const { plan } = this;
-		const { tool, selection } = plan;
+		const { executable: tool, selection } = plan;
 		this.watchLog.begin(
 			plan.targets.map(({ config }) => config),
 			selection.home
@@ -69,46 +73,48 @@ export class ServeLog implements ServeReporter {
 				`Both ${tool.server.id} and ${tool.passedOver.id} are pinned; serving with ${tool.server.id} (--tool ${tool.passedOver.id} to switch).`
 			);
 		}
-		for (const target of plan.running) this.running(target);
+		for (const target of plan.alreadyServed) this.running(target);
 	}
 
 	update(update: WatchUpdate): void {
 		this.watchLog.update(update);
 	}
 
-	serving({ target, info }: ServingServer): void {
+	serving({ target, info }: ServerReadyEvent): void {
 		this.logService.success(
 			`Serving ${target.config.label} with ${serverOf(info)} at ${target.address}.`
 		);
 	}
 
 	/** What a server said, as Rogen's own line, with the paths under the working folder relative to it; what Rogen drops shows only with `--verbose`. */
-	said(said: ServerSaid): void {
+	said(said: ServerOutputEvent): void {
 		const { plan } = this;
 		const { message } = said;
 		if (message.severity === "debug") {
-			this.logService.debug(`${plan.tool.server.name}: ${message.text}`);
+			this.logService.debug(
+				`${plan.executable.server.name}: ${message.text}`
+			);
 			return;
 		}
-		const text = `${plan.tool.server.name}: ${messageRelativeTo(message.text, this.cwd)}`;
+		const text = `${plan.executable.server.name}: ${messageRelativeTo(message.text, this.cwd)}`;
 		if (message.severity === "error") this.logService.error(text);
 		else if (message.severity === "warning") this.logService.warn(text);
 		else this.logService.info(text);
 	}
 
-	stopped({ target, interrupted, failure }: ServerStop): void {
+	stopped({ target, interrupted, failure }: ServerExitEvent): void {
 		if (failure) this.logService.diagnostic(failure);
 		else if (!interrupted)
 			this.logService.info(
-				`${this.plan.tool.server.name} stopped serving ${target.config.label}.`
+				`${this.plan.executable.server.name} stopped serving ${target.config.label}.`
 			);
 	}
 
-	changed(change: ServeChange): void {
+	changed(change: ServeChangeEvent): void {
 		const { target } = change;
 		const { label } = target.config;
 		switch (change.kind) {
-			case "running":
+			case "servedElsewhere":
 				this.running(change.target);
 				return;
 			case "refused":
@@ -135,8 +141,8 @@ export class ServeLog implements ServeReporter {
 		this.watchLog.end(message);
 	}
 
-	private running(target: RunningTarget): void {
-		const { running: info } = target;
+	private running(target: ServedTarget): void {
+		const { servedBy: info } = target;
 		this.logService.info(
 			`${target.config.label} is already served: ${serverOf(info)} serves a project named ${info.project} at ${target.address}${info.session ? ` (session ${info.session})` : ""}.`
 		);
@@ -151,7 +157,7 @@ export class ServeJsonLog implements ServeReporter {
 	) {}
 
 	begin(): void {
-		for (const target of this.plan.running) this.running(target);
+		for (const target of this.plan.alreadyServed) this.running(target);
 	}
 
 	update(update: WatchUpdate): void {
@@ -160,33 +166,35 @@ export class ServeJsonLog implements ServeReporter {
 			this.line({ build: buildEntry(build) });
 	}
 
-	serving({ target, info }: ServingServer): void {
+	serving({ target, info }: ServerReadyEvent): void {
 		this.line({ serving: this.servingJson(target, info, false) });
 	}
 
-	said(said: ServerSaid): void {
+	said(said: ServerOutputEvent): void {
 		const { plan } = this;
 		const { target, message } = said;
 		if (message.severity === "debug") {
-			this.logService.debug(`${plan.tool.server.name}: ${message.text}`);
+			this.logService.debug(
+				`${plan.executable.server.name}: ${message.text}`
+			);
 			return;
 		}
 		this.line({
 			output: {
 				config: target.config.label,
-				tool: plan.tool.server.id,
+				tool: plan.executable.server.id,
 				severity: message.severity,
 				message: message.text,
 			},
 		});
 	}
 
-	stopped({ target, exit, failure }: ServerStop): void {
+	stopped({ target, exit, failure }: ServerExitEvent): void {
 		const { plan } = this;
 		this.line({
 			stopped: {
 				config: target.config.label,
-				tool: plan.tool.server.id,
+				tool: plan.executable.server.id,
 				reason: "exited",
 				code: exit.code,
 				signal: exit.signal,
@@ -195,12 +203,12 @@ export class ServeJsonLog implements ServeReporter {
 		if (failure) this.line(diagnosticsJson([failure]));
 	}
 
-	changed(change: ServeChange): void {
+	changed(change: ServeChangeEvent): void {
 		const { target } = change;
 		const { label } = target.config;
-		const tool = this.plan.tool.server.id;
+		const tool = this.plan.executable.server.id;
 		switch (change.kind) {
-			case "running":
+			case "servedElsewhere":
 				this.running(change.target);
 				return;
 			case "refused":
@@ -224,7 +232,7 @@ export class ServeJsonLog implements ServeReporter {
 			this.line({
 				stopped: {
 					config: config.label,
-					tool: this.plan.tool.server.id,
+					tool: this.plan.executable.server.id,
 					reason: "shutdown",
 				},
 			});
@@ -240,9 +248,9 @@ export class ServeJsonLog implements ServeReporter {
 
 	end(): void {}
 
-	private running(target: RunningTarget): void {
+	private running(target: ServedTarget): void {
 		this.line({
-			serving: this.servingJson(target, target.running, true),
+			serving: this.servingJson(target, target.servedBy, true),
 		});
 	}
 

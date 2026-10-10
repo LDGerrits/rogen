@@ -29,6 +29,22 @@ export interface ExecOptions {
 	readonly signal?: AbortSignal;
 }
 
+/** The exit codes of a program that Ctrl+C or a termination request ended: 128 plus the signal on POSIX, `STATUS_CONTROL_C_EXIT` on Windows. */
+const INTERRUPTED_CODES: ReadonlySet<number> = new Set([130, 143, 0xc000013a]);
+const INTERRUPTING_SIGNALS: ReadonlySet<string> = new Set([
+	"SIGINT",
+	"SIGTERM",
+]);
+
+/** Whether the process was ended the way Ctrl+C or a termination request ends one. */
+export const wasInterrupted = ({ code, signal }: ProcessExit): boolean =>
+	(signal !== null && INTERRUPTING_SIGNALS.has(signal)) ||
+	(code !== null && INTERRUPTED_CODES.has(code));
+
+/** An exit code as its platform shows it: Windows status codes, such as a crash's, in hex. */
+export const exitCodeText = (code: number): string =>
+	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
+
 /** A process this one started; disposing it ends it. */
 export interface ChildProcess extends Disposable {
 	/** Text it printed, on either stream, as it arrives. */

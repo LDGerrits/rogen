@@ -4,6 +4,7 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
+import { OptionDescriptor } from "../../platform/environment/args.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -18,6 +19,15 @@ import {
 	SyncServer,
 } from "./serve.js";
 
+/** The option that picks the sync server to serve with. */
+export const ServerOption = {
+	name: "tool",
+	type: "string",
+	placeholder: SyncServer.ALL.map(({ id }) => id).join("|"),
+	description:
+		"Serves with this sync server; without it, the one the project pins, Rojo before Argon.",
+} as const satisfies OptionDescriptor;
+
 export interface ServeRequest {
 	/** The configs to serve, by name or path; every config here that no other extends when none. */
 	readonly refs: readonly string[];
@@ -31,7 +41,7 @@ export interface ServeRequest {
 }
 
 /** The server a serve starts, as found and checked. */
-export interface ServeTool {
+export interface ServerExecutable {
 	readonly server: SyncServer;
 	/** The file that runs it. */
 	readonly file: string;
@@ -47,20 +57,20 @@ export interface ServeTarget {
 	readonly project: string;
 	readonly address: ServeAddress;
 	/** What already serves its project, when something does. */
-	readonly running?: ServerInfo;
+	readonly servedBy?: ServerInfo;
 }
 
 /** A target a server already serves. */
-export type RunningTarget = ServeTarget & { readonly running: ServerInfo };
+export type ServedTarget = ServeTarget & { readonly servedBy: ServerInfo };
 
-export const isRunning = (target: ServeTarget): target is RunningTarget =>
-	target.running !== undefined;
+export const isServed = (target: ServeTarget): target is ServedTarget =>
+	target.servedBy !== undefined;
 
 /** What a serve will do: the configs it builds, the server it runs, and each config it serves. */
 export class ServePlan {
 	constructor(
 		readonly selection: ReloadableSelection,
-		readonly tool: ServeTool,
+		readonly executable: ServerExecutable,
 		readonly targets: readonly ServeTarget[],
 		readonly serverArgs: readonly string[],
 		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
@@ -68,13 +78,13 @@ export class ServePlan {
 	) {}
 
 	/** The targets a server already serves. */
-	get running(): RunningTarget[] {
-		return this.targets.filter(isRunning);
+	get alreadyServed(): ServedTarget[] {
+		return this.targets.filter(isServed);
 	}
 
 	/** The targets this serve starts a server for. */
 	get toStart(): ServeTarget[] {
-		return this.targets.filter(({ running }) => running === undefined);
+		return this.targets.filter(({ servedBy }) => servedBy === undefined);
 	}
 
 	/** Whether every target is served already, so nothing is built or watched. */
@@ -84,19 +94,19 @@ export class ServePlan {
 }
 
 /** A server the session started, once it answers for its project. */
-export interface ServingServer {
+export interface ServerReadyEvent {
 	readonly target: ServeTarget;
 	readonly info: ServerInfo;
 }
 
 /** Something a server the session started said that is worth showing. */
-export interface ServerSaid {
+export interface ServerOutputEvent {
 	readonly target: ServeTarget;
 	readonly message: ServerMessage;
 }
 
 /** A server the session started that stopped before the session did. */
-export type ServerStop = {
+export type ServerExitEvent = {
 	readonly target: ServeTarget;
 	readonly exit: ProcessExit;
 	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
@@ -112,7 +122,7 @@ export type ServerStop = {
 );
 
 /** How the servers changed with the configs, after the session started them. A config that comes to be served starts its server as at the start, and says so through `onDidServe`. */
-export type ServeChange =
+export type ServeChangeEvent =
 	/** A server stopped on purpose: its config is gone, another config now extends it, or its template moved it to another address, where a new server starts. */
 	| {
 			readonly kind: "retired";
@@ -126,7 +136,7 @@ export type ServeChange =
 			readonly diagnostic: Diagnostic;
 	  }
 	/** A config to serve now is already served by a server the session didn't start. */
-	| { readonly kind: "running"; readonly target: RunningTarget };
+	| { readonly kind: "servedElsewhere"; readonly target: ServedTarget };
 
 /** A running serve: a watch of the plan's configs, and a server for each target nothing served. The caller owns it and disposes it. */
 export interface ServeSession extends Disposable {
@@ -134,13 +144,13 @@ export interface ServeSession extends Disposable {
 	/** A step failed unexpectedly; the serve goes on. */
 	readonly onDidError: Event<Error>;
 	/** Fired once for each server started, when it answers. */
-	readonly onDidServe: Event<ServingServer>;
+	readonly onDidServe: Event<ServerReadyEvent>;
 	/** Fired for each warning, error and unrecognised line a server prints; the rest of its output is dropped. */
-	readonly onDidSay: Event<ServerSaid>;
+	readonly onDidOutput: Event<ServerOutputEvent>;
 	/** Fired when the configs to serve change while it serves. */
-	readonly onDidChange: Event<ServeChange>;
+	readonly onDidChange: Event<ServeChangeEvent>;
 	/** Fired when a server stops before the session does, after what it said. */
-	readonly onDidStop: Event<ServerStop>;
+	readonly onDidStop: Event<ServerExitEvent>;
 
 	/** The targets it runs a server for now. */
 	readonly targets: readonly ServeTarget[];

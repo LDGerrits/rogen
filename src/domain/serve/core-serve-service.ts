@@ -14,7 +14,7 @@ import {
 } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
-import { ServedConfigs, SyncServer } from "./serve.js";
+import { SyncServer } from "./serve.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
@@ -26,6 +26,7 @@ import {
 import { ServerFinder } from "./server-finder.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
+import { ServedConfigs } from "./served-configs.js";
 
 export class CoreServeService implements ServeService {
 	declare readonly _serviceBrand: undefined;
@@ -77,13 +78,7 @@ export class CoreServeService implements ServeService {
 		if (tool.isErr()) return tool;
 
 		const port = tool.value.server.portIn(request.serverArgs);
-		if (Number.isNaN(port)) {
-			return err(
-				new UsageError(
-					"The --port after '--' takes a number from 1 to 65535."
-				)
-			);
-		}
+		if (port.isErr()) return port;
 		const targets: ServeTarget[] = [];
 		for (const config of served)
 			targets.push(
@@ -94,7 +89,7 @@ export class CoreServeService implements ServeService {
 				)
 			);
 
-		const clash = this.ports.clashOf(targets, port !== undefined);
+		const clash = this.ports.clashOf(targets, port.value !== undefined);
 		if (clash) return err(clash);
 
 		const checked: ServeTarget[] = [];

@@ -8,7 +8,8 @@ import {
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
-	ServerStop,
+	ServerExitEvent,
+	ServerOption,
 	ServeService,
 	ServeSession,
 } from "../../domain/serve/serve-service.js";
@@ -17,27 +18,15 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	CommandLine,
-	JsonOption,
-	OptionDescriptor,
-} from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
 
-const ToolOption = {
-	name: "tool",
-	type: "string",
-	placeholder: "rojo|argon",
-	description:
-		"Serves with this sync server; without it, the one the project pins, Rojo before Argon.",
-} as const satisfies OptionDescriptor;
-
 const ServeOptions = [
 	...ConfigOptions,
-	ToolOption,
+	ServerOption,
 	{
 		...JsonOption,
 		description:
@@ -135,11 +124,11 @@ registerCommand(
 			shutdown: DeferredPromise<void>
 		): Promise<Result<void, Error>> {
 			const store = new DisposableStore();
-			const stopped = new DeferredPromise<ServerStop>();
+			const stopped = new DeferredPromise<ServerExitEvent>();
 			store.add(session.onDidUpdate((update) => log.update(update)));
 			store.add(session.onDidError((error) => log.error(error)));
 			store.add(session.onDidServe((serving) => log.serving(serving)));
-			store.add(session.onDidSay((said) => log.said(said)));
+			store.add(session.onDidOutput((said) => log.said(said)));
 			store.add(session.onDidChange((change) => log.changed(change)));
 			store.add(
 				session.onDidStop((stop) => {

@@ -7,13 +7,15 @@ import {
 	ChildProcess,
 	ProcessExit,
 	ProcessService,
+	exitCodeText,
+	wasInterrupted,
 } from "../../platform/process/process-service.js";
 import {
 	ServePlan,
 	ServeTarget,
-	ServerSaid,
-	ServerStop,
-	ServingServer,
+	ServerOutputEvent,
+	ServerExitEvent,
+	ServerReadyEvent,
 } from "./serve-service.js";
 import { ServerOutput } from "./server-output.js";
 import { ServerProbe } from "./server-probe.js";
@@ -22,29 +24,14 @@ import { ServerRecords } from "./server-record.js";
 /** How often a started server is asked whether it serves yet, at first and at most. */
 const READY_POLL_MS = { first: 200, max: 1_000 };
 
-/** The exit codes of a program that Ctrl+C or a termination request ended: 128 plus the signal on POSIX, `STATUS_CONTROL_C_EXIT` on Windows. */
-const INTERRUPTED_CODES: ReadonlySet<number> = new Set([130, 143, 0xc000013a]);
-const INTERRUPTING_SIGNALS: ReadonlySet<string> = new Set([
-	"SIGINT",
-	"SIGTERM",
-]);
-
-const wasInterrupted = ({ code, signal }: ProcessExit) =>
-	(signal !== null && INTERRUPTING_SIGNALS.has(signal)) ||
-	(code !== null && INTERRUPTED_CODES.has(code));
-
-/** An exit code as its platform shows it: Windows status codes, such as a crash's, in hex. */
-const exitCodeText = (code: number) =>
-	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
-
 /** What happens to a started server, told to the session that started it. */
 export interface StartedServerListener {
 	/** It answers for its project. */
-	served(serving: ServingServer): void;
+	served(serving: ServerReadyEvent): void;
 	/** It printed something worth showing. */
-	said(said: ServerSaid): void;
+	said(said: ServerOutputEvent): void;
 	/** It stopped before it was told to. */
-	stopped(stop: ServerStop): void;
+	stopped(stop: ServerExitEvent): void;
 	/** A step of its own failed unexpectedly. */
 	failed(error: Error): void;
 }
@@ -70,7 +57,7 @@ export class StartedServer extends AbstractDisposable {
 		private readonly listener: StartedServerListener
 	) {
 		super();
-		const { tool, serverArgs, selection } = plan;
+		const { executable: tool, serverArgs, selection } = plan;
 		this.child = this._register(
 			processService.spawn(
 				tool.file,
@@ -129,7 +116,7 @@ export class StartedServer extends AbstractDisposable {
 	private askReady(): void {
 		const { target } = this;
 		this.probe
-			.probe(target.address, this.plan.tool.server)
+			.probe(target.address, this.plan.executable.server)
 			.then((state) => {
 				if (this.ending || this.exited) return;
 				if (
@@ -160,9 +147,9 @@ export class StartedServer extends AbstractDisposable {
 	}
 
 	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */
-	private stopOf(exit: ProcessExit, said: boolean): ServerStop {
+	private stopOf(exit: ProcessExit, said: boolean): ServerExitEvent {
 		const interrupted = wasInterrupted(exit);
-		const { server } = this.plan.tool;
+		const { server } = this.plan.executable;
 		const { label, file } = this.target.config;
 		const failure =
 			exit.error !== undefined

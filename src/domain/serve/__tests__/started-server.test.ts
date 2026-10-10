@@ -10,9 +10,9 @@ import { ServeAddress, SyncServer } from "../serve.js";
 import {
 	ServePlan,
 	ServeTarget,
-	ServerSaid,
-	ServerStop,
-	ServingServer,
+	ServerOutputEvent,
+	ServerExitEvent,
+	ServerReadyEvent,
 } from "../serve-service.js";
 import { ServerProbe } from "../server-probe.js";
 import { ServerRecords } from "../server-record.js";
@@ -25,9 +25,9 @@ describe("StartedServer", () => {
 	let processes: MockProcessService;
 	let requests: MockRequestService;
 	let records: ServerRecords;
-	let served: ServingServer[];
-	let said: ServerSaid[];
-	let stops: ServerStop[];
+	let served: ServerReadyEvent[];
+	let said: ServerOutputEvent[];
+	let stops: ServerExitEvent[];
 	let failures: Error[];
 	let server: StartedServer;
 

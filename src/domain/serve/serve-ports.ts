@@ -15,7 +15,7 @@ import {
 	ServerInfo,
 	SyncServer,
 } from "./serve.js";
-import { ServeTarget, ServeTool } from "./serve-service.js";
+import { ServeTarget, ServerExecutable } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-record.js";
 
@@ -34,7 +34,7 @@ export class ServePorts {
 	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own settings and defaults. */
 	async targetOf(
 		config: ResolvedConfig,
-		tool: ServeTool,
+		tool: ServerExecutable,
 		serverArgs: readonly string[]
 	): Promise<ServeTarget> {
 		const { server } = tool;
@@ -48,7 +48,7 @@ export class ServePorts {
 					project?.serveAddress ??
 					defaults.host ??
 					server.defaultHost,
-				server.portIn(serverArgs) ??
+				server.portIn(serverArgs).unwrapOr(undefined) ??
 					project?.servePort ??
 					defaults.port ??
 					server.defaultPort
@@ -79,7 +79,7 @@ export class ServePorts {
 		return new UsageError([...lines, fix].join("\n"));
 	}
 
-	/** `target` once its port is free, or with `running` set when its own project is already served there; otherwise why it can't be served. `others` are the targets served beside it, and `sharedName` says another of them has its project's name, so a server of that name can't be told apart. */
+	/** `target` once its port is free, or with `servedBy` set when its own project is already served there; otherwise why it can't be served. `others` are the targets served beside it, and `sharedName` says another of them has its project's name, so a server of that name can't be told apart. */
 	async check(
 		target: ServeTarget,
 		others: readonly ServeTarget[],
@@ -96,7 +96,7 @@ export class ServePorts {
 			!sharedName &&
 			(!elsewhere ||
 				samePath(elsewhere.projectFile, target.config.outFile));
-		if (ownServer) return ok({ ...target, running: holder });
+		if (ownServer) return ok({ ...target, servedBy: holder });
 		return err(
 			await this.portTaken(
 				target,
