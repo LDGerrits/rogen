@@ -31,6 +31,8 @@ const NAME_RULE = "use letters and digits only, starting with a letter";
 /** Checks every rule on a config's values that doesn't need the source tree, and hands back the config with its route targets parsed. */
 export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
+	/** The declared keys by their identity, so a second that differs only in case is reported. */
+	private readonly claimed = new Map<string, string>();
 	private readonly rootDirs: readonly string[];
 	private readonly routes: Readonly<Record<string, string>>;
 	private readonly variants: readonly string[];
@@ -57,12 +59,12 @@ export class ConfigValidator {
 	): Result<ResolvedConfig, Diagnostic[]> {
 		const { config } = this.layered;
 		const dir = path.dirname(this.layered.leaf.file);
-		const claimed = new Map<string, string>();
 
-		const routes = this.checkRoutes(claimed);
-		this.checkVariants(claimed);
+		const routes = this.checkRoutes();
+		this.checkVariants();
 		const groups = this.checkConflictGroups();
-		this.checkModes(claimed, groups);
+		this.checkModes(groups);
+		this.checkModeChoice();
 		this.checkActiveConflicts(groups);
 		this.checkOutFile();
 		this.checkRootDirs();
@@ -90,13 +92,12 @@ export class ConfigValidator {
 		);
 	}
 
-	private checkRoutes(claimed: Map<string, string>): Map<string, Target> {
+	private checkRoutes(): Map<string, Target> {
 		const targets = new Map<string, Target>();
 		for (const [key, text] of Object.entries(this.routes)) {
 			const location = this.layered.locate("routes", key);
 			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
-				if (DeclaredKeys.isName(key))
-					this.claim(claimed, key, location);
+				if (DeclaredKeys.isName(key)) this.claim(key, location);
 				else {
 					this.problems.error(
 						"config.invalidRouteKey",
@@ -112,7 +113,7 @@ export class ConfigValidator {
 		return targets;
 	}
 
-	private checkVariants(claimed: Map<string, string>): void {
+	private checkVariants(): void {
 		const seen = new Set<string>();
 		this.layered.config
 			.entries<string>("variants")
@@ -133,7 +134,7 @@ export class ConfigValidator {
 						`variant "${variant}" has the same name as a route key; rename one of them.`
 					);
 				} else {
-					this.claim(claimed, variant, location);
+					this.claim(variant, location);
 				}
 			});
 	}
@@ -156,11 +157,10 @@ export class ConfigValidator {
 						);
 					} else if (!this.variants.includes(name)) {
 						valid = false;
-						const suggestion = closestMatch(name, this.variants);
 						this.problems.error(
 							"config.conflictUndeclaredVariant",
 							location,
-							`a conflict group names "${name}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
+							`a conflict group names "${name}", which is not declared under "variants". ${this.declareHint(name)}`
 						);
 					}
 				}
@@ -184,12 +184,8 @@ export class ConfigValidator {
 		);
 	}
 
-	private checkModes(
-		claimed: Map<string, string>,
-		groups: readonly ConflictGroup[]
-	): void {
-		const { modes, modeChoice } = this.layered;
-		for (const mode of modes) {
+	private checkModes(groups: readonly ConflictGroup[]): void {
+		for (const mode of this.layered.modes) {
 			const location = this.layered.locateMode(mode);
 			if (!DeclaredKeys.isName(mode)) {
 				this.problems.error(
@@ -210,11 +206,15 @@ export class ConfigValidator {
 					`mode "${mode}" has the same name as a variant; a name is either a mode or a variant. Rename one of them.`
 				);
 			} else {
-				this.claim(claimed, mode, location);
+				this.claim(mode, location);
 			}
 			this.checkModeVariants(mode, groups);
 		}
+	}
 
+	/** A config with modes names the one to build in, and that mode is one it declares. */
+	private checkModeChoice(): void {
+		const { modes, modeChoice } = this.layered;
 		if (modes.length > 0 && modeChoice.name === undefined) {
 			this.problems.error(
 				"config.modeRequired",
@@ -255,11 +255,10 @@ export class ConfigValidator {
 		const listed = this.layered.modeVariants(mode);
 		listed.forEach((variant, index) => {
 			if (this.variants.includes(variant)) return;
-			const suggestion = closestMatch(variant, this.variants);
 			this.problems.error(
 				"config.undeclaredModeVariant",
 				this.layered.locateModeEntry(mode, "variants", index),
-				`mode "${mode}" turns on variant "${variant}", which is not declared under "variants". ${suggestion ? `Did you mean "${suggestion}"?` : "Declare it there."}`
+				`mode "${mode}" turns on variant "${variant}", which is not declared under "variants". ${this.declareHint(variant)}`
 			);
 		});
 		for (const { names } of groups) {
@@ -317,6 +316,14 @@ export class ConfigValidator {
 		}
 	}
 
+	/** What to do about a variant that isn't declared: the one it may misspell, else declaring it. */
+	private declareHint(variant: string): string {
+		const suggestion = closestMatch(variant, this.variants);
+		return suggestion
+			? `Did you mean "${suggestion}"?`
+			: "Declare it there.";
+	}
+
 	private static declaredModes(
 		modes: readonly string[],
 		asked: string
@@ -367,14 +374,10 @@ export class ConfigValidator {
 	}
 
 	/** Two keys that differ only in the case of their first letter would match the same names. */
-	private claim(
-		claimed: Map<string, string>,
-		key: string,
-		location: DiagnosticLocation
-	): void {
+	private claim(key: string, location: DiagnosticLocation): void {
 		const identity = DeclaredKeys.identityOf(key);
-		const other = claimed.get(identity);
-		if (other === undefined) claimed.set(identity, key);
+		const other = this.claimed.get(identity);
+		if (other === undefined) this.claimed.set(identity, key);
 		else {
 			this.problems.error(
 				"config.ambiguousKey",

@@ -171,8 +171,8 @@ export class LayeredConfig {
 		const path = LayeredConfig.pathOf(section);
 		const { source } = this.config.inspect(path);
 		if (source?.tier !== "layer") return { resource: this.leaf.file };
-		if (source.index === this.files.length && this.mode !== undefined)
-			return this.locateIn(this.chain, ["modes", this.mode, ...path]);
+		if (this.inModeLayer(source.index))
+			return this.locateMode(this.mode, ...section);
 		return this.locateIn(this.config, path);
 	}
 
@@ -189,19 +189,8 @@ export class LayeredConfig {
 	locateEntry(field: string, index: number): DiagnosticLocation {
 		const entry = this.config.entries([field])[index];
 		if (entry?.source.tier !== "layer") return { resource: this.leaf.file };
-		if (
-			entry.source.index === this.files.length &&
-			this.mode !== undefined
-		) {
-			const inMode = ["modes", this.mode, field];
-			const written = this.chain.entries(inMode)[entry.index];
-			return written?.source.tier === "layer"
-				? this.positionIn(written.source.index, [
-						...inMode,
-						String(written.index),
-					])
-				: { resource: this.leaf.file };
-		}
+		if (this.inModeLayer(entry.source.index))
+			return this.locateModeEntry(this.mode, field, entry.index);
 		return this.positionIn(entry.source.index, [
 			field,
 			String(entry.index),
@@ -222,6 +211,11 @@ export class LayeredConfig {
 					String(entry.index),
 				])
 			: { resource: this.leaf.file };
+	}
+
+	/** Whether the layer at `index` is the active mode's, which `config` stacks after the chain's files. */
+	private inModeLayer(index: number): this is { readonly mode: string } {
+		return index === this.files.length && this.mode !== undefined;
 	}
 
 	private locateIn(
