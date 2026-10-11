@@ -1,5 +1,5 @@
 import { UsageError } from "../../base/errors.js";
-import { PathSet, samePath } from "../../base/path.js";
+import { PathSet } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -162,12 +162,13 @@ export class CoreServeService implements ServeService {
 		const files = named.value.entries.map(({ file }) => file);
 		const filesNamed = new PathSet(files);
 		const here = await this.configService.select([], options);
+		const held = new PathSet(
+			here.isOk() ? here.value.entries.map(({ file }) => file) : []
+		);
 		const holdsNamed =
 			here.isOk() &&
 			here.value.requireValid().isOk() &&
-			files.every((file) =>
-				here.value.entries.some((entry) => samePath(entry.file, file))
-			);
+			files.every((file) => held.has(file));
 		if (holdsNamed)
 			return ok({
 				selection: here.value,

@@ -4,7 +4,6 @@ import {
 	PathSet,
 	commonAncestor,
 	isInside,
-	pathKey,
 	samePath,
 	toPosix,
 } from "../../base/path.js";
@@ -74,14 +73,11 @@ export function leafConfigs<T extends ExtendingConfig>(
 	configs: readonly T[],
 	caseInsensitive = isWindows
 ): T[] {
-	const extended = new Set(
-		configs.flatMap(({ parents }) =>
-			parents.map((parent) => pathKey(parent, caseInsensitive))
-		)
+	const extended = new PathSet(
+		configs.flatMap(({ parents }) => parents),
+		caseInsensitive
 	);
-	return configs.filter(
-		({ file }) => !extended.has(pathKey(file, caseInsensitive))
-	);
+	return configs.filter(({ file }) => !extended.has(file));
 }
 
 /** Whether `config` is one of `files` or extends one of them, however far down its chain. */
@@ -95,10 +91,9 @@ export function directExtendersOf<T extends ExtendingConfig>(
 	configs: readonly T[],
 	caseInsensitive = isWindows
 ): T[] {
-	const key = pathKey(config.file, caseInsensitive);
+	const file = new PathSet([config.file], caseInsensitive);
 	return configs.filter(
-		({ parents }) =>
-			parents.length > 0 && pathKey(parents[0], caseInsensitive) === key
+		({ parents }) => parents.length > 0 && file.has(parents[0])
 	);
 }
 

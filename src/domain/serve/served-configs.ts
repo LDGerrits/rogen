@@ -1,4 +1,4 @@
-import { PathSet, pathKey } from "../../base/path.js";
+import { PathSet } from "../../base/path.js";
 import { isWindows } from "../../base/platform.js";
 import { ResolvedConfig, inFamilyOf, leafConfigs } from "../config/config.js";
 
@@ -21,10 +21,10 @@ export class ServedConfigs {
 
 	/** The other configs here with `config`'s project name, which a server that only says that name could be serving. */
 	namesakesOf(config: ResolvedConfig): ResolvedConfig[] {
-		const key = pathKey(config.file, this.caseInsensitive);
+		const itself = new PathSet([config.file], this.caseInsensitive);
 		return [...this.all, ...this.neighbours].filter(
 			(other) =>
-				pathKey(other.file, this.caseInsensitive) !== key &&
+				!itself.has(other.file) &&
 				other.projectName === config.projectName
 		);
 	}
