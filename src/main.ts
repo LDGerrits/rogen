@@ -1,5 +1,6 @@
+import path from "path";
 import { DisposableStore } from "./base/disposable.js";
-import { setUnexpectedErrorHandler } from "./base/errors.js";
+import { UsageError, setUnexpectedErrorHandler } from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -7,7 +8,12 @@ import {
 } from "./platform/commands/commands.js";
 import { CommandFailure } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import { JsonOption, hasFlag, parseArgs } from "./platform/environment/args.js";
+import {
+	HELP_COMMAND,
+	JsonOption,
+	hasFlag,
+	parseArgs,
+} from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
 import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
@@ -56,6 +62,15 @@ import "./commands/where/where-command.js";
 /** The version `scripts/bundle.ts` bakes into a bundle; undefined in a run from source. */
 declare const ROGEN_VERSION: string | undefined;
 
+/** The folder rogen runs in, or `undefined` when it was deleted under the shell. */
+function currentFolder(): string | undefined {
+	try {
+		return process.cwd();
+	} catch {
+		return undefined;
+	}
+}
+
 export default function run(): void {
 	main().catch((error) => {
 		console.error("Fatal Error:", error);
@@ -80,9 +95,10 @@ async function main(): Promise<void> {
 		// Read from the raw line, so a parse error is reported the way the flags ask.
 		const json = hasFlag(rawArgs, JsonOption);
 		const options = argsResult.isOk() ? argsResult.value.line.options : {};
+		const cwd = currentFolder();
 		const environmentService = new NativeEnvironmentService(
 			{ ...options, json },
-			process.cwd()
+			cwd ?? path.parse(process.execPath).root
 		);
 		const logService: LogService = environmentService.isPlain
 			? new PlainLogService(environmentService.cwd)
@@ -95,6 +111,15 @@ async function main(): Promise<void> {
 			return;
 		}
 		const { command, line } = argsResult.value;
+		if (cwd === undefined && command !== HELP_COMMAND) {
+			process.exitCode = failure.finish(
+				new UsageError(
+					"The current folder no longer exists. cd to one that does, then run rogen again."
+				),
+				command
+			);
+			return;
+		}
 		const promptService = new ConsolePromptService({
 			interactive: environmentService.isInteractive,
 		});
