@@ -104,8 +104,14 @@ async function main(): Promise<void> {
 			cwd ?? path.parse(process.execPath).root
 		);
 		const logService: LogService = environmentService.isPlain
-			? new PlainLogService(environmentService.cwd)
-			: new TerminalLogService(environmentService.cwd);
+			? new PlainLogService(
+					environmentService.cwd,
+					environmentService.annotationsIn
+				)
+			: new TerminalLogService(
+					environmentService.cwd,
+					environmentService.annotationsIn
+				);
 		logService.setLevel(environmentService.logLevel);
 		const failure = new CommandFailure(logService, json);
 

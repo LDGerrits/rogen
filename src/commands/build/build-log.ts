@@ -242,6 +242,9 @@ export class BuildLog {
 
 	/** `failing` when the diagnostics are what fails the run, as every warning is under `--deny-warnings`. */
 	diagnostics(diagnostics: readonly Diagnostic[], failing = false): void {
+		// Annotated whole, since the text caps what it lists; GitHub decides how many annotations it shows.
+		for (const diagnostic of diagnostics)
+			this.logService.annotate(diagnostic);
 		for (const diagnostic of capped(diagnostics))
 			this.logService.diagnostic(diagnostic, failing);
 	}

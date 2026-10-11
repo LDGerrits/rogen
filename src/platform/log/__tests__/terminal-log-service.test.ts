@@ -112,4 +112,21 @@ describe("TerminalLogService", () => {
 
 		expect(drawn()).not.toContain("warning: /repo");
 	});
+
+	it("should write the workflow commands of a diagnostic on stderr, undrawn, when asked for a workspace", () => {
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+
+		new TerminalLogService("/work/repo", "/work/repo").annotate(
+			warningDiagnostic(
+				"tree.deadScript",
+				{ resource: "/work/repo/src/Dead.luau" },
+				"never runs."
+			)
+		);
+
+		expect(error).toHaveBeenCalledWith(
+			"::warning file=src/Dead.luau,title=tree.deadScript::never runs."
+		);
+		expect(drawn()).toBe("");
+	});
 });

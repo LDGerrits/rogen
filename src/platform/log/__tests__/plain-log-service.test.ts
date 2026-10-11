@@ -254,4 +254,48 @@ describe("PlainLogService", () => {
 
 		expect(errors).toEqual(["src/a.luau - warning: w (x.y)"]);
 	});
+
+	describe("annotate", () => {
+		const diagnostic = warningDiagnostic(
+			"tree.deadScript",
+			{ resource: "/work/repo/src/Dead.luau" },
+			"never runs."
+		);
+
+		it("should write the workflow commands of a diagnostic on stderr, when asked for a workspace", () => {
+			const logService = new PlainLogService("/work/repo", "/work/repo");
+
+			logService.annotate(diagnostic);
+
+			expect(errors).toEqual([
+				"::warning file=src/Dead.luau,title=tree.deadScript::never runs.",
+			]);
+			expect(out).toEqual([]);
+		});
+
+		it("should start the line at its first column, inside a step too, or GitHub would not read it", () => {
+			const logService = new PlainLogService("/work/repo", "/work/repo");
+			logService.section("default.rogen.json", "root dirs: src");
+			logService.step("lobby");
+
+			logService.annotate(diagnostic);
+
+			expect(errors.at(-1)?.startsWith("::warning ")).toBe(true);
+		});
+
+		it("should write nothing without a workspace", () => {
+			new PlainLogService("/work/repo").annotate(diagnostic);
+
+			expect(errors).toEqual([]);
+		});
+
+		it("should write them even when only errors are shown, since the pull request decides what to show", () => {
+			const logService = new PlainLogService("/work/repo", "/work/repo");
+			logService.setLevel(LogLevel.Error);
+
+			logService.annotate(diagnostic);
+
+			expect(errors).toHaveLength(1);
+		});
+	});
 });

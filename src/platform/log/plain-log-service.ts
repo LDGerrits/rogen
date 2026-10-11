@@ -41,6 +41,7 @@ export class PlainLogService extends AbstractLogService {
 				console.warn(text);
 				break;
 			case "diagnosticError":
+			case "annotation":
 				console.error(text);
 				break;
 			case "debug":

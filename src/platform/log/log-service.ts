@@ -35,6 +35,8 @@ export interface LogService {
 	closeFrame(message: string): void;
 	/** Written as `file:line:col - severity: message` with no severity prefix of its own, so editors and CI can parse it. One that `failing` made the run fail is written wherever errors are. */
 	diagnostic(diagnostic: Diagnostic, failing?: boolean): void;
+	/** Writes the workflow commands that make GitHub Actions show `diagnostic` on the pull request, on stderr; nothing unless the run asked for them. Called with a diagnostic as the command found it, not as `diagnostic` printed it. */
+	annotate(diagnostic: Diagnostic): void;
 }
 
 export const LogService = createServiceIdentifier<LogService>("logService");

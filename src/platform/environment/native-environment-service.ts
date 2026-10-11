@@ -64,6 +64,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly isPlain: boolean;
 	readonly userHome: string;
 	readonly tmpDir: string;
+	readonly annotationsIn?: string;
 	readonly pid: number;
 
 	constructor(
@@ -79,6 +80,8 @@ export class NativeEnvironmentService implements EnvironmentService {
 	) {
 		this.userHome = userHome;
 		this.tmpDir = tmpDir;
+		if (env.GITHUB_ACTIONS === "true" && json !== true)
+			this.annotationsIn = env.GITHUB_WORKSPACE || cwd;
 		this.pid = pid;
 		this.logLevel = quiet
 			? LogLevel.Error

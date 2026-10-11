@@ -120,6 +120,40 @@ describe("NativeEnvironmentService", () => {
 		});
 	});
 
+	describe("annotationsIn", () => {
+		it.each([
+			[
+				{ GITHUB_ACTIONS: "true", GITHUB_WORKSPACE: "/work/repo" },
+				"/work/repo",
+			],
+			[{ GITHUB_ACTIONS: "true" }, "/mock/cwd"],
+			[{ GITHUB_WORKSPACE: "/work/repo" }, undefined],
+			[
+				{ GITHUB_ACTIONS: "false", GITHUB_WORKSPACE: "/work/repo" },
+				undefined,
+			],
+			[{}, undefined],
+		])("should read it from %j", (env, workspace) => {
+			expect(inTerminal(env).annotationsIn).toBe(workspace);
+		});
+
+		it("should leave it out when the run prints JSON", () => {
+			const env = new NativeEnvironmentService(
+				{ json: true },
+				"/mock/cwd",
+				{
+					env: { GITHUB_ACTIONS: "true" },
+					isTerminal: false,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+					pid: 4242,
+				}
+			);
+
+			expect(env.annotationsIn).toBeUndefined();
+		});
+	});
+
 	it("should carry the id of the process it describes", () => {
 		const environment = new NativeEnvironmentService({}, "/repo", {
 			env: {},

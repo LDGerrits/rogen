@@ -88,8 +88,10 @@ registerCommand(
 					failure
 				);
 			// The findings are what was asked for, so they go to stdout and survive --quiet.
-			for (const diagnostic of failure?.diagnostics ?? [])
+			for (const diagnostic of failure?.diagnostics ?? []) {
 				logService.print(renderDiagnostic(diagnostic, cwd));
+				logService.annotate(diagnostic);
+			}
 			if (stoppedBy.length > 0)
 				logService.warn(
 					`Checked as far as the build gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`

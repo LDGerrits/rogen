@@ -9,6 +9,8 @@ export interface EnvironmentService {
 	readonly userHome: string;
 	/** The folder for temporary files every process on the machine shares. */
 	readonly tmpDir: string;
+	/** Where the repository is checked out, which the paths of GitHub Actions annotations are relative to, when this run should write them: GitHub Actions runs the process and it isn't printing JSON. None otherwise. */
+	readonly annotationsIn?: string;
 	/** This process's id, which tells the records a serve leaves in `tmpDir` as its own. */
 	readonly pid: number;
 

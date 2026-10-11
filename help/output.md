@@ -4,6 +4,8 @@ Diagnostics print as `file:line:col - severity: message (code)`, on stderr, exce
 
 Exit codes: 0 done, warnings included (`build --deny-warnings` exits 1 on any warning, for CI: files and diagnostics are unchanged, only the exit code differs; `check` exits 1 on any diagnostic about the paths it is given); 1 the project has errors (an invalid config, build errors, a failed write, a cancelled init); 2 the command line is wrong (an unknown command, option or name, or a combination that isn't allowed). `rogen serve` exits 0 on Ctrl+C, and with the server's code when a server stops on its own. `--json` keeps the same codes.
 
+Under GitHub Actions, `build` and `check` also write each diagnostic as a workflow command on stderr (`::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?`), one per file for a warning about several; never with `--json`.
+
 Plain lines (in pipes, CI and under an agent) put results on stdout and warnings, errors, diagnostics and `--verbose` debug lines on stderr. `--json` on `build`, `where`, `check`, `list` and `init` prints one JSON document on stdout, whatever the exit code, and nothing else. `serve --json` prints one JSON object per line instead, what the server says included. Read them instead of parsing text.
 
 - `build --json`: `{ "configs": [{ "config", "file", "outFile", "outcome", "diagnostics" }] }`, where `outcome` is `wrote`, `unchanged` or `notWritten`. A config that doesn't load is an entry too, with `"outFile": null` and its errors in `diagnostics`; a config not written because others failed or didn't load has `blockedBy`, their names.

@@ -4,6 +4,7 @@ import {
 	DiagnosticSeverity,
 	renderDiagnostic,
 } from "../diagnostics/diagnostic.js";
+import { diagnosticAnnotationLines } from "../diagnostics/diagnostic-annotation-lines.js";
 import { LogLevel, LogService } from "./log-service.js";
 
 export type LogKind =
@@ -21,7 +22,8 @@ export type LogKind =
 	| "debug"
 	| "trace"
 	| "diagnosticWarning"
-	| "diagnosticError";
+	| "diagnosticError"
+	| "annotation";
 
 export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
@@ -29,8 +31,11 @@ export abstract class AbstractLogService implements LogService {
 	protected level: LogLevel = LogLevel.Info;
 	private frameOpen = false;
 
-	/** Diagnostics are written relative to `cwd` when one is given. */
-	constructor(private readonly cwd?: string) {}
+	/** Diagnostics are written relative to `cwd` when one is given. Annotations are written when `annotationsIn` names the folder their paths are relative to. */
+	constructor(
+		private readonly cwd?: string,
+		private readonly annotationsIn?: string
+	) {}
 
 	setLevel(level: LogLevel): void {
 		this.level = level;
@@ -144,6 +149,16 @@ export abstract class AbstractLogService implements LogService {
 
 	closeFrame(message: string): void {
 		if (this.frameOpen) this.outro(message);
+	}
+
+	annotate(diagnostic: Diagnostic): void {
+		if (this.annotationsIn === undefined || this.level === LogLevel.Off)
+			return;
+		for (const line of diagnosticAnnotationLines(
+			diagnostic,
+			this.annotationsIn
+		))
+			this.write("annotation", line);
 	}
 
 	diagnostic(diagnostic: Diagnostic, failing = false): void {
