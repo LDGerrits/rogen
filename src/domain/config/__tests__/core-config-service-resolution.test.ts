@@ -494,6 +494,46 @@ describe("CoreConfigService", () => {
 				).toEqual([]);
 			});
 
+			it("should reject a server Rogen can't start, where it is written", async () => {
+				const problems = await diagnosticsFor(`{
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"server": "argn"
+}`);
+
+				expect(problems).toEqual([
+					[
+						'"server" is "argn", but Rogen serves with "rojo" or "argon". Did you mean "argon"?',
+						"/repo/default.rogen.json",
+						3,
+						12,
+					],
+				]);
+			});
+
+			it("should reject a server spelt in capitals, as --server does", async () => {
+				const problems = await diagnosticsFor({
+					routes: { "*": "ReplicatedStorage/Shared" },
+					server: "Argon",
+				});
+
+				expect(problems).toHaveLength(1);
+				expect(problems[0][0]).toContain('Did you mean "argon"?');
+			});
+
+			it("should resolve the server a parent names", async () => {
+				await write("/repo/default.rogen.json", {
+					routes: { "*": "ReplicatedStorage/Shared" },
+					server: "argon",
+				});
+				await write("/repo/lobby.rogen.json", {
+					extends: "./default.rogen.json",
+				});
+
+				await start({ names: ["lobby"] });
+
+				expect(resolved(0)).toMatchObject({ server: "argon" });
+			});
+
 			it("should reject a variant that shares a name with a route key", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService" },

@@ -44,7 +44,7 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
   </Tab>
 </Tabs>
 
-There are twelve fields, none nested more than two levels. `modes` is the only one that nests a map in a map. Unknown keys and wrong types are errors.
+There are thirteen fields, none nested more than two levels. `modes` is the only one that nests a map in a map. Unknown keys and wrong types are errors.
 
 ---
 
@@ -64,6 +64,7 @@ There are twelve fields, none nested more than two levels. `modes` is the only o
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
 | `outFile` | `<name>.project.json` | The project file to write. Not inherited. See [Output](/docs/v2/core-concepts/output#output). |
+| `server` | none | The sync server `rogen serve` starts, `"rojo"` or `"argon"`, unless `--server` says otherwise. Without it, the one the project pins, Rojo before Argon. Set it when you pin both, such as Rojo for `rojo sourcemap` and Argon to serve. See [`serve`](/docs/v2/cli#serve). |
 
 All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
 
@@ -86,7 +87,7 @@ Use `extends` when a config is a small variation on another: a second place, ano
 | Map | `routes` | merged key by key; the child wins a key |
 | Map of blocks | `modes` | merged by name; each block merges by these same rules, so a child adds globs and variants to the parent's `prod` |
 | List | `rootDirs`, `exclude`, `variants`, `conflicts` | the child's entries are added after the parent's; a repeated entry keeps its last position |
-| String | `syncDir`, `mode` | the child replaces |
+| String | `syncDir`, `mode`, `server` | the child replaces |
 | Template | `template` | the child's template merges over the parent's; see [Merging Templates](/docs/v2/core-concepts/output#merging-templates) |
 | Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
 

@@ -7,7 +7,7 @@ import {
 	eventually,
 	writeProjectFile,
 } from "./harness.js";
-import { useServeProject } from "./serve-fixtures.js";
+import { config, useServeProject } from "./serve-fixtures.js";
 
 async function argonProject(port: number): Promise<string | undefined> {
 	try {
@@ -137,13 +137,18 @@ describeWithArgon("end to end serve with Argon", () => {
 		expect(await argonProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
-	it("should serve with Argon when --tool asks for it, though Rojo is pinned too", async () => {
+	it("should serve with Argon when the config names it, though Rojo is pinned too", async () => {
 		writeProjectFile(
 			serve.dir,
 			"rokit.toml",
 			fs.readFileSync(path.resolve("rokit.toml"), "utf8")
 		);
-		const serving = serve.start(["--tool", "argon", "--json"]);
+		writeProjectFile(
+			serve.dir,
+			"default.rogen.json",
+			config({ server: "argon" })
+		);
+		const serving = serve.start(["--json"]);
 
 		await eventually(() => {
 			expect(serving.stdout).toContain('"serving"');
@@ -153,7 +158,35 @@ describeWithArgon("end to end serve with Argon", () => {
 			JSON.parse(serving.stdout.trim().split("\n").at(-1)!).serving
 		).toEqual(
 			expect.objectContaining({
-				tool: "argon",
+				server: "argon",
+				project: "Game",
+				port: serve.port,
+			})
+		);
+	}, 40_000);
+
+	it("should serve with the server --server names over the one the config names", async () => {
+		writeProjectFile(
+			serve.dir,
+			"rokit.toml",
+			fs.readFileSync(path.resolve("rokit.toml"), "utf8")
+		);
+		writeProjectFile(
+			serve.dir,
+			"default.rogen.json",
+			config({ server: "rojo" })
+		);
+		const serving = serve.start(["--server", "argon", "--json"]);
+
+		await eventually(() => {
+			expect(serving.stdout).toContain('"serving"');
+		}, 20_000);
+
+		expect(
+			JSON.parse(serving.stdout.trim().split("\n").at(-1)!).serving
+		).toEqual(
+			expect.objectContaining({
+				server: "argon",
 				project: "Game",
 				port: serve.port,
 			})

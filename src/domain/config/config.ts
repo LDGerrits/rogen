@@ -15,6 +15,13 @@ import {
 	RojoProject,
 } from "../rojo/rojo-project.js";
 
+/** The sync servers a config can pick for `rogen serve`; each is the id of a `SyncServer`. */
+export const SERVER_NAMES = ["rojo", "argon"] as const;
+export type ServerName = (typeof SERVER_NAMES)[number];
+
+export const isServerName = (name: string): name is ServerName =>
+	(SERVER_NAMES as readonly string[]).includes(name);
+
 /** What a mode changes about a build: which variants it turns on and which files are left out. */
 export interface ModeConfig {
 	readonly variants?: string[];
@@ -34,6 +41,7 @@ export interface RogenConfig {
 	readonly template?: string;
 	readonly syncDir?: string;
 	readonly outFile?: string;
+	readonly server?: string;
 }
 
 /** Anything that holds config values by field name, such as a config model or the chain of them. */
@@ -321,6 +329,8 @@ export interface ResolvedConfigFields {
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
+	/** The sync server `rogen serve` starts for it; the one the project pins when not set. */
+	readonly server?: string;
 }
 
 /** A config with its layers merged and validated: every path is absolute and every route target is parsed. */
@@ -339,6 +349,7 @@ export class ResolvedConfig {
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
+	readonly server?: string;
 	readonly keys: DeclaredKeys;
 	private readonly switches: Readonly<Record<string, boolean>>;
 
@@ -357,6 +368,7 @@ export class ResolvedConfig {
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;
+		this.server = fields.server;
 		this.keys = new DeclaredKeys(
 			fields.routes.keys(),
 			Object.keys(fields.variants),
