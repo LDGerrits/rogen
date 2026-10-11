@@ -1,5 +1,6 @@
 import { DeclaredKeys } from "../config/config.js";
-import { RUN_SCRIPT_SUFFIXES, RojoFile, RojoFileKind } from "../rojo/rojo.js";
+import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
+import { InstanceName, SuffixSpan } from "./instance-name.js";
 import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";
 
 /** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
@@ -23,13 +24,6 @@ export interface FolderNameReading {
 	readonly misspellings: readonly Misspelling[];
 }
 
-export interface SuffixSpan {
-	readonly key: string;
-	/** Where the key and its sign begin in the stem. */
-	readonly start: number;
-	readonly length: number;
-}
-
 export interface SuffixMatch {
 	readonly baseName: string;
 	readonly matchedKeys: ReadonlySet<string>;
@@ -41,43 +35,10 @@ export interface SuffixMatch {
 
 /** Finds the config's declared keys in folder names, marker files and file suffixes. */
 export class NameReader {
-	private static readonly INVISIBLE_FOLDER = /^\((.+)\)$/;
-
 	private readonly finder: MisspellingFinder;
 
 	constructor(private readonly keys: DeclaredKeys) {
 		this.finder = new MisspellingFinder(keys);
-	}
-
-	/** A folder written `(name)` is the folder `name`, left out of the tree. */
-	static unwrapInvisibleFolder(folderName: string): {
-		readonly name: string;
-		readonly invisible: boolean;
-	} {
-		const inner = NameReader.INVISIBLE_FOLDER.exec(folderName)?.[1];
-		return inner === undefined
-			? { name: folderName, invisible: false }
-			: { name: inner, invisible: true };
-	}
-
-	/** A name that starts with `^` is hoisted to its route's target; the `^` comes off it. */
-	static unhoisted(name: string): {
-		readonly name: string;
-		readonly hoisted: boolean;
-	} {
-		return name.length > 1 && name.startsWith("^")
-			? { name: name.slice(1), hoisted: true }
-			: { name, hoisted: false };
-	}
-
-	/** The name Rojo gives a file's stem once the keys are off it, then with its `^` off. */
-	static leafName(
-		kind: RojoFileKind,
-		stripped: string
-	): { readonly name: string; readonly hoisted: boolean } {
-		return NameReader.unhoisted(
-			kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped
-		);
 	}
 
 	/** A folder's name with its parentheses, then its `^`, off; `offset` is where that name starts in the folder's. */
@@ -87,8 +48,8 @@ export class NameReader {
 		readonly hoisted: boolean;
 		readonly offset: number;
 	} {
-		const unwrapped = NameReader.unwrapInvisibleFolder(folderName);
-		const { name, hoisted } = NameReader.unhoisted(unwrapped.name);
+		const unwrapped = InstanceName.unwrapInvisibleFolder(folderName);
+		const { name, hoisted } = InstanceName.unhoisted(unwrapped.name);
 		return {
 			name,
 			invisible: unwrapped.invisible,
@@ -159,7 +120,7 @@ export class NameReader {
 		const [routeSpan, ...innerRouteSpans] = spans.filter(({ key }) =>
 			this.keys.isRoute(key)
 		);
-		const keptName = NameReader.withoutSpans(
+		const keptName = InstanceName.withoutSpans(
 			name,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
 		);
@@ -171,7 +132,7 @@ export class NameReader {
 			innerRoutes: innerRouteSpans.map(({ key }) => key),
 			variants: variantSpans.map(({ key }) => key),
 			...(keptName !== "" && { keptName }),
-			outrankedName: NameReader.withoutSpans(name, variantSpans),
+			outrankedName: InstanceName.withoutSpans(name, variantSpans),
 			misspellings: NameReader.inFolderName(
 				[
 					...(routeSpan
@@ -338,18 +299,6 @@ export class NameReader {
 		return (at > 0 || (at === 0 && routed)) && key
 			? { key, start: at, length: remaining.length - at }
 			: undefined;
-	}
-
-	/** Only a folder named by keys alone loses all of its name. */
-	static withoutSpans(name: string, spans: readonly SuffixSpan[]): string {
-		return [...spans]
-			.sort((a, b) => b.start - a.start)
-			.reduce(
-				(kept, span) =>
-					kept.slice(0, span.start) +
-					kept.slice(span.start + span.length),
-				name
-			);
 	}
 }
 

@@ -15,6 +15,7 @@ import {
 	NameReader,
 	SuffixMatch,
 } from "./name-reader.js";
+import { InstanceName } from "./instance-name.js";
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A folder that never becomes an instance, as a warning names it. */
@@ -126,16 +127,16 @@ export class NameReadings {
 			buriedScriptSuffix:
 				kind === "script" && variantSpans.length > 0 && !scriptSuffix
 					? RojoFile.scriptSuffixOf(
-							NameReader.withoutSpans(stem, variantSpans)
+							InstanceName.withoutSpans(stem, variantSpans)
 						)
 					: undefined,
 			match,
 			isInit:
 				kind === "script" &&
 				this.initNames.has(
-					NameReader.leafName(
+					InstanceName.leafName(
 						kind,
-						NameReader.withoutSpans(stem, match.spans)
+						InstanceName.withoutSpans(stem, match.spans)
 					).name
 				),
 		});

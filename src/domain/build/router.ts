@@ -4,7 +4,7 @@ import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
 import { RouteMatch, VariantMatch } from "./build.js";
 import { DirClaims } from "./dir-claims.js";
-import { NameReader, SuffixSpan } from "./name-reader.js";
+import { InstanceName, SuffixSpan } from "./instance-name.js";
 import {
 	EntryReading,
 	FolderReading,
@@ -418,11 +418,11 @@ export class Router {
 			if (routes) routeSpan ??= span;
 		}
 
-		const stripped = NameReader.withoutSpans(stem, [
+		const stripped = InstanceName.withoutSpans(stem, [
 			...variantSpans,
 			...match.spans.filter((span) => span.key === routeSpan?.key),
 		]);
-		const { name, hoisted } = NameReader.leafName(kind, stripped);
+		const { name, hoisted } = InstanceName.leafName(kind, stripped);
 		return {
 			name,
 			hoisted,
