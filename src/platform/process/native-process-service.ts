@@ -6,6 +6,7 @@ import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event, NullEvent } from "../../base/event.js";
 import { isWindows } from "../../base/platform.js";
 import { Result, err, ok } from "../../base/result.js";
+import { LineBuffer } from "./line-buffer.js";
 import {
 	ChildProcess,
 	ExecOptions,
@@ -73,7 +74,7 @@ export function launch(
 /** A process that never started: it has already failed with `error`. */
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
-	readonly onDidOutput: Event<string> = NullEvent;
+	readonly onDidOutputLine: Event<string> = NullEvent;
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 	private readonly exit: ProcessExit;
 
@@ -89,12 +90,13 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 }
 
 class NativeChildProcess extends AbstractDisposable implements ChildProcess {
-	private readonly _onDidOutput = this._register(new Emitter<string>());
-	readonly onDidOutput: Event<string> = this._onDidOutput.event;
+	private readonly _onDidOutputLine = this._register(new Emitter<string>());
+	readonly onDidOutputLine: Event<string> = this._onDidOutputLine.event;
 
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 
+	private readonly lineBuffers: LineBuffer[] = [];
 	private exit: ProcessExit | undefined;
 	private readonly exited: Promise<ProcessExit>;
 	private terminating: Promise<ProcessExit> | undefined;
@@ -102,14 +104,23 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	constructor(private readonly child: childProcess.ChildProcess) {
 		super();
 		for (const stream of [child.stdout, child.stderr]) {
+			const lines = new LineBuffer();
+			this.lineBuffers.push(lines);
 			stream?.setEncoding("utf8");
-			stream?.on("data", (text: string) => this._onDidOutput.fire(text));
+			stream?.on("data", (text: string) => {
+				for (const line of lines.push(text))
+					this._onDidOutputLine.fire(line);
+			});
 		}
 		this.exited = new Promise((resolve) => {
 			const finish = (exit: ProcessExit) => {
 				if (this.exit) return;
 				this.exit = exit;
 				resolve(exit);
+				for (const lines of this.lineBuffers) {
+					const last = lines.flush();
+					if (last !== undefined) this._onDidOutputLine.fire(last);
+				}
 				this._onDidExit.fire(exit);
 			};
 			child.once("exit", (code, signal) => {

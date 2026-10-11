@@ -38,7 +38,6 @@ export class ServerOutput extends AbstractDisposable {
 	);
 	readonly onDidMessage: Event<ServerMessage> = this._onDidMessage.event;
 
-	private partial = "";
 	private pending: PendingRecord | undefined;
 	private readonly quiet: RunOnceScheduler;
 	private last: { readonly key: string; readonly at: number } | undefined;
@@ -50,18 +49,15 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	write(text: string): void {
-		const lines = (this.partial + text).split(/\r?\n/);
-		this.partial = lines.pop()!;
-		for (const line of lines) this.read(stripVTControlCharacters(line));
+	/** Reads one line the server printed. */
+	readLine(line: string): void {
+		this.read(stripVTControlCharacters(line));
 		this.quiet.cancel();
 		if (this.pending) this.quiet.schedule();
 	}
 
 	/** Passes on what is left, once the server has stopped printing. */
 	end(): void {
-		if (this.partial) this.read(stripVTControlCharacters(this.partial));
-		this.partial = "";
 		this.flush();
 	}
 

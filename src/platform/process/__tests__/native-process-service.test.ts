@@ -143,7 +143,7 @@ describe("NativeProcessService", () => {
 				{ cwd: dir }
 			);
 			const pid = await new Promise<number>((resolve) =>
-				child.onDidOutput((text) => resolve(Number(text.trim())))
+				child.onDidOutputLine((line) => resolve(Number(line.trim())))
 			);
 
 			await child.terminate();
@@ -184,11 +184,27 @@ describe("NativeProcessService", () => {
 				],
 				{ cwd: dir }
 			);
-			let printed = "";
-			child.onDidOutput((text) => (printed += text));
+			const printed: string[] = [];
+			child.onDidOutputLine((line) => printed.push(line));
 
 			expect(await exitOf(child)).toEqual({ code: 3, signal: null });
-			expect(printed.split("\n").sort()).toEqual(["", "err", "out"]);
+			expect(printed.sort()).toEqual(["err", "out"]);
+			child[Symbol.dispose]();
+		});
+
+		it("should pass on a line that never ended when the process exits, before its exit", async () => {
+			const child = service.spawn(
+				node,
+				["-e", "process.stdout.write('no end')"],
+				{ cwd: dir }
+			);
+			const events: string[] = [];
+			child.onDidOutputLine((line) => events.push(`line: ${line}`));
+			child.onDidExit(() => events.push("exit"));
+
+			await exitOf(child);
+
+			expect(events).toEqual(["line: no end", "exit"]);
 			child[Symbol.dispose]();
 		});
 

@@ -49,9 +49,9 @@ export const exitCodeText = (code: number): string =>
 
 /** A process this one started; disposing it ends it. */
 export interface ChildProcess extends Disposable {
-	/** Text it printed, on either stream, as it arrives. */
-	readonly onDidOutput: Event<string>;
-	/** Fires once, when the process has exited or failed to start, after the text it printed. */
+	/** Each line it printed, on either stream, as the line completes; one the process left unfinished comes when it exits. */
+	readonly onDidOutputLine: Event<string>;
+	/** Fires once, when the process has exited or failed to start, after the lines it printed. */
 	readonly onDidExit: Event<ProcessExit>;
 
 	/** Ends the process and every process it started, and resolves once it has exited. Safe to call after it exited. */
@@ -70,7 +70,7 @@ export interface ProcessService {
 		args: readonly string[],
 		options: ExecOptions
 	): Promise<Result<ProcessOutput, Error>>;
-	/** Starts `file`, with no input; what it prints comes through `onDidOutput`. */
+	/** Starts `file`, with no input; what it prints comes through `onDidOutputLine`. */
 	spawn(
 		file: string,
 		args: readonly string[],

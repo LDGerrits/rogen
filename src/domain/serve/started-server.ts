@@ -74,7 +74,9 @@ export class StartedServer extends AbstractDisposable {
 		);
 		const output = this._register(new ServerOutput(executable.server));
 		let said = false;
-		this._register(this.child.onDidOutput((text) => output.write(text)));
+		this._register(
+			this.child.onDidOutputLine((line) => output.readLine(line))
+		);
 		this._register(
 			output.onDidMessage((message) => {
 				if (message.severity !== "debug") said = true;
