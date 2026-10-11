@@ -1,0 +1,81 @@
+---
+title: Testing
+description: Run your specs in Roblox with jest-roblox-cli, from a config that builds them in and leaves them out of production.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+[jest-roblox-cli](https://github.com/christopher-buss/jest-roblox-cli) builds a place with Rojo, runs your Jest specs inside Roblox and prints the results. Rogen's part is the project file it builds the place from: one with the specs in it, which a production build must not have.
+
+The specs and the production build differ by [mode](/docs/v2/core-concepts/modes), so one more config is all it takes. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
+
+<Steps>
+
+<Step>
+### Leave the Specs Out of Production
+
+A mode excludes files. `rogen init` does this when it finds a test runner: `prod` leaves the specs out, `dev` keeps them.
+
+```json title="default.rogen.json"
+{
+	"modes": {
+		"dev": {},
+		"prod": { "exclude": ["**/*.spec.luau", "DevPackages"] }
+	},
+	"mode": "prod"
+}
+```
+
+The config builds in `prod` unless you say otherwise, so `rogen build` never ships a spec.
+
+</Step>
+
+<Step>
+### Add a Config for the Tests
+
+Put it in a folder of its own, so the configs beside `default.rogen.json` stay what `rogen serve` and `rogen build` read: a config that extends `default` would take its place as the one `serve` syncs to Studio. `test/test.rogen.json` builds in `dev` and sets `LoadStringEnabled`, which Jest needs:
+
+```json title="test/test.rogen.json"
+{
+	"extends": "../default.rogen.json",
+	"mode": "dev",
+	"template": "template.project.json"
+}
+```
+
+```json title="test/template.project.json"
+{
+	"name": "GameTests",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": { "$properties": { "LoadStringEnabled": true } }
+	}
+}
+```
+
+The template merges over the default one, so it keeps the package mounts and the other properties you set there. The default config has to name its `rootDirs` (`rogen init` writes them), because paths in a config are relative to the file that wrote them, and an unwritten `src` would be looked for under `test/`.
+
+</Step>
+
+<Step>
+### Run Them
+
+Build the test project file, then point jest-roblox at it:
+
+```bash
+rogen build test/test.rogen.json
+jest-roblox --rojoProject test/test.project.json
+```
+
+Its paths reach back into `../src`, so the specs are the files you edit. A plain `rogen build` still writes only `default.project.json`, with no specs, and jest-roblox looks for that one first when it isn't told otherwise, so pass `--rojoProject`, or set `rojoProject` in its config.
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+	Add `--deny-warnings` to `rogen build test/test.rogen.json` in CI, so a spec
+	that lands nowhere is found before the run. jest-roblox's own exit code then
+	says whether the tests passed.
+</Callout>

@@ -119,6 +119,19 @@ To write the same tree with paths into a different folder, add a config that `ex
 
 `rogen serve` builds every config, starts Rojo or Argon on each rendering no other config extends, and rebuilds as `watch` does. With Darklua that's `sync.project.json`; in a multi-place repo, each place. The server reads the port from the project file, so a `servePort` in the template applies. When a Rojo or Argon you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which server runs, the port, `--json` and exit codes.
 
+## Place Files
+
+Rogen writes the project file, not the place file. To get an `.rbxl` or `.rbxm` for publishing or a test run, build the project file with Rojo:
+
+```bash
+rogen build --mode prod -o prod.project.json
+rojo build prod.project.json -o prod.rbxl
+```
+
+`-o` writes the project file somewhere else, which also leaves the one a running `rogen serve` serves alone: a build in another mode is refused while it would change that file. With several configs, name the one to build (`rogen build default --mode prod -o prod.project.json`), because `-o` changes a single config. With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first and build the config that has the `syncDir`, so the place holds the compiled code.
+
+Rojo, and not Rogen, runs the second command, and `rogen build` needs no Rojo to run. Which server version builds the file is yours to pin in `rokit.toml`.
+
 ## Building While Watching
 
 It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file, so you can always run a build after moving files and trust the result.
