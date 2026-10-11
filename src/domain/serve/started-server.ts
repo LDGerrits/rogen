@@ -15,6 +15,7 @@ import { ServerInfo } from "./serve.js";
 import {
 	ServePlan,
 	ServeTarget,
+	ServerConnectionEvent,
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
@@ -37,6 +38,8 @@ export interface StartedServerListener {
 	said(said: ServerOutputEvent): void;
 	/** It stopped before it was told to. */
 	stopped(stop: ServerExitEvent): void;
+	/** A Studio plugin connected to it or left it. */
+	connection(change: ServerConnectionEvent): void;
 	/** A step of its own failed unexpectedly. */
 	failed(error: Error): void;
 }
@@ -65,6 +68,8 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	private answering: ServerInfo | undefined;
 	/** The mode and variants of the build its project file holds. */
 	private setting: BuildSetting;
+	/** How many Studio plugins are connected, as far as its output says. */
+	private connected = 0;
 	/** The next time its port is asked whether it answers yet. */
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
@@ -89,13 +94,31 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 					path.relative(selection.home, target.config.outFile),
 					serverArgs
 				),
-				{ cwd: selection.home }
+				{
+					cwd: selection.home,
+					defaultEnv: executable.server.defaultEnv,
+				}
 			)
 		);
 		const output = this._register(new ServerOutput(executable.server));
 		let said = false;
 		this._register(
 			this.child.onDidOutputLine((line) => output.readLine(line))
+		);
+		this._register(
+			output.onDidConnection((change) => {
+				const opened = change === "opened";
+				this.connected = Math.max(
+					0,
+					this.connected + (opened ? 1 : -1)
+				);
+				void this.updateRecord();
+				this.listener.connection({
+					target,
+					opened,
+					clients: this.connected,
+				});
+			})
 		);
 		this._register(
 			output.onDidMessage((message) => {
@@ -136,13 +159,18 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		const setting = settingOf(config);
 		if (sameSetting(setting, this.setting)) return;
 		this.setting = setting;
+		await this.updateRecord();
+	}
+
+	/** Writes the record again once its last write is done, unless the server is going away. */
+	private updateRecord(): Promise<void> | undefined {
 		if (!this.record || !this.answering || this.ending || this.exited)
-			return;
+			return undefined;
 		const info = this.answering;
 		this.record = this.record.then(() =>
 			this.ending || this.exited ? undefined : this.writeRecord(info)
 		);
-		await this.record;
+		return this.record;
 	}
 
 	private writeRecord(info: ServerInfo): Promise<void> {
@@ -151,6 +179,9 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 			.write(target.address, info, {
 				projectFile: target.config.outFile,
 				setting: this.setting,
+				clients: info.server.reportsConnections(info.version)
+					? this.connected
+					: undefined,
 			})
 			.catch((error) =>
 				this.listener.failed(ErrorUtils.fromUnknown(error))

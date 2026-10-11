@@ -112,4 +112,27 @@ describe("ServedProjectFiles", () => {
 
 		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
 	});
+
+	describe("servingOf", () => {
+		it("should give the record of the running serve that serves the file, whatever its mode", async () => {
+			await record(prod);
+			answer();
+
+			expect(
+				await files.servingOf("/repo/default.project.json")
+			).toMatchObject({ port: 34872, setting: prod });
+		});
+
+		it("should give nothing for another file, or for a serve that no longer runs", async () => {
+			await record(dev);
+
+			expect(
+				await files.servingOf("/repo/default.project.json")
+			).toBeUndefined();
+			answer();
+			expect(
+				await files.servingOf("/repo/lobby.project.json")
+			).toBeUndefined();
+		});
+	});
 });

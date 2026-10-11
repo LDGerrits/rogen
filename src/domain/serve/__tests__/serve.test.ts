@@ -103,6 +103,63 @@ describe("SyncServer", () => {
 		});
 	});
 
+	describe("connections", () => {
+		it.each([
+			["Rojo 7.7.1", SyncServer.ROJO, "7.7.1", true],
+			["Rojo 7.7.0", SyncServer.ROJO, "7.7.0", true],
+			["a later Rojo major", SyncServer.ROJO, "8.0.0", true],
+			["Rojo 7.10.2", SyncServer.ROJO, "7.10.2", true],
+			["Rojo 7.6.1, which long-polls", SyncServer.ROJO, "7.6.1", false],
+			["a version that isn't one", SyncServer.ROJO, "nightly", false],
+			["Argon", SyncServer.ARGON, "2.0.29", false],
+		])(
+			"should say whether %s reports them",
+			(_, server, version, reports) => {
+				expect(server.reportsConnections(version)).toBe(reports);
+			}
+		);
+
+		it.each([
+			[
+				"WebSocket subscription established for session 0ea352f4",
+				"opened",
+			],
+			["WebSocket subscription closed by client", "closed"],
+			["WebSocket subscription closed by client ", "closed"],
+			["WebSocket stream ended", "closed"],
+			[
+				"WebSocket error: WebSocket protocol error: Connection reset without closing handshake",
+				"closed",
+			],
+			[
+				"Message queue disconnected; closing WebSocket subscription",
+				"closed",
+			],
+			[
+				"Sending batch of messages over WebSocket subscription",
+				undefined,
+			],
+			["Rojo server listening:", undefined],
+		])("should read %j from Rojo as %s", (line, change) => {
+			expect(SyncServer.ROJO.connectionIn(line)).toBe(change);
+		});
+
+		it("should read nothing from Argon, which says nothing of them", () => {
+			expect(
+				SyncServer.ARGON.connectionIn(
+					"WebSocket subscription established for session 1"
+				)
+			).toBeUndefined();
+		});
+
+		it("should ask Rojo for the debug lines of its web server, and Argon for nothing", () => {
+			expect(SyncServer.ROJO.defaultEnv).toEqual({
+				RUST_LOG: "info,librojo::web=debug",
+			});
+			expect(SyncServer.ARGON.defaultEnv).toEqual({});
+		});
+	});
+
 	describe("serveArgs", () => {
 		it("should serve the project file, with the tool args last", () => {
 			expect(

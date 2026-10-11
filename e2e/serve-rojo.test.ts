@@ -311,6 +311,62 @@ describeWithRojo("end to end serve", () => {
 			"Rojo: Found argument '--no-such-flag'"
 		);
 	}, 40_000);
+	describe("as Studio connects", () => {
+		it("should tell when a plugin connects and when it goes away, and show it in list", async () => {
+			const serving = serve.start(["--json"]);
+			await eventually(() => {
+				expect(serving.stdout).toContain('"serving"');
+			}, 20_000);
+			expect(
+				JSON.parse(serving.stdout.trim().split("\n").at(-1)!).serving
+			).toMatchObject({ reportsConnections: true });
+
+			const studio = spawn(
+				process.execPath,
+				[
+					"-e",
+					`new WebSocket("ws://127.0.0.1:${serve.port}/api/socket/0"); setInterval(() => {}, 1000)`,
+				],
+				{ stdio: "ignore" }
+			);
+			try {
+				await eventually(() => {
+					expect(serving.stdout).toContain(
+						`{"connected":{"config":"default","server":"rojo","clients":1}}`
+					);
+				}, 20_000);
+				const listed = () => {
+					const [list, listArgs] = invocation(serve.cli, [
+						"list",
+						"--json",
+					]);
+					return JSON.parse(
+						spawnSync(list, listArgs, {
+							cwd: serve.dir,
+							encoding: "utf8",
+						}).stdout
+					).configs[0].serving;
+				};
+				await eventually(() => {
+					expect(listed()).toEqual({
+						server: "rojo",
+						host: "127.0.0.1",
+						port: serve.port,
+						clients: 1,
+					});
+				}, 20_000);
+			} finally {
+				studio.kill("SIGKILL");
+			}
+
+			await eventually(() => {
+				expect(serving.stdout).toContain(
+					`{"disconnected":{"config":"default","server":"rojo","clients":0}}`
+				);
+			}, 20_000);
+		}, 60_000);
+	});
+
 	describe("in another mode than the serve runs", () => {
 		const recordPath = () =>
 			path.join(os.tmpdir(), "rogen-serve", `${serve.port}.json`);

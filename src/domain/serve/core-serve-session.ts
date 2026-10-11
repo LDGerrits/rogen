@@ -14,6 +14,7 @@ import {
 	ServePlan,
 	ServeSession,
 	ServeTarget,
+	ServerConnectionEvent,
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
@@ -42,6 +43,12 @@ export class CoreServeSession
 		new Emitter<ServerReadyEvent>()
 	);
 	readonly onDidServe: Event<ServerReadyEvent> = this._onDidServe.event;
+
+	private readonly _onDidConnect = this._register(
+		new Emitter<ServerConnectionEvent>()
+	);
+	readonly onDidConnect: Event<ServerConnectionEvent> =
+		this._onDidConnect.event;
 
 	private readonly _onDidOutput = this._register(
 		new Emitter<ServerOutputEvent>()
@@ -325,6 +332,7 @@ export class CoreServeSession
 			{
 				served: (serving) => this._onDidServe.fire(serving),
 				said: (said) => this._onDidOutput.fire(said),
+				connection: (change) => this._onDidConnect.fire(change),
 				stopped: (stop) => this._onDidExit.fire(stop),
 				failed: (error) => this._onDidError.fire(error),
 			}

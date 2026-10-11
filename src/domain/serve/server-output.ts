@@ -38,6 +38,13 @@ export class ServerOutput extends AbstractDisposable {
 	);
 	readonly onDidMessage: Event<ServerMessage> = this._onDidMessage.event;
 
+	private readonly _onDidConnection = this._register(
+		new Emitter<"opened" | "closed">()
+	);
+	/** Fired for each log record that says a Studio plugin connected or left. */
+	readonly onDidConnection: Event<"opened" | "closed"> =
+		this._onDidConnection.event;
+
 	private pending: PendingRecord | undefined;
 	private readonly quiet: RunOnceScheduler;
 	private last: { readonly key: string; readonly at: number } | undefined;
@@ -86,7 +93,7 @@ export class ServerOutput extends AbstractDisposable {
 			return;
 		}
 		this.flush();
-		this.say("info", line.trim());
+		this.say("info", line.trim(), false);
 	}
 
 	private flush(): void {
@@ -105,11 +112,18 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	private say(severity: ServerMessage["severity"], said: string): void {
+	/** `logged` says the text is a log record of the server's, not a line it printed on its own. */
+	private say(
+		severity: ServerMessage["severity"],
+		said: string,
+		logged = true
+	): void {
 		if (said === "") return;
 		const text = RUST_NOISE.test(said)
 			? undefined
 			: this.server.tidied(said);
+		const change = logged ? this.server.connectionIn(said) : undefined;
+		if (change) this._onDidConnection.fire(change);
 		if (severity === "debug" || !text) {
 			this._onDidMessage.fire({ severity: "debug", text: said });
 			return;

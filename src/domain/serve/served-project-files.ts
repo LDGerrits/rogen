@@ -39,6 +39,18 @@ export class ServedProjectFiles {
 		return undefined;
 	}
 
+	/** The record of a running serve that serves `file`, whatever mode it built in. */
+	async servingOf(file: string): Promise<ServerRecord | undefined> {
+		for (const record of await this.records.all()) {
+			if (
+				samePath(record.projectFile, file) &&
+				(await this.isRunning(record))
+			)
+				return record;
+		}
+		return undefined;
+	}
+
 	/** Whether the server of `record` still answers, as the one the serve started: a crashed serve leaves its record behind. */
 	private async isRunning(record: ServerRecord): Promise<boolean> {
 		const server = SyncServer.byId(record.server);

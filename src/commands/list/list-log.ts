@@ -8,12 +8,26 @@ import {
 	leafConfigs,
 } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
+import { ServingNow } from "../../domain/serve/serve-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
 import {
 	DiagnosticJson,
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+
+/** The server that a running serve serves each config with, by the config file; none for a config nothing serves. */
+export type ServingByConfig = ReadonlyMap<string, ServingNow | undefined>;
+
+/** A running serve in words: `Rojo at 127.0.0.1:34872, 1 Studio connected`. */
+const servingLine = ({ server, host, port, clients }: ServingNow): string =>
+	`${server.name} at ${host}:${port}${
+		clients === undefined
+			? ""
+			: clients === 0
+				? ", no Studio connected"
+				: `, ${clients} Studio connected`
+	}`;
 
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
@@ -43,6 +57,13 @@ export interface ConfigDetails {
 	readonly templates: readonly string[];
 	readonly syncDir: string | null;
 	readonly outFile: string;
+	/** The server a running serve serves the project file with, and how many Studio plugins are connected to it when it says. */
+	readonly serving: {
+		readonly server: string;
+		readonly host: string;
+		readonly port: number;
+		readonly clients: number | null;
+	} | null;
 }
 
 /** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
@@ -85,7 +106,11 @@ export class ListLog {
 	}
 
 	/** The intro, one block per config (its file, what it extends, then its values or its errors), and the closing line when every config loads. `home` is the folder the configs are read from. */
-	print(entries: readonly ConfigEntry[], home?: string): void {
+	print(
+		entries: readonly ConfigEntry[],
+		home?: string,
+		serving: ServingByConfig = new Map()
+	): void {
 		const { logService } = this;
 		new BuildLog(logService, this.cwd).begin("list", [], home);
 		const relative = (file: string) => relativeTo(this.cwd, file);
@@ -134,6 +159,9 @@ export class ListLog {
 						: []),
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
+					...(serving.get(entry.file)
+						? [`serving: ${servingLine(serving.get(entry.file)!)}`]
+						: []),
 					`variants: ${listed(variantLines(config))}`,
 					...(config.conflicts.length > 0
 						? [
@@ -153,7 +181,10 @@ export class ListLog {
 			logService.outro(`${plural(entries.length, "config")}.`);
 	}
 
-	json(entries: readonly ConfigEntry[]): ListDocument {
+	json(
+		entries: readonly ConfigEntry[],
+		serving: ServingByConfig = new Map()
+	): ListDocument {
 		const leaves = new Set(leafConfigs(entries));
 		return {
 			configs: entries.map((entry) => ({
@@ -166,7 +197,7 @@ export class ListLog {
 				),
 				served: entry.status === "valid" && leaves.has(entry),
 				...(entry.status === "valid"
-					? configDetails(entry.config)
+					? configDetails(entry.config, serving.get(entry.file))
 					: {}),
 				diagnostics:
 					entry.status === "broken"
@@ -177,7 +208,10 @@ export class ListLog {
 	}
 }
 
-function configDetails(config: ResolvedConfig): ConfigDetails {
+function configDetails(
+	config: ResolvedConfig,
+	serving: ServingNow | undefined
+): ConfigDetails {
 	return {
 		projectName: config.projectName,
 		rootDirs: config.rootDirs.map((file) => toNative(file)),
@@ -198,5 +232,13 @@ function configDetails(config: ResolvedConfig): ConfigDetails {
 			: [],
 		syncDir: config.syncDir ? toNative(config.syncDir) : null,
 		outFile: toNative(config.outFile),
+		serving: serving
+			? {
+					server: serving.server.id,
+					host: serving.host,
+					port: serving.port,
+					clients: serving.clients ?? null,
+				}
+			: null,
 	};
 }

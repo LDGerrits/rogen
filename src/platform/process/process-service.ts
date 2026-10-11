@@ -22,6 +22,8 @@ export interface ProcessOutput {
 
 export interface SpawnOptions {
 	readonly cwd: string;
+	/** Variables the program gets unless the environment already sets them. */
+	readonly defaultEnv?: Readonly<Record<string, string>>;
 }
 
 export interface ExecOptions {

@@ -8,6 +8,8 @@ import { ServeAddress, ServerInfo } from "./serve.js";
 export interface ServedBuild {
 	readonly projectFile: string;
 	readonly setting: BuildSetting;
+	/** How many Studio plugins are connected; none when the server doesn't say. */
+	readonly clients?: number;
 }
 
 /** What a serve recorded of a server it started. */
@@ -33,6 +35,7 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		!isObject(value.variants) ||
 		(value.session !== undefined && typeof value.session !== "string") ||
 		(value.pid !== undefined && typeof value.pid !== "number") ||
+		(value.clients !== undefined && typeof value.clients !== "number") ||
 		(value.mode !== undefined && typeof value.mode !== "string")
 	)
 		return undefined;
@@ -44,6 +47,7 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		session: value.session,
 		pid: value.pid,
 		projectFile: value.projectFile,
+		clients: value.clients,
 		setting: {
 			mode: value.mode,
 			variants: Object.fromEntries(
@@ -114,6 +118,7 @@ export class ServerRecords {
 				session: info.session,
 				project: info.project,
 				projectFile: built.projectFile,
+				clients: built.clients,
 				mode: built.setting.mode,
 				variants: built.setting.variants,
 			})

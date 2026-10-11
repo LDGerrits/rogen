@@ -255,6 +255,7 @@ describe("serve command", () => {
 					host: "127.0.0.1",
 					port: 34872,
 					session: "s1",
+					reportsConnections: false,
 					alreadyRunning: true,
 					adopted: true,
 				},
@@ -300,12 +301,84 @@ describe("serve command", () => {
 					host: "127.0.0.1",
 					port: 34872,
 					session: "s1",
+					reportsConnections: true,
 				},
 			},
 		]);
 		expect(
 			logService.entries.filter(({ kind }) => kind !== "print")
 		).toEqual([]);
+	});
+
+	describe("as Studio connects", () => {
+		const websocket = (what: string) =>
+			`[DEBUG librojo::web::api] WebSocket subscription ${what}\n`;
+		const answered = async (options: CommandLine["options"] = {}) => {
+			void serve([], options);
+			await settle();
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: "s1",
+			});
+			await settle();
+		};
+
+		it("should say when Studio connects and leaves", async () => {
+			await answered();
+
+			processes.spawned[0].print(websocket("established for session s1"));
+			await settle();
+			processes.spawned[0].print(websocket("established for session s2"));
+			await settle();
+			processes.spawned[0].print(websocket("closed by client"));
+			await settle();
+			processes.spawned[0].print(websocket("closed by client"));
+			await settle();
+
+			expect(
+				logService.lines.filter((line) => line.includes("Studio"))
+			).toEqual([
+				"info: Studio connected to default.",
+				"info: Studio connected to default (2 connected).",
+				"info: Studio disconnected from default, 1 still connected.",
+				"info: Studio disconnected from default.",
+			]);
+		});
+
+		it("should print each connection as a JSON line, with how many are connected", async () => {
+			await answered({ json: true });
+
+			processes.spawned[0].print(websocket("established for session s1"));
+			await settle();
+			processes.spawned[0].print(websocket("closed by client"));
+			await settle();
+
+			expect(printed().slice(2)).toEqual([
+				{
+					connected: {
+						config: "default",
+						server: "rojo",
+						clients: 1,
+					},
+				},
+				{
+					disconnected: {
+						config: "default",
+						server: "rojo",
+						clients: 0,
+					},
+				},
+			]);
+		});
+
+		it("should say on the serving line that this serve reports connections", async () => {
+			await answered({ json: true });
+
+			expect(printed()[1].serving).toMatchObject({
+				reportsConnections: true,
+			});
+		});
 	});
 
 	it("should print what the server says as JSON lines, without what Rogen drops", async () => {

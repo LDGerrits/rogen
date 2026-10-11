@@ -12,7 +12,8 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ListLog } from "./list-log.js";
+import { ServeService } from "../../domain/serve/serve-service.js";
+import { ListLog, ServingByConfig } from "./list-log.js";
 
 const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;
 
@@ -47,11 +48,31 @@ registerCommand(
 			const { entries, home } = selection.value;
 			const report = new ListLog(logService, cwd);
 			const broken = ListLog.failure(entries);
+			const serveService = accessor.get(ServeService);
+			const serving: ServingByConfig = new Map(
+				await Promise.all(
+					entries.map(
+						async (entry) =>
+							[
+								entry.file,
+								entry.status === "valid"
+									? await serveService.servedBy(
+											entry.config.outFile
+										)
+									: undefined,
+							] as const
+					)
+				)
+			);
 
 			if (line.options.json)
-				return this.printJson(logService, report.json(entries), broken);
+				return this.printJson(
+					logService,
+					report.json(entries, serving),
+					broken
+				);
 
-			report.print(entries, home);
+			report.print(entries, home, serving);
 			return broken ? err(broken) : ok(undefined);
 		}
 	}

@@ -102,6 +102,32 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it.each([
+			["is not set", {}, "from-default"],
+			["is set", { ROGEN_PROBE: "from-env" }, "from-env"],
+		])(
+			"should give the child its default for a variable that %s",
+			async (_, env, expected) => {
+				const owned = new NativeProcessService({
+					...process.env,
+					PATH: [path.dirname(node), dir].join(path.delimiter),
+					...env,
+				});
+				const child = owned.spawn(
+					node,
+					["-e", "console.log(process.env.ROGEN_PROBE)"],
+					{ cwd: dir, defaultEnv: { ROGEN_PROBE: "from-default" } }
+				);
+				let output = "";
+				child.onDidOutputLine((line) => (output += line));
+
+				await exitOf(child);
+
+				expect(output.trim()).toBe(expected);
+				child[Symbol.dispose]();
+			}
+		);
+
 		it("should not take a signal from outside for the interruption of this process", async () => {
 			if (process.platform === "win32") return;
 			const child = service.spawn(

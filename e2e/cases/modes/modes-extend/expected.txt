@@ -40,6 +40,7 @@ stdout:
         "templates": [],
         "syncDir": null,
         "outFile": "<dir>/default.project.json",
+        "serving": null,
         "diagnostics": []
       }
     ]

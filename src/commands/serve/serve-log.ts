@@ -3,6 +3,7 @@ import {
 	ServePlan,
 	ServedTarget,
 	ServeTarget,
+	ServerConnectionEvent,
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
@@ -28,6 +29,8 @@ export interface ServeReporter {
 	update(update: WatchUpdate): void;
 	serving(serving: ServerReadyEvent): void;
 	said(said: ServerOutputEvent): void;
+	/** A Studio plugin connected to a server this serve started, or left it. */
+	connection(change: ServerConnectionEvent): void;
 	stopped(stop: ServerExitEvent): void;
 	/** How the servers followed the configs as they changed. */
 	changed(change: ServeChangeEvent): void;
@@ -98,6 +101,15 @@ export class ServeLog implements ServeReporter {
 		if (message.severity === "error") this.logService.error(text);
 		else if (message.severity === "warning") this.logService.warn(text);
 		else this.logService.info(text);
+	}
+
+	connection({ target, opened, clients }: ServerConnectionEvent): void {
+		const { label } = target.config;
+		this.logService.info(
+			opened
+				? `Studio connected to ${label}${clients > 1 ? ` (${clients} connected)` : ""}.`
+				: `Studio disconnected from ${label}${clients > 0 ? `, ${clients} still connected` : ""}.`
+		);
 	}
 
 	stopped({ target, interrupted, failure }: ServerExitEvent): void {
@@ -194,6 +206,16 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
+	connection({ target, opened, clients }: ServerConnectionEvent): void {
+		this.line({
+			[opened ? "connected" : "disconnected"]: {
+				config: target.config.label,
+				server: serverFor(target, this.plan).id,
+				clients,
+			},
+		});
+	}
+
 	stopped({ target, exit, failure }: ServerExitEvent): void {
 		this.line({
 			stopped: this.stoppedJson(target, "exited", {
@@ -275,6 +297,8 @@ export class ServeJsonLog implements ServeReporter {
 			host: target.address.host,
 			port: target.address.port,
 			...(info.session && { session: info.session }),
+			reportsConnections:
+				!alreadyRunning && info.server.reportsConnections(info.version),
 			...(alreadyRunning && { alreadyRunning }),
 			...(target.adopted && { adopted: true }),
 		};
