@@ -29,13 +29,13 @@ describe("CommandFailure", () => {
 		});
 	});
 
-	describe("report", () => {
+	describe("finish, as told to the user", () => {
 		it("should print nothing for a failure already reported in full", () => {
-			new CommandFailure(logService, false).report(
+			new CommandFailure(logService, false).finish(
 				new ReportedError(new DiagnosticsError([problem])),
 				"build"
 			);
-			new CommandFailure(logService, true).report(
+			new CommandFailure(logService, true).finish(
 				new ReportedError(new Error("x")),
 				"build"
 			);
@@ -46,7 +46,7 @@ describe("CommandFailure", () => {
 		it("should print each diagnostic of a failure, then close the frame", () => {
 			logService.intro("rogen build");
 
-			new CommandFailure(logService, false).report(
+			new CommandFailure(logService, false).finish(
 				new DiagnosticsError([problem]),
 				"build"
 			);
@@ -60,7 +60,7 @@ describe("CommandFailure", () => {
 		it("should print another failure as an error, then close the frame", () => {
 			logService.intro("rogen build");
 
-			new CommandFailure(logService, false).report(
+			new CommandFailure(logService, false).finish(
 				new Error("no config"),
 				"build"
 			);
@@ -74,7 +74,7 @@ describe("CommandFailure", () => {
 		it("should close the frame with the message of a cancelled run", () => {
 			logService.intro("rogen init");
 
-			new CommandFailure(logService, false).report(
+			new CommandFailure(logService, false).finish(
 				new CancelledError("init cancelled."),
 				"init"
 			);
@@ -85,7 +85,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the diagnostics of a failure as a JSON document", () => {
-			new CommandFailure(logService, true).report(
+			new CommandFailure(logService, true).finish(
 				new DiagnosticsError([problem]),
 				"build"
 			);
@@ -97,7 +97,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the message of another failure as a JSON document", () => {
-			new CommandFailure(logService, true).report(
+			new CommandFailure(logService, true).finish(
 				new Error("no config"),
 				"build"
 			);
@@ -108,7 +108,7 @@ describe("CommandFailure", () => {
 		it("should print only the error for a failure before any command ran", () => {
 			logService.intro("rogen");
 
-			new CommandFailure(logService, false).report(
+			new CommandFailure(logService, false).finish(
 				new Error("unknown option")
 			);
 

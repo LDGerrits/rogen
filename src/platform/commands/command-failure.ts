@@ -12,7 +12,7 @@ export class CommandFailure {
 	) {}
 
 	/** `command` is the one that failed; without it the failure came before any command ran, so there is no frame to close. */
-	report(error: Error, command?: string): void {
+	private report(error: Error, command?: string): void {
 		if (error instanceof ReportedError) return;
 		if (this.json) {
 			this.logService.print(JSON.stringify(failureToJson(error)));
