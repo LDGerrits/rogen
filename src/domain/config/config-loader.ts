@@ -164,8 +164,9 @@ export class ConfigLoader {
 		let written = "";
 
 		for (;;) {
+			const currentKey = pathKey(current);
 			const cycleStart = files.findIndex(
-				(file) => pathKey(file) === pathKey(current)
+				(seen) => pathKey(seen) === currentKey
 			);
 			if (cycleStart >= 0 && referrer) {
 				const cycle = [...files.slice(cycleStart), current];

@@ -48,14 +48,33 @@ export function dirnamePosix(relativePath: string): string {
 	return dir === "." ? "" : dir;
 }
 
+/** `a` and `b` as `path.relative` compares them: it follows the host's case rule, which is wrong for macOS' file system, so a file system that ignores case folds both. */
+function foldedForRelative(
+	a: string,
+	b: string,
+	caseInsensitive: boolean
+): [string, string] {
+	return caseInsensitive ? [a.toLowerCase(), b.toLowerCase()] : [a, b];
+}
+
 /** Whether two paths name one place, compared as paths, since a case-insensitive file system makes `Src` and `src` one folder. */
-export function samePath(a: string, b: string): boolean {
-	return path.relative(a, b) === "";
+export function samePath(
+	a: string,
+	b: string,
+	caseInsensitive = ignoresPathCase
+): boolean {
+	return path.relative(...foldedForRelative(a, b, caseInsensitive)) === "";
 }
 
 /** Whether `dir` lies strictly inside `parent`; both must be absolute. */
-export function isInside(dir: string, parent: string): boolean {
-	const relative = path.relative(parent, dir);
+export function isInside(
+	dir: string,
+	parent: string,
+	caseInsensitive = ignoresPathCase
+): boolean {
+	const relative = path.relative(
+		...foldedForRelative(parent, dir, caseInsensitive)
+	);
 	return (
 		relative !== "" &&
 		relative !== ".." &&
