@@ -737,12 +737,44 @@ describe("CoreServeService", () => {
 		});
 	});
 
+	describe("servedBy", () => {
+		it("should say which server serves each project file, and how many Studio plugins it has", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					clients: 2,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const served = await service.servedBy([
+				"/repo/default.project.json",
+				"/repo/lobby.project.json",
+			]);
+
+			expect([...served]).toEqual([
+				[
+					"/repo/default.project.json",
+					{
+						server: SyncServer.ROJO,
+						host: "127.0.0.1",
+						port: 34872,
+						clients: 2,
+					},
+				],
+			]);
+		});
+	});
+
 	describe("serve", () => {
 		let session: ServeSession;
 		let served: ServerReadyEvent[];
 		let stops: ServerExitEvent[];
 		let said: string[];
 		let changes: string[];
+		let connections: string[];
 
 		const settle = async () => {
 			for (let i = 0; i < 20; i++)
@@ -759,6 +791,12 @@ describe("CoreServeService", () => {
 			served = [];
 			stops = [];
 			session.onDidServe((serving) => served.push(serving));
+			connections = [];
+			session.onDidConnect(({ target, opened, clients }) =>
+				connections.push(
+					`${target.config.label} ${opened ? "opened" : "closed"} ${clients}`
+				)
+			);
 			said = [];
 			session.onDidOutput(({ message }) =>
 				said.push(`${message.severity}: ${message.text}`)
@@ -813,7 +851,10 @@ describe("CoreServeService", () => {
 				[
 					"/bin/rojo",
 					["serve", "default.project.json"],
-					{ cwd: "/repo" },
+					{
+						cwd: "/repo",
+						env: { RUST_LOG: expect.any(Function) },
+					},
 				],
 			]);
 		});
@@ -855,6 +896,29 @@ describe("CoreServeService", () => {
 			);
 			expect(JSON.parse(projectFile).globIgnorePaths).toEqual([
 				"src/Analytics.mock.luau",
+			]);
+		});
+
+		it("should tell when a Studio plugin connects to a server it started, and leaves it", async () => {
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await settle();
+
+			processes.spawned[0].print(
+				"[DEBUG librojo::web::api] WebSocket subscription established for session s1\n"
+			);
+			await settle();
+			processes.spawned[0].print(
+				"[DEBUG librojo::web::api] WebSocket subscription closed by client\n"
+			);
+			await settle();
+
+			expect(connections).toEqual([
+				"default opened 1",
+				"default closed 0",
 			]);
 		});
 
@@ -915,6 +979,7 @@ describe("CoreServeService", () => {
 				host: "127.0.0.1",
 				port: 34872,
 				server: "rojo",
+				clients: 0,
 				pid: 4242,
 				session: "s1",
 				project: "repo",

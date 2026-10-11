@@ -22,6 +22,10 @@ export interface ProcessOutput {
 
 export interface SpawnOptions {
 	readonly cwd: string;
+	/** Variables the program gets, each worked out from what the environment already holds under that name. */
+	readonly env?: Readonly<
+		Record<string, (inherited: string | undefined) => string>
+	>;
 }
 
 export interface ExecOptions {
