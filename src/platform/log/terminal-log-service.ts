@@ -1,11 +1,11 @@
 import * as clack from "@clack/prompts";
-import { styleText } from "util";
+import { style } from "../../base/style.js";
 import { AbstractLogService, LogKind } from "./abstract-log-service.js";
 
 const SYMBOLS = {
-	success: styleText("green", "✔"),
-	warning: styleText("yellow", "▲"),
-	error: styleText("red", "■"),
+	success: style("green", "✔"),
+	warning: style("yellow", "▲"),
+	error: style("red", "■"),
 } as const;
 
 const nested = (text: string, symbol?: string) =>
@@ -21,7 +21,7 @@ export class TerminalLogService extends AbstractLogService {
 				console.info(text);
 				break;
 			case "note":
-				console.info(styleText("dim", text));
+				console.info(style("dim", text));
 				break;
 			case "intro":
 				clack.intro(text);
@@ -49,7 +49,7 @@ export class TerminalLogService extends AbstractLogService {
 				break;
 			case "debug":
 			case "trace":
-				nested(styleText("dim", text));
+				nested(style("dim", text));
 				break;
 			case "info":
 				nested(text);

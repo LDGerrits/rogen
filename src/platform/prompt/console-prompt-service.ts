@@ -23,7 +23,7 @@ import {
 	symbolBar,
 } from "@clack/prompts";
 import { Readable, Writable } from "stream";
-import { styleText } from "util";
+import { style } from "../../base/style.js";
 import {
 	ConfirmPromptOptions,
 	MultiSelectPromptOptions,
@@ -36,8 +36,8 @@ import {
 
 type State = Prompt<unknown>["state"];
 
-const dim = (text: string) => styleText("dim", text);
-const struck = (text: string) => styleText(["strikethrough", "dim"], text);
+const dim = (text: string) => style("dim", text);
+const struck = (text: string) => style(["strikethrough", "dim"], text);
 
 const choiceText = <T extends string>(
 	{ label, hint }: PromptChoice<T>,
@@ -59,12 +59,12 @@ interface Frame {
 /** Draws one prompt: its description and hint only while it's open, then just the title and answer. */
 function drawFrame(output: Writable, frame: Frame): string {
 	const { state, message, details } = frame;
-	const bar = `${symbolBar(state) ?? styleText("gray", S_BAR)}  `;
-	const gray = `${styleText("gray", S_BAR)}  `;
+	const bar = `${symbolBar(state) ?? style("gray", S_BAR)}  `;
+	const gray = `${style("gray", S_BAR)}  `;
 	const wrap = (text: string, prefix: string, first = prefix) =>
 		wrapTextWithPrefix(output, text, prefix, first);
 	const head = [
-		styleText("gray", S_BAR),
+		style("gray", S_BAR),
 		wrap(message, bar, `${symbol(state)}  `),
 	];
 
@@ -75,7 +75,7 @@ function drawFrame(output: Writable, frame: Frame): string {
 		return [
 			...head,
 			...(frame.answer ? [wrap(struck(frame.answer), gray)] : []),
-			styleText("gray", S_BAR),
+			style("gray", S_BAR),
 		].join("\n");
 	}
 
@@ -87,12 +87,12 @@ function drawFrame(output: Writable, frame: Frame): string {
 		...head,
 		...detailLines,
 		...frame.body.map((line) => `${bar}${line}`),
-		...(frame.footer ?? [styleText("cyan", S_BAR_END)]),
+		...(frame.footer ?? [style("cyan", S_BAR_END)]),
 	].join("\n")}\n`;
 }
 
 const errorFooter = (error: string) => [
-	`${styleText("yellow", S_BAR_END)}  ${styleText("yellow", error)}`,
+	`${style("yellow", S_BAR_END)}  ${style("yellow", error)}`,
 ];
 
 interface PromptStreams {
@@ -130,8 +130,8 @@ export class ConsolePromptService implements PromptService {
 			validate: validate && ((value) => validate(value || placeholder)),
 			render() {
 				const empty = placeholder
-					? `${styleText("inverse", placeholder[0])}${dim(placeholder.slice(1))}`
-					: styleText(["inverse", "hidden"], "_");
+					? `${style("inverse", placeholder[0])}${dim(placeholder.slice(1))}`
+					: style(["inverse", "hidden"], "_");
 				return drawFrame(output, {
 					state: this.state,
 					message: options.message,
@@ -158,7 +158,7 @@ export class ConsolePromptService implements PromptService {
 			render() {
 				const radio = (on: boolean, label: string) =>
 					on
-						? `${styleText("green", S_RADIO_ACTIVE)} ${label}`
+						? `${style("green", S_RADIO_ACTIVE)} ${label}`
 						: `${dim(S_RADIO_INACTIVE)} ${dim(label)}`;
 				return drawFrame(output, {
 					state: this.state,
@@ -189,7 +189,7 @@ export class ConsolePromptService implements PromptService {
 					options: this.options,
 					style: (choice, active) =>
 						active
-							? `${styleText("green", S_RADIO_ACTIVE)} ${choiceText(choice)}`
+							? `${style("green", S_RADIO_ACTIVE)} ${choiceText(choice)}`
 							: `${dim(S_RADIO_INACTIVE)} ${choiceText(choice, dim)}`,
 				});
 				return drawFrame(output, {
@@ -222,9 +222,9 @@ export class ConsolePromptService implements PromptService {
 					options: this.options,
 					style: (choice, active) => {
 						const box = ticked.includes(choice.value)
-							? styleText("green", S_CHECKBOX_SELECTED)
+							? style("green", S_CHECKBOX_SELECTED)
 							: active
-								? styleText("cyan", S_CHECKBOX_ACTIVE)
+								? style("cyan", S_CHECKBOX_ACTIVE)
 								: dim(S_CHECKBOX_INACTIVE);
 						return `${box} ${choiceText(choice, active ? undefined : dim)}`;
 					},
