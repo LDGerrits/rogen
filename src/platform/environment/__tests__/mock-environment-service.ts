@@ -13,7 +13,9 @@ export class MockEnvironmentService implements EnvironmentService {
 		public readonly userHome: string = "/mock/home",
 		public readonly tmpDir: string = "/mock/tmp",
 		public readonly pid: number = 4242,
-		public readonly annotationsIn?: string
+		public readonly annotationsIn?: string,
+		public readonly cacheDir: string = "/mock/cache",
+		public readonly checksForUpdates: boolean = false
 	) {
 		this.isPlain = !isInteractive;
 	}

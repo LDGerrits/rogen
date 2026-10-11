@@ -54,7 +54,10 @@ export class NativeRequestService implements RequestService {
 				client
 					.get(
 						url,
-						{ signal: AbortSignal.timeout(options.timeout) },
+						{
+							headers: options.headers,
+							signal: AbortSignal.timeout(options.timeout),
+						},
 						(response) => {
 							const chunks: Buffer[] = [];
 							response.on("data", (chunk: Buffer) =>

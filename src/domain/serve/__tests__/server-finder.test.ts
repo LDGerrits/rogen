@@ -1,5 +1,6 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { SyncServer } from "../serve.js";
 import { ServerFinder } from "../server-finder.js";
 
@@ -24,7 +25,7 @@ describe("ServerFinder", () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo/game");
 		processes = new MockProcessService();
-		finder = new ServerFinder(fs, processes);
+		finder = new ServerFinder(new CoreToolchainService(fs), processes);
 	});
 
 	it("should run the server the project pins, by the name it pins it as", async () => {

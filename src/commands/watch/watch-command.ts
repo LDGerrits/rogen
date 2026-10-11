@@ -32,6 +32,7 @@ registerCommand(
 			super({
 				id: "watch",
 				metadata: {
+					longRunning: true,
 					description:
 						"Builds, then rebuilds whenever sources or configs change.",
 					args: ConfigArguments,

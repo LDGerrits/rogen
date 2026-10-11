@@ -50,6 +50,29 @@ describe("ToolManifest", () => {
 		});
 	});
 
+	describe("pinOf", () => {
+		it("should write the entry as the manager's file reads it", () => {
+			const rokit = parse("/repo/rokit.toml", "[tools]\n");
+			const foreman = parse("/repo/foreman.toml", "[tools]\n");
+
+			expect(rokit.pinOf("rogen", "ldgerrits/rogen", "2.0.3")).toBe(
+				'rogen = "ldgerrits/rogen@2.0.3"'
+			);
+			expect(foreman.pinOf("rogen", "ldgerrits/rogen", "2.0.3")).toBe(
+				'rogen = { github = "ldgerrits/rogen", version = "2.0.3" }'
+			);
+		});
+
+		it("should write what the file's own parser reads back", () => {
+			const foreman = parse("/repo/foreman.toml", "[tools]\n");
+			const text = `[tools]\n${foreman.pinOf("rogen", "ldgerrits/rogen", "2.0.3")}\n`;
+
+			expect(
+				parse("/repo/foreman.toml", text).nameOf("ldgerrits/rogen")
+			).toBe("rogen");
+		});
+	});
+
 	describe("commands", () => {
 		it("should install and add with the manager the file belongs to", () => {
 			const manifest = parse("/repo/aftman.toml", "[tools]\n");

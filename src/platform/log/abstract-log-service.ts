@@ -10,6 +10,7 @@ import { LogLevel, LogService } from "./log-service.js";
 export type LogKind =
 	| "print"
 	| "note"
+	| "notice"
 	| "intro"
 	| "step"
 	| "section"
@@ -119,6 +120,10 @@ export abstract class AbstractLogService implements LogService {
 
 	note(text: string): void {
 		if (this.level !== LogLevel.Off) this.write("note", text);
+	}
+
+	notice(text: string): void {
+		if (this.canLog(LogLevel.Info)) this.write("notice", text);
 	}
 
 	intro(title: string): void {

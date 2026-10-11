@@ -179,6 +179,17 @@ describe("PlainLogService", () => {
 		expect(out).toEqual([]);
 	});
 
+	it("should print a notice on stderr, unless quiet", () => {
+		const logService = new PlainLogService();
+
+		logService.notice("Rogen 2.0.1 is out");
+		logService.setLevel(LogLevel.Error);
+		logService.notice("Rogen 2.0.2 is out");
+
+		expect(errors).toEqual(["Rogen 2.0.1 is out"]);
+		expect(out).toEqual([]);
+	});
+
 	it("should print raw text at the error level", () => {
 		const logService = new PlainLogService();
 		logService.setLevel(LogLevel.Error);

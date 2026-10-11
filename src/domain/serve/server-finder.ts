@@ -1,5 +1,4 @@
 import path from "path";
-import { ancestors } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { firstLine, joinedWithOr } from "../../base/strings.js";
 import {
@@ -7,11 +6,11 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SyncServer } from "./serve.js";
 import { ServerExecutable } from "./serve-service.js";
-import { ToolManifest } from "./tool-manifest.js";
+import { ToolManifest } from "../toolchain/tool-manifest.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 
 /** How long `--version` may take; a toolchain manager may download the tool first. */
 const VERSION_TIMEOUT_MS = 60_000;
@@ -31,7 +30,7 @@ interface PinnedCandidate extends Candidate {
 /** Finds the sync server a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
 export class ServerFinder {
 	constructor(
-		private readonly fileSystemService: FileReader,
+		private readonly toolchainService: ToolchainService,
 		private readonly processService: ProcessService
 	) {}
 
@@ -42,7 +41,7 @@ export class ServerFinder {
 		resource: string,
 		signal?: AbortSignal
 	): Promise<Result<ServerExecutable, DiagnosticsError>> {
-		const manifests = await this.manifestsFor(directory);
+		const manifests = await this.toolchainService.readManifests(directory);
 		const servers = wanted ? [wanted] : SyncServer.ALL;
 		const pinned = servers.flatMap((server): PinnedCandidate[] => {
 			for (const manifest of manifests) {
@@ -87,27 +86,6 @@ export class ServerFinder {
 			version: version.value,
 			passedOver: pinned.length > 0 ? other?.candidate.server : undefined,
 		});
-	}
-
-	/** The toolchain files of `directory` and every folder above it, the nearest first. */
-	private async manifestsFor(directory: string): Promise<ToolManifest[]> {
-		const manifests: ToolManifest[] = [];
-		for (const dir of [directory, ...ancestors(directory)]) {
-			for (const fileName of ToolManifest.FILE_NAMES) {
-				const file = path.join(dir, fileName);
-				if (!(await this.fileSystemService.exists(file))) continue;
-				try {
-					const manifest = ToolManifest.parse(
-						file,
-						await this.fileSystemService.readFile(file)
-					);
-					if (manifest) manifests.push(manifest);
-				} catch {
-					// An unreadable toolchain file pins nothing; the manager reports it when it runs.
-				}
-			}
-		}
-		return manifests;
 	}
 
 	/** Runs `--version`, which proves the server starts, through its toolchain manager when one pins it. */

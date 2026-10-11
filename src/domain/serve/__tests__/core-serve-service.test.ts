@@ -11,6 +11,7 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
 import { ServedProjectFiles } from "../served-project-files.js";
@@ -109,7 +110,8 @@ describe("CoreServeService", () => {
 					).guard
 				)
 			),
-			new MockEnvironmentService("/repo", undefined, false, "/home/me")
+			new MockEnvironmentService("/repo", undefined, false, "/home/me"),
+			new CoreToolchainService(memFs)
 		);
 	});
 

@@ -400,3 +400,39 @@ describe("CoreToolchainService", () => {
 		});
 	});
 });
+
+describe("CoreToolchainService.readManifests", () => {
+	let fs: MemoryFileSystemService;
+	let toolchain: CoreToolchainService;
+	const files = async (directory: string) =>
+		(await toolchain.readManifests(directory)).map(({ file }) => file);
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/game");
+		toolchain = new CoreToolchainService(fs);
+	});
+
+	it("should list the files of the folder and every folder above, the nearest first", async () => {
+		await fs.writeFile("/repo/rokit.toml", "[tools]\n");
+		await fs.writeFile("/repo/game/aftman.toml", "[tools]\n");
+		await fs.writeFile("/repo/game/rokit.toml", "[tools]\n");
+
+		expect(await files("/repo/game")).toEqual([
+			"/repo/game/rokit.toml",
+			"/repo/game/aftman.toml",
+			"/repo/rokit.toml",
+		]);
+	});
+
+	it("should list none when no folder has one", async () => {
+		expect(await files("/repo/game")).toEqual([]);
+	});
+
+	it("should skip a file that cannot be read", async () => {
+		await fs.createDirectory("/repo/game/rokit.toml");
+		await fs.writeFile("/repo/foreman.toml", "[tools]\n");
+
+		expect(await files("/repo/game")).toEqual(["/repo/foreman.toml"]);
+	});
+});

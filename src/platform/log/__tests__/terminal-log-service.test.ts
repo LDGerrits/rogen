@@ -32,6 +32,28 @@ describe("TerminalLogService", () => {
 		);
 	});
 
+	it("should write a notice on stderr, dimmed where there are colours", () => {
+		const info = jest.spyOn(console, "info").mockImplementation(() => {});
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+
+		new TerminalLogService().notice("Rogen 2.0.1 is out");
+
+		expect(info).not.toHaveBeenCalled();
+		expect(stripVTControlCharacters(String(error.mock.calls[0][0]))).toBe(
+			"Rogen 2.0.1 is out"
+		);
+	});
+
+	it("should write no notice under --quiet", () => {
+		const error = jest.spyOn(console, "error").mockImplementation(() => {});
+		const logService = new TerminalLogService();
+		logService.setLevel(LogLevel.Error);
+
+		logService.notice("Rogen 2.0.1 is out");
+
+		expect(error).not.toHaveBeenCalled();
+	});
+
 	it("should nest results and diagnostics under a step", () => {
 		const logService = new TerminalLogService();
 
