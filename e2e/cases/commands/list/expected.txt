@@ -20,6 +20,7 @@ stdout:
     project file: out/lobby.project.json
     variants: (none)
   source.rogen.json
+    extended by: default.rogen.json
     root dirs: src
     routes: same as default
     sync dir: (none)

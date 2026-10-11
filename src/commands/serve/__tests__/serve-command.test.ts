@@ -181,7 +181,15 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should start nothing and exit 0 when a server already serves the project", async () => {
+	it("should start nothing and exit 0 when another serve already serves the project", async () => {
+		await memFs.writeFile(
+			"/mock/tmp/rogen-serve/34872.json",
+			JSON.stringify({
+				session: "s1",
+				project: "repo",
+				projectFile: "/repo/default.project.json",
+			})
+		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
 			serverVersion: "7.7.1",
@@ -195,8 +203,75 @@ describe("serve command", () => {
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default",
-			"info: default is already served: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
-			"outro: Nothing to start: every config is already served, so nothing is built or watched here.",
+			"info: default is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
+			"outro: Nothing to start: another rogen serve already serves every config, so nothing is built or watched here.",
+		]);
+	});
+
+	it("should build for a server no serve started, and exit 0 once it stops answering", async () => {
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+
+		const result = serve();
+		await settle();
+
+		expect(processes.spawned).toEqual([]);
+		expect(await memFs.exists("/repo/default.project.json")).toBe(true);
+		expect(logService.lines[1]).toBe(
+			"info: default is already served: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1). Rogen builds for it, and stops when it does."
+		);
+
+		requests.responses.delete(ROJO_URL);
+		await settle();
+		await settle();
+
+		expect((await result).isOk()).toBe(true);
+		expect(logService.lines.slice(-2)).toEqual([
+			"info: Rojo stopped serving default.",
+			"outro: Stopped serving.",
+		]);
+	});
+
+	it("should mark a server no serve started as adopted, and end with it stopped", async () => {
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+
+		void serve([], { json: true });
+		await settle();
+		requests.responses.delete(ROJO_URL);
+		await settle();
+		await settle();
+		await running;
+
+		expect(printed()).toEqual([
+			{
+				serving: {
+					config: "default",
+					tool: "rojo",
+					version: "7.7.1",
+					project: "repo",
+					host: "127.0.0.1",
+					port: 34872,
+					session: "s1",
+					alreadyRunning: true,
+					adopted: true,
+				},
+			},
+			{ build: expect.objectContaining({ config: "default" }) },
+			{
+				stopped: {
+					config: "default",
+					tool: "rojo",
+					reason: "exited",
+					adopted: true,
+				},
+			},
 		]);
 	});
 
@@ -255,6 +330,101 @@ describe("serve command", () => {
 				message: "It broke",
 			},
 		});
+	});
+
+	it("should mark the stop of an adopted server as adopted when it was asked to shut down", async () => {
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		const result = serve([], { json: true });
+		await settle();
+
+		lifecycle.shutdown();
+		await result;
+
+		expect(printed().at(-1)).toEqual({
+			stopped: {
+				config: "default",
+				tool: "rojo",
+				reason: "shutdown",
+				adopted: true,
+			},
+		});
+	});
+
+	it("should mark the stop of an adopted server whose config is gone as adopted, as JSON", async () => {
+		await memFs.writeFile(
+			"/repo/lobby.project.json",
+			JSON.stringify({
+				name: "Lobby",
+				servePort: 34900,
+				tree: { $className: "DataModel" },
+			})
+		);
+		await memFs.writeFile(
+			"/repo/lobby.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: { "*": "Workspace" },
+				template: "lobby.project.json",
+				outFile: "lobby-out.project.json",
+			})
+		);
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		void serve([], { json: true });
+		await settle();
+
+		await memFs.delete("/repo/default.rogen.json");
+		await settle();
+
+		expect(printed().filter((line) => "stopped" in line)).toContainEqual({
+			stopped: {
+				config: "default",
+				tool: "rojo",
+				reason: "removed",
+				adopted: true,
+			},
+		});
+	});
+
+	it("should say it stopped building for an adopted server whose config is gone, not that the server stopped", async () => {
+		await memFs.writeFile(
+			"/repo/lobby.project.json",
+			JSON.stringify({
+				name: "Lobby",
+				servePort: 34900,
+				tree: { $className: "DataModel" },
+			})
+		);
+		await memFs.writeFile(
+			"/repo/lobby.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: { "*": "Workspace" },
+				template: "lobby.project.json",
+				outFile: "lobby-out.project.json",
+			})
+		);
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		void serve();
+		await settle();
+
+		await memFs.delete("/repo/default.rogen.json");
+		await settle();
+
+		expect(logService.lines).toContain(
+			"info: Stopped building for default: its config is gone."
+		);
 	});
 
 	it("should end the JSON lines with each server stopped on shutdown", async () => {
@@ -495,21 +665,19 @@ describe("serve command", () => {
 
 	it("should serve a named config and still build every config here", async () => {
 		await memFs.writeFile(
-			"/repo/sync.rogen.json",
-			JSON.stringify({
-				extends: "./default.rogen.json",
-				outFile: "sync.project.json",
-			})
+			"/repo/lobby.rogen.json",
+			JSON.stringify({ rootDirs: ["src"], routes: { "*": "Workspace" } })
 		);
 
-		void serve(["default"]);
+		void serve(["lobby"]);
 		await settle();
 
 		expect(processes.spawned[0].args).toEqual([
 			"serve",
-			"default.project.json",
+			"lobby.project.json",
 		]);
-		expect(await memFs.exists("/repo/sync.project.json")).toBe(true);
+		expect(await memFs.exists("/repo/default.project.json")).toBe(true);
+		expect(logService.lines[0]).toBe("intro: rogen serve · default, lobby");
 	});
 
 	it("should fail with the build's errors and start nothing when the first build fails", async () => {

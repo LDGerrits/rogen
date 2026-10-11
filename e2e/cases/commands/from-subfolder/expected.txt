@@ -25,6 +25,7 @@ exit 0
 stdout:
   rogen list · in ../..
   ../../default.rogen.json
+    extended by: ../../lobby.rogen.json
     root dirs: ..
     routes:
       Server -> ServerScriptService

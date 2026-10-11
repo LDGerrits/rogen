@@ -170,6 +170,32 @@ describe("list command", () => {
 		);
 	});
 
+	it("should show the configs that extend a config directly", async () => {
+		await write("default.rogen.json", {});
+		await write("lobby.rogen.json", { extends: "default.rogen.json" });
+		await write("lobby-sync.rogen.json", { extends: "lobby.rogen.json" });
+
+		await run();
+
+		expect(under("default.rogen.json")[0]).toMatch(
+			/^extended by: lobby\.rogen\.json\n/
+		);
+		expect(under("lobby.rogen.json")[0]).toMatch(
+			/^extends: default\.rogen\.json\nextended by: lobby-sync\.rogen\.json\n/
+		);
+	});
+
+	it("should list a named config with the configs that extend it", async () => {
+		await write("default.rogen.json", {});
+		await write("lobby.rogen.json", { extends: "default.rogen.json" });
+		await write("lobby-sync.rogen.json", { extends: "lobby.rogen.json" });
+		await write("arena.rogen.json", { extends: "default.rogen.json" });
+
+		await run({ _: ["lobby"] });
+
+		expect(steps()).toEqual(["lobby.rogen.json", "lobby-sync.rogen.json"]);
+	});
+
 	it("should list every config here, in name order", async () => {
 		await write("lobby.rogen.json", {});
 		await write("default.rogen.json", {});
@@ -370,6 +396,8 @@ describe("list command", () => {
 						file: "/repo/default.rogen.json",
 						status: "valid",
 						extends: ["/repo/base.rogen.json"],
+						extendedBy: [],
+						served: true,
 						projectName: "repo",
 						rootDirs: ["/repo/src", "/repo/lobby"],
 						commonRoot: "/repo",
@@ -389,6 +417,29 @@ describe("list command", () => {
 						diagnostics: [],
 					},
 				],
+			});
+		});
+
+		it("should say which configs extend each, and which serve starts a server for", async () => {
+			await write("default.rogen.json", {});
+			await write("lobby.rogen.json", { extends: "default.rogen.json" });
+			await write("lobby-sync.rogen.json", {
+				extends: "lobby.rogen.json",
+			});
+
+			await run({ json: true });
+
+			expect(entry("default")).toMatchObject({
+				extendedBy: ["/repo/lobby.rogen.json"],
+				served: false,
+			});
+			expect(entry("lobby")).toMatchObject({
+				extendedBy: ["/repo/lobby-sync.rogen.json"],
+				served: false,
+			});
+			expect(entry("lobby-sync")).toMatchObject({
+				extendedBy: [],
+				served: true,
 			});
 		});
 
@@ -448,6 +499,8 @@ describe("list command", () => {
 				file: "/repo/b.rogen.json",
 				status: "broken",
 				extends: [],
+				extendedBy: [],
+				served: false,
 				diagnostics: [
 					expect.objectContaining({
 						file: "/repo/b.rogen.json",

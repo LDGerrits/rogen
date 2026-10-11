@@ -1,5 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import path from "path";
+import { pathKey } from "../../base/path.js";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -163,7 +164,10 @@ export class ConfigLoader {
 		let written = "";
 
 		for (;;) {
-			const cycleStart = files.indexOf(current);
+			const currentKey = pathKey(current);
+			const cycleStart = files.findIndex(
+				(seen) => pathKey(seen) === currentKey
+			);
 			if (cycleStart >= 0 && referrer) {
 				const cycle = [...files.slice(cycleStart), current];
 				return {

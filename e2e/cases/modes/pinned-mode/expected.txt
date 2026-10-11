@@ -13,6 +13,7 @@ exit 0
 stdout:
   rogen list
   default.rogen.json
+    extended by: release.rogen.json
     root dirs: src
     routes:
       Server -> ServerScriptService

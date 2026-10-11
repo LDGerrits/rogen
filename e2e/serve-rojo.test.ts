@@ -206,7 +206,7 @@ describeWithRojo("end to end serve", () => {
 		expect(serving.output).not.toContain("Rojo server listening");
 	}, 40_000);
 
-	it("should exit 0 at once when the project is already served", async () => {
+	it("should exit 0 at once when another serve already serves the project", async () => {
 		const first = serve.start();
 		await eventually(() => {
 			expect(first.output).toContain("Serving default");
@@ -218,6 +218,42 @@ describeWithRojo("end to end serve", () => {
 		expect(JSON.parse(second.stdout.trim()).serving).toEqual(
 			expect.objectContaining({ port: serve.port, alreadyRunning: true })
 		);
+	}, 40_000);
+
+	it("should build for a Rojo it didn't start, and stop once that Rojo stops", async () => {
+		const [build, buildArgs] = invocation(serve.cli, ["build"]);
+		expect(spawnSync(build, buildArgs, { cwd: serve.dir }).status).toBe(0);
+		const rojo = spawn("rojo", ["serve", "default.project.json"], {
+			cwd: serve.dir,
+			stdio: "ignore",
+		});
+		try {
+			await eventually(async () => {
+				expect(await rojoProject(serve.port)).toBe("Game");
+			}, 20_000);
+
+			const serving = serve.start(["--json"]);
+			await eventually(() => {
+				expect(serving.stdout).toContain('"adopted":true');
+			}, 20_000);
+			writeProjectFile(serve.dir, "src/B.luau");
+			await eventually(() => {
+				expect(
+					fs.readFileSync(
+						path.join(serve.dir, "default.project.json"),
+						"utf8"
+					)
+				).toContain("src/B.luau");
+			});
+			rojo.kill("SIGINT");
+
+			expect(await serving.exited).toBe(0);
+			expect(serving.stdout).toContain(
+				'{"stopped":{"config":"default","tool":"rojo","reason":"exited","adopted":true}}'
+			);
+		} finally {
+			rojo.kill("SIGINT");
+		}
 	}, 40_000);
 
 	it("should refuse a server that another checkout of the project started", async () => {

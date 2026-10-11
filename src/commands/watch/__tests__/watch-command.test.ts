@@ -11,7 +11,7 @@ import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { parseArgs } from "../../../platform/environment/args.js";
+import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import {
 	CommandRegistry,
 	Extensions,
@@ -45,7 +45,10 @@ describe("watch command", () => {
 		...extra,
 	});
 
-	const startWatch = async (names: string[] = []) => {
+	const startWatch = async (
+		names: string[] = [],
+		options: CommandLine["options"] = {}
+	) => {
 		const harness = commandHarness({
 			fs: memFs,
 			log: logService,
@@ -53,7 +56,7 @@ describe("watch command", () => {
 			lifecycle,
 			watcher,
 		});
-		return harness.run("watch", { positionals: names });
+		return harness.run("watch", { positionals: names, options });
 	};
 
 	const run = async (names: string[] = []) => {
@@ -91,6 +94,50 @@ describe("watch command", () => {
 		await watcher.stop();
 		jest.runOnlyPendingTimers();
 		jest.useRealTimers();
+	});
+
+	describe("with --json", () => {
+		it("should print one JSON object per line for each build, and nothing else", async () => {
+			void startWatch([], { json: true });
+			await settle();
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(
+				logService.texts("print").map((line) => JSON.parse(line))
+			).toEqual([
+				{
+					build: expect.objectContaining({
+						config: "default",
+						outcome: "wrote",
+					}),
+				},
+				{
+					build: expect.objectContaining({
+						config: "default",
+						outcome: "wrote",
+					}),
+				},
+			]);
+			expect(
+				logService.entries.filter(({ kind }) => kind !== "print")
+			).toEqual([]);
+		});
+
+		it("should print a config that comes to the folder as a notice", async () => {
+			void startWatch([], { json: true });
+			await settle();
+			logService.clear();
+
+			await write("/repo/source.rogen.json", config());
+			await settle();
+
+			expect(
+				logService.texts("print").map((line) => JSON.parse(line))
+			).toContainEqual({
+				notice: { kind: "added", file: "/repo/source.rogen.json" },
+			});
+		});
 	});
 
 	describe("startup", () => {
@@ -532,7 +579,7 @@ describe("watch command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept the override flags, but not --json", () => {
+		it("should accept the override flags and --json", () => {
 			expect(
 				parse(
 					"watch",
@@ -540,10 +587,10 @@ describe("watch command", () => {
 					"--variant",
 					"mock",
 					"-o",
-					"x"
+					"x",
+					"--json"
 				).isOk()
 			).toBe(true);
-			expect(parse("watch", "--json").isErr()).toBe(true);
 		});
 
 		it("should reject --all", () => {

@@ -38,8 +38,20 @@ export interface StartedServerListener {
 	failed(error: Error): void;
 }
 
+/** A server the session serves a config with, whether it started the process or adopted one that was already running. */
+export interface RunningServer {
+	readonly target: ServeTarget;
+	/** Ends what the session holds of it: its process if it started one, else only its watching. */
+	terminate(): Promise<void>;
+	/** Terminates it, drops its record and everything it holds. */
+	retire(): Promise<void>;
+	/** Drops its record, if it has one. */
+	unrecord(): Promise<void>;
+	[Symbol.dispose](): void;
+}
+
 /** A server process the session started for one config, from its start until it is stopped: it reads its output, asks its port until it answers, and records itself once it does. */
-export class StartedServer extends AbstractDisposable {
+export class StartedServer extends AbstractDisposable implements RunningServer {
 	private readonly child: ChildProcess;
 	private exited = false;
 	/** Told to stop, by the session or because its config no longer wants it there; its exit is no failure. */

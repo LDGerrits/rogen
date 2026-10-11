@@ -26,6 +26,7 @@ stdout:
     project file: arena.project.json
     variants: (none)
   default.rogen.json
+    extended by: arena.rogen.json, lobby.rogen.json
     root dirs: places/shared/src
     routes: same as arena
     template: places/shared/template.project.json

@@ -1,4 +1,5 @@
 import path from "path";
+import { compareStrings } from "../../base/collections.js";
 import { UsageError } from "../../base/errors.js";
 import { samePath } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -87,28 +88,31 @@ export class ServePorts {
 		return new UsageError([...lines, fix].join("\n"));
 	}
 
-	/** `target` once its port is free, or with `servedBy` set when its own project is already served there; otherwise why it can't be served. `others` are the targets served beside it, and `sharedName` says another of them has its project's name, so a server of that name can't be told apart. */
+	/** `target` once its port is free, or with `servedBy` set when its project is already served there (`adopted` when no serve recorded that server); else why it can't be served. */
 	async check(
 		target: ServeTarget,
 		others: readonly ServeTarget[],
-		sharedName: boolean
+		namesakes: readonly ResolvedConfig[]
 	): Promise<Result<ServeTarget, Diagnostic>> {
 		const state = await this.probe.probe(target.address, this.server);
 		if (state.kind === "free") return ok(target);
 		const holder = state.kind === "serving" ? state.info : undefined;
-		const elsewhere =
+		const recorded =
 			holder &&
 			(await this.records.projectFileOf(target.address, holder));
-		const ownServer =
-			holder?.project === target.project &&
-			!sharedName &&
-			(!elsewhere || samePath(elsewhere, target.config.outFile));
-		if (ownServer) return ok({ ...target, servedBy: holder });
+		if (holder?.project === target.project) {
+			if (recorded && samePath(recorded, target.config.outFile))
+				return ok({ ...target, servedBy: holder });
+			if (!recorded)
+				return namesakes.length === 0
+					? ok({ ...target, servedBy: holder, adopted: true })
+					: err(this.unknownServer(target, holder, namesakes));
+		}
 		return err(
 			await this.portTaken(
 				target,
 				holder,
-				elsewhere ? path.dirname(elsewhere) : undefined,
+				recorded ? path.dirname(recorded) : undefined,
 				others
 			)
 		);
@@ -168,6 +172,23 @@ export class ServePorts {
 							},
 						},
 					]
+		);
+	}
+
+	/** Why `target` can't be told apart from its `namesakes` on `holder`, which no serve recorded. */
+	private unknownServer(
+		target: ServeTarget,
+		holder: ServerInfo,
+		namesakes: readonly ResolvedConfig[]
+	): Diagnostic {
+		const { config, address } = target;
+		const labels = [config, ...namesakes]
+			.map(({ label }) => label)
+			.sort(compareStrings);
+		return errorDiagnostic(
+			"serve.portTaken",
+			{ resource: config.template?.file ?? config.file },
+			`Port ${address.port} is taken by ${holder.server.name} serving ${holder.project}, the name of ${joinedWithAnd(labels)}, so Rogen can't tell whether it serves ${config.label}. Stop it, and run 'rogen serve' again to start the server.`
 		);
 	}
 

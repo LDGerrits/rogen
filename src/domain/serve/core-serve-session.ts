@@ -17,15 +17,17 @@ import {
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
+	ServedTarget,
 	isServed,
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
-import { StartedServer } from "./started-server.js";
+import { RunningServer, StartedServer } from "./started-server.js";
+import { AdoptedServer } from "./adopted-server.js";
 import { ServedConfigs } from "./served-configs.js";
 
-/** A watch of the plan's configs, and a server for each config to serve that nothing else serves, kept in step with the configs as they change. */
+/** A watch of the plan's configs, and a server for each config to serve: one it starts where nothing serves, or one it adopts where a server no serve started already does, kept in step with the configs as they change. */
 export class CoreServeSession
 	extends AbstractDisposable
 	implements ServeSession
@@ -56,7 +58,7 @@ export class CoreServeSession
 	);
 	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
 
-	private readonly servers = new Map<string, StartedServer>();
+	private readonly servers = new Map<string, RunningServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */
 	private readonly retirements = new Set<Promise<void>>();
 	/** The configs whose server can't be started at the address they were last seen at, so what the session said of them is said once. */
@@ -128,11 +130,13 @@ export class CoreServeSession
 		);
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		for (const target of this.plan.toStart) this.launch(target);
-		for (const { config, address } of this.plan.alreadyServed)
-			this.declined.set(config.file, {
-				kind: "elsewhere",
-				address: address.toString(),
-			});
+		for (const target of this.plan.alreadyServed)
+			if (target.adopted) this.adopt(target);
+			else
+				this.declined.set(target.config.file, {
+					kind: "elsewhere",
+					address: target.address.toString(),
+				});
 		this.launched = true;
 		return ok(undefined);
 	}
@@ -167,7 +171,8 @@ export class CoreServeSession
 	private async reconcile(): Promise<void> {
 		const served = new ServedConfigs(
 			this.plan.selection.configs,
-			this.plan.named
+			this.plan.named,
+			this.plan.neighbours
 		);
 		const wanted = new Set(served.configs.map(({ file }) => file));
 		const present = new Set(served.all.map(({ file }) => file));
@@ -217,12 +222,12 @@ export class CoreServeSession
 		const samePort = started?.target.address.port === target.address.port;
 		const checked = holder
 			? err(this.ports.sharedPort(target, holder))
-			: started && samePort
+			: started instanceof StartedServer && samePort
 				? ok(target)
 				: await this.ports.check(
 						target,
 						others,
-						served.sharesName(target.project)
+						served.namesakesOf(target.config)
 					);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
@@ -231,7 +236,7 @@ export class CoreServeSession
 	/** Says what came of checking `target`, and acts on it: a refusal is said once, a server already serving it is left be, and else the server moves or starts. */
 	private async settle(
 		target: ServeTarget,
-		started: StartedServer | undefined,
+		started: RunningServer | undefined,
 		declinedHere: "refused" | "elsewhere" | undefined,
 		checked: Result<ServeTarget, Diagnostic>
 	): Promise<void> {
@@ -254,7 +259,10 @@ export class CoreServeSession
 					kind: "servedElsewhere",
 					target: checked.value,
 				});
-			this.declined.set(file, { kind: "elsewhere", address });
+			if (checked.value.adopted) {
+				this.declined.delete(file);
+				this.adopt(checked.value);
+			} else this.declined.set(file, { kind: "elsewhere", address });
 			return;
 		}
 		this.declined.delete(file);
@@ -278,7 +286,7 @@ export class CoreServeSession
 	}
 
 	private async retire(
-		server: StartedServer,
+		server: RunningServer,
 		reason: "removed" | "extended" | "moved"
 	): Promise<void> {
 		const { target } = server;
@@ -308,6 +316,15 @@ export class CoreServeSession
 				failed: (error) => this._onDidError.fire(error),
 			}
 		);
+		this.servers.set(target.config.file, server);
+	}
+
+	private adopt(target: ServedTarget): void {
+		if (this.stopping) return;
+		const server = new AdoptedServer(target, this.probe, {
+			stopped: (stop) => this._onDidExit.fire(stop),
+			failed: (error) => this._onDidError.fire(error),
+		});
 		this.servers.set(target.config.file, server);
 	}
 }

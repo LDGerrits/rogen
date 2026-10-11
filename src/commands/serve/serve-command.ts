@@ -45,7 +45,7 @@ registerCommand(
 						{
 							name: "config",
 							description:
-								"A config to serve, by name or path. Every config here is built and watched either way; without names, each one no other config extends is served.",
+								"A config to serve, by name or path; when configs extend it, the ones no other config extends are served instead. Every config here, or in the nearest folder above that has any, is built and watched either way; without names, each one no other config extends is served.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -53,7 +53,7 @@ registerCommand(
 					passthrough: {
 						name: "server args",
 						description:
-							"Passed to the server untouched, such as --port 34873.",
+							"Passed to every server untouched, such as --port 34873. A place's own servePort and serveAddress go in its template.",
 					},
 					options: ServeOptions,
 					examples: [
@@ -99,7 +99,7 @@ registerCommand(
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(
-						"Nothing to start: every config is already served, so nothing is built or watched here."
+						"Nothing to start: another rogen serve already serves every config, so nothing is built or watched here."
 					);
 					return ok(undefined);
 				}

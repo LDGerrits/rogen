@@ -297,6 +297,26 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should print only JSON lines on stdout with --json, one per build", async () => {
+		const watching = start(["--json"]);
+		await eventually(() => {
+			expect(watching.stdout).toContain('"build"');
+		});
+
+		writeProjectFile(project.dir, "src/B.luau");
+
+		await eventually(() => {
+			const lines = watching.stdout
+				.trim()
+				.split("\n")
+				.map((line) => JSON.parse(line));
+			expect(lines.map((line) => line.build.outcome)).toEqual([
+				"wrote",
+				"wrote",
+			]);
+		});
+	}, 30_000);
+
 	it("should exit cleanly when interrupted", async () => {
 		const running = start();
 		await eventually(() => {

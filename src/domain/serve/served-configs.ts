@@ -1,27 +1,29 @@
-import { ResolvedConfig, leafConfigs } from "../config/config.js";
+import { PathSet } from "../../base/path.js";
+import { ResolvedConfig, inFamilyOf, leafConfigs } from "../config/config.js";
 
-/** Which of a serve's configs it serves: the ones named on the command line, else the leaves. */
+/** Which of a serve's configs it serves: the ones no other config extends, among the named ones and those that extend them, else among all. */
 export class ServedConfigs {
 	readonly configs: readonly ResolvedConfig[];
-	private readonly servable: ReadonlySet<ResolvedConfig>;
 
 	constructor(
 		readonly all: readonly ResolvedConfig[],
-		named: ReadonlySet<string> | undefined
+		named: PathSet | undefined,
+		/** Configs here that the serve doesn't build, which still share project names. */
+		private readonly neighbours: readonly ResolvedConfig[] = []
 	) {
 		const leaves = leafConfigs(all);
 		this.configs = named
-			? all.filter(({ file }) => named.has(file))
+			? leaves.filter((config) => inFamilyOf(config, named))
 			: leaves;
-		this.servable = new Set([...leaves, ...this.configs]);
 	}
 
-	/** Whether several configs a server could serve here have `project`'s name, so a server of that name can't be told apart. */
-	sharesName(project: string): boolean {
-		return (
-			[...this.servable].filter(
-				({ projectName: name }) => name === project
-			).length > 1
+	/** The other configs here with `config`'s project name, which a server that only says that name could be serving. */
+	namesakesOf(config: ResolvedConfig): ResolvedConfig[] {
+		const itself = new PathSet([config.file]);
+		return [...this.all, ...this.neighbours].filter(
+			(other) =>
+				!itself.has(other.file) &&
+				other.projectName === config.projectName
 		);
 	}
 }

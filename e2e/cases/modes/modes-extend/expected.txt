@@ -10,6 +10,8 @@ stdout:
         "extends": [
           "<dir>/base.rogen.json"
         ],
+        "extendedBy": [],
+        "served": true,
         "projectName": "project",
         "rootDirs": [
           "<dir>/src"

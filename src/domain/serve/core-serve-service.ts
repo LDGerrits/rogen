@@ -1,4 +1,5 @@
 import { UsageError } from "../../base/errors.js";
+import { PathSet } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -7,6 +8,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 
+import { ResolvedConfig } from "../config/config.js";
 import {
 	ConfigOptionValues,
 	ReloadableSelection,
@@ -73,10 +75,14 @@ export class CoreServeService implements ServeService {
 		if (server.isErr()) return server;
 		const selected = await this.select(request.refs, request.options);
 		if (selected.isErr()) return selected;
-		const { selection, named } = selected.value;
+		const { selection, named, neighbours } = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const servedConfigs = new ServedConfigs(configs.value, named);
+		const servedConfigs = new ServedConfigs(
+			configs.value,
+			named,
+			neighbours
+		);
 		const served = servedConfigs.configs;
 
 		const executable = await this.finder.find(
@@ -104,7 +110,7 @@ export class CoreServeService implements ServeService {
 			const result = await ports.check(
 				target,
 				targets,
-				servedConfigs.sharesName(target.project)
+				servedConfigs.namesakesOf(target.config)
 			);
 			if (result.isOk()) checked.push(result.value);
 			else taken.push(result.error);
@@ -116,7 +122,8 @@ export class CoreServeService implements ServeService {
 				executable.value,
 				checked,
 				request.serverArgs,
-				named
+				named,
+				neighbours
 			)
 		);
 	}
@@ -143,26 +150,50 @@ export class CoreServeService implements ServeService {
 		Result<
 			{
 				readonly selection: ReloadableSelection;
-				readonly named?: ReadonlySet<string>;
+				readonly named?: PathSet;
+				readonly neighbours: readonly ResolvedConfig[];
 			},
 			Error
 		>
 	> {
 		const named = await this.configService.select(refs, options);
 		if (named.isErr() || refs.length === 0)
-			return named.map((selection) => ({ selection }));
-		const files = new Set(named.value.entries.map(({ file }) => file));
+			return named.map((selection) => ({ selection, neighbours: [] }));
+		const files = named.value.entries.map(({ file }) => file);
+		const filesNamed = new PathSet(files);
 		const here = await this.configService.select([], options);
+		const held = new PathSet(
+			here.isOk() ? here.value.entries.map(({ file }) => file) : []
+		);
 		const holdsNamed =
 			here.isOk() &&
 			here.value.requireValid().isOk() &&
-			[...files].every((file) =>
-				here.value.entries.some((entry) => entry.file === file)
-			);
+			files.every((file) => held.has(file));
+		if (holdsNamed)
+			return ok({
+				selection: here.value,
+				named: filesNamed,
+				neighbours: [],
+			});
 		return ok({
-			selection: holdsNamed ? here.value : named.value,
-			named: files,
+			selection: named.value,
+			named: filesNamed,
+			neighbours: await this.neighboursOf(named.value, options),
 		});
+	}
+
+	/** The configs in the working folder that `selection` leaves out, read without the `-o` that names one config. */
+	private async neighboursOf(
+		selection: ReloadableSelection,
+		options: ConfigOptionValues
+	): Promise<ResolvedConfig[]> {
+		const everyone = await this.configService.select([], {
+			...options,
+			"out-file": undefined,
+		});
+		if (everyone.isErr()) return [];
+		const chosen = new PathSet(selection.entries.map(({ file }) => file));
+		return everyone.value.configs.filter(({ file }) => !chosen.has(file));
 	}
 
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError> {

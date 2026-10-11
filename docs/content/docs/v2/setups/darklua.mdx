@@ -142,7 +142,7 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 </Steps>
 
 <Callout type="info">
-	`rogen build` and `rogen watch` mention any config you didn't ask for, so you'll notice if you forget the sync config. `rogen serve` builds every config on its own.
+	A config's name brings the configs that extend it: `rogen build default` and `rogen watch default` build `sync` too, and `rogen serve default` serves `sync`. `default.project.json` and `sync.project.json` have the same project name, so a `rojo serve` you started yourself can't be told apart from the one `rogen serve` would start; `rogen serve` asks you to stop it instead of taking it over.
 </Callout>
 
 ## Data Files

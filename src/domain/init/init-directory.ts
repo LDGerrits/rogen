@@ -1,6 +1,6 @@
 import path from "path";
 import { PathSet, contains, normalizeDir } from "../../base/path.js";
-import { isWindows } from "../../base/platform.js";
+import { ignoresPathCase } from "../../base/platform.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -46,8 +46,8 @@ export class InitDirectory {
 		readonly givenName: string | undefined,
 		/** What a place inherits from `default.rogen.json`; `undefined` when there is none. */
 		readonly base: Result<BaseConfig, Diagnostic[]> | undefined,
-		/** Whether the file system takes `Src` and `src` for one name, as Windows' does. */
-		caseInsensitive = isWindows
+		/** Whether the file system takes `Src` and `src` for one name, as Windows' and macOS' do. */
+		caseInsensitive = ignoresPathCase
 	) {
 		this.names = new PathSet(entries, caseInsensitive);
 	}

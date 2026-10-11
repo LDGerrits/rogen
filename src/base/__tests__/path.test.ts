@@ -45,6 +45,15 @@ describe("PathSet", () => {
 });
 
 describe("Path", () => {
+	describe("letter case", () => {
+		it("should take Src and src for one folder when the file system ignores case", () => {
+			expect(samePath("/repo/Src", "/repo/src", true)).toBe(true);
+			expect(samePath("/repo/Src", "/repo/src", false)).toBe(false);
+			expect(isInside("/repo/Src/a", "/repo/src", true)).toBe(true);
+			expect(isInside("/repo/Src/a", "/repo/src", false)).toBe(false);
+		});
+	});
+
 	describe("samePath", () => {
 		it("should accept paths that resolve to one place", () => {
 			expect(samePath("/repo/src", "/repo/src/")).toBe(true);
