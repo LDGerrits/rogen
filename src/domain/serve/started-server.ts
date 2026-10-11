@@ -9,6 +9,9 @@ import {
 	ProcessService,
 	exitCodeText,
 } from "../../platform/process/process-service.js";
+import { BuildSetting, sameSetting, settingOf } from "../build/build.js";
+import { ResolvedConfig } from "../config/config.js";
+import { ServerInfo } from "./serve.js";
 import {
 	ServePlan,
 	ServeTarget,
@@ -58,6 +61,10 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	private ending = false;
 	/** The write of its record, once it answered. */
 	private record: Promise<void> | undefined;
+	/** What the server said when it answered, which its record keeps naming. */
+	private answering: ServerInfo | undefined;
+	/** The mode and variants of the build its project file holds. */
+	private setting: BuildSetting;
 	/** The next time its port is asked whether it answers yet. */
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
@@ -73,6 +80,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		private readonly listener: StartedServerListener
 	) {
 		super();
+		this.setting = settingOf(target.config);
 		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
 			processService.spawn(
@@ -123,6 +131,32 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this[Symbol.dispose]();
 	}
 
+	/** Notes that the config was built again, as the server's project file now holds that build: when its mode or variants changed since the record was written, the record says so. */
+	async rebuilt(config: ResolvedConfig): Promise<void> {
+		const setting = settingOf(config);
+		if (sameSetting(setting, this.setting)) return;
+		this.setting = setting;
+		if (!this.record || !this.answering || this.ending || this.exited)
+			return;
+		const info = this.answering;
+		this.record = this.record.then(() =>
+			this.ending || this.exited ? undefined : this.writeRecord(info)
+		);
+		await this.record;
+	}
+
+	private writeRecord(info: ServerInfo): Promise<void> {
+		const { target } = this;
+		return this.records
+			.write(target.address, info, {
+				projectFile: target.config.outFile,
+				setting: this.setting,
+			})
+			.catch((error) =>
+				this.listener.failed(ErrorUtils.fromUnknown(error))
+			);
+	}
+
 	/** Drops the record of the server, once its write is done, so no late write outlives it. */
 	async unrecord(): Promise<void> {
 		if (!this.record) return;
@@ -141,15 +175,8 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 					state.kind === "serving" &&
 					state.info.project === target.project
 				) {
-					this.record = this.records
-						.write(
-							target.address,
-							state.info,
-							target.config.outFile
-						)
-						.catch((error) =>
-							this.listener.failed(ErrorUtils.fromUnknown(error))
-						);
+					this.answering = state.info;
+					this.record = this.writeRecord(state.info);
 					this.listener.served({ target, info: state.info });
 					return;
 				}

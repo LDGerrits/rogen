@@ -166,7 +166,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf(SyncServer.ARGON);
 
 		expect(diagnostic.message).toBe(
-			"No Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'aftman add argon-rbx/argon', then 'argon plugin install' to install its Studio plugin."
+			"No Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'aftman add argon-rbx/argon', then 'argon plugin install' to install its Studio plugin. Argon was asked for by --server or a config's \"server\"; drop that to serve with another server."
 		);
 		expect(diagnostic.fixes?.[0]).toEqual({
 			run: { command: "aftman add argon-rbx/argon", cwd: "/repo" },

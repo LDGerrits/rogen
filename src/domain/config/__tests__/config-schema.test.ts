@@ -27,6 +27,7 @@ describe("domain/config/config-schema", () => {
 			"template",
 			"syncDir",
 			"outFile",
+			"server",
 		];
 
 		const UNSUPPORTED_FIELDS = [

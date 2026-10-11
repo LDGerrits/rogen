@@ -21,6 +21,9 @@ import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { MockPromptService } from "../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CoreServeService } from "../../domain/serve/core-serve-service.js";
+import { ServedProjectFiles } from "../../domain/serve/served-project-files.js";
+import { ServerProbe } from "../../domain/serve/server-probe.js";
+import { ServerRecords } from "../../domain/serve/server-records.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
 import { CoreWatchService } from "../../domain/watch/core-watch-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
@@ -91,11 +94,20 @@ export function commandHarness(
 		options.config ?? legacyChecked(new CoreConfigService(fs, environment));
 	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
-	const build = new CoreBuildService(fs, index, toolchain.syncTools);
+	const requests = options.requests ?? new MockRequestService();
+	const served = new ServedProjectFiles(
+		new ServerRecords(fs, environment.tmpDir, environment.pid),
+		new ServerProbe(requests)
+	);
+	const build = new CoreBuildService(
+		fs,
+		index,
+		toolchain.syncTools,
+		served.guard
+	);
 	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
 	const watch = new CoreWatchService(watcher, index, build);
 	const processes = options.processes ?? new MockProcessService();
-	const requests = options.requests ?? new MockRequestService();
 
 	const services = new ServiceCollection();
 	services.set(EnvironmentService, environment);

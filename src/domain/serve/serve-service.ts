@@ -22,18 +22,18 @@ import {
 
 /** The option that picks the sync server to serve with. */
 export const ServerOption = {
-	name: "tool",
+	name: "server",
 	type: "string",
 	placeholder: SyncServer.ALL.map(({ id }) => id).join("|"),
 	description:
-		"Serves with this sync server; without it, the one the project pins, Rojo before Argon.",
+		"Serves with this sync server, over the configs' server field; without either, the one the project pins, Rojo before Argon.",
 } as const satisfies OptionDescriptor;
 
 export interface ServeRequest {
 	/** The configs to serve, by name or path; every config here that no other extends when none. */
 	readonly refs: readonly string[];
 	readonly options: ConfigOptionValues;
-	/** The id of the server to start, `rojo` or `argon`; the one the project pins when not given, Rojo before Argon. */
+	/** The id of the server to start, `rojo` or `argon`; the one the served configs name when not given, else the one the project pins, Rojo before Argon. */
 	readonly serverId?: string;
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
@@ -79,7 +79,9 @@ export class ServePlan {
 		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
 		readonly named?: PathSet,
 		/** The configs in the working folder that the selection leaves out. */
-		readonly neighbours: readonly ResolvedConfig[] = []
+		readonly neighbours: readonly ResolvedConfig[] = [],
+		/** Whether `--server` picked the server, so no config's `server` field is asked. */
+		readonly serverAsked = false
 	) {}
 
 	/** The targets a server already serves. */
@@ -140,7 +142,7 @@ export type ServeChangeEvent =
 			readonly target: ServeTarget;
 			readonly reason: "removed" | "extended" | "moved";
 	  }
-	/** A config to serve now couldn't be served, as its port is taken; the others go on. */
+	/** A config to serve now couldn't be served, as its port is taken or it names another server than this serve runs; the others go on, and so does its own server if it has one. */
 	| {
 			readonly kind: "refused";
 			readonly target: ServeTarget;

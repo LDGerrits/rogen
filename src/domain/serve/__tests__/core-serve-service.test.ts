@@ -13,6 +13,10 @@ import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
+import { ServedProjectFiles } from "../served-project-files.js";
+import { ServerProbe } from "../server-probe.js";
+import { ServerRecords } from "../server-records.js";
+import { recordFile } from "./record-fixtures.js";
 import { SyncServer } from "../serve.js";
 import {
 	ServePlan,
@@ -32,12 +36,6 @@ const config = (extra: Record<string, unknown> = {}) =>
 
 const template = (fields: Record<string, unknown>) =>
 	JSON.stringify({ tree: { $className: "DataModel" }, ...fields });
-
-const recordOf = (port: number, project: string, projectFile: string) =>
-	[
-		`/mock/tmp/rogen-serve/${port}.json`,
-		JSON.stringify({ session: "s1", project, projectFile }),
-	] as const;
 
 const rojoInfo = (project: string) => ({
 	projectName: project,
@@ -98,7 +96,19 @@ describe("CoreServeService", () => {
 			memFs,
 			processes,
 			requests,
-			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
+			new CoreWatchService(
+				watcher,
+				index,
+				buildServiceOf(
+					memFs,
+					index,
+					[],
+					new ServedProjectFiles(
+						new ServerRecords(memFs, "/mock/tmp", 4242),
+						new ServerProbe(requests)
+					).guard
+				)
+			),
 			new MockEnvironmentService("/repo", undefined, false, "/home/me")
 		);
 	});
@@ -121,10 +131,72 @@ describe("CoreServeService", () => {
 			expect(servePlan.toStart).toHaveLength(1);
 		});
 
-		it("should refuse a server it doesn't know", async () => {
-			expect(await errorOf({ serverId: "lune" })).toEqual(
-				new UsageError('--tool takes rojo or argon, not "lune".')
-			);
+		it.each([
+			["lune", ""],
+			["Argon", ' Did you mean "argon"?'],
+		])(
+			"should refuse the server %j, which the config field would too",
+			async (serverId, hint) => {
+				expect(await errorOf({ serverId })).toEqual(
+					new UsageError(
+						`--server takes rojo or argon, not "${serverId}".${hint}`
+					)
+				);
+			}
+		);
+
+		describe("with a server named in the config", () => {
+			beforeEach(async () => {
+				await memFs.writeFile(
+					"/repo/rokit.toml",
+					'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.24"\n'
+				);
+				processes.installed.set("argon", "/bin/argon");
+				processes.outputs.set("/bin/argon", {
+					code: 0,
+					stdout: "argon 2.0.24",
+					stderr: "",
+				});
+				await memFs.writeFile(
+					"/repo/default.rogen.json",
+					config({ server: "argon" })
+				);
+			});
+
+			it("should serve with it over the pin order, without saying another was passed over", async () => {
+				expect((await plan()).executable).toMatchObject({
+					server: SyncServer.ARGON,
+					passedOver: undefined,
+				});
+			});
+
+			it("should serve with the server --server names instead", async () => {
+				expect(
+					(await plan({ serverId: "rojo" })).executable.server
+				).toBe(SyncServer.ROJO);
+			});
+
+			it("should refuse configs to serve that name different servers", async () => {
+				await memFs.writeFile(
+					"/repo/lobby.rogen.json",
+					config({
+						server: "rojo",
+						template: "lobby.template.project.json",
+					})
+				);
+				await memFs.writeFile(
+					"/repo/lobby.template.project.json",
+					template({ servePort: 34873 })
+				);
+
+				expect(await errorOf()).toEqual(
+					new UsageError(
+						'default names "server": "argon".\n' +
+							'lobby names "server": "rojo".\n' +
+							"One serve runs one server: give them the same \"server\", or serve one at a time, as 'rogen serve default'."
+					)
+				);
+			});
 		});
 
 		it("should serve the synced config of a Darklua setup, not the source-rooted one", async () => {
@@ -377,7 +449,7 @@ describe("CoreServeService", () => {
 				})
 			);
 			await memFs.writeFile(
-				...recordOf(34872, "repo", "/repo/sync.project.json")
+				...recordFile(34872, "repo", "/repo/sync.project.json")
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -454,12 +526,7 @@ describe("CoreServeService", () => {
 
 		it("should refuse a server that another checkout of the project started", async () => {
 			await memFs.writeFile(
-				"/mock/tmp/rogen-serve/34872.json",
-				JSON.stringify({
-					session: "s1",
-					project: "repo",
-					projectFile: "/other/repo/default.project.json",
-				})
+				...recordFile(34872, "repo", "/other/repo/default.project.json")
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -473,14 +540,85 @@ describe("CoreServeService", () => {
 			);
 		});
 
+		describe("a project file another serve serves in another setting", () => {
+			const modal = {
+				variants: ["mock"],
+				modes: { dev: { variants: ["mock"] }, prod: {} },
+				mode: "dev",
+			};
+
+			beforeEach(async () => {
+				await memFs.writeFile(
+					"/repo/default.rogen.json",
+					config(modal)
+				);
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
+				);
+			});
+
+			it("should leave a server alone that serves the same mode and variants", async () => {
+				await memFs.writeFile(
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						setting: { mode: "dev", variants: { mock: true } },
+					})
+				);
+
+				const servePlan = await plan();
+
+				expect(servePlan.alreadyServed).toHaveLength(1);
+			});
+
+			it("should refuse a serve of another mode, and name the one that runs", async () => {
+				await memFs.writeFile(
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						setting: { mode: "dev", variants: { mock: true } },
+					})
+				);
+
+				const error = (await errorOf({
+					options: { mode: "prod" },
+				})) as DiagnosticsError;
+
+				expect(error.diagnostics).toMatchObject([
+					{
+						code: "serve.otherMode",
+						resource: "/repo/default.rogen.json",
+					},
+				]);
+				expect(error.diagnostics[0].message).toBe(
+					"default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built in mode dev with mock on, and this serve builds mode prod. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'."
+				);
+			});
+
+			it("should refuse a serve that turns a variant off, though the mode is the same", async () => {
+				await memFs.writeFile(
+					...recordFile(34872, "repo", "/repo/default.project.json", {
+						setting: { mode: "dev", variants: { mock: true } },
+					})
+				);
+
+				const error = (await errorOf({
+					options: { "no-variant": ["mock"] },
+				})) as DiagnosticsError;
+
+				expect(error.diagnostics).toMatchObject([
+					{ code: "serve.otherMode" },
+				]);
+			});
+		});
+
 		it("should ignore a record left by a server that no longer runs", async () => {
 			await memFs.writeFile(
-				"/mock/tmp/rogen-serve/34872.json",
-				JSON.stringify({
-					session: "old",
-					project: "repo",
-					projectFile: "/other/repo/default.project.json",
-				})
+				...recordFile(
+					34872,
+					"repo",
+					"/other/repo/default.project.json",
+					{
+						session: "old",
+					}
+				)
 			);
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -680,6 +818,46 @@ describe("CoreServeService", () => {
 			]);
 		});
 
+		it("should keep the record of a server in step with the mode its config is built in", async () => {
+			const modal = (mode: string) =>
+				config({
+					variants: ["mock"],
+					modes: { dev: { variants: ["mock"] }, prod: {} },
+					mode,
+				});
+			const recorded = async () =>
+				JSON.parse(
+					await memFs.readFile("/mock/tmp/rogen-serve/34872.json")
+				);
+			await memFs.writeFile("/repo/src/Analytics.luau", "");
+			await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
+			await memFs.writeFile("/repo/default.rogen.json", modal("dev"));
+			await start();
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await settle();
+			expect(await recorded()).toMatchObject({
+				mode: "dev",
+				variants: { mock: true },
+			});
+
+			await memFs.writeFile("/repo/default.rogen.json", modal("prod"));
+			await settle();
+
+			expect(await recorded()).toMatchObject({
+				mode: "prod",
+				variants: { mock: false },
+			});
+			const projectFile = await memFs.readFile(
+				"/repo/default.project.json"
+			);
+			expect(JSON.parse(projectFile).globIgnorePaths).toEqual([
+				"src/Analytics.mock.luau",
+			]);
+		});
+
 		it("should say a server serves once it answers for its project", async () => {
 			await start();
 			expect(served).toEqual([]);
@@ -734,9 +912,14 @@ describe("CoreServeService", () => {
 					await memFs.readFile("/mock/tmp/rogen-serve/34872.json")
 				)
 			).toEqual({
+				host: "127.0.0.1",
+				port: 34872,
+				server: "rojo",
+				pid: 4242,
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",
+				variants: {},
 			});
 
 			await session.stop();
@@ -984,7 +1167,7 @@ describe("CoreServeService", () => {
 
 			it("should start the server of a config another serve served once that server is gone", async () => {
 				await memFs.writeFile(
-					...recordOf(34900, "Lobby", "/repo/lobby.project.json")
+					...recordFile(34900, "Lobby", "/repo/lobby.project.json")
 				);
 				requests.answer(
 					"http://127.0.0.1:34900/api/rojo",
@@ -1093,7 +1276,7 @@ describe("CoreServeService", () => {
 
 			it("should refuse a config another serve served once another project's server holds its port", async () => {
 				await memFs.writeFile(
-					...recordOf(34900, "Lobby", "/repo/lobby.project.json")
+					...recordFile(34900, "Lobby", "/repo/lobby.project.json")
 				);
 				requests.answer(
 					"http://127.0.0.1:34900/api/rojo",

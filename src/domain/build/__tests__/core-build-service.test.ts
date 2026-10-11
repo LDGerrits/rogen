@@ -11,7 +11,7 @@ import {
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { BuildSet, LoadedBuild } from "../build.js";
+import { BuildSet, LoadedBuild, OutFileGuard, PendingWrite } from "../build.js";
 import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 
@@ -72,6 +72,52 @@ describe("CoreBuildService", () => {
 			expect(build).toMatchObject({
 				summary: { roots: [{ rootDir: abs("src"), files: 1 }] },
 			});
+		});
+
+		it("should hand the guard the file, label and setting of each write, and report a refusal as that config's error", async () => {
+			const asked: PendingWrite[] = [];
+			const refusal = errorDiagnostic(
+				"output.servedInOtherMode",
+				{ resource: abs("default.project.json") },
+				"served"
+			);
+			const guard: OutFileGuard = async (write) => {
+				asked.push(write);
+				return write.label === "default" ? refusal : undefined;
+			};
+			const service = buildServiceOf(
+				fs,
+				new CoreIndexService(fs),
+				[],
+				guard
+			);
+
+			const { builds } = await service.build(
+				selectionOf(
+					configOf({
+						mode: "prod",
+						modes: { dev: {}, prod: {} },
+						variants: { mock: false },
+					}),
+					lobby()
+				)
+			);
+
+			expect(
+				asked.map(({ file, label, setting }) => [file, label, setting])
+			).toEqual([
+				[
+					abs("default.project.json"),
+					"default",
+					{ mode: "prod", variants: { mock: false } },
+				],
+			]);
+			expect(builds.map(({ outcome }) => outcome)).toEqual([
+				"failed",
+				"notWritten",
+			]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+			expect(await fs.exists(abs("lobby.project.json"))).toBe(false);
 		});
 
 		it("should write every config's project file and say what each did", async () => {

@@ -9,6 +9,8 @@ export interface EnvironmentService {
 	readonly userHome: string;
 	/** The folder for temporary files every process on the machine shares. */
 	readonly tmpDir: string;
+	/** This process's id, which tells the records a serve leaves in `tmpDir` as its own. */
+	readonly pid: number;
 
 	/** How much to print: errors only under `--quiet`, debug output under `--verbose`. */
 	readonly logLevel: LogLevel;
