@@ -17,10 +17,12 @@ import {
 	ConfigBuild,
 	FailedBuild,
 	LoadedBuild,
+	OutFileGuard,
 	OutputFile,
 	SyncTool,
 	UnwrittenBuild,
 	WrittenBuild,
+	settingOf,
 } from "./build.js";
 import {
 	BuildService,
@@ -45,9 +47,11 @@ export class CoreBuildService implements BuildService {
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
 		/** What each tool that writes the sync dir tells a build; the build names none of them. */
-		private readonly syncTools: readonly SyncTool[]
+		private readonly syncTools: readonly SyncTool[],
+		/** Asked before a project file changes, whether something else holds it in a way the change would break. */
+		guard?: OutFileGuard
 	) {
-		this.writer = new OutputWriter(fileSystemService);
+		this.writer = new OutputWriter(fileSystemService, guard);
 	}
 
 	build(selection: ConfigSelection): Promise<BuildRun> {
@@ -252,7 +256,12 @@ export class CoreBuildService implements BuildService {
 			}
 			const written = await this.writer.write(
 				new OutputFile(config.outFile),
-				projectFile
+				projectFile,
+				{
+					file: config.outFile,
+					label: config.label,
+					setting: settingOf(config),
+				}
 			);
 			if (written.isErr()) failed = config.label;
 			builds.push(

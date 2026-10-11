@@ -9,6 +9,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
+import { describeSetting, sameSetting, settingOf } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
 	ServeAddress,
@@ -18,7 +19,7 @@ import {
 } from "./serve.js";
 import { ServeTarget } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-records.js";
+import { ServerRecord, ServerRecords } from "./server-records.js";
 
 /** How many ports past a taken one are tried for a free one to suggest. */
 const FREE_PORT_SEARCH = 20;
@@ -98,11 +99,15 @@ export class ServePorts {
 		if (state.kind === "free") return ok(target);
 		const holder = state.kind === "serving" ? state.info : undefined;
 		const recorded =
-			holder &&
-			(await this.records.projectFileOf(target.address, holder));
+			holder && (await this.records.recordOf(target.address, holder));
 		if (holder?.project === target.project) {
-			if (recorded && samePath(recorded, target.config.outFile))
-				return ok({ ...target, servedBy: holder });
+			if (
+				recorded &&
+				samePath(recorded.projectFile, target.config.outFile)
+			)
+				return sameSetting(recorded.setting, settingOf(target.config))
+					? ok({ ...target, servedBy: holder })
+					: err(this.otherBuild(target, holder, recorded));
 			if (!recorded)
 				return namesakes.length === 0
 					? ok({ ...target, servedBy: holder, adopted: true })
@@ -112,9 +117,23 @@ export class ServePorts {
 			await this.portTaken(
 				target,
 				holder,
-				recorded ? path.dirname(recorded) : undefined,
+				recorded ? path.dirname(recorded.projectFile) : undefined,
 				others
 			)
+		);
+	}
+
+	/** Why `target` isn't served by the server that serves its project file, which another serve started with `recorded`'s mode and variants, not this serve's. */
+	private otherBuild(
+		target: ServeTarget,
+		holder: ServerInfo,
+		recorded: ServerRecord
+	): Diagnostic {
+		const { config, address } = target;
+		return errorDiagnostic(
+			"serve.otherMode",
+			{ resource: config.file },
+			`${config.label} is already served by another rogen serve with ${holder.server.name} ${holder.version} at ${address}, built in ${describeSetting(recorded.setting)}, and this serve builds ${describeSetting(settingOf(config))}. Both would write ${path.basename(config.outFile)}. Stop that serve, or serve ${config.label} on its own from another project file and port, as 'rogen serve ${config.label} -o <file> -- --port <port>'.`
 		);
 	}
 

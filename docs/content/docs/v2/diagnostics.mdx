@@ -845,6 +845,16 @@ default.project.json - error: the project file could not be written: permission 
 
 Check that the folder is writable and that no other program locks the file. Rogen creates the folder if it is missing. See [Output](/docs/v2/core-concepts/output#output).
 
+### `output.servedInOtherMode` [#output-servedinothermode]
+
+Error. A running `rogen serve` serves this project file as built in one mode (or with some variants on), and this build would write it in another, so Studio would get the new content without anyone asking. The file isn't written. A build that would write the same bytes isn't refused, and neither is one in the mode the serve runs. A record left by a serve that has stopped or crashed doesn't count: Rogen asks the server before it refuses.
+
+```
+default.project.json - error: default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built in mode dev with mock on, and this build is mode prod, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)
+```
+
+Build to another file with `-o`, as in `rogen build default --mode prod -o prod.project.json`, or stop the serve. This also holds for `watch`. A server you started yourself, which no `rogen serve` recorded, can't be told apart, so it isn't protected. See [Building While Watching](/docs/v2/core-concepts/output#building-while-watching).
+
 ### `output.nothingEmitted` [#output-nothingemitted]
 
 Warning. The config has a `syncDir`, but nothing the compiler or processor should have written for a root directory exists there. Rojo would find nothing to sync.
@@ -968,6 +978,16 @@ default.rogen.json - error: Port 34872 is taken by Rojo serving shop, so default
 ```
 
 Stop what holds the port, give the config its own `servePort` in its template, or pass a free port after `--`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
+
+### `serve.otherMode` [#serve-othermode]
+
+Error. Another `rogen serve` already serves this config's project file, built in a different mode or with different variants on than this serve builds. Both would write the same file, so this serve doesn't take it over, and doesn't count it as served either.
+
+```
+default.rogen.json - error: default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built in mode dev with mock on, and this serve builds mode prod. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'. (serve.otherMode)
+```
+
+Serve the mode that serve runs, stop it, or serve this mode from its own project file and port. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.serverExited` [#serve-serverexited]
 

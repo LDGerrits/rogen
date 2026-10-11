@@ -89,9 +89,22 @@ export class CoreServeSession
 		this._register(watch);
 		this._register(
 			watch.onDidUpdate((update) => {
-				for (const { build } of update.reports)
-					if (isWritten(build)) this.built.add(build.config.file);
-					else this.built.delete(build.config.file);
+				for (const { build } of update.reports) {
+					if (!isWritten(build)) {
+						this.built.delete(build.config.file);
+						continue;
+					}
+					this.built.add(build.config.file);
+					const running = this.servers.get(build.config.file);
+					if (running instanceof StartedServer)
+						running
+							.rebuilt(build.config)
+							.catch((error) =>
+								this._onDidError.fire(
+									ErrorUtils.fromUnknown(error)
+								)
+							);
+				}
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);
 				this._onDidUpdate.fire(update);

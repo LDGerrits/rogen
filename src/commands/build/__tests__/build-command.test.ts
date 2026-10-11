@@ -13,6 +13,8 @@ import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
+import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -254,6 +256,53 @@ describe("build command", () => {
 		expect((result as ResultError<Error>).error.message).toContain(
 			"could not be written"
 		);
+	});
+
+	describe("beside a running serve", () => {
+		const settings = { modes: { dev: {}, prod: {} } };
+		const runWithServe = async (mode: string) => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("default.project.json"), "served\n");
+			await fs.writeFile(
+				...recordFile(34872, "repo", abs("default.project.json"), {
+					setting: { mode: "dev", variants: {} },
+				})
+			);
+			const requests = new MockRequestService();
+			requests.answer("http://127.0.0.1:34872/api/rojo", {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: "s1",
+			});
+			return commandHarness({
+				fs,
+				log: new NullLogService(),
+				requests,
+				config: new MockConfigService([
+					buildable({ ...settings, mode }),
+				]),
+			}).run("build", { positionals: [], options: {} });
+		};
+
+		it("should refuse to change the project file it serves into another mode's, and say how to build to another file", async () => {
+			const result = await runWithServe("prod");
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built in mode dev, and this build is mode prod, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)"
+			);
+			expect(await fs.readFile(abs("default.project.json"))).toBe(
+				"served\n"
+			);
+		});
+
+		it("should build in the mode the serve runs", async () => {
+			const result = await runWithServe("dev");
+
+			expect(result.isOk()).toBe(true);
+			expect(await fs.readFile(abs("default.project.json"))).not.toBe(
+				"served\n"
+			);
+		});
 	});
 
 	it("should report a config that doesn't load as part of the build, and fail", async () => {
