@@ -17,11 +17,14 @@ import {
 	ServerReadyEvent,
 } from "./serve-service.js";
 import { ServerOutput } from "./server-output.js";
-import { ServerProbe } from "./server-probe.js";
+import { PortState, ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
 /** How often a started server is asked whether it serves yet, at first and at most. */
 const READY_POLL_MS = { first: 200, max: 1_000 };
+
+/** How long a started server may go without answering for its project before the user is told. */
+const SLOW_START_MS = 10_000;
 
 /** What happens to a started server, told to the session that started it. */
 export interface StartedServerListener {
@@ -46,6 +49,8 @@ export class StartedServer extends AbstractDisposable {
 	/** The next time its port is asked whether it answers yet. */
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
+	private readonly startedAt = Date.now();
+	private toldSlow = false;
 
 	constructor(
 		readonly target: ServeTarget,
@@ -134,6 +139,7 @@ export class StartedServer extends AbstractDisposable {
 					this.listener.served({ target, info: state.info });
 					return;
 				}
+				this.warnWhenSlow(state);
 				this.readyDelay = Math.min(
 					this.readyDelay * 2,
 					READY_POLL_MS.max
@@ -143,6 +149,26 @@ export class StartedServer extends AbstractDisposable {
 			.catch((error) =>
 				this.listener.failed(ErrorUtils.fromUnknown(error))
 			);
+	}
+
+	/** Says once that the server has not answered for its project in a while, and what does answer on its port, if anything; it goes on asking. */
+	private warnWhenSlow(state: PortState): void {
+		if (this.toldSlow || Date.now() - this.startedAt < SLOW_START_MS)
+			return;
+		this.toldSlow = true;
+		const { target } = this;
+		const { server } = this.plan.executable;
+		const where = `port ${target.address.port}`;
+		this.listener.said({
+			target,
+			message: {
+				severity: "warning",
+				text:
+					state.kind === "free"
+						? `${server.name} hasn't answered on ${where} yet; still waiting.`
+						: `${where} is answered by something other than ${server.name} serving ${target.project}, so ${target.config.label} may not be served there. Stop what holds it, or give it another port.`,
+			},
+		});
 	}
 
 	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */

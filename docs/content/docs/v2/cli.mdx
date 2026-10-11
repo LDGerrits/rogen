@@ -62,7 +62,7 @@ error: Rojo: Snapshot error: File is not a valid JSON model: src/Bad.model.json:
 
 Every config in the folder is built and watched, so no project file goes stale. A server starts only for the configs no other config extends: `sync` over `default` with [Darklua](/docs/v2/setups/darklua), and each place, not the shared `default`, in a [multi-place](/docs/v2/setups/multi-place) repo. Names pick which configs are served: `rogen serve lobby` builds everything and serves only `lobby`. A named config from another folder is watched on its own.
 
-Servers start only after the first build succeeds. If it fails, nothing starts, the errors print and `serve` exits 1. Press Ctrl+C to stop: it reaches the server, and Rogen ends every process it started.
+Servers start only after the first build succeeds. If it fails, nothing starts, the errors print and `serve` exits 1. A server that has not answered for its project after ten seconds is reported once, saying what else answers on its port if something does, and `serve` goes on waiting. Press Ctrl+C to stop: it reaches the server, and Rogen ends every process it started.
 
 **As configs change.** The servers follow the configs while `serve` runs, as the build does. A config added that is to be served gets its own server once it builds, after the same port checks as at the start; one that can't be served, as its port is taken, is reported and the rest go on. A served config that is deleted, or that a new config comes to extend (adding `sync.rogen.json` over `default`), has its server stopped, and the new config is served instead. A template that moves a config to another port or address restarts its server there. With config names, only those configs are served, whatever is added.
 

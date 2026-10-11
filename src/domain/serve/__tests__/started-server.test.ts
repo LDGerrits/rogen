@@ -161,6 +161,52 @@ describe("StartedServer", () => {
 		expect(await askedAfter(1)).toBe(5);
 	});
 
+	it("should say once, after ten seconds, that the server has not answered", async () => {
+		start();
+
+		await jest.advanceTimersByTimeAsync(9_000);
+		expect(said).toEqual([]);
+		await jest.advanceTimersByTimeAsync(30_000);
+
+		expect(said).toEqual([
+			{
+				target,
+				message: {
+					severity: "warning",
+					text: "Rojo hasn't answered on port 34872 yet; still waiting.",
+				},
+			},
+		]);
+		expect(requests.requested.length).toBeGreaterThan(20);
+	});
+
+	it("should say what else answers on the port when it is not the server for the project", async () => {
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "other",
+			serverVersion: "7.7.1",
+		});
+
+		await jest.advanceTimersByTimeAsync(12_000);
+
+		expect(said).toHaveLength(1);
+		expect(said[0].message.text).toContain(
+			"port 34872 is answered by something other than Rojo"
+		);
+	});
+
+	it("should not warn once the server answers", async () => {
+		start();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+		});
+
+		await jest.advanceTimersByTimeAsync(20_000);
+
+		expect(said).toEqual([]);
+	});
+
 	it("should pass on what the server says", async () => {
 		const child = start();
 
