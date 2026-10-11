@@ -102,7 +102,7 @@ export class RootClaims {
 	private readonly byRoot = new Map<ScannedRoot, DirClaims>();
 
 	constructor(
-		roots: readonly ScannedRoot[],
+		readonly roots: readonly ScannedRoot[],
 		readings: NameReadings,
 		keys: DeclaredKeys
 	) {

@@ -62,15 +62,16 @@ export class ServerOutput extends AbstractDisposable {
 	}
 
 	private read(line: string): void {
-		const record =
-			this.server.logRecordOf(line) ?? RUST_RECORD.exec(line)?.groups;
+		const logged = this.server.logRecordOf(line);
+		const record = logged ?? RUST_RECORD.exec(line)?.groups;
 		if (record) {
 			this.flush();
 			const level = record.level.toUpperCase();
 			this.pending = {
 				severity: level in SEVERITIES ? SEVERITIES[level] : "info",
 				parts: [record.text],
-				paragraph: record.level === level && line.startsWith(level),
+				// A message in capitals that is no log record of the server's is one it wrote itself.
+				paragraph: logged === undefined && record.level === level,
 			};
 			return;
 		}

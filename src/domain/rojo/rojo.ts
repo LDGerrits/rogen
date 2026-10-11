@@ -259,6 +259,17 @@ export class RojoMeta {
 		});
 	}
 
+	/** The fields of two metas for one instance, `over` applied after `base`, as Rojo applies a `.meta.jsonc` after a `.meta.json`: properties merge, and any other field `over` sets replaces the one in `base`. */
+	static merged(base: RojoMetaFields, over: RojoMetaFields): RojoMetaFields {
+		return {
+			...base,
+			...over,
+			...((base.properties || over.properties) && {
+				properties: { ...base.properties, ...over.properties },
+			}),
+		};
+	}
+
 	/** The fields `meta` adds to a project's `node`, by Rojo's precedence: a field the project sets wins, and properties merge with the project's winning. */
 	static fieldsUnder(
 		meta: RojoMetaFields,

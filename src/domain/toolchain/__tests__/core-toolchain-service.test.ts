@@ -206,6 +206,37 @@ describe("CoreToolchainService.detect", () => {
 			);
 		});
 
+		it("should read a list of bases, the last of them having the last word", async () => {
+			await write(
+				"tsconfig.a.json",
+				JSON.stringify({
+					compilerOptions: { outDir: "from-a", rootDir: "game" },
+				})
+			);
+			await write(
+				"tsconfig.b.json",
+				JSON.stringify({ compilerOptions: { outDir: "from-b" } })
+			);
+			await extending(["./tsconfig.a.json", "./tsconfig.b.json"]);
+
+			const language = rbxts(await toolchain().detect(cwd));
+
+			expect(language.compiler?.outDir).toBe("from-b");
+			expect(language.configuredRootDir()).toBe("game");
+		});
+
+		it("should find a package in a node_modules above the folder", async () => {
+			await write(
+				"../node_modules/@acme/tsconfig/tsconfig.json",
+				JSON.stringify({ compilerOptions: { rootDir: "shared" } })
+			);
+			await extending("@acme/tsconfig");
+
+			expect(
+				rbxts(await toolchain().detect(cwd)).configuredRootDir()
+			).toBe("../node_modules/@acme/tsconfig/shared");
+		});
+
 		it("should stop at a loop or a base that is missing", async () => {
 			await write(
 				"tsconfig.json",

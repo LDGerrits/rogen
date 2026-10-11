@@ -179,6 +179,16 @@ describe("ServerOutput", () => {
 			reading(SyncServer.ARGON);
 		});
 
+		it("should read a record in capitals as one line of its log, not a paragraph", () => {
+			write(["ERROR: it broke", "Listening on 34872", ""].join("\n"));
+			output.end();
+
+			expect(said).toEqual([
+				{ severity: "error", text: "it broke" },
+				{ severity: "info", text: "Listening on 34872" },
+			]);
+		});
+
 		it("should drop its info logs and what Rogen's probes and writes make it say", () => {
 			write(
 				[

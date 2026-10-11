@@ -374,6 +374,32 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("merged", () => {
+			it("should merge properties and let the later meta replace any other field", () => {
+				expect(
+					RojoMeta.merged(
+						{
+							className: "Actor",
+							properties: { A: 1, B: 1 },
+							attributes: { x: 1 },
+						},
+						{ properties: { B: 2 }, attributes: { y: 2 }, id: "i" }
+					)
+				).toEqual({
+					className: "Actor",
+					properties: { A: 1, B: 2 },
+					attributes: { y: 2 },
+					id: "i",
+				});
+			});
+
+			it("should leave properties out when neither meta has any", () => {
+				expect(RojoMeta.merged({ className: "Folder" }, {})).toEqual({
+					className: "Folder",
+				});
+			});
+		});
+
 		describe("fieldsUnder", () => {
 			it("should let the project's fields win, and merge properties with the project's winning", () => {
 				expect(

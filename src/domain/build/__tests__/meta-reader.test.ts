@@ -273,6 +273,29 @@ describe("MetaReader", () => {
 			]);
 		});
 
+		it("should read an init.meta.json and an init.meta.jsonc of one folder as one meta, the .jsonc over the .json", async () => {
+			await fs.writeFile(abs("src/Combat/A.luau"), "");
+			await fs.writeFile(
+				abs("src/Combat/init.meta.json"),
+				'{"className": "Actor", "properties": {"Name": "x"}, "attributes": {"a": 1}}'
+			);
+			await fs.writeFile(
+				abs("src/Combat/init.meta.jsonc"),
+				'{"properties": {"Archivable": false}, "attributes": {"b": 2}}'
+			);
+
+			const result = await read();
+
+			const metas = result.isOk() ? result.value : [];
+			expect(metas).toHaveLength(1);
+			expect(metas[0].file).toBe(abs("src/Combat/init.meta.jsonc"));
+			expect(metas[0].fields).toEqual({
+				className: "Actor",
+				properties: { Name: "x", Archivable: false },
+				attributes: { b: 2 },
+			});
+		});
+
 		it("should accept a RunContext in the meta of a Script", async () => {
 			await fs.writeFile(abs("src/Save.server.luau"), "");
 			await fs.writeFile(

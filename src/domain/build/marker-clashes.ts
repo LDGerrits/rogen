@@ -29,12 +29,11 @@ export class MarkerClashes {
 	private readonly clashes: readonly MarkerClash[];
 
 	constructor(
-		roots: readonly ScannedRoot[],
 		claims: RootClaims,
 		private readonly readings: NameReadings,
 		private readonly keys: DeclaredKeys
 	) {
-		this.clashes = roots.flatMap((root) =>
+		this.clashes = claims.roots.flatMap((root) =>
 			this.clashesIn(root, claims.of(root))
 		);
 	}

@@ -160,16 +160,9 @@ export class MetaReader {
 			Diagnostic[]
 		>
 	> {
-		// Rojo applies a folder's `init.meta.jsonc` over its `init.meta.json`, so it is read first.
-		const candidates = placement.metaFiles
-			.filter(({ relativePath }) =>
-				RojoFile.isInitMeta(path.posix.basename(relativePath))
-			)
-			.sort(
-				(a, b) =>
-					Number(path.basename(b.file) === RojoFile.INIT_META_JSONC) -
-					Number(path.basename(a.file) === RojoFile.INIT_META_JSONC)
-			);
+		const candidates = placement.metaFiles.filter(({ relativePath }) =>
+			RojoFile.isInitMeta(path.posix.basename(relativePath))
+		);
 		const parsed = await Promise.all(
 			candidates.map(({ file }) => this.readMeta(file))
 		);
@@ -177,16 +170,32 @@ export class MetaReader {
 		const folderMeta: FolderMeta[] = [];
 		candidates.forEach(({ rootDir, relativePath, file }, index) => {
 			const meta = parsed[index];
-			if (meta.isErr()) problems.add(meta.error);
-			else
+			if (meta.isErr()) {
+				problems.add(meta.error);
+				return;
+			}
+			const dir = dirnamePosix(toPosix(relativePath));
+			const beside = folderMeta.findIndex(
+				(other) => other.rootDir === rootDir && other.dir === dir
+			);
+			// Rojo applies an `init.meta.jsonc` over the `init.meta.json` of its folder, and reports the folder under both.
+			if (beside === -1)
 				folderMeta.push(
-					new FolderMeta(
-						file,
-						rootDir,
-						dirnamePosix(toPosix(relativePath)),
-						meta.value.fields
-					)
+					new FolderMeta(file, rootDir, dir, meta.value.fields)
 				);
+			else {
+				const existing = folderMeta[beside];
+				const isJsonc =
+					path.basename(file) === RojoFile.INIT_META_JSONC;
+				folderMeta[beside] = new FolderMeta(
+					isJsonc ? file : existing.file,
+					rootDir,
+					dir,
+					isJsonc
+						? RojoMeta.merged(existing.fields, meta.value.fields)
+						: RojoMeta.merged(meta.value.fields, existing.fields)
+				);
+			}
 		});
 		return problems.hasErrors
 			? err([...problems.diagnostics])

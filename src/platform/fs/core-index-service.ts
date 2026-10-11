@@ -143,13 +143,25 @@ export class CoreIndexService implements IndexService {
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
 				// A folder that can't be read any more is reported deleted too, but dropping it would drop its files from the project; failing keeps the listing as it was.
-				await listingOf(dir);
+				await this.probe(listingOf, dir);
 				if (isDirectoryType(change.fileType))
-					await listingOf(posixPath);
+					await this.probe(listingOf, posixPath);
 				draft.delete(dir, name);
 			}
 		}
 		return new Listing(draft.directories);
+	}
+
+	/** Reads `dir` through `listingOf`, failing only when it exists but may not be read. */
+	private async probe(
+		listingOf: (dir: string) => Promise<unknown>,
+		dir: string
+	): Promise<void> {
+		try {
+			await listingOf(dir);
+		} catch (error) {
+			if (ErrorUtils.hasCode(error, "EACCES", "EPERM")) throw error;
+		}
 	}
 
 	private async addEntry(

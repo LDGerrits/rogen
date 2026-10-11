@@ -59,6 +59,12 @@ function compilerOption(tsconfig: unknown, key: string): string | undefined {
 	return typeof value === "string" && value !== "" ? value : undefined;
 }
 
+/** `dir` and every folder above it, nearest first. */
+function ancestorsOf(dir: string): string[] {
+	const parent = path.dirname(dir);
+	return parent === dir ? [dir] : [dir, ...ancestorsOf(parent)];
+}
+
 const firstSegment = (dir: string): string =>
 	dir.split(/[\\/]/).find((segment) => segment !== "" && segment !== ".") ??
 	dir;
@@ -253,7 +259,7 @@ export class RobloxTsDetector implements LanguageDetector {
 		cwd: string,
 		file: string
 	): Promise<TsconfigFacts> {
-		const chain = await this.readChain(cwd, file);
+		const chain = await this.readChain(file);
 		const option = (key: string): string | undefined => {
 			for (const { file: defined, value } of chain) {
 				const found = compilerOption(value, key);
@@ -281,9 +287,8 @@ export class RobloxTsDetector implements LanguageDetector {
 		};
 	}
 
-	/** `file` and the files it extends, nearest first; a file that can't be read or parsed, or that closes a loop, ends the chain. */
+	/** `file` and the files it extends, nearest first; of several in an `extends` list the last has the last word, so it comes first. A file that can't be read or parsed, or that closes a loop, ends its branch. */
 	private async readChain(
-		cwd: string,
 		file: string,
 		seen: readonly string[] = []
 	): Promise<{ file: string; value: unknown }[]> {
@@ -298,40 +303,43 @@ export class RobloxTsDetector implements LanguageDetector {
 			return [];
 		}
 		const base = isObject(value) ? value.extends : undefined;
-		const parent =
-			typeof base === "string"
-				? await this.resolveExtends(cwd, file, base)
-				: undefined;
-		return [
-			{ file, value },
-			...(parent
-				? await this.readChain(cwd, parent, [...seen, file])
-				: []),
-		];
+		const specifiers = (Array.isArray(base) ? base : [base])
+			.filter((specifier) => typeof specifier === "string")
+			.reverse();
+		const chain = [{ file, value }];
+		for (const specifier of specifiers) {
+			const parent = await this.resolveExtends(file, specifier);
+			if (parent)
+				chain.push(...(await this.readChain(parent, [...seen, file])));
+		}
+		return chain;
 	}
 
-	/** The file an `extends` names: a relative path, or a package under `node_modules`; `.json` may be left off. */
+	/** The file an `extends` names: a relative path, or a package in the `node_modules` of the file's folder or of any folder above it; `.json` may be left off. */
 	private async resolveExtends(
-		cwd: string,
 		from: string,
 		specifier: string
 	): Promise<string | undefined> {
 		const relative =
 			specifier.startsWith(".") || path.isAbsolute(specifier);
-		const base = relative
-			? path.resolve(path.dirname(from), specifier)
-			: path.join(cwd, "node_modules", specifier);
-		const candidates = [
-			base,
-			`${base}.json`,
-			...(relative ? [] : [path.join(base, TSCONFIG)]),
-		];
-		for (const candidate of candidates)
-			if (
-				candidate.endsWith(".json") &&
-				(await this.fileSystemService.exists(candidate))
-			)
-				return candidate;
+		const bases = relative
+			? [path.resolve(path.dirname(from), specifier)]
+			: ancestorsOf(path.dirname(from)).map((dir) =>
+					path.join(dir, "node_modules", specifier)
+				);
+		for (const base of bases) {
+			const candidates = [
+				base,
+				`${base}.json`,
+				...(relative ? [] : [path.join(base, TSCONFIG)]),
+			];
+			for (const candidate of candidates)
+				if (
+					candidate.endsWith(".json") &&
+					(await this.fileSystemService.exists(candidate))
+				)
+					return candidate;
+		}
 		return undefined;
 	}
 }

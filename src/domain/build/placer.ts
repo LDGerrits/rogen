@@ -54,7 +54,7 @@ export class Placer {
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
 			new Router(this.config, readings).route(roots, claims);
 		const variants = new VariantResolver(this.config, readings);
-		const markerClashes = new MarkerClashes(roots, claims, readings, keys);
+		const markerClashes = new MarkerClashes(claims, readings, keys);
 		const routeErrors = [
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
