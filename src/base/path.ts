@@ -1,5 +1,5 @@
 import path from "path";
-import { isWindows } from "./platform.js";
+import { ignoresPathCase } from "./platform.js";
 
 const POSIX_SEP = path.posix.sep;
 
@@ -7,13 +7,13 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
-/** Paths found however they are written: a watcher reports POSIX paths on every system, and a file system that ignores letter case (Windows') makes `Src` and `src` one path. */
+/** Paths found however they are written: a watcher reports POSIX paths on every system, and a file system that ignores letter case (Windows' and macOS') makes `Src` and `src` one path. */
 export class PathSet {
 	private readonly keys: ReadonlySet<string>;
 
 	constructor(
 		files: Iterable<string>,
-		private readonly caseInsensitive = isWindows
+		private readonly caseInsensitive = ignoresPathCase
 	) {
 		this.keys = new Set([...files].map((file) => this.keyOf(file)));
 	}
@@ -90,11 +90,11 @@ export function containsPosix(parent: string, child: string): boolean {
 	return child === parent || child.startsWith(`${parent}/`);
 }
 
-/** As `containsPosix`, but a file system that ignores letter case (Windows') makes `Src` and `src` one folder. */
+/** As `containsPosix`, but a file system that ignores letter case (Windows' and macOS') makes `Src` and `src` one folder. */
 export function containsPath(
 	parent: string,
 	child: string,
-	caseInsensitive = isWindows
+	caseInsensitive = ignoresPathCase
 ): boolean {
 	return caseInsensitive
 		? containsPosix(parent.toLowerCase(), child.toLowerCase())
@@ -102,7 +102,10 @@ export function containsPath(
 }
 
 /** The absolute form of `filePath` that is one string for every way of writing it, for use as a key. */
-export function pathKey(filePath: string, caseInsensitive = isWindows): string {
+export function pathKey(
+	filePath: string,
+	caseInsensitive = ignoresPathCase
+): string {
 	const resolved = path.resolve(filePath);
 	return caseInsensitive ? resolved.toLowerCase() : resolved;
 }
@@ -128,7 +131,7 @@ export function stemOf(fileName: string): string {
 /** The deepest directory containing every one of `dirs`. All paths must be absolute. Throws when `dirs` is empty. */
 export function commonAncestor(
 	dirs: readonly string[],
-	caseInsensitive = isWindows
+	caseInsensitive = ignoresPathCase
 ): string {
 	if (dirs.length === 0) {
 		throw new Error("commonAncestor needs at least one directory.");

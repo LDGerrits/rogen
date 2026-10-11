@@ -7,7 +7,7 @@ import {
 	samePath,
 	toPosix,
 } from "../../base/path.js";
-import { isWindows } from "../../base/platform.js";
+import { ignoresPathCase } from "../../base/platform.js";
 import { Target } from "../roblox/roblox.js";
 import {
 	NodeClash,
@@ -71,7 +71,7 @@ interface ExtendingConfig {
 /** The configs of `configs` that no other of them extends, which a serve starts a server for: the synced config over its source-rooted base, and each place over the config they share. A file counts as one however its path is written, as `extends` may spell it differently than the folder lists it. */
 export function leafConfigs<T extends ExtendingConfig>(
 	configs: readonly T[],
-	caseInsensitive = isWindows
+	caseInsensitive = ignoresPathCase
 ): T[] {
 	const extended = new PathSet(
 		configs.flatMap(({ parents }) => parents),
@@ -89,7 +89,7 @@ export function inFamilyOf(config: ExtendingConfig, files: PathSet): boolean {
 export function directExtendersOf<T extends ExtendingConfig>(
 	config: ExtendingConfig,
 	configs: readonly T[],
-	caseInsensitive = isWindows
+	caseInsensitive = ignoresPathCase
 ): T[] {
 	const file = new PathSet([config.file], caseInsensitive);
 	return configs.filter(
