@@ -1,4 +1,5 @@
 import { UsageError } from "../../base/errors.js";
+import { PathSet, samePath } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -149,7 +150,7 @@ export class CoreServeService implements ServeService {
 		Result<
 			{
 				readonly selection: ReloadableSelection;
-				readonly named?: ReadonlySet<string>;
+				readonly named?: PathSet;
 				readonly neighbours: readonly ResolvedConfig[];
 			},
 			Error
@@ -158,19 +159,24 @@ export class CoreServeService implements ServeService {
 		const named = await this.configService.select(refs, options);
 		if (named.isErr() || refs.length === 0)
 			return named.map((selection) => ({ selection, neighbours: [] }));
-		const files = new Set(named.value.entries.map(({ file }) => file));
+		const files = named.value.entries.map(({ file }) => file);
+		const filesNamed = new PathSet(files);
 		const here = await this.configService.select([], options);
 		const holdsNamed =
 			here.isOk() &&
 			here.value.requireValid().isOk() &&
-			[...files].every((file) =>
-				here.value.entries.some((entry) => entry.file === file)
+			files.every((file) =>
+				here.value.entries.some((entry) => samePath(entry.file, file))
 			);
 		if (holdsNamed)
-			return ok({ selection: here.value, named: files, neighbours: [] });
+			return ok({
+				selection: here.value,
+				named: filesNamed,
+				neighbours: [],
+			});
 		return ok({
 			selection: named.value,
-			named: files,
+			named: filesNamed,
 			neighbours: await this.neighboursOf(named.value, options),
 		});
 	}
@@ -185,7 +191,7 @@ export class CoreServeService implements ServeService {
 			"out-file": undefined,
 		});
 		if (everyone.isErr()) return [];
-		const chosen = new Set(selection.entries.map(({ file }) => file));
+		const chosen = new PathSet(selection.entries.map(({ file }) => file));
 		return everyone.value.configs.filter(({ file }) => !chosen.has(file));
 	}
 

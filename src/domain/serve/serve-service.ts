@@ -1,5 +1,6 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
+import { PathSet } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -76,7 +77,7 @@ export class ServePlan {
 		readonly targets: readonly ServeTarget[],
 		readonly serverArgs: readonly string[],
 		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
-		readonly named?: ReadonlySet<string>,
+		readonly named?: PathSet,
 		/** The configs in the working folder that the selection leaves out. */
 		readonly neighbours: readonly ResolvedConfig[] = []
 	) {}

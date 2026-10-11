@@ -4,6 +4,7 @@ import { unescapedGlob } from "../../base/glob.js";
 import {
 	ResolvedConfig,
 	configLabel,
+	directExtendersOf,
 	leafConfigs,
 } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
@@ -57,12 +58,6 @@ export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-/** The entries of `entries` whose nearest parent is `entry`. */
-const extendersOf = (
-	entry: ConfigEntry,
-	entries: readonly ConfigEntry[]
-): ConfigEntry[] => entries.filter(({ parents }) => parents[0] === entry.file);
-
 /** What `list --json` prints. */
 export interface ListDocument {
 	readonly configs: readonly ListedConfig[];
@@ -96,7 +91,7 @@ export class ListLog {
 		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
 		for (const entry of entries) {
-			const extenders = extendersOf(entry, entries);
+			const extenders = directExtendersOf(entry, entries);
 			const extended = [
 				...(entry.parents.length > 0
 					? [`extends: ${entry.parents.map(relative).join(" -> ")}`]
@@ -166,7 +161,7 @@ export class ListLog {
 				file: toNative(entry.file),
 				status: entry.status,
 				extends: entry.parents.map((file) => toNative(file)),
-				extendedBy: extendersOf(entry, entries).map(({ file }) =>
+				extendedBy: directExtendersOf(entry, entries).map(({ file }) =>
 					toNative(file)
 				),
 				served: entry.status === "valid" && leaves.has(entry),

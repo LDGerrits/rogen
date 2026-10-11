@@ -1,12 +1,16 @@
 import fs from "fs";
 import path from "path";
+import { PathSet } from "../../../base/path.js";
 import { mockConfig } from "./mock-config-service.js";
 import {
 	DeclaredKeys,
 	SCHEMA_URL,
 	configFileName,
 	configLabel,
+	directExtendersOf,
 	fieldOf,
+	inFamilyOf,
+	leafConfigs,
 	rootDirOverlap,
 	schemaUrlFor,
 } from "../config.js";
@@ -19,6 +23,84 @@ describe("domain/config/config", () => {
 
 		it("should take the stem back out of a config path", () => {
 			expect(configLabel("/repo/lobby.rogen.json")).toBe("lobby");
+		});
+	});
+
+	describe("config families", () => {
+		const link = (file: string, ...parents: string[]) => ({
+			file,
+			parents,
+		});
+		const base = link("/repo/base.rogen.json");
+		const lobby = link("/repo/lobby.rogen.json", "/repo/base.rogen.json");
+		const sync = link(
+			"/repo/lobby-sync.rogen.json",
+			"/repo/lobby.rogen.json",
+			"/repo/base.rogen.json"
+		);
+
+		it("should leave out every config that another extends, however far", () => {
+			expect(leafConfigs([base, lobby, sync])).toEqual([sync]);
+		});
+
+		it("should take an extends written in another letter case as the same file on a case-insensitive file system", () => {
+			const written = link(
+				"/repo/lobby.rogen.json",
+				"/repo/Base.rogen.json"
+			);
+
+			expect(leafConfigs([base, written], true)).toEqual([written]);
+			expect(leafConfigs([base, written], false)).toEqual([
+				base,
+				written,
+			]);
+		});
+
+		it("should put a config in the family of a file it is or extends", () => {
+			const files = new PathSet([lobby.file]);
+
+			expect(
+				[base, lobby, sync].filter((c) => inFamilyOf(c, files))
+			).toEqual([lobby, sync]);
+		});
+
+		it("should find the family however the file or its extends is written", () => {
+			const written = link(
+				"/repo/lobby-sync.rogen.json",
+				"/repo/Lobby.rogen.json"
+			);
+
+			expect(inFamilyOf(written, new PathSet([lobby.file], true))).toBe(
+				true
+			);
+			expect(inFamilyOf(written, new PathSet([lobby.file], false))).toBe(
+				false
+			);
+			expect(
+				inFamilyOf(
+					sync,
+					new PathSet(["\\repo\\lobby.rogen.json"], false)
+				)
+			).toBe(true);
+		});
+
+		it("should list only the configs whose nearest parent is the config", () => {
+			expect(directExtendersOf(base, [base, lobby, sync])).toEqual([
+				lobby,
+			]);
+			expect(directExtendersOf(lobby, [base, lobby, sync])).toEqual([
+				sync,
+			]);
+		});
+
+		it("should find the nearest parent in any letter case on a case-insensitive file system", () => {
+			const written = link(
+				"/repo/lobby.rogen.json",
+				"/repo/BASE.rogen.json"
+			);
+
+			expect(directExtendersOf(base, [written], true)).toEqual([written]);
+			expect(directExtendersOf(base, [written], false)).toEqual([]);
 		});
 	});
 

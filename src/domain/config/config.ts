@@ -1,11 +1,14 @@
 import path from "path";
 import { formatJsonFile, safeStringify } from "../../base/json.js";
 import {
+	PathSet,
 	commonAncestor,
 	isInside,
+	pathKey,
 	samePath,
 	toPosix,
 } from "../../base/path.js";
+import { isWindows } from "../../base/platform.js";
 import { Target } from "../roblox/roblox.js";
 import {
 	NodeClash,
@@ -60,12 +63,43 @@ export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
 export const isConfigFileName = (fileName: string): boolean =>
 	fileName.endsWith(CONFIG_SUFFIX);
 
-/** The configs of `configs` that no other of them extends, which a serve starts a server for: the synced config over its source-rooted base, and each place over the config they share. */
-export function leafConfigs<
-	T extends { readonly file: string; readonly parents: readonly string[] },
->(configs: readonly T[]): T[] {
-	const extended = new Set(configs.flatMap(({ parents }) => parents));
-	return configs.filter(({ file }) => !extended.has(file));
+/** A config as the relations between configs see it: its file and the files of its `extends` chain, nearest first. */
+interface ExtendingConfig {
+	readonly file: string;
+	readonly parents: readonly string[];
+}
+
+/** The configs of `configs` that no other of them extends, which a serve starts a server for: the synced config over its source-rooted base, and each place over the config they share. A file counts as one however its path is written, as `extends` may spell it differently than the folder lists it. */
+export function leafConfigs<T extends ExtendingConfig>(
+	configs: readonly T[],
+	caseInsensitive = isWindows
+): T[] {
+	const extended = new Set(
+		configs.flatMap(({ parents }) =>
+			parents.map((parent) => pathKey(parent, caseInsensitive))
+		)
+	);
+	return configs.filter(
+		({ file }) => !extended.has(pathKey(file, caseInsensitive))
+	);
+}
+
+/** Whether `config` is one of `files` or extends one of them, however far down its chain. */
+export function inFamilyOf(config: ExtendingConfig, files: PathSet): boolean {
+	return files.has(config.file) || config.parents.some((p) => files.has(p));
+}
+
+/** The configs of `configs` whose nearest parent is `config`. */
+export function directExtendersOf<T extends ExtendingConfig>(
+	config: ExtendingConfig,
+	configs: readonly T[],
+	caseInsensitive = isWindows
+): T[] {
+	const key = pathKey(config.file, caseInsensitive);
+	return configs.filter(
+		({ parents }) =>
+			parents.length > 0 && pathKey(parents[0], caseInsensitive) === key
+	);
 }
 
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */

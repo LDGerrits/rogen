@@ -1,10 +1,12 @@
 import path from "path";
 import { Disposable } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
+import { PathSet } from "../../base/path.js";
 import { Result, err } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
+import { inFamilyOf } from "./config.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ConfigOverrides } from "./layered-config.js";
@@ -96,9 +98,9 @@ export class CoreConfigService implements ConfigService {
 		named: readonly ManagedConfig[],
 		overrides: ConfigOverrides
 	): Promise<ManagedConfig[]> {
-		const namedFiles = new Set(named.map(({ file }) => file));
-		const known = new Set([
-			...namedFiles,
+		const namedFiles = new PathSet(named.map(({ file }) => file));
+		const known = new PathSet([
+			...named.map(({ file }) => file),
 			...named.flatMap(({ entry }) => entry.parents),
 		]);
 		const folders = new Set(named.map(({ file }) => path.dirname(file)));
@@ -117,8 +119,8 @@ export class CoreConfigService implements ConfigService {
 				})
 			)
 		);
-		return opened.filter(({ entry }) =>
-			entry.parents.some((parent) => namedFiles.has(parent))
+		return opened.filter(({ file, entry }) =>
+			inFamilyOf({ file, parents: entry.parents }, namedFiles)
 		);
 	}
 
