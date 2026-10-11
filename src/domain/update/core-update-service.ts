@@ -5,6 +5,7 @@ import {
 	ProductService,
 	REPOSITORY,
 } from "../../platform/product/product-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ReleaseService } from "../../platform/release/release-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { UpdateService } from "./update-service.js";
@@ -19,6 +20,7 @@ export class CoreUpdateService implements UpdateService {
 		private readonly productService: ProductService,
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
+		private readonly fileReader: FileReader,
 		private readonly installDir: string
 	) {}
 
@@ -48,15 +50,23 @@ export class CoreUpdateService implements UpdateService {
 
 	/** What to do about it, by how this Rogen was installed. */
 	private async fix(version: Version): Promise<string> {
-		if (/[\\/]node_modules[\\/]/.test(this.installDir))
-			return `Update with: npm i ${PACKAGE_NAME}@${version}`;
+		const project = /^(.*?)[\\/]node_modules[\\/]/.exec(
+			this.installDir
+		)?.[1];
+		if (project !== undefined) {
+			// A folder with a package.json installed it as a dependency; npm's global folder has none.
+			const local = await this.fileReader.exists(
+				path.join(project, "package.json")
+			);
+			return `Update with: npm i ${local ? "" : "-g "}${PACKAGE_NAME}@${version}`;
+		}
 		const repository = REPOSITORY.toLowerCase();
 		for (const manifest of await this.toolchainService.readManifests(
 			this.environmentService.cwd
 		)) {
 			const name = manifest.nameOf(repository);
 			if (name)
-				return `Update the pin in ${path.relative(this.environmentService.cwd, manifest.file)}: ${manifest.pinOf(name, repository, version.toString())}`;
+				return `Update the pin in ${path.relative(this.environmentService.cwd, manifest.file)}: ${manifest.pinOf(name, repository, version.toString())}. Then run ${manifest.installCommand}.`;
 		}
 		return `See https://github.com/${REPOSITORY}/releases/tag/v${version}`;
 	}

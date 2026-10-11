@@ -38,6 +38,7 @@ describe("CoreUpdateService", () => {
 				checks
 			),
 			new CoreToolchainService(fs),
+			fs,
 			options.installDir ?? "/home/me/.rokit/tool-storage/rogen/dist"
 		).check();
 	};
@@ -129,7 +130,7 @@ describe("CoreUpdateService", () => {
 			);
 
 			expect(await check()).toBe(
-				'Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3"'
+				'Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3". Then run rokit install.'
 			);
 		});
 
@@ -140,7 +141,7 @@ describe("CoreUpdateService", () => {
 			);
 
 			expect(await check()).toContain(
-				'Update the pin in ../aftman.toml: r = "ldgerrits/rogen@2.0.3"'
+				'Update the pin in ../aftman.toml: r = "ldgerrits/rogen@2.0.3". Then run aftman install.'
 			);
 		});
 
@@ -151,7 +152,7 @@ describe("CoreUpdateService", () => {
 			);
 
 			expect(await check()).toContain(
-				'foreman.toml: rogen = { github = "ldgerrits/rogen", version = "2.0.3" }'
+				'foreman.toml: rogen = { github = "ldgerrits/rogen", version = "2.0.3" }. Then run foreman install.'
 			);
 		});
 
@@ -164,7 +165,8 @@ describe("CoreUpdateService", () => {
 			expect(await check()).toContain("See https://github.com/");
 		});
 
-		it("should name npm for an install from node_modules", async () => {
+		it("should name npm for an install into the project", async () => {
+			await fs.writeFile("/repo/game/package.json", "{}");
 			await fs.writeFile(
 				"/repo/game/rokit.toml",
 				'[tools]\nrogen = "ldgerrits/rogen@2.0.0"\n'
@@ -179,13 +181,23 @@ describe("CoreUpdateService", () => {
 			);
 		});
 
+		it("should name a global npm install as one", async () => {
+			expect(
+				await check({
+					installDir: "/usr/lib/node_modules/@ldgerrits/rogen/dist",
+				})
+			).toBe(
+				"Rogen 2.0.3 is out (you have 2.0.0). Update with: npm i -g @ldgerrits/rogen@2.0.3"
+			);
+		});
+
 		it("should know node_modules by Windows separators too", async () => {
 			expect(
 				await check({
 					installDir:
 						"C:\\game\\node_modules\\@ldgerrits\\rogen\\dist",
 				})
-			).toContain("npm i @ldgerrits/rogen@2.0.3");
+			).toContain("npm i");
 		});
 	});
 });

@@ -205,6 +205,7 @@ async function main(): Promise<void> {
 			productService,
 			environmentService,
 			toolchainService,
+			fileSystemService,
 			import.meta.dirname
 		);
 		services.set(

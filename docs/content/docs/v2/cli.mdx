@@ -440,10 +440,10 @@ Diagnostics use the familiar `file:line:col - severity: message` shape, so edito
 
 ## Update notice
 
-When a newer stable release is out, Rogen prints one line on stderr after a command in a terminal, naming the fix for how you installed it: the pin to change in `rokit.toml`, `aftman.toml` or `foreman.toml`, the `npm i` command, or a link to the release.
+When a newer stable release is out, Rogen prints one line on stderr after a command in a terminal, naming the fix for how you installed it: the pin to change in `rokit.toml`, `aftman.toml` or `foreman.toml` and the install command to run after, the `npm i` command (`npm i -g` for a global install), or a link to the release.
 
 ```text
-Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3"
+Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3". Then run rokit install.
 ```
 
 `watch` and `serve` print it once, before the first build. A prerelease hears about later prereleases as well. It says nothing under CI or an agent (the run [described above](#output) as automated), in a pipe, with `--json`, with `--quiet`, or for `--version` and `help`, and it names each version once a day.
