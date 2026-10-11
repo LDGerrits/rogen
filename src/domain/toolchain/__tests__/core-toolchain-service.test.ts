@@ -140,6 +140,90 @@ describe("CoreToolchainService.detect", () => {
 		});
 	});
 
+	describe("extends", () => {
+		const extending = (extendsPath: string | string[]) =>
+			write("tsconfig.json", JSON.stringify({ extends: extendsPath }));
+
+		it("should read the outDir of a base config", async () => {
+			await write(
+				"tsconfig.base.json",
+				JSON.stringify({ compilerOptions: { outDir: "build" } })
+			);
+			await extending("./tsconfig.base");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"build"
+			);
+		});
+
+		it("should let the config override the base, and keep the rest of it", async () => {
+			await write(
+				"tsconfig.base.json",
+				JSON.stringify({
+					compilerOptions: { outDir: "build", rootDir: "game" },
+					include: ["game"],
+				})
+			);
+			await write(
+				"tsconfig.json",
+				JSON.stringify({
+					extends: "./tsconfig.base.json",
+					compilerOptions: { outDir: "lib" },
+				})
+			);
+
+			const language = rbxts(await toolchain().detect(cwd));
+
+			expect(language.compiler?.outDir).toBe("lib");
+			expect(language.configuredRootDir()).toBe("game");
+		});
+
+		it("should read a base in another folder, with its paths made relative to here", async () => {
+			await write(
+				"configs/tsconfig.base.json",
+				JSON.stringify({ compilerOptions: { outDir: "../build" } })
+			);
+			await extending("./configs/tsconfig.base.json");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"build"
+			);
+		});
+
+		it("should follow a chain of bases and a package under node_modules, reading paths from the file that sets them", async () => {
+			await write(
+				"node_modules/@acme/tsconfig/tsconfig.json",
+				JSON.stringify({ compilerOptions: { outDir: "dist" } })
+			);
+			await write(
+				"tsconfig.base.json",
+				JSON.stringify({ extends: "@acme/tsconfig" })
+			);
+			await extending("./tsconfig.base.json");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"node_modules/@acme/tsconfig/dist"
+			);
+		});
+
+		it("should stop at a loop or a base that is missing", async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({ extends: "./tsconfig.json" })
+			);
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"out"
+			);
+
+			await extending("./nowhere.json");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"out"
+			);
+		});
+	});
+
 	describe("rootDir", () => {
 		it("should read compilerOptions.rootDir from tsconfig.json", async () => {
 			await write(

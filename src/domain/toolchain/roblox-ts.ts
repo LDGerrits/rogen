@@ -17,6 +17,7 @@ import { SyncTool } from "../build/build.js";
 
 const TSCONFIG = "tsconfig.json";
 const DEFAULT_OUT_DIR = "out";
+const MAX_EXTENDS_DEPTH = 10;
 const INCLUDE_DIR = "include";
 const INCLUDE_LANDING = "ReplicatedStorage/rbxts_include";
 const SCOPES = ["@rbxts", "@flamework", "@rbxts-js"] as const;
@@ -228,7 +229,7 @@ export class RobloxTsDetector implements LanguageDetector {
 			has(INCLUDE_DIR),
 		]);
 		const tsconfig = isTs
-			? await this.readTsconfig(path.join(cwd, TSCONFIG))
+			? await this.readTsconfig(cwd, path.join(cwd, TSCONFIG))
 			: undefined;
 		return new RobloxTs(
 			{
@@ -247,28 +248,90 @@ export class RobloxTsDetector implements LanguageDetector {
 		);
 	}
 
-	private async readTsconfig(file: string): Promise<TsconfigFacts> {
+	/** The facts of `tsconfig.json`, each from the first file of its `extends` chain that sets it. */
+	private async readTsconfig(
+		cwd: string,
+		file: string
+	): Promise<TsconfigFacts> {
+		const chain = await this.readChain(cwd, file);
+		const option = (key: string): string | undefined => {
+			for (const { file: defined, value } of chain) {
+				const found = compilerOption(value, key);
+				if (found === undefined) continue;
+				return path.dirname(defined) === cwd || path.isAbsolute(found)
+					? found
+					: normalizeDir(
+							path.relative(
+								cwd,
+								path.resolve(path.dirname(defined), found)
+							)
+						);
+			}
+			return undefined;
+		};
+		const rootDir = option("rootDir");
+		const tsBuildInfoFile = option("tsBuildInfoFile");
+		return {
+			outDir: option("outDir") ?? DEFAULT_OUT_DIR,
+			...(rootDir && { rootDir }),
+			setsInclude: chain.some(
+				({ value }) => isObject(value) && "include" in value
+			),
+			...(tsBuildInfoFile && { tsBuildInfoFile }),
+		};
+	}
+
+	/** `file` and the files it extends, nearest first; a file that can't be read or parsed, or that closes a loop, ends the chain. */
+	private async readChain(
+		cwd: string,
+		file: string,
+		seen: readonly string[] = []
+	): Promise<{ file: string; value: unknown }[]> {
+		if (seen.includes(file) || seen.length >= MAX_EXTENDS_DEPTH) return [];
+		let value: unknown;
 		try {
 			const parsed = parse(await this.fileSystemService.readFile(file));
-			if (parsed.isOk()) {
-				const rootDir = compilerOption(parsed.value, "rootDir");
-				const tsBuildInfoFile = compilerOption(
-					parsed.value,
-					"tsBuildInfoFile"
-				);
-				return {
-					outDir:
-						compilerOption(parsed.value, "outDir") ??
-						DEFAULT_OUT_DIR,
-					...(rootDir && { rootDir }),
-					setsInclude:
-						isObject(parsed.value) && "include" in parsed.value,
-					...(tsBuildInfoFile && { tsBuildInfoFile }),
-				};
-			}
+			if (parsed.isErr()) return [];
+			value = parsed.value;
 		} catch {
 			// An unreadable tsconfig.json means the defaults, not a failed init.
+			return [];
 		}
-		return { outDir: DEFAULT_OUT_DIR, setsInclude: false };
+		const base = isObject(value) ? value.extends : undefined;
+		const parent =
+			typeof base === "string"
+				? await this.resolveExtends(cwd, file, base)
+				: undefined;
+		return [
+			{ file, value },
+			...(parent
+				? await this.readChain(cwd, parent, [...seen, file])
+				: []),
+		];
+	}
+
+	/** The file an `extends` names: a relative path, or a package under `node_modules`; `.json` may be left off. */
+	private async resolveExtends(
+		cwd: string,
+		from: string,
+		specifier: string
+	): Promise<string | undefined> {
+		const relative =
+			specifier.startsWith(".") || path.isAbsolute(specifier);
+		const base = relative
+			? path.resolve(path.dirname(from), specifier)
+			: path.join(cwd, "node_modules", specifier);
+		const candidates = [
+			base,
+			`${base}.json`,
+			...(relative ? [] : [path.join(base, TSCONFIG)]),
+		];
+		for (const candidate of candidates)
+			if (
+				candidate.endsWith(".json") &&
+				(await this.fileSystemService.exists(candidate))
+			)
+				return candidate;
+		return undefined;
 	}
 }
