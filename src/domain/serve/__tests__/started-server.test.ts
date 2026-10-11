@@ -6,6 +6,7 @@ import {
 	MockConfigSelection,
 	mockConfig,
 } from "../../config/__tests__/mock-config-service.js";
+import { ResolvedConfig } from "../../config/config.js";
 import { ServeAddress, SyncServer } from "../serve.js";
 import {
 	ServePlan,
@@ -47,9 +48,9 @@ describe("StartedServer", () => {
 		["--port", "34872"]
 	);
 
-	const start = () => {
+	const start = (built: ResolvedConfig = config) => {
 		server = new StartedServer(
-			target,
+			{ ...target, config: built },
 			plan,
 			processes,
 			new ServerProbe(requests),
@@ -69,7 +70,7 @@ describe("StartedServer", () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
 		requests = new MockRequestService();
-		records = new ServerRecords(fileSystem, "/tmp");
+		records = new ServerRecords(fileSystem, "/tmp", 4242);
 		served = [];
 		said = [];
 		stops = [];
@@ -107,12 +108,90 @@ describe("StartedServer", () => {
 		expect(served).toHaveLength(1);
 		expect(served[0].info.project).toBe("repo");
 		expect(
-			await records.projectFileOf(target.address, served[0].info)
-		).toBeDefined();
+			await records.recordOf(target.address, served[0].info)
+		).toMatchObject({
+			projectFile: "/repo/default.project.json",
+			setting: { mode: undefined, variants: {} },
+		});
 		await server.unrecord();
 		expect(
-			await records.projectFileOf(target.address, served[0].info)
+			await records.recordOf(target.address, served[0].info)
 		).toBeUndefined();
+	});
+
+	describe("when its config is built again", () => {
+		const modal = (mode: string, mock: boolean) =>
+			mockConfig({
+				file: "/repo/default.rogen.json",
+				outFile: "/repo/default.project.json",
+				variants: { mock },
+				modes: { dev: { variants: ["mock"] }, prod: {} },
+				mode,
+			});
+		const recordedNow = async () =>
+			(await records.recordOf(target.address, served[0].info))?.setting;
+
+		const answer = async () => {
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: "s1",
+			});
+			await jest.advanceTimersByTimeAsync(250);
+		};
+
+		it("should record the mode and variants it serves, and the ones it is built in next", async () => {
+			start(modal("dev", true));
+			await answer();
+			expect(await recordedNow()).toEqual({
+				mode: "dev",
+				variants: { mock: true },
+			});
+
+			await server.rebuilt(modal("prod", false));
+
+			expect(await recordedNow()).toEqual({
+				mode: "prod",
+				variants: { mock: false },
+			});
+		});
+
+		it("should not write its record again for a build in the same setting", async () => {
+			start(modal("dev", true));
+			await answer();
+			const write = jest.spyOn(records, "write");
+
+			await server.rebuilt(modal("dev", true));
+
+			expect(write).not.toHaveBeenCalled();
+		});
+
+		it("should not write its record again once it is told to stop", async () => {
+			start(modal("dev", true));
+			await answer();
+			const write = jest.spyOn(records, "write");
+
+			await server.terminate();
+			await server.rebuilt(modal("prod", false));
+			await server.unrecord();
+
+			expect(write).not.toHaveBeenCalled();
+			expect(
+				await records.recordOf(target.address, served[0].info)
+			).toBeUndefined();
+		});
+
+		it("should record the latest build when the server answers after it", async () => {
+			start(modal("dev", true));
+
+			await server.rebuilt(modal("prod", false));
+			await answer();
+
+			expect(await recordedNow()).toEqual({
+				mode: "prod",
+				variants: { mock: false },
+			});
+		});
 	});
 
 	it("should report a failure to write its record, and still say it serves", async () => {

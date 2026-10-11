@@ -43,6 +43,7 @@ export interface ConfigDetails {
 	readonly templates: readonly string[];
 	readonly syncDir: string | null;
 	readonly outFile: string;
+	readonly server: string | null;
 }
 
 /** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
@@ -134,6 +135,7 @@ export class ListLog {
 						: []),
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
+					...(config.server ? [`server: ${config.server}`] : []),
 					`variants: ${listed(variantLines(config))}`,
 					...(config.conflicts.length > 0
 						? [
@@ -198,5 +200,6 @@ function configDetails(config: ResolvedConfig): ConfigDetails {
 			: [],
 		syncDir: config.syncDir ? toNative(config.syncDir) : null,
 		outFile: toNative(config.outFile),
+		server: config.server ?? null,
 	};
 }

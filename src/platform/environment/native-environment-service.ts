@@ -32,12 +32,13 @@ function isAutomated(env: Variables): boolean {
 	);
 }
 
-/** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, and the user's home and temporary folders. */
+/** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, the user's home and temporary folders, and its id. */
 export interface ProcessContext {
 	readonly env: Variables;
 	readonly isTerminal: boolean;
 	readonly userHome: string;
 	readonly tmpDir: string;
+	readonly pid: number;
 }
 
 const nativeProcess = (): ProcessContext => ({
@@ -45,6 +46,7 @@ const nativeProcess = (): ProcessContext => ({
 	isTerminal: Boolean(process.stdin.isTTY && process.stdout.isTTY),
 	userHome: os.homedir(),
 	tmpDir: os.tmpdir(),
+	pid: process.pid,
 });
 
 /** The flags that say how a run prints; only `json` is read from a line that fails to parse. */
@@ -63,16 +65,24 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly userHome: string;
 	readonly tmpDir: string;
 	readonly annotationsIn?: string;
+	readonly pid: number;
 
 	constructor(
 		{ json, verbose, quiet }: OutputFlags,
 		readonly cwd: string,
-		{ env, isTerminal, userHome, tmpDir }: ProcessContext = nativeProcess()
+		{
+			env,
+			isTerminal,
+			userHome,
+			tmpDir,
+			pid,
+		}: ProcessContext = nativeProcess()
 	) {
 		this.userHome = userHome;
 		this.tmpDir = tmpDir;
 		if (env.GITHUB_ACTIONS === "true" && json !== true)
 			this.annotationsIn = env.GITHUB_WORKSPACE || cwd;
+		this.pid = pid;
 		this.logLevel = quiet
 			? LogLevel.Error
 			: verbose

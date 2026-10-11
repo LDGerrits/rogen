@@ -181,13 +181,16 @@ export class ServerFinder {
 		const plugin = {
 			run: { command: server.pluginCommand, cwd: directory },
 		};
+		const asked = wanted
+			? ` ${wanted.name} was asked for by --server or a config's "server"; drop that to serve with another server.`
+			: "";
 		const steps = pin
 			? `Run '${pin.run.command}', then '${server.pluginCommand}' to install its Studio plugin.`
 			: `Pin ${server.repository} in ${path.basename(manifests[0].file)}, install it, then run '${server.pluginCommand}' to install its Studio plugin.`;
 		return errorDiagnostic(
 			"serve.noServer",
 			{ resource: manifests[0]?.file ?? resource },
-			`No ${names} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}`,
+			`No ${names} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${asked}`,
 			pin ? [pin, plugin] : [plugin]
 		);
 	}

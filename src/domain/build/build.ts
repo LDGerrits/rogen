@@ -1,7 +1,7 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
 import { pathKey, toPosix } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
+import { joinedWithAnd, plural } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -363,6 +363,53 @@ export interface SyncTool {
 	/** What it writes instead of a data file, such as a `.txt`, which Rojo then no longer finds. */
 	readonly dataReplacement?: DataReplacement;
 }
+
+/** What decides the content of a project file besides the sources: the active mode, and which variants are on. */
+export interface BuildSetting {
+	readonly mode?: string;
+	readonly variants: Readonly<Record<string, boolean>>;
+}
+
+export const settingOf = (config: ResolvedConfig): BuildSetting => ({
+	mode: config.mode,
+	variants: config.variants,
+});
+
+export function sameSetting(a: BuildSetting, b: BuildSetting): boolean {
+	const names = new Set([
+		...Object.keys(a.variants),
+		...Object.keys(b.variants),
+	]);
+	return (
+		a.mode === b.mode &&
+		[...names].every(
+			(name) =>
+				(a.variants[name] ?? false) === (b.variants[name] ?? false)
+		)
+	);
+}
+
+/** A setting in words, as `mode dev with mock on`. */
+export function describeSetting({ mode, variants }: BuildSetting): string {
+	const on = Object.keys(variants).filter((name) => variants[name]);
+	const parts = [
+		mode === undefined ? undefined : `mode ${mode}`,
+		on.length === 0 ? undefined : `${joinedWithAnd(on)} on`,
+	].filter((part) => part !== undefined);
+	return parts.join(" with ") || "nothing switched on";
+}
+
+/** A write of a config's project file that a build is about to make. */
+export interface PendingWrite {
+	readonly file: string;
+	readonly label: string;
+	readonly setting: BuildSetting;
+}
+
+/** Says why a project file must not be changed now, when something else holds it as built in another setting. */
+export type OutFileGuard = (
+	write: PendingWrite
+) => Promise<Diagnostic | undefined>;
 
 /** The project file a config writes, and the staging files its writes go through. */
 export class OutputFile {

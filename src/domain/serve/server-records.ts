@@ -1,7 +1,60 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { BuildSetting } from "../build/build.js";
 import { ServeAddress, ServerInfo } from "./serve.js";
+
+/** What a serve writes into the project file it serves, which a later build or serve checks against its own. */
+export interface ServedBuild {
+	readonly projectFile: string;
+	readonly setting: BuildSetting;
+}
+
+/** What a serve recorded of a server it started. */
+export interface ServerRecord extends ServedBuild {
+	readonly host: string;
+	readonly port: number;
+	/** The id of the sync server. */
+	readonly server: string;
+	readonly project: string;
+	readonly session?: string;
+	/** The process of the serve that wrote it. */
+	readonly pid?: number;
+}
+
+function recordIn(value: unknown): ServerRecord | undefined {
+	if (
+		!isObject(value) ||
+		typeof value.host !== "string" ||
+		typeof value.port !== "number" ||
+		typeof value.server !== "string" ||
+		typeof value.project !== "string" ||
+		typeof value.projectFile !== "string" ||
+		!isObject(value.variants) ||
+		(value.session !== undefined && typeof value.session !== "string") ||
+		(value.pid !== undefined && typeof value.pid !== "number") ||
+		(value.mode !== undefined && typeof value.mode !== "string")
+	)
+		return undefined;
+	return {
+		host: value.host,
+		port: value.port,
+		server: value.server,
+		project: value.project,
+		session: value.session,
+		pid: value.pid,
+		projectFile: value.projectFile,
+		setting: {
+			mode: value.mode,
+			variants: Object.fromEntries(
+				Object.entries(value.variants).filter(
+					(entry): entry is [string, boolean] =>
+						typeof entry[1] === "boolean"
+				)
+			),
+		},
+	};
+}
 
 /** The records of the servers running serves started, one per port, in a folder every serve on the machine shares. */
 export class ServerRecords {
@@ -9,54 +62,84 @@ export class ServerRecords {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		tmpDir: string
+		tmpDir: string,
+		/** The process these records are written for. */
+		private readonly pid: number
 	) {
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}
 
-	/** The project file of the server on `address`, as the serve that started it recorded it, when it is still the one that answers with `info`. A server only names its project, so this is how another checkout of the same project tells the server isn't its own. */
-	async projectFileOf(
+	/** What the serve that started the server on `address` recorded of it, when it is still the one that answers with `info`. A server only names its project, so this is how another checkout of the same project tells the server isn't its own. */
+	async recordOf(
 		address: ServeAddress,
 		info: ServerInfo
-	): Promise<string | undefined> {
-		let value: unknown;
+	): Promise<ServerRecord | undefined> {
+		const record = await this.read(this.fileOf(address.port));
+		return record &&
+			record.project === info.project &&
+			record.session === info.session
+			? record
+			: undefined;
+	}
+
+	/** Every record that can be read, whether or not its server still runs. */
+	async all(): Promise<ServerRecord[]> {
+		let entries: [string, unknown][];
 		try {
-			value = JSON.parse(
-				await this.fileSystemService.readFile(this.fileOf(address))
-			);
+			entries = await this.fileSystemService.readDirectory(this.dir);
 		} catch {
-			return undefined;
+			return [];
 		}
-		if (
-			!isObject(value) ||
-			typeof value.projectFile !== "string" ||
-			value.project !== info.project ||
-			value.session !== info.session
-		)
-			return undefined;
-		return value.projectFile;
+		const read = await Promise.all(
+			entries
+				.map(([name]) => name)
+				.filter((name) => name.endsWith(".json"))
+				.map((name) => this.read(path.join(this.dir, name)))
+		);
+		return read.filter((record) => record !== undefined);
 	}
 
 	async write(
 		address: ServeAddress,
 		info: ServerInfo,
-		projectFile: string
+		built: ServedBuild
 	): Promise<void> {
 		await this.fileSystemService.writeFile(
-			this.fileOf(address),
+			this.fileOf(address.port),
 			JSON.stringify({
+				host: address.host,
+				port: address.port,
+				server: info.server.id,
+				pid: this.pid,
 				session: info.session,
 				project: info.project,
-				projectFile,
+				projectFile: built.projectFile,
+				mode: built.setting.mode,
+				variants: built.setting.variants,
 			})
 		);
 	}
 
-	async remove(address: ServeAddress): Promise<void> {
-		await this.fileSystemService.delete(this.fileOf(address));
+	/** Whether this process wrote `record`, whose serve rebuilds its project file itself. */
+	owns(record: ServerRecord): boolean {
+		return record.pid === this.pid;
 	}
 
-	private fileOf(address: ServeAddress): string {
-		return path.join(this.dir, `${address.port}.json`);
+	async remove(address: ServeAddress): Promise<void> {
+		await this.fileSystemService.delete(this.fileOf(address.port));
+	}
+
+	private async read(file: string): Promise<ServerRecord | undefined> {
+		try {
+			return recordIn(
+				JSON.parse(await this.fileSystemService.readFile(file))
+			);
+		} catch {
+			return undefined;
+		}
+	}
+
+	private fileOf(port: number): string {
+		return path.join(this.dir, `${port}.json`);
 	}
 }

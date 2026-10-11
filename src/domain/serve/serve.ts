@@ -2,6 +2,7 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { isObject } from "../../base/objects.js";
 import { Result, err, ok } from "../../base/result.js";
+import type { ServerName } from "../config/config.js";
 
 /** What a running sync server says it serves. */
 export interface ServerInfo {
@@ -40,7 +41,7 @@ function topLevelValue(text: string, key: string): string | undefined {
 }
 
 interface SyncServerFields {
-	readonly id: string;
+	readonly id: ServerName;
 	readonly name: string;
 	/** Where toolchain managers install it from, as `owner/repo`. */
 	readonly repository: string;
@@ -148,7 +149,7 @@ export class SyncServer {
 		SyncServer.ARGON,
 	];
 
-	readonly id: string;
+	readonly id: ServerName;
 	readonly name: string;
 	readonly repository: string;
 	readonly defaultHost: string;
@@ -165,7 +166,7 @@ export class SyncServer {
 	}
 
 	static byId(id: string): SyncServer | undefined {
-		return SyncServer.ALL.find((server) => server.id === id.toLowerCase());
+		return SyncServer.ALL.find((server) => server.id === id);
 	}
 
 	/** The command that installs its Studio plugin. */

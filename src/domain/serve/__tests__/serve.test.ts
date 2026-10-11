@@ -1,3 +1,4 @@
+import { SERVER_NAMES } from "../../config/config.js";
 import { ServeAddress, SyncServer } from "../serve.js";
 
 describe("SyncServer", () => {
@@ -97,9 +98,16 @@ describe("SyncServer", () => {
 	});
 
 	describe("byId", () => {
-		it("should find a server by id in any case", () => {
-			expect(SyncServer.byId("Argon")).toBe(SyncServer.ARGON);
+		it("should find a server by its id, as the config spells it", () => {
+			expect(SyncServer.byId("argon")).toBe(SyncServer.ARGON);
+			expect(SyncServer.byId("Argon")).toBeUndefined();
 			expect(SyncServer.byId("lune")).toBeUndefined();
+		});
+
+		it("should know every server a config can name", () => {
+			expect(
+				SERVER_NAMES.map((name) => SyncServer.byId(name)?.id)
+			).toEqual(SyncServer.ALL.map(({ id }) => id));
 		});
 	});
 
