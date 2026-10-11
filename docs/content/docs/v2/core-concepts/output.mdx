@@ -30,7 +30,7 @@ Commit the project files Rogen writes. The cost shows up on a fresh clone, where
 The **template** is a Rojo project file that Rogen merges its tree into. It holds what Rogen can't know: the DataModel name, package mounts and `$properties`. Without one, Rogen starts from an empty `DataModel` named after the config's folder.
 
 - If the template and the generated tree define the same instance, the template wins and Rogen warns. A `$path` below a service, like a package mount, owns that whole folder.
-- A `$path` that points inside a root directory hands that path to Rojo. Rogen skips it entirely and `rogen where` reports it as `mounted`, which is how you sync a vendored library as-is. Mounting a root directory itself, a folder above one, or something inside an init folder is an error.
+- A `$path` that points inside a root directory hands that path to Rojo. Rogen skips it entirely and `rogen where` reports it as `mounted`, which is how you sync a vendored library as-is. Mounting a root directory itself or a folder above one is an error. A folder inside an init folder can be mounted: Rojo reads it where the template puts it, and the init folder leaves it out.
 - An `exclude` glob that matches a `$path` drops the node, so a [mode](/docs/v2/core-concepts/modes#template-nodes) can leave a mount such as `DevPackages` out of prod.
 - A child config's `template` merges over its parent's, so a place's template holds only what differs, such as `{ "name": "Lobby", "servePort": 34873 }`. See [Merging Templates](#merging-templates).
 
