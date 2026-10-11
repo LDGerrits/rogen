@@ -189,7 +189,7 @@ It's for instances Roblox only reads at the top of a container, such as an `Anim
 
 - The target stays whole: `^` only drops folders from disk, never the ones a target creates, so `ReplicatedStorage/Shared` keeps `Shared`.
 - Every folder in between goes, including a `Name@key/` folder and the folders above the governing route. It works under any route, `*` included, and an unrouted file stays unrouted.
-- A folder takes it too: `^Hud/` lands `Hud` at the target, with its contents nested as usual. `(^Name)/` puts its contents at the target.
+- A folder takes it too: `^Hud/` lands `Hud` at the target, with its contents nested as usual. `(^Name)/`, or `^(Name)/`, puts its contents at the target.
 - The `^` comes off the name, so `^Animate.client.luau` is `Animate`. Its meta file is `^Animate.meta.json`.
 - An init script can't take it, since the script is its folder: `^init.luau` is an error. Put the `^` on the folder.
 
