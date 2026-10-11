@@ -133,6 +133,8 @@ $ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
+A line number names a script, so only the file that places that script is listed. An instance with none, such as `ServerScriptService.Combat`, lists every file inside it.
+
 When no file places the instance, `where` says where a new one goes, from the files placed beside it:
 
 ```

@@ -224,6 +224,33 @@ describe("domain/roblox/roblox", () => {
 			).toBe(false);
 		});
 
+		it("should contain only the instance itself when a line number names it", () => {
+			for (const text of [
+				"ServerScriptService.Ui:3: attempt to index nil",
+				"game.ServerScriptService.Ui:3",
+				"Script 'ServerScriptService.Ui', Line 3 - function run",
+			]) {
+				const reference = InstanceReference.parse(text)!;
+
+				expect(reference.contains(["ServerScriptService", "Ui"])).toBe(
+					true
+				);
+				expect(
+					reference.contains(["ServerScriptService", "Ui", "Button"])
+				).toBe(false);
+			}
+		});
+
+		it("should still contain what's inside a name with no line number", () => {
+			expect(
+				InstanceReference.parse("'ServerScriptService.Ui'")!.contains([
+					"ServerScriptService",
+					"Ui",
+					"Button",
+				])
+			).toBe(true);
+		});
+
 		it("should match a name that holds a dot", () => {
 			expect(
 				InstanceReference.parse(
