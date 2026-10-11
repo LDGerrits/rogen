@@ -152,6 +152,16 @@ default.rogen.json:4:3 - error: root dir "src/shared" is inside root dir "src"; 
 
 Remove the inner one, or move it out of the outer one. See [Several Root Directories](/docs/v2/core-concepts/project-layout#several-root-directories).
 
+### `config.syncDirOverlapsRootDir` [#config-syncdiroverlapsrootdir]
+
+Error. The sync dir is a root dir, lies inside one, or contains one. The sync dir is where Darklua or a compiler writes the code the root dirs hold, so Rogen would read that output as source and write the project file from it.
+
+```
+default.rogen.json:4:14 - error: the sync dir "/repo/src/out" is inside root dir "/repo/src", so Rogen would read what the tools write as source. Set "syncDir" to a folder outside the root dirs. (config.syncDirOverlapsRootDir)
+```
+
+Set `syncDir` to a folder beside the root dirs, such as `dist` or `out`. See [Darklua](/docs/v2/setups/darklua).
+
 ### `config.invalidRouteKey` [#config-invalidroutekey]
 
 Error. A route key has characters other than letters and digits, or starts with a digit. Keys appear in folder and file names, so they have to match exactly.

@@ -469,6 +469,31 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
+			it.each([
+				["src/out", "is inside"],
+				["src", "is inside"],
+				[".", "contains"],
+			])(
+				"should reject the sync dir %j against the root dir src",
+				async (syncDir, relation) => {
+					const problems = await diagnosticsFor({
+						rootDirs: ["src"],
+						syncDir,
+					});
+
+					expect(problems).toHaveLength(1);
+					expect(problems[0][0]).toContain(
+						`${relation} root dir "/repo/src"`
+					);
+				}
+			);
+
+			it("should accept a sync dir beside the root dirs", async () => {
+				expect(
+					await diagnosticsFor({ rootDirs: ["src"], syncDir: "dist" })
+				).toEqual([]);
+			});
+
 			it("should reject a variant that shares a name with a route key", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService" },
