@@ -9,8 +9,10 @@ import {
 	errorDiagnostic,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
+import { WhereAnswers } from "../where-answers.js";
+import { WhereFileEntry } from "../where-document.js";
 import { WhereLog } from "../where-log.js";
-import { lineOf, reportOf } from "./where-fixtures.js";
+import { documentOf, lineOf, reportOf } from "./where-fixtures.js";
 
 describe("WhereLog", () => {
 	describe("a location", () => {
@@ -182,7 +184,7 @@ describe("WhereLog", () => {
 			});
 
 			it("should add the mode to each location in the JSON form", () => {
-				const [location] = reportOf(
+				const [location] = documentOf(
 					[
 						[
 							"default",
@@ -199,7 +201,7 @@ describe("WhereLog", () => {
 					false,
 					[],
 					inMode
-				).json().locations;
+				).locations;
 
 				expect(location).toMatchObject({
 					config: "default",
@@ -209,7 +211,7 @@ describe("WhereLog", () => {
 			});
 
 			it("should leave the mode out of a config that declares none", () => {
-				const [location] = reportOf([
+				const [location] = documentOf([
 					[
 						"default",
 						[
@@ -221,7 +223,7 @@ describe("WhereLog", () => {
 							},
 						],
 					],
-				]).json().locations;
+				]).locations;
 
 				expect(location).not.toHaveProperty("mode");
 			});
@@ -257,26 +259,29 @@ describe("WhereLog", () => {
 		])(
 			"should keep a glob of Rogen's own as it is and make a drive glob relative to the working directory: %s",
 			(pattern, shown) => {
-				const report = new WhereLog("C:\\repo", {
-					everyFile: false,
-					errors: [],
-					configs: [
-						{
-							config: mockConfig({}),
-							files: [
-								{
-									status: "excluded",
-									source: "C:/repo/src/A.luau",
-									exists: true,
-									pattern,
-								},
-							],
-							instances: [],
-							queried: [],
-							diagnostics: [],
-						},
-					],
-				});
+				const report = new WhereLog(
+					"C:\\repo",
+					new WhereAnswers({
+						everyFile: false,
+						errors: [],
+						configs: [
+							{
+								config: mockConfig({}),
+								files: [
+									{
+										status: "excluded",
+										source: "C:/repo/src/A.luau",
+										exists: true,
+										pattern,
+									},
+								],
+								instances: [],
+								queried: [],
+								diagnostics: [],
+							},
+						],
+					})
+				);
 
 				expect(report.lines()[0]).toContain(`matches ${shown}`);
 			}
@@ -463,7 +468,8 @@ describe("WhereLog", () => {
 			variants: [],
 		});
 		const entry = (location: FileLocation) =>
-			reportOf([["default", [location]]]).json().locations[0];
+			documentOf([["default", [location]]])
+				.locations[0] as WhereFileEntry & { require?: string };
 
 		it("should give a placed Luau module the expression that reaches it, after its instance path", () => {
 			const module = entry(
@@ -738,28 +744,31 @@ describe("WhereLog", () => {
 
 	describe("emptyLine", () => {
 		it("should name the root dirs of every config once, relative to the working directory", () => {
-			const report = new WhereLog("/repo", {
-				everyFile: true,
-				errors: [],
-				configs: [
-					{
-						config: mockConfig({
-							rootDirs: ["/repo/src", "/repo/places/lobby"],
-						}),
-						files: [],
-						instances: [],
-						queried: [],
-						diagnostics: [],
-					},
-					{
-						config: mockConfig({ rootDirs: ["/repo/src"] }),
-						files: [],
-						instances: [],
-						queried: [],
-						diagnostics: [],
-					},
-				],
-			});
+			const report = new WhereLog(
+				"/repo",
+				new WhereAnswers({
+					everyFile: true,
+					errors: [],
+					configs: [
+						{
+							config: mockConfig({
+								rootDirs: ["/repo/src", "/repo/places/lobby"],
+							}),
+							files: [],
+							instances: [],
+							queried: [],
+							diagnostics: [],
+						},
+						{
+							config: mockConfig({ rootDirs: ["/repo/src"] }),
+							files: [],
+							instances: [],
+							queried: [],
+							diagnostics: [],
+						},
+					],
+				})
+			);
 
 			expect(report.lines()).toEqual([]);
 			expect(report.emptyLine()).toBe(
@@ -906,9 +915,9 @@ describe("WhereLog", () => {
 		});
 
 		it("should narrow a grouped diagnostic to the path in json: its entry's message and its own fixes", () => {
-			const [entry] = reportOf([
+			const [entry] = documentOf([
 				["default", [placed(source)], [], [strayAt]],
-			]).json().locations;
+			]).locations;
 
 			expect(entry.diagnostics).toEqual([
 				{
@@ -930,9 +939,9 @@ describe("WhereLog", () => {
 		});
 
 		it("should give a clean path an empty list", () => {
-			const [entry] = reportOf([
+			const [entry] = documentOf([
 				["default", [placed("/repo/src/Clean.luau")], [], [strayAt]],
-			]).json().locations;
+			]).locations;
 
 			expect(entry.diagnostics).toEqual([]);
 		});

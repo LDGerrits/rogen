@@ -5,12 +5,12 @@ import {
 } from "../../../domain/build/build-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { reportOf } from "./where-fixtures.js";
+import { documentOf } from "./where-fixtures.js";
 
 describe("WhereLog", () => {
 	describe("json", () => {
 		const jsonOf = (location: FileLocation) => {
-			return reportOf([["default", [location]]]).json().locations;
+			return documentOf([["default", [location]]]).locations;
 		};
 
 		it("should hold the errors of the configs that didn't load beside the locations", () => {
@@ -20,7 +20,7 @@ describe("WhereLog", () => {
 				"bad."
 			);
 
-			const document = reportOf([], false, [error]).json();
+			const document = documentOf([], false, [error]);
 
 			expect(document).toMatchObject({
 				locations: [],
@@ -188,7 +188,7 @@ describe("WhereLog", () => {
 				routeMatch: "folder",
 				variants: [],
 			};
-			const report = reportOf([
+			const report = documentOf([
 				[
 					"default",
 					[],
@@ -214,9 +214,7 @@ describe("WhereLog", () => {
 			]);
 
 			expect(
-				report
-					.json()
-					.locations.map(({ config: _config, ...rest }) => rest)
+				report.locations.map(({ config: _config, ...rest }) => rest)
 			).toEqual([
 				expect.objectContaining({
 					source: "/repo/src/Save.luau",
@@ -234,9 +232,9 @@ describe("WhereLog", () => {
 
 		it("should give the renames that would place an instance no file does, and leave out empty lists", () => {
 			const entries = (instance: InstanceLocation) =>
-				reportOf([["default", [], [instance]]])
-					.json()
-					.locations.map(({ config: _config, ...rest }) => rest);
+				documentOf([["default", [], [instance]]]).locations.map(
+					({ config: _config, ...rest }) => rest
+				);
 			const reference = InstanceReference.parse("Workspace.Missing")!;
 
 			expect(
@@ -275,7 +273,7 @@ describe("WhereLog", () => {
 		});
 
 		it("should keep a config's outside entry when another config places the path", () => {
-			const report = reportOf([
+			const report = documentOf([
 				[
 					"default",
 					[{ status: "outside", source: "/repo/a", exists: true }],
@@ -297,9 +295,7 @@ describe("WhereLog", () => {
 			]);
 
 			expect(
-				report
-					.json()
-					.locations.map(({ config, status }) => [config, status])
+				report.locations.map(({ config, status }) => [config, status])
 			).toEqual([
 				["default", "outside"],
 				["lobby", "placed"],
@@ -307,16 +303,17 @@ describe("WhereLog", () => {
 		});
 
 		it("should give each config its own entry however many agree", () => {
-			const report = reportOf(
+			const report = documentOf(
 				["default", "lobby"].map((label) => [
 					label,
 					[{ status: "outside", source: "/repo/a", exists: true }],
 				])
 			);
 
-			expect(report.json().locations.map(({ config }) => config)).toEqual(
-				["default", "lobby"]
-			);
+			expect(report.locations.map(({ config }) => config)).toEqual([
+				"default",
+				"lobby",
+			]);
 		});
 
 		it("should sort the sources when every file was asked about, and keep the order given otherwise", () => {
@@ -326,14 +323,14 @@ describe("WhereLog", () => {
 			];
 
 			expect(
-				reportOf([["default", files]])
-					.json()
-					.locations.map(({ source }) => source)
+				documentOf([["default", files]]).locations.map(
+					(entry) => "source" in entry && entry.source
+				)
 			).toEqual(["/repo/b", "/repo/a"]);
 			expect(
-				reportOf([["default", files]], true)
-					.json()
-					.locations.map(({ source }) => source)
+				documentOf([["default", files]], true).locations.map(
+					(entry) => "source" in entry && entry.source
+				)
 			).toEqual(["/repo/a", "/repo/b"]);
 		});
 	});

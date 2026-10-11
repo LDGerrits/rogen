@@ -1,55 +1,20 @@
-import { groupBy } from "../../base/collections.js";
 import { unescapedGlob } from "../../base/glob.js";
 import path from "path";
-import { relativeTo, toNative, toPosix } from "../../base/path.js";
+import { relativeTo, toPosix } from "../../base/path.js";
 import {
-	ConfigLocations,
 	FileLocation,
 	InstanceFix,
-	Locations,
-	diagnosticsOf,
 	requireExpressionOf,
 	requireNoteOf,
 } from "../../domain/build/build-service.js";
-import {
-	Diagnostic,
-	diagnosticSummary,
-} from "../../platform/diagnostics/diagnostic.js";
+import { diagnosticSummary } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
-import {
-	DiagnosticJson,
-	diagnosticToJson,
-	fixToJson,
-} from "../../platform/diagnostics/diagnostic-json.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
-
-/** The mode a config built in, and every mode it declares. */
-interface ModeContext {
-	readonly active: string | undefined;
-	readonly names: ReadonlySet<string>;
-}
-
-/** What one config says: where a path lands, or that no file places an instance. A location also holds the diagnostics a build raises about its path. */
-type Answer =
-	| {
-			readonly kind: "file";
-			readonly label: string;
-			readonly location: FileLocation;
-			readonly mode: ModeContext;
-			readonly diagnostics: readonly Diagnostic[];
-	  }
-	| {
-			readonly kind: "instance";
-			readonly label: string;
-			readonly instance: string;
-			/** Absolute POSIX folders a new file for it goes in. */
-			readonly folders: readonly string[];
-			/** Renames of files that would place it. */
-			readonly fixes: readonly InstanceFix[];
-	  };
-
-const sourceOf = (answer: Answer): string =>
-	answer.kind === "file" ? answer.location.source : answer.instance;
+import {
+	Answer,
+	ModeContext,
+	WhereAnswers,
+} from "./where-answers.js";
 
 /** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
 function patternRelativeTo(cwd: string, escaped: string): string {
@@ -139,124 +104,12 @@ function outcomeOf(
 	}
 }
 
-/** The fields a location adds to its source and status in the JSON form. */
-function locationFields(location: FileLocation): Record<string, unknown> {
-	switch (location.status) {
-		case "placed":
-			return {
-				instancePath: location.instancePath,
-				...(requireExpressionOf(location) && {
-					require: requireExpressionOf(location),
-				}),
-				...(location.alsoAt && { alsoAt: location.alsoAt }),
-				route: location.route,
-				routeMatch: location.routeMatch,
-				variants: location.variants.map(({ variant, form }) => ({
-					variant,
-					form,
-				})),
-				...(location.hoisted && { hoisted: true }),
-			};
-		case "pruned":
-			return {
-				variants: location.variants.map(({ variant, form }) => ({
-					variant,
-					form,
-				})),
-			};
-		case "replaced":
-			return { by: toNative(location.by) };
-		case "extensionCase":
-			return { rename: location.rename };
-		case "blocked":
-			return {
-				blockedBy: {
-					file: toNative(location.by.resource),
-					code: location.by.code,
-				},
-			};
-		case "displaced":
-		case "mounted":
-			return { node: location.node };
-		case "excluded":
-			return { pattern: unescapedGlob(location.pattern) };
-		case "unrouted":
-		case "skipped":
-		case "outside":
-		case "ignored":
-		case "missing":
-		case "empty":
-			return {};
-	}
-}
-
-const isOutside = (answer: Answer): boolean =>
-	answer.kind === "file" && answer.location.status === "outside";
-
-/** A path outside one config's root dirs is no news when another config places it. */
-function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
-	const inside = answers.filter((answer) => !isOutside(answer));
-	return inside.length > 0 ? inside : answers;
-}
-
 /** Where files land, one line per path however many configs answered. */
 export class WhereLog {
-	private readonly answers: Answer[];
-	/** Why the configs that didn't load did not answer. */
-	readonly errors: readonly Diagnostic[];
-	private readonly configs: number;
-	private readonly rootDirs: readonly string[];
-	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
-	private readonly sorted: boolean;
-
 	constructor(
 		private readonly cwd: string,
-		{ everyFile, configs, errors }: Locations
-	) {
-		this.errors = errors;
-		this.rootDirs = configs.flatMap(({ config }) => config.rootDirs);
-		this.configs = configs.length;
-		this.sorted = everyFile;
-		this.answers = configs.flatMap((located) => this.answersOf(located));
-	}
-
-	/** What one config says about each location, then about the files behind each instance. */
-	private answersOf({
-		config,
-		files: locations,
-		instances,
-		diagnostics,
-	}: ConfigLocations): Answer[] {
-		const { label } = config;
-		const mode: ModeContext = {
-			active: config.mode,
-			names: new Set(config.modes),
-		};
-		const answer = (location: FileLocation): Answer => ({
-			kind: "file",
-			label,
-			location,
-			mode,
-			diagnostics: diagnosticsOf(location, diagnostics),
-		});
-		return [
-			...locations.map(answer),
-			...instances.flatMap(
-				({ reference, files, folders, fixes }): Answer[] =>
-					files.length > 0
-						? files.map(answer)
-						: [
-								{
-									kind: "instance",
-									label,
-									instance: reference.text,
-									folders,
-									fixes,
-								},
-							]
-			),
-		];
-	}
+		private readonly answers: WhereAnswers
+	) {}
 
 	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Under each, a line for every diagnostic a build raises about the path. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
 	lines(): string[] {
@@ -269,12 +122,13 @@ export class WhereLog {
 		requireLines: string[];
 		requires: string[];
 	}[] {
-		return this.bySource().map((all) => {
-			const answers = withoutOutside(all);
+		return this.answers.bySource().map((all) => {
+			const answers = WhereAnswers.withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
 				new Set(answers.map(({ label }) => label)).size ===
-					this.configs && lines.every((line) => line === lines[0]);
+					this.answers.configCount &&
+				lines.every((line) => line === lines[0]);
 			const requires = [
 				...new Set(
 					answers.flatMap((answer) =>
@@ -289,7 +143,7 @@ export class WhereLog {
 					? requireNoteOf(answer.location)
 					: undefined
 			);
-			if (agreed || this.configs === 1)
+			if (agreed || this.answers.configCount === 1)
 				return {
 					lines: [lines[0], ...this.sharedNotes(answers)],
 					requireLines: [
@@ -336,62 +190,14 @@ export class WhereLog {
 	emptyLine(): string | undefined {
 		const rootDirs = [
 			...new Set(
-				this.rootDirs.map((rootDir) => relativeTo(this.cwd, rootDir))
+				this.answers.rootDirs.map((rootDir) =>
+					relativeTo(this.cwd, rootDir)
+				)
 			),
 		];
 		return rootDirs.length > 0
 			? `No files in the root dirs (${rootDirs.join(", ")}).`
 			: undefined;
-	}
-
-	/** One entry per config and path, in the order `lines` puts the paths, under `locations`. */
-	json(): {
-		locations: Record<string, unknown>[];
-		diagnostics: DiagnosticJson[];
-	} {
-		const locations = this.bySource()
-			.flat()
-			.map((answer) => ({
-				config: answer.label,
-				...(answer.kind === "file" && answer.mode.active
-					? { mode: answer.mode.active }
-					: {}),
-				...(answer.kind === "file"
-					? {
-							source: toNative(answer.location.source),
-							status: answer.location.status,
-							exists: answer.location.exists,
-							...locationFields(answer.location),
-							diagnostics:
-								answer.diagnostics.map(diagnosticToJson),
-						}
-					: {
-							instance: answer.instance,
-							status: "noFile",
-							...(answer.folders.length > 0 && {
-								folders: answer.folders.map((folder) =>
-									toNative(folder)
-								),
-							}),
-							...(answer.fixes.length > 0 && {
-								fixes: answer.fixes.map(({ rename }) =>
-									fixToJson({ rename })
-								),
-							}),
-							diagnostics: [],
-						}),
-			}));
-		return {
-			locations,
-			diagnostics: this.errors.map(diagnosticToJson),
-		};
-	}
-
-	private bySource(): Answer[][] {
-		const bySource = groupBy(this.answers, sourceOf);
-		const sources = [...bySource.keys()];
-		if (this.sorted) sources.sort();
-		return sources.map((source) => bySource.get(source) ?? []);
 	}
 
 	/** One indented line for each diagnostic about the answer's path: its severity, what it says about the path and its code, which `rogen help <code>` explains. */

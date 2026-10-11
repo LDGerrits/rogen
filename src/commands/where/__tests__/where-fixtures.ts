@@ -1,3 +1,5 @@
+import { WhereAnswers } from "../where-answers.js";
+import { whereDocument } from "../where-document.js";
 import { WhereLog } from "../where-log.js";
 import {
 	FileLocation,
@@ -6,18 +8,20 @@ import {
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 
-export const reportOf = (
-	configs: [
-		label: string,
-		files: FileLocation[],
-		instances?: InstanceLocation[],
-		diagnostics?: Diagnostic[],
-	][],
+type Configs = [
+	label: string,
+	files: FileLocation[],
+	instances?: InstanceLocation[],
+	diagnostics?: Diagnostic[],
+][];
+
+export const answersOf = (
+	configs: Configs,
 	everyFile = false,
 	errors: Diagnostic[] = [],
 	modes: Parameters<typeof mockConfig>[0] = {}
 ) =>
-	new WhereLog("/repo", {
+	new WhereAnswers({
 		everyFile,
 		errors,
 		configs: configs.map(
@@ -33,6 +37,12 @@ export const reportOf = (
 			})
 		),
 	});
+
+export const reportOf = (...args: Parameters<typeof answersOf>) =>
+	new WhereLog("/repo", answersOf(...args));
+
+export const documentOf = (...args: Parameters<typeof answersOf>) =>
+	whereDocument(answersOf(...args));
 
 export const lineOf = (location: FileLocation) =>
 	reportOf([["default", [location]]]).lines()[0];
