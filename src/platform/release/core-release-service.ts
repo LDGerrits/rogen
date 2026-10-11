@@ -71,6 +71,7 @@ export class CoreReleaseService implements ReleaseService {
 		return true;
 	}
 
+	/** Reads the listing, not `releases/latest`, which never names a prerelease. */
 	private async refresh(): Promise<void> {
 		const response = await this.requestService.request(RELEASES_URL, {
 			timeout: CHECK_TIMEOUT_MS,

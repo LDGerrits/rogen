@@ -23,21 +23,19 @@ const HARNESS_VARIABLES = [
 const isSet = (value: string | undefined) =>
 	value !== undefined && value !== "";
 
+/** Whether a variable is turned on: set, and not `0` or `false`. */
+function isOn(value: string | undefined): boolean {
+	const lowered = value?.toLowerCase();
+	return isSet(lowered) && lowered !== "0" && lowered !== "false";
+}
+
 /** Whether `env` says an agent or CI, not a person, runs the process. */
 function isAutomated(env: Variables): boolean {
 	return (
-		GENERIC_VARIABLES.some((name) => {
-			const value = env[name]?.toLowerCase();
-			return isSet(value) && value !== "0" && value !== "false";
-		}) || HARNESS_VARIABLES.some((name) => isSet(env[name]))
+		GENERIC_VARIABLES.some((name) => isOn(env[name])) ||
+		HARNESS_VARIABLES.some((name) => isSet(env[name]))
 	);
 }
-
-/** Turned on by any value but `0` and `false`, as the variables that say CI or an agent are. */
-const isOn = (value: string | undefined) =>
-	isSet(value) &&
-	value?.toLowerCase() !== "0" &&
-	value?.toLowerCase() !== "false";
 
 /** The folder the user's programs keep what they can fetch again. */
 function userCacheDir(
@@ -121,6 +119,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 		this.checksForUpdates =
 			this.isInteractive &&
 			json !== true &&
+			!quiet &&
 			!isOn(env.ROGEN_NO_UPDATE_CHECK) &&
 			!isSet(env.NO_UPDATE_NOTIFIER);
 	}

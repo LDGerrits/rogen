@@ -22,7 +22,7 @@ export interface EnvironmentService {
 	readonly isInteractive: boolean;
 	/** Whether to print plain lines instead of drawing: the run prints JSON or isn't interactive, or `NO_COLOR` is set. */
 	readonly isPlain: boolean;
-	/** Whether to tell the user a newer Rogen is out: a person is at a terminal and doesn't print JSON, and neither `ROGEN_NO_UPDATE_CHECK` nor `NO_UPDATE_NOTIFIER` asks for silence. */
+	/** Whether to tell the user a newer Rogen is out: a person is at a terminal and neither prints JSON nor asks for `--quiet`, and neither `ROGEN_NO_UPDATE_CHECK` nor `NO_UPDATE_NOTIFIER` asks for silence. */
 	readonly checksForUpdates: boolean;
 }
 

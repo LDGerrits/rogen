@@ -230,6 +230,23 @@ describe("NativeEnvironmentService", () => {
 			expect(piped.checksForUpdates).toBe(false);
 		});
 
+		it("should be false under --quiet in a terminal", () => {
+			const quiet = new NativeEnvironmentService(
+				{ quiet: true },
+				"/mock/cwd",
+				{
+					env: {},
+					isTerminal: true,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+					pid: 4242,
+					platform: "linux",
+				}
+			);
+
+			expect(quiet.checksForUpdates).toBe(false);
+		});
+
 		it("should be false under --json in a terminal", () => {
 			const json = new NativeEnvironmentService(
 				{ json: true },
