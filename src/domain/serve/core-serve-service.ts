@@ -1,6 +1,6 @@
 import { UsageError } from "../../base/errors.js";
 import { PathSet } from "../../base/path.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { closestMatch, joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -139,13 +139,15 @@ export class CoreServeService implements ServeService {
 	): Result<SyncServer | undefined, UsageError> {
 		if (id === undefined) return ok(undefined);
 		const server = SyncServer.byId(id);
-		return server
-			? ok(server)
-			: err(
-					new UsageError(
-						`--server takes ${SyncServer.ALL.map(({ id }) => id).join(" or ")}, not "${id}".`
-					)
-				);
+		if (server) return ok(server);
+		const ids = SyncServer.ALL.map(({ id }) => id);
+		const suggestion = closestMatch(id, ids);
+		return err(
+			new UsageError(
+				`--server takes ${ids.join(" or ")}, not "${id}".` +
+					(suggestion ? ` Did you mean "${suggestion}"?` : "")
+			)
+		);
 	}
 
 	/** The server the configs to serve name in their "server" field, when they do; one serve runs one server, so they may not name two. */

@@ -346,7 +346,7 @@ One JSON object per line on stdout, each keyed by what it reports, and nothing e
 | `notice` | a config is added, removed, broken or recovered | `kind` (`added`, `removed`, `broken` or `recovered`), `file`; a broken config adds `keptLastValid` and `diagnostics` |
 | `serving` | a server answers, so Studio can connect | `config`, `server`, `version`, `project`, `host`, `port`, `session` (Rojo only); `alreadyRunning: true` when it was already serving before `serve` started, and `adopted: true` as well when no `rogen serve` started it, so this one builds for it |
 | `output` | a server prints a warning, an error or a line Rogen doesn't recognise | `config`, `server`, `severity` (`error`, `warning` or `info` for an unrecognised line), `message` |
-| `refused` | a config to serve, added while serving, can't be served; the others go on | `config`, `server`, `diagnostics` |
+| `refused` | a config to serve, added or edited while serving, can't be served: its port is taken, or it names another `server` than this serve runs. The others go on, and so does the server it already has, if any | `config`, `server`, `diagnostics` |
 | `stopped` | a server stops | `config`, `server`, `reason`: `exited` when it stopped on its own, with its `code` and `signal` (an adopted server has neither: it stopped answering); `removed`, `extended` or `moved` when its config was deleted, came to be extended by another, or moved to another address (a `serving` line follows for the new server); `shutdown` when `serve` was asked to stop, as the last lines of a clean run. A line about an adopted server has `adopted: true`: apart from `exited`, it means `serve` stopped building for it, and the server runs on |
 | `error` | an unexpected failure that `serve` survives | the message |
 

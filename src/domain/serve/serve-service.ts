@@ -142,7 +142,7 @@ export type ServeChangeEvent =
 			readonly target: ServeTarget;
 			readonly reason: "removed" | "extended" | "moved";
 	  }
-	/** A config to serve now couldn't be served, as its port is taken; the others go on. */
+	/** A config to serve now couldn't be served, as its port is taken or it names another server than this serve runs; the others go on, and so does its own server if it has one. */
 	| {
 			readonly kind: "refused";
 			readonly target: ServeTarget;

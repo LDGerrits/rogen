@@ -121,12 +121,15 @@ describe("CoreServeService", () => {
 			expect(servePlan.toStart).toHaveLength(1);
 		});
 
-		it.each(["lune", "Argon"])(
+		it.each([
+			["lune", ""],
+			["Argon", ' Did you mean "argon"?'],
+		])(
 			"should refuse the server %j, which the config field would too",
-			async (serverId) => {
+			async (serverId, hint) => {
 				expect(await errorOf({ serverId })).toEqual(
 					new UsageError(
-						`--server takes rojo or argon, not "${serverId}".`
+						`--server takes rojo or argon, not "${serverId}".${hint}`
 					)
 				);
 			}
