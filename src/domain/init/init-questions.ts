@@ -35,6 +35,8 @@ export interface AdditionOption<T> {
 export interface NameQuestion {
 	readonly message: string;
 	readonly description: string;
+	/** The name Enter gives. */
+	readonly placeholder?: string;
 	/** The files a config of this name would write. */
 	readonly filesFor: (name: string) => readonly string[];
 }
@@ -172,12 +174,13 @@ export class InitQuestions {
 	/** A name has no default, so a run that can't ask stops here. */
 	async name(
 		directory: InitDirectory,
-		{ message, description, filesFor }: NameQuestion
+		{ message, description, placeholder, filesFor }: NameQuestion
 	): Promise<string | undefined> {
 		if (!this.interactive) return undefined;
 		const answer = await this.promptService.text({
 			message,
 			description,
+			placeholder,
 			validate: (value) => {
 				const trimmed = value.trim();
 				if (trimmed === "") return "Enter a name.";
@@ -209,6 +212,9 @@ export class InitQuestions {
 		return this.name(directory, {
 			message: "Config name",
 			description: "Writes <name>.rogen.json.",
+			placeholder: directory.hasDefaultConfig
+				? undefined
+				: DEFAULT_CONFIG_STEM,
 			filesFor: (name) => [
 				configFileName(name),
 				configFileName(ConfigSet.syncStemOf(name)),

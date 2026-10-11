@@ -600,6 +600,23 @@ describe("init command", () => {
 			expect(await read("default.rogen.json")).toBe("{}");
 		});
 
+		it("should ask for a name and not the layout beside configs but no default", async () => {
+			await write("lobby.rogen.json", "{}");
+			const prompts = new MockPromptService({
+				"A config exists. What do you want to add?": "separate",
+			});
+
+			await runInit([], prompts);
+
+			expect(prompts.asked).toContain("Config name");
+			expect(prompts.asked).not.toContain("What are you setting up?");
+			expect(
+				prompts.prompts.find(({ message }) => message === "Config name")
+					?.placeholder
+			).toBe("default");
+			expect(await exists("default.rogen.json")).toBe(true);
+		});
+
 		it("should fail before any question when the given name is taken", async () => {
 			await write("lobby.rogen.json", "{}");
 			const prompts = new MockPromptService([]);
@@ -618,7 +635,7 @@ describe("init command", () => {
 				"Does Darklua process your code before Rojo syncs it?": true,
 			});
 
-			const result = await runInit([], prompts);
+			const result = await runInit(["default"], prompts);
 
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
@@ -626,7 +643,7 @@ describe("init command", () => {
 					resource: path.join(cwd, "sync.rogen.json"),
 				},
 			]);
-			expect(prompts.asked).toHaveLength(4);
+			expect(prompts.asked).toHaveLength(3);
 			expect(await exists("default.rogen.json")).toBe(false);
 		});
 

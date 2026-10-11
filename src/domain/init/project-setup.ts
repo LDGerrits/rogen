@@ -188,7 +188,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		>
 	> {
 		const { directory, questions } = this;
-		const firstRun = !directory.hasDefaultConfig;
+		const firstRun = !directory.hasConfigs;
 
 		let layout: PlaceCount = "one";
 		if (firstRun && directory.givenName === undefined) {
@@ -199,7 +199,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const name =
 			directory.givenName ??
-			(firstRun ? directory.name : await questions.configName(directory));
+			(firstRun || !questions.interactive
+				? directory.name
+				: await questions.configName(directory));
 		if (name === undefined) return ok(undefined);
 
 		const language = await questions.language(directory);

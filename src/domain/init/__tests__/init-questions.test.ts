@@ -315,7 +315,8 @@ describe("InitQuestions askProject", () => {
 
 			const result = await askInitChoices(
 				prompts,
-				contextOf(luau, ["sync.rogen.json"])
+				contextOf(luau, ["sync.rogen.json"]),
+				"default"
 			);
 
 			expect(conflictsOf(result)).toMatchObject([
@@ -324,7 +325,7 @@ describe("InitQuestions askProject", () => {
 					resource: path.join(directory, "sync.rogen.json"),
 				},
 			]);
-			expect(prompts.asked).toHaveLength(3);
+			expect(prompts.asked).toHaveLength(2);
 		});
 	});
 
@@ -1018,14 +1019,14 @@ describe("InitQuestions askProject layout", () => {
 	it.each([
 		["lobby, lobby", "lobby is listed twice."],
 		["default", "default.rogen.json is written for default"],
-		["arena", "arena.rogen.json already exists."],
+		["arena", "arena.project.json already exists."],
 	])("should reject the places %j at the prompt", async (answer, message) => {
 		await expect(
 			ask(
 				luau,
 				{ "What are you setting up?": "several", Places: answer },
 				undefined,
-				["arena.rogen.json"]
+				["arena.project.json"]
 			)
 		).rejects.toThrow(message);
 	});
