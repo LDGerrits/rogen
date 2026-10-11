@@ -141,14 +141,21 @@ export class TemplatePlan {
 		);
 		const added = mounted?.added ?? [];
 		const skipped = mounted?.skipped ?? [];
+		// Its paths read from the folder it was written in, so a copy into another folder moves them.
+		const folder = path.posix.dirname(fileName);
+		const moved = folder !== ".";
+		const rewritten =
+			mounted && (removed.length + added.length > 0 || moved)
+				? (moved
+						? mounted.template.rebased(".", folder)
+						: mounted.template
+					).toJson()
+				: undefined;
 		return new TemplatePlan(
 			{
 				fileName,
 				// Rewriting would drop comments and formatting, so only do it when something changed.
-				content:
-					mounted && removed.length + added.length > 0
-						? mounted.template.toJson()
-						: content,
+				content: rewritten ?? content,
 			},
 			fileName,
 			[
@@ -179,6 +186,11 @@ export class TemplatePlan {
 					? []
 					: [
 							`Remove the nodes in ${fileName} that point into ${joinedWithOr(dirs)}; Rogen generates those now.`,
+						]),
+				...(parsed || !moved
+					? []
+					: [
+							`Check the "$path" entries in ${fileName}: they read from the folder ${from} lies in, and Rogen couldn't read the file to move them.`,
 						]),
 				...(parsed || mounts.length === 0
 					? []

@@ -96,10 +96,12 @@ export class ServerOutput extends AbstractDisposable {
 		if (!record) return;
 		this.say(
 			record.severity,
-			record.parts
-				.filter((part) => part !== "" && part !== "Caused by:")
-				.map((part) => part.replace(/^\d+:\s*/, ""))
-				.join(record.paragraph ? " " : ": ")
+			record.paragraph
+				? record.parts.filter((part) => part !== "").join(" ")
+				: record.parts
+						.filter((part) => part !== "" && part !== "Caused by:")
+						.map((part) => part.replace(/^\d+:\s*/, ""))
+						.join(": ")
 		);
 	}
 

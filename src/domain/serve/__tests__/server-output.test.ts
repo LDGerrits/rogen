@@ -85,6 +85,25 @@ describe("ServerOutput", () => {
 			]);
 		});
 
+		it("should keep a number and a Caused by: a paragraph holds as they are", () => {
+			write(
+				[
+					"WARNING: Could not load",
+					"10: of 12 files",
+					"Caused by:",
+					"",
+					"",
+				].join("\n")
+			);
+
+			expect(said).toEqual([
+				{
+					severity: "warning",
+					text: "Could not load 10: of 12 files Caused by:",
+				},
+			]);
+		});
+
 		it("should join a record and its cause chain into one message", () => {
 			write(
 				[

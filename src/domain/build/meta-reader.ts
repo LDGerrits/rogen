@@ -38,7 +38,7 @@ export class BuildMeta {
 	/** The meta files whose contents the build read, which a change to must rebuild it. */
 	get files(): string[] {
 		return [
-			...this.folderMeta.map(({ file }) => file),
+			...this.folderMeta.flatMap(({ files }) => files),
 			...this.scriptMetaFiles,
 		];
 	}
@@ -57,8 +57,8 @@ interface ScriptMetaSource {
 		readonly metaFile: string;
 		readonly runContext: unknown;
 	};
-	/** The meta beside the script, when one exists that no folder meta is. */
-	readonly sibling?: string;
+	/** The metas beside the script that no folder meta is, the one Rojo applies last first. */
+	readonly siblings: readonly string[];
 }
 
 /** Reads the meta files a placed build needs, once, before it is assembled. */
@@ -74,7 +74,7 @@ export class MetaReader {
 		const sources = this.scriptMetaSources(placement, folderMeta);
 		// A meta beside several scripts is read for the first.
 		const siblings = [
-			...new Set(sources.flatMap(({ sibling }) => sibling ?? [])),
+			...new Set(sources.flatMap(({ siblings }) => siblings)),
 		];
 		const parsed = new Map(
 			await Promise.all(
@@ -88,19 +88,29 @@ export class MetaReader {
 		this.checkClassNames(placement, folderMeta, problems);
 		const runContexts = new Map<string, unknown>();
 		const claimed = new Set<string>();
-		for (const { entry, scriptSuffix, fromFolder, sibling } of sources) {
+		for (const { entry, scriptSuffix, fromFolder, siblings } of sources) {
 			let set: { metaFile: string; runContext: unknown } | undefined =
 				fromFolder;
-			if (!set && sibling && !claimed.has(sibling)) {
-				claimed.add(sibling);
-				const meta = parsed.get(sibling);
-				set = meta?.isOk()
-					? {
-							metaFile: sibling,
-							runContext:
-								meta.value.fields.properties?.RunContext,
-						}
-					: undefined;
+			const [first] = siblings;
+			if (!set && first !== undefined && !claimed.has(first)) {
+				claimed.add(first);
+				const read = siblings.flatMap((file) => {
+					const meta = parsed.get(file);
+					return meta?.isOk()
+						? [{ file, fields: meta.value.fields }]
+						: [];
+				});
+				const setting = read.find(
+					({ fields }) => fields.properties?.RunContext !== undefined
+				);
+				set =
+					read.length > 0
+						? {
+								metaFile: (setting ?? read[0]).file,
+								runContext:
+									setting?.fields.properties?.RunContext,
+							}
+						: undefined;
 			}
 			if (!set) continue;
 			runContexts.set(entry.source, set.runContext);
@@ -193,7 +203,8 @@ export class MetaReader {
 					dir,
 					isJsonc
 						? RojoMeta.merged(existing.fields, meta.value.fields)
-						: RojoMeta.merged(meta.value.fields, existing.fields)
+						: RojoMeta.merged(meta.value.fields, existing.fields),
+					isJsonc ? existing.files : [file]
 				);
 			}
 		});
@@ -228,6 +239,7 @@ export class MetaReader {
 								metaFile: meta.file,
 								runContext: meta.fields.properties.RunContext,
 							},
+							siblings: [],
 						},
 					];
 			}
@@ -235,17 +247,18 @@ export class MetaReader {
 				entry.rootDir,
 				path.dirname(entry.relativePath)
 			);
-			const beside = new RojoFile(
+			const siblings = new RojoFile(
 				path.basename(entry.relativePath)
 			).metaFiles
 				.map((name) => path.join(folder, name))
-				.find((candidate) => metaFiles.has(candidate));
-			const sibling =
-				beside !== undefined &&
-				!folderMeta.some((meta) => meta.file === beside)
-					? beside
-					: undefined;
-			return [{ entry, scriptSuffix, sibling }];
+				.filter(
+					(candidate) =>
+						metaFiles.has(candidate) &&
+						!folderMeta.some((meta) =>
+							meta.files.includes(candidate)
+						)
+				);
+			return [{ entry, scriptSuffix, siblings }];
 		});
 	}
 

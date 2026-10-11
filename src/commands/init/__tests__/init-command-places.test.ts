@@ -326,6 +326,7 @@ describe("init command", () => {
 						$className: "DataModel",
 						ReplicatedStorage: { $path: "places/lobby/src" },
 						Workspace: { $properties: { Gravity: 100 } },
+						ReplicatedStorage_Packages: { $path: "Packages" },
 					},
 				})
 			);
@@ -341,6 +342,9 @@ describe("init command", () => {
 			expect(template.servePort).toBe(34900);
 			expect(template.tree.ReplicatedStorage).toBeUndefined();
 			expect(template.tree.Workspace).toBeDefined();
+			expect(template.tree.ReplicatedStorage_Packages.$path).toBe(
+				"../../Packages"
+			);
 			expect((await readJson("lobby.project.json")).name).toBe(
 				"Lobby Game"
 			);

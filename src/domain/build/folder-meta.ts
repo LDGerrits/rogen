@@ -17,8 +17,15 @@ export class FolderMeta {
 		readonly rootDir: string,
 		/** The folder, relative to the root dir; the root dir itself is "". */
 		readonly dir: string,
-		readonly fields: RojoMetaFields
+		readonly fields: RojoMetaFields,
+		/** The other files merged into it, when the folder holds both an `init.meta.json` and an `init.meta.jsonc`. */
+		private readonly merged: readonly string[] = []
 	) {}
+
+	/** Every file it was read from. */
+	get files(): string[] {
+		return [this.file, ...this.merged];
+	}
 
 	/** The folder as an absolute POSIX path. */
 	get folder(): string {

@@ -1,3 +1,4 @@
+import path from "path";
 import { formatJsonFile } from "../../base/json.js";
 import { containsPosix, normalizeDir } from "../../base/path.js";
 import {
@@ -88,6 +89,18 @@ export class StarterTemplate {
 			added: added.map(describe),
 			skipped: skipped.map(describe),
 		};
+	}
+
+	/** This template as the folder `to` reads it instead of `from`, both relative to one place: every `$path` that isn't absolute moves with it. */
+	rebased(from: string, to: string): StarterTemplate {
+		return new StarterTemplate(
+			this.project.rebased((target) =>
+				path.posix.isAbsolute(target)
+					? target
+					: path.posix.relative(to, path.posix.join(from, target)) ||
+						"."
+			)
+		);
 	}
 
 	toJson(): string {

@@ -94,12 +94,14 @@ describe("MetaReader", () => {
 						ignoreUnknownInstances: true,
 						id: "combat",
 					},
+					merged: [],
 				},
 				{
 					file: abs("src/init.meta.json"),
 					rootDir: abs("src"),
 					dir: "",
 					fields: {},
+					merged: [],
 				},
 			]);
 		});
@@ -155,6 +157,7 @@ describe("MetaReader", () => {
 					rootDir: abs("src"),
 					dir: "Combat",
 					fields: { className: "Actor" },
+					merged: [],
 				},
 			]);
 		});
@@ -289,11 +292,32 @@ describe("MetaReader", () => {
 			const metas = result.isOk() ? result.value : [];
 			expect(metas).toHaveLength(1);
 			expect(metas[0].file).toBe(abs("src/Combat/init.meta.jsonc"));
+			expect(metas[0].files).toEqual([
+				abs("src/Combat/init.meta.jsonc"),
+				abs("src/Combat/init.meta.json"),
+			]);
 			expect(metas[0].fields).toEqual({
 				className: "Actor",
 				properties: { Name: "x", Archivable: false },
 				attributes: { b: 2 },
 			});
+		});
+
+		it("should find a RunContext in the .meta.json of a script that has a .meta.jsonc too", async () => {
+			await fs.writeFile(abs("src/Save.luau"), "");
+			await fs.writeFile(
+				abs("src/Save.meta.json"),
+				'{"properties": {"RunContext": "Server"}}'
+			);
+			await fs.writeFile(abs("src/Save.meta.jsonc"), "{}");
+
+			const result = await read();
+
+			expect(
+				result.isErr()
+					? result.error.map(({ code, resource }) => [code, resource])
+					: []
+			).toEqual([["meta.runContextOnModule", abs("src/Save.meta.json")]]);
 		});
 
 		it("should accept a RunContext in the meta of a Script", async () => {

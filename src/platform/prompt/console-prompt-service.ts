@@ -36,11 +36,14 @@ import {
 
 type State = Prompt<unknown>["state"];
 
-const dim = (text: string) => style("dim", text);
-const struck = (text: string) => style(["strikethrough", "dim"], text);
+/** Puts text in a style; without colours it leaves the text as it is. */
+type Styler = typeof style;
+
+const plain: Styler = (_format, text) => text;
 
 const choiceText = <T extends string>(
 	{ label, hint }: PromptChoice<T>,
+	dim: (text: string) => string,
 	styleLabel: (label: string) => string = (text) => text
 ) => `${styleLabel(label)}${hint ? ` ${dim(`(${hint})`)}` : ""}`;
 
@@ -57,7 +60,9 @@ interface Frame {
 }
 
 /** Draws one prompt: its description and hint only while it's open, then just the title and answer. */
-function drawFrame(output: Writable, frame: Frame): string {
+function drawFrame(output: Writable, frame: Frame, style: Styler): string {
+	const dim = (text: string) => style("dim", text);
+	const struck = (text: string) => style(["strikethrough", "dim"], text);
 	const { state, message, details } = frame;
 	const bar = `${symbolBar(state) ?? style("gray", S_BAR)}  `;
 	const gray = `${style("gray", S_BAR)}  `;
@@ -91,7 +96,7 @@ function drawFrame(output: Writable, frame: Frame): string {
 	].join("\n")}\n`;
 }
 
-const errorFooter = (error: string) => [
+const errorFooter = (error: string, style: Styler) => [
 	`${style("yellow", S_BAR_END)}  ${style("yellow", error)}`,
 ];
 
@@ -103,6 +108,8 @@ interface PromptStreams {
 interface PromptSession extends PromptStreams {
 	/** Whether a person can answer, as the environment decides (`EnvironmentService.isInteractive`). */
 	readonly interactive: boolean;
+	/** Whether the prompts are drawn in colours, as the environment decides (`EnvironmentService.isPlain` says not). */
+	readonly color: boolean;
 }
 
 export class ConsolePromptService implements PromptService {
@@ -110,19 +117,24 @@ export class ConsolePromptService implements PromptService {
 
 	readonly isInteractive: boolean;
 	private readonly streams: Required<PromptStreams>;
+	private readonly style: Styler;
 
 	constructor({
 		input = process.stdin,
 		output = process.stdout,
 		interactive,
+		color,
 	}: PromptSession) {
 		this.streams = { input, output };
 		this.isInteractive = interactive;
+		this.style = color ? style : plain;
 	}
 
 	async text(options: TextPromptOptions): Promise<string | undefined> {
 		const { placeholder = "", validate } = options;
 		const { output } = this.streams;
+		const { style } = this;
+		const dim = (text: string) => style("dim", text);
 		const answer = await new TextPrompt({
 			...this.streams,
 			placeholder,
@@ -132,16 +144,22 @@ export class ConsolePromptService implements PromptService {
 				const empty = placeholder
 					? `${style("inverse", placeholder[0])}${dim(placeholder.slice(1))}`
 					: style(["inverse", "hidden"], "_");
-				return drawFrame(output, {
-					state: this.state,
-					message: options.message,
-					details: options,
-					body: [this.userInput ? this.userInputWithCursor : empty],
-					answer: this.value ?? "",
-					...(this.state === "error" && {
-						footer: errorFooter(this.error),
-					}),
-				});
+				return drawFrame(
+					output,
+					{
+						state: this.state,
+						message: options.message,
+						details: options,
+						body: [
+							this.userInput ? this.userInputWithCursor : empty,
+						],
+						answer: this.value ?? "",
+						...(this.state === "error" && {
+							footer: errorFooter(this.error, style),
+						}),
+					},
+					style
+				);
 			},
 		}).prompt();
 		return isCancel(answer) ? undefined : answer;
@@ -149,6 +167,8 @@ export class ConsolePromptService implements PromptService {
 
 	async confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
 		const { output } = this.streams;
+		const { style } = this;
+		const dim = (text: string) => style("dim", text);
 		const [yes, no] = ["Yes", "No"];
 		const answer = await new ConfirmPrompt({
 			...this.streams,
@@ -160,15 +180,19 @@ export class ConsolePromptService implements PromptService {
 					on
 						? `${style("green", S_RADIO_ACTIVE)} ${label}`
 						: `${dim(S_RADIO_INACTIVE)} ${dim(label)}`;
-				return drawFrame(output, {
-					state: this.state,
-					message: options.message,
-					details: options,
-					body: [
-						`${radio(Boolean(this.value), yes)} ${dim("/")} ${radio(!this.value, no)}`,
-					],
-					answer: this.value ? yes : no,
-				});
+				return drawFrame(
+					output,
+					{
+						state: this.state,
+						message: options.message,
+						details: options,
+						body: [
+							`${radio(Boolean(this.value), yes)} ${dim("/")} ${radio(!this.value, no)}`,
+						],
+						answer: this.value ? yes : no,
+					},
+					style
+				);
 			},
 		}).prompt();
 		return isCancel(answer) ? undefined : answer;
@@ -178,6 +202,8 @@ export class ConsolePromptService implements PromptService {
 		options: SelectPromptOptions<T>
 	): Promise<T | undefined> {
 		const { output } = this.streams;
+		const { style } = this;
+		const dim = (text: string) => style("dim", text);
 		const answer = await new SelectPrompt<PromptChoice<T>>({
 			...this.streams,
 			options: [...options.choices],
@@ -189,17 +215,24 @@ export class ConsolePromptService implements PromptService {
 					options: this.options,
 					style: (choice, active) =>
 						active
-							? `${style("green", S_RADIO_ACTIVE)} ${choiceText(choice)}`
-							: `${dim(S_RADIO_INACTIVE)} ${choiceText(choice, dim)}`,
+							? `${style("green", S_RADIO_ACTIVE)} ${choiceText(choice, dim)}`
+							: `${dim(S_RADIO_INACTIVE)} ${choiceText(choice, dim, dim)}`,
 				});
-				return drawFrame(output, {
-					state: this.state,
-					message: options.message,
-					details: options,
-					body: rows,
-					answer: this.options[this.cursor]?.label ?? "",
-					footer: formatInstructionFooter(SELECT_INSTRUCTIONS, true),
-				});
+				return drawFrame(
+					output,
+					{
+						state: this.state,
+						message: options.message,
+						details: options,
+						body: rows,
+						answer: this.options[this.cursor]?.label ?? "",
+						footer: formatInstructionFooter(
+							SELECT_INSTRUCTIONS,
+							true
+						),
+					},
+					style
+				);
 			},
 		}).prompt();
 		return isCancel(answer) ? undefined : (answer as T);
@@ -209,6 +242,8 @@ export class ConsolePromptService implements PromptService {
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined> {
 		const { output } = this.streams;
+		const { style } = this;
+		const dim = (text: string) => style("dim", text);
 		const answer = await new MultiSelectPrompt<PromptChoice<T>>({
 			...this.streams,
 			options: [...options.choices],
@@ -226,25 +261,29 @@ export class ConsolePromptService implements PromptService {
 							: active
 								? style("cyan", S_CHECKBOX_ACTIVE)
 								: dim(S_CHECKBOX_INACTIVE);
-						return `${box} ${choiceText(choice, active ? undefined : dim)}`;
+						return `${box} ${choiceText(choice, dim, active ? undefined : dim)}`;
 					},
 				});
 				const labels = this.options
 					.filter(({ value }) => ticked.includes(value))
 					.map(({ label }) => label);
-				return drawFrame(output, {
-					state: this.state,
-					message: options.message,
-					details: options,
-					body: rows,
-					answer:
-						labels.join(", ") ||
-						(this.state === "submit" ? "none" : ""),
-					footer: formatInstructionFooter(
-						MULTISELECT_INSTRUCTIONS,
-						true
-					),
-				});
+				return drawFrame(
+					output,
+					{
+						state: this.state,
+						message: options.message,
+						details: options,
+						body: rows,
+						answer:
+							labels.join(", ") ||
+							(this.state === "submit" ? "none" : ""),
+						footer: formatInstructionFooter(
+							MULTISELECT_INSTRUCTIONS,
+							true
+						),
+					},
+					style
+				);
 			},
 		}).prompt();
 		return isCancel(answer) ? undefined : (answer as T[]);

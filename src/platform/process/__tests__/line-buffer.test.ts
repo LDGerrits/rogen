@@ -33,4 +33,26 @@ describe("LineBuffer", () => {
 
 		expect(lines.flush()).toBeUndefined();
 	});
+
+	it("should end a line at a lone \\r, as a redraw does", () => {
+		expect(new LineBuffer().push("10%\r50%\r100%\n")).toEqual([
+			"10%",
+			"50%",
+			"100%",
+		]);
+	});
+
+	it("should wait for the \\n after a \\r that ends a piece", () => {
+		const lines = new LineBuffer();
+
+		expect(lines.push("a\r")).toEqual([]);
+		expect(lines.push("\nb\n")).toEqual(["a", "b"]);
+	});
+
+	it("should not hand out the \\r a last line was left with", () => {
+		const lines = new LineBuffer();
+		lines.push("tail\r");
+
+		expect(lines.flush()).toBe("tail");
+	});
 });

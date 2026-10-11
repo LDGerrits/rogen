@@ -122,6 +122,7 @@ async function main(): Promise<void> {
 		}
 		const promptService = new ConsolePromptService({
 			interactive: environmentService.isInteractive,
+			color: !environmentService.isPlain,
 		});
 
 		// Default handler throws async, which would crash `watch`.
