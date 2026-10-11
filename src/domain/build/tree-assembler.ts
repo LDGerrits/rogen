@@ -3,6 +3,7 @@ import { compareStrings } from "../../base/collections.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { LeftOut } from "./build.js";
 import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
 import { RojoProject, RojoTree } from "../rojo/rojo-project.js";
@@ -212,8 +213,14 @@ export class TreeAssembler {
 		const outermostFirst = [...entriesByDir].sort(
 			([a], [b]) => a.split("/").length - b.split("/").length
 		);
+		const holdsEmpty = this.emptyFolderFinder(entriesByDir);
 		for (const [dir, entries] of outermostFirst) {
-			if (blocked.has(dir) || !namedDirs.has(dir) || covering.covers(dir))
+			if (
+				blocked.has(dir) ||
+				!namedDirs.has(dir) ||
+				covering.covers(dir) ||
+				holdsEmpty(dir)
+			)
 				continue;
 			const instancePath = this.instancePathOf(dir, entries);
 			if (
@@ -224,6 +231,27 @@ export class TreeAssembler {
 				collapsed.set(dir, instancePath);
 		}
 		return collapsed;
+	}
+
+	/** Whether a directory has a folder below it that nothing in it places: Rojo reading the directory would make that a Folder, which the files Rogen places one by one never do. Tools that write the sync dir decide what it holds, so only a build without one asks. */
+	private emptyFolderFinder(
+		placedDirs: ReadonlyMap<string, readonly PlacedEntry[]>
+	): (dir: string) => boolean {
+		const { placement } = this;
+		const known = new Map<string, boolean>();
+		const holdsEmpty = (dir: string): boolean => {
+			const cached = known.get(dir);
+			if (cached !== undefined) return cached;
+			const found = [...placement.listing(dir)].some(([name, type]) => {
+				if (!isDirectoryType(type)) return false;
+				const child = path.posix.join(dir, name);
+				return !placedDirs.has(child) || holdsEmpty(child);
+			});
+			known.set(dir, found);
+			return found;
+		};
+		return (dir) =>
+			placement.layout.syncDir === undefined && holdsEmpty(dir);
 	}
 
 	/** The instance the directory becomes, if every entry sits where Rojo would put it. Never a service itself. */

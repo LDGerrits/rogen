@@ -138,6 +138,48 @@ describe("TreeAssembler", () => {
 				});
 			});
 
+			it("should not collapse a directory with a folder in it that nothing places, so a collapsed build and an uncollapsed one agree", async () => {
+				await write(
+					"src/Inventory/Save.luau",
+					"src/Inventory/Assets/.gitkeep",
+					"src/Inventory/Docs/README.md"
+				);
+
+				const storage = await storageOf();
+
+				expect(storage.Inventory).toEqual({
+					...FOLDER,
+					Save: { $path: optional("src/Inventory/Save.luau") },
+				});
+			});
+
+			it("should collapse the folders beside an empty one that hold files", async () => {
+				await write(
+					"src/Inventory/Empty/.gitkeep",
+					"src/Inventory/Items/Sword.luau"
+				);
+
+				const storage = await storageOf();
+
+				expect(storage.Inventory).toEqual({
+					...FOLDER,
+					Items: { $path: optional("src/Inventory/Items") },
+				});
+			});
+
+			it("should collapse a directory with an empty folder when a sync dir holds what Rojo reads", async () => {
+				await write(
+					"src/Inventory/Save.ts",
+					"src/Inventory/Assets/.gitkeep"
+				);
+
+				const storage = await storageOf({ syncDir: abs("dist") });
+
+				expect(storage.Inventory).toEqual({
+					$path: optional("dist/Inventory"),
+				});
+			});
+
 			it("should not collapse a directory holding a skipped link, and ignore the link", async () => {
 				await write("src/Real/Thing.luau");
 				await fs.createSymbolicLink(abs("src"), abs("src/Real/Back"));

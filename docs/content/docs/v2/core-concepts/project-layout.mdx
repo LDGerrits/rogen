@@ -40,9 +40,11 @@ An init ModuleScript with no route of its own goes wherever its folder does. Whe
 
 Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.jsonc`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Route and variant suffixes go before the extension. `.d.ts` files are skipped.
 
+A folder is an instance because of the files in it. One with nothing that places (it is empty, or holds only a `.gitkeep` or a `README.md`) is left out of the project file, where Rojo reading the same directory would make it an empty Folder. To keep an empty Folder, declare it in the template.
+
 ## Metadata Files
 
-A `*.meta.json` file sets a class, properties or attributes that a file or folder can't express on its own.
+A `*.meta.json` file (or `*.meta.jsonc`, which Rojo applies after it) sets a class, properties or attributes that a file or folder can't express on its own.
 
 For a file, name the meta after the instance name Rojo gives it, without `.server`, `.client` or `.plugin`: `Save.server.luau` takes `Save.meta.json`. A variant file keeps its full name, so `Analytics.mock.luau` takes `Analytics.mock.meta.json` even when it's renamed in the game.
 
