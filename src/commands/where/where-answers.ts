@@ -64,12 +64,12 @@ export class WhereAnswers {
 		this.answers = configs.flatMap((located) => answersOf(located));
 	}
 
-	/** The answers to each path or instance, in the order they were asked, or sorted. A directory's files stay together, in the order its config listed them. */
+	/** The answers to each path or instance, in the order they were asked, or sorted. A directory's files stay together, in the order its config listed them, and a config answers a file once. */
 	bySource(): Answer[][] {
 		const bySource = groupBy(this.answers, sourceOf);
 		const sources = [...bySource.keys()];
 		if (this.sorted) sources.sort();
-		else {
+		else if (this.asked.length > 1) {
 			const rank = new Map(
 				sources.map((source) => [
 					source,
@@ -78,7 +78,12 @@ export class WhereAnswers {
 			);
 			sources.sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0));
 		}
-		return sources.map((source) => bySource.get(source) ?? []);
+		return sources.map((source) =>
+			(bySource.get(source) ?? []).filter(
+				({ label }, at, all) =>
+					all.findIndex((other) => other.label === label) === at
+			)
+		);
 	}
 
 	/** The position of the first thing asked about that this answer is for; after all of them when it is for none. */

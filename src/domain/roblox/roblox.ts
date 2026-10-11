@@ -236,7 +236,8 @@ export function containerClassName(instancePath: readonly string[]): string {
 export class InstanceReference {
 	private static readonly GAME_PREFIX = /^game[./]/;
 	private static readonly QUOTED = /'([^']+)'/;
-	private static readonly LINE_AFTER_NAME = /^[^:]*:\d+|'\s*,\s*line\s+\d+/i;
+	private static readonly COLON_LINE = /^[^:]*:\d+/;
+	private static readonly LINE_AFTER_QUOTE = /^[\s,(]*line\s+\d+/i;
 
 	private constructor(
 		/** The reference without `game.` or a line number. */
@@ -248,8 +249,11 @@ export class InstanceReference {
 
 	/** Reads a pasted error line or stack frame: a quoted name is taken from its quotes, a leading `game.` and everything from the first `:` go. `undefined` unless it starts with a supported service. */
 	static parse(input: string): InstanceReference | undefined {
-		const quoted = InstanceReference.QUOTED.exec(input)?.[1] ?? input;
-		const text = quoted
+		const quote = InstanceReference.QUOTED.exec(input);
+		const unquoted = input
+			.trim()
+			.replace(InstanceReference.GAME_PREFIX, "");
+		const text = (quote?.[1] ?? input)
 			.trim()
 			.replace(InstanceReference.GAME_PREFIX, "")
 			.split(":")[0]
@@ -260,9 +264,11 @@ export class InstanceReference {
 			? new InstanceReference(
 					text,
 					separator,
-					InstanceReference.LINE_AFTER_NAME.test(
-						input.trim().replace(InstanceReference.GAME_PREFIX, "")
-					)
+					quote
+						? InstanceReference.LINE_AFTER_QUOTE.test(
+								input.slice(quote.index + quote[0].length)
+							)
+						: InstanceReference.COLON_LINE.test(unquoted)
 				)
 			: undefined;
 	}

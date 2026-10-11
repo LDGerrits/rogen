@@ -93,6 +93,44 @@ describe("WhereAnswers", () => {
 		]);
 	});
 
+	it("should answer a file once per config when a path and an instance both ask about it", () => {
+		const hit = placed("/repo/src/Hit.luau", "Hit");
+
+		expect(
+			answersOf(
+				[
+					[
+						"default",
+						[hit],
+						[instance("ReplicatedStorage.Hit:3", [hit])],
+					],
+				],
+				false,
+				[],
+				{},
+				[
+					{ path: "/repo/src/Hit.luau" },
+					{ instance: "ReplicatedStorage.Hit" },
+				]
+			).bySource()
+		).toHaveLength(1);
+		expect(
+			answersOf(
+				[
+					[
+						"default",
+						[hit],
+						[instance("ReplicatedStorage.Hit:3", [hit])],
+					],
+				],
+				false,
+				[],
+				{},
+				[{ path: "/repo/src/Hit.luau" }]
+			).bySource()[0]
+		).toHaveLength(1);
+	});
+
 	it("should keep a file asked about twice where it was first asked", () => {
 		expect(
 			sources(

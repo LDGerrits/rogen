@@ -229,6 +229,7 @@ describe("domain/roblox/roblox", () => {
 				"ServerScriptService.Ui:3: attempt to index nil",
 				"game.ServerScriptService.Ui:3",
 				"Script 'ServerScriptService.Ui', Line 3 - function run",
+				"Script 'ServerScriptService.Ui' (line 3)",
 			]) {
 				const reference = InstanceReference.parse(text)!;
 
@@ -239,6 +240,14 @@ describe("domain/roblox/roblox", () => {
 					reference.contains(["ServerScriptService", "Ui", "Button"])
 				).toBe(false);
 			}
+		});
+
+		it("should not take a time or a count elsewhere in the line for a line number", () => {
+			expect(
+				InstanceReference.parse(
+					"12:30 Script 'ServerScriptService.Ui' errored"
+				)!.contains(["ServerScriptService", "Ui", "Button"])
+			).toBe(true);
 		});
 
 		it("should still contain what's inside a name with no line number", () => {
