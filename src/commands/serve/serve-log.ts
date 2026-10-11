@@ -68,7 +68,7 @@ export class ServeLog implements ServeReporter {
 		this.watchLog.begin(selection.configs, selection.home);
 		if (executable.passedOver) {
 			this.logService.info(
-				`Both ${executable.server.id} and ${executable.passedOver.id} are pinned; serving with ${executable.server.id} (--tool ${executable.passedOver.id} to switch).`
+				`Both ${executable.server.id} and ${executable.passedOver.id} are pinned; serving with ${executable.server.id} (pass --server ${executable.passedOver.id} to switch, or set "server": "${executable.passedOver.id}" in every config served, or in the one they extend).`
 			);
 		}
 		for (const target of plan.alreadyServed) this.running(target);
@@ -187,7 +187,7 @@ export class ServeJsonLog implements ServeReporter {
 		this.line({
 			output: {
 				config: target.config.label,
-				tool: plan.executable.server.id,
+				server: plan.executable.server.id,
 				severity: message.severity,
 				message: message.text,
 			},
@@ -206,7 +206,7 @@ export class ServeJsonLog implements ServeReporter {
 	changed(change: ServeChangeEvent): void {
 		const { target } = change;
 		const { label } = target.config;
-		const tool = serverFor(target, this.plan).id;
+		const server = serverFor(target, this.plan).id;
 		switch (change.kind) {
 			case "servedElsewhere":
 				this.running(change.target);
@@ -215,7 +215,7 @@ export class ServeJsonLog implements ServeReporter {
 				this.line({
 					refused: {
 						config: label,
-						tool,
+						server,
 						diagnostics: [diagnosticToJson(change.diagnostic)],
 					},
 				});
@@ -255,7 +255,7 @@ export class ServeJsonLog implements ServeReporter {
 	): Record<string, unknown> {
 		return {
 			config: target.config.label,
-			tool: serverFor(target, this.plan).id,
+			server: serverFor(target, this.plan).id,
 			reason,
 			...extra,
 			...(target.adopted && { adopted: true }),
@@ -269,7 +269,7 @@ export class ServeJsonLog implements ServeReporter {
 	): Record<string, unknown> {
 		return {
 			config: target.config.label,
-			tool: info.server.id,
+			server: info.server.id,
 			version: info.version,
 			project: info.project,
 			host: target.address.host,

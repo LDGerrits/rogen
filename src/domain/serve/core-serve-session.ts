@@ -3,7 +3,11 @@ import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	errorDiagnostic,
+	isError,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { isWritten } from "../build/build.js";
@@ -66,6 +70,8 @@ export class CoreServeSession
 		string,
 		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
 	>();
+	/** The configs refused for naming another server than this serve runs, which are told once until they stop. */
+	private readonly otherServer = new Set<string>();
 	/** The configs whose latest build wrote their project file, which a new server can serve. */
 	private readonly built = new Set<string>();
 	private launched = false;
@@ -186,6 +192,8 @@ export class CoreServeSession
 		}
 		for (const file of [...this.declined.keys()])
 			if (!wanted.has(file)) this.declined.delete(file);
+		for (const file of [...this.otherServer])
+			if (!wanted.has(file)) this.otherServer.delete(file);
 		for (const config of served.configs) {
 			if (this.stopping) return;
 			await this.follow(config, served);
@@ -198,6 +206,7 @@ export class CoreServeSession
 		served: ServedConfigs
 	): Promise<void> {
 		const target = await this.ports.targetOf(config);
+		if (this.namesOtherServer(target)) return;
 		const address = target.address.toString();
 		const started = this.servers.get(config.file);
 		if (started?.target.address.toString() === address) return;
@@ -231,6 +240,32 @@ export class CoreServeSession
 					);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
+	}
+
+	/** Whether `target`'s config names another server than the one this serve runs, which no config may switch once it runs. Said once; a server already running for it goes on. `--server` ends the question. */
+	private namesOtherServer(target: ServeTarget): boolean {
+		const { config } = target;
+		const running = this.plan.executable.server.id;
+		if (
+			this.plan.serverAsked ||
+			config.server === undefined ||
+			config.server === running
+		) {
+			this.otherServer.delete(config.file);
+			return false;
+		}
+		if (this.otherServer.has(config.file)) return true;
+		this.otherServer.add(config.file);
+		this._onDidChange.fire({
+			kind: "refused",
+			target,
+			diagnostic: errorDiagnostic(
+				"serve.otherServer",
+				{ resource: config.file },
+				`${config.label} names "server": "${config.server}", but this serve runs ${running}, and one serve runs one server. Restart it to serve with ${config.server}, or serve ${config.label} on its own, as 'rogen serve ${config.label}'.`
+			),
+		});
+		return true;
 	}
 
 	/** Says what came of checking `target`, and acts on it: a refusal is said once, a server already serving it is left be, and else the server moves or starts. */

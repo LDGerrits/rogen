@@ -58,7 +58,7 @@ registerCommand(
 					options: ServeOptions,
 					examples: [
 						"rogen serve",
-						"rogen serve lobby --tool argon",
+						"rogen serve lobby --server argon",
 						"rogen serve -- --port 34873",
 					],
 				},
@@ -82,7 +82,7 @@ registerCommand(
 					signal: stopChecks.signal,
 					refs: line.positionals,
 					options: line.options,
-					serverId: line.options.tool,
+					serverId: line.options.server,
 					serverArgs: line.passthrough ?? [],
 				});
 				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.

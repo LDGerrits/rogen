@@ -252,6 +252,16 @@ default.rogen.json:3:11 - error: "mode" is "prod", but this config declares "dev
 
 Declare the mode under `modes`, or pick one that exists. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
 
+### `config.unknownServer` [#config-unknownserver]
+
+Error. The config's `server` field names a sync server Rogen can't start. It takes `"rojo"` or `"argon"`, in lowercase.
+
+```
+default.rogen.json:4:12 - error: "server" is "argn", but Rogen serves with "rojo" or "argon". Did you mean "argon"? (config.unknownServer)
+```
+
+Fix the name, or remove the field to serve with the server the project pins. See [`serve`](/docs/v2/cli#serve).
+
 ### `config.modeNotDeclared` [#config-modenotdeclared]
 
 Error. `--mode` names a mode that a selected config doesn't declare, although it declares others. `--mode` is strict, so a run for production can never quietly build one place in dev. A selected config that declares no modes at all ignores the flag.
@@ -931,7 +941,7 @@ Fix the file's permissions, or move it out of the way. See [Template](/docs/v2/c
 
 ### `serve.noServer` [#serve-noserver]
 
-Error. `rogen serve` found no sync server: neither Rojo nor Argon is pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and neither is on the PATH. With `--tool`, only that server counts.
+Error. `rogen serve` found no sync server: neither Rojo nor Argon is pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and neither is on the PATH. With `--server`, or a config's `server`, only that server counts.
 
 ```
 default.rogen.json - error: No Rojo or Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. (serve.noServer)
@@ -968,6 +978,16 @@ default.rogen.json - error: Port 34872 is taken by Rojo serving shop, so default
 ```
 
 Stop what holds the port, give the config its own `servePort` in its template, or pass a free port after `--`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
+
+### `serve.otherServer` [#serve-otherserver]
+
+Error. While `rogen serve` runs, a config that is served now names a `server` other than the one this serve runs: a config was added, or an edit changed a `server` field. One serve runs one server, so the config isn't served with the other one, and the servers already running go on. It is said once for a config, again if the config stops naming another server and then does again. `--server` ends the question, since it picks the server over every config's field.
+
+```
+lobby.rogen.json - error: lobby names "server": "argon", but this serve runs rojo, and one serve runs one server. Restart it to serve with argon, or serve lobby on its own, as 'rogen serve lobby'. (serve.otherServer)
+```
+
+Restart `rogen serve` to serve with the new server, or serve the config on its own. At startup the same disagreement stops the serve instead, with exit 2. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.serverExited` [#serve-serverexited]
 
