@@ -1,6 +1,7 @@
 import { AbstractDisposable } from "../../../base/disposable.js";
 import { Emitter, Event } from "../../../base/event.js";
 import { Result, err, ok } from "../../../base/result.js";
+import { LineBuffer } from "../line-buffer.js";
 import {
 	ChildProcess,
 	ProcessExit,
@@ -13,8 +14,9 @@ export class MockChildProcess
 	extends AbstractDisposable
 	implements ChildProcess
 {
-	private readonly _onDidOutput = this._register(new Emitter<string>());
-	readonly onDidOutput: Event<string> = this._onDidOutput.event;
+	private readonly _onDidOutputLine = this._register(new Emitter<string>());
+	readonly onDidOutputLine: Event<string> = this._onDidOutputLine.event;
+	private readonly lines = new LineBuffer();
 
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
@@ -31,12 +33,15 @@ export class MockChildProcess
 	}
 
 	print(text: string): void {
-		this._onDidOutput.fire(text);
+		for (const line of this.lines.push(text))
+			this._onDidOutputLine.fire(line);
 	}
 
 	exit(exit: ProcessExit): void {
 		if (this.exitedWith) return;
 		this.exitedWith = exit;
+		const last = this.lines.flush();
+		if (last !== undefined) this._onDidOutputLine.fire(last);
 		this._onDidExit.fire(exit);
 	}
 

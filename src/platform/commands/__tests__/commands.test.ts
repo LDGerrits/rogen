@@ -1,5 +1,5 @@
 import { DisposableStore } from "../../../base/disposable.js";
-import { ReportedError, UsageError } from "../../../base/errors.js";
+import { UsageError } from "../../../base/errors.js";
 import { ResultError, ok } from "../../../base/result.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
 import { exitCodeOf } from "../command-failure.js";
@@ -10,6 +10,7 @@ import {
 	CommandRegistry,
 	Extensions,
 	registerCommand,
+	ReportedError,
 } from "../commands.js";
 import {
 	OptionDescriptor,
@@ -301,5 +302,15 @@ describe("AbstractCommand", () => {
 			expect(exitCodeOf(error)).toBe(2);
 			expect(logService.entries).toHaveLength(1);
 		});
+	});
+});
+describe("ReportedError", () => {
+	it("should keep the message and cause of the failure it stands for", () => {
+		const cause = new Error("No config found.");
+		const reported = new ReportedError(cause);
+
+		expect(reported.message).toBe("No config found.");
+		expect(reported.cause).toBe(cause);
+		expect(reported).toBeInstanceOf(Error);
 	});
 });

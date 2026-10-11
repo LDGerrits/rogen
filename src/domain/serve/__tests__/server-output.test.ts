@@ -7,6 +7,12 @@ describe("ServerOutput", () => {
 	let said: ServerMessage[];
 	let dropped: string[];
 
+	const write = (text: string) => {
+		const lines = text.split(/\r?\n/);
+		if (lines.at(-1) === "") lines.pop();
+		for (const line of lines) output.readLine(line);
+	};
+
 	const reading = (server: SyncServer) => {
 		output = new ServerOutput(server);
 		said = [];
@@ -34,7 +40,7 @@ describe("ServerOutput", () => {
 		});
 
 		it("should drop the banner", () => {
-			output.write(
+			write(
 				[
 					"Rojo server listening:",
 					"  Address: \u001b[0m\u001b[1m\u001b[32mlocalhost",
@@ -55,8 +61,51 @@ describe("ServerOutput", () => {
 			]);
 		});
 
+		it("should say a paragraph the server writes in capitals as one warning, up to the blank line", () => {
+			write(
+				[
+					"\u001b[0m\u001b[1m\u001b[33mWARNING: This server is bound to 0.0.0.0, which is reachable.",
+					"The serve API is unauthenticated, so anyone who can reach it can",
+					"modify your project's source.",
+					"\u001b[0m",
+					"\u001b[0mVisit \u001b[0mhttp://0.0.0.0:34999/ in your browser.",
+					"",
+				].join("\n")
+			);
+			output.end();
+
+			expect(said).toEqual([
+				{
+					severity: "warning",
+					text: "This server is bound to 0.0.0.0, which is reachable. The serve API is unauthenticated, so anyone who can reach it can modify your project's source.",
+				},
+			]);
+			expect(dropped).toEqual([
+				"Visit http://0.0.0.0:34999/ in your browser.",
+			]);
+		});
+
+		it("should keep a number and a Caused by: a paragraph holds as they are", () => {
+			write(
+				[
+					"WARNING: Could not load",
+					"10: of 12 files",
+					"Caused by:",
+					"",
+					"",
+				].join("\n")
+			);
+
+			expect(said).toEqual([
+				{
+					severity: "warning",
+					text: "Could not load 10: of 12 files Caused by:",
+				},
+			]);
+		});
+
 		it("should join a record and its cause chain into one message", () => {
-			output.write(
+			write(
 				[
 					"[ERROR librojo::change_processor] Snapshot error: File was not a valid Rojo project: /repo/default.project.json",
 					"        ",
@@ -77,10 +126,11 @@ describe("ServerOutput", () => {
 		});
 
 		it("should wait for the rest of a record that arrives in pieces", () => {
-			output.write("[WARN  librojo::snapshot] Unknown fi");
-			output.write("le: /repo/a.xyz\n        \n");
+			write(
+				"[WARN  librojo::snapshot] Unknown file: /repo/a.xyz\n        \n"
+			);
 			jest.advanceTimersByTime(10);
-			output.write("        Caused by:\n            no handler\n");
+			write("        Caused by:\n            no handler\n");
 			jest.advanceTimersByTime(100);
 
 			expect(said).toEqual([
@@ -92,9 +142,7 @@ describe("ServerOutput", () => {
 		});
 
 		it("should drop its info and debug logs", () => {
-			output.write(
-				"[INFO  librojo::serve] Listening\n[DEBUG librojo] Tick\n"
-			);
+			write("[INFO  librojo::serve] Listening\n[DEBUG librojo] Tick\n");
 			output.end();
 
 			expect(said).toEqual([]);
@@ -104,10 +152,10 @@ describe("ServerOutput", () => {
 		it("should say the same message once while it repeats", () => {
 			const twice =
 				"[ERROR librojo] Bad model\n[ERROR librojo] Bad model\n";
-			output.write(twice);
+			write(twice);
 			jest.advanceTimersByTime(100);
 			jest.advanceTimersByTime(5_000);
-			output.write("[ERROR librojo] Bad model\n");
+			write("[ERROR librojo] Bad model\n");
 			output.end();
 
 			expect(said).toEqual([
@@ -117,7 +165,7 @@ describe("ServerOutput", () => {
 		});
 
 		it("should keep the lines it doesn't recognise, and a command line error", () => {
-			output.write(
+			write(
 				[
 					"error: unexpected argument '--nope' found",
 					"",
@@ -150,8 +198,18 @@ describe("ServerOutput", () => {
 			reading(SyncServer.ARGON);
 		});
 
+		it("should read a record in capitals as one line of its log, not a paragraph", () => {
+			write(["ERROR: it broke", "Listening on 34872", ""].join("\n"));
+			output.end();
+
+			expect(said).toEqual([
+				{ severity: "error", text: "it broke" },
+				{ severity: "info", text: "Listening on 34872" },
+			]);
+		});
+
 		it("should drop its info logs and what Rogen's probes and writes make it say", () => {
-			output.write(
+			write(
 				[
 					"INFO: Serving on: http://localhost:8000, project: /repo/default.project.json",
 					"ERROR: stream error: request parse error: invalid Header provided [actix_http::h1::dispatcher:1257]",
@@ -165,7 +223,7 @@ describe("ServerOutput", () => {
 		});
 
 		it("should drop the debug detail it appends to an error", () => {
-			output.write(
+			write(
 				[
 					'ERROR: Failed to process changes: Failed to read JsonModel at /repo/src/Bad.model.json: key must be a string at line 1 column 3, source: Project("ReplicatedStorage", "/repo/default.project.json", ProjectNode { class_name: None }) [argon::core::processor::read:44]',
 					"ERROR: Failed to reload project: Failed to parse project at /repo/default.project.json: expected ident at line 1 column 2 [argon::core::processor:167]",
@@ -187,7 +245,7 @@ describe("ServerOutput", () => {
 		});
 
 		it("should show a warning as one", () => {
-			output.write("WARN: Something is off\n");
+			write("WARN: Something is off\n");
 			output.end();
 
 			expect(said).toEqual([

@@ -1,6 +1,9 @@
 import { DeferredPromise } from "../../base/async.js";
-import { Disposable, DisposableStore } from "../../base/disposable.js";
-import { ReportedError } from "../../base/errors.js";
+import {
+	Disposable,
+	DisposableStore,
+	toDisposable,
+} from "../../base/disposable.js";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
@@ -16,14 +19,33 @@ import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
 
+/** A failure already reported in full; only the exit code is left to set. */
+export class ReportedError extends Error {
+	override readonly name = "ReportedError";
+
+	constructor(cause: Error) {
+		super(cause.message, { cause });
+	}
+}
+
+/** A failure that ends the run with a given exit code, such as the code a child process stopped with. */
+export class ExitCodeError extends Error {
+	override readonly name = "ExitCodeError";
+
+	constructor(
+		readonly exitCode: number,
+		cause: Error
+	) {
+		super(cause.message, { cause });
+	}
+}
+
 export interface CommandService {
 	readonly _serviceBrand: undefined;
 	executeCommand(
 		commandId: string,
 		line: CommandLine
 	): Promise<Result<void, Error>>;
-	/** Every registered command, by id. */
-	getCommands(): ReadonlyMap<string, Command>;
 }
 
 export const CommandService =
@@ -63,14 +85,11 @@ interface CommandMetadata<
 }
 
 export interface CommandRegistry {
-	/** @throws Error if `id` is already registered. */
+	/** @throws Error if `id` is already registered, or an option conflicts with another command's. */
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
-	/**
-	 * Global options plus the given command's own, or every registered
-	 * command's when no id is given.
-	 */
+	/** Global options plus the given command's own, or every registered command's when no id is given. */
 	getOptions(commandId?: string): readonly OptionDescriptor[];
 }
 
@@ -117,13 +136,11 @@ class CoreCommandRegistry implements CommandRegistry {
 
 		this.commands.set(id, command);
 
-		return {
-			[Symbol.dispose]: () => {
-				if (this.commands.get(id) === command) {
-					this.commands.delete(id);
-				}
-			},
-		};
+		return toDisposable(() => {
+			if (this.commands.get(id) === command) {
+				this.commands.delete(id);
+			}
+		});
 	}
 
 	getCommand(id: string): Command | undefined {

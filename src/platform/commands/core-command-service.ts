@@ -4,7 +4,7 @@ import { closestMatch } from "../../base/strings.js";
 import { CommandLine, HELP_COMMAND } from "../environment/args.js";
 import { ServicesAccessor } from "../instantiation/instantiation.js";
 import { LogService } from "../log/log-service.js";
-import { Command, CommandRegistry, CommandService } from "./commands.js";
+import { CommandRegistry, CommandService } from "./commands.js";
 
 export class CoreCommandService implements CommandService {
 	declare readonly _serviceBrand: undefined;
@@ -14,10 +14,6 @@ export class CoreCommandService implements CommandService {
 		private readonly logService: LogService,
 		private readonly registry: CommandRegistry
 	) {}
-
-	getCommands(): ReadonlyMap<string, Command> {
-		return this.registry.getCommands();
-	}
 
 	async executeCommand(
 		commandId: string,

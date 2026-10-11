@@ -1,12 +1,10 @@
 import { DeclaredKeys } from "../config/config.js";
-import {
-	DOT_ROUTE_KEYS,
-	Misspelling,
-	MisspellingFinder,
-} from "./misspelling-finder.js";
+import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
+import { InstanceName, SuffixSpan } from "./instance-name.js";
+import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";
 
 /** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
-export interface FolderReading {
+export interface FolderNameReading {
 	readonly invisible: boolean;
 	/** Written `^Name`: it lands at its route's target, and the folders above it are dropped. */
 	readonly hoisted: boolean;
@@ -26,13 +24,6 @@ export interface FolderReading {
 	readonly misspellings: readonly Misspelling[];
 }
 
-export interface SuffixSpan {
-	readonly key: string;
-	/** Where the key and its sign begin in the stem. */
-	readonly start: number;
-	readonly length: number;
-}
-
 export interface SuffixMatch {
 	readonly baseName: string;
 	readonly matchedKeys: ReadonlySet<string>;
@@ -44,33 +35,10 @@ export interface SuffixMatch {
 
 /** Finds the config's declared keys in folder names, marker files and file suffixes. */
 export class NameReader {
-	private static readonly INVISIBLE_FOLDER = /^\((.+)\)$/;
-
 	private readonly finder: MisspellingFinder;
 
 	constructor(private readonly keys: DeclaredKeys) {
 		this.finder = new MisspellingFinder(keys);
-	}
-
-	/** A folder written `(name)` is the folder `name`, left out of the tree. */
-	static unwrapInvisibleFolder(folderName: string): {
-		readonly name: string;
-		readonly invisible: boolean;
-	} {
-		const inner = NameReader.INVISIBLE_FOLDER.exec(folderName)?.[1];
-		return inner === undefined
-			? { name: folderName, invisible: false }
-			: { name: inner, invisible: true };
-	}
-
-	/** A name that starts with `^` is hoisted to its route's target; the `^` comes off it. */
-	static unhoisted(name: string): {
-		readonly name: string;
-		readonly hoisted: boolean;
-	} {
-		return name.length > 1 && name.startsWith("^")
-			? { name: name.slice(1), hoisted: true }
-			: { name, hoisted: false };
 	}
 
 	/** A folder's name with its parentheses, then its `^`, off; `offset` is where that name starts in the folder's. */
@@ -80,8 +48,8 @@ export class NameReader {
 		readonly hoisted: boolean;
 		readonly offset: number;
 	} {
-		const unwrapped = NameReader.unwrapInvisibleFolder(folderName);
-		const { name, hoisted } = NameReader.unhoisted(unwrapped.name);
+		const unwrapped = InstanceName.unwrapInvisibleFolder(folderName);
+		const { name, hoisted } = InstanceName.unhoisted(unwrapped.name);
 		return {
 			name,
 			invisible: unwrapped.invisible,
@@ -91,7 +59,7 @@ export class NameReader {
 	}
 
 	/** A folder declares a key as its whole name (`server`, `mock`, `@server`, `.mock`) or as suffixes after a name it keeps (`Name@server`, `Name.mock`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
-	folder(folderName: string): FolderReading {
+	folder(folderName: string): FolderNameReading {
 		const { name, invisible, hoisted, offset } =
 			NameReader.readFolderName(folderName);
 		const bareRoute = this.keys.resolveRoute(name);
@@ -135,7 +103,7 @@ export class NameReader {
 			hoisted,
 		}: { readonly invisible: boolean; readonly hoisted: boolean },
 		offset: number
-	): FolderReading {
+	): FolderNameReading {
 		const suffixed = this.suffixes(name, false);
 		const leading =
 			suffixed.spans.length > 0
@@ -152,7 +120,7 @@ export class NameReader {
 		const [routeSpan, ...innerRouteSpans] = spans.filter(({ key }) =>
 			this.keys.isRoute(key)
 		);
-		const keptName = NameReader.withoutSpans(
+		const keptName = InstanceName.withoutSpans(
 			name,
 			routeSpan ? [...variantSpans, routeSpan] : variantSpans
 		);
@@ -164,7 +132,7 @@ export class NameReader {
 			innerRoutes: innerRouteSpans.map(({ key }) => key),
 			variants: variantSpans.map(({ key }) => key),
 			...(keptName !== "" && { keptName }),
-			outrankedName: NameReader.withoutSpans(name, variantSpans),
+			outrankedName: InstanceName.withoutSpans(name, variantSpans),
 			misspellings: NameReader.inFolderName(
 				[
 					...(routeSpan
@@ -192,8 +160,8 @@ export class NameReader {
 			hoisted,
 		}: { readonly invisible: boolean; readonly hoisted: boolean },
 		name: string,
-		claims: Partial<FolderReading>
-	): FolderReading {
+		claims: Partial<FolderNameReading>
+	): FolderNameReading {
 		return {
 			invisible,
 			hoisted,
@@ -245,7 +213,7 @@ export class NameReader {
 	}
 
 	/** The declared key a marker file spells with its sign: `@server` for a route, `.mock` for a variant. */
-	marker(fileName: string): MarkerRead {
+	marker(fileName: string): MarkerReading {
 		const text = fileName.slice(1);
 		const nearMiss = this.keys.nearMiss(text);
 		if (fileName.startsWith("@")) {
@@ -319,7 +287,7 @@ export class NameReader {
 			const part = remaining.slice(dot + 1);
 			const key =
 				this.keys.resolveVariant(part) ??
-				(dotRoutes && DOT_ROUTE_KEYS.has(part)
+				(dotRoutes && RUN_SCRIPT_SUFFIXES.has(part)
 					? this.keys.resolveRoute(part)
 					: undefined);
 			return key && dot > 0
@@ -332,21 +300,9 @@ export class NameReader {
 			? { key, start: at, length: remaining.length - at }
 			: undefined;
 	}
-
-	/** Only a folder named by keys alone loses all of its name. */
-	static withoutSpans(name: string, spans: readonly SuffixSpan[]): string {
-		return [...spans]
-			.sort((a, b) => b.start - a.start)
-			.reduce(
-				(kept, span) =>
-					kept.slice(0, span.start) +
-					kept.slice(span.start + span.length),
-				name
-			);
-	}
 }
 
-export interface MarkerRead {
+export interface MarkerReading {
 	/** The declared route or variant key the marker spells. */
 	readonly key: string | undefined;
 	readonly nearMissKey: string | undefined;

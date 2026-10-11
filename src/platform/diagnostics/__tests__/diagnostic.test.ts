@@ -3,12 +3,12 @@ import path from "path";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
-	diagnosticToJson,
 	diagnosticsAbout,
 	diagnosticsReaching,
 	renderDiagnostic,
 	warningDiagnostic,
 } from "../diagnostic.js";
+import { diagnosticToJson } from "../diagnostic-json.js";
 
 describe("platform/diagnostics/diagnostic", () => {
 	describe("renderDiagnostic", () => {

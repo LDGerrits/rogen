@@ -69,7 +69,7 @@ export class MemoryFileSystemService
 	);
 	readonly onDidMutateFile: Event<FileChange> = this._onDidMutateFile.event;
 
-	private _walk(
+	private walk(
 		filePath: string,
 		followFinal: boolean,
 		createMissing: boolean = false
@@ -109,24 +109,32 @@ export class MemoryFileSystemService
 		return { node: current, realParts };
 	}
 
-	private _lookup(
-		filePath: string,
-		silent: boolean = true,
-		followFinal: boolean = true
-	): Node | undefined {
-		const { node, failure } = this._walk(filePath, followFinal);
-		if (!node && !silent) throw walkError(failure!, "stat", filePath);
+	private lookup(filePath: string): Node | undefined {
+		return this.walk(filePath, true).node;
+	}
+
+	private lookupOrThrow(filePath: string): Node {
+		const { node, failure } = this.walk(filePath, true);
+		if (!node) throw walkError(failure!, "stat", filePath);
 		return node;
 	}
 
-	private _lookupParent(
+	private parentOf(filePath: string): DirectoryNode {
+		return this.parentDirectory(filePath, false);
+	}
+
+	private parentOrCreate(filePath: string): DirectoryNode {
+		return this.parentDirectory(filePath, true);
+	}
+
+	private parentDirectory(
 		filePath: string,
-		createMissing: boolean = false
+		createMissing: boolean
 	): DirectoryNode {
 		const parts = splitPath(filePath);
 		parts.pop();
 
-		const { node, failure } = this._walk(
+		const { node, failure } = this.walk(
 			parts.join("/"),
 			true,
 			createMissing
@@ -138,12 +146,12 @@ export class MemoryFileSystemService
 		return node;
 	}
 
-	private _absoluteTarget(target: string, linkPath: string): string {
+	private absoluteTarget(target: string, linkPath: string): string {
 		if (!/^\.\.?([\\/]|$)/.test(target)) return target;
 
 		const parts = splitPath(linkPath);
 		parts.pop();
-		const { realParts } = this._walk(parts.join("/"), true);
+		const { realParts } = this.walk(parts.join("/"), true);
 		const resolved = [...realParts];
 		for (const part of splitPath(target)) {
 			if (part === "..") resolved.pop();
@@ -152,37 +160,37 @@ export class MemoryFileSystemService
 		return resolved.join("/");
 	}
 
-	private _targetPath(filePath: string): string {
+	private targetPath(filePath: string): string {
 		const parts = splitPath(filePath);
 		const name = parts.pop()!;
-		const { realParts } = this._walk(parts.join("/"), true);
+		const { realParts } = this.walk(parts.join("/"), true);
 		const realKey = [...realParts, name].join("/");
 		return realKey === splitPath(filePath).join("/")
 			? toPosix(filePath)
 			: (filePath.startsWith("/") ? "/" : "") + realKey;
 	}
 
-	private _typeOf(node: Node): FileType {
+	private typeOf(node: Node): FileType {
 		if (node.type !== FileType.SymbolicLink) return node.type;
-		const target = this._lookup(node.target)?.type ?? FileType.Unknown;
+		const target = this.lookup(node.target)?.type ?? FileType.Unknown;
 		return FileType.SymbolicLink | target;
 	}
 
 	async exists(filePath: string): Promise<boolean> {
-		return this._lookup(filePath) !== undefined;
+		return this.lookup(filePath) !== undefined;
 	}
 
 	async isFile(filePath: string): Promise<boolean> {
-		return this._lookup(filePath)?.type === FileType.File;
+		return this.lookup(filePath)?.type === FileType.File;
 	}
 
 	async isDirectory(filePath: string): Promise<boolean> {
-		return this._lookup(filePath)?.type === FileType.Directory;
+		return this.lookup(filePath)?.type === FileType.Directory;
 	}
 
 	async readDirectory(filePath: string): Promise<[string, FileType][]> {
-		const node = this._lookup(filePath, false);
-		if (node?.type !== FileType.Directory) {
+		const node = this.lookupOrThrow(filePath);
+		if (node.type !== FileType.Directory) {
 			throw fileSystemError(
 				"ENOTDIR",
 				`ENOTDIR: not a directory, scandir '${filePath}'`
@@ -192,21 +200,21 @@ export class MemoryFileSystemService
 			.sort(([a], [b]) => compareStrings(a, b))
 			.map(([name, child]): [string, FileType] => [
 				name,
-				this._leadsBack(filePath, child)
+				this.leadsBack(filePath, child)
 					? FileType.SymbolicLink
-					: this._typeOf(child),
+					: this.typeOf(child),
 			]);
 	}
 
 	/** Whether a link to a directory leads back to the directory it is in or one of its ancestors, so nothing descends into it. */
-	private _leadsBack(dirPath: string, child: Node): boolean {
+	private leadsBack(dirPath: string, child: Node): boolean {
 		if (child.type !== FileType.SymbolicLink) return false;
-		if (this._lookup(child.target)?.type !== FileType.Directory)
+		if (this.lookup(child.target)?.type !== FileType.Directory)
 			return false;
-		const real = this._walk(child.target, true).realParts.join("/");
+		const real = this.walk(child.target, true).realParts.join("/");
 		const parts = splitPath(dirPath);
 		for (let length = parts.length; length >= 0; length--) {
-			const ancestor = this._walk(parts.slice(0, length).join("/"), true);
+			const ancestor = this.walk(parts.slice(0, length).join("/"), true);
 			if (ancestor.realParts.join("/") === real) return true;
 		}
 		return false;
@@ -228,7 +236,7 @@ export class MemoryFileSystemService
 			if (!child) {
 				child = new DirectoryNode();
 				(current as DirectoryNode).entries.set(part, child);
-				this._fire({
+				this.fire({
 					type: FileChangeType.ADDED,
 					path: currentPath,
 					fileType: FileType.Directory,
@@ -236,7 +244,7 @@ export class MemoryFileSystemService
 			}
 			const resolved: Node | undefined =
 				child.type === FileType.SymbolicLink
-					? this._lookup(child.target)
+					? this.lookup(child.target)
 					: child;
 			if (resolved?.type !== FileType.Directory) {
 				const last = part === parts[parts.length - 1];
@@ -252,8 +260,8 @@ export class MemoryFileSystemService
 	}
 
 	async readFile(filePath: string): Promise<string> {
-		const node = this._lookup(filePath, false);
-		if (node?.type === FileType.Directory) {
+		const node = this.lookupOrThrow(filePath);
+		if (node.type === FileType.Directory) {
 			throw fileSystemError(
 				"EISDIR",
 				`EISDIR: illegal operation on a directory, read '${filePath}'`
@@ -268,7 +276,7 @@ export class MemoryFileSystemService
 		const leading = toPosix(filePath).startsWith("/") ? "/" : "";
 		const dir = leading + parts.join("/");
 		if (!(await this.exists(dir))) await this.createDirectory(dir);
-		const parent = this._lookupParent(filePath);
+		const parent = this.parentOf(filePath);
 
 		const node = parent.entries.get(name);
 		if (node?.type === FileType.SymbolicLink) {
@@ -284,9 +292,9 @@ export class MemoryFileSystemService
 		}
 
 		parent.entries.set(name, new FileNode(content));
-		this._fire({
+		this.fire({
 			type,
-			path: this._targetPath(filePath),
+			path: this.targetPath(filePath),
 			fileType: FileType.File,
 		});
 	}
@@ -294,7 +302,7 @@ export class MemoryFileSystemService
 	async delete(filePath: string, recursive: boolean = false): Promise<void> {
 		const parts = splitPath(filePath);
 		const name = parts.pop();
-		const { node: parent, failure } = this._walk(parts.join("/"), true);
+		const { node: parent, failure } = this.walk(parts.join("/"), true);
 		if (failure === "ENOTDIR" || parent?.type === FileType.File)
 			throw walkError("ENOTDIR", "rm", filePath);
 		if (!name || parent?.type !== FileType.Directory) return;
@@ -310,7 +318,7 @@ export class MemoryFileSystemService
 
 		parent.entries.delete(name);
 
-		this._emitDeleted(target, toPosix(filePath));
+		this.emitDeleted(target, toPosix(filePath));
 	}
 
 	async rename(
@@ -321,14 +329,16 @@ export class MemoryFileSystemService
 		const from = toPosix(source);
 		const to = toPosix(destination);
 		if (from === to) return;
-		const node = this._lookup(source, false, false) as Node;
+		const found = this.walk(source, false);
+		if (!found.node) throw walkError(found.failure!, "stat", source);
+		const node = found.node;
 		if (containsPosix(from, to))
 			throw fileSystemError(
 				"EINVAL",
 				`EINVAL: invalid argument, rename '${source}' -> '${destination}'`
 			);
 
-		const existing = this._lookup(destination, true, false);
+		const existing = this.walk(destination, false).node;
 		const refusal = renameRefusal(
 			existing?.type,
 			overwrite,
@@ -337,52 +347,52 @@ export class MemoryFileSystemService
 		);
 		if (refusal) throw refusal;
 
-		const target = this._lookupParent(destination, true);
-		this._lookupParent(source).entries.delete(from.split("/").pop()!);
+		const target = this.parentOrCreate(destination);
+		this.parentOf(source).entries.delete(from.split("/").pop()!);
 		target.entries.set(to.split("/").pop()!, node);
 
-		this._emitDeleted(node, from);
-		this._emitAdded(
+		this.emitDeleted(node, from);
+		this.emitAdded(
 			node,
 			to,
 			existing ? FileChangeType.UPDATED : FileChangeType.ADDED
 		);
 	}
 
-	private _emitDeleted(
+	private emitDeleted(
 		node: Node,
 		currentPath: string,
 		chain: readonly Node[] = []
 	): void {
-		const resolved = this._resolve(node);
+		const resolved = this.resolve(node);
 		if (!resolved) return;
 		if (resolved.type === FileType.Directory && !chain.includes(resolved)) {
 			for (const [childName, childNode] of resolved.entries) {
-				this._emitDeleted(childNode, `${currentPath}/${childName}`, [
+				this.emitDeleted(childNode, `${currentPath}/${childName}`, [
 					...chain,
 					resolved,
 				]);
 			}
 		}
-		this._fire({
+		this.fire({
 			type: FileChangeType.DELETED,
 			path: currentPath,
 			fileType: resolved.type,
 		});
 	}
 
-	private _emitAdded(
+	private emitAdded(
 		node: Node,
 		currentPath: string,
 		type: FileChangeType,
 		chain: readonly Node[] = []
 	): void {
-		const resolved = this._resolve(node);
+		const resolved = this.resolve(node);
 		if (!resolved) return;
-		this._fire({ type, path: currentPath, fileType: resolved.type });
+		this.fire({ type, path: currentPath, fileType: resolved.type });
 		if (resolved.type === FileType.Directory && !chain.includes(resolved)) {
 			for (const [childName, childNode] of resolved.entries) {
-				this._emitAdded(
+				this.emitAdded(
 					childNode,
 					`${currentPath}/${childName}`,
 					FileChangeType.ADDED,
@@ -392,14 +402,14 @@ export class MemoryFileSystemService
 		}
 	}
 
-	private _resolve(node: Node): FileNode | DirectoryNode | undefined {
+	private resolve(node: Node): FileNode | DirectoryNode | undefined {
 		if (node.type !== FileType.SymbolicLink) return node;
-		const target = this._lookup(node.target);
+		const target = this.lookup(node.target);
 		return target?.type === FileType.SymbolicLink ? undefined : target;
 	}
 
-	private _fire(change: FileChange): void {
-		const links = this._collectLinks(this.root, "");
+	private fire(change: FileChange): void {
+		const links = this.collectLinks(this.root, "");
 		const seen = new Set([splitPath(change.path).join("/")]);
 		const pending = [{ change, via: new Set<string>() }];
 		const leading = change.path.startsWith("/") ? "/" : "";
@@ -428,7 +438,7 @@ export class MemoryFileSystemService
 		}
 	}
 
-	private _collectLinks(
+	private collectLinks(
 		dir: DirectoryNode,
 		dirKey: string
 	): { key: string; targetKey: string }[] {
@@ -441,7 +451,7 @@ export class MemoryFileSystemService
 					targetKey: splitPath(child.target).join("/"),
 				});
 			} else if (child.type === FileType.Directory) {
-				links.push(...this._collectLinks(child, key));
+				links.push(...this.collectLinks(child, key));
 			}
 		}
 		return links;
@@ -449,7 +459,7 @@ export class MemoryFileSystemService
 
 	/** A target starting with `.` or `..` is relative to the link's directory; any other is a path from the root. */
 	async createSymbolicLink(target: string, linkPath: string): Promise<void> {
-		const parent = this._lookupParent(linkPath, true);
+		const parent = this.parentOrCreate(linkPath);
 		const name = splitPath(linkPath).pop()!;
 		if (parent.entries.has(name)) {
 			throw fileSystemError(
@@ -457,8 +467,8 @@ export class MemoryFileSystemService
 				`EEXIST: file already exists, symlink '${target}' -> '${linkPath}'`
 			);
 		}
-		const link = new LinkNode(this._absoluteTarget(target, linkPath));
+		const link = new LinkNode(this.absoluteTarget(target, linkPath));
 		parent.entries.set(name, link);
-		this._emitAdded(link, toPosix(linkPath), FileChangeType.ADDED);
+		this.emitAdded(link, toPosix(linkPath), FileChangeType.ADDED);
 	}
 }

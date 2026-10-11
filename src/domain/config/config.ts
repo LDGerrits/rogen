@@ -60,6 +60,14 @@ export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
 export const isConfigFileName = (fileName: string): boolean =>
 	fileName.endsWith(CONFIG_SUFFIX);
 
+/** The configs of `configs` that no other of them extends, which a serve starts a server for: the synced config over its source-rooted base, and each place over the config they share. */
+export function leafConfigs<
+	T extends { readonly file: string; readonly parents: readonly string[] },
+>(configs: readonly T[]): T[] {
+	const extended = new Set(configs.flatMap(({ parents }) => parents));
+	return configs.filter(({ file }) => !extended.has(file));
+}
+
 /** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
 export const configLabel = (file: string): string =>
 	path.basename(file, CONFIG_SUFFIX);
@@ -226,15 +234,8 @@ export class ResolvedTemplate {
 		const to = path.dirname(this.file);
 		const rebase = (target: string) =>
 			toPosix(path.relative(to, path.resolve(from, target)));
-		let rebased = base.project;
-		if (from !== to) {
-			const globs = rebased.globIgnorePaths;
-			rebased = new RojoProject({
-				...rebased.getTree(),
-				...(globs.length > 0 && { globIgnorePaths: globs.map(rebase) }),
-			});
-			rebased.mapPaths(rebase);
-		}
+		const rebased =
+			from === to ? base.project : base.project.rebased(rebase);
 		const { project, clashes } = rebased.overlaidWith(this.project);
 		return new ResolvedTemplate(
 			this.file,
@@ -255,8 +256,8 @@ export class ResolvedTemplate {
 		return (
 			other !== undefined &&
 			this.file === other.file &&
-			safeStringify(this.project.getTree()) ===
-				safeStringify(other.project.getTree())
+			safeStringify(this.project.getFile()) ===
+				safeStringify(other.project.getFile())
 		);
 	}
 }
@@ -274,7 +275,7 @@ export interface ResolvedConfigFields {
 	readonly parents: readonly string[];
 	/** Variants turned on or off from the command line that this config doesn't declare. */
 	readonly skippedVariants: readonly string[];
-	readonly name: string;
+	readonly projectName: string;
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
@@ -298,7 +299,7 @@ export class ResolvedConfig {
 	readonly file: string;
 	readonly parents: readonly string[];
 	readonly skippedVariants: readonly string[];
-	readonly name: string;
+	readonly projectName: string;
 	readonly rootDirs: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
 	readonly variants: Readonly<Record<string, boolean>>;
@@ -316,7 +317,7 @@ export class ResolvedConfig {
 		this.file = fields.file;
 		this.parents = fields.parents;
 		this.skippedVariants = fields.skippedVariants;
-		this.name = fields.name;
+		this.projectName = fields.projectName;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;
 		this.variants = fields.variants;

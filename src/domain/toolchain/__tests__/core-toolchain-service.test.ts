@@ -54,10 +54,7 @@ describe("CoreToolchainService.detect", () => {
 			]);
 			expect(workspace).toMatchObject({
 				darkluaConfig: undefined,
-				codeFolders: [],
-				hasSrc: false,
 				packageDirs: new Set(),
-				places: [],
 			});
 			expect(workspace.packageManager).toBeUndefined();
 		});
@@ -143,6 +140,121 @@ describe("CoreToolchainService.detect", () => {
 		});
 	});
 
+	describe("extends", () => {
+		const extending = (extendsPath: string | string[]) =>
+			write("tsconfig.json", JSON.stringify({ extends: extendsPath }));
+
+		it("should read the outDir of a base config", async () => {
+			await write(
+				"tsconfig.base.json",
+				JSON.stringify({ compilerOptions: { outDir: "build" } })
+			);
+			await extending("./tsconfig.base");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"build"
+			);
+		});
+
+		it("should let the config override the base, and keep the rest of it", async () => {
+			await write(
+				"tsconfig.base.json",
+				JSON.stringify({
+					compilerOptions: { outDir: "build", rootDir: "game" },
+					include: ["game"],
+				})
+			);
+			await write(
+				"tsconfig.json",
+				JSON.stringify({
+					extends: "./tsconfig.base.json",
+					compilerOptions: { outDir: "lib" },
+				})
+			);
+
+			const language = rbxts(await toolchain().detect(cwd));
+
+			expect(language.compiler?.outDir).toBe("lib");
+			expect(language.configuredRootDir()).toBe("game");
+		});
+
+		it("should read a base in another folder, with its paths made relative to here", async () => {
+			await write(
+				"configs/tsconfig.base.json",
+				JSON.stringify({ compilerOptions: { outDir: "../build" } })
+			);
+			await extending("./configs/tsconfig.base.json");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"build"
+			);
+		});
+
+		it("should follow a chain of bases and a package under node_modules, reading paths from the file that sets them", async () => {
+			await write(
+				"node_modules/@acme/tsconfig/tsconfig.json",
+				JSON.stringify({ compilerOptions: { outDir: "dist" } })
+			);
+			await write(
+				"tsconfig.base.json",
+				JSON.stringify({ extends: "@acme/tsconfig" })
+			);
+			await extending("./tsconfig.base.json");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"node_modules/@acme/tsconfig/dist"
+			);
+		});
+
+		it("should read a list of bases, the last of them having the last word", async () => {
+			await write(
+				"tsconfig.a.json",
+				JSON.stringify({
+					compilerOptions: { outDir: "from-a", rootDir: "game" },
+				})
+			);
+			await write(
+				"tsconfig.b.json",
+				JSON.stringify({ compilerOptions: { outDir: "from-b" } })
+			);
+			await extending(["./tsconfig.a.json", "./tsconfig.b.json"]);
+
+			const language = rbxts(await toolchain().detect(cwd));
+
+			expect(language.compiler?.outDir).toBe("from-b");
+			expect(language.configuredRootDir()).toBe("game");
+		});
+
+		it("should find a package in a node_modules above the folder", async () => {
+			await write(
+				"../node_modules/@acme/tsconfig/tsconfig.json",
+				JSON.stringify({ compilerOptions: { rootDir: "shared" } })
+			);
+			await extending("@acme/tsconfig");
+
+			expect(
+				rbxts(await toolchain().detect(cwd)).configuredRootDir()
+			).toBe("../node_modules/@acme/tsconfig/shared");
+		});
+
+		it("should stop at a loop or a base that is missing", async () => {
+			await write(
+				"tsconfig.json",
+				JSON.stringify({ extends: "./tsconfig.json" })
+			);
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"out"
+			);
+
+			await extending("./nowhere.json");
+
+			expect(rbxts(await toolchain().detect(cwd)).compiler?.outDir).toBe(
+				"out"
+			);
+		});
+	});
+
 	describe("rootDir", () => {
 		it("should read compilerOptions.rootDir from tsconfig.json", async () => {
 			await write(
@@ -202,69 +314,6 @@ describe("CoreToolchainService.detect", () => {
 			expect(place?.files[0].content).toContain(
 				'"tsBuildInfoFile": "out/lobby/tsconfig.tsbuildinfo"'
 			);
-		});
-	});
-
-	describe("code folders", () => {
-		it("should list top-level folders holding code, sorted", async () => {
-			await write("src/a/b/Deep.luau");
-			await write("lib/Game.server.lua");
-			await write("shared/Util.ts");
-			await write("web/App.tsx");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual([
-				"lib",
-				"shared",
-				"src",
-				"web",
-			]);
-		});
-
-		it("should leave out places, whose folders are places rather than code", async () => {
-			await write("src/Util.luau");
-			await write("places/lobby/Game.server.lua");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual(["src"]);
-		});
-
-		it("should skip folders without code, dot-folders and node_modules", async () => {
-			await write("docs/readme.md");
-			await write(".git/hooks/pre-commit.lua");
-			await write("node_modules/pkg/index.ts");
-			await write("src/nested/node_modules/x/y.lua");
-			await write("src/Real.luau");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual(["src"]);
-		});
-
-		it("should skip package folders, include and the outDir", async () => {
-			await write(
-				"tsconfig.json",
-				'{"compilerOptions":{"outDir":"lib"}}'
-			);
-			await write("Packages/Roact.luau");
-			await write("include/RuntimeLib.lua");
-			await write("lib/main.luau");
-			await write("src/main.ts");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual(["src"]);
-		});
-
-		it("should report whether src exists, even without code", async () => {
-			await fs.createDirectory(path.join(cwd, "src"));
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.hasSrc).toBe(true);
-			expect(workspace.codeFolders).toEqual([]);
 		});
 	});
 
@@ -335,23 +384,6 @@ describe("CoreToolchainService.detect", () => {
 				path: "include",
 				installed: true,
 			});
-		});
-	});
-
-	describe("places", () => {
-		it("should list the folders in places, sorted", async () => {
-			await write("places/match/Game.luau");
-			await write("places/lobby/.gitkeep");
-			await write("places/.hidden/x.luau");
-			await write("places/notes.md");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.places).toEqual(["lobby", "match"]);
-		});
-
-		it("should find none without a places folder", async () => {
-			expect((await toolchain().detect(cwd)).places).toEqual([]);
 		});
 	});
 });

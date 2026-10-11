@@ -23,6 +23,20 @@ describe("NativeLifecycleService", () => {
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
+	it("should fire onWillShutdown once when the reader of the output quits", () => {
+		const service = store.add(new NativeLifecycleService());
+		const listener = jest.fn();
+		store.add(service.onWillShutdown(listener));
+		const closed = Object.assign(new Error("write EPIPE"), {
+			code: "EPIPE",
+		});
+
+		process.stdout.emit("error", closed);
+		process.stdout.emit("error", closed);
+
+		expect(listener).toHaveBeenCalledTimes(1);
+	});
+
 	it("should leave the signals to the process until something listens", () => {
 		const before = process.listenerCount("SIGTERM");
 

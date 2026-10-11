@@ -135,7 +135,7 @@ export interface ReloadableSelection extends ConfigSelection {
 	/** Every file the selected configs read: their chains and templates. */
 	readonly files: ReadonlySet<string>;
 	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
-	readonly directory: string | undefined;
+	readonly followedFolder: string | undefined;
 
 	/** Whether a selected config reads `file`, however its path is written: a watcher reports POSIX paths on every system. */
 	reads(file: string): boolean;
@@ -143,7 +143,7 @@ export interface ReloadableSelection extends ConfigSelection {
 	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config that came to the folder. */
 	concerns(file: string): boolean;
 
-	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `directory` first adds and drops the configs that came and went. */
+	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version. A selection with a `followedFolder` first adds and drops the configs that came and went. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
 }
 

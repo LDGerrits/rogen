@@ -6,10 +6,10 @@ import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
 
 export class MemoryWatcher extends AbstractWatcher {
-	private watchDisposables: DisposableStore | null = null;
+	private readonly subscriptions = this._register(new DisposableStore());
 
 	constructor(
-		private readonly memoryFs: MemoryFileSystemService,
+		private readonly fileSystemService: MemoryFileSystemService,
 		logService: LogService
 	) {
 		super(logService);
@@ -20,22 +20,18 @@ export class MemoryWatcher extends AbstractWatcher {
 		options: WatchOptions
 	): Promise<void> {
 		const filter = new WatchFilter(paths, options);
-		this.watchDisposables = new DisposableStore();
 
-		this.memoryFs.onDidMutateFile((change) => {
+		this.fileSystemService.onDidMutateFile((change) => {
 			if (!filter.reports(change.path)) return;
 			this.fireChange({
 				type: change.type,
 				path: toPosix(change.path),
 				fileType: change.fileType,
 			});
-		}, this.watchDisposables);
+		}, this.subscriptions);
 	}
 
 	protected async stopWatching(): Promise<void> {
-		if (this.watchDisposables) {
-			this.watchDisposables[Symbol.dispose]();
-			this.watchDisposables = null;
-		}
+		this.subscriptions.clear();
 	}
 }

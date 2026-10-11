@@ -122,9 +122,6 @@ describe("DetectedWorkspace", () => {
 					darklua: darklua,
 					languages: [],
 					packageDirs: new Set(),
-					codeFolders: [],
-					hasSrc: false,
-					places: [],
 				})
 		).toThrow("at least one language");
 	});

@@ -1,11 +1,18 @@
 import path from "path";
+import { Result, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
-import { PLACES_DIR } from "../toolchain/toolchain.js";
+import { projectFileName } from "../rojo/rojo-project.js";
+import { CodeFinder, PLACES_DIR, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
+import { TemplateReader } from "./template-reader.js";
 
-const SOURCE_DIR = "src";
+/** The project file a place was written by hand as, which its template starts from. */
+export interface HandWrittenProject {
+	readonly from: string;
+	readonly content: string;
+}
 
 /** The folder a place owns: its code in `src` with its template beside it, or, when the folder already holds code outside a `src`, the folder itself with the template beside the folder, so that code never moves. */
 export class PlaceFolder {
@@ -35,19 +42,14 @@ export class PlaceFolder {
 		name: string,
 		sharedRootDirs: readonly string[]
 	): string {
-		return directory.workspace.places.includes(name)
+		return directory.layout.places.includes(name)
 			? PlaceFolder.pathOf(name)
 			: PlaceFolder.pathOf(name, sharedRootDirs);
 	}
 
-	/** A folder as a new project's places start: empty. */
-	static empty(folder: string): PlaceFolder {
-		return new PlaceFolder(folder, false, false);
-	}
-
 	/** Where the place's own code is, which its config adds to default's root dirs. */
 	get rootDir(): string {
-		return this.holdsCode ? this.path : `${this.path}/${SOURCE_DIR}`;
+		return this.holdsCode ? this.path : `${this.path}/${DEFAULT_ROOT_DIR}`;
 	}
 
 	/** The place's template, outside its root dir, since anything inside one is synced into the game. */
@@ -63,19 +65,20 @@ export class PlaceFolder {
 }
 
 /** Reads what the folders of a place already hold. */
-export class PlaceFolders {
-	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly toolchainService: ToolchainService
-	) {}
+export class PlaceFolderReader {
+	private readonly codeFinder: CodeFinder;
+
+	constructor(private readonly fileSystemService: FileReader) {
+		this.codeFinder = new CodeFinder(fileSystemService);
+	}
 
 	/** What `folder` already holds in `directory`. */
 	async read(directory: string, folder: string): Promise<PlaceFolder> {
 		const absolute = path.join(directory, folder);
 		const code =
 			!(await this.fileSystemService.exists(
-				path.join(absolute, SOURCE_DIR)
-			)) && (await this.toolchainService.holdsCode(absolute));
+				path.join(absolute, DEFAULT_ROOT_DIR)
+			)) && (await this.codeFinder.holdsCode(absolute));
 		return new PlaceFolder(
 			folder,
 			code,
@@ -83,5 +86,20 @@ export class PlaceFolders {
 				path.join(directory, PlaceFolder.templateOf(folder, code))
 			)
 		);
+	}
+
+	/** The project file named after the place, when it was written by hand: no config beside it writes it. */
+	async handWrittenProject(
+		directory: InitDirectory,
+		place: string
+	): Promise<Result<HandWrittenProject | undefined, Diagnostic[]>> {
+		const from = projectFileName(place);
+		if (!directory.handWrittenProjectFiles.includes(from))
+			return ok(undefined);
+		const content = await new TemplateReader(
+			this.fileSystemService,
+			directory.path
+		).read(from);
+		return content.map((text) => ({ from, content: text }));
 	}
 }

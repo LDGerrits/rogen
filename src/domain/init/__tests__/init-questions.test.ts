@@ -8,16 +8,14 @@ import {
 	PromptScript,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import {
-	WorkspaceSpec,
-	withRobloxTs,
-} from "../../toolchain/__tests__/workspaces.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
 import {
 	DirectorySpec,
+	WorkspaceSpec,
 	directory,
 	directoryOf,
 	placeFoldersOf,
@@ -62,7 +60,7 @@ const rbxts: WorkspaceSpec = {
 	robloxTs: {
 		outDir: "build",
 		rbxtsScopes: ["@rbxts"],
-		hasInclude: true,
+		includeInstalled: true,
 	},
 	packageManager: "wally",
 	packageDirs: ["Packages"],
@@ -317,7 +315,8 @@ describe("InitQuestions askProject", () => {
 
 			const result = await askInitChoices(
 				prompts,
-				contextOf(luau, ["sync.rogen.json"])
+				contextOf(luau, ["sync.rogen.json"]),
+				"default"
 			);
 
 			expect(conflictsOf(result)).toMatchObject([
@@ -326,7 +325,7 @@ describe("InitQuestions askProject", () => {
 					resource: path.join(directory, "sync.rogen.json"),
 				},
 			]);
-			expect(prompts.asked).toHaveLength(3);
+			expect(prompts.asked).toHaveLength(2);
 		});
 	});
 
@@ -364,6 +363,21 @@ describe("InitQuestions askProject", () => {
 				"Darklua writes into"
 			);
 		});
+
+		it.each(["src", "src/out", "./src/"])(
+			"should refuse %j, which holds or lies in a root dir",
+			async (answer) => {
+				await expect(
+					ask(
+						{ ...luau, darkluaConfig: ".darklua.json" },
+						{
+							"Does Darklua process your code before Rojo syncs it?": true,
+							"Sync dir": answer,
+						}
+					)
+				).rejects.toThrow("overlaps src");
+			}
+		);
 	});
 
 	it("should split root dirs on commas", async () => {
@@ -521,7 +535,7 @@ describe("InitQuestions askProject", () => {
 				withRobloxTs(
 					{ ...luau, packageManager: "wally" },
 					{
-						hasInclude: true,
+						includeInstalled: true,
 						rbxtsScopes: ["@rbxts", "@flamework"],
 					}
 				)
@@ -1005,14 +1019,14 @@ describe("InitQuestions askProject layout", () => {
 	it.each([
 		["lobby, lobby", "lobby is listed twice."],
 		["default", "default.rogen.json is written for default"],
-		["arena", "arena.rogen.json already exists."],
+		["arena", "arena-sync.project.json already exists."],
 	])("should reject the places %j at the prompt", async (answer, message) => {
 		await expect(
 			ask(
-				luau,
+				{ ...luau, darkluaConfig: ".darklua.json" },
 				{ "What are you setting up?": "several", Places: answer },
 				undefined,
-				["arena.rogen.json"]
+				["arena-sync.project.json"]
 			)
 		).rejects.toThrow(message);
 	});

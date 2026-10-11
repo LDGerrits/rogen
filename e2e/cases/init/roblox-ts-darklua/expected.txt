@@ -10,6 +10,8 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  sync.project.json
+  sync.rogen.json
   template.project.json
 
 default.rogen.json:
@@ -25,10 +27,23 @@ default.rogen.json:
 		"*": "ReplicatedStorage/shared"
 	},
 	"template": "template.project.json",
+	"syncDir": "out"
+}
+
+sync.rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"extends": "./default.rogen.json",
 	"syncDir": "dist"
 }
 
 $ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
+    main: Script  <- out/server/main.server.luau
+
+$ rojo sourcemap sync.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService

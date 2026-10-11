@@ -7,10 +7,7 @@ export interface VariantSwitch {
 	readonly by?: SwitchCause;
 }
 
-/**
- * Each declared variant's switch: on when the mode lists it or the command
- * line adds it, and off when the command line removes it, which applies last.
- */
+/** Each declared variant's switch: on when the mode lists it or the command line adds it, and off when the command line removes it, which applies last. */
 export function switchVariants(
 	declared: readonly string[],
 	listed: readonly string[],

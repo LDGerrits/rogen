@@ -1,5 +1,6 @@
+import path from "path";
 import { DisposableStore } from "./base/disposable.js";
-import { setUnexpectedErrorHandler } from "./base/errors.js";
+import { UsageError, setUnexpectedErrorHandler } from "./base/errors.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -7,7 +8,12 @@ import {
 } from "./platform/commands/commands.js";
 import { CommandFailure } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
-import { JsonOption, hasFlag, parseArgs } from "./platform/environment/args.js";
+import {
+	HELP_COMMAND,
+	JsonOption,
+	hasFlag,
+	parseArgs,
+} from "./platform/environment/args.js";
 import { EnvironmentService } from "./platform/environment/environment-service.js";
 import { NativeEnvironmentService } from "./platform/environment/native-environment-service.js";
 import { DiskFileSystemService } from "./platform/fs/disk-file-system-service.js";
@@ -56,6 +62,15 @@ import "./commands/where/where-command.js";
 /** The version `scripts/bundle.ts` bakes into a bundle; undefined in a run from source. */
 declare const ROGEN_VERSION: string | undefined;
 
+/** The folder rogen runs in, or `undefined` when it was deleted under the shell. */
+function currentFolder(): string | undefined {
+	try {
+		return process.cwd();
+	} catch {
+		return undefined;
+	}
+}
+
 export default function run(): void {
 	main().catch((error) => {
 		console.error("Fatal Error:", error);
@@ -80,14 +95,15 @@ async function main(): Promise<void> {
 		// Read from the raw line, so a parse error is reported the way the flags ask.
 		const json = hasFlag(rawArgs, JsonOption);
 		const options = argsResult.isOk() ? argsResult.value.line.options : {};
-		const environment = new NativeEnvironmentService(
+		const cwd = currentFolder();
+		const environmentService = new NativeEnvironmentService(
 			{ ...options, json },
-			process.cwd()
+			cwd ?? path.parse(process.execPath).root
 		);
-		const logService: LogService = environment.isPlain
-			? new PlainLogService(environment.cwd)
-			: new TerminalLogService(environment.cwd);
-		logService.setLevel(environment.logLevel);
+		const logService: LogService = environmentService.isPlain
+			? new PlainLogService(environmentService.cwd)
+			: new TerminalLogService(environmentService.cwd);
+		logService.setLevel(environmentService.logLevel);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -95,8 +111,18 @@ async function main(): Promise<void> {
 			return;
 		}
 		const { command, line } = argsResult.value;
+		if (cwd === undefined && command !== HELP_COMMAND) {
+			process.exitCode = failure.finish(
+				new UsageError(
+					"The current folder no longer exists. cd to one that does, then run rogen again."
+				),
+				command
+			);
+			return;
+		}
 		const promptService = new ConsolePromptService({
-			interactive: environment.isInteractive,
+			interactive: environmentService.isInteractive,
+			color: !environmentService.isPlain,
 		});
 
 		// Default handler throws async, which would crash `watch`.
@@ -108,12 +134,12 @@ async function main(): Promise<void> {
 
 		const configService = new CoreConfigService(
 			fileSystemService,
-			environment
+			environmentService
 		);
 		services.set(ConfigService, configService);
 		disposables.add(configService.registerFileCheck(LegacyConfig.check));
 
-		services.set(EnvironmentService, environment);
+		services.set(EnvironmentService, environmentService);
 		services.set(LogService, logService);
 		services.set(PromptService, promptService);
 		const indexService = new CoreIndexService(fileSystemService);
@@ -132,7 +158,7 @@ async function main(): Promise<void> {
 			new CoreInitService(
 				fileSystemService,
 				promptService,
-				environment,
+				environmentService,
 				toolchainService,
 				configService
 			)
@@ -169,7 +195,7 @@ async function main(): Promise<void> {
 				processService,
 				requestService,
 				watchService,
-				environment
+				environmentService
 			)
 		);
 

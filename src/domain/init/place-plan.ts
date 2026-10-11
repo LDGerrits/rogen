@@ -5,14 +5,17 @@ import { projectFileName } from "../rojo/rojo-project.js";
 import { SyncServer } from "../serve/serve.js";
 import { CompiledPlace, Darklua, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
-import { BaseConfig, InitDirectory } from "./init-directory.js";
+import { InitDirectory, BaseConfig } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { PlaceFolder } from "./place-folder.js";
+import { HandWrittenProject, PlaceFolder } from "./place-folder.js";
+import { TemplatePlan } from "./template-plan.js";
 
 /** A place's name, folder and port, and what it joins: the project's language, whether Darklua processes it, and what it inherits from its config. */
 export interface PlaceChoices {
 	readonly name: string;
 	readonly folder: PlaceFolder;
+	/** The project file named after it that was there before, which its template starts from. */
+	readonly handWritten?: HandWrittenProject;
 	/** The port its template serves it on, which no other place uses. */
 	readonly servePort: number;
 	readonly language: Language;
@@ -22,15 +25,9 @@ export interface PlaceChoices {
 
 /** What one place writes and says, which a place added later and every place of a new project share. */
 export class PlacePlan {
-	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
-	static freePort(taken: readonly number[]): number {
-		let port = SyncServer.ROJO.defaultPort + 1;
-		while (taken.includes(port)) port++;
-		return port;
-	}
-
 	readonly configSet: ConfigSet;
 	private readonly folder: PlaceFolder;
+	private readonly handWritten: HandWrittenProject | undefined;
 	private readonly servePort: number;
 	private readonly rootDirs: string[];
 	private readonly outDir: string | undefined;
@@ -39,9 +36,18 @@ export class PlacePlan {
 
 	constructor(
 		private readonly directory: InitDirectory,
-		{ name, folder, servePort, language, darklua, base }: PlaceChoices
+		{
+			name,
+			folder,
+			handWritten,
+			servePort,
+			language,
+			darklua,
+			base,
+		}: PlaceChoices
 	) {
 		this.folder = folder;
+		this.handWritten = handWritten;
 		this.servePort = servePort;
 		this.configSet = new ConfigSet(name, language, darklua);
 		const { compiler } = language;
@@ -62,9 +68,16 @@ export class PlacePlan {
 				: undefined;
 	}
 
+	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
+	static freePort(taken: readonly number[]): number {
+		let port = SyncServer.ROJO.defaultPort + 1;
+		while (taken.includes(port)) port++;
+		return port;
+	}
+
 	/** The configs, the place's template, the compiler's own files and the one-time edits, which a project sets up for every place. */
 	planFiles(builder: InitPlanBuilder): void {
-		const { configSet, folder, syncDir, compiled } = this;
+		const { configSet, folder, syncDir, outDir, compiled } = this;
 		builder.addDirectory(folder.rootDir);
 		configSet.planConfigs(
 			builder,
@@ -73,10 +86,28 @@ export class PlacePlan {
 				rootDirs: [folder.rootDir],
 				template: folder.template,
 			},
-			syncDir
+			{ source: this.outDir, synced: syncDir }
 		);
-		if (folder.hasTemplate) builder.addNote(`Using ${folder.template}.`);
-		else
+		if (folder.hasTemplate) {
+			builder.addNote(`Using ${folder.template}.`);
+			if (this.handWritten)
+				builder.addNote(
+					`Rogen replaces ${this.handWritten.from} on every build; move anything you need from it into ${folder.template} first.`
+				);
+		} else if (this.handWritten) {
+			const copy = TemplatePlan.copiedTo(
+				folder.template,
+				this.handWritten,
+				[
+					...this.rootDirs,
+					...(outDir ? [outDir] : []),
+					...(syncDir ? [syncDir] : []),
+				]
+			);
+			if (copy.file) builder.addPlaceTemplate(copy.file);
+			for (const note of copy.notes) builder.addNote(note);
+			builder.addEdit(...copy.edits);
+		} else
 			builder.addPlaceTemplate({
 				fileName: folder.template,
 				content: formatJsonFile({
@@ -113,9 +144,7 @@ export class PlacePlan {
 		const [first] = places;
 		if (!first?.configSet.sourced && !sharedPort) return "rogen serve";
 		return `rogen serve ${places
-			.map(({ configSet }) =>
-				configSet.sourced ? configSet.syncStem : configSet.name
-			)
+			.map(({ configSet }) => configSet.servedStem)
 			.join(" ")}`;
 	}
 }

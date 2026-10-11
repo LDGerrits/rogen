@@ -4,9 +4,9 @@ import {
 	Diagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** An instance that two or more sets of variants or modes claim and no file is left to give. */
 export interface MissingInstance {

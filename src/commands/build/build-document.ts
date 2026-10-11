@@ -1,10 +1,10 @@
 import { toNative } from "../../base/path.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
-	Diagnostic,
 	DiagnosticJson,
 	diagnosticToJson,
-} from "../../platform/diagnostics/diagnostic.js";
+} from "../../platform/diagnostics/diagnostic-json.js";
 
 /** What a build did to one config, as the document lists it. */
 export interface BuildEntry {
@@ -20,7 +20,7 @@ export interface BuildEntry {
 }
 
 /** What a build did to each config, as one JSON document. */
-export interface BuildReport {
+export interface BuildDocument {
 	readonly configs: readonly BuildEntry[];
 }
 
@@ -44,11 +44,11 @@ export function buildEntry(
 }
 
 /** What a build did to each of `builds`, with `diagnosticsOf` standing in for what one found. */
-export function buildReport(
+export function buildDocument(
 	builds: readonly ConfigBuild[],
 	diagnosticsOf: (build: ConfigBuild) => readonly Diagnostic[] = (build) =>
 		build.diagnostics
-): BuildReport {
+): BuildDocument {
 	return {
 		configs: builds.map((build) => buildEntry(build, diagnosticsOf(build))),
 	};

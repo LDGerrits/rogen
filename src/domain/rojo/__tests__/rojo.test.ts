@@ -19,6 +19,8 @@ describe("domain/rojo/rojo", () => {
 				["Model.rbxm", "model"],
 				["Model.rbxmx", "model"],
 				["Config.json", "data"],
+				["Config.jsonc", "data"],
+				["Gun.model.jsonc", "data"],
 				["Config.toml", "data"],
 				["Table.csv", "data"],
 				["Notes.txt", "data"],
@@ -34,7 +36,9 @@ describe("domain/rojo/rojo", () => {
 				"Save.Json",
 				"Save.META.JSON",
 				"Save.meta.json",
+				"Save.meta.jsonc",
 				"init.meta.json",
+				"init.meta.jsonc",
 				"Notes.md",
 				".server",
 				"README",
@@ -84,6 +88,10 @@ describe("domain/rojo/rojo", () => {
 			it("should accept a meta file in lowercase only, and reject other JSON", () => {
 				expect(new RojoFile("Save.meta.json").isMeta).toBe(true);
 				expect(new RojoFile(RojoFile.INIT_META).isMeta).toBe(true);
+				expect(new RojoFile("Save.meta.jsonc").isMeta).toBe(true);
+				expect(new RojoFile(RojoFile.INIT_META_JSONC).isMeta).toBe(
+					true
+				);
 				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(false);
 				expect(new RojoFile("Save.json").isMeta).toBe(false);
 			});
@@ -221,6 +229,7 @@ describe("domain/rojo/rojo", () => {
 				["Foo.server.mock.luau", "Foo.server.mock"],
 				["Crate.model.json", "Crate"],
 				["Config.json", "Config"],
+				["Config.jsonc", "Config"],
 				["Gun.rbxm", "Gun"],
 				["Data.model.toml", "Data.model"],
 			])("should name %s as %s", (fileName, name) => {
@@ -234,6 +243,7 @@ describe("domain/rojo/rojo", () => {
 				["Types.luau", "Types"],
 				["Foo.server.mock.luau", "Foo.server.mock"],
 				["Config.json", "Config"],
+				["Config.jsonc", "Config"],
 				["Notes.txt", "Notes"],
 			])("should read the meta of %s under %s", (fileName, name) => {
 				expect(new RojoFile(fileName).metaName).toBe(name);
@@ -253,6 +263,24 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
+		describe("metaStemOf", () => {
+			it("should strip either meta suffix, and none from another file", () => {
+				expect(RojoFile.metaStemOf("Save.meta.json")).toBe("Save");
+				expect(RojoFile.metaStemOf("Save.meta.jsonc")).toBe("Save");
+				expect(RojoFile.metaStemOf("Save.json")).toBeUndefined();
+			});
+		});
+
+		describe("metaFiles", () => {
+			it("should name the .jsonc Rojo applies over the .json first", () => {
+				expect(new RojoFile("Save.luau").metaFiles).toEqual([
+					"Save.meta.jsonc",
+					"Save.meta.json",
+				]);
+				expect(new RojoFile("Gun.rbxm").metaFiles).toEqual([]);
+			});
+		});
+
 		describe("metaFile", () => {
 			it("should name the meta file Rojo reads for a script", () => {
 				expect(new RojoFile("Save.server.luau").metaFile).toBe(
@@ -268,6 +296,20 @@ describe("domain/rojo/rojo", () => {
 
 	describe("RojoMeta", () => {
 		describe("parse", () => {
+			it("should refuse a byte order mark, which Rojo can't read", () => {
+				const result = RojoMeta.parse(
+					'\uFEFF{"className":"Folder"}',
+					"a/init.meta.json"
+				);
+
+				expect(result.isErr() && result.error).toMatchObject([
+					{
+						code: "meta.byteOrderMark",
+						resource: "a/init.meta.json",
+					},
+				]);
+			});
+
 			it("should keep the fields Rojo reads and drop the rest", () => {
 				const parsed = RojoMeta.parse(
 					'{ "$schema": "x", "className": "Actor", "properties": { "RunContext": "Client" } }',
@@ -329,6 +371,32 @@ describe("domain/rojo/rojo", () => {
 			it("should not warn when the meta can't be read at all", () => {
 				expect(typosOf("{bad", "/repo/A.meta.json")).toEqual([]);
 				expect(typosOf("[]", "/repo/A.meta.json")).toEqual([]);
+			});
+		});
+
+		describe("merged", () => {
+			it("should merge properties and let the later meta replace any other field", () => {
+				expect(
+					RojoMeta.merged(
+						{
+							className: "Actor",
+							properties: { A: 1, B: 1 },
+							attributes: { x: 1 },
+						},
+						{ properties: { B: 2 }, attributes: { y: 2 }, id: "i" }
+					)
+				).toEqual({
+					className: "Actor",
+					properties: { A: 1, B: 2 },
+					attributes: { y: 2 },
+					id: "i",
+				});
+			});
+
+			it("should leave properties out when neither meta has any", () => {
+				expect(RojoMeta.merged({ className: "Folder" }, {})).toEqual({
+					className: "Folder",
+				});
 			});
 		});
 

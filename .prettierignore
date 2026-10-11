@@ -1,3 +1,3 @@
 src/commands/help/help-texts.ts
 src/domain/init/agent-block.ts
-src/domain/init/agent-hook.ts
+src/domain/init/hook-script.ts

@@ -34,22 +34,53 @@ export interface UnclaimedMeta {
 }
 
 /** What a scan found under one root dir. */
-export class ScannedRoot {
+export interface ScannedRootParts {
+	readonly rootDir: string;
+	/** False for a root dir the index doesn't hold, which contributes nothing. */
+	readonly exists: boolean;
+	readonly entries: readonly ScannedFile[];
+	readonly markers: readonly string[];
+	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; Rojo applies them, they're never entries. */
+	readonly metaFiles: readonly string[];
+	/** The paths the scan left out, by absolute POSIX path. */
+	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
+}
+
+/** What a scan found under one root dir, and the questions it answers about it. */
+export class ScannedRoot implements ScannedRootParts {
+	readonly rootDir: string;
+	readonly exists: boolean;
+	readonly entries: readonly ScannedFile[];
+	readonly markers: readonly string[];
+	readonly metaFiles: readonly string[];
+	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
+
 	constructor(
-		readonly rootDir: string,
-		/** False for a root dir the index doesn't hold, which contributes nothing. */
-		readonly exists: boolean,
-		readonly entries: readonly ScannedFile[],
-		readonly markers: readonly string[],
-		/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
-		readonly metaFiles: readonly string[],
-		/** The paths the scan left out, by absolute POSIX path. */
-		readonly leftOut: ReadonlyMap<string, ScanLeftOut>,
+		parts: ScannedRootParts,
 		private readonly index: IndexReader
-	) {}
+	) {
+		({
+			rootDir: this.rootDir,
+			exists: this.exists,
+			entries: this.entries,
+			markers: this.markers,
+			metaFiles: this.metaFiles,
+			leftOut: this.leftOut,
+		} = parts);
+	}
 
 	static missing(rootDir: string, index: IndexReader): ScannedRoot {
-		return new ScannedRoot(rootDir, false, [], [], [], new Map(), index);
+		return new ScannedRoot(
+			{
+				rootDir,
+				exists: false,
+				entries: [],
+				markers: [],
+				metaFiles: [],
+				leftOut: new Map(),
+			},
+			index
+		);
 	}
 
 	get excludedCount(): number {
@@ -93,7 +124,7 @@ export class ScannedRoot {
 	unclaimedMeta(): UnclaimedMeta[] {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
-			if (fileName === RojoFile.INIT_META) return [];
+			if (RojoFile.isInitMeta(fileName)) return [];
 			const listing =
 				this.index.getEntries(
 					path.join(this.rootDir, path.posix.dirname(metaFile))
@@ -101,7 +132,7 @@ export class ScannedRoot {
 			const siblings = [...listing]
 				.filter(([, type]) => isFileType(type))
 				.map(([sibling]) => sibling);
-			const name = fileName.slice(0, -RojoFile.META_SUFFIX.length);
+			const name = RojoFile.metaStemOf(fileName) ?? fileName;
 			if (siblings.some((file) => new RojoFile(file).metaName === name))
 				return [];
 
@@ -129,8 +160,7 @@ export class ScannedRoot {
 		siblings: readonly string[],
 		isFolder: boolean
 	): string | undefined {
-		if (isFolder)
-			return `a folder's meta is ${name}/init${RojoFile.META_SUFFIX}`;
+		if (isFolder) return `a folder's meta is ${name}/${RojoFile.INIT_META}`;
 		for (const file of siblings) {
 			if (stemOf(file) !== name) continue;
 			const metaName = new RojoFile(file).metaName;
@@ -187,14 +217,16 @@ export class RootScanner {
 			return ScannedRoot.missing(rootDir, this.index);
 		}
 		return new ScannedRoot(
-			rootDir,
-			true,
-			walk.entries.sort((a, b) =>
-				compareStrings(a.relativePath, b.relativePath)
-			),
-			walk.markers.sort(),
-			walk.metaFiles.sort(),
-			walk.leftOut,
+			{
+				rootDir,
+				exists: true,
+				entries: walk.entries.sort((a, b) =>
+					compareStrings(a.relativePath, b.relativePath)
+				),
+				markers: walk.markers.sort(),
+				metaFiles: walk.metaFiles.sort(),
+				leftOut: walk.leftOut,
+			},
 			this.index
 		);
 	}
@@ -232,6 +264,13 @@ export class RootScanner {
 				});
 			else kept.push([name, type]);
 		}
+		// Left out before it exists too, or the first build and the one after it would write different files.
+		const outName = path.basename(this.outFile);
+		if (samePath(path.dirname(this.outFile), dir) && !listing.has(outName))
+			walk.leftOut.set(joinPosix(dir, outName), {
+				status: "excluded",
+				pattern: outName,
+			});
 		return kept;
 	}
 

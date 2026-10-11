@@ -56,10 +56,9 @@ export class CoreConfigSelection implements ReloadableSelection {
 		home: string,
 		folder?: PickedFolder
 	): Promise<Result<CoreConfigSelection, Error>> {
-		const managed = files.map(
-			(file) => new ManagedConfig(file, loader, overrides)
+		const managed = await Promise.all(
+			files.map((file) => ManagedConfig.open(file, loader, overrides))
 		);
-		await Promise.all(managed.map((config) => config.load()));
 		const problem =
 			undeclaredVariant(managed, overrides) ??
 			undeclaredMode(managed, overrides);
@@ -84,7 +83,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return this._files;
 	}
 
-	get directory(): string | undefined {
+	get followedFolder(): string | undefined {
 		return this.folder?.directory;
 	}
 
@@ -98,7 +97,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		return (
 			this.folder !== undefined &&
 			isConfigFileName(posixFile) &&
-			dirnamePosix(posixFile) === toPosix(this.folder.directory)
+			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
 		);
 	}
 
@@ -166,12 +165,13 @@ export class CoreConfigSelection implements ReloadableSelection {
 		if (!this.folder) return { added: [], removed: [] };
 		const now = new Set(await this.folder.list());
 		const known = new Set(this.managed.map(({ file }) => file));
-		const added = [...now]
-			.filter((file) => !known.has(file))
-			.map(
-				(file) => new ManagedConfig(file, this.loader, this.overrides)
-			);
-		await Promise.all(added.map((config) => config.load()));
+		const added = await Promise.all(
+			[...now]
+				.filter((file) => !known.has(file))
+				.map((file) =>
+					ManagedConfig.open(file, this.loader, this.overrides)
+				)
+		);
 		const removed = [...known].filter((file) => !now.has(file));
 		this.managed = [
 			...this.managed.filter(({ file }) => now.has(file)),

@@ -1,11 +1,7 @@
 import { jest } from "@jest/globals";
 import "../serve-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
-import {
-	ExitCodeError,
-	ReportedError,
-	UsageError,
-} from "../../../base/errors.js";
+import { UsageError } from "../../../base/errors.js";
 import { Result } from "../../../base/result.js";
 import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 import { CommandLine } from "../../../platform/environment/args.js";
@@ -16,6 +12,10 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
+import {
+	ExitCodeError,
+	ReportedError,
+} from "../../../platform/commands/commands.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -426,6 +426,25 @@ describe("serve command", () => {
 		});
 		expect(exitCodeOf(error)).toBe(1);
 		expect(printed()).toEqual([]);
+	});
+
+	it("should say why when the watch can't start, before it fails", async () => {
+		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("no access"));
+
+		const error = await failureOf(serve());
+
+		expect(error).toBeInstanceOf(ReportedError);
+		expect(logService.texts("error")).toEqual(["no access"]);
+	});
+
+	it("should print the reason once as JSON when the watch can't start", async () => {
+		jest.spyOn(watcher, "watch").mockRejectedValue(new Error("no access"));
+
+		await failureOf(serve([], { json: true }));
+
+		expect(
+			printed().filter((line) => line.error === "no access")
+		).toHaveLength(1);
 	});
 
 	it("should print a stop as JSON, then the failure", async () => {

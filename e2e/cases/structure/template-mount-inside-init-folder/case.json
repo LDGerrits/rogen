@@ -1,0 +1,1 @@
+{ "steps": [["build", "--verbose"], ["where", "src/Net/Vendor/Signal.luau"]] }

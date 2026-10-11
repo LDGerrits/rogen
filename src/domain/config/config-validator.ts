@@ -1,5 +1,5 @@
 import path from "path";
-import { samePath } from "../../base/path.js";
+import { contains, isInside, samePath } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -71,13 +71,14 @@ export class ConfigValidator {
 		this.checkActiveConflicts(groups);
 		this.checkOutFile();
 		this.checkRootDirs();
+		this.checkSyncDir();
 
 		return this.problems.toResult(
 			new ResolvedConfig({
 				file: this.layered.leaf.file,
 				parents: this.parents,
 				skippedVariants: this.layered.skippedVariants,
-				name:
+				projectName:
 					template?.project.name ||
 					path.basename(dir) ||
 					FALLBACK_NAME,
@@ -380,6 +381,23 @@ export class ConfigValidator {
 				);
 			}
 		});
+	}
+
+	/** The sync dir is where tools write the code Rogen's root dirs hold, so neither may lie in the other: Rogen would read the tools' output as source. */
+	private checkSyncDir(): void {
+		const syncDir = fieldOf(this.layered.config, "syncDir");
+		if (syncDir === undefined) return;
+		const location = this.layered.locate("syncDir");
+		for (const rootDir of this.rootDirs) {
+			const inside = contains(rootDir, syncDir);
+			if (!inside && !isInside(rootDir, syncDir)) continue;
+			this.problems.error(
+				"config.syncDirOverlapsRootDir",
+				location,
+				`the sync dir "${syncDir}" ${inside ? "is inside" : "contains"} root dir "${rootDir}", so Rogen would read what the tools write as source. Set "syncDir" to a folder outside the root dirs.`
+			);
+			return;
+		}
 	}
 
 	/** Two keys that differ only in the case of their first letter would match the same names. */

@@ -15,7 +15,6 @@ const matchMarkerKey = (fileName: string, keys: DeclaredKeys) =>
 	readerOf(keys).marker(fileName).key;
 const matchSuffixKeys = (stem: string, keys: ReadonlySet<string>) =>
 	readerOf(new DeclaredKeys(keys, [])).suffixes(stem);
-const unwrapInvisibleFolder = NameReader.unwrapInvisibleFolder;
 const misspelt = <K extends MisspellingKind>(
 	read: { readonly misspellings: readonly Misspelling[] },
 	kind: K
@@ -346,46 +345,6 @@ describe("NameReader stray @", () => {
 		expect(
 			misspelt(matchSuffixKeys("Save@", ROUTES), "strayAt")
 		).toBeUndefined();
-	});
-});
-
-describe("NameReader.unwrapInvisibleFolder", () => {
-	it("removes the parentheses and marks the folder invisible", () => {
-		expect(unwrapInvisibleFolder("(mock)")).toEqual({
-			name: "mock",
-			invisible: true,
-		});
-	});
-
-	it("leaves an ordinary name alone", () => {
-		expect(unwrapInvisibleFolder("mock")).toEqual({
-			name: "mock",
-			invisible: false,
-		});
-	});
-
-	it("ignores empty or unbalanced parentheses", () => {
-		for (const name of ["()", "(mock", "mock)"])
-			expect(unwrapInvisibleFolder(name)).toEqual({
-				name,
-				invisible: false,
-			});
-	});
-});
-
-describe("NameReader.unhoisted", () => {
-	it("should leave a lone ^ as a name", () => {
-		expect(NameReader.unhoisted("^")).toEqual({
-			name: "^",
-			hoisted: false,
-		});
-	});
-
-	it("should take the ^ off a longer name", () => {
-		expect(NameReader.unhoisted("^Animate")).toEqual({
-			name: "Animate",
-			hoisted: true,
-		});
 	});
 });
 

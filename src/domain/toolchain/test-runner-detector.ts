@@ -1,5 +1,6 @@
 import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
+import { PackageManager } from "./toolchain.js";
 
 /** A test runner's name, as `init` says it, and how a package source names it: as a whole path segment, so `ts-jest` is no runner. */
 const RUNNERS = [
@@ -18,9 +19,10 @@ export class TestRunnerDetector {
 	/** The first runner a manifest in `cwd` depends on, or `undefined` when none does. */
 	async detect(cwd: string): Promise<string | undefined> {
 		const [npm, ...toml] = await Promise.all(
-			["package.json", "wally.toml", "pesde.toml"].map((name) =>
-				this.read(path.join(cwd, name))
-			)
+			[
+				"package.json",
+				...PackageManager.PRIORITY.map(({ manifest }) => manifest),
+			].map((name) => this.read(path.join(cwd, name)))
 		);
 		const packages = [
 			...TestRunnerDetector.npmPackages(npm),

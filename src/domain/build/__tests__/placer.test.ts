@@ -41,7 +41,7 @@ describe("Placer", () => {
 		it("should hold the template rebased to the output's directory", () => {
 			const { template } = prepare({ name: "game" }).unwrap();
 
-			expect(template.edit().getTree()).toEqual({
+			expect(template.edit().getFile()).toEqual({
 				name: "game",
 				tree: { $className: "DataModel" },
 			});
@@ -70,7 +70,6 @@ describe("Placer", () => {
 		) =>
 			(
 				await buildAndPlace(
-					store,
 					fs,
 					configOf({
 						routes: VARIANT_ROUTES,
@@ -619,7 +618,6 @@ describe("Placer", () => {
 		const route = async (overrides: ResolvedConfigSpec = {}) => {
 			const { placement } = (
 				await buildAndPlace(
-					store,
 					fs,
 					configOf({ routes: ROUTES, ...overrides })
 				)

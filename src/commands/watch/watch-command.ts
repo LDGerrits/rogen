@@ -1,6 +1,5 @@
 import { DisposableStore } from "../../base/disposable.js";
-import { ErrorUtils } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 
 import {
 	ConfigArguments,
@@ -69,21 +68,16 @@ registerCommand(
 				);
 
 				store.add(session.onDidUpdate((update) => log.update(update)));
-				store.add(
-					session.onDidError((error) =>
-						logService.error(error.message)
-					)
-				);
+				store.add(session.onDidError((error) => log.error(error)));
 				try {
-					await session.start();
+					const started = await session.start();
+					if (started.isErr()) return started;
 					await shutdown.p;
 				} finally {
 					await session.stop();
 				}
 				log.end();
 				return ok(undefined);
-			} catch (error) {
-				return err(ErrorUtils.fromUnknown(error));
 			} finally {
 				store[Symbol.dispose]();
 			}

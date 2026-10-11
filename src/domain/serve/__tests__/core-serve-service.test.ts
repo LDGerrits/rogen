@@ -17,10 +17,10 @@ import { SyncServer } from "../serve.js";
 import {
 	ServePlan,
 	ServeRequest,
-	ServeChange,
+	ServeChangeEvent,
 	ServeSession,
-	ServerStop,
-	ServingServer,
+	ServerExitEvent,
+	ServerReadyEvent,
 } from "../serve-service.js";
 
 const config = (extra: Record<string, unknown> = {}) =>
@@ -106,7 +106,7 @@ describe("CoreServeService", () => {
 			const servePlan = await plan();
 
 			expect(served(servePlan)).toEqual([["default", "127.0.0.1:34872"]]);
-			expect(servePlan.tool).toEqual({
+			expect(servePlan.executable).toEqual({
 				server: SyncServer.ROJO,
 				file: "/bin/rojo",
 				version: "7.7.1",
@@ -116,7 +116,7 @@ describe("CoreServeService", () => {
 		});
 
 		it("should refuse a server it doesn't know", async () => {
-			expect(await errorOf({ server: "lune" })).toEqual(
+			expect(await errorOf({ serverId: "lune" })).toEqual(
 				new UsageError('--tool takes rojo or argon, not "lune".')
 			);
 		});
@@ -240,13 +240,13 @@ describe("CoreServeService", () => {
 				'host = "0.0.0.0"\nport = 8100\n'
 			);
 
-			expect(served(await plan({ server: "argon" }))).toEqual([
+			expect(served(await plan({ serverId: "argon" }))).toEqual([
 				["default", "0.0.0.0:8100"],
 			]);
 
 			await memFs.writeFile("/repo/argon.toml", "port = 8200 # mine\n");
 
-			expect(served(await plan({ server: "argon" }))).toEqual([
+			expect(served(await plan({ serverId: "argon" }))).toEqual([
 				["default", "localhost:8200"],
 			]);
 		});
@@ -298,7 +298,9 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(servePlan.running.map(({ running }) => running)).toEqual([
+			expect(
+				servePlan.alreadyServed.map(({ servedBy: running }) => running)
+			).toEqual([
 				{
 					server: SyncServer.ROJO,
 					project: "repo",
@@ -348,9 +350,9 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(servePlan.running.map(({ config }) => config.label)).toEqual(
-				["sync"]
-			);
+			expect(
+				servePlan.alreadyServed.map(({ config }) => config.label)
+			).toEqual(["sync"]);
 		});
 
 		it("should refuse a server that another checkout of the project started", async () => {
@@ -388,7 +390,7 @@ describe("CoreServeService", () => {
 				rojoInfo("repo")
 			);
 
-			expect((await plan()).running).toHaveLength(1);
+			expect((await plan()).alreadyServed).toHaveLength(1);
 		});
 
 		it("should refuse a port another project's server holds, offering a free one", async () => {
@@ -502,8 +504,8 @@ describe("CoreServeService", () => {
 
 	describe("serve", () => {
 		let session: ServeSession;
-		let served: ServingServer[];
-		let stops: ServerStop[];
+		let served: ServerReadyEvent[];
+		let stops: ServerExitEvent[];
 		let said: string[];
 		let changes: string[];
 
@@ -518,15 +520,15 @@ describe("CoreServeService", () => {
 			stops = [];
 			session.onDidServe((serving) => served.push(serving));
 			said = [];
-			session.onDidSay(({ message }) =>
+			session.onDidOutput(({ message }) =>
 				said.push(`${message.severity}: ${message.text}`)
 			);
-			session.onDidStop((stop) => {
+			session.onDidExit((stop) => {
 				said.push("stopped");
 				stops.push(stop);
 			});
 			changes = [];
-			session.onDidChange((change: ServeChange) =>
+			session.onDidChange((change: ServeChangeEvent) =>
 				changes.push(
 					`${change.kind} ${change.target.config.label}${change.kind === "retired" ? ` (${change.reason})` : change.kind === "refused" ? `: ${change.diagnostic.message}` : ""}`
 				)
@@ -795,7 +797,7 @@ describe("CoreServeService", () => {
 				await settle();
 
 				expect(spawnedProjects()).toEqual(["default.project.json"]);
-				expect(changes).toEqual(["running lobby"]);
+				expect(changes).toEqual(["servedElsewhere lobby"]);
 			});
 
 			it("should stop the server of a config that is removed, without calling it a failure", async () => {
@@ -980,7 +982,7 @@ describe("CoreServeService", () => {
 
 				expect(changes.map((change) => change.split(":")[0])).toEqual([
 					"refused lobby",
-					"running lobby",
+					"servedElsewhere lobby",
 				]);
 			});
 
@@ -1007,7 +1009,7 @@ describe("CoreServeService", () => {
 
 				expect(changes.map((change) => change.split(":")[0])).toEqual([
 					"refused lobby",
-					"running lobby",
+					"servedElsewhere lobby",
 				]);
 			});
 

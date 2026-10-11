@@ -8,7 +8,11 @@ describe("ConsolePromptService", () => {
 
 	beforeEach(() => {
 		terminal = new ScriptedTerminal();
-		service = new ConsolePromptService({ ...terminal, interactive: true });
+		service = new ConsolePromptService({
+			...terminal,
+			interactive: true,
+			color: true,
+		});
 	});
 
 	afterEach(() => {
@@ -24,8 +28,36 @@ describe("ConsolePromptService", () => {
 			const declined = new ConsolePromptService({
 				...terminal,
 				interactive: false,
+				color: true,
 			});
 			expect(declined.isInteractive).toBe(false);
+		});
+	});
+
+	describe("colours", () => {
+		const hintCode = "\u001b[2m";
+
+		const drawn = async (color: boolean) => {
+			const service = new ConsolePromptService({
+				...terminal,
+				interactive: true,
+				color,
+			});
+			const asked = service.confirm({ message: "Go?", hint: "a hint" });
+			await terminal.press(KEY.enter);
+			await asked;
+			return terminal.raw;
+		};
+
+		it("should dim the hint when colours are on", async () => {
+			expect(await drawn(true)).toContain(hintCode);
+		});
+
+		it("should draw none of its own escape codes when colours are off", async () => {
+			const raw = await drawn(false);
+
+			expect(raw).toContain("Go?");
+			expect(raw).not.toContain(hintCode);
 		});
 	});
 

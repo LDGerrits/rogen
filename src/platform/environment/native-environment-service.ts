@@ -47,7 +47,7 @@ const nativeProcess = (): ProcessContext => ({
 	tmpDir: os.tmpdir(),
 });
 
-/** The flags that say how a run prints, read even from a line that fails to parse. */
+/** The flags that say how a run prints; only `json` is read from a line that fails to parse. */
 export interface OutputFlags {
 	readonly json?: boolean;
 	readonly verbose?: boolean;

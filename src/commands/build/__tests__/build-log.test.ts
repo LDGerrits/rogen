@@ -213,7 +213,9 @@ describe("BuildLog.outcome", () => {
 		note?: string
 	) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).outcome(build, diagnostics, note);
+		new BuildLog(logService, cwd).outcome(build, diagnostics, {
+			notes: [note],
+		});
 		return logService.entries.map(({ kind, text }) => [kind, text]);
 	};
 

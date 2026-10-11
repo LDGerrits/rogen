@@ -265,6 +265,60 @@ describe("CoreIndexService", () => {
 			expect(listing.getEntries("src")).toBeUndefined();
 		});
 
+		it.each([
+			["a folder that can't be read", "src/locked", FileType.Directory],
+			[
+				"a file in a folder that can't be read",
+				"src/locked/b.luau",
+				FileType.File,
+			],
+		])(
+			"should fail on a deletion of %s, rather than drop what the project holds",
+			async (_, deleted, fileType) => {
+				await memoryFs.writeFile("src/locked/b.luau", "");
+				listing = await indexService.list(["src"]);
+				const read = memoryFs.readDirectory.bind(memoryFs);
+				jest.spyOn(memoryFs, "readDirectory").mockImplementation(
+					async (dir) => {
+						if (dir.endsWith("locked"))
+							throw Object.assign(new Error("EACCES: denied"), {
+								code: "EACCES",
+							});
+						return read(dir);
+					}
+				);
+
+				await expect(
+					indexService.update(listing, [
+						{
+							type: FileChangeType.DELETED,
+							path: deleted,
+							fileType,
+						},
+					])
+				).rejects.toThrow("EACCES");
+				expect(listing.hasEntry("src", "locked")).toBe(true);
+			}
+		);
+
+		it("should drop what is reported deleted when its folder can't be read for another reason", async () => {
+			await memoryFs.writeFile("src/gone/b.luau", "");
+			listing = await indexService.list(["src"]);
+			jest.spyOn(memoryFs, "readDirectory").mockRejectedValue(
+				Object.assign(new Error("EIO: i/o error"), { code: "EIO" })
+			);
+
+			listing = await indexService.update(listing, [
+				{
+					type: FileChangeType.DELETED,
+					path: "src/gone",
+					fileType: FileType.Directory,
+				},
+			]);
+
+			expect(listing.hasEntry("src", "gone")).toBe(false);
+		});
+
 		it("should record an added link to its own parent as only a link, as a rescan does", async () => {
 			await memoryFs.createSymbolicLink("src", "src/Loop");
 

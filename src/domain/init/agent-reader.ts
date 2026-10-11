@@ -4,7 +4,7 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentHooks, AgentInUse } from "./agent-hooks.js";
-import { HOOK_SCRIPT_FILE, HOOK_TARGETS } from "./hook-target.js";
+import { HOOK_SCRIPT_FILE, CODING_AGENTS } from "./coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
 
 /** Reads what a directory holds for the coding agents it uses: their instruction files and their hooks. */
@@ -29,7 +29,7 @@ export class AgentReader {
 		directory: InitDirectory
 	): Promise<Result<AgentHooks, Error>> {
 		const inUse: AgentInUse[] = [];
-		for (const target of HOOK_TARGETS) {
+		for (const target of CODING_AGENTS) {
 			const signs = await Promise.all(
 				target.signs.map((sign) =>
 					this.fileSystemService.exists(
@@ -40,7 +40,7 @@ export class AgentReader {
 			if (!signs.includes(true)) continue;
 			const text = await this.readIfThere(directory, target.settingsFile);
 			if (text.isErr()) return text;
-			inUse.push({ target, text: text.value });
+			inUse.push({ agent: target, text: text.value });
 		}
 		return ok(
 			new AgentHooks({

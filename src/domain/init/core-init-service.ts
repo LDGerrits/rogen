@@ -7,6 +7,7 @@ import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { CodeFinder } from "./code-finder.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -21,8 +22,9 @@ import {
 	InitWritten,
 } from "./init-service.js";
 import { BaseConfigReader } from "./base-config-reader.js";
-import { Asking, InitAdditions, asking } from "./init-additions.js";
-import { PlaceFolders } from "./place-folder.js";
+import { InitAdditions } from "./init-additions.js";
+import { Setup } from "./setup.js";
+import { PlaceFolderReader } from "./place-folder.js";
 import { ProjectSetup } from "./project-setup.js";
 
 export class CoreInitService implements InitService {
@@ -99,13 +101,17 @@ export class CoreInitService implements InitService {
 				)
 			: undefined;
 
+		const workspace = await this.toolchainService.detect(directory);
 		return ok(
 			new InitDirectory(
 				directory,
 				entries,
-				await this.toolchainService.detect(directory),
+				workspace,
+				await new CodeFinder(this.fileSystemService).layoutOf(
+					directory,
+					workspace
+				),
 				names.length > 0 ? name.value : undefined,
-				name.value,
 				base
 			)
 		);
@@ -128,10 +134,7 @@ export class CoreInitService implements InitService {
 		);
 		if (taken.length > 0) return err(new DiagnosticsError(taken));
 
-		const placeFolders = new PlaceFolders(
-			this.fileSystemService,
-			this.toolchainService
-		);
+		const placeFolders = new PlaceFolderReader(this.fileSystemService);
 		const projectSetup = new ProjectSetup(
 			directory,
 			questions,
@@ -147,8 +150,8 @@ export class CoreInitService implements InitService {
 			return this.planWith(
 				directory,
 				questions,
-				asking(projectSetup),
-				asking(new AgentSetup(agentFile.value, hooks.value, questions))
+				projectSetup,
+				new AgentSetup(agentFile.value, hooks.value, questions)
 			);
 		const options = new InitAdditions(
 			directory,
@@ -170,18 +173,18 @@ export class CoreInitService implements InitService {
 	private async planWith(
 		directory: InitDirectory,
 		questions: InitQuestions,
-		...setups: readonly Asking[]
+		...setups: readonly Setup<unknown>[]
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const plans: ((builder: InitPlanBuilder) => void)[] = [];
-		for (const ask of setups) {
-			const asked = await ask();
+		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
+		for (const setup of setups) {
+			const asked = await setup.ask();
 			if (asked.isErr()) return err(new DiagnosticsError(asked.error));
 			if (asked.value === undefined) return ok(undefined);
-			plans.push(asked.value);
+			answered.push({ setup, choices: asked.value });
 		}
 
 		const builder = new InitPlanBuilder(directory, questions.interactive);
-		for (const plan of plans) plan(builder);
+		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
 	}

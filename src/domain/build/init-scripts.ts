@@ -1,8 +1,8 @@
 import { groupBy } from "../../base/collections.js";
 import { ResolvedConfig } from "../config/config.js";
-import { InstanceMap } from "../rojo/rojo-project.js";
 import { BuildTemplate } from "./build-template.js";
 import { InitToCopy, RoutedFile } from "./router.js";
+import { InstanceMap } from "../roblox/roblox.js";
 
 /** The init scripts that stand for their whole folder: copied to every node the folder becomes, and dropped when nothing is left at a node to parent. */
 export class InitScripts {
@@ -42,35 +42,31 @@ export class InitScripts {
 			),
 			({ folder }) => folder
 		);
-		return toCopy.flatMap(
-			({ entry, variants, buriedScriptSuffix, init, placed }) => {
-				const taken = new InstanceMap<true>();
-				if (placed) taken.set(placed.instancePath, true);
-				const copies: RoutedFile[] = [];
-				for (const { file, at } of throughFolder.get(init.becomes) ??
-					[]) {
-					const { instancePath } = file.folderNodes[at];
-					if (owned.get(instancePath) || taken.get(instancePath))
-						continue;
-					taken.set(instancePath, true);
-					copies.push({
-						entry,
-						route: file.route,
-						routeMatch: "copy",
-						instancePath,
-						folderNodes: file.folderNodes.slice(0, at + 1),
-						outrankedFolderRoutes: [],
-						ignoredAts: [],
-						variants,
-						variantNodes: variants.map(() => instancePath),
-						buriedScriptSuffix,
-						init,
-						...(file.hoisted && { hoisted: true }),
-					});
-				}
-				return copies;
+		return toCopy.flatMap(({ entry, variants, init, placed }) => {
+			const taken = new InstanceMap<true>();
+			if (placed) taken.set(placed.instancePath, true);
+			const copies: RoutedFile[] = [];
+			for (const { file, at } of throughFolder.get(init.becomes) ?? []) {
+				const { instancePath } = file.folderNodes[at];
+				if (owned.get(instancePath) || taken.get(instancePath))
+					continue;
+				taken.set(instancePath, true);
+				copies.push({
+					entry,
+					route: file.route,
+					routeMatch: "copy",
+					instancePath,
+					folderNodes: file.folderNodes.slice(0, at + 1),
+					outrankedFolderRoutes: [],
+					ignoredAts: [],
+					variants,
+					variantNodes: variants.map(() => instancePath),
+					init,
+					...(file.hoisted && { hoisted: true }),
+				});
 			}
-		);
+			return copies;
+		});
 	}
 
 	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the template keeps carries it. Repeats, since a dropped init script empties the folders above it. */

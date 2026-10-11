@@ -19,9 +19,10 @@ import {
 	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
 	scriptFate,
+	instanceKey,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { RojoNode, instanceKey } from "../rojo/rojo-project.js";
+import { RojoNode } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import {
 	MisspellingKind,
@@ -85,6 +86,7 @@ export class BuildValidator {
 			...this.rootDirNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.extensionCase(),
+			...this.nestedProject(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
@@ -195,6 +197,22 @@ export class BuildValidator {
 					"scan.unresolvedLink",
 					{ resource: link },
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
+				)
+			);
+	}
+
+	private nestedProject(): Diagnostic[] {
+		return this.placement.files
+			.filter(
+				({ entry }) =>
+					path.posix.basename(entry.relativePath) ===
+					"default.project.json"
+			)
+			.map(({ entry, instancePath }) =>
+				warningDiagnostic(
+					"scan.nestedProject",
+					{ resource: entry.source },
+					`Rojo reads this project file as a nested project, so it becomes ${instanceKey(instancePath)}, holding that project's tree. A project file for the folder it lies in belongs outside the root dirs.`
 				)
 			);
 	}
@@ -481,63 +499,66 @@ export class BuildValidator {
 	}
 
 	private buriedScriptSuffix(): Diagnostic[] {
-		return this.placement.routed.flatMap(
-			({ entry, buriedScriptSuffix: suffix }) =>
-				suffix
-					? [
-							warningDiagnostic(
-								"variant.buriedScriptSuffix",
-								{ resource: entry.source },
-								`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
-							),
-						]
-					: []
-		);
+		return this.placement.routed.flatMap((file) => {
+			const { buriedScriptSuffix: suffix } =
+				this.placement.readingOf(file);
+			return suffix
+				? [
+						warningDiagnostic(
+							"variant.buriedScriptSuffix",
+							{ resource: file.entry.source },
+							`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
+						),
+					]
+				: [];
+		});
 	}
 
 	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
 	private reservedName(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		return reservedKeys(this.assembly.tree.tree, []).flatMap((key) => {
-			const under = routed.filter(
-				({ entry, instancePath }) =>
-					leftOut.get(entry.source)?.status !== "pruned" &&
-					key.every((name, index) => instancePath[index] === name)
-			);
-			const file =
-				under.find(
-					({ instancePath }) => instancePath.length === key.length
-				) ?? under[0];
-			if (!file) return [];
-			const fileName = path.posix.basename(file.entry.source);
-			const renamable =
-				file.instancePath.length === key.length &&
-				file.init === undefined &&
-				fileName.startsWith("$") &&
-				fileName.length > 1;
-			return [
-				warningDiagnostic(
-					"tree.reservedName",
-					{ resource: file.entry.source },
-					`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
-					renamable
-						? [
-								{
-									rename: {
-										from: file.entry.source,
-										to: path.posix.join(
-											path.posix.dirname(
-												file.entry.source
+		return reservedKeys(this.assembly.projectFile.tree, []).flatMap(
+			(key) => {
+				const under = routed.filter(
+					({ entry, instancePath }) =>
+						leftOut.get(entry.source)?.status !== "pruned" &&
+						key.every((name, index) => instancePath[index] === name)
+				);
+				const file =
+					under.find(
+						({ instancePath }) => instancePath.length === key.length
+					) ?? under[0];
+				if (!file) return [];
+				const fileName = path.posix.basename(file.entry.source);
+				const renamable =
+					file.instancePath.length === key.length &&
+					file.init === undefined &&
+					fileName.startsWith("$") &&
+					fileName.length > 1;
+				return [
+					warningDiagnostic(
+						"tree.reservedName",
+						{ resource: file.entry.source },
+						`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
+						renamable
+							? [
+									{
+										rename: {
+											from: file.entry.source,
+											to: path.posix.join(
+												path.posix.dirname(
+													file.entry.source
+												),
+												fileName.slice(1)
 											),
-											fileName.slice(1)
-										),
+										},
 									},
-								},
-							]
-						: []
-				),
-			];
-		});
+								]
+							: []
+					),
+				];
+			}
+		);
 	}
 
 	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
@@ -652,15 +673,15 @@ export class BuildValidator {
 			const { instancePath, meta, templateNode } = outcome;
 			if (
 				templateNode.$className === undefined ||
-				meta.className === undefined ||
-				templateNode.$className === meta.className
+				meta.fields.className === undefined ||
+				templateNode.$className === meta.fields.className
 			)
 				return [];
 			return [
 				warningDiagnostic(
 					"meta.templateClass",
 					{ resource: meta.file },
-					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, so its class is kept over this meta's ${meta.className}.`
+					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, so its class is kept over this meta's ${meta.fields.className}.`
 				),
 			];
 		});

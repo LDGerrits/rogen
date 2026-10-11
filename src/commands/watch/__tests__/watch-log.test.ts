@@ -478,3 +478,13 @@ describe("WatchLog.update", () => {
 		});
 	});
 });
+
+describe("WatchLog.error", () => {
+	it("should print the message of a step that failed unexpectedly, as an error", () => {
+		const logService = new MockLogService();
+
+		new WatchLog(logService, cwd).error(new Error("the watcher broke"));
+
+		expect(logService.texts("error")).toEqual(["the watcher broke"]);
+	});
+});

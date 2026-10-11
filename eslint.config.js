@@ -27,7 +27,7 @@ const modules = {
 	},
 	// A command's own file is imported only by the composition root, for its side effect.
 	commands: {
-		build: ["build-log", "build-report"],
+		build: ["build-log", "build-document"],
 		check: [],
 		help: [],
 		init: [],
@@ -241,6 +241,22 @@ export default defineConfig(
 		},
 	},
 	...layerConfigs,
+	{
+		// A class reads top down: its fields, its constructor, then its methods. Accessors sit wherever they read best.
+		files: ["src/**/*.ts"],
+		ignores: ["**/__tests__/**"],
+		rules: {
+			"@typescript-eslint/member-ordering": [
+				"error",
+				{
+					classes: ["field", "constructor", "method"],
+					classExpressions: ["field", "constructor", "method"],
+					interfaces: "never",
+					typeLiterals: "never",
+				},
+			],
+		},
+	},
 	{
 		files: ["src/{base,domain,commands}/**/*.ts"],
 		ignores: ["**/__tests__/**", "src/base/platform.ts"],

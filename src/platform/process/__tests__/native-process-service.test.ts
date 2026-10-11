@@ -102,6 +102,21 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it("should not take a signal from outside for the interruption of this process", async () => {
+			if (process.platform === "win32") return;
+			const child = service.spawn(
+				node,
+				["-e", "process.kill(process.pid, 'SIGTERM')"],
+				{ cwd: dir }
+			);
+
+			expect(await exitOf(child)).toEqual({
+				code: null,
+				signal: "SIGTERM",
+			});
+			child[Symbol.dispose]();
+		});
+
 		it("should end a running process on terminate", async () => {
 			const child = service.spawn(
 				node,
@@ -115,6 +130,36 @@ describe("NativeProcessService", () => {
 			expect(exit.code === 0 || exit.signal !== null).toBe(true);
 			expect(await exited).toEqual(exit);
 			expect(await child.terminate()).toEqual(exit);
+			child[Symbol.dispose]();
+		});
+
+		it("should end a process the process started, with it", async () => {
+			const child = service.spawn(
+				node,
+				[
+					"-e",
+					"const grandchild = require('child_process').spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60_000)'], { stdio: 'ignore' }); console.log(grandchild.pid); setTimeout(() => {}, 60_000)",
+				],
+				{ cwd: dir }
+			);
+			const pid = await new Promise<number>((resolve) =>
+				child.onDidOutputLine((line) => resolve(Number(line.trim())))
+			);
+
+			await child.terminate();
+
+			const alive = async () => {
+				for (let tries = 0; tries < 50; tries++) {
+					try {
+						process.kill(pid, 0);
+					} catch {
+						return false;
+					}
+					await new Promise((resolve) => setTimeout(resolve, 20));
+				}
+				return true;
+			};
+			expect(await alive()).toBe(false);
 			child[Symbol.dispose]();
 		});
 
@@ -139,11 +184,27 @@ describe("NativeProcessService", () => {
 				],
 				{ cwd: dir }
 			);
-			let printed = "";
-			child.onDidOutput((text) => (printed += text));
+			const printed: string[] = [];
+			child.onDidOutputLine((line) => printed.push(line));
 
 			expect(await exitOf(child)).toEqual({ code: 3, signal: null });
-			expect(printed.split("\n").sort()).toEqual(["", "err", "out"]);
+			expect(printed.sort()).toEqual(["err", "out"]);
+			child[Symbol.dispose]();
+		});
+
+		it("should pass on a line that never ended when the process exits, before its exit", async () => {
+			const child = service.spawn(
+				node,
+				["-e", "process.stdout.write('no end')"],
+				{ cwd: dir }
+			);
+			const events: string[] = [];
+			child.onDidOutputLine((line) => events.push(`line: ${line}`));
+			child.onDidExit(() => events.push("exit"));
+
+			await exitOf(child);
+
+			expect(events).toEqual(["line: no end", "exit"]);
 			child[Symbol.dispose]();
 		});
 

@@ -1,10 +1,8 @@
 import fs from "fs";
 import path from "path";
-import {
-	DiagnosticSeverity,
-	diagnosticToJson,
-} from "../platform/diagnostics/diagnostic.js";
+import { DiagnosticSeverity } from "../platform/diagnostics/diagnostic.js";
 import { DOCS_URL } from "../platform/product/product-service.js";
+import { diagnosticToJson } from "../platform/diagnostics/diagnostic-json.js";
 
 const SRC = path.resolve(import.meta.dirname, "..");
 const PAGE = path.resolve(SRC, "../docs/content/docs/v2/diagnostics.mdx");

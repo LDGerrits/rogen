@@ -1,5 +1,6 @@
 import { editDistance, closestMatches } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
+import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 
 /** An `@` followed by a near miss of a declared route, by a route that isn't at the end of the name, or by a declared variant, which takes a dot. */
 export interface StrayAt {
@@ -63,12 +64,6 @@ export interface Respelling {
 /** A misspelled name as the readings note it, with the path it's renamed to when one rename fixes it. */
 export type NotedName<T> = T & { readonly renamedTo?: string };
 
-/** The script suffixes Rojo reads from a dot, which route when a key of that name is declared. */
-export const DOT_ROUTE_KEYS: ReadonlySet<string> = new Set([
-	"server",
-	"client",
-]);
-
 /** Shorter keys are one edit from real words, so a folder is not read as a slip of them. */
 const MIN_TYPO_KEY_LENGTH = 4;
 
@@ -115,7 +110,7 @@ export class MisspellingFinder {
 		const rojo = text.toLowerCase();
 		const after = stem?.slice(start + text.length + 1) ?? "";
 		const respelling =
-			stem !== undefined && DOT_ROUTE_KEYS.has(rojo)
+			stem !== undefined && RUN_SCRIPT_SUFFIXES.has(rojo)
 				? {
 						start,
 						written: `.${text}${after}`,
@@ -130,7 +125,7 @@ export class MisspellingFinder {
 		const dot = remaining.lastIndexOf(".");
 		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
 		const text = remaining.slice(dot + 1);
-		if (DOT_ROUTE_KEYS.has(text) || this.dotRouteKey(text))
+		if (RUN_SCRIPT_SUFFIXES.has(text) || this.dotRouteKey(text))
 			return undefined;
 		return this.variantTypoOf(text, dot);
 	}

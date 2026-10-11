@@ -14,7 +14,9 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { LocationReport } from "./location-report.js";
+import { WhereAnswers } from "./where-answers.js";
+import { whereDocument } from "./where-document.js";
+import { WhereLog } from "./where-log.js";
 
 const WhereOptions = [...ConfigSelectionOptions, JsonOption] as const;
 
@@ -63,11 +65,15 @@ registerCommand(
 			});
 			if (located.isErr()) return located;
 
-			const report = new LocationReport(cwd, located.value);
-			const failure = DiagnosticsError.of(report.errors);
+			const answers = new WhereAnswers(located.value);
+			const failure = DiagnosticsError.of(answers.errors);
 			if (line.options.json)
-				return this.printJson(logService, report.json(), failure);
-			report.print(logService, Boolean(line.options.verbose));
+				return this.printJson(
+					logService,
+					whereDocument(answers),
+					failure
+				);
+			new WhereLog(cwd, answers).print(logService);
 			return failure ? err(failure) : ok(undefined);
 		}
 	}

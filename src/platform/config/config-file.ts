@@ -42,7 +42,7 @@ export class ConfigFileReader {
 	private readonly documents: JsoncDocumentReader;
 
 	constructor(
-		private readonly fileSystemService: FileReader,
+		private readonly fileReader: FileReader,
 		private readonly schema: JSONSchema,
 		advise?: WrongTypeAdvisor
 	) {
@@ -54,9 +54,7 @@ export class ConfigFileReader {
 
 	/** Never throws for a problem the user can cause; those come back as diagnostics. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
-		const text = await tryWithAsync(() =>
-			this.fileSystemService.readFile(file)
-		);
+		const text = await tryWithAsync(() => this.fileReader.readFile(file));
 		if (text.isErr()) {
 			const missing = isMissingPath(text.error);
 			const reason = failureReason(text.error);

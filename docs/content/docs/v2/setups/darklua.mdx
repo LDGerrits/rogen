@@ -54,7 +54,7 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 
   </Tab>
   <Tab value="roblox-ts">
-    `init` writes **one** config. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync directory:
+    `init` writes the same **two** configs. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync directory:
 
     ```json title="default.rogen.json"
     {
@@ -67,11 +67,19 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     		"*": "ReplicatedStorage/shared"
     	},
     	"template": "template.project.json",
+    	"syncDir": "out"
+    }
+    ```
+
+    ```json title="sync.rogen.json"
+    {
+    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+    	"extends": "./default.rogen.json",
     	"syncDir": "dist"
     }
     ```
 
-    roblox-ts has its own types, so one config is enough.
+    `rbxtsc` reads `default.project.json` to learn where each compiled file lands, so that one points into `out`. `sync.project.json` points into `dist`, which is the one you serve.
   </Tab>
 </Tabs>
 
@@ -124,6 +132,8 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     darklua process out dist --watch
     rogen serve
     ```
+
+    `rogen serve` builds both configs and serves `sync.project.json`, since no other config extends `sync`. `rbxtsc` keeps reading `default.project.json`.
   </Tab>
 </Tabs>
 

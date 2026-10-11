@@ -5,10 +5,10 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
-import { ReportedError } from "../../../base/errors.js";
 import {
 	CommandRegistry,
 	Extensions,
+	ReportedError,
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 

@@ -21,6 +21,12 @@ rogen init
 
 It writes `default.rogen.json`. If you have a hand-written `default.project.json`, it's kept as `template.project.json`, because v2 [owns its output](/docs/v2/core-concepts/output#output).
 
+Move the old config out of the way first, since v2 reports a `.rogen.json` as an error (`config.unnamed`, with a `legacy.config` warning that points here), and a build that includes it writes nothing. A name v2 doesn't read as a config keeps it for the comparison below:
+
+```bash
+mv .rogen.json .rogen.json.v1
+```
+
 </Step>
 
 <Step>
@@ -63,7 +69,7 @@ Read the warnings. Files that used an old suffix no longer route, so they fall t
 rogen where | grep fallback
 ```
 
-Then compare the result in Studio with your v1 build, and delete the old `.rogen.json` once they match.
+Then compare the result in Studio with your v1 build, and delete `.rogen.json.v1` once they match.
 
 </Step>
 

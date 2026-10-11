@@ -1,9 +1,9 @@
-import { RojoTree } from "../../rojo/rojo-project.js";
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncLayout } from "../sync-layout.js";
 import { BuildTemplate } from "../build-template.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
-const mountedPackages: Partial<RojoTree> = {
+const mountedPackages: Partial<RojoProjectFile> = {
 	tree: {
 		$className: "DataModel",
 		ReplicatedStorage: {
@@ -34,7 +34,7 @@ describe("BuildTemplate", () => {
 	it("should start from a bare DataModel without a template", () => {
 		const template = templateOf({ name: "game" });
 
-		expect(template.edit().getTree()).toEqual({
+		expect(template.edit().getFile()).toEqual({
 			name: "game",
 			tree: { $className: "DataModel" },
 		});

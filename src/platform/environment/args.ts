@@ -180,12 +180,7 @@ function findOptionProblem(
 	return undefined;
 }
 
-/**
- * Finds the command with every known option (`optionsFor(undefined)`), then
- * checks the line against the options of the command it names. A line for a
- * command that doesn't exist is returned unchecked, for the command service to
- * report.
- */
+/** Finds the command with every known option (`optionsFor(undefined)`), then checks the line against the options of the command it names. A line for a command that doesn't exist is returned unchecked, for the command service to report. */
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],

@@ -12,8 +12,7 @@ export class WatchedConfig {
 	private readonly rebuilds = new Sequencer();
 	/** Rebuilds queued that haven't finished. */
 	private pending = 0;
-	/** The latest finished rebuild; `undefined` before the first. */
-	latest: LoadedBuild | undefined;
+	private _latest: LoadedBuild | undefined;
 	/** The files the latest successful build read, whose updates must rebuild it. */
 	private readFiles = new PathSet([]);
 
@@ -31,6 +30,11 @@ export class WatchedConfig {
 		};
 		void queued.then(done, done);
 		return queued;
+	}
+
+	/** The latest finished rebuild; `undefined` before the first. */
+	get latest(): LoadedBuild | undefined {
+		return this._latest;
 	}
 
 	get failing(): boolean {
@@ -58,7 +62,7 @@ export class WatchedConfig {
 									resource === gone.resource
 							)
 					);
-		this.latest = build;
+		this._latest = build;
 		if (build.outcome !== "failed")
 			this.readFiles = new PathSet(build.readFiles);
 		return {

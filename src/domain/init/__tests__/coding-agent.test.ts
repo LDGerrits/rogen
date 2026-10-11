@@ -1,19 +1,19 @@
-import { agentHook } from "../agent-hook.js";
+import { hookScript } from "../hook-script.js";
 import {
 	HOOK_SCRIPT_FILE,
-	HOOK_TARGETS,
+	CODING_AGENTS,
 	HookEntry,
-	registerHook,
-} from "../hook-target.js";
+	withHook,
+} from "../coding-agent.js";
 
 const target = (name: string) => {
-	const found = HOOK_TARGETS.find((candidate) => candidate.name === name);
+	const found = CODING_AGENTS.find((candidate) => candidate.name === name);
 	if (!found) throw new Error(name);
 	return found;
 };
 
 const registered = (name: string) => {
-	const registration = registerHook(undefined, target(name).hook);
+	const registration = withHook(undefined, target(name).hook);
 	if (registration.kind !== "added") throw new Error(registration.kind);
 	return JSON.parse(registration.text);
 };
@@ -22,7 +22,7 @@ const entry = (command: string) => ({ hooks: [{ type: "command", command }] });
 const SPEC: HookEntry = { event: "Stop", entry: entry("mine.sh") };
 
 const added = (text: string | undefined, spec = SPEC) => {
-	const registration = registerHook(text, spec);
+	const registration = withHook(text, spec);
 	if (registration.kind !== "added") throw new Error(registration.kind);
 	return registration.text;
 };
@@ -93,7 +93,7 @@ describe("hook targets", () => {
 
 	it("should say where each agent leaves a sign of itself", () => {
 		expect(
-			Object.fromEntries(HOOK_TARGETS.map((t) => [t.name, t.signs]))
+			Object.fromEntries(CODING_AGENTS.map((t) => [t.name, t.signs]))
 		).toEqual({
 			"Claude Code": [".claude", "CLAUDE.md"],
 			Codex: [".codex"],
@@ -105,16 +105,16 @@ describe("hook targets", () => {
 
 	it("should have every command run the script the docs hold", () => {
 		expect(HOOK_SCRIPT_FILE).toBe(".agents/hooks/rogen-check.sh");
-		expect(agentHook).toMatch(/^#!\/usr\/bin\/env bash\n/);
-		for (const { hook } of HOOK_TARGETS)
-			expect(registerHook(undefined, hook)).toMatchObject({
+		expect(hookScript).toMatch(/^#!\/usr\/bin\/env bash\n/);
+		for (const { hook } of CODING_AGENTS)
+			expect(withHook(undefined, hook)).toMatchObject({
 				kind: "added",
 			});
 	});
 
 	it("should ask Codex to be trusted, and no other agent", () => {
 		expect(
-			HOOK_TARGETS.filter(({ afterwards }) => afterwards).map(
+			CODING_AGENTS.filter(({ afterwards }) => afterwards).map(
 				({ name }) => name
 			)
 		).toEqual(["Codex"]);
@@ -196,7 +196,7 @@ describe("registerHook", () => {
 			},
 		});
 
-		expect(registerHook(settings, SPEC)).toEqual({ kind: "present" });
+		expect(withHook(settings, SPEC)).toEqual({ kind: "present" });
 	});
 
 	it("should add to the event it is given, not another", () => {
@@ -204,9 +204,9 @@ describe("registerHook", () => {
 			hooks: { Stop: [entry("/x/rogen-check.sh")] },
 		});
 
-		expect(
-			registerHook(settings, { ...SPEC, event: "AfterAgent" }).kind
-		).toBe("added");
+		expect(withHook(settings, { ...SPEC, event: "AfterAgent" }).kind).toBe(
+			"added"
+		);
 	});
 
 	it.each([
@@ -215,6 +215,6 @@ describe("registerHook", () => {
 		["hooks that are not an object", '{ "hooks": [] }'],
 		["an event that is not a list", '{ "hooks": { "Stop": {} } }'],
 	])("should not edit settings with %s", (_, settings) => {
-		expect(registerHook(settings, SPEC).kind).toBe("unreadable");
+		expect(withHook(settings, SPEC).kind).toBe("unreadable");
 	});
 });

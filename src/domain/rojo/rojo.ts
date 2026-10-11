@@ -5,6 +5,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
+	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -21,9 +22,16 @@ const SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
 export type RojoScriptSuffix = (typeof SCRIPT_SUFFIXES)[number];
 
+/** The script suffixes that say which side a script runs on, and that a declared key of the same name routes. */
+export const RUN_SCRIPT_SUFFIXES: ReadonlySet<string> = new Set([
+	"server",
+	"client",
+]);
+
 const MODEL_EXTENSIONS: readonly string[] = [".rbxm", ".rbxmx"];
 const DATA_EXTENSIONS: readonly string[] = [
 	".json",
+	".jsonc",
 	".toml",
 	".csv",
 	".txt",
@@ -41,8 +49,11 @@ export class RojoFile {
 		".tsx",
 	];
 	static readonly META_SUFFIX = ".meta.json";
+	/** Rojo reads this over `.meta.json` when a file has both. */
+	static readonly META_SUFFIX_JSONC = ".meta.jsonc";
 	static readonly INIT_NAME = "init";
 	static readonly INIT_META = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX}`;
+	static readonly INIT_META_JSONC = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX_JSONC}`;
 
 	readonly stem: string;
 
@@ -66,8 +77,24 @@ export class RojoFile {
 		return stem.replace(/(?<=.)\.(model|project)$/, "");
 	}
 
+	/** `fileName` without its meta suffix, or `undefined` for a file name that isn't a meta file. */
+	static metaStemOf(fileName: string): string | undefined {
+		for (const suffix of [RojoFile.META_SUFFIX_JSONC, RojoFile.META_SUFFIX])
+			if (fileName.endsWith(suffix))
+				return fileName.slice(0, -suffix.length);
+		return undefined;
+	}
+
+	/** Whether `fileName` is the meta file Rojo reads for the folder it lies in. */
+	static isInitMeta(fileName: string): boolean {
+		return (
+			fileName === RojoFile.INIT_META ||
+			fileName === RojoFile.INIT_META_JSONC
+		);
+	}
+
 	get isMeta(): boolean {
-		return this.name.endsWith(RojoFile.META_SUFFIX);
+		return RojoFile.metaStemOf(this.name) !== undefined;
 	}
 
 	/** The name with an extension Rojo would read written as it reads it, when only the letter case keeps Rojo from reading the file: Rojo ignores `Foo.LUAU` and `Foo.MODEL.JSON`. */
@@ -127,7 +154,7 @@ export class RojoFile {
 	}
 
 	private get isJson(): boolean {
-		return path.extname(this.name) === ".json";
+		return [".json", ".jsonc"].includes(path.extname(this.name));
 	}
 
 	/** The name Rojo reads the file's `.meta.json` under, or none for a file that takes no meta. */
@@ -137,6 +164,16 @@ export class RojoFile {
 			return this.stem;
 		}
 		return undefined;
+	}
+
+	/** The meta files Rojo reads for the file, the one it prefers first; none for a file that takes no meta. */
+	get metaFiles(): string[] {
+		const name = this.metaName;
+		return name === undefined
+			? []
+			: [RojoFile.META_SUFFIX_JSONC, RojoFile.META_SUFFIX].map(
+					(suffix) => `${name}${suffix}`
+				);
 	}
 
 	/** The `.meta.json` Rojo reads for the file, or none for a file that takes no meta. */
@@ -156,6 +193,8 @@ export interface RojoMetaFields {
 	readonly ignoreUnknownInstances?: boolean;
 	readonly id?: string;
 }
+
+const BYTE_ORDER_MARK = "\uFEFF";
 
 const META_SCHEMA: JSONSchema = {
 	type: "object",
@@ -184,6 +223,14 @@ export class RojoMeta {
 
 	/** The fields `text` sets, with a warning for each that is a slip from one Rojo reads, such as `classname`; or why Rojo would refuse `file`. A field that resembles none, such as `$schema`, is left alone. */
 	static parse(text: string, file: string): Result<ParsedMeta, Diagnostic[]> {
+		if (text.startsWith(BYTE_ORDER_MARK))
+			return err([
+				errorDiagnostic(
+					"meta.byteOrderMark",
+					{ resource: file, position: { line: 1, column: 1 } },
+					"starts with a byte order mark, which Rojo can't read, so it refuses the project. Save the file as UTF-8 without one."
+				),
+			]);
 		const document = RojoMeta.documents.read(text, file, META_SCHEMA);
 		if (document.isErr()) return err(document.error);
 
@@ -210,6 +257,17 @@ export class RojoMeta {
 					: [];
 			}),
 		});
+	}
+
+	/** The fields of two metas for one instance, `over` applied after `base`, as Rojo applies a `.meta.jsonc` after a `.meta.json`: properties merge, and any other field `over` sets replaces the one in `base`. */
+	static merged(base: RojoMetaFields, over: RojoMetaFields): RojoMetaFields {
+		return {
+			...base,
+			...over,
+			...((base.properties || over.properties) && {
+				properties: { ...base.properties, ...over.properties },
+			}),
+		};
 	}
 
 	/** The fields `meta` adds to a project's `node`, by Rojo's precedence: a field the project sets wins, and properties merge with the project's winning. */
@@ -248,7 +306,8 @@ export function scriptRunOf(
 	legacyScripts: boolean,
 	runContext: unknown
 ): ScriptRun | undefined {
-	if (suffix !== "server" && suffix !== "client") return undefined;
+	if (suffix === undefined || !RUN_SCRIPT_SUFFIXES.has(suffix))
+		return undefined;
 	if (suffix === "client" && legacyScripts) return "LocalScript";
 	const set =
 		typeof runContext === "string" ? RUN_CONTEXTS[runContext] : undefined;

@@ -20,13 +20,15 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 	TRACE: "debug",
 };
 
-/** Rust's own lines: a CLI error or warning, and the hint that follows a panic. */
-const RUST_RECORD = /^(?<level>error|warning): (?<text>.*)$/;
+/** Rust's own lines: a CLI error or warning, and the hint that follows a panic. In capitals it is a message the server wrote itself, as a paragraph that ends at the blank line. */
+const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
 
 interface PendingRecord {
 	readonly severity: ServerMessage["severity"];
 	readonly parts: string[];
+	/** A paragraph of text lines, not a cause chain: it runs to the blank line, and its lines make one sentence. */
+	readonly paragraph: boolean;
 }
 
 /** Reads what a server prints into messages: its warnings and errors, each on one line without its debug detail, and as `debug` its banner, its info logs and the noise Rogen causes. */
@@ -36,7 +38,6 @@ export class ServerOutput extends AbstractDisposable {
 	);
 	readonly onDidMessage: Event<ServerMessage> = this._onDidMessage.event;
 
-	private partial = "";
 	private pending: PendingRecord | undefined;
 	private readonly quiet: RunOnceScheduler;
 	private last: { readonly key: string; readonly at: number } | undefined;
@@ -48,31 +49,35 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	write(text: string): void {
-		const lines = (this.partial + text).split(/\r?\n/);
-		this.partial = lines.pop()!;
-		for (const line of lines) this.read(stripVTControlCharacters(line));
+	/** Reads one line the server printed. */
+	readLine(line: string): void {
+		this.read(stripVTControlCharacters(line));
 		this.quiet.cancel();
 		if (this.pending) this.quiet.schedule();
 	}
 
 	/** Passes on what is left, once the server has stopped printing. */
 	end(): void {
-		if (this.partial) this.read(stripVTControlCharacters(this.partial));
-		this.partial = "";
 		this.flush();
 	}
 
 	private read(line: string): void {
-		const record =
-			this.server.logRecordOf(line) ?? RUST_RECORD.exec(line)?.groups;
+		const logged = this.server.logRecordOf(line);
+		const record = logged ?? RUST_RECORD.exec(line)?.groups;
 		if (record) {
 			this.flush();
 			const level = record.level.toUpperCase();
 			this.pending = {
 				severity: level in SEVERITIES ? SEVERITIES[level] : "info",
 				parts: [record.text],
+				// A message in capitals that is no log record of the server's is one it wrote itself.
+				paragraph: logged === undefined && record.level === level,
 			};
+			return;
+		}
+		if (this.pending?.paragraph) {
+			if (line.trim() === "") this.flush();
+			else this.pending.parts.push(line.trim());
 			return;
 		}
 		// A record's cause chain follows it, indented.
@@ -91,10 +96,12 @@ export class ServerOutput extends AbstractDisposable {
 		if (!record) return;
 		this.say(
 			record.severity,
-			record.parts
-				.filter((part) => part !== "" && part !== "Caused by:")
-				.map((part) => part.replace(/^\d+:\s*/, ""))
-				.join(": ")
+			record.paragraph
+				? record.parts.filter((part) => part !== "").join(" ")
+				: record.parts
+						.filter((part) => part !== "" && part !== "Caused by:")
+						.map((part) => part.replace(/^\d+:\s*/, ""))
+						.join(": ")
 		);
 	}
 

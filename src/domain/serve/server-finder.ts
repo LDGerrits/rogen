@@ -10,7 +10,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { SyncServer } from "./serve.js";
-import { ServeTool } from "./serve-service.js";
+import { ServerExecutable } from "./serve-service.js";
 import { ToolManifest } from "./tool-manifest.js";
 
 /** How long `--version` may take; a toolchain manager may download the tool first. */
@@ -41,7 +41,7 @@ export class ServerFinder {
 		wanted: SyncServer | undefined,
 		resource: string,
 		signal?: AbortSignal
-	): Promise<Result<ServeTool, DiagnosticsError>> {
+	): Promise<Result<ServerExecutable, DiagnosticsError>> {
 		const manifests = await this.manifestsFor(directory);
 		const servers = wanted ? [wanted] : SyncServer.ALL;
 		const pinned = servers.flatMap((server): PinnedCandidate[] => {

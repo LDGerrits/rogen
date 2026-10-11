@@ -12,8 +12,6 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import {
-	diagnosticToJson,
-	diagnosticsJson,
 	renderDiagnostic,
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
@@ -22,6 +20,10 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
+import {
+	diagnosticToJson,
+	diagnosticsJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 
 const CheckOptions = [...ConfigSelectionOptions, JsonOption] as const;
 

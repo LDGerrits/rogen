@@ -1,4 +1,3 @@
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import {
 	Diagnostic,
@@ -12,20 +11,14 @@ import { abs, builderOf, configOf, indexOf } from "./fixtures.js";
 
 describe("ConfigBuilder", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const buildOf = async (config: ResolvedConfig) => {
-		const index = await indexOf(store, fs, config.rootDirs);
+		const index = await indexOf(fs, config.rootDirs);
 		return builderOf(fs, index).build(config);
 	};
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	describe("build", () => {
@@ -63,8 +56,8 @@ describe("ConfigBuilder", () => {
 			const result = await buildOf(config);
 
 			expect(result.unwrap().findings.warnings).toEqual([]);
-			expectRojoProject(result.unwrap().tree);
-			expect(result.unwrap().tree.tree).toEqual({
+			expectRojoProject(result.unwrap().projectFile);
+			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -141,8 +134,8 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().tree);
-			expect(result.unwrap().tree.tree).toEqual({
+			expectRojoProject(result.unwrap().projectFile);
+			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -159,7 +152,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().tree.tree).toEqual({
+			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -175,8 +168,8 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().tree);
-			expect(result.unwrap().tree.name).toBe("lobby");
+			expectRojoProject(result.unwrap().projectFile);
+			expect(result.unwrap().projectFile.name).toBe("lobby");
 		});
 
 		describe("unclaimed meta", () => {
@@ -541,7 +534,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await builderOf(
 				fs,
-				await indexOf(store, fs, [abs("src")])
+				await indexOf(fs, [abs("src")])
 			).build(configOf());
 
 			expect(result.isErr() && result.error.diagnostics).toMatchObject([
@@ -552,10 +545,7 @@ describe("ConfigBuilder", () => {
 		it("should check the sync dir only when nothing is known of it", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ syncDir: abs("dist") });
-			const builder = builderOf(
-				fs,
-				await indexOf(store, fs, config.rootDirs)
-			);
+			const builder = builderOf(fs, await indexOf(fs, config.rootDirs));
 
 			const checked = await builder.build(config);
 			const known = await builder.build(config, []);

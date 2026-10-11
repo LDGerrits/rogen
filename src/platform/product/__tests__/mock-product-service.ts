@@ -5,7 +5,7 @@ export class MockProductService implements ProductService {
 
 	constructor(private readonly version = "0.0.0") {}
 
-	async getVersion(): Promise<string> {
+	async readVersion(): Promise<string> {
 		return this.version;
 	}
 }

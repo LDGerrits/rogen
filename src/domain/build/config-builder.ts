@@ -7,7 +7,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { RojoTree } from "../rojo/rojo-project.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
@@ -20,7 +20,7 @@ import { TreeAssembler } from "./tree-assembler.js";
 /** One config built in memory, which the run goes on to write. */
 export interface BuiltConfig {
 	readonly config: ResolvedConfig;
-	readonly tree: RojoTree;
+	readonly projectFile: RojoProjectFile;
 	readonly findings: BuildFindings;
 	readonly summary: BuildSummary;
 	/** The files whose contents the build read, which a change to must rebuild it. */
@@ -32,8 +32,8 @@ export type ExaminedConfig =
 	| {
 			readonly kind: "assembled";
 			readonly placement: Placement;
-			readonly tree: RojoTree;
-			/** The files read to assemble the tree. */
+			readonly projectFile: RojoProjectFile;
+			/** The files read to assemble the project file. */
 			readonly readFiles: readonly string[];
 			readonly warnings: readonly Diagnostic[];
 	  }
@@ -43,10 +43,9 @@ export type ExaminedConfig =
 			readonly errors: readonly Diagnostic[];
 	  };
 
-/** Builds one config from an index, phase by phase, so `run` and `locate` place files the same way. */
+/** Builds one config from an index, phase by phase, so `build` and `locate` place files the same way. */
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
-	private readonly assembler: TreeAssembler;
 	private readonly syncDirCheck: SyncDirCheck;
 
 	constructor(
@@ -55,7 +54,6 @@ export class ConfigBuilder {
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.metaReader = new MetaReader(fileSystemService);
-		this.assembler = new TreeAssembler();
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
 	}
 
@@ -74,10 +72,10 @@ export class ConfigBuilder {
 		const examinedConfig = examined.value;
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
-		const { placement, tree, readFiles, warnings } = examinedConfig;
+		const { placement, projectFile, readFiles, warnings } = examinedConfig;
 		return ok({
 			config,
-			tree,
+			projectFile,
 			summary: placement.summary(),
 			findings: {
 				warnings,
@@ -88,7 +86,7 @@ export class ConfigBuilder {
 		});
 	}
 
-	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the sync dir check, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -106,7 +104,7 @@ export class ConfigBuilder {
 		return ok({
 			kind: "assembled",
 			placement: placement.value,
-			tree: assembly.tree,
+			projectFile: assembly.projectFile,
 			readFiles: meta.files,
 			warnings: [
 				...meta.warnings,
@@ -146,7 +144,7 @@ export class ConfigBuilder {
 	private async assemble(placement: Placement) {
 		const meta = await this.metaReader.read(placement);
 		if (meta.isErr()) return err(meta.error);
-		const assembly = this.assembler.assemble(placement, meta.value);
+		const assembly = new TreeAssembler(placement, meta.value).assemble();
 		return assembly.isErr()
 			? err(assembly.error)
 			: ok({ meta: meta.value, assembly: assembly.value });

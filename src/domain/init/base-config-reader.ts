@@ -7,6 +7,7 @@ import {
 	DEFAULT_CONFIG_STEM,
 	configFileName,
 	isConfigFileName,
+	leafConfigs,
 } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
 import { SyncServer } from "../serve/serve.js";
@@ -21,7 +22,7 @@ export class BaseConfigReader {
 		private readonly directory: string
 	) {}
 
-	/** `default.rogen.json` resolved the way a build would, so a place joins a config that builds. A Darklua repo's default is source-rooted, so its sync dir comes from the synced config beside it. */
+	/** `default.rogen.json` resolved the way a build would, so a place joins a config that builds. A Darklua repo's default is source-rooted, so its sync dir comes from the synced config beside it, over a compiler's output default itself names. */
 	async read(
 		names: ReadonlySet<string>
 	): Promise<Result<BaseConfig, Diagnostic[]>> {
@@ -39,19 +40,17 @@ export class BaseConfigReader {
 				)
 		);
 		const entries = new Map(read);
-		const entry =
-			entries.get(DEFAULT_CONFIG_FILE) ??
-			(await this.configService.read(
-				path.join(this.directory, DEFAULT_CONFIG_FILE)
-			));
+		const entry = entries.get(DEFAULT_CONFIG_FILE);
+		if (!entry)
+			throw new Error(`${DEFAULT_CONFIG_FILE} is not in the listing.`);
 		if (entry.status === "broken") return err([...entry.errors]);
 
 		const sync = entries.get(
 			configFileName(ConfigSet.syncStemOf(DEFAULT_CONFIG_STEM))
 		);
 		const syncDir =
-			entry.config.syncDir ??
-			(sync?.status === "valid" ? sync.config.syncDir : undefined);
+			(sync?.status === "valid" ? sync.config.syncDir : undefined) ??
+			entry.config.syncDir;
 		return ok({
 			rootDirs: entry.config.rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),
@@ -65,13 +64,8 @@ export class BaseConfigReader {
 		sharedPort: boolean;
 	} {
 		const valid = read.filter((entry) => entry.status === "valid");
-		const extended = new Set(valid.flatMap(({ parents }) => parents));
-		const served = valid
-			.filter(
-				({ file }) =>
-					!extended.has(file) &&
-					path.basename(file) !== DEFAULT_CONFIG_FILE
-			)
+		const served = leafConfigs(valid)
+			.filter(({ file }) => path.basename(file) !== DEFAULT_CONFIG_FILE)
 			.map(
 				({ config }) =>
 					config.template?.project.servePort ??

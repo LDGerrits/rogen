@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
 import {
@@ -15,6 +14,7 @@ import {
 	sourcemap,
 	sourcemapError,
 } from "../../rojo/__tests__/rojo-cli.js";
+import { RojoFile } from "../../rojo/rojo.js";
 import { buildServiceOf } from "./fixtures.js";
 
 const FILES: Record<string, string> = {
@@ -33,6 +33,8 @@ const FILES: Record<string, string> = {
 	"M.LUAU": "",
 	"N.local.luau": "",
 	"O.json": "{}",
+	"O2.jsonc": "{}",
+	"V2.model.jsonc": '{"className":"Folder"}',
 	"P.toml": "",
 	"Q.yaml": "a: 1",
 	"R.yml": "a: 1",
@@ -73,7 +75,7 @@ const metaApplied = (node: SourcemapNode, prefix = ""): string[] =>
 			const here = prefix ? `${prefix}/${child.name}` : child.name;
 			return [
 				...(child.filePaths ?? [])
-					.filter((file) => file.endsWith(".meta.json"))
+					.filter((file) => RojoFile.metaStemOf(file) !== undefined)
 					.map((file) => `${here} <- ${file}`),
 				...metaApplied(child, here),
 			];
@@ -81,16 +83,13 @@ const metaApplied = (node: SourcemapNode, prefix = ""): string[] =>
 		.sort();
 
 describeWithRojo("build against Rojo reading the same directory", () => {
-	let store: DisposableStore;
 	let dir: string;
 
 	beforeEach(() => {
-		store = new DisposableStore();
 		dir = makeRojoDir("rogen-conformance-");
 	});
 
 	afterEach(() => {
-		store[Symbol.dispose]();
 		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
@@ -235,6 +234,39 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ServerScriptService/Inv/Foo <- src/Inv/Foo.mock.meta.json",
 			"ServerScriptService/Inv/Gun <- src/Inv/Gun@server.meta.json",
 			"ServerScriptService/Inv/Save <- src/Inv/Save.meta.json",
+		]);
+	});
+
+	it("should apply a .meta.jsonc as Rojo does, alongside a .meta.json beside it", async () => {
+		const meta = '{"attributes":{"a":1}}';
+		writeFiles({
+			"Inv/Plain.luau": "",
+			"Inv/Plain.meta.jsonc": meta,
+			"Inv/Both.luau": "",
+			"Inv/Both.meta.json": meta,
+			"Inv/Both.meta.jsonc": meta,
+			"Inv/Folder/Item.luau": "",
+			"Inv/Folder/init.meta.jsonc": meta,
+			"Inv/Data.jsonc": "{}",
+		});
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({ name: "t", tree: { $path: "src/Inv" } })
+		);
+		await rogenTree();
+
+		const rojo = placed(sourcemap(dir, "rojo.project.json"));
+		const storage = sourcemap(dir, "ours.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+		expect(
+			placed(storage!).filter((line) => line.startsWith("Inv/"))
+		).toEqual(rojo.map((line) => `Inv/${line}`));
+		expect(metaApplied(storage!)).toEqual([
+			"Inv/Both <- src/Inv/Both.meta.json",
+			"Inv/Both <- src/Inv/Both.meta.jsonc",
+			"Inv/Folder <- src/Inv/Folder/init.meta.jsonc",
+			"Inv/Plain <- src/Inv/Plain.meta.jsonc",
 		]);
 	});
 

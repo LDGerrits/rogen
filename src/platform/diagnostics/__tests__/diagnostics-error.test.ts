@@ -1,6 +1,7 @@
 import { DOCS_URL } from "../../product/product-service.js";
 import { errorDiagnostic } from "../diagnostic.js";
-import { DiagnosticsError, failureToJson } from "../diagnostics-error.js";
+import { DiagnosticsError } from "../diagnostics-error.js";
+import { failureToJson } from "../diagnostic-json.js";
 
 describe("platform/diagnostics/diagnostics-error", () => {
 	describe("DiagnosticsError", () => {

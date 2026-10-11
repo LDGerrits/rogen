@@ -30,6 +30,18 @@ describe("PathSet", () => {
 	it("should not find a path it was not given", () => {
 		expect(new PathSet(["/repo/a.json"]).has("/repo/b.json")).toBe(false);
 	});
+
+	it("should tell paths apart by letter case where the file system does", () => {
+		expect(new PathSet(["/repo/A.json"], false).has("/repo/a.json")).toBe(
+			false
+		);
+	});
+
+	it("should take paths that differ only in letter case as one where the file system does", () => {
+		expect(new PathSet(["/repo/A.json"], true).has("/repo/a.JSON")).toBe(
+			true
+		);
+	});
 });
 
 describe("Path", () => {
