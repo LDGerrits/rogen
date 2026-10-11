@@ -26,6 +26,8 @@ export class RequestError extends Error {
 export interface RequestOptions {
 	/** Milliseconds to wait before giving up. */
 	readonly timeout: number;
+	/** Sent with the request, for a server that wants to know who asks. */
+	readonly headers?: Readonly<Record<string, string>>;
 }
 
 /** Makes HTTP requests. */

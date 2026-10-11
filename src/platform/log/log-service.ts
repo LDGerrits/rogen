@@ -25,6 +25,8 @@ export interface LogService {
 	print(text: string): void;
 	/** Text that goes with what `print` wrote, dimmed where the output has colour. */
 	note(text: string): void;
+	/** A line about the program rather than the run, such as a newer version, on stderr and dimmed where the output has colour; `--quiet` hides it. */
+	notice(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
 	/** A step with its lines under it, written at any level but off, for what the user asked for. */

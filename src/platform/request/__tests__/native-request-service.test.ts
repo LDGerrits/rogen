@@ -56,6 +56,23 @@ describe("NativeRequestService", () => {
 		await close(server);
 	});
 
+	it("should send the headers it is given", async () => {
+		let seen: string | undefined;
+		const server = http.createServer((request, response) => {
+			seen = request.headers["user-agent"];
+			response.end("ok");
+		});
+		const port = await listen(server);
+
+		await service.request(`http://127.0.0.1:${port}/`, {
+			timeout: 2_000,
+			headers: { "user-agent": "rogen" },
+		});
+
+		expect(seen).toBe("rogen");
+		await close(server);
+	});
+
 	it("should reach a port that fetch refuses to use", async () => {
 		const server = http.createServer((_request, response) =>
 			response.end("ok")

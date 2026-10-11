@@ -39,6 +39,7 @@ registerCommand(
 			super({
 				id: "serve",
 				metadata: {
+					longRunning: true,
 					description:
 						"Builds, serves the project files with Rojo or Argon, and rebuilds whenever sources or configs change.",
 					args: [

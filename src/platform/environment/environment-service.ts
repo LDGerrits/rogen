@@ -9,6 +9,8 @@ export interface EnvironmentService {
 	readonly userHome: string;
 	/** The folder for temporary files every process on the machine shares. */
 	readonly tmpDir: string;
+	/** The user's folder for what a program can fetch again, which no project owns: `XDG_CACHE_HOME`, else the system's usual place. */
+	readonly cacheDir: string;
 	/** Where the repository is checked out, which the paths of GitHub Actions annotations are relative to, when this run should write them: GitHub Actions runs the process and it isn't printing JSON. None otherwise. */
 	readonly annotationsIn?: string;
 	/** This process's id, which tells the records a serve leaves in `tmpDir` as its own. */
@@ -20,6 +22,8 @@ export interface EnvironmentService {
 	readonly isInteractive: boolean;
 	/** Whether to print plain lines instead of drawing: the run prints JSON or isn't interactive, or `NO_COLOR` is set. */
 	readonly isPlain: boolean;
+	/** Whether to tell the user a newer Rogen is out: a person is at a terminal and neither prints JSON nor asks for `--quiet`, and neither `ROGEN_NO_UPDATE_CHECK` nor `NO_UPDATE_NOTIFIER` asks for silence. */
+	readonly checksForUpdates: boolean;
 }
 
 export const EnvironmentService =

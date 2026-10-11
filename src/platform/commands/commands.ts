@@ -82,6 +82,8 @@ interface CommandMetadata<
 	readonly examples?: readonly string[];
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
 	readonly unknownWordOffer?: string;
+	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */
+	readonly longRunning?: boolean;
 }
 
 export interface CommandRegistry {

@@ -6,13 +6,15 @@ interface ToolchainManager {
 	readonly fileName: string;
 	/** Whether it has an `add` command that pins a tool. */
 	readonly adds: boolean;
+	/** Whether it pins a tool in a table, `name = { github = "owner/repo", version = "1.2.3" }`, rather than as `name = "owner/repo@1.2.3"`. */
+	readonly pinsInTable: boolean;
 }
 
 /** In the order Rokit reads them, which reads the files of the other two as well. */
 const MANAGERS: readonly ToolchainManager[] = [
-	{ id: "rokit", fileName: "rokit.toml", adds: true },
-	{ id: "aftman", fileName: "aftman.toml", adds: true },
-	{ id: "foreman", fileName: "foreman.toml", adds: false },
+	{ id: "rokit", fileName: "rokit.toml", adds: true, pinsInTable: false },
+	{ id: "aftman", fileName: "aftman.toml", adds: true, pinsInTable: false },
+	{ id: "foreman", fileName: "foreman.toml", adds: false, pinsInTable: true },
 ];
 
 const unquoted = (key: string) => key.replace(/^(["'])(.*)\1$/, "$2");
@@ -68,6 +70,13 @@ export class ToolManifest {
 		for (const [name, source] of this.tools)
 			if (source === wanted) return name;
 		return undefined;
+	}
+
+	/** The entry that pins `version` of the tool from `repository` as `name`, written as this file's manager reads it. */
+	pinOf(name: string, repository: string, version: string): string {
+		return this.manager.pinsInTable
+			? `${name} = { github = "${repository}", version = "${version}" }`
+			: `${name} = "${repository}@${version}"`;
 	}
 
 	/** The command that installs every tool the file pins. */

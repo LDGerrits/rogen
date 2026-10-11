@@ -35,6 +35,7 @@ import { NativeProcessService } from "./platform/process/native-process-service.
 import { ProcessService } from "./platform/process/process-service.js";
 import { NativeRequestService } from "./platform/request/native-request-service.js";
 import { RequestService } from "./platform/request/request-service.js";
+import { CoreReleaseService } from "./platform/release/core-release-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
@@ -45,6 +46,7 @@ import { InitService } from "./domain/init/init-service.js";
 import { LegacyConfig } from "./domain/legacy/legacy-config.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
+import { CoreUpdateService } from "./domain/update/core-update-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
@@ -72,6 +74,10 @@ function currentFolder(): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+function printNotice(logService: LogService, notice: string | undefined): void {
+	if (notice) logService.notice(notice);
 }
 
 export default function run(): void {
@@ -183,13 +189,24 @@ async function main(): Promise<void> {
 				configService
 			)
 		);
-		services.set(
-			ProductService,
-			new CoreProductService(
-				fileSystemService,
-				import.meta.dirname,
-				typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined
-			)
+		const productService = new CoreProductService(
+			fileSystemService,
+			import.meta.dirname,
+			typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined
+		);
+		services.set(ProductService, productService);
+		const releaseService = new CoreReleaseService(
+			fileSystemService,
+			requestService,
+			environmentService.cacheDir
+		);
+		const updateService = new CoreUpdateService(
+			releaseService,
+			productService,
+			environmentService,
+			toolchainService,
+			fileSystemService,
+			import.meta.dirname
 		);
 		services.set(
 			LifecycleService,
@@ -213,7 +230,8 @@ async function main(): Promise<void> {
 				processService,
 				requestService,
 				watchService,
-				environmentService
+				environmentService,
+				toolchainService
 			)
 		);
 
@@ -223,6 +241,16 @@ async function main(): Promise<void> {
 			commandRegistry
 		);
 		services.set(CommandService, commandService);
+
+		// Started before the command so the check runs beside it. It never fails a run, and `--version` and `help` don't ask.
+		const notice =
+			command === HELP_COMMAND
+				? undefined
+				: updateService.check().catch(() => undefined);
+		// A command that never ends can't tell the user afterwards.
+		const noticeFirst =
+			commandRegistry.getCommand(command)?.metadata.longRunning;
+		if (noticeFirst) printNotice(logService, await notice);
 
 		const result = await commandService
 			.executeCommand(command, line)
@@ -234,6 +262,7 @@ async function main(): Promise<void> {
 		process.exitCode = result.isErr()
 			? failure.finish(result.error, command)
 			: 0;
+		if (!noticeFirst) printNotice(logService, await notice);
 	} finally {
 		disposables[Symbol.dispose]();
 	}

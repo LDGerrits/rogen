@@ -15,6 +15,7 @@ import {
 	ReloadableSelection,
 	ConfigService,
 } from "../config/config-service.js";
+import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { SyncServer } from "./serve.js";
@@ -48,9 +49,10 @@ export class CoreServeService implements ServeService {
 		private readonly processService: ProcessService,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
-		environmentService: EnvironmentService
+		environmentService: EnvironmentService,
+		toolchainService: ToolchainService
 	) {
-		this.finder = new ServerFinder(fileSystemService, processService);
+		this.finder = new ServerFinder(toolchainService, processService);
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
 			fileSystemService,

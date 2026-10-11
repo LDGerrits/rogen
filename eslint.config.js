@@ -22,7 +22,8 @@ const modules = {
 		roblox: ["roblox", "supported-services"],
 		rojo: ["rojo", "rojo-project"],
 		serve: ["serve", "serve-service"],
-		toolchain: ["toolchain", "toolchain-service"],
+		toolchain: ["toolchain", "toolchain-service", "tool-manifest"],
+		update: ["update-service"],
 		watch: ["watch-service"],
 	},
 	// A command's own file is imported only by the composition root, for its side effect.

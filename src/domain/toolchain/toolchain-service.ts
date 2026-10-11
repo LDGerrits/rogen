@@ -1,6 +1,7 @@
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { SyncTool } from "../build/build.js";
 import { DetectedWorkspace } from "./toolchain.js";
+import { ToolManifest } from "./tool-manifest.js";
 
 /** The languages and tools Rogen knows and what a workspace uses of them. */
 export interface ToolchainService {
@@ -11,6 +12,9 @@ export interface ToolchainService {
 
 	/** What `directory` uses: facts only, never decisions. Only `init` asks; builds do what the config says. */
 	detect(directory: string): Promise<DetectedWorkspace>;
+
+	/** The toolchain files that pin tools for `directory`: its own and those of every folder above it, the nearest first. */
+	readManifests(directory: string): Promise<readonly ToolManifest[]>;
 }
 
 export const ToolchainService =

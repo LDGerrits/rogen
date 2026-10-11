@@ -8,6 +8,7 @@ const inTerminal = (env: Record<string, string | undefined>) =>
 		userHome: "/mock/home",
 		tmpDir: "/mock/tmp",
 		pid: 4242,
+		platform: "linux",
 	});
 
 describe("NativeEnvironmentService", () => {
@@ -27,6 +28,7 @@ describe("NativeEnvironmentService", () => {
 			userHome: "/mock/home",
 			tmpDir: "/mock/tmp",
 			pid: 4242,
+			platform: "linux",
 		});
 
 		expect(env.logLevel).toBe(level);
@@ -44,6 +46,7 @@ describe("NativeEnvironmentService", () => {
 				userHome: "/mock/home",
 				tmpDir: "/mock/tmp",
 				pid: 4242,
+				platform: "linux",
 			});
 
 			expect(piped.isInteractive).toBe(false);
@@ -113,6 +116,7 @@ describe("NativeEnvironmentService", () => {
 					userHome: "/mock/home",
 					tmpDir: "/mock/tmp",
 					pid: 4242,
+					platform: "linux",
 				}
 			);
 
@@ -147,10 +151,117 @@ describe("NativeEnvironmentService", () => {
 					userHome: "/mock/home",
 					tmpDir: "/mock/tmp",
 					pid: 4242,
+					platform: "linux",
 				}
 			);
 
 			expect(env.annotationsIn).toBeUndefined();
+		});
+	});
+
+	describe("cacheDir", () => {
+		const cacheDirOn = (
+			platform: NodeJS.Platform,
+			env: Record<string, string | undefined> = {}
+		) =>
+			new NativeEnvironmentService({}, "/mock/cwd", {
+				env,
+				isTerminal: true,
+				userHome: "/home/me",
+				tmpDir: "/mock/tmp",
+				pid: 4242,
+				platform,
+			}).cacheDir;
+
+		it("should be XDG_CACHE_HOME when it is set", () => {
+			expect(cacheDirOn("linux", { XDG_CACHE_HOME: "/xdg" })).toBe(
+				"/xdg"
+			);
+		});
+
+		it.each([
+			["linux", "/home/me/.cache"],
+			["darwin", "/home/me/Library/Caches"],
+		] as const)("should be the usual place on %s", (platform, dir) => {
+			expect(cacheDirOn(platform)).toBe(dir);
+		});
+
+		it("should be LOCALAPPDATA on Windows", () => {
+			expect(cacheDirOn("win32", { LOCALAPPDATA: "/local" })).toBe(
+				"/local"
+			);
+		});
+	});
+
+	describe("checksForUpdates", () => {
+		it("should be true for a person in a terminal", () => {
+			expect(inTerminal({}).checksForUpdates).toBe(true);
+		});
+
+		it.each([
+			["CI", "true"],
+			["CLAUDECODE", "1"],
+			["ROGEN_NO_UPDATE_CHECK", "1"],
+			["ROGEN_NO_UPDATE_CHECK", "true"],
+			["NO_UPDATE_NOTIFIER", "1"],
+		])("should be false with %s=%s", (name, value) => {
+			expect(inTerminal({ [name]: value }).checksForUpdates).toBe(false);
+		});
+
+		it("should stay on when the opt-out is 0 or false", () => {
+			expect(
+				inTerminal({ ROGEN_NO_UPDATE_CHECK: "0" }).checksForUpdates
+			).toBe(true);
+			expect(
+				inTerminal({ ROGEN_NO_UPDATE_CHECK: "false" }).checksForUpdates
+			).toBe(true);
+		});
+
+		it("should be false without a terminal", () => {
+			const piped = new NativeEnvironmentService({}, "/mock/cwd", {
+				env: {},
+				isTerminal: false,
+				userHome: "/mock/home",
+				tmpDir: "/mock/tmp",
+				pid: 4242,
+				platform: "linux",
+			});
+
+			expect(piped.checksForUpdates).toBe(false);
+		});
+
+		it("should be false under --quiet in a terminal", () => {
+			const quiet = new NativeEnvironmentService(
+				{ quiet: true },
+				"/mock/cwd",
+				{
+					env: {},
+					isTerminal: true,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+					pid: 4242,
+					platform: "linux",
+				}
+			);
+
+			expect(quiet.checksForUpdates).toBe(false);
+		});
+
+		it("should be false under --json in a terminal", () => {
+			const json = new NativeEnvironmentService(
+				{ json: true },
+				"/mock/cwd",
+				{
+					env: {},
+					isTerminal: true,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+					pid: 4242,
+					platform: "linux",
+				}
+			);
+
+			expect(json.checksForUpdates).toBe(false);
 		});
 	});
 
@@ -161,6 +272,7 @@ describe("NativeEnvironmentService", () => {
 			userHome: "/home/me",
 			tmpDir: "/mock/tmp",
 			pid: 4242,
+			platform: "linux",
 		});
 
 		expect(environment.pid).toBe(4242);

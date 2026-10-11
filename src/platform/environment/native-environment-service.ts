@@ -1,4 +1,5 @@
 import os from "os";
+import path from "path";
 import { LogLevel } from "../log/log-service.js";
 import { EnvironmentService } from "./environment-service.js";
 
@@ -22,23 +23,41 @@ const HARNESS_VARIABLES = [
 const isSet = (value: string | undefined) =>
 	value !== undefined && value !== "";
 
+/** Whether a variable is turned on: set, and not `0` or `false`. */
+function isOn(value: string | undefined): boolean {
+	const lowered = value?.toLowerCase();
+	return isSet(lowered) && lowered !== "0" && lowered !== "false";
+}
+
 /** Whether `env` says an agent or CI, not a person, runs the process. */
 function isAutomated(env: Variables): boolean {
 	return (
-		GENERIC_VARIABLES.some((name) => {
-			const value = env[name]?.toLowerCase();
-			return isSet(value) && value !== "0" && value !== "false";
-		}) || HARNESS_VARIABLES.some((name) => isSet(env[name]))
+		GENERIC_VARIABLES.some((name) => isOn(env[name])) ||
+		HARNESS_VARIABLES.some((name) => isSet(env[name]))
 	);
 }
 
-/** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, the user's home and temporary folders, and its id. */
+/** The folder the user's programs keep what they can fetch again. */
+function userCacheDir(
+	env: Variables,
+	platform: NodeJS.Platform,
+	userHome: string
+): string {
+	if (isSet(env.XDG_CACHE_HOME)) return env.XDG_CACHE_HOME!;
+	if (platform === "darwin") return path.join(userHome, "Library", "Caches");
+	if (platform === "win32")
+		return env.LOCALAPPDATA || path.join(userHome, "AppData", "Local");
+	return path.join(userHome, ".cache");
+}
+
+/** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, the user's home and temporary folders, its id, and the platform it runs on. */
 export interface ProcessContext {
 	readonly env: Variables;
 	readonly isTerminal: boolean;
 	readonly userHome: string;
 	readonly tmpDir: string;
 	readonly pid: number;
+	readonly platform: NodeJS.Platform;
 }
 
 const nativeProcess = (): ProcessContext => ({
@@ -47,6 +66,7 @@ const nativeProcess = (): ProcessContext => ({
 	userHome: os.homedir(),
 	tmpDir: os.tmpdir(),
 	pid: process.pid,
+	platform: process.platform,
 });
 
 /** The flags that say how a run prints; only `json` is read from a line that fails to parse. */
@@ -64,6 +84,8 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly isPlain: boolean;
 	readonly userHome: string;
 	readonly tmpDir: string;
+	readonly cacheDir: string;
+	readonly checksForUpdates: boolean;
 	readonly annotationsIn?: string;
 	readonly pid: number;
 
@@ -76,10 +98,12 @@ export class NativeEnvironmentService implements EnvironmentService {
 			userHome,
 			tmpDir,
 			pid,
+			platform,
 		}: ProcessContext = nativeProcess()
 	) {
 		this.userHome = userHome;
 		this.tmpDir = tmpDir;
+		this.cacheDir = userCacheDir(env, platform, userHome);
 		if (env.GITHUB_ACTIONS === "true" && json !== true)
 			this.annotationsIn = env.GITHUB_WORKSPACE || cwd;
 		this.pid = pid;
@@ -92,5 +116,11 @@ export class NativeEnvironmentService implements EnvironmentService {
 			isTerminal && env.TERM !== "dumb" && !isAutomated(env);
 		this.isPlain =
 			json === true || !this.isInteractive || isSet(env.NO_COLOR);
+		this.checksForUpdates =
+			this.isInteractive &&
+			json !== true &&
+			!quiet &&
+			!isOn(env.ROGEN_NO_UPDATE_CHECK) &&
+			!isSet(env.NO_UPDATE_NOTIFIER);
 	}
 }

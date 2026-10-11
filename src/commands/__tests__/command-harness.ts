@@ -139,7 +139,8 @@ export function commandHarness(
 			processes,
 			requests,
 			watch,
-			environment
+			environment,
+			toolchain
 		)
 	);
 
