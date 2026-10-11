@@ -40,10 +40,12 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		configSet.planConfigs(
 			builder,
 			{ extends: ConfigSet.reference(DEFAULT_CONFIG_FILE) },
-			configSet.sourced
-				? ((base?.isOk() ? base.value.syncDir : undefined) ??
+			{
+				synced: configSet.sourced
+					? ((base?.isOk() ? base.value.syncDir : undefined) ??
 						configSet.syncDir)
-				: undefined
+					: undefined,
+			}
 		);
 		builder.addRun(configSet.serveCommand);
 		builder.addEdit(

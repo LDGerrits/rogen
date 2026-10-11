@@ -374,7 +374,7 @@ describe("InitQuestions askProject", () => {
 							"Sync dir": answer,
 						}
 					)
-				).rejects.toThrow("overlaps the root dir src");
+				).rejects.toThrow("overlaps src");
 			}
 		);
 	});

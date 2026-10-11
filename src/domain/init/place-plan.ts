@@ -73,7 +73,7 @@ export class PlacePlan {
 				rootDirs: [folder.rootDir],
 				template: folder.template,
 			},
-			syncDir
+			{ source: this.outDir, synced: syncDir }
 		);
 		if (folder.hasTemplate) builder.addNote(`Using ${folder.template}.`);
 		else

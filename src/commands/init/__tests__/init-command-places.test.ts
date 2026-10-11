@@ -671,6 +671,36 @@ describe("init command", () => {
 			expect(await exists("lobby.rogen.json")).toBe(false);
 		});
 
+		it("should have Darklua process each roblox-ts place's compiled output, and serve the synced configs", async () => {
+			await write("tsconfig.json", '{ "include": ["src"] }');
+			await write(".darklua.json");
+			await write("places/lobby/B.ts");
+			const logService = new MockLogService();
+
+			await runInit([], new MockPromptService([], false), logService);
+
+			expect(await readJson("default.rogen.json")).toMatchObject({
+				syncDir: "out",
+			});
+			expect(await readJson("sync.rogen.json")).toMatchObject({
+				syncDir: "dist",
+			});
+			expect(await readJson("lobby.rogen.json")).toMatchObject({
+				syncDir: "out/lobby",
+			});
+			expect(await readJson("lobby-sync.rogen.json")).toMatchObject({
+				extends: "./lobby.rogen.json",
+				syncDir: "dist/lobby",
+			});
+			expect(logService.lines).toEqual(
+				expect.arrayContaining([
+					"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
+					"info:   darklua process out/lobby dist/lobby",
+					"info:   rogen serve lobby-sync",
+				])
+			);
+		});
+
 		it("should write a tsconfig per roblox-ts place and compile each", async () => {
 			await write("tsconfig.json", '{ "include": ["src"] }');
 			await write("places/lobby/B.ts");

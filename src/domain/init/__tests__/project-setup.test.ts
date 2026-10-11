@@ -298,18 +298,22 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files, "default.rogen.json").syncDir).toBe("build");
 		});
 
-		it("should write one config synced from dist for roblox-ts with darklua", async () => {
+		it("should write a config synced from the compiler's output and one synced from dist for roblox-ts with darklua", async () => {
 			const files = await planFor("roblox-ts", true);
 
 			expect(files.configs.map((file) => file.fileName)).toEqual([
 				"default.rogen.json",
+				"sync.rogen.json",
 			]);
 			expect(configOf(files, "default.rogen.json")).toMatchObject({
+				syncDir: "build",
+			});
+			expect(configOf(files, "sync.rogen.json")).toEqual({
+				$schema: expect.any(String),
+				extends: "./default.rogen.json",
 				syncDir: "dist",
 			});
-			expect(
-				configOf(files, "default.rogen.json").extends
-			).toBeUndefined();
+			expect(files.nextSteps.run).toEqual(["rbxtsc -w", "rogen serve"]);
 		});
 
 		it("should say how to run luau", async () => {

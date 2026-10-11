@@ -22,7 +22,7 @@ export class BaseConfigReader {
 		private readonly directory: string
 	) {}
 
-	/** `default.rogen.json` resolved the way a build would, so a place joins a config that builds. A Darklua repo's default is source-rooted, so its sync dir comes from the synced config beside it. */
+	/** `default.rogen.json` resolved the way a build would, so a place joins a config that builds. A Darklua repo's default is source-rooted, so its sync dir comes from the synced config beside it, over a compiler's output default itself names. */
 	async read(
 		names: ReadonlySet<string>
 	): Promise<Result<BaseConfig, Diagnostic[]>> {
@@ -49,8 +49,8 @@ export class BaseConfigReader {
 			configFileName(ConfigSet.syncStemOf(DEFAULT_CONFIG_STEM))
 		);
 		const syncDir =
-			entry.config.syncDir ??
-			(sync?.status === "valid" ? sync.config.syncDir : undefined);
+			(sync?.status === "valid" ? sync.config.syncDir : undefined) ??
+			entry.config.syncDir;
 		return ok({
 			rootDirs: entry.config.rootDirs.map((dir) => this.relative(dir)),
 			...(syncDir && { syncDir: this.relative(syncDir) }),

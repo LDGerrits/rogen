@@ -398,10 +398,10 @@ export class InitQuestions {
 		return { kind: "new" };
 	}
 
-	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in a root dir, or Rogen would read the processed code as source. */
+	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in one of the `read` folders, the root dirs and a compiler's output, or Darklua would write over what is read. */
 	async syncDir(
 		{ workspace }: InitDirectory,
-		rootDirs: readonly string[]
+		read: readonly string[]
 	): Promise<string | undefined> {
 		const placeholder = workspace.darklua.defaultSyncDir;
 		if (!this.interactive) return placeholder;
@@ -414,11 +414,12 @@ export class InitQuestions {
 				const missing = required("a sync dir")(value);
 				if (missing) return missing;
 				const dir = normalizeDir(value);
-				const overlapped = rootDirs.find(
-					(root) => containsPath(root, dir) || containsPath(dir, root)
+				const overlapped = read.find(
+					(folder) =>
+						containsPath(folder, dir) || containsPath(dir, folder)
 				);
 				return overlapped
-					? `${dir} overlaps the root dir ${overlapped}; Rogen would read the processed code as source.`
+					? `${dir} overlaps ${overlapped}. Darklua must write to a folder of its own.`
 					: undefined;
 			},
 		});

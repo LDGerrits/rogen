@@ -59,6 +59,21 @@ describe("BaseConfigReader", () => {
 		).toMatchObject({ rootDirs: ["src"], syncDir: "dist" });
 	});
 
+	it("should take the synced config's sync dir over the compiler's output default syncs", async () => {
+		await write("default.rogen.json", {
+			rootDirs: ["src"],
+			syncDir: "out",
+		});
+		await write("sync.rogen.json", {
+			extends: "./default.rogen.json",
+			syncDir: "dist",
+		});
+
+		expect(
+			(await readBase(["default.rogen.json", "sync.rogen.json"])).unwrap()
+		).toMatchObject({ syncDir: "dist" });
+	});
+
 	it("should read the port every config's template serves on, skipping a broken config", async () => {
 		await write("default.rogen.json", {
 			template: "default.template.json",

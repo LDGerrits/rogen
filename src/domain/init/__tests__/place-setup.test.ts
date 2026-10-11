@@ -233,7 +233,7 @@ describe("PlaceSetup", () => {
 			);
 		});
 
-		it("should use the tsconfig outDir for the compiler and the sync dir for Rojo", () => {
+		it("should use the tsconfig outDir for the compiler and its own config, and the sync dir for the synced one", () => {
 			const { configs, tsconfig } = written(
 				plan(
 					withRobloxTs(
@@ -245,10 +245,11 @@ describe("PlaceSetup", () => {
 			);
 
 			expect(tsconfig.compilerOptions.outDir).toBe("build/lobby");
-			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+			expect(configs["lobby.rogen.json"].syncDir).toBe("build/lobby");
+			expect(configs["lobby-sync.rogen.json"].syncDir).toBe("dist/lobby");
 		});
 
-		it("should sync from Darklua's output when Darklua processes compiled code and its config sets no sync dir", () => {
+		it("should sync the synced config from Darklua's output when Darklua processes compiled code and its config sets no sync dir", () => {
 			const { configs, nextSteps } = written(
 				plan(
 					{ ...rbxts, darkluaConfig: ".darklua.json" },
@@ -256,7 +257,8 @@ describe("PlaceSetup", () => {
 				)
 			);
 
-			expect(configs["lobby.rogen.json"].syncDir).toBe("dist/lobby");
+			expect(configs["lobby.rogen.json"].syncDir).toBe("out/lobby");
+			expect(configs["lobby-sync.rogen.json"].syncDir).toBe("dist/lobby");
 			expect(nextSteps.darklua).toEqual([
 				"darklua process out/lobby dist/lobby",
 			]);

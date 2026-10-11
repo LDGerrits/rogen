@@ -64,15 +64,29 @@ export interface ProjectPlace {
 /** The routes the nodes a copied project file loses become; asking and planning both read them from here, so the ids they use agree. */
 function derivedRoutesOf(
 	template: ProjectTemplate,
-	rootDirs: readonly string[],
-	syncDir: string | undefined
+	dirs: readonly string[]
 ): DerivedRoutes | undefined {
 	return template.kind === "copy"
-		? DerivedRoutes.of(template.from, template.content, [
-				...rootDirs,
-				...(syncDir ? [syncDir] : []),
-			])
+		? DerivedRoutes.of(template.from, template.content, dirs)
 		: undefined;
+}
+
+/** The folders Rogen generates the code of: the root dirs, what is synced, and a compiler's output when Darklua processes it. */
+function generatedDirs({
+	language,
+	darklua,
+	rootDirs,
+	syncDir,
+}: Pick<
+	ProjectChoices,
+	"language" | "darklua" | "rootDirs" | "syncDir"
+>): string[] {
+	const { compiler } = language;
+	return [
+		...rootDirs,
+		...(syncDir ? [syncDir] : []),
+		...(darklua && compiler ? [compiler.outDir] : []),
+	];
 }
 
 /** A new project: a config, its template and project file, and any places that share its code. */
@@ -108,7 +122,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		let syncDir = configSet.syncDir;
 		if (darklua) {
-			const answer = await questions.syncDir(directory, rootDirs);
+			const answer = await questions.syncDir(directory, [
+				...rootDirs,
+				...(language.compiler ? [language.compiler.outDir] : []),
+			]);
 			if (answer === undefined) return ok(undefined);
 			syncDir = answer;
 		}
@@ -121,7 +138,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		const routes = await questions.routes(
 			language,
-			derivedRoutesOf(template.value, rootDirs, syncDir)
+			derivedRoutesOf(
+				template.value,
+				generatedDirs({ language, darklua, rootDirs, syncDir })
+			)
 		);
 		if (routes === undefined) return ok(undefined);
 
@@ -283,18 +303,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
-		const { name, language, darklua, rootDirs, syncDir } = choices;
+		const { name, language, darklua } = choices;
 		const configSet = new ConfigSet(name, language, darklua);
-		const derived = derivedRoutesOf(choices.template, rootDirs, syncDir);
+		const dirs = generatedDirs(choices);
+		const derived = derivedRoutesOf(choices.template, dirs);
 		const template = TemplatePlan.of(this.directory, configSet, {
 			template: choices.template,
 			templateDir: choices.templateDir,
 			mounts: choices.mounts,
-			dirs: [
-				...rootDirs,
-				...(syncDir ? [syncDir] : []),
-				...choices.places.map(({ folder }) => folder.path),
-			],
+			dirs: [...dirs, ...choices.places.map(({ folder }) => folder.path)],
 			derived,
 		});
 		this.planProject(builder, choices, configSet, template, derived);
@@ -328,7 +345,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 		if (template.file) builder.setTemplate(template.file);
 		for (const rootDir of rootDirs) builder.addDirectory(rootDir);
-		configSet.planConfigs(builder, starter, syncDir);
+		configSet.planConfigs(builder, starter, {
+			source: compiler?.outDir,
+			synced: syncDir,
+		});
 
 		for (const note of template.notes) builder.addNote(note);
 		for (const { place, problem } of choices.unusablePlaces ?? [])
