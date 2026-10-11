@@ -226,6 +226,7 @@ describe("serve command", () => {
 
 		requests.responses.delete(ROJO_URL);
 		await settle();
+		await settle();
 
 		expect((await result).isOk()).toBe(true);
 		expect(logService.lines.slice(-2)).toEqual([
@@ -245,6 +246,7 @@ describe("serve command", () => {
 		await settle();
 		requests.responses.delete(ROJO_URL);
 		await settle();
+		await settle();
 		await running;
 
 		expect(printed()).toEqual([
@@ -262,7 +264,14 @@ describe("serve command", () => {
 				},
 			},
 			{ build: expect.objectContaining({ config: "default" }) },
-			{ stopped: { config: "default", tool: "rojo", reason: "exited" } },
+			{
+				stopped: {
+					config: "default",
+					tool: "rojo",
+					reason: "exited",
+					adopted: true,
+				},
+			},
 		]);
 	});
 
@@ -323,7 +332,7 @@ describe("serve command", () => {
 		});
 	});
 
-	it("should not say an adopted server stopped when it was asked to shut down", async () => {
+	it("should mark the stop of an adopted server as adopted when it was asked to shut down", async () => {
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
 			serverVersion: "7.7.1",
@@ -335,7 +344,53 @@ describe("serve command", () => {
 		lifecycle.shutdown();
 		await result;
 
-		expect(printed().filter((line) => "stopped" in line)).toEqual([]);
+		expect(printed().at(-1)).toEqual({
+			stopped: {
+				config: "default",
+				tool: "rojo",
+				reason: "shutdown",
+				adopted: true,
+			},
+		});
+	});
+
+	it("should mark the stop of an adopted server whose config is gone as adopted, as JSON", async () => {
+		await memFs.writeFile(
+			"/repo/lobby.project.json",
+			JSON.stringify({
+				name: "Lobby",
+				servePort: 34900,
+				tree: { $className: "DataModel" },
+			})
+		);
+		await memFs.writeFile(
+			"/repo/lobby.rogen.json",
+			JSON.stringify({
+				rootDirs: ["src"],
+				routes: { "*": "Workspace" },
+				template: "lobby.project.json",
+				outFile: "lobby-out.project.json",
+			})
+		);
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
+		});
+		void serve([], { json: true });
+		await settle();
+
+		await memFs.delete("/repo/default.rogen.json");
+		await settle();
+
+		expect(printed().filter((line) => "stopped" in line)).toContainEqual({
+			stopped: {
+				config: "default",
+				tool: "rojo",
+				reason: "removed",
+				adopted: true,
+			},
+		});
 	});
 
 	it("should say it stopped building for an adopted server whose config is gone, not that the server stopped", async () => {

@@ -88,7 +88,7 @@ export class ServePorts {
 		return new UsageError([...lines, fix].join("\n"));
 	}
 
-	/** `target` once its port is free, or with `servedBy` set when its own project is already served there, `adopted` when no serve started that server; otherwise why it can't be served. `others` are the targets served beside it, and `namesakes` the other configs with its project's name, which a server no serve recorded could be serving instead. */
+	/** `target` once its port is free, or with `servedBy` set when its project is already served there (`adopted` when no serve recorded that server); else why it can't be served. */
 	async check(
 		target: ServeTarget,
 		others: readonly ServeTarget[],
@@ -103,10 +103,10 @@ export class ServePorts {
 		if (holder?.project === target.project) {
 			if (recorded && samePath(recorded, target.config.outFile))
 				return ok({ ...target, servedBy: holder });
-			if (!recorded && namesakes.length === 0)
-				return ok({ ...target, servedBy: holder, adopted: true });
 			if (!recorded)
-				return err(this.unknownServer(target, holder, namesakes));
+				return namesakes.length === 0
+					? ok({ ...target, servedBy: holder, adopted: true })
+					: err(this.unknownServer(target, holder, namesakes));
 		}
 		return err(
 			await this.portTaken(
@@ -175,7 +175,7 @@ export class ServePorts {
 		);
 	}
 
-	/** Why `target` can't be served beside `holder`, which serves a project of its name that `namesakes` share, without a serve's record to say which. */
+	/** Why `target` can't be told apart from its `namesakes` on `holder`, which no serve recorded. */
 	private unknownServer(
 		target: ServeTarget,
 		holder: ServerInfo,

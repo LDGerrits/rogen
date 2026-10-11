@@ -249,7 +249,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await serving.exited).toBe(0);
 			expect(serving.stdout).toContain(
-				'{"stopped":{"config":"default","tool":"rojo","reason":"exited"}}'
+				'{"stopped":{"config":"default","tool":"rojo","reason":"exited","adopted":true}}'
 			);
 		} finally {
 			rojo.kill("SIGINT");

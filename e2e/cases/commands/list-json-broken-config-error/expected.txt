@@ -9,7 +9,7 @@ stdout:
         "status": "broken",
         "extends": [],
         "extendedBy": [],
-        "served": true,
+        "served": false,
         "diagnostics": [
           {
             "file": "<dir>/default.rogen.json",

@@ -500,7 +500,7 @@ describe("list command", () => {
 				status: "broken",
 				extends: [],
 				extendedBy: [],
-				served: true,
+				served: false,
 				diagnostics: [
 					expect.objectContaining({
 						file: "/repo/b.rogen.json",

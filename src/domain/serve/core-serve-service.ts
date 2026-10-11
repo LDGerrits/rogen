@@ -7,6 +7,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 
+import { ResolvedConfig } from "../config/config.js";
 import {
 	ConfigOptionValues,
 	ReloadableSelection,
@@ -73,10 +74,14 @@ export class CoreServeService implements ServeService {
 		if (server.isErr()) return server;
 		const selected = await this.select(request.refs, request.options);
 		if (selected.isErr()) return selected;
-		const { selection, named } = selected.value;
+		const { selection, named, neighbours } = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const servedConfigs = new ServedConfigs(configs.value, named);
+		const servedConfigs = new ServedConfigs(
+			configs.value,
+			named,
+			neighbours
+		);
 		const served = servedConfigs.configs;
 
 		const executable = await this.finder.find(
@@ -116,7 +121,8 @@ export class CoreServeService implements ServeService {
 				executable.value,
 				checked,
 				request.serverArgs,
-				named
+				named,
+				neighbours
 			)
 		);
 	}
@@ -144,13 +150,14 @@ export class CoreServeService implements ServeService {
 			{
 				readonly selection: ReloadableSelection;
 				readonly named?: ReadonlySet<string>;
+				readonly neighbours: readonly ResolvedConfig[];
 			},
 			Error
 		>
 	> {
 		const named = await this.configService.select(refs, options);
 		if (named.isErr() || refs.length === 0)
-			return named.map((selection) => ({ selection }));
+			return named.map((selection) => ({ selection, neighbours: [] }));
 		const files = new Set(named.value.entries.map(({ file }) => file));
 		const here = await this.configService.select([], options);
 		const holdsNamed =
@@ -159,10 +166,27 @@ export class CoreServeService implements ServeService {
 			[...files].every((file) =>
 				here.value.entries.some((entry) => entry.file === file)
 			);
+		if (holdsNamed)
+			return ok({ selection: here.value, named: files, neighbours: [] });
 		return ok({
-			selection: holdsNamed ? here.value : named.value,
+			selection: named.value,
 			named: files,
+			neighbours: await this.neighboursOf(named.value, options),
 		});
+	}
+
+	/** The configs in the working folder that `selection` leaves out, read without the `-o` that names one config. */
+	private async neighboursOf(
+		selection: ReloadableSelection,
+		options: ConfigOptionValues
+	): Promise<ResolvedConfig[]> {
+		const everyone = await this.configService.select([], {
+			...options,
+			"out-file": undefined,
+		});
+		if (everyone.isErr()) return [];
+		const chosen = new Set(selection.entries.map(({ file }) => file));
+		return everyone.value.configs.filter(({ file }) => !chosen.has(file));
 	}
 
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError> {

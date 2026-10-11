@@ -415,6 +415,29 @@ describe("CoreServeService", () => {
 			);
 		});
 
+		it("should refuse a server no serve recorded when a config left out of the selection has its name", async () => {
+			await memFs.writeFile(
+				"/repo/sync.rogen.json",
+				JSON.stringify({
+					extends: "./default.rogen.json",
+					syncDir: "dist",
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const error = (await errorOf({
+				refs: ["sync"],
+				options: { "out-file": "/repo/other.project.json" },
+			})) as DiagnosticsError;
+
+			expect(error.diagnostics[0].message).toContain(
+				"the name of default and sync, so Rogen can't tell whether it serves sync."
+			);
+		});
+
 		it("should adopt a server no serve started when no other config has its name", async () => {
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -586,6 +609,11 @@ describe("CoreServeService", () => {
 		const settle = async () => {
 			for (let i = 0; i < 20; i++)
 				await jest.advanceTimersByTimeAsync(100);
+		};
+
+		const polls = async (count: number) => {
+			for (let i = 0; i < count; i++)
+				await jest.advanceTimersByTimeAsync(2_000);
 		};
 
 		const start = async (request: Partial<ServeRequest> = {}) => {
@@ -1152,12 +1180,46 @@ describe("CoreServeService", () => {
 			]);
 
 			requests.responses.delete("http://127.0.0.1:34872/api/rojo");
-			await settle();
+			await polls(2);
 
 			expect(stops).toHaveLength(1);
 			expect(stops[0].target.config.label).toBe("default");
 			expect(stops[0].exit).toBeUndefined();
 			expect(stops[0].interrupted).toBe(false);
+		});
+
+		it("should keep an adopted server through one poll that is refused", async () => {
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await start();
+
+			requests.responses.delete("http://127.0.0.1:34872/api/rojo");
+			await polls(1);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await polls(4);
+
+			expect(stops).toEqual([]);
+		});
+
+		it("should keep an adopted server that is listening but slow to answer", async () => {
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await start();
+
+			requests.responses.set(
+				"http://127.0.0.1:34872/api/rojo",
+				"timeout"
+			);
+			await polls(6);
+
+			expect(stops).toEqual([]);
 		});
 
 		it("should take another session on an adopted server's port as that server stopping", async () => {

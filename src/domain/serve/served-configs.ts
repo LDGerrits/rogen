@@ -6,7 +6,9 @@ export class ServedConfigs {
 
 	constructor(
 		readonly all: readonly ResolvedConfig[],
-		named: ReadonlySet<string> | undefined
+		named: ReadonlySet<string> | undefined,
+		/** Configs here that the serve doesn't build, which still share project names. */
+		private readonly neighbours: readonly ResolvedConfig[] = []
 	) {
 		const leaves = leafConfigs(all);
 		this.configs = named
@@ -20,7 +22,7 @@ export class ServedConfigs {
 
 	/** The other configs here with `config`'s project name, which a server that only says that name could be serving. */
 	namesakesOf(config: ResolvedConfig): ResolvedConfig[] {
-		return this.all.filter(
+		return [...this.all, ...this.neighbours].filter(
 			(other) =>
 				other.file !== config.file &&
 				other.projectName === config.projectName

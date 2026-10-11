@@ -76,7 +76,9 @@ export class ServePlan {
 		readonly targets: readonly ServeTarget[],
 		readonly serverArgs: readonly string[],
 		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
-		readonly named?: ReadonlySet<string>
+		readonly named?: ReadonlySet<string>,
+		/** The configs in the working folder that the selection leaves out. */
+		readonly neighbours: readonly ResolvedConfig[] = []
 	) {}
 
 	/** The targets a server already serves. */

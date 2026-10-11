@@ -52,7 +52,7 @@ export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly extends: readonly string[];
 	/** The configs listed that extend it directly. */
 	readonly extendedBy: readonly string[];
-	/** Whether `rogen serve` starts a server for it: no listed config extends it. */
+	/** Whether `rogen serve` starts a server for it: it loads and no listed config extends it. */
 	readonly served: boolean;
 	readonly diagnostics: readonly DiagnosticJson[];
 }
@@ -169,7 +169,7 @@ export class ListLog {
 				extendedBy: extendersOf(entry, entries).map(({ file }) =>
 					toNative(file)
 				),
-				served: leaves.has(entry),
+				served: entry.status === "valid" && leaves.has(entry),
 				...(entry.status === "valid"
 					? configDetails(entry.config)
 					: {}),

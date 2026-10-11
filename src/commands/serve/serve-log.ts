@@ -196,12 +196,9 @@ export class ServeJsonLog implements ServeReporter {
 
 	stopped({ target, exit, failure }: ServerExitEvent): void {
 		this.line({
-			stopped: {
-				config: target.config.label,
-				tool: serverFor(target, this.plan).id,
-				reason: "exited",
+			stopped: this.stoppedJson(target, "exited", {
 				...(exit && { code: exit.code, signal: exit.signal }),
-			},
+			}),
 		});
 		if (failure) this.line(diagnosticsJson([failure]));
 	}
@@ -224,21 +221,13 @@ export class ServeJsonLog implements ServeReporter {
 				});
 				return;
 			case "retired":
-				this.line({
-					stopped: { config: label, tool, reason: change.reason },
-				});
+				this.line({ stopped: this.stoppedJson(target, change.reason) });
 		}
 	}
 
 	shutdown(targets: readonly ServeTarget[]): void {
-		for (const target of targets.filter(({ adopted }) => !adopted))
-			this.line({
-				stopped: {
-					config: target.config.label,
-					tool: serverFor(target, this.plan).id,
-					reason: "shutdown",
-				},
-			});
+		for (const target of targets)
+			this.line({ stopped: this.stoppedJson(target, "shutdown") });
 	}
 
 	error(error: Error): void {
@@ -256,6 +245,21 @@ export class ServeJsonLog implements ServeReporter {
 		this.line({
 			serving: this.servingJson(target, target.servedBy, true),
 		});
+	}
+
+	/** `adopted` says the server runs on: this serve only stopped building for it, unless it `exited` itself. */
+	private stoppedJson(
+		target: ServeTarget,
+		reason: string,
+		extra: Record<string, unknown> = {}
+	): Record<string, unknown> {
+		return {
+			config: target.config.label,
+			tool: serverFor(target, this.plan).id,
+			reason,
+			...extra,
+			...(target.adopted && { adopted: true }),
+		};
 	}
 
 	private servingJson(

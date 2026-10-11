@@ -23,7 +23,7 @@ import {
 import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
-import { StartedServer } from "./started-server.js";
+import { RunningServer, StartedServer } from "./started-server.js";
 import { AdoptedServer } from "./adopted-server.js";
 import { ServedConfigs } from "./served-configs.js";
 
@@ -58,7 +58,7 @@ export class CoreServeSession
 	);
 	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
 
-	private readonly servers = new Map<string, StartedServer | AdoptedServer>();
+	private readonly servers = new Map<string, RunningServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */
 	private readonly retirements = new Set<Promise<void>>();
 	/** The configs whose server can't be started at the address they were last seen at, so what the session said of them is said once. */
@@ -171,7 +171,8 @@ export class CoreServeSession
 	private async reconcile(): Promise<void> {
 		const served = new ServedConfigs(
 			this.plan.selection.configs,
-			this.plan.named
+			this.plan.named,
+			this.plan.neighbours
 		);
 		const wanted = new Set(served.configs.map(({ file }) => file));
 		const present = new Set(served.all.map(({ file }) => file));
@@ -235,7 +236,7 @@ export class CoreServeSession
 	/** Says what came of checking `target`, and acts on it: a refusal is said once, a server already serving it is left be, and else the server moves or starts. */
 	private async settle(
 		target: ServeTarget,
-		started: StartedServer | AdoptedServer | undefined,
+		started: RunningServer | undefined,
 		declinedHere: "refused" | "elsewhere" | undefined,
 		checked: Result<ServeTarget, Diagnostic>
 	): Promise<void> {
@@ -285,7 +286,7 @@ export class CoreServeSession
 	}
 
 	private async retire(
-		server: StartedServer | AdoptedServer,
+		server: RunningServer,
 		reason: "removed" | "extended" | "moved"
 	): Promise<void> {
 		const { target } = server;
