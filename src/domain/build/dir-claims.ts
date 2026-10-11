@@ -96,3 +96,23 @@ export class DirClaims {
 		return routes;
 	}
 }
+
+/** The claims of every root dir, built once for the routing and the checks that read them. */
+export class RootClaims {
+	private readonly byRoot = new Map<ScannedRoot, DirClaims>();
+
+	constructor(
+		roots: readonly ScannedRoot[],
+		readings: NameReadings,
+		keys: DeclaredKeys
+	) {
+		for (const root of roots)
+			this.byRoot.set(root, new DirClaims(root, readings, keys));
+	}
+
+	of(root: ScannedRoot): DirClaims {
+		const claims = this.byRoot.get(root);
+		if (!claims) throw new Error(`${root.rootDir} was not scanned.`);
+		return claims;
+	}
+}

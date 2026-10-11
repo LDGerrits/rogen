@@ -20,6 +20,7 @@ import {
 	RoutedFile,
 	Router,
 } from "./router.js";
+import { RootClaims } from "./dir-claims.js";
 import { MarkerClashes } from "./marker-clashes.js";
 import { SyncLayout } from "./sync-layout.js";
 import { LandsElsewhere, VariantResolver } from "./variant-resolver.js";
@@ -49,10 +50,11 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(keys, this.layout.initNames, roots);
+		const claims = new RootClaims(roots, readings, keys);
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
-			new Router(this.config, readings).route(roots);
+			new Router(this.config, readings).route(roots, claims);
 		const variants = new VariantResolver(this.config, readings);
-		const markerClashes = new MarkerClashes(roots, readings, keys);
+		const markerClashes = new MarkerClashes(roots, claims, readings, keys);
 		const routeErrors = [
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(

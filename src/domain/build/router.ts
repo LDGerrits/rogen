@@ -3,7 +3,7 @@ import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
 import { RouteMatch, VariantMatch } from "./build.js";
-import { DirClaims } from "./dir-claims.js";
+import { DirClaims, RootClaims } from "./dir-claims.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import {
 	EntryReading,
@@ -178,7 +178,7 @@ export class Router {
 	}
 
 	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
-	route(roots: readonly ScannedRoot[]): Routing {
+	route(roots: readonly ScannedRoot[], claims: RootClaims): Routing {
 		const routing: Routing = {
 			routed: [],
 			toCopy: [],
@@ -187,7 +187,7 @@ export class Router {
 			hoistedInits: [],
 		};
 		for (const root of roots) {
-			const dirs = new DirClaims(root, this.readings, this.keys);
+			const dirs = claims.of(root);
 			for (const entry of root.entries)
 				this.routeEntry(entry, dirs, routing);
 		}

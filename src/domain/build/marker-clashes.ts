@@ -7,7 +7,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys } from "../config/config.js";
-import { DirClaims, InitRoute } from "./dir-claims.js";
+import { DirClaims, InitRoute, RootClaims } from "./dir-claims.js";
 import { NameReadings } from "./name-readings.js";
 import { ScannedRoot } from "./root-scanner.js";
 
@@ -30,11 +30,12 @@ export class MarkerClashes {
 
 	constructor(
 		roots: readonly ScannedRoot[],
+		claims: RootClaims,
 		private readonly readings: NameReadings,
 		private readonly keys: DeclaredKeys
 	) {
 		this.clashes = roots.flatMap((root) =>
-			this.clashesIn(root, new DirClaims(root, readings, keys))
+			this.clashesIn(root, claims.of(root))
 		);
 	}
 
