@@ -250,6 +250,29 @@ describe("MetaReader", () => {
 			]);
 		});
 
+		it("should fail when the meta of a folder with an init script sets a className, which only a Folder takes", async () => {
+			await fs.writeFile(abs("src/Net/init.luau"), "");
+			await fs.writeFile(
+				abs("src/Net/init.meta.json"),
+				'{"className": "Folder"}'
+			);
+			await fs.writeFile(abs("src/Plain/A.luau"), "");
+			await fs.writeFile(
+				abs("src/Plain/init.meta.json"),
+				'{"className": "Actor"}'
+			);
+
+			const result = await read();
+
+			expect(
+				result.isErr()
+					? result.error.map(({ code, resource }) => [code, resource])
+					: []
+			).toEqual([
+				["meta.classNameOnScript", abs("src/Net/init.meta.json")],
+			]);
+		});
+
 		it("should accept a RunContext in the meta of a Script", async () => {
 			await fs.writeFile(abs("src/Save.server.luau"), "");
 			await fs.writeFile(

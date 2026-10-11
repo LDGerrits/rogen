@@ -758,6 +758,16 @@ src/Net/init.meta.json - error: sets a RunContext, but init.luau is a ModuleScri
 
 Name the script `.server` or `.client`, or remove `RunContext`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
 
+### `meta.classNameOnScript` [#meta-classnameonscript]
+
+Error. A folder's `init.meta.json` sets `className`, but the folder holds an init script. The script is the folder's instance and decides its class (`init.luau` a ModuleScript, `init.server.luau` a Script, `init.client.luau` a LocalScript), so Rojo refuses the meta.
+
+```
+src/Net/init.meta.json - error: sets a className, but its folder holds an init script, which decides the class, so Rojo refuses this meta. Remove className, or rename the script to change its class. (meta.classNameOnScript)
+```
+
+Remove `className`, or name the init script for the class you want. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
 ## Scanning
 
 ### `scan.missingRootDir` [#scan-missingrootdir]

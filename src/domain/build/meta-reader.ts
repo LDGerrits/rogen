@@ -85,6 +85,7 @@ export class MetaReader {
 		);
 
 		const problems = new DiagnosticCollector();
+		this.checkClassNames(placement, folderMeta, problems);
 		const runContexts = new Map<string, unknown>();
 		const claimed = new Set<string>();
 		for (const { entry, scriptSuffix, fromFolder, sibling } of sources) {
@@ -125,6 +126,29 @@ export class MetaReader {
 				uniqueDiagnostics(typos)
 			)
 		);
+	}
+
+	/** A folder with an init script is that script, not a Folder, so Rojo refuses a `className` in its meta. */
+	private checkClassNames(
+		placement: Placement,
+		folderMeta: readonly FolderMeta[],
+		problems: DiagnosticCollector
+	): void {
+		const initFolders = new Set(
+			placement.files.flatMap(({ init }) =>
+				init ? [init.becomes, init.sitsIn] : []
+			)
+		);
+		for (const meta of folderMeta)
+			if (
+				meta.fields.className !== undefined &&
+				initFolders.has(meta.folder)
+			)
+				problems.error(
+					"meta.classNameOnScript",
+					{ resource: meta.file },
+					`sets a className, but its folder holds an init script, which decides the class, so Rojo refuses this meta. Remove className, or rename the script to change its class.`
+				);
 	}
 
 	/** Every folder's `init.meta.json` or `init.meta.jsonc`, read together; fails on one Rojo would refuse. */

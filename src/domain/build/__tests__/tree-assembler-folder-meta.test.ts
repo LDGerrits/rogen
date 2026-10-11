@@ -120,7 +120,7 @@ describe("TreeAssembler", () => {
 			it("should copy nothing onto an init folder", async () => {
 				await write("src/Bots/init.luau", "src/Other.server.luau");
 				await writeMeta("src/Bots/init.meta.json", {
-					className: "Actor",
+					attributes: { a: 1 },
 				});
 
 				const storage = await storageOf({ routes: SPLIT });
