@@ -11,6 +11,9 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
+import { toNative } from "../../base/path.js";
+import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
+import { buildEntry } from "../build/build-document.js";
 import { BuildLog } from "../build/build-log.js";
 
 interface WatchChange {
@@ -91,8 +94,18 @@ function counted(
 	return parts.length > 0 ? `${parts.join(" and ")} ${what}` : undefined;
 }
 
+/** What a watch tells its user, as it happens. */
+export interface WatchReporter {
+	/** Opens the output: the configs watched. */
+	begin(configs: readonly ResolvedConfig[], home?: string): void;
+	update(update: WatchUpdate): void;
+	/** A step of the watch failed unexpectedly; the watch goes on. */
+	error(error: Error): void;
+	end(): void;
+}
+
 /** How `watch` reports each round of rebuilds. */
-export class WatchLog {
+export class WatchLog implements WatchReporter {
 	private readonly buildLog: BuildLog;
 
 	/** `command` is the one whose output it is: `serve` reports its rebuilds as `watch` does. */
@@ -183,5 +196,42 @@ export class WatchLog {
 				],
 			}
 		);
+	}
+}
+
+/** How `watch --json` reports each round of rebuilds, as one JSON object per line: each notice, then each build. */
+export class WatchJsonLog implements WatchReporter {
+	constructor(private readonly logService: LogService) {}
+
+	begin(): void {}
+
+	end(): void {}
+
+	update(update: WatchUpdate): void {
+		update.notices.forEach((notice) => this.notice(notice));
+		for (const { build } of update.reports)
+			this.line({ build: buildEntry(build) });
+	}
+
+	/** A step of the watch failed unexpectedly; the watch goes on. */
+	error(error: Error): void {
+		this.line({ error: error.message });
+	}
+
+	line(value: unknown): void {
+		this.logService.print(JSON.stringify(value));
+	}
+
+	private notice(notice: ConfigNotice): void {
+		this.line({
+			notice: {
+				kind: notice.kind,
+				file: toNative(notice.file),
+				...(notice.kind === "broken" && {
+					keptLastValid: notice.keptLastValid,
+					diagnostics: notice.errors.map(diagnosticToJson),
+				}),
+			},
+		});
 	}
 }

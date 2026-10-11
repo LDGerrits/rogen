@@ -7,7 +7,7 @@ stdout:
     rogen build [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
@@ -38,17 +38,19 @@ stdout:
     rogen watch [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.
         --mode <name>        Picks the mode every config that declares modes builds in.
         --variant <name>     Turns a variant on, beyond those the mode lists. (repeatable)
         --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
+        --json               Print one JSON object per line: each config change and each build.
   
   Examples:
     rogen watch
     rogen watch lobby --variant dev
+    rogen watch --json
   
   Global options:
     -h, --help     Print help.
@@ -91,7 +93,7 @@ stdout:
     rogen list [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
         --mode <name>        Picks the mode every config that declares modes builds in.
@@ -118,7 +120,7 @@ stdout:
     rogen build [config...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.
+    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
     -o, --out-file <path>    Overrides outFile, for one config.

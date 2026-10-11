@@ -48,17 +48,14 @@ export class CoreConfigSelection implements ReloadableSelection {
 		this.filePaths = new PathSet(this._files);
 	}
 
-	/** Loads `files` with `overrides`; fails when a variant or mode override is declared by none of them. */
-	static async load(
-		files: readonly string[],
+	/** A selection of `managed`, opened with `overrides`; fails when a variant or mode override is declared by none of them. */
+	static create(
+		managed: readonly ManagedConfig[],
 		loader: ConfigLoader,
 		overrides: ConfigOverrides,
 		home: string,
 		folder?: PickedFolder
-	): Promise<Result<CoreConfigSelection, Error>> {
-		const managed = await Promise.all(
-			files.map((file) => ManagedConfig.open(file, loader, overrides))
-		);
+	): Result<CoreConfigSelection, Error> {
 		const problem =
 			undeclaredVariant(managed, overrides) ??
 			undeclaredMode(managed, overrides);

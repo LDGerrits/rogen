@@ -10,6 +10,8 @@ stdout:
         "extends": [
           "<dir>/source.rogen.json"
         ],
+        "extendedBy": [],
+        "served": true,
         "projectName": "project",
         "rootDirs": [
           "<dir>/src"
@@ -40,6 +42,8 @@ stdout:
         "file": "<dir>/lobby.rogen.json",
         "status": "valid",
         "extends": [],
+        "extendedBy": [],
+        "served": true,
         "projectName": "project",
         "rootDirs": [
           "<dir>/core",
@@ -68,6 +72,10 @@ stdout:
         "file": "<dir>/source.rogen.json",
         "status": "valid",
         "extends": [],
+        "extendedBy": [
+          "<dir>/default.rogen.json"
+        ],
+        "served": false,
         "projectName": "project",
         "rootDirs": [
           "<dir>/src"
@@ -106,6 +114,8 @@ stdout:
         "file": "<dir>/lobby.rogen.json",
         "status": "valid",
         "extends": [],
+        "extendedBy": [],
+        "served": true,
         "projectName": "project",
         "rootDirs": [
           "<dir>/core",

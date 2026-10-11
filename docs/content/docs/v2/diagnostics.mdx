@@ -961,7 +961,7 @@ Pin the tool, or fix the install the quoted line points at. Running `rojo --vers
 
 ### `serve.portTaken` [#serve-porttaken]
 
-Error. Another program holds the port a config would be served on. When it's a Rojo or Argon server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running and doesn't start another.
+Error. Another program holds the port a config would be served on. When it's a Rojo or Argon server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running, and builds for it when no `rogen serve` started it. It is one when another config here has the same project name and no `rogen serve` started the server, since Rogen can't tell which config it serves: stop that server and run `rogen serve` again.
 
 ```
 default.rogen.json - error: Port 34872 is taken by Rojo serving shop, so default can't be served there. Give default a template with its own servePort, or run 'rogen serve default -- --port 34873'. (serve.portTaken)

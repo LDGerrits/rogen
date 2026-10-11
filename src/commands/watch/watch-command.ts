@@ -11,14 +11,23 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { CommandLine } from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { WatchLog } from "./watch-log.js";
+import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
+
+const WatchOptions = [
+	...ConfigOptions,
+	{
+		...JsonOption,
+		description:
+			"Print one JSON object per line: each config change and each build.",
+	},
+] as const;
 
 registerCommand(
-	class WatchCommand extends AbstractCommand<typeof ConfigOptions> {
+	class WatchCommand extends AbstractCommand<typeof WatchOptions> {
 		constructor() {
 			super({
 				id: "watch",
@@ -26,10 +35,11 @@ registerCommand(
 					description:
 						"Builds, then rebuilds whenever sources or configs change.",
 					args: ConfigArguments,
-					options: ConfigOptions,
+					options: WatchOptions,
 					examples: [
 						"rogen watch",
 						"rogen watch lobby --variant dev",
+						"rogen watch --json",
 					],
 				},
 			});
@@ -38,15 +48,17 @@ registerCommand(
 		/** Watches until the process is asked to shut down. */
 		async run(
 			accessor: ServicesAccessor,
-			line: CommandLine<typeof ConfigOptions>
+			line: CommandLine<typeof WatchOptions>
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
 			const configService = accessor.get(ConfigService);
 			const watchService = accessor.get(WatchService);
-			const log = new WatchLog(
-				logService,
-				accessor.get(EnvironmentService).cwd
-			);
+			const log: WatchReporter = line.options.json
+				? new WatchJsonLog(logService)
+				: new WatchLog(
+						logService,
+						accessor.get(EnvironmentService).cwd
+					);
 
 			// Subscribed first, so Ctrl+C while the configs load still stops the run.
 			const store = new DisposableStore();

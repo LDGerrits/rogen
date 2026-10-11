@@ -11,6 +11,8 @@ stdout:
           "<dir>/middle.rogen.json",
           "<dir>/core.rogen.json"
         ],
+        "extendedBy": [],
+        "served": true,
         "projectName": "project",
         "rootDirs": [
           "<dir>/lib",

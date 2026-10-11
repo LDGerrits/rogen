@@ -104,7 +104,7 @@ export class CoreServeService implements ServeService {
 			const result = await ports.check(
 				target,
 				targets,
-				servedConfigs.sharesName(target.project)
+				servedConfigs.namesakesOf(target.config)
 			);
 			if (result.isOk()) checked.push(result.value);
 			else taken.push(result.error);

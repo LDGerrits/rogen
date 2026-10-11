@@ -37,7 +37,7 @@ export const ConfigArguments = [
 	{
 		name: "config",
 		description:
-			"A config's name (lobby for lobby.rogen.json) or path. Every config here, or in the nearest folder above that has any, when none is given.",
+			"A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.",
 		isOptional: true,
 		isVariadic: true,
 	},
@@ -170,7 +170,7 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, each a name or a path, or every config in the working directory when it names none (or in the nearest folder above that has any, when the working directory has none), with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, each a name or a path, with the configs in a named one's folder that extend it, or every config in the working directory when it names none (or in the nearest folder above that has any, when the working directory has none), with the overrides `options` set. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
 		refs: readonly string[],
 		options: ConfigOptionValues

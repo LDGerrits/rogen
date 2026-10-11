@@ -1,7 +1,11 @@
 import { relativeTo, toNative } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
-import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
+import {
+	ResolvedConfig,
+	configLabel,
+	leafConfigs,
+} from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
@@ -46,8 +50,18 @@ export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
 	readonly extends: readonly string[];
+	/** The configs listed that extend it directly. */
+	readonly extendedBy: readonly string[];
+	/** Whether `rogen serve` starts a server for it: no listed config extends it. */
+	readonly served: boolean;
 	readonly diagnostics: readonly DiagnosticJson[];
 }
+
+/** The entries of `entries` whose nearest parent is `entry`. */
+const extendersOf = (
+	entry: ConfigEntry,
+	entries: readonly ConfigEntry[]
+): ConfigEntry[] => entries.filter(({ parents }) => parents[0] === entry.file);
 
 /** What `list --json` prints. */
 export interface ListDocument {
@@ -82,10 +96,17 @@ export class ListLog {
 		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
 		for (const entry of entries) {
-			const extended =
-				entry.parents.length > 0
+			const extenders = extendersOf(entry, entries);
+			const extended = [
+				...(entry.parents.length > 0
 					? [`extends: ${entry.parents.map(relative).join(" -> ")}`]
-					: [];
+					: []),
+				...(extenders.length > 0
+					? [
+							`extended by: ${extenders.map(({ file }) => relative(file)).join(", ")}`,
+						]
+					: []),
+			];
 			if (entry.status === "broken") {
 				logService.section(
 					relative(entry.file),
@@ -138,12 +159,17 @@ export class ListLog {
 	}
 
 	json(entries: readonly ConfigEntry[]): ListDocument {
+		const leaves = new Set(leafConfigs(entries));
 		return {
 			configs: entries.map((entry) => ({
 				config: configLabel(entry.file),
 				file: toNative(entry.file),
 				status: entry.status,
 				extends: entry.parents.map((file) => toNative(file)),
+				extendedBy: extendersOf(entry, entries).map(({ file }) =>
+					toNative(file)
+				),
+				served: leaves.has(entry),
 				...(entry.status === "valid"
 					? configDetails(entry.config)
 					: {}),

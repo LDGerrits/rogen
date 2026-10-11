@@ -1,9 +1,8 @@
 import { ResolvedConfig, leafConfigs } from "../config/config.js";
 
-/** Which of a serve's configs it serves: the ones named on the command line, else the leaves. */
+/** Which of a serve's configs it serves: the ones no other config extends, among the named ones and those that extend them, else among all. */
 export class ServedConfigs {
 	readonly configs: readonly ResolvedConfig[];
-	private readonly servable: ReadonlySet<ResolvedConfig>;
 
 	constructor(
 		readonly all: readonly ResolvedConfig[],
@@ -11,17 +10,20 @@ export class ServedConfigs {
 	) {
 		const leaves = leafConfigs(all);
 		this.configs = named
-			? all.filter(({ file }) => named.has(file))
+			? leaves.filter(
+					({ file, parents }) =>
+						named.has(file) ||
+						parents.some((parent) => named.has(parent))
+				)
 			: leaves;
-		this.servable = new Set([...leaves, ...this.configs]);
 	}
 
-	/** Whether several configs a server could serve here have `project`'s name, so a server of that name can't be told apart. */
-	sharesName(project: string): boolean {
-		return (
-			[...this.servable].filter(
-				({ projectName: name }) => name === project
-			).length > 1
+	/** The other configs here with `config`'s project name, which a server that only says that name could be serving. */
+	namesakesOf(config: ResolvedConfig): ResolvedConfig[] {
+		return this.all.filter(
+			(other) =>
+				other.file !== config.file &&
+				other.projectName === config.projectName
 		);
 	}
 }

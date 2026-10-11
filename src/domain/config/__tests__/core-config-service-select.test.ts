@@ -49,6 +49,57 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it("should select a named config with the configs beside it that extend it, however far down", async () => {
+			await write("/repo/default.rogen.json", {});
+			await write("/repo/lobby.rogen.json", {
+				extends: "./default.rogen.json",
+			});
+			await write("/repo/lobby-sync.rogen.json", {
+				extends: "./lobby.rogen.json",
+			});
+			await write("/repo/match.rogen.json", {});
+
+			const selection = (await start({ names: ["default"] })).unwrap();
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+				"/repo/lobby-sync.rogen.json",
+				"/repo/lobby.rogen.json",
+			]);
+		});
+
+		it("should not look beyond a named config's folder for configs that extend it", async () => {
+			await write("/repo/default.rogen.json", {});
+			await write("/repo/places/lobby.rogen.json", {
+				extends: "../default.rogen.json",
+			});
+
+			const selection = (await start({ names: ["default"] })).unwrap();
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+			]);
+		});
+
+		it("should apply -o to the named config only, not to those that extend it", async () => {
+			await write("/repo/lobby.rogen.json", {});
+			await write("/repo/lobby-sync.rogen.json", {
+				extends: "./lobby.rogen.json",
+			});
+
+			const selection = (
+				await start({
+					names: ["lobby"],
+					overrides: { outFile: "a.json", variants: {} },
+				})
+			).unwrap();
+
+			expect(selection.configs.map(({ outFile }) => outFile)).toEqual([
+				"/repo/a.json",
+				"/repo/lobby-sync.project.json",
+			]);
+		});
+
 		const refusal = async (refs: Refs) => {
 			await write("/repo/lobby.rogen.json", {});
 			await write("/repo/match.rogen.json", {});

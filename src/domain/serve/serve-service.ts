@@ -58,6 +58,8 @@ export interface ServeTarget {
 	readonly address: ServeAddress;
 	/** What already serves its project, when something does. */
 	readonly servedBy?: ServerInfo;
+	/** Whether `servedBy` is a server no serve started, which this serve builds for instead of starting one, and stops with. */
+	readonly adopted?: boolean;
 }
 
 /** A target a server already serves. */
@@ -87,9 +89,14 @@ export class ServePlan {
 		return this.targets.filter(({ servedBy }) => servedBy === undefined);
 	}
 
-	/** Whether every target is served already, so nothing is built or watched. */
+	/** The targets a server no serve started already serves, which this serve builds for. */
+	get adopted(): ServedTarget[] {
+		return this.alreadyServed.filter(({ adopted }) => adopted);
+	}
+
+	/** Whether another serve already serves every target, so nothing is built or watched. */
 	get isIdle(): boolean {
-		return this.toStart.length === 0;
+		return this.toStart.length === 0 && this.adopted.length === 0;
 	}
 }
 
@@ -105,10 +112,11 @@ export interface ServerOutputEvent {
 	readonly message: ServerMessage;
 }
 
-/** A server the session started that stopped before the session did. */
+/** A server the session started or adopted that stopped before the session did. */
 export type ServerExitEvent = {
 	readonly target: ServeTarget;
-	readonly exit: ProcessExit;
+	/** How its process exited; none for an adopted server, which only stopped answering. */
+	readonly exit?: ProcessExit;
 	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
 	readonly interrupted: boolean;
 } & (
@@ -138,7 +146,7 @@ export type ServeChangeEvent =
 	/** A config to serve now is already served by a server the session didn't start. */
 	| { readonly kind: "servedElsewhere"; readonly target: ServedTarget };
 
-/** A running serve: a watch of the plan's configs, and a server for each target nothing served. The caller owns it and disposes it. */
+/** A running serve: a watch of the plan's configs, and a server for each target nothing served, or the adopted one that serves it. The caller owns it and disposes it. */
 export interface ServeSession extends Disposable {
 	readonly onDidUpdate: Event<WatchUpdate>;
 	/** A step failed unexpectedly; the serve goes on. */
@@ -149,10 +157,10 @@ export interface ServeSession extends Disposable {
 	readonly onDidOutput: Event<ServerOutputEvent>;
 	/** Fired when the configs to serve change while it serves. */
 	readonly onDidChange: Event<ServeChangeEvent>;
-	/** Fired when a server stops before the session does, after what it said. */
+	/** Fired when a server stops before the session does, after what it said, or when an adopted one stops answering for its project. */
 	readonly onDidExit: Event<ServerExitEvent>;
 
-	/** The targets it runs a server for now. */
+	/** The targets it runs or adopted a server for now. */
 	readonly targets: readonly ServeTarget[];
 
 	/** Builds, then starts the servers. Fails with the build's errors, starting none, when the first build fails or throws. */
