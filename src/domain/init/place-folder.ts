@@ -1,8 +1,18 @@
 import path from "path";
+import { Result, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import { CodeFinder, PLACES_DIR, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
+import { TemplateReader } from "./template-reader.js";
+
+/** The project file a place was written by hand as, which its template starts from. */
+export interface HandWrittenProject {
+	readonly from: string;
+	readonly content: string;
+}
 
 /** The folder a place owns: its code in `src` with its template beside it, or, when the folder already holds code outside a `src`, the folder itself with the template beside the folder, so that code never moves. */
 export class PlaceFolder {
@@ -76,5 +86,20 @@ export class PlaceFolderReader {
 				path.join(directory, PlaceFolder.templateOf(folder, code))
 			)
 		);
+	}
+
+	/** The project file named after the place, when it was written by hand: no config beside it writes it. */
+	async handWrittenProject(
+		directory: InitDirectory,
+		place: string
+	): Promise<Result<HandWrittenProject | undefined, Diagnostic[]>> {
+		const from = projectFileName(place);
+		if (!directory.handWrittenProjectFiles.includes(from))
+			return ok(undefined);
+		const content = await new TemplateReader(
+			this.fileSystemService,
+			directory.path
+		).read(from);
+		return content.map((text) => ({ from, content: text }));
 	}
 }

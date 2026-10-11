@@ -1019,14 +1019,14 @@ describe("InitQuestions askProject layout", () => {
 	it.each([
 		["lobby, lobby", "lobby is listed twice."],
 		["default", "default.rogen.json is written for default"],
-		["arena", "arena.project.json already exists."],
+		["arena", "arena-sync.project.json already exists."],
 	])("should reject the places %j at the prompt", async (answer, message) => {
 		await expect(
 			ask(
-				luau,
+				{ ...luau, darkluaConfig: ".darklua.json" },
 				{ "What are you setting up?": "several", Places: answer },
 				undefined,
-				["arena.project.json"]
+				["arena-sync.project.json"]
 			)
 		).rejects.toThrow(message);
 	});

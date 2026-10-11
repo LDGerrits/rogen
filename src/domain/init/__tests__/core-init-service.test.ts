@@ -669,14 +669,17 @@ describe("CoreInitService", () => {
 				);
 			});
 
-			it("should reject a place whose project file exists", async () => {
-				await expect(
-					planWith(
-						{ "Place name": "arena" },
-						[],
-						["arena.project.json"]
-					)
-				).rejects.toThrow("arena.project.json already exists.");
+			it("should take a place's hand-written project file as its template", async () => {
+				const { result } = await planWith(
+					{ "Place name": "arena" },
+					[],
+					["arena.project.json"]
+				);
+
+				const files = result.unwrap()?.files ?? [];
+				expect(files.map(({ fileName }) => fileName)).toContain(
+					"places/arena/template.project.json"
+				);
 			});
 
 			it("should add an extending config by name", async () => {
@@ -776,26 +779,20 @@ describe("CoreInitService", () => {
 					]);
 				});
 
-				it("should name a taken project file without asking to delete it", async () => {
+				it("should copy a taken project file to the place's template rather than refuse the name", async () => {
 					await write("lobby.project.json", "{}");
 
-					const result = await planNamed(["lobby"]);
+					const plan = (await planNamed(["lobby"])).unwrap();
 
-					expect(
-						result.isErr() &&
-							result.error instanceof DiagnosticsError &&
-							result.error.diagnostics
-					).toMatchObject([
-						{
-							code: "init.fileExists",
-							resource: path.join(
-								directory,
-								"lobby.project.json"
-							),
-							message:
-								"this file already exists, and init never overwrites one. Pick another name.",
-						},
-					]);
+					expect(plan?.files.map(({ fileName }) => fileName)).toEqual(
+						[
+							"lobby.rogen.json",
+							"places/lobby/template.project.json",
+						]
+					);
+					expect(plan?.notes).toContain(
+						"Copying lobby.project.json to places/lobby/template.project.json, since Rogen replaces lobby.project.json on every build."
+					);
 				});
 
 				it("should fail rather than add a place folder inside default's root dirs", async () => {

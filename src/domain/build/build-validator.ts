@@ -86,6 +86,7 @@ export class BuildValidator {
 			...this.rootDirNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.extensionCase(),
+			...this.nestedProject(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
 			...this.strayAt(),
@@ -196,6 +197,22 @@ export class BuildValidator {
 					"scan.unresolvedLink",
 					{ resource: link },
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
+				)
+			);
+	}
+
+	private nestedProject(): Diagnostic[] {
+		return this.placement.files
+			.filter(
+				({ entry }) =>
+					path.posix.basename(entry.relativePath) ===
+					"default.project.json"
+			)
+			.map(({ entry, instancePath }) =>
+				warningDiagnostic(
+					"scan.nestedProject",
+					{ resource: entry.source },
+					`Rojo reads this project file as a nested project, so it becomes ${instanceKey(instancePath)}, holding that project's tree. A project file for the folder it lies in belongs outside the root dirs.`
 				)
 			);
 	}

@@ -231,12 +231,13 @@ export class ConfigSet {
 		return [...this.configFiles, ...this.outputFiles];
 	}
 
-	/** The files a place named like this writes, the compiler's own among them. */
+	/** The files a place named like this writes, the compiler's own among them, except its own project file: one found there was written by hand, and becomes the place's template. */
 	get placeFiles(): string[] {
+		const own = projectFileName(this.name);
 		return [
 			...this.configFiles,
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			...this.outputFiles,
+			...this.outputFiles.filter((file) => file !== own),
 		];
 	}
 }

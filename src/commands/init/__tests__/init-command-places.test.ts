@@ -315,9 +315,60 @@ describe("init command", () => {
 			expect(prompts.asked).toHaveLength(1);
 		});
 
-		it("should fail before the place folder when a given name would replace a project file", async () => {
+		it("should copy the project file named after the place to its template, without the nodes into its code", async () => {
+			await setUpLuau();
+			await write(
+				"lobby.project.json",
+				JSON.stringify({
+					name: "Lobby Game",
+					servePort: 34900,
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { $path: "places/lobby/src" },
+						Workspace: { $properties: { Gravity: 100 } },
+					},
+				})
+			);
+
+			const logService = new MockLogService();
+			const result = await runInit(["lobby"], undefined, logService);
+
+			expect(result.isOk()).toBe(true);
+			const template = await readJson(
+				"places/lobby/template.project.json"
+			);
+			expect(template.name).toBe("Lobby Game");
+			expect(template.servePort).toBe(34900);
+			expect(template.tree.ReplicatedStorage).toBeUndefined();
+			expect(template.tree.Workspace).toBeDefined();
+			expect((await readJson("lobby.project.json")).name).toBe(
+				"Lobby Game"
+			);
+			expect(logService.lines).toContain(
+				"info: Copying lobby.project.json to places/lobby/template.project.json, since Rogen replaces lobby.project.json on every build."
+			);
+		});
+
+		it("should leave a place template that exists as it is and say the project file is replaced", async () => {
 			await setUpLuau();
 			await write("lobby.project.json", "{}");
+			await write("places/lobby/template.project.json", '{"name":"X"}');
+			const logService = new MockLogService();
+
+			await runInit(["lobby"], undefined, logService);
+
+			expect(await read("places/lobby/template.project.json")).toBe(
+				'{"name":"X"}'
+			);
+			expect(logService.lines).toContain(
+				"info: Rogen replaces lobby.project.json on every build; move anything you need from it into places/lobby/template.project.json first."
+			);
+		});
+
+		it("should still refuse a place whose synced project file exists", async () => {
+			await write(".darklua.json");
+			await write("default.rogen.json", "{}");
+			await write("lobby-sync.project.json", "{}");
 			const prompts = offerAnd();
 
 			const result = await runInit(["lobby"], prompts);
@@ -325,10 +376,9 @@ describe("init command", () => {
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
 					code: "init.fileExists",
-					resource: path.join(cwd, "lobby.project.json"),
+					resource: path.join(cwd, "lobby-sync.project.json"),
 				},
 			]);
-			expect(prompts.asked).toHaveLength(1);
 		});
 
 		it("should allow a place name whose -sync file exists when no synced config is written", async () => {
@@ -582,6 +632,24 @@ describe("init command", () => {
 			expect((await readJson("default.rogen.json")).template).toBe(
 				"places/shared/template.project.json"
 			);
+		});
+
+		it("should copy a project file named after a place of a new project to the place's template", async () => {
+			await write(
+				"lobby.project.json",
+				JSON.stringify({ name: "Lobby Game", tree: {} })
+			);
+			const prompts = new MockPromptService({
+				"What are you setting up?": "several",
+				Places: "lobby",
+			});
+
+			const result = await runInit([], prompts);
+
+			expect(result.isOk()).toBe(true);
+			expect(
+				(await readJson("places/lobby/template.project.json")).name
+			).toBe("Lobby Game");
 		});
 
 		it("should take other shared folders when that is the answer", async () => {

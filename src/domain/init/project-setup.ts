@@ -1,14 +1,7 @@
-import { failureReason } from "../../base/errors.js";
 import path from "path";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
-import {
-	FileReader,
-	isMissingPath,
-} from "../../platform/fs/file-system-service.js";
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { RogenConfig, configFileName } from "../config/config.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
@@ -20,7 +13,11 @@ import {
 	SharedCode,
 	UnusablePlace,
 } from "./init-questions.js";
-import { PlaceFolder, PlaceFolderReader } from "./place-folder.js";
+import {
+	HandWrittenProject,
+	PlaceFolder,
+	PlaceFolderReader,
+} from "./place-folder.js";
 import { PlacePlan } from "./place-plan.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 import { DerivedRoutes } from "./derived-routes.js";
@@ -31,6 +28,7 @@ import {
 	TemplateChoice,
 } from "./template-plan.js";
 import { Setup } from "./setup.js";
+import { TemplateReader } from "./template-reader.js";
 
 /** Every answer the new-project questions give, whether asked or defaulted. */
 export interface ProjectChoices {
@@ -59,6 +57,8 @@ export interface ProjectChoices {
 export interface ProjectPlace {
 	readonly name: string;
 	readonly folder: PlaceFolder;
+	/** The project file named after it that was there before. */
+	readonly handWritten?: HandWrittenProject;
 }
 
 /** The routes the nodes a copied project file loses become; asking and planning both read them from here, so the ids they use agree. */
@@ -151,8 +151,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const places =
 			layout === "several"
 				? await this.askPlaces(identity.value, rootDirs, outputs)
-				: { places: [], unusable: [] };
-		if (places === undefined) return ok(undefined);
+				: ok({ places: [], unusable: [] });
+		if (places.isErr()) return places;
+		if (places.value === undefined) return ok(undefined);
 
 		return ok({
 			name,
@@ -165,9 +166,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			mounts,
 			routes: routes.routes,
 			fallback: routes.fallback,
-			places: places.places,
-			...(places.unusable.length > 0 && {
-				unusablePlaces: places.unusable,
+			places: places.value.places,
+			...(places.value.unusable.length > 0 && {
+				unusablePlaces: places.value.unusable,
 			}),
 			...(modes && { modes }),
 		});
@@ -222,7 +223,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		templateDir: string | undefined
 	): Promise<Result<ProjectTemplate, Diagnostic[]>> {
 		if (chosen.kind === "copy") {
-			const copied = await this.readTemplate(chosen.from);
+			const copied = await new TemplateReader(
+				this.fileSystemService,
+				this.directory.path
+			).read(chosen.from);
 			return copied.isErr()
 				? err(copied.error)
 				: ok({ ...chosen, content: copied.value });
@@ -253,11 +257,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		rootDirs: readonly string[],
 		outputs: readonly string[]
 	): Promise<
-		| {
-				readonly places: ProjectPlace[];
-				readonly unusable: UnusablePlace[];
-		  }
-		| undefined
+		Result<
+			| {
+					readonly places: ProjectPlace[];
+					readonly unusable: UnusablePlace[];
+			  }
+			| undefined,
+			Diagnostic[]
+		>
 	> {
 		const { directory } = this;
 		const answer = await this.questions.places(directory, {
@@ -270,38 +277,24 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				TEMPLATE_FILE,
 			]),
 		});
-		if (answer === undefined) return undefined;
-		const places = await Promise.all(
-			answer.places.map(async (place) => ({
-				name: place,
+		if (answer === undefined) return ok(undefined);
+		const places: ProjectPlace[] = [];
+		for (const name of answer.places) {
+			const handWritten = await this.placeFolders.handWrittenProject(
+				directory,
+				name
+			);
+			if (handWritten.isErr()) return handWritten;
+			places.push({
+				name,
+				handWritten: handWritten.value,
 				folder: await this.placeFolders.read(
 					directory.path,
-					PlaceFolder.pathIn(directory, place, rootDirs)
+					PlaceFolder.pathIn(directory, name, rootDirs)
 				),
-			}))
-		);
-		return { places, unusable: [...answer.unusable] };
-	}
-
-	/** The file a `copy` template choice copies, as it is. */
-	private async readTemplate(
-		fileName: string
-	): Promise<Result<string, Diagnostic[]>> {
-		const file = path.join(this.directory.path, fileName);
-		const text = await tryWithAsync(() =>
-			this.fileSystemService.readFile(file)
-		);
-		return text.isOk()
-			? text
-			: err([
-					errorDiagnostic(
-						"init.templateUnreadable",
-						{ resource: file },
-						isMissingPath(text.error)
-							? "this file does not exist, so it can't be copied."
-							: `couldn't read this file to copy it: ${failureReason(text.error)}.`
-					),
-				]);
+			});
+		}
+		return ok({ places, unusable: [...answer.unusable] });
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
@@ -368,12 +361,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		{ language, darklua, rootDirs, syncDir, places }: ProjectChoices
 	): PlacePlan[] {
 		const ports: number[] = [];
-		const plans = places.map(({ name, folder }) => {
+		const plans = places.map(({ name, folder, handWritten }) => {
 			const servePort = PlacePlan.freePort(ports);
 			ports.push(servePort);
 			return new PlacePlan(this.directory, {
 				name,
 				folder,
+				handWritten,
 				servePort,
 				language,
 				darklua,

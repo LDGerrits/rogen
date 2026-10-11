@@ -80,7 +80,13 @@ export class TemplatePlan {
 			);
 		}
 		if (template.kind === "copy")
-			return TemplatePlan.copied(template, mounts, dirs, derived);
+			return TemplatePlan.copied(
+				TEMPLATE_FILE,
+				template,
+				mounts,
+				dirs,
+				derived
+			);
 		if (template.kind === "use")
 			return new TemplatePlan(
 				undefined,
@@ -111,7 +117,17 @@ export class TemplatePlan {
 			: new TemplatePlan(undefined, undefined, [], []);
 	}
 
+	/** A hand-written project file copied to `fileName`, as a place's template, without the nodes that point into `dirs`. */
+	static copiedTo(
+		fileName: string,
+		source: { readonly from: string; readonly content: string },
+		dirs: readonly string[]
+	): TemplatePlan {
+		return TemplatePlan.copied(fileName, source, [], dirs, undefined);
+	}
+
 	private static copied(
+		fileName: string,
 		{ from, content }: { readonly from: string; readonly content: string },
 		mounts: readonly Mount[],
 		dirs: readonly string[],
@@ -127,16 +143,16 @@ export class TemplatePlan {
 		const skipped = mounted?.skipped ?? [];
 		return new TemplatePlan(
 			{
-				fileName: TEMPLATE_FILE,
+				fileName,
 				// Rewriting would drop comments and formatting, so only do it when something changed.
 				content:
 					mounted && removed.length + added.length > 0
 						? mounted.template.toJson()
 						: content,
 			},
-			TEMPLATE_FILE,
+			fileName,
 			[
-				`Copying ${from} to ${TEMPLATE_FILE}, since Rogen replaces ${from} on every build.`,
+				`Copying ${from} to ${fileName}, since Rogen replaces ${from} on every build.`,
 				...(removed.length > 0
 					? [
 							`Left out ${joinedWithAnd(removed)}, since ${removed.length === 1 ? "it points" : "they point"} into ${joinedWithOr(dirs)} and Rogen generates that code now.`,
@@ -150,11 +166,11 @@ export class TemplatePlan {
 						]
 					: []),
 				...(added.length > 0
-					? [`Added ${joinedWithAnd(added)} to ${TEMPLATE_FILE}.`]
+					? [`Added ${joinedWithAnd(added)} to ${fileName}.`]
 					: []),
 				...(skipped.length > 0
 					? [
-							`Didn't add ${joinedWithAnd(skipped)} to ${TEMPLATE_FILE}, since it already has ${skipped.length === 1 ? "a node" : "nodes"} there.`,
+							`Didn't add ${joinedWithAnd(skipped)} to ${fileName}, since it already has ${skipped.length === 1 ? "a node" : "nodes"} there.`,
 						]
 					: []),
 			],
@@ -162,14 +178,14 @@ export class TemplatePlan {
 				...(stripped
 					? []
 					: [
-							`Remove the nodes in ${TEMPLATE_FILE} that point into ${joinedWithOr(dirs)}; Rogen generates those now.`,
+							`Remove the nodes in ${fileName} that point into ${joinedWithOr(dirs)}; Rogen generates those now.`,
 						]),
 				...(parsed || mounts.length === 0
 					? []
 					: [
 							`Mount ${joinedWithAnd(
 								mounts.map(({ path }) => path)
-							)} in ${TEMPLATE_FILE}; Rogen couldn't read it to add the ${mounts.length === 1 ? "mount" : "mounts"}.`,
+							)} in ${fileName}; Rogen couldn't read it to add the ${mounts.length === 1 ? "mount" : "mounts"}.`,
 						]),
 			]
 		);

@@ -760,6 +760,16 @@ src/Save.LUAU - warning: Rojo reads an extension only in lowercase, so it ignore
 
 Rename the file as the message says. The same holds for `.JSON`, `.MODEL.JSON` and every other extension Rojo reads.
 
+### `scan.nestedProject` [#scan-nestedproject]
+
+Warning. A `default.project.json` lies inside a root dir. Rojo reads it as a nested project, so it becomes an instance named `default`, holding that project's tree. That is what a project file in a place's folder, such as `places/arena/default.project.json`, does by mistake: it was meant for the place, not for the game. Other project files are left alone, since a nested project with a name of its own is a thing Rojo supports.
+
+```
+places/arena/default.project.json - warning: Rojo reads this project file as a nested project, so it becomes ReplicatedStorage/Shared/default, holding that project's tree. A project file for the folder it lies in belongs outside the root dirs. (scan.nestedProject)
+```
+
+Move the file out of the root dirs. For a place, `rogen init <place>` copies the `<place>.project.json` beside the config to the place's template, which Rogen builds the project file from. If it is meant as a nested project, mount it in the template with a `$path` instead, which Rogen leaves to Rojo.
+
 ### `scan.rootDirNamedAfterKey` [#scan-rootdirnamedafterkey]
 
 Warning. A root directory is named after a route or variant key. Routing starts below a root directory, so its name routes (or prunes) nothing, and its files land wherever the `*` route sends them, or nowhere. One warning lists every such root dir.

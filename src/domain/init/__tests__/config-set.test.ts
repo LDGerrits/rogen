@@ -68,10 +68,9 @@ describe("ConfigSet", () => {
 	});
 
 	describe("placeFiles", () => {
-		it("should be the place's config and project file", () => {
+		it("should be the place's config, without its own project file, which becomes its template", () => {
 			expect(new ConfigSet("lobby", luau, undefined).placeFiles).toEqual([
 				"lobby.rogen.json",
-				"lobby.project.json",
 			]);
 		});
 
@@ -79,7 +78,6 @@ describe("ConfigSet", () => {
 			expect(new ConfigSet("lobby", luau, darklua).placeFiles).toEqual([
 				"lobby.rogen.json",
 				"lobby-sync.rogen.json",
-				"lobby.project.json",
 				"lobby-sync.project.json",
 			]);
 		});
@@ -87,11 +85,7 @@ describe("ConfigSet", () => {
 		it("should add the compiler's own per-place files", () => {
 			expect(
 				new ConfigSet("lobby", robloxTs, undefined).placeFiles
-			).toEqual([
-				"lobby.rogen.json",
-				"tsconfig.lobby.json",
-				"lobby.project.json",
-			]);
+			).toEqual(["lobby.rogen.json", "tsconfig.lobby.json"]);
 		});
 	});
 });

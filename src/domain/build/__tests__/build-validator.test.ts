@@ -102,6 +102,40 @@ describe("BuildValidator rules", () => {
 			fs = new MemoryFileSystemService();
 		});
 
+		describe("a project file in a root dir", () => {
+			const nested = async (...files: string[]) => {
+				await write(...files);
+				return (await route())
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "scan.nestedProject"
+					);
+			};
+
+			it("should warn for a default.project.json, naming the instance it becomes", async () => {
+				const warnings = await nested(
+					"src/sub/default.project.json",
+					"src/Other.project.json"
+				);
+
+				expect(warnings).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: at("src", "sub", "default.project.json"),
+						message: expect.stringContaining(
+							"ReplicatedStorage/shared/sub/default"
+						),
+					},
+				]);
+			});
+
+			it("should not warn for a project file that is outside the root dirs", async () => {
+				expect(
+					await nested("src/A.luau", "default.project.json")
+				).toEqual([]);
+			});
+		});
+
 		describe("a root dir named after a key", () => {
 			const named = async (
 				rootDirs: string[],

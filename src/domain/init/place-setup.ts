@@ -56,8 +56,15 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 			]);
 		}
 
+		const handWritten = await this.placeFolders.handWrittenProject(
+			directory,
+			name
+		);
+		if (handWritten.isErr()) return handWritten;
+
 		return ok({
 			name,
+			handWritten: handWritten.value,
 			folder: await this.placeFolders.read(
 				directory.path,
 				normalizeDir(folder)
