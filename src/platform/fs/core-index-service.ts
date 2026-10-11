@@ -142,6 +142,10 @@ export class CoreIndexService implements IndexService {
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
+				// A folder that can't be read any more is reported deleted too, but dropping it would drop its files from the project; failing keeps the listing as it was.
+				await listingOf(dir);
+				if (isDirectoryType(change.fileType))
+					await listingOf(posixPath);
 				draft.delete(dir, name);
 			}
 		}
