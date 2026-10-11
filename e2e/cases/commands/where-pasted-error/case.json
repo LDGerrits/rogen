@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["where", "ServerScriptService.Combat.Hit:12: attempt to index nil", "src/Combat/Client/Hud.luau", "ServerScriptService.Combat", "ServerScriptService.Combat.Dodge:3"]
+	],
+	"rojo": false
+}

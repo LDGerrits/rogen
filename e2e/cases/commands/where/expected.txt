@@ -33,7 +33,6 @@ stdout:
 $ rogen where ServerScriptService.Combat.Moves:4: attempt to index nil ReplicatedStorage/Shared/Nope
 exit 0
 stdout:
-  src/Combat/Server/Moves/Punch.luau -> ServerScriptService/Combat/Moves/Punch · route Server (folder)
   src/Combat/Server/Moves/init.luau -> ServerScriptService/Combat/Moves · route Server (folder)
   ReplicatedStorage/Shared/Nope -> no file places it · a new file goes in src/Shared/
 

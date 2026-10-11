@@ -15,6 +15,7 @@ import { InstanceReference } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncTool } from "./build.js";
 import {
+	Asked,
 	ConfigLocations,
 	FileLocation,
 	InstanceFix,
@@ -32,6 +33,8 @@ interface Targets {
 	/** The resolved paths among `paths` that the argument named as a folder, by a trailing separator. */
 	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
+	/** The paths and instances in the order they were given. */
+	readonly asked: readonly Asked[];
 }
 
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
@@ -60,8 +63,8 @@ export class Locator {
 			located.push(locations.value);
 		}
 		return ok({
-			everyFile:
-				targets.paths.length === 0 && targets.instances.length === 0,
+			everyFile: targets.asked.length === 0,
+			asked: targets.asked,
 			configs: located,
 		});
 	}
@@ -82,6 +85,7 @@ export class Locator {
 		const paths: string[] = [];
 		const folders = new Set<string>();
 		const instances: InstanceReference[] = [];
+		const asked: Asked[] = [];
 		for (const given of args) {
 			const reference = InstanceReference.parse(given);
 			if (
@@ -89,17 +93,19 @@ export class Locator {
 				!(await this.fileSystemService.exists(
 					path.resolve(cwd, reference.service)
 				))
-			)
+			) {
 				instances.push(reference);
-			else {
+				asked.push({ instance: reference.text });
+			} else {
 				// A backslash is a separator on every platform, so a Windows-style path answers as its slash form does.
 				const arg = await this.withoutPosition(toPosix(given), cwd);
 				const resolved = path.resolve(cwd, arg);
 				paths.push(resolved);
+				asked.push({ path: toPosix(resolved) });
 				if (arg.endsWith("/")) folders.add(toPosix(resolved));
 			}
 		}
-		return { paths, folders, instances };
+		return { paths, folders, instances, asked };
 	}
 }
 

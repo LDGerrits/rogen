@@ -1,5 +1,7 @@
 import { groupBy } from "../../base/collections.js";
+import { containsPath } from "../../base/path.js";
 import {
+	Asked,
 	ConfigLocations,
 	FileLocation,
 	InstanceFix,
@@ -19,6 +21,8 @@ export interface FileAnswer {
 	readonly kind: "file";
 	readonly label: string;
 	readonly location: FileLocation;
+	/** The instance it was asked about by, when an instance and not its path asked. */
+	readonly instance?: string;
 	readonly mode: ModeContext;
 	readonly diagnostics: readonly Diagnostic[];
 }
@@ -49,22 +53,44 @@ export class WhereAnswers {
 	private readonly answers: Answer[];
 	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
 	private readonly sorted: boolean;
+	private readonly asked: readonly Asked[];
 
-	constructor({ everyFile, configs, errors }: Locations) {
+	constructor({ everyFile, asked, configs, errors }: Locations) {
 		this.errors = errors;
+		this.asked = asked;
 		this.rootDirs = configs.flatMap(({ config }) => config.rootDirs);
 		this.configCount = configs.length;
 		this.sorted = everyFile;
 		this.answers = configs.flatMap((located) => answersOf(located));
 	}
 
-	/** The answers to each path or instance, in the order they were first given, or sorted. */
+	/** The answers to each path or instance, in the order they were asked, or sorted. A directory's files stay together, in the order its config listed them. */
 	bySource(): Answer[][] {
 		const bySource = groupBy(this.answers, sourceOf);
 		const sources = [...bySource.keys()];
 		if (this.sorted) sources.sort();
+		else {
+			const rank = new Map(
+				sources.map((source) => [
+					source,
+					Math.min(...(bySource.get(source) ?? []).map(this.askedAt)),
+				])
+			);
+			sources.sort((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0));
+		}
 		return sources.map((source) => bySource.get(source) ?? []);
 	}
+
+	/** The position of the first thing asked about that this answer is for; after all of them when it is for none. */
+	private readonly askedAt = (answer: Answer): number => {
+		const at = this.asked.findIndex((entry) =>
+			"instance" in entry
+				? entry.instance === answer.instance
+				: answer.kind === "file" &&
+					containsPath(entry.path, answer.location.source)
+		);
+		return at === -1 ? this.asked.length : at;
+	};
 
 	/** `answers` without the ones that say a path is outside a config's root dirs, which is no news when another config places it; all of them when every config says so. */
 	static withoutOutside(answers: readonly Answer[]): readonly Answer[] {
@@ -91,19 +117,20 @@ function answersOf({
 		active: config.mode,
 		names: new Set(config.modes),
 	};
-	const answer = (location: FileLocation): FileAnswer => ({
+	const answer = (location: FileLocation, instance?: string): FileAnswer => ({
 		kind: "file",
 		label,
 		location,
+		...(instance !== undefined && { instance }),
 		mode,
 		diagnostics: diagnosticsOf(location, diagnostics),
 	});
 	return [
-		...locations.map(answer),
+		...locations.map((location) => answer(location)),
 		...instances.flatMap(
 			({ reference, files, folders, fixes }): Answer[] =>
 				files.length > 0
-					? files.map(answer)
+					? files.map((file) => answer(file, reference.text))
 					: [
 							{
 								kind: "instance",

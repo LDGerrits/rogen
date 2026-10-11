@@ -163,23 +163,6 @@ stdout:
     "locations": [
       {
         "config": "default",
-        "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
-        "status": "placed",
-        "exists": true,
-        "instancePath": [
-          "ServerScriptService",
-          "Combat",
-          "Moves",
-          "Punch"
-        ],
-        "require": "game:GetService(\"ServerScriptService\").Combat.Moves.Punch",
-        "route": "Server",
-        "routeMatch": "folder",
-        "variants": [],
-        "diagnostics": []
-      },
-      {
-        "config": "default",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
         "exists": true,

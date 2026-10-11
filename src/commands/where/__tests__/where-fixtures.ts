@@ -2,6 +2,7 @@ import { WhereAnswers } from "../where-answers.js";
 import { whereDocument } from "../where-document.js";
 import { WhereLog } from "../where-log.js";
 import {
+	Asked,
 	FileLocation,
 	InstanceLocation,
 } from "../../../domain/build/build-service.js";
@@ -19,10 +20,12 @@ export const answersOf = (
 	configs: Configs,
 	everyFile = false,
 	errors: Diagnostic[] = [],
-	modes: Parameters<typeof mockConfig>[0] = {}
+	modes: Parameters<typeof mockConfig>[0] = {},
+	asked: Asked[] = []
 ) =>
 	new WhereAnswers({
 		everyFile,
+		asked,
 		errors,
 		configs: configs.map(
 			([label, files, instances = [], diagnostics = []]) => ({
