@@ -5,6 +5,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
+	errorDiagnostic,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -193,6 +194,8 @@ export interface RojoMetaFields {
 	readonly id?: string;
 }
 
+const BYTE_ORDER_MARK = "\uFEFF";
+
 const META_SCHEMA: JSONSchema = {
 	type: "object",
 	// Rojo ignores fields it doesn't know, such as `$schema`.
@@ -220,6 +223,14 @@ export class RojoMeta {
 
 	/** The fields `text` sets, with a warning for each that is a slip from one Rojo reads, such as `classname`; or why Rojo would refuse `file`. A field that resembles none, such as `$schema`, is left alone. */
 	static parse(text: string, file: string): Result<ParsedMeta, Diagnostic[]> {
+		if (text.startsWith(BYTE_ORDER_MARK))
+			return err([
+				errorDiagnostic(
+					"meta.byteOrderMark",
+					{ resource: file, position: { line: 1, column: 1 } },
+					"starts with a byte order mark, which Rojo can't read, so it refuses the project. Save the file as UTF-8 without one."
+				),
+			]);
 		const document = RojoMeta.documents.read(text, file, META_SCHEMA);
 		if (document.isErr()) return err(document.error);
 

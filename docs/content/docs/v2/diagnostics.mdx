@@ -638,6 +638,16 @@ src/Combat/init.meta.json:3:1 - error: invalid JSONC: expected '}'. (meta.invali
 
 Fix the syntax at the line and column shown. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
 
+### `meta.byteOrderMark` [#meta-byteordermark]
+
+Error. A meta file starts with a byte order mark (the invisible character some editors and PowerShell's `Out-File` put first in a UTF-8 file). Rojo can't read a file that begins with one and refuses the whole project, so Rogen stops before it writes a project file that Rojo would then fail on.
+
+```
+src/Combat/init.meta.json:1:1 - error: starts with a byte order mark, which Rojo can't read, so it refuses the project. Save the file as UTF-8 without one. (meta.byteOrderMark)
+```
+
+Save the file as UTF-8 without a byte order mark. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
 ### `meta.notAnObject` [#meta-notanobject]
 
 Error. A folder's `init.meta.json` holds a JSON value that isn't an object.

@@ -296,6 +296,20 @@ describe("domain/rojo/rojo", () => {
 
 	describe("RojoMeta", () => {
 		describe("parse", () => {
+			it("should refuse a byte order mark, which Rojo can't read", () => {
+				const result = RojoMeta.parse(
+					'\uFEFF{"className":"Folder"}',
+					"a/init.meta.json"
+				);
+
+				expect(result.isErr() && result.error).toMatchObject([
+					{
+						code: "meta.byteOrderMark",
+						resource: "a/init.meta.json",
+					},
+				]);
+			});
+
 			it("should keep the fields Rojo reads and drop the rest", () => {
 				const parsed = RojoMeta.parse(
 					'{ "$schema": "x", "className": "Actor", "properties": { "RunContext": "Client" } }',
