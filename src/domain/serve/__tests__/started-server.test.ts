@@ -30,6 +30,7 @@ describe("StartedServer", () => {
 	let said: ServerOutputEvent[];
 	let stops: ServerExitEvent[];
 	let failures: Error[];
+	let connections: string[];
 	let server: StartedServer;
 
 	const config = mockConfig({
@@ -60,6 +61,10 @@ describe("StartedServer", () => {
 				said: (message) => said.push(message),
 				stopped: (stop) => stops.push(stop),
 				failed: (error) => failures.push(error),
+				connection: (change) =>
+					connections.push(
+						`${change.opened ? "opened" : "closed"} ${change.clients}`
+					),
 			}
 		);
 		return processes.spawned[0];
@@ -75,6 +80,7 @@ describe("StartedServer", () => {
 		said = [];
 		stops = [];
 		failures = [];
+		connections = [];
 	});
 
 	afterEach(() => {
@@ -92,7 +98,10 @@ describe("StartedServer", () => {
 			"--port",
 			"34872",
 		]);
-		expect(child.options).toEqual({ cwd: "/repo" });
+		expect(child.options).toEqual({
+			cwd: "/repo",
+			env: { RUST_LOG: expect.any(Function) },
+		});
 	});
 
 	it("should say when the server answers for its project, and record it", async () => {
@@ -117,6 +126,95 @@ describe("StartedServer", () => {
 		expect(
 			await records.recordOf(target.address, served[0].info)
 		).toBeUndefined();
+	});
+
+	describe("as Studio plugins connect", () => {
+		const websocket = (what: string) =>
+			`[DEBUG librojo::web::api] WebSocket subscription ${what}\n`;
+		const answer = async (version = "7.7.1") => {
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: version,
+				sessionId: "s1",
+			});
+			await jest.advanceTimersByTimeAsync(250);
+		};
+		const clientsRecorded = async () =>
+			(await records.recordOf(target.address, served[0].info))?.clients;
+
+		it("should count the connections it is told of, and tell its listener each one", async () => {
+			const child = start();
+			await answer();
+
+			child.print(websocket("established for session s1"));
+			child.print(websocket("established for session s1"));
+			child.print(websocket("closed by client"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(connections).toEqual(["opened 1", "opened 2", "closed 1"]);
+		});
+
+		it("should keep the count in its record, from none when it answers", async () => {
+			const child = start();
+			await answer();
+			expect(await clientsRecorded()).toBe(0);
+
+			child.print(websocket("established for session s1"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(await clientsRecorded()).toBe(1);
+		});
+
+		it("should not count below none", async () => {
+			const child = start();
+			await answer();
+
+			child.print(websocket("closed by client"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(connections).toEqual(["closed 0"]);
+			expect(await clientsRecorded()).toBe(0);
+		});
+
+		it("should count a plugin that connected before it was seen to answer", async () => {
+			const child = start();
+			child.print(websocket("established for session s1"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			await answer();
+
+			expect(await clientsRecorded()).toBe(1);
+		});
+
+		it("should record no count for a version that doesn't say who connects", async () => {
+			start();
+			await answer("7.6.1");
+
+			expect(await clientsRecorded()).toBeUndefined();
+		});
+
+		it("should tell nothing of connections that end because it is stopping", async () => {
+			const child = start();
+			await answer();
+
+			await server.terminate();
+			child.print(websocket("closed by client"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(connections).toEqual([]);
+		});
+
+		it("should not write its record for a connection after it was told to stop", async () => {
+			const child = start();
+			await answer();
+			const write = jest.spyOn(records, "write");
+
+			await server.terminate();
+			child.print(websocket("closed by client"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(write).not.toHaveBeenCalled();
+		});
 	});
 
 	describe("when its config is built again", () => {

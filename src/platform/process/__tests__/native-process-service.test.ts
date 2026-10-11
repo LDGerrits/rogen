@@ -102,6 +102,38 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it.each([
+			["is not set", {}, "unset+added"],
+			["is set", { ROGEN_PROBE: "mine" }, "mine+added"],
+		])(
+			"should give the child the variable as derived from what it inherits, when it %s",
+			async (_, env, expected) => {
+				const owned = new NativeProcessService({
+					...process.env,
+					PATH: [path.dirname(node), dir].join(path.delimiter),
+					...env,
+				});
+				const child = owned.spawn(
+					node,
+					["-e", "console.log(process.env.ROGEN_PROBE)"],
+					{
+						cwd: dir,
+						env: {
+							ROGEN_PROBE: (inherited) =>
+								`${inherited ?? "unset"}+added`,
+						},
+					}
+				);
+				let output = "";
+				child.onDidOutputLine((line) => (output += line));
+
+				await exitOf(child);
+
+				expect(output.trim()).toBe(expected);
+				child[Symbol.dispose]();
+			}
+		);
+
 		it("should not take a signal from outside for the interruption of this process", async () => {
 			if (process.platform === "win32") return;
 			const child = service.spawn(

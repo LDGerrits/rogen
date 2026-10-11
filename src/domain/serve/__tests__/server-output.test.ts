@@ -39,6 +39,96 @@ describe("ServerOutput", () => {
 			reading(SyncServer.ROJO);
 		});
 
+		describe("connections", () => {
+			let changes: string[];
+
+			beforeEach(() => {
+				changes = [];
+				output.onDidConnection((change) => changes.push(change));
+			});
+
+			it("should say when the plugin connects and leaves, and drop the lines as it drops debug logs", () => {
+				write(
+					[
+						"[DEBUG librojo::web::api] WebSocket subscription established for session 0ea352f4",
+						"[DEBUG librojo::web::api] WebSocket subscription closed by client",
+					].join("\n")
+				);
+
+				output.end();
+
+				expect(changes).toEqual(["opened", "closed"]);
+				expect(said).toEqual([]);
+			});
+
+			it("should tell two connections of one session apart from a repeated line", () => {
+				write(
+					"[DEBUG librojo::web::api] WebSocket subscription established for session s1\n".repeat(
+						2
+					)
+				);
+
+				output.end();
+
+				expect(changes).toEqual(["opened", "opened"]);
+			});
+
+			it("should count a connection that ended in an error as closed, and still show the error", () => {
+				write(
+					[
+						"[DEBUG librojo::web::api] WebSocket subscription established for session s1",
+						"[ERROR librojo::web::api] WebSocket error: Connection reset without closing handshake",
+					].join("\n")
+				);
+				output.end();
+
+				expect(changes).toEqual(["opened", "closed"]);
+				expect(said).toEqual([
+					{
+						severity: "error",
+						text: "WebSocket error: Connection reset without closing handshake",
+					},
+				]);
+			});
+
+			it("should count a connection that ended with the stream as closed", () => {
+				write(
+					[
+						"[DEBUG librojo::web::api] WebSocket subscription established for session s1",
+						"[DEBUG librojo::web::api] WebSocket stream ended",
+					].join("\n")
+				);
+				output.end();
+
+				expect(changes).toEqual(["opened", "closed"]);
+			});
+
+			it("should say nothing of other debug logs", () => {
+				write(
+					"[DEBUG librojo::web::api] Sending batch of messages over WebSocket subscription"
+				);
+
+				output.end();
+
+				expect(changes).toEqual([]);
+			});
+
+			it("should not read a connection from a message the server wrote itself, outside its log", () => {
+				write("ERROR: WebSocket stream ended");
+				output.end();
+
+				expect(changes).toEqual([]);
+			});
+
+			it("should not read a connection from a line that is no log record", () => {
+				write("WebSocket subscription closed by client");
+
+				output.end();
+
+				expect(changes).toEqual([]);
+			});
+		});
+
 		it("should drop the banner", () => {
 			write(
 				[

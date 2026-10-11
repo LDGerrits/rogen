@@ -11,6 +11,8 @@ import {
 	ReportedError,
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
+import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
+import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 
 describe("list command", () => {
 	let fs: MemoryFileSystemService;
@@ -424,6 +426,7 @@ describe("list command", () => {
 						syncDir: "/repo/out",
 						outFile: "/repo/default.project.json",
 						server: null,
+						serving: null,
 						diagnostics: [],
 					},
 				],
@@ -577,5 +580,91 @@ describe("list command", () => {
 
 		expect(logService.texts("section")).toEqual(["default.rogen.json"]);
 		expect(logService.texts("intro")).toEqual([]);
+	});
+	describe("beside a running serve", () => {
+		const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
+		let requests: MockRequestService;
+
+		beforeEach(async () => {
+			requests = new MockRequestService();
+			const harness = commandHarness({ requests });
+			({ fs } = harness);
+			logService = harness.log;
+			run = ({ _ = [], ...options } = {}) =>
+				harness.run("list", { positionals: _, options });
+			await write("default.rogen.json", {
+				routes: { "*": "ReplicatedStorage" },
+			});
+		});
+
+		const serve = async (clients?: number) => {
+			await fs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					clients,
+				})
+			);
+			requests.answer(ROJO_URL, {
+				projectName: "repo",
+				serverVersion: "7.7.1",
+				sessionId: "s1",
+			});
+		};
+
+		it.each([
+			[0, "serving: Rojo at 127.0.0.1:34872, no Studio connected"],
+			[1, "serving: Rojo at 127.0.0.1:34872, 1 Studio connected"],
+			[2, "serving: Rojo at 127.0.0.1:34872, 2 Studio connected"],
+			[undefined, "serving: Rojo at 127.0.0.1:34872"],
+		])(
+			"should say what serves a config, and who is connected (%s)",
+			async (clients, line) => {
+				await serve(clients);
+
+				await run();
+
+				const [details] = under("default.rogen.json");
+				expect(details).toContain(`\n${line}\n`);
+			}
+		);
+
+		it("should say nothing of a serve when the server no longer answers", async () => {
+			await fs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					clients: 1,
+				})
+			);
+
+			await run();
+
+			expect(under("default.rogen.json")[0]).not.toContain("serving:");
+		});
+
+		it("should print the serving server of each config, or null, with --json", async () => {
+			await write("lobby.rogen.json", {
+				extends: "default.rogen.json",
+				outFile: "lobby.project.json",
+			});
+			await serve(1);
+
+			await run({ json: true });
+
+			const { configs } = JSON.parse(logService.texts("print")[0]) as {
+				configs: { config: string; serving: unknown }[];
+			};
+			expect(
+				configs.map(({ config, serving }) => [config, serving])
+			).toEqual([
+				[
+					"default",
+					{
+						server: "rojo",
+						host: "127.0.0.1",
+						port: 34872,
+						clients: 1,
+					},
+				],
+				["lobby", null],
+			]);
+		});
 	});
 });

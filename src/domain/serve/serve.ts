@@ -65,6 +65,16 @@ interface SyncServerFields {
 		readonly files: (projectDir: string, userHome: string) => string[];
 		readonly read: (text: string) => ServerDefaults;
 	};
+	/** How it tells that a Studio plugin connected, when it does: the first version to log it, the log records that say so, and the filter that makes it print them. */
+	readonly connections?: {
+		readonly since: readonly [major: number, minor: number];
+		readonly opened: RegExp;
+		readonly closed: RegExp;
+		/** The variables that make it print them, each from what the user already set, so a filter of the user's stays. */
+		readonly logEnv: Readonly<
+			Record<string, (inherited: string | undefined) => string>
+		>;
+	};
 	readonly readInfo: (
 		server: SyncServer,
 		value: Readonly<Record<string, unknown>>
@@ -89,6 +99,17 @@ export class SyncServer {
 		logRecord: /^\[(?<level>[A-Z]+)\s*[^\]]*\]\s?(?<text>.*)$/,
 		noise: [/^Rojo server listening:$/, /^(Address|Port):/, /^Visit http/],
 		clutter: [],
+		// Its plugin holds one websocket to the server, which logs it at debug level.
+		connections: {
+			since: [7, 7],
+			opened: /^WebSocket subscription established\b/,
+			// Each way its handler can end a connection logs one of these.
+			closed: /^(WebSocket subscription closed|WebSocket stream ended|WebSocket error|Message queue disconnected)\b/,
+			logEnv: {
+				RUST_LOG: (inherited) =>
+					`${inherited ?? "info"},librojo::web=debug`,
+			},
+		},
 		readInfo: (server, value) => {
 			const project = text(value.projectName);
 			const version = text(value.serverVersion);
@@ -167,6 +188,30 @@ export class SyncServer {
 
 	static byId(id: string): SyncServer | undefined {
 		return SyncServer.ALL.find((server) => server.id === id);
+	}
+
+	/** Whether this version of it says in its output when a Studio plugin connects or leaves. */
+	reportsConnections(version: string): boolean {
+		const since = this.fields.connections?.since;
+		const found = /^(\d+)\.(\d+)/.exec(version);
+		if (!since || !found) return false;
+		const [major, minor] = [Number(found[1]), Number(found[2])];
+		return major > since[0] || (major === since[0] && minor >= since[1]);
+	}
+
+	/** Whether `text`, the text of one of its log records, says a Studio plugin connected or left. */
+	connectionIn(text: string): "opened" | "closed" | undefined {
+		const { connections } = this.fields;
+		if (connections?.opened.test(text)) return "opened";
+		if (connections?.closed.test(text)) return "closed";
+		return undefined;
+	}
+
+	/** The environment variables that make it print the records `connectionIn` reads, each from what the environment already holds. */
+	get env(): Readonly<
+		Record<string, (inherited: string | undefined) => string>
+	> {
+		return this.fields.connections?.logEnv ?? {};
 	}
 
 	/** The command that installs its Studio plugin. */

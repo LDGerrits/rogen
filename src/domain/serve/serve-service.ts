@@ -111,6 +111,24 @@ export interface ServerReadyEvent {
 	readonly info: ServerInfo;
 }
 
+/** A server that a running serve serves a project file with. */
+export interface ServingNow {
+	readonly server: SyncServer;
+	readonly host: string;
+	readonly port: number;
+	/** How many Studio plugins are connected; none when the server doesn't say. */
+	readonly clients?: number;
+}
+
+/** A Studio plugin connected to a server the session started, or left it. */
+export interface ServerConnectionEvent {
+	readonly target: ServeTarget;
+	/** Whether a plugin connected, else one left. */
+	readonly opened: boolean;
+	/** How many are connected now. */
+	readonly clients: number;
+}
+
 /** Something a server the session started said that is worth showing. */
 export interface ServerOutputEvent {
 	readonly target: ServeTarget;
@@ -158,6 +176,8 @@ export interface ServeSession extends Disposable {
 	readonly onDidError: Event<Error>;
 	/** Fired once for each server started, when it answers. */
 	readonly onDidServe: Event<ServerReadyEvent>;
+	/** Fired when a Studio plugin connects to a server the session started, or leaves it. A server that doesn't say who connects fires nothing. */
+	readonly onDidConnect: Event<ServerConnectionEvent>;
 	/** Fired for each message a server prints; its own info logs and noise come as `debug`. */
 	readonly onDidOutput: Event<ServerOutputEvent>;
 	/** Fired when the configs to serve change while it serves. */
@@ -183,6 +203,11 @@ export interface ServeService {
 
 	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError>;
+
+	/** For each of `projectFiles` that a running serve serves, the server it serves it with, as that serve recorded it, when the server still answers. */
+	servedBy(
+		projectFiles: readonly string[]
+	): Promise<ReadonlyMap<string, ServingNow>>;
 }
 
 export const ServeService =

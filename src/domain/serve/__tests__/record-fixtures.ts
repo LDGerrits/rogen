@@ -9,7 +9,13 @@ export const recordFile = (
 		session = "s1",
 		setting = { variants: {} },
 		pid,
-	}: { session?: string; setting?: BuildSetting; pid?: number } = {}
+		clients,
+	}: {
+		session?: string;
+		setting?: BuildSetting;
+		pid?: number;
+		clients?: number;
+	} = {}
 ) =>
 	[
 		`/mock/tmp/rogen-serve/${port}.json`,
@@ -18,6 +24,7 @@ export const recordFile = (
 			port,
 			server: "rojo",
 			pid,
+			clients,
 			session,
 			project,
 			projectFile,
