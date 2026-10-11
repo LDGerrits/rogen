@@ -2,7 +2,7 @@ import {
 	ContainerFactory,
 	RojoNode,
 	RojoProject,
-	RojoTree,
+	RojoProjectFile,
 	projectFileName,
 	stemOfProjectFile,
 } from "../rojo-project.js";
@@ -26,7 +26,7 @@ describe("project file names", () => {
 });
 
 describe("RojoProject", () => {
-	let baseTree: RojoTree;
+	let baseTree: RojoProjectFile;
 
 	beforeEach(() => {
 		baseTree = {

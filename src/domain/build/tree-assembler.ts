@@ -6,7 +6,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { LeftOut } from "./build.js";
 import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
-import { RojoProject, RojoTree } from "../rojo/rojo-project.js";
+import { RojoProject, RojoProjectFile } from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
 	FolderMetaApplier,
@@ -17,10 +17,10 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** A placed build with its tree; what the rules report on. */
+/** A placed build with its project file; what the rules report on. */
 export interface Assembly {
 	readonly placement: Placement;
-	readonly tree: RojoTree;
+	readonly projectFile: RojoProjectFile;
 	readonly meta: BuildMeta;
 	readonly metaOutcomes: readonly FolderMetaOutcome[];
 }
@@ -75,7 +75,7 @@ export class TreeAssembler {
 
 		return ok({
 			placement,
-			tree: placement.template.toFile(
+			projectFile: placement.template.toFile(
 				project.getFile().tree,
 				globIgnorePaths
 			),

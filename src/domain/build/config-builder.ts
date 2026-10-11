@@ -7,7 +7,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import { RojoTree } from "../rojo/rojo-project.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
@@ -20,7 +20,7 @@ import { TreeAssembler } from "./tree-assembler.js";
 /** One config built in memory, which the run goes on to write. */
 export interface BuiltConfig {
 	readonly config: ResolvedConfig;
-	readonly tree: RojoTree;
+	readonly projectFile: RojoProjectFile;
 	readonly findings: BuildFindings;
 	readonly summary: BuildSummary;
 	/** The files whose contents the build read, which a change to must rebuild it. */
@@ -32,8 +32,8 @@ export type ExaminedConfig =
 	| {
 			readonly kind: "assembled";
 			readonly placement: Placement;
-			readonly tree: RojoTree;
-			/** The files read to assemble the tree. */
+			readonly projectFile: RojoProjectFile;
+			/** The files read to assemble the project file. */
 			readonly readFiles: readonly string[];
 			readonly warnings: readonly Diagnostic[];
 	  }
@@ -72,10 +72,10 @@ export class ConfigBuilder {
 		const examinedConfig = examined.value;
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
-		const { placement, tree, readFiles, warnings } = examinedConfig;
+		const { placement, projectFile, readFiles, warnings } = examinedConfig;
 		return ok({
 			config,
-			tree,
+			projectFile,
 			summary: placement.summary(),
 			findings: {
 				warnings,
@@ -104,7 +104,7 @@ export class ConfigBuilder {
 		return ok({
 			kind: "assembled",
 			placement: placement.value,
-			tree: assembly.tree,
+			projectFile: assembly.projectFile,
 			readFiles: meta.files,
 			warnings: [
 				...meta.warnings,

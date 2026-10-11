@@ -40,7 +40,8 @@ function childNodes(node: RojoNode): [string, RojoNode][] {
 	);
 }
 
-export interface RojoTree {
+/** A Rojo project file: the name of the game and its tree of nodes, with the settings Rojo reads beside them. */
+export interface RojoProjectFile {
 	name: string;
 	tree: RojoNode;
 	servePort?: number;
@@ -103,7 +104,7 @@ export const stemOfProjectFile = (fileName: string): string | undefined =>
 		: undefined;
 
 /** A Rojo project file being edited; the owner decides what an ancestor created on its behalf looks like. */
-export class RojoProject<T extends ProjectFile = RojoTree> {
+export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 	private readonly project: T;
 
 	constructor(
@@ -194,13 +195,13 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		readonly name: string;
 		readonly tree: RojoNode;
 		readonly globIgnorePaths: readonly string[];
-	}): RojoTree {
+	}): RojoProjectFile {
 		const { globIgnorePaths: _globs, ...fields } = this.getFile();
 		const file = {
 			...fields,
 			name: parts.name,
 			tree: parts.tree,
-		} as RojoTree;
+		} as RojoProjectFile;
 		if (parts.globIgnorePaths.length > 0) {
 			file.globIgnorePaths = [...parts.globIgnorePaths];
 		}

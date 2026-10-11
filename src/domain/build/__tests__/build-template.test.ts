@@ -1,9 +1,9 @@
-import { RojoTree } from "../../rojo/rojo-project.js";
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncLayout } from "../sync-layout.js";
 import { BuildTemplate } from "../build-template.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
-const mountedPackages: Partial<RojoTree> = {
+const mountedPackages: Partial<RojoProjectFile> = {
 	tree: {
 		$className: "DataModel",
 		ReplicatedStorage: {

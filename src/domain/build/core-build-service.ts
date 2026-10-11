@@ -244,14 +244,15 @@ export class CoreBuildService implements BuildService {
 		const builds: LoadedBuild[] = [];
 		let failed: string | undefined;
 		for (const attempt of built) {
-			const { config, tree, findings, summary, readFiles } = attempt;
+			const { config, projectFile, findings, summary, readFiles } =
+				attempt;
 			if (failed) {
 				builds.push(CoreBuildService.unwritten(attempt, [failed]));
 				continue;
 			}
 			const written = await this.writer.write(
 				new OutputFile(config.outFile),
-				tree
+				projectFile
 			);
 			if (written.isErr()) failed = config.label;
 			builds.push(

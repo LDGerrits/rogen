@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { RojoTree } from "../../rojo/rojo-project.js";
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputFile } from "../build.js";
 import { OutputWriter } from "../output-writer.js";
 
@@ -10,7 +10,7 @@ const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
 
 const outFile = path.resolve("/repo", "default.project.json");
 
-const treeOf = (): RojoTree => ({
+const treeOf = (): RojoProjectFile => ({
 	tree: {
 		ReplicatedStorage: { $className: "ReplicatedStorage" },
 		$className: "DataModel",
@@ -23,7 +23,7 @@ describe("OutputWriter", () => {
 	let writer: OutputWriter;
 	let store: DisposableStore;
 
-	const write = (tree: RojoTree) =>
+	const write = (tree: RojoProjectFile) =>
 		writer.write(new OutputFile(outFile), tree);
 
 	beforeEach(() => {

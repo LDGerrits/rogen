@@ -24,7 +24,8 @@ describe("TreeAssembler", () => {
 		) => assembleFilesOf(fs, overrides, extraTools);
 
 		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>
-			(await assemble(overrides)).tree.tree.ReplicatedStorage as RojoNode;
+			(await assemble(overrides)).projectFile.tree
+				.ReplicatedStorage as RojoNode;
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
@@ -32,7 +33,7 @@ describe("TreeAssembler", () => {
 
 		describe("template", () => {
 			it("should start from a bare DataModel with the resolved name when there is no template", async () => {
-				const { tree: value } = await assemble({ name: "game" });
+				const { projectFile: value } = await assemble({ name: "game" });
 
 				expect(value).toEqual({
 					name: "game",
@@ -50,7 +51,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					name: "game",
 					template,
 				});
@@ -134,7 +135,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value, warnings } = await assemble({
+				const { projectFile: value, warnings } = await assemble({
 					routes: { "*": "ReplicatedStorage/Vendor" },
 					template,
 				});
@@ -158,7 +159,9 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value, warnings } = await assemble({ template });
+				const { projectFile: value, warnings } = await assemble({
+					template,
+				});
 
 				expect(
 					(value.tree.ReplicatedStorage as RojoNode).Packages
@@ -202,7 +205,7 @@ describe("TreeAssembler", () => {
 			it("should create a service node for each service and folders below it", async () => {
 				await write("src/Combat.luau");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: { "*": "ServerScriptService/server" },
 				});
 
@@ -218,7 +221,7 @@ describe("TreeAssembler", () => {
 			it("should create StarterPlayer's script containers with their own class", async () => {
 				await write("src/Hud.client.luau");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: { "*": "StarterPlayer/StarterPlayerScripts" },
 				});
 
@@ -328,7 +331,7 @@ describe("TreeAssembler", () => {
 					emitLegacyScripts: false,
 				});
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: { "*": "StarterPlayer/StarterPlayerScripts" },
 					template,
 				});
@@ -353,7 +356,9 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value, warnings } = await assemble({ template });
+				const { projectFile: value, warnings } = await assemble({
+					template,
+				});
 
 				expect(warnings).toEqual([]);
 				expect(
@@ -422,7 +427,7 @@ describe("TreeAssembler", () => {
 			it("should place a standalone data file as its own instance", async () => {
 				await write("src/Items.json", "src/Foo.luau");
 
-				const { tree: value, warnings } = await assemble();
+				const { projectFile: value, warnings } = await assemble();
 
 				expect(value.tree.ReplicatedStorage).toEqual({
 					$className: "ReplicatedStorage",
@@ -480,7 +485,9 @@ describe("TreeAssembler", () => {
 					JSON.stringify({ attributes: { Remote: true } })
 				);
 
-				const { tree: value } = await assemble({ routes: SPLIT });
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+				});
 
 				expect(value.tree.ReplicatedStorage).toEqual({
 					$className: "ReplicatedStorage",
@@ -528,7 +535,7 @@ describe("TreeAssembler", () => {
 			it("should point at the directory roblox-ts writes an index script's init into", async () => {
 				await write("src/Lib/index.ts", "src/Lib/server/Api.ts");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: SPLIT,
 					syncDir: abs("out"),
 				});

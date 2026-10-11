@@ -23,7 +23,8 @@ describe("TreeAssembler", () => {
 		) => assembleFilesOf(fs, overrides, extraTools);
 
 		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>
-			(await assemble(overrides)).tree.tree.ReplicatedStorage as RojoNode;
+			(await assemble(overrides)).projectFile.tree
+				.ReplicatedStorage as RojoNode;
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
@@ -73,7 +74,7 @@ describe("TreeAssembler", () => {
 					"src/Inventory/Items.json"
 				);
 
-				const { tree: value, warnings } = await assemble();
+				const { projectFile: value, warnings } = await assemble();
 
 				expect(warnings).toEqual([]);
 				expect(
@@ -100,7 +101,7 @@ describe("TreeAssembler", () => {
 					"src/Combat/server/Moves/Punch.luau"
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -188,7 +189,7 @@ describe("TreeAssembler", () => {
 					abs("src/Real/Gone")
 				);
 
-				const { tree: value } = await assemble();
+				const { projectFile: value } = await assemble();
 
 				expect((value.tree.ReplicatedStorage as RojoNode).Real).toEqual(
 					{
@@ -240,7 +241,7 @@ describe("TreeAssembler", () => {
 					"src/Inventory/Hud.client.luau"
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: { client: "StarterPlayer/StarterPlayerScripts" },
 				});
 
@@ -298,7 +299,7 @@ describe("TreeAssembler", () => {
 			it("should not collapse a directory holding a file Rojo would name differently, and emit it under its instance name", async () => {
 				await write("src/Save/Save.mock@server.luau");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					variants: { mock: true },
 					routes: { server: "ServerScriptService" },
 				});
@@ -346,7 +347,7 @@ describe("TreeAssembler", () => {
 			it("should never collapse a directory into a service", async () => {
 				await write("src/server/Save.luau");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -374,7 +375,7 @@ describe("TreeAssembler", () => {
 			it("should ignore .d.ts files when deciding to collapse and never list them", async () => {
 				await write("src/Inventory/Save.ts", "src/Inventory/Save.d.ts");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					exclude: [abs("**/*.d.ts")],
 				});
 
@@ -388,7 +389,7 @@ describe("TreeAssembler", () => {
 		it("should keep out of the ignore list whatever a processor says it only reads", async () => {
 			await write("src/Inventory/Save.luau", "src/Inventory/Save.proto");
 
-			const { tree: value } = await assemble(
+			const { projectFile: value } = await assemble(
 				{ exclude: [abs("**/*.proto")] },
 				[
 					{
@@ -408,7 +409,7 @@ describe("TreeAssembler", () => {
 					"src/Inventory/Analytics.mock.luau"
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					syncDir: abs("dist"),
 					variants: { mock: false },
 				});
@@ -425,7 +426,7 @@ describe("TreeAssembler", () => {
 					"src/Save.spec.luau"
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					exclude: [abs("**/*.spec.luau")],
 					template: {
 						file: abs("template.project.json"),
@@ -451,7 +452,7 @@ describe("TreeAssembler", () => {
 					"src/Inventory/Save.spec.ts"
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					syncDir: abs("dist"),
 					variants: { mock: false },
 					exclude: [abs("**/*.spec.ts")],
@@ -470,7 +471,7 @@ describe("TreeAssembler", () => {
 					"src/Moves/Heavy/Slam.spec.ts"
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					syncDir: abs("dist"),
 					exclude: [abs("**/*.spec.ts")],
 				});
@@ -485,7 +486,7 @@ describe("TreeAssembler", () => {
 			it("should list an unrouted file", async () => {
 				await write("src/Hud.ts", "src/Combat.server.ts");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					syncDir: abs("dist"),
 					routes: { server: "ServerScriptService" },
 				});
@@ -496,7 +497,7 @@ describe("TreeAssembler", () => {
 			it("should not list a file an active variant replaced, which shares the winner's emitted path", async () => {
 				await write("src/Analytics.luau", "src/Analytics.mock.luau");
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					variants: { mock: true },
 				});
 
@@ -514,7 +515,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value } = await assemble({ template });
+				const { projectFile: value } = await assemble({ template });
 
 				expect(value.globIgnorePaths).toBeUndefined();
 				expect(
@@ -537,7 +538,7 @@ describe("TreeAssembler", () => {
 					abs("templates/base.project.json")
 				);
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					template,
 					exclude: [abs("src/Foo.spec.luau")],
 				});

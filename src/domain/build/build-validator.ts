@@ -517,46 +517,48 @@ export class BuildValidator {
 	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
 	private reservedName(): Diagnostic[] {
 		const { routed, leftOut } = this.placement;
-		return reservedKeys(this.assembly.tree.tree, []).flatMap((key) => {
-			const under = routed.filter(
-				({ entry, instancePath }) =>
-					leftOut.get(entry.source)?.status !== "pruned" &&
-					key.every((name, index) => instancePath[index] === name)
-			);
-			const file =
-				under.find(
-					({ instancePath }) => instancePath.length === key.length
-				) ?? under[0];
-			if (!file) return [];
-			const fileName = path.posix.basename(file.entry.source);
-			const renamable =
-				file.instancePath.length === key.length &&
-				file.init === undefined &&
-				fileName.startsWith("$") &&
-				fileName.length > 1;
-			return [
-				warningDiagnostic(
-					"tree.reservedName",
-					{ resource: file.entry.source },
-					`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
-					renamable
-						? [
-								{
-									rename: {
-										from: file.entry.source,
-										to: path.posix.join(
-											path.posix.dirname(
-												file.entry.source
+		return reservedKeys(this.assembly.projectFile.tree, []).flatMap(
+			(key) => {
+				const under = routed.filter(
+					({ entry, instancePath }) =>
+						leftOut.get(entry.source)?.status !== "pruned" &&
+						key.every((name, index) => instancePath[index] === name)
+				);
+				const file =
+					under.find(
+						({ instancePath }) => instancePath.length === key.length
+					) ?? under[0];
+				if (!file) return [];
+				const fileName = path.posix.basename(file.entry.source);
+				const renamable =
+					file.instancePath.length === key.length &&
+					file.init === undefined &&
+					fileName.startsWith("$") &&
+					fileName.length > 1;
+				return [
+					warningDiagnostic(
+						"tree.reservedName",
+						{ resource: file.entry.source },
+						`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
+						renamable
+							? [
+									{
+										rename: {
+											from: file.entry.source,
+											to: path.posix.join(
+												path.posix.dirname(
+													file.entry.source
+												),
+												fileName.slice(1)
 											),
-											fileName.slice(1)
-										),
+										},
 									},
-								},
-							]
-						: []
-				),
-			];
-		});
+								]
+							: []
+					),
+				];
+			}
+		);
 	}
 
 	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */

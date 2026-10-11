@@ -10,7 +10,7 @@ import { containerClassName, instanceKey } from "../roblox/roblox.js";
 import {
 	RojoNode,
 	RojoProject,
-	RojoTree,
+	RojoProjectFile,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { SyncLayout } from "./sync-layout.js";
@@ -207,7 +207,10 @@ export class BuildTemplate {
 	}
 
 	/** The project file to write: the template's own fields, and `tree` as the tree. */
-	toFile(tree: RojoNode, globIgnorePaths: readonly string[]): RojoTree {
+	toFile(
+		tree: RojoNode,
+		globIgnorePaths: readonly string[]
+	): RojoProjectFile {
 		return (this.config.template?.project ?? NO_TEMPLATE).toFile({
 			name: this.config.projectName,
 			tree,

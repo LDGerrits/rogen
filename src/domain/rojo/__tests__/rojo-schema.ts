@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import path from "path";
 import Ajv from "ajv";
-import { RojoTree } from "../rojo-project.js";
+import { RojoProjectFile } from "../rojo-project.js";
 
 const schema = JSON.parse(
 	readFileSync(
@@ -12,7 +12,7 @@ const schema = JSON.parse(
 
 const validate = new Ajv.default({ strict: false }).compile(schema);
 
-export function expectRojoProject(tree: RojoTree): void {
+export function expectRojoProject(tree: RojoProjectFile): void {
 	const valid = validate(JSON.parse(JSON.stringify(tree)));
 	expect(valid ? [] : validate.errors).toEqual([]);
 }

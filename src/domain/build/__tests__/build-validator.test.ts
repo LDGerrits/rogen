@@ -88,10 +88,10 @@ describe("BuildValidator rules", () => {
 						...overrides,
 					})
 				)
-			).map(({ placement, tree, findings: { warnings } }) => ({
+			).map(({ placement, projectFile, findings: { warnings } }) => ({
 				routed: placement.routed,
 				leftOut: placement.leftOut,
-				globIgnorePaths: tree.globIgnorePaths,
+				globIgnorePaths: projectFile.globIgnorePaths,
 				unrouted: placement.leftOut
 					.withStatus("unrouted")
 					.map(([source]) => source),

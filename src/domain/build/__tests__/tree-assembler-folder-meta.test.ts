@@ -31,7 +31,8 @@ describe("TreeAssembler", () => {
 		) => assembleFilesOf(fs, overrides, extraTools);
 
 		const storageOf = async (overrides: ResolvedConfigSpec = {}) =>
-			(await assemble(overrides)).tree.tree.ReplicatedStorage as RojoNode;
+			(await assemble(overrides)).projectFile.tree
+				.ReplicatedStorage as RojoNode;
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
@@ -62,7 +63,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { tree: value, warnings } = await assemble({
+				const { projectFile: value, warnings } = await assemble({
 					routes: SPLIT,
 				});
 
@@ -137,7 +138,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { tree: value, warnings } = await assemble({
+				const { projectFile: value, warnings } = await assemble({
 					routes: SPLIT,
 				});
 
@@ -192,7 +193,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					routes: SPLIT,
 					template,
 				});
@@ -230,7 +231,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					rootDirs: [abs("core"), abs("lobby")],
 					routes: SPLIT,
 				});
@@ -247,7 +248,9 @@ describe("TreeAssembler", () => {
 				await write("src/Combat/server/Hit.luau");
 				await writeMeta("src/Combat/init.meta.json", { id: "combat" });
 
-				const { tree: value } = await assemble({ routes: SPLIT });
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+				});
 
 				expect(
 					nodeAt(value.tree, "ServerScriptService", "Combat")
@@ -285,7 +288,9 @@ describe("TreeAssembler", () => {
 					ignoreUnknownInstances: true,
 				});
 
-				const { tree: value } = await assemble({ routes: SPLIT });
+				const { projectFile: value } = await assemble({
+					routes: SPLIT,
+				});
 
 				expect(
 					nodeAt(value.tree, "ServerScriptService", "Combat")
@@ -311,7 +316,7 @@ describe("TreeAssembler", () => {
 					attributes: { Lobby: true },
 				});
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					rootDirs: [abs("core"), abs("lobby")],
 					routes: SPLIT,
 				});
@@ -341,7 +346,7 @@ describe("TreeAssembler", () => {
 					className: "Actor",
 				});
 
-				const { tree: value } = await assemble({
+				const { projectFile: value } = await assemble({
 					rootDirs: [abs("core"), abs("lobby")],
 					routes: SPLIT,
 				});
@@ -401,7 +406,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value, warnings } = await assemble({
+				const { projectFile: value, warnings } = await assemble({
 					routes: SPLIT,
 					template,
 				});
@@ -470,7 +475,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value, warnings } = await assemble({
+				const { projectFile: value, warnings } = await assemble({
 					routes: SPLIT,
 					template,
 				});
@@ -504,7 +509,7 @@ describe("TreeAssembler", () => {
 					},
 				});
 
-				const { tree: value } = await assemble({ template });
+				const { projectFile: value } = await assemble({ template });
 
 				expect(
 					nodeAt(value.tree, "ReplicatedStorage", "Combat")
@@ -558,7 +563,7 @@ describe("TreeAssembler", () => {
 						className: "Actor",
 					});
 
-				const { warnings, tree: value } = await assemble({
+				const { warnings, projectFile: value } = await assemble({
 					routes: SPLIT,
 				});
 

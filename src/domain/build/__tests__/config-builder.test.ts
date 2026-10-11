@@ -56,8 +56,8 @@ describe("ConfigBuilder", () => {
 			const result = await buildOf(config);
 
 			expect(result.unwrap().findings.warnings).toEqual([]);
-			expectRojoProject(result.unwrap().tree);
-			expect(result.unwrap().tree.tree).toEqual({
+			expectRojoProject(result.unwrap().projectFile);
+			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -134,8 +134,8 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().tree);
-			expect(result.unwrap().tree.tree).toEqual({
+			expectRojoProject(result.unwrap().projectFile);
+			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -152,7 +152,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expect(result.unwrap().tree.tree).toEqual({
+			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					$className: "ReplicatedStorage",
@@ -168,8 +168,8 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().tree);
-			expect(result.unwrap().tree.name).toBe("lobby");
+			expectRojoProject(result.unwrap().projectFile);
+			expect(result.unwrap().projectFile.name).toBe("lobby");
 		});
 
 		describe("unclaimed meta", () => {

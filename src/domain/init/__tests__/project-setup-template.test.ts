@@ -1,4 +1,4 @@
-import { RojoTree } from "../../rojo/rojo-project.js";
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { DerivedRoutes } from "../derived-routes.js";
 import { PlaceFolder } from "../place-folder.js";
@@ -26,7 +26,7 @@ describe("ProjectSetup plan", () => {
 			expect(JSON.parse(files.template!.content)).toEqual({
 				name: "my-game",
 				tree: { $className: "DataModel", ...mounts },
-			} satisfies RojoTree);
+			} satisfies RojoProjectFile);
 			expect(configOf(files, "default.rogen.json").template).toBe(
 				"template.project.json"
 			);

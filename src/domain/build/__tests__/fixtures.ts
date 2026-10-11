@@ -17,7 +17,7 @@ import {
 } from "../../config/__tests__/mock-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import { RojoTree } from "../../rojo/rojo-project.js";
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../build.js";
 import {
 	BuildService,
@@ -133,12 +133,12 @@ export async function routeFiles(
 				...overrides,
 			})
 		)
-	).map(({ placement, tree, findings: { warnings } }) => ({
+	).map(({ placement, projectFile, findings: { warnings } }) => ({
 		placement,
 		routed: placement.routed,
 		files: placement.files,
 		leftOut: placement.leftOut,
-		globIgnorePaths: tree.globIgnorePaths,
+		globIgnorePaths: projectFile.globIgnorePaths,
 		unrouted: placement.leftOut
 			.withStatus("unrouted")
 			.map(([source]) => source),
@@ -168,11 +168,14 @@ export async function assembleFilesOf(
 	extraTools: readonly SyncTool[] = []
 ) {
 	const output = (await assembleResultOf(fs, overrides, extraTools)).unwrap();
-	expectRojoProject(output.tree);
-	return { tree: output.tree, warnings: output.findings.warnings };
+	expectRojoProject(output.projectFile);
+	return {
+		projectFile: output.projectFile,
+		warnings: output.findings.warnings,
+	};
 }
 
 export const templateOf = (
-	project: Partial<RojoTree>,
+	project: Partial<RojoProjectFile>,
 	file = abs("default.project.json")
 ) => ({ file, project });
