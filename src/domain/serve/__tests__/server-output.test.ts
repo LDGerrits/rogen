@@ -55,6 +55,30 @@ describe("ServerOutput", () => {
 			]);
 		});
 
+		it("should say a paragraph the server writes in capitals as one warning, up to the blank line", () => {
+			output.write(
+				[
+					"\u001b[0m\u001b[1m\u001b[33mWARNING: This server is bound to 0.0.0.0, which is reachable.",
+					"The serve API is unauthenticated, so anyone who can reach it can",
+					"modify your project's source.",
+					"\u001b[0m",
+					"\u001b[0mVisit \u001b[0mhttp://0.0.0.0:34999/ in your browser.",
+					"",
+				].join("\n")
+			);
+			output.end();
+
+			expect(said).toEqual([
+				{
+					severity: "warning",
+					text: "This server is bound to 0.0.0.0, which is reachable. The serve API is unauthenticated, so anyone who can reach it can modify your project's source.",
+				},
+			]);
+			expect(dropped).toEqual([
+				"Visit http://0.0.0.0:34999/ in your browser.",
+			]);
+		});
+
 		it("should join a record and its cause chain into one message", () => {
 			output.write(
 				[

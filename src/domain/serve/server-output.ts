@@ -20,13 +20,15 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 	TRACE: "debug",
 };
 
-/** Rust's own lines: a CLI error or warning, and the hint that follows a panic. */
-const RUST_RECORD = /^(?<level>error|warning): (?<text>.*)$/;
+/** Rust's own lines: a CLI error or warning, and the hint that follows a panic. In capitals it is a message the server wrote itself, as a paragraph that ends at the blank line. */
+const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
 
 interface PendingRecord {
 	readonly severity: ServerMessage["severity"];
 	readonly parts: string[];
+	/** A paragraph of text lines, not a cause chain: it runs to the blank line, and its lines make one sentence. */
+	readonly paragraph: boolean;
 }
 
 /** Reads what a server prints into messages: its warnings and errors, each on one line without its debug detail, and as `debug` its banner, its info logs and the noise Rogen causes. */
@@ -72,7 +74,13 @@ export class ServerOutput extends AbstractDisposable {
 			this.pending = {
 				severity: level in SEVERITIES ? SEVERITIES[level] : "info",
 				parts: [record.text],
+				paragraph: record.level === level && line.startsWith(level),
 			};
+			return;
+		}
+		if (this.pending?.paragraph) {
+			if (line.trim() === "") this.flush();
+			else this.pending.parts.push(line.trim());
 			return;
 		}
 		// A record's cause chain follows it, indented.
@@ -94,7 +102,7 @@ export class ServerOutput extends AbstractDisposable {
 			record.parts
 				.filter((part) => part !== "" && part !== "Caused by:")
 				.map((part) => part.replace(/^\d+:\s*/, ""))
-				.join(": ")
+				.join(record.paragraph ? " " : ": ")
 		);
 	}
 
