@@ -1,0 +1,8 @@
+$ rogen where ServerScriptService.Combat.Hit:12: attempt to index nil src/Combat/Client/Hud.luau ServerScriptService.Combat ServerScriptService.Combat.Dodge:3
+exit 0
+stdout:
+  src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
+  src/Combat/Client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Combat/Hud · route Client (folder)
+    no require by this path: StarterPlayerScripts is cloned into each player
+  src/Combat/Server/Heal.luau -> ServerScriptService/Combat/Heal · route Server (folder)
+  ServerScriptService.Combat.Dodge -> no file places it · a new file goes in src/Combat/Server/

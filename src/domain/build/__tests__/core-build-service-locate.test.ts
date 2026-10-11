@@ -794,6 +794,33 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
+		it("should find only the script a line number names, and a folder with what is in it", async () => {
+			await write(
+				"src/Net/init.luau",
+				"src/Net/Types.luau",
+				"src/Net/Remote.luau"
+			);
+			const config = configOf();
+			const files = async (instance: string) =>
+				(
+					await locateIn(buildService(), config, {
+						args: [instance],
+						cwd: abs(),
+					})
+				)
+					.unwrap()
+					.instances[0].files.map(({ source }) => source);
+
+			expect(await files("ReplicatedStorage.Shared.Net:3: oops")).toEqual(
+				[abs("src/Net/init.luau")]
+			);
+			expect(await files("ReplicatedStorage.Shared.Net")).toEqual([
+				abs("src/Net/Remote.luau"),
+				abs("src/Net/Types.luau"),
+				abs("src/Net/init.luau"),
+			]);
+		});
+
 		it("should list every node an init script is copied to, and find it at each", async () => {
 			await write(
 				"src/Net/init.luau",

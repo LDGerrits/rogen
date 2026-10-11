@@ -236,17 +236,24 @@ export function containerClassName(instancePath: readonly string[]): string {
 export class InstanceReference {
 	private static readonly GAME_PREFIX = /^game[./]/;
 	private static readonly QUOTED = /'([^']+)'/;
+	private static readonly COLON_LINE = /^[^:]*:\d+/;
+	private static readonly LINE_AFTER_QUOTE = /^[\s,(]*line\s+\d+/i;
 
 	private constructor(
 		/** The reference without `game.` or a line number. */
 		readonly text: string,
-		readonly separator: "." | "/"
+		readonly separator: "." | "/",
+		/** Whether a line number came with it, which only a script has: what is inside the instance is not asked about. */
+		readonly namesScript = false
 	) {}
 
 	/** Reads a pasted error line or stack frame: a quoted name is taken from its quotes, a leading `game.` and everything from the first `:` go. `undefined` unless it starts with a supported service. */
 	static parse(input: string): InstanceReference | undefined {
-		const quoted = InstanceReference.QUOTED.exec(input)?.[1] ?? input;
-		const text = quoted
+		const quote = InstanceReference.QUOTED.exec(input);
+		const unquoted = input
+			.trim()
+			.replace(InstanceReference.GAME_PREFIX, "");
+		const text = (quote?.[1] ?? input)
 			.trim()
 			.replace(InstanceReference.GAME_PREFIX, "")
 			.split(":")[0]
@@ -254,7 +261,15 @@ export class InstanceReference {
 		const separator = text.includes("/") ? "/" : ".";
 		const [service] = text.split(separator);
 		return isSupportedService(service)
-			? new InstanceReference(text, separator)
+			? new InstanceReference(
+					text,
+					separator,
+					quote
+						? InstanceReference.LINE_AFTER_QUOTE.test(
+								input.slice(quote.index + quote[0].length)
+							)
+						: InstanceReference.COLON_LINE.test(unquoted)
+				)
 			: undefined;
 	}
 
@@ -262,10 +277,13 @@ export class InstanceReference {
 		return this.text.split(this.separator)[0];
 	}
 
-	/** Whether `instancePath` is this instance or inside it. Names may hold the separator, so whole keys are compared rather than split segments. */
+	/** Whether `instancePath` is this instance, or inside it unless a line number says it is a script. Names may hold the separator, so whole keys are compared rather than split segments. */
 	contains(instancePath: readonly string[]): boolean {
 		const key = instancePath.join(this.separator);
-		return key === this.text || key.startsWith(this.text + this.separator);
+		return (
+			key === this.text ||
+			(!this.namesScript && key.startsWith(this.text + this.separator))
+		);
 	}
 }
 

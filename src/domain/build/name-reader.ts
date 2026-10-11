@@ -41,20 +41,24 @@ export class NameReader {
 		this.finder = new MisspellingFinder(keys);
 	}
 
-	/** A folder's name with its parentheses, then its `^`, off; `offset` is where that name starts in the folder's. */
+	/** A folder's name with its parentheses and its `^` off, in either order (`(^Name)` and `^(Name)`); `offset` is where that name starts in the folder's. */
 	private static readFolderName(folderName: string): {
 		readonly name: string;
 		readonly invisible: boolean;
 		readonly hoisted: boolean;
 		readonly offset: number;
 	} {
-		const unwrapped = InstanceName.unwrapInvisibleFolder(folderName);
-		const { name, hoisted } = InstanceName.unhoisted(unwrapped.name);
+		const outer = InstanceName.unwrapInvisibleFolder(folderName);
+		const hoisted = InstanceName.unhoisted(outer.name);
+		const inner = hoisted.hoisted
+			? InstanceName.unwrapInvisibleFolder(hoisted.name)
+			: { name: hoisted.name, invisible: false };
+		const invisible = outer.invisible || inner.invisible;
 		return {
-			name,
-			invisible: unwrapped.invisible,
-			hoisted,
-			offset: (unwrapped.invisible ? 1 : 0) + (hoisted ? 1 : 0),
+			name: inner.name,
+			invisible,
+			hoisted: hoisted.hoisted,
+			offset: (invisible ? 1 : 0) + (hoisted.hoisted ? 1 : 0),
 		};
 	}
 

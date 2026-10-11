@@ -129,10 +129,15 @@ export interface ConfigLocations {
 	readonly diagnostics: readonly Diagnostic[];
 }
 
+/** One thing `where` was asked about: a path, resolved and written with slashes, or an instance as `reference.text` has it. */
+export type Asked = { readonly path: string } | { readonly instance: string };
+
 /** What `locate` found, config by config. */
 export interface Locations {
 	/** No path or instance was asked about, so `files` holds every file. */
 	readonly everyFile: boolean;
+	/** Everything asked about, in the order it was given. */
+	readonly asked: readonly Asked[];
 	/** The configs that load; each answers for itself. */
 	readonly configs: readonly ConfigLocations[];
 	/** Why the configs that didn't load did not answer. */

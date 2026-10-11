@@ -81,11 +81,16 @@ describe("Router", () => {
 			});
 
 			it("should land a ^ name inside a ^ folder at the target, and an invisible ^ folder's contents there", async () => {
-				await write("src/A/^B/C/^D.luau", "src/A/(^E)/F.luau");
+				await write(
+					"src/A/^B/C/^D.luau",
+					"src/A/(^E)/F.luau",
+					"src/A/^(G)/H.luau"
+				);
 
 				expect((await paths()).sort()).toEqual([
 					"ReplicatedStorage/shared/D",
 					"ReplicatedStorage/shared/F",
+					"ReplicatedStorage/shared/H",
 				]);
 			});
 

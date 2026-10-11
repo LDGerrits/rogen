@@ -383,6 +383,17 @@ describe("NameReader folder", () => {
 		expect(read(".mock").keptName).toBeUndefined();
 	});
 
+	it.each(["(^server)", "^(server)"])(
+		"should read %s as an invisible hoisted route folder",
+		(folderName) => {
+			expect(read(folderName)).toMatchObject({
+				route: "server",
+				invisible: true,
+				hoisted: true,
+			});
+		}
+	);
+
 	it("should read parentheses off first and mark the folder invisible", () => {
 		expect(read("(server)")).toMatchObject({
 			route: "server",
@@ -562,6 +573,7 @@ describe("NameReader folder name offsets", () => {
 		["(Foo.mok)", 4],
 		["^Foo.mok", 4],
 		["(^Foo.mok)", 5],
+		["^(Foo.mok)", 5],
 	])(
 		"should measure a respelling in %s from the start of the whole name",
 		(folderName, start) => {

@@ -263,6 +263,7 @@ describe("WhereLog", () => {
 					"C:\\repo",
 					new WhereAnswers({
 						everyFile: false,
+						asked: [],
 						errors: [],
 						configs: [
 							{
@@ -748,6 +749,7 @@ describe("WhereLog", () => {
 				"/repo",
 				new WhereAnswers({
 					everyFile: true,
+					asked: [],
 					errors: [],
 					configs: [
 						{

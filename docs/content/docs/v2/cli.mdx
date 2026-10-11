@@ -100,7 +100,7 @@ src/Net/Types.lua -> replaced by src/Net/Types.luau
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
-A directory stands for the files inside it, and no path at all means every file in the tree. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
+A directory stands for the files inside it, and no path at all means every file in the tree. Answers come in the order you gave the arguments, and a file already answered by an earlier argument isn't repeated. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
 A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0. That answer is per path. Without a path, or asked about an instance, `where` has nothing it can place, so it prints the errors and exits 1, as `check` does.
 
@@ -132,6 +132,8 @@ A path can carry the `:line` or `:line:col` that linters and logs print after it
 $ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
+
+A line number names a script, so only the file that places that script is listed. An instance with none, such as `ServerScriptService.Combat`, lists every file inside it.
 
 When no file places the instance, `where` says where a new one goes, from the files placed beside it:
 
@@ -408,4 +410,4 @@ In a terminal, Rogen draws a framed layout. It prints plain lines instead in pip
 
 Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `-y` does. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
 
-Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them.
+Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A warning about several files is one block in `build`, `watch` and `serve`, and its first line names the config. For one line per file, which is what an editor task or a CI annotation should read, use [`rogen check`](#check-path) or `--json`.
