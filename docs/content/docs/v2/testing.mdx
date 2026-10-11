@@ -15,26 +15,26 @@ The specs and the production build differ by [mode](/docs/v2/core-concepts/modes
 <Step>
 ### Leave the Specs Out of Production
 
-A mode excludes files. `rogen init` does this when it finds a test runner: `prod` leaves the specs out, `dev` keeps them.
+A mode excludes files. When `rogen init` finds a test runner it writes two, and `dev` is the one the config builds in, so `rogen serve` shows the specs in Studio and a release build leaves them out:
 
 ```json title="default.rogen.json"
 {
 	"modes": {
 		"dev": {},
-		"prod": { "exclude": ["**/*.spec.luau", "DevPackages"] }
+		"prod": { "exclude": ["**/*.spec.luau"] }
 	},
-	"mode": "prod"
+	"mode": "dev"
 }
 ```
 
-The config builds in `prod` unless you say otherwise, so `rogen build` never ships a spec.
+Without a test runner, write the same by hand. Add the globs for anything else that is only for development, such as a `DevPackages` mount, to `prod`'s `exclude`. A release is built with `rogen build --mode prod`, written to another file: see [Place Files](/docs/v2/core-concepts/output#place-files).
 
 </Step>
 
 <Step>
 ### Add a Config for the Tests
 
-Put it in a folder of its own, so the configs beside `default.rogen.json` stay what `rogen serve` and `rogen build` read: a config that extends `default` would take its place as the one `serve` syncs to Studio. `test/test.rogen.json` builds in `dev` and sets `LoadStringEnabled`, which Jest needs:
+Put it in a folder of its own, so the configs beside `default.rogen.json` stay what `rogen serve` and `rogen build` read: a config that extends `default` would take its place as the one `serve` syncs to Studio. `test/test.rogen.json` builds in `dev` whatever the default config does, and sets `LoadStringEnabled`, which Jest needs and a game you ship should not have:
 
 ```json title="test/test.rogen.json"
 {
@@ -54,7 +54,7 @@ Put it in a folder of its own, so the configs beside `default.rogen.json` stay w
 }
 ```
 
-The template merges over the default one, so it keeps the package mounts and the other properties you set there. The default config has to name its `rootDirs` (`rogen init` writes them), because paths in a config are relative to the file that wrote them, and an unwritten `src` would be looked for under `test/`.
+The template merges over the default one, so it keeps the package mounts and the other properties you set there. The default config has to name its `rootDirs`, as `rogen init` does. Paths in a config are relative to the file that wrote them, and the `src` that applies when none is named would be looked for under `test/`: the build then warns that the root dir does not exist ([`scan.missingRootDir`](/docs/v2/diagnostics#scan-missingrootdir)), and the place holds no specs.
 
 </Step>
 
