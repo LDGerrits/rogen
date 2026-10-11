@@ -65,10 +65,7 @@ export class ServeLog implements ServeReporter {
 	begin(): void {
 		const { plan } = this;
 		const { executable, selection } = plan;
-		this.watchLog.begin(
-			plan.targets.map(({ config }) => config),
-			selection.home
-		);
+		this.watchLog.begin(selection.configs, selection.home);
 		if (executable.passedOver) {
 			this.logService.info(
 				`Both ${executable.server.id} and ${executable.passedOver.id} are pinned; serving with ${executable.server.id} (--tool ${executable.passedOver.id} to switch).`
@@ -123,7 +120,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "retired":
 				this.logService.info(
-					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
+					`${target.adopted ? "Stopped building for" : "Stopped serving"} ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
 		}
 	}
@@ -234,7 +231,7 @@ export class ServeJsonLog implements ServeReporter {
 	}
 
 	shutdown(targets: readonly ServeTarget[]): void {
-		for (const target of targets)
+		for (const target of targets.filter(({ adopted }) => !adopted))
 			this.line({
 				stopped: {
 					config: target.config.label,
