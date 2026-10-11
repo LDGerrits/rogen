@@ -103,9 +103,12 @@ async function main(): Promise<void> {
 		const logService: LogService = environmentService.isPlain
 			? new PlainLogService(
 					environmentService.cwd,
-					json ? undefined : environmentService.githubWorkspace
+					environmentService.annotationsIn
 				)
-			: new TerminalLogService(environmentService.cwd);
+			: new TerminalLogService(
+					environmentService.cwd,
+					environmentService.annotationsIn
+				);
 		logService.setLevel(environmentService.logLevel);
 		const failure = new CommandFailure(logService, json);
 

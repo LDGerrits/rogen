@@ -116,7 +116,7 @@ describe("NativeEnvironmentService", () => {
 		});
 	});
 
-	describe("githubWorkspace", () => {
+	describe("annotationsIn", () => {
 		it.each([
 			[
 				{ GITHUB_ACTIONS: "true", GITHUB_WORKSPACE: "/work/repo" },
@@ -130,7 +130,22 @@ describe("NativeEnvironmentService", () => {
 			],
 			[{}, undefined],
 		])("should read it from %j", (env, workspace) => {
-			expect(inTerminal(env).githubWorkspace).toBe(workspace);
+			expect(inTerminal(env).annotationsIn).toBe(workspace);
+		});
+
+		it("should leave it out when the run prints JSON", () => {
+			const env = new NativeEnvironmentService(
+				{ json: true },
+				"/mock/cwd",
+				{
+					env: { GITHUB_ACTIONS: "true" },
+					isTerminal: false,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+				}
+			);
+
+			expect(env.annotationsIn).toBeUndefined();
 		});
 	});
 });

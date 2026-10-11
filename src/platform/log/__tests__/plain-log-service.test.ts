@@ -273,6 +273,16 @@ describe("PlainLogService", () => {
 			expect(out).toEqual([]);
 		});
 
+		it("should start the line at its first column, inside a step too, or GitHub would not read it", () => {
+			const logService = new PlainLogService("/work/repo", "/work/repo");
+			logService.section("default.rogen.json", "root dirs: src");
+			logService.step("lobby");
+
+			logService.annotate(diagnostic);
+
+			expect(errors.at(-1)?.startsWith("::warning ")).toBe(true);
+		});
+
 		it("should write nothing without a workspace", () => {
 			new PlainLogService("/work/repo").annotate(diagnostic);
 
