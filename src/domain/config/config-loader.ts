@@ -1,6 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import path from "path";
-import { Disposable } from "../../base/disposable.js";
+import { Disposable, toDisposable } from "../../base/disposable.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -71,7 +71,7 @@ export class ConfigLoader {
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
 		this.fileChecks.add(check);
-		return { [Symbol.dispose]: () => this.fileChecks.delete(check) };
+		return toDisposable(() => this.fileChecks.delete(check));
 	}
 
 	/** Never throws for a problem the user can cause. */

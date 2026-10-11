@@ -2,10 +2,8 @@ import path from "path";
 import { jest } from "@jest/globals";
 import "../build-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
-import { ReportedError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { DisposableStore } from "../../../base/disposable.js";
 import {
 	MockConfigService,
 	brokenEntry,
@@ -21,23 +19,18 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import {
 	CommandRegistry,
 	Extensions,
+	ReportedError,
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
 describe("build command", () => {
-	let store: DisposableStore;
 	let fs: MemoryFileSystemService;
 
 	beforeEach(async () => {
-		store = new DisposableStore();
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	const run = async (

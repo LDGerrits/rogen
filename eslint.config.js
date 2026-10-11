@@ -27,7 +27,7 @@ const modules = {
 	},
 	// A command's own file is imported only by the composition root, for its side effect.
 	commands: {
-		build: ["build-log", "build-report"],
+		build: ["build-log", "build-document"],
 		check: [],
 		help: [],
 		init: [],

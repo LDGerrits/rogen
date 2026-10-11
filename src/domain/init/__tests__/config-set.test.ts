@@ -56,11 +56,14 @@ describe("ConfigSet", () => {
 	});
 
 	describe("with a compiler", () => {
-		it("should write one config even when Darklua reads the compiler's output", () => {
+		it("should add the synced config when Darklua reads the compiler's output, which the compiler's project file points at", () => {
 			const set = new ConfigSet("default", robloxTs, darklua);
 
-			expect(set.sourced).toBe(false);
-			expect(set.configFiles).toEqual(["default.rogen.json"]);
+			expect(set.sourced).toBe(true);
+			expect(set.configFiles).toEqual([
+				"default.rogen.json",
+				"sync.rogen.json",
+			]);
 		});
 	});
 
@@ -77,6 +80,7 @@ describe("ConfigSet", () => {
 				"lobby.rogen.json",
 				"lobby-sync.rogen.json",
 				"lobby.project.json",
+				"lobby-sync.project.json",
 			]);
 		});
 
@@ -100,7 +104,7 @@ describe("ConfigSet naming", () => {
 	});
 
 	it("should point at where variants of a script are swapped in", () => {
-		expect(ConfigSet.variantsStep(luau, "default.rogen.json")).toBe(
+		expect(new ConfigSet("default", luau, undefined).variantsStep).toBe(
 			'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.'
 		);
 	});
@@ -118,7 +122,9 @@ describe("ConfigSet naming", () => {
 			[["a", "b"], "at most one"],
 			[[" "], "can't be empty"],
 			[["a/b"], "path separators"],
+			[["a\\b"], "path separators"],
 			[[".."], "path separators"],
+			[["."], "path separators"],
 			[["a:b"], `can't contain ":"`],
 			[["lobby.json"], "read as a path"],
 			[["lobby "], "start or end with a space"],
@@ -174,7 +180,7 @@ describe("ConfigSet planning", () => {
 				new ConfigSet("game", robloxTs, undefined).planConfigs(
 					builder,
 					own,
-					"out"
+					{ synced: "out" }
 				)
 			);
 
@@ -186,7 +192,11 @@ describe("ConfigSet planning", () => {
 
 		it("should leave out the sync dir when there is none", () => {
 			const plan = planned((builder) =>
-				new ConfigSet("game", luau, undefined).planConfigs(builder, own)
+				new ConfigSet("game", luau, undefined).planConfigs(
+					builder,
+					own,
+					{}
+				)
 			);
 
 			expect(configsOf(plan)["game.rogen.json"]).not.toHaveProperty(
@@ -196,11 +206,9 @@ describe("ConfigSet planning", () => {
 
 		it("should move the sync dir to the synced config beside a sourced one", () => {
 			const plan = planned((builder) =>
-				new ConfigSet("game", luau, darklua).planConfigs(
-					builder,
-					own,
-					"dist"
-				)
+				new ConfigSet("game", luau, darklua).planConfigs(builder, own, {
+					synced: "dist",
+				})
 			);
 
 			const configs = configsOf(plan);
@@ -210,6 +218,28 @@ describe("ConfigSet planning", () => {
 			]);
 			expect(configs["game.rogen.json"]).toMatchObject(own);
 			expect(configs["game.rogen.json"]).not.toHaveProperty("syncDir");
+			expect(configs["game-sync.rogen.json"]).toMatchObject({
+				extends: "./game.rogen.json",
+				syncDir: "dist",
+			});
+		});
+	});
+
+	describe("planConfigs with a compiler and Darklua", () => {
+		it("should keep the compiler's output on the sourced config, and Darklua's on the synced one", () => {
+			const plan = planned((builder) =>
+				new ConfigSet("game", robloxTs, darklua).planConfigs(
+					builder,
+					own,
+					{ source: "out", synced: "dist" }
+				)
+			);
+
+			const configs = configsOf(plan);
+			expect(configs["game.rogen.json"]).toMatchObject({
+				...own,
+				syncDir: "out",
+			});
 			expect(configs["game-sync.rogen.json"]).toMatchObject({
 				extends: "./game.rogen.json",
 				syncDir: "dist",
@@ -265,6 +295,15 @@ describe("ConfigSet planning", () => {
 			expect(run).toContain(
 				target.workspace.darklua.sourcemapCommand("game.project.json")
 			);
+		});
+
+		it("should not keep a sourcemap current for a compiler's output", () => {
+			const { run, edits } = steps(
+				new ConfigSet("game", robloxTs, darklua),
+				"rbxtsc -w"
+			);
+
+			expect([...run, ...edits].join("\n")).not.toContain("sourcemap");
 		});
 
 		it("should have no Darklua commands without Darklua", () => {

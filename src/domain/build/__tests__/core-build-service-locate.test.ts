@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { PlannedFilesIndex } from "../planned-files-index.js";
@@ -29,7 +28,6 @@ const configOf = (overrides: ResolvedConfigSpec = {}): ResolvedConfig =>
 
 describe("CoreBuildService.locate", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
@@ -58,11 +56,6 @@ describe("CoreBuildService.locate", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	describe("a named file", () => {
@@ -566,7 +559,7 @@ describe("CoreBuildService.locate", () => {
 
 		it("should never be written to the listing it sits on", async () => {
 			await write("src/Other.luau");
-			const listing = await indexOf(store, fs, [abs("src")]);
+			const listing = await indexOf(fs, [abs("src")]);
 
 			const planned = new PlannedFilesIndex(
 				listing,
@@ -900,6 +893,28 @@ describe("CoreBuildService.locate", () => {
 
 			expect(
 				await foldersFor("ServerScriptService.Net.NewThing")
+			).toEqual([[abs("src/Net/Server")]]);
+		});
+
+		it("should count an init script whose name carries a route as the folder it is", async () => {
+			await write("src/Net/Moves/init@Server.luau");
+
+			expect(
+				await foldersFor("ServerScriptService.Net.NewThing")
+			).toEqual([[abs("src/Net")]]);
+		});
+
+		it("should count an init script whose name carries a variant as the folder it is", async () => {
+			await write("src/Net/Server/Moves/init.mock.luau");
+
+			expect(
+				await foldersIn(
+					configOf({
+						variants: { mock: true },
+						rootDirs: [abs("src")],
+					}),
+					"ServerScriptService.Net.NewThing"
+				)
 			).toEqual([[abs("src/Net/Server")]]);
 		});
 

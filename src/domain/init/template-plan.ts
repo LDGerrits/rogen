@@ -1,15 +1,20 @@
 import path from "path";
 import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
-import { instanceKey } from "../rojo/rojo-project.js";
 import { Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitDirectory } from "./init-directory.js";
-import {
-	StarterTemplate,
-	TEMPLATE_FILE,
-	TemplateChoice,
-} from "./starter-template.js";
+import { StarterTemplate, TEMPLATE_FILE } from "./starter-template.js";
+import { instanceKey } from "../roblox/roblox.js";
+
+/** What the template question answers. */
+export type TemplateChoice =
+	/** Start `template.project.json` from the package mounts, when there are any. */
+	| { readonly kind: "new" }
+	/** Copy a hand-written project file to `template.project.json`. */
+	| { readonly kind: "copy"; readonly from: string }
+	/** Reference a hand-written project file as it is. */
+	| { readonly kind: "use"; readonly file: string };
 
 /** The template a new project chose, with the text of a copied file read in. */
 export type ProjectTemplate =
@@ -30,6 +35,14 @@ export interface TemplateInputs {
 	readonly dirs: readonly string[];
 	/** The routes the nodes a copy leaves out become. */
 	readonly derived: DerivedRoutes | undefined;
+}
+
+/** The name of the folder a mount at `target` lies in or is: a file's folder is where its marker goes. */
+function folderNameOf(target: string): string {
+	const name = path.posix.basename(target);
+	return path.posix.extname(name) === ""
+		? name
+		: path.posix.basename(path.posix.dirname(target));
 }
 
 /** Which template a new project's configs name, the file `init` writes for it, and what it says about it. */
@@ -133,7 +146,7 @@ export class TemplatePlan {
 					? [
 							`Couldn't route ${joinedWithOr(
 								derived.unrouted.map(({ node }) => node)
-							)}: only a folder directly in a root dir becomes a route. Give ${derived.unrouted.length === 1 ? "its folder" : "each folder"} a marker such as ${path.posix.basename(derived.unrouted[0].target)}@server, or move ${derived.unrouted.length === 1 ? "it" : "them"} up into a root dir.`,
+							)}: only a folder directly in a root dir becomes a route. Give ${derived.unrouted.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(derived.unrouted[0].target)}@server, or move ${derived.unrouted.length === 1 ? "it" : "them"} up into a root dir.`,
 						]
 					: []),
 				...(added.length > 0

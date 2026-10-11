@@ -5,13 +5,13 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
-import { BaseConfig, InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
+import { InitDirectory, BaseConfig } from "./init-directory.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
-import { PlaceFolders } from "./place-folder.js";
+import { PlaceFolderReader } from "./place-folder.js";
 import { PlaceChoices, PlacePlan } from "./place-plan.js";
+import { Setup } from "./setup.js";
 
 /** A place extends `default.rogen.json` with its own root dir and template, syncing from its own subfolder when code is compiled or processed. */
 export class PlaceSetup implements Setup<PlaceChoices> {
@@ -20,7 +20,7 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		/** The `default.rogen.json` the place joins, as it was read. */
 		private readonly base: Result<BaseConfig, Diagnostic[]>,
 		private readonly questions: InitQuestions,
-		private readonly placeFolders: PlaceFolders
+		private readonly placeFolders: PlaceFolderReader
 	) {}
 
 	/** Asks for the name and folder of a place added beside an existing `default.rogen.json`. */
@@ -29,20 +29,14 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 		const { workspace } = directory;
 		if (base.isErr()) return err(base.error);
 
-		const filesFor = (candidate: string) =>
-			ConfigSet.in(workspace, candidate).placeFiles;
-		const given = directory.givenName;
-		if (given) {
-			const conflicts = directory.checkFree(filesFor(given));
-			if (conflicts.length > 0) return err(conflicts);
-		}
-		const name =
-			given ??
-			(await questions.name(directory, {
-				message: "Place name",
-				description: "Writes <name>.rogen.json.",
-				filesFor,
-			}));
+		const named = await questions.givenOrAskedName(directory, {
+			message: "Place name",
+			description: "Writes <name>.rogen.json.",
+			filesFor: (candidate) =>
+				ConfigSet.in(workspace, candidate).placeFiles,
+		});
+		if (named.isErr()) return named;
+		const name = named.value;
 		if (name === undefined) return ok(undefined);
 
 		const folder = await questions.placeFolder(directory, base.value, name);
@@ -82,11 +76,6 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 			builder,
 			PlacePlan.serveCommandOf([place], choices.base.sharedPort)
 		);
-		builder.addEdit(
-			ConfigSet.variantsStep(
-				place.configSet.language,
-				configFileName(place.configSet.name)
-			)
-		);
+		builder.addEdit(place.configSet.variantsStep);
 	}
 }

@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 import { MemoryWatcher } from "../memory-watcher.js";
-import { WatchFilter, isIgnored } from "../watcher.js";
+import { IgnoredPath, WatchFilter } from "../watcher.js";
 import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js";
 import { FileType } from "../../fs/file-system-service.js";
 import { NullLogService } from "../../log/null-log-service.js";
@@ -170,7 +170,10 @@ describe("MemoryWatcher", () => {
 	});
 });
 
-describe("isIgnored", () => {
+const isIgnored = (target: string, ignored: readonly IgnoredPath[]) =>
+	new WatchFilter([], { ignored }).skips(target);
+
+describe("WatchFilter ignored paths", () => {
 	it("should match the ignored path itself", () => {
 		expect(isIgnored("/repo/out", ["/repo/out"])).toBe(true);
 	});

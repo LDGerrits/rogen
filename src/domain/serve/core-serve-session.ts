@@ -9,21 +9,21 @@ import { ProcessService } from "../../platform/process/process-service.js";
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
-import { ServedConfigs } from "./serve.js";
 import {
-	ServeChange,
+	ServeChangeEvent,
 	ServePlan,
 	ServeSession,
 	ServeTarget,
-	ServerSaid,
-	ServerStop,
-	ServingServer,
-	isRunning,
+	ServerOutputEvent,
+	ServerExitEvent,
+	ServerReadyEvent,
+	isServed,
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-record.js";
+import { ServerRecords } from "./server-records.js";
 import { StartedServer } from "./started-server.js";
+import { ServedConfigs } from "./served-configs.js";
 
 /** A watch of the plan's configs, and a server for each config to serve that nothing else serves, kept in step with the configs as they change. */
 export class CoreServeSession
@@ -36,17 +36,25 @@ export class CoreServeSession
 	private readonly _onDidError = this._register(new Emitter<Error>());
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
-	private readonly _onDidServe = this._register(new Emitter<ServingServer>());
-	readonly onDidServe: Event<ServingServer> = this._onDidServe.event;
+	private readonly _onDidServe = this._register(
+		new Emitter<ServerReadyEvent>()
+	);
+	readonly onDidServe: Event<ServerReadyEvent> = this._onDidServe.event;
 
-	private readonly _onDidSay = this._register(new Emitter<ServerSaid>());
-	readonly onDidSay: Event<ServerSaid> = this._onDidSay.event;
+	private readonly _onDidOutput = this._register(
+		new Emitter<ServerOutputEvent>()
+	);
+	readonly onDidOutput: Event<ServerOutputEvent> = this._onDidOutput.event;
 
-	private readonly _onDidChange = this._register(new Emitter<ServeChange>());
-	readonly onDidChange: Event<ServeChange> = this._onDidChange.event;
+	private readonly _onDidChange = this._register(
+		new Emitter<ServeChangeEvent>()
+	);
+	readonly onDidChange: Event<ServeChangeEvent> = this._onDidChange.event;
 
-	private readonly _onDidStop = this._register(new Emitter<ServerStop>());
-	readonly onDidStop: Event<ServerStop> = this._onDidStop.event;
+	private readonly _onDidExit = this._register(
+		new Emitter<ServerExitEvent>()
+	);
+	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
 
 	private readonly servers = new Map<string, StartedServer>();
 	/** The servers being stopped on purpose, which the session's own stop waits for. */
@@ -107,7 +115,11 @@ export class CoreServeSession
 	}
 
 	async start(): Promise<Result<void, Error>> {
-		await this.watch.start();
+		const watching = await this.watch.start();
+		if (watching.isErr()) {
+			this._onDidError.fire(watching.error);
+			return watching;
+		}
 		const first = await this.firstUpdate.p;
 		if (!first || this.stopping) return ok(undefined);
 		if (first instanceof Error) return err(first);
@@ -116,7 +128,7 @@ export class CoreServeSession
 		);
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		for (const target of this.plan.toStart) this.launch(target);
-		for (const { config, address } of this.plan.running)
+		for (const { config, address } of this.plan.alreadyServed)
 			this.declined.set(config.file, {
 				kind: "elsewhere",
 				address: address.toString(),
@@ -180,8 +192,7 @@ export class CoreServeSession
 		config: ResolvedConfig,
 		served: ServedConfigs
 	): Promise<void> {
-		const { tool, serverArgs } = this.plan;
-		const target = await this.ports.targetOf(config, tool, serverArgs);
+		const target = await this.ports.targetOf(config);
 		const address = target.address.toString();
 		const started = this.servers.get(config.file);
 		if (started?.target.address.toString() === address) return;
@@ -211,7 +222,6 @@ export class CoreServeSession
 				: await this.ports.check(
 						target,
 						others,
-						tool.server,
 						served.sharesName(target.project)
 					);
 		if (this.stopping) return;
@@ -238,10 +248,10 @@ export class CoreServeSession
 			return;
 		}
 		if (started) await this.retire(started, "moved");
-		if (isRunning(checked.value)) {
+		if (isServed(checked.value)) {
 			if (declinedHere !== "elsewhere")
 				this._onDidChange.fire({
-					kind: "running",
+					kind: "servedElsewhere",
 					target: checked.value,
 				});
 			this.declined.set(file, { kind: "elsewhere", address });
@@ -258,7 +268,7 @@ export class CoreServeSession
 	): Promise<boolean> {
 		const state = await this.probe.probe(
 			target.address,
-			this.plan.tool.server
+			this.plan.executable.server
 		);
 		const ownProject =
 			state.kind === "serving" && state.info.project === target.project;
@@ -293,8 +303,8 @@ export class CoreServeSession
 			this.records,
 			{
 				served: (serving) => this._onDidServe.fire(serving),
-				said: (said) => this._onDidSay.fire(said),
-				stopped: (stop) => this._onDidStop.fire(stop),
+				said: (said) => this._onDidOutput.fire(said),
+				stopped: (stop) => this._onDidExit.fire(stop),
 				failed: (error) => this._onDidError.fire(error),
 			}
 		);

@@ -1,5 +1,6 @@
 import path from "path";
-import { contains, normalizeDir } from "../../base/path.js";
+import { PathSet, contains, normalizeDir } from "../../base/path.js";
+import { isWindows } from "../../base/platform.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -7,15 +8,16 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import {
 	DEFAULT_CONFIG_FILE,
+	DEFAULT_CONFIG_STEM,
 	configFileName,
 	isConfigFileName,
 	rootDirOverlap,
 } from "../config/config.js";
 import { stemOfProjectFile } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
+import { DirectoryLayout, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
-const DEFAULT_ROOT_DIR = "src";
 const DEFAULT_PROJECT_NAME = "roblox-game";
 
 /** What a place inherits from `default.rogen.json`, with paths relative to the directory. */
@@ -30,19 +32,30 @@ export interface BaseConfig {
 
 /** The directory `init` writes into: what is in it, what the toolchain found there, and which paths could be written. */
 export class InitDirectory {
+	private readonly names: PathSet;
+
 	constructor(
 		/** The absolute path. */
 		readonly path: string,
 		/** The names of the entries in it. */
 		private readonly entries: ReadonlySet<string>,
 		readonly workspace: DetectedWorkspace,
+		/** Which of its folders hold code. */
+		readonly layout: DirectoryLayout,
 		/** The config name given on the command line, if one was. */
 		readonly givenName: string | undefined,
-		/** The name written when none is asked for: the given one, else `default`. */
-		readonly name: string,
 		/** What a place inherits from `default.rogen.json`; `undefined` when there is none. */
-		readonly base: Result<BaseConfig, Diagnostic[]> | undefined
-	) {}
+		readonly base: Result<BaseConfig, Diagnostic[]> | undefined,
+		/** Whether the file system takes `Src` and `src` for one name, as Windows' does. */
+		caseInsensitive = isWindows
+	) {
+		this.names = new PathSet(entries, caseInsensitive);
+	}
+
+	/** The name written when none is asked for: the given one, else `default`. */
+	get name(): string {
+		return this.givenName ?? DEFAULT_CONFIG_STEM;
+	}
 
 	/** The name of the game the project files carry. */
 	get projectName(): string {
@@ -50,7 +63,7 @@ export class InitDirectory {
 	}
 
 	has(fileName: string): boolean {
-		return this.entries.has(fileName);
+		return this.names.has(fileName);
 	}
 
 	get hasDefaultConfig(): boolean {
@@ -114,15 +127,15 @@ export class InitDirectory {
 	defaultRootDir(language: Language): string {
 		const configured = language.configuredRootDir();
 		if (configured !== undefined) return configured;
-		if (this.workspace.hasSrc) return DEFAULT_ROOT_DIR;
-		const { codeFolders } = this.workspace;
+		if (this.has(DEFAULT_ROOT_DIR)) return DEFAULT_ROOT_DIR;
+		const { codeFolders } = this.layout;
 		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_ROOT_DIR;
 	}
 
 	/** The hint line naming the code folders `rootDir` doesn't cover, or `undefined` when there are none. */
 	otherCodeFoldersHint(rootDir: string): string | undefined {
 		const [topLevel] = rootDir.split("/");
-		const others = this.workspace.codeFolders.filter(
+		const others = this.layout.codeFolders.filter(
 			(folder) => folder !== topLevel
 		);
 		return others.length > 0

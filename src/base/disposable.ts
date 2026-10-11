@@ -2,6 +2,23 @@ export interface Disposable {
 	[Symbol.dispose](): void;
 }
 
+/** Does nothing when disposed. */
+export const NullDisposable: Disposable = Object.freeze({
+	[Symbol.dispose]() {},
+});
+
+/** A disposable that runs `fn` once, the first time it is disposed. */
+export function toDisposable(fn: () => void): Disposable {
+	let done = false;
+	return {
+		[Symbol.dispose]: () => {
+			if (done) return;
+			done = true;
+			fn();
+		},
+	};
+}
+
 export class DisposableStore implements Disposable {
 	private readonly disposables = new Set<Disposable>();
 	private isDisposed = false;
@@ -15,22 +32,27 @@ export class DisposableStore implements Disposable {
 		return disposable;
 	}
 
-	[Symbol.dispose](): void {
-		if (this.isDisposed) return;
-		this.isDisposed = true;
-
+	/** Disposes everything added so far; the store stays usable. */
+	clear(): void {
+		const disposables = [...this.disposables];
+		this.disposables.clear();
 		const failures: unknown[] = [];
-		for (const disposable of this.disposables) {
+		for (const disposable of disposables) {
 			try {
 				disposable[Symbol.dispose]();
 			} catch (error) {
 				failures.push(error);
 			}
 		}
-		this.disposables.clear();
 		if (failures.length === 1) throw failures[0];
 		if (failures.length > 1)
 			throw new AggregateError(failures, "Several disposables failed.");
+	}
+
+	[Symbol.dispose](): void {
+		if (this.isDisposed) return;
+		this.isDisposed = true;
+		this.clear();
 	}
 }
 

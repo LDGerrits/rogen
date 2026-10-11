@@ -1,6 +1,9 @@
 import path from "path";
-import { isIgnored } from "../../../platform/watcher/watcher.js";
+import { IgnoredPath, WatchFilter } from "../../../platform/watcher/watcher.js";
 import { WatchPlan, WatchPlanConfig } from "../watch-plan.js";
+
+const isIgnored = (target: string, ignored: readonly IgnoredPath[]) =>
+	new WatchFilter([], { ignored }).skips(target);
 
 const config = (
 	file: string,

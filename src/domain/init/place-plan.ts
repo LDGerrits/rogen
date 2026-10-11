@@ -5,7 +5,7 @@ import { projectFileName } from "../rojo/rojo-project.js";
 import { SyncServer } from "../serve/serve.js";
 import { CompiledPlace, Darklua, Language } from "../toolchain/toolchain.js";
 import { ConfigSet } from "./config-set.js";
-import { BaseConfig, InitDirectory } from "./init-directory.js";
+import { InitDirectory, BaseConfig } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { PlaceFolder } from "./place-folder.js";
 
@@ -73,7 +73,7 @@ export class PlacePlan {
 				rootDirs: [folder.rootDir],
 				template: folder.template,
 			},
-			syncDir
+			{ source: this.outDir, synced: syncDir }
 		);
 		if (folder.hasTemplate) builder.addNote(`Using ${folder.template}.`);
 		else
@@ -113,9 +113,7 @@ export class PlacePlan {
 		const [first] = places;
 		if (!first?.configSet.sourced && !sharedPort) return "rogen serve";
 		return `rogen serve ${places
-			.map(({ configSet }) =>
-				configSet.sourced ? configSet.syncStem : configSet.name
-			)
+			.map(({ configSet }) => configSet.servedStem)
 			.join(" ")}`;
 	}
 }

@@ -1,4 +1,6 @@
-import { normalizeDir } from "../../base/path.js";
+import { containsPath, normalizeDir } from "../../base/path.js";
+import { Result, err, ok } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
 	PromptChoice,
@@ -10,21 +12,18 @@ import {
 	configFileName,
 } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
-import {
-	Language,
-	Mount,
-	MountCandidate,
-	PLACES_DIR,
-} from "../toolchain/toolchain.js";
+import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
+import { PLACES_DIR, DEFAULT_ROOT_DIR } from "./code-finder.js";
 import { ConfigSet } from "./config-set.js";
 import { PlaceFolder } from "./place-folder.js";
-import { HOOK_SCRIPT_FILE } from "./hook-target.js";
-import { BaseConfig, InitDirectory } from "./init-directory.js";
+import { HOOK_SCRIPT_FILE } from "./coding-agent.js";
+import { InitDirectory, BaseConfig } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { TEMPLATE_FILE, TemplateChoice } from "./starter-template.js";
+import { TEMPLATE_FILE } from "./starter-template.js";
+import { TemplateChoice } from "./template-plan.js";
 
-export type Layout = "one" | "several";
+export type PlaceCount = "one" | "several";
 /** One thing `init` can add beside the configs here, and what adding it does. */
 export interface AdditionOption<T> {
 	readonly id: string;
@@ -46,6 +45,18 @@ export interface PlacesQuestion {
 	readonly filesFor: (name: string) => readonly string[];
 	/** Files the project itself writes, which no place may. */
 	readonly reserved: ReadonlySet<string>;
+}
+
+/** A place folder the workspace has that can't be set up as a place, and why. */
+export interface UnusablePlace {
+	readonly place: string;
+	readonly problem: string;
+}
+
+/** The places to set up, and the ones found that can't be. */
+export interface ChosenPlaces {
+	readonly places: readonly string[];
+	readonly unusable: readonly UnusablePlace[];
 }
 
 /** Where a new multi-place project keeps the code every place shares, unless it already has code at the root. */
@@ -134,14 +145,17 @@ export class InitQuestions {
 	}
 
 	/** Several places when the workspace already has a `places` folder. */
-	async layout({ workspace }: InitDirectory): Promise<Layout | undefined> {
-		const initial: Layout = workspace.places.length > 0 ? "several" : "one";
+	async placeCount({
+		layout,
+	}: InitDirectory): Promise<PlaceCount | undefined> {
+		const initial: PlaceCount =
+			layout.places.length > 0 ? "several" : "one";
 		if (!this.interactive) return initial;
 
-		const found = workspace.places
+		const found = layout.places
 			.map((name) => PlaceFolder.pathOf(name))
 			.join(", ");
-		return this.promptService.select<Layout>({
+		return this.promptService.select<PlaceCount>({
 			message: "What are you setting up?",
 			choices: [
 				{ value: "one", label: "One place" },
@@ -176,6 +190,18 @@ export class InitQuestions {
 			},
 		});
 		return answer?.trim();
+	}
+
+	/** The name given on the command line, which must be free to write, else the name asked for. */
+	async givenOrAskedName(
+		directory: InitDirectory,
+		question: NameQuestion
+	): Promise<Result<string | undefined, Diagnostic[]>> {
+		const given = directory.givenName;
+		if (given === undefined)
+			return ok(await this.name(directory, question));
+		const conflicts = directory.checkFree(question.filesFor(given));
+		return conflicts.length > 0 ? err(conflicts) : ok(given);
 	}
 
 	/** The name of a config added beside `default`. */
@@ -279,11 +305,10 @@ export class InitQuestions {
 		language: Language
 	): Promise<SharedCode | undefined> {
 		const rootDir = directory.defaultRootDir(language);
-		const { workspace } = directory;
 		const existing =
 			language.compiler !== undefined ||
-			workspace.hasSrc ||
-			workspace.codeFolders.includes(rootDir);
+			directory.has(DEFAULT_ROOT_DIR) ||
+			directory.layout.codeFolders.includes(rootDir);
 		const initial = existing ? rootDir : SHARED_FOLDER;
 		const answer = this.interactive
 			? await this.promptService.select({
@@ -373,8 +398,11 @@ export class InitQuestions {
 		return { kind: "new" };
 	}
 
-	/** The folder Darklua writes into, which Rojo syncs from. */
-	async syncDir({ workspace }: InitDirectory): Promise<string | undefined> {
+	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in one of the `read` folders, the root dirs and a compiler's output, or Darklua would write over what is read. */
+	async syncDir(
+		{ workspace }: InitDirectory,
+		read: readonly string[]
+	): Promise<string | undefined> {
 		const placeholder = workspace.darklua.defaultSyncDir;
 		if (!this.interactive) return placeholder;
 		const answer = await this.promptService.text({
@@ -382,7 +410,18 @@ export class InitQuestions {
 			description:
 				"The folder Darklua writes into. Rojo syncs from here.",
 			placeholder,
-			validate: required("a sync dir"),
+			validate: (value) => {
+				const missing = required("a sync dir")(value);
+				if (missing) return missing;
+				const dir = normalizeDir(value);
+				const overlapped = read.find(
+					(folder) =>
+						containsPath(folder, dir) || containsPath(dir, folder)
+				);
+				return overlapped
+					? `${dir} overlaps ${overlapped}. Darklua must write to a folder of its own.`
+					: undefined;
+			},
 		});
 		return answer === undefined ? undefined : normalizeDir(answer);
 	}
@@ -503,19 +542,20 @@ export class InitQuestions {
 		return fallback && { routes, fallback: fallback === "shared" };
 	}
 
-	/** The places set up alongside, the ones the workspace already has unless told otherwise. */
+	/** The places set up alongside, the ones the workspace already has unless told otherwise; unattended, the ones it has that can't be set up are told apart. */
 	async places(
 		directory: InitDirectory,
-		{ rootDirs, filesFor, reserved }: PlacesQuestion
-	): Promise<string[] | undefined> {
-		const found = directory.workspace.places.filter(
-			(place) =>
-				!directory.placeFolderProblem(
-					rootDirs,
-					PlaceFolder.pathIn(directory, place, rootDirs)
-				)
-		);
-		if (!this.interactive) return found;
+		question: PlacesQuestion
+	): Promise<ChosenPlaces | undefined> {
+		const { rootDirs } = question;
+		const found: string[] = [];
+		const unusable: UnusablePlace[] = [];
+		for (const place of directory.layout.places) {
+			const problem = this.placeProblem(directory, place, question);
+			if (problem) unusable.push({ place, problem });
+			else found.push(place);
+		}
+		if (!this.interactive) return { places: found, unusable };
 
 		const answer = await this.promptService.text({
 			message: "Places",
@@ -525,29 +565,43 @@ export class InitQuestions {
 				const names = splitList(value);
 				if (names.length === 0) return "Enter at least one place.";
 				for (const [index, place] of names.entries()) {
-					const parsed = ConfigSet.checkName(place);
-					if (parsed.isErr()) return parsed.error.message;
-					if (names.indexOf(place) !== index) {
+					if (names.indexOf(place) !== index)
 						return `${place} is listed twice.`;
-					}
-					const clash = filesFor(place).find(
-						(file) => directory.has(file) || reserved.has(file)
-					);
-					if (clash) {
-						return directory.has(clash)
-							? `${clash} already exists.`
-							: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
-					}
-					const problem = directory.placeFolderProblem(
-						rootDirs,
-						PlaceFolder.pathIn(directory, place, rootDirs)
+					const problem = this.placeProblem(
+						directory,
+						place,
+						question
 					);
 					if (problem) return problem;
 				}
 				return undefined;
 			},
 		});
-		return answer === undefined ? undefined : splitList(answer);
+		return answer === undefined
+			? undefined
+			: { places: splitList(answer), unusable: [] };
+	}
+
+	/** The first reason a place can't be called `place`: its name, the files it would write, or its folder. */
+	private placeProblem(
+		directory: InitDirectory,
+		place: string,
+		{ rootDirs, filesFor, reserved }: PlacesQuestion
+	): string | undefined {
+		const parsed = ConfigSet.checkName(place);
+		if (parsed.isErr()) return parsed.error.message;
+		const clash = filesFor(place).find(
+			(file) => directory.has(file) || reserved.has(file)
+		);
+		if (clash) {
+			return directory.has(clash)
+				? `${clash} already exists.`
+				: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
+		}
+		return directory.placeFolderProblem(
+			rootDirs,
+			PlaceFolder.pathIn(directory, place, rootDirs)
+		);
 	}
 
 	/** Where a place keeps its own files: beside default's shared folder unless told otherwise. */

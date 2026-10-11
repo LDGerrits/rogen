@@ -1,5 +1,4 @@
 import path from "path";
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
@@ -18,17 +17,11 @@ import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 
 describe("CoreBuildService", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const buildServiceOfFs = () => buildServiceOf(fs, new CoreIndexService(fs));
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	describe("build", () => {
@@ -771,6 +764,47 @@ describe("CoreBuildService", () => {
 			expect(await diagnose("src/F")).toMatchObject([
 				{ code: "route.folderTypo" },
 			]);
+		});
+
+		it("should report what is wrong with a meta file that applies to nothing, from the folder it is in", async () => {
+			await fs.writeFile(abs("src/I/Nope.meta.json"), "{}");
+			await fs.writeFile(abs("src/I/B.luau"), "");
+			const diagnose = async (arg: string) =>
+				(
+					await buildServiceOfFs().diagnose(
+						selectionOf(
+							configOf({ routes: { "*": "ReplicatedStorage" } })
+						),
+						{ args: [arg], cwd: abs() }
+					)
+				).unwrap().diagnostics;
+
+			const file = await diagnose("src/I/Nope.meta.json");
+
+			expect(file).not.toEqual([]);
+			expect(await diagnose("src/I")).toEqual(file);
+		});
+
+		it("should say the build stops on a meta error that is not about the path", async () => {
+			await fs.writeFile(abs("src/Combat/A.luau"), "");
+			await fs.writeFile(abs("src/Combat/init.meta.json"), "{ nope");
+			await fs.writeFile(abs("src/B.luau"), "");
+
+			const found = (
+				await buildServiceOfFs().diagnose(selectionOf(configOf()), {
+					args: ["src/B.luau"],
+					cwd: abs(),
+				})
+			).unwrap();
+
+			expect(found.diagnostics).toEqual([]);
+			expect(
+				found.stoppedBy.map(({ code, resource }) => [code, resource])
+			).toEqual(
+				expect.arrayContaining([
+					["meta.invalidSyntax", abs("src/Combat/init.meta.json")],
+				])
+			);
 		});
 
 		it("should report the error of a config the set blocks beside what reaches the path in the others", async () => {

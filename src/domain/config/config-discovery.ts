@@ -24,10 +24,10 @@ function isConfigPath(ref: string): boolean {
 /** The config files a command reads, and the folder it looked in. */
 export interface DiscoveredConfigs {
 	/** The working directory, or the nearest folder above it with configs when the working directory has none. */
-	readonly directory: string;
+	readonly home: string;
 	/** Absolute paths. */
 	readonly files: readonly string[];
-	/** Whether none was named, so `files` is every config in `directory`. */
+	/** Whether none was named, so `files` is every config in `home`. */
 	readonly everyConfig: boolean;
 }
 
@@ -48,7 +48,7 @@ export class ConfigDiscovery {
 			if (home.isErr()) return err(home.error);
 			const { directory, fileNames } = home.value;
 			return ok({
-				directory,
+				home: directory,
 				files: fileNames.map((name) => path.join(directory, name)),
 				everyConfig: true,
 			});
@@ -82,7 +82,7 @@ export class ConfigDiscovery {
 			);
 		}
 
-		return ok({ directory, files: resolved, everyConfig: false });
+		return ok({ home: directory, files: resolved, everyConfig: false });
 	}
 
 	/** Every `*.rogen.json` directly in `directory`, as sorted absolute paths; none when it can't be read. */

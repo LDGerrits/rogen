@@ -38,12 +38,7 @@ export interface IndexService {
 
 	/** Lists `dirs` and everything under them. A directory that doesn't exist isn't listed. */
 	list(dirs: readonly string[]): Promise<Listing>;
-	/**
-	 * `base` with `changes` applied, as a fresh listing would have them: an
-	 * added entry's type is read from the disk, not the change, an added
-	 * directory is listed whole, and an entry that is gone by then is skipped.
-	 * `base` itself is left as it was.
-	 */
+	/** `base` with `changes` applied, as a fresh listing would have them: an added entry's type is read from the disk, not the change, an added directory is listed whole, and an entry that is gone by then is skipped. `base` itself is left as it was. */
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
 

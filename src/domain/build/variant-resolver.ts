@@ -3,9 +3,11 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { ResolvedConfig } from "../config/config.js";
-import { InstanceMap, instanceKey } from "../rojo/rojo-project.js";
+import { joinPosix } from "../../base/path.js";
 import { LeftOut } from "./build.js";
+import { NameReadings } from "./name-readings.js";
 import { RoutedFile } from "./router.js";
+import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** Plain files from one root dir that claim one instance path; the last one wins and the others are replaced. */
 export interface InstanceClash {
@@ -14,7 +16,13 @@ export interface InstanceClash {
 	readonly losers: readonly RoutedFile[];
 }
 
-export interface VariantOutcome {
+/** A variant file that lands apart from the plain file beside it, which it would ship with rather than replace. */
+export interface LandsElsewhere {
+	readonly file: RoutedFile;
+	readonly plain: RoutedFile;
+}
+
+export interface VariantResolution {
 	/** Every instance path appears once per build; the last root dir wins across roots. */
 	readonly nodes: readonly RoutedFile[];
 	/** The files pruned by a dormant variant and those another file replaced. */
@@ -23,11 +31,51 @@ export interface VariantOutcome {
 }
 
 /** Decides which of the routed files an active variant leaves in the tree: dormant variants are pruned, and files that share an instance path give way to one. */
-export class VariantResolution {
-	constructor(private readonly config: ResolvedConfig) {}
+export class VariantResolver {
+	constructor(
+		private readonly config: ResolvedConfig,
+		private readonly readings: NameReadings
+	) {}
+
+	/** A variant file is an alternative of the plain file beside it, so it has to land where one of those does. */
+	landingElsewhere(routed: readonly RoutedFile[]): LandsElsewhere[] {
+		const found: LandsElsewhere[] = [];
+		for (const beside of groupBy(routed, (file) =>
+			this.besideKeyOf(file)
+		).values()) {
+			const plain = beside.filter((file) => file.variants.length === 0);
+			const landings = new Set(
+				plain.map(({ instancePath }) => instanceKey(instancePath))
+			);
+			if (plain.length > 0)
+				for (const file of beside)
+					if (!landings.has(instanceKey(file.instancePath)))
+						found.push({ file, plain: plain[0] });
+		}
+		return found;
+	}
+
+	/** Where a file sits with its variants off: its directory without variant folders or the variants on its folders, and its instance name, or none for an init script. */
+	private besideKeyOf({ entry, instancePath, init }: RoutedFile): string {
+		const dirs = this.readings
+			.entryReading(entry.source)
+			.folders.flatMap((folder) =>
+				folder.variants.length > 0 &&
+				folder.keptName === undefined &&
+				folder.route === undefined
+					? []
+					: [
+							`${folder.invisible ? "()" : ""}${folder.hoisted ? "^" : ""}${folder.outrankedName}`,
+						]
+			);
+		const name = init ? "" : instancePath[instancePath.length - 1];
+		return `${joinPosix(entry.rootDir, ...dirs)}\n${name}`;
+	}
 
 	/** Prunes what dormant variants remove, then resolves files that share an instance path. */
-	apply(routed: readonly RoutedFile[]): Result<VariantOutcome, Diagnostic[]> {
+	resolve(
+		routed: readonly RoutedFile[]
+	): Result<VariantResolution, Diagnostic[]> {
 		const { kept, pruned } = this.pruneDormant(routed);
 		const resolved = this.resolveClaimants(kept);
 		if (resolved.isErr()) return resolved;
@@ -89,7 +137,7 @@ export class VariantResolution {
 			for (const [instance, claimants] of groupBy(root, (file) =>
 				instanceKey(file.instancePath)
 			)) {
-				const top = VariantResolution.mostSpecific(claimants);
+				const top = VariantResolver.mostSpecific(claimants);
 				const variantFiles = top.filter(
 					(file) => file.variants.length > 0
 				);

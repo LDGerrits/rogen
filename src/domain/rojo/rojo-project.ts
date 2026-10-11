@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from "util";
 import { getOwn, isObject, setOwn } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
+import { instanceKey } from "../roblox/roblox.js";
 
 export interface OptionalRojoPath {
 	readonly optional: string;
@@ -31,48 +32,12 @@ export interface RojoNode {
 	[key: string]: unknown;
 }
 
-const INSTANCE_SEPARATOR = "/";
-
-/** An instance path written as one key, such as `ReplicatedStorage/Shared/Util`. */
-export function instanceKey(instancePath: readonly string[]): string {
-	return instancePath.join(INSTANCE_SEPARATOR);
-}
-
 /** A node's children: every key Rojo reads as an instance name, in file order. */
 function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(
 		(entry): entry is [string, RojoNode] =>
 			!entry[0].startsWith("$") && isObject(entry[1])
 	);
-}
-
-/** A map keyed by instance path, kept in the order paths were first set. */
-export class InstanceMap<V> implements Iterable<[readonly string[], V]> {
-	private readonly entries = new Map<
-		string,
-		{ readonly path: readonly string[]; value: V }
-	>();
-
-	get(instancePath: readonly string[]): V | undefined {
-		return this.entries.get(instanceKey(instancePath))?.value;
-	}
-
-	set(instancePath: readonly string[], value: V): this {
-		const key = instanceKey(instancePath);
-		const existing = this.entries.get(key);
-		if (existing) existing.value = value;
-		else this.entries.set(key, { path: instancePath, value });
-		return this;
-	}
-
-	*values(): IterableIterator<V> {
-		for (const { value } of this.entries.values()) yield value;
-	}
-
-	*[Symbol.iterator](): IterableIterator<[readonly string[], V]> {
-		for (const { path, value } of this.entries.values())
-			yield [path, value];
-	}
 }
 
 export interface RojoTree {
@@ -149,10 +114,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** A file without a `tree` gets a bare DataModel; it fails when the text, its tree or a node in it isn't an object. */
-	static parse(
-		text: string,
-		createContainer?: ContainerFactory
-	): Result<RojoProject<ParsedProjectFile>, Error> {
+	static parse(text: string): Result<RojoProject<ParsedProjectFile>, Error> {
 		const parsed = parse(text);
 		if (parsed.isErr()) return err(parsed.error);
 		if (!isObject(parsed.value)) {
@@ -168,10 +130,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 			);
 		}
 		return ok(
-			new RojoProject<ParsedProjectFile>(
-				{ ...parsed.value, tree },
-				createContainer
-			)
+			new RojoProject<ParsedProjectFile>({ ...parsed.value, tree })
 		);
 	}
 
@@ -236,7 +195,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		readonly tree: RojoNode;
 		readonly globIgnorePaths: readonly string[];
 	}): RojoTree {
-		const { globIgnorePaths: _globs, ...fields } = this.getTree();
+		const { globIgnorePaths: _globs, ...fields } = this.getFile();
 		const file = {
 			...fields,
 			name: parts.name,
@@ -249,7 +208,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** A copy, so what the caller does to it can't reach back into the model. */
-	getTree(): T {
+	getFile(): T {
 		return structuredClone(this.project);
 	}
 
@@ -281,7 +240,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** Every `$path` in the tree, depth first, the root's included. */
-	getPaths(): MountedPath[] {
+	mountedPaths(): MountedPath[] {
 		const found: MountedPath[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {
 			if (isRojoPath(node.$path))
@@ -318,7 +277,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 	}
 
 	/** Rewrites the target of every `$path`, keeping whether it is optional. */
-	mapPaths(map: (target: string) => string): void {
+	private mapPaths(map: (target: string) => string): void {
 		const visit = (node: RojoNode) => {
 			if (isRojoPath(node.$path)) {
 				node.$path =
@@ -331,6 +290,20 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		visit(this.project.tree);
 	}
 
+	/** A copy with every `$path` target and `globIgnorePaths` entry mapped, as when the file moves to another directory. */
+	rebased(map: (target: string) => string): RojoProject<T> {
+		const globs = this.globIgnorePaths;
+		const copy = new RojoProject<T>(
+			{
+				...this.getFile(),
+				...(globs.length > 0 && { globIgnorePaths: globs.map(map) }),
+			},
+			this.createContainer
+		);
+		copy.mapPaths(map);
+		return copy;
+	}
+
 	/** Adds the `$path` nodes of `additions` this project lacks; a node already there wins and its `$path` is skipped. */
 	mergeMissing(additions: RojoProject<ProjectFile>): {
 		added: MountedPath[];
@@ -339,7 +312,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		const added: MountedPath[] = [];
 		const skipped: MountedPath[] = [];
 		const pathsBelow = (node: RojoNode, at: readonly string[]) =>
-			new RojoProject({ tree: node }).getPaths().map((mounted) => ({
+			new RojoProject({ tree: node }).mountedPaths().map((mounted) => ({
 				path: mounted.path,
 				instancePath: [...at, ...mounted.instancePath],
 			}));
@@ -370,7 +343,7 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 				}
 			}
 		};
-		merge(this.project.tree, additions.getTree().tree, []);
+		merge(this.project.tree, additions.getFile().tree, []);
 		return { added, skipped };
 	}
 
@@ -379,8 +352,8 @@ export class RojoProject<T extends ProjectFile = RojoTree> {
 		project: RojoProject<T>;
 		clashes: NodeClash[];
 	} {
-		const base = this.getTree();
-		const over = overlay.getTree();
+		const base = this.getFile();
+		const over = overlay.getFile();
 		const clashes: NodeClash[] = [];
 		const merge = (
 			node: RojoNode,

@@ -228,6 +228,30 @@ describe("platform/config/config-models", () => {
 					index: 1,
 				});
 			});
+
+			it.each(["constructor", "toString", "__proto__"])(
+				"should not take %s from the prototype of a map that doesn't set it",
+				(key) => {
+					const layered = new Config(
+						new ConfigModel(),
+						[
+							new ConfigModel({
+								map: Object.defineProperty({}, key, {
+									value: 1,
+									enumerable: true,
+								}),
+							}),
+							new ConfigModel({ map: { other: 2 } }),
+						],
+						new ConfigModel()
+					);
+
+					expect(layered.inspect(["map", key]).source).toEqual({
+						tier: "layer",
+						index: 0,
+					});
+				}
+			);
 		});
 
 		describe("equals", () => {
@@ -246,6 +270,26 @@ describe("platform/config/config-models", () => {
 				expect(before.equals(after)).toBe(false);
 				expect(before.equals(before)).toBe(true);
 			});
+		});
+	});
+
+	describe("ConfigModel", () => {
+		it("should give every value when no section is asked for", () => {
+			expect(new ConfigModel({ a: 1 }).getValue()).toEqual({ a: 1 });
+		});
+
+		it("should give nothing below a value that isn't a map", () => {
+			expect(new ConfigModel({ a: 1 }).getValue("a.b")).toBeUndefined();
+			expect(
+				new ConfigModel({ a: null }).getValue("a.b")
+			).toBeUndefined();
+		});
+
+		it("should read a key the model owns, and none it inherits", () => {
+			const model = new ConfigModel({ map: { own: 1 } });
+
+			expect(model.getValue("map.own")).toBe(1);
+			expect(model.getValue("map.toString")).toBeUndefined();
 		});
 	});
 });

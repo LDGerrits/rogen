@@ -2,8 +2,7 @@ import { isObject, sortObject } from "./objects.js";
 
 /** `obj` as JSON with its keys in alphabetical order. */
 export function stableStringify(obj: unknown): string {
-	const sorted = sortObject(obj);
-	return JSON.stringify(sorted, null, 2);
+	return formatJsonDocument(sortObject(obj));
 }
 
 /** `JSON.stringify` that breaks apart circular references. */

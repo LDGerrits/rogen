@@ -1,16 +1,28 @@
+import { ok } from "../../../base/result.js";
 import { SCHEMA_URL as SCHEMA } from "../../config/config.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { ExtendingConfigSetup } from "../extending-config-setup.js";
-import { WorkspaceSpec } from "../../toolchain/__tests__/workspaces.js";
-import { directoryOf, legacyPlan, planOf } from "./init-fixtures.js";
+import {
+	DirectorySpec,
+	WorkspaceSpec,
+	directoryOf,
+	legacyPlan,
+	planOf,
+} from "./init-fixtures.js";
 
 describe("ExtendingConfigSetup", () => {
 	const extending = async (
 		existing: readonly string[] = [],
-		workspace?: WorkspaceSpec
+		workspace?: WorkspaceSpec,
+		base?: DirectorySpec["base"]
 	) => {
-		const target = directoryOf({ givenName: "prod", existing, workspace });
+		const target = directoryOf({
+			givenName: "prod",
+			existing,
+			workspace,
+			base,
+		});
 		const setup = new ExtendingConfigSetup(
 			target,
 			new InitQuestions(new MockPromptService([], false), false)
@@ -91,5 +103,29 @@ describe("ExtendingConfigSetup", () => {
 		const { asked } = await extending(["prod.project.json"]);
 
 		expect(asked.isErr()).toBe(true);
+	});
+
+	it("should sync a synced twin from where default's project syncs", async () => {
+		const { asked, setup, target } = await extending(
+			[],
+			{ darkluaConfig: ".darklua.json" },
+			ok({ rootDirs: ["src"], syncDir: "build" })
+		);
+
+		const plan = legacyPlan(
+			planOf(setup, asked.unwrap()!, target).unwrap()
+		);
+
+		expect(
+			Object.fromEntries(
+				plan.configs.map(({ fileName, content }) => [
+					fileName,
+					JSON.parse(content).syncDir,
+				])
+			)
+		).toEqual({
+			"prod.rogen.json": undefined,
+			"prod-sync.rogen.json": "build",
+		});
 	});
 });

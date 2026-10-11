@@ -1,4 +1,3 @@
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
@@ -16,7 +15,6 @@ describe("NameReadings", () => {
 
 	describe("reading", () => {
 		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
@@ -29,17 +27,12 @@ describe("NameReadings", () => {
 				variants: { mock: true },
 				...overrides,
 			});
-			const index = await indexOf(store, fs, config.rootDirs);
+			const index = await indexOf(fs, config.rootDirs);
 			return placeFiles(index, config, syncTools).unwrap().readings;
 		};
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
-		});
-
-		afterEach(() => {
-			store[Symbol.dispose]();
 		});
 
 		describe("folders", () => {

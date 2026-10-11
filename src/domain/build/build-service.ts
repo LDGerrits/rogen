@@ -3,6 +3,8 @@ import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
 	RenameFix,
+	diagnosticsAbout,
+	diagnosticsReaching,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -65,8 +67,20 @@ export interface BlockedLocation extends Located {
 export type FileLocation =
 	PlacedLocation | (LeftOut & Located) | UnplacedLocation | BlockedLocation;
 
+/** What a build raises about `location`: for a file the user named, everything that reaches it, a folder's diagnostics included; for any other, only what is about that path. */
+export function diagnosticsOf(
+	location: FileLocation,
+	diagnostics: readonly Diagnostic[]
+): Diagnostic[] {
+	return location.status === "placed" && location.named
+		? diagnosticsReaching(diagnostics, location.source)
+		: diagnosticsAbout(diagnostics, location.source);
+}
+
 /** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
-export function requireOf(location: FileLocation): string | undefined {
+export function requireExpressionOf(
+	location: FileLocation
+): string | undefined {
 	return location.status === "placed" &&
 		new RojoFile(path.posix.basename(location.source)).isLuauModule
 		? requireExpression(location.instancePath)
@@ -74,7 +88,7 @@ export function requireOf(location: FileLocation): string | undefined {
 }
 
 /** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
-export function requirementOf(location: FileLocation): string | undefined {
+export function requireNoteOf(location: FileLocation): string | undefined {
 	if (location.status !== "placed" || !location.named) return undefined;
 	const file = new RojoFile(path.posix.basename(location.source));
 	if (!file.isLuau) return undefined;
@@ -109,6 +123,8 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	/** One per instance argument. */
 	readonly instances: readonly InstanceLocation[];
+	/** The path arguments, resolved; a diagnostic about one is about a file that places nothing too. */
+	readonly queried: readonly string[];
 	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }
@@ -124,13 +140,13 @@ export interface Locations {
 }
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
-export interface LocateTargets {
+export interface LocateQuery {
 	readonly args: readonly string[];
 	readonly cwd: string;
 }
 
 /** What `diagnose` found. */
-export interface Diagnosed {
+export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
 	readonly stoppedBy: readonly Diagnostic[];
@@ -154,13 +170,13 @@ export interface BuildService {
 	/** What a build raises about each of `targets.args` (see `diagnosticsReaching`), and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,
-		targets?: LocateTargets
-	): Promise<Result<Diagnosed, DiagnosticsError>>;
+		targets?: LocateQuery
+	): Promise<Result<Diagnosis, DiagnosticsError>>;
 
 	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load, or that the set blocks, answers nothing, and its errors come back beside the answers of the rest. */
 	locate(
 		selection: ConfigSelection,
-		targets?: LocateTargets
+		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>>;
 }
 

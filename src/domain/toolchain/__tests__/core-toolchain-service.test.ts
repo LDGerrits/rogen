@@ -54,10 +54,7 @@ describe("CoreToolchainService.detect", () => {
 			]);
 			expect(workspace).toMatchObject({
 				darkluaConfig: undefined,
-				codeFolders: [],
-				hasSrc: false,
 				packageDirs: new Set(),
-				places: [],
 			});
 			expect(workspace.packageManager).toBeUndefined();
 		});
@@ -205,69 +202,6 @@ describe("CoreToolchainService.detect", () => {
 		});
 	});
 
-	describe("code folders", () => {
-		it("should list top-level folders holding code, sorted", async () => {
-			await write("src/a/b/Deep.luau");
-			await write("lib/Game.server.lua");
-			await write("shared/Util.ts");
-			await write("web/App.tsx");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual([
-				"lib",
-				"shared",
-				"src",
-				"web",
-			]);
-		});
-
-		it("should leave out places, whose folders are places rather than code", async () => {
-			await write("src/Util.luau");
-			await write("places/lobby/Game.server.lua");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual(["src"]);
-		});
-
-		it("should skip folders without code, dot-folders and node_modules", async () => {
-			await write("docs/readme.md");
-			await write(".git/hooks/pre-commit.lua");
-			await write("node_modules/pkg/index.ts");
-			await write("src/nested/node_modules/x/y.lua");
-			await write("src/Real.luau");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual(["src"]);
-		});
-
-		it("should skip package folders, include and the outDir", async () => {
-			await write(
-				"tsconfig.json",
-				'{"compilerOptions":{"outDir":"lib"}}'
-			);
-			await write("Packages/Roact.luau");
-			await write("include/RuntimeLib.lua");
-			await write("lib/main.luau");
-			await write("src/main.ts");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.codeFolders).toEqual(["src"]);
-		});
-
-		it("should report whether src exists, even without code", async () => {
-			await fs.createDirectory(path.join(cwd, "src"));
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.hasSrc).toBe(true);
-			expect(workspace.codeFolders).toEqual([]);
-		});
-	});
-
 	describe("packages", () => {
 		const mkdir = (dir: string) => fs.createDirectory(path.join(cwd, dir));
 
@@ -335,23 +269,6 @@ describe("CoreToolchainService.detect", () => {
 				path: "include",
 				installed: true,
 			});
-		});
-	});
-
-	describe("places", () => {
-		it("should list the folders in places, sorted", async () => {
-			await write("places/match/Game.luau");
-			await write("places/lobby/.gitkeep");
-			await write("places/.hidden/x.luau");
-			await write("places/notes.md");
-
-			const workspace = await toolchain().detect(cwd);
-
-			expect(workspace.places).toEqual(["lobby", "match"]);
-		});
-
-		it("should find none without a places folder", async () => {
-			expect((await toolchain().detect(cwd)).places).toEqual([]);
 		});
 	});
 });

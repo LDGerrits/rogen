@@ -7,20 +7,21 @@ import {
 	FileLocation,
 	InstanceFix,
 	Locations,
-	requireOf,
-	requirementOf,
+	diagnosticsOf,
+	requireExpressionOf,
+	requireNoteOf,
 } from "../../domain/build/build-service.js";
-import { instanceKey } from "../../domain/rojo/rojo-project.js";
 import {
 	Diagnostic,
-	DiagnosticJson,
 	diagnosticSummary,
-	diagnosticsAbout,
-	diagnosticsReaching,
-	diagnosticToJson,
-	fixToJson,
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+import {
+	DiagnosticJson,
+	diagnosticToJson,
+	fixToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
+import { instanceKey } from "../../domain/roblox/roblox.js";
 
 /** The mode a config built in, and every mode it declares. */
 interface ModeContext {
@@ -144,7 +145,9 @@ function locationFields(location: FileLocation): Record<string, unknown> {
 		case "placed":
 			return {
 				instancePath: location.instancePath,
-				...(requireOf(location) && { require: requireOf(location) }),
+				...(requireExpressionOf(location) && {
+					require: requireExpressionOf(location),
+				}),
 				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
@@ -197,7 +200,7 @@ function withoutOutside(answers: readonly Answer[]): readonly Answer[] {
 }
 
 /** Where files land, one line per path however many configs answered. */
-export class LocationReport {
+export class WhereLog {
 	private readonly answers: Answer[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
@@ -234,10 +237,7 @@ export class LocationReport {
 			label,
 			location,
 			mode,
-			diagnostics:
-				location.status === "placed" && location.named
-					? diagnosticsReaching(diagnostics, location.source)
-					: diagnosticsAbout(diagnostics, location.source),
+			diagnostics: diagnosticsOf(location, diagnostics),
 		});
 		return [
 			...locations.map(answer),
@@ -273,20 +273,20 @@ export class LocationReport {
 			const answers = withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
-				answers.length === this.configs &&
-				lines.every((line) => line === lines[0]);
+				new Set(answers.map(({ label }) => label)).size ===
+					this.configs && lines.every((line) => line === lines[0]);
 			const requires = [
 				...new Set(
 					answers.flatMap((answer) =>
 						answer.kind === "file"
-							? (requireOf(answer.location) ?? [])
+							? (requireExpressionOf(answer.location) ?? [])
 							: []
 					)
 				),
 			];
 			const requirements = answers.map((answer) =>
 				answer.kind === "file"
-					? requirementOf(answer.location)
+					? requireNoteOf(answer.location)
 					: undefined
 			);
 			if (agreed || this.configs === 1)
@@ -314,8 +314,8 @@ export class LocationReport {
 		});
 	}
 
-	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires show only with `verbose`. */
-	print(logService: LogService, verbose: boolean): void {
+	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires are debug lines. */
+	print(logService: LogService): void {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
 			const empty = this.emptyLine();
@@ -326,7 +326,7 @@ export class LocationReport {
 			logService.print(block.lines.join("\n"));
 			if (block.requireLines.length > 0)
 				logService.note(block.requireLines.join("\n"));
-			else if (verbose)
+			else
 				for (const expression of block.requires)
 					logService.debug(`require: ${expression}`);
 		}

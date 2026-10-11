@@ -1,9 +1,14 @@
 import { relativeTo, toNative } from "../../base/path.js";
+import { plural } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
-import { diagnosticToJson } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { BuildLog } from "../build/build-log.js";
+import {
+	DiagnosticJson,
+	diagnosticToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
@@ -18,15 +23,65 @@ const variantLines = ({ variants }: ResolvedConfig): string[] =>
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
-/** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
-export class ConfigReport {
-	constructor(private readonly entries: readonly ConfigEntry[]) {}
+/** What `--json` lists of a config that loads, fully resolved. */
+export interface ConfigDetails {
+	readonly projectName: string;
+	readonly rootDirs: readonly string[];
+	readonly commonRoot: string | null;
+	readonly routes: Readonly<Record<string, string>>;
+	readonly variants: Readonly<Record<string, boolean>>;
+	readonly conflicts: readonly (readonly string[])[];
+	readonly mode: string | null;
+	readonly modes: readonly string[];
+	readonly exclude: readonly string[];
+	readonly template: string | null;
+	readonly templates: readonly string[];
+	readonly syncDir: string | null;
+	readonly outFile: string;
+}
 
-	/** One block per config: its file, what it extends, then its values or its errors. */
-	print(logService: LogService, cwd: string): void {
-		const relative = (file: string) => relativeTo(cwd, file);
+/** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
+export interface ListedConfig extends Partial<ConfigDetails> {
+	readonly config: string;
+	readonly file: string;
+	readonly status: ConfigEntry["status"];
+	readonly extends: readonly string[];
+	readonly diagnostics: readonly DiagnosticJson[];
+}
+
+/** What `list --json` prints. */
+export interface ListDocument {
+	readonly configs: readonly ListedConfig[];
+}
+
+/** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
+export class ListLog {
+	constructor(
+		private readonly logService: LogService,
+		private readonly cwd: string
+	) {}
+
+	/** The run's result when some configs are broken; none when every one loads. */
+	static failure(entries: readonly ConfigEntry[]): Error | undefined {
+		const broken = entries.filter(
+			({ status }) => status === "broken"
+		).length;
+		if (broken === 0) return undefined;
+		const verb = broken === 1 ? "has" : "have";
+		return new Error(
+			broken === entries.length
+				? `${plural(broken, "config")} ${verb} errors.`
+				: `${broken} of ${entries.length} configs ${verb} errors.`
+		);
+	}
+
+	/** The intro, one block per config (its file, what it extends, then its values or its errors), and the closing line when every config loads. `home` is the folder the configs are read from. */
+	print(entries: readonly ConfigEntry[], home?: string): void {
+		const { logService } = this;
+		new BuildLog(logService, this.cwd).begin("list", [], home);
+		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
-		for (const entry of this.entries) {
+		for (const entry of entries) {
 			const extended =
 				entry.parents.length > 0
 					? [`extends: ${entry.parents.map(relative).join(" -> ")}`]
@@ -78,17 +133,19 @@ export class ConfigReport {
 				].join("\n")
 			);
 		}
+		if (ListLog.failure(entries) === undefined)
+			logService.outro(`${plural(entries.length, "config")}.`);
 	}
 
-	json(): Record<string, unknown> {
+	json(entries: readonly ConfigEntry[]): ListDocument {
 		return {
-			configs: this.entries.map((entry) => ({
+			configs: entries.map((entry) => ({
 				config: configLabel(entry.file),
 				file: toNative(entry.file),
 				status: entry.status,
 				extends: entry.parents.map((file) => toNative(file)),
 				...(entry.status === "valid"
-					? describeConfig(entry.config)
+					? configDetails(entry.config)
 					: {}),
 				diagnostics:
 					entry.status === "broken"
@@ -99,9 +156,9 @@ export class ConfigReport {
 	}
 }
 
-function describeConfig(config: ResolvedConfig): Record<string, unknown> {
+function configDetails(config: ResolvedConfig): ConfigDetails {
 	return {
-		projectName: config.name,
+		projectName: config.projectName,
 		rootDirs: config.rootDirs.map((file) => toNative(file)),
 		commonRoot: config.commonRoot ? toNative(config.commonRoot) : null,
 		routes: Object.fromEntries(

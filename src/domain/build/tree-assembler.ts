@@ -5,12 +5,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LeftOut } from "./build.js";
 import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
-import {
-	InstanceMap,
-	RojoProject,
-	RojoTree,
-	instanceKey,
-} from "../rojo/rojo-project.js";
+import { RojoProject, RojoTree } from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
 	FolderMetaApplier,
@@ -19,15 +14,14 @@ import {
 import { BuildMeta } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 /** A placed build with its tree; what the rules report on. */
-export class Assembly {
-	constructor(
-		readonly placement: Placement,
-		readonly tree: RojoTree,
-		readonly meta: BuildMeta,
-		readonly metaOutcomes: readonly FolderMetaOutcome[]
-	) {}
+export interface Assembly {
+	readonly placement: Placement;
+	readonly tree: RojoTree;
+	readonly meta: BuildMeta;
+	readonly metaOutcomes: readonly FolderMetaOutcome[];
 }
 
 /** Directories written as one `$path`, mapped to the instance each becomes. */
@@ -62,12 +56,15 @@ const literalGlob = (filePath: string): string =>
 
 /** Turns a placed build and the meta it read into its Rojo tree. */
 export class TreeAssembler {
-	assemble(
-		placement: Placement,
-		meta: BuildMeta
-	): Result<Assembly, Diagnostic[]> {
+	constructor(
+		private readonly placement: Placement,
+		private readonly meta: BuildMeta
+	) {}
+
+	assemble(): Result<Assembly, Diagnostic[]> {
+		const { placement, meta } = this;
 		const project = placement.template.edit();
-		const { collapsed, globIgnorePaths } = this.merge(placement, project);
+		const { collapsed, globIgnorePaths } = this.merge(project);
 		const applied = new FolderMetaApplier(
 			placement,
 			collapsed,
@@ -75,24 +72,23 @@ export class TreeAssembler {
 		).apply(project);
 		if (applied.isErr()) return err(applied.error);
 
-		return ok(
-			new Assembly(
-				placement,
-				placement.template.toFile(
-					project.getTree().tree,
-					globIgnorePaths
-				),
-				meta,
-				applied.value
-			)
-		);
+		return ok({
+			placement,
+			tree: placement.template.toFile(
+				project.getFile().tree,
+				globIgnorePaths
+			),
+			meta,
+			metaOutcomes: applied.value,
+		});
 	}
 
 	/** Merges the placed files into `project`, collapsing a directory into one `$path` where Rojo would see the same files. */
-	private merge(
-		placement: Placement,
-		project: RojoProject
-	): { collapsed: Collapsed; globIgnorePaths: string[] } {
+	private merge(project: RojoProject): {
+		collapsed: Collapsed;
+		globIgnorePaths: string[];
+	} {
+		const { placement } = this;
 		const { layout, template, leftOut: allLeftOut } = placement;
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
@@ -100,12 +96,11 @@ export class TreeAssembler {
 		const ignored = this.ignoredSources(leftOut, template.mounts.paths);
 		const collapsed = new Collapsed(
 			this.collapsibleDirs(
-				placement,
 				leftOut.map(([source]) => source),
 				(instancePath) => template.getNode(instancePath) !== undefined
 			)
 		);
-		const initDirs = this.insertNodes(placement, project, collapsed);
+		const initDirs = this.insertNodes(project, collapsed);
 
 		return {
 			collapsed,
@@ -116,7 +111,7 @@ export class TreeAssembler {
 						literalGlob(layout.syncPath(source).optional)
 					),
 					...[...initDirs].flatMap(([dir, init]) =>
-						this.besideInit(placement, dir, init)
+						this.besideInit(dir, init)
 					),
 				]),
 			],
@@ -140,12 +135,12 @@ export class TreeAssembler {
 			.sort(compareStrings);
 	}
 
-	/** Inserts the collapsed directories and the files the collapsed ones don't cover; returns the folders of the init scripts, by the init script's name. */
+	/** Inserts the collapsed directories and the files the collapsed ones don't cover; returns the init script name of each folder that holds one, by folder. */
 	private insertNodes(
-		placement: Placement,
 		project: RojoProject,
 		collapsed: Collapsed
 	): Map<string, string> {
+		const { placement } = this;
 		const { layout, nodes } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
 			project.insertNode(instancePath, { $path: layout.syncPath(dir) });
@@ -168,11 +163,8 @@ export class TreeAssembler {
 	}
 
 	/** What Rojo would read beside the init script `init` in `dir`, which every node it is leaves to the nodes those files are placed at. */
-	private besideInit(
-		placement: Placement,
-		dir: string,
-		init: string
-	): string[] {
+	private besideInit(dir: string, init: string): string[] {
+		const { placement } = this;
 		const { layout } = placement;
 		return childrenBesideInit(placement.listing(dir), init)
 			.map((name) => path.posix.join(dir, name))
@@ -182,12 +174,11 @@ export class TreeAssembler {
 
 	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
 	private collapsibleDirs(
-		placement: Placement,
 		leftOut: readonly string[],
 		isReserved: (instancePath: readonly string[]) => boolean
 	): Map<string, readonly string[]> {
-		const placed = placement.nodes.map((file) =>
-			this.placeEntry(placement, file)
+		const placed = this.placement.nodes.map((file) =>
+			this.placeEntry(file)
 		);
 		const claims = new InstanceMap<number>();
 		const entriesByDir = new Map<string, PlacedEntry[]>();
@@ -264,7 +255,8 @@ export class TreeAssembler {
 		return base;
 	}
 
-	private placeEntry(placement: Placement, file: RoutedFile): PlacedEntry {
+	private placeEntry(file: RoutedFile): PlacedEntry {
+		const { placement } = this;
 		const { source } = file.entry;
 		return {
 			file,

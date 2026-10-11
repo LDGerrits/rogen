@@ -2,13 +2,14 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
+import { Result, ok, tryWithAsync } from "../../base/result.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
 import { BuildSet } from "../build/build.js";
 import { BuildService } from "../build/build-service.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
-import { ChangeBatcher, ChangeBurst } from "./change-batcher.js";
+import { ChangeBatcher } from "./change-batcher.js";
 import { WatchedConfig } from "./watched-config.js";
 import { WatchPlan } from "./watch-plan.js";
 import {
@@ -16,6 +17,7 @@ import {
 	WatchCause,
 	WatchSession,
 	WatchUpdate,
+	ChangeBurst,
 } from "./watch-service.js";
 
 /** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */
@@ -58,7 +60,7 @@ export class CoreWatchSession
 	}
 
 	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
-	async start(): Promise<void> {
+	async start(): Promise<Result<void, Error>> {
 		if (this.starting) throw new Error("A watch starts once.");
 		this.starting = true;
 		this._register(
@@ -80,12 +82,14 @@ export class CoreWatchSession
 			)
 		);
 
-		await this.watchPlan();
+		const watching = await tryWithAsync(() => this.watchPlan());
+		if (watching.isErr()) return watching;
 		this.announce(
 			{ kind: "initial" },
 			this.selection.configs.map(({ file }) => this.queueRebuild(file))
 		);
 		this.started = true;
+		return ok(undefined);
 	}
 
 	/** Lets the work already started finish, drops anything queued after, and stops the watcher. Safe to call twice. */
@@ -121,7 +125,7 @@ export class CoreWatchSession
 	/** Whether the session acts on `file`; the folder watched for configs reports its other entries too. */
 	private isWatched(file: string): boolean {
 		return (
-			!this.selection.directory ||
+			!this.selection.followedFolder ||
 			this.selection.concerns(file) ||
 			this.selection.reads(file) ||
 			this.plan.watches(file)
@@ -215,7 +219,9 @@ export class CoreWatchSession
 
 	/** The folder watched for configs added to it and deleted from it. */
 	private get shallowDirs(): string[] {
-		return this.selection.directory ? [this.selection.directory] : [];
+		return this.selection.followedFolder
+			? [this.selection.followedFolder]
+			: [];
 	}
 
 	private watchPaths(): string[] {

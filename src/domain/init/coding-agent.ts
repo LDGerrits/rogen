@@ -31,7 +31,7 @@ function indentOf(text: string): string {
 }
 
 /** The file's text with the entry added to its event, or why it can't be: the file names the script already, or isn't plain JSON of the shape the agents read. `text` is `undefined` when the file doesn't exist. */
-export function registerHook(
+export function withHook(
 	text: string | undefined,
 	{ event, entry, version }: HookEntry
 ): HookRegistration {
@@ -64,7 +64,7 @@ export function registerHook(
 }
 
 /** A coding agent that runs a hook when its turn ends, and where it reads it from. */
-export interface HookTarget {
+export interface CodingAgent {
 	readonly name: string;
 	/** The hook file `init` adds the hook to. */
 	readonly settingsFile: string;
@@ -81,7 +81,7 @@ const group = (command: string) => ({
 	hooks: [{ type: "command", command }],
 });
 
-export const HOOK_TARGETS: readonly HookTarget[] = [
+export const CODING_AGENTS: readonly CodingAgent[] = [
 	{
 		name: "Claude Code",
 		settingsFile: ".claude/settings.json",

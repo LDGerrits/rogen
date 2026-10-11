@@ -1,6 +1,6 @@
-import { ROBLOX_TS_SYNC_TOOL, RobloxTs } from "../roblox-ts.js";
+import { RobloxTs, RobloxTsCompiler } from "../roblox-ts.js";
 
-const robloxTsSyncTool = ROBLOX_TS_SYNC_TOOL;
+const robloxTsSyncTool = RobloxTsCompiler.SYNC_TOOL;
 
 describe("roblox-ts sync tool", () => {
 	it.each(["Foo.ts", "Foo.server.tsx", "src/Foo.TS"])(

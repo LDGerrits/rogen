@@ -1,13 +1,15 @@
 import { Result, err, ok } from "../../base/result.js";
 import {
 	AbstractCommand,
-	CommandService,
+	CommandRegistry,
+	Extensions,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { CommandLine, HELP_COMMAND } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ProductService } from "../../platform/product/product-service.js";
+import { Registry } from "../../platform/registry/registry.js";
 import { HelpPages } from "./help-pages.js";
 
 registerCommand(
@@ -42,7 +44,9 @@ registerCommand(
 			const logService = accessor.get(LogService);
 
 			if (line.options.version) {
-				const version = await accessor.get(ProductService).getVersion();
+				const version = await accessor
+					.get(ProductService)
+					.readVersion();
 				logService.print(`rogen ${version}`);
 				return ok(undefined);
 			}
@@ -51,7 +55,7 @@ registerCommand(
 			const [target] = line.positionals;
 
 			const pages = new HelpPages(
-				accessor.get(CommandService).getCommands()
+				Registry.as<CommandRegistry>(Extensions.Commands).getCommands()
 			);
 			if (target === undefined) {
 				logService.print(pages.overview());

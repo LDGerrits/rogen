@@ -56,9 +56,6 @@ export class PackageManager {
 	}
 }
 
-/** Where a repo that builds several places keeps each place's own code. */
-export const PLACES_DIR = "places";
-
 /** A file `init` writes, relative to the directory it runs in. */
 export interface PlannedFile {
 	readonly fileName: string;
@@ -112,8 +109,6 @@ export interface Compiler {
 	readonly name: string;
 	/** Where it writes here, and so what Rojo or a processor reads instead of the root dirs. */
 	readonly outDir: string;
-	/** Where it writes when its own config doesn't say. */
-	readonly defaultOutDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
 	/** The edit that makes it compile the shared code from `rootDir`, when its config compiles another folder. */
@@ -177,11 +172,6 @@ export interface DetectedWorkspaceFields {
 	readonly packageManager?: PackageManager;
 	/** The installed package directories, of any manager. */
 	readonly packageDirs: ReadonlySet<string>;
-	/** Top-level folders holding Luau or TypeScript code, sorted. */
-	readonly codeFolders: readonly string[];
-	readonly hasSrc: boolean;
-	/** The folders directly inside `places/`, sorted. */
-	readonly places: readonly string[];
 	/** The test runner the package manifests name, such as Jest. */
 	readonly testRunner?: string;
 }
@@ -194,9 +184,6 @@ export class DetectedWorkspace {
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
 	readonly packageDirs: ReadonlySet<string>;
-	readonly codeFolders: readonly string[];
-	readonly hasSrc: boolean;
-	readonly places: readonly string[];
 	readonly testRunner?: string;
 
 	constructor(fields: DetectedWorkspaceFields) {
@@ -208,9 +195,6 @@ export class DetectedWorkspace {
 		this.darkluaConfig = fields.darkluaConfig;
 		this.packageManager = fields.packageManager;
 		this.packageDirs = fields.packageDirs;
-		this.codeFolders = fields.codeFolders;
-		this.hasSrc = fields.hasSrc;
-		this.places = fields.places;
 		this.testRunner = fields.testRunner;
 	}
 

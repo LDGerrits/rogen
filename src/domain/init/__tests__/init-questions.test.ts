@@ -8,16 +8,14 @@ import {
 	PromptScript,
 	ScriptedAnswer,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import {
-	WorkspaceSpec,
-	withRobloxTs,
-} from "../../toolchain/__tests__/workspaces.js";
+import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
 import {
 	DirectorySpec,
+	WorkspaceSpec,
 	directory,
 	directoryOf,
 	placeFoldersOf,
@@ -62,7 +60,7 @@ const rbxts: WorkspaceSpec = {
 	robloxTs: {
 		outDir: "build",
 		rbxtsScopes: ["@rbxts"],
-		hasInclude: true,
+		includeInstalled: true,
 	},
 	packageManager: "wally",
 	packageDirs: ["Packages"],
@@ -364,6 +362,21 @@ describe("InitQuestions askProject", () => {
 				"Darklua writes into"
 			);
 		});
+
+		it.each(["src", "src/out", "./src/"])(
+			"should refuse %j, which holds or lies in a root dir",
+			async (answer) => {
+				await expect(
+					ask(
+						{ ...luau, darkluaConfig: ".darklua.json" },
+						{
+							"Does Darklua process your code before Rojo syncs it?": true,
+							"Sync dir": answer,
+						}
+					)
+				).rejects.toThrow("overlaps src");
+			}
+		);
 	});
 
 	it("should split root dirs on commas", async () => {
@@ -521,7 +534,7 @@ describe("InitQuestions askProject", () => {
 				withRobloxTs(
 					{ ...luau, packageManager: "wally" },
 					{
-						hasInclude: true,
+						includeInstalled: true,
 						rbxtsScopes: ["@rbxts", "@flamework"],
 					}
 				)

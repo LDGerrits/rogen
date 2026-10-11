@@ -14,7 +14,7 @@ import {
 } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
-import { ServedConfigs, SyncServer } from "./serve.js";
+import { SyncServer } from "./serve.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
@@ -25,7 +25,8 @@ import {
 } from "./serve-service.js";
 import { ServerFinder } from "./server-finder.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-record.js";
+import { ServerRecords } from "./server-records.js";
+import { ServedConfigs } from "./served-configs.js";
 
 export class CoreServeService implements ServeService {
 	declare readonly _serviceBrand: undefined;
@@ -33,11 +34,11 @@ export class CoreServeService implements ServeService {
 	private readonly finder: ServerFinder;
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
-	private readonly ports: ServePorts;
+	private readonly userHome: string;
 
 	constructor(
 		private readonly configService: ConfigService,
-		fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileSystemService,
 		private readonly processService: ProcessService,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
@@ -49,16 +50,26 @@ export class CoreServeService implements ServeService {
 			fileSystemService,
 			environmentService.tmpDir
 		);
-		this.ports = new ServePorts(
-			fileSystemService,
+		this.userHome = environmentService.userHome;
+	}
+
+	/** The ports of a serve of `server`, which gets `serverArgs` as they are. */
+	private portsFor(
+		server: SyncServer,
+		serverArgs: readonly string[]
+	): ServePorts {
+		return new ServePorts(
+			this.fileSystemService,
 			this.probe,
 			this.records,
-			environmentService.userHome
+			this.userHome,
+			server,
+			serverArgs
 		);
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
-		const server = CoreServeService.serverOf(request.server);
+		const server = CoreServeService.serverOf(request.serverId);
 		if (server.isErr()) return server;
 		const selected = await this.select(request.refs, request.options);
 		if (selected.isErr()) return selected;
@@ -68,42 +79,31 @@ export class CoreServeService implements ServeService {
 		const servedConfigs = new ServedConfigs(configs.value, named);
 		const served = servedConfigs.configs;
 
-		const tool = await this.finder.find(
+		const executable = await this.finder.find(
 			selection.home,
 			server.value,
 			served[0]?.file ?? selection.home,
 			request.signal
 		);
-		if (tool.isErr()) return tool;
+		if (executable.isErr()) return executable;
 
-		const port = tool.value.server.portIn(request.serverArgs);
-		if (Number.isNaN(port)) {
-			return err(
-				new UsageError(
-					"The --port after '--' takes a number from 1 to 65535."
-				)
-			);
-		}
+		const ports = this.portsFor(
+			executable.value.server,
+			request.serverArgs
+		);
+		if (ports.portError) return err(ports.portError);
 		const targets: ServeTarget[] = [];
-		for (const config of served)
-			targets.push(
-				await this.ports.targetOf(
-					config,
-					tool.value,
-					request.serverArgs
-				)
-			);
+		for (const config of served) targets.push(await ports.targetOf(config));
 
-		const clash = this.ports.clashOf(targets, port !== undefined);
+		const clash = ports.clashOf(targets);
 		if (clash) return err(clash);
 
 		const checked: ServeTarget[] = [];
 		const taken: Diagnostic[] = [];
 		for (const target of targets) {
-			const result = await this.ports.check(
+			const result = await ports.check(
 				target,
 				targets,
-				tool.value.server,
 				servedConfigs.sharesName(target.project)
 			);
 			if (result.isOk()) checked.push(result.value);
@@ -113,7 +113,7 @@ export class CoreServeService implements ServeService {
 		return ok(
 			new ServePlan(
 				selection,
-				tool.value,
+				executable.value,
 				checked,
 				request.serverArgs,
 				named
@@ -175,7 +175,7 @@ export class CoreServeService implements ServeService {
 				this.processService,
 				this.probe,
 				this.records,
-				this.ports
+				this.portsFor(plan.executable.server, plan.serverArgs)
 			)
 		);
 	}

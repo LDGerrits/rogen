@@ -6,6 +6,7 @@ import {
 	HttpResponse,
 	RequestError,
 	RequestFailure,
+	RequestOptions,
 	RequestService,
 } from "./request-service.js";
 
@@ -30,7 +31,7 @@ export class NativeRequestService implements RequestService {
 
 	request(
 		url: string,
-		options: { readonly timeout: number }
+		options: RequestOptions
 	): Promise<Result<HttpResponse, RequestError>> {
 		return new Promise((resolve) => {
 			const fail = (caught: unknown) => {

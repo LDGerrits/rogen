@@ -1,8 +1,4 @@
-import { ResolvedConfig } from "../../config/config.js";
-import { ServeAddress, SyncServer, leafConfigs } from "../serve.js";
-
-const config = (file: string, parents: string[] = []) =>
-	({ file, parents }) as unknown as ResolvedConfig;
+import { ServeAddress, SyncServer } from "../serve.js";
 
 describe("SyncServer", () => {
 	describe("readInfo", () => {
@@ -53,21 +49,42 @@ describe("SyncServer", () => {
 			[["--port", "34873"], 34873],
 			[["--port=34873"], 34873],
 			[["--address", "0.0.0.0"], undefined],
-			[["--port", "x"], NaN],
-			[["--port", "70000"], NaN],
 		])("should read Rojo's port from %j", (args, port) => {
-			expect(SyncServer.ROJO.portIn(args)).toBe(port);
+			expect(SyncServer.ROJO.portIn(args).unwrap()).toBe(port);
+		});
+
+		it.each([["x"], ["70000"], ["0"]])(
+			"should refuse the value %s as a port",
+			(value) => {
+				expect(SyncServer.ROJO.portIn(["--port", value]).isErr()).toBe(
+					true
+				);
+			}
+		);
+
+		it("should read Argon's short flag with the value attached", () => {
+			expect(SyncServer.ARGON.portIn(["-P8001"]).unwrap()).toBe(8001);
+			expect(SyncServer.ARGON.portIn(["-Pabc"]).isErr()).toBe(true);
 		});
 
 		it("should read Argon's short flag, and take the last one given", () => {
 			expect(
-				SyncServer.ARGON.portIn(["-P", "8001", "--port", "8002"])
+				SyncServer.ARGON.portIn([
+					"-P",
+					"8001",
+					"--port",
+					"8002",
+				]).unwrap()
 			).toBe(8002);
-			expect(SyncServer.ARGON.portIn(["-P", "8001"])).toBe(8001);
+			expect(SyncServer.ARGON.portIn(["-P", "8001"]).unwrap()).toBe(8001);
 		});
 	});
 
 	describe("hostIn", () => {
+		it("should read Argon's short host flag with the value attached", () => {
+			expect(SyncServer.ARGON.hostIn(["-H0.0.0.0"])).toBe("0.0.0.0");
+		});
+
 		it("should read each server's own host flag", () => {
 			expect(SyncServer.ROJO.hostIn(["--address", "0.0.0.0"])).toBe(
 				"0.0.0.0"
@@ -123,31 +140,5 @@ describe("ServeAddress", () => {
 		expect(
 			new ServeAddress("localhost", 8000).urlAt("127.0.0.1", "/details")
 		).toBe("http://127.0.0.1:8000/details");
-	});
-});
-
-describe("leafConfigs", () => {
-	it("should serve the synced config over the source-rooted one it extends", () => {
-		const base = config("/repo/default.rogen.json");
-		const sync = config("/repo/sync.rogen.json", [base.file]);
-
-		expect(leafConfigs([base, sync])).toEqual([sync]);
-	});
-
-	it("should serve each place and not the config they share", () => {
-		const base = config("/repo/default.rogen.json");
-		const lobby = config("/repo/lobby.rogen.json", [base.file]);
-		const shop = config("/repo/shop.rogen.json", [base.file]);
-
-		expect(leafConfigs([base, lobby, shop])).toEqual([lobby, shop]);
-	});
-
-	it("should serve a lone config, and one whose parent isn't selected", () => {
-		const lone = config("/repo/default.rogen.json");
-		const orphan = config("/repo/lobby.rogen.json", [
-			"/other/base.rogen.json",
-		]);
-
-		expect(leafConfigs([lone, orphan])).toEqual([lone, orphan]);
 	});
 });

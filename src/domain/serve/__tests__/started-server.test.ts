@@ -10,12 +10,12 @@ import { ServeAddress, SyncServer } from "../serve.js";
 import {
 	ServePlan,
 	ServeTarget,
-	ServerSaid,
-	ServerStop,
-	ServingServer,
+	ServerOutputEvent,
+	ServerExitEvent,
+	ServerReadyEvent,
 } from "../serve-service.js";
 import { ServerProbe } from "../server-probe.js";
-import { ServerRecords } from "../server-record.js";
+import { ServerRecords } from "../server-records.js";
 import { StartedServer } from "../started-server.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
@@ -25,9 +25,9 @@ describe("StartedServer", () => {
 	let processes: MockProcessService;
 	let requests: MockRequestService;
 	let records: ServerRecords;
-	let served: ServingServer[];
-	let said: ServerSaid[];
-	let stops: ServerStop[];
+	let served: ServerReadyEvent[];
+	let said: ServerOutputEvent[];
+	let stops: ServerExitEvent[];
 	let failures: Error[];
 	let server: StartedServer;
 
@@ -107,11 +107,11 @@ describe("StartedServer", () => {
 		expect(served).toHaveLength(1);
 		expect(served[0].info.project).toBe("repo");
 		expect(
-			await records.read(target.address, served[0].info)
+			await records.projectFileOf(target.address, served[0].info)
 		).toBeDefined();
 		await server.unrecord();
 		expect(
-			await records.read(target.address, served[0].info)
+			await records.projectFileOf(target.address, served[0].info)
 		).toBeUndefined();
 	});
 
@@ -200,7 +200,7 @@ describe("StartedServer", () => {
 	});
 
 	it("should stop without a failure when Ctrl+C ended it", () => {
-		start().exit({ code: 130, signal: null });
+		start().exit({ code: 130, signal: null, interrupted: true });
 
 		expect(stops).toHaveLength(1);
 		expect(stops[0]).toMatchObject({ interrupted: true });
@@ -230,16 +230,14 @@ describe("StartedServer", () => {
 		expect(stops[0].exitCode).toBeUndefined();
 	});
 
-	it.each([
-		{ code: 143, signal: null },
-		{ code: 0xc000013a, signal: null },
-		{ code: null, signal: "SIGINT" },
-		{ code: null, signal: "SIGTERM" },
-	] as const)("should count %j as an interruption", (exit) => {
-		start().exit(exit);
+	it("should fail when a signal from someone else ended it", () => {
+		start().exit({ code: null, signal: "SIGTERM" });
 
-		expect(stops[0]).toMatchObject({ interrupted: true });
-		expect(stops[0].failure).toBeUndefined();
+		expect(stops[0]).toMatchObject({
+			interrupted: false,
+			exitCode: 1,
+			failure: { code: "serve.serverExited" },
+		});
 	});
 
 	it("should show a Windows status code in hex", () => {

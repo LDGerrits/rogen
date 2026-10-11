@@ -14,6 +14,12 @@ import {
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { TEMPLATE_FILE } from "./starter-template.js";
 
+/** Where the configs of a set sync from: `synced` is Darklua's output, else a compiler's; `source` is what a sourced set's own config syncs, a compiler's output a place of its own. */
+export interface SyncDirs {
+	readonly source?: string;
+	readonly synced?: string;
+}
+
 /** The names `init` writes for one config name; a Darklua repo without a compiler gets the named config, rooted at the source for luau-lsp and Darklua, and a synced one to serve. */
 export class ConfigSet {
 	constructor(
@@ -45,11 +51,6 @@ export class ConfigSet {
 	/** The glob that matches a language's spec files. */
 	static specGlobOf(language: Language): string {
 		return `**/*.spec.${language.extension}`;
-	}
-
-	/** Says where variants of a script are swapped in, in the words the next steps use. */
-	static variantsStep(language: Language, configFile: string): string {
-		return `Declare variants under "variants" in ${configFile} to swap in files like Analytics.mock.${language.extension}, and turn them on in a mode or with --variant.`;
 	}
 
 	/** `names` are the positionals after `init`. */
@@ -112,11 +113,9 @@ export class ConfigSet {
 			: this.language.compiler?.outDir;
 	}
 
-	/** Whether a synced config is written beside the named one. */
+	/** Whether a synced config is written beside the named one: Darklua's output is served, and the named config stays with what Darklua reads, which a sourcemap and a compiler's project file are made from. */
 	get sourced(): boolean {
-		return (
-			this.darklua !== undefined && this.language.compiler === undefined
-		);
+		return this.darklua !== undefined;
 	}
 
 	get syncStem(): string {
@@ -141,28 +140,46 @@ export class ConfigSet {
 		return this.stems.map(projectFileName);
 	}
 
+	/** Says where variants of a script are swapped in, in the words the next steps use. */
+	get variantsStep(): string {
+		return `Declare variants under "variants" in ${configFileName(this.name)} to swap in files like Analytics.mock.${this.language.extension}, and turn them on in a mode or with --variant.`;
+	}
+
+	/** The stem of the config that is served: the synced one when there is one. */
+	get servedStem(): string {
+		return this.sourced ? this.syncStem : this.name;
+	}
+
 	/** The command that serves the set: a bare `rogen serve` picks the config no other extends, but named configs share a port, so they are named. */
 	get serveCommand(): string {
 		if (this.name === DEFAULT_CONFIG_STEM) return "rogen serve";
-		return `rogen serve ${this.sourced ? this.syncStem : this.name}`;
+		return `rogen serve ${this.servedStem}`;
 	}
 
-	/** Writes `own`, which carries the sync dir; a sourced set keeps `own` rooted at the source, and a second config extending it takes the sync dir. */
+	/** The command that serves the set beside configs that were here before, which a bare `rogen serve` would serve on the same port. */
+	serveCommandBeside(others: boolean): string {
+		return others ? `rogen serve ${this.servedStem}` : this.serveCommand;
+	}
+
+	/** Writes `own` with the `synced` dir; a sourced set keeps `own` at the `source` dir, a compiler's output or none for Luau, and a second config extending it takes the `synced` dir. */
 	planConfigs(
 		builder: InitPlanBuilder,
 		own: RogenConfig,
-		syncDir?: string
+		{ source, synced }: SyncDirs
 	): void {
 		if (this.sourced) {
-			builder.addConfig(this.name, own);
+			builder.addConfig(this.name, {
+				...own,
+				...(source && { syncDir: source }),
+			});
 			builder.addConfig(this.syncStem, {
 				extends: ConfigSet.reference(configFileName(this.name)),
-				...(syncDir && { syncDir }),
+				...(synced && { syncDir: synced }),
 			});
 		} else {
 			builder.addConfig(this.name, {
 				...own,
-				...(syncDir && { syncDir }),
+				...(synced && { syncDir: synced }),
 			});
 		}
 	}
@@ -196,7 +213,8 @@ export class ConfigSet {
 				...darklua.processCommands(directory, processed, syncDir)
 			);
 		}
-		if (darklua && this.sourced && sourcemap) {
+		// A compiler's output doesn't require by string, so Darklua needs no sourcemap of it.
+		if (darklua && this.sourced && sourcemap && !this.language.compiler) {
 			const projectFile = projectFileName(this.name);
 			const command = darklua.sourcemapCommand(projectFile);
 			// luau-lsp keeps the sourcemap Darklua reads current from the default project; any other needs its own watch.
@@ -208,13 +226,17 @@ export class ConfigSet {
 		}
 	}
 
-	/** The files a place named like this writes, plus its project file, which mustn't exist either. */
+	/** The configs and the project files they write, none of which may exist. */
+	get writtenFiles(): string[] {
+		return [...this.configFiles, ...this.outputFiles];
+	}
+
+	/** The files a place named like this writes, the compiler's own among them. */
 	get placeFiles(): string[] {
 		return [
-			configFileName(this.name),
-			...(this.syncFile ? [this.syncFile] : []),
+			...this.configFiles,
 			...(this.language.compiler?.placeFileNames(this.name) ?? []),
-			projectFileName(this.name),
+			...this.outputFiles,
 		];
 	}
 }

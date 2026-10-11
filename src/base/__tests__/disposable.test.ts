@@ -3,6 +3,8 @@ import {
 	DisposableStore,
 	AbstractDisposable,
 	Disposable,
+	NullDisposable,
+	toDisposable,
 } from "../disposable.js";
 
 describe("DisposableStore", () => {
@@ -73,6 +75,40 @@ describe("DisposableStore", () => {
 		store.add(throwing());
 
 		expect(() => store[Symbol.dispose]()).toThrow(AggregateError);
+	});
+});
+
+describe("DisposableStore.clear", () => {
+	it("should dispose what was added and stay usable", () => {
+		const store = new DisposableStore();
+		const first = { [Symbol.dispose]: jest.fn() };
+		const second = { [Symbol.dispose]: jest.fn() };
+		store.add(first);
+
+		store.clear();
+		store.add(second);
+		store[Symbol.dispose]();
+
+		expect(first[Symbol.dispose]).toHaveBeenCalledTimes(1);
+		expect(second[Symbol.dispose]).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("toDisposable", () => {
+	it("should run its function once, however often it is disposed", () => {
+		const run = jest.fn();
+		const disposable = toDisposable(run);
+
+		disposable[Symbol.dispose]();
+		disposable[Symbol.dispose]();
+
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("NullDisposable", () => {
+	it("should do nothing when disposed", () => {
+		expect(() => NullDisposable[Symbol.dispose]()).not.toThrow();
 	});
 });
 

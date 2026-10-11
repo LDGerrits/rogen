@@ -76,7 +76,7 @@ describe("CoreConfigService", () => {
 
 				await start();
 
-				expect(resolved(0)?.name).toBe("FromTemplate");
+				expect(resolved(0)?.projectName).toBe("FromTemplate");
 			});
 
 			it("should fall back to the config's directory when the template has no name", async () => {
@@ -87,7 +87,7 @@ describe("CoreConfigService", () => {
 
 				await start();
 
-				expect(resolved(0)?.name).toBe("repo");
+				expect(resolved(0)?.projectName).toBe("repo");
 			});
 
 			it("should fall back to the config's directory when there is no template", async () => {
@@ -95,7 +95,7 @@ describe("CoreConfigService", () => {
 
 				await start();
 
-				expect(resolved(0)?.name).toBe("repo");
+				expect(resolved(0)?.projectName).toBe("repo");
 			});
 
 			it("should never be empty", async () => {
@@ -104,7 +104,7 @@ describe("CoreConfigService", () => {
 
 				await start({}, "/");
 
-				expect(resolved(0)?.name).toBe("project");
+				expect(resolved(0)?.projectName).toBe("project");
 			});
 
 			it("should ignore an empty template name", async () => {
@@ -115,7 +115,7 @@ describe("CoreConfigService", () => {
 
 				await start();
 
-				expect(resolved(0)?.name).toBe("repo");
+				expect(resolved(0)?.projectName).toBe("repo");
 			});
 		});
 
@@ -227,7 +227,7 @@ describe("CoreConfigService", () => {
 
 				await start({ names: ["lobby"] });
 
-				expect(resolved(0)?.name).toBe("Lobby");
+				expect(resolved(0)?.projectName).toBe("Lobby");
 				expect(plain(resolved(0))?.template).toEqual({
 					file: "/repo/places/lobby/template.project.json",
 					project: {
@@ -276,7 +276,7 @@ describe("CoreConfigService", () => {
 
 				await start({ names: ["c"] });
 
-				expect(resolved(0)?.template?.project.getTree()).toEqual({
+				expect(resolved(0)?.template?.project.getFile()).toEqual({
 					name: "C",
 					tree: {
 						$className: "DataModel",
@@ -307,7 +307,7 @@ describe("CoreConfigService", () => {
 
 				await start();
 
-				expect(resolved(0)?.name).toBe("T");
+				expect(resolved(0)?.projectName).toBe("T");
 				expect(resolved(0)?.template?.bases).toEqual([
 					"/repo/m.template.json",
 				]);
@@ -423,7 +423,7 @@ describe("CoreConfigService", () => {
 				await write("/repo/t.project.json", { name: "Two", tree: {} });
 				const reload = await selection.reload(["/repo/t.project.json"]);
 
-				expect(resolved(0)?.name).toBe("Two");
+				expect(resolved(0)?.projectName).toBe("Two");
 				expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 			});
 		});

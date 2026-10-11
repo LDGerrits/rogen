@@ -2,8 +2,9 @@ import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentHooks } from "./agent-hooks.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
+import { Setup } from "./setup.js";
 
 /** What `init` adds for coding agents. */
 export interface AgentChoices {
@@ -38,5 +39,6 @@ export class AgentSetup implements Setup<AgentChoices> {
 	plan({ rules, hook }: AgentChoices, builder: InitPlanBuilder): void {
 		if (rules) builder.addAgentFile(this.agentFile);
 		if (hook) builder.addAgentHook(this.hooks);
+		for (const note of this.hooks.notes) builder.addNote(note);
 	}
 }

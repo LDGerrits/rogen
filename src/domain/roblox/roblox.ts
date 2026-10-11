@@ -148,7 +148,7 @@ export class Target {
 	}
 
 	toString(): string {
-		return this.instancePath.join("/");
+		return instanceKey(this.instancePath);
 	}
 }
 
@@ -266,5 +266,41 @@ export class InstanceReference {
 	contains(instancePath: readonly string[]): boolean {
 		const key = instancePath.join(this.separator);
 		return key === this.text || key.startsWith(this.text + this.separator);
+	}
+}
+
+const INSTANCE_SEPARATOR = "/";
+
+/** An instance path written as one key, such as `ReplicatedStorage/Shared/Util`. */
+export function instanceKey(instancePath: readonly string[]): string {
+	return instancePath.join(INSTANCE_SEPARATOR);
+}
+
+/** A map keyed by instance path, kept in the order paths were first set. */
+export class InstanceMap<V> implements Iterable<[readonly string[], V]> {
+	private readonly entries = new Map<
+		string,
+		{ readonly path: readonly string[]; value: V }
+	>();
+
+	get(instancePath: readonly string[]): V | undefined {
+		return this.entries.get(instanceKey(instancePath))?.value;
+	}
+
+	set(instancePath: readonly string[], value: V): this {
+		const key = instanceKey(instancePath);
+		const existing = this.entries.get(key);
+		if (existing) existing.value = value;
+		else this.entries.set(key, { path: instancePath, value });
+		return this;
+	}
+
+	*values(): IterableIterator<V> {
+		for (const { value } of this.entries.values()) yield value;
+	}
+
+	*[Symbol.iterator](): IterableIterator<[readonly string[], V]> {
+		for (const { path, value } of this.entries.values())
+			yield [path, value];
 	}
 }

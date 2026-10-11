@@ -60,7 +60,7 @@ export class CoreConfigService implements ConfigService {
 		if (discovered.isErr()) return err(discovered.error);
 
 		const overrides = overridesOf(options);
-		const { directory, files, everyConfig } = discovered.value;
+		const { home: directory, files, everyConfig } = discovered.value;
 		const count = files.length;
 		if (overrides.outFile !== undefined && count > 1) {
 			const found = everyConfig ? "are here" : "were named";
@@ -87,9 +87,8 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async read(file: string): Promise<ConfigEntry> {
-		const config = new ManagedConfig(file, this.loader, { variants: {} });
-		await config.load();
-		return config.entry;
+		return (await ManagedConfig.open(file, this.loader, { variants: {} }))
+			.entry;
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

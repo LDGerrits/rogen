@@ -84,7 +84,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 		file,
 		parents: spec.parents ?? [],
 		skippedVariants: spec.skippedVariants ?? [],
-		name: spec.name ?? "repo",
+		projectName: spec.name ?? "repo",
 		rootDirs: spec.rootDirs ?? [],
 		routes: new Map(
 			Object.entries(spec.routes ?? {}).map(([key, text]) => [
@@ -155,7 +155,7 @@ export function selectionOf(
 /** A selection of fixed entries; a reload changes nothing. */
 export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
-	readonly directory = undefined;
+	readonly followedFolder = undefined;
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],

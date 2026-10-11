@@ -18,10 +18,10 @@ describe("CoreConfigService", () => {
 
 		it("should know the folder it was picked from, and not when configs were named", async () => {
 			await start({ names: [] });
-			expect(selection.directory).toBe("/repo");
+			expect(selection.followedFolder).toBe("/repo");
 
 			await start({ names: ["default"] });
-			expect(selection.directory).toBeUndefined();
+			expect(selection.followedFolder).toBeUndefined();
 		});
 
 		it("should concern the config files of that folder and the files it reads", async () => {

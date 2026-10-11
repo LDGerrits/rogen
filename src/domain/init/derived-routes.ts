@@ -2,12 +2,9 @@ import path from "path";
 import { containsPosix, normalizeDir } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { isSupportedService } from "../roblox/supported-services.js";
-import {
-	MountedPath,
-	instanceKey,
-	rojoPathTarget,
-} from "../rojo/rojo-project.js";
+import { MountedPath, rojoPathTarget } from "../rojo/rojo-project.js";
 import { StarterTemplate } from "./starter-template.js";
+import { instanceKey } from "../roblox/roblox.js";
 
 /** The routes that reproduce the mounts of a hand-written project file, which a copy leaves out because Rogen generates that code now. */
 export class DerivedRoutes {

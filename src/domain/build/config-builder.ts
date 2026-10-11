@@ -43,10 +43,9 @@ export type ExaminedConfig =
 			readonly errors: readonly Diagnostic[];
 	  };
 
-/** Builds one config from an index, phase by phase, so `run` and `locate` place files the same way. */
+/** Builds one config from an index, phase by phase, so `build` and `locate` place files the same way. */
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
-	private readonly assembler: TreeAssembler;
 	private readonly syncDirCheck: SyncDirCheck;
 
 	constructor(
@@ -55,7 +54,6 @@ export class ConfigBuilder {
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.metaReader = new MetaReader(fileSystemService);
-		this.assembler = new TreeAssembler();
 		this.syncDirCheck = new SyncDirCheck(fileSystemService);
 	}
 
@@ -88,7 +86,7 @@ export class ConfigBuilder {
 		});
 	}
 
-	/** Runs every phase of `build` but the sync dir check and the write, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the sync dir check, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -146,7 +144,7 @@ export class ConfigBuilder {
 	private async assemble(placement: Placement) {
 		const meta = await this.metaReader.read(placement);
 		if (meta.isErr()) return err(meta.error);
-		const assembly = this.assembler.assemble(placement, meta.value);
+		const assembly = new TreeAssembler(placement, meta.value).assemble();
 		return assembly.isErr()
 			? err(assembly.error)
 			: ok({ meta: meta.value, assembly: assembly.value });

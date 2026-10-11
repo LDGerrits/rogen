@@ -19,9 +19,10 @@ import {
 	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
 	scriptFate,
+	instanceKey,
 } from "../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { RojoNode, instanceKey } from "../rojo/rojo-project.js";
+import { RojoNode } from "../rojo/rojo-project.js";
 import { FolderMeta } from "./folder-meta.js";
 import {
 	MisspellingKind,
@@ -481,18 +482,19 @@ export class BuildValidator {
 	}
 
 	private buriedScriptSuffix(): Diagnostic[] {
-		return this.placement.routed.flatMap(
-			({ entry, buriedScriptSuffix: suffix }) =>
-				suffix
-					? [
-							warningDiagnostic(
-								"variant.buriedScriptSuffix",
-								{ resource: entry.source },
-								`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
-							),
-						]
-					: []
-		);
+		return this.placement.routed.flatMap((file) => {
+			const { buriedScriptSuffix: suffix } =
+				this.placement.readingOf(file);
+			return suffix
+				? [
+						warningDiagnostic(
+							"variant.buriedScriptSuffix",
+							{ resource: file.entry.source },
+							`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
+						),
+					]
+				: [];
+		});
 	}
 
 	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
@@ -652,15 +654,15 @@ export class BuildValidator {
 			const { instancePath, meta, templateNode } = outcome;
 			if (
 				templateNode.$className === undefined ||
-				meta.className === undefined ||
-				templateNode.$className === meta.className
+				meta.fields.className === undefined ||
+				templateNode.$className === meta.fields.className
 			)
 				return [];
 			return [
 				warningDiagnostic(
 					"meta.templateClass",
 					{ resource: meta.file },
-					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, so its class is kept over this meta's ${meta.className}.`
+					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, so its class is kept over this meta's ${meta.fields.className}.`
 				),
 			];
 		});

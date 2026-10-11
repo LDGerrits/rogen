@@ -102,7 +102,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
-A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0.
+A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0. That answer is per path. Without a path, or asked about an instance, `where` has nothing it can place, so it prints the errors and exits 1, as `check` does.
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
@@ -368,7 +368,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 `require` is the Luau expression that reaches the module, such as `game:GetService("ReplicatedStorage").Shared.Inventory.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is a reserved word. It is there only for a placed Luau module. A Script has none, nor does a roblox-ts source, which you import by relative path, nor anything under `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui` or `StarterPack`, because Roblox clones those into the player at runtime and the edit-time path names the template. `rogen where <file> --verbose` prints it in text.
 
-`routeMatch` is `folder`, `marker`, `suffix` or `fallback`. Each `variants` entry looks like `{ "variant": "mock", "form": "suffix" }`.
+`routeMatch` is `folder`, `marker`, `suffix`, `fallback`, `init` (the route suffix of an init script in one of its folders) or `copy` (an init script placed where its folder's other files route it). Each `variants` entry looks like `{ "variant": "mock", "form": "suffix" }`.
 
 ### `init --json`
 

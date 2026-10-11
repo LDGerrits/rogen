@@ -2,11 +2,11 @@ import {
 	ContainerFactory,
 	RojoNode,
 	RojoProject,
-	InstanceMap,
 	RojoTree,
 	projectFileName,
 	stemOfProjectFile,
 } from "../rojo-project.js";
+import { InstanceMap } from "../../roblox/roblox.js";
 
 const folders: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
@@ -41,14 +41,14 @@ describe("RojoProject", () => {
 		it("should hold a deep clone of the tree it was given", () => {
 			const project = new RojoProject(baseTree, folders);
 
-			expect(project.getTree()).toEqual(baseTree);
-			expect(project.getTree()).not.toBe(baseTree);
+			expect(project.getFile()).toEqual(baseTree);
+			expect(project.getFile()).not.toBe(baseTree);
 		});
 
 		it("should hand out a copy that can't change the project", () => {
 			const project = new RojoProject(baseTree, folders);
 
-			delete project.getTree().tree.ServerScriptService;
+			delete project.getFile().tree.ServerScriptService;
 
 			expect(project.getNode(["ServerScriptService"])).toBeDefined();
 		});
@@ -82,7 +82,7 @@ describe("RojoProject", () => {
 				$path: "foo.luau",
 			});
 
-			expect(project.getTree().tree).toEqual({
+			expect(project.getFile().tree).toEqual({
 				ReplicatedStorage: {
 					shared: {
 						$className: "Folder",
@@ -150,7 +150,7 @@ describe("RojoProject", () => {
 				folders
 			);
 
-			expect(project.getPaths()).toEqual([
+			expect(project.mountedPaths()).toEqual([
 				{ path: "root", instancePath: [] },
 				{
 					path: { optional: "Packages" },
@@ -192,14 +192,14 @@ describe("RojoProject", () => {
 					instancePath: ["ServerScriptService", "Server"],
 				},
 			]);
-			expect(project.getTree().tree).toEqual({
+			expect(project.getFile().tree).toEqual({
 				$path: "src",
 				ServerScriptService: { Kept: { $path: "Packages" } },
 			});
 		});
 	});
 
-	describe("mapPaths", () => {
+	describe("rebased", () => {
 		it("should rewrite every $path, keeping each one's form", () => {
 			const project = new RojoProject(
 				{
@@ -215,9 +215,9 @@ describe("RojoProject", () => {
 				folders
 			);
 
-			project.mapPaths((target) => `../${target}`);
-
-			const tree = project.getTree().tree;
+			const { tree } = project
+				.rebased((target) => `../${target}`)
+				.getFile();
 			expect(tree.$path).toBe("../a");
 			expect((tree.Child as RojoNode).$path).toEqual({
 				optional: "../b",
@@ -225,6 +225,20 @@ describe("RojoProject", () => {
 			expect((tree.Child as RojoNode).$properties).toEqual({
 				$path: "not a path",
 			});
+		});
+
+		it("should rewrite the globIgnorePaths too, and leave the original as it was", () => {
+			const project = new RojoProject({
+				name: "x",
+				tree: { $path: "a" },
+				globIgnorePaths: ["**/*.spec.luau"],
+			});
+
+			const moved = project.rebased((target) => `../${target}`);
+
+			expect(moved.globIgnorePaths).toEqual(["../**/*.spec.luau"]);
+			expect(project.globIgnorePaths).toEqual(["**/*.spec.luau"]);
+			expect(project.getFile().tree.$path).toBe("a");
 		});
 	});
 
@@ -234,7 +248,7 @@ describe("RojoProject", () => {
 				'{ "name": "Game", "servePort": 34872, "tree": { "$className": "DataModel" } }'
 			).unwrap();
 
-			expect(project.getTree()).toEqual({
+			expect(project.getFile()).toEqual({
 				name: "Game",
 				servePort: 34872,
 				tree: { $className: "DataModel" },
@@ -246,7 +260,7 @@ describe("RojoProject", () => {
 				'{ // note\n "tree": {},\n}'
 			).unwrap();
 
-			expect(project.getTree().tree).toEqual({});
+			expect(project.getFile().tree).toEqual({});
 		});
 
 		it("should give a file without a tree a bare DataModel", () => {
@@ -254,7 +268,7 @@ describe("RojoProject", () => {
 				'{ "globIgnorePaths": [] }'
 			).unwrap();
 
-			expect(project.getTree().tree).toEqual({ $className: "DataModel" });
+			expect(project.getFile().tree).toEqual({ $className: "DataModel" });
 		});
 
 		it("should fail on syntax errors", () => {
@@ -280,7 +294,7 @@ describe("RojoProject", () => {
 		it("should treat a null tree as a missing one", () => {
 			const project = RojoProject.parse('{ "tree": null }').unwrap();
 
-			expect(project.getTree().tree).toEqual({ $className: "DataModel" });
+			expect(project.getFile().tree).toEqual({ $className: "DataModel" });
 		});
 
 		it("should fail when a node below the tree isn't an object, which no insert could go through", () => {
@@ -308,7 +322,7 @@ describe("RojoProject", () => {
 				$path: "foo.luau",
 			});
 
-			expect(project.getTree().tree).toEqual({
+			expect(project.getFile().tree).toEqual({
 				ReplicatedStorage: {
 					shared: {
 						$className: "Folder",
@@ -380,7 +394,7 @@ describe("RojoProject", () => {
 				})
 			);
 
-			expect(project.getTree().tree.ServerScriptService).toEqual({
+			expect(project.getFile().tree.ServerScriptService).toEqual({
 				$className: "ServerScriptService",
 				Vendor: { $path: "vendor" },
 			});
@@ -440,7 +454,7 @@ describe("RojoProject", () => {
 				parsed({ name: "Lobby", servePort: 34873 })
 			);
 
-			expect(project.getTree()).toEqual({
+			expect(project.getFile()).toEqual({
 				name: "Lobby",
 				servePort: 34873,
 				placeId: 1,
@@ -468,7 +482,7 @@ describe("RojoProject", () => {
 				})
 			);
 
-			expect(project.getTree().tree).toEqual({
+			expect(project.getFile().tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
 					Packages: { $path: "Packages" },
@@ -563,11 +577,11 @@ describe("RojoProject", () => {
 
 			base.overlaidWith(overlay);
 
-			expect(base.getTree()).toEqual({
+			expect(base.getFile()).toEqual({
 				name: "Game",
 				tree: { Lighting: {} },
 			});
-			expect(overlay.getTree()).toEqual({ tree: { Workspace: {} } });
+			expect(overlay.getFile()).toEqual({ tree: { Workspace: {} } });
 		});
 	});
 });
@@ -606,7 +620,7 @@ describe("InstanceMap", () => {
 			expect(project.getNode(["ReplicatedStorage", "__proto__"])).toEqual(
 				{ $path: "src/__proto__.luau" }
 			);
-			expect(JSON.stringify(project.getTree())).toContain('"__proto__"');
+			expect(JSON.stringify(project.getFile())).toContain('"__proto__"');
 		});
 	});
 });

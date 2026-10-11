@@ -1,4 +1,3 @@
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { SyncLayout } from "../sync-layout.js";
@@ -19,28 +18,18 @@ const ROUTES = {
 
 describe("modes in a build", () => {
 	let fs: MemoryFileSystemService;
-	let store: DisposableStore;
 
 	const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
 	const built = async (spec: Parameters<typeof configOf>[0]) =>
 		(
-			await buildAndPlace(
-				store,
-				fs,
-				configOf({ routes: ROUTES, ...spec })
-			)
+			await buildAndPlace(fs, configOf({ routes: ROUTES, ...spec }))
 		).unwrap();
 
 	const MODES = { dev: {}, prod: {} };
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		store = new DisposableStore();
-	});
-
-	afterEach(() => {
-		store[Symbol.dispose]();
 	});
 
 	describe("marking files", () => {

@@ -1,5 +1,4 @@
 import { jest } from "@jest/globals";
-import { DisposableStore } from "../../../base/disposable.js";
 import { toPosix } from "../../../base/path.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { FileChangeType } from "../../../platform/fs/file-changes.js";
@@ -28,7 +27,6 @@ describe("RootScanner", () => {
 
 	describe("scan", () => {
 		let fs: MemoryFileSystemService;
-		let store: DisposableStore;
 
 		const newIndex = () => new CoreIndexService(fs);
 
@@ -57,11 +55,6 @@ describe("RootScanner", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
-			store = new DisposableStore();
-		});
-
-		afterEach(() => {
-			store[Symbol.dispose]();
 		});
 
 		describe("the project file it writes", () => {
@@ -86,6 +79,22 @@ describe("RootScanner", () => {
 					pattern: "game.project.json",
 				});
 			});
+		});
+
+		it("should leave out the project file it writes before it exists, as after", async () => {
+			await write("src/A.luau");
+			const index = await newIndex().list([abs("src")]);
+			const config = configOf({
+				rootDirs: [abs("src")],
+				exclude: [],
+				outFile: abs("src/game.project.json"),
+			});
+
+			const [root] = builderOf(fs, index).place(config).unwrap().roots;
+
+			expect(
+				root.leftOut.get(toPosix(abs("src/game.project.json")))
+			).toEqual({ status: "excluded", pattern: "game.project.json" });
 		});
 
 		describe("recognised files", () => {

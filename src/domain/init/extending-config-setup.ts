@@ -1,10 +1,11 @@
-import { Result, err, ok } from "../../base/result.js";
+import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlanBuilder, Setup } from "./init-plan-builder.js";
+import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
+import { Setup } from "./setup.js";
 
 export interface ExtendingConfigChoices {
 	readonly name: string;
@@ -17,38 +18,34 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		private readonly questions: InitQuestions
 	) {}
 
-	/** The configs it writes and their project files, none of which may exist. */
-	private filesOf(name: string): string[] {
-		const configSet = ConfigSet.in(this.directory.workspace, name);
-		return [...configSet.configFiles, ...configSet.outputFiles];
-	}
-
 	async ask(): Promise<
 		Result<ExtendingConfigChoices | undefined, Diagnostic[]>
 	> {
 		const { directory, questions } = this;
-		const given = directory.givenName;
-		if (given) {
-			const conflicts = directory.checkFree(this.filesOf(given));
-			if (conflicts.length > 0) return err(conflicts);
-		}
-		const name =
-			given ??
-			(await questions.name(directory, {
-				message: "Config name",
-				description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
-				filesFor: (candidate) => this.filesOf(candidate),
-			}));
+		const named = await questions.givenOrAskedName(directory, {
+			message: "Config name",
+			description: `Writes <name>.rogen.json, which extends ${DEFAULT_CONFIG_FILE}.`,
+			filesFor: (candidate) =>
+				ConfigSet.in(directory.workspace, candidate).writtenFiles,
+		});
+		if (named.isErr()) return named;
+		const name = named.value;
 		return ok(name === undefined ? undefined : { name });
 	}
 
 	plan({ name }: ExtendingConfigChoices, builder: InitPlanBuilder): void {
 		const configSet = ConfigSet.in(this.directory.workspace, name);
-		// A compiler's sync dir is inherited from default; only a synced twin adds one.
+		const { base } = this.directory;
+		// A compiler's sync dir is inherited from default; only a synced twin adds one, where default's project syncs from.
 		configSet.planConfigs(
 			builder,
 			{ extends: ConfigSet.reference(DEFAULT_CONFIG_FILE) },
-			configSet.sourced ? configSet.syncDir : undefined
+			{
+				synced: configSet.sourced
+					? ((base?.isOk() ? base.value.syncDir : undefined) ??
+						configSet.syncDir)
+					: undefined,
+			}
 		);
 		builder.addRun(configSet.serveCommand);
 		builder.addEdit(

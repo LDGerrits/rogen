@@ -23,6 +23,7 @@ export class ConfigModel {
 		for (const component of sectionPath(section)) {
 			if (typeof current !== "object" || current === null)
 				return undefined;
+			if (!Object.hasOwn(current, component)) return undefined;
 			current = (current as Record<string, unknown>)[component];
 		}
 
@@ -73,7 +74,7 @@ export class Config {
 		private readonly policies: MergePolicies = {}
 	) {}
 
-	getConsolidatedModel(): ConfigModel {
+	private getConsolidatedModel(): ConfigModel {
 		if (!this.consolidatedModel) {
 			const merged = this.consolidateEach([], this.policies);
 			this.consolidatedModel = new ConfigModel(merged);
@@ -81,11 +82,7 @@ export class Config {
 		return this.consolidatedModel;
 	}
 
-	/**
-	 * The entries of the list at `section`, each tier's after the earlier ones.
-	 * An entry a later tier repeats moves to the later position. The default
-	 * applies only when no layer or the command line sets the list.
-	 */
+	/** The entries of the list at `section`, each tier's after the earlier ones. An entry a later tier repeats moves to the later position. The default applies only when no layer or the command line sets the list. */
 	entries<T>(section: ConfigSection): ListEntry<T>[] {
 		const tiers: { source: ConfigSource; list: T[] | undefined }[] = [
 			...this.layers.map((layer, index) => ({
@@ -160,8 +157,7 @@ export class Config {
 	): Record<string, unknown> {
 		const keys = new Set(
 			this.tiers.flatMap((tier) => {
-				const value =
-					path.length === 0 ? tier.contents : tier.getValue(path);
+				const value = tier.getValue(path);
 				return isObject(value) ? Object.keys(value) : [];
 			})
 		);

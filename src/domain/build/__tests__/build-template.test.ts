@@ -34,7 +34,7 @@ describe("BuildTemplate", () => {
 	it("should start from a bare DataModel without a template", () => {
 		const template = templateOf({ name: "game" });
 
-		expect(template.edit().getTree()).toEqual({
+		expect(template.edit().getFile()).toEqual({
 			name: "game",
 			tree: { $className: "DataModel" },
 		});
