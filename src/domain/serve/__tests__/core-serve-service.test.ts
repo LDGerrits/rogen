@@ -131,10 +131,72 @@ describe("CoreServeService", () => {
 			expect(servePlan.toStart).toHaveLength(1);
 		});
 
-		it("should refuse a server it doesn't know", async () => {
-			expect(await errorOf({ serverId: "lune" })).toEqual(
-				new UsageError('--tool takes rojo or argon, not "lune".')
-			);
+		it.each([
+			["lune", ""],
+			["Argon", ' Did you mean "argon"?'],
+		])(
+			"should refuse the server %j, which the config field would too",
+			async (serverId, hint) => {
+				expect(await errorOf({ serverId })).toEqual(
+					new UsageError(
+						`--server takes rojo or argon, not "${serverId}".${hint}`
+					)
+				);
+			}
+		);
+
+		describe("with a server named in the config", () => {
+			beforeEach(async () => {
+				await memFs.writeFile(
+					"/repo/rokit.toml",
+					'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.24"\n'
+				);
+				processes.installed.set("argon", "/bin/argon");
+				processes.outputs.set("/bin/argon", {
+					code: 0,
+					stdout: "argon 2.0.24",
+					stderr: "",
+				});
+				await memFs.writeFile(
+					"/repo/default.rogen.json",
+					config({ server: "argon" })
+				);
+			});
+
+			it("should serve with it over the pin order, without saying another was passed over", async () => {
+				expect((await plan()).executable).toMatchObject({
+					server: SyncServer.ARGON,
+					passedOver: undefined,
+				});
+			});
+
+			it("should serve with the server --server names instead", async () => {
+				expect(
+					(await plan({ serverId: "rojo" })).executable.server
+				).toBe(SyncServer.ROJO);
+			});
+
+			it("should refuse configs to serve that name different servers", async () => {
+				await memFs.writeFile(
+					"/repo/lobby.rogen.json",
+					config({
+						server: "rojo",
+						template: "lobby.template.project.json",
+					})
+				);
+				await memFs.writeFile(
+					"/repo/lobby.template.project.json",
+					template({ servePort: 34873 })
+				);
+
+				expect(await errorOf()).toEqual(
+					new UsageError(
+						'default names "server": "argon".\n' +
+							'lobby names "server": "rojo".\n' +
+							"One serve runs one server: give them the same \"server\", or serve one at a time, as 'rogen serve default'."
+					)
+				);
+			});
 		});
 
 		it("should serve the synced config of a Darklua setup, not the source-rooted one", async () => {
