@@ -82,3 +82,12 @@ rogen where src/Inventory
 </Steps>
 
 Already-written requires keep working while you move, because a file's instance path only changes when its route does. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.
+
+## Rojo's Other Commands
+
+Rogen replaces the project file you wrote, and Rojo's commands that read it keep working on the one Rogen writes.
+
+- **`rojo serve`** still serves the project file. `rogen serve` builds it first, starts the server for you and rebuilds as files change; see [Studio](/docs/v2/studio) for the plugin settings.
+- **`rojo build`** makes a place file from it. Build the mode you want to another file first: see [Place Files](/docs/v2/core-concepts/output#place-files).
+- **`rojo sourcemap`** works on it as it does on any project file, for luau-lsp and other tools.
+- **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and can edit properties in the file it reads, which Rogen overwrites on its next build. Don't run it against a project file Rogen writes. Bring changes from a place back into the feature folders by hand.

@@ -1,0 +1,90 @@
+---
+title: Studio
+description: Connect Studio to the server Rogen starts without clicking Connect each session, and keep every place on the right port.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+Rogen writes the project file, and `rogen serve` starts [Rojo](https://rojo.space) or [Argon](https://github.com/argon-rbx/argon) on it. The syncing, and every setting on this page, belongs to that server's Studio plugin: Rogen doesn't touch the plugin, and never installs one. What follows is how Rojo 7.7 and Argon 2.0 behave; their plugins are theirs to change, so look in the plugin's settings page when a name differs. Install the plugin that matches your server with `rojo plugin install` or `argon plugin install`.
+
+## Connect Without Clicking
+
+Both plugins can connect on their own. Argon's plugin does by default; Rojo's needs a setting turned on.
+
+| | Rojo | Argon |
+|---|---|---|
+| Connect when a place opens | **Auto Reconnect**, off by default. Only for a place you connected before. | **Auto Connect**, on by default. |
+| Connect again after a lost connection | No: it tries again only when a place opens. | **Auto Reconnect**, off by default. |
+| Where it connects | The host and port you used for that place last time. | The host and port in its settings, which can be set for one place, for one game or for every place. |
+
+Turn the settings on in the plugin's settings page, once.
+
+**Start `rogen serve` before you open the place.** Rojo looks for a server only as the place opens, and reminds you to connect, about every 30 seconds, when it finds one later. Argon connects when a place opens too, and retries only if Auto Reconnect is on.
+
+<Callout type="warn">
+	Rojo remembers a place by its place ID, and doesn't remember an unsaved local
+	file or a Baseplate template, so Auto Reconnect has nothing to go by for
+	them. Publish the place, or save it to Roblox, then connect once by hand.
+</Callout>
+
+Rojo also checks the **name of the project** against the one it synced last: a place reconnects only to a server that serves a project of the same name. That name is `name` in the project file, which Rogen takes from your [template](/docs/v2/core-concepts/output#template). Give each place its own name, and keep it.
+
+### The Confirmation Dialog
+
+Rojo's plugin asks to confirm the first changes of each project in a session. Its **Confirmation Behavior** setting changes when:
+
+- **Initial**, the default: once per project per session.
+- **Unlisted PlaceId**: only when the place isn't in the project's `servePlaceIds`, which is the next section. A place you listed connects without asking.
+- **Never** and **Always**.
+
+## Place IDs
+
+A template can say which places the server is for, with `servePlaceIds`:
+
+```json title="template.project.json"
+{
+	"name": "Game",
+	"servePlaceIds": [1818]
+}
+```
+
+A project with no template needs only a file with the field in it, and `template` in the config to point at it. The template needs no `tree`; Rogen adds the tree:
+
+```json title="template.project.json"
+{ "name": "Game", "servePlaceIds": [1818] }
+```
+
+```json title="default.rogen.json"
+{
+	"routes": { "*": "ReplicatedStorage" },
+	"template": "template.project.json"
+}
+```
+
+What a listed place changes depends on the server:
+
+- **Rojo** refuses to connect from any other place, and says which IDs it expects. `blockedPlaceIds` does the opposite, and names places that may never connect.
+- **Argon** asks whether to go on when the place isn't listed.
+
+Both servers read the same `servePlaceIds` field. In a repo with [several places](/docs/v2/setups/multi-place), the list is what keeps Lobby's window from syncing Arena's code, so give each place's template its own:
+
+```json title="places/lobby/template.project.json"
+{
+	"name": "Lobby",
+	"servePort": 34873,
+	"servePlaceIds": [1818]
+}
+```
+
+A place's template merges over the shared one, and a top-level field such as `servePlaceIds` replaces the parent's.
+
+<Callout type="warn">
+	A place that was never saved to Roblox has the place ID `0`, which no list
+	holds, so a listed project refuses it. Add the IDs once the places are
+	published. `rogen init` doesn't ask for them, since they usually don't exist
+	yet.
+</Callout>
+
+## One Port For Each Place
+
+`rogen serve` starts a server for each place, on the `servePort` of its template (`rogen init` gives each place the first free port above 34872). In Studio, connect each place to its own port. Rojo remembers the port for a place after the first connect, so Auto Reconnect takes it back to the same one; Argon takes the port from its settings, which can be set for one place. See [`serve`](/docs/v2/cli#serve) for how Rogen picks the server and the port.
