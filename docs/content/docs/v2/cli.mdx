@@ -46,7 +46,7 @@ With no config names, `watch` follows the folder: a `*.rogen.json` you add is bu
 
 With `--json`, `watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line for each config each time it builds, and a `notice` line when a config is added, removed, broken or recovered.
 
-It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
+It's safe to run `build` while `watch` is running, in the same mode and variants. Press Ctrl+C to stop.
 
 ### `serve [config…] [-- server args…]` [#serve]
 
@@ -81,7 +81,7 @@ Two served configs on one port exit 2, with the fix: give each its own `servePor
 
 **Already running.** Before building, Rogen asks each port what serves there. A Rojo or Argon server only says the name of its project, and a server another `rogen serve` started is also known by its project file:
 
-- **Another `rogen serve` serves the config's project file.** That serve keeps it built, so nothing starts for the config. When this holds for every served config, `serve` says so and exits 0 without building.
+- **Another `rogen serve` serves the config's project file.** That serve keeps it built, so nothing starts for the config. When this holds for every served config, `serve` says so and exits 0 without building. It counts only when that serve built the file in the same mode and variants as this one would; a serve in another mode exits 1 with [`serve.otherMode`](/docs/v2/diagnostics#serve-othermode), since both would write the same file.
 - **A server Rogen didn't start serves a project of the config's name,** such as a `rojo serve` you ran yourself, or one an editor extension started. `serve` adopts it: it starts no server, but builds and watches for it, and stops, with exit code 0, once that server is gone: two checks in a row, two seconds apart, find nothing on its port, or the port answers for another session, such as a Rojo you restarted. A slow answer doesn't count.
 - **Another config here has the same project name,** as a Darklua setup's `default` and `sync` do, and no `rogen serve` started the server. Rogen can't tell which one it serves, so it refuses with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken): stop that server and run `rogen serve` again.
 - **Anything else holds the port,** including a second checkout of the same project, such as a git worktree. `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), which names what holds it (and the other checkout's folder) and a free port to use instead.

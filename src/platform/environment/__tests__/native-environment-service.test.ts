@@ -7,6 +7,7 @@ const inTerminal = (env: Record<string, string | undefined>) =>
 		isTerminal: true,
 		userHome: "/mock/home",
 		tmpDir: "/mock/tmp",
+		pid: 4242,
 	});
 
 describe("NativeEnvironmentService", () => {
@@ -25,6 +26,7 @@ describe("NativeEnvironmentService", () => {
 			isTerminal: true,
 			userHome: "/mock/home",
 			tmpDir: "/mock/tmp",
+			pid: 4242,
 		});
 
 		expect(env.logLevel).toBe(level);
@@ -41,6 +43,7 @@ describe("NativeEnvironmentService", () => {
 				isTerminal: false,
 				userHome: "/mock/home",
 				tmpDir: "/mock/tmp",
+				pid: 4242,
 			});
 
 			expect(piped.isInteractive).toBe(false);
@@ -109,10 +112,23 @@ describe("NativeEnvironmentService", () => {
 					isTerminal: true,
 					userHome: "/mock/home",
 					tmpDir: "/mock/tmp",
+					pid: 4242,
 				}
 			);
 
 			expect(env.isPlain).toBe(true);
 		});
+	});
+
+	it("should carry the id of the process it describes", () => {
+		const environment = new NativeEnvironmentService({}, "/repo", {
+			env: {},
+			isTerminal: true,
+			userHome: "/home/me",
+			tmpDir: "/mock/tmp",
+			pid: 4242,
+		});
+
+		expect(environment.pid).toBe(4242);
 	});
 });

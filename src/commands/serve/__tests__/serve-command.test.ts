@@ -11,6 +11,7 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
+import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import {
 	ExitCodeError,
@@ -183,12 +184,7 @@ describe("serve command", () => {
 
 	it("should start nothing and exit 0 when another serve already serves the project", async () => {
 		await memFs.writeFile(
-			"/mock/tmp/rogen-serve/34872.json",
-			JSON.stringify({
-				session: "s1",
-				project: "repo",
-				projectFile: "/repo/default.project.json",
-			})
+			...recordFile(34872, "repo", "/repo/default.project.json")
 		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
