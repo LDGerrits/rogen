@@ -127,7 +127,7 @@ export class MetaReader {
 		);
 	}
 
-	/** Every folder's `init.meta.json`, read together; fails on one Rojo would refuse. */
+	/** Every folder's `init.meta.json` or `init.meta.jsonc`, read together; fails on one Rojo would refuse. */
 	private async readFolderMetas(
 		placement: Placement
 	): Promise<
@@ -136,10 +136,16 @@ export class MetaReader {
 			Diagnostic[]
 		>
 	> {
-		const candidates = placement.metaFiles.filter(
-			({ relativePath }) =>
-				path.posix.basename(relativePath) === RojoFile.INIT_META
-		);
+		// Rojo applies a folder's `init.meta.jsonc` over its `init.meta.json`, so it is read first.
+		const candidates = placement.metaFiles
+			.filter(({ relativePath }) =>
+				RojoFile.isInitMeta(path.posix.basename(relativePath))
+			)
+			.sort(
+				(a, b) =>
+					Number(path.basename(b.file) === RojoFile.INIT_META_JSONC) -
+					Number(path.basename(a.file) === RojoFile.INIT_META_JSONC)
+			);
 		const parsed = await Promise.all(
 			candidates.map(({ file }) => this.readMeta(file))
 		);
@@ -192,13 +198,17 @@ export class MetaReader {
 						},
 					];
 			}
-			const beside = path.join(
+			const folder = path.join(
 				entry.rootDir,
-				path.dirname(entry.relativePath),
-				new RojoFile(path.basename(entry.relativePath)).metaFile ?? ""
+				path.dirname(entry.relativePath)
 			);
+			const beside = new RojoFile(
+				path.basename(entry.relativePath)
+			).metaFiles
+				.map((name) => path.join(folder, name))
+				.find((candidate) => metaFiles.has(candidate));
 			const sibling =
-				metaFiles.has(beside) &&
+				beside !== undefined &&
 				!folderMeta.some((meta) => meta.file === beside)
 					? beside
 					: undefined;

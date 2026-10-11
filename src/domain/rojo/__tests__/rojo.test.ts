@@ -19,6 +19,8 @@ describe("domain/rojo/rojo", () => {
 				["Model.rbxm", "model"],
 				["Model.rbxmx", "model"],
 				["Config.json", "data"],
+				["Config.jsonc", "data"],
+				["Gun.model.jsonc", "data"],
 				["Config.toml", "data"],
 				["Table.csv", "data"],
 				["Notes.txt", "data"],
@@ -34,7 +36,9 @@ describe("domain/rojo/rojo", () => {
 				"Save.Json",
 				"Save.META.JSON",
 				"Save.meta.json",
+				"Save.meta.jsonc",
 				"init.meta.json",
+				"init.meta.jsonc",
 				"Notes.md",
 				".server",
 				"README",
@@ -84,6 +88,10 @@ describe("domain/rojo/rojo", () => {
 			it("should accept a meta file in lowercase only, and reject other JSON", () => {
 				expect(new RojoFile("Save.meta.json").isMeta).toBe(true);
 				expect(new RojoFile(RojoFile.INIT_META).isMeta).toBe(true);
+				expect(new RojoFile("Save.meta.jsonc").isMeta).toBe(true);
+				expect(new RojoFile(RojoFile.INIT_META_JSONC).isMeta).toBe(
+					true
+				);
 				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(false);
 				expect(new RojoFile("Save.json").isMeta).toBe(false);
 			});
@@ -221,6 +229,7 @@ describe("domain/rojo/rojo", () => {
 				["Foo.server.mock.luau", "Foo.server.mock"],
 				["Crate.model.json", "Crate"],
 				["Config.json", "Config"],
+				["Config.jsonc", "Config"],
 				["Gun.rbxm", "Gun"],
 				["Data.model.toml", "Data.model"],
 			])("should name %s as %s", (fileName, name) => {
@@ -234,6 +243,7 @@ describe("domain/rojo/rojo", () => {
 				["Types.luau", "Types"],
 				["Foo.server.mock.luau", "Foo.server.mock"],
 				["Config.json", "Config"],
+				["Config.jsonc", "Config"],
 				["Notes.txt", "Notes"],
 			])("should read the meta of %s under %s", (fileName, name) => {
 				expect(new RojoFile(fileName).metaName).toBe(name);
@@ -250,6 +260,24 @@ describe("domain/rojo/rojo", () => {
 				expect(new RojoFile("Crate.model.toml").metaName).toBe(
 					"Crate.model"
 				);
+			});
+		});
+
+		describe("metaStemOf", () => {
+			it("should strip either meta suffix, and none from another file", () => {
+				expect(RojoFile.metaStemOf("Save.meta.json")).toBe("Save");
+				expect(RojoFile.metaStemOf("Save.meta.jsonc")).toBe("Save");
+				expect(RojoFile.metaStemOf("Save.json")).toBeUndefined();
+			});
+		});
+
+		describe("metaFiles", () => {
+			it("should name the .jsonc Rojo applies over the .json first", () => {
+				expect(new RojoFile("Save.luau").metaFiles).toEqual([
+					"Save.meta.jsonc",
+					"Save.meta.json",
+				]);
+				expect(new RojoFile("Gun.rbxm").metaFiles).toEqual([]);
 			});
 		});
 

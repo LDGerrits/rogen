@@ -40,7 +40,7 @@ export interface ScannedRootParts {
 	readonly exists: boolean;
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
-	/** `.meta.json` files, `init.meta.json` included; Rojo applies them, they're never entries. */
+	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; Rojo applies them, they're never entries. */
 	readonly metaFiles: readonly string[];
 	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
@@ -124,7 +124,7 @@ export class ScannedRoot implements ScannedRootParts {
 	unclaimedMeta(): UnclaimedMeta[] {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
-			if (fileName === RojoFile.INIT_META) return [];
+			if (RojoFile.isInitMeta(fileName)) return [];
 			const listing =
 				this.index.getEntries(
 					path.join(this.rootDir, path.posix.dirname(metaFile))
@@ -132,7 +132,7 @@ export class ScannedRoot implements ScannedRootParts {
 			const siblings = [...listing]
 				.filter(([, type]) => isFileType(type))
 				.map(([sibling]) => sibling);
-			const name = fileName.slice(0, -RojoFile.META_SUFFIX.length);
+			const name = RojoFile.metaStemOf(fileName) ?? fileName;
 			if (siblings.some((file) => new RojoFile(file).metaName === name))
 				return [];
 
@@ -160,8 +160,7 @@ export class ScannedRoot implements ScannedRootParts {
 		siblings: readonly string[],
 		isFolder: boolean
 	): string | undefined {
-		if (isFolder)
-			return `a folder's meta is ${name}/init${RojoFile.META_SUFFIX}`;
+		if (isFolder) return `a folder's meta is ${name}/${RojoFile.INIT_META}`;
 		for (const file of siblings) {
 			if (stemOf(file) !== name) continue;
 			const metaName = new RojoFile(file).metaName;

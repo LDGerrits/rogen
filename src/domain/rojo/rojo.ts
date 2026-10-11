@@ -30,6 +30,7 @@ export const RUN_SCRIPT_SUFFIXES: ReadonlySet<string> = new Set([
 const MODEL_EXTENSIONS: readonly string[] = [".rbxm", ".rbxmx"];
 const DATA_EXTENSIONS: readonly string[] = [
 	".json",
+	".jsonc",
 	".toml",
 	".csv",
 	".txt",
@@ -47,8 +48,11 @@ export class RojoFile {
 		".tsx",
 	];
 	static readonly META_SUFFIX = ".meta.json";
+	/** Rojo reads this over `.meta.json` when a file has both. */
+	static readonly META_SUFFIX_JSONC = ".meta.jsonc";
 	static readonly INIT_NAME = "init";
 	static readonly INIT_META = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX}`;
+	static readonly INIT_META_JSONC = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX_JSONC}`;
 
 	readonly stem: string;
 
@@ -72,8 +76,24 @@ export class RojoFile {
 		return stem.replace(/(?<=.)\.(model|project)$/, "");
 	}
 
+	/** `fileName` without its meta suffix, or `undefined` for a file name that isn't a meta file. */
+	static metaStemOf(fileName: string): string | undefined {
+		for (const suffix of [RojoFile.META_SUFFIX_JSONC, RojoFile.META_SUFFIX])
+			if (fileName.endsWith(suffix))
+				return fileName.slice(0, -suffix.length);
+		return undefined;
+	}
+
+	/** Whether `fileName` is the meta file Rojo reads for the folder it lies in. */
+	static isInitMeta(fileName: string): boolean {
+		return (
+			fileName === RojoFile.INIT_META ||
+			fileName === RojoFile.INIT_META_JSONC
+		);
+	}
+
 	get isMeta(): boolean {
-		return this.name.endsWith(RojoFile.META_SUFFIX);
+		return RojoFile.metaStemOf(this.name) !== undefined;
 	}
 
 	/** The name with an extension Rojo would read written as it reads it, when only the letter case keeps Rojo from reading the file: Rojo ignores `Foo.LUAU` and `Foo.MODEL.JSON`. */
@@ -133,7 +153,7 @@ export class RojoFile {
 	}
 
 	private get isJson(): boolean {
-		return path.extname(this.name) === ".json";
+		return [".json", ".jsonc"].includes(path.extname(this.name));
 	}
 
 	/** The name Rojo reads the file's `.meta.json` under, or none for a file that takes no meta. */
@@ -143,6 +163,16 @@ export class RojoFile {
 			return this.stem;
 		}
 		return undefined;
+	}
+
+	/** The meta files Rojo reads for the file, the one it prefers first; none for a file that takes no meta. */
+	get metaFiles(): string[] {
+		const name = this.metaName;
+		return name === undefined
+			? []
+			: [RojoFile.META_SUFFIX_JSONC, RojoFile.META_SUFFIX].map(
+					(suffix) => `${name}${suffix}`
+				);
 	}
 
 	/** The `.meta.json` Rojo reads for the file, or none for a file that takes no meta. */

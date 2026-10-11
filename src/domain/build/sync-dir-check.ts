@@ -132,7 +132,14 @@ export class SyncDirCheck {
 			if (await this.fileSystemService.exists(emitted)) continue;
 			missing.push(toPosix(source));
 			const replacement = await this.replacementAt(
-				emitted.slice(0, -RojoFile.META_SUFFIX.length),
+				emitted.slice(
+					0,
+					-(
+						emitted.endsWith(RojoFile.META_SUFFIX_JSONC)
+							? RojoFile.META_SUFFIX_JSONC
+							: RojoFile.META_SUFFIX
+					).length
+				),
 				replacements
 			);
 			if (replacement) {
