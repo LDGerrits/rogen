@@ -8,7 +8,7 @@ import {
 	MergePolicy,
 } from "../../platform/config/config-models.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
-import { DeclaredKeys, RogenConfig } from "./config.js";
+import { DeclaredKeys, RogenConfig, SERVER_NAMES } from "./config.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
 
@@ -198,6 +198,17 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 				"The Rojo project file Rogen writes. Defaults to this " +
 				"config's own file name, with .rogen.json replaced by " +
 				".project.json.",
+		},
+	},
+	server: {
+		merge: "replace",
+		schema: {
+			type: "string",
+			enum: [...SERVER_NAMES],
+			description:
+				"The sync server rogen serve starts, rojo or argon, unless " +
+				"--server says otherwise. Without it, the one the project " +
+				"pins, Rojo before Argon.",
 		},
 	},
 };

@@ -197,7 +197,7 @@ describeWithRojo("end to end serve", () => {
 		expect(lines[1].serving).toEqual(
 			expect.objectContaining({
 				config: "default",
-				tool: "rojo",
+				server: "rojo",
 				version: "7.7.1",
 				project: "Game",
 				port: serve.port,
@@ -249,7 +249,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await serving.exited).toBe(0);
 			expect(serving.stdout).toContain(
-				'{"stopped":{"config":"default","tool":"rojo","reason":"exited","adopted":true}}'
+				'{"stopped":{"config":"default","server":"rojo","reason":"exited","adopted":true}}'
 			);
 		} finally {
 			rojo.kill("SIGINT");
