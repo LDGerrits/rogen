@@ -197,7 +197,7 @@ describe("CoreUpdateService", () => {
 					installDir:
 						"C:\\game\\node_modules\\@ldgerrits\\rogen\\dist",
 				})
-			).toContain("npm i");
+			).toContain("npm i -g @ldgerrits/rogen@2.0.3");
 		});
 	});
 });
