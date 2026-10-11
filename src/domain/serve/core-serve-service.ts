@@ -216,16 +216,20 @@ export class CoreServeService implements ServeService {
 		);
 	}
 
-	async servedBy(projectFile: string): Promise<ServingNow | undefined> {
-		const record = await this.served.servingOf(projectFile);
-		const server = record && SyncServer.byId(record.server);
-		return record && server
-			? {
+	async servedBy(
+		projectFiles: readonly string[]
+	): Promise<ReadonlyMap<string, ServingNow>> {
+		const found = new Map<string, ServingNow>();
+		for (const [file, record] of await this.served.serving(projectFiles)) {
+			const server = SyncServer.byId(record.server);
+			if (server)
+				found.set(file, {
 					server,
 					host: record.host,
 					port: record.port,
 					clients: record.clients,
-				}
-			: undefined;
+				});
+		}
+		return found;
 	}
 }

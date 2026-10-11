@@ -108,7 +108,8 @@ export class ServerOutput extends AbstractDisposable {
 				: record.parts
 						.filter((part) => part !== "" && part !== "Caused by:")
 						.map((part) => part.replace(/^\d+:\s*/, ""))
-						.join(": ")
+						.join(": "),
+			!record.paragraph
 		);
 	}
 

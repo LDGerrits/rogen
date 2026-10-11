@@ -103,10 +103,10 @@ describe("NativeProcessService", () => {
 		});
 
 		it.each([
-			["is not set", {}, "from-default"],
-			["is set", { ROGEN_PROBE: "from-env" }, "from-env"],
+			["is not set", {}, "unset+added"],
+			["is set", { ROGEN_PROBE: "mine" }, "mine+added"],
 		])(
-			"should give the child its default for a variable that %s",
+			"should give the child the variable as derived from what it inherits, when it %s",
 			async (_, env, expected) => {
 				const owned = new NativeProcessService({
 					...process.env,
@@ -116,7 +116,13 @@ describe("NativeProcessService", () => {
 				const child = owned.spawn(
 					node,
 					["-e", "console.log(process.env.ROGEN_PROBE)"],
-					{ cwd: dir, defaultEnv: { ROGEN_PROBE: "from-default" } }
+					{
+						cwd: dir,
+						env: {
+							ROGEN_PROBE: (inherited) =>
+								`${inherited ?? "unset"}+added`,
+						},
+					}
 				);
 				let output = "";
 				child.onDidOutputLine((line) => (output += line));

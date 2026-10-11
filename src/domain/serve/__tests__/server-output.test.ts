@@ -113,6 +113,13 @@ describe("ServerOutput", () => {
 				expect(changes).toEqual([]);
 			});
 
+			it("should not read a connection from a message the server wrote itself, outside its log", () => {
+				write("ERROR: WebSocket stream ended");
+				output.end();
+
+				expect(changes).toEqual([]);
+			});
+
 			it("should not read a connection from a line that is no log record", () => {
 				write("WebSocket subscription closed by client");
 

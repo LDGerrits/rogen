@@ -202,8 +202,10 @@ export interface ServeService {
 	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError>;
 
-	/** The server that a running serve serves `projectFile` with, as that serve recorded it, when it still answers. */
-	servedBy(projectFile: string): Promise<ServingNow | undefined>;
+	/** For each of `projectFiles` that a running serve serves, the server it serves it with, as that serve recorded it, when the server still answers. */
+	servedBy(
+		projectFiles: readonly string[]
+	): Promise<ReadonlyMap<string, ServingNow>>;
 }
 
 export const ServeService =

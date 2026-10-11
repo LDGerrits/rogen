@@ -271,7 +271,14 @@ export class NativeProcessService implements ProcessService {
 		return new NativeChildProcess(
 			childProcess.spawn(run.command, run.args, {
 				cwd: options.cwd,
-				env: { ...options.defaultEnv, ...this.env },
+				env: {
+					...this.env,
+					...Object.fromEntries(
+						Object.entries(options.env ?? {}).map(
+							([name, from]) => [name, from(this.env[name])]
+						)
+					),
+				},
 				windowsVerbatimArguments: run.windowsVerbatimArguments,
 				stdio: ["ignore", "pipe", "pipe"],
 				detached: !isWindows,

@@ -69,7 +69,10 @@ interface SyncServerFields {
 		readonly since: readonly [major: number, minor: number];
 		readonly opened: RegExp;
 		readonly closed: RegExp;
-		readonly logFilter: Readonly<Record<string, string>>;
+		/** The variables that make it print them, each from what the user already set, so a filter of the user's stays. */
+		readonly logEnv: Readonly<
+			Record<string, (inherited: string | undefined) => string>
+		>;
 	};
 	readonly readInfo: (
 		server: SyncServer,
@@ -101,7 +104,10 @@ export class SyncServer {
 			opened: /^WebSocket subscription established\b/,
 			// Each way its handler can end a connection logs one of these.
 			closed: /^(WebSocket subscription closed|WebSocket stream ended|WebSocket error|Message queue disconnected)\b/,
-			logFilter: { RUST_LOG: "info,librojo::web=debug" },
+			logEnv: {
+				RUST_LOG: (inherited) =>
+					`${inherited ?? "info"},librojo::web=debug`,
+			},
 		},
 		readInfo: (server, value) => {
 			const project = text(value.projectName);
@@ -186,7 +192,7 @@ export class SyncServer {
 	/** Whether this version of it says in its output when a Studio plugin connects or leaves. */
 	reportsConnections(version: string): boolean {
 		const since = this.fields.connections?.since;
-		const found = /^(\d+)\.(\d+)\./.exec(version);
+		const found = /^(\d+)\.(\d+)/.exec(version);
 		if (!since || !found) return false;
 		const [major, minor] = [Number(found[1]), Number(found[2])];
 		return major > since[0] || (major === since[0] && minor >= since[1]);
@@ -200,9 +206,11 @@ export class SyncServer {
 		return undefined;
 	}
 
-	/** The environment variables that make it print the records `connectionIn` reads, unless the user set them. */
-	get defaultEnv(): Readonly<Record<string, string>> {
-		return this.fields.connections?.logFilter ?? {};
+	/** The environment variables that make it print the records `connectionIn` reads, each from what the environment already holds. */
+	get env(): Readonly<
+		Record<string, (inherited: string | undefined) => string>
+	> {
+		return this.fields.connections?.logEnv ?? {};
 	}
 
 	/** The command that installs its Studio plugin. */

@@ -39,16 +39,26 @@ export class ServedProjectFiles {
 		return undefined;
 	}
 
-	/** The record of a running serve that serves `file`, whatever mode it built in. */
-	async servingOf(file: string): Promise<ServerRecord | undefined> {
-		for (const record of await this.records.all()) {
-			if (
-				samePath(record.projectFile, file) &&
-				(await this.isRunning(record))
+	/** For each of `files` that a running serve serves, the record of that serve, whatever mode it built in. The records are read once, and each server is asked once. */
+	async serving(
+		files: readonly string[]
+	): Promise<ReadonlyMap<string, ServerRecord>> {
+		const candidates = (await this.records.all()).filter((record) =>
+			files.some((file) => samePath(record.projectFile, file))
+		);
+		const running = await Promise.all(
+			candidates.map(async (record) =>
+				(await this.isRunning(record)) ? record : undefined
 			)
-				return record;
+		);
+		const found = new Map<string, ServerRecord>();
+		for (const record of running) {
+			if (!record) continue;
+			for (const file of files)
+				if (!found.has(file) && samePath(record.projectFile, file))
+					found.set(file, record);
 		}
-		return undefined;
+		return found;
 	}
 
 	/** Whether the server of `record` still answers, as the one the serve started: a crashed serve leaves its record behind. */

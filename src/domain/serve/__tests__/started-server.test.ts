@@ -100,7 +100,7 @@ describe("StartedServer", () => {
 		]);
 		expect(child.options).toEqual({
 			cwd: "/repo",
-			defaultEnv: { RUST_LOG: "info,librojo::web=debug" },
+			env: { RUST_LOG: expect.any(Function) },
 		});
 	});
 
@@ -191,6 +191,17 @@ describe("StartedServer", () => {
 			await answer("7.6.1");
 
 			expect(await clientsRecorded()).toBeUndefined();
+		});
+
+		it("should tell nothing of connections that end because it is stopping", async () => {
+			const child = start();
+			await answer();
+
+			await server.terminate();
+			child.print(websocket("closed by client"));
+			await jest.advanceTimersByTimeAsync(100);
+
+			expect(connections).toEqual([]);
 		});
 
 		it("should not write its record for a connection after it was told to stop", async () => {

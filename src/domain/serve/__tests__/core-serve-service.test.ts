@@ -675,6 +675,37 @@ describe("CoreServeService", () => {
 		});
 	});
 
+	describe("servedBy", () => {
+		it("should say which server serves each project file, and how many Studio plugins it has", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					clients: 2,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const served = await service.servedBy([
+				"/repo/default.project.json",
+				"/repo/lobby.project.json",
+			]);
+
+			expect([...served]).toEqual([
+				[
+					"/repo/default.project.json",
+					{
+						server: SyncServer.ROJO,
+						host: "127.0.0.1",
+						port: 34872,
+						clients: 2,
+					},
+				],
+			]);
+		});
+	});
+
 	describe("serve", () => {
 		let session: ServeSession;
 		let served: ServerReadyEvent[];
@@ -760,7 +791,7 @@ describe("CoreServeService", () => {
 					["serve", "default.project.json"],
 					{
 						cwd: "/repo",
-						defaultEnv: { RUST_LOG: "info,librojo::web=debug" },
+						env: { RUST_LOG: expect.any(Function) },
 					},
 				],
 			]);

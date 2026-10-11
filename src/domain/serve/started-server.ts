@@ -1,6 +1,6 @@
 import path from "path";
 import { RunOnceScheduler } from "../../base/async.js";
-import { ErrorUtils } from "../../base/errors.js";
+import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -96,7 +96,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 				),
 				{
 					cwd: selection.home,
-					defaultEnv: executable.server.defaultEnv,
+					env: executable.server.env,
 				}
 			)
 		);
@@ -107,12 +107,13 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		);
 		this._register(
 			output.onDidConnection((change) => {
+				if (this.ending || this.exited) return;
 				const opened = change === "opened";
 				this.connected = Math.max(
 					0,
 					this.connected + (opened ? 1 : -1)
 				);
-				void this.updateRecord();
+				this.updateRecord().catch(onUnexpectedError);
 				this.listener.connection({
 					target,
 					opened,
@@ -163,9 +164,9 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	}
 
 	/** Writes the record again once its last write is done, unless the server is going away. */
-	private updateRecord(): Promise<void> | undefined {
+	private updateRecord(): Promise<void> {
 		if (!this.record || !this.answering || this.ending || this.exited)
-			return undefined;
+			return Promise.resolve();
 		const info = this.answering;
 		this.record = this.record.then(() =>
 			this.ending || this.exited ? undefined : this.writeRecord(info)

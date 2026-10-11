@@ -110,6 +110,8 @@ describe("SyncServer", () => {
 			["a later Rojo major", SyncServer.ROJO, "8.0.0", true],
 			["Rojo 7.10.2", SyncServer.ROJO, "7.10.2", true],
 			["Rojo 7.6.1, which long-polls", SyncServer.ROJO, "7.6.1", false],
+			["a release candidate", SyncServer.ROJO, "7.7.0-rc.1", true],
+			["a version of two numbers", SyncServer.ROJO, "7.7", true],
 			["a version that isn't one", SyncServer.ROJO, "nightly", false],
 			["Argon", SyncServer.ARGON, "2.0.29", false],
 		])(
@@ -152,11 +154,18 @@ describe("SyncServer", () => {
 			).toBeUndefined();
 		});
 
-		it("should ask Rojo for the debug lines of its web server, and Argon for nothing", () => {
-			expect(SyncServer.ROJO.defaultEnv).toEqual({
-				RUST_LOG: "info,librojo::web=debug",
-			});
-			expect(SyncServer.ARGON.defaultEnv).toEqual({});
+		it.each([
+			["nothing set", undefined, "info,librojo::web=debug"],
+			["the user's filter", "warn", "warn,librojo::web=debug"],
+		])(
+			"should ask Rojo for the debug lines of its web server beside %s",
+			(_, inherited, expected) => {
+				expect(SyncServer.ROJO.env.RUST_LOG(inherited)).toBe(expected);
+			}
+		);
+
+		it("should ask Argon for nothing", () => {
+			expect(SyncServer.ARGON.env).toEqual({});
 		});
 	});
 

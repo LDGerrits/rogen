@@ -49,20 +49,18 @@ registerCommand(
 			const report = new ListLog(logService, cwd);
 			const broken = ListLog.failure(entries);
 			const serveService = accessor.get(ServeService);
-			const serving: ServingByConfig = new Map(
-				await Promise.all(
-					entries.map(
-						async (entry) =>
-							[
-								entry.file,
-								entry.status === "valid"
-									? await serveService.servedBy(
-											entry.config.outFile
-										)
-									: undefined,
-							] as const
-					)
+			const served = await serveService.servedBy(
+				entries.flatMap((entry) =>
+					entry.status === "valid" ? [entry.config.outFile] : []
 				)
+			);
+			const serving: ServingByConfig = new Map(
+				entries.map((entry) => [
+					entry.file,
+					entry.status === "valid"
+						? served.get(entry.config.outFile)
+						: undefined,
+				])
 			);
 
 			if (line.options.json)
