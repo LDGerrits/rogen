@@ -25,13 +25,6 @@ export interface PlaceChoices {
 
 /** What one place writes and says, which a place added later and every place of a new project share. */
 export class PlacePlan {
-	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
-	static freePort(taken: readonly number[]): number {
-		let port = SyncServer.ROJO.defaultPort + 1;
-		while (taken.includes(port)) port++;
-		return port;
-	}
-
 	readonly configSet: ConfigSet;
 	private readonly folder: PlaceFolder;
 	private readonly handWritten: HandWrittenProject | undefined;
@@ -73,6 +66,13 @@ export class PlacePlan {
 						projectFile: projectFileName(name),
 					})
 				: undefined;
+	}
+
+	/** A place's first port: the first above Rojo's default that `taken` lacks, so every place serves at once. */
+	static freePort(taken: readonly number[]): number {
+		let port = SyncServer.ROJO.defaultPort + 1;
+		while (taken.includes(port)) port++;
+		return port;
 	}
 
 	/** The configs, the place's template, the compiler's own files and the one-time edits, which a project sets up for every place. */

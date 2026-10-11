@@ -12,6 +12,19 @@ export class ManagedConfig {
 	private _skippedVariants: readonly string[] | undefined;
 	private _modes: readonly string[] | undefined;
 
+	private constructor(
+		readonly file: string,
+		private readonly loader: ConfigLoader,
+		private readonly overrides: ConfigOverrides,
+		loaded: LoadedConfig
+	) {
+		this._files = loaded.files;
+		this._entry = this.entryOf(loaded);
+		this.config = loaded.config;
+		this._skippedVariants = loaded.skippedVariants;
+		this._modes = loaded.modes;
+	}
+
 	/** Loads `file` with `overrides`. */
 	static async open(
 		file: string,
@@ -24,19 +37,6 @@ export class ManagedConfig {
 			overrides,
 			await loader.load(file, overrides)
 		);
-	}
-
-	private constructor(
-		readonly file: string,
-		private readonly loader: ConfigLoader,
-		private readonly overrides: ConfigOverrides,
-		loaded: LoadedConfig
-	) {
-		this._files = loaded.files;
-		this._entry = this.entryOf(loaded);
-		this.config = loaded.config;
-		this._skippedVariants = loaded.skippedVariants;
-		this._modes = loaded.modes;
 	}
 
 	/** The latest snapshot. */

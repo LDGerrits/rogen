@@ -7,6 +7,8 @@ const MARKER = "<!-- rogen -->";
 
 /** The file a repo's coding agents read, which takes Rogen's rules: `AGENTS.md`, else a lone `CLAUDE.md`, else a new `AGENTS.md`. */
 export class AgentFile {
+	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD] as const;
+
 	private constructor(
 		readonly fileName: string,
 		private readonly text: string | undefined,
@@ -24,8 +26,6 @@ export class AgentFile {
 			? new AgentFile(CLAUDE_MD, claudeText, undefined)
 			: new AgentFile(AGENTS_MD, undefined, undefined);
 	}
-
-	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD] as const;
 
 	/** Whether either agent file already holds the block, so a second copy would load twice. */
 	get hasBlock(): boolean {
