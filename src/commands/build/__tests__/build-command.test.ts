@@ -256,6 +256,55 @@ describe("build command", () => {
 		);
 	});
 
+	describe("on GitHub Actions", () => {
+		const annotatedRun = async (
+			entries: ReturnType<typeof buildable>[],
+			line: CommandLine = { positionals: [], options: {} }
+		) => {
+			const logService = new MockLogService("/repo", "/repo");
+			const result = await commandHarness({
+				fs,
+				log: logService,
+				config: new MockConfigService(entries),
+			}).run("build", line);
+			return { logService, result };
+		};
+
+		it("should annotate every warning of a build, though the text lists only some of them", async () => {
+			for (let i = 1; i <= 12; i++)
+				await fs.writeFile(abs(`src/F${i}@sever.luau`), "");
+
+			const { logService } = await annotatedRun([
+				buildable({
+					routes: {
+						"*": "ReplicatedStorage",
+						Server: "ServerScriptService",
+					},
+				}),
+			]);
+
+			expect(logService.texts("annotation")).toHaveLength(12);
+			expect(logService.texts("annotation")).toContain(
+				'::warning file=src/F9@sever.luau,title=route.strayAt::did you mean "@Server"?'
+			);
+			expect(
+				logService.texts("diagnosticWarning").join("\n")
+			).not.toContain("F9@sever");
+		});
+
+		it("should annotate an error that fails the build", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
+			const { logService } = await annotatedRun([
+				buildable({ routes: {} }),
+			]);
+
+			expect(logService.texts("annotation")).toEqual([
+				"::error file=default.rogen.json,title=route.noRoutes::no routes declared, so nothing can be placed.%0AAdd a \"routes\" map; 'rogen init' writes a starting set.",
+			]);
+		});
+	});
+
 	it("should report a config that doesn't load as part of the build, and fail", async () => {
 		const logService = new MockLogService();
 		const entry = brokenEntry([

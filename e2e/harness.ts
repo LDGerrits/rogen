@@ -20,6 +20,8 @@ export interface CaseSpec {
 	readonly show?: readonly string[];
 	/** Commands, of those whose output is left out, that this case checks the output of. */
 	readonly output?: readonly FramedCommand[];
+	/** Variables the commands run with, on top of an environment that is not GitHub Actions'. */
+	readonly env?: Readonly<Record<string, string>>;
 }
 
 /** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
@@ -30,7 +32,21 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	rojo: true,
 	show: true,
 	output: true,
+	env: true,
 };
+
+/** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
+function childEnv(extra: Readonly<Record<string, string>> = {}) {
+	const env: NodeJS.ProcessEnv = {
+		...process.env,
+		NO_COLOR: "1",
+		FORCE_COLOR: "0",
+		...extra,
+	};
+	if (!("GITHUB_ACTIONS" in extra)) delete env.GITHUB_ACTIONS;
+	delete env.GITHUB_WORKSPACE;
+	return env;
+}
 
 /** The output of these is the same frame in nearly every case, so it is left out of a transcript unless the case lists the command under `output`. The unit tests of the command own its wording. */
 const FRAMED_COMMANDS = ["build", "init"] as const;
@@ -132,7 +148,8 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		for (const args of spec.steps ?? [["build"]]) {
 			const result = await run(
 				...invocation(cli, args),
-				path.join(dir, spec.cwd ?? "")
+				path.join(dir, spec.cwd ?? ""),
+				spec.env
 			);
 			sections.push(
 				formatStep(["rogen", ...args], result, showsStdout(args, spec))
@@ -189,14 +206,15 @@ function readSpec(caseDir: string): CaseSpec {
 async function run(
 	command: string,
 	args: readonly string[],
-	cwd: string
+	cwd: string,
+	env?: Readonly<Record<string, string>>
 ): Promise<RunResult> {
 	try {
 		const { stdout, stderr } = await execFileAsync(command, [...args], {
 			cwd,
 			encoding: "utf8",
 			timeout: RUN_TIMEOUT_MS,
-			env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+			env: childEnv(env),
 		});
 		return { exitCode: 0, stdout, stderr };
 	} catch (error) {
@@ -405,7 +423,7 @@ export class RunningRogen {
 		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
-			env: { ...process.env, NO_COLOR: "1", FORCE_COLOR: "0" },
+			env: childEnv(),
 		});
 		for (const stream of [this.child.stdout, this.child.stderr]) {
 			stream?.setEncoding("utf8");

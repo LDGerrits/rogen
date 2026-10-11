@@ -115,4 +115,22 @@ describe("NativeEnvironmentService", () => {
 			expect(env.isPlain).toBe(true);
 		});
 	});
+
+	describe("githubWorkspace", () => {
+		it.each([
+			[
+				{ GITHUB_ACTIONS: "true", GITHUB_WORKSPACE: "/work/repo" },
+				"/work/repo",
+			],
+			[{ GITHUB_ACTIONS: "true" }, "/mock/cwd"],
+			[{ GITHUB_WORKSPACE: "/work/repo" }, undefined],
+			[
+				{ GITHUB_ACTIONS: "false", GITHUB_WORKSPACE: "/work/repo" },
+				undefined,
+			],
+			[{}, undefined],
+		])("should read it from %j", (env, workspace) => {
+			expect(inTerminal(env).githubWorkspace).toBe(workspace);
+		});
+	});
 });

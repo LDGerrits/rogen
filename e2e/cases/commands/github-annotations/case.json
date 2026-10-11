@@ -1,0 +1,6 @@
+{
+	"steps": [["check"], ["build"], ["check", "--json"]],
+	"output": ["build"],
+	"env": { "GITHUB_ACTIONS": "true" },
+	"rojo": false
+}

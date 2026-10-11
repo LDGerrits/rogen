@@ -329,4 +329,37 @@ describe("check command", () => {
 			expect(document()).toEqual({ diagnostics: [] });
 		});
 	});
+
+	describe("on GitHub Actions", () => {
+		let annotated: MockLogService;
+		let runAnnotated: (
+			args: CommandLine["options"] & { _?: string[] }
+		) => Promise<Result<void, Error>>;
+
+		beforeEach(async () => {
+			annotated = new MockLogService("/repo", "/repo");
+			const harness = commandHarness({ log: annotated, fs });
+			runAnnotated = ({ _ = [], ...options }) =>
+				harness.run("check", { positionals: _, options });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await write("src/Save@sever.luau");
+		});
+
+		it("should annotate each finding beside printing it", async () => {
+			await runAnnotated({ _: ["src/Save@sever.luau"] });
+
+			expect(annotated.texts("print")).toEqual([
+				'src/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)',
+			]);
+			expect(annotated.texts("annotation")).toEqual([
+				'::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?',
+			]);
+		});
+
+		it("should write no workflow commands into the JSON document", async () => {
+			await runAnnotated({ _: ["src/Save@sever.luau"], json: true });
+
+			expect(annotated.texts("annotation")).toEqual([]);
+		});
+	});
 });

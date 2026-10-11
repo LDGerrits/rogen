@@ -62,6 +62,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly isPlain: boolean;
 	readonly userHome: string;
 	readonly tmpDir: string;
+	readonly githubWorkspace?: string;
 
 	constructor(
 		{ json, verbose, quiet }: OutputFlags,
@@ -70,6 +71,8 @@ export class NativeEnvironmentService implements EnvironmentService {
 	) {
 		this.userHome = userHome;
 		this.tmpDir = tmpDir;
+		if (env.GITHUB_ACTIONS === "true")
+			this.githubWorkspace = env.GITHUB_WORKSPACE || cwd;
 		this.logLevel = quiet
 			? LogLevel.Error
 			: verbose

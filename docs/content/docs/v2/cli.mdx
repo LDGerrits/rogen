@@ -263,6 +263,21 @@ git diff --exit-code -- '*.project.json'
 - Whether to [commit the project file](/docs/v2/core-concepts/output#commit-the-project-file) is yours to decide, and committing it is what the last line of the snippet needs.
 - No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
 
+### Annotations on GitHub
+
+When GitHub Actions runs `build` or `check` (`GITHUB_ACTIONS` is `true`), each diagnostic is also written as a workflow command on stderr, which GitHub shows on the changed file of the pull request:
+
+```
+::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?
+```
+
+`title` is the diagnostic's [code](/docs/v2/diagnostics), and `file`, `line` and `col` are there when the diagnostic has them, with the path relative to `GITHUB_WORKSPACE`. A warning about several files, such as `route.strayAt`, makes one annotation for each file it names, all of them, where the text lists ten. The text output is unchanged, `--json` never carries workflow commands, and a run that is not on GitHub Actions writes none. GitHub shows only a limited number of annotations per step, so the log still holds the full list. Nothing needs to be turned on:
+
+```yaml
+- run: rogen build --deny-warnings
+- run: git diff --name-only --diff-filter=d origin/main... | xargs -r rogen check
+```
+
 ## JSON output
 
 `--json` prints exactly one JSON document on stdout (`serve` and `watch` print one per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints `{ "error": "<message>" }`, exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.

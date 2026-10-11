@@ -23,8 +23,10 @@ export class CommandFailure {
 			return;
 		}
 		if (error instanceof DiagnosticsError) {
-			for (const diagnostic of error.diagnostics)
+			for (const diagnostic of error.diagnostics) {
 				this.logService.diagnostic(diagnostic);
+				this.logService.annotate(diagnostic);
+			}
 		} else {
 			this.logService.error(error.message);
 		}

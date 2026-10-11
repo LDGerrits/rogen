@@ -9,6 +9,8 @@ export interface EnvironmentService {
 	readonly userHome: string;
 	/** The folder for temporary files every process on the machine shares. */
 	readonly tmpDir: string;
+	/** Where the repository is checked out when GitHub Actions runs the process, which the paths of its annotations are relative to; none otherwise. */
+	readonly githubWorkspace?: string;
 
 	/** How much to print: errors only under `--quiet`, debug output under `--verbose`. */
 	readonly logLevel: LogLevel;

@@ -20,6 +20,9 @@ export class TerminalLogService extends AbstractLogService {
 			case "print":
 				console.info(text);
 				break;
+			case "annotation":
+				console.error(text);
+				break;
 			case "note":
 				console.info(style("dim", text));
 				break;
