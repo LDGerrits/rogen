@@ -369,6 +369,28 @@ describeWithRojo("end to end serve", () => {
 			expect(projectFile()).toContain("Analytics.mock.luau");
 		}, 60_000);
 
+		it("should rebuild its own project file when its own config changes mode", async () => {
+			const serving = await servedInDev();
+			const ignored = () =>
+				(JSON.parse(projectFile()).globIgnorePaths ?? []) as string[];
+			expect(ignored()).toEqual([]);
+
+			writeProjectFile(
+				serve.dir,
+				"default.rogen.json",
+				config({
+					variants: ["mock"],
+					modes: { dev: { variants: ["mock"] }, prod: {} },
+					mode: "prod",
+				})
+			);
+
+			await eventually(() => {
+				expect(ignored()).toEqual(["src/Net/Analytics.mock.luau"]);
+			}, 20_000);
+			expect(serving.output).not.toContain("output.servedInOtherMode");
+		}, 60_000);
+
 		it("should not call a serve of another mode already served", async () => {
 			await servedInDev();
 

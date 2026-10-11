@@ -13,6 +13,9 @@ import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
+import { ServedProjectFiles } from "../served-project-files.js";
+import { ServerProbe } from "../server-probe.js";
+import { ServerRecords } from "../server-records.js";
 import { recordFile } from "./record-fixtures.js";
 import { SyncServer } from "../serve.js";
 import {
@@ -93,7 +96,19 @@ describe("CoreServeService", () => {
 			memFs,
 			processes,
 			requests,
-			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
+			new CoreWatchService(
+				watcher,
+				index,
+				buildServiceOf(
+					memFs,
+					index,
+					[],
+					new ServedProjectFiles(
+						new ServerRecords(memFs, "/mock/tmp", 4242),
+						new ServerProbe(requests)
+					).guard
+				)
+			),
 			new MockEnvironmentService("/repo", undefined, false, "/home/me")
 		);
 	});
@@ -752,6 +767,8 @@ describe("CoreServeService", () => {
 				JSON.parse(
 					await memFs.readFile("/mock/tmp/rogen-serve/34872.json")
 				);
+			await memFs.writeFile("/repo/src/Analytics.luau", "");
+			await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
 			await memFs.writeFile("/repo/default.rogen.json", modal("dev"));
 			await start();
 			requests.answer(
@@ -771,6 +788,12 @@ describe("CoreServeService", () => {
 				mode: "prod",
 				variants: { mock: false },
 			});
+			const projectFile = await memFs.readFile(
+				"/repo/default.project.json"
+			);
+			expect(JSON.parse(projectFile).globIgnorePaths).toEqual([
+				"src/Analytics.mock.luau",
+			]);
 		});
 
 		it("should say a server serves once it answers for its project", async () => {
@@ -830,6 +853,7 @@ describe("CoreServeService", () => {
 				host: "127.0.0.1",
 				port: 34872,
 				server: "rojo",
+				pid: 4242,
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",

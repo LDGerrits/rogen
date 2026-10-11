@@ -153,7 +153,11 @@ async function main(): Promise<void> {
 		const requestService = new NativeRequestService();
 		services.set(RequestService, requestService);
 		const servedProjectFiles = new ServedProjectFiles(
-			new ServerRecords(fileSystemService, environmentService.tmpDir),
+			new ServerRecords(
+				fileSystemService,
+				environmentService.tmpDir,
+				environmentService.pid
+			),
 			new ServerProbe(requestService)
 		);
 		const buildService = new CoreBuildService(

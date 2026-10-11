@@ -50,7 +50,8 @@ export class CoreServeService implements ServeService {
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
 			fileSystemService,
-			environmentService.tmpDir
+			environmentService.tmpDir,
+			environmentService.pid
 		);
 		this.userHome = environmentService.userHome;
 	}

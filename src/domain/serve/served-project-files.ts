@@ -24,10 +24,11 @@ export class ServedProjectFiles {
 	/** The guard `build` asks before it changes a project file. */
 	readonly guard: OutFileGuard = (write) => this.refusalFor(write);
 
-	/** Why `write` must not be made: a serve that still runs serves the file as built in another setting, so Studio would get the new content. */
+	/** Why `write` must not be made: another serve that still runs serves the file as built in another setting, so Studio would get the new content. A serve rebuilds its own file as its config changes, so a record of this process never refuses. */
 	async refusalFor(write: PendingWrite): Promise<Diagnostic | undefined> {
 		for (const record of await this.records.all()) {
 			if (
+				this.records.owns(record) ||
 				!samePath(record.projectFile, write.file) ||
 				sameSetting(record.setting, write.setting)
 			)

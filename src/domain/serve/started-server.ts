@@ -136,9 +136,12 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		const setting = settingOf(config);
 		if (sameSetting(setting, this.setting)) return;
 		this.setting = setting;
-		if (!this.record || !this.answering) return;
+		if (!this.record || !this.answering || this.ending || this.exited)
+			return;
 		const info = this.answering;
-		this.record = this.record.then(() => this.writeRecord(info));
+		this.record = this.record.then(() =>
+			this.ending || this.exited ? undefined : this.writeRecord(info)
+		);
 		await this.record;
 	}
 

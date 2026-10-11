@@ -22,8 +22,12 @@ describe("ServedProjectFiles", () => {
 
 	const record = (
 		setting = dev,
-		projectFile = "/repo/default.project.json"
-	) => fs.writeFile(...recordFile(34872, "repo", projectFile, { setting }));
+		projectFile = "/repo/default.project.json",
+		pid = 200
+	) =>
+		fs.writeFile(
+			...recordFile(34872, "repo", projectFile, { setting, pid })
+		);
 
 	const answer = (sessionId = "s1") =>
 		requests.answer(ROJO_URL, {
@@ -36,7 +40,7 @@ describe("ServedProjectFiles", () => {
 		fs = new MemoryFileSystemService();
 		requests = new MockRequestService();
 		files = new ServedProjectFiles(
-			new ServerRecords(fs, "/mock/tmp"),
+			new ServerRecords(fs, "/mock/tmp", 100),
 			new ServerProbe(requests)
 		);
 	});
@@ -98,6 +102,13 @@ describe("ServedProjectFiles", () => {
 	it("should allow a write when another server has taken the port since", async () => {
 		await record();
 		answer("s2");
+
+		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
+	});
+
+	it("should allow the serve that wrote a record to rebuild its own file in another setting", async () => {
+		await record(dev, "/repo/default.project.json", 100);
+		answer();
 
 		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
 	});

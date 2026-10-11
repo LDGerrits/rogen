@@ -70,7 +70,7 @@ describe("StartedServer", () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
 		requests = new MockRequestService();
-		records = new ServerRecords(fileSystem, "/tmp");
+		records = new ServerRecords(fileSystem, "/tmp", 4242);
 		served = [];
 		said = [];
 		stops = [];
@@ -164,6 +164,21 @@ describe("StartedServer", () => {
 			await server.rebuilt(modal("dev", true));
 
 			expect(write).not.toHaveBeenCalled();
+		});
+
+		it("should not write its record again once it is told to stop", async () => {
+			start(modal("dev", true));
+			await answer();
+			const write = jest.spyOn(records, "write");
+
+			await server.terminate();
+			await server.rebuilt(modal("prod", false));
+			await server.unrecord();
+
+			expect(write).not.toHaveBeenCalled();
+			expect(
+				await records.recordOf(target.address, served[0].info)
+			).toBeUndefined();
 		});
 
 		it("should record the latest build when the server answers after it", async () => {

@@ -96,7 +96,7 @@ export function commandHarness(
 	const toolchain = new CoreToolchainService(fs);
 	const requests = options.requests ?? new MockRequestService();
 	const served = new ServedProjectFiles(
-		new ServerRecords(fs, environment.tmpDir),
+		new ServerRecords(fs, environment.tmpDir, environment.pid),
 		new ServerProbe(requests)
 	);
 	const build = new CoreBuildService(

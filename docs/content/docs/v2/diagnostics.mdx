@@ -847,7 +847,7 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.servedInOtherMode` [#output-servedinothermode]
 
-Error. A running `rogen serve` serves this project file as built in one mode (or with some variants on), and this build would write it in another, so Studio would get the new content without anyone asking. The file isn't written. A build that would write the same bytes isn't refused, and neither is one in the mode the serve runs. A record left by a serve that has stopped or crashed doesn't count: Rogen asks the server before it refuses.
+Error. A running `rogen serve` serves this project file as built in one mode (or with some variants on), and this build would write it in another, so Studio would get the new content without anyone asking. The file isn't written. A build that would write the same bytes isn't refused, and neither is one in the mode the serve runs. A serve's own rebuilds, as its config changes, are never refused. Rogen knows a serve from the moment its server answers, and a record left by a serve that has stopped or crashed doesn't count: Rogen asks the server before it refuses.
 
 ```
 default.project.json - error: default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built in mode dev with mock on, and this build is mode prod, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)
