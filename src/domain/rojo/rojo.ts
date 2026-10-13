@@ -15,6 +15,7 @@ import {
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { ScriptRun } from "../roblox/roblox.js";
 import { RojoNode } from "./rojo-project.js";
+import { SyncRuleUse, SyncRules } from "./sync-rules.js";
 
 export type RojoFileKind = "script" | "model" | "data";
 
@@ -28,16 +29,30 @@ export const RUN_SCRIPT_SUFFIXES: ReadonlySet<string> = new Set([
 	"client",
 ]);
 
-const MODEL_EXTENSIONS: readonly string[] = [".rbxm", ".rbxmx"];
-const DATA_EXTENSIONS: readonly string[] = [
-	".json",
-	".jsonc",
-	".toml",
-	".csv",
-	".txt",
-	".yaml",
-	".yml",
-];
+/** What each rule of Rojo's table turns a file into. */
+const KIND_OF_USE: Readonly<Record<SyncRuleUse, RojoFileKind | undefined>> = {
+	serverScript: "script",
+	clientScript: "script",
+	pluginScript: "script",
+	moduleScript: "script",
+	legacyClientScript: "script",
+	legacyServerScript: "script",
+	runContextServerScript: "script",
+	runContextClientScript: "script",
+	rbxm: "model",
+	rbxmx: "model",
+	project: "data",
+	jsonModel: "data",
+	json: "data",
+	toml: "data",
+	csv: "data",
+	text: "data",
+	yaml: "data",
+	ignore: undefined,
+};
+
+/** Sources a compiler turns into Luau first, which Rojo's table does not list. */
+const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 const INIT_FILE = /^init(\.(server|client|plugin))?\.luau?$/;
 
 /** A file name as Rojo reads it: what it turns the file into, and which names it takes from it. */
@@ -45,8 +60,7 @@ export class RojoFile {
 	static readonly SCRIPT_EXTENSIONS: readonly string[] = [
 		".luau",
 		".lua",
-		".ts",
-		".tsx",
+		...COMPILER_EXTENSIONS,
 	];
 	static readonly META_SUFFIX = ".meta.json";
 	/** Rojo reads this over `.meta.json` when a file has both. */
@@ -116,11 +130,10 @@ export class RojoFile {
 	get kind(): RojoFileKind | undefined {
 		if (this.name.endsWith(".d.ts") || this.isMeta) return undefined;
 
-		const extension = path.extname(this.name);
-		if (RojoFile.SCRIPT_EXTENSIONS.includes(extension)) return "script";
-		if (MODEL_EXTENSIONS.includes(extension)) return "model";
-		if (DATA_EXTENSIONS.includes(extension)) return "data";
-		return undefined;
+		if (COMPILER_EXTENSIONS.includes(path.extname(this.name)))
+			return "script";
+		const match = SyncRules.DEFAULT.match(this.name);
+		return match && KIND_OF_USE[match.rule.use];
 	}
 
 	/** Whether the file is Luau source, which Rojo reads as it is; a `.ts` source is compiled first. */
