@@ -114,77 +114,8 @@ describe("CoreServeService", () => {
 				server: SyncServer.ROJO,
 				file: "/bin/rojo",
 				version: "7.7.1",
-				passedOver: undefined,
 			});
 			expect(servePlan.toStart).toHaveLength(1);
-		});
-
-		it.each([
-			["lune", ""],
-			["Argon", ' Did you mean "argon"?'],
-		])(
-			"should refuse the server %j, which the config field would too",
-			async (serverId, hint) => {
-				expect(await errorOf({ serverId })).toEqual(
-					new UsageError(
-						`--server takes rojo or argon, not "${serverId}".${hint}`
-					)
-				);
-			}
-		);
-
-		describe("with a server named in the config", () => {
-			beforeEach(async () => {
-				await memFs.writeFile(
-					"/repo/rokit.toml",
-					'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.24"\n'
-				);
-				processes.installed.set("argon", "/bin/argon");
-				processes.outputs.set("/bin/argon", {
-					code: 0,
-					stdout: "argon 2.0.24",
-					stderr: "",
-				});
-				await memFs.writeFile(
-					"/repo/default.rogen.json",
-					config({ server: "argon" })
-				);
-			});
-
-			it("should serve with it over the pin order, without saying another was passed over", async () => {
-				expect((await plan()).executable).toMatchObject({
-					server: SyncServer.ARGON,
-					passedOver: undefined,
-				});
-			});
-
-			it("should serve with the server --server names instead", async () => {
-				expect(
-					(await plan({ serverId: "rojo" })).executable.server
-				).toBe(SyncServer.ROJO);
-			});
-
-			it("should refuse configs to serve that name different servers", async () => {
-				await memFs.writeFile(
-					"/repo/lobby.rogen.json",
-					config({
-						server: "rojo",
-						template: "lobby.template.project.json",
-					})
-				);
-				await memFs.writeFile(
-					"/repo/lobby.template.project.json",
-					template({ servePort: 34873 })
-				);
-
-				expect(await errorOf()).toEqual(
-					new UsageError(
-						'default names "server": "argon".\n' +
-							'lobby names "server": "rojo".\n' +
-							"One serve runs one server: give them the same \"server\", or serve one at a time, as 'rogen serve default'."
-					)
-				);
-			});
 		});
 
 		it("should serve the synced config of a Darklua setup, not the source-rooted one", async () => {
@@ -319,29 +250,6 @@ describe("CoreServeService", () => {
 					"The --port after '--' takes a number from 1 to 65535."
 				)
 			);
-		});
-
-		it("should read Argon's port from its settings beside the project file, else its own default", async () => {
-			processes.installed.set("argon", "/bin/argon");
-			processes.outputs.set("/bin/argon", {
-				code: 0,
-				stdout: "argon 2.0.24",
-				stderr: "",
-			});
-			await memFs.writeFile(
-				"/home/me/.argon/config.toml",
-				'host = "0.0.0.0"\nport = 8100\n'
-			);
-
-			expect(served(await plan({ serverId: "argon" }))).toEqual([
-				["default", "0.0.0.0:8100"],
-			]);
-
-			await memFs.writeFile("/repo/argon.toml", "port = 8200 # mine\n");
-
-			expect(served(await plan({ serverId: "argon" }))).toEqual([
-				["default", "localhost:8200"],
-			]);
 		});
 
 		it("should refuse two configs on one port, naming them and the fix", async () => {
@@ -1174,10 +1082,7 @@ describe("CoreServeService", () => {
 
 				expect(
 					requests.requested.filter((url) => !url.includes(":34872/"))
-				).toEqual([
-					"http://127.0.0.1:34900/api/rojo",
-					"http://127.0.0.1:34900/details",
-				]);
+				).toEqual(["http://127.0.0.1:34900/api/rojo"]);
 			});
 
 			it("should restart a server whose template moves only its host, without asking the port it holds", async () => {

@@ -1,13 +1,12 @@
 # Configs
 
-A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `extends`, `rootDirs` (default `["src"]`), `routes`, `exclude`, `template`, `syncDir`, `outFile` (default `<name>.project.json`) and `server`. Unknown keys are errors. A command given no names reads every `*.rogen.json` here.
+A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `extends`, `rootDirs` (default `["src"]`), `routes`, `exclude`, `template`, `syncDir` and `outFile` (default `<name>.project.json`). Unknown keys are errors. A command given no names reads every `*.rogen.json` here.
 
 - `extends` merges `routes` key by key, adds a child's `rootDirs` and `exclude` entries after its parent's (a repeated entry keeps its last position), lets the child replace strings, and merges a child's `template` over its parent's. `outFile` and `$schema` are never inherited. A child adds and never removes, so invert the chain to drop something. Write one by hand: `{ "extends": "./default.rogen.json" }`.
 - Several `rootDirs` merge into one tree, and the later one wins a clash. `["src"]` applies only when no config in the chain sets `rootDirs`. A place is a config that extends `default` and adds its own directory and template: `"rootDirs": ["places/lobby/src"], "template": "places/lobby/template.project.json"`, the template giving its name and its own `servePort`. Add one with `rogen init <name> --json`: it writes the place's config and the extra files Darklua or roblox-ts need, and lists the edits to make in its `nextSteps.setup`.
 - `exclude` lists globs, relative to the config, that are never built, such as `**/*.spec.luau`. A glob that matches a template `$path` drops that node too.
 - `template` is a `.project.json` Rogen merges its tree into. It holds what names can't express: the DataModel name, package mounts and `$properties`. The template wins a clash. A template `$path` into a root dir is Rojo's: Rogen skips that folder, so mount vendored code there to sync it as it is. A child config's template merges over its parent's: top-level fields such as `name` and `servePort` replace, the trees merge node by node, and a field both set on one node takes the child's value with a warning. So a place's template can be just `{ "name": "Lobby", "servePort": 34873 }`.
 - `syncDir` is the compiler's output (`out` for roblox-ts, `dist` for Darklua), where emitted `$path`s point.
-- `server` is the sync server `rogen serve` starts, `"rojo"` or `"argon"`; `--server` overrides it. Without it, serve starts the one the project pins, Rojo before Argon, so set it when the project pins both.
 - With Darklua in a Luau project, `default.rogen.json` is rooted at the source for luau-lsp and Darklua, and `sync.rogen.json` extends it with `"syncDir": "dist"` for Rojo. `rogen build` builds both; `rogen serve` builds both and serves `sync`.
 
 Ownership:

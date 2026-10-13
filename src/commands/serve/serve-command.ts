@@ -5,7 +5,6 @@ import { Result, ok } from "../../base/result.js";
 import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
-	ServerOption,
 	ServeService,
 	ServeSession,
 } from "../../domain/serve/serve-service.js";
@@ -23,7 +22,6 @@ import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
 
 const ServeOptions = [
 	...ConfigOptions,
-	ServerOption,
 	{
 		...JsonOption,
 		description:
@@ -41,7 +39,7 @@ registerCommand(
 				metadata: {
 					longRunning: true,
 					description:
-						"Builds, serves the project files with Rojo or Argon, and rebuilds whenever sources or configs change.",
+						"Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
 					args: [
 						{
 							name: "config",
@@ -59,7 +57,7 @@ registerCommand(
 					options: ServeOptions,
 					examples: [
 						"rogen serve",
-						"rogen serve lobby --server argon",
+						"rogen serve lobby",
 						"rogen serve -- --port 34873",
 					],
 				},
@@ -83,7 +81,6 @@ registerCommand(
 					signal: stopChecks.signal,
 					refs: line.positionals,
 					options: line.options,
-					serverId: line.options.server,
 					serverArgs: line.passthrough ?? [],
 				});
 				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.

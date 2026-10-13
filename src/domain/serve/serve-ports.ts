@@ -8,14 +8,8 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	ServeAddress,
-	ServerDefaults,
-	ServerInfo,
-	SyncServer,
-} from "./serve.js";
+import { ServeAddress, ServerInfo, SyncServer } from "./serve.js";
 import { ServeTarget } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
@@ -30,10 +24,8 @@ export class ServePorts {
 
 	/** `serverArgs` are the words after `--`, which the server gets as they are. */
 	constructor(
-		private readonly fileSystemService: FileReader,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
-		private readonly userHome: string,
 		private readonly server: SyncServer,
 		serverArgs: readonly string[]
 	) {
@@ -46,22 +38,17 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
-	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own settings and defaults. */
-	async targetOf(config: ResolvedConfig): Promise<ServeTarget> {
+	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own defaults. */
+	targetOf(config: ResolvedConfig): ServeTarget {
 		const { server } = this;
 		const project = config.template?.project;
-		const defaults = await this.defaultsOf(config.projectDir);
 		return {
 			config,
 			project: config.projectName,
 			address: new ServeAddress(
-				this.host ??
-					project?.serveAddress ??
-					defaults.host ??
-					server.defaultHost,
+				this.host ?? project?.serveAddress ?? server.defaultHost,
 				this.port.unwrapOr(undefined) ??
 					project?.servePort ??
-					defaults.port ??
 					server.defaultPort
 			),
 		};
@@ -128,21 +115,6 @@ export class ServePorts {
 			{ resource: config.template?.file ?? config.file },
 			`Port ${address.port} is taken by the server of ${holder.config.label}, so ${config.label} can't be served there. Give ${config.label} ${this.ownPortIn(config)}, or serve it on its own, as 'rogen serve ${config.label}'.`
 		);
-	}
-
-	private async defaultsOf(projectDir: string): Promise<ServerDefaults> {
-		const { server } = this;
-		for (const file of server.settingsFiles(projectDir, this.userHome)) {
-			let text: string;
-			try {
-				if (!(await this.fileSystemService.exists(file))) continue;
-				text = await this.fileSystemService.readFile(file);
-			} catch {
-				continue;
-			}
-			return server.defaultsIn(text);
-		}
-		return {};
 	}
 
 	/** `from` is the folder of the project file the holder serves, when a serve recorded it. */

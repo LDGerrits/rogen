@@ -28,7 +28,6 @@ stdout:
         "templates": [],
         "syncDir": "<dir>/dist",
         "outFile": "<dir>/default.project.json",
-        "server": null,
         "serving": null,
         "diagnostics": []
       },
@@ -56,7 +55,6 @@ stdout:
         "templates": [],
         "syncDir": null,
         "outFile": "<dir>/out/lobby.project.json",
-        "server": null,
         "serving": null,
         "diagnostics": []
       },
@@ -85,7 +83,6 @@ stdout:
         "templates": [],
         "syncDir": null,
         "outFile": "<dir>/source.project.json",
-        "server": null,
         "serving": null,
         "diagnostics": []
       }
@@ -121,7 +118,6 @@ stdout:
         "templates": [],
         "syncDir": null,
         "outFile": "<dir>/out/lobby.project.json",
-        "server": null,
         "serving": null,
         "diagnostics": []
       }

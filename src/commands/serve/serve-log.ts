@@ -67,13 +67,8 @@ export class ServeLog implements ServeReporter {
 
 	begin(): void {
 		const { plan } = this;
-		const { executable, selection } = plan;
+		const { selection } = plan;
 		this.watchLog.begin(selection.configs, selection.home);
-		if (executable.passedOver) {
-			this.logService.info(
-				`Both ${executable.server.id} and ${executable.passedOver.id} are pinned; serving with ${executable.server.id} (pass --server ${executable.passedOver.id} to switch, or set "server": "${executable.passedOver.id}" in every config served, or in the one they extend).`
-			);
-		}
 		for (const target of plan.alreadyServed) this.running(target);
 	}
 

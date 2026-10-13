@@ -5,18 +5,17 @@ import { SyncServer } from "../serve.js";
 import { ServerFinder } from "../server-finder.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
-const ARGON_VERSION = { code: 0, stdout: "argon 2.0.24\n", stderr: "" };
 
 describe("ServerFinder", () => {
 	let fs: MemoryFileSystemService;
 	let processes: MockProcessService;
 	let finder: ServerFinder;
 
-	const find = (wanted?: SyncServer) =>
-		finder.find("/repo/game", wanted, "/repo/game/default.rogen.json");
+	const find = () =>
+		finder.find("/repo/game", "/repo/game/default.rogen.json");
 
-	const diagnosticOf = async (wanted?: SyncServer) => {
-		const result = await find(wanted);
+	const diagnosticOf = async () => {
+		const result = await find();
 		if (result.isOk()) throw new Error("expected a failure");
 		return result.error.diagnostics[0];
 	};
@@ -42,48 +41,10 @@ describe("ServerFinder", () => {
 			server: SyncServer.ROJO,
 			file: "/bin/rojo7",
 			version: "7.7.1",
-			passedOver: undefined,
 		});
 		expect(processes.execs).toEqual([
 			{ file: "/bin/rojo7", args: ["--version"], cwd: "/repo/game" },
 		]);
-	});
-
-	it("should find a pin in a folder above", async () => {
-		await fs.writeFile(
-			"/repo/aftman.toml",
-			'[tools]\nargon = "argon-rbx/argon@2.0.24"\n'
-		);
-		processes.installed.set("argon", "/bin/argon");
-		processes.outputs.set("/bin/argon", ARGON_VERSION);
-
-		expect((await find()).unwrap().server).toBe(SyncServer.ARGON);
-	});
-
-	it("should pick Rojo when both are pinned, and say which it passed over", async () => {
-		await fs.writeFile(
-			"/repo/game/rokit.toml",
-			'[tools]\nargon = "argon-rbx/argon@2.0.24"\nrojo = "rojo-rbx/rojo@7.7.1"\n'
-		);
-		processes.installed.set("rojo", "/bin/rojo");
-		processes.installed.set("argon", "/bin/argon");
-		processes.outputs.set("/bin/rojo", ROJO_VERSION);
-
-		const tool = (await find()).unwrap();
-
-		expect(tool.server).toBe(SyncServer.ROJO);
-		expect(tool.passedOver).toBe(SyncServer.ARGON);
-	});
-
-	it("should say nothing of the other server when both are only on the PATH", async () => {
-		processes.installed.set("rojo", "/usr/bin/rojo");
-		processes.installed.set("argon", "/usr/bin/argon");
-		processes.outputs.set("/usr/bin/rojo", ROJO_VERSION);
-
-		const tool = (await find()).unwrap();
-
-		expect(tool.server).toBe(SyncServer.ROJO);
-		expect(tool.passedOver).toBeUndefined();
 	});
 
 	it("should let the caller end the version check", async () => {
@@ -91,41 +52,9 @@ describe("ServerFinder", () => {
 		processes.outputs.set("/usr/bin/rojo", ROJO_VERSION);
 		const controller = new AbortController();
 
-		await finder.find(
-			"/repo/game",
-			undefined,
-			"/repo/game",
-			controller.signal
-		);
+		await finder.find("/repo/game", "/repo/game", controller.signal);
 
 		expect(processes.execs[0].signal).toBe(controller.signal);
-	});
-
-	it("should pick the server asked for", async () => {
-		await fs.writeFile(
-			"/repo/game/rokit.toml",
-			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.24"\n'
-		);
-		processes.installed.set("rojo", "/bin/rojo");
-		processes.installed.set("argon", "/bin/argon");
-		processes.outputs.set("/bin/argon", ARGON_VERSION);
-
-		const tool = (await find(SyncServer.ARGON)).unwrap();
-
-		expect(tool.server).toBe(SyncServer.ARGON);
-		expect(tool.passedOver).toBeUndefined();
-	});
-
-	it("should fall back to the PATH when nothing is pinned", async () => {
-		processes.installed.set("argon", "/usr/bin/argon");
-		processes.outputs.set("/usr/bin/argon", ARGON_VERSION);
-
-		expect((await find()).unwrap()).toEqual({
-			server: SyncServer.ARGON,
-			file: "/usr/bin/argon",
-			version: "2.0.24",
-			passedOver: undefined,
-		});
 	});
 
 	it("should say to install a server that is pinned but not installed", async () => {
@@ -153,7 +82,7 @@ describe("ServerFinder", () => {
 		expect(diagnostic.code).toBe("serve.noServer");
 		expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
 		expect(diagnostic.message).toBe(
-			"No Rojo or Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -161,17 +90,34 @@ describe("ServerFinder", () => {
 		]);
 	});
 
-	it("should add the server asked for with the project's own manager", async () => {
-		await fs.writeFile("/repo/aftman.toml", "[tools]\n");
-
-		const diagnostic = await diagnosticOf(SyncServer.ARGON);
-
-		expect(diagnostic.message).toBe(
-			"No Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'aftman add argon-rbx/argon', then 'argon plugin install' to install its Studio plugin. Argon was asked for by --server or a config's \"server\"; drop that to serve with another server."
+	it("should find a Rojo pinned in a folder above", async () => {
+		await fs.writeFile(
+			"/repo/aftman.toml",
+			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 		);
-		expect(diagnostic.fixes?.[0]).toEqual({
-			run: { command: "aftman add argon-rbx/argon", cwd: "/repo" },
-		});
+		processes.installed.set("rojo", "/bin/rojo");
+		processes.outputs.set("/bin/rojo", ROJO_VERSION);
+
+		expect((await find()).unwrap().server).toBe(SyncServer.ROJO);
+	});
+
+	it("should say that rogen serve only starts Rojo when only Argon is pinned", async () => {
+		await fs.writeFile(
+			"/repo/game/rokit.toml",
+			'[tools]\nargon = "argon-rbx/argon@2.0.24"\n'
+		);
+		processes.installed.set("argon", "/bin/argon");
+
+		const diagnostic = await diagnosticOf();
+
+		expect(diagnostic.code).toBe("serve.noServer");
+		expect(diagnostic.message).toContain(
+			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them."
+		);
+	});
+
+	it("should say nothing of Argon when it is not pinned", async () => {
+		expect((await diagnosticOf()).message).not.toContain("Argon");
 	});
 
 	it("should say to pin the server by hand in a Foreman file", async () => {
@@ -180,7 +126,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toBe(
-			"No Rojo or Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rojo plugin install' to install its Studio plugin."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rojo plugin install' to install its Studio plugin."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rojo plugin install", cwd: "/repo/game" } },

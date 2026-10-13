@@ -1,6 +1,6 @@
 import path from "path";
 import { Result, err, ok } from "../../base/result.js";
-import { firstLine, joinedWithOr } from "../../base/strings.js";
+import { firstLine } from "../../base/strings.js";
 import {
 	DiagnosticFix,
 	errorDiagnostic,
@@ -27,65 +27,55 @@ interface PinnedCandidate extends Candidate {
 	readonly manifest: ToolManifest;
 }
 
-/** Finds the sync server a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
+/** The repository Argon is installed from, which Rogen doesn't start but tells the user to run. */
+const ARGON_REPOSITORY = "argon-rbx/argon";
+
+/** Finds the Rojo a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
 export class ServerFinder {
 	constructor(
 		private readonly toolchainService: ToolchainService,
 		private readonly processService: ProcessService
 	) {}
 
-	/** `wanted` picks the server; without it Rojo goes before Argon. `directory` is where the server will run, and where toolchain files are looked for, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */
+	/** `directory` is where the server will run, and where toolchain files are looked for, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */
 	async find(
 		directory: string,
-		wanted: SyncServer | undefined,
 		resource: string,
 		signal?: AbortSignal
 	): Promise<Result<ServerExecutable, DiagnosticsError>> {
 		const manifests = await this.toolchainService.readManifests(directory);
-		const servers = wanted ? [wanted] : SyncServer.ALL;
-		const pinned = servers.flatMap((server): PinnedCandidate[] => {
-			for (const manifest of manifests) {
-				const command = manifest.nameOf(server.repository);
-				if (command) return [{ server, command, manifest }];
+		const server = SyncServer.ROJO;
+		let pinned: PinnedCandidate | undefined;
+		for (const manifest of manifests) {
+			const command = manifest.nameOf(server.repository);
+			if (command) {
+				pinned = { server, command, manifest };
+				break;
 			}
-			return [];
-		});
-		const candidates =
-			pinned.length > 0
-				? pinned
-				: servers.map((server) => ({ server, command: server.id }));
-
-		const found: { candidate: Candidate; file: string }[] = [];
-		for (const candidate of candidates) {
-			const file = await this.processService.which(candidate.command);
-			if (file) found.push({ candidate, file });
 		}
-		const [chosen, other] = found;
-		if (!chosen) {
+		const candidate: Candidate = pinned ?? { server, command: server.id };
+
+		const file = await this.processService.which(candidate.command);
+		if (!file) {
 			return err(
 				new DiagnosticsError([
-					pinned.length > 0
-						? this.notInstalled(pinned[0])
-						: this.noServer(directory, manifests, wanted, resource),
+					pinned
+						? this.notInstalled(pinned)
+						: this.noServer(directory, manifests, resource),
 				])
 			);
 		}
 
 		const version = await this.versionOf(
-			chosen.candidate,
-			chosen.file,
+			candidate,
+			file,
 			directory,
 			manifests,
 			resource,
 			signal
 		);
 		if (version.isErr()) return version;
-		return ok({
-			server: chosen.candidate.server,
-			file: chosen.file,
-			version: version.value,
-			passedOver: pinned.length > 0 ? other?.candidate.server : undefined,
-		});
+		return ok({ server, file, version: version.value });
 	}
 
 	/** Runs `--version`, which proves the server starts, through its toolchain manager when one pins it. */
@@ -148,27 +138,25 @@ export class ServerFinder {
 	private noServer(
 		directory: string,
 		manifests: readonly ToolManifest[],
-		wanted: SyncServer | undefined,
 		resource: string
 	) {
-		const server = wanted ?? SyncServer.ROJO;
-		const names = wanted
-			? wanted.name
-			: joinedWithOr(SyncServer.ALL.map(({ name }) => name));
+		const server = SyncServer.ROJO;
 		const pin = this.pinFix(server, directory, manifests);
 		const plugin = {
 			run: { command: server.pluginCommand, cwd: directory },
 		};
-		const asked = wanted
-			? ` ${wanted.name} was asked for by --server or a config's "server"; drop that to serve with another server.`
-			: "";
 		const steps = pin
 			? `Run '${pin.run.command}', then '${server.pluginCommand}' to install its Studio plugin.`
 			: `Pin ${server.repository} in ${path.basename(manifests[0].file)}, install it, then run '${server.pluginCommand}' to install its Studio plugin.`;
+		const argon = manifests.some((manifest) =>
+			manifest.nameOf(ARGON_REPOSITORY)
+		)
+			? " Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them."
+			: "";
 		return errorDiagnostic(
 			"serve.noServer",
 			{ resource: manifests[0]?.file ?? resource },
-			`No ${names} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${asked}`,
+			`No ${server.name} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon}`,
 			pin ? [pin, plugin] : [plugin]
 		);
 	}

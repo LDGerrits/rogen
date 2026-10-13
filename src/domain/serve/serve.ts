@@ -1,8 +1,6 @@
-import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { isObject } from "../../base/objects.js";
 import { Result, err, ok } from "../../base/result.js";
-import type { ServerName } from "../config/config.js";
 
 /** What a running sync server says it serves. */
 export interface ServerInfo {
@@ -20,28 +18,8 @@ export interface ServerMessage {
 	readonly text: string;
 }
 
-/** Where a server's own settings put it, which apply when the project file sets nothing. */
-export interface ServerDefaults {
-	readonly host?: string;
-	readonly port?: number;
-}
-
-/** A top-level `key = value` of a flat TOML file, as Argon's settings are written. */
-function topLevelValue(text: string, key: string): string | undefined {
-	for (const raw of text.split(/\r?\n/)) {
-		const line = raw.trim();
-		if (line.startsWith("[")) return undefined;
-		const entry =
-			/^([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\d+))\s*(#.*)?$/.exec(
-				line
-			);
-		if (entry?.[1] === key) return entry[2] ?? entry[3] ?? entry[4];
-	}
-	return undefined;
-}
-
 interface SyncServerFields {
-	readonly id: ServerName;
+	readonly id: string;
 	readonly name: string;
 	/** Where toolchain managers install it from, as `owner/repo`. */
 	readonly repository: string;
@@ -51,20 +29,10 @@ interface SyncServerFields {
 	readonly infoPath: string;
 	readonly hostFlags: readonly string[];
 	readonly portFlags: readonly string[];
-	/** Keep it in the foreground, as the child Rogen stops, whatever its settings say. */
-	readonly foregroundArgs: readonly string[];
 	/** A line that starts one of its log records, with the groups `level` and `text`. */
 	readonly logRecord: RegExp;
 	/** What it prints that tells a Rogen user nothing: its banner, and what Rogen's own probes and writes make it say. */
 	readonly noise: readonly RegExp[];
-	/** Debug detail it appends to a record. */
-	readonly clutter: readonly RegExp[];
-	/** Its own settings, which may set `host` and `port`; none for a server with no such file. */
-	readonly settings?: {
-		/** The files that may hold them, the first found winning. */
-		readonly files: (projectDir: string, userHome: string) => string[];
-		readonly read: (text: string) => ServerDefaults;
-	};
 	/** How it tells that a Studio plugin connected, when it does: the first version to log it, the log records that say so, and the filter that makes it print them. */
 	readonly connections?: {
 		readonly since: readonly [major: number, minor: number];
@@ -95,10 +63,8 @@ export class SyncServer {
 		infoPath: "/api/rojo",
 		hostFlags: ["--address"],
 		portFlags: ["--port"],
-		foregroundArgs: [],
 		logRecord: /^\[(?<level>[A-Z]+)\s*[^\]]*\]\s?(?<text>.*)$/,
 		noise: [/^Rojo server listening:$/, /^(Address|Port):/, /^Visit http/],
-		clutter: [],
 		// Its plugin holds one websocket to the server, which logs it at debug level.
 		connections: {
 			since: [7, 7],
@@ -124,53 +90,7 @@ export class SyncServer {
 		},
 	});
 
-	static readonly ARGON = new SyncServer({
-		id: "argon",
-		name: "Argon",
-		repository: "argon-rbx/argon",
-		defaultHost: "localhost",
-		defaultPort: 8000,
-		infoPath: "/details",
-		hostFlags: ["--host", "-H"],
-		portFlags: ["--port", "-P"],
-		// Its run_async setting otherwise detaches a copy and exits at once.
-		foregroundArgs: ["--argon-spawn"],
-		logRecord: /^(?<level>[A-Z]+): (?<text>.*)$/,
-		noise: [
-			/^stream error: request parse error/,
-			// What Rogen's write of the project file looks like to it; it still syncs the new one.
-			/^Warning! Top level project file was deleted/,
-		],
-		clutter: [/, source: .*$/, /\s\[[\w:]+:\d+\]$/],
-		settings: {
-			files: (projectDir, userHome) => [
-				path.join(projectDir, "argon.toml"),
-				path.join(userHome, ".argon", "config.toml"),
-			],
-			read: (settings) => {
-				const port = Number(topLevelValue(settings, "port"));
-				return {
-					host: topLevelValue(settings, "host"),
-					port: Number.isInteger(port) && port > 0 ? port : undefined,
-				};
-			},
-		},
-		readInfo: (server, value) => {
-			const project = text(value.name);
-			const version = text(value.version);
-			return project === undefined || version === undefined
-				? undefined
-				: { server, project, version };
-		},
-	});
-
-	/** In the order one is picked when a project has several. */
-	static readonly ALL: readonly SyncServer[] = [
-		SyncServer.ROJO,
-		SyncServer.ARGON,
-	];
-
-	readonly id: ServerName;
+	readonly id: string;
 	readonly name: string;
 	readonly repository: string;
 	readonly defaultHost: string;
@@ -187,7 +107,7 @@ export class SyncServer {
 	}
 
 	static byId(id: string): SyncServer | undefined {
-		return SyncServer.ALL.find((server) => server.id === id);
+		return id === SyncServer.ROJO.id ? SyncServer.ROJO : undefined;
 	}
 
 	/** Whether this version of it says in its output when a Studio plugin connects or leaves. */
@@ -221,12 +141,7 @@ export class SyncServer {
 
 	/** The line that starts it on `projectFile`; `serverArgs` go last, untouched. */
 	serveArgs(projectFile: string, serverArgs: readonly string[]): string[] {
-		return [
-			"serve",
-			projectFile,
-			...this.fields.foregroundArgs,
-			...serverArgs,
-		];
+		return ["serve", projectFile, ...serverArgs];
 	}
 
 	/** The level and text of `line` when it starts one of its log records. */
@@ -237,11 +152,9 @@ export class SyncServer {
 		return groups && { level: groups.level, text: groups.text };
 	}
 
-	/** `text` without the debug detail it appended; `undefined` when it is noise. */
+	/** `text` trimmed; `undefined` when it is noise. */
 	tidied(text: string): string | undefined {
-		const tidy = this.fields.clutter
-			.reduce((rest, clutter) => rest.replace(clutter, ""), text)
-			.trim();
+		const tidy = text.trim();
 		return this.fields.noise.some((noise) => noise.test(tidy))
 			? undefined
 			: tidy;
@@ -250,16 +163,6 @@ export class SyncServer {
 	/** What an answer from `infoPath` says, when it is this server's answer. */
 	readInfo(value: unknown): ServerInfo | undefined {
 		return isObject(value) ? this.fields.readInfo(this, value) : undefined;
-	}
-
-	/** The settings files that may set where it listens when the project file doesn't: beside the project file, then the user's own. */
-	settingsFiles(projectDir: string, userHome: string): string[] {
-		return this.fields.settings?.files(projectDir, userHome) ?? [];
-	}
-
-	/** Where the settings in `settings` put it. */
-	defaultsIn(settings: string): ServerDefaults {
-		return this.fields.settings?.read(settings) ?? {};
 	}
 
 	/** The value `serverArgs` give the host flag, if any. */
@@ -284,9 +187,6 @@ export class SyncServer {
 	}
 }
 
-/** Whether `flag` is one dash and one letter, whose value may follow it with no space, as `-P9000`. */
-const isShort = (flag: string): boolean => /^-[^-]$/.test(flag);
-
 /** The value of the last of `flags` in `args`, written `--flag value` or `--flag=value`. */
 function flagValue(
 	args: readonly string[],
@@ -298,8 +198,6 @@ function flagValue(
 			if (arg === flag) value = args[index + 1];
 			else if (arg.startsWith(`${flag}=`))
 				value = arg.slice(flag.length + 1);
-			else if (isShort(flag) && arg.startsWith(flag))
-				value = arg.slice(flag.length);
 		}
 	});
 	return value;

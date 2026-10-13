@@ -1,6 +1,4 @@
-import { UsageError } from "../../base/errors.js";
 import { PathSet } from "../../base/path.js";
-import { closestMatch, joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -41,7 +39,6 @@ export class CoreServeService implements ServeService {
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
 	private readonly served: ServedProjectFiles;
-	private readonly userHome: string;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -59,7 +56,6 @@ export class CoreServeService implements ServeService {
 			environmentService.tmpDir
 		);
 		this.served = new ServedProjectFiles(this.records, this.probe);
-		this.userHome = environmentService.userHome;
 	}
 
 	/** The ports of a serve of `server`, which gets `serverArgs` as they are. */
@@ -67,19 +63,10 @@ export class CoreServeService implements ServeService {
 		server: SyncServer,
 		serverArgs: readonly string[]
 	): ServePorts {
-		return new ServePorts(
-			this.fileSystemService,
-			this.probe,
-			this.records,
-			this.userHome,
-			server,
-			serverArgs
-		);
+		return new ServePorts(this.probe, this.records, server, serverArgs);
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
-		const asked = CoreServeService.serverOf(request.serverId);
-		if (asked.isErr()) return asked;
 		const selected = await this.select(request.refs, request.options);
 		if (selected.isErr()) return selected;
 		const { selection, named, neighbours } = selected.value;
@@ -91,14 +78,8 @@ export class CoreServeService implements ServeService {
 			neighbours
 		);
 		const served = servedConfigs.configs;
-		const server = asked.value
-			? ok(asked.value)
-			: CoreServeService.serverNamedBy(served);
-		if (server.isErr()) return server;
-
 		const executable = await this.finder.find(
 			selection.home,
-			server.value,
 			served[0]?.file ?? selection.home,
 			request.signal
 		);
@@ -110,7 +91,7 @@ export class CoreServeService implements ServeService {
 		);
 		if (ports.portError) return err(ports.portError);
 		const targets: ServeTarget[] = [];
-		for (const config of served) targets.push(await ports.targetOf(config));
+		for (const config of served) targets.push(ports.targetOf(config));
 
 		const clash = ports.clashOf(targets);
 		if (clash) return err(clash);
@@ -134,48 +115,9 @@ export class CoreServeService implements ServeService {
 				checked,
 				request.serverArgs,
 				named,
-				neighbours,
-				request.serverId !== undefined
+				neighbours
 			)
 		);
-	}
-
-	private static serverOf(
-		id: string | undefined
-	): Result<SyncServer | undefined, UsageError> {
-		if (id === undefined) return ok(undefined);
-		const server = SyncServer.byId(id);
-		if (server) return ok(server);
-		const ids = SyncServer.ALL.map(({ id }) => id);
-		const suggestion = closestMatch(id, ids);
-		return err(
-			new UsageError(
-				`--server takes ${ids.join(" or ")}, not "${id}".` +
-					(suggestion ? ` Did you mean "${suggestion}"?` : "")
-			)
-		);
-	}
-
-	/** The server the configs to serve name in their "server" field, when they do; one serve runs one server, so they may not name two. */
-	private static serverNamedBy(
-		configs: readonly ResolvedConfig[]
-	): Result<SyncServer | undefined, UsageError> {
-		const byServer = new Map<string, string[]>();
-		for (const { server, label } of configs) {
-			if (server === undefined) continue;
-			const labels = byServer.get(server) ?? [];
-			labels.push(label);
-			byServer.set(server, labels);
-		}
-		const named = [...byServer];
-		if (named.length === 0) return ok(undefined);
-		if (named.length === 1) return ok(SyncServer.byId(named[0][0]));
-		const lines = named.map(
-			([id, labels]) =>
-				`${joinedWithAnd(labels)} ${labels.length === 1 ? "names" : "name"} "server": "${id}".`
-		);
-		const fix = `One serve runs one server: give them the same "server", or serve one at a time, as 'rogen serve ${named[0][1][0]}'.`;
-		return err(new UsageError([...lines, fix].join("\n")));
 	}
 
 	/** Every config here is watched, so no project file goes stale, and `refs` pick what is served. A named config from elsewhere, or a broken one here, leaves the named configs watched on their own. */

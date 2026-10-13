@@ -117,7 +117,7 @@ To write the same tree with paths into a different folder, add a config that `ex
 
 ## Serving
 
-`rogen serve` builds every config, starts Rojo or Argon on each rendering no other config extends, and rebuilds as `watch` does. With Darklua that's `sync.project.json`; in a multi-place repo, each place. The server reads the port from the project file, so a `servePort` in the template applies. When a Rojo or Argon you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which server runs, the port, `--json` and exit codes.
+`rogen serve` builds every config, starts Rojo on each rendering no other config extends, and rebuilds as `watch` does. With Darklua that's `sync.project.json`; in a multi-place repo, each place. Rojo reads the port from the project file, so a `servePort` in the template applies. When a Rojo you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which Rojo runs, the port, `--json` and exit codes.
 
 ## Place Files
 

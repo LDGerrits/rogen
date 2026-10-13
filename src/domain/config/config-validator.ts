@@ -7,16 +7,13 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
-import { closestMatch, joinedWithOr } from "../../base/strings.js";
 import {
 	DeclaredKeys,
 	ResolvedConfig,
 	ResolvedTemplate,
-	SERVER_NAMES,
 	configLabel,
 	fieldOf,
 	isConfigFileName,
-	isServerName,
 	rootDirOverlap,
 } from "./config.js";
 import { projectFileName } from "../rojo/rojo-project.js";
@@ -60,7 +57,6 @@ export class ConfigValidator {
 		this.checkOutFile();
 		this.checkRootDirs();
 		this.checkSyncDir();
-		this.checkServer();
 
 		return this.problems.toResult(
 			new ResolvedConfig({
@@ -76,7 +72,6 @@ export class ConfigValidator {
 				template,
 				syncDir: fieldOf(config, "syncDir"),
 				outFile: this.outFile,
-				server: fieldOf(config, "server"),
 			})
 		);
 	}
@@ -163,19 +158,6 @@ export class ConfigValidator {
 			);
 			return;
 		}
-	}
-
-	/** `server` names a sync server Rogen can start. */
-	private checkServer(): void {
-		const server = fieldOf(this.layered.config, "server");
-		if (server === undefined || isServerName(server)) return;
-		const suggestion = closestMatch(server, SERVER_NAMES);
-		this.problems.error(
-			"config.unknownServer",
-			this.layered.locate("server"),
-			`"server" is "${server}", but Rogen serves with ${joinedWithOr(SERVER_NAMES.map((name) => `"${name}"`))}.` +
-				(suggestion ? ` Did you mean "${suggestion}"?` : "")
-		);
 	}
 
 	/** Two keys that differ only in the case of their first letter would match the same names. */

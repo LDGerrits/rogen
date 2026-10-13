@@ -67,9 +67,10 @@ Error. The config has a field that Rogen removed. The error is at the field, as 
 ```
 default.rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a second config that extends this one, which can add "exclude". (config.removedField)
 default.rogen.json:5:2 - error: "variants" was removed. A file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir. (config.removedField)
+default.rogen.json:6:2 - error: "server" was removed. rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it. (config.removedField)
 ```
 
-Remove the field and do what the message says. For `modes` and `mode`, that is a second config that [extends](/docs/v2/configuration#extending-configs) this one and adds an `exclude`, built by its name as `rogen build <name>`. For `variants`, a file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir. For `conflicts`, sets that exclude each other are one config each, listing their own root dir. See [Configuration](/docs/v2/configuration#fields) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the field and do what the message says. For `modes` and `mode`, that is a second config that [extends](/docs/v2/configuration#extending-configs) this one and adds an `exclude`, built by its name as `rogen build <name>`. For `variants`, a file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir. For `conflicts`, sets that exclude each other are one config each, listing their own root dir. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#fields) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.unnamed` [#config-unnamed]
 
@@ -192,16 +193,6 @@ default.rogen.json:7:13 - error: "Server" and "server" differ only in the case o
 ```
 
 Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
-
-### `config.unknownServer` [#config-unknownserver]
-
-Error. The config's `server` field names a sync server Rogen can't start. It takes `"rojo"` or `"argon"`, in lowercase.
-
-```
-default.rogen.json:4:12 - error: "server" is "argn", but Rogen serves with "rojo" or "argon". Did you mean "argon"? (config.unknownServer)
-```
-
-Fix the name, or remove the field to serve with the server the project pins. See [`serve`](/docs/v2/cli#serve).
 
 ## Routes
 
@@ -733,17 +724,18 @@ Fix the file's permissions, or move it out of the way. See [Template](/docs/v2/c
 
 ### `serve.noServer` [#serve-noserver]
 
-Error. `rogen serve` found no sync server: neither Rojo nor Argon is pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and neither is on the PATH. With `--server`, or a config's `server`, only that server counts.
+Error. `rogen serve` found no Rojo: it is not pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and not on the PATH. `serve` only starts Rojo, so a pinned Argon doesn't count. When Argon is pinned, the message says so.
 
 ```
-default.rogen.json - error: No Rojo or Argon to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. (serve.noServer)
+default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. (serve.noServer)
+default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them. (serve.noServer)
 ```
 
-Pin the server with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rojo plugin install`. Rogen never installs anything. See [CLI](/docs/v2/cli#serve).
+Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rojo plugin install`. Rogen never installs anything. To serve with Argon, run `rogen watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
 
 ### `serve.notInstalled` [#serve-notinstalled]
 
-Error. A toolchain file pins the server, but it isn't installed, so its command isn't on the PATH.
+Error. A toolchain file pins Rojo, but it isn't installed, so its command isn't on the PATH.
 
 ```
 rokit.toml - error: rokit.toml pins Rojo as rojo, but it isn't installed. Run 'rokit install'. (serve.notInstalled)
@@ -753,33 +745,23 @@ Run the manager's install command: `rokit install`, `aftman install` or `foreman
 
 ### `serve.serverFailed` [#serve-serverfailed]
 
-Error. Rogen runs `<tool> --version` before it builds, and that failed, so the server can't start. The message ends with the first line the server printed. A toolchain shim on the PATH whose project doesn't pin the tool fails this way, and then the message adds the command that pins it.
+Error. Rogen runs `<tool> --version` before it builds, and that failed, so Rojo can't start. The message ends with the first line Rojo printed. A toolchain shim on the PATH whose project doesn't pin the tool fails this way, and then the message adds the command that pins it.
 
 ```
 default.rogen.json - error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. (serve.serverFailed)
 ```
 
-Pin the tool, or fix the install the quoted line points at. Running `rojo --version` (or `argon --version`) yourself shows the full output. See [CLI](/docs/v2/cli#serve).
+Pin the tool, or fix the install the quoted line points at. Running `rojo --version` yourself shows the full output. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.portTaken` [#serve-porttaken]
 
-Error. Another program holds the port a config would be served on. When it's a Rojo or Argon server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running, and builds for it when no `rogen serve` started it. It is one when another config here has the same project name and no `rogen serve` started the server, since Rogen can't tell which config it serves: stop that server and run `rogen serve` again.
+Error. Another program holds the port a config would be served on. When it's a Rojo server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running, and builds for it when no `rogen serve` started it. It is one when another config here has the same project name and no `rogen serve` started the server, since Rogen can't tell which config it serves: stop that server and run `rogen serve` again.
 
 ```
 default.rogen.json - error: Port 34872 is taken by Rojo serving shop, so default can't be served there. Give default a template with its own servePort, or run 'rogen serve default -- --port 34873'. (serve.portTaken)
 ```
 
 Stop what holds the port, give the config its own `servePort` in its template, or pass a free port after `--`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
-
-### `serve.otherServer` [#serve-otherserver]
-
-Error. While `rogen serve` runs, a config that is served now names a `server` other than the one this serve runs: a config was added, or an edit changed a `server` field. One serve runs one server, so the config isn't served with the other one, and the servers already running go on. It is said once for a config, again if the config stops naming another server and then does again. `--server` ends the question, since it picks the server over every config's field.
-
-```
-lobby.rogen.json - error: lobby names "server": "argon", but this serve runs rojo, and one serve runs one server. Restart it to serve with argon, or serve lobby on its own, as 'rogen serve lobby'. (serve.otherServer)
-```
-
-Restart `rogen serve` to serve with the new server, or serve the config on its own. At startup the same disagreement stops the serve instead, with exit 2. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.serverExited` [#serve-serverexited]
 

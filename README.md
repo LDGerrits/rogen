@@ -27,7 +27,7 @@ src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inven
 - **Feature Folders:** Keep a feature's client, server and shared code in one folder.
 - **Routes:** Declare where each kind of code goes, and route files with a folder, a marker file or an `@` suffix (`Save@server.luau`).
 - **Several Places:** Merge root directories so places share core code and override parts of it.
-- **Watch Mode:** Rebuild as files change, and reload when the config does. `rogen serve` also starts Rojo or Argon.
+- **Watch Mode:** Rebuild as files change, and reload when the config does. `rogen serve` also starts Rojo.
 - **Toolchains:** Luau, roblox-ts and Darklua, set up by `rogen init`.
 
 ## Getting Started

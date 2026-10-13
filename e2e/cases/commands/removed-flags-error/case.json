@@ -5,6 +5,8 @@
 		["build", "--mode", "prod"],
 		["build", "--variant", "mock"],
 		["build", "--no-variant", "mock"],
+		["serve", "--server", "rojo"],
+		["serve", "--tool", "argon"],
 		["build", "--all"],
 		["build", "-c", "default.rogen.json"],
 		["list", "--all"],

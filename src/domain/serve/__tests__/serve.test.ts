@@ -1,4 +1,3 @@
-import { SERVER_NAMES } from "../../config/config.js";
 import { ServeAddress, SyncServer } from "../serve.js";
 
 describe("SyncServer", () => {
@@ -19,26 +18,11 @@ describe("SyncServer", () => {
 			});
 		});
 
-		it("should read what Argon's details endpoint says", () => {
-			expect(
-				SyncServer.ARGON.readInfo({
-					version: "2.0.24",
-					name: "Game",
-					gameId: null,
-					placeIds: [],
-				})
-			).toEqual({
-				server: SyncServer.ARGON,
-				project: "Game",
-				version: "2.0.24",
-			});
-		});
-
 		it("should not read another server's answer", () => {
 			expect(
-				SyncServer.ARGON.readInfo({
-					serverVersion: "7.7.1",
-					projectName: "Game",
+				SyncServer.ROJO.readInfo({
+					version: "2.0.24",
+					name: "Game",
 				})
 			).toBeUndefined();
 			expect(SyncServer.ROJO.readInfo("Home Page")).toBeUndefined();
@@ -62,52 +46,22 @@ describe("SyncServer", () => {
 				);
 			}
 		);
-
-		it("should read Argon's short flag with the value attached", () => {
-			expect(SyncServer.ARGON.portIn(["-P8001"]).unwrap()).toBe(8001);
-			expect(SyncServer.ARGON.portIn(["-Pabc"]).isErr()).toBe(true);
-		});
-
-		it("should read Argon's short flag, and take the last one given", () => {
-			expect(
-				SyncServer.ARGON.portIn([
-					"-P",
-					"8001",
-					"--port",
-					"8002",
-				]).unwrap()
-			).toBe(8002);
-			expect(SyncServer.ARGON.portIn(["-P", "8001"]).unwrap()).toBe(8001);
-		});
 	});
 
 	describe("hostIn", () => {
-		it("should read Argon's short host flag with the value attached", () => {
-			expect(SyncServer.ARGON.hostIn(["-H0.0.0.0"])).toBe("0.0.0.0");
-		});
-
-		it("should read each server's own host flag", () => {
+		it("should read Rojo's own host flag", () => {
 			expect(SyncServer.ROJO.hostIn(["--address", "0.0.0.0"])).toBe(
 				"0.0.0.0"
-			);
-			expect(SyncServer.ARGON.hostIn(["-H", "127.0.0.1"])).toBe(
-				"127.0.0.1"
 			);
 			expect(SyncServer.ROJO.hostIn(["--host", "x"])).toBeUndefined();
 		});
 	});
 
 	describe("byId", () => {
-		it("should find a server by its id, as the config spells it", () => {
-			expect(SyncServer.byId("argon")).toBe(SyncServer.ARGON);
-			expect(SyncServer.byId("Argon")).toBeUndefined();
-			expect(SyncServer.byId("lune")).toBeUndefined();
-		});
-
-		it("should know every server a config can name", () => {
-			expect(
-				SERVER_NAMES.map((name) => SyncServer.byId(name)?.id)
-			).toEqual(SyncServer.ALL.map(({ id }) => id));
+		it("should find Rojo by its id, as a record spells it", () => {
+			expect(SyncServer.byId("rojo")).toBe(SyncServer.ROJO);
+			expect(SyncServer.byId("Rojo")).toBeUndefined();
+			expect(SyncServer.byId("argon")).toBeUndefined();
 		});
 	});
 
@@ -121,7 +75,6 @@ describe("SyncServer", () => {
 			["a release candidate", SyncServer.ROJO, "7.7.0-rc.1", true],
 			["a version of two numbers", SyncServer.ROJO, "7.7", true],
 			["a version that isn't one", SyncServer.ROJO, "nightly", false],
-			["Argon", SyncServer.ARGON, "2.0.29", false],
 		])(
 			"should say whether %s reports them",
 			(_, server, version, reports) => {
@@ -154,14 +107,6 @@ describe("SyncServer", () => {
 			expect(SyncServer.ROJO.connectionIn(line)).toBe(change);
 		});
 
-		it("should read nothing from Argon, which says nothing of them", () => {
-			expect(
-				SyncServer.ARGON.connectionIn(
-					"WebSocket subscription established for session 1"
-				)
-			).toBeUndefined();
-		});
-
 		it.each([
 			["nothing set", undefined, "info,librojo::web=debug"],
 			["the user's filter", "warn", "warn,librojo::web=debug"],
@@ -171,10 +116,6 @@ describe("SyncServer", () => {
 				expect(SyncServer.ROJO.env.RUST_LOG(inherited)).toBe(expected);
 			}
 		);
-
-		it("should ask Argon for nothing", () => {
-			expect(SyncServer.ARGON.env).toEqual({});
-		});
 	});
 
 	describe("serveArgs", () => {
@@ -182,17 +123,6 @@ describe("SyncServer", () => {
 			expect(
 				SyncServer.ROJO.serveArgs("lobby.project.json", ["--port", "1"])
 			).toEqual(["serve", "lobby.project.json", "--port", "1"]);
-		});
-
-		it("should keep Argon in the foreground, even when its settings run it async", () => {
-			expect(
-				SyncServer.ARGON.serveArgs("lobby.project.json", ["--async"])
-			).toEqual([
-				"serve",
-				"lobby.project.json",
-				"--argon-spawn",
-				"--async",
-			]);
 		});
 	});
 });

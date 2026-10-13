@@ -31,8 +31,7 @@ e2e/cases/<area>/<case>/
   files are printed, and every `*.project.json` is passed to Rojo.
 
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
-and fails in CI. `serve-argon.test.ts` needs the Argon `rokit.toml` pins,
-which `rokit install` installs too.
+and fails in CI.
 
 ## Where each thing is checked
 
@@ -75,6 +74,6 @@ It prints the edits to the transcripts, grouped, with the number of transcripts 
 
 Read that list first, and open the diff of a transcript only for an edit you did not expect. `npm run test:e2e:diff` prints the list again for what is not yet committed.
 
-`watch.test.ts`, `serve-rojo.test.ts` and `serve-argon.test.ts` cover the
-long-running `watch` and `serve` commands, which a transcript can't describe. The
-serve tests start the pinned Rojo or Argon on a random port.
+`watch.test.ts` and `serve-rojo.test.ts` cover the long-running `watch` and
+`serve` commands, which a transcript can't describe. The serve tests start the
+pinned Rojo on a random port.

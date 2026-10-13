@@ -47,7 +47,6 @@ export interface ConfigDetails {
 	readonly templates: readonly string[];
 	readonly syncDir: string | null;
 	readonly outFile: string;
-	readonly server: string | null;
 	/** The server a running serve serves the project file with, and how many Studio plugins are connected to it when it says. */
 	readonly serving: {
 		readonly server: string;
@@ -150,7 +149,6 @@ export class ListLog {
 						: []),
 					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
 					`project file: ${relative(config.outFile)}`,
-					...(config.server ? [`server: ${config.server}`] : []),
 					...(serving.get(entry.file)
 						? [`serving: ${servingLine(serving.get(entry.file)!)}`]
 						: []),
@@ -208,7 +206,6 @@ function configDetails(
 			: [],
 		syncDir: config.syncDir ? toNative(config.syncDir) : null,
 		outFile: toNative(config.outFile),
-		server: config.server ?? null,
 		serving: serving
 			? {
 					server: serving.server.id,

@@ -23,7 +23,6 @@ describe("domain/config/config-schema", () => {
 			"template",
 			"syncDir",
 			"outFile",
-			"server",
 		];
 
 		const UNSUPPORTED_FIELDS = [
@@ -165,7 +164,7 @@ describe("domain/config/config-schema", () => {
 	describe("removed field advice", () => {
 		const location = { resource: "/repo/default.rogen.json" };
 
-		it.each(["modes", "mode", "variants", "conflicts"])(
+		it.each(["modes", "mode", "variants", "conflicts", "server"])(
 			"says %s was removed and what to do instead",
 			(field) => {
 				expect(configRemovedFieldAdvice(field, location)).toMatchObject(

@@ -23,6 +23,16 @@ exit 2
 stderr:
   error: Unknown option '--no-variant'. Run 'rogen help build' to see what build accepts.
 
+$ rogen serve --server rojo
+exit 2
+stderr:
+  error: Unknown option '--server'. Run 'rogen help serve' to see what serve accepts.
+
+$ rogen serve --tool argon
+exit 2
+stderr:
+  error: Unknown option '--tool'. Run 'rogen help serve' to see what serve accepts.
+
 $ rogen build --all
 exit 2
 stderr:

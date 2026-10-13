@@ -32,7 +32,6 @@ stdout:
         ],
         "syncDir": "<dir>/dist",
         "outFile": "<dir>/default.project.json",
-        "server": null,
         "serving": null,
         "diagnostics": []
       }

@@ -155,15 +155,6 @@ describe("list command", () => {
 
 		const [details] = under("default.rogen.json");
 		expect(details).toContain("sync dir: (none)");
-		expect(details).not.toContain("server:");
-	});
-
-	it("should show the server a config names", async () => {
-		await write("default.rogen.json", { server: "argon" });
-
-		await run();
-
-		expect(under("default.rogen.json")[0]).toContain("server: argon");
 	});
 
 	it("should show the extends chain of a config", async () => {
@@ -344,7 +335,6 @@ describe("list command", () => {
 						templates: [],
 						syncDir: "/repo/out",
 						outFile: "/repo/default.project.json",
-						server: null,
 						serving: null,
 						diagnostics: [],
 					},

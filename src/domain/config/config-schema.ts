@@ -7,7 +7,7 @@ import {
 	MergePolicy,
 } from "../../platform/config/config-models.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
-import { DeclaredKeys, RogenConfig, SERVER_NAMES } from "./config.js";
+import { DeclaredKeys, RogenConfig } from "./config.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
 
@@ -132,17 +132,6 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 				".project.json.",
 		},
 	},
-	server: {
-		merge: "replace",
-		schema: {
-			type: "string",
-			enum: [...SERVER_NAMES],
-			description:
-				"The sync server rogen serve starts, rojo or argon, unless " +
-				"--server says otherwise. Without it, the one the project " +
-				"pins, Rojo before Argon.",
-		},
-	},
 };
 
 /** How each top-level field combines across a config's chain. */
@@ -186,6 +175,7 @@ export const configDefaults = new ConfigModel(
 const removedFields: Readonly<Record<string, string>> = {
 	modes: 'Put what a mode set in a second config that extends this one, which can add "exclude".',
 	mode: "Modes are gone with \"modes\". Build the config that holds the settings by name, as 'rogen build <name>'.",
+	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir.",
 	conflicts:

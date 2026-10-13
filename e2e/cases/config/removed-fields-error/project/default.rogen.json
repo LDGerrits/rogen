@@ -6,5 +6,6 @@
 		"dev": { "exclude": ["**/*.spec.luau"] }
 	},
 	"variants": ["mock"],
-	"conflicts": [["mock", "dev"]]
+	"conflicts": [["mock", "dev"]],
+	"server": "argon"
 }

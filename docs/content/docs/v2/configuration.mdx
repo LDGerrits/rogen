@@ -58,7 +58,6 @@ There are nine fields, none nested more than two levels. Unknown keys and wrong 
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
 | `outFile` | `<name>.project.json` | The project file to write. Not inherited. See [Output](/docs/v2/core-concepts/output#output). |
-| `server` | none | The sync server `rogen serve` starts, `"rojo"` or `"argon"`, unless `--server` says otherwise. Without it, the one the project pins, Rojo before Argon. Set it when you pin both, such as Rojo for `rojo sourcemap` and Argon to serve. See [`serve`](/docs/v2/cli#serve). |
 
 All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
 

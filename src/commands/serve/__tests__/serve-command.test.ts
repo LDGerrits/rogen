@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import "../serve-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
-import { UsageError } from "../../../base/errors.js";
+
 import { Result } from "../../../base/result.js";
 import { exitCodeOf } from "../../../platform/commands/command-failure.js";
 import { CommandLine } from "../../../platform/environment/args.js";
@@ -13,10 +13,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import {
-	ExitCodeError,
-	ReportedError,
-} from "../../../platform/commands/commands.js";
+import { ExitCodeError, ReportedError } from "../../../platform/commands/commands.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -540,90 +537,6 @@ describe("serve command", () => {
 			).toBe(false);
 		});
 
-		it("should refuse a config added while serving that names another server, once, and go on serving the others", async () => {
-			void serve();
-			await settle();
-
-			await memFs.writeFile(
-				"/repo/lobby.rogen.json",
-				JSON.stringify({
-					rootDirs: ["src"],
-					routes: { "*": "ReplicatedStorage" },
-					server: "argon",
-				})
-			);
-			await settle();
-			await memFs.writeFile("/repo/src/B.luau", "");
-			await settle();
-
-			const refusals = logService.lines.filter((line) =>
-				line.includes("serve.otherServer")
-			);
-			expect(refusals).toEqual([
-				'diagnosticError: /repo/lobby.rogen.json - error: lobby names "server": "argon", but this serve runs rojo, and one serve runs one server. Restart it to serve with argon, or serve lobby on its own, as \'rogen serve lobby\'. (serve.otherServer)',
-			]);
-			expect(processes.spawned).toHaveLength(1);
-			expect(processes.spawned[0].terminated).toBe(false);
-		});
-
-		it("should refuse a served config edited to name another server, and say so again when it is edited back and forth", async () => {
-			void serve();
-			await settle();
-			const write = (server?: string) =>
-				memFs.writeFile(
-					"/repo/default.rogen.json",
-					JSON.stringify({
-						rootDirs: ["src"],
-						routes: { "*": "ReplicatedStorage" },
-						...(server && { server }),
-					})
-				);
-
-			await write("argon");
-			await settle();
-			await write();
-			await settle();
-			await write("argon");
-			await settle();
-
-			expect(
-				logService.lines.filter((line) =>
-					line.includes("serve.otherServer")
-				)
-			).toHaveLength(2);
-			expect(processes.spawned[0].terminated).toBe(false);
-		});
-
-		it("should not refuse a config naming another server when --server picked this one", async () => {
-			void serve([], { server: "rojo" });
-			await settle();
-
-			await memFs.writeFile(
-				"/repo/lobby.rogen.json",
-				JSON.stringify({
-					rootDirs: ["src"],
-					routes: { "*": "ReplicatedStorage" },
-					template: "templates/lobby.project.json",
-					server: "argon",
-				})
-			);
-			await memFs.writeFile(
-				"/repo/templates/lobby.project.json",
-				JSON.stringify({
-					tree: { $className: "DataModel" },
-					servePort: 34900,
-				})
-			);
-			await settle();
-
-			expect(
-				logService.lines.some((line) =>
-					line.includes("serve.otherServer")
-				)
-			).toBe(false);
-			expect(processes.spawned).toHaveLength(2);
-		});
-
 		it("should say a server stopped because its config is gone, and stop only that one at shutdown", async () => {
 			const result = serve([], { json: true });
 			await settle();
@@ -700,26 +613,6 @@ describe("serve command", () => {
 		});
 	});
 
-	it("should say which server it picked when both are pinned", async () => {
-		await memFs.writeFile(
-			"/repo/rokit.toml",
-			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\nargon = "argon-rbx/argon@2.0.0"\n'
-		);
-		processes.installed.set("argon", "/bin/argon");
-		processes.outputs.set("/bin/argon", {
-			code: 0,
-			stdout: "argon 2.0.0",
-			stderr: "",
-		});
-
-		void serve();
-		await settle();
-
-		expect(logService.lines).toContainEqual(
-			'info: Both rojo and argon are pinned; serving with rojo (pass --server argon to switch, or set "server": "argon" in every config served, or in the one they extend).'
-		);
-	});
-
 	it("should print a config that broke while serving as a notice line", async () => {
 		void serve([], { json: true });
 		await settle();
@@ -735,6 +628,28 @@ describe("serve command", () => {
 				diagnostics: [expect.objectContaining({ severity: "error" })],
 			}),
 		});
+	});
+
+	it("should say that rogen serve only starts Rojo when only Argon is pinned, and fail", async () => {
+		await memFs.writeFile(
+			"/repo/rokit.toml",
+			'[tools]\nargon = "argon-rbx/argon@2.0.0"\n'
+		);
+		processes.installed.clear();
+
+		const error = await failureOf(serve());
+
+		expect(error).toMatchObject({
+			diagnostics: [
+				expect.objectContaining({
+					code: "serve.noServer",
+					message: expect.stringContaining(
+						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them."
+					),
+				}),
+			],
+		});
+		expect(exitCodeOf(error)).toBe(1);
 	});
 
 	it("should leave a failure before it served to be reported", async () => {
@@ -805,15 +720,6 @@ describe("serve command", () => {
 			"--port",
 			"40000",
 		]);
-	});
-
-	it("should refuse a server it doesn't know", async () => {
-		const error = await failureOf(serve([], { server: "lune" }));
-
-		expect(error).toEqual(
-			new UsageError('--server takes rojo or argon, not "lune".')
-		);
-		expect(exitCodeOf(error)).toBe(2);
 	});
 
 	it("should serve a named config and still build every config here", async () => {

@@ -23,7 +23,7 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
-		it.each(["mode", "variants", "conflicts"])(
+		it.each(["mode", "variants", "conflicts", "server"])(
 			"should say %s was removed",
 			async (field) => {
 				await write("/repo/default.rogen.json", { [field]: "x" });

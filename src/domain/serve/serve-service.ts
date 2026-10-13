@@ -5,7 +5,6 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { OptionDescriptor } from "../../platform/environment/args.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import {
@@ -20,21 +19,10 @@ import {
 	SyncServer,
 } from "./serve.js";
 
-/** The option that picks the sync server to serve with. */
-export const ServerOption = {
-	name: "server",
-	type: "string",
-	placeholder: SyncServer.ALL.map(({ id }) => id).join("|"),
-	description:
-		"Serves with this sync server, over the configs' server field; without either, the one the project pins, Rojo before Argon.",
-} as const satisfies OptionDescriptor;
-
 export interface ServeRequest {
 	/** The configs to serve, by name or path; every config here that no other extends when none. */
 	readonly refs: readonly string[];
 	readonly options: ConfigOptionValues;
-	/** The id of the server to start, `rojo` or `argon`; the one the served configs name when not given, else the one the project pins, Rojo before Argon. */
-	readonly serverId?: string;
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
 	/** Ends the checks that run other programs, when the run is stopped before it has started. */
@@ -47,8 +35,6 @@ export interface ServerExecutable {
 	/** The file that runs it. */
 	readonly file: string;
 	readonly version: string;
-	/** Another server the project pins, which this one was picked over. */
-	readonly passedOver?: SyncServer;
 }
 
 /** One config a serve serves. */
@@ -79,9 +65,7 @@ export class ServePlan {
 		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
 		readonly named?: PathSet,
 		/** The configs in the working folder that the selection leaves out. */
-		readonly neighbours: readonly ResolvedConfig[] = [],
-		/** Whether `--server` picked the server, so no config's `server` field is asked. */
-		readonly serverAsked = false
+		readonly neighbours: readonly ResolvedConfig[] = []
 	) {}
 
 	/** The targets a server already serves. */
