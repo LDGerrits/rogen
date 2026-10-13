@@ -8,15 +8,6 @@ export function Hero() {
 			<div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
 				<div className="absolute top-1/2 left-1/2 w-125 h-125 bg-white opacity-[0.15] blur-[100px] rounded-full pointer-events-none -z-10 -translate-x-1/2 -translate-y-1/2" />
 
-				<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/3 border border-white/10 text-xs md:text-sm font-medium text-gray-300 shadow-lg backdrop-blur-md mb-8 transition-all duration-200">
-					<span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-					<span className="text-white font-semibold">Notice:</span>
-					<span className="text-gray-400">
-						Rojo 7.7.0 introduced a bug. Downgrade to 7.6.1 until
-						patch
-					</span>
-				</div>
-
 				<h1 className="text-5xl md:text-7xl lg:text-[96px] font-bold tracking-tighter text-white leading-[1.02] mb-8">
 					Feature-based
 					<br />
