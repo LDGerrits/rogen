@@ -1,5 +1,6 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServeAddress, ServerInfo, SyncServer } from "../serve.js";
+import { ServerInfo, SyncServer } from "../../runner/sync-server.js";
+import { ServeAddress } from "../serve.js";
 import { ServerRecords } from "../server-records.js";
 
 describe("ServerRecords", () => {

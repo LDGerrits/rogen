@@ -1,7 +1,8 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ServeAddress, ServerInfo } from "./serve.js";
+import { ServerInfo } from "../runner/sync-server.js";
+import { ServeAddress } from "./serve.js";
 
 /** What a serve records of the project file it serves. */
 export interface ServedBuild {

@@ -10,7 +10,7 @@ import {
 	leafConfigs,
 } from "../config/config.js";
 import { ConfigEntry, ConfigService } from "../config/config-service.js";
-import { SyncServer } from "../serve/serve.js";
+import { SyncServer } from "../runner/sync-server.js";
 import { ConfigSet } from "./config-set.js";
 import { BaseConfig } from "./init-directory.js";
 

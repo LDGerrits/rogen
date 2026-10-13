@@ -4,7 +4,6 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ProcessService } from "../../platform/process/process-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 
 import { ResolvedConfig } from "../config/config.js";
@@ -13,10 +12,10 @@ import {
 	ReloadableSelection,
 	ConfigService,
 } from "../config/config-service.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
-import { SyncServer } from "./serve.js";
+import { RojoRunner } from "../runner/rojo-runner.js";
+import { SyncServer } from "../runner/sync-server.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
@@ -27,7 +26,6 @@ import {
 	ServingNow,
 } from "./serve-service.js";
 import { ServedProjectFiles } from "./served-project-files.js";
-import { ServerFinder } from "./server-finder.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { ServedConfigs } from "./served-configs.js";
@@ -35,7 +33,6 @@ import { ServedConfigs } from "./served-configs.js";
 export class CoreServeService implements ServeService {
 	declare readonly _serviceBrand: undefined;
 
-	private readonly finder: ServerFinder;
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
 	private readonly served: ServedProjectFiles;
@@ -43,13 +40,11 @@ export class CoreServeService implements ServeService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly fileSystemService: FileSystemService,
-		private readonly processService: ProcessService,
+		private readonly rojoRunner: RojoRunner,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
-		environmentService: EnvironmentService,
-		toolchainService: ToolchainService
+		environmentService: EnvironmentService
 	) {
-		this.finder = new ServerFinder(toolchainService, processService);
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
 			fileSystemService,
@@ -78,7 +73,7 @@ export class CoreServeService implements ServeService {
 			neighbours
 		);
 		const served = servedConfigs.configs;
-		const executable = await this.finder.find(
+		const executable = await this.rojoRunner.find(
 			selection.home,
 			served[0]?.file ?? selection.home,
 			request.signal
@@ -181,7 +176,7 @@ export class CoreServeService implements ServeService {
 			new CoreServeSession(
 				plan,
 				watch.value,
-				this.processService,
+				this.rojoRunner,
 				this.probe,
 				this.records,
 				this.portsFor(plan.executable.server, plan.serverArgs)

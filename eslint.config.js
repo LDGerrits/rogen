@@ -20,6 +20,7 @@ const modules = {
 		init: ["init-service"],
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
+		runner: ["rojo-runner", "sync-server"],
 		rojo: ["rojo", "rojo-project", "sync-rules"],
 		serve: ["serve", "serve-service"],
 		toolchain: ["toolchain", "toolchain-service", "tool-manifest"],

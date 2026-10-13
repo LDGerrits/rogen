@@ -5,9 +5,9 @@ import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ProcessService } from "../../platform/process/process-service.js";
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
+import { RojoRunner } from "../runner/rojo-runner.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
 	ServeChangeEvent,
@@ -87,7 +87,7 @@ export class CoreServeSession
 	constructor(
 		private readonly plan: ServePlan,
 		private readonly watch: WatchSession,
-		private readonly processService: ProcessService,
+		private readonly rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly ports: ServePorts
@@ -317,7 +317,7 @@ export class CoreServeSession
 		const server = new StartedServer(
 			target,
 			this.plan,
-			this.processService,
+			this.rojoRunner,
 			this.probe,
 			this.records,
 			{

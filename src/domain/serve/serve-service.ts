@@ -12,12 +12,13 @@ import {
 	ReloadableSelection,
 } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
+import { ServerExecutable } from "../runner/rojo-runner.js";
 import {
-	ServeAddress,
 	ServerInfo,
 	ServerMessage,
 	SyncServer,
-} from "./serve.js";
+} from "../runner/sync-server.js";
+import { ServeAddress } from "./serve.js";
 
 export interface ServeRequest {
 	/** The configs to serve, by name or path; every config here that no other extends when none. */
@@ -27,14 +28,6 @@ export interface ServeRequest {
 	readonly serverArgs: readonly string[];
 	/** Ends the checks that run other programs, when the run is stopped before it has started. */
 	readonly signal?: AbortSignal;
-}
-
-/** The server a serve starts, as found and checked. */
-export interface ServerExecutable {
-	readonly server: SyncServer;
-	/** The file that runs it. */
-	readonly file: string;
-	readonly version: string;
 }
 
 /** One config a serve serves. */

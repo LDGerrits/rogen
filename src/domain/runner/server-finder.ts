@@ -7,8 +7,8 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessService } from "../../platform/process/process-service.js";
-import { SyncServer } from "./serve.js";
-import { ServerExecutable } from "./serve-service.js";
+import { SyncServer } from "./sync-server.js";
+import { ServerExecutable } from "./rojo-runner.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 

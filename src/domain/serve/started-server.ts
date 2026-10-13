@@ -4,12 +4,11 @@ import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
-	ChildProcess,
 	ProcessExit,
-	ProcessService,
 	exitCodeText,
 } from "../../platform/process/process-service.js";
-import { ServerInfo } from "./serve.js";
+import { RojoProcess, RojoRunner } from "../runner/rojo-runner.js";
+import { ServerInfo } from "../runner/sync-server.js";
 import {
 	ServePlan,
 	ServeTarget,
@@ -18,7 +17,6 @@ import {
 	ServerExitEvent,
 	ServerReadyEvent,
 } from "./serve-service.js";
-import { ServerOutput } from "./server-output.js";
 import { PortState, ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
@@ -56,7 +54,7 @@ export interface RunningServer {
 
 /** A server process the session started for one config, from its start until it is stopped: it reads its output, asks its port until it answers, and records itself once it does. */
 export class StartedServer extends AbstractDisposable implements RunningServer {
-	private readonly child: ChildProcess;
+	private readonly child: RojoProcess;
 	private exited = false;
 	/** Told to stop, by the session or because its config no longer wants it there; its exit is no failure. */
 	private ending = false;
@@ -75,7 +73,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	constructor(
 		readonly target: ServeTarget,
 		private readonly plan: ServePlan,
-		processService: ProcessService,
+		rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly listener: StartedServerListener
@@ -83,25 +81,17 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		super();
 		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
-			processService.spawn(
-				executable.file,
-				executable.server.serveArgs(
-					path.relative(selection.home, target.config.outFile),
-					serverArgs
-				),
-				{
-					cwd: selection.home,
-					env: executable.server.env,
-				}
+			rojoRunner.start(
+				executable,
+				"serve",
+				path.relative(selection.home, target.config.outFile),
+				serverArgs,
+				selection.home
 			)
 		);
-		const output = this._register(new ServerOutput(executable.server));
 		let said = false;
 		this._register(
-			this.child.onDidOutputLine((line) => output.readLine(line))
-		);
-		this._register(
-			output.onDidConnection((change) => {
+			this.child.onDidConnection((change) => {
 				if (this.ending || this.exited) return;
 				const opened = change === "opened";
 				this.connected = Math.max(
@@ -117,7 +107,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 			})
 		);
 		this._register(
-			output.onDidMessage((message) => {
+			this.child.onDidMessage((message) => {
 				if (message.severity !== "debug") said = true;
 				this.listener.said({ target, message });
 			})
@@ -125,7 +115,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this._register(
 			this.child.onDidExit((exit) => {
 				this.exited = true;
-				output.end();
 				if (!this.ending)
 					this.listener.stopped(this.stopOf(exit, said));
 			})

@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { ServerMessage, SyncServer } from "../serve.js";
+import { ServerMessage, SyncServer } from "../sync-server.js";
 import { ServerOutput } from "../server-output.js";
 
 describe("ServerOutput", () => {

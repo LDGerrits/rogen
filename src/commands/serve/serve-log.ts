@@ -8,7 +8,10 @@ import {
 	ServerExitEvent,
 	ServerReadyEvent,
 } from "../../domain/serve/serve-service.js";
-import { ServerInfo, SyncServer } from "../../domain/serve/serve.js";
+import {
+	ServerInfo,
+	SyncServer,
+} from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";

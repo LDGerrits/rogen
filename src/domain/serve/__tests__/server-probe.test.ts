@@ -1,5 +1,6 @@
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
-import { ServeAddress, SyncServer } from "../serve.js";
+import { SyncServer } from "../../runner/sync-server.js";
+import { ServeAddress } from "../serve.js";
 import { ServerProbe } from "../server-probe.js";
 
 describe("ServerProbe", () => {

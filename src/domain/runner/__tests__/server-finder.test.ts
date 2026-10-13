@@ -1,7 +1,7 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
-import { SyncServer } from "../serve.js";
+import { SyncServer } from "../sync-server.js";
 import { ServerFinder } from "../server-finder.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };

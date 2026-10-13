@@ -2,7 +2,7 @@ import { stripVTControlCharacters } from "util";
 import { RunOnceScheduler } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
-import { ServerMessage, SyncServer } from "./serve.js";
+import { ServerMessage, SyncServer } from "./sync-server.js";
 
 /** How long a record waits for more of its lines before it is passed on. */
 const RECORD_QUIET_MS = 50;

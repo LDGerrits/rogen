@@ -3,7 +3,8 @@ import {
 	isSuccess,
 	readBody,
 } from "../../platform/request/request-service.js";
-import { ServeAddress, ServerInfo, SyncServer } from "./serve.js";
+import { ServerInfo, SyncServer } from "../runner/sync-server.js";
+import { ServeAddress } from "./serve.js";
 
 /** How long a port may take to answer before what listens there counts as something else. */
 const PROBE_TIMEOUT_MS = 1_500;

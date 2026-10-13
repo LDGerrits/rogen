@@ -50,6 +50,8 @@ import { CoreUpdateService } from "./domain/update/core-update-service.js";
 import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
+import { CoreRojoRunner } from "./domain/runner/core-rojo-runner.js";
+import { RojoRunner } from "./domain/runner/rojo-runner.js";
 import { CoreServeService } from "./domain/serve/core-serve-service.js";
 import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
@@ -210,16 +212,17 @@ async function main(): Promise<void> {
 		services.set(WatchService, watchService);
 		const processService = new NativeProcessService();
 		services.set(ProcessService, processService);
+		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
+		services.set(RojoRunner, rojoRunner);
 		services.set(
 			ServeService,
 			new CoreServeService(
 				configService,
 				fileSystemService,
-				processService,
+				rojoRunner,
 				requestService,
 				watchService,
-				environmentService,
-				toolchainService
+				environmentService
 			)
 		);
 

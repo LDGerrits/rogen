@@ -5,6 +5,7 @@ import { ConfigService } from "../../domain/config/config-service.js";
 import { CoreConfigService } from "../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../domain/init/core-init-service.js";
 import { InitService } from "../../domain/init/init-service.js";
+import { CoreRojoRunner } from "../../domain/runner/core-rojo-runner.js";
 import { CoreToolchainService } from "../../domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "../../domain/toolchain/toolchain-service.js";
 import { CoreCommandService } from "../../platform/commands/core-command-service.js";
@@ -124,11 +125,10 @@ export function commandHarness(
 		new CoreServeService(
 			config,
 			fs,
-			processes,
+			new CoreRojoRunner(toolchain, processes),
 			requests,
 			watch,
-			environment,
-			toolchain
+			environment
 		)
 	);
 

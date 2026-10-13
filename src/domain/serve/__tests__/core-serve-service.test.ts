@@ -11,12 +11,13 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
+import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
+import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
 
 import { recordFile } from "./record-fixtures.js";
-import { SyncServer } from "../serve.js";
 import {
 	ServePlan,
 	ServeRequest,
@@ -93,11 +94,10 @@ describe("CoreServeService", () => {
 		service = new CoreServeService(
 			configService,
 			memFs,
-			processes,
+			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
 			requests,
 			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
-			new MockEnvironmentService("/repo", undefined, false, "/home/me"),
-			new CoreToolchainService(memFs)
+			new MockEnvironmentService("/repo", undefined, false, "/home/me")
 		);
 	});
 

@@ -7,7 +7,10 @@ import {
 	mockConfig,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { ServeAddress, SyncServer } from "../serve.js";
+import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
+import { SyncServer } from "../../runner/sync-server.js";
+import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { ServeAddress } from "../serve.js";
 import {
 	ServePlan,
 	ServeTarget,
@@ -53,7 +56,7 @@ describe("StartedServer", () => {
 		server = new StartedServer(
 			{ ...target, config: built },
 			plan,
-			processes,
+			new CoreRojoRunner(new CoreToolchainService(fileSystem), processes),
 			new ServerProbe(requests),
 			records,
 			{

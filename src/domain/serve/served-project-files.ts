@@ -1,5 +1,6 @@
 import { samePath } from "../../base/path.js";
-import { ServeAddress, SyncServer } from "./serve.js";
+import { SyncServer } from "../runner/sync-server.js";
+import { ServeAddress } from "./serve.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecord, ServerRecords } from "./server-records.js";
 
