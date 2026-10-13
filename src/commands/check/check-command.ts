@@ -3,10 +3,7 @@ import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
-import {
-	ConfigSelectionOptions,
-	ConfigService,
-} from "../../domain/config/config-service.js";
+import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -25,7 +22,7 @@ import {
 	diagnosticsJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 
-const CheckOptions = [...ConfigSelectionOptions, JsonOption] as const;
+const CheckOptions = [JsonOption] as const;
 
 registerCommand(
 	class CheckCommand extends AbstractCommand<typeof CheckOptions> {
@@ -64,7 +61,7 @@ registerCommand(
 			const logService = accessor.get(LogService);
 
 			// The positionals are paths, so every config here is read.
-			const selection = await configService.select([], line.options);
+			const selection = await configService.select([]);
 			if (selection.isErr()) return selection;
 			const found = await buildService.diagnose(
 				selection.value,

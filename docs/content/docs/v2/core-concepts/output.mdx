@@ -124,14 +124,27 @@ To write the same tree with paths into a different folder, add a config that `ex
 Rogen writes the project file, not the place file. To get an `.rbxl` or `.rbxm` for publishing or a test run, build the project file with Rojo:
 
 ```bash
-rogen build --variant mock -o mock.project.json
-rojo build mock.project.json -o mock.rbxl
+rogen build -o release.project.json
+rojo build release.project.json -o release.rbxl
 ```
 
-`-o` writes the project file somewhere else, so the one a running `rogen serve` serves stays as it is. It changes a single config, so with several configs name one that no other config extends: naming a config also builds the configs that extend it, each into its own project file and with the same variants. Rogen refuses to change a file a running `serve` serves with other variants, so the build would fail on those. `rogen list` shows what extends what. In a repo with one config, `rogen build --variant mock -o mock.project.json` is the whole command; with places, build the place (`rogen build lobby --variant mock -o lobby.mock.project.json`). With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first and build the config that has the `syncDir`, so the place holds the compiled code.
+`-o` writes the project file somewhere else, so the one a running `rogen serve` serves stays as it is. It changes a single config, so with several configs name one that no other config extends: naming a config also builds the configs that extend it, each into its own project file. `rogen list` shows what extends what. In a repo with one config, `rogen build -o release.project.json` is the whole command; with places, build the place (`rogen build lobby -o lobby.release.project.json`).
+
+A release that differs from your default build is a config of its own. One that leaves out the specs, for example, extends the default config and adds an `exclude`. Put it in a folder of its own, since beside `default.rogen.json` it would take the place of the config `rogen serve` syncs to Studio. `rogen build release/release.rogen.json` then writes `release/release.project.json`:
+
+```json title="release/release.rogen.json"
+{
+	"extends": "../default.rogen.json",
+	"exclude": ["../**/*.spec.luau"]
+}
+```
+
+A glob is relative to the file that wrote it, so this one starts with `..` to reach the files of the config above it. For files that only some builds have, see [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+
+With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first and build the config that has the `syncDir`, so the place holds the compiled code.
 
 Rojo, and not Rogen, runs the second command, and `rogen build` needs no Rojo to run. Which Rojo version builds the file is yours to pin in `rokit.toml`.
 
 ## Building While Watching
 
-It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file with the same variants, so you can always run a build after moving files and trust the result. A build with other variants would change what a running `serve` sends to Studio, so Rogen refuses it ([`output.servedInOtherMode`](/docs/v2/diagnostics#output-servedinothermode)): build to another file with `-o`, as in `rogen build --variant mock -o mock.project.json`.
+It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file, so you can always run a build after moving files and trust the result. What a build writes depends only on your files and configs, so it matches what the running command writes.

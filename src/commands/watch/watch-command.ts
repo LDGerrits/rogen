@@ -39,7 +39,7 @@ registerCommand(
 					options: WatchOptions,
 					examples: [
 						"rogen watch",
-						"rogen watch lobby --variant dev",
+						"rogen watch lobby",
 						"rogen watch --json",
 					],
 				},

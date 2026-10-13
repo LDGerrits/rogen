@@ -11,7 +11,6 @@ stdout:
     Run each in its own terminal:
       rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json
       rogen serve
-    Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on with --variant.
   Wrote 3 files.
 
 $ rogen build

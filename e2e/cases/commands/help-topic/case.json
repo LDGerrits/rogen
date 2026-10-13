@@ -1,8 +1,8 @@
 {
 	"steps": [
-		["help", "variants"],
+		["help", "layout"],
 		["help", "route.dotRoute"],
-		["help", "varients"],
+		["help", "layuot"],
 		["help", "route.dotRoot"]
 	],
 	"rojo": false

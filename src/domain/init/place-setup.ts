@@ -83,6 +83,5 @@ export class PlaceSetup implements Setup<PlaceChoices> {
 			builder,
 			PlacePlan.serveCommandOf([place], choices.base.sharedPort)
 		);
-		builder.addEdit(place.configSet.variantsStep);
 	}
 }

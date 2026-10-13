@@ -3,7 +3,7 @@ import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";
 
-/** What a folder's name declares once its parentheses are off: the route and variants it claims, and the name it keeps. */
+/** What a folder's name declares once its parentheses are off: the route it claims, and the name it keeps. */
 export interface FolderNameReading {
 	readonly invisible: boolean;
 	/** Written `^Name`: it lands at its route's target, and the folders above it are dropped. */
@@ -14,13 +14,11 @@ export interface FolderNameReading {
 	readonly at: boolean;
 	/** Route keys its name spells before the one it routes by, which that one outranks. */
 	readonly innerRoutes: readonly string[];
-	/** Its whole name, or `.variant` parts at its end. */
-	readonly variants: readonly string[];
-	/** Its name with its keys off; none for a folder named after a key alone, which exists only to declare it. */
+	/** Its name with its route off; none for a folder named after a key alone, which exists only to declare it. */
 	readonly keptName?: string;
-	/** The name it keeps when an outer route outranks its own: only its variants come off. */
+	/** The name it keeps when an outer route outranks its own: its whole name, with its parentheses and `^` off. */
 	readonly outrankedName: string;
-	/** What its name misspells, measured on the folder's whole name: an `@` when it declares no route, a dot part only when it declares nothing. */
+	/** What its name misspells, measured on the folder's whole name: an `@` when it declares no route, a dot-folder that spells a route key. */
 	readonly misspellings: readonly Misspelling[];
 }
 
@@ -29,11 +27,11 @@ export interface SuffixMatch {
 	readonly matchedKeys: ReadonlySet<string>;
 	/** In match order: the trailing key first. */
 	readonly spans: readonly SuffixSpan[];
-	/** What the base name misspells: an `@` that doesn't route, a dot part one edit from a variant, or a route key after a dot. */
+	/** What the base name misspells: an `@` that doesn't route, or a route key after a dot. */
 	readonly misspellings: readonly Misspelling[];
 }
 
-/** Finds the config's declared keys in folder names, marker files and file suffixes. */
+/** Finds the config's route keys in folder names, marker files and file suffixes. */
 export class NameReader {
 	private readonly finder: MisspellingFinder;
 
@@ -62,15 +60,15 @@ export class NameReader {
 		};
 	}
 
-	/** A folder declares a key as its whole name (`server`, `mock`, `@server`, `.mock`) or as suffixes after a name it keeps (`Name@server`, `Name.mock`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
+	/** A folder declares a route as its whole name (`server`, `@server`) or as a suffix after a name it keeps (`Name@server`); parentheses come off first. Only a file's dot routes to Rojo's script class. */
 	folder(folderName: string): FolderNameReading {
 		const { name, invisible, hoisted, offset } =
 			NameReader.readFolderName(folderName);
-		const bareRoute = this.keys.resolveRoute(name);
+		const bareRoute = this.keys.resolve(name);
 		const route =
 			bareRoute ??
 			(name.startsWith("@")
-				? this.keys.resolveRoute(name.slice(1))
+				? this.keys.resolve(name.slice(1))
 				: undefined);
 		const lead = { invisible, hoisted };
 		if (route)
@@ -78,17 +76,8 @@ export class NameReader {
 				route,
 				at: bareRoute === undefined,
 			});
-		const dotted = name.startsWith(".") ? name.slice(1) : undefined;
-		const variant = this.keys.resolveVariant(dotted ?? name);
-		if (variant)
-			return NameReader.reading(lead, name, {
-				variants: [variant],
-				misspellings: NameReader.inFolderName(
-					NameReader.present([this.finder.strayAt(name)]),
-					offset
-				),
-			});
 
+		const dotted = name.startsWith(".") ? name.slice(1) : undefined;
 		const dotName =
 			dotted !== undefined && this.finder.dotNameMisspelling(dotted);
 		if (dotName)
@@ -99,7 +88,7 @@ export class NameReader {
 		return this.suffixedFolder(name, lead, offset);
 	}
 
-	/** A folder named by suffixes after a name it keeps, such as `Name@server` or `Name.mock`; or by a leading key beside them. */
+	/** A folder named by a suffix after a name it keeps, such as `Name@server`. */
 	private suffixedFolder(
 		name: string,
 		{
@@ -109,24 +98,10 @@ export class NameReader {
 		offset: number
 	): FolderNameReading {
 		const suffixed = this.suffixes(name, false);
-		const leading =
-			suffixed.spans.length > 0
-				? this.leadingKey(suffixed.baseName, suffixed.spans)
-				: undefined;
-		const leadingTypo =
-			!leading && suffixed.baseName.startsWith(".")
-				? this.finder.dotNameTypo(suffixed.baseName.slice(1))
-				: undefined;
-		const spans = leading ? [...suffixed.spans, leading] : suffixed.spans;
-		const variantSpans = spans.filter(({ key }) =>
-			this.keys.isVariant(key)
-		);
-		const [routeSpan, ...innerRouteSpans] = spans.filter(({ key }) =>
-			this.keys.isRoute(key)
-		);
+		const [routeSpan, ...innerRouteSpans] = suffixed.spans;
 		const keptName = InstanceName.withoutSpans(
 			name,
-			routeSpan ? [...variantSpans, routeSpan] : variantSpans
+			routeSpan ? [routeSpan] : []
 		);
 		return {
 			invisible,
@@ -134,9 +109,8 @@ export class NameReader {
 			...(routeSpan && { route: routeSpan.key }),
 			at: routeSpan !== undefined,
 			innerRoutes: innerRouteSpans.map(({ key }) => key),
-			variants: variantSpans.map(({ key }) => key),
 			...(keptName !== "" && { keptName }),
-			outrankedName: InstanceName.withoutSpans(name, variantSpans),
+			outrankedName: name,
 			misspellings: NameReader.inFolderName(
 				[
 					...(routeSpan
@@ -145,7 +119,6 @@ export class NameReader {
 					...suffixed.misspellings.filter(
 						({ kind }) => kind !== "strayAt"
 					),
-					...NameReader.present([leadingTypo]),
 					...(routeSpan
 						? []
 						: NameReader.present([
@@ -171,25 +144,10 @@ export class NameReader {
 			hoisted,
 			at: false,
 			innerRoutes: [],
-			variants: [],
 			outrankedName: name,
 			misspellings: [],
 			...claims,
 		};
-	}
-
-	/** The rest of a folder's name once its suffixes are off, when that is one more signed key (`.mock` in `.mock@server`): the folder then leaves no name. */
-	private leadingKey(
-		baseName: string,
-		spans: readonly SuffixSpan[]
-	): SuffixSpan | undefined {
-		const text = baseName.slice(1);
-		const routed = spans.some(({ key }) => this.keys.isRoute(key));
-		let key: string | undefined;
-		if (baseName.startsWith("@") && !routed)
-			key = this.keys.resolveRoute(text);
-		else if (baseName.startsWith(".")) key = this.keys.resolveVariant(text);
-		return key ? { key, start: 0, length: baseName.length } : undefined;
 	}
 
 	/** Misspellings read in a folder's name, with their respellings measured on the folder's whole name. */
@@ -216,37 +174,27 @@ export class NameReader {
 		return misspellings.filter((misspelt) => misspelt !== undefined);
 	}
 
-	/** The declared key a marker file spells with its sign: `@server` for a route, `.mock` for a variant. */
+	/** The route a marker file spells with its `@`. A dot-file claims nothing, but warns when it spells a route key. */
 	marker(fileName: string): MarkerReading {
 		const text = fileName.slice(1);
-		const nearMiss = this.keys.nearMiss(text);
-		if (fileName.startsWith("@")) {
-			const key = this.keys.resolveRoute(text);
+		if (!fileName.startsWith("@"))
 			return {
-				key,
-				nearMissKey:
-					nearMiss && !this.keys.isVariant(nearMiss)
-						? nearMiss
-						: undefined,
-				// A case-only miss gets the letter-case warning instead.
-				misspellings:
-					key === undefined && !nearMiss
-						? NameReader.present([this.finder.strayAt(fileName)])
-						: [],
+				key: undefined,
+				nearMissKey: undefined,
+				misspellings: NameReader.present([
+					this.finder.dotNameMisspelling(text),
+				]),
 			};
-		}
-		const key = this.keys.resolveVariant(text);
+		const key = this.keys.resolve(text);
+		const nearMiss = this.keys.nearMiss(text);
 		return {
 			key,
-			nearMissKey:
-				nearMiss && this.keys.isVariant(nearMiss)
-					? nearMiss
-					: undefined,
-			misspellings: NameReader.present([
-				key === undefined
-					? this.finder.dotNameMisspelling(text)
-					: undefined,
-			]),
+			nearMissKey: nearMiss,
+			// A case-only miss gets the letter-case warning instead.
+			misspellings:
+				key === undefined && !nearMiss
+					? NameReader.present([this.finder.strayAt(fileName)])
+					: [],
 		};
 	}
 
@@ -273,13 +221,12 @@ export class NameReader {
 			spans,
 			misspellings: NameReader.present([
 				this.finder.strayAt(remaining),
-				this.finder.variantTypo(remaining),
 				this.finder.dotRoute(remaining, dotRoutes, stem),
 			]),
 		};
 	}
 
-	/** `@route` at the end, or a trailing dot part that is a variant or Rojo's `.server`/`.client` of a declared route. */
+	/** `@route` at the end, or Rojo's `.server`/`.client` of a declared route as a trailing dot part. */
 	private trailingSpan(
 		remaining: string,
 		dotRoutes: boolean,
@@ -290,16 +237,15 @@ export class NameReader {
 		if (dot > at) {
 			const part = remaining.slice(dot + 1);
 			const key =
-				this.keys.resolveVariant(part) ??
-				(dotRoutes && RUN_SCRIPT_SUFFIXES.has(part)
-					? this.keys.resolveRoute(part)
-					: undefined);
+				dotRoutes && RUN_SCRIPT_SUFFIXES.has(part)
+					? this.keys.resolve(part)
+					: undefined;
 			return key && dot > 0
 				? { key, start: dot, length: remaining.length - dot }
 				: undefined;
 		}
 		// A bare `@key` names nothing alone, but before another route it is one more route the name spells.
-		const key = this.keys.resolveRoute(remaining.slice(at + 1));
+		const key = this.keys.resolve(remaining.slice(at + 1));
 		return (at > 0 || (at === 0 && routed)) && key
 			? { key, start: at, length: remaining.length - at }
 			: undefined;
@@ -307,9 +253,9 @@ export class NameReader {
 }
 
 export interface MarkerReading {
-	/** The declared route or variant key the marker spells. */
+	/** The declared route key the marker spells. */
 	readonly key: string | undefined;
 	readonly nearMissKey: string | undefined;
-	/** An `@` that doesn't route, or a route key after the dot of a variant marker. */
+	/** An `@` that doesn't route, or a route key written as a dot-file. */
 	readonly misspellings: readonly Misspelling[];
 }

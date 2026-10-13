@@ -90,7 +90,7 @@ describe("CoreConfigService", () => {
 			const selection = (
 				await start({
 					names: ["lobby"],
-					overrides: { outFile: "a.json", variants: {} },
+					overrides: { outFile: "a.json" },
 				})
 			).unwrap();
 
@@ -110,7 +110,7 @@ describe("CoreConfigService", () => {
 		it("should refuse -o with several named configs", async () => {
 			const error = await refusal({
 				names: ["lobby", "match.rogen.json"],
-				overrides: { outFile: "a.json", variants: {} },
+				overrides: { outFile: "a.json" },
 			});
 
 			expect(error).toBeInstanceOf(UsageError);
@@ -122,7 +122,7 @@ describe("CoreConfigService", () => {
 		it("should refuse -o when none is named and several are here", async () => {
 			const error = await refusal({
 				names: [],
-				overrides: { outFile: "a.json", variants: {} },
+				overrides: { outFile: "a.json" },
 			});
 
 			expect(error?.message).toBe(
@@ -135,7 +135,7 @@ describe("CoreConfigService", () => {
 
 			const result = await start({
 				names: ["lobby"],
-				overrides: { outFile: "a.json", variants: {} },
+				overrides: { outFile: "a.json" },
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -146,7 +146,7 @@ describe("CoreConfigService", () => {
 
 			const result = await start({
 				names: [],
-				overrides: { outFile: "a.json", variants: {} },
+				overrides: { outFile: "a.json" },
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -163,7 +163,6 @@ describe("CoreConfigService", () => {
 			expect(plain(resolved(0))).toMatchObject({
 				rootDirs: ["/repo/src"],
 				routes: {},
-				variants: {},
 				exclude: [],
 				outFile: "/repo/default.project.json",
 			});

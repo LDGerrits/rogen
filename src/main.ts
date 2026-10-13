@@ -51,9 +51,7 @@ import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import { CoreServeService } from "./domain/serve/core-serve-service.js";
-import { ServedProjectFiles } from "./domain/serve/served-project-files.js";
-import { ServerProbe } from "./domain/serve/server-probe.js";
-import { ServerRecords } from "./domain/serve/server-records.js";
+
 import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
 import "./commands/check/check-command.js";
@@ -164,19 +162,10 @@ async function main(): Promise<void> {
 		services.set(ToolchainService, toolchainService);
 		const requestService = new NativeRequestService();
 		services.set(RequestService, requestService);
-		const servedProjectFiles = new ServedProjectFiles(
-			new ServerRecords(
-				fileSystemService,
-				environmentService.tmpDir,
-				environmentService.pid
-			),
-			new ServerProbe(requestService)
-		);
 		const buildService = new CoreBuildService(
 			fileSystemService,
 			indexService,
-			toolchainService.syncTools,
-			servedProjectFiles.guard
+			toolchainService.syncTools
 		);
 		services.set(BuildService, buildService);
 		services.set(

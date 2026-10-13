@@ -3,12 +3,12 @@
 		["build", "--nope"],
 		["build", "--root-dir", "src"],
 		["watch", "-w"],
-		["build", "--variant"],
+		["build", "-o"],
 		["build", "--json=yes"],
 		["build", "--jsno"],
-		["init", "--variant", "x"],
+		["init", "--nope", "x"],
 		["build", "--nope", "--json"],
 		["--nope"],
-		["--variant", "x"]
+		["--out-file", "x"]
 	]
 }

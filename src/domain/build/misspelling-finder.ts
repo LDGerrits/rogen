@@ -2,12 +2,12 @@ import { editDistance, closestMatches } from "../../base/strings.js";
 import { DeclaredKeys } from "../config/config.js";
 import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 
-/** An `@` followed by a near miss of a declared route, by a route that isn't at the end of the name, or by a declared variant, which takes a dot. */
+/** An `@` followed by a near miss of a declared route, or by a route that isn't at the end of the name. */
 export interface StrayAt {
 	readonly kind: "strayAt";
 	/** The name after the `@`, up to the next dot. */
 	readonly text: string;
-	/** What to write instead: the closest route key's `@` form, or a variant's dot form. */
+	/** What to write instead: the closest route key's `@` form. */
 	readonly suggestion: string;
 	/** `text` is a declared route, but dot parts follow it, so it isn't at the end of the name. */
 	readonly notLast: boolean;
@@ -26,26 +26,15 @@ export interface DotRoute {
 /** A folder whose whole name is one edit from a declared route key. */
 export interface FolderTypo {
 	readonly kind: "folderTypo";
-	/** The folder's name with its parentheses, `^` and variant parts off. */
+	/** The folder's name with its parentheses and `^` off. */
 	readonly text: string;
 	readonly key: string;
 	/** The one rename that fixes it: none when another key is as close. */
 	readonly respelling?: Respelling;
 }
 
-/** A trailing dot part, or a folder's whole name, that is one edit from a declared variant. */
-export interface VariantTypo {
-	readonly kind: "variantTypo";
-	readonly text: string;
-	readonly variant: string;
-	/** The name is a folder's whole name, so the variant is written without a dot. */
-	readonly bare?: true;
-	/** The one rename that fixes it: none when another variant is as close. */
-	readonly respelling?: Respelling;
-}
-
 /** A name that looks like a slip in spelling a declared key. */
-export type Misspelling = StrayAt | DotRoute | FolderTypo | VariantTypo;
+export type Misspelling = StrayAt | DotRoute | FolderTypo;
 
 export type MisspellingKind = Misspelling["kind"];
 
@@ -93,11 +82,7 @@ export class MisspellingFinder {
 
 	/** The route a dot part spells in any letter case: the dot is already the slip, so the case is fixed with it. */
 	private dotRouteKey(text: string): string | undefined {
-		const nearMiss = this.keys.nearMiss(text);
-		return (
-			this.keys.resolveRoute(text) ??
-			(nearMiss && !this.keys.isVariant(nearMiss) ? nearMiss : undefined)
-		);
+		return this.keys.resolve(text) ?? this.keys.nearMiss(text);
 	}
 
 	/** `.text` at `start`, which spells the route `key`, respelt with its `@`. In a script's `stem`, Rojo's own suffix is respelt as Rojo reads it: lower case, and last. */
@@ -120,37 +105,18 @@ export class MisspellingFinder {
 		return { kind: "dotRoute", text, key, respelling };
 	}
 
-	/** `.spec` and `.story` are ordinary names, so only a part one edit from a declared variant is reported. */
-	variantTypo(remaining: string): VariantTypo | undefined {
-		const dot = remaining.lastIndexOf(".");
-		if (dot <= 0 || dot < remaining.lastIndexOf("@")) return undefined;
-		const text = remaining.slice(dot + 1);
-		if (RUN_SCRIPT_SUFFIXES.has(text) || this.dotRouteKey(text))
-			return undefined;
-		return this.variantTypoOf(text, dot);
-	}
-
-	/** A dot-file or dot-folder `.text` that isn't a variant: a route key written with a dot, or a variant's near miss. */
-	dotNameMisspelling(text: string): Misspelling | undefined {
+	/** A dot-file or dot-folder `.text` that spells a route key, which only `@` routes. */
+	dotNameMisspelling(text: string): DotRoute | undefined {
 		const route = this.dotRouteKey(text);
-		return route
-			? MisspellingFinder.dotRouteOf(text, route, 0)
-			: this.dotNameTypo(text);
+		return route ? MisspellingFinder.dotRouteOf(text, route, 0) : undefined;
 	}
 
-	/** A dot is a variant's sign, so a near miss is reported; one that differs in letter case alone gets the letter-case warning instead. */
-	dotNameTypo(text: string): VariantTypo | undefined {
-		if (this.keys.resolve(text) !== undefined || this.keys.nearMiss(text))
-			return undefined;
-		return this.variantTypoOf(text, 0);
-	}
-
-	/** A folder named one edit from a declared key, which would route or prune if it were spelt right. A key shorter than four letters is not offered, since it is one edit from real words. */
-	folderTypo(name: string): FolderTypo | VariantTypo | undefined {
+	/** A folder named one edit from a declared route key, which would route if it were spelt right. A key shorter than four letters is not offered, since it is one edit from real words. */
+	folderTypo(name: string): FolderTypo | undefined {
 		if (this.keys.resolve(name) !== undefined || this.keys.nearMiss(name))
 			return undefined;
 		const identity = DeclaredKeys.identityOf(name);
-		const keys = [...this.keys.all].filter(
+		const keys = [...this.keys.routeKeys].filter(
 			(key) =>
 				key.length >= MIN_TYPO_KEY_LENGTH &&
 				editDistance(identity, DeclaredKeys.identityOf(key)) === 1
@@ -166,50 +132,11 @@ export class MisspellingFinder {
 			keys.length === 1
 				? { start: 0, written: name, spelling }
 				: undefined;
-		return this.keys.isVariant(key)
-			? {
-					kind: "variantTypo",
-					text: name,
-					variant: key,
-					bare: true,
-					...(respelling && { respelling }),
-				}
-			: {
-					kind: "folderTypo",
-					text: name,
-					key,
-					...(respelling && { respelling }),
-				};
-	}
-
-	/** `.text`, written at `start`, as a typo of the closest declared variant one edit away, if any. */
-	private variantTypoOf(
-		text: string,
-		start: number
-	): VariantTypo | undefined {
-		const distances = [...this.keys.variantKeys]
-			.map((key) => ({
-				key,
-				distance: editDistance(text.toLowerCase(), key.toLowerCase()),
-			}))
-			.filter(({ distance }) => distance <= 1);
-		const nearest = Math.min(...distances.map(({ distance }) => distance));
-		const variants = distances
-			.filter(({ distance }) => distance === nearest)
-			.map(({ key }) => key);
-		if (variants.length === 0) return undefined;
-		const [variant] = variants;
 		return {
-			kind: "variantTypo",
-			text,
-			variant,
-			...(variants.length === 1 && {
-				respelling: {
-					start,
-					written: `.${text}`,
-					spelling: `.${variant}`,
-				},
-			}),
+			kind: "folderTypo",
+			text: name,
+			key,
+			...(respelling && { respelling }),
 		};
 	}
 
@@ -219,19 +146,8 @@ export class MisspellingFinder {
 		const text = name.slice(at + 1).split(".")[0];
 		if (text === "") return undefined;
 		const written = `@${text}`;
-		const variant = this.keys.resolveVariant(text);
-		if (variant) {
-			const suggestion = `.${variant}`;
-			return {
-				kind: "strayAt",
-				text,
-				suggestion,
-				notLast: false,
-				respelling: { start: at, written, spelling: suggestion },
-			};
-		}
 		const closest = closestMatches(text, this.keys.routeKeys);
-		const notLast = this.keys.resolveRoute(text) !== undefined;
+		const notLast = this.keys.resolve(text) !== undefined;
 		// Package names use `@` too (`@rbxts`, `owner_name@1.5.1`), so only a near miss of a route is a typo.
 		if (closest.length === 0 || (at === 0 && notLast)) return undefined;
 		const suggestion = `@${closest[0]}`;

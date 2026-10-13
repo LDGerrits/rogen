@@ -9,22 +9,6 @@ import {
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
 
-const VariantOption = {
-	name: "variant",
-	type: "string",
-	placeholder: "name",
-	multiple: true,
-	description: "Turns a variant on.",
-} as const satisfies OptionDescriptor;
-
-const NoVariantOption = {
-	name: "no-variant",
-	type: "string",
-	placeholder: "name",
-	multiple: true,
-	description: "Turns a variant off, whatever turned it on.",
-} as const satisfies OptionDescriptor;
-
 /** The positional words that name the configs a command reads. */
 export const ConfigArguments = [
 	{
@@ -35,12 +19,6 @@ export const ConfigArguments = [
 		isVariadic: true,
 	},
 ] as const;
-
-/** The flags that say which variants are on in the configs a command reads. */
-export const ConfigSelectionOptions = [
-	VariantOption,
-	NoVariantOption,
-] as const satisfies readonly OptionDescriptor[];
 
 export const OutFileOption = {
 	name: "out-file",
@@ -53,10 +31,9 @@ export const OutFileOption = {
 /** The flags that override the configs a command builds. */
 export const ConfigOptions = [
 	OutFileOption,
-	...ConfigSelectionOptions,
 ] as const satisfies readonly OptionDescriptor[];
 
-/** What a command line says about the configs to read; `ConfigSelectionOptions` give a part of it. */
+/** What a command line says about the configs to read. */
 export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
 
 interface ConfigEntryFields {
@@ -165,7 +142,7 @@ export interface ConfigService {
 	/** Loads the configs `refs` names, with those beside them that extend them, else every config here (or in the nearest folder above that has any), with `options` applied. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
 		refs: readonly string[],
-		options: ConfigOptionValues
+		options?: ConfigOptionValues
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above the working directory that has configs. */
 	findEnclosing(): Promise<EnclosingConfigs | undefined>;

@@ -1,13 +1,11 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { BuildSetting } from "../build/build.js";
 import { ServeAddress, ServerInfo } from "./serve.js";
 
-/** What a serve writes into the project file it serves, which a later build or serve checks against its own. */
+/** What a serve records of the project file it serves. */
 export interface ServedBuild {
 	readonly projectFile: string;
-	readonly setting: BuildSetting;
 	/** How many Studio plugins are connected; none when the server doesn't say. */
 	readonly clients?: number;
 }
@@ -20,8 +18,6 @@ export interface ServerRecord extends ServedBuild {
 	readonly server: string;
 	readonly project: string;
 	readonly session?: string;
-	/** The process of the serve that wrote it. */
-	readonly pid?: number;
 }
 
 function recordIn(value: unknown): ServerRecord | undefined {
@@ -32,9 +28,7 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		typeof value.server !== "string" ||
 		typeof value.project !== "string" ||
 		typeof value.projectFile !== "string" ||
-		!isObject(value.variants) ||
 		(value.session !== undefined && typeof value.session !== "string") ||
-		(value.pid !== undefined && typeof value.pid !== "number") ||
 		(value.clients !== undefined && typeof value.clients !== "number")
 	)
 		return undefined;
@@ -44,17 +38,8 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		server: value.server,
 		project: value.project,
 		session: value.session,
-		pid: value.pid,
 		projectFile: value.projectFile,
 		clients: value.clients,
-		setting: {
-			variants: Object.fromEntries(
-				Object.entries(value.variants).filter(
-					(entry): entry is [string, boolean] =>
-						typeof entry[1] === "boolean"
-				)
-			),
-		},
 	};
 }
 
@@ -64,9 +49,7 @@ export class ServerRecords {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		tmpDir: string,
-		/** The process these records are written for. */
-		private readonly pid: number
+		tmpDir: string
 	) {
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}
@@ -112,19 +95,12 @@ export class ServerRecords {
 				host: address.host,
 				port: address.port,
 				server: info.server.id,
-				pid: this.pid,
 				session: info.session,
 				project: info.project,
 				projectFile: built.projectFile,
 				clients: built.clients,
-				variants: built.setting.variants,
 			})
 		);
-	}
-
-	/** Whether this process wrote `record`, whose serve rebuilds its project file itself. */
-	owns(record: ServerRecord): boolean {
-		return record.pid === this.pid;
 	}
 
 	async remove(address: ServeAddress): Promise<void> {

@@ -11,11 +11,6 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
-interface VariantEntry {
-	readonly variant: string;
-	readonly form: string;
-}
-
 /** What every answer about a path carries, whichever way it lands. */
 interface FileEntryBase {
 	readonly config: string;
@@ -33,12 +28,7 @@ type LocationFields =
 			readonly alsoAt?: readonly (readonly string[])[];
 			readonly route: string;
 			readonly routeMatch: string;
-			readonly variants: readonly VariantEntry[];
 			readonly hoisted?: true;
-	  }
-	| {
-			readonly status: "pruned";
-			readonly variants: readonly VariantEntry[];
 	  }
 	| { readonly status: "replaced"; readonly by: string }
 	| { readonly status: "extensionCase"; readonly rename: string }
@@ -88,11 +78,6 @@ export interface WhereDocument {
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-const variantsOf = (
-	variants: readonly VariantEntry[]
-): readonly VariantEntry[] =>
-	variants.map(({ variant, form }) => ({ variant, form }));
-
 /** What `location` adds to its source and status in the document. */
 function fieldsOf(location: FileLocation): LocationFields {
 	switch (location.status) {
@@ -105,15 +90,9 @@ function fieldsOf(location: FileLocation): LocationFields {
 				...(location.alsoAt && { alsoAt: location.alsoAt }),
 				route: location.route,
 				routeMatch: location.routeMatch,
-				variants: variantsOf(location.variants),
 				...(location.hoisted && { hoisted: true as const }),
 			};
 		}
-		case "pruned":
-			return {
-				status: "pruned",
-				variants: variantsOf(location.variants),
-			};
 		case "replaced":
 			return { status: "replaced", by: toNative(location.by) };
 		case "extensionCase":

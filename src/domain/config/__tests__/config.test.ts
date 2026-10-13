@@ -177,18 +177,12 @@ describe("domain/config/config", () => {
 	});
 
 	describe("DeclaredKeys", () => {
-		const routes = new DeclaredKeys(["server", "client", "shared"], []);
-		const withVariants = new DeclaredKeys(
-			["server", "client", "shared"],
-			["mock", "debug"]
-		);
+		const routes = new DeclaredKeys(["server", "client", "shared"]);
 
 		it("should hold every key except the fallback route, which no name can spell", () => {
-			const keys = new DeclaredKeys(["*", "server"], ["mock"]);
+			const keys = new DeclaredKeys(["*", "server"]);
 
 			expect([...keys.routeKeys]).toEqual(["server"]);
-			expect([...keys.variantKeys]).toEqual(["mock"]);
-			expect([...keys.all]).toEqual(["server", "mock"]);
 		});
 
 		describe("resolve", () => {
@@ -198,7 +192,7 @@ describe("domain/config/config", () => {
 
 			it("should match with the first letter in the other case and report the declared key", () => {
 				expect(routes.resolve("Server")).toBe("server");
-				expect(new DeclaredKeys(["Server"], []).resolve("server")).toBe(
+				expect(new DeclaredKeys(["Server"]).resolve("server")).toBe(
 					"Server"
 				);
 			});
@@ -211,14 +205,6 @@ describe("domain/config/config", () => {
 			it("should not match an undeclared name or an empty one", () => {
 				expect(routes.resolve("Inventory")).toBeUndefined();
 				expect(routes.resolve("")).toBeUndefined();
-			});
-
-			it("should tell a route from a variant", () => {
-				expect(withVariants.resolveRoute("mock")).toBeUndefined();
-				expect(withVariants.resolveVariant("mock")).toBe("mock");
-				expect(withVariants.resolveRoute("Server")).toBe("server");
-				expect(withVariants.resolveVariant("server")).toBeUndefined();
-				expect(withVariants.resolve("Mock")).toBe("mock");
 			});
 		});
 
@@ -236,11 +222,6 @@ describe("domain/config/config", () => {
 			it("should ignore an unrelated name", () => {
 				expect(routes.nearMiss("Inventory")).toBeUndefined();
 			});
-		});
-
-		it("should say which keys are variants", () => {
-			expect(withVariants.isVariant("mock")).toBe(true);
-			expect(withVariants.isVariant("server")).toBe(false);
 		});
 
 		it("should share an identity between keys that differ only in the first letter", () => {
@@ -293,43 +274,15 @@ describe("domain/config/config", () => {
 			expect(mockConfig({ rootDirs: [] }).commonRoot).toBeUndefined();
 		});
 
-		it("should pick out the variants a file carries that are off", () => {
-			const config = mockConfig({ variants: { mock: true, dev: false } });
-
-			expect(
-				config.dormantVariants([
-					{ variant: "mock", form: "suffix" },
-					{ variant: "dev", form: "folder" },
-				])
-			).toEqual([{ variant: "dev", form: "folder" }]);
-		});
-
-		it("should say whether every variant a file carries is on", () => {
-			const config = mockConfig({ variants: { mock: true, dev: false } });
-
-			expect(config.allVariantsOn([])).toBe(true);
-			expect(
-				config.allVariantsOn([{ variant: "mock", form: "suffix" }])
-			).toBe(true);
-			expect(
-				config.allVariantsOn([
-					{ variant: "mock", form: "suffix" },
-					{ variant: "dev", form: "folder" },
-				])
-			).toBe(false);
-		});
-
-		it("should know its declared keys from its routes and variants", () => {
+		it("should know its declared keys from its routes", () => {
 			const { keys } = mockConfig({
 				routes: {
 					"*": "ReplicatedStorage",
 					server: "ServerScriptService",
 				},
-				variants: { mock: true },
 			});
 
 			expect([...keys.routeKeys]).toEqual(["server"]);
-			expect([...keys.variantKeys]).toEqual(["mock"]);
 		});
 	});
 

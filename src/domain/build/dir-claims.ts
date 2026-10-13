@@ -1,18 +1,15 @@
 import { dirnamePosix, joinPosix } from "../../base/path.js";
-import { DeclaredKeys } from "../config/config.js";
 import { NameReadings } from "./name-readings.js";
 import { ScannedRoot } from "./root-scanner.js";
 
-/** The route an init script's suffix gives the folder it sits in, whether it's spelled `@key`, and the script's variants. */
+/** The route an init script's suffix gives the folder it sits in, and whether it's spelled `@key`. */
 export interface InitRoute {
 	readonly key: string;
 	readonly source: string;
 	readonly at: boolean;
-	/** In the order the name spells them. */
-	readonly variants: readonly string[];
 }
 
-/** A marker file in a folder, with the declared key it spells. */
+/** A marker file in a folder, with the route key it spells. */
 export interface FolderMarker {
 	readonly fileName: string;
 	readonly key: string;
@@ -25,8 +22,7 @@ export class DirClaims {
 
 	constructor(
 		private readonly root: ScannedRoot,
-		private readonly readings: NameReadings,
-		private readonly keys: DeclaredKeys
+		private readonly readings: NameReadings
 	) {
 		this.markers = root.markersByDir();
 		this.initRoutes = this.initRoutesOf();
@@ -37,7 +33,7 @@ export class DirClaims {
 		return new Set([...this.markers.keys(), ...this.initRoutes.keys()]);
 	}
 
-	/** The markers of `dir` that spell a declared key. */
+	/** The markers of `dir` that spell a route key. */
 	markersAt(dir: string): FolderMarker[] {
 		return (this.markers.get(dir) ?? []).flatMap((fileName) => {
 			const key = this.readings.markers.get(
@@ -52,22 +48,7 @@ export class DirClaims {
 		return this.initRoutes.get(dir) ?? [];
 	}
 
-	/** Whether a route outranks the markers and init scripts of `dir`: its own name's, or a folder's, marker's or init script's above it. */
-	isRoutedAbove(dir: string): boolean {
-		const segments = dir.split("/");
-		return segments.some((_, index) => {
-			const at = segments.slice(0, index + 1).join("/");
-			const above = segments.slice(0, index).join("/");
-			return (
-				this.readings.folders.get(joinPosix(this.root.rootDir, at))
-					?.route !== undefined ||
-				this.initRoutesAt(above).length > 0 ||
-				this.markersAt(above).some(({ key }) => this.keys.isRoute(key))
-			);
-		});
-	}
-
-	/** The routes each folder's init scripts give it, whichever variants are on, so turning one on never moves the files beside it. */
+	/** The routes each folder's init scripts give it. */
 	private initRoutesOf(): Map<string, InitRoute[]> {
 		const routes = new Map<string, InitRoute[]>();
 		for (const entry of this.root.entries) {
@@ -75,9 +56,7 @@ export class DirClaims {
 			if (!read.isInit) continue;
 			const { stem, match } = read;
 			// Only the last `@key` of a name routes; the ones before it are outranked.
-			const governing = match.spans.find(({ key }) =>
-				this.keys.isRoute(key)
-			);
+			const [governing] = match.spans;
 			if (!governing) continue;
 			const dir = dirnamePosix(entry.relativePath);
 			routes.set(dir, [
@@ -86,10 +65,6 @@ export class DirClaims {
 					key: governing.key,
 					source: entry.source,
 					at: stem[governing.start] === "@",
-					variants: match.spans
-						.filter(({ key }) => this.keys.isVariant(key))
-						.map(({ key }) => key)
-						.reverse(),
 				},
 			]);
 		}
@@ -103,11 +78,10 @@ export class RootClaims {
 
 	constructor(
 		readonly roots: readonly ScannedRoot[],
-		readings: NameReadings,
-		keys: DeclaredKeys
+		readings: NameReadings
 	) {
 		for (const root of roots)
-			this.byRoot.set(root, new DirClaims(root, readings, keys));
+			this.byRoot.set(root, new DirClaims(root, readings));
 	}
 
 	of(root: ScannedRoot): DirClaims {

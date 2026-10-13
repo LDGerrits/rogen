@@ -188,7 +188,6 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ServerScriptService", "Inventory", "Save"],
 				route: "Server",
 				routeMatch: "folder",
-				variants: [],
 				named: true,
 			},
 			{
@@ -203,7 +202,6 @@ describe("CoreBuildService.locate", () => {
 				],
 				route: "Client",
 				routeMatch: "suffix",
-				variants: [],
 				named: true,
 			},
 			expect.objectContaining({
@@ -218,7 +216,6 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ServerScriptService", "Anti", "Check"],
 				route: "Server",
 				routeMatch: "marker",
-				variants: [],
 				named: true,
 			},
 			{
@@ -228,41 +225,8 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ReplicatedStorage", "Shared", "Util"],
 				route: "*",
 				routeMatch: "fallback",
-				variants: [],
 				named: true,
 			},
-		]);
-	});
-
-	it("should say which dormant variant pruned a file and how it matched, and which active variants a placed file carries", async () => {
-		await write(
-			"src/Net/Http.mock.luau",
-			"src/Net/DataMock.luau",
-			"src/Net/Store.dev.luau"
-		);
-
-		const located = await locate(undefined, {
-			variants: { mock: false, dev: true },
-		});
-
-		expect(located).toEqual([
-			expect.objectContaining({
-				source: abs("src/Net/DataMock.luau"),
-				exists: true,
-				status: "placed",
-			}),
-			{
-				status: "pruned",
-				source: abs("src/Net/Http.mock.luau"),
-				exists: true,
-				variants: [{ variant: "mock", form: "suffix" }],
-			},
-			expect.objectContaining({
-				source: abs("src/Net/Store.dev.luau"),
-				exists: true,
-				instancePath: ["ReplicatedStorage", "Shared", "Net", "Store"],
-				variants: [{ variant: "dev", form: "suffix" }],
-			}),
 		]);
 	});
 
@@ -388,7 +352,6 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
 				route: "*",
 				routeMatch: "fallback",
-				variants: [],
 			},
 			{
 				status: "displaced",
@@ -544,12 +507,12 @@ describe("CoreBuildService.locate", () => {
 		});
 
 		it("should replace a file that does exist", async () => {
-			await write("src/Analytics.luau");
+			await write("src/Analytics.lua");
 
-			const located = await locate(
-				["src/Analytics.luau", "src/Analytics.mock.luau"],
-				{ variants: { mock: true } }
-			);
+			const located = await locate([
+				"src/Analytics.lua",
+				"src/Analytics.luau",
+			]);
 
 			expect(located.map(({ status }) => status)).toEqual([
 				"replaced",
@@ -773,27 +736,6 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should prune only its init script when that carries a dormant variant", async () => {
-			await write(
-				"src/Combat/Server/Moves/init.mock.luau",
-				"src/Combat/Server/Moves/Punch.luau"
-			);
-
-			const located = await locate(["src/Combat/Server/Moves"], {
-				variants: { mock: false },
-			});
-
-			expect(
-				located.map(({ source, status }) => [
-					path.basename(source),
-					status,
-				])
-			).toEqual([
-				["Punch.luau", "placed"],
-				["init.mock.luau", "pruned"],
-			]);
-		});
-
 		it("should find only the script a line number names, and a folder with what is in it", async () => {
 			await write(
 				"src/Net/init.luau",
@@ -849,7 +791,6 @@ describe("CoreBuildService.locate", () => {
 					],
 					route: "*",
 					routeMatch: "fallback",
-					variants: [],
 					named: true,
 				},
 			]);
@@ -929,20 +870,6 @@ describe("CoreBuildService.locate", () => {
 			expect(
 				await foldersFor("ServerScriptService.Net.NewThing")
 			).toEqual([[abs("src/Net")]]);
-		});
-
-		it("should count an init script whose name carries a variant as the folder it is", async () => {
-			await write("src/Net/Server/Moves/init.mock.luau");
-
-			expect(
-				await foldersIn(
-					configOf({
-						variants: { mock: true },
-						rootDirs: [abs("src")],
-					}),
-					"ServerScriptService.Net.NewThing"
-				)
-			).toEqual([[abs("src/Net/Server")]]);
 		});
 
 		it("should go up to the nearest parent something is placed in", async () => {

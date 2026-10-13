@@ -3,6 +3,8 @@
 		["build", "--sync-dir", "out"],
 		["build", "--template", "other.project.json"],
 		["build", "--mode", "prod"],
+		["build", "--variant", "mock"],
+		["build", "--no-variant", "mock"],
 		["build", "--all"],
 		["build", "-c", "default.rogen.json"],
 		["list", "--all"],

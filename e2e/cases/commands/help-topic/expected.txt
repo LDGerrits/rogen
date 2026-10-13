@@ -1,21 +1,16 @@
-$ rogen help variants
+$ rogen help layout
 exit 0
 stdout:
-  # Variants
+  # Layout
   
-  A variant swaps a file at build time. Declare every variant by name in `variants`: `"variants": ["mock", "debug"]`. A variant is off unless `--variant` turns it on. An undeclared dot part is just part of the name (`Save.spec.luau`), but one a single edit from a declared variant warns, in a name, a folder or a marker file (`Analytics.mok.luau`, `.mok/`, `.mok`). Variants are independent switches, not Roblox instance Tags.
-  
-  - `Analytics.mock.luau` becomes `Analytics` while `mock` is on, replacing the plain file, and is left out while it is off. It combines with a route in either order (`Analytics.mock@server.luau`); Rojo's `.server` or `.client` stays last.
-  - A variant folder (`mock/`) or marker file (`.mock`) marks everything inside. `dev/Service.luau` beside `prod/Service.luau` lets the active variant pick which file becomes `Service`. With both off, `Service` is missing, and Rogen warns.
-  - `Analytics.mock/` carries the variant and keeps the name `Analytics`.
-  - Only a dot carries a variant: `HttpMock.luau` and `Http-mock.luau` are ordinary names, and `Analytics@mock.luau` warns.
-  - A variant has to land where the plain file beside it does: `Analytics.mock@server.luau` beside `Analytics.luau` is an error, since both would ship. Route and hoist them the same way.
-  - Where a file lands never depends on which variants are on, and a mistake in a name is reported even while its variant is off.
-  - Of the files at one name, the active one with the most variants wins, if it has every variant the others have: `mock/Service.dev.luau` replaces `mock/Service.luau`, which replaces `Service.luau`. Two that each lack one of the other's variants (`Service.mock.luau`, `Service.dev.luau`) are an error; two plain files are a warning. Nesting means "and": `mock/dev/` needs both on.
-  - A variant is on when `--variant` adds it, and off when `--no-variant` removes it, which applies last. Both last for one run and have no short flags.
-  - `conflicts` lists groups of variants of which at most one may be on: `"conflicts": [["halloween", "christmas"]]`. Two on is an error. `--variant christmas` never turns `halloween` off; use `--no-variant halloween --variant christmas`.
-  - `variants` was a map of on and off in earlier betas; a map is a config error.
-  - `rogen list` shows every config's variants with their state.
+  - A `(Name)/` folder groups files on disk and is left out of the tree. `(Server)/` is still a routing folder.
+  - A directory with an `init` script (`init.luau`, `init.server.luau`, roblox-ts's `index.ts`) is one instance: the script is the folder, and the other files in it are its children, each routed like any other file.
+  - An init script's route (`init@server.luau`, or `init.server.luau` with a `server` key) routes its whole folder like a marker file.
+  - A folder split across routes becomes an instance in each, and each gets a copy of its init ModuleScript with only the files routed there; an init Script is never copied. A copy's children depend on where it sits, not who runs it, and the server may load two copies, so keep a copied init stateless and use `script:FindFirstChild` rather than `RunService` to pick children.
+  - An init script with no folder of its own to become, in a root dir or a plain routing folder, is an error.
+  - A file's `.meta.json` is named after the name Rojo gives it: `Save.server.luau` takes `Save.meta.json`, and `^Animate.client.luau` takes `^Animate.meta.json`.
+  - A feature folder's `init.meta.json` (`{ "className": "Actor" }`) applies to every node the folder becomes. In a governing routing folder or an invisible folder it applies to nothing, and Rogen warns. A `Name@key` folder and a routing folder an outer route outranks are ordinary folders.
+  - A symlink or junction inside a root dir is read as the directory it points at, and keeps its own path in the output.
 
 $ rogen help route.dotRoute
 exit 0
@@ -30,10 +25,10 @@ stdout:
   
   Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See Marker Files (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing#marker-files).
 
-$ rogen help varients
+$ rogen help layuot
 exit 2
 stderr:
-  error: Unknown command or topic "varients". Did you mean 'rogen help variants'?
+  error: Unknown command or topic "layuot". Did you mean 'rogen help layout'?
 
 $ rogen help route.dotRoot
 exit 2

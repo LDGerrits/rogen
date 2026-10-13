@@ -446,29 +446,36 @@ describe("watch command", () => {
 			beforeEach(async () => {
 				await write(
 					"/repo/default.rogen.json",
-					config({ variants: ["dev", "mock"] })
+					config({
+						routes: {
+							server: "ServerScriptService",
+							client: "StarterGui",
+							"*": "ReplicatedStorage",
+						},
+					})
 				);
-				await memFs.writeFile("/repo/src/Analytics.dev.luau", "");
-				await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
+				await memFs.writeFile("/repo/src/Net/@server", "");
+				await memFs.writeFile("/repo/src/Net/@client", "");
+				await memFs.writeFile("/repo/src/init.luau", "");
 			});
 
 			it("should print the error under the result that failed", async () => {
-				await run([], { variant: ["dev", "mock"] });
+				await run();
 
 				const [block] = blocks();
 				expect(block.lines).toEqual([
 					"default.project.json · not written",
 					expect.stringMatching(
-						/^diagnosticError: .*Analytics\.dev\.luau - error: /
+						/^diagnosticError: .*src\/Net - error: /
 					),
 					expect.stringMatching(
-						/^diagnosticError: .*Analytics\.mock\.luau - error: /
+						/^diagnosticError: .*src\/init\.luau - error: /
 					),
 				]);
 			});
 
 			it("should say the errors repeat when they were already printed", async () => {
-				await run([], { variant: ["dev", "mock"] });
+				await run();
 				logService.clear();
 
 				await memFs.writeFile("/repo/src/B.luau", "");
@@ -580,15 +587,7 @@ describe("watch command", () => {
 
 		it("should accept the override flags and --json", () => {
 			expect(
-				parse(
-					"watch",
-					"a.rogen.json",
-					"--variant",
-					"mock",
-					"-o",
-					"x",
-					"--json"
-				).isOk()
+				parse("watch", "a.rogen.json", "-o", "x", "--json").isOk()
 			).toBe(true);
 		});
 

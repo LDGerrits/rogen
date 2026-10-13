@@ -156,8 +156,7 @@ describe("BuildValidator rules", () => {
 				await write(
 					"server/Save.luau",
 					"client/Hud.luau",
-					"src/server/Net.luau",
-					"mock/Fake.luau"
+					"src/server/Net.luau"
 				);
 			});
 
@@ -216,18 +215,6 @@ describe("BuildValidator rules", () => {
 				const [warning] = await named(["Server"]);
 
 				expect(warning.message).toContain('Server ("server" route)');
-			});
-
-			it("should name a variant a root dir is named after", async () => {
-				const [warning] = await named(["mock"], {
-					variants: { mock: false },
-				});
-
-				expect(warning.message.split("\n")).toEqual([
-					"1 root dir is named after a variant key, but routing starts below a root dir, so its name prunes nothing:",
-					'  mock ("mock" variant)',
-					'Move it into one folder, such as src/mock, and use "rootDirs": ["src"].',
-				]);
 			});
 
 			it("should not stop the build from placing the files", async () => {
@@ -371,13 +358,10 @@ describe("BuildValidator rules", () => {
 				expect((await dead())[0].message).toContain("1 script will");
 			});
 
-			it("should not warn about a ModuleScript or a script that is pruned", async () => {
-				await write(
-					"src/server/Hud.client.mock.luau",
-					"src/server/Save@server.luau"
-				);
+			it("should not warn about a ModuleScript", async () => {
+				await write("src/server/Save@server.luau");
 
-				expect(await dead({ variants: { mock: false } })).toEqual([]);
+				expect(await dead()).toEqual([]);
 			});
 
 			it("should name every script in related, and list them all", async () => {
@@ -510,118 +494,6 @@ describe("BuildValidator rules", () => {
 				await write("src/Cost$.luau", "src/Kit/$Inner.luau");
 
 				expect(await reserved()).toEqual([]);
-			});
-		});
-
-		describe("instances no variant gives", () => {
-			const missing = async (
-				variants: Record<string, boolean>,
-				rootDirs?: readonly string[]
-			) =>
-				(await route({ variants }, rootDirs))
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "variant.noneActive"
-					);
-
-			it("should warn once, naming the instance and the variants that give it, when all are off", async () => {
-				await write(
-					"src/Analytics/dev/Service.luau",
-					"src/Analytics/prod/Service.luau",
-					"src/Analytics/Other.luau"
-				);
-
-				const [warning, ...others] = await missing({
-					dev: false,
-					prod: false,
-				});
-
-				expect(others).toEqual([]);
-				expect(warning.message).toContain(
-					"ReplicatedStorage/shared/Analytics/Service (dev, prod)"
-				);
-			});
-
-			it("should list ten of the instances and count the rest", async () => {
-				await write(
-					...Array.from({ length: 11 }, (_, index) => [
-						`src/Kit${index}/dev/Service.luau`,
-						`src/Kit${index}/prod/Service.luau`,
-					]).flat()
-				);
-
-				const [warning] = await missing({ dev: false, prod: false });
-
-				expect(warning.message).toContain("11 instances are missing");
-				expect(warning.message).toContain(
-					"  1 more like it isn't listed."
-				);
-			});
-
-			it("should not warn when one of them is on", async () => {
-				await write(
-					"src/Analytics/dev/Service.luau",
-					"src/Analytics/prod/Service.luau"
-				);
-
-				expect(await missing({ dev: true, prod: false })).toEqual([]);
-			});
-
-			it("should name a folder two variant folders give, not each file inside", async () => {
-				await write(
-					"src/Analytics.mock/Service.luau",
-					"src/Analytics.prod/Service.luau"
-				);
-
-				const [warning] = await missing({ mock: false, prod: false });
-
-				expect(warning.message).toContain("1 instance is missing");
-				expect(warning.message).toContain(
-					"ReplicatedStorage/shared/Analytics (mock, prod)"
-				);
-			});
-
-			it("should not count a folder's files as alternatives of the folder", async () => {
-				await write(
-					"src/Tools/Debug.dev.luau",
-					"src/Tools/Profiler.prof.luau",
-					"src/Kit/.dev",
-					"src/Kit/Y.luau",
-					"src/Kit/X.prof.luau"
-				);
-
-				expect(await missing({ dev: false, prof: false })).toEqual([]);
-			});
-
-			it("should name the file two variant folders give, not the folder above them", async () => {
-				await write("src/W/dev/Svc.luau", "src/W/prod/Svc.luau");
-
-				const [warning] = await missing({ dev: false, prod: false });
-
-				expect(warning.message).toContain(
-					"ReplicatedStorage/shared/W/Svc (dev, prod)"
-				);
-			});
-
-			it("should not warn for a lone variant", async () => {
-				await write("src/DebugPanel.dev.luau");
-
-				expect(await missing({ dev: false })).toEqual([]);
-			});
-
-			it("should not warn when a plain file in a later root dir gives the instance", async () => {
-				await write(
-					"src/Analytics/dev/Service.luau",
-					"src/Analytics/prod/Service.luau",
-					"lib/Analytics/Service.luau"
-				);
-
-				expect(
-					await missing({ dev: false, prod: false }, [
-						abs("src"),
-						abs("lib"),
-					])
-				).toEqual([]);
 			});
 		});
 
@@ -758,19 +630,6 @@ describe("BuildValidator rules", () => {
 				expect(warning.message).toContain("12 files");
 				expect(warning.message).not.toContain("more like it");
 				expect(warning.related).toHaveLength(12);
-			});
-
-			it("should not warn about a file a dormant variant prunes", async () => {
-				await write("src/ReplicatedFirst/server/Save.mock.luau");
-
-				const [warning] = await (async () =>
-					(await route({ variants: { mock: false } }))
-						.unwrap()
-						.warnings.filter(
-							({ code }) => code === "route.serverCodeShipped"
-						))();
-
-				expect(warning).toBeUndefined();
 			});
 		});
 	});

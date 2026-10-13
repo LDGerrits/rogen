@@ -139,7 +139,6 @@ export class PlacementLocator {
 			}),
 			route: file.route,
 			routeMatch: file.routeMatch,
-			variants: file.variants,
 			...(file.hoisted && { hoisted: true }),
 		};
 	}

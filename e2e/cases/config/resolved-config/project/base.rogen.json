@@ -8,9 +8,6 @@
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"variants": [
-		"mock"
-	],
 	"exclude": [
 		"**/*.spec.luau"
 	],

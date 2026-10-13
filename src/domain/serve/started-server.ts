@@ -9,8 +9,7 @@ import {
 	ProcessService,
 	exitCodeText,
 } from "../../platform/process/process-service.js";
-import { BuildSetting, sameSetting, settingOf } from "../build/build.js";
-import { ResolvedConfig } from "../config/config.js";
+
 import { ServerInfo } from "./serve.js";
 import {
 	ServePlan,
@@ -66,8 +65,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	private record: Promise<void> | undefined;
 	/** What the server said when it answered, which its record keeps naming. */
 	private answering: ServerInfo | undefined;
-	/** The variants of the build its project file holds. */
-	private setting: BuildSetting;
 	/** How many Studio plugins are connected, as far as its output says. */
 	private connected = 0;
 	/** The next time its port is asked whether it answers yet. */
@@ -85,7 +82,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		private readonly listener: StartedServerListener
 	) {
 		super();
-		this.setting = settingOf(target.config);
 		const { executable, serverArgs, selection } = plan;
 		this.child = this._register(
 			processService.spawn(
@@ -155,14 +151,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this[Symbol.dispose]();
 	}
 
-	/** Notes that the config was built again, as the server's project file now holds that build: when its variants changed since the record was written, the record says so. */
-	async rebuilt(config: ResolvedConfig): Promise<void> {
-		const setting = settingOf(config);
-		if (sameSetting(setting, this.setting)) return;
-		this.setting = setting;
-		await this.updateRecord();
-	}
-
 	/** Writes the record again once its last write is done, unless the server is going away. */
 	private updateRecord(): Promise<void> {
 		if (!this.record || !this.answering || this.ending || this.exited)
@@ -179,7 +167,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		return this.records
 			.write(target.address, info, {
 				projectFile: target.config.outFile,
-				setting: this.setting,
 				clients: info.server.reportsConnections(info.version)
 					? this.connected
 					: undefined,

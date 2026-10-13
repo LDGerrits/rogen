@@ -7,8 +7,6 @@ describe("WatchedConfig", () => {
 	const summary = {
 		roots: [],
 		routes: [],
-		variants: [],
-		modes: [],
 		unrouted: 0,
 		replaced: 0,
 		displaced: 0,

@@ -14,9 +14,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
-import { ServedProjectFiles } from "../served-project-files.js";
-import { ServerProbe } from "../server-probe.js";
-import { ServerRecords } from "../server-records.js";
+
 import { recordFile } from "./record-fixtures.js";
 import { SyncServer } from "../serve.js";
 import {
@@ -97,19 +95,7 @@ describe("CoreServeService", () => {
 			memFs,
 			processes,
 			requests,
-			new CoreWatchService(
-				watcher,
-				index,
-				buildServiceOf(
-					memFs,
-					index,
-					[],
-					new ServedProjectFiles(
-						new ServerRecords(memFs, "/mock/tmp", 4242),
-						new ServerProbe(requests)
-					).guard
-				)
-			),
+			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
 			new MockEnvironmentService("/repo", undefined, false, "/home/me"),
 			new CoreToolchainService(memFs)
 		);
@@ -542,53 +528,18 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		describe("a project file another serve serves in another setting", () => {
-			const declared = { variants: ["mock"] };
+		it("should leave a server alone that another serve recorded for this project file", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json")
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
 
-			beforeEach(async () => {
-				await memFs.writeFile(
-					"/repo/default.rogen.json",
-					config(declared)
-				);
-				requests.answer(
-					"http://127.0.0.1:34872/api/rojo",
-					rojoInfo("repo")
-				);
-			});
+			const servePlan = await plan();
 
-			it("should leave a server alone that serves the same variants", async () => {
-				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json", {
-						setting: { variants: { mock: true } },
-					})
-				);
-
-				const servePlan = await plan({
-					options: { variant: ["mock"] },
-				});
-
-				expect(servePlan.alreadyServed).toHaveLength(1);
-			});
-
-			it("should refuse a serve of other variants, and name the ones that run", async () => {
-				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json", {
-						setting: { variants: { mock: true } },
-					})
-				);
-
-				const error = (await errorOf()) as DiagnosticsError;
-
-				expect(error.diagnostics).toMatchObject([
-					{
-						code: "serve.otherMode",
-						resource: "/repo/default.rogen.json",
-					},
-				]);
-				expect(error.diagnostics[0].message).toBe(
-					"default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built with mock on, and this serve builds with no variants on. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'."
-				);
-			});
+			expect(servePlan.alreadyServed).toHaveLength(1);
 		});
 
 		it("should ignore a record left by a server that no longer runs", async () => {
@@ -922,11 +873,9 @@ describe("CoreServeService", () => {
 				port: 34872,
 				server: "rojo",
 				clients: 0,
-				pid: 4242,
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",
-				variants: {},
 			});
 
 			await session.stop();

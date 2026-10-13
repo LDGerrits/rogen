@@ -196,7 +196,6 @@ describe("WatchLog.update", () => {
 				{
 					roots: [],
 					routes: [],
-					variants: [],
 					unrouted: 0,
 					replaced: 0,
 					displaced: 0,
@@ -239,7 +238,6 @@ describe("WatchLog.update", () => {
 				{
 					roots: [],
 					routes: [],
-					variants: [],
 					unrouted: 0,
 					replaced: 0,
 					displaced: 0,

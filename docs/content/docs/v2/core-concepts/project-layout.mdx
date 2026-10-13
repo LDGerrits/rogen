@@ -5,11 +5,11 @@ description: Shape the tree with invisible folders, init folders, metadata and e
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rogen scans the **root directories** in `rootDirs` and turns them into a tree. Routes and variants do most of the shaping, but a few more rules apply.
+Rogen scans the **root directories** in `rootDirs` and turns them into a tree. Routes do most of the shaping, but a few more rules apply.
 
 ## Invisible Folders
 
-Wrap a folder name in parentheses, like `(Internals)`, to group files on disk without the folder appearing in the game. Parentheses are stripped before matching, so `(mock)` is still a variant folder and `(server)` a routing folder.
+Wrap a folder name in parentheses, like `(Internals)`, to group files on disk without the folder appearing in the game. Parentheses are stripped before matching, so `(server)` is still a routing folder.
 
 ```
 src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
@@ -17,9 +17,9 @@ src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
 
 ## Init Folders
 
-A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed and varied like any other file. An init script with no folder of its own to become, in a root directory or a plain routing folder, is an error.
+A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed like any other file. An init script with no folder of its own to become, in a root directory or a plain routing folder, is an error.
 
-An init script's route routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing#marker-files) would: `Combat/init@server.luau`, or `Combat/init.server.luau` when your config has a `server` key, sends everything in `Combat/` to the server. This holds whichever variants are on, so `init.mock.luau` swaps the script without moving the files beside it, and `init.mock@client.luau` beside `init@server.luau` is an error even while `mock` is off.
+An init script's route routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing#marker-files) would: `Combat/init@server.luau`, or `Combat/init.server.luau` when your config has a `server` key, sends everything in `Combat/` to the server. A route on the init script and a marker file that names another route in the same folder clash: `init@client.luau` beside `init@server.luau` is an error.
 
 An init ModuleScript with no route of its own goes wherever its folder does. When the folder is split across routes, say `Combat/Server/` and `Combat/Shared/`, it becomes a `Combat` instance in each service, and each one gets a copy of `init.luau` with only the files routed there as children. `rogen where` lists the copies (`· also ServerScriptService/Combat`). An init `Script` or `LocalScript` is never copied, since every copy would run.
 
@@ -38,7 +38,7 @@ An init ModuleScript with no route of its own goes wherever its folder does. Whe
 
 ## Data Files
 
-Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.jsonc`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Route and variant suffixes go before the extension. `.d.ts` files are skipped.
+Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.jsonc`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Route suffixes go before the extension. `.d.ts` files are skipped.
 
 A folder is an instance because of the files in it. One with nothing that places (it is empty, or holds only a `.gitkeep` or a `README.md`) is left out of the project file, where Rojo reading the same directory would make it an empty Folder. To keep an empty Folder, declare it in the template.
 
@@ -46,7 +46,7 @@ A folder is an instance because of the files in it. One with nothing that places
 
 A `*.meta.json` file (or `*.meta.jsonc`, which Rojo applies after it) sets a class, properties or attributes that a file or folder can't express on its own.
 
-For a file, name the meta after the instance name Rojo gives it, without `.server`, `.client` or `.plugin`: `Save.server.luau` takes `Save.meta.json`. A variant file keeps its full name, so `Analytics.mock.luau` takes `Analytics.mock.meta.json` even when it's renamed in the game.
+For a file, name the meta after the instance name Rojo gives it, without `.server`, `.client` or `.plugin`: `Save.server.luau` takes `Save.meta.json`. A dot is part of the name, so `Analytics.mock.luau` takes `Analytics.mock.meta.json`.
 
 For a folder, `init.meta.json` applies to every node the folder becomes. This makes a feature folder an `Actor` in every service it lands in:
 
@@ -56,7 +56,7 @@ For a folder, `init.meta.json` applies to every node the folder becomes. This ma
 
 When several folders become the same node, the last root directory with a meta wins. Two metas reaching the same node within one root directory are an error, as is an `id` that would end up on two nodes. If the template defines the node too, the template wins.
 
-Rogen warns about metadata with nothing to apply to, such as an `init.meta.json` in a routing, variant or invisible folder, or a `*.meta.json` no file claims.
+Rogen warns about metadata with nothing to apply to, such as an `init.meta.json` in a routing or invisible folder, or a `*.meta.json` no file claims.
 
 <Callout type="warn" title="Darklua drops metadata">
 	With a `syncDir`, Rojo reads metadata from your compiler's output. roblox-ts copies it over, but Darklua turns each file into a stray `.meta.lua` module. Folder meta survives because Rogen reads it from your source, and Rogen warns about any other `*.meta.json` missing from the sync directory.
@@ -102,6 +102,32 @@ Symlinks and Windows junctions inside a root directory are followed, which is ha
 ## Several Root Directories
 
 Several root directories merge into one tree, and the later one wins any clash. That's how one codebase serves several places; see the [multi-place guide](/docs/v2/setups/multi-place). Root directories can't nest, and one that doesn't exist yet only gets a warning until it appears.
+
+## Replacing a File
+
+Put the replacement in a later root directory. When two root directories give one instance, the last one wins, and Rogen says nothing about it. This swaps in a mock `Analytics`:
+
+```json title="default.rogen.json"
+{ "rootDirs": ["src", "dev"] }
+```
+
+```
+src/Analytics/Analytics.luau  ->  left out
+dev/Analytics/Analytics.luau  ->  Analytics
+```
+
+To keep the swap out of the default build, list `dev` only in a second config that [extends](/docs/v2/configuration#extending-configs) the first, which appends its `rootDirs` after the parent's:
+
+```json title="mock/mock.rogen.json"
+{
+	"extends": "../default.rogen.json",
+	"rootDirs": ["../dev"]
+}
+```
+
+Put the second config in a folder of its own, since beside `default.rogen.json` it would take the place of the config `rogen serve` syncs to Studio. `rogen build mock/mock.rogen.json` writes `mock/mock.project.json`. Paths in a config are relative to the config's folder, hence the `..`.
+
+The same goes for files that only one build has. A root dir that one config lists and another doesn't, or an [`exclude`](#excluding-files) in the second config, leaves them out of the other. Two files in one root directory that give one instance are a [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) warning, and the last one wins.
 
 <Callout type="info" title="Rogen only reads names">
 	The tree depends only on file and folder names, so editing a script's contents never changes the output.

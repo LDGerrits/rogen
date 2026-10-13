@@ -7,4 +7,3 @@ stdout:
       * -> ReplicatedStorage/shared
     sync dir: (none)
     project file: default.project.json
-    variants: (none)

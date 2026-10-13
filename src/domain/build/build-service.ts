@@ -23,7 +23,6 @@ import {
 	LeftOut,
 	LoadedBuild,
 	RouteMatch,
-	VariantMatch,
 } from "./build.js";
 
 interface Located {
@@ -40,8 +39,6 @@ export interface PlacedLocation extends Located {
 	readonly alsoAt?: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
-	/** The active variants the file carries. */
-	readonly variants: readonly VariantMatch[];
 	/** A `^` on its name or a folder's took it straight to the route's target. */
 	readonly hoisted?: boolean;
 	/** The path was named as a file, and not found in a folder or behind an instance. */

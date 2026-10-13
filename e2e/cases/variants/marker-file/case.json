@@ -1,7 +1,0 @@
-{
-	"steps": [
-		["build"],
-		["build", "-o", "active.project.json", "--variant", "mock"]
-	],
-	"output": ["build"]
-}

@@ -13,7 +13,6 @@ const placed = (source: string, at: string): FileLocation => ({
 	instancePath: ["ReplicatedStorage", at],
 	route: "*",
 	routeMatch: "fallback",
-	variants: [],
 });
 
 const instance = (text: string, files: FileLocation[]): InstanceLocation => ({

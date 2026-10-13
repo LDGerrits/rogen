@@ -1,10 +1,7 @@
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
-import {
-	ConfigSelectionOptions,
-	ConfigService,
-} from "../../domain/config/config-service.js";
+import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -18,7 +15,7 @@ import { WhereAnswers } from "./where-answers.js";
 import { whereDocument } from "./where-document.js";
 import { WhereLog } from "./where-log.js";
 
-const WhereOptions = [...ConfigSelectionOptions, JsonOption] as const;
+const WhereOptions = [JsonOption] as const;
 
 registerCommand(
 	class WhereCommand extends AbstractCommand<typeof WhereOptions> {
@@ -57,7 +54,7 @@ registerCommand(
 			const logService = accessor.get(LogService);
 
 			// The positionals are paths, so every config here is read.
-			const selection = await configService.select([], line.options);
+			const selection = await configService.select([]);
 			if (selection.isErr()) return selection;
 			const located = await buildService.locate(selection.value, {
 				args: line.positionals,

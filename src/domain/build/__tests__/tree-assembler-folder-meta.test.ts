@@ -103,13 +103,15 @@ describe("TreeAssembler", () => {
 				expect(storage.Bots).toEqual({ $path: optional("src/Bots") });
 			});
 
-			it("should copy the meta onto a folder a pruned file keeps from collapsing", async () => {
-				await write("src/Bots/Body.luau", "src/Bots/Http.mock.luau");
+			it("should copy the meta onto a folder an excluded file keeps from collapsing", async () => {
+				await write("src/Bots/Body.luau", "src/Bots/Http.luau");
 				await writeMeta("src/Bots/init.meta.json", {
 					className: "Actor",
 				});
 
-				const storage = await storageOf({ variants: { mock: false } });
+				const storage = await storageOf({
+					exclude: [abs("src/Bots/Http.luau")],
+				});
 
 				expect(storage.Bots).toEqual({
 					$className: "Actor",
@@ -211,13 +213,15 @@ describe("TreeAssembler", () => {
 				).toBe("combat");
 			});
 
-			it("should copy nothing from a folder whose files were all pruned", async () => {
-				await write("src/Mocks/Http.mock.luau", "src/A.luau");
+			it("should copy nothing from a folder whose files were all excluded", async () => {
+				await write("src/Mocks/Http.luau", "src/A.luau");
 				await writeMeta("src/Mocks/init.meta.json", {
 					className: "Actor",
 				});
 
-				const storage = await storageOf({ variants: { mock: false } });
+				const storage = await storageOf({
+					exclude: [abs("src/Mocks/**")],
+				});
 
 				expect(storage.Mocks).toBeUndefined();
 			});
@@ -519,26 +523,21 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should warn at each meta in a routing, variant or invisible folder or a root dir", async () => {
+			it("should warn at each meta in a routing or invisible folder or a root dir", async () => {
 				await write(
 					"src/Combat/server/A.luau",
-					"src/Combat/dev/B.luau",
 					"src/Combat/(group)/C.luau"
 				);
 				for (const dir of [
 					"src",
 					"src/Combat/server",
-					"src/Combat/dev",
 					"src/Combat/(group)",
 				])
 					await writeMeta(`${dir}/init.meta.json`, {
 						className: "Actor",
 					});
 
-				const { warnings } = await assemble({
-					routes: SPLIT,
-					variants: { dev: true },
-				});
+				const { warnings } = await assemble({ routes: SPLIT });
 
 				const nothing = (dir: string, kind: string) => ({
 					code: "meta.appliesToNothing",
@@ -547,7 +546,6 @@ describe("TreeAssembler", () => {
 				});
 				expect(warnings).toMatchObject([
 					nothing("src/Combat/(group)", "an invisible folder"),
-					nothing("src/Combat/dev", "a variant folder"),
 					nothing("src/Combat/server", "a routing folder"),
 					nothing("src", "a root dir"),
 				]);
@@ -574,21 +572,6 @@ describe("TreeAssembler", () => {
 				expect(
 					nodeAt(value.tree, "ServerScriptService", "Queue")
 				).toEqual({ $path: optional("src/Queue@server") });
-			});
-
-			it("should warn about the name, not the meta, of a folder whose files were all pruned", async () => {
-				await write("src/Mocks/Http.mock.luau");
-				await writeMeta("src/Mocks/init.meta.json", {
-					className: "Actor",
-				});
-
-				const { warnings } = await assemble({
-					variants: { mock: false },
-				});
-
-				expect(warnings.map(({ code }) => code)).toEqual([
-					"variant.typo",
-				]);
 			});
 		});
 	});

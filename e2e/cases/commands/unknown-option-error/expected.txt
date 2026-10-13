@@ -13,10 +13,10 @@ exit 2
 stderr:
   error: Unknown option '-w'. Run 'rogen help watch' to see what watch accepts.
 
-$ rogen build --variant
+$ rogen build -o
 exit 2
 stderr:
-  error: Option '--variant' needs a value.
+  error: Option '-o' needs a value.
 
 $ rogen build --json=yes
 exit 2
@@ -28,10 +28,10 @@ exit 2
 stderr:
   error: Unknown option '--jsno'. Did you mean '--json'?
 
-$ rogen init --variant x
+$ rogen init --nope x
 exit 2
 stderr:
-  error: init doesn't take '--variant'. build, check, list, serve, watch and where do.
+  error: Unknown option '--nope'. Run 'rogen help init' to see what init accepts.
 
 $ rogen build --nope --json
 exit 2
@@ -43,7 +43,7 @@ exit 2
 stderr:
   error: Unknown option '--nope'. Run 'rogen help' to see the commands.
 
-$ rogen --variant x
+$ rogen --out-file x
 exit 2
 stderr:
-  error: '--variant' goes after a command: build, check, list, serve, watch and where take it.
+  error: '--out-file' goes after a command: build, serve and watch take it.

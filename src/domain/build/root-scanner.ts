@@ -120,7 +120,7 @@ export class ScannedRoot implements ScannedRootParts {
 		);
 	}
 
-	/** Meta no sibling on disk claims under Rojo's naming rule; pruned and excluded siblings still claim theirs. */
+	/** Meta no sibling on disk claims under Rojo's naming rule; excluded siblings still claim theirs. */
 	unclaimedMeta(): UnclaimedMeta[] {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);

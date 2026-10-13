@@ -103,7 +103,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 	};
 
 	const rogenTree = async (
-		overrides: Pick<ResolvedConfigSpec, "routes" | "variants"> = {}
+		overrides: Pick<ResolvedConfigSpec, "routes"> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
@@ -112,7 +112,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			name: "t",
 			rootDirs: [path.join(dir, "src")],
 			routes: { "*": "ReplicatedStorage" },
-			variants: {},
 			exclude: [],
 			outFile: path.join(dir, "ours.project.json"),
 			...overrides,
@@ -220,18 +219,17 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		});
 		await rogenTree({
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
-			variants: { mock: true },
 		});
 
 		expect(metaApplied(sourcemap(dir, "ours.project.json"))).toEqual([
-			"ReplicatedStorage/Inv/Analytics <- src/Inv/Analytics.mock.meta.json",
+			"ReplicatedStorage/Inv/Analytics.mock <- src/Inv/Analytics.mock.meta.json",
 			"ReplicatedStorage/Inv/Items <- src/Inv/Items.meta.json",
 			"ReplicatedStorage/Inv/Notes <- src/Inv/Notes.meta.json",
 			"ReplicatedStorage/Inv/Plain <- src/Inv/Plain.meta.json",
 			"ReplicatedStorage/Inv/Stats.server <- src/Inv/Stats.server.meta.json",
 			"ReplicatedStorage/Inv/Tool <- src/Inv/Tool.meta.json",
 			"ServerScriptService/Inv/Combat <- src/Inv/Combat@server.meta.json",
-			"ServerScriptService/Inv/Foo <- src/Inv/Foo.mock.meta.json",
+			"ServerScriptService/Inv/Foo.mock <- src/Inv/Foo.mock.meta.json",
 			"ServerScriptService/Inv/Gun <- src/Inv/Gun@server.meta.json",
 			"ServerScriptService/Inv/Save <- src/Inv/Save.meta.json",
 		]);
@@ -278,8 +276,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"Net/Types.luau": "",
 			"Net/server/Remote.luau": "",
 			"Net/client/Listener.luau": "",
-			"Bots/init.luau": "",
-			"Bots/init.mock.server.luau": "",
+			"Bots/init.server.luau": "",
 			"Bots/init.meta.json": meta,
 			"Bots/Brain.luau": "",
 		});
@@ -289,7 +286,6 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 				client: "StarterPlayer/StarterPlayerScripts",
 				"*": "ReplicatedStorage",
 			},
-			variants: { mock: true },
 		});
 
 		const tree = sourcemap(dir, "ours.project.json");
@@ -311,6 +307,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		);
 		expect(metaApplied(tree)).toEqual([
 			"ReplicatedStorage/Net <- src/Net/init.meta.json",
+			"ServerScriptService/Bots <- src/Bots/init.meta.json",
 			"ServerScriptService/Net <- src/Net/init.meta.json",
 			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
 		]);

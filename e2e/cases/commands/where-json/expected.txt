@@ -17,7 +17,6 @@ stdout:
         "require": "game:GetService(\"ServerScriptService\").Combat.Moves.Punch",
         "route": "Server",
         "routeMatch": "folder",
-        "variants": [],
         "diagnostics": []
       },
       {
@@ -33,7 +32,6 @@ stdout:
         "require": "game:GetService(\"ServerScriptService\").Combat.Moves",
         "route": "Server",
         "routeMatch": "folder",
-        "variants": [],
         "diagnostics": []
       },
       {
@@ -49,20 +47,21 @@ stdout:
         "require": "game:GetService(\"ServerScriptService\").Inventory.Save",
         "route": "Server",
         "routeMatch": "folder",
-        "variants": [],
         "diagnostics": []
       },
       {
         "config": "default",
         "source": "<dir>/src/Net/Http.mock@client.luau",
-        "status": "pruned",
+        "status": "placed",
         "exists": true,
-        "variants": [
-          {
-            "variant": "mock",
-            "form": "suffix"
-          }
+        "instancePath": [
+          "StarterPlayer",
+          "StarterPlayerScripts",
+          "Net",
+          "Http.mock"
         ],
+        "route": "Client",
+        "routeMatch": "suffix",
         "diagnostics": []
       },
       {
@@ -78,7 +77,6 @@ stdout:
         ],
         "route": "Client",
         "routeMatch": "suffix",
-        "variants": [],
         "diagnostics": []
       },
       {
@@ -111,7 +109,6 @@ stdout:
         "require": "game:GetService(\"ReplicatedStorage\").Shared.Net.Types",
         "route": "*",
         "routeMatch": "fallback",
-        "variants": [],
         "diagnostics": []
       },
       {
@@ -126,7 +123,7 @@ stdout:
     "diagnostics": []
   }
 
-$ rogen where --json src/Net/Http.mock@client.luau --variant mock
+$ rogen where --json src/Net/Http.mock@client.luau
 exit 0
 stdout:
   {
@@ -140,16 +137,10 @@ stdout:
           "StarterPlayer",
           "StarterPlayerScripts",
           "Net",
-          "Http"
+          "Http.mock"
         ],
         "route": "Client",
         "routeMatch": "suffix",
-        "variants": [
-          {
-            "variant": "mock",
-            "form": "suffix"
-          }
-        ],
         "diagnostics": []
       }
     ],
@@ -174,7 +165,6 @@ stdout:
         "require": "game:GetService(\"ServerScriptService\").Combat.Moves",
         "route": "Server",
         "routeMatch": "folder",
-        "variants": [],
         "diagnostics": []
       },
       {

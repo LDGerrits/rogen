@@ -63,7 +63,6 @@ const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],
 	routes: [],
-	variants: [],
 	unrouted: 0,
 	replaced: 0,
 	displaced: 0,
@@ -77,7 +76,7 @@ const describeBuild = (summary: BuildSummary, dir: string) =>
 	debugLines(dir, configOf(), summary);
 
 describe("BuildLog config lines", () => {
-	it("should say nothing about a config with no parent and no skipped variants", () => {
+	it("should say nothing about a config with no parent", () => {
 		expect(describeConfig(configOf(), cwd)).toEqual([]);
 	});
 
@@ -93,18 +92,6 @@ describe("BuildLog config lines", () => {
 				cwd
 			)
 		).toEqual(["extends: default.rogen.json -> shared/base.rogen.json"]);
-	});
-
-	it("should name each variant flag the config does not declare", () => {
-		expect(
-			describeConfig(
-				configOf({ skippedVariants: ["mock", "debug"] }),
-				cwd
-			)
-		).toEqual([
-			"variant mock skipped: not declared in this config",
-			"variant debug skipped: not declared in this config",
-		]);
 	});
 });
 
@@ -156,23 +143,6 @@ describe("BuildLog build lines", () => {
 		).toEqual([
 			"route server -> ServerScriptService: 1 file",
 			"route * -> ReplicatedStorage: 0 files",
-		]);
-	});
-
-	it("should say which variants are on and which left files out", () => {
-		expect(
-			describeBuild(
-				summaryOf({
-					variants: [
-						{ variant: "mock", on: true, files: 2 },
-						{ variant: "debug", on: false, files: 1 },
-					],
-				}),
-				cwd
-			)
-		).toEqual([
-			"variant mock on: 2 files",
-			"variant debug off: 1 file left out",
 		]);
 	});
 

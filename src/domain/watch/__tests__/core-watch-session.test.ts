@@ -796,7 +796,7 @@ describe("CoreWatchSession", () => {
 
 			await write(
 				"/repo/default.rogen.json",
-				config({ variants: ["mock"] })
+				config({ exclude: ["nothing/**"] })
 			);
 			await settle();
 

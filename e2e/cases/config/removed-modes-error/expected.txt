@@ -1,7 +1,0 @@
-$ rogen build
-exit 1
-stdout: (not shown)
-stderr:
-  error: default.rogen.json · not loaded
-  default.rogen.json:4:2 - error: "mode" was removed. Modes are gone with "modes". Build the config that holds the settings by name, as 'rogen build <name>'. (config.removedField)
-  default.rogen.json:5:2 - error: "modes" was removed. Put what a mode set in a second config that extends this one, which can add "exclude", and turn variants on with --variant. (config.removedField)

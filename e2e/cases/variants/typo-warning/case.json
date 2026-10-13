@@ -1,6 +1,0 @@
-{
-	"steps": [
-		["build", "--variant", "mock"],
-		["build", "--json", "--variant", "mock"]
-	]
-}

@@ -15,13 +15,6 @@ export interface JsoncDocumentKind {
 	readonly noun: string;
 }
 
-/** A better thing to say than "wrong type" about a value of the wrong kind, for a path a caller knows the history of. */
-export type WrongTypeAdvisor = (
-	path: string,
-	node: JsoncNode,
-	location: DiagnosticLocation
-) => Diagnostic | undefined;
-
 /** A better thing to say than "unknown field" about a field a caller knows the history of. */
 export type UnknownFieldAdvisor = (
 	path: string,
@@ -46,7 +39,6 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 export class JsoncDocumentReader {
 	constructor(
 		private readonly kind: JsoncDocumentKind,
-		private readonly advise?: WrongTypeAdvisor,
 		private readonly adviseUnknown?: UnknownFieldAdvisor
 	) {}
 
@@ -110,8 +102,6 @@ export class JsoncDocumentReader {
 
 		const expected = schema.type === undefined ? [] : [schema.type].flat();
 		if (expected.length > 0 && !expected.includes(node.kind)) {
-			const advice = this.advise?.(path, node, location(node));
-			if (advice) return [advice];
 			return [
 				this.error(
 					"wrongType",

@@ -2,7 +2,7 @@ import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
-import { RouteMatch, VariantMatch } from "./build.js";
+import { RouteMatch } from "./build.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import {
@@ -26,14 +26,10 @@ export interface RoutedFile {
 	readonly routeMatch: RouteMatch;
 	/** The service, the target's folders, the file's own folders, then the instance name; an init script's ends at its folder's. */
 	readonly instancePath: readonly string[];
-	/** Routing, variant and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
+	/** Routing and invisible folders name no node, so they have none; a routing folder that an outer route outranks is an ordinary folder. */
 	readonly folderNodes: readonly FolderNode[];
 	/** The route keys of bare routing folders above the file that the governing route outranks, unless a sign restating that route sits at or below them. */
 	readonly outrankedFolderRoutes: readonly string[];
-	/** Variant folders and suffixes are already out of `instancePath`; the variant stage decides what they mean. */
-	readonly variants: readonly VariantMatch[];
-	/** The instance each of `variants` gives an alternative of: the node of the folder or marker that carries it, or the file's own. */
-	readonly variantNodes: readonly (readonly string[])[];
 	/** The `@key`s in its name, its folders' and its markers that an outer route outranks and that don't restate it. */
 	readonly ignoredAts: readonly IgnoredAt[];
 	/** Set for an init script, which is the nearest of its folders that becomes a node rather than an instance of its own. */
@@ -42,7 +38,7 @@ export interface RoutedFile {
 	readonly hoisted?: boolean;
 }
 
-/** The two folders of an init script, which differ when a variant folder sits between them. */
+/** The two folders of an init script, which differ when a routing or invisible folder sits between them. */
 export interface InitFolders {
 	/** The nearest of its folders that becomes a node, which the script is; an absolute POSIX path. */
 	readonly becomes: string;
@@ -83,9 +79,6 @@ interface ClaimedFolder {
 class Claims {
 	route: { readonly key: string; readonly match: RouteMatch } | undefined;
 	readonly ignoredAts: IgnoredAt[] = [];
-	readonly variants: VariantMatch[] = [];
-	/** For each of `variants`, the index of the node it claims among the folders that name one, the file's own last. */
-	readonly variantLevels: number[] = [];
 	/** The bare routing folders the governing route outranks, by how deep they are. */
 	private readonly outrankedFolders: { key: string; depth: number }[] = [];
 	/** The depth of the deepest sign that restates the governing route. */
@@ -124,14 +117,9 @@ class Claims {
 	outrankBare(key: string, depth: number): void {
 		if (this.route?.key !== key) this.outrankedFolders.push({ key, depth });
 	}
-
-	claimVariant(variant: VariantMatch, level: number): void {
-		this.variants.push(variant);
-		this.variantLevels.push(level);
-	}
 }
 
-/** The file's own name, as Rojo reads it once the suffixes its route and variants claimed are off, and its `^`. */
+/** The file's own name, as Rojo reads it once the suffix its route claimed is off, and its `^`. */
 interface LeafName {
 	readonly name: string;
 	readonly hoisted: boolean;
@@ -151,7 +139,7 @@ interface ClaimedPath {
 }
 
 /** An init ModuleScript that no route of its own sends anywhere, which is every node its folder becomes; and where the fallback route placed it, if anywhere. */
-export interface InitToCopy extends Pick<RoutedFile, "entry" | "variants"> {
+export interface InitToCopy extends Pick<RoutedFile, "entry"> {
 	readonly init: InitFolders;
 	readonly placed: RoutedFile | undefined;
 }
@@ -167,15 +155,10 @@ export interface Routing {
 
 /** Finds each scanned file's governing route and instance path. */
 export class Router {
-	private readonly keys: DeclaredKeys;
-
 	constructor(
-		/** Its routes and keys; never which variants are on, so a file routes the same in every build. */
 		private readonly config: ResolvedConfig,
 		private readonly readings: NameReadings
-	) {
-		this.keys = config.keys;
-	}
+	) {}
 
 	/** Every file a route governs, in scan order; the init scripts to copy; the sources of the files no route governs; the init scripts with no folder to be; and the init scripts written `^init`. */
 	route(roots: readonly ScannedRoot[], claims: RootClaims): Routing {
@@ -220,7 +203,6 @@ export class Router {
 		if (this.isCopied(claimed))
 			routing.toCopy.push({
 				entry,
-				variants: claimed.claims.variants,
 				init: this.initFolders(entry, claimed.folders),
 				placed,
 			});
@@ -248,7 +230,7 @@ export class Router {
 			dirs,
 			claims
 		);
-		const leaf = this.claimLeaf(read, claims, folders.length);
+		const leaf = this.claimLeaf(read, claims);
 		// An init script is its folder, so its own `^` hoists nothing.
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		const dropped = hoistsLeaf ? folders.length : (hoistAt ?? 0);
@@ -287,12 +269,6 @@ export class Router {
 			instancePath,
 			folderNodes,
 			outrankedFolderRoutes: claims.outrankedFolderRoutes,
-			variants: claims.variants,
-			variantNodes: claims.variantLevels.map(
-				(level) =>
-					folderNodes[Math.max(0, level - claimed.dropped)]
-						?.instancePath ?? instancePath
-			),
 			ignoredAts: claims.ignoredAts,
 			init: leaf.isInit ? this.initFolders(entry, folders) : undefined,
 			...(claimed.hoisted && { hoisted: true }),
@@ -318,7 +294,7 @@ export class Router {
 		);
 	}
 
-	/** Routing, variant and invisible folders and markers claim the file, then the route suffixes of the init scripts in each folder; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
+	/** Routing and invisible folders and markers claim the file, then the route suffixes of the init scripts in each folder; every other folder, a `Name@key` routing folder and a routing folder an outer route outranks becomes a node. */
 	private claimFolders(
 		entry: ScannedFile,
 		read: EntryReading,
@@ -329,43 +305,32 @@ export class Router {
 		/** Where the folders below the innermost `^` folder start; none without one. */
 		readonly hoistAt: number | undefined;
 	} {
-		const claimDirectory = (dir: string, level: number) =>
-			this.claimDirectory(entry, dir, level, dirs, claims);
-		claimDirectory("", 0);
+		const claimDirectory = (dir: string) =>
+			this.claimDirectory(entry, dir, dirs, claims);
+		claimDirectory("");
 		const folders: ClaimedFolder[] = [];
 		let hoistAt: number | undefined;
 		for (const folder of read.folders) {
 			if (folder.hoisted) hoistAt = folders.length;
-			for (const variant of folder.variants)
-				claims.claimVariant(
-					{ variant, form: "folder" },
-					folders.length
-				);
 			const routes = this.claimFolderRoute(folder, claims);
 			const name = routes ? folder.keptName : folder.outrankedName;
 			const named = name !== undefined && !folder.invisible;
 			if (named) folders.push({ name, dir: folder.dir });
-			claimDirectory(
-				folder.dir,
-				named ? folders.length - 1 : folders.length
-			);
+			claimDirectory(folder.dir);
 		}
 		return { folders, hoistAt };
 	}
 
-	/** What the markers of `dir`, and the route suffixes of the init scripts in it, claim for `entry` at `level`. */
+	/** What the markers of `dir`, and the route suffixes of the init scripts in it, claim for `entry`. */
 	private claimDirectory(
 		entry: ScannedFile,
 		dir: string,
-		level: number,
 		dirs: DirClaims,
 		claims: Claims
 	): void {
 		const depth = depthOf(dir);
 		for (const { fileName, key } of dirs.markersAt(dir)) {
-			if (this.keys.isVariant(key))
-				claims.claimVariant({ variant: key, form: "marker" }, level);
-			else if (!claims.claimRoute(key, "marker"))
+			if (!claims.claimRoute(key, "marker"))
 				claims.outrankSigned(key, depth, {
 					key,
 					dir,
@@ -395,22 +360,12 @@ export class Router {
 		return routes;
 	}
 
-	/** Reads the suffixes of a file into `claims`, each claiming the file's node at `level`, and returns its instance name. */
-	private claimLeaf(
-		read: EntryReading,
-		claims: Claims,
-		level: number
-	): LeafName {
+	/** Reads the suffixes of a file into `claims` and returns its instance name. */
+	private claimLeaf(read: EntryReading, claims: Claims): LeafName {
 		const { kind, stem, match, scriptSuffix, isInit } = read;
-		const variantSpans = match.spans.filter((span) =>
-			this.keys.isVariant(span.key)
-		);
-		for (const span of variantSpans)
-			claims.claimVariant(this.asVariantMatch(span), level);
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
 			const { key, start } = span;
-			if (!this.keys.isRoute(key)) continue;
 			const routes =
 				claims.claimRoute(key, "suffix") ||
 				(stem[start] === "@" &&
@@ -418,10 +373,10 @@ export class Router {
 			if (routes) routeSpan ??= span;
 		}
 
-		const stripped = InstanceName.withoutSpans(stem, [
-			...variantSpans,
-			...match.spans.filter((span) => span.key === routeSpan?.key),
-		]);
+		const stripped = InstanceName.withoutSpans(
+			stem,
+			match.spans.filter((span) => span.key === routeSpan?.key)
+		);
 		const { name, hoisted } = InstanceName.leafName(kind, stripped);
 		return {
 			name,
@@ -429,9 +384,5 @@ export class Router {
 			scriptSuffix,
 			isInit,
 		};
-	}
-
-	private asVariantMatch(span: SuffixSpan): VariantMatch {
-		return { variant: span.key, form: "suffix" };
 	}
 }

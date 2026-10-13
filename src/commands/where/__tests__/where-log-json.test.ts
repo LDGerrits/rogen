@@ -47,7 +47,6 @@ describe("WhereLog", () => {
 					],
 					route: "Client",
 					routeMatch: "suffix",
-					variants: [{ variant: "mock", form: "suffix" }],
 				})
 			).toEqual([
 				{
@@ -62,7 +61,6 @@ describe("WhereLog", () => {
 					],
 					route: "Client",
 					routeMatch: "suffix",
-					variants: [{ variant: "mock", form: "suffix" }],
 					diagnostics: [],
 				},
 			]);
@@ -76,7 +74,6 @@ describe("WhereLog", () => {
 				instancePath: ["StarterPlayer", "Animate"],
 				route: "character",
 				routeMatch: "marker",
-				variants: [],
 			};
 
 			expect(jsonOf({ ...placed, hoisted: true })[0]).toHaveProperty(
@@ -96,7 +93,6 @@ describe("WhereLog", () => {
 					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
 					route: "server",
 					routeMatch: "copy",
-					variants: [],
 				})[0]
 			).toMatchObject({
 				alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
@@ -104,15 +100,6 @@ describe("WhereLog", () => {
 		});
 
 		it.each<[FileLocation, Record<string, unknown>]>([
-			[
-				{
-					status: "pruned",
-					source: "/repo/src/Http.mock.luau",
-					exists: true,
-					variants: [{ variant: "mock", form: "suffix" }],
-				},
-				{ variants: [{ variant: "mock", form: "suffix" }] },
-			],
 			[
 				{
 					status: "replaced",
@@ -186,7 +173,6 @@ describe("WhereLog", () => {
 				instancePath: ["ServerScriptService", "Save"],
 				route: "Server",
 				routeMatch: "folder",
-				variants: [],
 			};
 			const report = documentOf([
 				[
@@ -288,7 +274,6 @@ describe("WhereLog", () => {
 							instancePath: ["ReplicatedStorage", "A"],
 							route: "*",
 							routeMatch: "fallback",
-							variants: [],
 						},
 					],
 				],

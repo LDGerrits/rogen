@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import path from "path";
 import { toPosix } from "../../../base/path.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
@@ -11,7 +12,7 @@ import {
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { BuildSet, LoadedBuild, OutFileGuard, PendingWrite } from "../build.js";
+import { BuildSet, LoadedBuild } from "../build.js";
 import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
 
@@ -74,41 +75,23 @@ describe("CoreBuildService", () => {
 			});
 		});
 
-		it("should hand the guard the file, label and setting of each write, and report a refusal as that config's error", async () => {
-			const asked: PendingWrite[] = [];
-			const refusal = errorDiagnostic(
-				"output.servedInOtherMode",
-				{ resource: abs("default.project.json") },
-				"served"
-			);
-			const guard: OutFileGuard = async (write) => {
-				asked.push(write);
-				return write.label === "default" ? refusal : undefined;
-			};
-			const service = buildServiceOf(
-				fs,
-				new CoreIndexService(fs),
-				[],
-				guard
+		it("should report a write that fails as that config's error, and write nothing after it", async () => {
+			jest.spyOn(fs, "writeFile").mockRejectedValueOnce(
+				new Error("disk full")
 			);
 
-			const { builds } = await service.build(
-				selectionOf(configOf({ variants: { mock: false } }), lobby())
+			const { builds } = await buildServiceOfFs().build(
+				selectionOf(configOf(), lobby())
 			);
 
-			expect(
-				asked.map(({ file, label, setting }) => [file, label, setting])
-			).toEqual([
-				[
-					abs("default.project.json"),
-					"default",
-					{ variants: { mock: false } },
-				],
-			]);
 			expect(builds.map(({ outcome }) => outcome)).toEqual([
 				"failed",
 				"notWritten",
 			]);
+			expect(
+				builds[0].outcome === "failed" &&
+					builds[0].errors.map(({ code }) => code)
+			).toEqual(["output.writeFailed"]);
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 			expect(await fs.exists(abs("lobby.project.json"))).toBe(false);
 		});

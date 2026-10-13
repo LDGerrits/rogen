@@ -45,11 +45,11 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Routing folder**: A folder named after a route key, like `Server/` or `@server/`. When it governs, it disappears from the generated tree. Below another route, it's an ordinary folder. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Suffix**: The end of a name that routes it or marks a variant. Routes use `@` (`Save@server.luau`, `Matchmaking@server/`), variants use a dot (`Analytics.mock.luau`), and Rojo's `.server` and `.client` route too when a key of that name exists. See [Routing](/docs/v2/core-concepts/routing#the--sign).
+- **Suffix**: The end of a name that routes it. Routes use `@` (`Save@server.luau`, `Matchmaking@server/`), and Rojo's `.server` and `.client` route too when a key of that name exists. See [Routing](/docs/v2/core-concepts/routing#the--sign).
 
-- **Declared key**: A route key or a variant. Both are recognized as a folder, a marker file or a suffix. See [Variants](/docs/v2/core-concepts/variants#marking-files).
+- **Declared key**: A route key. It is recognized as a folder, a marker file or a suffix. See [Routing](/docs/v2/core-concepts/routing).
 
-- **Marker file**: An empty file named after a declared key with its sign, `@server` for a route and `.mock` for a variant, which applies it to its folder and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
+- **Marker file**: An empty file named after a declared key with its `@`, like `@server`, which applies it to its folder and everything below. See [Routing](/docs/v2/core-concepts/routing#marker-files).
 
 - **Metadata file**: Rojo's `*.meta.json`, which sets a class, properties or attributes. See [Project Layout](/docs/v2/core-concepts/project-layout#metadata-files).
 
@@ -58,19 +58,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Init folder**: A folder with an `init` or `index` script, which Rojo treats as one instance. See [Project Layout](/docs/v2/core-concepts/project-layout#init-folders).
 
-## Variants and Filtering
-
-- **Variant**: A switch declared in `variants` whose name marks another version of a file, kept right next to it. It is off unless `--variant` turns it on. See [Variants](/docs/v2/core-concepts/variants).
-
-- **Active variant**: A variant that's on for the current build, because `--variant` turned it on. Its suffix is stripped, and its file replaces the plain one. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
-
-- **Dormant variant**: A declared variant that's off for the current build, because `--variant` didn't turn it on or `--no-variant` turned it off. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
-
-- **Variant folder**: A folder named after a declared variant. It never appears in the tree. See [Variants](/docs/v2/core-concepts/variants#variant-folders).
-
-- **Conflict**: A group of variants in `conflicts` of which at most one may be on. Two on at once is an error. See [Variants](/docs/v2/core-concepts/variants#conflicts).
-
-- **Pruned**: Left out of the output because the file belongs to a dormant variant. See [Variants](/docs/v2/core-concepts/variants#declaring-variants).
+## Filtering
 
 - **Excluded**: Left out of the output because the file, or the template `$path` that mounts it, matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
 

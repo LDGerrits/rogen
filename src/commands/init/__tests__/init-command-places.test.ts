@@ -444,7 +444,6 @@ describe("init command", () => {
 				"info: Run each in its own terminal:",
 				"info:   rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
 				"info:   rogen serve",
-				'info: Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on with --variant.',
 				"outro: Wrote 3 files.",
 			]);
 		});

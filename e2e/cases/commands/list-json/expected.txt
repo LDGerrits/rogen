@@ -1,4 +1,4 @@
-$ rogen list --json --variant dev
+$ rogen list --json
 exit 0
 stdout:
   {
@@ -23,11 +23,6 @@ stdout:
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "variants": {
-          "mock": false,
-          "dev": true
-        },
-        "conflicts": [],
         "exclude": [],
         "template": null,
         "templates": [],
@@ -56,8 +51,6 @@ stdout:
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "variants": {},
-        "conflicts": [],
         "exclude": [],
         "template": null,
         "templates": [],
@@ -87,11 +80,6 @@ stdout:
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "variants": {
-          "mock": false,
-          "dev": true
-        },
-        "conflicts": [],
         "exclude": [],
         "template": null,
         "templates": [],
@@ -128,8 +116,6 @@ stdout:
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "variants": {},
-        "conflicts": [],
         "exclude": [],
         "template": null,
         "templates": [],

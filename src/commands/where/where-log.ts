@@ -27,29 +27,15 @@ function describeLocation(location: FileLocation, cwd: string): string {
 	return `${relative(location.source)} -> ${outcomeOf(location, cwd)}`;
 }
 
-/** The variants a file carries, as `variants mock (suffix)`. */
-function carried(
-	matches: readonly { variant: string; form: string }[]
-): string {
-	if (matches.length === 0) return "";
-	const listed = matches.map(({ variant, form }) => `${variant} (${form})`);
-	return ` · variant${matches.length === 1 ? "" : "s"} ${listed.join(", ")}`;
-}
-
 function outcomeOf(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
-			const variants = carried(location.variants);
 			const alsoAt = location.alsoAt
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
 			const hoisted = location.hoisted ? " · hoisted by ^" : "";
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${variants}${hoisted}${alsoAt}`;
-		}
-		case "pruned": {
-			const [first] = location.variants;
-			return `pruned · variant ${first.variant} is off (${first.form})`;
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}`;
 		}
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;

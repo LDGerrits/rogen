@@ -24,7 +24,6 @@ stdout:
     template: places/arena/template.project.json, over places/shared/template.project.json
     sync dir: (none)
     project file: arena.project.json
-    variants: (none)
   default.rogen.json
     extended by: arena.rogen.json, lobby.rogen.json
     root dirs: places/shared/src
@@ -32,7 +31,6 @@ stdout:
     template: places/shared/template.project.json
     sync dir: (none)
     project file: default.project.json
-    variants: (none)
   lobby.rogen.json
     extends: default.rogen.json
     root dirs: places/shared/src, places/lobby/src
@@ -40,7 +38,6 @@ stdout:
     template: places/lobby/template.project.json, over places/shared/template.project.json
     sync dir: (none)
     project file: lobby.project.json
-    variants: (none)
   3 configs.
 
 written:

@@ -198,7 +198,7 @@ describe("help command", () => {
 	});
 
 	describe("rogen help <topic>", () => {
-		it.each(["routing", "variants", "config", "layout", "output"])(
+		it.each(["routing", "config", "layout", "output"])(
 			"should print the %s topic as written",
 			async (topic) => {
 				const result = await help(topic);
@@ -238,13 +238,13 @@ describe("help command", () => {
 		});
 
 		it("should suggest the topic a misspelled one is closest to, as a usage error", async () => {
-			const result = await help("varients");
+			const result = await help("rouing");
 
 			expect((result as ResultError<Error>).error).toBeInstanceOf(
 				UsageError
 			);
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command or topic \"varients\". Did you mean 'rogen help variants'?"
+				"Unknown command or topic \"rouing\". Did you mean 'rogen help routing'?"
 			);
 		});
 	});
@@ -277,8 +277,6 @@ describe("help command", () => {
 			await help("build");
 
 			expect(printed()).toContain("-o, --out-file <path>");
-			expect(printed()).toContain("--variant <name>");
-			expect(printed()).toContain("--no-variant <name>");
 		});
 
 		it("should write <value> for a string option without a placeholder", async () => {
@@ -312,6 +310,40 @@ describe("help command", () => {
 			await help("placeholder-fallback");
 
 			expect(printed()).toContain("--thing <value>");
+		});
+
+		it("should mark an option that may repeat", async () => {
+			const options = [
+				{
+					name: "thing",
+					type: "string",
+					multiple: true,
+					description: "Takes things.",
+				},
+			] as const satisfies readonly OptionDescriptor[];
+			store.add(
+				registerCommand(
+					class extends AbstractCommand<typeof options> {
+						constructor() {
+							super({
+								id: "repeatable",
+								metadata: {
+									description: "A test command.",
+									options,
+								},
+							});
+						}
+
+						async run(): Promise<Result<void, Error>> {
+							return ok(undefined);
+						}
+					}
+				)
+			);
+
+			await help("repeatable");
+
+			expect(printed()).toContain("Takes things. (repeatable)");
 		});
 
 		it("should accept every option that help prints for a command", async () => {

@@ -7,11 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
-import {
-	closestMatch,
-	joinedWithAnd,
-	joinedWithOr,
-} from "../../base/strings.js";
+import { closestMatch, joinedWithOr } from "../../base/strings.js";
 import {
 	DeclaredKeys,
 	ResolvedConfig,
@@ -28,11 +24,6 @@ import { LayeredConfig } from "./layered-config.js";
 
 const FALLBACK_NAME = "project";
 
-/** Variants of which at most one may be on, and where the config wrote the group. */
-interface ConflictGroup {
-	readonly names: readonly string[];
-	readonly location: DiagnosticLocation;
-}
 const NAME_RULE = "use letters and digits only, starting with a letter";
 
 /** Checks every rule on a config's values that doesn't need the source tree, and hands back the config with its route targets parsed. */
@@ -42,7 +33,6 @@ export class ConfigValidator {
 	private readonly claimed = new Map<string, string>();
 	private readonly rootDirs: readonly string[];
 	private readonly routes: Readonly<Record<string, string>>;
-	private readonly variants: readonly string[];
 	private readonly outFile: string;
 
 	constructor(
@@ -52,7 +42,6 @@ export class ConfigValidator {
 		const { config } = layered;
 		this.rootDirs = fieldOf(config, "rootDirs") ?? [];
 		this.routes = fieldOf(config, "routes") ?? {};
-		this.variants = layered.variants;
 		this.outFile =
 			fieldOf(config, "outFile") ??
 			path.join(
@@ -68,9 +57,6 @@ export class ConfigValidator {
 		const dir = path.dirname(this.layered.leaf.file);
 
 		const routes = this.checkRoutes();
-		this.checkVariants();
-		const groups = this.checkConflictGroups();
-		this.checkActiveConflicts(groups);
 		this.checkOutFile();
 		this.checkRootDirs();
 		this.checkSyncDir();
@@ -80,15 +66,12 @@ export class ConfigValidator {
 			new ResolvedConfig({
 				file: this.layered.leaf.file,
 				parents: this.parents,
-				skippedVariants: this.layered.skippedVariants,
 				projectName:
 					template?.project.name ||
 					path.basename(dir) ||
 					FALLBACK_NAME,
 				rootDirs: this.rootDirs,
 				routes,
-				variants: this.layered.switches,
-				conflicts: groups.map(({ names }) => names),
 				exclude: fieldOf(config, "exclude") ?? [],
 				template,
 				syncDir: fieldOf(config, "syncDir"),
@@ -117,78 +100,6 @@ export class ConfigValidator {
 			else targets.set(key, target.value);
 		}
 		return targets;
-	}
-
-	private checkVariants(): void {
-		const seen = new Set<string>();
-		this.layered.config
-			.entries<string>("variants")
-			.forEach(({ value: variant }, index) => {
-				if (seen.has(variant)) return;
-				seen.add(variant);
-				const location = this.layered.locateEntry("variants", index);
-				if (!DeclaredKeys.isName(variant)) {
-					this.problems.error(
-						"config.invalidVariantName",
-						location,
-						`variant "${variant}" is invalid: ${NAME_RULE}.`
-					);
-				} else if (Object.hasOwn(this.routes, variant)) {
-					this.problems.error(
-						"config.variantClashesWithRoute",
-						location,
-						`variant "${variant}" has the same name as a route key; rename one of them.`
-					);
-				} else {
-					this.claim(variant, location);
-				}
-			});
-	}
-
-	/** The groups of declared variants of which at most one may be on; a group that names anything else is reported and left out. */
-	private checkConflictGroups(): ConflictGroup[] {
-		const groups: ConflictGroup[] = [];
-		this.layered.config
-			.entries<string[]>("conflicts")
-			.forEach(({ value: names }, index) => {
-				const location = this.layered.locateEntry("conflicts", index);
-				let valid = true;
-				for (const name of names) {
-					if (!this.variants.includes(name)) {
-						valid = false;
-						this.problems.error(
-							"config.conflictUndeclaredVariant",
-							location,
-							`a conflict group names "${name}", which is not declared under "variants". ${this.declareHint(name)}`
-						);
-					}
-				}
-				if (valid)
-					groups.push({ names: [...new Set(names)], location });
-			});
-		return groups;
-	}
-
-	/** Two variants of one group are on only when the command line turned both on. */
-	private checkActiveConflicts(groups: readonly ConflictGroup[]): void {
-		const { switches } = this.layered;
-		for (const { names, location } of groups) {
-			const on = names.filter((name) => switches[name]);
-			if (on.length < 2) continue;
-			this.problems.error(
-				"config.variantConflict",
-				location,
-				`variants ${joinedWithAnd(on.map((name) => `"${name}"`))} conflict, but ${on.length === 2 ? "both" : "all"} are on from --variant. Pass only one of them.`
-			);
-		}
-	}
-
-	/** What to do about a variant that isn't declared: the one it may misspell, else declaring it. */
-	private declareHint(variant: string): string {
-		const suggestion = closestMatch(variant, this.variants);
-		return suggestion
-			? `Did you mean "${suggestion}"?`
-			: "Declare it there.";
 	}
 
 	/** The output file may be no template of the chain's and no config, since a build would overwrite it. */

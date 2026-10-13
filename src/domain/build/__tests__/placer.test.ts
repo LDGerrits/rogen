@@ -48,32 +48,28 @@ describe("Placer", () => {
 		});
 	});
 
-	type VariantResult = Pick<Placement, "files" | "leftOut"> & {
+	type PlaceResult = Pick<Placement, "files" | "leftOut"> & {
 		readonly warnings: readonly Diagnostic[];
 	};
 
-	const VARIANT_ROUTES = {
+	const SHARED_ROUTES = {
 		server: "ServerScriptService",
 		client: "StarterPlayer/StarterPlayerScripts",
 		"*": "ReplicatedStorage",
 	};
 
-	describe("variants", () => {
+	describe("files that share an instance", () => {
 		let fs: MemoryFileSystemService;
 		let store: DisposableStore;
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-		const apply = async (
-			variants: Record<string, boolean>,
-			rootDirs: readonly string[] = [abs("src")]
-		) =>
+		const apply = async (rootDirs: readonly string[] = [abs("src")]) =>
 			(
 				await buildAndPlace(
 					fs,
 					configOf({
-						routes: VARIANT_ROUTES,
-						variants,
+						routes: SHARED_ROUTES,
 						rootDirs: [...rootDirs],
 					})
 				)
@@ -81,21 +77,8 @@ describe("Placer", () => {
 				({
 					placement: { files, leftOut },
 					findings: { warnings },
-				}): VariantResult => ({ files, leftOut, warnings })
+				}): PlaceResult => ({ files, leftOut, warnings })
 			);
-
-		const prunedPaths = (result: VariantResult) =>
-			[...result.leftOut]
-				.filter(([, why]) => why.status === "pruned")
-				.map(([source]) => source);
-
-		const instances = async (
-			variants: Record<string, boolean>,
-			rootDirs?: readonly string[]
-		) =>
-			(await apply(variants, rootDirs))
-				.unwrap()
-				.files.map((file) => file.instancePath.join("/"));
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
@@ -106,501 +89,107 @@ describe("Placer", () => {
 			store[Symbol.dispose]();
 		});
 
-		describe("variant folder", () => {
-			it("should move an active variant folder's contents up into the parent", async () => {
-				await write("src/Analytics/mock/Service.luau");
+		it("should name the file from the last root dir that replaced another", async () => {
+			await write("core/Types.luau", "lobby/Types.luau");
 
-				expect(await instances({ mock: true })).toEqual([
-					"ReplicatedStorage/Analytics/Service",
-				]);
-			});
+			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
 
-			it("should prune a dormant variant folder whole", async () => {
-				await write(
-					"src/Analytics/mock/Service.luau",
-					"src/Analytics/mock/deep/Data.luau"
-				);
-
-				const result = (await apply({ mock: false })).unwrap();
-
-				expect(result.files).toEqual([]);
-				expect(prunedPaths(result)).toEqual([
-					abs("src/Analytics/mock/Service.luau"),
-					abs("src/Analytics/mock/deep/Data.luau"),
-				]);
-			});
-		});
-
-		describe("marker file", () => {
-			it("should apply an active marker below and keep the folder's name", async () => {
-				await write(
-					"src/Experimental/.mock",
-					"src/Experimental/Save.luau"
-				);
-
-				expect(await instances({ mock: true })).toEqual([
-					"ReplicatedStorage/Experimental/Save",
-				]);
-			});
-
-			it("should prune everything below a dormant marker", async () => {
-				await write(
-					"src/Experimental/.mock",
-					"src/Experimental/Save.luau",
-					"src/Experimental/deep/Load.luau",
-					"src/Other.luau"
-				);
-
-				const result = (await apply({ mock: false })).unwrap();
-
-				expect(result.files.map((file) => file.instancePath)).toEqual([
-					["ReplicatedStorage", "Other"],
-				]);
-				expect(prunedPaths(result)).toEqual([
-					abs("src/Experimental/Save.luau"),
-					abs("src/Experimental/deep/Load.luau"),
-				]);
-			});
-		});
-
-		describe("suffix", () => {
-			it("should strip an active suffix from the name", async () => {
-				await write("src/Analytics.mock.luau");
-
-				expect(await instances({ mock: true })).toEqual([
-					"ReplicatedStorage/Analytics",
-				]);
-			});
-
-			it("should prune a file with a dormant suffix silently when it uses a separator", async () => {
-				await write("src/Analytics.mock.luau");
-
-				const result = (await apply({ mock: false })).unwrap();
-
-				expect(result.files).toEqual([]);
-				expect(prunedPaths(result)).toEqual([
-					abs("src/Analytics.mock.luau"),
-				]);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should name the dormant variant that pruned each file, and how it matched", async () => {
-				await write("src/Analytics.mock.luau", "src/dev/Save.luau");
-
-				const result = (
-					await apply({ mock: false, dev: false })
-				).unwrap();
-
-				expect(new Map(result.leftOut)).toEqual(
-					new Map([
-						[
-							abs("src/Analytics.mock.luau"),
-							{
-								status: "pruned",
-								variants: [{ variant: "mock", form: "suffix" }],
-							},
-						],
-						[
-							abs("src/dev/Save.luau"),
-							{
-								status: "pruned",
-								variants: [{ variant: "dev", form: "folder" }],
-							},
-						],
-					])
-				);
-			});
-
-			it("should list every dormant variant a pruned file carries, the first first", async () => {
-				await write("src/dev/Analytics.mock.luau");
-
-				const result = (
-					await apply({ mock: false, dev: false })
-				).unwrap();
-
-				expect(
-					result.leftOut.get(abs("src/dev/Analytics.mock.luau"))
-				).toEqual({
-					status: "pruned",
-					variants: [
-						{ variant: "dev", form: "folder" },
-						{ variant: "mock", form: "suffix" },
-					],
-				});
-			});
-
-			it("should report the file an active variant replaced", async () => {
-				await write("src/Analytics.luau", "src/Analytics.mock.luau");
-
-				const result = (await apply({ mock: true })).unwrap();
-
-				expect(new Map(result.leftOut)).toEqual(
-					new Map([
-						[
-							abs("src/Analytics.luau"),
-							{
-								status: "replaced",
-								by: abs("src/Analytics.mock.luau"),
-							},
-						],
-					])
-				);
-			});
-
-			it("should name the file from the last root dir that replaced another", async () => {
-				await write("core/Types.luau", "lobby/Types.luau");
-
-				const result = (
-					await apply({}, [abs("core"), abs("lobby")])
-				).unwrap();
-
-				expect(new Map(result.leftOut)).toEqual(
-					new Map([
-						[
-							abs("core/Types.luau"),
-							{ status: "replaced", by: abs("lobby/Types.luau") },
-						],
-					])
-				);
-			});
-
-			it("should prune models by a dormant suffix too", async () => {
-				await write("src/Gun.mock.rbxm");
-
-				expect(
-					prunedPaths((await apply({ mock: false })).unwrap())
-				).toEqual([abs("src/Gun.mock.rbxm")]);
-			});
-
-			it("should prune a file carrying one dormant variant among active ones", async () => {
-				await write("src/dev/Save.mock.luau");
-
-				expect(await instances({ dev: true, mock: false })).toEqual([]);
-			});
-		});
-
-		describe("capital suffix on a dormant variant", () => {
-			it("should neither prune nor warn: a capital letter no longer carries a variant", async () => {
-				await write("src/HttpMock.luau", "src/DataMock.luau");
-
-				const result = (await apply({ mock: false })).unwrap();
-
-				expect(result.files.map((file) => file.instancePath)).toEqual([
-					["ReplicatedStorage", "DataMock"],
-					["ReplicatedStorage", "HttpMock"],
-				]);
-				expect(prunedPaths(result)).toEqual([]);
-				expect(result.warnings).toEqual([]);
-			});
-		});
-
-		describe("precedence within a root dir", () => {
-			it("should let dev/Service.luau beat prod/Service.luau when dev is active", async () => {
-				await write("src/Analytics/dev/Service.luau");
-				await write("src/Analytics/prod/Service.luau");
-
-				const result = (
-					await apply({ dev: true, prod: false })
-				).unwrap();
-
-				expect(
-					result.files.map((file) => file.entry.relativePath)
-				).toEqual(["Analytics/dev/Service.luau"]);
-				expect(
-					result.files.map((file) => file.instancePath.join("/"))
-				).toEqual(["ReplicatedStorage/Analytics/Service"]);
-				expect(prunedPaths(result)).toEqual([
-					abs("src/Analytics/prod/Service.luau"),
-				]);
-			});
-
-			it("should let a variant file beat a plain one silently", async () => {
-				await write("src/Analytics.luau", "src/Analytics.mock.luau");
-
-				const result = (await apply({ mock: true })).unwrap();
-
-				expect(
-					result.files.map((file) => file.entry.relativePath)
-				).toEqual(["Analytics.mock.luau"]);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should keep the plain file when the variant is dormant", async () => {
-				await write("src/Analytics.luau", "src/Analytics.mock.luau");
-
-				const result = (await apply({ mock: false })).unwrap();
-
-				expect(
-					result.files.map((file) => file.entry.relativePath)
-				).toEqual(["Analytics.luau"]);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should fail at each file when two active variants claim one name", async () => {
-				await write(
-					"src/Analytics.mock.luau",
-					"src/Analytics.dev.luau"
-				);
-
-				const result = await apply({ mock: true, dev: true });
-
-				expect(
-					result.isErr() ? result.error.diagnostics : []
-				).toMatchObject([
-					{
-						severity: DiagnosticSeverity.Error,
-						code: "variant.activeClash",
-						resource: abs("src/Analytics.dev.luau"),
-						message: `becomes "ReplicatedStorage/Analytics" with an active variant, and so does ${abs("src/Analytics.mock.luau")}. Only one can apply: turn a variant off or rename a file.`,
-					},
-					{
-						code: "variant.activeClash",
-						resource: abs("src/Analytics.mock.luau"),
-					},
-				]);
-			});
-
-			it("should fail when two files carry the same active variant", async () => {
-				await write("src/mock/Service.luau", "src/Service.mock.luau");
-
-				const result = await apply({ mock: true });
-
-				expect(
-					result.isErr() ? result.error.diagnostics[0].code : ""
-				).toBe("variant.activeClash");
-			});
-
-			it("should let the file with more active variants replace one whose variants it also has", async () => {
-				await write(
-					"src/A/Service.luau",
-					"src/A/mock/Service.luau",
-					"src/A/mock/Service.dev.luau"
-				);
-
-				const result = (
-					await apply({ mock: true, dev: true })
-				).unwrap();
-
-				expect(
-					result.files.map((file) => file.entry.relativePath)
-				).toEqual(["A/mock/Service.dev.luau"]);
-				expect(
-					[...result.leftOut].map(([source, why]) => [
-						source,
-						why.status === "replaced" && why.by,
-					])
-				).toEqual([
+			expect(new Map(result.leftOut)).toEqual(
+				new Map([
 					[
-						abs("src/A/Service.luau"),
-						abs("src/A/mock/Service.dev.luau"),
+						abs("core/Types.luau"),
+						{ status: "replaced", by: abs("lobby/Types.luau") },
 					],
-					[
-						abs("src/A/mock/Service.luau"),
-						abs("src/A/mock/Service.dev.luau"),
-					],
-				]);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should fail at the files with the most variants only, when neither has all of the other's", async () => {
-				await write(
-					"src/Service.luau",
-					"src/Service.mock.luau",
-					"src/mock/Service.dev.luau",
-					"src/Service.halloween.luau"
-				);
-
-				const result = await apply({
-					mock: true,
-					dev: true,
-					halloween: true,
-				});
-
-				expect(
-					result.isErr() &&
-						result.error.diagnostics.map(({ code, resource }) => [
-							code,
-							resource,
-						])
-				).toEqual([
-					["variant.activeClash", abs("src/Service.halloween.luau")],
-					["variant.activeClash", abs("src/mock/Service.dev.luau")],
-				]);
-			});
-
-			it("should warn at the plain file left out, naming the one used", async () => {
-				await write("src/Types.luau", "src/Types.lua");
-
-				const result = (await apply({})).unwrap();
-
-				expect(
-					result.files.map((file) => file.entry.relativePath)
-				).toEqual(["Types.luau"]);
-				expect(result.warnings).toEqual([
-					{
-						severity: DiagnosticSeverity.Warning,
-						code: "tree.instanceClash",
-						resource: abs("src/Types.lua"),
-						message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place. Rename one of them to keep both.`,
-					},
-				]);
-			});
-
-			it("should name the clash's winner in its own root dir when a later root dir wins", async () => {
-				await write(
-					"core/Types.luau",
-					"core/Types.lua",
-					"lobby/Types.luau"
-				);
-
-				const result = (
-					await apply({}, [abs("core"), abs("lobby")])
-				).unwrap();
-
-				expect(result.warnings).toMatchObject([
-					{
-						resource: abs("core/Types.lua"),
-						message: expect.stringContaining(
-							`as ${abs("core/Types.luau")} does`
-						),
-					},
-				]);
-			});
-
-			it("should warn at every plain file left out of a clash", async () => {
-				await write(
-					"src/Types.luau",
-					"src/Types.lua",
-					"src/Types.json"
-				);
-
-				const result = (await apply({})).unwrap();
-
-				expect(result.warnings.map(({ resource }) => resource)).toEqual(
-					[abs("src/Types.json"), abs("src/Types.lua")]
-				);
-			});
-
-			it("should not warn about plain files that lose to a variant one", async () => {
-				await write(
-					"src/Types.luau",
-					"src/Types.lua",
-					"src/Types.mock.luau"
-				);
-
-				expect((await apply({ mock: true })).unwrap().warnings).toEqual(
-					[]
-				);
-			});
+				])
+			);
 		});
 
-		describe("root dirs", () => {
-			it("should let the last root dir win a clash without a warning", async () => {
-				await write("core/Save.luau", "lobby/Save.luau");
+		it("should warn at the file left out, naming the one used", async () => {
+			await write("src/Types.luau", "src/Types.lua");
 
-				const result = (
-					await apply({}, [abs("core"), abs("lobby")])
-				).unwrap();
+			const result = (await apply()).unwrap();
 
-				expect(result.files.map((file) => file.entry.rootDir)).toEqual([
-					abs("lobby"),
-				]);
-				expect(result.warnings).toEqual([]);
-			});
-
-			it("should apply the last-root rule after variant precedence", async () => {
-				await write("core/Save.mock.luau", "lobby/Save.luau");
-
-				const result = (
-					await apply({ mock: true }, [abs("core"), abs("lobby")])
-				).unwrap();
-
-				expect(result.files.map((file) => file.entry.rootDir)).toEqual([
-					abs("lobby"),
-				]);
-			});
-
-			it("should not treat files in different root dirs as a variant clash", async () => {
-				await write("core/Save.mock.luau", "lobby/Save.dev.luau");
-
-				const result = await apply({ mock: true, dev: true }, [
-					abs("core"),
-					abs("lobby"),
-				]);
-
-				expect(result.isOk()).toBe(true);
-			});
+			expect(result.files.map((file) => file.entry.relativePath)).toEqual(
+				["Types.luau"]
+			);
+			expect(result.warnings).toEqual([
+				{
+					severity: DiagnosticSeverity.Warning,
+					code: "tree.instanceClash",
+					resource: abs("src/Types.lua"),
+					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place. Rename one of them to keep both.`,
+				},
+			]);
 		});
 
-		describe("warnings", () => {
-			it("should warn that a script with a variant after .server becomes a ModuleScript", async () => {
-				await write("src/Foo.server.mock.luau");
+		it("should name the clash's winner in its own root dir when a later root dir wins", async () => {
+			await write(
+				"core/Types.luau",
+				"core/Types.lua",
+				"lobby/Types.luau"
+			);
 
-				const { warnings } = (await apply({ mock: true })).unwrap();
+			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
 
-				expect(warnings).toMatchObject([
-					{
-						severity: DiagnosticSeverity.Warning,
-						code: "variant.buriedScriptSuffix",
-						resource: abs("src/Foo.server.mock.luau"),
-					},
-				]);
-				expect(warnings[0].message).toContain(".server");
-			});
+			expect(result.warnings).toMatchObject([
+				{
+					resource: abs("core/Types.lua"),
+					message: expect.stringContaining(
+						`as ${abs("core/Types.luau")} does`
+					),
+				},
+			]);
+		});
 
-			it("should warn once for an init script copied to several nodes", async () => {
-				await write(
-					"src/Net/init.plugin.mock.luau",
-					"src/Net/Util.luau",
-					"src/Net/server/Remote.luau",
-					"src/Net/client/Hud.luau"
-				);
+		it("should warn at every file left out of a clash", async () => {
+			await write("src/Types.luau", "src/Types.lua", "src/Types.json");
 
-				const { warnings } = (await apply({ mock: true })).unwrap();
+			const result = (await apply()).unwrap();
 
-				expect(
-					warnings.filter(
-						({ code }) => code === "variant.buriedScriptSuffix"
-					)
-				).toMatchObject([
-					{ resource: abs("src/Net/init.plugin.mock.luau") },
-				]);
-			});
+			expect(result.warnings.map(({ resource }) => resource)).toEqual([
+				abs("src/Types.json"),
+				abs("src/Types.lua"),
+			]);
+		});
 
-			it("should not warn when the script suffix comes last", async () => {
-				await write(
-					"src/Foo.mock.server.luau",
-					"src/Bar.mock.client.luau"
-				);
+		it("should let the last root dir win a clash without a warning", async () => {
+			await write("core/Save.luau", "lobby/Save.luau");
 
-				expect((await apply({ mock: true })).unwrap().warnings).toEqual(
-					[]
-				);
-			});
+			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
 
-			it("should warn about a file whose variant is off too, since its name is wrong either way", async () => {
-				await write("src/Foo.server.mock.luau");
+			expect(result.files.map((file) => file.entry.rootDir)).toEqual([
+				abs("lobby"),
+			]);
+			expect(result.warnings).toEqual([]);
+		});
 
-				expect(
-					(await apply({ mock: false })).unwrap().warnings
-				).toMatchObject([
-					{
-						code: "variant.buriedScriptSuffix",
-						resource: abs("src/Foo.server.mock.luau"),
-					},
-				]);
-			});
+		it("should keep a capital letter in the name and warn of nothing", async () => {
+			await write("src/HttpMock.luau", "src/DataMock.luau");
 
-			it("should keep a suffix that isn't a declared variant in the name, without a warning", async () => {
-				await write("src/Foo.beta.luau");
+			const result = (await apply()).unwrap();
 
-				const result = (await apply({ mock: true })).unwrap();
+			expect(result.files.map((file) => file.instancePath)).toEqual([
+				["ReplicatedStorage", "DataMock"],
+				["ReplicatedStorage", "HttpMock"],
+			]);
+			expect(result.warnings).toEqual([]);
+		});
 
-				expect(
-					result.files.map((file) => file.instancePath.join("/"))
-				).toEqual(["ReplicatedStorage/Foo.beta"]);
-				expect(result.warnings).toEqual([]);
-			});
+		it("should not warn when the script suffix comes last", async () => {
+			await write("src/Foo.mock.server.luau", "src/Bar.mock.client.luau");
+
+			expect((await apply()).unwrap().warnings).toEqual([]);
+		});
+
+		it("should keep a dot part in the name, without a warning", async () => {
+			await write("src/Foo.beta.luau");
+
+			const result = (await apply()).unwrap();
+
+			expect(
+				result.files.map((file) => file.instancePath.join("/"))
+			).toEqual(["ReplicatedStorage/Foo.beta"]);
+			expect(result.warnings).toEqual([]);
 		});
 	});
 
@@ -722,16 +311,17 @@ describe("Placer", () => {
 			await write(
 				"src/Net/init.luau",
 				"src/Net/server/init.luau",
-				"src/Net/client/init.dev.luau",
+				"src/Net/client/init.luau",
 				"src/Net/client/Hud.luau"
 			);
 
-			const result = await route({ variants: { dev: false } });
+			const result = await route();
 
-			expect(await placed({ variants: { dev: false } })).toEqual([
+			expect(await placed()).toEqual([
 				"Net/client/Hud.luau -> StarterPlayer/StarterPlayerScripts/Net/Hud",
+				"Net/client/init.luau -> StarterPlayer/StarterPlayerScripts/Net",
+				"Net/init.luau -> ReplicatedStorage/shared/Net",
 				"Net/server/init.luau -> ServerScriptService/Net",
-				"Net/init.luau -> StarterPlayer/StarterPlayerScripts/Net (copy)",
 			]);
 			expect(result.leftOut.withStatus("replaced")).toEqual([]);
 		});
@@ -808,24 +398,11 @@ describe("Placer", () => {
 		});
 
 		it("should copy only to nodes something placed is left at", async () => {
-			await write("src/Net/init.luau", "src/Net/client/Debug.dev.luau");
+			await write("src/Net/init.luau", "src/Net/client/Debug.luau");
 
-			expect(await placed({ variants: { dev: false } })).toEqual([
-				"Net/init.luau -> ReplicatedStorage/shared/Net",
-			]);
-		});
-
-		it("should make an init script with a variant its folder, and let it replace the plain one at every node it is copied to", async () => {
-			await write(
-				"src/Net/init.luau",
-				"src/Net/init.mock.luau",
-				"src/Net/server/Remote.luau"
-			);
-
-			expect(await placed({ variants: { mock: true } })).toEqual([
-				"Net/server/Remote.luau -> ServerScriptService/Net/Remote",
-				"Net/init.mock.luau -> ServerScriptService/Net (copy)",
-			]);
+			expect(
+				await placed({ exclude: [abs("src/Net/client/Debug.luau")] })
+			).toEqual(["Net/init.luau -> ReplicatedStorage/shared/Net"]);
 		});
 	});
 });

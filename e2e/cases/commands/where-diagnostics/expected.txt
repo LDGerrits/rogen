@@ -32,7 +32,6 @@ stdout:
         "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"Save@sever\"]",
         "route": "*",
         "routeMatch": "fallback",
-        "variants": [],
         "diagnostics": [
           {
             "file": "<dir>/src/Inventory/Save@sever.luau",
@@ -64,7 +63,6 @@ stdout:
         ],
         "route": "shared",
         "routeMatch": "folder",
-        "variants": [],
         "diagnostics": [
           {
             "file": "<dir>/src/Shared/Server/Secret.server.luau",
@@ -89,7 +87,6 @@ stdout:
         "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory[\"New@sever\"]",
         "route": "*",
         "routeMatch": "fallback",
-        "variants": [],
         "diagnostics": [
           {
             "file": "<dir>/src/Inventory/New@sever.luau",
@@ -122,7 +119,6 @@ stdout:
         "require": "game:GetService(\"ReplicatedStorage\").shared.Inventory.Clean",
         "route": "*",
         "routeMatch": "fallback",
-        "variants": [],
         "diagnostics": []
       }
     ],

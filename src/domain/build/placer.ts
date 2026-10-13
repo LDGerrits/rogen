@@ -23,11 +23,10 @@ import {
 import { RootClaims } from "./dir-claims.js";
 import { MarkerClashes } from "./marker-clashes.js";
 import { SyncLayout } from "./sync-layout.js";
-import { LandsElsewhere, VariantResolver } from "./variant-resolver.js";
+import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
-import { instanceKey } from "../roblox/roblox.js";
 
-/** Finds where every file of a config lands: scans the root dirs, routes each file, then decides across files: copies init scripts, applies variants and lets the template win. */
+/** Finds where every file of a config lands: scans the root dirs, routes each file, then decides across files: copies init scripts, lets the last file with an instance path win and lets the template win. */
 export class Placer {
 	private readonly layout: SyncLayout;
 	private readonly template: BuildTemplate;
@@ -40,7 +39,7 @@ export class Placer {
 	) {
 		this.layout = new SyncLayout(config, tools);
 		this.template = new BuildTemplate(config, this.layout);
-		this.initScripts = new InitScripts(config, this.template);
+		this.initScripts = new InitScripts(this.template);
 	}
 
 	place(): Result<Placement, Diagnostic[]> {
@@ -50,11 +49,10 @@ export class Placer {
 		if (rootDirMounts.length > 0) return err(rootDirMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(keys, this.layout.initNames, roots);
-		const claims = new RootClaims(roots, readings, keys);
+		const claims = new RootClaims(roots, readings);
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
 			new Router(this.config, readings).route(roots, claims);
-		const variants = new VariantResolver(this.config, readings);
-		const markerClashes = new MarkerClashes(claims, readings, keys);
+		const markerClashes = new MarkerClashes(claims);
 		const routeErrors = [
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
@@ -63,16 +61,11 @@ export class Placer {
 			),
 			...this.withoutFolderErrors(withoutFolder),
 			...this.hoistedInitErrors(hoistedInits),
-			...this.landsElsewhereErrors(
-				variants.landingElsewhere(routed),
-				markerClashes
-			),
 		];
-		const routedNodes = this.initScripts.withCopies(routed, toCopy);
-		const applied = variants.resolve(routedNodes);
-		if (applied.isErr()) return err([...routeErrors, ...applied.error]);
 		if (routeErrors.length > 0) return err(routeErrors);
-		const nodes = this.initScripts.withoutLoneInits(applied.value.nodes);
+		const routedNodes = this.initScripts.withCopies(routed, toCopy);
+		const resolved = new InstanceResolver().resolve(routedNodes);
+		const nodes = this.initScripts.withoutLoneInits(resolved.nodes);
 		const templating = this.yieldToTemplate(nodes);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
@@ -83,7 +76,7 @@ export class Placer {
 					source,
 					{ status: "unrouted" },
 				]),
-			applied.value.leftOut,
+			resolved.leftOut,
 			templating.leftOut
 		);
 
@@ -97,7 +90,7 @@ export class Placer {
 				routedNodes,
 				nodes: templating.nodes,
 				leftOut,
-				clashes: applied.value.clashes,
+				clashes: resolved.clashes,
 				displaced: templating.displaced,
 			})
 		);
@@ -114,7 +107,7 @@ export class Placer {
 		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
 	}
 
-	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, whichever variants are on, unless the template displaces the file. A marker in a clash is that error's. */
+	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, unless the template displaces the file. A marker in a clash is that error's. */
 	private ignoredAtErrors(
 		nodes: readonly RoutedFile[],
 		markerClashes: MarkerClashes
@@ -180,25 +173,6 @@ export class Placer {
 				`${path.posix.basename(source)} starts with "^", but an init script is its folder, so the "^" can't hoist it alone. Put the "^" on the folder: ^${path.posix.basename(folder)}.`
 			);
 		});
-	}
-
-	/** A variant that lands apart from the plain file beside it replaces nothing, so both would ship. A clash in a folder above it is that error's. */
-	private landsElsewhereErrors(
-		landsElsewhere: readonly LandsElsewhere[],
-		markerClashes: MarkerClashes
-	): Diagnostic[] {
-		return landsElsewhere
-			.filter(
-				({ file }) =>
-					!markerClashes.covers(path.posix.dirname(file.entry.source))
-			)
-			.map(({ file, plain }) =>
-				errorDiagnostic(
-					"variant.landsElsewhere",
-					{ resource: file.entry.source },
-					`lands at "${instanceKey(file.instancePath)}", but ${plain.entry.source}, which it is a variant of, lands at "${instanceKey(plain.instancePath)}", so both would ship. Route and hoist them the same way.`
-				)
-			);
 	}
 
 	/** Leaves out the files whose node the template already defines; the template wins. */

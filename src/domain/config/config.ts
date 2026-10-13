@@ -27,8 +27,6 @@ export interface RogenConfig {
 	readonly extends?: string;
 	readonly rootDirs?: string[];
 	readonly routes?: Record<string, string>;
-	readonly variants?: string[];
-	readonly conflicts?: string[][];
 	readonly exclude?: string[];
 	readonly template?: string;
 	readonly syncDir?: string;
@@ -138,7 +136,7 @@ export function rootDirOverlap(
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
-/** The route and variant keys a config declares; a name spells a key exactly or with its first letter flipped. */
+/** The route keys a config declares; a name spells a key exactly or with its first letter flipped. */
 export class DeclaredKeys {
 	/** The route that takes every file no other route claims. */
 	static readonly FALLBACK_ROUTE = "*";
@@ -147,16 +145,11 @@ export class DeclaredKeys {
 
 	/** Every route key but the fallback, which no name can spell. */
 	readonly routeKeys: ReadonlySet<string>;
-	/** The keys that mark a file as one alternative of an instance. */
-	readonly variantKeys: ReadonlySet<string>;
-	readonly all: ReadonlySet<string>;
 
-	constructor(routeKeys: Iterable<string>, variantKeys: Iterable<string>) {
+	constructor(routeKeys: Iterable<string>) {
 		this.routeKeys = new Set(
 			[...routeKeys].filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
 		);
-		this.variantKeys = new Set(variantKeys);
-		this.all = new Set([...this.routeKeys, ...this.variantKeys]);
 	}
 
 	/** Whether `text` can be a key: letters and digits, starting with a letter. */
@@ -179,38 +172,20 @@ export class DeclaredKeys {
 		return flipped + name.slice(1);
 	}
 
-	/** Whether `key` marks a file as an alternative. */
-	isVariant(key: string): boolean {
-		return this.variantKeys.has(key);
-	}
-
 	isRoute(key: string): boolean {
 		return this.routeKeys.has(key);
 	}
 
-	/** What `key` is, in the words a message names it. */
-	kindOf(key: string): "variant" | "route" {
-		return this.isVariant(key) ? "variant" : "route";
-	}
-
 	/** The key `name` spells, exactly or with the first letter in the other case. */
 	resolve(name: string): string | undefined {
-		return this.resolveIn(name, this.all);
-	}
-
-	resolveRoute(name: string): string | undefined {
 		return this.resolveIn(name, this.routeKeys);
-	}
-
-	resolveVariant(name: string): string | undefined {
-		return this.resolveIn(name, this.variantKeys);
 	}
 
 	/** The key `name` only differs from beyond the first letter's case, when `name` doesn't spell a key. */
 	nearMiss(name: string): string | undefined {
 		if (this.resolve(name) !== undefined) return undefined;
 		const lower = name.toLowerCase();
-		return [...this.all].find((key) => key.toLowerCase() === lower);
+		return [...this.routeKeys].find((key) => key.toLowerCase() === lower);
 	}
 
 	private resolveIn(
@@ -282,16 +257,10 @@ export interface ResolvedConfigFields {
 	readonly file: string;
 	/** The configs it extends, the nearest first. */
 	readonly parents: readonly string[];
-	/** Variants turned on or off from the command line that this config doesn't declare. */
-	readonly skippedVariants: readonly string[];
 	readonly projectName: string;
 	readonly rootDirs: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** Every declared variant to whether it is on, as the command line says. */
-	readonly variants: Readonly<Record<string, boolean>>;
-	/** Groups of variants of which at most one is on. */
-	readonly conflicts: readonly (readonly string[])[];
 	/** The globs left out, which drop scanned files and template mounts alike. */
 	readonly exclude: readonly string[];
 	readonly template?: ResolvedTemplate;
@@ -305,13 +274,10 @@ export interface ResolvedConfigFields {
 export class ResolvedConfig {
 	readonly file: string;
 	readonly parents: readonly string[];
-	readonly skippedVariants: readonly string[];
 	readonly projectName: string;
 	readonly rootDirs: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
-	readonly variants: Readonly<Record<string, boolean>>;
 	readonly exclude: readonly string[];
-	readonly conflicts: readonly (readonly string[])[];
 	readonly template?: ResolvedTemplate;
 	readonly syncDir?: string;
 	readonly outFile: string;
@@ -321,21 +287,15 @@ export class ResolvedConfig {
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
 		this.parents = fields.parents;
-		this.skippedVariants = fields.skippedVariants;
 		this.projectName = fields.projectName;
 		this.rootDirs = fields.rootDirs;
 		this.routes = fields.routes;
-		this.variants = fields.variants;
 		this.exclude = fields.exclude;
-		this.conflicts = fields.conflicts;
 		this.template = fields.template;
 		this.syncDir = fields.syncDir;
 		this.outFile = fields.outFile;
 		this.server = fields.server;
-		this.keys = new DeclaredKeys(
-			fields.routes.keys(),
-			Object.keys(fields.variants)
-		);
+		this.keys = new DeclaredKeys(fields.routes.keys());
 	}
 
 	/** What the config is asked for by. */
@@ -353,19 +313,5 @@ export class ResolvedConfig {
 		return this.rootDirs.length > 0
 			? commonAncestor(this.rootDirs)
 			: undefined;
-	}
-
-	/** The variants among a file's that are off; a file that carries any is pruned. */
-	dormantVariants<T extends { readonly variant: string }>(
-		matches: readonly T[]
-	): T[] {
-		return matches.filter(({ variant }) => !this.variants[variant]);
-	}
-
-	/** Whether every variant among a file's is on; otherwise it is pruned. */
-	allVariantsOn<T extends { readonly variant: string }>(
-		matches: readonly T[]
-	): boolean {
-		return this.dormantVariants(matches).length === 0;
 	}
 }

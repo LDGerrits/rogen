@@ -135,11 +135,6 @@ export class ConfigSet {
 		return this.stems.map(projectFileName);
 	}
 
-	/** Says where variants of a script are swapped in, in the words the next steps use. */
-	get variantsStep(): string {
-		return `Declare variants under "variants" in ${configFileName(this.name)} to swap in files like Analytics.mock.${this.language.extension}, and turn them on with --variant.`;
-	}
-
 	/** The stem of the config that is served: the synced one when there is one. */
 	get servedStem(): string {
 		return this.sourced ? this.syncStem : this.name;

@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from "child_process";
 import fs from "fs";
-import os from "os";
 import path from "path";
 import { decode } from "@msgpack/msgpack";
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
@@ -364,66 +363,6 @@ describeWithRojo("end to end serve", () => {
 					`{"disconnected":{"config":"default","server":"rojo","clients":0}}`
 				);
 			}, 20_000);
-		}, 60_000);
-	});
-
-	describe("with other variants than the serve runs", () => {
-		const recordPath = () =>
-			path.join(os.tmpdir(), "rogen-serve", `${serve.port}.json`);
-		const servedMocked = async () => {
-			writeProjectFile(
-				serve.dir,
-				"default.rogen.json",
-				config({ variants: ["mock"] })
-			);
-			writeProjectFile(serve.dir, "src/Net/Analytics.luau");
-			writeProjectFile(serve.dir, "src/Net/Analytics.mock.luau");
-			const serving = serve.start(["--variant", "mock"]);
-			await eventually(() => {
-				expect(fs.existsSync(recordPath())).toBe(true);
-			}, 20_000);
-			return serving;
-		};
-		const projectFile = () =>
-			fs.readFileSync(
-				path.join(serve.dir, "default.project.json"),
-				"utf8"
-			);
-		const ignored = () =>
-			(JSON.parse(projectFile()).globIgnorePaths ?? []) as string[];
-
-		it("should refuse a build that would change what Studio gets, and build to another file instead", async () => {
-			await servedMocked();
-			expect(ignored()).toEqual([]);
-
-			const [build, buildArgs] = invocation(serve.cli, ["build"]);
-			const refused = spawnSync(build, buildArgs, {
-				cwd: serve.dir,
-				encoding: "utf8",
-			});
-
-			expect(refused.status).toBe(1);
-			expect(refused.stderr).toContain("output.servedInOtherMode");
-			expect(ignored()).toEqual([]);
-
-			const [other, otherArgs] = invocation(serve.cli, [
-				"build",
-				"-o",
-				"plain.project.json",
-			]);
-			expect(spawnSync(other, otherArgs, { cwd: serve.dir }).status).toBe(
-				0
-			);
-			expect(ignored()).toEqual([]);
-		}, 60_000);
-
-		it("should not call a serve with other variants already served", async () => {
-			await servedMocked();
-
-			const second = serve.start();
-
-			expect(await second.exited).toBe(1);
-			expect(second.output).toContain("serve.otherMode");
 		}, 60_000);
 	});
 });

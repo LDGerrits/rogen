@@ -20,10 +20,6 @@ const TOPICS: readonly HelpTopic[] = [
 			"How folders and names place a file, and what that means for requires.",
 	},
 	{
-		name: "variants",
-		description: "Files that swap in when a variant is on.",
-	},
-	{
 		name: "config",
 		description: "Config fields, extends, places, templates and sync dirs.",
 	},

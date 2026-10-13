@@ -21,8 +21,6 @@ import { fieldOf } from "./config.js";
 export interface ConfigOverrides {
 	/** Resolved against the working directory. */
 	readonly outFile?: string;
-	/** Variant name to whether it is on. */
-	readonly variants: Readonly<Record<string, boolean>>;
 }
 
 /** A config's chain merged with the defaults and the command line, with each value traceable to the file that set it. */
@@ -30,12 +28,6 @@ export class LayeredConfig {
 	readonly config: Config;
 	/** The chain from its root to the leaf, matching the layers of `config`. */
 	readonly files: readonly ConfigFile[];
-	/** The variants the CLI named that no layer declares, so they were left out. */
-	readonly skippedVariants: readonly string[];
-	/** Every variant the chain declares, in order. */
-	readonly variants: readonly string[];
-	/** Each declared variant to whether the command line turns it on. */
-	readonly switches: Readonly<Record<string, boolean>>;
 	private readonly layers: readonly ConfigModel[];
 
 	/** `chain` is the leaf first, then each parent. */
@@ -60,23 +52,6 @@ export class LayeredConfig {
 			this.layers,
 			LayeredConfig.cliModel(overrides, cwd),
 			configMergePolicies
-		);
-
-		this.variants = [
-			...new Set(
-				this.config
-					.entries<string>("variants")
-					.map(({ value }) => value)
-			),
-		];
-		const declared = new Set(this.variants);
-		const named = Object.keys(overrides.variants);
-		this.skippedVariants = named.filter((name) => !declared.has(name));
-		this.switches = Object.fromEntries(
-			this.variants.map((variant) => [
-				variant,
-				overrides.variants[variant] === true,
-			])
 		);
 	}
 

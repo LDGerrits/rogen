@@ -75,7 +75,7 @@ describe("StartedServer", () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
 		requests = new MockRequestService();
-		records = new ServerRecords(fileSystem, "/tmp", 4242);
+		records = new ServerRecords(fileSystem, "/tmp");
 		served = [];
 		said = [];
 		stops = [];
@@ -120,7 +120,6 @@ describe("StartedServer", () => {
 			await records.recordOf(target.address, served[0].info)
 		).toMatchObject({
 			projectFile: "/repo/default.project.json",
-			setting: { variants: {} },
 		});
 		await server.unrecord();
 		expect(
@@ -214,70 +213,6 @@ describe("StartedServer", () => {
 			await jest.advanceTimersByTimeAsync(100);
 
 			expect(write).not.toHaveBeenCalled();
-		});
-	});
-
-	describe("when its config is built again", () => {
-		const built = (mock: boolean) =>
-			mockConfig({
-				file: "/repo/default.rogen.json",
-				outFile: "/repo/default.project.json",
-				variants: { mock },
-			});
-		const recordedNow = async () =>
-			(await records.recordOf(target.address, served[0].info))?.setting;
-
-		const answer = async () => {
-			requests.answer(ROJO_URL, {
-				projectName: "repo",
-				serverVersion: "7.7.1",
-				sessionId: "s1",
-			});
-			await jest.advanceTimersByTimeAsync(250);
-		};
-
-		it("should record the variants it serves, and the ones it is built with next", async () => {
-			start(built(true));
-			await answer();
-			expect(await recordedNow()).toEqual({ variants: { mock: true } });
-
-			await server.rebuilt(built(false));
-
-			expect(await recordedNow()).toEqual({ variants: { mock: false } });
-		});
-
-		it("should not write its record again for a build in the same setting", async () => {
-			start(built(true));
-			await answer();
-			const write = jest.spyOn(records, "write");
-
-			await server.rebuilt(built(true));
-
-			expect(write).not.toHaveBeenCalled();
-		});
-
-		it("should not write its record again once it is told to stop", async () => {
-			start(built(true));
-			await answer();
-			const write = jest.spyOn(records, "write");
-
-			await server.terminate();
-			await server.rebuilt(built(false));
-			await server.unrecord();
-
-			expect(write).not.toHaveBeenCalled();
-			expect(
-				await records.recordOf(target.address, served[0].info)
-			).toBeUndefined();
-		});
-
-		it("should record the latest build when the server answers after it", async () => {
-			start(built(true));
-
-			await server.rebuilt(built(false));
-			await answer();
-
-			expect(await recordedNow()).toEqual({ variants: { mock: false } });
 		});
 	});
 

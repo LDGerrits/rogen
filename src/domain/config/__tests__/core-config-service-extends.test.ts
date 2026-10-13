@@ -19,7 +19,6 @@ describe("CoreConfigService", () => {
 		it("should merge maps key by key with the child winning", async () => {
 			await write("/repo/base.rogen.json", {
 				routes: { server: "ServerScriptService", "*": "ServerStorage" },
-				variants: ["mock", "debug"],
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
@@ -27,7 +26,6 @@ describe("CoreConfigService", () => {
 					"*": "ReplicatedStorage/shared",
 					client: "StarterGui",
 				},
-				variants: ["fake"],
 			});
 
 			await start();
@@ -38,34 +36,6 @@ describe("CoreConfigService", () => {
 					"*": "ReplicatedStorage/shared",
 					client: "StarterGui",
 				},
-				variants: { mock: false, debug: false, fake: false },
-			});
-		});
-
-		it("should add a child's variants and conflicts to its parent's", async () => {
-			await write("/repo/base.rogen.json", {
-				variants: ["mock", "halloween"],
-				conflicts: [["halloween", "christmas"]],
-			});
-			await write("/repo/default.rogen.json", {
-				extends: "./base.rogen.json",
-				variants: ["christmas", "debug"],
-				conflicts: [["debug", "halloween"]],
-			});
-
-			await start();
-
-			expect(resolved(0)).toMatchObject({
-				variants: {
-					mock: false,
-					halloween: false,
-					christmas: false,
-					debug: false,
-				},
-				conflicts: [
-					["halloween", "christmas"],
-					["debug", "halloween"],
-				],
 			});
 		});
 
@@ -241,7 +211,6 @@ describe("CoreConfigService", () => {
 			await write("/repo/core.rogen.json", {
 				rootDirs: ["core"],
 				routes: { server: "ServerScriptService", client: "StarterGui" },
-				variants: ["mock"],
 			});
 			await write("/repo/lobby-source.rogen.json", {
 				extends: "./core.rogen.json",
@@ -251,7 +220,6 @@ describe("CoreConfigService", () => {
 			await write("/repo/lobby.rogen.json", {
 				extends: "./lobby-source.rogen.json",
 				syncDir: "dist/lobby",
-				variants: ["debug"],
 			});
 
 			await start({ names: ["lobby"] });
@@ -268,7 +236,6 @@ describe("CoreConfigService", () => {
 					server: "ServerScriptService",
 					client: "StarterPlayer/StarterPlayerScripts",
 				},
-				variants: { mock: false, debug: false },
 				exclude: [],
 				syncDir: "/repo/dist/lobby",
 				outFile: "/repo/lobby.project.json",
@@ -447,10 +414,10 @@ describe("CoreConfigService", () => {
 			expect(selection.files).toContain("/repo/base.rogen.json");
 		});
 
-		it("should reject null in an ancestor's routes and variants", async () => {
+		it("should reject null in an ancestor's routes and root dirs", async () => {
 			await write("/repo/base.rogen.json", {
 				routes: { server: null },
-				variants: [null],
+				rootDirs: [null],
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
@@ -465,7 +432,7 @@ describe("CoreConfigService", () => {
 				],
 				[
 					"/repo/base.rogen.json",
-					'"variants[0]": expected a string, found null.',
+					'"rootDirs[0]": expected a string, found null.',
 				],
 			]);
 		});

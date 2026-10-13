@@ -2,8 +2,6 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 1 name is one edit from a declared variant, so it is read as an ordinary name: (variant.typo)
-    src/Net/mokc (did you mean "mock"?)
   default.rogen.json - warning: 3 folders are one edit from a declared route key, so they are read as ordinary folders: (route.folderTypo)
     src/Hud/Servers (did you mean "Server"?)
     src/Hud/Sevrer (did you mean "Server"?)
@@ -20,27 +18,6 @@ stdout:
         "outFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
-          {
-            "file": "<dir>/default.rogen.json",
-            "severity": "warning",
-            "code": "variant.typo",
-            "message": "1 name is one edit from a declared variant, so it is read as an ordinary name:\n  <dir>/src/Net/mokc (did you mean \"mock\"?)",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#variant-typo",
-            "related": [
-              {
-                "file": "<dir>/src/Net/mokc",
-                "message": "did you mean \"mock\"?"
-              }
-            ],
-            "fixes": [
-              {
-                "rename": {
-                  "from": "<dir>/src/Net/mokc",
-                  "to": "<dir>/src/Net/mock"
-                }
-              }
-            ]
-          },
           {
             "file": "<dir>/default.rogen.json",
             "severity": "warning",

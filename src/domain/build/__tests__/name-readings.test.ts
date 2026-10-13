@@ -24,7 +24,6 @@ describe("NameReadings", () => {
 					server: "ServerScriptService",
 					"*": "ReplicatedStorage",
 				},
-				variants: { mock: true },
 				...overrides,
 			});
 			const index = await indexOf(fs, config.rootDirs);
@@ -37,26 +36,18 @@ describe("NameReadings", () => {
 
 		describe("folders", () => {
 			it("should classify each folder above an entry, outermost first", async () => {
-				await write("src/server/(Hidden)/mock/Inventory/Save.luau");
+				await write("src/server/(Hidden)/Inventory/Save.luau");
 
 				const { entries } = await read();
 				const entry = entries.get(
-					at("src/server/(Hidden)/mock/Inventory/Save.luau")
+					at("src/server/(Hidden)/Inventory/Save.luau")
 				);
 
 				expect(
 					entry?.folders.map(
-						({
+						({ segment, route, keptName, invisible, dir }) => ({
 							segment,
 							route,
-							variants,
-							keptName,
-							invisible,
-							dir,
-						}) => ({
-							segment,
-							route,
-							variants,
 							keptName,
 							invisible,
 							dir,
@@ -66,7 +57,6 @@ describe("NameReadings", () => {
 					{
 						segment: "server",
 						route: "server",
-						variants: [],
 						keptName: undefined,
 						invisible: false,
 						dir: "server",
@@ -74,26 +64,16 @@ describe("NameReadings", () => {
 					{
 						segment: "(Hidden)",
 						route: undefined,
-						variants: [],
 						keptName: "Hidden",
 						invisible: true,
 						dir: "server/(Hidden)",
 					},
 					{
-						segment: "mock",
-						route: undefined,
-						variants: ["mock"],
-						keptName: undefined,
-						invisible: false,
-						dir: "server/(Hidden)/mock",
-					},
-					{
 						segment: "Inventory",
 						route: undefined,
-						variants: [],
 						keptName: "Inventory",
 						invisible: false,
-						dir: "server/(Hidden)/mock/Inventory",
+						dir: "server/(Hidden)/Inventory",
 					},
 				]);
 			});
@@ -115,7 +95,6 @@ describe("NameReadings", () => {
 
 				expect(folders.get(at("src/Empty"))).toMatchObject({
 					keptName: "Empty",
-					variants: [],
 					segment: "Empty",
 				});
 			});
@@ -136,12 +115,11 @@ describe("NameReadings", () => {
 
 		describe("markers", () => {
 			it("should read the key a marker declares", async () => {
-				await write("src/@server", "src/.mock", "src/.other");
+				await write("src/@server", "src/.other");
 
 				const { markers } = await read();
 
 				expect(markers.get(at("src/@server"))?.key).toBe("server");
-				expect(markers.get(at("src/.mock"))?.key).toBe("mock");
 				expect(markers.get(at("src/.other"))?.key).toBeUndefined();
 			});
 
@@ -159,18 +137,17 @@ describe("NameReadings", () => {
 
 		describe("entries", () => {
 			it("should read the suffixes of a file's stem", async () => {
-				await write("src/Save.mock.server.luau");
+				await write("src/Save@client.server.luau");
 
 				const { entries } = await read();
-				const entry = entries.get(at("src/Save.mock.server.luau"));
+				const entry = entries.get(at("src/Save@client.server.luau"));
 
 				expect(entry).toMatchObject({
-					fileName: "Save.mock.server.luau",
+					fileName: "Save@client.server.luau",
 					kind: "script",
 				});
 				expect(entry?.match.spans.map(({ key }) => key)).toEqual([
 					"server",
-					"mock",
 				]);
 			});
 

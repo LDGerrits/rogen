@@ -2,7 +2,7 @@ import path from "path";
 import { Disposable } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { PathSet } from "../../base/path.js";
-import { Result, err } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
@@ -22,19 +22,9 @@ import {
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
 
-/** The overrides the command line's flags set; `--no-variant` beats `--variant` for one variant. */
+/** The overrides the command line's flags set. */
 function overridesOf(options: ConfigOptionValues): ConfigOverrides {
-	return {
-		outFile: options["out-file"],
-		variants: {
-			...Object.fromEntries(
-				(options.variant ?? []).map((variant) => [variant, true])
-			),
-			...Object.fromEntries(
-				(options["no-variant"] ?? []).map((variant) => [variant, false])
-			),
-		},
-	};
+	return { outFile: options["out-file"] };
 }
 
 export class CoreConfigService implements ConfigService {
@@ -56,7 +46,7 @@ export class CoreConfigService implements ConfigService {
 
 	async select(
 		refs: readonly string[],
-		options: ConfigOptionValues
+		options: ConfigOptionValues = {}
 	): Promise<Result<ReloadableSelection, Error>> {
 		const discovered = await this.discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
@@ -81,14 +71,16 @@ export class CoreConfigService implements ConfigService {
 		const extenders = everyConfig
 			? []
 			: await this.extendersOf(named, overrides);
-		return CoreConfigSelection.create(
-			[...named, ...extenders],
-			this.loader,
-			overrides,
-			directory,
-			everyConfig
-				? { directory, list: () => this.discovery.list(directory) }
-				: undefined
+		return ok(
+			new CoreConfigSelection(
+				[...named, ...extenders],
+				this.loader,
+				overrides,
+				directory,
+				everyConfig
+					? { directory, list: () => this.discovery.list(directory) }
+					: undefined
+			)
 		);
 	}
 
@@ -128,8 +120,7 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	async read(file: string): Promise<ConfigEntry> {
-		return (await ManagedConfig.open(file, this.loader, { variants: {} }))
-			.entry;
+		return (await ManagedConfig.open(file, this.loader, {})).entry;
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

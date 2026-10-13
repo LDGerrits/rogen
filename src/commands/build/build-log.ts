@@ -61,19 +61,13 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	});
 }
 
-/** The `extends` chain and skipped variant flags of a config. */
+/** The `extends` chain of a config. */
 function describeConfig(config: ResolvedConfig, cwd: string): string[] {
 	const parents = config.parents.map((file) => relativeTo(cwd, file));
-	return [
-		...(parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : []),
-		...config.skippedVariants.map(
-			(variant) =>
-				`variant ${variant} skipped: not declared in this config`
-		),
-	];
+	return parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : [];
 }
 
-/** One line per root dir, route and variant. */
+/** One line per root dir and route. */
 function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
 		({ rootDir, files, excluded, mounted, skippedLinks }) =>
@@ -90,11 +84,6 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		({ key, target, files }) =>
 			`route ${key} -> ${target}: ${plural(files, "file")}`
 	);
-	const variants = summary.variants.map(({ variant, on, files }) =>
-		on
-			? `variant ${variant} on: ${plural(files, "file")}`
-			: `variant ${variant} off: ${plural(files, "file")} left out`
-	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
 		...(summary.replaced > 0
@@ -107,7 +96,6 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	return [
 		...roots,
 		...routes,
-		...variants,
 		...(leftOut.length > 0 ? [`left out: ${leftOut.join(", ")}`] : []),
 	];
 }

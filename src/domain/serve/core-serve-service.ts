@@ -56,8 +56,7 @@ export class CoreServeService implements ServeService {
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
 			fileSystemService,
-			environmentService.tmpDir,
-			environmentService.pid
+			environmentService.tmpDir
 		);
 		this.served = new ServedProjectFiles(this.records, this.probe);
 		this.userHome = environmentService.userHome;

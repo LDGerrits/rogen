@@ -20,10 +20,7 @@ import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A folder that never becomes an instance, as a warning names it. */
 export type InstancelessFolder =
-	| "a root dir"
-	| "a routing folder"
-	| "a variant folder"
-	| "an invisible folder";
+	"a root dir" | "a routing folder" | "an invisible folder";
 
 /** A folder read once: what its name means, and the declared key it only differs from in case. */
 export type FolderReading = FolderNameReading & {
@@ -42,14 +39,12 @@ export interface EntryReading {
 	readonly stem: string;
 	/** The script class Rojo reads from the stem: a `.server`, `.client` or `.plugin` script; none for any other file. */
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
-	/** A `.server`/`.client` that a variant suffix follows, which Rojo won't read as a script class. */
-	readonly buriedScriptSuffix: RojoScriptSuffix | undefined;
 	readonly match: SuffixMatch;
-	/** Whether it is an init script once every declared key is off its name, a route it doesn't govern too. */
+	/** Whether it is an init script once its route keys are off its name, a route it doesn't govern too. */
 	readonly isInit: boolean;
 }
 
-/** Every folder, marker and suffix the declared keys can claim, read once and shared by the stages and rules. */
+/** Every folder, marker and suffix the route keys can claim, read once and shared by the stages and rules. */
 export class NameReadings {
 	private readonly _folders = new Map<string, FolderReading>();
 	private readonly _markers = new Map<string, MarkerReading>();
@@ -115,21 +110,12 @@ export class NameReadings {
 		const match = this.reader.suffixes(stem, kind === "script");
 		const scriptSuffix =
 			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
-		const variantSpans = match.spans.filter(({ key }) =>
-			this.keys.isVariant(key)
-		);
 		this._entries.set(entry.source, {
 			folders,
 			fileName,
 			kind,
 			stem,
 			scriptSuffix,
-			buriedScriptSuffix:
-				kind === "script" && variantSpans.length > 0 && !scriptSuffix
-					? RojoFile.scriptSuffixOf(
-							InstanceName.withoutSpans(stem, variantSpans)
-						)
-					: undefined,
 			match,
 			isInit:
 				kind === "script" &&
@@ -161,8 +147,7 @@ export class NameReadings {
 		const folder = this._folders.get(joinPosix(rootDir, dir));
 		if (folder?.keptName !== undefined)
 			return folder.invisible ? "an invisible folder" : undefined;
-		if (folder?.route !== undefined) return "a routing folder";
-		return folder?.variants.length ? "a variant folder" : undefined;
+		return folder?.route !== undefined ? "a routing folder" : undefined;
 	}
 
 	/** Each resource whose name has a misspelling of `kind`, with it; first found first. */
@@ -227,27 +212,19 @@ export class NameReadings {
 		if (!read) {
 			const segment = path.posix.basename(dir);
 			const reading = this.reader.folder(segment);
-			const plain =
-				reading.route === undefined && reading.variants.length === 0;
 			read = {
 				...reading,
 				segment,
 				dir,
-				nearMissKey: plain
-					? this.nearMissOf(reading.outrankedName)
-					: undefined,
+				nearMissKey:
+					reading.route === undefined &&
+					reading.keptName !== undefined
+						? this.keys.nearMiss(reading.keptName)
+						: undefined,
 			};
 			this._folders.set(key, read);
 		}
 		return read;
-	}
-
-	/** The key a folder's name spells in another letter case; a dot-folder is a variant's, as a dot-file marker is. */
-	private nearMissOf(name: string): string | undefined {
-		const nearMiss = this.keys.nearMiss(name);
-		if (nearMiss || !name.startsWith(".")) return nearMiss;
-		const dotted = this.keys.nearMiss(name.slice(1));
-		return dotted && this.keys.isVariant(dotted) ? dotted : undefined;
 	}
 
 	private readFoldersAbove(

@@ -13,14 +13,11 @@ describe("ServerRecords", () => {
 		version: "7.7.1",
 		session: "s1",
 	};
-	const built = {
-		projectFile: "/repo/default.project.json",
-		setting: { variants: { mock: true } },
-	};
+	const built = { projectFile: "/repo/default.project.json" };
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		records = new ServerRecords(fs, "/tmp", 100);
+		records = new ServerRecords(fs, "/tmp");
 	});
 
 	describe("recordOf", () => {
@@ -31,7 +28,6 @@ describe("ServerRecords", () => {
 				host: "127.0.0.1",
 				port: 34872,
 				server: "rojo",
-				pid: 100,
 				project: "Game",
 				session: "s1",
 				...built,
@@ -51,41 +47,6 @@ describe("ServerRecords", () => {
 			await fs.writeFile("/tmp/rogen-serve/34872.json", "{");
 
 			expect(await records.recordOf(address, info)).toBeUndefined();
-		});
-	});
-
-	describe("owns", () => {
-		it("should tell a record this process wrote from another process's", async () => {
-			await records.write(address, info, built);
-			await fs.writeFile(
-				"/tmp/rogen-serve/34873.json",
-				JSON.stringify({
-					host: "127.0.0.1",
-					port: 34873,
-					server: "rojo",
-					pid: 200,
-					project: "Game",
-					projectFile: "/repo/lobby.project.json",
-					variants: {},
-				})
-			);
-			await fs.writeFile(
-				"/tmp/rogen-serve/34874.json",
-				JSON.stringify({
-					host: "127.0.0.1",
-					port: 34874,
-					server: "rojo",
-					project: "Game",
-					projectFile: "/repo/arena.project.json",
-					variants: {},
-				})
-			);
-
-			const owned = (await records.all())
-				.sort((a, b) => a.port - b.port)
-				.map((record) => records.owns(record));
-
-			expect(owned).toEqual([true, false, false]);
 		});
 	});
 

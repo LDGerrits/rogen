@@ -13,6 +13,16 @@ exit 2
 stderr:
   error: Unknown option '--mode'. Run 'rogen help build' to see what build accepts.
 
+$ rogen build --variant mock
+exit 2
+stderr:
+  error: Unknown option '--variant'. Run 'rogen help build' to see what build accepts.
+
+$ rogen build --no-variant mock
+exit 2
+stderr:
+  error: Unknown option '--no-variant'. Run 'rogen help build' to see what build accepts.
+
 $ rogen build --all
 exit 2
 stderr:

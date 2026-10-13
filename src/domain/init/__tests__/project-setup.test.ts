@@ -271,7 +271,6 @@ describe("ProjectSetup plan", () => {
 				darklua: [],
 				edits: [
 					'Add your own routes under "routes" in default.rogen.json.',
-					'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on with --variant.',
 				],
 			});
 		});
@@ -345,16 +344,7 @@ describe("ProjectSetup plan", () => {
 				).nextSteps.edits
 			).toEqual([
 				'Add your own routes under "routes" in lobby.rogen.json.',
-				'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on with --variant.',
 			]);
-		});
-
-		it("should mention variants with a .ts variant for roblox-ts", async () => {
-			expect(
-				(await planFor("roblox-ts", false)).nextSteps.edits.at(-1)
-			).toBe(
-				'Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.ts, and turn them on with --variant.'
-			);
 		});
 
 		it("should tell roblox-ts with darklua to process the compiled output", async () => {
@@ -376,7 +366,6 @@ describe("ProjectSetup plan", () => {
 				darklua: [],
 				edits: [
 					'Add your own routes under "routes" in lobby.rogen.json.',
-					'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.luau, and turn them on with --variant.',
 				],
 			});
 		});

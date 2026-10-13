@@ -7,8 +7,5 @@
 		"client": "StarterPlayer/StarterPlayerScripts",
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
-	},
-	"variants": [
-		"mock"
-	]
+	}
 }

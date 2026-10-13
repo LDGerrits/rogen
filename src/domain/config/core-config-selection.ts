@@ -1,9 +1,7 @@
 import { Sequencer } from "../../base/async.js";
 import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
-import { UsageError } from "../../base/errors.js";
 import { compareStrings } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
-import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	newDiagnostics,
@@ -37,7 +35,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 	private _files: ReadonlySet<string>;
 	private filePaths: PathSet;
 
-	private constructor(
+	constructor(
 		private managed: readonly ManagedConfig[],
 		private readonly loader: ConfigLoader,
 		private readonly overrides: ConfigOverrides,
@@ -46,28 +44,6 @@ export class CoreConfigSelection implements ReloadableSelection {
 	) {
 		this._files = this.readFiles();
 		this.filePaths = new PathSet(this._files);
-	}
-
-	/** A selection of `managed`, opened with `overrides`; fails when a variant override is declared by none of them. */
-	static create(
-		managed: readonly ManagedConfig[],
-		loader: ConfigLoader,
-		overrides: ConfigOverrides,
-		home: string,
-		folder?: PickedFolder
-	): Result<CoreConfigSelection, Error> {
-		const problem = undeclaredVariant(managed, overrides);
-		return problem
-			? err(problem)
-			: ok(
-					new CoreConfigSelection(
-						managed,
-						loader,
-						overrides,
-						home,
-						folder
-					)
-				);
 	}
 
 	get entries(): readonly ConfigEntry[] {
@@ -210,34 +186,4 @@ function addedNotice(entry: ConfigEntry): ConfigNotice {
 				errors: entry.errors,
 				keptLastValid: false,
 			};
-}
-
-/** A variant override that no config being built declares, as an error. */
-function undeclaredVariant(
-	managed: readonly ManagedConfig[],
-	overrides: ConfigOverrides
-): Error | undefined {
-	const allReadable = managed.every(
-		(config) => config.skippedVariants !== undefined
-	);
-	if (!allReadable) return undefined;
-	for (const variant of Object.keys(overrides.variants)) {
-		if (
-			!managed.every((config) =>
-				config.skippedVariants?.includes(variant)
-			)
-		)
-			continue;
-		const declared = managed.flatMap((config) =>
-			Object.keys(buildableConfig(config.entry)?.variants ?? {})
-		);
-		const suggestion = closestMatch(variant, declared);
-		return new UsageError(
-			`Variant "${variant}" is not declared by any config being built. ` +
-				(suggestion
-					? `Did you mean "${suggestion}"?`
-					: `Add it under "variants" in a config, or drop the flag.`)
-		);
-	}
-	return undefined;
 }

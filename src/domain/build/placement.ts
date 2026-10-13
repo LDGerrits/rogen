@@ -10,7 +10,7 @@ import { EntryReading, NameReadings } from "./name-readings.js";
 import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
-import { InstanceClash } from "./variant-resolver.js";
+import { InstanceClash } from "./instance-resolver.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {
@@ -89,7 +89,7 @@ export class Placement {
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
 	readonly displaced: readonly DisplacedFile[];
-	/** As `files`, but every file a route governs, before variants decide which are placed. */
+	/** As `files`, but every file a route governs, before clashes decide which are placed. */
 	readonly routed: readonly RoutedFile[];
 	/** One per placed file, at its own node, or at its first copy when a route placed it nowhere itself. */
 	readonly files: readonly RoutedFile[];
@@ -172,18 +172,6 @@ export class Placement {
 
 	/** What the build did, counted for the summary. */
 	summary(): BuildSummary {
-		const carrying = (
-			variant: string,
-			variantSets: readonly (readonly { readonly variant: string }[])[]
-		) =>
-			variantSets.filter((variants) =>
-				variants.some((match) => match.variant === variant)
-			).length;
-		const placedVariants = this.files.map((file) => file.variants);
-		// Every routed file with an off variant was pruned, so off variants count those.
-		const prunedVariants = this.leftOut
-			.withStatus("pruned")
-			.map(([, why]) => why.variants);
 		return {
 			roots: this.roots.map((root) => ({
 				rootDir: root.rootDir,
@@ -197,16 +185,6 @@ export class Placement {
 				target: target.toString(),
 				files: this.files.filter((file) => file.route === key).length,
 			})),
-			variants: Object.entries(this.config.variants).map(
-				([variant, on]) => ({
-					variant,
-					on,
-					files: carrying(
-						variant,
-						on ? placedVariants : prunedVariants
-					),
-				})
-			),
 			unrouted: this.leftOut.count("unrouted"),
 			replaced: this.leftOut.count("replaced"),
 			displaced: this.leftOut.count("displaced"),

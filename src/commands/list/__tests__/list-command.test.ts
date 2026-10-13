@@ -50,15 +50,14 @@ describe("list command", () => {
 			harness.run("list", { positionals: _, options });
 	});
 
-	it("should show a config's root dirs, sync dir, project file and every variant with its state", async () => {
+	it("should show a config's root dirs, routes, sync dir and project file", async () => {
 		await write("default.rogen.json", {
 			rootDirs: ["src", "lobby"],
 			syncDir: "out",
 			routes: { Server: "ServerScriptService", "*": "ReplicatedStorage" },
-			variants: ["mock", "dev", "prod"],
 		});
 
-		const result = await run({ variant: ["mock", "prod"] });
+		const result = await run();
 
 		expect(result.isOk()).toBe(true);
 		expect(steps()).toEqual(["default.rogen.json"]);
@@ -70,7 +69,6 @@ describe("list command", () => {
 				"  * -> ReplicatedStorage",
 				"sync dir: out",
 				"project file: default.project.json",
-				"variants: mock on, dev off, prod on",
 			].join("\n"),
 		]);
 	});
@@ -150,14 +148,13 @@ describe("list command", () => {
 		);
 	});
 
-	it("should say so when there is no sync dir and no variant", async () => {
+	it("should say so when there is no sync dir", async () => {
 		await write("default.rogen.json", {});
 
 		await run();
 
 		const [details] = under("default.rogen.json");
 		expect(details).toContain("sync dir: (none)");
-		expect(details).toContain("variants: (none)");
 		expect(details).not.toContain("server:");
 	});
 
@@ -166,7 +163,7 @@ describe("list command", () => {
 
 		await run();
 
-		expect(under("default.rogen.json")[0]).toContain("server: argon\n");
+		expect(under("default.rogen.json")[0]).toContain("server: argon");
 	});
 
 	it("should show the extends chain of a config", async () => {
@@ -273,39 +270,6 @@ describe("list command", () => {
 		expect(steps()).toEqual(["places/lobby.rogen.json"]);
 	});
 
-	it("should show each variant's state once variant flags are applied", async () => {
-		await write("default.rogen.json", {
-			variants: ["mock", "fake"],
-		});
-
-		await run({ variant: ["fake", "mock"], "no-variant": ["mock"] });
-
-		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("variants: mock off, fake on"),
-		]);
-	});
-
-	it("should list the conflict groups a config declares", async () => {
-		await write("default.rogen.json", {
-			variants: ["halloween", "christmas", "debug"],
-			conflicts: [["halloween", "christmas"]],
-		});
-
-		await run({});
-
-		expect(under("default.rogen.json")[0]).toContain(
-			"conflicts: halloween | christmas"
-		);
-	});
-
-	it("should leave conflicts off a config that declares none", async () => {
-		await write("default.rogen.json", {});
-
-		await run({});
-
-		expect(under("default.rogen.json")[0]).not.toContain("conflicts:");
-	});
-
 	describe("with --json", () => {
 		const document = () =>
 			logService.json<{ configs: Record<string, unknown>[] }>();
@@ -352,16 +316,11 @@ describe("list command", () => {
 				extends: "base.rogen.json",
 				rootDirs: ["src", "lobby"],
 				routes: { "*": "ReplicatedStorage/Shared" },
-				variants: ["mock"],
 				exclude: ["**/*.spec.luau"],
 				syncDir: "out",
 			});
 
-			const result = await run({
-				_: ["default"],
-				json: true,
-				variant: ["mock"],
-			});
+			const result = await run({ _: ["default"], json: true });
 
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({
@@ -380,8 +339,6 @@ describe("list command", () => {
 							Server: "ServerScriptService",
 							"*": "ReplicatedStorage/Shared",
 						},
-						variants: { mock: true },
-						conflicts: [],
 						exclude: ["/repo/**/*.spec.luau"],
 						template: null,
 						templates: [],
@@ -428,16 +385,6 @@ describe("list command", () => {
 				"default",
 				"lobby",
 			]);
-		});
-
-		it("should apply variant flags to the printed variants", async () => {
-			await write("default.rogen.json", { variants: ["mock"] });
-
-			await run({ json: true, variant: ["mock"] });
-
-			expect(entry("default")?.variants).toEqual({
-				mock: true,
-			});
 		});
 
 		it("should print a broken config's diagnostics in place of its fields and fail without reporting again", async () => {
@@ -495,19 +442,11 @@ describe("list command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept names, paths, variant flags and --json, but not the output overrides", () => {
+		it("should accept names, paths and --json, but not the output overrides", () => {
 			expect(
-				parse(
-					"list",
-					"lobby",
-					"places/a.rogen.json",
-					"--variant",
-					"mock",
-					"--no-variant",
-					"dev",
-					"--json"
-				).isOk()
+				parse("list", "lobby", "places/a.rogen.json", "--json").isOk()
 			).toBe(true);
+			expect(parse("list", "--variant", "mock").isErr()).toBe(true);
 			expect(parse("list", "-o", "out.project.json").isErr()).toBe(true);
 			expect(parse("list", "--all").isErr()).toBe(true);
 		});
@@ -564,7 +503,7 @@ describe("list command", () => {
 				await run();
 
 				const [details] = under("default.rogen.json");
-				expect(details).toContain(`\n${line}\n`);
+				expect(details).toContain(`\n${line}`);
 			}
 		);
 

@@ -1,8 +1,5 @@
 {
 	"extends": "./a.rogen.json",
-	"variants": [
-		"y"
-	],
 	"rootDirs": [
 		"one"
 	]

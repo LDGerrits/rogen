@@ -66,38 +66,6 @@ describe("ConfigBuilder", () => {
 			});
 		});
 
-		it("should return the variant stage's warnings", async () => {
-			await fs.writeFile(abs("src/Save.server.mock.luau"), "");
-			const config = configOf({ variants: { mock: true } });
-
-			const result = await buildOf(config);
-
-			expect(result.unwrap().findings.warnings).toMatchObject([
-				{ code: "variant.buriedScriptSuffix" },
-			]);
-		});
-
-		it("should fail when two active variants claim one instance", async () => {
-			await fs.writeFile(abs("src/A.mock.luau"), "");
-			await fs.writeFile(abs("src/A.dev.luau"), "");
-			const config = configOf({ variants: { mock: true, dev: true } });
-
-			const result = await buildOf(config);
-
-			expect(
-				result.isErr() ? result.error.diagnostics : []
-			).toMatchObject([
-				{
-					code: "variant.activeClash",
-					resource: abs("src/A.dev.luau"),
-				},
-				{
-					code: "variant.activeClash",
-					resource: abs("src/A.mock.luau"),
-				},
-			]);
-		});
-
 		it("should warn about a missing root dir and still succeed", async () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({ rootDirs: [abs("core"), abs("lobby")] });
@@ -234,18 +202,10 @@ describe("ConfigBuilder", () => {
 				expect(warnings).toEqual([]);
 			});
 
-			it("should count a claim from a pruned or excluded sibling", async () => {
+			it("should count a claim from an excluded sibling", async () => {
 				const warnings = await warningsFor(
-					[
-						"src/Analytics.mock.luau",
-						"src/Analytics.mock.meta.json",
-						"src/Legacy.luau",
-						"src/Legacy.meta.json",
-					],
-					{
-						variants: { mock: false },
-						exclude: [toPosix(abs("src/Legacy.luau"))],
-					}
+					["src/Legacy.luau", "src/Legacy.meta.json"],
+					{ exclude: [toPosix(abs("src/Legacy.luau"))] }
 				);
 
 				expect(warnings).toEqual([]);
@@ -439,35 +399,6 @@ describe("ConfigBuilder", () => {
 				).toEqual([1, 1, 2]);
 			});
 
-			it("should count the files each variant marks, whether on or off", async () => {
-				await fs.writeFile(abs("src/A.mock.luau"), "");
-				await fs.writeFile(abs("src/debug/B.luau"), "");
-				await fs.writeFile(abs("src/debug/C.luau"), "");
-
-				const result = await buildOf(
-					configOf({ variants: { mock: true, debug: false } })
-				);
-
-				expect(result.unwrap().summary.variants).toEqual([
-					{ variant: "mock", on: true, files: 1 },
-					{ variant: "debug", on: false, files: 2 },
-				]);
-			});
-
-			it("should count only placed files for a variant that's on", async () => {
-				await fs.writeFile(abs("src/A.mock.luau"), "");
-				await fs.writeFile(abs("src/B.mock.debug.luau"), "");
-
-				const result = await buildOf(
-					configOf({ variants: { mock: true, debug: false } })
-				);
-
-				expect(result.unwrap().summary.variants).toEqual([
-					{ variant: "mock", on: true, files: 1 },
-					{ variant: "debug", on: false, files: 1 },
-				]);
-			});
-
 			it("should count the files no route governs", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/B.client.luau"), "");
@@ -480,12 +411,10 @@ describe("ConfigBuilder", () => {
 			});
 
 			it("should count the files another with the same name replaced", async () => {
+				await fs.writeFile(abs("src/A.lua"), "");
 				await fs.writeFile(abs("src/A.luau"), "");
-				await fs.writeFile(abs("src/A.mock.luau"), "");
 
-				const result = await buildOf(
-					configOf({ variants: { mock: true } })
-				);
+				const result = await buildOf(configOf());
 
 				expect(result.unwrap().summary.replaced).toBe(1);
 			});

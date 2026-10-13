@@ -108,15 +108,6 @@ export class CoreServeSession
 						continue;
 					}
 					this.built.add(build.config.file);
-					const running = this.servers.get(build.config.file);
-					if (running instanceof StartedServer)
-						running
-							.rebuilt(build.config)
-							.catch((error) =>
-								this._onDidError.fire(
-									ErrorUtils.fromUnknown(error)
-								)
-							);
 				}
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);

@@ -1,4 +1,4 @@
-$ rogen build --variant mock
+$ rogen build
 exit 0
 stdout: (not shown)
 
@@ -10,8 +10,8 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Inventory: Folder
-        Analytics: ModuleScript  <- src/Inventory/Analytics.mock.luau, src/Inventory/Analytics.mock.meta.json
+        Analytics.mock: ModuleScript  <- src/Inventory/Analytics.mock.luau, src/Inventory/Analytics.mock.meta.json
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Combat: ModuleScript  <- src/Inventory/Combat@server.luau, src/Inventory/Combat@server.meta.json
-      Foo: Script  <- src/Inventory/Foo.mock.meta.json, src/Inventory/Foo.mock.server.luau
+      Foo.mock: Script  <- src/Inventory/Foo.mock.meta.json, src/Inventory/Foo.mock.server.luau

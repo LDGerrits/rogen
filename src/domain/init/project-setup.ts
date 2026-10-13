@@ -381,8 +381,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 		builder.addEdit(...template.edits);
 		builder.addEdit(
-			`Add your own routes under "routes" in ${configFileName(name)}.`,
-			configSet.variantsStep
+			`Add your own routes under "routes" in ${configFileName(name)}.`
 		);
 		const serveCommand = PlacePlan.serveCommandOf(placePlans);
 		placePlans.forEach((place, index) =>

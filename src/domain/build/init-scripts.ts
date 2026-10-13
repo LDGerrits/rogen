@@ -1,15 +1,11 @@
 import { groupBy } from "../../base/collections.js";
-import { ResolvedConfig } from "../config/config.js";
 import { BuildTemplate } from "./build-template.js";
 import { InitToCopy, RoutedFile } from "./router.js";
 import { InstanceMap } from "../roblox/roblox.js";
 
 /** The init scripts that stand for their whole folder: copied to every node the folder becomes, and dropped when nothing is left at a node to parent. */
 export class InitScripts {
-	constructor(
-		private readonly config: ResolvedConfig,
-		private readonly template: BuildTemplate
-	) {}
+	constructor(private readonly template: BuildTemplate) {}
 
 	/** Each root dir's routed files, then the copies of its init scripts. */
 	withCopies(
@@ -34,15 +30,14 @@ export class InitScripts {
 		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
 		const owned = new InstanceMap<true>();
 		for (const file of routed)
-			if (file.init && this.config.allVariantsOn(file.variants))
-				owned.set(file.instancePath, true);
+			if (file.init) owned.set(file.instancePath, true);
 		const throughFolder = groupBy(
 			routed.flatMap((file) =>
 				file.folderNodes.map(({ folder }, at) => ({ file, folder, at }))
 			),
 			({ folder }) => folder
 		);
-		return toCopy.flatMap(({ entry, variants, init, placed }) => {
+		return toCopy.flatMap(({ entry, init, placed }) => {
 			const taken = new InstanceMap<true>();
 			if (placed) taken.set(placed.instancePath, true);
 			const copies: RoutedFile[] = [];
@@ -59,8 +54,6 @@ export class InitScripts {
 					folderNodes: file.folderNodes.slice(0, at + 1),
 					outrankedFolderRoutes: [],
 					ignoredAts: [],
-					variants,
-					variantNodes: variants.map(() => instancePath),
 					init,
 					...(file.hoisted && { hoisted: true }),
 				});

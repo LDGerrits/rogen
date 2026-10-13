@@ -18,7 +18,7 @@ import {
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
-import { OutFileGuard, SyncTool } from "../build.js";
+import { SyncTool } from "../build.js";
 import {
 	BuildService,
 	ConfigLocations,
@@ -49,9 +49,8 @@ export const builderOf = (
 export const buildServiceOf = (
 	fs: FileSystemService,
 	index: IndexService,
-	extraTools: readonly SyncTool[] = [],
-	guard?: OutFileGuard
-) => new CoreBuildService(fs, index, [...syncTools, ...extraTools], guard);
+	extraTools: readonly SyncTool[] = []
+) => new CoreBuildService(fs, index, [...syncTools, ...extraTools]);
 
 /** Where `targets` land in `config` alone. */
 export async function locateIn(

@@ -8,9 +8,6 @@
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"variants": [
-		"mock"
-	],
 	"exclude": [
 		"src/Specs"
 	]

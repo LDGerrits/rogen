@@ -128,17 +128,6 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse an active variant folder into its parent's node", async () => {
-				await write("src/Combat/dev/Cheats.luau");
-
-				const storage = await storageOf({ variants: { dev: true } });
-
-				expect(storage.Combat).toEqual({
-					...FOLDER,
-					Cheats: { $path: optional("src/Combat/dev/Cheats.luau") },
-				});
-			});
-
 			it("should not collapse a directory with a folder in it that nothing places, so a collapsed build and an uncollapsed one agree", async () => {
 				await write(
 					"src/Inventory/Save.luau",
@@ -201,22 +190,6 @@ describe("TreeAssembler", () => {
 					"src/Real/Back",
 					"src/Real/Gone",
 				]);
-			});
-
-			it("should not collapse a directory with a dormant-variant file", async () => {
-				await write(
-					"src/Inventory/Analytics.luau",
-					"src/Inventory/Analytics.mock.luau"
-				);
-
-				const storage = await storageOf({ variants: { mock: false } });
-
-				expect(storage.Inventory).toEqual({
-					...FOLDER,
-					Analytics: {
-						$path: optional("src/Inventory/Analytics.luau"),
-					},
-				});
 			});
 
 			it("should not collapse a directory with an excluded file", async () => {
@@ -297,10 +270,9 @@ describe("TreeAssembler", () => {
 			});
 
 			it("should not collapse a directory holding a file Rojo would name differently, and emit it under its instance name", async () => {
-				await write("src/Save/Save.mock@server.luau");
+				await write("src/Save/Save@server.luau");
 
 				const { projectFile: value } = await assemble({
-					variants: { mock: true },
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -309,24 +281,24 @@ describe("TreeAssembler", () => {
 					Save: {
 						...FOLDER,
 						Save: {
-							$path: optional("src/Save/Save.mock@server.luau"),
+							$path: optional("src/Save/Save@server.luau"),
 						},
 					},
 				});
 			});
 
-			it("should not collapse a directory holding the file an active variant replaced", async () => {
+			it("should not collapse a directory holding the file another replaced", async () => {
 				await write(
-					"src/Inventory/Analytics.luau",
-					"src/Inventory/Analytics.mock.luau"
+					"src/Inventory/Analytics.lua",
+					"src/Inventory/Analytics.luau"
 				);
 
-				const storage = await storageOf({ variants: { mock: true } });
+				const storage = await storageOf();
 
 				expect(storage.Inventory).toEqual({
 					...FOLDER,
 					Analytics: {
-						$path: optional("src/Inventory/Analytics.mock.luau"),
+						$path: optional("src/Inventory/Analytics.luau"),
 					},
 				});
 			});
@@ -403,22 +375,6 @@ describe("TreeAssembler", () => {
 		});
 
 		describe("globIgnorePaths", () => {
-			it("should list a pruned file as a sync path", async () => {
-				await write(
-					"src/Inventory/Analytics.luau",
-					"src/Inventory/Analytics.mock.luau"
-				);
-
-				const { projectFile: value } = await assemble({
-					syncDir: abs("dist"),
-					variants: { mock: false },
-				});
-
-				expect(value.globIgnorePaths).toEqual([
-					"dist/Inventory/Analytics.mock.luau",
-				]);
-			});
-
 			it("should never list a path the template mounts, which Rojo has to read", async () => {
 				await write(
 					"src/Vendor/Lib.luau",
@@ -445,21 +401,20 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual(["src/Save.spec.luau"]);
 			});
 
-			it("should list excluded and pruned files in path order, translated to sync paths", async () => {
+			it("should list excluded files in path order, translated to sync paths", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
-					"src/Inventory/Analytics.mock.luau",
-					"src/Inventory/Save.spec.ts"
+					"src/Inventory/Save.spec.ts",
+					"src/Inventory/Alpha.spec.ts"
 				);
 
 				const { projectFile: value } = await assemble({
 					syncDir: abs("dist"),
-					variants: { mock: false },
 					exclude: [abs("**/*.spec.ts")],
 				});
 
 				expect(value.globIgnorePaths).toEqual([
-					"dist/Inventory/Analytics.mock.luau",
+					"dist/Inventory/Alpha.spec.luau",
 					"dist/Inventory/Save.spec.luau",
 				]);
 			});
@@ -494,11 +449,11 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual(["dist/Hud.luau"]);
 			});
 
-			it("should not list a file an active variant replaced, which shares the winner's emitted path", async () => {
-				await write("src/Analytics.luau", "src/Analytics.mock.luau");
+			it("should not list a file another replaced, which shares the winner's emitted path", async () => {
+				await write("src/Analytics.luau", "src/Analytics.ts");
 
 				const { projectFile: value } = await assemble({
-					variants: { mock: true },
+					syncDir: abs("dist"),
 				});
 
 				expect(value.globIgnorePaths).toBeUndefined();

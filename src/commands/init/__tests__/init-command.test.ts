@@ -116,9 +116,7 @@ describe("init command", () => {
 						"rogen serve",
 					],
 					darklua: [],
-					edits: [
-						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on with --variant.',
-					],
+					edits: [],
 				},
 			});
 			expect(await exists("tsconfig.lobby.json")).toBe(true);
@@ -218,7 +216,6 @@ describe("init command", () => {
 				"info: Run:",
 				"info:   rogen serve",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on with --variant.',
 				"outro: Wrote 2 files.",
 			]);
 		});
@@ -707,7 +704,7 @@ describe("init command", () => {
 			expect(await exists("prod.rogen.json")).toBe(true);
 		});
 
-		it("should say how to run the extending config and where its variants go", async () => {
+		it("should say how to run the extending config and what it leaves out", async () => {
 			const logService = new MockLogService();
 
 			await runInit(

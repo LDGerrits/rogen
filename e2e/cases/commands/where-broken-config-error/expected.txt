@@ -24,7 +24,6 @@ stdout:
         "require": "game:GetService(\"ReplicatedStorage\").shared.A",
         "route": "*",
         "routeMatch": "fallback",
-        "variants": [],
         "diagnostics": []
       }
     ],

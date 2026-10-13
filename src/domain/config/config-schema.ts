@@ -1,10 +1,6 @@
 import { JSONSchema } from "../../base/json-schema.js";
-import { DOCS_URL } from "../../platform/product/product-service.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
-import {
-	UnknownFieldAdvisor,
-	WrongTypeAdvisor,
-} from "../../platform/jsonc/jsonc-document-reader.js";
+import { UnknownFieldAdvisor } from "../../platform/jsonc/jsonc-document-reader.js";
 import {
 	ConfigModel,
 	MergePolicies,
@@ -39,26 +35,6 @@ const routesSchema: JSONSchema = {
 			"StarterGui",
 		],
 	},
-};
-
-const variantsSchema: JSONSchema = {
-	type: "array",
-	items: { type: "string", pattern: NAME_PATTERN },
-	default: [],
-	description:
-		"Every variant this project uses. A variant is a switch: off unless " +
-		"--variant turns it on. A declared name " +
-		"marks files (Analytics.mock.luau, a mock folder, a .mock marker); " +
-		"an undeclared one ships silently as part of an instance name.",
-};
-
-const conflictsSchema: JSONSchema = {
-	type: "array",
-	items: { type: "array", items: { type: "string" } },
-	default: [],
-	description:
-		"Groups of declared variants of which at most one may be on, such as " +
-		'[["halloween", "christmas"]]. A group names declared variants.',
 };
 
 /** How a relative path in a field resolves against the directory of the file that wrote it: a path or a list of them with `path.resolve`, globs joined in POSIX form. */
@@ -108,8 +84,6 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 		},
 	},
 	routes: { merge: "merge", schema: routesSchema },
-	variants: { merge: "append", schema: variantsSchema },
-	conflicts: { merge: "append", schema: conflictsSchema },
 	exclude: {
 		merge: "append",
 		paths: "globs",
@@ -208,12 +182,14 @@ export const configDefaults = new ConfigModel(
 	)
 );
 
-const VARIANTS_LINK = `${DOCS_URL}/core-concepts/variants#declaring-variants`;
-
 /** What replaces each field a config no longer has. */
 const removedFields: Readonly<Record<string, string>> = {
-	modes: 'Put what a mode set in a second config that extends this one, which can add "exclude", and turn variants on with --variant.',
+	modes: 'Put what a mode set in a second config that extends this one, which can add "exclude".',
 	mode: "Modes are gone with \"modes\". Build the config that holds the settings by name, as 'rogen build <name>'.",
+	variants:
+		"A file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir.",
+	conflicts:
+		"Variants are gone, and so are their conflict groups. Sets that exclude each other are one config each, listing their own root dir.",
 };
 
 /** The words for a field that Rogen once read and doesn't now, in place of "unknown field". */
@@ -228,21 +204,3 @@ export const configRemovedFieldAdvice: UnknownFieldAdvisor = (
 				`"${path}" was removed. ${removedFields[path]}`
 			)
 		: undefined;
-
-/** The words for an old config that wrote `variants` as a map of on and off. */
-export const configWrongTypeAdvice: WrongTypeAdvisor = (
-	path,
-	node,
-	location
-) => {
-	if (node.kind !== "object") return undefined;
-	if (path === "variants") {
-		return errorDiagnostic(
-			"config.variantsAreAList",
-			location,
-			`"variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. ` +
-				`A variant is off unless --variant turns it on. See ${VARIANTS_LINK}.`
-		);
-	}
-	return undefined;
-};

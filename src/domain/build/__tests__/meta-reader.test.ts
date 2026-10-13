@@ -6,7 +6,7 @@ import { MetaReader } from "../meta-reader.js";
 import { abs, configOf, indexOf, placeFiles, syncTools } from "./fixtures.js";
 
 describe("MetaReader", () => {
-	type Read = Pick<ResolvedConfig, "rootDirs" | "exclude" | "variants">;
+	type Read = Pick<ResolvedConfig, "rootDirs" | "exclude">;
 
 	describe("read", () => {
 		let fs: MemoryFileSystemService;
@@ -15,7 +15,6 @@ describe("MetaReader", () => {
 			const config: Read = {
 				rootDirs: [abs("src")],
 				exclude: [],
-				variants: {},
 				...overrides,
 			};
 			const index = await indexOf(fs, config.rootDirs);
@@ -120,7 +119,6 @@ describe("MetaReader", () => {
 					configOf({
 						rootDirs: [abs("src")],
 						exclude: [],
-						variants: {},
 					}),
 					syncTools
 				).unwrap()
@@ -231,25 +229,6 @@ describe("MetaReader", () => {
 			).toEqual([
 				["meta.runContextOnModule", abs("src/Net/init.meta.json")],
 				["meta.runContextOnModule", abs("src/Save.meta.json")],
-			]);
-		});
-
-		it("should fail when the meta of the folder an init script in a variant folder becomes sets a RunContext", async () => {
-			await fs.writeFile(abs("src/Net/dev/init.luau"), "");
-			await fs.writeFile(abs("src/Net/Types.luau"), "");
-			await fs.writeFile(
-				abs("src/Net/init.meta.json"),
-				'{"properties": {"RunContext": "Server"}}'
-			);
-
-			const result = await read({ variants: { dev: true } });
-
-			expect(
-				result.isErr()
-					? result.error.map(({ code, resource }) => [code, resource])
-					: []
-			).toEqual([
-				["meta.runContextOnModule", abs("src/Net/init.meta.json")],
 			]);
 		});
 

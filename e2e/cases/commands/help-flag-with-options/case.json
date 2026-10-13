@@ -1,6 +1,6 @@
 {
 	"steps": [
-		["build", "--variant", "mock", "--help"],
+		["build", "-o", "x.project.json", "--help"],
 		["build", "--json", "--help"],
 		["help", "--help"]
 	],

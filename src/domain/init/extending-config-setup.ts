@@ -11,7 +11,7 @@ export interface ExtendingConfigChoices {
 	readonly name: string;
 }
 
-/** An extending config inherits everything from default; its own file is where variants and excludes go. Like any named config, it gets a synced twin when Darklua processes source-rooted code. */
+/** An extending config inherits everything from default; its own file is where its excludes go. Like any named config, it gets a synced twin when Darklua processes source-rooted code. */
 export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 	constructor(
 		private readonly directory: InitDirectory,

@@ -11,6 +11,7 @@ project: DataModel
     shared: Folder
       Inventory: Folder
         .hidden: ModuleScript  <- src/Inventory/.hidden.luau
+        Analytics.mock: ModuleScript  <- src/Inventory/Analytics.mock.luau
         Types: ModuleScript  <- src/Inventory/Types.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder

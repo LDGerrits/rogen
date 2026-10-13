@@ -1,14 +1,13 @@
 import fs from "fs";
 import path from "path";
 import { JSONSchema } from "../../../base/json-schema.js";
-import { JsoncNode } from "../../../base/jsonc.js";
+
 import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
 import {
 	configDefaults,
 	configMergePolicies,
 	configRemovedFieldAdvice,
 	configSchema,
-	configWrongTypeAdvice,
 } from "../config-schema.js";
 
 describe("domain/config/config-schema", () => {
@@ -20,8 +19,6 @@ describe("domain/config/config-schema", () => {
 			"extends",
 			"rootDirs",
 			"routes",
-			"variants",
-			"conflicts",
 			"exclude",
 			"template",
 			"syncDir",
@@ -86,11 +83,6 @@ describe("domain/config/config-schema", () => {
 
 			it("defaults routes to {}", () => {
 				expect(schema.properties!.routes.default).toEqual({});
-			});
-
-			it("defaults variants and conflicts to []", () => {
-				expect(schema.properties!.variants.default).toEqual([]);
-				expect(schema.properties!.conflicts.default).toEqual([]);
 			});
 
 			it("defaults exclude to []", () => {
@@ -168,66 +160,12 @@ describe("domain/config/config-schema", () => {
 			for (const example of target.examples as string[])
 				expect(matches(target.pattern, example)).toBe(true);
 		});
-
-		it("holds variant names to letters and digits", () => {
-			const pattern = configSchema.properties!.variants.items?.pattern;
-
-			expect(matches(pattern, "myVariant2")).toBe(true);
-			expect(matches(pattern, "my-variant")).toBe(false);
-			expect(matches(pattern, "2variant")).toBe(false);
-			expect(matches(pattern, "")).toBe(false);
-		});
-	});
-
-	describe("variants", () => {
-		it("are a list of names", () => {
-			expect(configSchema.properties!.variants).toMatchObject({
-				type: "array",
-				items: { type: "string" },
-			});
-		});
-	});
-
-	describe("conflicts", () => {
-		it("are a list of groups of names", () => {
-			expect(configSchema.properties!.conflicts).toMatchObject({
-				type: "array",
-				items: { type: "array", items: { type: "string" } },
-			});
-		});
-	});
-
-	describe("wrong type advice", () => {
-		const object = { kind: "object" } as JsoncNode;
-		const location = { resource: "/repo/default.rogen.json" };
-
-		it("says variants is a list when a config writes the old map", () => {
-			expect(
-				configWrongTypeAdvice("variants", object, location)
-			).toMatchObject({
-				code: "config.variantsAreAList",
-				message: expect.stringContaining('"variants" is a list'),
-			});
-		});
-
-		it("leaves any other wrong value to the generic message", () => {
-			expect(
-				configWrongTypeAdvice("routes", object, location)
-			).toBeUndefined();
-			expect(
-				configWrongTypeAdvice(
-					"variants",
-					{ kind: "string" } as JsoncNode,
-					location
-				)
-			).toBeUndefined();
-		});
 	});
 
 	describe("removed field advice", () => {
 		const location = { resource: "/repo/default.rogen.json" };
 
-		it.each(["modes", "mode"])(
+		it.each(["modes", "mode", "variants", "conflicts"])(
 			"says %s was removed and what to do instead",
 			(field) => {
 				expect(configRemovedFieldAdvice(field, location)).toMatchObject(
@@ -263,8 +201,6 @@ describe("domain/config/config-schema", () => {
 				rootDirs: "append",
 				exclude: "append",
 				routes: "merge",
-				variants: "append",
-				conflicts: "append",
 				template: "replace",
 				syncDir: "replace",
 			});
@@ -276,8 +212,6 @@ describe("domain/config/config-schema", () => {
 			expect(configDefaults.contents).toEqual({
 				rootDirs: ["src"],
 				routes: {},
-				variants: [],
-				conflicts: [],
 				exclude: [],
 			});
 		});

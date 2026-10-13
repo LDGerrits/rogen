@@ -3,11 +3,8 @@ import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
-import {
-	Diagnostic,
-	errorDiagnostic,
-} from "../../../platform/diagnostics/diagnostic.js";
-import { OutFileGuard, OutputFile, PendingWrite } from "../build.js";
+
+import { OutputFile } from "../build.js";
 import { OutputWriter } from "../output-writer.js";
 
 const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
@@ -147,76 +144,6 @@ describe("OutputWriter", () => {
 			expect(entries.map(([name]) => name)).toEqual([
 				path.basename(outFile),
 			]);
-		});
-	});
-	describe("write beside a guard", () => {
-		const pending: PendingWrite = {
-			file: outFile,
-			label: "default",
-			setting: { variants: { mock: false } },
-		};
-		const refusal: Diagnostic = errorDiagnostic(
-			"output.servedInOtherMode",
-			{ resource: outFile },
-			"served"
-		);
-		let asked: PendingWrite[];
-		let answer: Diagnostic | undefined;
-
-		beforeEach(() => {
-			asked = [];
-			answer = undefined;
-			const guard: OutFileGuard = async (write) => {
-				asked.push(write);
-				return answer;
-			};
-			writer = new OutputWriter(fs, guard);
-		});
-
-		it("should write when the guard has no objection", async () => {
-			const result = await writer.write(
-				new OutputFile(outFile),
-				treeOf(),
-				pending
-			);
-
-			expect(result.unwrap()).toBe(true);
-			expect(asked).toEqual([pending]);
-		});
-
-		it("should leave the file and its staging files alone when the guard refuses", async () => {
-			await fs.writeFile(outFile, "old\n");
-			answer = refusal;
-
-			const result = await writer.write(
-				new OutputFile(outFile),
-				treeOf(),
-				pending
-			);
-
-			expect(result.isErr()).toBe(true);
-			expect(result.isErr() && result.error.diagnostics).toEqual([
-				refusal,
-			]);
-			expect(await fs.readFile(outFile)).toBe("old\n");
-			expect(
-				(await fs.readDirectory("/repo")).map(([name]) => name)
-			).toEqual(["default.project.json"]);
-		});
-
-		it("should not ask the guard when the bytes would not change", async () => {
-			await writer.write(new OutputFile(outFile), treeOf(), pending);
-			asked = [];
-			answer = refusal;
-
-			const result = await writer.write(
-				new OutputFile(outFile),
-				treeOf(),
-				pending
-			);
-
-			expect(result.unwrap()).toBe(false);
-			expect(asked).toEqual([]);
 		});
 	});
 });

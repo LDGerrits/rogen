@@ -60,6 +60,7 @@ project: DataModel
       Util: ModuleScript  <- src/Util.luau
   ServerScriptService: ServerScriptService
     Save: Script  <- src/server/Save.server.luau
+    Save.mock: Script  <- src/server/Save.mock.server.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Hud: LocalScript  <- src/client/Hud.client.luau
@@ -68,3 +69,4 @@ $ rojo sourcemap match.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
     Save: Script  <- src/server/Save.server.luau
+    Save.mock: Script  <- src/server/Save.mock.server.luau

@@ -29,30 +29,9 @@ describe("WhereLog", () => {
 					],
 					route: "Client",
 					routeMatch: "suffix",
-					variants: [],
 				})
 			).toBe(
 				"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Http · route Client (suffix)"
-			);
-		});
-
-		it("should name each active variant with how it matched", () => {
-			expect(
-				lineOf({
-					status: "placed",
-					source: "/repo/src/A.luau",
-					exists: true,
-					instancePath: ["ReplicatedStorage", "A"],
-					route: "*",
-					routeMatch: "fallback",
-					variants: [
-						{ variant: "dev", form: "folder" },
-						{ variant: "mock", form: "suffix" },
-						{ variant: "test", form: "marker" },
-					],
-				})
-			).toBe(
-				"src/A.luau -> ReplicatedStorage/A · route * (fallback) · variants dev (folder), mock (suffix), test (marker)"
 			);
 		});
 
@@ -69,7 +48,6 @@ describe("WhereLog", () => {
 					],
 					route: "character",
 					routeMatch: "marker",
-					variants: [],
 					hoisted: true,
 				})
 			).toBe(
@@ -87,28 +65,9 @@ describe("WhereLog", () => {
 					alsoAt: [["StarterPlayer", "StarterPlayerScripts", "Net"]],
 					route: "server",
 					routeMatch: "copy",
-					variants: [],
 				})
 			).toBe(
 				"src/Net/init.luau -> ServerScriptService/Net · route server (copy) · also StarterPlayer/StarterPlayerScripts/Net"
-			);
-		});
-
-		it("should say how a dormant variant matched a pruned file", () => {
-			expect(
-				lineOf({
-					status: "pruned",
-					source: "/repo/src/Http.mock.luau",
-					exists: true,
-					variants: [
-						{
-							variant: "mock",
-							form: "suffix",
-						},
-					],
-				})
-			).toBe(
-				"src/Http.mock.luau -> pruned · variant mock is off (suffix)"
 			);
 		});
 
@@ -258,7 +217,6 @@ describe("WhereLog", () => {
 			instancePath: ["ReplicatedStorage", at],
 			route: "*",
 			routeMatch: "fallback",
-			variants: [],
 		});
 
 		it("should prefix each config's line when they differ", () => {
@@ -349,7 +307,6 @@ describe("WhereLog", () => {
 			instancePath,
 			route: "*",
 			routeMatch: "fallback",
-			variants: [],
 		});
 		const entry = (location: FileLocation) =>
 			documentOf([["default", [location]]])
@@ -417,10 +374,10 @@ describe("WhereLog", () => {
 		it("should give none for a location that isn't placed", () => {
 			expect(
 				entry({
-					status: "pruned",
-					source: "/repo/src/Http.mock.luau",
+					status: "replaced",
+					source: "/repo/src/Http.lua",
 					exists: true,
-					variants: [{ variant: "mock", form: "suffix" }],
+					by: "/repo/src/Http.luau",
 				})
 			).not.toHaveProperty("require");
 		});
@@ -452,7 +409,6 @@ describe("WhereLog", () => {
 			instancePath,
 			route: "*",
 			routeMatch: "fallback",
-			variants: [],
 			...(named && { named: true as const }),
 		});
 		const requireLines = (...configs: [string, FileLocation][]) =>
@@ -675,7 +631,6 @@ describe("WhereLog", () => {
 			instancePath: ["ReplicatedStorage", "Save"],
 			route: "*",
 			routeMatch: "fallback",
-			variants: [],
 		});
 		const strayAt = warningDiagnostic(
 			"route.strayAt",

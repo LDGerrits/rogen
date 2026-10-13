@@ -1,8 +1,0 @@
-{
-	"rootDirs": ["src"],
-	"variants": ["mock"],
-	"routes": {
-		"server": "ServerScriptService",
-		"*": "ReplicatedStorage/shared"
-	}
-}

@@ -10,15 +10,13 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
-    -o, --out-file <path>    Overrides outFile, for one config.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
-        --json               Print one JSON document instead of text.
-        --deny-warnings      Exit 1 when any config has a warning.
+    -o, --out-file <path>  Overrides outFile, for one config.
+        --json             Print one JSON document instead of text.
+        --deny-warnings    Exit 1 when any config has a warning.
   
   Examples:
     rogen build
-    rogen build places/lobby.rogen.json --variant mock
+    rogen build places/lobby.rogen.json
     rogen build --json
     rogen build --deny-warnings
   
@@ -40,14 +38,12 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
-    -o, --out-file <path>    Overrides outFile, for one config.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
-        --json               Print one JSON object per line: each config change and each build.
+    -o, --out-file <path>  Overrides outFile, for one config.
+        --json             Print one JSON object per line: each config change and each build.
   
   Examples:
     rogen watch
-    rogen watch lobby --variant dev
+    rogen watch lobby
     rogen watch --json
   
   Global options:
@@ -85,7 +81,7 @@ stdout:
 $ rogen help list
 exit 0
 stdout:
-  Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.
+  Lists every config here with its root dirs, routes, sync dir and project file; with --json, each fully resolved.
   
   Usage:
     rogen list [config...] [options]
@@ -94,9 +90,7 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
-        --json               Print one JSON document instead of text.
+        --json  Print one JSON document instead of text.
   
   Examples:
     rogen list
@@ -120,15 +114,13 @@ stdout:
     config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
   
   Options:
-    -o, --out-file <path>    Overrides outFile, for one config.
-        --variant <name>     Turns a variant on. (repeatable)
-        --no-variant <name>  Turns a variant off, whatever turned it on. (repeatable)
-        --json               Print one JSON document instead of text.
-        --deny-warnings      Exit 1 when any config has a warning.
+    -o, --out-file <path>  Overrides outFile, for one config.
+        --json             Print one JSON document instead of text.
+        --deny-warnings    Exit 1 when any config has a warning.
   
   Examples:
     rogen build
-    rogen build places/lobby.rogen.json --variant mock
+    rogen build places/lobby.rogen.json
     rogen build --json
     rogen build --deny-warnings
   

@@ -13,8 +13,7 @@ import { ResolvedConfigSpec } from "../../../domain/config/__tests__/mock-config
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
-import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
+
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -304,52 +303,6 @@ describe("build command", () => {
 			expect(logService.texts("annotation")).toEqual([
 				"::error file=default.rogen.json,title=route.noRoutes::no routes declared, so nothing can be placed.%0AAdd a \"routes\" map; 'rogen init' writes a starting set.",
 			]);
-		});
-	});
-
-	describe("beside a running serve", () => {
-		const runWithServe = async (mock: boolean) => {
-			await fs.writeFile(abs("src/A.luau"), "");
-			await fs.writeFile(abs("default.project.json"), "served\n");
-			await fs.writeFile(
-				...recordFile(34872, "repo", abs("default.project.json"), {
-					setting: { variants: { mock: true } },
-				})
-			);
-			const requests = new MockRequestService();
-			requests.answer("http://127.0.0.1:34872/api/rojo", {
-				projectName: "repo",
-				serverVersion: "7.7.1",
-				sessionId: "s1",
-			});
-			return commandHarness({
-				fs,
-				log: new NullLogService(),
-				requests,
-				config: new MockConfigService([
-					buildable({ variants: { mock } }),
-				]),
-			}).run("build", { positionals: [], options: {} });
-		};
-
-		it("should refuse to change the project file it serves into another variants', and say how to build to another file", async () => {
-			const result = await runWithServe(false);
-
-			expect((result as ResultError<Error>).error.message).toContain(
-				"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built with mock on, and this build has no variants on, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)"
-			);
-			expect(await fs.readFile(abs("default.project.json"))).toBe(
-				"served\n"
-			);
-		});
-
-		it("should build with the variants the serve runs", async () => {
-			const result = await runWithServe(true);
-
-			expect(result.isOk()).toBe(true);
-			expect(await fs.readFile(abs("default.project.json"))).not.toBe(
-				"served\n"
-			);
 		});
 	});
 
@@ -727,12 +680,6 @@ describe("build command", () => {
 				"places/a.rogen.json",
 				"-o",
 				"out.project.json",
-				"--variant",
-				"mock",
-				"--variant",
-				"dev",
-				"--no-variant",
-				"prod",
 				"--json"
 			).unwrap();
 
@@ -740,37 +687,16 @@ describe("build command", () => {
 			expect(line.positionals).toEqual(["lobby", "places/a.rogen.json"]);
 			expect(line.options).toEqual({
 				"out-file": "out.project.json",
-				variant: ["mock", "dev"],
-				"no-variant": ["prod"],
 				json: true,
 			});
 		});
 
-		it("should repeat --variant and --no-variant", () => {
-			const { options } = parse(
-				"build",
-				"--variant",
-				"mock",
-				"--no-variant",
-				"dev",
-				"--no-variant",
-				"prod"
-			).unwrap().line;
-
-			expect(options).toMatchObject({
-				variant: ["mock"],
-				"no-variant": ["dev", "prod"],
-			});
-		});
-
-		it("should reject --mode, which modes took", () => {
-			expect(parse("build", "--mode", "prod").isErr()).toBe(true);
-		});
-
-		it("should have no short flags for the variant options", () => {
-			expect(parse("build", "-t", "mock").isErr()).toBe(true);
-			expect(parse("build", "-T", "mock").isErr()).toBe(true);
-		});
+		it.each(["--variant", "--no-variant", "--mode"])(
+			"should reject %s, which a removed feature took",
+			(flag) => {
+				expect(parse("build", flag, "prod").isErr()).toBe(true);
+			}
+		);
 
 		it.each([
 			"--all",

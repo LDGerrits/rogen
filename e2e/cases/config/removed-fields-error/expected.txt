@@ -1,0 +1,9 @@
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:4:2 - error: "mode" was removed. Modes are gone with "modes". Build the config that holds the settings by name, as 'rogen build <name>'. (config.removedField)
+  default.rogen.json:5:2 - error: "modes" was removed. Put what a mode set in a second config that extends this one, which can add "exclude". (config.removedField)
+  default.rogen.json:8:2 - error: "variants" was removed. A file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir. (config.removedField)
+  default.rogen.json:9:2 - error: "conflicts" was removed. Variants are gone, and so are their conflict groups. Sets that exclude each other are one config each, listing their own root dir. (config.removedField)

@@ -43,7 +43,7 @@ export class InitAdditions {
 						{
 							id: "extending",
 							label: "A config that extends default",
-							hint: "the same game with other variants or excludes",
+							hint: "the same game with other excludes",
 							addition: new ExtendingConfigSetup(
 								directory,
 								questions

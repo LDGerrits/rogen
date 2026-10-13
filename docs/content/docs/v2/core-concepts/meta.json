@@ -2,7 +2,6 @@
 	"title": "Core Concepts",
 	"pages": [
 		"routing",
-		"variants",
 		"project-layout",
 		"requires",
 		"output"

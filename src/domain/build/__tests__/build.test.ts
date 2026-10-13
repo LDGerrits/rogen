@@ -20,7 +20,6 @@ const staged = (file: string, id: string) => `${file}.${id}.tmp`;
 const summary: BuildSummary = {
 	roots: [],
 	routes: [],
-	variants: [],
 	unrouted: 0,
 	replaced: 0,
 	displaced: 0,

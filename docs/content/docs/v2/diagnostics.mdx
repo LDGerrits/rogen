@@ -65,10 +65,11 @@ Rename it to the field suggested, or remove it. A config with v1 fields also get
 Error. The config has a field that Rogen removed. The error is at the field, as for an unknown field, and the message says what to do instead.
 
 ```
-default.rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a second config that extends this one, which can add "exclude", and turn variants on with --variant. (config.removedField)
+default.rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a second config that extends this one, which can add "exclude". (config.removedField)
+default.rogen.json:5:2 - error: "variants" was removed. A file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir. (config.removedField)
 ```
 
-Remove the field and do what the message says. For `modes` and `mode`, that is a second config that [extends](/docs/v2/configuration#extending-configs) this one and adds an `exclude`, built by its name as `rogen build <name>`, and `--variant` for the variants. See [Configuration](/docs/v2/configuration#fields).
+Remove the field and do what the message says. For `modes` and `mode`, that is a second config that [extends](/docs/v2/configuration#extending-configs) this one and adds an `exclude`, built by its name as `rogen build <name>`. For `variants`, a file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir. For `conflicts`, sets that exclude each other are one config each, listing their own root dir. See [Configuration](/docs/v2/configuration#fields) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.unnamed` [#config-unnamed]
 
@@ -182,26 +183,6 @@ default.rogen.json:6:14 - error: route key "ser-ver" is invalid: use letters and
 
 Rename the key, for example `server`. See [Routing](/docs/v2/core-concepts/routing).
 
-### `config.invalidVariantName` [#config-invalidvariantname]
-
-Error. A variant name has characters other than letters and digits, or starts with a digit.
-
-```
-default.rogen.json:12:17 - error: variant "my-variant" is invalid: use letters and digits only, starting with a letter. (config.invalidVariantName)
-```
-
-Rename the variant, for example `myVariant`. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
-
-### `config.variantClashesWithRoute` [#config-variantclasheswithroute]
-
-Error. A variant has the same name as a route key, so a folder or marker with that name could mean either.
-
-```
-default.rogen.json:12:13 - error: variant "server" has the same name as a route key; rename one of them. (config.variantClashesWithRoute)
-```
-
-Rename the variant or the route. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
-
 ### `config.ambiguousKey` [#config-ambiguouskey]
 
 Error. Two declared keys differ only in the case of their first letter. A name matches a key with its first letter in either case, so both would match the same folders.
@@ -221,36 +202,6 @@ default.rogen.json:4:12 - error: "server" is "argn", but Rogen serves with "rojo
 ```
 
 Fix the name, or remove the field to serve with the server the project pins. See [`serve`](/docs/v2/cli#serve).
-
-### `config.variantsAreAList` [#config-variantsarealist]
-
-Error. `variants` is a map of on and off, as earlier betas wrote it. It is a list of names now: a variant is off unless `--variant` turns it on.
-
-```
-default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/variants#declaring-variants. (config.variantsAreAList)
-```
-
-Write `"variants": ["mock"]`, and turn a variant that was `true` on with `--variant`. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
-
-### `config.conflictUndeclaredVariant` [#config-conflictundeclaredvariant]
-
-Error. A group in `conflicts` names a variant that `variants` doesn't declare.
-
-```
-default.rogen.json:5:39 - error: a conflict group names "christmass", which is not declared under "variants". Did you mean "christmas"? (config.conflictUndeclaredVariant)
-```
-
-Declare the variant, or fix the name the message suggests. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
-
-### `config.variantConflict` [#config-variantconflict]
-
-Error. Two variants of one conflict group are on, because `--variant` turned both on.
-
-```
-default.rogen.json:5:16 - error: variants "halloween" and "christmas" conflict, but both are on from --variant. Pass only one of them. (config.variantConflict)
-```
-
-Pass only one of them. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
 
 ## Routes
 
@@ -297,14 +248,15 @@ Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"
 
 ### `route.strayAt` [#route-strayat]
 
-Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), it spells one but isn't at the end of the name (`Report@server.bak.luau`), or it's followed by a variant (`Analytics@mock.luau`), which takes a dot. One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
+Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
 
 ```
-default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
   src/Inventory/Load@SERVER.luau (did you mean "@server"?)
+  src/Inventory/Report@server.bak.luau ("@server" must end the name)
 ```
 
-Rename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest, and for a variant's dot form. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
+Rename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See [The `@` Sign](/docs/v2/core-concepts/routing#the--sign).
 
 ### `route.dotRoute` [#route-dotroute]
 
@@ -320,7 +272,7 @@ Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, an
 
 ### `route.folderTypo` [#route-foldertypo]
 
-Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). A plural counts too: `Servers/` reads as an ordinary folder, so it warns; rename it if its files belong under the route. The folder's name is read with its parentheses, `^` and variant parts off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead. One warning lists every such folder.
+Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). A plural counts too: `Servers/` reads as an ordinary folder, so it warns; rename it if its files belong under the route. The folder's name is read with its parentheses and `^` off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead. One warning lists every such folder.
 
 ```
 default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
@@ -331,14 +283,13 @@ Rename the folder to the key suggested, or, when the key in your config is the t
 
 ### `route.markerClash` [#route-markerclash]
 
-Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too, as does `init@server.luau` beside `init.mock@client.luau`, whether or not `mock` is on. Both sit at the same level, so nothing decides which one governs. The same route twice is fine, and variant markers (`.mock` beside `.dev`) both apply.
+Error. Two marker files in one folder name different routes, such as `@server` beside `@client`. An init script's route suffix counts as a marker, so `@server` beside `init@client.luau` clashes too. Both sit at the same level, so nothing decides which one governs. The same route twice is fine.
 
 ```
 src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)
-src/Combat - error: "init.dev@server.luau" and "init.prod@client.luau" route this folder to different places, but a variant never changes where a file lands. Move the files only a variant sends elsewhere into a folder beside this one: Combat.dev@server/ and Combat.prod@client/. (route.markerClash)
 ```
 
-Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. Where a file lands never depends on which variants are on, so init scripts of two variants, even ones that are never on together, can't send their folder to two places. Keep the folder's own route, if it has one, and move the files that only a variant sends elsewhere into a folder beside it that names the variant and the route, such as `Combat.dev@server/`. A marker inside the folder wouldn't work, since the folder's route governs everything in it. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Delete the marker you don't want, or move part of the folder into a subfolder with its own marker. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.ignoredAt` [#route-ignoredat]
 
@@ -348,7 +299,7 @@ Error. A name or marker file has an `@key` inside a folder that another route al
 src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
 ```
 
-Remove the `@key`, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. An `@` that restates the governing route, like `Shared/Net/Remote@shared.luau`, is fine. A file that a dormant variant leaves out, or that a variant replaces, is reported too, since its name is wrong either way. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
+Remove the `@key`, or move the file out of the governing route's folder. There's no automatic fix, since which one is right depends on where the code should run. An `@` that restates the governing route, like `Shared/Net/Remote@shared.luau`, is fine. A file that another file replaces is reported too, since its name is wrong either way. See [The Governing Route](/docs/v2/core-concepts/routing#the-governing-route).
 
 ### `route.caseMismatch` [#route-casemismatch]
 
@@ -372,61 +323,6 @@ Move it out of the "shared" route's files if it's server code, or keep it there 
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`. If the folder is meant to replicate, put a marker file that restates the governing route in it, such as `Shared/Server/@shared`: it covers every file below it. `Secret@shared.luau` covers just that file. A route written with `@`, like `Shared/Data@server.luau`, is the [`route.ignoredAt`](#route-ignoredat) error instead. See [Server Code Under a Replicating Route](/docs/v2/core-concepts/routing#server-code-under-a-replicating-route).
 
-## Variants
-
-### `variant.typo` [#variant-typo]
-
-Warning. A name ends in a dot part that is one edit away from a declared variant, such as `.mok` next to `mock`, so it's read as part of the name. That covers a file (`Analytics.mok.luau`), a folder (`Analytics.mok/`), a dot-folder (`.mok/`) and a marker file (`.mok`), which then marks nothing. A folder whose whole name is one edit from a variant of four letters or more (`mokc/` next to `mock`, or the plural `Mocks/`) is reported too, and the hint then leaves out the dot; shorter variants are one edit from real words, so they are not offered. One warning lists every such name.
-
-```
-default.rogen.json - warning: 1 name ends in a dot part that is one edit from a declared variant, so it is read as an ordinary name: (variant.typo)
-  src/Analytics.mok.luau (did you mean ".mock"?)
-```
-
-Rename the file or folder to the variant suggested. A dot-file that really is something else, such as a `.lock` next to a `mock` variant, can be renamed or left out with `exclude`. In `--json`, `fixes` holds the rename when exactly one variant is closest. See [Marking Files](/docs/v2/core-concepts/variants#marking-files).
-
-### `variant.noneActive` [#variant-noneactive]
-
-Warning. Two or more variants give one instance, a file or a folder, no plain file does, and none of the variants is on, so the instance is missing. Whatever requires it fails at runtime. A lone variant (`DebugPanel.dev.luau`) is silent, and a plain file in a later root directory gives the instance. One warning lists every missing instance.
-
-```
-default.rogen.json - warning: 1 instance is missing, because none of the variants that give it is on: (variant.noneActive)
-  ReplicatedStorage/shared/Analytics/Service (dev, prod)
-Turn one of its variants on, or add a plain file.
-```
-
-Turn one of the variants on with `--variant`, or add a plain file as the default. See [Precedence](/docs/v2/core-concepts/variants#precedence).
-
-### `variant.activeClash` [#variant-activeclash]
-
-Error. Two files with active variants become the same instance, and neither has all of the other's variants, so Rogen can't tell which one to use. `Analytics.mock.luau` and `Analytics.dev.luau` clash; `mock/Analytics.dev.luau` has both variants, so it replaces `Analytics.mock.luau` instead.
-
-```
-src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)
-```
-
-Turn one of the variants off by not passing its `--variant` or by passing `--no-variant`, or rename one of the files. Variants that must never be on together belong in `conflicts`, which reports it before any file is placed. See [Precedence](/docs/v2/core-concepts/variants#precedence).
-
-### `variant.landsElsewhere` [#variant-landselsewhere]
-
-Error. A variant file lands somewhere other than the plain file beside it, so it would ship next to that file instead of replacing it. A route suffix, a marker in a variant folder or a `^` that only one of them has does this. It's reported whether or not the variant is on.
-
-```
-src/Analytics.mock@server.luau - error: lands at "ServerScriptService/Analytics", but src/Analytics.luau, which it is a variant of, lands at "ReplicatedStorage/shared/Analytics", so both would ship. Route and hoist them the same way. (variant.landsElsewhere)
-```
-
-Give both files the same route and `^`: `Analytics.mock.luau` beside `Analytics.luau`, or `Analytics.mock@server.luau` beside `Analytics@server.luau`. The plain file beside a variant is the one with the same name once its variants and route are off, in the same folder once variant folders are left out. See [Precedence](/docs/v2/core-concepts/variants#precedence).
-
-### `variant.buriedScriptSuffix` [#variant-buriedscriptsuffix]
-
-Warning. Rojo's `.server` or `.client` isn't the file's last suffix, so once the variant comes off, Rojo reads the file as a ModuleScript.
-
-```
-src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.server.luau. (variant.buriedScriptSuffix)
-```
-
-Put the script suffix last: `Save.mock.server.luau`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
-
 ## Tree
 
 ### `tree.reservedName` [#tree-reservedname]
@@ -441,13 +337,13 @@ Rename the file or folder without the `$`. A `$` inside a name, as in `Cost$`, i
 
 ### `tree.instanceClash` [#tree-instanceclash]
 
-Warning. Two plain files become the same instance, such as `Types.lua` and `Types.luau`. One takes the instance and the other is left out.
+Warning. Two files in one root directory become the same instance, such as `Types.lua` and `Types.luau`. The last one takes the instance and the other is left out. Across root directories the last one wins without a warning: that is how a file is [replaced](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ```
 src/Inventory/Types.lua - warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
 ```
 
-Rename or delete one of them. `rogen where` shows the left-out file as `replaced by`. See [Variants](/docs/v2/core-concepts/variants).
+Rename or delete one of them. `rogen where` shows the left-out file as `replaced by`. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `tree.templateClash` [#tree-templateclash]
 
@@ -461,7 +357,7 @@ Rename the file, or remove the node from the template. See [Template](/docs/v2/c
 
 ### `tree.initWithoutFolder` [#tree-initwithoutfolder]
 
-Error. An init script becomes the folder it sits in, but that folder never becomes an instance. That's a root directory, a plain routing folder, a variant folder or an invisible folder.
+Error. An init script becomes the folder it sits in, but that folder never becomes an instance. That's a root directory, a plain routing folder or an invisible folder.
 
 ```
 src/server/init.server.luau - error: an init script becomes the folder it sits in, but it sits in a routing folder, which never becomes an instance. Move it into a folder of its own, or rename it. (tree.initWithoutFolder)
@@ -596,7 +492,7 @@ Rename it to the name the message gives, or delete it. A folder's meta is `init.
 
 ### `meta.appliesToNothing` [#meta-appliestonothing]
 
-Warning. An `init.meta.json` sits in a folder that never becomes an instance, such as a routing folder, a variant folder or an invisible folder.
+Warning. An `init.meta.json` sits in a folder that never becomes an instance, such as a routing folder or an invisible folder.
 
 ```
 src/Combat/server/init.meta.json - warning: applies to nothing, because a routing folder never becomes an instance. Move the meta into the folder that should get it. (meta.appliesToNothing)
@@ -708,7 +604,7 @@ Move the file out of the root dirs. For a place, `rogen init <place>` copies the
 
 ### `scan.rootDirNamedAfterKey` [#scan-rootdirnamedafterkey]
 
-Warning. A root directory is named after a route or variant key. Routing starts below a root directory, so its name routes (or prunes) nothing, and its files land wherever the `*` route sends them, or nowhere. One warning lists every such root dir.
+Warning. A root directory is named after a route key. Routing starts below a root directory, so its name routes nothing, and its files land wherever the `*` route sends them, or nowhere. One warning lists every such root dir.
 
 ```
 default.rogen.json - warning: 2 root dirs are named after a route key, but routing starts below a root dir, so their names route nothing: (scan.rootDirNamedAfterKey)
@@ -750,16 +646,6 @@ default.project.json - error: the project file could not be written: permission 
 ```
 
 Check that the folder is writable and that no other program locks the file. Rogen creates the folder if it is missing. See [Output](/docs/v2/core-concepts/output#output).
-
-### `output.servedInOtherMode` [#output-servedinothermode]
-
-Error. A running `rogen serve` serves this project file as built with some variants on, and this build would write it with others, so Studio would get the new content without anyone asking. The file isn't written. A build that would write the same bytes isn't refused, and neither is one with the variants the serve runs. A serve's own rebuilds, as its config changes, are never refused. Rogen knows a serve from the moment its server answers, and a record left by a serve that has stopped or crashed doesn't count: Rogen asks the server before it refuses.
-
-```
-default.project.json - error: default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built with mock on, and this build has no variants on, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)
-```
-
-Build to another file with `-o`, as in `rogen build default --variant mock -o mock.project.json`, or stop the serve. This also holds for `watch`. A server you started yourself, which no `rogen serve` recorded, can't be told apart, so it isn't protected. See [Building While Watching](/docs/v2/core-concepts/output#building-while-watching).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
@@ -884,16 +770,6 @@ default.rogen.json - error: Port 34872 is taken by Rojo serving shop, so default
 ```
 
 Stop what holds the port, give the config its own `servePort` in its template, or pass a free port after `--`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
-
-### `serve.otherMode` [#serve-othermode]
-
-Error. Another `rogen serve` already serves this config's project file, built with different variants on than this serve builds. Both would write the same file, so this serve doesn't take it over, and doesn't count it as served either.
-
-```
-default.rogen.json - error: default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built with mock on, and this serve builds with no variants on. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'. (serve.otherMode)
-```
-
-Stop that serve, or serve this config with its variants from its own project file and port. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.otherServer` [#serve-otherserver]
 

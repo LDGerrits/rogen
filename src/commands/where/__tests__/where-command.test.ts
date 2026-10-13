@@ -45,18 +45,18 @@ describe("where command", () => {
 	it("should print where each path lands and why, relative to the working directory", async () => {
 		await writeConfig("default.rogen.json", {
 			routes: ROUTES,
-			variants: ["mock"],
+			exclude: ["**/*.spec.luau"],
 		});
 		await write(
 			"src/Net/Http@client.luau",
-			"src/Net/Http.mock@client.luau",
+			"src/Net/Http.spec.luau",
 			"src/Util.luau"
 		);
 
 		const result = await run({
 			_: [
 				"src/Net/Http@client.luau",
-				"src/Net/Http.mock@client.luau",
+				"src/Net/Http.spec.luau",
 				"src/Util.luau",
 				"src/Combat/Server/Hit.luau",
 			],
@@ -65,7 +65,7 @@ describe("where command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
 			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
-			"src/Net/Http.mock@client.luau -> pruned · variant mock is off (suffix)",
+			"src/Net/Http.spec.luau -> excluded · matches **/*.spec.luau",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
 		]);
@@ -153,22 +153,6 @@ describe("where command", () => {
 
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual(["No files in the root dirs (src)."]);
-	});
-
-	it("should read every config here, with variant flags applied", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await writeConfig("mocked.rogen.json", {
-			routes: ROUTES,
-			variants: ["mock"],
-		});
-		await write("src/Http.mock.luau");
-
-		await run({ _: ["src/Http.mock.luau"], variant: ["mock"] });
-
-		expect(printed()).toEqual([
-			"default: src/Http.mock.luau -> ReplicatedStorage/Shared/Http.mock · route * (fallback)",
-			"mocked: src/Http.mock.luau -> ReplicatedStorage/Shared/Http · route * (fallback) · variant mock (suffix)",
-		]);
 	});
 
 	describe("with several configs", () => {
@@ -331,11 +315,11 @@ describe("where command", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
-				variants: ["mock"],
+				exclude: ["**/*.spec.luau"],
 			});
 			await write(
 				"src/Inventory/Server/Save.luau",
-				"src/Net/Http.mock.luau"
+				"src/Net/Http.spec.luau"
 			);
 		});
 
@@ -343,7 +327,7 @@ describe("where command", () => {
 			const result = await run({
 				_: [
 					"src/Inventory/Server/Save.luau",
-					"src/Net/Http.mock.luau",
+					"src/Net/Http.spec.luau",
 					"src/Nowhere.luau",
 				],
 				json: true,
@@ -362,15 +346,14 @@ describe("where command", () => {
 						'game:GetService("ServerScriptService").Inventory.Save',
 					route: "Server",
 					routeMatch: "folder",
-					variants: [],
 					diagnostics: [],
 				},
 				{
 					config: "default",
-					source: "/repo/src/Net/Http.mock.luau",
-					status: "pruned",
+					source: "/repo/src/Net/Http.spec.luau",
+					status: "excluded",
 					exists: true,
-					variants: [{ variant: "mock", form: "suffix" }],
+					pattern: "/repo/**/*.spec.luau",
 					diagnostics: [],
 				},
 				{
@@ -383,7 +366,6 @@ describe("where command", () => {
 						'game:GetService("ReplicatedStorage").Shared.Nowhere',
 					route: "*",
 					routeMatch: "fallback",
-					variants: [],
 					diagnostics: [],
 				},
 			]);
@@ -429,18 +411,9 @@ describe("where command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept the variant flags, but not the output overrides", () => {
-			expect(
-				parse(
-					"where",
-					"src",
-					"--variant",
-					"mock",
-					"--no-variant",
-					"dev"
-				).isOk()
-			).toBe(true);
-			expect(parse("where", "--json").isOk()).toBe(true);
+		it("should accept paths and --json, but not the output overrides", () => {
+			expect(parse("where", "src", "--json").isOk()).toBe(true);
+			expect(parse("where", "--variant", "mock").isErr()).toBe(true);
 			expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
 			expect(parse("where", "-c", "a.rogen.json").isErr()).toBe(true);
 		});

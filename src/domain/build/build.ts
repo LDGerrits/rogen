@@ -1,7 +1,7 @@
 import path from "path";
 import { groupBy } from "../../base/collections.js";
 import { pathKey, toPosix } from "../../base/path.js";
-import { joinedWithAnd, plural } from "../../base/strings.js";
+import { plural } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -12,16 +12,11 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { ResolvedConfig, configLabel } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
 
-/** How a route or variant key matched a file by its name. */
+/** How a route key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "suffix";
 
 /** How the governing route matched the file; `init` is the route suffix of an init script in one of its folders, `copy` an init script placed where its folder's other files route it, and `fallback` the `*` route. */
 export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
-
-export interface VariantMatch {
-	readonly variant: string;
-	readonly form: MatchForm;
-}
 
 /** Why the scan left a path out; the path is the key it is stored under. */
 export type ScanLeftOut =
@@ -38,8 +33,6 @@ export type LeftOut =
 	| ScanLeftOut
 	/** No route governs it. */
 	| { readonly status: "unrouted" }
-	/** Every dormant variant it carries, the first first. */
-	| { readonly status: "pruned"; readonly variants: readonly VariantMatch[] }
 	/** Another file took its instance path. */
 	| { readonly status: "replaced"; readonly by: string }
 	/** The template defines the node it would be, or a `$path` above it. */
@@ -60,18 +53,10 @@ export interface RouteSummary {
 	readonly files: number;
 }
 
-export interface VariantSummary {
-	readonly variant: string;
-	readonly on: boolean;
-	/** Files placed with the variant when it's on, or left out by it when it's off. */
-	readonly files: number;
-}
-
 export interface BuildSummary {
 	readonly roots: readonly RootSummary[];
 	/** In the order the config declares them. */
 	readonly routes: readonly RouteSummary[];
-	readonly variants: readonly VariantSummary[];
 	readonly unrouted: number;
 	readonly replaced: number;
 	/** Left out because the template defines their node. */
@@ -354,43 +339,6 @@ export interface SyncTool {
 	/** What it writes instead of a data file, such as a `.txt`, which Rojo then no longer finds. */
 	readonly dataReplacement?: DataReplacement;
 }
-
-/** What decides the content of a project file besides the sources: which variants are on. */
-export interface BuildSetting {
-	readonly variants: Readonly<Record<string, boolean>>;
-}
-
-export const settingOf = (config: ResolvedConfig): BuildSetting => ({
-	variants: config.variants,
-});
-
-export function sameSetting(a: BuildSetting, b: BuildSetting): boolean {
-	const names = new Set([
-		...Object.keys(a.variants),
-		...Object.keys(b.variants),
-	]);
-	return [...names].every(
-		(name) => (a.variants[name] ?? false) === (b.variants[name] ?? false)
-	);
-}
-
-/** A setting in words, as `mock on`. */
-export function describeSetting({ variants }: BuildSetting): string {
-	const on = Object.keys(variants).filter((name) => variants[name]);
-	return on.length === 0 ? "no variants on" : `${joinedWithAnd(on)} on`;
-}
-
-/** A write of a config's project file that a build is about to make. */
-export interface PendingWrite {
-	readonly file: string;
-	readonly label: string;
-	readonly setting: BuildSetting;
-}
-
-/** Says why a project file must not be changed now, when something else holds it as built in another setting. */
-export type OutFileGuard = (
-	write: PendingWrite
-) => Promise<Diagnostic | undefined>;
 
 /** The project file a config writes, and the staging files its writes go through. */
 export class OutputFile {

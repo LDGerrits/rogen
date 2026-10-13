@@ -1,0 +1,54 @@
+import { errors, start, useConfigFixture, write } from "./config-fixture.js";
+
+describe("CoreConfigService", () => {
+	useConfigFixture();
+
+	describe("removed fields", () => {
+		it("should say modes was removed, where it is written", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"modes": { "dev": {} }
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.removedField",
+					position: { line: 2, column: 2 },
+					message: expect.stringContaining('"modes" was removed.'),
+				},
+			]);
+		});
+
+		it.each(["mode", "variants", "conflicts"])(
+			"should say %s was removed",
+			async (field) => {
+				await write("/repo/default.rogen.json", { [field]: "x" });
+
+				await start();
+
+				expect(errors(0)).toMatchObject([
+					{
+						code: "config.removedField",
+						message: expect.stringContaining(
+							`"${field}" was removed.`
+						),
+					},
+				]);
+			}
+		);
+
+		it("should name a later root dir as what replaces a variant", async () => {
+			await write("/repo/default.rogen.json", {
+				variants: { mock: true },
+			});
+
+			await start();
+
+			expect(errors(0)[0].message).toContain("later root dir");
+		});
+	});
+});

@@ -7,11 +7,7 @@ import { CoreConfigService } from "../core-config-service.js";
 export interface Refs {
 	/** Names or paths; the default config when absent. */
 	readonly names?: string[];
-	readonly overrides?: {
-		readonly outFile?: string;
-		readonly mode?: string;
-		readonly variants: Record<string, boolean>;
-	};
+	readonly overrides?: { readonly outFile?: string };
 }
 
 export let fs: MemoryFileSystemService;
@@ -47,7 +43,6 @@ export const plain = (config: ResolvedConfig | undefined) =>
 		routes: Object.fromEntries(
 			[...config.routes].map(([key, target]) => [key, String(target)])
 		),
-		variants: config.variants,
 		exclude: config.exclude,
 		syncDir: config.syncDir,
 		outFile: config.outFile,
@@ -62,14 +57,9 @@ export const start = async (
 	{ names = ["default"], overrides }: Refs = {},
 	cwd = "/repo"
 ) => {
-	const variants = Object.entries(overrides?.variants ?? {});
 	service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
 	const result = await service.select(names, {
 		"out-file": overrides?.outFile,
-		variant: variants.filter(([, on]) => on).map(([variant]) => variant),
-		"no-variant": variants
-			.filter(([, on]) => !on)
-			.map(([variant]) => variant),
 	});
 	if (result.isOk()) selection = result.value;
 	return result;

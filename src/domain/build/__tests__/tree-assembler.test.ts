@@ -512,26 +512,6 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should point a node at an init script with a variant, which Rojo reads alone, and copy its folder's meta on", async () => {
-				await write(
-					"src/Net/init.luau",
-					"src/Net/init.mock.luau",
-					"src/Net/Types.luau"
-				);
-				await fs.writeFile(
-					abs("src/Net/init.meta.json"),
-					JSON.stringify({ attributes: { Mocked: true } })
-				);
-
-				const storage = await storageOf({ variants: { mock: true } });
-
-				expect(storage.Net).toEqual({
-					$path: optional("src/Net/init.mock.luau"),
-					$attributes: { Mocked: true },
-					Types: { $path: optional("src/Net/Types.luau") },
-				});
-			});
-
 			it("should point at the directory roblox-ts writes an index script's init into", async () => {
 				await write("src/Lib/index.ts", "src/Lib/server/Api.ts");
 

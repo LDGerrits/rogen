@@ -9,7 +9,6 @@ export class ManagedConfig {
 	private _entry: ConfigEntry;
 	private config: Config | undefined;
 	private _files: readonly string[];
-	private _skippedVariants: readonly string[] | undefined;
 
 	private constructor(
 		readonly file: string,
@@ -20,7 +19,6 @@ export class ManagedConfig {
 		this._files = loaded.files;
 		this._entry = this.entryOf(loaded);
 		this.config = loaded.config;
-		this._skippedVariants = loaded.skippedVariants;
 	}
 
 	/** Loads `file` with `overrides`. */
@@ -45,11 +43,6 @@ export class ManagedConfig {
 	/** Every file the config reads: its chain and its template. */
 	get files(): readonly string[] {
 		return this._files;
-	}
-
-	/** The CLI variants this config does not declare; `undefined` when its chain could not be read. */
-	get skippedVariants(): readonly string[] | undefined {
-		return this._skippedVariants;
 	}
 
 	/** Whether it reads one of `changed`. */
@@ -78,7 +71,6 @@ export class ManagedConfig {
 		const loaded = await this.loader.load(this.file, this.overrides);
 		this._entry = this.entryOf(loaded);
 		this._files = loaded.files;
-		this._skippedVariants = loaded.skippedVariants;
 		if (loaded.resolved.isOk()) this.config = loaded.config;
 	}
 

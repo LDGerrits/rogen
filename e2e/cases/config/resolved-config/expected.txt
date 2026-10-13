@@ -23,10 +23,6 @@ stdout:
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "variants": {
-          "mock": false
-        },
-        "conflicts": [],
         "exclude": [
           "<dir>/**/*.spec.luau"
         ],

@@ -34,9 +34,7 @@ stdout:
         "rogen serve"
       ],
       "darklua": [],
-      "edits": [
-        "Declare variants under \"variants\" in match.rogen.json to swap in files like Analytics.mock.luau, and turn them on with --variant."
-      ]
+      "edits": []
     }
   }
 

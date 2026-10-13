@@ -1,6 +1,5 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
-import { PendingWrite } from "../../build/build.js";
 import { ServedProjectFiles } from "../served-project-files.js";
 import { ServerProbe } from "../server-probe.js";
 import { ServerRecords } from "../server-records.js";
@@ -13,21 +12,8 @@ describe("ServedProjectFiles", () => {
 	let requests: MockRequestService;
 	let files: ServedProjectFiles;
 
-	const mocked = { variants: { mock: true } };
-	const plain = { variants: { mock: false } };
-	const writeOf = (
-		setting: PendingWrite["setting"],
-		file = "/repo/default.project.json"
-	): PendingWrite => ({ file, label: "default", setting });
-
-	const record = (
-		setting = mocked,
-		projectFile = "/repo/default.project.json",
-		pid = 200
-	) =>
-		fs.writeFile(
-			...recordFile(34872, "repo", projectFile, { setting, pid })
-		);
+	const record = (projectFile = "/repo/default.project.json") =>
+		fs.writeFile(...recordFile(34872, "repo", projectFile));
 
 	const answer = (sessionId = "s1") =>
 		requests.answer(ROJO_URL, {
@@ -40,69 +26,14 @@ describe("ServedProjectFiles", () => {
 		fs = new MemoryFileSystemService();
 		requests = new MockRequestService();
 		files = new ServedProjectFiles(
-			new ServerRecords(fs, "/mock/tmp", 100),
+			new ServerRecords(fs, "/mock/tmp"),
 			new ServerProbe(requests)
 		);
 	});
 
-	it("should refuse a write in another setting to a file a running serve serves, and say how to go on", async () => {
-		await record();
-		answer();
-
-		const refusal = await files.refusalFor(writeOf(plain));
-
-		expect(refusal).toMatchObject({
-			code: "output.servedInOtherMode",
-			resource: "/repo/default.project.json",
-		});
-		expect(refusal?.message).toBe(
-			"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built with mock on, and this build has no variants on, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve."
-		);
-	});
-
-	it("should allow a write in the setting the serve built in", async () => {
-		await record();
-		answer();
-
-		expect(await files.refusalFor(writeOf(mocked))).toBeUndefined();
-	});
-
-	it("should allow a write to another file", async () => {
-		await record();
-		answer();
-
-		expect(
-			await files.refusalFor(writeOf(plain, "/repo/other.project.json"))
-		).toBeUndefined();
-	});
-
-	it("should allow a write when no serve left a record", async () => {
-		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
-	});
-
-	it("should allow a write when the serve that left the record no longer runs", async () => {
-		await record();
-
-		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
-	});
-
-	it("should allow a write when another server has taken the port since", async () => {
-		await record();
-		answer("s2");
-
-		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
-	});
-
-	it("should allow the serve that wrote a record to rebuild its own file in another setting", async () => {
-		await record(mocked, "/repo/default.project.json", 100);
-		answer();
-
-		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
-	});
-
 	describe("serving", () => {
-		it("should give the record of the running serve that serves each file, whatever its mode", async () => {
-			await record(plain);
+		it("should give the record of the running serve that serves each file", async () => {
+			await record();
 			answer();
 
 			const found = await files.serving([
@@ -113,12 +44,29 @@ describe("ServedProjectFiles", () => {
 			expect([...found.keys()]).toEqual(["/repo/default.project.json"]);
 			expect(found.get("/repo/default.project.json")).toMatchObject({
 				port: 34872,
-				setting: plain,
 			});
 		});
 
 		it("should give nothing for a serve that no longer runs", async () => {
-			await record(mocked);
+			await record();
+
+			expect(
+				(await files.serving(["/repo/default.project.json"])).size
+			).toBe(0);
+		});
+
+		it("should give nothing when another server has taken the port since", async () => {
+			await record();
+			answer("s2");
+
+			expect(
+				(await files.serving(["/repo/default.project.json"])).size
+			).toBe(0);
+		});
+
+		it("should give nothing for a file no serve serves", async () => {
+			await record("/repo/other.project.json");
+			answer();
 
 			expect(
 				(await files.serving(["/repo/default.project.json"])).size

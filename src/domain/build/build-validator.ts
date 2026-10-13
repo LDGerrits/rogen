@@ -2,11 +2,7 @@ import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { isObject } from "../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../base/path.js";
-import {
-	capitalized,
-	joinedWithAnd,
-	joinedWithOr,
-} from "../../base/strings.js";
+import { capitalized, joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -29,7 +25,6 @@ import {
 	MisspellingOf,
 	NotedName,
 } from "./misspelling-finder.js";
-import { MissingInstances } from "./missing-instances.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { Assembly } from "./tree-assembler.js";
@@ -91,13 +86,10 @@ export class BuildValidator {
 			...this.caseMismatch(),
 			...this.strayAt(),
 			...this.dotRoute(),
-			...this.variantTypo(),
 			...this.folderTypo(),
-			...this.noneActive(),
 			...this.unrouted(),
 			...this.serverCodeShipped(),
 			...this.deadScript(),
-			...this.buriedScriptSuffix(),
 			...this.reservedName(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
@@ -121,7 +113,7 @@ export class BuildValidator {
 			);
 	}
 
-	/** Routing starts below a root dir, so a root dir named like a key routes or prunes nothing by that name. */
+	/** Routing starts below a root dir, so a root dir named like a route key routes nothing by that name. */
 	private rootDirNamedAfterKey(): Diagnostic[] {
 		const configDir = path.dirname(this.config.file);
 		const named = this.config.rootDirs.flatMap((rootDir) => {
@@ -134,7 +126,6 @@ export class BuildValidator {
 					rootDir,
 					shown: toPosix(path.relative(configDir, rootDir)),
 					key,
-					kind: this.config.keys.kindOf(key),
 					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
 					parent: isInside(parent, configDir)
 						? relativeParent
@@ -144,17 +135,7 @@ export class BuildValidator {
 		});
 		if (named.length === 0) return [];
 
-		const kinds = new Set(named.map(({ kind }) => kind));
 		const many = named.length > 1;
-		const keyKind = joinedWithOr(
-			(["route", "variant"] as const).filter((kind) => kinds.has(kind))
-		);
-		const effect =
-			kinds.has("route") && kinds.size > 1
-				? "do nothing"
-				: kinds.has("route")
-					? `route${many ? "" : "s"} nothing`
-					: `prune${many ? "" : "s"} nothing`;
 		const inside = named.filter(({ parent }) => parent !== undefined);
 		const atTop = named.filter(({ parent }) => parent === undefined);
 		const fixes = [
@@ -169,15 +150,15 @@ export class BuildValidator {
 					]
 				: []),
 		];
-		const items = named.map(({ rootDir, shown, key, kind }) => ({
+		const items = named.map(({ rootDir, shown, key }) => ({
 			resource: rootDir,
-			message: `named after the "${key}" ${kind}`,
-			line: `  ${shown} ("${key}" ${kind})`,
+			message: `named after the "${key}" route`,
+			line: `  ${shown} ("${key}" route)`,
 		}));
 		return [
 			this.grouped(
 				"scan.rootDirNamedAfterKey",
-				`${named.length} root ${many ? "dirs are" : "dir is"} named after a ${keyKind} key, but routing starts below a root dir, so ${many ? "their names" : "its name"} ${effect}:`,
+				`${named.length} root ${many ? "dirs are" : "dir is"} named after a route key, but routing starts below a root dir, so ${many ? "their names" : "its name"} route${many ? "" : "s"} nothing:`,
 				items.map(({ line }) => line),
 				items.map(({ resource, message }) => ({ resource, message })),
 				fixes
@@ -254,11 +235,10 @@ export class BuildValidator {
 	private caseMismatch(): Diagnostic[] {
 		const { nearMisses } = this.placement.readings;
 		return [...nearMisses].map(([resource, key]) => {
-			const kind = this.config.keys.kindOf(key);
 			return warningDiagnostic(
 				"route.caseMismatch",
 				{ resource },
-				`differs from the ${kind} "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
+				`differs from the route "${key}" only in letter case, so it is read as an ordinary name. Spell it "${key}" or "${DeclaredKeys.flipFirstLetter(key)}", or declare it as written.`
 			);
 		});
 	}
@@ -272,7 +252,7 @@ export class BuildValidator {
 				`${count} ${count === 1 ? "name has" : "names have"} an "@" that routes nowhere, so ${count === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
 			(_, { text, suggestion, notLast }) =>
 				notLast
-					? `"@${text}" must end the name, or be followed only by a variant`
+					? `"@${text}" must end the name`
 					: `did you mean "${suggestion}"?`
 		);
 	}
@@ -286,24 +266,6 @@ export class BuildValidator {
 				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
 			(resource, { renamedTo }) =>
 				`write "${path.posix.basename(renamedTo ?? resource)}"`
-		);
-	}
-
-	/** A dot part one edit from a declared variant, or a folder one edit from one, is probably that key, mistyped. */
-	private variantTypo(): Diagnostic[] {
-		const typos = [
-			...this.placement.readings.misspelt("variantTypo").values(),
-		];
-		const bare = typos.some((typo) => typo.bare);
-		return this.misspelt(
-			"variant.typo",
-			"variantTypo",
-			(count) =>
-				bare
-					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
-					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
-			(_, { variant, bare }) =>
-				`did you mean "${bare ? variant : `.${variant}`}"?`
 		);
 	}
 
@@ -346,11 +308,6 @@ export class BuildValidator {
 				renames(noted)
 			),
 		];
-	}
-
-	/** Variants are independent switches, so turning off every alternative of an instance leaves nothing where code expects it. */
-	private noneActive(): Diagnostic[] {
-		return new MissingInstances(this.placement).diagnostics();
 	}
 
 	private unrouted(): Diagnostic[] {
@@ -487,31 +444,13 @@ export class BuildValidator {
 			: `a Script with RunContext ${run}`;
 	}
 
-	private buriedScriptSuffix(): Diagnostic[] {
-		return this.placement.routed.flatMap((file) => {
-			const { buriedScriptSuffix: suffix } =
-				this.placement.readingOf(file);
-			return suffix
-				? [
-						warningDiagnostic(
-							"variant.buriedScriptSuffix",
-							{ resource: file.entry.source },
-							`".${suffix}" isn't this file's last suffix, so Rojo will make it a ModuleScript. Put it last, as in Foo.mock.${suffix}.luau.`
-						),
-					]
-				: [];
-		});
-	}
-
 	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
 	private reservedName(): Diagnostic[] {
-		const { routed, leftOut } = this.placement;
+		const { routed } = this.placement;
 		return reservedKeys(this.assembly.projectFile.tree, []).flatMap(
 			(key) => {
-				const under = routed.filter(
-					({ entry, instancePath }) =>
-						leftOut.get(entry.source)?.status !== "pruned" &&
-						key.every((name, index) => instancePath[index] === name)
+				const under = routed.filter(({ instancePath }) =>
+					key.every((name, index) => instancePath[index] === name)
 				);
 				const file =
 					under.find(
@@ -550,7 +489,7 @@ export class BuildValidator {
 		);
 	}
 
-	/** Only one plain file can become an instance; a variant file replacing it is the point of variants. */
+	/** Only one file can become an instance, so the others give way to the last. */
 	private instanceClash(): Diagnostic[] {
 		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
 			losers.map(({ entry }) =>

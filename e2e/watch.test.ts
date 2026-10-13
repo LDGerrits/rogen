@@ -158,14 +158,14 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({
 				rootDirs: ["src"],
 				routes: { "*": "ReplicatedStorage" },
-				variants: ["mock"],
 			})
 		);
 		writeProjectFile(project.dir, "src/Analytics.luau");
-		writeProjectFile(project.dir, "src/Analytics.mock.luau");
-		start(["--variant", "mock"]);
+		start(["-o", "out.project.json"]);
 		await eventually(async () => {
-			expect(await tree()).toContain("<- src/Analytics.mock.luau");
+			expect(await tree("out.project.json")).toContain(
+				"<- src/Analytics.luau"
+			);
 		});
 
 		writeProjectFile(
@@ -174,7 +174,7 @@ describeWithRojo("end to end watch", () => {
 			JSON.stringify({
 				rootDirs: ["src"],
 				routes: { "*": "ReplicatedStorage" },
-				variants: ["mock", "dev"],
+				exclude: ["nothing/**"],
 			})
 		);
 
@@ -183,9 +183,9 @@ describeWithRojo("end to end watch", () => {
 		});
 		writeProjectFile(project.dir, "src/Other.luau");
 		await eventually(async () => {
-			const built = await tree();
+			const built = await tree("out.project.json");
 			expect(built).toContain("<- src/Other.luau");
-			expect(built).toContain("<- src/Analytics.mock.luau");
+			expect(built).toContain("<- src/Analytics.luau");
 		});
 	}, 30_000);
 

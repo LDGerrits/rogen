@@ -19,7 +19,6 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
     		"Shared": "ReplicatedStorage/Shared",
     		"*": "ReplicatedStorage/Shared"
     	},
-    	"variants": ["mock"],
     	"exclude": ["**/*.spec.luau"]
     }
     ```
@@ -35,7 +34,6 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
     		"shared": "ReplicatedStorage/shared",
     		"*": "ReplicatedStorage/shared"
     	},
-    	"variants": ["mock"],
     	"exclude": ["**/*.spec.ts"],
     	"template": "template.project.json",
     	"syncDir": "out"
@@ -44,7 +42,7 @@ A **config** is a `<name>.rogen.json` file that describes one tree and the proje
   </Tab>
 </Tabs>
 
-There are eleven fields, none nested more than two levels. Unknown keys and wrong types are errors.
+There are nine fields, none nested more than two levels. Unknown keys and wrong types are errors.
 
 ---
 
@@ -52,12 +50,10 @@ There are eleven fields, none nested more than two levels. Unknown keys and wron
 
 | Field | Default | What it does |
 |---|---|---|
-| `$schema` | none | The published JSON schema, for editor validation and completion. It underlines a route key or a variant name that isn't letters and digits, and a route target that doesn't start with a service, and offers the common targets as completions. Not inherited. |
+| `$schema` | none | The published JSON schema, for editor validation and completion. It underlines a route key that isn't letters and digits, and a route target that doesn't start with a service, and offers the common targets as completions. Not inherited. |
 | `extends` | none | Another `*.rogen.json` to inherit from. See [Extending Configs](#extending-configs). |
 | `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. A config adds its entries to those of the config it extends. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Required. See [Routing](/docs/v2/core-concepts/routing). |
-| `variants` | `[]` | The names of the switches the project uses, each off unless `--variant` turns it on. See [Variants](/docs/v2/core-concepts/variants). |
-| `conflicts` | `[]` | Groups of variants of which at most one may be on. See [Conflicts](/docs/v2/core-concepts/variants#conflicts). |
 | `exclude` | `[]` | Globs for files that are never built, scanned or mounted by the template. A config adds its globs to those of the config it extends. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
 | `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
 | `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
@@ -83,12 +79,12 @@ Use `extends` when a config is a small variation on another: a second place, a r
 | Kind | Fields | Behavior |
 |---|---|---|
 | Map | `routes` | merged key by key; the child wins a key |
-| List | `rootDirs`, `exclude`, `variants`, `conflicts` | the child's entries are added after the parent's; a repeated entry keeps its last position |
+| List | `rootDirs`, `exclude` | the child's entries are added after the parent's; a repeated entry keeps its last position |
 | String | `syncDir`, `server` | the child replaces |
 | Template | `template` | the child's template merges over the parent's; see [Merging Templates](/docs/v2/core-concepts/output#merging-templates) |
 | Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
 
-A child adds to its parent and never removes. To drop something, flip the chain so the config without it is the parent. A default applies only when no config in the chain sets the field, so a parent that leaves out `rootDirs` contributes no `src` once a child sets its own. Relative paths resolve against the file that wrote them. A cycle is an error that shows the loop.
+A child adds to its parent and never removes. A child that lists one more root dir therefore gets a later root dir than the parent's, where a file can [replace](/docs/v2/core-concepts/project-layout#replacing-a-file) one of the parent's. To drop something, flip the chain so the config without it is the parent. A default applies only when no config in the chain sets the field, so a parent that leaves out `rootDirs` contributes no `src` once a child sets its own. Relative paths resolve against the file that wrote them. A cycle is an error that shows the loop.
 
 `rogen list --json` prints a config fully resolved, with defaults filled in and paths made absolute.
 
@@ -109,7 +105,7 @@ lobby.rogen.json:7:3 - error: unknown field "outDir". (config.unknownField)
 Errors stop the build. Warnings don't, and the build still exits with 0. You'll get warnings for:
 
 - files that match no route,
-- names that look like a route key or variant but aren't,
+- names that look like a route key but aren't,
 - server code that ships to clients,
 - scripts placed where they'll never run,
 - an empty sync directory or a missing root directory,

@@ -118,22 +118,6 @@ describe("BuildValidator rules", () => {
 				]);
 			});
 
-			it("should warn about a variant folder one edit from a variant, without a dot", async () => {
-				await write("src/mokc/Fake.luau");
-
-				const [warning] = await folderTypos({
-					variants: { mock: false },
-				});
-
-				expect(warning).toMatchObject({
-					code: "variant.typo",
-					related: [{ message: 'did you mean "mock"?' }],
-				});
-				expect(warning.message.split("\n")[0]).toBe(
-					"1 name is one edit from a declared variant, so it is read as an ordinary name:"
-				);
-			});
-
 			it("should count two swapped letters as one edit", async () => {
 				await write("src/Sevrer/Save.luau");
 
@@ -203,20 +187,19 @@ describe("BuildValidator rules", () => {
 				).toEqual([]);
 			});
 
-			it("should read the name with its parentheses and variant parts off", async () => {
-				await write("src/(Sever)/A.luau", "src/Sever.mock/B.luau");
+			it("should read the name with its parentheses off", async () => {
+				await write("src/(Sever)/A.luau", "src/^Sever/B.luau");
 
 				const [warning] = await folderTypos({
 					routes: {
 						Server: "ServerScriptService",
 						"*": "ReplicatedStorage",
 					},
-					variants: { mock: true },
 				});
 
 				expect(
 					warning.related?.map(({ resource }) => resource)
-				).toEqual([abs("src/(Sever)"), abs("src/Sever.mock")]);
+				).toEqual([abs("src/(Sever)"), abs("src/^Sever")]);
 			});
 		});
 
@@ -241,17 +224,6 @@ describe("BuildValidator rules", () => {
 				expect(warning.message).toContain(
 					'Spell it "server" or "Server"'
 				);
-			});
-
-			it("should warn about an invisible folder named like a variant in different case", async () => {
-				await write("src/Analytics/(MOCK)/Service.luau");
-
-				const [warning] = await caseWarnings({
-					variants: { mock: true },
-				});
-
-				expect(warning.resource).toBe(abs("src/Analytics/(MOCK)"));
-				expect(warning.message).toContain('variant "mock"');
 			});
 
 			it("should warn about a marker file named like a route in different case", async () => {
@@ -446,7 +418,7 @@ describe("BuildValidator rules", () => {
 		describe("route keys after a dot", () => {
 			const SHARED = { ...ROUTES, shared: "ReplicatedStorage/shared" };
 			const warningsOf = async (code: string) =>
-				(await route({ routes: SHARED, variants: { mock: false } }))
+				(await route({ routes: SHARED }))
 					.unwrap()
 					.warnings.filter((warning) => warning.code === code);
 
@@ -613,28 +585,6 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
-			it("should name a variant's dot form for an @ that spells a variant, in a marker, a name or a folder", async () => {
-				await write(
-					"src/Experimental/@mock",
-					"src/Experimental/A.luau",
-					"src/Analytics@mock.luau",
-					"src/Net@mock/B.luau"
-				);
-
-				const [warning] = await warningsOf("route.strayAt");
-
-				expect(warning.message).toContain("3 names have");
-				expect(warning.message).toContain(
-					`${at("src/Experimental/@mock")} (did you mean ".mock"?)`
-				);
-				expect(warning.fixes).toContainEqual({
-					rename: {
-						from: at("src/Analytics@mock.luau"),
-						to: at("src/Analytics.mock.luau"),
-					},
-				});
-			});
-
 			it("should warn about an @ marker that nearly spells a route", async () => {
 				await write("src/Ui/@sever", "src/Ui/B.luau");
 
@@ -645,154 +595,6 @@ describe("BuildValidator rules", () => {
 					warnings.find(({ code }) => code === "route.strayAt")
 						?.message
 				).toContain(`${at("src/Ui/@sever")} (did you mean "@server"?)`);
-			});
-		});
-
-		describe("variant typos", () => {
-			const typos = async () =>
-				(await route({ variants: { mock: true } }))
-					.unwrap()
-					.warnings.filter(({ code }) => code === "variant.typo");
-
-			it("should warn once, naming the variant a dot part is one edit from", async () => {
-				await write(
-					"src/Analytics.mok.luau",
-					"src/Save.spec.luau",
-					"src/Fine.mock.luau"
-				);
-
-				const [warning, ...others] = await typos();
-
-				expect(others).toEqual([]);
-				expect(warning.resource).toBe(abs("default.rogen.json"));
-				expect(warning.message).toContain(
-					`${abs("src/Analytics.mok.luau")} (did you mean ".mock"?)`
-				);
-				expect(warning.message).not.toContain("spec");
-			});
-
-			it("should fix the name by renaming it to the variant", async () => {
-				await write("src/Analytics.mok.luau");
-
-				const [warning] = await typos();
-
-				expect(warning.fixes).toEqual([
-					{
-						rename: {
-							from: at("src/Analytics.mok.luau"),
-							to: at("src/Analytics.mock.luau"),
-						},
-					},
-				]);
-			});
-
-			it("should warn about a dot-file marker and a dot-folder one edit from a variant, and leave their files unmarked", async () => {
-				await write(
-					"src/M/.mok",
-					"src/M/A.luau",
-					"src/.mok/B.luau",
-					"src/modules/C.luau",
-					"src/.gitkeep",
-					"src/.luaurc",
-					"src/.spec"
-				);
-
-				const [warning, ...others] = await typos();
-				const result = (
-					await route({ variants: { mock: true } })
-				).unwrap();
-
-				expect(others).toEqual([]);
-				expect(warning.message).toContain("2 names");
-				expect(warning.fixes).toEqual([
-					{ rename: { from: at("src/.mok"), to: at("src/.mock") } },
-					{
-						rename: {
-							from: at("src/M/.mok"),
-							to: at("src/M/.mock"),
-						},
-					},
-				]);
-				expect(
-					result.routed.map(({ instancePath, variants }) => [
-						instancePath.join("/"),
-						variants.length,
-					])
-				).toEqual([
-					["ReplicatedStorage/shared/.mok/B", 0],
-					["ReplicatedStorage/shared/M/A", 0],
-					["ReplicatedStorage/shared/modules/C", 0],
-				]);
-			});
-
-			it("should give a dot-file or dot-folder that differs in letter case the letter-case warning, and leave a dot near a route silent", async () => {
-				await write(
-					"src/A/.MOCK",
-					"src/A/X.luau",
-					"src/.MOCK/Y.luau",
-					"src/B/.sever",
-					"src/B/Z.luau"
-				);
-
-				const warnings = (
-					await route({ variants: { mock: true } })
-				).unwrap().warnings;
-
-				expect(
-					warnings.map(({ code, resource }) => [code, resource])
-				).toEqual([
-					["route.caseMismatch", abs("src/A/.MOCK")],
-					["route.caseMismatch", abs("src/.MOCK")],
-				]);
-			});
-
-			it("should give a dot-file no fix when two variants are one edit away", async () => {
-				await write("src/A/.mok", "src/A/X.luau");
-
-				const [warning] = (
-					await route({ variants: { mock: true, mob: false } })
-				)
-					.unwrap()
-					.warnings.filter(({ code }) => code === "variant.typo");
-
-				expect(warning.message).toContain(`${abs("src/A/.mok")}`);
-				expect(warning.fixes).toBeUndefined();
-			});
-
-			it("should warn about a variant's near miss in a folder that also routes", async () => {
-				await write(
-					"src/K.mok@server/A.luau",
-					"src/.mok@server/B.luau"
-				);
-
-				const [warning] = await typos();
-
-				expect(warning.fixes).toEqual([
-					{
-						rename: {
-							from: at("src/.mok@server"),
-							to: at("src/.mock@server"),
-						},
-					},
-					{
-						rename: {
-							from: at("src/K.mok@server"),
-							to: at("src/K.mock@server"),
-						},
-					},
-				]);
-			});
-
-			it("should give no fix when two variants are one edit away", async () => {
-				await write("src/Analytics.mok.luau");
-
-				const [warning] = (
-					await route({ variants: { mock: true, mook: false } })
-				)
-					.unwrap()
-					.warnings.filter(({ code }) => code === "variant.typo");
-
-				expect(warning.fixes).toBeUndefined();
 			});
 		});
 	});

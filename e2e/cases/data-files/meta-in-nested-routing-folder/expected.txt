@@ -1,10 +1,10 @@
-$ rogen build --variant mock
+$ rogen build
 exit 0
 stdout: (not shown)
 stderr:
   default.rogen.json - warning: 2 files under a "server" route ship to clients, because "shared" governs them: (route.serverCodeShipped)
     src/Shared/Server/Datastore.luau -> ReplicatedStorage/shared/Server/Datastore
-    src/Shared/Server/Other.mock.luau -> ReplicatedStorage/shared/Server/Other
+    src/Shared/Server/Other.mock.luau -> ReplicatedStorage/shared/Server/Other.mock
   Move them out of the "shared" route's files if they're server code, or keep them there with a "@shared" marker file in their folder.
 
 written:
@@ -14,6 +14,6 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Server: Actor
+      Server: Actor  <- src/Shared/Server/init.meta.json
         Datastore: ModuleScript  <- src/Shared/Server/Datastore.luau
-        Other: ModuleScript  <- src/Shared/Server/Other.mock.luau
+        Other.mock: ModuleScript  <- src/Shared/Server/Other.mock.luau

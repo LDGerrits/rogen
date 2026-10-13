@@ -1,7 +1,6 @@
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ConfigArguments,
-	ConfigSelectionOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import {
@@ -15,7 +14,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
 import { ListLog, ServingByConfig } from "./list-log.js";
 
-const ListOptions = [...ConfigSelectionOptions, JsonOption] as const;
+const ListOptions = [JsonOption] as const;
 
 registerCommand(
 	class ListCommand extends AbstractCommand<typeof ListOptions> {
@@ -24,7 +23,7 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its root dirs, routes, sync dir, project file and variants; with --json, each fully resolved.",
+						"Lists every config here with its root dirs, routes, sync dir and project file; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
 					examples: ["rogen list", "rogen list --json"],
@@ -40,10 +39,7 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.select(
-				line.positionals,
-				line.options
-			);
+			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			const { entries, home } = selection.value;
 			const report = new ListLog(logService, cwd);

@@ -44,7 +44,6 @@ describe("CoreConfigService", () => {
 				exclude: ["/repo/**/*.spec.luau"],
 				rootDirs: ["/repo/core"],
 				routes: {},
-				variants: {},
 			});
 		});
 
@@ -454,21 +453,6 @@ describe("CoreConfigService", () => {
 				).toEqual([]);
 			});
 
-			it("should reject a variant name that starts with a digit", async () => {
-				const problems = await diagnosticsFor(`{
-	"variants": ["1st"]
-}`);
-
-				expect(problems).toEqual([
-					[
-						'variant "1st" is invalid: use letters and digits only, starting with a letter.',
-						"/repo/default.rogen.json",
-						2,
-						15,
-					],
-				]);
-			});
-
 			it.each([
 				["src/out", "is inside"],
 				["src", "is inside"],
@@ -534,31 +518,6 @@ describe("CoreConfigService", () => {
 				expect(resolved(0)).toMatchObject({ server: "argon" });
 			});
 
-			it("should reject a variant that shares a name with a route key", async () => {
-				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService" },
-	"variants": ["server"]
-}`);
-
-				expect(problems).toEqual([
-					[
-						'variant "server" has the same name as a route key; rename one of them.',
-						"/repo/default.rogen.json",
-						3,
-						15,
-					],
-				]);
-			});
-
-			it("should accept a variant named like a property every object has", async () => {
-				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService" },
-	"variants": ["constructor"]
-}`);
-
-				expect(problems).toEqual([]);
-			});
-
 			it("should reject two route keys that differ only in the case of their first letter", async () => {
 				const problems = await diagnosticsFor(`{
 	"routes": { "server": "ServerScriptService", "Server": "Workspace" }
@@ -574,30 +533,13 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
-			it("should reject two variants that differ only in the case of their first letter", async () => {
-				const problems = await diagnosticsFor(`{
-	"variants": ["mock", "Mock"]
-}`);
-
-				expect(problems).toHaveLength(1);
-				expect(problems[0][0]).toContain('"Mock" and "mock"');
-			});
-
-			it("should reject a variant that differs from a route key only in the case of its first letter", async () => {
-				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService" },
-	"variants": ["Server"]
-}`);
-
-				expect(problems).toHaveLength(1);
-				expect(problems[0][0]).toContain('"Server" and "server"');
-			});
-
 			it("should accept keys that differ beyond the first letter", async () => {
 				expect(
 					await diagnosticsFor({
-						routes: { server: "ServerScriptService" },
-						variants: ["SERVER"],
+						routes: {
+							server: "ServerScriptService",
+							SERVER: "Workspace",
+						},
 					})
 				).toEqual([]);
 			});
@@ -751,7 +693,7 @@ describe("CoreConfigService", () => {
 			it("should report every problem at once", async () => {
 				const problems = await diagnosticsFor({
 					routes: { "a-b": "Nowhere" },
-					variants: ["c-d"],
+					server: "nope",
 					rootDirs: ["src", "src/x"],
 				});
 

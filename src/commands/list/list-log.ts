@@ -32,12 +32,6 @@ const servingLine = ({ server, host, port, clients }: ServingNow): string =>
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
-/** Every variant the config declares, with its state, in the order declared. */
-const variantLines = ({ variants }: ResolvedConfig): string[] =>
-	Object.entries(variants).map(
-		([variant, on]) => `${variant} ${on ? "on" : "off"}`
-	);
-
 /** The resolved routes as `key -> target`, in the config's order. */
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
@@ -48,8 +42,6 @@ export interface ConfigDetails {
 	readonly rootDirs: readonly string[];
 	readonly commonRoot: string | null;
 	readonly routes: Readonly<Record<string, string>>;
-	readonly variants: Readonly<Record<string, boolean>>;
-	readonly conflicts: readonly (readonly string[])[];
 	readonly exclude: readonly string[];
 	readonly template: string | null;
 	readonly templates: readonly string[];
@@ -162,12 +154,6 @@ export class ListLog {
 					...(serving.get(entry.file)
 						? [`serving: ${servingLine(serving.get(entry.file)!)}`]
 						: []),
-					`variants: ${listed(variantLines(config))}`,
-					...(config.conflicts.length > 0
-						? [
-								`conflicts: ${config.conflicts.map((group) => group.join(" | ")).join(", ")}`,
-							]
-						: []),
 				].join("\n")
 			);
 		}
@@ -213,8 +199,6 @@ function configDetails(
 		routes: Object.fromEntries(
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
-		variants: config.variants,
-		conflicts: config.conflicts,
 		exclude: config.exclude.map(unescapedGlob),
 		template: config.template ? toNative(config.template.file) : null,
 		templates: config.template

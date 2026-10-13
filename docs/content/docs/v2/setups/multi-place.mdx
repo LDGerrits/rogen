@@ -182,5 +182,5 @@ rojo sourcemap lobby.project.json --output sourcemap.json --watch
 One catch: luau-lsp regenerates `sourcemap.json` from `default.project.json` and would overwrite the place's version. While you work on a place, set `"luau-lsp.sourcemap.rojoProjectFile": "lobby.project.json"`, or turn off `luau-lsp.sourcemap.autogenerate`.
 
 <Callout type="info">
-	Shared `routes`, `variants` and `template` live in the config every place extends, so each place only has to say what's different. A place's own `exclude` adds globs to the shared ones.
+	Shared `routes` and `template` live in the config every place extends, so each place only has to say what's different. A place's own `exclude` adds globs to the shared ones.
 </Callout>
