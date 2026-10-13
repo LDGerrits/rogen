@@ -10,12 +10,6 @@ import {
 } from "../../domain/build/build-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 
-/** The mode a config built in, and every mode it declares. */
-export interface ModeContext {
-	readonly active: string | undefined;
-	readonly names: ReadonlySet<string>;
-}
-
 /** What one config says about a path: where it lands, and the diagnostics a build raises about it. */
 export interface FileAnswer {
 	readonly kind: "file";
@@ -23,7 +17,6 @@ export interface FileAnswer {
 	readonly location: FileLocation;
 	/** The instance it was asked about by, when an instance and not its path asked. */
 	readonly instance?: string;
-	readonly mode: ModeContext;
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -118,16 +111,11 @@ function answersOf({
 	diagnostics,
 }: ConfigLocations): Answer[] {
 	const { label } = config;
-	const mode: ModeContext = {
-		active: config.mode,
-		names: new Set(config.modes),
-	};
 	const answer = (location: FileLocation, instance?: string): FileAnswer => ({
 		kind: "file",
 		label,
 		location,
 		...(instance !== undefined && { instance }),
-		mode,
 		diagnostics: diagnosticsOf(location, diagnostics),
 	});
 	return [

@@ -66,7 +66,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	private record: Promise<void> | undefined;
 	/** What the server said when it answered, which its record keeps naming. */
 	private answering: ServerInfo | undefined;
-	/** The mode and variants of the build its project file holds. */
+	/** The variants of the build its project file holds. */
 	private setting: BuildSetting;
 	/** How many Studio plugins are connected, as far as its output says. */
 	private connected = 0;
@@ -155,7 +155,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this[Symbol.dispose]();
 	}
 
-	/** Notes that the config was built again, as the server's project file now holds that build: when its mode or variants changed since the record was written, the record says so. */
+	/** Notes that the config was built again, as the server's project file now holds that build: when its variants changed since the record was written, the record says so. */
 	async rebuilt(config: ResolvedConfig): Promise<void> {
 		const setting = settingOf(config);
 		if (sameSetting(setting, this.setting)) return;

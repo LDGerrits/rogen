@@ -1,7 +1,10 @@
 import { JSONSchema } from "../../base/json-schema.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { WrongTypeAdvisor } from "../../platform/jsonc/jsonc-document-reader.js";
+import {
+	UnknownFieldAdvisor,
+	WrongTypeAdvisor,
+} from "../../platform/jsonc/jsonc-document-reader.js";
 import {
 	ConfigModel,
 	MergePolicies,
@@ -44,7 +47,7 @@ const variantsSchema: JSONSchema = {
 	default: [],
 	description:
 		"Every variant this project uses. A variant is a switch: off unless " +
-		"the active mode lists it or --variant turns it on. A declared name " +
+		"--variant turns it on. A declared name " +
 		"marks files (Analytics.mock.luau, a mock folder, a .mock marker); " +
 		"an undeclared one ships silently as part of an instance name.",
 };
@@ -55,37 +58,7 @@ const conflictsSchema: JSONSchema = {
 	default: [],
 	description:
 		"Groups of declared variants of which at most one may be on, such as " +
-		'[["halloween", "christmas"]]. A group names variants, never a mode.',
-};
-
-const modesSchema: JSONSchema = {
-	type: "object",
-	description:
-		"Named environments, exactly one of which is active per build. A " +
-		"mode marks files like a variant does (Service.prod.luau, a prod " +
-		"folder, a .prod marker), turns variants on and excludes globs, " +
-		'never changes where files go. "mode" or --mode picks the active one.',
-	propertyNames: { pattern: NAME_PATTERN },
-	additionalProperties: {
-		type: "object",
-		additionalProperties: false,
-		properties: {
-			variants: {
-				type: "array",
-				items: { type: "string" },
-				description:
-					"Variants this mode turns on. Each must be declared " +
-					'under "variants".',
-			},
-			exclude: {
-				type: "array",
-				items: { type: "string" },
-				description:
-					"Globs left out in this mode, relative to this file's " +
-					"directory, added to the config's own exclude.",
-			},
-		},
-	},
+		'[["halloween", "christmas"]]. A group names declared variants.',
 };
 
 /** How a relative path in a field resolves against the directory of the file that wrote it: a path or a list of them with `path.resolve`, globs joined in POSIX form. */
@@ -95,9 +68,8 @@ interface ConfigField {
 	readonly schema: JSONSchema;
 	/** How a child's value combines with its parent's across `extends`. */
 	readonly merge: MergePolicy;
-	/** What paths it holds; a field of objects says it for each object's fields. */
-	readonly paths?:
-		PathForm | { readonly each: Readonly<Record<string, PathForm>> };
+	/** What paths it holds. */
+	readonly paths?: PathForm;
 	/** Only the config itself sets it; a parent's value is dropped. */
 	readonly leafOnly?: true;
 }
@@ -138,20 +110,6 @@ const fields: Record<keyof RogenConfig, ConfigField> = {
 	routes: { merge: "merge", schema: routesSchema },
 	variants: { merge: "append", schema: variantsSchema },
 	conflicts: { merge: "append", schema: conflictsSchema },
-	modes: {
-		merge: { each: { variants: "append", exclude: "append" } },
-		paths: { each: { exclude: "globs" } },
-		schema: modesSchema,
-	},
-	mode: {
-		merge: "replace",
-		schema: {
-			type: "string",
-			pattern: NAME_PATTERN,
-			description:
-				'The mode this config builds in, unless --mode says otherwise. Required when "modes" is declared.',
-		},
-	},
 	exclude: {
 		merge: "append",
 		paths: "globs",
@@ -219,13 +177,12 @@ export const configMergePolicies: MergePolicies = Object.fromEntries(
 );
 
 /** What paths each field holds, for the fields that hold any. */
-export const configPathForms: Readonly<
-	Record<string, NonNullable<ConfigField["paths"]>>
-> = Object.fromEntries(
-	Object.entries(fields).flatMap(([key, field]) =>
-		field.paths === undefined ? [] : [[key, field.paths] as const]
-	)
-);
+export const configPathForms: Readonly<Record<string, PathForm>> =
+	Object.fromEntries(
+		Object.entries(fields).flatMap(([key, field]) =>
+			field.paths === undefined ? [] : [[key, field.paths] as const]
+		)
+	);
 
 /** The fields a parent in an `extends` chain never passes on. */
 export const configLeafOnlyKeys: readonly string[] = Object.entries(fields)
@@ -251,8 +208,26 @@ export const configDefaults = new ConfigModel(
 	)
 );
 
-const MODES_LINK = `${DOCS_URL}/core-concepts/modes`;
-const MODE_VARIANTS_PATH = /^modes\.[^.]+\.variants$/;
+const VARIANTS_LINK = `${DOCS_URL}/core-concepts/variants#declaring-variants`;
+
+/** What replaces each field a config no longer has. */
+const removedFields: Readonly<Record<string, string>> = {
+	modes: 'Put what a mode set in a second config that extends this one, which can add "exclude", and turn variants on with --variant.',
+	mode: "Modes are gone with \"modes\". Build the config that holds the settings by name, as 'rogen build <name>'.",
+};
+
+/** The words for a field that Rogen once read and doesn't now, in place of "unknown field". */
+export const configRemovedFieldAdvice: UnknownFieldAdvisor = (
+	path,
+	location
+) =>
+	Object.hasOwn(removedFields, path)
+		? errorDiagnostic(
+				"config.removedField",
+				location,
+				`"${path}" was removed. ${removedFields[path]}`
+			)
+		: undefined;
 
 /** The words for an old config that wrote `variants` as a map of on and off. */
 export const configWrongTypeAdvice: WrongTypeAdvisor = (
@@ -266,14 +241,8 @@ export const configWrongTypeAdvice: WrongTypeAdvisor = (
 			"config.variantsAreAList",
 			location,
 			`"variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. ` +
-				`A variant is off unless the active mode lists it under "modes" or --variant turns it on. See ${MODES_LINK}.`
+				`A variant is off unless --variant turns it on. See ${VARIANTS_LINK}.`
 		);
 	}
-	return MODE_VARIANTS_PATH.test(path)
-		? errorDiagnostic(
-				"config.variantsAreAList",
-				location,
-				`"${path}" is a list of the variants the mode turns on, such as ["mock"], not a map of on and off. See ${MODES_LINK}.`
-			)
-		: undefined;
+	return undefined;
 };

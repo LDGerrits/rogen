@@ -93,14 +93,7 @@ describe("CoreBuildService", () => {
 			);
 
 			const { builds } = await service.build(
-				selectionOf(
-					configOf({
-						mode: "prod",
-						modes: { dev: {}, prod: {} },
-						variants: { mock: false },
-					}),
-					lobby()
-				)
+				selectionOf(configOf({ variants: { mock: false } }), lobby())
 			);
 
 			expect(
@@ -109,7 +102,7 @@ describe("CoreBuildService", () => {
 				[
 					abs("default.project.json"),
 					"default",
-					{ mode: "prod", variants: { mock: false } },
+					{ variants: { mock: false } },
 				],
 			]);
 			expect(builds.map(({ outcome }) => outcome)).toEqual([

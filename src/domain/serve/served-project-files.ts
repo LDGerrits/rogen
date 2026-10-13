@@ -14,7 +14,7 @@ import { ServeAddress, SyncServer } from "./serve.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecord, ServerRecords } from "./server-records.js";
 
-/** The project files that running serves serve, which a build may not change into another mode's or variants'. */
+/** The project files that running serves serve, which a build may not change into another variants'. */
 export class ServedProjectFiles {
 	constructor(
 		private readonly records: ServerRecords,
@@ -39,7 +39,7 @@ export class ServedProjectFiles {
 		return undefined;
 	}
 
-	/** For each of `files` that a running serve serves, the record of that serve, whatever mode it built in. The records are read once, and each server is asked once. */
+	/** For each of `files` that a running serve serves, the record of that serve, whatever variants it built with. The records are read once, and each server is asked once. */
 	async serving(
 		files: readonly string[]
 	): Promise<ReadonlyMap<string, ServerRecord>> {
@@ -82,7 +82,7 @@ export class ServedProjectFiles {
 		return errorDiagnostic(
 			"output.servedInOtherMode",
 			{ resource: write.file },
-			`${path.basename(write.file)} is served by a running rogen serve (${where}) as built in ${describeSetting(record.setting)}, and this build is ${describeSetting(write.setting)}, so writing it would change what Studio gets. Build to another file, as 'rogen build ${write.label} -o <file>', or stop that serve.`
+			`${path.basename(write.file)} is served by a running rogen serve (${where}) as built with ${describeSetting(record.setting)}, and this build has ${describeSetting(write.setting)}, so writing it would change what Studio gets. Build to another file, as 'rogen build ${write.label} -o <file>', or stop that serve.`
 		);
 	}
 }

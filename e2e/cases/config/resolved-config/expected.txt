@@ -24,14 +24,9 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "variants": {
-          "mock": true
+          "mock": false
         },
         "conflicts": [],
-        "mode": "dev",
-        "modes": [
-          "dev",
-          "prod"
-        ],
         "exclude": [
           "<dir>/**/*.spec.luau"
         ],

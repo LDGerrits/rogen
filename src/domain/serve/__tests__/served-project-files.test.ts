@@ -13,15 +13,15 @@ describe("ServedProjectFiles", () => {
 	let requests: MockRequestService;
 	let files: ServedProjectFiles;
 
-	const dev = { mode: "dev", variants: { mock: true } };
-	const prod = { mode: "prod", variants: { mock: false } };
+	const mocked = { variants: { mock: true } };
+	const plain = { variants: { mock: false } };
 	const writeOf = (
 		setting: PendingWrite["setting"],
 		file = "/repo/default.project.json"
 	): PendingWrite => ({ file, label: "default", setting });
 
 	const record = (
-		setting = dev,
+		setting = mocked,
 		projectFile = "/repo/default.project.json",
 		pid = 200
 	) =>
@@ -49,14 +49,14 @@ describe("ServedProjectFiles", () => {
 		await record();
 		answer();
 
-		const refusal = await files.refusalFor(writeOf(prod));
+		const refusal = await files.refusalFor(writeOf(plain));
 
 		expect(refusal).toMatchObject({
 			code: "output.servedInOtherMode",
 			resource: "/repo/default.project.json",
 		});
 		expect(refusal?.message).toBe(
-			"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built in mode dev with mock on, and this build is mode prod, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve."
+			"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built with mock on, and this build has no variants on, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve."
 		);
 	});
 
@@ -64,18 +64,7 @@ describe("ServedProjectFiles", () => {
 		await record();
 		answer();
 
-		expect(await files.refusalFor(writeOf(dev))).toBeUndefined();
-	});
-
-	it("should refuse a write that differs only in a variant", async () => {
-		await record();
-		answer();
-
-		expect(
-			await files.refusalFor(
-				writeOf({ mode: "dev", variants: { mock: false } })
-			)
-		).toMatchObject({ code: "output.servedInOtherMode" });
+		expect(await files.refusalFor(writeOf(mocked))).toBeUndefined();
 	});
 
 	it("should allow a write to another file", async () => {
@@ -83,39 +72,37 @@ describe("ServedProjectFiles", () => {
 		answer();
 
 		expect(
-			await files.refusalFor(
-				writeOf(prod, "/repo/default.prod.project.json")
-			)
+			await files.refusalFor(writeOf(plain, "/repo/other.project.json"))
 		).toBeUndefined();
 	});
 
 	it("should allow a write when no serve left a record", async () => {
-		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
+		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
 	});
 
 	it("should allow a write when the serve that left the record no longer runs", async () => {
 		await record();
 
-		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
+		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
 	});
 
 	it("should allow a write when another server has taken the port since", async () => {
 		await record();
 		answer("s2");
 
-		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
+		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
 	});
 
 	it("should allow the serve that wrote a record to rebuild its own file in another setting", async () => {
-		await record(dev, "/repo/default.project.json", 100);
+		await record(mocked, "/repo/default.project.json", 100);
 		answer();
 
-		expect(await files.refusalFor(writeOf(prod))).toBeUndefined();
+		expect(await files.refusalFor(writeOf(plain))).toBeUndefined();
 	});
 
 	describe("serving", () => {
 		it("should give the record of the running serve that serves each file, whatever its mode", async () => {
-			await record(prod);
+			await record(plain);
 			answer();
 
 			const found = await files.serving([
@@ -126,12 +113,12 @@ describe("ServedProjectFiles", () => {
 			expect([...found.keys()]).toEqual(["/repo/default.project.json"]);
 			expect(found.get("/repo/default.project.json")).toMatchObject({
 				port: 34872,
-				setting: prod,
+				setting: plain,
 			});
 		});
 
 		it("should give nothing for a serve that no longer runs", async () => {
-			await record(dev);
+			await record(mocked);
 
 			expect(
 				(await files.serving(["/repo/default.project.json"])).size

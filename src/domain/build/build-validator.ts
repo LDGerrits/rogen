@@ -147,9 +147,7 @@ export class BuildValidator {
 		const kinds = new Set(named.map(({ kind }) => kind));
 		const many = named.length > 1;
 		const keyKind = joinedWithOr(
-			(["route", "variant", "mode"] as const).filter((kind) =>
-				kinds.has(kind)
-			)
+			(["route", "variant"] as const).filter((kind) => kinds.has(kind))
 		);
 		const effect =
 			kinds.has("route") && kinds.size > 1
@@ -291,28 +289,19 @@ export class BuildValidator {
 		);
 	}
 
-	/** A dot part one edit from a declared variant or mode, or a folder one edit from one, is probably that key, mistyped. */
+	/** A dot part one edit from a declared variant, or a folder one edit from one, is probably that key, mistyped. */
 	private variantTypo(): Diagnostic[] {
 		const typos = [
 			...this.placement.readings.misspelt("variantTypo").values(),
 		];
 		const bare = typos.some((typo) => typo.bare);
-		const modes = typos.filter(({ variant }) =>
-			this.config.keys.isMode(variant)
-		).length;
-		const noun =
-			modes === 0
-				? "variant"
-				: modes === typos.length
-					? "mode"
-					: "variant or mode";
 		return this.misspelt(
 			"variant.typo",
 			"variantTypo",
 			(count) =>
 				bare
-					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared ${noun}, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
-					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared ${noun}, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
+					? `${count} ${count > 1 ? "names are" : "name is"} one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`
+					: `${count} ${count > 1 ? "names end" : "name ends"} in a dot part that is one edit from a declared variant, so ${count > 1 ? "they are read as ordinary names" : "it is read as an ordinary name"}:`,
 			(_, { variant, bare }) =>
 				`did you mean "${bare ? variant : `.${variant}`}"?`
 		);

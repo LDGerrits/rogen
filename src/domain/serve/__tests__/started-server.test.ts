@@ -120,7 +120,7 @@ describe("StartedServer", () => {
 			await records.recordOf(target.address, served[0].info)
 		).toMatchObject({
 			projectFile: "/repo/default.project.json",
-			setting: { mode: undefined, variants: {} },
+			setting: { variants: {} },
 		});
 		await server.unrecord();
 		expect(
@@ -218,13 +218,11 @@ describe("StartedServer", () => {
 	});
 
 	describe("when its config is built again", () => {
-		const modal = (mode: string, mock: boolean) =>
+		const built = (mock: boolean) =>
 			mockConfig({
 				file: "/repo/default.rogen.json",
 				outFile: "/repo/default.project.json",
 				variants: { mock },
-				modes: { dev: { variants: ["mock"] }, prod: {} },
-				mode,
 			});
 		const recordedNow = async () =>
 			(await records.recordOf(target.address, served[0].info))?.setting;
@@ -238,39 +236,33 @@ describe("StartedServer", () => {
 			await jest.advanceTimersByTimeAsync(250);
 		};
 
-		it("should record the mode and variants it serves, and the ones it is built in next", async () => {
-			start(modal("dev", true));
+		it("should record the variants it serves, and the ones it is built with next", async () => {
+			start(built(true));
 			await answer();
-			expect(await recordedNow()).toEqual({
-				mode: "dev",
-				variants: { mock: true },
-			});
+			expect(await recordedNow()).toEqual({ variants: { mock: true } });
 
-			await server.rebuilt(modal("prod", false));
+			await server.rebuilt(built(false));
 
-			expect(await recordedNow()).toEqual({
-				mode: "prod",
-				variants: { mock: false },
-			});
+			expect(await recordedNow()).toEqual({ variants: { mock: false } });
 		});
 
 		it("should not write its record again for a build in the same setting", async () => {
-			start(modal("dev", true));
+			start(built(true));
 			await answer();
 			const write = jest.spyOn(records, "write");
 
-			await server.rebuilt(modal("dev", true));
+			await server.rebuilt(built(true));
 
 			expect(write).not.toHaveBeenCalled();
 		});
 
 		it("should not write its record again once it is told to stop", async () => {
-			start(modal("dev", true));
+			start(built(true));
 			await answer();
 			const write = jest.spyOn(records, "write");
 
 			await server.terminate();
-			await server.rebuilt(modal("prod", false));
+			await server.rebuilt(built(false));
 			await server.unrecord();
 
 			expect(write).not.toHaveBeenCalled();
@@ -280,15 +272,12 @@ describe("StartedServer", () => {
 		});
 
 		it("should record the latest build when the server answers after it", async () => {
-			start(modal("dev", true));
+			start(built(true));
 
-			await server.rebuilt(modal("prod", false));
+			await server.rebuilt(built(false));
 			await answer();
 
-			expect(await recordedNow()).toEqual({
-				mode: "prod",
-				variants: { mock: false },
-			});
+			expect(await recordedNow()).toEqual({ variants: { mock: false } });
 		});
 	});
 

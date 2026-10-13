@@ -10,11 +10,7 @@ import {
 import { diagnosticSummary } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
-import {
-	Answer,
-	ModeContext,
-	WhereAnswers,
-} from "./where-answers.js";
+import { Answer, WhereAnswers } from "./where-answers.js";
 
 /** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
 function patternRelativeTo(cwd: string, escaped: string): string {
@@ -26,41 +22,25 @@ function patternRelativeTo(cwd: string, escaped: string): string {
 }
 
 /** One line: the path, where it lands, and why. */
-function describeLocation(
-	location: FileLocation,
-	mode: ModeContext,
-	cwd: string
-): string {
+function describeLocation(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
-	return `${relative(location.source)} -> ${outcomeOf(location, mode, cwd)}`;
+	return `${relative(location.source)} -> ${outcomeOf(location, cwd)}`;
 }
 
-/** The variants and modes a file carries, as `variants mock (suffix)`, or with each named when both kinds are there. */
+/** The variants a file carries, as `variants mock (suffix)`. */
 function carried(
-	matches: readonly { variant: string; form: string }[],
-	mode: ModeContext
+	matches: readonly { variant: string; form: string }[]
 ): string {
 	if (matches.length === 0) return "";
-	const kindOf = ({ variant }: { variant: string }) =>
-		mode.names.has(variant) ? "mode" : "variant";
-	const kinds = new Set(matches.map(kindOf));
 	const listed = matches.map(({ variant, form }) => `${variant} (${form})`);
-	if (kinds.size === 1) {
-		const [kind] = kinds;
-		return ` · ${kind}${matches.length === 1 ? "" : "s"} ${listed.join(", ")}`;
-	}
-	return ` · ${matches.map((match, index) => `${kindOf(match)} ${listed[index]}`).join(", ")}`;
+	return ` · variant${matches.length === 1 ? "" : "s"} ${listed.join(", ")}`;
 }
 
-function outcomeOf(
-	location: FileLocation,
-	mode: ModeContext,
-	cwd: string
-): string {
+function outcomeOf(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	switch (location.status) {
 		case "placed": {
-			const variants = carried(location.variants, mode);
+			const variants = carried(location.variants);
 			const alsoAt = location.alsoAt
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
@@ -69,9 +49,7 @@ function outcomeOf(
 		}
 		case "pruned": {
 			const [first] = location.variants;
-			return mode.names.has(first.variant)
-				? `pruned · mode is ${mode.active}, not ${first.variant}`
-				: `pruned · variant ${first.variant} is off (${first.form})`;
+			return `pruned · variant ${first.variant} is off (${first.form})`;
 		}
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
@@ -247,7 +225,7 @@ export class WhereLog {
 
 	private describe(answer: Answer): string {
 		return answer.kind === "file"
-			? describeLocation(answer.location, answer.mode, this.cwd)
+			? describeLocation(answer.location, this.cwd)
 			: `${answer.instance} -> no file places it${this.whereToAdd(answer.folders, answer.fixes)}`;
 	}
 }

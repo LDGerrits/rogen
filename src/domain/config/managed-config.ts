@@ -10,7 +10,6 @@ export class ManagedConfig {
 	private config: Config | undefined;
 	private _files: readonly string[];
 	private _skippedVariants: readonly string[] | undefined;
-	private _modes: readonly string[] | undefined;
 
 	private constructor(
 		readonly file: string,
@@ -22,7 +21,6 @@ export class ManagedConfig {
 		this._entry = this.entryOf(loaded);
 		this.config = loaded.config;
 		this._skippedVariants = loaded.skippedVariants;
-		this._modes = loaded.modes;
 	}
 
 	/** Loads `file` with `overrides`. */
@@ -54,11 +52,6 @@ export class ManagedConfig {
 		return this._skippedVariants;
 	}
 
-	/** The modes the config declares; `undefined` when its chain could not be read. */
-	get modes(): readonly string[] | undefined {
-		return this._modes;
-	}
-
 	/** Whether it reads one of `changed`. */
 	reads(changed: PathSet): boolean {
 		return this._files.some((file) => changed.has(file));
@@ -86,7 +79,6 @@ export class ManagedConfig {
 		this._entry = this.entryOf(loaded);
 		this._files = loaded.files;
 		this._skippedVariants = loaded.skippedVariants;
-		this._modes = loaded.modes;
 		if (loaded.resolved.isOk()) this.config = loaded.config;
 	}
 

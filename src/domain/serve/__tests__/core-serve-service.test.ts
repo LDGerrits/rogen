@@ -543,16 +543,12 @@ describe("CoreServeService", () => {
 		});
 
 		describe("a project file another serve serves in another setting", () => {
-			const modal = {
-				variants: ["mock"],
-				modes: { dev: { variants: ["mock"] }, prod: {} },
-				mode: "dev",
-			};
+			const declared = { variants: ["mock"] };
 
 			beforeEach(async () => {
 				await memFs.writeFile(
 					"/repo/default.rogen.json",
-					config(modal)
+					config(declared)
 				);
 				requests.answer(
 					"http://127.0.0.1:34872/api/rojo",
@@ -560,28 +556,28 @@ describe("CoreServeService", () => {
 				);
 			});
 
-			it("should leave a server alone that serves the same mode and variants", async () => {
+			it("should leave a server alone that serves the same variants", async () => {
 				await memFs.writeFile(
 					...recordFile(34872, "repo", "/repo/default.project.json", {
-						setting: { mode: "dev", variants: { mock: true } },
+						setting: { variants: { mock: true } },
 					})
 				);
 
-				const servePlan = await plan();
+				const servePlan = await plan({
+					options: { variant: ["mock"] },
+				});
 
 				expect(servePlan.alreadyServed).toHaveLength(1);
 			});
 
-			it("should refuse a serve of another mode, and name the one that runs", async () => {
+			it("should refuse a serve of other variants, and name the ones that run", async () => {
 				await memFs.writeFile(
 					...recordFile(34872, "repo", "/repo/default.project.json", {
-						setting: { mode: "dev", variants: { mock: true } },
+						setting: { variants: { mock: true } },
 					})
 				);
 
-				const error = (await errorOf({
-					options: { mode: "prod" },
-				})) as DiagnosticsError;
+				const error = (await errorOf()) as DiagnosticsError;
 
 				expect(error.diagnostics).toMatchObject([
 					{
@@ -590,24 +586,8 @@ describe("CoreServeService", () => {
 					},
 				]);
 				expect(error.diagnostics[0].message).toBe(
-					"default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built in mode dev with mock on, and this serve builds mode prod. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'."
+					"default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built with mock on, and this serve builds with no variants on. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'."
 				);
-			});
-
-			it("should refuse a serve that turns a variant off, though the mode is the same", async () => {
-				await memFs.writeFile(
-					...recordFile(34872, "repo", "/repo/default.project.json", {
-						setting: { mode: "dev", variants: { mock: true } },
-					})
-				);
-
-				const error = (await errorOf({
-					options: { "no-variant": ["mock"] },
-				})) as DiagnosticsError;
-
-				expect(error.diagnostics).toMatchObject([
-					{ code: "serve.otherMode" },
-				]);
 			});
 		});
 
@@ -858,46 +838,6 @@ describe("CoreServeService", () => {
 						env: { RUST_LOG: expect.any(Function) },
 					},
 				],
-			]);
-		});
-
-		it("should keep the record of a server in step with the mode its config is built in", async () => {
-			const modal = (mode: string) =>
-				config({
-					variants: ["mock"],
-					modes: { dev: { variants: ["mock"] }, prod: {} },
-					mode,
-				});
-			const recorded = async () =>
-				JSON.parse(
-					await memFs.readFile("/mock/tmp/rogen-serve/34872.json")
-				);
-			await memFs.writeFile("/repo/src/Analytics.luau", "");
-			await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
-			await memFs.writeFile("/repo/default.rogen.json", modal("dev"));
-			await start();
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-			await settle();
-			expect(await recorded()).toMatchObject({
-				mode: "dev",
-				variants: { mock: true },
-			});
-
-			await memFs.writeFile("/repo/default.rogen.json", modal("prod"));
-			await settle();
-
-			expect(await recorded()).toMatchObject({
-				mode: "prod",
-				variants: { mock: false },
-			});
-			const projectFile = await memFs.readFile(
-				"/repo/default.project.json"
-			);
-			expect(JSON.parse(projectFile).globIgnorePaths).toEqual([
-				"src/Analytics.mock.luau",
 			]);
 		});
 

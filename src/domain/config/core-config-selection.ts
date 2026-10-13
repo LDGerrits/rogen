@@ -48,7 +48,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		this.filePaths = new PathSet(this._files);
 	}
 
-	/** A selection of `managed`, opened with `overrides`; fails when a variant or mode override is declared by none of them. */
+	/** A selection of `managed`, opened with `overrides`; fails when a variant override is declared by none of them. */
 	static create(
 		managed: readonly ManagedConfig[],
 		loader: ConfigLoader,
@@ -56,9 +56,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		home: string,
 		folder?: PickedFolder
 	): Result<CoreConfigSelection, Error> {
-		const problem =
-			undeclaredVariant(managed, overrides) ??
-			undeclaredMode(managed, overrides);
+		const problem = undeclaredVariant(managed, overrides);
 		return problem
 			? err(problem)
 			: ok(
@@ -230,11 +228,6 @@ function undeclaredVariant(
 			)
 		)
 			continue;
-		if (managed.some((config) => config.modes?.includes(variant))) {
-			return new UsageError(
-				`"${variant}" is a mode, not a variant. Pick it with --mode ${variant}.`
-			);
-		}
 		const declared = managed.flatMap((config) =>
 			Object.keys(buildableConfig(config.entry)?.variants ?? {})
 		);
@@ -247,18 +240,4 @@ function undeclaredVariant(
 		);
 	}
 	return undefined;
-}
-
-/** A mode override when no config being built declares any mode. A config that declares others but not this one reports it itself. */
-function undeclaredMode(
-	managed: readonly ManagedConfig[],
-	overrides: ConfigOverrides
-): Error | undefined {
-	if (overrides.mode === undefined) return undefined;
-	const allReadable = managed.every((config) => config.modes !== undefined);
-	if (!allReadable || managed.some((config) => config.modes?.length))
-		return undefined;
-	return new UsageError(
-		`Mode "${overrides.mode}" is not declared by any config being built. Add it under "modes" in a config, or drop the flag.`
-	);
 }

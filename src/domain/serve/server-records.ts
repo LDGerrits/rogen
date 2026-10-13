@@ -35,8 +35,7 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		!isObject(value.variants) ||
 		(value.session !== undefined && typeof value.session !== "string") ||
 		(value.pid !== undefined && typeof value.pid !== "number") ||
-		(value.clients !== undefined && typeof value.clients !== "number") ||
-		(value.mode !== undefined && typeof value.mode !== "string")
+		(value.clients !== undefined && typeof value.clients !== "number")
 	)
 		return undefined;
 	return {
@@ -49,7 +48,6 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		projectFile: value.projectFile,
 		clients: value.clients,
 		setting: {
-			mode: value.mode,
 			variants: Object.fromEntries(
 				Object.entries(value.variants).filter(
 					(entry): entry is [string, boolean] =>
@@ -119,7 +117,6 @@ export class ServerRecords {
 				project: info.project,
 				projectFile: built.projectFile,
 				clients: built.clients,
-				mode: built.setting.mode,
 				variants: built.setting.variants,
 			})
 		);

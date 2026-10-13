@@ -21,7 +21,6 @@ const summary: BuildSummary = {
 	roots: [],
 	routes: [],
 	variants: [],
-	modes: [],
 	unrouted: 0,
 	replaced: 0,
 	displaced: 0,

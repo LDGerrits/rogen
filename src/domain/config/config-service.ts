@@ -14,7 +14,7 @@ const VariantOption = {
 	type: "string",
 	placeholder: "name",
 	multiple: true,
-	description: "Turns a variant on, beyond those the mode lists.",
+	description: "Turns a variant on.",
 } as const satisfies OptionDescriptor;
 
 const NoVariantOption = {
@@ -23,13 +23,6 @@ const NoVariantOption = {
 	placeholder: "name",
 	multiple: true,
 	description: "Turns a variant off, whatever turned it on.",
-} as const satisfies OptionDescriptor;
-
-const ModeOption = {
-	name: "mode",
-	type: "string",
-	placeholder: "name",
-	description: "Picks the mode every config that declares modes builds in.",
 } as const satisfies OptionDescriptor;
 
 /** The positional words that name the configs a command reads. */
@@ -43,9 +36,8 @@ export const ConfigArguments = [
 	},
 ] as const;
 
-/** The flags that say which mode is active and which variants are on in the configs a command reads. */
+/** The flags that say which variants are on in the configs a command reads. */
 export const ConfigSelectionOptions = [
-	ModeOption,
 	VariantOption,
 	NoVariantOption,
 ] as const satisfies readonly OptionDescriptor[];

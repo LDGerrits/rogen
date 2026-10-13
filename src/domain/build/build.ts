@@ -67,20 +67,11 @@ export interface VariantSummary {
 	readonly files: number;
 }
 
-export interface ModeSummary {
-	readonly mode: string;
-	readonly on: boolean;
-	/** Files placed with the mode when it's the active one, or left out by it when it isn't. */
-	readonly files: number;
-}
-
 export interface BuildSummary {
 	readonly roots: readonly RootSummary[];
 	/** In the order the config declares them. */
 	readonly routes: readonly RouteSummary[];
 	readonly variants: readonly VariantSummary[];
-	/** In the order the config declares them; none without modes. */
-	readonly modes: readonly ModeSummary[];
 	readonly unrouted: number;
 	readonly replaced: number;
 	/** Left out because the template defines their node. */
@@ -364,14 +355,12 @@ export interface SyncTool {
 	readonly dataReplacement?: DataReplacement;
 }
 
-/** What decides the content of a project file besides the sources: the active mode, and which variants are on. */
+/** What decides the content of a project file besides the sources: which variants are on. */
 export interface BuildSetting {
-	readonly mode?: string;
 	readonly variants: Readonly<Record<string, boolean>>;
 }
 
 export const settingOf = (config: ResolvedConfig): BuildSetting => ({
-	mode: config.mode,
 	variants: config.variants,
 });
 
@@ -380,23 +369,15 @@ export function sameSetting(a: BuildSetting, b: BuildSetting): boolean {
 		...Object.keys(a.variants),
 		...Object.keys(b.variants),
 	]);
-	return (
-		a.mode === b.mode &&
-		[...names].every(
-			(name) =>
-				(a.variants[name] ?? false) === (b.variants[name] ?? false)
-		)
+	return [...names].every(
+		(name) => (a.variants[name] ?? false) === (b.variants[name] ?? false)
 	);
 }
 
-/** A setting in words, as `mode dev with mock on`. */
-export function describeSetting({ mode, variants }: BuildSetting): string {
+/** A setting in words, as `mock on`. */
+export function describeSetting({ variants }: BuildSetting): string {
 	const on = Object.keys(variants).filter((name) => variants[name]);
-	const parts = [
-		mode === undefined ? undefined : `mode ${mode}`,
-		on.length === 0 ? undefined : `${joinedWithAnd(on)} on`,
-	].filter((part) => part !== undefined);
-	return parts.join(" with ") || "nothing switched on";
+	return on.length === 0 ? "no variants on" : `${joinedWithAnd(on)} on`;
 }
 
 /** A write of a config's project file that a build is about to make. */

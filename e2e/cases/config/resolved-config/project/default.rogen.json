@@ -1,5 +1,4 @@
 {
 	"extends": "./base.rogen.json",
-	"mode": "dev",
 	"syncDir": "dist"
 }

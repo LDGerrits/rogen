@@ -8,7 +8,7 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
 A **variant** is an alternative version of a file that lives right next to it. When `mock` is on, `Analytics.mock.luau` *becomes* `Analytics`. When it's off, the file is left out. (If you only want to leave files out, use [`exclude`](/docs/v2/core-concepts/project-layout#excluding-files).)
 
-Variants are independent switches: any number can be on, and each is off unless something turns it on. For one choice with exactly one value, like dev or prod, declare [modes](/docs/v2/core-concepts/modes), and let a mode turn on the variants it wants.
+Variants are independent switches: any number can be on, and each is off unless `--variant` turns it on.
 
 ## Declaring Variants
 
@@ -20,12 +20,12 @@ Variants are independent switches: any number can be on, and each is off unless 
 }
 ```
 
-A declared variant is off unless the active [mode](/docs/v2/core-concepts/modes) lists it or `--variant` turns it on. A variant that's on is **active**, and one that's off is **dormant**. Files of a dormant variant are **pruned** from the output. A variant can't share its name with a route key or a mode.
+A declared variant is off unless `--variant` turns it on. A variant that's on is **active**, and one that's off is **dormant**. Files of a dormant variant are **pruned** from the output. A variant can't share its name with a route key.
 
-There is no default per variant: a `true` at the root would be inherited by every mode that forgot to turn it off. Which variants a build has on is decided by one place, the mode, and the command line on top of it. See [Which Variants Are On](/docs/v2/core-concepts/modes#which-variants-are-on).
+There is no default per variant, so the command line alone decides which variants a build has on. A dot part that matches no declared variant, like the `prod` in `Service.prod.luau`, is just part of the name.
 
 <Callout type="warn" title="Variants used to be a map">
-	`"variants": { "mock": false }` is a config error that prints the list form and points at modes. Write `"variants": ["mock"]`, then list `"mock"` in the modes that want it, or pass `--variant mock`. A config that only existed to turn a variant on becomes a mode, pinned by that config if it must stay a second output.
+	`"variants": { "mock": false }` is a config error that prints the list form. Write `"variants": ["mock"]`, and pass `--variant mock` to turn it on.
 </Callout>
 
 ## Marking Files
@@ -99,33 +99,35 @@ Some variants must never be on together, like two seasonal events. List them in 
 }
 ```
 
-Two on at once is an error, whether they come from a mode, `--variant` or both. `--variant christmas` never turns `halloween` off, so when the mode already has it on, the error suggests the swap:
+Two on at once is an error, and the message names `--variant` as the source:
 
 ```bash
 rogen build --variant halloween --variant christmas       # error: they conflict
-rogen build --mode prod --no-variant halloween --variant christmas
+rogen build --variant christmas
 ```
 
-A group names declared variants only, never a mode, since modes are already exclusive. A mode that lists two variants of one group is a config error. A variant may sit in several groups, and each is checked. Under [`extends`](/docs/v2/configuration#extending-configs) the groups add up, so a place can add a group but never dissolve a shared one.
+A variant may sit in several groups, and each is checked. Under [`extends`](/docs/v2/configuration#extending-configs) the groups add up, so a place can add a group but never dissolve a shared one.
 
 ## Turning Variants On and Off
 
-Override a mode for a single run from the CLI. Both flags can be repeated, and `--no-variant` applies last:
+Both flags can be repeated, and `--no-variant` applies last:
 
 ```bash
 rogen build --variant halloween --no-variant mock
 ```
 
-A variant is on when the active mode lists it or `--variant` adds it, and off when `--no-variant` removes it. `--variant dev` for a mode named `dev` is a usage error that points at `--mode dev`.
+A variant is on when `--variant` adds it, and off otherwise or when `--no-variant` removes it. Nothing else turns one on.
 
-To keep a combination around as a second output, add a config that extends the first and pins a mode. `rogen build release` then writes `release.project.json`:
+To keep a build around as a second output with other files left out, add a config that extends the first and adds an `exclude`. Put it in a folder of its own, since beside `default.rogen.json` it would take the place of the config `rogen serve` syncs to Studio. `rogen build release/release.rogen.json` then writes `release/release.project.json`, for example without the specs:
 
-```json title="release.rogen.json"
+```json title="release/release.rogen.json"
 {
-	"extends": "./default.rogen.json",
-	"mode": "prod"
+	"extends": "../default.rogen.json",
+	"exclude": ["../**/*.spec.luau"]
 }
 ```
+
+A glob is relative to the file that wrote it, so this one starts with `..` to reach the files of the config above it.
 
 <Callout type="info" title="Not Roblox's Tags">
 	Variants used to be called tags, and were renamed to avoid confusion with Roblox's CollectionService Tags.

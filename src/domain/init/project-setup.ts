@@ -49,8 +49,6 @@ export interface ProjectChoices {
 	readonly places: readonly ProjectPlace[];
 	/** Place folders found that were left out, and why. */
 	readonly unusablePlaces?: readonly UnusablePlace[];
-	/** Whether the config declares dev and prod modes, the prod one leaving out specs. */
-	readonly modes?: boolean;
 }
 
 /** A place a new project sets up, and what its folder already holds. */
@@ -145,9 +143,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 		if (routes === undefined) return ok(undefined);
 
-		const modes = await questions.modes(directory, language);
-		if (modes === undefined) return ok(undefined);
-
 		const places =
 			layout === "several"
 				? await this.askPlaces(identity.value, rootDirs, outputs)
@@ -170,7 +165,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(places.value.unusable.length > 0 && {
 				unusablePlaces: places.value.unusable,
 			}),
-			...(modes && { modes }),
 		});
 	}
 
@@ -328,13 +322,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const starter: RogenConfig = {
 			rootDirs: [...rootDirs],
 			routes: starting.starting(choices.routes, choices.fallback),
-			...(choices.modes && {
-				mode: "dev",
-				modes: {
-					dev: {},
-					prod: { exclude: [ConfigSet.specGlobOf(language)] },
-				},
-			}),
 			...(template.reference && { template: template.reference }),
 		};
 
@@ -393,11 +380,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addSetup(compiler.rootDirStep(rootDirs[0]));
 		}
 		builder.addEdit(...template.edits);
-		if (choices.modes) {
-			builder.addEdit(
-				`Build a release without specs with rogen build --mode prod; ${configFileName(name)} declares the modes.`
-			);
-		}
 		builder.addEdit(
 			`Add your own routes under "routes" in ${configFileName(name)}.`,
 			configSet.variantsStep

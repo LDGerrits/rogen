@@ -1,9 +1,12 @@
 {
-	"rootDirs": ["src", "lib"],
+	"rootDirs": [
+		"src",
+		"lib"
+	],
 	"routes": {
 		"server": "ServerScriptService"
 	},
-	"variants": ["mock"],
-	"mode": "dev",
-	"modes": { "dev": { "variants": ["mock"] } }
+	"variants": [
+		"mock"
+	]
 }

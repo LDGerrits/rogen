@@ -12,7 +12,6 @@ export interface BuildEntry {
 	readonly file: string;
 	/** `null` for a config that didn't load. */
 	readonly outFile: string | null;
-	readonly mode?: string;
 	readonly outcome: "wrote" | "unchanged" | "notWritten";
 	/** The labels of the configs whose failure stopped this one from being written. */
 	readonly blockedBy?: readonly string[];
@@ -34,7 +33,6 @@ export function buildEntry(
 		config: build.label,
 		file: toNative(build.file),
 		outFile: loaded ? toNative(build.config.outFile) : null,
-		...(loaded && build.config.mode && { mode: build.config.mode }),
 		outcome: isWritten(build) ? build.outcome : "notWritten",
 		...(build.outcome === "notWritten" && {
 			blockedBy: build.blockedBy,

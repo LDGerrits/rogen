@@ -90,20 +90,10 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		({ key, target, files }) =>
 			`route ${key} -> ${target}: ${plural(files, "file")}`
 	);
-	const switched = (
-		kind: string,
-		name: string,
-		on: boolean,
-		files: number
-	) =>
-		on
-			? `${kind} ${name} on: ${plural(files, "file")}`
-			: `${kind} ${name} off: ${plural(files, "file")} left out`;
 	const variants = summary.variants.map(({ variant, on, files }) =>
-		switched("variant", variant, on, files)
-	);
-	const modes = summary.modes.map(({ mode, on, files }) =>
-		switched("mode", mode, on, files)
+		on
+			? `variant ${variant} on: ${plural(files, "file")}`
+			: `variant ${variant} off: ${plural(files, "file")} left out`
 	);
 	const leftOut = [
 		...(summary.unrouted > 0 ? [`${summary.unrouted} unrouted`] : []),
@@ -118,7 +108,6 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 		...roots,
 		...routes,
 		...variants,
-		...modes,
 		...(leftOut.length > 0 ? [`left out: ${leftOut.join(", ")}`] : []),
 	];
 }
@@ -212,9 +201,6 @@ export class BuildLog {
 						: build.config.outFile
 				),
 				outcome,
-				build.outcome !== "notLoaded" && build.config.mode
-					? `mode ${build.config.mode}`
-					: undefined,
 				note,
 			]
 				.filter((part) => part !== undefined)

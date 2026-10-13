@@ -1,1 +1,0 @@
-{ "steps": [["build", "--mode", "prod"], ["build", "-o", "dev.project.json"], ["where", "src/Tools/Inspector.luau", "--mode", "dev"]], "output": ["build"] }

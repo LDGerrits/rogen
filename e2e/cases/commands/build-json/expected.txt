@@ -14,7 +14,6 @@ stdout:
         "config": "match",
         "file": "<dir>/match.rogen.json",
         "outFile": "<dir>/match.project.json",
-        "mode": "dev",
         "outcome": "wrote",
         "diagnostics": [
           {
@@ -68,4 +67,4 @@ project: DataModel
 $ rojo sourcemap match.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
-    Save: Script  <- src/server/Save.mock.server.luau
+    Save: Script  <- src/server/Save.server.luau

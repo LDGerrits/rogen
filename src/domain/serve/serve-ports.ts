@@ -123,7 +123,7 @@ export class ServePorts {
 		);
 	}
 
-	/** Why `target` isn't served by the server that serves its project file, which another serve started with `recorded`'s mode and variants, not this serve's. */
+	/** Why `target` isn't served by the server that serves its project file, which another serve started with `recorded`'s variants, not this serve's. */
 	private otherBuild(
 		target: ServeTarget,
 		holder: ServerInfo,
@@ -133,7 +133,7 @@ export class ServePorts {
 		return errorDiagnostic(
 			"serve.otherMode",
 			{ resource: config.file },
-			`${config.label} is already served by another rogen serve with ${holder.server.name} ${holder.version} at ${address}, built in ${describeSetting(recorded.setting)}, and this serve builds ${describeSetting(settingOf(config))}. Both would write ${path.basename(config.outFile)}. Stop that serve, or serve ${config.label} on its own from another project file and port, as 'rogen serve ${config.label} -o <file> -- --port <port>'.`
+			`${config.label} is already served by another rogen serve with ${holder.server.name} ${holder.version} at ${address}, built with ${describeSetting(recorded.setting)}, and this serve builds with ${describeSetting(settingOf(config))}. Both would write ${path.basename(config.outFile)}. Stop that serve, or serve ${config.label} on its own from another project file and port, as 'rogen serve ${config.label} -o <file> -- --port <port>'.`
 		);
 	}
 

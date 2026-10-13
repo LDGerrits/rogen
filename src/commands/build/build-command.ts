@@ -48,7 +48,7 @@ registerCommand(
 						"rogen build",
 						"rogen build places/lobby.rogen.json --variant mock",
 						"rogen build --json",
-						"rogen build --mode prod --deny-warnings",
+						"rogen build --deny-warnings",
 					],
 				},
 			});

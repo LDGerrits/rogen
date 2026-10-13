@@ -66,7 +66,6 @@ export const start = async (
 	service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
 	const result = await service.select(names, {
 		"out-file": overrides?.outFile,
-		mode: overrides?.mode,
 		variant: variants.filter(([, on]) => on).map(([variant]) => variant),
 		"no-variant": variants
 			.filter(([, on]) => !on)

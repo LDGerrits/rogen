@@ -4,12 +4,7 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
-import {
-	ModeView,
-	ResolvedConfig,
-	ResolvedTemplate,
-	TemplateClash,
-} from "../config.js";
+import { ResolvedConfig, ResolvedTemplate, TemplateClash } from "../config.js";
 import {
 	BrokenConfigEntry,
 	ConfigEntry,
@@ -29,22 +24,10 @@ export interface ResolvedConfigSpec {
 	readonly name?: string;
 	readonly rootDirs?: readonly string[];
 	readonly routes?: Readonly<Record<string, string>>;
-	/** Every declared variant to whether it is on outside any mode, as the command line leaves it. */
+	/** Every declared variant to whether it is on, as the command line leaves it. */
 	readonly variants?: Readonly<Record<string, boolean>>;
 	readonly conflicts?: readonly (readonly string[])[];
 	readonly exclude?: readonly string[];
-	/** The variants each mode turns on and the globs it adds to the config's. */
-	readonly modes?: Readonly<
-		Record<
-			string,
-			{
-				readonly variants?: readonly string[];
-				readonly exclude?: readonly string[];
-			}
-		>
-	>;
-	/** The active mode; the first of `modes` when left out. */
-	readonly mode?: string;
 	readonly template?: {
 		readonly file: string;
 		readonly project: Readonly<Record<string, unknown>>;
@@ -57,29 +40,6 @@ export interface ResolvedConfigSpec {
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	const file = spec.file ?? "/repo/default.rogen.json";
-	const declared = Object.keys(spec.variants ?? {});
-	const switched = (listed: readonly string[], base = false) =>
-		Object.fromEntries(
-			declared.map((variant) => [
-				variant,
-				listed.includes(variant) ||
-					(base && !!spec.variants?.[variant]),
-			])
-		);
-	const modeViews = new Map<string, ModeView>(
-		Object.entries(spec.modes ?? {}).map(([mode, body]) => [
-			mode,
-			{
-				variants: switched(body.variants ?? []),
-				exclude: [...(spec.exclude ?? []), ...(body.exclude ?? [])],
-			},
-		])
-	);
-	const mode =
-		modeViews.size > 0
-			? (spec.mode ?? [...modeViews.keys()][0])
-			: undefined;
-	const view = mode === undefined ? undefined : modeViews.get(mode);
 	return new ResolvedConfig({
 		file,
 		parents: spec.parents ?? [],
@@ -92,14 +52,9 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 				Target.parse(text, { resource: file }).unwrap(),
 			])
 		),
-		variants:
-			mode === undefined
-				? (spec.variants ?? {})
-				: switched(spec.modes?.[mode]?.variants ?? [], true),
+		variants: spec.variants ?? {},
 		conflicts: spec.conflicts ?? [],
-		exclude: view?.exclude ?? spec.exclude ?? [],
-		mode,
-		modeViews,
+		exclude: spec.exclude ?? [],
 		template:
 			spec.template &&
 			new ResolvedTemplate(

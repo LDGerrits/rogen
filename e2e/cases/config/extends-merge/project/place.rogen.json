@@ -3,14 +3,6 @@
 	"routes": {
 		"chat": "TextChatService"
 	},
-	"mode": "dev",
-	"modes": {
-		"dev": {
-			"variants": [
-				"debug"
-			]
-		}
-	},
 	"exclude": [
 		"**/*.story.luau"
 	]

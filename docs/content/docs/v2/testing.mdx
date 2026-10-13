@@ -8,38 +8,34 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 [jest-roblox-cli](https://github.com/christopher-buss/jest-roblox-cli) builds a place with Rojo, runs your Jest specs inside Roblox and prints the results. Rogen's part is the project file it builds the place from: one with the specs in it, which a production build must not have.
 
-The specs and the production build differ by [mode](/docs/v2/core-concepts/modes), so one more config is all it takes. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
+The specs and the production build differ by an `exclude`, so one more config is all it takes. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
 
 <Steps>
 
 <Step>
 ### Leave the Specs Out of Production
 
-A mode excludes files. When `rogen init` finds a test runner it writes two, and `dev` is the one the config builds in, so `rogen serve` shows the specs in Studio and a release build leaves them out:
+The default config builds the specs in, so `rogen serve` shows them in Studio. A config that extends it can add an `exclude` for what a release leaves out. Put it in a folder of its own, like the test config below: beside `default.rogen.json`, it would take the place of the config `rogen serve` syncs to Studio.
 
-```json title="default.rogen.json"
+```json title="release/release.rogen.json"
 {
-	"modes": {
-		"dev": {},
-		"prod": { "exclude": ["**/*.spec.luau"] }
-	},
-	"mode": "dev"
+	"extends": "../default.rogen.json",
+	"exclude": ["../**/*.spec.luau"]
 }
 ```
 
-Without a test runner, write the same by hand. Add the globs for anything else that is only for development, such as a `DevPackages` mount, to `prod`'s `exclude`. A release is built with `rogen build --mode prod`, written to another file: see [Place Files](/docs/v2/core-concepts/output#place-files).
+A glob is relative to the file that wrote it, so this one starts with `..` to reach the files of the config above it. Add the globs for anything else that is only for development, such as a `DevPackages` mount, to its `exclude`. Build it with `rogen build release/release.rogen.json`, and give the project file it writes to `rojo build` for a place file: see [Place Files](/docs/v2/core-concepts/output#place-files).
 
 </Step>
 
 <Step>
 ### Add a Config for the Tests
 
-Put it in a folder of its own, so the configs beside `default.rogen.json` stay what `rogen serve` and `rogen build` read: a config that extends `default` would take its place as the one `serve` syncs to Studio. `test/test.rogen.json` builds in `dev` whatever the default config does, and sets `LoadStringEnabled`, which Jest needs and a game you ship should not have:
+Put it in a folder of its own, so the configs beside `default.rogen.json` stay what `rogen serve` and `rogen build` read: a config that extends `default` would take its place as the one `serve` syncs to Studio. `test/test.rogen.json` builds the specs whatever the release config leaves out, and sets `LoadStringEnabled`, which Jest needs and a game you ship should not have:
 
 ```json title="test/test.rogen.json"
 {
 	"extends": "../default.rogen.json",
-	"mode": "dev",
 	"template": "template.project.json"
 }
 ```

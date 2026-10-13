@@ -15,7 +15,7 @@ describe("ServerRecords", () => {
 	};
 	const built = {
 		projectFile: "/repo/default.project.json",
-		setting: { mode: "dev", variants: { mock: true } },
+		setting: { variants: { mock: true } },
 	};
 
 	beforeEach(() => {

@@ -15,7 +15,7 @@ The first word is always the command, and a bare `rogen` prints usage. Whatever 
 
 ### `build [config…]`
 
-Writes the project file of every config in the folder, or of the ones you name. A config that declares [modes](/docs/v2/core-concepts/modes) builds in the mode its `mode` field names, or in the one `--mode` picks. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
+Writes the project file of every config in the folder, or of the ones you name. You can build several configs at once, as long as no two write the same file. Configs that share a root directory share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
 Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 config with 4 warnings.`
 
@@ -23,7 +23,7 @@ Each warning and error ends with its [code](/docs/v2/diagnostics), and the closi
 
 Builds, then rebuilds whenever files or configs change. Only names matter, so editing inside a script never triggers a rebuild.
 
-A config reloads when it, its `extends` chain or its template changes, and CLI overrides carry over. If you save an invalid config, `watch` prints the error and keeps using the last valid version, so a broken `prod.rogen.json` doesn't hold up `default.rogen.json`.
+A config reloads when it, its `extends` chain or its template changes, and CLI overrides carry over. If you save an invalid config, `watch` prints the error and keeps using the last valid version, so a broken `release.rogen.json` doesn't hold up `default.rogen.json`.
 
 ```
 ┌  rogen watch · default, lobby
@@ -46,7 +46,7 @@ With no config names, `watch` follows the folder: a `*.rogen.json` you add is bu
 
 With `--json`, `watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line for each config each time it builds, and a `notice` line when a config is added, removed, broken or recovered.
 
-It's safe to run `build` while `watch` is running, in the same mode and variants. Press Ctrl+C to stop.
+It's safe to run `build` while `watch` is running, with the same variants. Press Ctrl+C to stop.
 
 ### `serve [config…] [-- server args…]` [#serve]
 
@@ -81,7 +81,7 @@ Two served configs on one port exit 2, with the fix: give each its own `servePor
 
 **Already running.** Before building, Rogen asks each port what serves there. A Rojo or Argon server only says the name of its project, and a server another `rogen serve` started is also known by its project file:
 
-- **Another `rogen serve` serves the config's project file.** That serve keeps it built, so nothing starts for the config. When this holds for every served config, `serve` says so and exits 0 without building. It counts only when that serve built the file in the same mode and variants as this one would; a serve in another mode exits 1 with [`serve.otherMode`](/docs/v2/diagnostics#serve-othermode), since both would write the same file.
+- **Another `rogen serve` serves the config's project file.** That serve keeps it built, so nothing starts for the config. When this holds for every served config, `serve` says so and exits 0 without building. It counts only when that serve built the file with the same variants as this one would; a serve with other variants exits 1 with [`serve.otherMode`](/docs/v2/diagnostics#serve-othermode), since both would write the same file.
 - **A server Rogen didn't start serves a project of the config's name,** such as a `rojo serve` you ran yourself, or one an editor extension started. `serve` adopts it: it starts no server, but builds and watches for it, and stops, with exit code 0, once that server is gone: two checks in a row, two seconds apart, find nothing on its port, or the port answers for another session, such as a Rojo you restarted. A slow answer doesn't count.
 - **Another config here has the same project name,** as a Darklua setup's `default` and `sync` do, and no `rogen serve` started the server. Rogen can't tell which one it serves, so it refuses with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken): stop that server and run `rogen serve` again.
 - **Anything else holds the port,** including a second checkout of the same project, such as a git worktree. `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), which names what holds it (and the other checkout's folder) and a free port to use instead.
@@ -94,7 +94,7 @@ Two served configs on one port exit 2, with the fix: give each its own `servePor
 
 **Exit code.** 0 after Ctrl+C. When a server stops on its own, `serve` stops too and exits with the server's code; a non-zero code also reports [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
 
-`serve` accepts `-o`, `--mode`, `--variant`, `--no-variant`, `--server` and `--json`. See [`serve --json`](#serve---json) for its lines.
+`serve` accepts `-o`, `--variant`, `--no-variant`, `--server` and `--json`. See [`serve --json`](#serve---json) for its lines.
 
 ### `where [path…]`
 
@@ -111,7 +111,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Answers come in the order you gave the arguments, and a file already answered by an earlier argument isn't repeated. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
-A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants and modes. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, or `mode is dev, not prod`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0. That answer is per path. Without a path, or asked about an instance, `where` has nothing it can place, so it prints the errors and exits 1, as `check` does.
+A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`) and any active variants. Otherwise the line says why it isn't placed: `pruned` (with the variant that is off, as in `variant mock is off (suffix)`), `replaced by` another file, `displaced` by a template node, `mounted` by a template `$path`, `unrouted`, `excluded` (with the glob), `outside the root dirs`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0. That answer is per path. Without a path, or asked about an instance, `where` has nothing it can place, so it prints the errors and exits 1, as `check` does.
 
 With no path and nothing in the root dirs, `where` says `No files in the root dirs (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
@@ -167,7 +167,7 @@ lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue �
 
 A config that doesn't load answers nothing, and neither does one without routes or one that writes the same file as another: `where` prints the answers of the other configs, then the errors, and exits 1.
 
-`where --json` keeps every config's entry, `outside` included. `where` accepts `--mode`, `--variant`, `--no-variant` and `--json`.
+`where --json` keeps every config's entry, `outside` included. `where` accepts `--variant`, `--no-variant` and `--json`.
 
 ### `check [path…]`
 
@@ -184,7 +184,7 @@ An error that stops the build because of another file does not fail the check of
 
 With no path, `check` reports every diagnostic of every config, the sync dir's included: `build --deny-warnings` without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing root dir, an empty sync dir) names the config or folder it is about.
 
-`check --json` prints `{ "diagnostics": [...] }` with the entries described under [JSON output](#json-output). `check` accepts `--mode`, `--variant`, `--no-variant` and `--json`. It has no `--changed`: git stays outside Rogen, so whoever calls `check` passes the paths.
+`check --json` prints `{ "diagnostics": [...] }` with the entries described under [JSON output](#json-output). `check` accepts `--variant`, `--no-variant` and `--json`. It has no `--changed`: git stays outside Rogen, so whoever calls `check` passes the paths.
 
 ```bash
 git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
@@ -192,7 +192,7 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 ### `init [name]`
 
-Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua, your package manager and a test runner (Jest or TestEZ in `package.json`, `wally.toml` or `pesde.toml`), and writes what it found into the config. With a test runner, it adds `dev` and `prod` modes, and `prod` leaves the specs out (see [Modes](/docs/v2/core-concepts/modes)). This is the only time Rogen detects anything; builds just do what the config says.
+Writes a starting `<name>.rogen.json` (or `default.rogen.json`). It detects the language, Darklua, your package manager and a test runner (Jest or TestEZ in `package.json`, `wally.toml` or `pesde.toml`), and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
 In a terminal it asks a few questions, and Enter gives you the default each time. With an existing `default.rogen.json`, it offers to add a place, a config that extends default, or a separate config, and with other configs but no default, a separate config. Either way it also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, so `rogen init lobby -y` adds a place in `places/lobby`, beside the shared code: its code in `places/lobby/src`, and a template with its name and the first free `servePort` above 34872. See [Multi-Place](/docs/v2/setups/multi-place).
 
@@ -208,24 +208,23 @@ Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot
 
 ### `list [config…]`
 
-Lists every config in the folder, or the ones you name, with its root directories, its resolved routes (`Server -> ServerScriptService`, one per line, or `routes: same as default` when an earlier config in the list has the same), sync directory, project file, the server it names (`server: argon`, only when set), every variant it declares, on or off (`variants: debug on, mock off`), its conflict groups (`conflicts: halloween | christmas`), the mode it builds in and every mode it declares (`mode: dev`, `modes: dev, qa, prod`). Under `extends:`, `extended by:` names the configs that extend it directly; a config that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say); `rogen serve` serves a config only when nothing does. It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
+Lists every config in the folder, or the ones you name, with its root directories, its resolved routes (`Server -> ServerScriptService`, one per line, or `routes: same as default` when an earlier config in the list has the same), sync directory, project file, the server it names (`server: argon`, only when set), every variant it declares, on or off (`variants: debug on, mock off`), its conflict groups (`conflicts: halloween | christmas`). Under `extends:`, `extended by:` names the configs that extend it directly; a config that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say); `rogen serve` serves a config only when nothing does. It's the quickest answer to "what can this repo build?". With `--json`, each config is printed fully resolved, which is handy for following an `extends` chain.
 
 ### `help [name]`
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
 
-`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `modes`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
+`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `variants`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
 ## Options
 
-An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where`, `check` and `list` only take `--mode`, `--variant` and `--no-variant`.
+An override changes a config value for one run. Anything you want every time belongs in the file, and a different sync directory or template is a different config. `where`, `check` and `list` only take `--variant` and `--no-variant`.
 
 | Flag | Effect |
 |---|---|
 | `-o, --out-file <path>` | Overrides `outFile`. |
-| `--mode <name>` | Picks the mode every config that declares modes builds in. Strict: a config that declares modes without this one is an error. |
-| `--variant <name>` | Turns a variant on, beyond those the mode lists. Repeatable. |
-| `--no-variant <name>` | Turns a variant off, whatever turned it on. Applies last. Repeatable. |
+| `--variant <name>` | Turns a variant on. Repeatable. |
+| `--no-variant <name>` | Turns a variant off. Applies last. Repeatable. |
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
 | `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `watch`. On `init` it implies `--yes`. |
 | `--server <rojo\|argon>` | `serve` only: the sync server to start. Without it, the one the configs' `server` names, else the one the project pins, Rojo before Argon. |
@@ -235,15 +234,15 @@ An override changes a config value for one run. Anything you want every time bel
 | `-v, --verbose` | Prints debug output. |
 | `-q, --quiet` | Prints errors only, plus anything you explicitly asked for and anything that makes the run fail, such as the warnings `--deny-warnings` turns into errors. |
 
-`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do. `--mode` applies to every config that declares modes, ignores the ones that don't, and is an error if none declare any. Naming a mode with `--variant` is an error that points at `--mode`. `--variant` never turns another variant off: for two variants of a [conflict group](/docs/v2/core-concepts/variants#conflicts), turn the first off with `--no-variant`.
+`-o` changes a single config, so with several configs in the folder you have to name one. A variant flag applies to every config that declares the variant, and is only an error if none do. `--variant` never turns another variant off. Two variants of a [conflict group](/docs/v2/core-concepts/variants#conflicts) can't both be on, so pass only one of them.
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
 | `0` | The command did its job, warnings included (unless `build --deny-warnings` is given). `serve` exits 0 after Ctrl+C, when another `rogen serve` already serves every config, or when a server it adopted stops. |
-| `1` | The project is wrong: an invalid config, a `--mode` that a config with modes does not declare, build errors, a failed write, a cancelled `init`, any warning under `build --deny-warnings`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
-| `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`, words after `--` on a command other than `serve`, two served configs on one port or naming different servers), or a name that no config declares or that doesn't exist (a config, a variant, a mode or a help topic). |
+| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, any warning under `build --deny-warnings`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
+| `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`-o` with several configs, `--verbose` with `--quiet`, words after `--` on a command other than `serve`, two served configs on one port or naming different servers), or a name that no config declares or that doesn't exist (a config, a variant or a help topic). |
 
 When a server stops on its own, `serve` exits with the server's code. `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
 
@@ -253,16 +252,15 @@ Warnings exit 0 on a developer's machine, but some should stop a merge, such as 
 
 ```bash
 # compile first when a config has a syncDir, or output.nothingEmitted warns
-rogen build --mode prod --deny-warnings
+rogen build --deny-warnings
 # only if you commit project files: fail when they're out of date
 git diff --exit-code -- '*.project.json'
 ```
 
-- Every build checks every mode, so a `--mode prod` build also fails on `mode.missingInstance` for another mode. That's the point of the check.
 - Run the compiler or processor before `rogen build` when `syncDir` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync dir.
 - `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
-- A place file for a release comes from `rojo build` on a project file built in the mode you want, written elsewhere with `-o`; see [Place Files](/docs/v2/core-concepts/output#place-files).
+- A place file for a release comes from `rojo build` on a project file built with the variants you want, written elsewhere with `-o`; see [Place Files](/docs/v2/core-concepts/output#place-files).
 - Whether to [commit the project file](/docs/v2/core-concepts/output#commit-the-project-file) is yours to decide, and committing it is what the last line of the snippet needs.
 - No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
 
@@ -345,7 +343,7 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 }
 ```
 
-`outcome` is `wrote`, `unchanged` or `notWritten`. A config that declares modes also has `mode`, the one it built in. If any config fails, nothing is written. Each entry's `diagnostics` is complete on its own: a warning that several configs share appears under each of them, while the text output prints it once and `--deny-warnings` counts it once.
+`outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written. Each entry's `diagnostics` is complete on its own: a warning that several configs share appears under each of them, while the text output prints it once and `--deny-warnings` counts it once.
 
 A config that doesn't load is an entry like the others: `outFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. So is a config without routes, or one of two that write the same file: its `diagnostics` hold [`route.noRoutes`](/docs/v2/diagnostics#route-noroutes) or [`output.sameOutFile`](/docs/v2/diagnostics#output-sameoutfile). Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
 
@@ -382,7 +380,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `status` | Fields |
 |---|---|
 | `placed` | `instancePath` (an array of names), `require`, `route`, `routeMatch`, `variants`, and `hoisted: true` for a `^` name |
-| `pruned` | `variants`, the dormant ones, a mode's name among them when another mode is active |
+| `pruned` | `variants`, the dormant ones |
 | `replaced` | `by`, the file that took its instance path |
 | `displaced` | `node`, the template node's path |
 | `mounted` | `node`, the template node whose `$path` mounts it |
@@ -390,7 +388,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 | `unrouted`, `outside`, `ignored`, `missing`, `empty`, `skipped` | none |
 | `noFile` | `instance` instead of `source`: no file places an instance you asked about. `folders` lists where a new file for it goes, when files are placed beside it or a route and a root dir make one. `fixes` lists the renames, in the shape diagnostics use, after which a file would place it |
 
-A config that declares modes adds `mode`, the active one, after `config`. Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
+Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
 
 Every entry also has `diagnostics`, last: the diagnostics about its path (the ones whose `file` is the path, or whose `related` lists it), empty for a clean path. A grouped diagnostic is narrowed to the path: its `message` is the `related` message about this path and `fixes` holds only the renames of this path. A `noFile` entry has none.
 
@@ -419,7 +417,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 		"setup": ["Add \"include\": [\"src\"] to tsconfig.json, so its own build leaves out the place folders."],
 		"run": ["rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json", "rogen serve"],
 		"darklua": [],
-		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant."]
+		"edits": ["Declare variants under \"variants\" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on with --variant."]
 	}
 }
 ```
@@ -428,7 +426,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first), `extendedBy` (the configs listed that extend it directly), `served` (whether `rogen serve` starts a server for it, which it does when it loads and no listed config extends it) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants` (each declared variant and whether it is on), `conflicts`, `mode` (the active one), `modes` (every name declared, in order), `exclude`, `template` (the config's own, or its nearest parent's), `templates` (every template merged, the furthest first), `syncDir`, `outFile`, `server` (the sync server the config names, or `null`) and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. `variants` and `exclude` are those of the active mode with the command line applied. A broken config has only the seven. If any config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config in the order they were read. Every entry has `config`, `file`, `status` (`valid` or `broken`), `extends` (nearest parent first), `extendedBy` (the configs listed that extend it directly), `served` (whether `rogen serve` starts a server for it, which it does when it loads and no listed config extends it) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows, which is not the config's name), `rootDirs`, `commonRoot`, `routes`, `variants` (each declared variant and whether it is on), `conflicts`, `exclude`, `template` (the config's own, or its nearest parent's), `templates` (every template merged, the furthest first), `syncDir`, `outFile`, `server` (the sync server the config names, or `null`) and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. `variants` has the command line applied. A broken config has only the seven. If any config has errors, the exit code is 1.
 
 ## Output
 

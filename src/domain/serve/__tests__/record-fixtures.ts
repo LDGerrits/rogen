@@ -28,7 +28,6 @@ export const recordFile = (
 			session,
 			project,
 			projectFile,
-			mode: setting.mode,
 			variants: setting.variants,
 		}),
 	] as const;

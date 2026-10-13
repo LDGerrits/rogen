@@ -276,45 +276,13 @@ describe("list command", () => {
 	it("should show each variant's state once variant flags are applied", async () => {
 		await write("default.rogen.json", {
 			variants: ["mock", "fake"],
-			mode: "dev",
-			modes: { dev: { variants: ["mock"] } },
 		});
 
-		await run({ variant: ["fake"], "no-variant": ["mock"] });
+		await run({ variant: ["fake", "mock"], "no-variant": ["mock"] });
 
 		expect(under("default.rogen.json")).toEqual([
 			expect.stringContaining("variants: mock off, fake on"),
 		]);
-	});
-
-	it("should show the mode a config builds in and every mode it declares", async () => {
-		await write("default.rogen.json", {
-			variants: ["mock"],
-			mode: "dev",
-			modes: { dev: { variants: ["mock"] }, qa: {}, prod: {} },
-		});
-
-		await run({});
-
-		expect(under("default.rogen.json")).toEqual([
-			expect.stringContaining("variants: mock on"),
-		]);
-		expect(under("default.rogen.json")[0]).toContain(
-			["mode: dev", "modes: dev, qa, prod"].join("\n")
-		);
-	});
-
-	it("should show the mode a flag picks in place of the config's", async () => {
-		await write("default.rogen.json", {
-			mode: "dev",
-			modes: { dev: {}, prod: {} },
-		});
-
-		await run({ mode: "prod" });
-
-		expect(under("default.rogen.json")[0]).toContain(
-			["mode: prod", "modes: dev, prod"].join("\n")
-		);
 	});
 
 	it("should list the conflict groups a config declares", async () => {
@@ -330,16 +298,12 @@ describe("list command", () => {
 		);
 	});
 
-	it("should leave modes off a config that declares none", async () => {
+	it("should leave conflicts off a config that declares none", async () => {
 		await write("default.rogen.json", {});
 
 		await run({});
 
-		expect(under("default.rogen.json")).toEqual([
-			expect.not.stringContaining("modes:"),
-		]);
 		expect(under("default.rogen.json")[0]).not.toContain("conflicts:");
-		expect(under("default.rogen.json")[0]).not.toContain("mode:");
 	});
 
 	describe("with --json", () => {
@@ -418,8 +382,6 @@ describe("list command", () => {
 						},
 						variants: { mock: true },
 						conflicts: [],
-						mode: null,
-						modes: [],
 						exclude: ["/repo/**/*.spec.luau"],
 						template: null,
 						templates: [],
@@ -453,27 +415,6 @@ describe("list command", () => {
 			expect(entry("lobby-sync")).toMatchObject({
 				extendedBy: [],
 				served: true,
-			});
-		});
-
-		it("should print the active mode and every mode a config declares", async () => {
-			await write("default.rogen.json", {
-				variants: ["mock", "fake"],
-				conflicts: [["mock", "fake"]],
-				mode: "dev",
-				modes: {
-					dev: { variants: ["mock"] },
-					prod: { exclude: ["**/*.spec.luau"] },
-				},
-			});
-
-			await run({ json: true, mode: "prod" });
-
-			expect(entry("default")).toMatchObject({
-				mode: "prod",
-				modes: ["dev", "prod"],
-				variants: { mock: false },
-				exclude: ["/repo/**/*.spec.luau"],
 			});
 		});
 

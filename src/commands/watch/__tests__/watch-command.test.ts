@@ -59,8 +59,11 @@ describe("watch command", () => {
 		return harness.run("watch", { positionals: names, options });
 	};
 
-	const run = async (names: string[] = []) => {
-		void startWatch(names);
+	const run = async (
+		names: string[] = [],
+		options: CommandLine["options"] = {}
+	) => {
+		void startWatch(names, options);
 		await settle();
 	};
 
@@ -443,22 +446,18 @@ describe("watch command", () => {
 			beforeEach(async () => {
 				await write(
 					"/repo/default.rogen.json",
-					config({
-						variants: ["dev", "mock"],
-						mode: "qa",
-						modes: { qa: { variants: ["dev", "mock"] } },
-					})
+					config({ variants: ["dev", "mock"] })
 				);
 				await memFs.writeFile("/repo/src/Analytics.dev.luau", "");
 				await memFs.writeFile("/repo/src/Analytics.mock.luau", "");
 			});
 
 			it("should print the error under the result that failed", async () => {
-				await run();
+				await run([], { variant: ["dev", "mock"] });
 
 				const [block] = blocks();
 				expect(block.lines).toEqual([
-					"default.project.json · not written · mode qa",
+					"default.project.json · not written",
 					expect.stringMatching(
 						/^diagnosticError: .*Analytics\.dev\.luau - error: /
 					),
@@ -469,7 +468,7 @@ describe("watch command", () => {
 			});
 
 			it("should say the errors repeat when they were already printed", async () => {
-				await run();
+				await run([], { variant: ["dev", "mock"] });
 				logService.clear();
 
 				await memFs.writeFile("/repo/src/B.luau", "");
@@ -479,7 +478,7 @@ describe("watch command", () => {
 					{
 						title: "1 file changed",
 						lines: [
-							"default.project.json · not written · mode qa · same errors as before",
+							"default.project.json · not written · same errors as before",
 						],
 					},
 				]);

@@ -10,14 +10,5 @@
 	},
 	"variants": [
 		"mock"
-	],
-	"mode": "prod",
-	"modes": {
-		"dev": {
-			"variants": [
-				"mock"
-			]
-		},
-		"prod": {}
-	}
+	]
 }

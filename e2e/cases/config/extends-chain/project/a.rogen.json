@@ -7,13 +7,5 @@
 	},
 	"variants": [
 		"x"
-	],
-	"mode": "dev",
-	"modes": {
-		"dev": {
-			"variants": [
-				"x"
-			]
-		}
-	}
+	]
 }

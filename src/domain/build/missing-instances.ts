@@ -8,10 +8,10 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** An instance that two or more sets of variants or modes claim and no file is left to give. */
+/** An instance that two or more sets of variants claim and no file is left to give. */
 export interface MissingInstance {
 	readonly instance: string;
-	/** The variants and modes that give it, sorted. */
+	/** The variants that give it, sorted. */
 	readonly variants: readonly string[];
 }
 
@@ -21,58 +21,22 @@ const LISTED = 10;
 export class MissingInstances {
 	constructor(private readonly placement: Placement) {}
 
-	/** One warning per kind of gap: variants alone leave a file out, or a mode does. */
+	/** One warning when variants alone leave an instance without a file. */
 	diagnostics(): Diagnostic[] {
-		const { config } = this.placement;
 		const missing = this.find();
-		const ofMode = (gap: MissingInstance) =>
-			gap.variants.some((key) => config.keys.isMode(key));
+		if (missing.length === 0) return [];
+		const many = missing.length > 1;
 		return [
-			this.variantGaps(missing.filter((gap) => !ofMode(gap))),
-			this.modeGaps(missing.filter(ofMode)),
-		].flatMap((diagnostic) => diagnostic ?? []);
-	}
-
-	/** One warning for the gaps in a mode the build isn't in, told as the mode's since its switches decide them, except those of `known` instances, which another warning already reports. */
-	modeDiagnostics(known: ReadonlySet<string>): Diagnostic[] {
-		const missing = this.find().filter(
-			({ instance }) => !known.has(instance)
-		);
-		const gap = this.modeGaps(missing);
-		return gap ? [gap] : [];
-	}
-
-	private variantGaps(
-		missing: readonly MissingInstance[]
-	): Diagnostic | undefined {
-		if (missing.length === 0) return undefined;
-		const many = missing.length > 1;
-		return warningDiagnostic(
-			"variant.noneActive",
-			{ resource: this.placement.config.file },
-			[
-				`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
-				...MissingInstances.listed(missing),
-				`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
-			].join("\n")
-		);
-	}
-
-	private modeGaps(
-		missing: readonly MissingInstance[]
-	): Diagnostic | undefined {
-		if (missing.length === 0) return undefined;
-		const { config } = this.placement;
-		const many = missing.length > 1;
-		return warningDiagnostic(
-			"mode.missingInstance",
-			{ resource: config.file },
-			[
-				`in mode "${config.mode}", ${missing.length} ${many ? "instances are" : "instance is"} missing, because no file that gives ${many ? "them" : "it"} applies:`,
-				...MissingInstances.listed(missing),
-				`Add a file for "${config.mode}" to ${many ? "each" : "it"}, or a plain file.`,
-			].join("\n")
-		);
+			warningDiagnostic(
+				"variant.noneActive",
+				{ resource: this.placement.config.file },
+				[
+					`${missing.length} ${many ? "instances are" : "instance is"} missing, because none of the variants that give ${many ? "them" : "it"} is on:`,
+					...MissingInstances.listed(missing),
+					`Turn one of ${many ? "each one's" : "its"} variants on, or add a plain file.`,
+				].join("\n")
+			),
+		];
 	}
 
 	private static listed(missing: readonly MissingInstance[]): string[] {

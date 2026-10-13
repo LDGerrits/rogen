@@ -1,5 +1,0 @@
-{
-	"extends": "./default.rogen.json",
-	"mode": "prod",
-	"template": "template.project.json"
-}

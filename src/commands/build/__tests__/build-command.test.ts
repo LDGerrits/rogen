@@ -308,13 +308,12 @@ describe("build command", () => {
 	});
 
 	describe("beside a running serve", () => {
-		const settings = { modes: { dev: {}, prod: {} } };
-		const runWithServe = async (mode: string) => {
+		const runWithServe = async (mock: boolean) => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await fs.writeFile(abs("default.project.json"), "served\n");
 			await fs.writeFile(
 				...recordFile(34872, "repo", abs("default.project.json"), {
-					setting: { mode: "dev", variants: {} },
+					setting: { variants: { mock: true } },
 				})
 			);
 			const requests = new MockRequestService();
@@ -328,24 +327,24 @@ describe("build command", () => {
 				log: new NullLogService(),
 				requests,
 				config: new MockConfigService([
-					buildable({ ...settings, mode }),
+					buildable({ variants: { mock } }),
 				]),
 			}).run("build", { positionals: [], options: {} });
 		};
 
-		it("should refuse to change the project file it serves into another mode's, and say how to build to another file", async () => {
-			const result = await runWithServe("prod");
+		it("should refuse to change the project file it serves into another variants', and say how to build to another file", async () => {
+			const result = await runWithServe(false);
 
 			expect((result as ResultError<Error>).error.message).toContain(
-				"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built in mode dev, and this build is mode prod, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)"
+				"default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built with mock on, and this build has no variants on, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)"
 			);
 			expect(await fs.readFile(abs("default.project.json"))).toBe(
 				"served\n"
 			);
 		});
 
-		it("should build in the mode the serve runs", async () => {
-			const result = await runWithServe("dev");
+		it("should build with the variants the serve runs", async () => {
+			const result = await runWithServe(true);
 
 			expect(result.isOk()).toBe(true);
 			expect(await fs.readFile(abs("default.project.json"))).not.toBe(
@@ -527,31 +526,6 @@ describe("build command", () => {
 				],
 			});
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
-		});
-
-		it("should name the mode a config built in", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-
-			const { document } = await buildJson(
-				new MockConfigService([
-					buildable({ modes: { dev: {}, prod: {} }, mode: "prod" }),
-				])
-			);
-
-			expect(document.configs[0]).toMatchObject({
-				config: "default",
-				mode: "prod",
-			});
-		});
-
-		it("should leave the mode out for a config without modes", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-
-			const { document } = await buildJson(
-				new MockConfigService([buildable()])
-			);
-
-			expect(document.configs[0]).not.toHaveProperty("mode");
 		});
 
 		it("should say unchanged for a project file that was already up to date", async () => {
@@ -759,8 +733,6 @@ describe("build command", () => {
 				"dev",
 				"--no-variant",
 				"prod",
-				"--mode",
-				"release",
 				"--json"
 			).unwrap();
 
@@ -770,7 +742,6 @@ describe("build command", () => {
 				"out-file": "out.project.json",
 				variant: ["mock", "dev"],
 				"no-variant": ["prod"],
-				mode: "release",
 				json: true,
 			});
 		});
@@ -790,6 +761,10 @@ describe("build command", () => {
 				variant: ["mock"],
 				"no-variant": ["dev", "prod"],
 			});
+		});
+
+		it("should reject --mode, which modes took", () => {
+			expect(parse("build", "--mode", "prod").isErr()).toBe(true);
 		});
 
 		it("should have no short flags for the variant options", () => {

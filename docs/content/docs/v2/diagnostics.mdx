@@ -60,6 +60,16 @@ default.rogen.json:4:2 - error: unknown field "exlude". Did you mean "exclude"? 
 
 Rename it to the field suggested, or remove it. A config with v1 fields also gets [`legacy.config`](#legacy-config). See [Configuration](/docs/v2/configuration#fields).
 
+### `config.removedField` [#config-removedfield]
+
+Error. The config has a field that Rogen removed. The error is at the field, as for an unknown field, and the message says what to do instead.
+
+```
+default.rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a second config that extends this one, which can add "exclude", and turn variants on with --variant. (config.removedField)
+```
+
+Remove the field and do what the message says. For `modes` and `mode`, that is a second config that [extends](/docs/v2/configuration#extending-configs) this one and adds an `exclude`, built by its name as `rogen build <name>`, and `--variant` for the variants. See [Configuration](/docs/v2/configuration#fields).
+
 ### `config.unnamed` [#config-unnamed]
 
 Error. The file is called just `.rogen.json`. Every config needs a name, because commands select it by that name.
@@ -202,56 +212,6 @@ default.rogen.json:7:13 - error: "Server" and "server" differ only in the case o
 
 Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
 
-### `config.invalidModeName` [#config-invalidmodename]
-
-Error. A mode name has characters other than letters and digits, or starts with a digit.
-
-```
-default.rogen.json:8:3 - error: mode "my-mode" is invalid: use letters and digits only, starting with a letter. (config.invalidModeName)
-```
-
-Rename the mode, for example `myMode`. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
-
-### `config.modeClashesWithRoute` [#config-modeclasheswithroute]
-
-Error. A mode has the same name as a route key, so a folder or marker with that name could mean either.
-
-```
-default.rogen.json:8:3 - error: mode "server" has the same name as a route key; rename one of them. (config.modeClashesWithRoute)
-```
-
-Rename the mode or the route. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
-
-### `config.modeClashesWithVariant` [#config-modeclasheswithvariant]
-
-Error. A mode has the same name as a variant. Route keys, variants and modes share one namespace, since all three are written the same way in a file name.
-
-```
-default.rogen.json:8:3 - error: mode "prod" has the same name as a variant; a name is either a mode or a variant. Rename one of them. (config.modeClashesWithVariant)
-```
-
-Rename the mode or the variant. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
-
-### `config.undeclaredModeVariant` [#config-undeclaredmodevariant]
-
-Error. A mode turns on a variant that `variants` doesn't declare. A variant exists only where `variants` lists it, so a mode can't introduce one.
-
-```
-default.rogen.json:9:36 - error: mode "dev" turns on variant "mock", which is not declared under "variants". Declare it there. (config.undeclaredModeVariant)
-```
-
-Add the variant to `variants`. When the name is close to a declared one, the message suggests it instead. See [Declaring Modes](/docs/v2/core-concepts/modes#declaring-modes).
-
-### `config.unknownMode` [#config-unknownmode]
-
-Error. The config's `mode` field names a mode that no config in its `extends` chain declares.
-
-```
-default.rogen.json:3:11 - error: "mode" is "prod", but this config declares "dev" and "staging". Did you mean "dev"? (config.unknownMode)
-```
-
-Declare the mode under `modes`, or pick one that exists. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
-
 ### `config.unknownServer` [#config-unknownserver]
 
 Error. The config's `server` field names a sync server Rogen can't start. It takes `"rojo"` or `"argon"`, in lowercase.
@@ -262,45 +222,15 @@ default.rogen.json:4:12 - error: "server" is "argn", but Rogen serves with "rojo
 
 Fix the name, or remove the field to serve with the server the project pins. See [`serve`](/docs/v2/cli#serve).
 
-### `config.modeNotDeclared` [#config-modenotdeclared]
-
-Error. `--mode` names a mode that a selected config doesn't declare, although it declares others. `--mode` is strict, so a run for production can never quietly build one place in dev. A selected config that declares no modes at all ignores the flag.
-
-```
-lobby.rogen.json - error: --mode prod names no mode here: this config declares "dev" and "staging". (config.modeNotDeclared)
-```
-
-Declare the mode in that config, or build it on its own without `--mode`. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
-
-### `config.modeRequired` [#config-moderequired]
-
-Error. The config declares `modes` but nothing says which one to build in. The first declared mode is not a default, since JSON key order is not a contract.
-
-```
-default.rogen.json:4:11 - error: this config declares modes but not which one to build in. Set "mode" to "dev" and "prod", or pass --mode. (config.modeRequired)
-```
-
-Set `"mode"` in the config, or in a config it extends, or pass `--mode`. See [Picking the Mode](/docs/v2/core-concepts/modes#picking-the-mode).
-
 ### `config.variantsAreAList` [#config-variantsarealist]
 
-Error. `variants`, or the `variants` of a mode, is a map of on and off, as earlier betas wrote it. It is a list of names now: a variant is off unless the active mode lists it or `--variant` turns it on.
+Error. `variants` is a map of on and off, as earlier betas wrote it. It is a list of names now: a variant is off unless `--variant` turns it on.
 
 ```
-default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless the active mode lists it under "modes" or --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/modes. (config.variantsAreAList)
+default.rogen.json:4:14 - error: "variants" is a list of names now, such as ["mock", "debug"], not a map of on and off. A variant is off unless --variant turns it on. See https://rogen-playfully.vercel.app/docs/v2/core-concepts/variants#declaring-variants. (config.variantsAreAList)
 ```
 
-Write `"variants": ["mock"]`. A variant that was `true` belongs in the `variants` list of the modes that want it, or behind `--variant`; a config that only existed to turn one on becomes a mode. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
-
-### `config.conflictNamesMode` [#config-conflictnamesmode]
-
-Error. A group in `conflicts` names a mode. Modes are already exclusive, so a group names variants only.
-
-```
-default.rogen.json:5:16 - error: a conflict group names "prod", which is a mode; modes are already exclusive, so a group names variants only. (config.conflictNamesMode)
-```
-
-Remove the mode from the group. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
+Write `"variants": ["mock"]`, and turn a variant that was `true` on with `--variant`. See [Declaring Variants](/docs/v2/core-concepts/variants#declaring-variants).
 
 ### `config.conflictUndeclaredVariant` [#config-conflictundeclaredvariant]
 
@@ -312,25 +242,15 @@ default.rogen.json:5:39 - error: a conflict group names "christmass", which is n
 
 Declare the variant, or fix the name the message suggests. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
 
-### `config.modeConflict` [#config-modeconflict]
-
-Error. A mode turns on two variants of one conflict group, so every build in it would fail.
-
-```
-default.rogen.json:8:38 - error: mode "dev" turns on "halloween" and "christmas", which conflict; a mode may turn on one of them. (config.modeConflict)
-```
-
-Keep one of them in the mode. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
-
 ### `config.variantConflict` [#config-variantconflict]
 
-Error. Two variants of one conflict group are on, and `--variant` turned at least one on. `--variant` never turns another variant off, so the message names the swap when the mode has one on.
+Error. Two variants of one conflict group are on, because `--variant` turned both on.
 
 ```
-default.rogen.json:5:16 - error: variants "halloween" and "christmas" conflict, but both are on: halloween from mode "dev", christmas from --variant. --variant never turns a variant off. Use --no-variant halloween --variant christmas. (config.variantConflict)
+default.rogen.json:5:16 - error: variants "halloween" and "christmas" conflict, but both are on from --variant. Pass only one of them. (config.variantConflict)
 ```
 
-Turn the one you don't want off with `--no-variant`, or pass only one of them. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
+Pass only one of them. See [Conflicts](/docs/v2/core-concepts/variants#conflicts).
 
 ## Routes
 
@@ -475,7 +395,7 @@ default.rogen.json - warning: 1 instance is missing, because none of the variant
 Turn one of its variants on, or add a plain file.
 ```
 
-Turn one of the variants on, by listing it in a mode or with `--variant`, or add a plain file as the default. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+Turn one of the variants on with `--variant`, or add a plain file as the default. See [Precedence](/docs/v2/core-concepts/variants#precedence).
 
 ### `variant.activeClash` [#variant-activeclash]
 
@@ -485,7 +405,7 @@ Error. Two files with active variants become the same instance, and neither has 
 src/Analytics/Analytics.mock.luau - error: becomes "ReplicatedStorage/shared/Analytics/Analytics" with an active variant, and so does src/Analytics/Analytics.dev.luau. Only one can apply: turn a variant off or rename a file. (variant.activeClash)
 ```
 
-Turn one of the variants off, by leaving it out of the mode or with `--no-variant`, or rename one of the files. Variants that must never be on together belong in `conflicts`, which reports it before any file is placed. See [Precedence](/docs/v2/core-concepts/variants#precedence).
+Turn one of the variants off by not passing its `--variant` or by passing `--no-variant`, or rename one of the files. Variants that must never be on together belong in `conflicts`, which reports it before any file is placed. See [Precedence](/docs/v2/core-concepts/variants#precedence).
 
 ### `variant.landsElsewhere` [#variant-landselsewhere]
 
@@ -506,30 +426,6 @@ src/Save/Save.server.mock.luau - warning: ".server" isn't this file's last suffi
 ```
 
 Put the script suffix last: `Save.mock.server.luau`. See [Rojo's Script Suffixes](/docs/v2/core-concepts/routing#rojos-script-suffixes).
-
-## Modes
-
-### `mode.missingInstance` [#mode-missinginstance]
-
-Warning. A build in another mode of the config would leave an instance missing: two or more files give it by name for other modes, and none applies there. Every build checks every mode, since Rogen reads names only, so a dev build can warn about prod. The active mode's own gaps are reported the same way. One warning lists every missing instance.
-
-```
-default.rogen.json - warning: in mode "prod", 1 instance is missing, because no file that gives it applies: (mode.missingInstance)
-  ReplicatedStorage/shared/Net (dev, staging)
-Add a file for "prod" to it, or a plain file.
-```
-
-Add a file for the mode, such as `Net.prod.luau`, or a plain file as the default. A lone file for one mode (`DebugPanel.dev.luau`) is silent. See [Checking Every Mode](/docs/v2/core-concepts/modes#checking-every-mode).
-
-### `mode.clash` [#mode-clash]
-
-Warning. A build in another mode would fail: two files that apply there become the same instance, or another rule that is an error in that mode stops it. The message is the error that mode's build would print, followed by the mode.
-
-```
-src/Net/Net.prod.luau - warning: becomes "ReplicatedStorage/shared/Net/Net" with an active variant, and so does src/Net/prod/Net.luau. Only one can apply: turn a variant off or rename a file. (in mode "prod") (mode.clash)
-```
-
-Rename one of the files, as the message says. The warning is the preview: `rogen build --mode prod` would fail with the error. See [Checking Every Mode](/docs/v2/core-concepts/modes#checking-every-mode).
 
 ## Tree
 
@@ -857,13 +753,13 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.servedInOtherMode` [#output-servedinothermode]
 
-Error. A running `rogen serve` serves this project file as built in one mode (or with some variants on), and this build would write it in another, so Studio would get the new content without anyone asking. The file isn't written. A build that would write the same bytes isn't refused, and neither is one in the mode the serve runs. A serve's own rebuilds, as its config changes, are never refused. Rogen knows a serve from the moment its server answers, and a record left by a serve that has stopped or crashed doesn't count: Rogen asks the server before it refuses.
+Error. A running `rogen serve` serves this project file as built with some variants on, and this build would write it with others, so Studio would get the new content without anyone asking. The file isn't written. A build that would write the same bytes isn't refused, and neither is one with the variants the serve runs. A serve's own rebuilds, as its config changes, are never refused. Rogen knows a serve from the moment its server answers, and a record left by a serve that has stopped or crashed doesn't count: Rogen asks the server before it refuses.
 
 ```
-default.project.json - error: default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built in mode dev with mock on, and this build is mode prod, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)
+default.project.json - error: default.project.json is served by a running rogen serve (Rojo at 127.0.0.1:34872) as built with mock on, and this build has no variants on, so writing it would change what Studio gets. Build to another file, as 'rogen build default -o <file>', or stop that serve. (output.servedInOtherMode)
 ```
 
-Build to another file with `-o`, as in `rogen build default --mode prod -o prod.project.json`, or stop the serve. This also holds for `watch`. A server you started yourself, which no `rogen serve` recorded, can't be told apart, so it isn't protected. See [Building While Watching](/docs/v2/core-concepts/output#building-while-watching).
+Build to another file with `-o`, as in `rogen build default --variant mock -o mock.project.json`, or stop the serve. This also holds for `watch`. A server you started yourself, which no `rogen serve` recorded, can't be told apart, so it isn't protected. See [Building While Watching](/docs/v2/core-concepts/output#building-while-watching).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
@@ -991,13 +887,13 @@ Stop what holds the port, give the config its own `servePort` in its template, o
 
 ### `serve.otherMode` [#serve-othermode]
 
-Error. Another `rogen serve` already serves this config's project file, built in a different mode or with different variants on than this serve builds. Both would write the same file, so this serve doesn't take it over, and doesn't count it as served either.
+Error. Another `rogen serve` already serves this config's project file, built with different variants on than this serve builds. Both would write the same file, so this serve doesn't take it over, and doesn't count it as served either.
 
 ```
-default.rogen.json - error: default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built in mode dev with mock on, and this serve builds mode prod. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'. (serve.otherMode)
+default.rogen.json - error: default is already served by another rogen serve with Rojo 7.7.1 at 127.0.0.1:34872, built with mock on, and this serve builds with no variants on. Both would write default.project.json. Stop that serve, or serve default on its own from another project file and port, as 'rogen serve default -o <file> -- --port <port>'. (serve.otherMode)
 ```
 
-Serve the mode that serve runs, stop it, or serve this mode from its own project file and port. See [CLI](/docs/v2/cli#serve).
+Stop that serve, or serve this config with its variants from its own project file and port. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.otherServer` [#serve-otherserver]
 
@@ -1023,7 +919,7 @@ Read what the server said just above it, which usually says why. When it said no
 
 ### `legacy.config` [#legacy-config]
 
-Warning. A config that failed to load has fields from Rogen 1, such as `source`, `aliases` or modes. v2 doesn't read v1 configs.
+Warning. A config that failed to load has fields from Rogen 1, such as `source`, `aliases` or `modes`. v2 doesn't read v1 configs.
 
 ```
 default.rogen.json - warning: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)

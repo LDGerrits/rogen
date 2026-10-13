@@ -117,7 +117,7 @@ describe("init command", () => {
 					],
 					darklua: [],
 					edits: [
-						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on in a mode or with --variant.',
+						'Declare variants under "variants" in lobby.rogen.json to swap in files like Analytics.mock.ts, and turn them on with --variant.',
 					],
 				},
 			});
@@ -218,7 +218,7 @@ describe("init command", () => {
 				"info: Run:",
 				"info:   rogen serve",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on in a mode or with --variant.',
+				'info: Declare variants under "variants" in default.rogen.json to swap in files like Analytics.mock.luau, and turn them on with --variant.',
 				"outro: Wrote 2 files.",
 			]);
 		});
@@ -724,7 +724,7 @@ describe("init command", () => {
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve prod",
-				'info: Add "exclude" or "modes", or pin a "mode", in prod.rogen.json.',
+				'info: Add "exclude" in prod.rogen.json for what this config leaves out.',
 				"outro: Wrote 1 file.",
 			]);
 		});

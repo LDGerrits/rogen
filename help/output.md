@@ -26,4 +26,4 @@ Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `
 
 `rogen check <paths>` is `where`'s verdict: it prints only the diagnostics about the paths (a clean path prints nothing), writes nothing and exits 1 on any; with no path it reports the whole project, the sync dir's warnings included.
 
-`rogen build` is safe beside a running `rogen watch` or `rogen serve` in the same mode and variants: it writes only bytes that changed. In another mode it would change what Studio gets from a running `serve`, so it is refused (`output.servedInOtherMode`): build to another file, as `rogen build --mode prod -o prod.project.json`.
+`rogen build` is safe beside a running `rogen watch` or `rogen serve` with the same variants: it writes only bytes that changed. With other variants it would change what Studio gets from a running `serve`, so it is refused (`output.servedInOtherMode`): build to another file, as `rogen build --variant mock -o mock.project.json`.

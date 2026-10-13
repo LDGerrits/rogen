@@ -2,7 +2,7 @@ $ rogen build c
 exit 0
 stdout:
   rogen build · c
-  c.project.json · wrote · mode dev
+  c.project.json · wrote
   Built 1 config.
 
 written:
@@ -12,7 +12,6 @@ $ rojo sourcemap c.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      F: ModuleScript  <- one/F.x.luau
-      G: ModuleScript  <- one/G.y.luau
+      F: ModuleScript  <- one/F.luau
   ServerStorage: ServerStorage
     Save: Script  <- one/Save.server.luau

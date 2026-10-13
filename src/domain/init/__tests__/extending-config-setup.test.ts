@@ -49,7 +49,7 @@ describe("ExtendingConfigSetup", () => {
 			run: ["rogen serve prod"],
 			darklua: [],
 			edits: [
-				'Add "exclude" or "modes", or pin a "mode", in prod.rogen.json.',
+				'Add "exclude" in prod.rogen.json for what this config leaves out.',
 			],
 		});
 	});

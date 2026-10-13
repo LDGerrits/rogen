@@ -31,7 +31,7 @@ The **template** is a Rojo project file that Rogen merges its tree into. It hold
 
 - If the template and the generated tree define the same instance, the template wins and Rogen warns. A `$path` below a service, like a package mount, owns that whole folder.
 - A `$path` that points inside a root directory hands that path to Rojo. Rogen skips it entirely and `rogen where` reports it as `mounted`, which is how you sync a vendored library as-is. Mounting a root directory itself or a folder above one is an error. A folder inside an init folder can be mounted: Rojo reads it where the template puts it, and the init folder leaves it out.
-- An `exclude` glob that matches a `$path` drops the node, so a [mode](/docs/v2/core-concepts/modes#template-nodes) can leave a mount such as `DevPackages` out of prod.
+- An `exclude` glob that matches a `$path` drops the node, so a config that extends the first and adds that glob to `exclude` can leave a mount such as `DevPackages` out of a release build.
 - A child config's `template` merges over its parent's, so a place's template holds only what differs, such as `{ "name": "Lobby", "servePort": 34873 }`. See [Merging Templates](#merging-templates).
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
@@ -124,14 +124,14 @@ To write the same tree with paths into a different folder, add a config that `ex
 Rogen writes the project file, not the place file. To get an `.rbxl` or `.rbxm` for publishing or a test run, build the project file with Rojo:
 
 ```bash
-rogen build --mode prod -o prod.project.json
-rojo build prod.project.json -o prod.rbxl
+rogen build --variant mock -o mock.project.json
+rojo build mock.project.json -o mock.rbxl
 ```
 
-`-o` writes the project file somewhere else, so the one a running `rogen serve` serves stays as it is. It changes a single config, so with several configs name one that no other config extends: naming a config also builds the configs that extend it, each into its own project file and in the same mode. Rogen refuses to change a file a running `serve` serves in another mode, so the build would fail on those. `rogen list` shows what extends what. In a repo with one config, `rogen build --mode prod -o prod.project.json` is the whole command; with places, build the place (`rogen build lobby --mode prod -o lobby.prod.project.json`). With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first and build the config that has the `syncDir`, so the place holds the compiled code.
+`-o` writes the project file somewhere else, so the one a running `rogen serve` serves stays as it is. It changes a single config, so with several configs name one that no other config extends: naming a config also builds the configs that extend it, each into its own project file and with the same variants. Rogen refuses to change a file a running `serve` serves with other variants, so the build would fail on those. `rogen list` shows what extends what. In a repo with one config, `rogen build --variant mock -o mock.project.json` is the whole command; with places, build the place (`rogen build lobby --variant mock -o lobby.mock.project.json`). With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first and build the config that has the `syncDir`, so the place holds the compiled code.
 
 Rojo, and not Rogen, runs the second command, and `rogen build` needs no Rojo to run. Which Rojo version builds the file is yours to pin in `rokit.toml`.
 
 ## Building While Watching
 
-It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file in the same mode and variants, so you can always run a build after moving files and trust the result. A build in another mode would change what a running `serve` sends to Studio, so Rogen refuses it ([`output.servedInOtherMode`](/docs/v2/diagnostics#output-servedinothermode)): build to another file with `-o`, as in `rogen build --mode prod -o prod.project.json`.
+It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file with the same variants, so you can always run a build after moving files and trust the result. A build with other variants would change what a running `serve` sends to Studio, so Rogen refuses it ([`output.servedInOtherMode`](/docs/v2/diagnostics#output-servedinothermode)): build to another file with `-o`, as in `rogen build --variant mock -o mock.project.json`.

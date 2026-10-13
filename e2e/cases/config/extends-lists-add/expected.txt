@@ -29,8 +29,6 @@ stdout:
         },
         "variants": {},
         "conflicts": [],
-        "mode": null,
-        "modes": [],
         "exclude": [
           "<dir>/**/*.story.luau",
           "<dir>/**/*.spec.luau",

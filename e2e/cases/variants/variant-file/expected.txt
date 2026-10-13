@@ -1,12 +1,16 @@
-$ rogen build default mocked
+$ rogen build
 exit 0
 stdout:
-  rogen build · default, mocked
-  default
-    default.project.json · wrote · mode prod
-  mocked
-    mocked.project.json · wrote · mode dev
-  Built 2 configs.
+  rogen build · default
+  default.project.json · wrote
+  Built 1 config.
+
+$ rogen build -o mocked.project.json --variant mock
+exit 0
+stdout:
+  rogen build · default
+  mocked.project.json · wrote
+  Built 1 config.
 
 written:
   default.project.json

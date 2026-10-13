@@ -50,8 +50,6 @@ export interface ConfigDetails {
 	readonly routes: Readonly<Record<string, string>>;
 	readonly variants: Readonly<Record<string, boolean>>;
 	readonly conflicts: readonly (readonly string[])[];
-	readonly mode: string | null;
-	readonly modes: readonly string[];
 	readonly exclude: readonly string[];
 	readonly template: string | null;
 	readonly templates: readonly string[];
@@ -170,12 +168,6 @@ export class ListLog {
 								`conflicts: ${config.conflicts.map((group) => group.join(" | ")).join(", ")}`,
 							]
 						: []),
-					...(config.mode !== undefined
-						? [
-								`mode: ${config.mode}`,
-								`modes: ${config.modes.join(", ")}`,
-							]
-						: []),
 				].join("\n")
 			);
 		}
@@ -223,8 +215,6 @@ function configDetails(
 		),
 		variants: config.variants,
 		conflicts: config.conflicts,
-		mode: config.mode ?? null,
-		modes: config.modes,
 		exclude: config.exclude.map(unescapedGlob),
 		template: config.template ? toNative(config.template.file) : null,
 		templates: config.template

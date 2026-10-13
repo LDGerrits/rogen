@@ -1,0 +1,9 @@
+{
+	"rootDirs": ["src"],
+	"routes": { "*": "ReplicatedStorage/Shared" },
+	"mode": "dev",
+	"modes": {
+		"dev": { "variants": ["mock"] },
+		"prod": { "exclude": ["**/*.spec.luau"] }
+	}
+}

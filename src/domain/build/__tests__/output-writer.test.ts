@@ -153,7 +153,7 @@ describe("OutputWriter", () => {
 		const pending: PendingWrite = {
 			file: outFile,
 			label: "default",
-			setting: { mode: "prod", variants: { mock: false } },
+			setting: { variants: { mock: false } },
 		};
 		const refusal: Diagnostic = errorDiagnostic(
 			"output.servedInOtherMode",

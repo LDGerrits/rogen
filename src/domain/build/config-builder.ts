@@ -1,8 +1,5 @@
 import { Result, err, ok } from "../../base/result.js";
-import {
-	Diagnostic,
-	warningDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -11,7 +8,6 @@ import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
-import { MissingInstances } from "./missing-instances.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
 import { SyncDirCheck } from "./sync-dir-check.js";
@@ -109,35 +105,7 @@ export class ConfigBuilder {
 			warnings: [
 				...meta.warnings,
 				...new BuildValidator(assembly).validate(),
-				...this.modeWarnings(config, placement.value),
 			],
-		});
-	}
-
-	/** Places `config` in every mode it declares but isn't built in, and warns of what a build there would lose. Rogen reads names only, so every build can check every mode. `active` is where the build placed `config`, whose own gaps are already reported. */
-	private modeWarnings(
-		config: ResolvedConfig,
-		active: Placement
-	): Diagnostic[] {
-		const others = config.modes.filter((mode) => mode !== config.mode);
-		if (others.length === 0) return [];
-		const known = new Set(
-			new MissingInstances(active).find().map(({ instance }) => instance)
-		);
-		return others.flatMap((mode) => {
-			const view = config.inMode(mode);
-			if (!view) return [];
-			const placed = this.place(view);
-			if (placed.isErr()) {
-				return placed.error.map(({ resource, position, message }) =>
-					warningDiagnostic(
-						"mode.clash",
-						{ resource, position },
-						`${message} (in mode "${mode}")`
-					)
-				);
-			}
-			return new MissingInstances(placed.value).modeDiagnostics(known);
 		});
 	}
 

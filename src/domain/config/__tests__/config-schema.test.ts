@@ -6,6 +6,7 @@ import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
 import {
 	configDefaults,
 	configMergePolicies,
+	configRemovedFieldAdvice,
 	configSchema,
 	configWrongTypeAdvice,
 } from "../config-schema.js";
@@ -21,8 +22,6 @@ describe("domain/config/config-schema", () => {
 			"routes",
 			"variants",
 			"conflicts",
-			"modes",
-			"mode",
 			"exclude",
 			"template",
 			"syncDir",
@@ -98,11 +97,6 @@ describe("domain/config/config-schema", () => {
 				expect(schema.properties!.exclude.default).toEqual([]);
 			});
 
-			it("has no static default for modes or mode", () => {
-				expect(schema.properties!.modes.default).toBeUndefined();
-				expect(schema.properties!.mode.default).toBeUndefined();
-			});
-
 			it("has no static default for template, syncDir or outFile", () => {
 				expect(schema.properties!.template.default).toBeUndefined();
 				expect(schema.properties!.syncDir.default).toBeUndefined();
@@ -124,7 +118,6 @@ describe("domain/config/config-schema", () => {
 		const routeKeys = configSchema.properties!.routes.propertyNames;
 		const target = configSchema.properties!.routes
 			.additionalProperties as JSONSchema;
-		const modeBody = configSchema.properties!.modes;
 
 		it.each(["server", "Server", "Shared2", "*"])(
 			"accepts the route key %s",
@@ -176,34 +169,19 @@ describe("domain/config/config-schema", () => {
 				expect(matches(target.pattern, example)).toBe(true);
 		});
 
-		it("holds variant, mode and mode-name names to letters and digits", () => {
-			const names = [
-				configSchema.properties!.variants.items?.pattern,
-				modeBody.propertyNames?.pattern,
-				configSchema.properties!.mode.pattern,
-			];
-			for (const pattern of names) {
-				expect(matches(pattern, "myMode2")).toBe(true);
-				expect(matches(pattern, "my-mode")).toBe(false);
-				expect(matches(pattern, "2mode")).toBe(false);
-				expect(matches(pattern, "")).toBe(false);
-			}
+		it("holds variant names to letters and digits", () => {
+			const pattern = configSchema.properties!.variants.items?.pattern;
+
+			expect(matches(pattern, "myVariant2")).toBe(true);
+			expect(matches(pattern, "my-variant")).toBe(false);
+			expect(matches(pattern, "2variant")).toBe(false);
+			expect(matches(pattern, "")).toBe(false);
 		});
 	});
 
 	describe("variants", () => {
 		it("are a list of names", () => {
 			expect(configSchema.properties!.variants).toMatchObject({
-				type: "array",
-				items: { type: "string" },
-			});
-		});
-
-		it("are turned on by a mode through a list of names", () => {
-			const body = configSchema.properties!.modes
-				.additionalProperties as JSONSchema;
-
-			expect(body.properties!.variants).toMatchObject({
 				type: "array",
 				items: { type: "string" },
 			});
@@ -232,15 +210,6 @@ describe("domain/config/config-schema", () => {
 			});
 		});
 
-		it("says the same of the variants of a mode", () => {
-			expect(
-				configWrongTypeAdvice("modes.dev.variants", object, location)
-			).toMatchObject({
-				code: "config.variantsAreAList",
-				message: expect.stringContaining('"modes.dev.variants"'),
-			});
-		});
-
 		it("leaves any other wrong value to the generic message", () => {
 			expect(
 				configWrongTypeAdvice("routes", object, location)
@@ -255,16 +224,30 @@ describe("domain/config/config-schema", () => {
 		});
 	});
 
-	describe("mode bodies", () => {
-		it("hold only variants and exclude", () => {
-			const body = configSchema.properties!.modes
-				.additionalProperties as JSONSchema;
+	describe("removed field advice", () => {
+		const location = { resource: "/repo/default.rogen.json" };
 
-			expect(body.additionalProperties).toBe(false);
-			expect(Object.keys(body.properties!).sort()).toEqual([
-				"exclude",
-				"variants",
-			]);
+		it.each(["modes", "mode"])(
+			"says %s was removed and what to do instead",
+			(field) => {
+				expect(configRemovedFieldAdvice(field, location)).toMatchObject(
+					{
+						code: "config.removedField",
+						message: expect.stringContaining(
+							`"${field}" was removed.`
+						),
+					}
+				);
+			}
+		);
+
+		it("leaves any other field to the unknown field message", () => {
+			expect(
+				configRemovedFieldAdvice("exlude", location)
+			).toBeUndefined();
+			expect(
+				configRemovedFieldAdvice("toString", location)
+			).toBeUndefined();
 		});
 	});
 
@@ -282,10 +265,8 @@ describe("domain/config/config-schema", () => {
 				routes: "merge",
 				variants: "append",
 				conflicts: "append",
-				modes: { each: { variants: "append", exclude: "append" } },
 				template: "replace",
 				syncDir: "replace",
-				mode: "replace",
 			});
 		});
 	});

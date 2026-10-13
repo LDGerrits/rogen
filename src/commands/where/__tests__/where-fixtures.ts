@@ -20,7 +20,7 @@ export const answersOf = (
 	configs: Configs,
 	everyFile = false,
 	errors: Diagnostic[] = [],
-	modes: Parameters<typeof mockConfig>[0] = {},
+	spec: Parameters<typeof mockConfig>[0] = {},
 	asked: Asked[] = []
 ) =>
 	new WhereAnswers({
@@ -31,7 +31,7 @@ export const answersOf = (
 			([label, files, instances = [], diagnostics = []]) => ({
 				config: mockConfig({
 					file: `/repo/${label}.rogen.json`,
-					...modes,
+					...spec,
 				}),
 				files,
 				instances,

@@ -19,7 +19,6 @@ interface VariantEntry {
 /** What every answer about a path carries, whichever way it lands. */
 interface FileEntryBase {
 	readonly config: string;
-	readonly mode?: string;
 	readonly source: string;
 	readonly exists: boolean;
 	readonly diagnostics: readonly DiagnosticJson[];
@@ -151,7 +150,6 @@ function entryOf(answer: Answer): WhereEntry {
 		const { status, ...fields } = fieldsOf(location);
 		return {
 			config: answer.label,
-			...(answer.mode.active && { mode: answer.mode.active }),
 			source: toNative(location.source),
 			status,
 			exists: location.exists,

@@ -367,22 +367,18 @@ describeWithRojo("end to end serve", () => {
 		}, 60_000);
 	});
 
-	describe("in another mode than the serve runs", () => {
+	describe("with other variants than the serve runs", () => {
 		const recordPath = () =>
 			path.join(os.tmpdir(), "rogen-serve", `${serve.port}.json`);
-		const servedInDev = async () => {
+		const servedMocked = async () => {
 			writeProjectFile(
 				serve.dir,
 				"default.rogen.json",
-				config({
-					variants: ["mock"],
-					modes: { dev: { variants: ["mock"] }, prod: {} },
-					mode: "dev",
-				})
+				config({ variants: ["mock"] })
 			);
 			writeProjectFile(serve.dir, "src/Net/Analytics.luau");
 			writeProjectFile(serve.dir, "src/Net/Analytics.mock.luau");
-			const serving = serve.start();
+			const serving = serve.start(["--variant", "mock"]);
 			await eventually(() => {
 				expect(fs.existsSync(recordPath())).toBe(true);
 			}, 20_000);
@@ -393,16 +389,14 @@ describeWithRojo("end to end serve", () => {
 				path.join(serve.dir, "default.project.json"),
 				"utf8"
 			);
+		const ignored = () =>
+			(JSON.parse(projectFile()).globIgnorePaths ?? []) as string[];
 
 		it("should refuse a build that would change what Studio gets, and build to another file instead", async () => {
-			await servedInDev();
-			expect(projectFile()).toContain("Analytics.mock.luau");
+			await servedMocked();
+			expect(ignored()).toEqual([]);
 
-			const [build, buildArgs] = invocation(serve.cli, [
-				"build",
-				"--mode",
-				"prod",
-			]);
+			const [build, buildArgs] = invocation(serve.cli, ["build"]);
 			const refused = spawnSync(build, buildArgs, {
 				cwd: serve.dir,
 				encoding: "utf8",
@@ -410,47 +404,23 @@ describeWithRojo("end to end serve", () => {
 
 			expect(refused.status).toBe(1);
 			expect(refused.stderr).toContain("output.servedInOtherMode");
-			expect(projectFile()).toContain("Analytics.mock.luau");
+			expect(ignored()).toEqual([]);
 
 			const [other, otherArgs] = invocation(serve.cli, [
 				"build",
-				"--mode",
-				"prod",
 				"-o",
-				"prod.project.json",
+				"plain.project.json",
 			]);
 			expect(spawnSync(other, otherArgs, { cwd: serve.dir }).status).toBe(
 				0
 			);
-			expect(projectFile()).toContain("Analytics.mock.luau");
-		}, 60_000);
-
-		it("should rebuild its own project file when its own config changes mode", async () => {
-			const serving = await servedInDev();
-			const ignored = () =>
-				(JSON.parse(projectFile()).globIgnorePaths ?? []) as string[];
 			expect(ignored()).toEqual([]);
-
-			writeProjectFile(
-				serve.dir,
-				"default.rogen.json",
-				config({
-					variants: ["mock"],
-					modes: { dev: { variants: ["mock"] }, prod: {} },
-					mode: "prod",
-				})
-			);
-
-			await eventually(() => {
-				expect(ignored()).toEqual(["src/Net/Analytics.mock.luau"]);
-			}, 20_000);
-			expect(serving.output).not.toContain("output.servedInOtherMode");
 		}, 60_000);
 
-		it("should not call a serve of another mode already served", async () => {
-			await servedInDev();
+		it("should not call a serve with other variants already served", async () => {
+			await servedMocked();
 
-			const second = serve.start(["--mode", "prod"]);
+			const second = serve.start();
 
 			expect(await second.exited).toBe(1);
 			expect(second.output).toContain("serve.otherMode");

@@ -21,7 +21,11 @@ import {
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { RojoProject } from "../rojo/rojo-project.js";
-import { configSchema, configWrongTypeAdvice } from "./config-schema.js";
+import {
+	configRemovedFieldAdvice,
+	configSchema,
+	configWrongTypeAdvice,
+} from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import {
 	CONFIG_SUFFIX,
@@ -42,8 +46,6 @@ export interface LoadedConfig {
 	readonly config?: Config;
 	/** The CLI variants this config doesn't declare; `undefined` when its chain could not be read. */
 	readonly skippedVariants?: readonly string[];
-	/** The modes its chain declares; `undefined` when the chain could not be read. */
-	readonly modes?: readonly string[];
 	readonly resolved: Result<ResolvedConfig, Diagnostic[]>;
 }
 
@@ -66,7 +68,8 @@ export class ConfigLoader {
 		this.reader = new ConfigFileReader(
 			fileSystemService,
 			configSchema,
-			configWrongTypeAdvice
+			configWrongTypeAdvice,
+			configRemovedFieldAdvice
 		);
 	}
 
@@ -113,7 +116,6 @@ export class ConfigLoader {
 			chain: chain.files,
 			files: [...chain.files, ...templates.map(({ file }) => file)],
 			skippedVariants: layered.skippedVariants,
-			modes: layered.modes,
 		};
 
 		let template: ResolvedTemplate | undefined;

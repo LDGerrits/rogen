@@ -1,6 +1,5 @@
 import path from "path";
 import { escapedGlobPrefix } from "../../base/glob.js";
-import { isObject } from "../../base/objects.js";
 import { toPosix } from "../../base/path.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
 import {
@@ -17,28 +16,17 @@ import {
 	configPathForms,
 } from "./config-schema.js";
 import { fieldOf } from "./config.js";
-import { VariantSwitch, switchVariants } from "./variant-switch.js";
 
 /** Per-invocation values that sit above every layer of a config's chain. */
 export interface ConfigOverrides {
 	/** Resolved against the working directory. */
 	readonly outFile?: string;
-	/** The mode to build in, in place of the config's own choice. */
-	readonly mode?: string;
 	/** Variant name to whether it is on. */
 	readonly variants: Readonly<Record<string, boolean>>;
 }
 
-/** The mode a config builds in, and how it was chosen. */
-export interface ModeChoice {
-	/** What was asked for or written; `undefined` when nothing names one. */
-	readonly name: string | undefined;
-	readonly source: "cli" | "config" | undefined;
-}
-
-/** A config's chain merged with the defaults, its active mode and the command line, with each value traceable to the file that set it. */
+/** A config's chain merged with the defaults and the command line, with each value traceable to the file that set it. */
 export class LayeredConfig {
-	/** The config in the active mode. */
 	readonly config: Config;
 	/** The chain from its root to the leaf, matching the layers of `config`. */
 	readonly files: readonly ConfigFile[];
@@ -46,18 +34,9 @@ export class LayeredConfig {
 	readonly skippedVariants: readonly string[];
 	/** Every variant the chain declares, in order. */
 	readonly variants: readonly string[];
-	/** Each declared variant's switch in the active mode, with the command line applied. */
-	readonly switches: ReadonlyMap<string, VariantSwitch>;
-	/** Every mode the chain declares, in declaration order. */
-	readonly modes: readonly string[];
-	readonly modeChoice: ModeChoice;
-	/** The active mode, when the choice names one the chain declares. */
-	readonly mode: string | undefined;
-	private readonly chain: Config;
-	private readonly cliVariants: Readonly<Record<string, boolean>>;
-	private readonly defaults: ConfigModel;
+	/** Each declared variant to whether the command line turns it on. */
+	readonly switches: Readonly<Record<string, boolean>>;
 	private readonly layers: readonly ConfigModel[];
-	private readonly cli: ConfigModel;
 
 	/** `chain` is the leaf first, then each parent. */
 	constructor(
@@ -71,81 +50,38 @@ export class LayeredConfig {
 			LayeredConfig.layerModel(file, file === leaf)
 		);
 
-		this.defaults = new ConfigModel(
-			LayeredConfig.absolutize(
-				configDefaults.contents,
-				path.dirname(leaf.file)
-			)
-		);
-		this.cli = LayeredConfig.cliModel(overrides, cwd);
-		this.chain = new Config(
-			this.defaults,
+		this.config = new Config(
+			new ConfigModel(
+				LayeredConfig.absolutize(
+					configDefaults.contents,
+					path.dirname(leaf.file)
+				)
+			),
 			this.layers,
-			new ConfigModel(),
+			LayeredConfig.cliModel(overrides, cwd),
 			configMergePolicies
 		);
 
 		this.variants = [
 			...new Set(
-				this.chain.entries<string>("variants").map(({ value }) => value)
+				this.config
+					.entries<string>("variants")
+					.map(({ value }) => value)
 			),
 		];
 		const declared = new Set(this.variants);
 		const named = Object.keys(overrides.variants);
 		this.skippedVariants = named.filter((name) => !declared.has(name));
-		this.cliVariants = Object.fromEntries(
-			named
-				.filter((name) => declared.has(name))
-				.map((name) => [name, overrides.variants[name]])
+		this.switches = Object.fromEntries(
+			this.variants.map((variant) => [
+				variant,
+				overrides.variants[variant] === true,
+			])
 		);
-
-		this.modes = Object.keys(fieldOf(this.chain, "modes") ?? {});
-		this.modeChoice = LayeredConfig.choiceOf(
-			overrides.mode,
-			fieldOf(this.chain, "mode")
-		);
-		this.mode =
-			this.modeChoice.name !== undefined &&
-			this.modes.includes(this.modeChoice.name)
-				? this.modeChoice.name
-				: undefined;
-		this.switches = this.switchesIn(this.mode, this.cliVariants);
-		this.config = this.configIn(this.mode);
 	}
 
 	get leaf(): ConfigFile {
 		return this.files[this.files.length - 1];
-	}
-
-	/** The variants `mode` turns on, as the chain writes them, in the order written. */
-	modeVariants(mode: string): string[] {
-		return this.chain
-			.entries<string>(["modes", mode, "variants"])
-			.map(({ value }) => value);
-	}
-
-	/** Each declared variant's switch in `mode`, with `cli` the command line's say. */
-	switchesIn(
-		mode: string | undefined,
-		cli: Readonly<Record<string, boolean>> = {}
-	): ReadonlyMap<string, VariantSwitch> {
-		return switchVariants(
-			this.variants,
-			mode === undefined ? [] : this.modeVariants(mode),
-			cli
-		);
-	}
-
-	/** The config with `mode` on top of its chain; the chain alone when `mode` is `undefined`. */
-	configIn(mode: string | undefined): Config {
-		return new Config(
-			this.defaults,
-			mode === undefined
-				? this.layers
-				: [...this.layers, this.modeLayer(mode)],
-			this.cli,
-			configMergePolicies
-		);
 	}
 
 	/** Every template the chain names, the furthest first, each once at the nearest layer that names it, with where that layer did. */
@@ -164,62 +100,19 @@ export class LayeredConfig {
 	locate(...section: ConfigSection[]): DiagnosticLocation {
 		const path = LayeredConfig.pathOf(section);
 		const { source } = this.config.inspect(path);
-		if (source?.tier !== "layer") return { resource: this.leaf.file };
-		if (this.inModeLayer(source.index))
-			return this.locateMode(this.mode, ...section);
-		return this.locateIn(this.config, path);
-	}
-
-	/** Where the chain declared the mode `name`, or the field of it that `section` names. */
-	locateMode(name: string, ...section: ConfigSection[]): DiagnosticLocation {
-		return this.locateIn(this.chain, [
-			"modes",
-			name,
-			...LayeredConfig.pathOf(section),
-		]);
+		return source?.tier === "layer"
+			? this.positionIn(source.index, path)
+			: { resource: this.leaf.file };
 	}
 
 	/** Where the config wrote the entry at `index` of the merged list `field`, or the leaf file when no file did. */
 	locateEntry(field: string, index: number): DiagnosticLocation {
 		const entry = this.config.entries([field])[index];
 		if (entry?.source.tier !== "layer") return { resource: this.leaf.file };
-		if (this.inModeLayer(entry.source.index))
-			return this.locateModeEntry(this.mode, field, entry.index);
 		return this.positionIn(entry.source.index, [
 			field,
 			String(entry.index),
 		]);
-	}
-
-	/** Where the chain wrote the entry at `index` of the merged list `field` of mode `mode`. */
-	locateModeEntry(
-		mode: string,
-		field: string,
-		index: number
-	): DiagnosticLocation {
-		const path = ["modes", mode, field];
-		const entry = this.chain.entries(path)[index];
-		return entry?.source.tier === "layer"
-			? this.positionIn(entry.source.index, [
-					...path,
-					String(entry.index),
-				])
-			: { resource: this.leaf.file };
-	}
-
-	/** Whether the layer at `index` is the active mode's, which `config` stacks after the chain's files. */
-	private inModeLayer(index: number): this is { readonly mode: string } {
-		return index === this.files.length && this.mode !== undefined;
-	}
-
-	private locateIn(
-		config: Config,
-		path: readonly string[]
-	): DiagnosticLocation {
-		const { source } = config.inspect([...path]);
-		return source?.tier === "layer"
-			? this.positionIn(source.index, path)
-			: { resource: this.leaf.file };
 	}
 
 	private positionIn(
@@ -230,30 +123,10 @@ export class LayeredConfig {
 		return { resource: file.file, position: file.positionOf(path) };
 	}
 
-	private modeLayer(mode: string): ConfigModel {
-		const exclude = this.chain.getValue<unknown>([
-			"modes",
-			mode,
-			"exclude",
-		]);
-		return new ConfigModel(exclude === undefined ? {} : { exclude });
-	}
-
 	private static pathOf(section: ConfigSection[]): string[] {
 		return section.flatMap((part) =>
 			typeof part === "string" ? [part] : part
 		);
-	}
-
-	/** The command line's mode over the one the config writes. */
-	private static choiceOf(
-		requested: string | undefined,
-		written: string | undefined
-	): ModeChoice {
-		if (requested !== undefined) return { name: requested, source: "cli" };
-		return written !== undefined
-			? { name: written, source: "config" }
-			: { name: undefined, source: undefined };
 	}
 
 	private static cliModel(
@@ -293,32 +166,9 @@ export class LayeredConfig {
 						path.posix.join(escapedGlobPrefix(toPosix(dir)), glob)
 					);
 		};
-		const resolveFields = (
-			body: Record<string, unknown>,
-			each: Readonly<Record<string, PathForm>>
-		) => {
-			const resolved = { ...body };
-			for (const [field, fieldForm] of Object.entries(each))
-				if (field in body)
-					resolved[field] = resolve(body[field], fieldForm);
-			return resolved;
-		};
 		const result = { ...contents };
-		for (const [key, form] of Object.entries(configPathForms)) {
-			if (!(key in result)) continue;
-			const value = result[key];
-			if (typeof form === "string") {
-				result[key] = resolve(value, form);
-				continue;
-			}
-			if (!isObject(value)) continue;
-			result[key] = Object.fromEntries(
-				Object.entries(value).map(([name, body]) => [
-					name,
-					isObject(body) ? resolveFields(body, form.each) : body,
-				])
-			);
-		}
+		for (const [key, form] of Object.entries(configPathForms))
+			if (key in result) result[key] = resolve(result[key], form);
 		return result;
 	}
 }

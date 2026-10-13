@@ -47,12 +47,12 @@ Check a thing once, where it lives, and leave it out of the other cases.
 - What `build` prints (header, per-config lines, closing line) is checked by
   `build-log.test.ts` and `build-command.test.ts` in
   `src/commands/build/__tests__/`. A case lists `build` under `output` only when
-  a line of it is the point, such as the mode a build ran in.
+  a line of it is the point, such as the variants a build ran with.
 - The wording of a warning or an error is checked by the domain test of its code,
   such as `build-validator.test.ts`. A case shows it on stderr to prove that it
   reaches the user.
 - The project file and the tree Rojo sees are checked by the case of the feature,
-  in `cases/routing`, `variants`, `modes`, `structure` and the like.
+  in `cases/routing`, `variants`, `structure` and the like.
 
 A new case needs no `output`. Add it only when the printed output of `build` or
 `init` is what the case is about.

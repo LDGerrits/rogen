@@ -3,13 +3,6 @@
 	"variants": [
 		"y"
 	],
-	"modes": {
-		"dev": {
-			"variants": [
-				"y"
-			]
-		}
-	},
 	"rootDirs": [
 		"one"
 	]

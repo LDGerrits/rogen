@@ -42,28 +42,25 @@ describe("CoreConfigService", () => {
 			});
 		});
 
-		it("should add a child's variants, conflicts and a mode's variants to its parent's", async () => {
+		it("should add a child's variants and conflicts to its parent's", async () => {
 			await write("/repo/base.rogen.json", {
 				variants: ["mock", "halloween"],
 				conflicts: [["halloween", "christmas"]],
-				mode: "dev",
-				modes: { dev: { variants: ["mock"] } },
 			});
 			await write("/repo/default.rogen.json", {
 				extends: "./base.rogen.json",
 				variants: ["christmas", "debug"],
 				conflicts: [["debug", "halloween"]],
-				modes: { dev: { variants: ["debug"] } },
 			});
 
 			await start();
 
 			expect(resolved(0)).toMatchObject({
 				variants: {
-					mock: true,
+					mock: false,
 					halloween: false,
 					christmas: false,
-					debug: true,
+					debug: false,
 				},
 				conflicts: [
 					["halloween", "christmas"],

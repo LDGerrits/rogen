@@ -49,7 +49,7 @@ export class ExtendingConfigSetup implements Setup<ExtendingConfigChoices> {
 		);
 		builder.addRun(configSet.serveCommand);
 		builder.addEdit(
-			`Add "exclude" or "modes", or pin a "mode", in ${configFileName(name)}.`
+			`Add "exclude" in ${configFileName(name)} for what this config leaves out.`
 		);
 	}
 }

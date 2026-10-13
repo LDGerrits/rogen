@@ -1,0 +1,7 @@
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.rogen.json · not loaded
+  default.rogen.json:5:16 - error: a conflict group names "prod", which is not declared under "variants". Declare it there. (config.conflictUndeclaredVariant)
+  default.rogen.json:5:39 - error: a conflict group names "christmass", which is not declared under "variants". Did you mean "christmas"? (config.conflictUndeclaredVariant)

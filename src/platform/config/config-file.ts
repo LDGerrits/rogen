@@ -11,6 +11,7 @@ import {
 import { FileReader, isMissingPath } from "../fs/file-system-service.js";
 import {
 	JsoncDocumentReader,
+	UnknownFieldAdvisor,
 	WrongTypeAdvisor,
 } from "../jsonc/jsonc-document-reader.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
@@ -44,11 +45,13 @@ export class ConfigFileReader {
 	constructor(
 		private readonly fileReader: FileReader,
 		private readonly schema: JSONSchema,
-		advise?: WrongTypeAdvisor
+		advise?: WrongTypeAdvisor,
+		adviseUnknown?: UnknownFieldAdvisor
 	) {
 		this.documents = new JsoncDocumentReader(
 			{ codePrefix: "config", noun: "a config" },
-			advise
+			advise,
+			adviseUnknown
 		);
 	}
 

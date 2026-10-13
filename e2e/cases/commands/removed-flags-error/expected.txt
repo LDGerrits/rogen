@@ -8,6 +8,11 @@ exit 2
 stderr:
   error: Unknown option '--template'. Run 'rogen help build' to see what build accepts.
 
+$ rogen build --mode prod
+exit 2
+stderr:
+  error: Unknown option '--mode'. Run 'rogen help build' to see what build accepts.
+
 $ rogen build --all
 exit 2
 stderr:
