@@ -9,7 +9,6 @@ import {
 	ProcessService,
 	exitCodeText,
 } from "../../platform/process/process-service.js";
-
 import { ServerInfo } from "./serve.js";
 import {
 	ServePlan,

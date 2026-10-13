@@ -37,8 +37,8 @@ export function Features() {
 							icon: <FaMapSigns className="text-white" />,
 						},
 						{
-							title: "Variants",
-							desc: "Swap in a mock or dev version of a file at build time, without touching a single require.",
+							title: "Replace a File",
+							desc: "List a later root directory and its files replace the ones in an earlier one, without touching a single require.",
 							icon: <FaClone className="text-white" />,
 						},
 						{

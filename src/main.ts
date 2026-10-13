@@ -51,7 +51,6 @@ import { CoreWatchService } from "./domain/watch/core-watch-service.js";
 import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import { CoreServeService } from "./domain/serve/core-serve-service.js";
-
 import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
 import "./commands/check/check-command.js";
