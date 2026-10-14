@@ -11,13 +11,68 @@ import {
 import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
+import { watchLineShapes } from "../build/build-document.js";
 import { reportServerMessage } from "../build/report-rojo.js";
 import { WatchJsonLog, WatchLog } from "../build/watch-log.js";
 import {
+	diagnosticShape,
 	diagnosticToJson,
 	diagnosticsJson,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+
+const S = OutputShape;
+
+const serverEventFields = { config: S.string, server: S.string };
+
+/** One line of `serve --json`. */
+export const serveLineShape = S.union(
+	watchLineShapes.build,
+	watchLineShapes.notice,
+	watchLineShapes.error,
+	S.object({
+		serving: S.object({
+			...serverEventFields,
+			version: S.string,
+			project: S.string,
+			host: S.string,
+			port: S.integer,
+			session: S.optional(S.string),
+			reportsConnections: S.boolean,
+			alreadyRunning: S.optional(S.boolean),
+			adopted: S.optional(S.boolean),
+		}),
+	}),
+	S.object({
+		connected: S.object({ ...serverEventFields, clients: S.integer }),
+	}),
+	S.object({
+		disconnected: S.object({ ...serverEventFields, clients: S.integer }),
+	}),
+	S.object({
+		output: S.object({
+			...serverEventFields,
+			severity: S.enum("error", "warning", "info"),
+			message: S.string,
+		}),
+	}),
+	S.object({
+		refused: S.object({
+			...serverEventFields,
+			diagnostics: S.array(diagnosticShape),
+		}),
+	}),
+	S.object({
+		stopped: S.object({
+			...serverEventFields,
+			reason: S.enum("exited", "removed", "moved", "shutdown"),
+			code: S.optional(S.nullable(S.integer)),
+			signal: S.optional(S.nullable(S.string)),
+			adopted: S.optional(S.boolean),
+		}),
+	})
+);
 
 const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;
 

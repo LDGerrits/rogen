@@ -18,7 +18,12 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
+import {
+	ServeJsonLog,
+	ServeLog,
+	ServeReporter,
+	serveLineShape,
+} from "./serve-log.js";
 
 const ServeOptions = [
 	{
@@ -46,6 +51,7 @@ registerCommand(
 							"Passed to every server untouched, such as --port 34873. A project's own servePort and serveAddress go in its rogen.json.",
 					},
 					options: ServeOptions,
+					output: { lines: serveLineShape },
 					examples: [
 						"rogen serve",
 						"rogen serve places/lobby",

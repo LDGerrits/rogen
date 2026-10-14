@@ -5,11 +5,77 @@ import {
 	requireExpressionOf,
 } from "../../domain/build/build-service.js";
 import {
+	OptionalKey,
+	OutputShape,
+} from "../../platform/output/output-shape.js";
+import {
 	DiagnosticJson,
+	diagnosticShape,
 	diagnosticToJson,
+	fixShape,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
+
+const S = OutputShape;
+
+const instancePathShape = S.array(S.string);
+
+const fileEntryBase = {
+	config: S.string,
+	source: S.string,
+	exists: S.boolean,
+	diagnostics: S.array(diagnosticShape),
+};
+
+const fileEntryShape = (
+	status: OutputShape,
+	fields: Readonly<Record<string, OutputShape | OptionalKey>> = {}
+) => S.object({ ...fileEntryBase, status, ...fields });
+
+/** The document of `where --json`. */
+export const whereDocumentShape = S.object({
+	locations: S.array(
+		S.union(
+			fileEntryShape(S.enum("placed"), {
+				instancePath: instancePathShape,
+				require: S.optional(S.string),
+				alsoAt: S.optional(S.array(instancePathShape)),
+				route: S.string,
+				routeMatch: S.string,
+				hoisted: S.optional(S.boolean),
+			}),
+			fileEntryShape(S.enum("replaced"), { by: S.string }),
+			fileEntryShape(S.enum("extensionCase"), { rename: S.string }),
+			fileEntryShape(S.enum("blocked"), {
+				blockedBy: S.object({ file: S.string, code: S.string }),
+			}),
+			fileEntryShape(S.enum("displaced", "mounted"), {
+				node: instancePathShape,
+			}),
+			fileEntryShape(S.enum("ignored"), { pattern: S.string }),
+			fileEntryShape(
+				S.enum(
+					"unrouted",
+					"skipped",
+					"outside",
+					"notInstance",
+					"missing",
+					"empty"
+				)
+			),
+			S.object({
+				config: S.string,
+				instance: S.string,
+				status: S.enum("noFile"),
+				folders: S.optional(S.array(S.string)),
+				fixes: S.optional(S.array(fixShape)),
+				diagnostics: S.array(diagnosticShape),
+			})
+		)
+	),
+	diagnostics: S.array(diagnosticShape),
+});
 
 interface FileEntryBase {
 	readonly config: string;

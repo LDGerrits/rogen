@@ -1,5 +1,11 @@
-import { ErrorKind, KindedError, errorKind } from "../../base/errors.js";
+import {
+	ErrorKind,
+	ErrorKinds,
+	KindedError,
+	errorKind,
+} from "../../base/errors.js";
 import { toNative } from "../../base/path.js";
+import { OutputShape } from "../output/output-shape.js";
 import { DOCS_URL, REPOSITORY } from "../product/product-service.js";
 import {
 	Diagnostic,
@@ -24,6 +30,46 @@ export interface DiagnosticJson {
 	}[];
 	readonly fixes?: readonly DiagnosticFix[];
 }
+
+export const fixShape = OutputShape.named(
+	"Fix",
+	OutputShape.union(
+		OutputShape.object({
+			rename: OutputShape.object({
+				from: OutputShape.string,
+				to: OutputShape.string,
+			}),
+		}),
+		OutputShape.object({
+			run: OutputShape.object({
+				command: OutputShape.string,
+				cwd: OutputShape.string,
+			}),
+		})
+	)
+);
+
+export const diagnosticShape = OutputShape.named(
+	"Diagnostic",
+	OutputShape.object({
+		file: OutputShape.string,
+		line: OutputShape.optional(OutputShape.integer),
+		column: OutputShape.optional(OutputShape.integer),
+		severity: OutputShape.enum("error", "warning"),
+		code: OutputShape.string,
+		message: OutputShape.string,
+		url: OutputShape.string,
+		related: OutputShape.optional(
+			OutputShape.array(
+				OutputShape.object({
+					file: OutputShape.string,
+					message: OutputShape.string,
+				})
+			)
+		),
+		fixes: OutputShape.optional(OutputShape.array(fixShape)),
+	})
+);
 
 const diagnosticAnchor = (code: string): string =>
 	code.replace(".", "-").toLowerCase();
@@ -106,3 +152,18 @@ export function failureToJson(
 		? diagnosticsJson(error.diagnostics)
 		: { error: errorToJson(error) };
 }
+
+export const errorShape = OutputShape.named(
+	"Error",
+	OutputShape.object({
+		kind: OutputShape.enum(...Object.keys(ErrorKinds)),
+		message: OutputShape.string,
+		hint: OutputShape.optional(OutputShape.string),
+	})
+);
+
+/** What a `--json` run prints when it fails before it has anything else to show. */
+export const failureShape = OutputShape.union(
+	OutputShape.object({ diagnostics: OutputShape.array(diagnosticShape) }),
+	OutputShape.object({ error: errorShape })
+);

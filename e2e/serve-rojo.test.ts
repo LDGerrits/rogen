@@ -7,6 +7,7 @@ import {
 	createProject,
 	eventually,
 	invocation,
+	outputProblem,
 	writeProjectFile,
 } from "./harness.js";
 import {
@@ -319,6 +320,9 @@ describeWithRojo("end to end serve", () => {
 			})
 		);
 		expect(serving.output).not.toContain("Rojo server listening");
+		expect(
+			outputProblem(["serve", "--json"], serving.stdout)
+		).toBeUndefined();
 	}, 40_000);
 
 	it("should exit 0 at once when another serve already serves the project", async () => {
@@ -333,6 +337,9 @@ describeWithRojo("end to end serve", () => {
 		expect(JSON.parse(second.stdout.trim()).serving).toEqual(
 			expect.objectContaining({ port: serve.port, alreadyRunning: true })
 		);
+		expect(
+			outputProblem(["serve", "--json"], second.stdout)
+		).toBeUndefined();
 	}, 40_000);
 
 	it("should build for a Rojo it didn't start, and stop once that Rojo stops", async () => {
@@ -366,6 +373,9 @@ describeWithRojo("end to end serve", () => {
 			expect(serving.stdout).toContain(
 				'{"stopped":{"config":"Game","server":"rojo","reason":"exited","adopted":true}}'
 			);
+			expect(
+				outputProblem(["serve", "--json"], serving.stdout)
+			).toBeUndefined();
 		} finally {
 			rojo.kill("SIGINT");
 		}

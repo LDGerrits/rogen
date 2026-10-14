@@ -5,12 +5,76 @@ import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { ServerMessage } from "../../domain/runner/sync-server.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,
 	ErrorJson,
+	diagnosticShape,
 	diagnosticToJson,
+	errorShape,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+
+const S = OutputShape;
+
+export const buildEntryShape = S.named(
+	"BuildEntry",
+	S.object({
+		config: S.string,
+		file: S.string,
+		projectFile: S.nullable(S.string),
+		outcome: S.enum("wrote", "unchanged", "notWritten"),
+		blockedBy: S.optional(S.array(S.string)),
+		diagnostics: S.array(diagnosticShape),
+	})
+);
+
+const rojoEntryShape = S.named(
+	"RojoEntry",
+	S.object({
+		command: S.enum("build"),
+		outcome: S.enum("built", "failed", "notRun"),
+		project: S.nullable(S.string),
+		output: S.optional(S.string),
+		plugin: S.optional(S.string),
+		messages: S.array(
+			S.object({
+				severity: S.enum("error", "warning", "info"),
+				text: S.string,
+			})
+		),
+		diagnostics: S.optional(S.array(diagnosticShape)),
+		error: S.optional(errorShape),
+	})
+);
+
+/** The document of `build --json`. */
+export const buildDocumentShape = S.object({
+	configs: S.array(buildEntryShape),
+	rojo: S.optional(rojoEntryShape),
+});
+
+/** The lines `build --watch --json` and `serve --json` have in common, each keyed by what it reports. */
+export const watchLineShapes = {
+	build: S.object({ build: buildEntryShape }),
+	notice: S.object({
+		notice: S.object({
+			kind: S.enum("added", "removed", "broken", "recovered"),
+			file: S.string,
+			keptLastValid: S.optional(S.boolean),
+			diagnostics: S.optional(S.array(diagnosticShape)),
+		}),
+	}),
+	error: S.object({ error: errorShape }),
+};
+
+/** One line of `build --watch --json`. */
+export const buildLineShape = S.union(
+	watchLineShapes.build,
+	S.object({ rojo: rojoEntryShape }),
+	watchLineShapes.notice,
+	watchLineShapes.error
+);
 
 export interface BuildEntry {
 	readonly config: string;

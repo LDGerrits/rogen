@@ -6,6 +6,7 @@ import {
 	bundleCli,
 	createProject,
 	eventually,
+	outputProblem,
 	sourcemapTree,
 	writeProjectFile,
 } from "./harness.js";
@@ -332,6 +333,9 @@ describeWithRojo("end to end watch", () => {
 				"wrote",
 				"wrote",
 			]);
+			expect(
+				outputProblem(["build", "--watch", "--json"], watching.stdout)
+			).toBeUndefined();
 		});
 	}, 30_000);
 

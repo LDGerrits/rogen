@@ -1,3 +1,4 @@
+import Ajv, { ValidateFunction } from "ajv";
 import { ChildProcess, execFile, spawn } from "child_process";
 import { createHash } from "crypto";
 import { buildSync } from "esbuild";
@@ -5,6 +6,23 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { promisify, stripVTControlCharacters } from "util";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../src/platform/commands/commands.js";
+import { outputJsonSchema } from "../src/platform/output/__tests__/output-json-schema.js";
+import { OutputShape } from "../src/platform/output/output-shape.js";
+import { failureShape } from "../src/platform/diagnostics/diagnostic-json.js";
+import { Registry } from "../src/platform/registry/registry.js";
+import "../src/commands/build/build-command.js";
+import "../src/commands/check/check-command.js";
+import "../src/commands/fmt-project/fmt-project-command.js";
+import "../src/commands/help/doc-command.js";
+import "../src/commands/help/help-command.js";
+import "../src/commands/init/init-command.js";
+import "../src/commands/list/list-command.js";
+import "../src/commands/serve/serve-command.js";
+import "../src/commands/where/where-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -155,6 +173,8 @@ export async function runCase(cli: string, name: string): Promise<string> {
 				path.join(dir, spec.cwd ?? ""),
 				spec.env
 			);
+			const problem = outputProblem(args, result.stdout);
+			if (problem) throw new Error(`rogen ${args.join(" ")} ${problem}`);
 			sections.push(
 				formatStep(["rogen", ...args], result, showsStdout(args, spec))
 			);
@@ -237,6 +257,60 @@ async function run(
 			stderr: failure.stderr ?? "",
 		};
 	}
+}
+
+const ajv = new Ajv.default({ strict: true });
+const checks = new Map<string, ValidateFunction>();
+
+/** What a command prints, or a failure instead; a command that declares nothing is held to the failure alone. */
+function checkFor(command: string, lines: boolean): ValidateFunction {
+	const key = `${command} ${lines}`;
+	const known = checks.get(key);
+	if (known) return known;
+	const output = Registry.as<CommandRegistry>(Extensions.Commands).getCommand(
+		command
+	)?.metadata.output;
+	const declared = lines ? output?.lines : output?.document;
+	const shapes: OutputShape[] = [
+		...(declared ? [declared] : []),
+		failureShape,
+	];
+	const check = ajv.compile(outputJsonSchema(shapes));
+	checks.set(key, check);
+	return check;
+}
+
+/** What is wrong with the stdout of a `--json` step against the output its command declares, if anything. */
+export function outputProblem(
+	args: readonly string[],
+	stdout: string
+): string | undefined {
+	const end = args.indexOf("--");
+	const own = end === -1 ? args : args.slice(0, end);
+	const prints = !own.some((arg) =>
+		["--help", "-h", "--version", "-V"].includes(arg)
+	);
+	if (!prints || !own.includes("--json") || stdout.trim() === "")
+		return undefined;
+	const [command = ""] = own;
+	const output = Registry.as<CommandRegistry>(Extensions.Commands).getCommand(
+		command
+	)?.metadata.output;
+	const lines =
+		output?.lines !== undefined &&
+		(own.includes("--watch") || output.document === undefined);
+	const check = checkFor(command, lines);
+	for (const text of lines ? stdout.trim().split("\n") : [stdout]) {
+		let document: unknown;
+		try {
+			document = JSON.parse(text);
+		} catch {
+			return `printed ${text.slice(0, 80)}, which is not JSON`;
+		}
+		if (!check(document))
+			return `printed a document that its declared output does not allow: ${ajv.errorsText(check.errors)}\n${text.slice(0, 400)}`;
+	}
+	return undefined;
 }
 
 /** The one JSON document of a `rogen --json` step, indented so a transcript stays readable. */

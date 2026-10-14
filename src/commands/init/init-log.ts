@@ -1,7 +1,3 @@
-import {
-	ErrorJson,
-	errorToJson,
-} from "../../platform/diagnostics/diagnostic-json.js";
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -14,10 +10,40 @@ import {
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ReportedError } from "../../platform/commands/commands.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
+import {
+	ErrorJson,
+	errorShape,
+	errorToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
-import { BuildEntry, buildDocument } from "../build/build-document.js";
+import {
+	BuildEntry,
+	buildDocument,
+	buildEntryShape,
+} from "../build/build-document.js";
+
+const S = OutputShape;
+
+/** The document of `init --json`. */
+export const initDocumentShape = S.object({
+	files: S.array(S.string),
+	appended: S.array(S.string),
+	directories: S.array(S.string),
+	error: S.optional(errorShape),
+	built: S.optional(S.array(buildEntryShape)),
+	notes: S.optional(S.array(S.string)),
+	nextSteps: S.optional(
+		S.object({
+			setup: S.array(S.string),
+			run: S.array(S.string),
+			darklua: S.array(S.string),
+			edits: S.array(S.string),
+		})
+	),
+});
 
 const indent = (line: string) => `  ${line}`;
 

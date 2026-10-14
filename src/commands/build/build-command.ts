@@ -22,7 +22,12 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
 import { BuildWatch } from "./build-watch.js";
-import { buildDocument, rojoEntry } from "./build-document.js";
+import {
+	buildDocument,
+	buildDocumentShape,
+	buildLineShape,
+	rojoEntry,
+} from "./build-document.js";
 import { oneProject } from "./one-project.js";
 import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
 
@@ -75,6 +80,10 @@ registerCommand(
 						"Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
 					args: ConfigArguments,
 					options: BuildOptions,
+					output: {
+						document: buildDocumentShape,
+						lines: buildLineShape,
+					},
 					unknownWordOffer: "To build a project",
 					longRunningWith: "watch",
 					formerCommands: {

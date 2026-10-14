@@ -12,7 +12,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { WhereAnswers } from "./where-answers.js";
-import { whereDocument } from "./where-document.js";
+import { whereDocument, whereDocumentShape } from "./where-document.js";
 import { WhereLog } from "./where-log.js";
 
 const WhereOptions = [JsonOption] as const;
@@ -35,6 +35,7 @@ registerCommand(
 						},
 					],
 					options: WhereOptions,
+					output: { document: whereDocumentShape },
 					examples: [
 						"rogen where src/Inventory/Server/Save.luau",
 						"rogen where ServerScriptService.Inventory.Save:12",

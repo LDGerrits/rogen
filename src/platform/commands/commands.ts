@@ -18,6 +18,7 @@ import {
 import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
+import { OutputDeclaration } from "../output/output-shape.js";
 
 /** A failure already reported in full; only the exit code is left to set. */
 export class ReportedError extends Error {
@@ -78,6 +79,8 @@ interface CommandMetadata<
 		readonly description: string;
 	};
 	readonly examples?: readonly string[];
+	/** The JSON this command prints with `--json`; a command with a `--json` option declares it. */
+	readonly output?: OutputDeclaration;
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
 	readonly unknownWordOffer?: string;
 	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */

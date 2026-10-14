@@ -12,7 +12,12 @@ import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { InitJsonLog, InitLog, InitReporter } from "./init-log.js";
+import {
+	InitJsonLog,
+	InitLog,
+	InitReporter,
+	initDocumentShape,
+} from "./init-log.js";
 
 const InitOptions = [
 	{
@@ -41,6 +46,7 @@ registerCommand(
 						},
 					],
 					options: InitOptions,
+					output: { document: initDocumentShape },
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",

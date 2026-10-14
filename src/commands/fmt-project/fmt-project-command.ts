@@ -13,8 +13,10 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,
+	diagnosticShape,
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -25,6 +27,16 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 
 const FmtProjectOptions = [JsonOption] as const;
+
+const FmtProjectOutput = OutputShape.object({
+	files: OutputShape.array(
+		OutputShape.object({
+			file: OutputShape.string,
+			outcome: OutputShape.enum("formatted", "unchanged", "failed"),
+			diagnostics: OutputShape.array(diagnosticShape),
+		})
+	),
+});
 
 interface FormattedFile {
 	readonly file: string;
@@ -59,6 +71,7 @@ registerCommand(
 						"Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
 					args: ConfigArguments,
 					options: FmtProjectOptions,
+					output: { document: FmtProjectOutput },
 					examples: [
 						"rogen fmt-project",
 						"rogen fmt-project places/lobby",

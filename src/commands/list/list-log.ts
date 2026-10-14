@@ -12,10 +12,74 @@ import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,
+	diagnosticShape,
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+
+const S = OutputShape;
+
+const servingShape = S.named(
+	"Serving",
+	S.object({
+		server: S.string,
+		host: S.string,
+		port: S.integer,
+		clients: S.nullable(S.integer),
+	})
+);
+
+const projectShape = S.named(
+	"Project",
+	S.object({
+		name: S.string,
+		file: S.string,
+		served: S.boolean,
+		port: S.optional(S.integer),
+		serving: S.nullable(servingShape),
+	})
+);
+
+const detailsShape = {
+	projectName: S.string,
+	sourcePaths: S.array(S.string),
+	commonRoot: S.nullable(S.string),
+	routes: S.record(S.string),
+	globIgnorePaths: S.array(S.string),
+	syncPath: S.nullable(S.string),
+	projectFile: S.string,
+	serving: S.nullable(servingShape),
+	projects: S.array(projectShape),
+};
+
+const optionalDetails = Object.fromEntries(
+	Object.entries(detailsShape).map(([key, shape]) => [key, S.optional(shape)])
+);
+
+/** The document of `list --json`; a config that doesn't load has no details. */
+export const listDocumentShape = S.object({
+	configs: S.array(
+		S.object({
+			config: S.string,
+			file: S.string,
+			status: S.enum("valid", "broken"),
+			served: S.boolean,
+			...optionalDetails,
+			places: S.optional(
+				S.array(
+					S.object({
+						place: S.string,
+						folder: S.string,
+						...detailsShape,
+					})
+				)
+			),
+			diagnostics: S.array(diagnosticShape),
+		})
+	),
+});
 
 export type ServingByConfig = ReadonlyMap<string, ServingNow | undefined>;
 

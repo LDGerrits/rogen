@@ -3,6 +3,7 @@ import {
 	AbstractCommand,
 	registerCommand,
 } from "../../platform/commands/commands.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import { BrowserService } from "../../platform/browser/browser-service.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -13,6 +14,17 @@ import { DocTopics } from "./doc-topics.js";
 
 const DocOptions = [JsonOption] as const;
 
+const DocOutput = OutputShape.union(
+	OutputShape.object({
+		url: OutputShape.string,
+		topics: OutputShape.array(OutputShape.string),
+	}),
+	OutputShape.object({
+		topic: OutputShape.string,
+		text: OutputShape.string,
+	})
+);
+
 registerCommand(
 	class DocCommand extends AbstractCommand<typeof DocOptions> {
 		constructor() {
@@ -22,6 +34,7 @@ registerCommand(
 					description:
 						"Opens the documentation in a browser, or prints one topic of it offline.",
 					options: DocOptions,
+					output: { document: DocOutput },
 					args: [
 						{
 							name: "topic",
