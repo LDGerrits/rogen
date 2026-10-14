@@ -6,8 +6,8 @@ import {
 	configFileContent,
 } from "../config/config.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
-import { AgentFile } from "./agent-file.js";
-import { AgentHooks } from "./agent-hooks.js";
+import { AgentFile } from "./agent/agent-file.js";
+import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 

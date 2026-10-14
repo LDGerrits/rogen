@@ -1,7 +1,7 @@
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { AgentFile } from "./agent-file.js";
-import { AgentHooks } from "./agent-hooks.js";
+import { AgentFile } from "./agent/agent-file.js";
+import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { Setup } from "./setup.js";

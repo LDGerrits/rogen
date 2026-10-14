@@ -1,4 +1,4 @@
-import { PlannedFile } from "../toolchain/toolchain.js";
+import { PlannedFile } from "../../toolchain/toolchain.js";
 import { agentBlock } from "./agent-block.js";
 
 const AGENTS_MD = "AGENTS.md";

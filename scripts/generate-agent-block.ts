@@ -3,7 +3,7 @@ import path from "path";
 import { pathToFileURL } from "url";
 
 export const SKILL = path.resolve("skills/rogen/SKILL.md");
-export const OUTPUT = path.resolve("src/domain/init/agent-block.ts");
+export const OUTPUT = path.resolve("src/domain/init/agent/agent-block.ts");
 
 /** The skill's block with its markers, as the module that embeds it holds it. */
 export function renderAgentBlockModule(skill: string): string {

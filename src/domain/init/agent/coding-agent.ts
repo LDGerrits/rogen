@@ -1,4 +1,4 @@
-import { isObject } from "../../base/objects.js";
+import { isObject } from "../../../base/objects.js";
 
 export const HOOK_SCRIPT_FILE = ".agents/hooks/rogen-check.sh";
 

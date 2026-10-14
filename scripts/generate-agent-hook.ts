@@ -3,7 +3,7 @@ import path from "path";
 import { pathToFileURL } from "url";
 
 export const PAGE = path.resolve("docs/content/docs/v2/agents.mdx");
-export const OUTPUT = path.resolve("src/domain/init/hook-script.ts");
+export const OUTPUT = path.resolve("src/domain/init/agent/hook-script.ts");
 
 /** The Stop hook script of the agents page, as the module that embeds it holds it. */
 export function renderAgentHookModule(page: string): string {

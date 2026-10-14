@@ -1,5 +1,5 @@
-import { agentBlock } from "../agent-block.js";
-import { hookScript } from "../hook-script.js";
+import { agentBlock } from "../agent/agent-block.js";
+import { hookScript } from "../agent/hook-script.js";
 import { PlannedFile } from "../../toolchain/toolchain.js";
 import { jest } from "@jest/globals";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";

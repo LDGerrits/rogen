@@ -1,5 +1,5 @@
-import { PlannedFile } from "../toolchain/toolchain.js";
-import { DOCS_URL } from "../../platform/product/product-service.js";
+import { PlannedFile } from "../../toolchain/toolchain.js";
+import { DOCS_URL } from "../../../platform/product/product-service.js";
 import { hookScript } from "./hook-script.js";
 import { HOOK_SCRIPT_FILE, CodingAgent, withHook } from "./coding-agent.js";
 

@@ -1,5 +1,5 @@
 import { SCHEMA_URL } from "../../config/config.js";
-import { AgentFile } from "../agent-file.js";
+import { AgentFile } from "../agent/agent-file.js";
 import { InitPlanBuilder } from "../init-plan-builder.js";
 import { directory, directoryOf } from "./init-fixtures.js";
 

@@ -2,9 +2,9 @@ import { ErrorUtils } from "../../base/errors.js";
 import path from "path";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { AgentFile } from "./agent-file.js";
-import { AgentHooks, AgentInUse } from "./agent-hooks.js";
-import { HOOK_SCRIPT_FILE, CODING_AGENTS } from "./coding-agent.js";
+import { AgentFile } from "./agent/agent-file.js";
+import { AgentHooks, AgentInUse } from "./agent/agent-hooks.js";
+import { HOOK_SCRIPT_FILE, CODING_AGENTS } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
 
 /** Reads what a directory holds for the coding agents it uses: their instruction files and their hooks. */
