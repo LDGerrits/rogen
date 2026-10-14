@@ -1,25 +1,31 @@
 import { isGlobsetMatch } from "../../base/glob.js";
+import path from "path";
+import { isObject } from "../../base/objects.js";
+import { joinPosix } from "../../base/path.js";
+
+export const SYNC_RULE_USES = [
+	"serverScript",
+	"clientScript",
+	"pluginScript",
+	"moduleScript",
+	"legacyClientScript",
+	"legacyServerScript",
+	"runContextServerScript",
+	"runContextClientScript",
+	"project",
+	"jsonModel",
+	"json",
+	"toml",
+	"csv",
+	"text",
+	"rbxm",
+	"rbxmx",
+	"yaml",
+	"ignore",
+] as const;
 
 /** What a sync rule turns a file into, spelled as Rojo spells the `use` of a rule. */
-export type SyncRuleUse =
-	| "serverScript"
-	| "clientScript"
-	| "pluginScript"
-	| "moduleScript"
-	| "legacyClientScript"
-	| "legacyServerScript"
-	| "runContextServerScript"
-	| "runContextClientScript"
-	| "project"
-	| "jsonModel"
-	| "json"
-	| "toml"
-	| "csv"
-	| "text"
-	| "rbxm"
-	| "rbxmx"
-	| "yaml"
-	| "ignore";
+export type SyncRuleUse = (typeof SYNC_RULE_USES)[number];
 
 export interface SyncRule {
 	readonly pattern: string;
@@ -28,11 +34,23 @@ export interface SyncRule {
 	readonly use: SyncRuleUse;
 	/** What is cut off the end of the file name to give the instance its name, the extension included; without it only the extension goes. */
 	readonly suffix?: string;
+	/** The absolute POSIX folder the patterns are relative to, when that is not the project's own: a rule a place inherits. */
+	readonly origin?: string;
 }
 
-interface SyncRuleMatch {
+export interface SyncRuleMatch {
 	readonly rule: SyncRule;
 	readonly name: string;
+	/** Whether the rule is one the project wrote rather than one of Rojo's. */
+	readonly own: boolean;
+	/** Whether the rule has a suffix the file name does not end with, so the whole file name is the instance name. */
+	readonly suffixMissed: boolean;
+}
+
+/** What is wrong with the rule at `index` of a project's `syncRules`. */
+export interface SyncRuleProblem {
+	readonly index: number;
+	readonly message: string;
 }
 
 /** The rules Rojo applies after a project's own, in its order. */
@@ -71,24 +89,100 @@ export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 export class SyncRules {
 	static readonly DEFAULT = new SyncRules(DEFAULT_SYNC_RULES);
 
-	constructor(private readonly rules: readonly SyncRule[]) {}
+	/** `dir` is the absolute POSIX folder the paths to match are relative to. */
+	constructor(
+		private readonly rules: readonly SyncRule[],
+		private readonly ownCount = 0,
+		private readonly dir = ""
+	) {}
+
+	/** `own` in front of Rojo's rules, the first match winning. */
+	static following(own: readonly SyncRule[], dir: string): SyncRules {
+		return new SyncRules([...own, ...DEFAULT_SYNC_RULES], own.length, dir);
+	}
+
+	/** The rules a project's `syncRules` holds, and what is wrong with the ones it can't read. */
+	static read(values: readonly unknown[]): {
+		readonly rules: SyncRule[];
+		readonly problems: SyncRuleProblem[];
+	} {
+		const rules: SyncRule[] = [];
+		const problems: SyncRuleProblem[] = [];
+		values.forEach((value, index) => {
+			const rule = SyncRules.readRule(value);
+			if (typeof rule === "string")
+				problems.push({ index, message: rule });
+			else rules.push(rule);
+		});
+		return { rules, problems };
+	}
+
+	private static readRule(value: unknown): SyncRule | string {
+		if (!isObject(value)) return "a sync rule must be an object.";
+		const { pattern, exclude, use, suffix, origin } = value;
+		if (typeof pattern !== "string")
+			return 'a sync rule needs a "pattern" string.';
+		if (!SYNC_RULE_USES.some((known) => known === use))
+			return `a sync rule needs a "use" of ${SYNC_RULE_USES.join(", ")}.`;
+		if (exclude !== undefined && typeof exclude !== "string")
+			return '"exclude" of a sync rule must be a string.';
+		if (suffix !== undefined && typeof suffix !== "string")
+			return '"suffix" of a sync rule must be a string.';
+		return {
+			pattern,
+			...(exclude !== undefined && { exclude }),
+			use: use as SyncRuleUse,
+			...(suffix !== undefined && { suffix }),
+			...(typeof origin === "string" && { origin }),
+		};
+	}
+
+	/** The rules the project wrote, in front of Rojo's. */
+	get own(): readonly SyncRule[] {
+		return this.rules.slice(0, this.ownCount);
+	}
 
 	/** The first rule that takes `filePath`, a path relative to the folder the rules are written for, written with `/`. */
 	match(filePath: string): SyncRuleMatch | undefined {
-		const rule = this.rules.find(
-			({ pattern, exclude }) =>
-				!(exclude && isGlobsetMatch(filePath, exclude)) &&
-				isGlobsetMatch(filePath, pattern)
+		const index = this.rules.findIndex((rule) =>
+			this.takes(rule, filePath)
 		);
-		return rule && { rule, name: SyncRules.nameOf(rule, filePath) };
+		if (index === -1) return undefined;
+		const rule = this.rules[index];
+		const fileName = filePath.slice(filePath.lastIndexOf("/") + 1);
+		const suffixMissed =
+			rule.suffix !== undefined && !fileName.endsWith(rule.suffix);
+		return {
+			rule,
+			name: SyncRules.nameOf(rule, fileName, suffixMissed),
+			own: index < this.ownCount,
+			suffixMissed,
+		};
 	}
 
-	private static nameOf(rule: SyncRule, filePath: string): string {
-		const fileName = filePath.slice(filePath.lastIndexOf("/") + 1);
+	private takes(
+		{ pattern, exclude, origin }: SyncRule,
+		filePath: string
+	): boolean {
+		const local =
+			origin === undefined
+				? filePath
+				: path.posix.relative(origin, joinPosix(this.dir, filePath));
+		return (
+			!(exclude && isGlobsetMatch(local, exclude)) &&
+			isGlobsetMatch(local, pattern)
+		);
+	}
+
+	private static nameOf(
+		rule: SyncRule,
+		fileName: string,
+		suffixMissed: boolean
+	): string {
 		if (rule.suffix !== undefined)
-			return fileName.endsWith(rule.suffix)
-				? fileName.slice(0, fileName.length - rule.suffix.length)
-				: fileName;
+			return suffixMissed
+				? fileName
+				: fileName.slice(0, fileName.length - rule.suffix.length);
 		const dot = fileName.lastIndexOf(".");
 		return dot > 0 ? fileName.slice(0, dot) : fileName;
 	}

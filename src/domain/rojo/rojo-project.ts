@@ -2,6 +2,7 @@ import { getOwn, isObject, setOwn } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { SyncRule } from "./sync-rules.js";
 
 export interface OptionalRojoPath {
 	readonly optional: string;
@@ -46,6 +47,7 @@ export interface RojoProjectFile {
 	gameId?: number;
 	serveAddress?: string;
 	globIgnorePaths?: string[];
+	syncRules?: SyncRule[];
 	emitLegacyScripts?: boolean;
 }
 
@@ -63,6 +65,7 @@ export interface ProjectFile {
 	readonly tree: RojoNode;
 	readonly name?: unknown;
 	readonly globIgnorePaths?: unknown;
+	readonly syncRules?: unknown;
 	readonly emitLegacyScripts?: unknown;
 	readonly servePort?: unknown;
 	readonly serveAddress?: unknown;
@@ -161,6 +164,12 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: [];
 	}
 
+	/** The entries of `syncRules` as written, valid or not. */
+	get syncRules(): unknown[] {
+		const { syncRules } = this.project;
+		return Array.isArray(syncRules) ? syncRules : [];
+	}
+
 	get emitLegacyScripts(): boolean | undefined {
 		const { emitLegacyScripts } = this.project;
 		return typeof emitLegacyScripts === "boolean"
@@ -168,15 +177,23 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: undefined;
 	}
 
-	/** This project's fields with the given tree and globs; fields Rogen doesn't model pass through. */
+	/** This project's fields with the given tree, globs and sync rules; fields Rogen doesn't model pass through. */
 	toFile(parts: {
 		readonly tree: RojoNode;
 		readonly globIgnorePaths: readonly string[];
+		readonly syncRules?: readonly SyncRule[];
 	}): RojoProjectFile {
-		const { globIgnorePaths: _globs, ...fields } = this.getFile();
+		const {
+			globIgnorePaths: _globs,
+			syncRules: _rules,
+			...fields
+		} = this.getFile();
 		const file = { ...fields, tree: parts.tree } as RojoProjectFile;
 		if (parts.globIgnorePaths.length > 0) {
 			file.globIgnorePaths = [...parts.globIgnorePaths];
+		}
+		if (parts.syncRules && parts.syncRules.length > 0) {
+			file.syncRules = [...parts.syncRules];
 		}
 		return file;
 	}

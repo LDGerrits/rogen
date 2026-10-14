@@ -6,6 +6,7 @@ import {
 	childrenBesideInit,
 	scriptRunOf,
 } from "../rojo.js";
+import { SyncRule, SyncRules } from "../sync-rules.js";
 
 describe("domain/rojo/rojo", () => {
 	describe("RojoFile", () => {
@@ -137,6 +138,114 @@ describe("domain/rojo/rojo", () => {
 				"init.meta.json",
 			])("should reject %s", (name) => {
 				expect(new RojoFile(name).isInit).toBe(false);
+			});
+		});
+
+		describe("with sync rules of the project", () => {
+			const rules = (...own: SyncRule[]) =>
+				SyncRules.following(own, "/repo");
+
+			it("should read a file by the rule that takes it", () => {
+				const file = new RojoFile(
+					"Combat.module",
+					rules({
+						pattern: "*.module",
+						use: "moduleScript",
+						suffix: ".module",
+					})
+				);
+
+				expect(file.kind).toBe("script");
+				expect(file.stem).toBe("Combat");
+				expect(file.instanceName).toBe("Combat");
+				expect(file.metaFiles).toEqual([
+					"Combat.meta.jsonc",
+					"Combat.meta.json",
+				]);
+			});
+
+			it("should give a script the class its rule gives it", () => {
+				const file = new RojoFile(
+					"Menu.hud",
+					rules({
+						pattern: "*.hud",
+						use: "clientScript",
+						suffix: ".hud",
+					})
+				);
+
+				expect(file.kind).toBe("script");
+				expect(RojoFile.scriptSuffixOf(file.stem)).toBe("client");
+				expect(file.instanceName).toBe("Menu");
+			});
+
+			it("should name a data file by the cut name even when it ends like a model", () => {
+				const file = new RojoFile(
+					"Gun.model.json",
+					rules({ pattern: "*.json", use: "json", suffix: ".json" })
+				);
+
+				expect(file.kind).toBe("data");
+				expect(file.dataName).toBe("Gun.model");
+				expect(file.instanceName).toBe("Gun.model");
+			});
+
+			it("should match a rule against the folder the file sits in", () => {
+				const rule: SyncRule = { pattern: "docs/*.md", use: "text" };
+
+				expect(new RojoFile("A.md", rules(rule), "docs").kind).toBe(
+					"data"
+				);
+				expect(
+					new RojoFile("A.md", rules(rule), "src").kind
+				).toBeUndefined();
+			});
+
+			it("should read an ignored file as nothing and say which rule ignores it", () => {
+				const rule: SyncRule = { pattern: "*.skip", use: "ignore" };
+				const file = new RojoFile("Draft.skip", rules(rule));
+
+				expect(file.kind).toBeUndefined();
+				expect(file.ignoredBy).toBe(rule);
+			});
+
+			it("should say when the suffix of its rule does not end the name", () => {
+				const rule: SyncRule = {
+					pattern: "*.md",
+					use: "text",
+					suffix: ".txt",
+				};
+				const file = new RojoFile("Notes.md", rules(rule));
+
+				expect(file.suffixMissedBy).toBe(rule);
+				expect(file.instanceName).toBe("Notes.md");
+			});
+
+			it("should leave an init script to Rojo's rules", () => {
+				const file = new RojoFile(
+					"init.server.luau",
+					rules({ pattern: "*.luau", use: "text" })
+				);
+
+				expect(file.kind).toBe("script");
+				expect(file.isInit).toBe(true);
+				expect(file.ownRule).toBeUndefined();
+			});
+
+			it("should read a file no rule of the project takes as Rojo does", () => {
+				const file = new RojoFile(
+					"Save.server.luau",
+					rules({ pattern: "*.module", use: "moduleScript" })
+				);
+
+				expect(file.kind).toBe("script");
+				expect(file.ownRule).toBeUndefined();
+				expect(file.instanceName).toBe("Save");
+			});
+
+			it("should read a nested project", () => {
+				expect(new RojoFile("Sub.project.json").isProject).toBe(true);
+				expect(new RojoFile("Sub.model.json").isProject).toBe(false);
 			});
 		});
 

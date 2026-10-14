@@ -1,6 +1,6 @@
 import path from "path";
 import { JSONSchema } from "../../base/json-schema.js";
-import { stemOf } from "../../base/path.js";
+import { joinPosix, stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
@@ -15,7 +15,12 @@ import {
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { ScriptRun } from "../roblox/roblox.js";
 import { RojoNode } from "./rojo-project.js";
-import { SyncRuleUse, SyncRules } from "./sync-rules.js";
+import {
+	SyncRule,
+	SyncRuleMatch,
+	SyncRuleUse,
+	SyncRules,
+} from "./sync-rules.js";
 
 export type RojoFileKind = "script" | "model" | "data";
 
@@ -49,6 +54,18 @@ const KIND_OF_USE: Readonly<Record<SyncRuleUse, RojoFileKind | undefined>> = {
 	ignore: undefined,
 };
 
+const SCRIPT_SUFFIX_OF_USE: Readonly<
+	Partial<Record<SyncRuleUse, RojoScriptSuffix>>
+> = {
+	serverScript: "server",
+	legacyServerScript: "server",
+	runContextServerScript: "server",
+	clientScript: "client",
+	legacyClientScript: "client",
+	runContextClientScript: "client",
+	pluginScript: "plugin",
+};
+
 const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 const INIT_FILE = /^init(\.(server|client|plugin))?\.luau?$/;
 
@@ -66,9 +83,46 @@ export class RojoFile {
 	static readonly INIT_META_JSONC = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX_JSONC}`;
 
 	readonly stem: string;
+	private readonly match: SyncRuleMatch | undefined;
 
-	constructor(readonly name: string) {
-		this.stem = stemOf(name);
+	/** `dir` is the folder the file sits in, relative to the one the sync rules are written for. */
+	constructor(
+		readonly name: string,
+		private readonly rules: SyncRules = SyncRules.DEFAULT,
+		private readonly dir = ""
+	) {
+		this.match = INIT_FILE.test(name)
+			? SyncRules.DEFAULT.match(name)
+			: rules.match(joinPosix(dir, name));
+		this.stem = this.ownMatch
+			? RojoFile.stemOfRule(this.ownMatch)
+			: stemOf(name);
+	}
+
+	/** The name a rule gives a file, with the script class its `use` gives it as a suffix, so it reads as the stem of a file Rojo's own rules take. */
+	private static stemOfRule({ rule, name }: SyncRuleMatch): string {
+		const suffix = SCRIPT_SUFFIX_OF_USE[rule.use];
+		return suffix ? `${name}.${suffix}` : name;
+	}
+
+	/** The match of a rule the project wrote. */
+	private get ownMatch(): SyncRuleMatch | undefined {
+		return this.match?.own ? this.match : undefined;
+	}
+
+	/** The rule the project wrote that takes this file. */
+	get ownRule(): SyncRule | undefined {
+		return this.ownMatch?.rule;
+	}
+
+	/** The rule of the project that takes this file as an `ignore`: Rojo reads nothing of it. */
+	get ignoredBy(): SyncRule | undefined {
+		return this.ownRule?.use === "ignore" ? this.ownRule : undefined;
+	}
+
+	/** The rule of the project that takes this file but whose suffix does not end its name, so Rojo names the instance by the whole file name. */
+	get suffixMissedBy(): SyncRule | undefined {
+		return this.ownMatch?.suffixMissed ? this.ownMatch.rule : undefined;
 	}
 
 	static scriptSuffixOf(stem: string): RojoScriptSuffix | undefined {
@@ -112,8 +166,8 @@ export class RojoFile {
 			(suffix) => suffix.toLowerCase()
 		);
 		return fixed !== this.name &&
-			(new RojoFile(fixed).kind !== undefined ||
-				new RojoFile(fixed).isMeta)
+			(new RojoFile(fixed, this.rules, this.dir).kind !== undefined ||
+				new RojoFile(fixed, this.rules, this.dir).isMeta)
 			? fixed
 			: undefined;
 	}
@@ -123,8 +177,12 @@ export class RojoFile {
 
 		if (COMPILER_EXTENSIONS.includes(path.extname(this.name)))
 			return "script";
-		const match = SyncRules.DEFAULT.match(this.name);
-		return match && KIND_OF_USE[match.rule.use];
+		return this.match && KIND_OF_USE[this.match.rule.use];
+	}
+
+	/** Whether Rojo reads the file as a nested project. */
+	get isProject(): boolean {
+		return this.match?.rule.use === "project";
 	}
 
 	get isLuau(): boolean {
@@ -142,7 +200,7 @@ export class RojoFile {
 
 	get instanceName(): string {
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
-		if (this.kind !== "data") return this.stem;
+		if (this.kind !== "data" || this.ownMatch) return this.stem;
 		return this.isJson && this.stem.endsWith(".model")
 			? this.stem.slice(0, -".model".length)
 			: this.stem;
@@ -150,7 +208,9 @@ export class RojoFile {
 
 	/** Rojo only reads `.model` and `.project` as a suffix on `.json` files. */
 	get dataName(): string {
-		return this.isJson ? RojoFile.dataNameOf(this.stem) : this.stem;
+		return this.isJson && !this.ownMatch
+			? RojoFile.dataNameOf(this.stem)
+			: this.stem;
 	}
 
 	private get isJson(): boolean {

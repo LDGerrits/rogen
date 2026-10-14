@@ -102,6 +102,100 @@ describe("domain/rojo/sync-rules", () => {
 			});
 		});
 
+		describe("following", () => {
+			it("should put the rules it is given in front of Rojo's", () => {
+				const rules = SyncRules.following(
+					[
+						{
+							pattern: "*.spec.luau",
+							use: "text",
+							suffix: ".spec.luau",
+						},
+					],
+					"/repo"
+				);
+
+				expect(rules.match("A.spec.luau")).toMatchObject({
+					rule: { use: "text" },
+					name: "A",
+					own: true,
+				});
+				expect(rules.match("A.luau")).toMatchObject({
+					rule: { use: "moduleScript" },
+					own: false,
+				});
+			});
+
+			it("should match a rule against the path from the folder the rule was written in", () => {
+				const rules = SyncRules.following(
+					[{ pattern: "docs/*.md", use: "text", origin: "/repo" }],
+					"/repo/places/lobby"
+				);
+
+				expect(rules.match("../../docs/A.md")?.rule.use).toBe("text");
+				expect(rules.match("docs/A.md")).toBeUndefined();
+			});
+
+			it("should list only the rules it was given as its own", () => {
+				const own: SyncRule[] = [{ pattern: "*.md", use: "text" }];
+
+				expect(SyncRules.following(own, "/repo").own).toEqual(own);
+				expect(SyncRules.DEFAULT.own).toEqual([]);
+			});
+
+			it("should say when the suffix of a rule does not end the file name", () => {
+				const rules = SyncRules.following(
+					[{ pattern: "*.md", use: "text", suffix: ".txt" }],
+					"/repo"
+				);
+
+				expect(rules.match("Foo.md")?.suffixMissed).toBe(true);
+				expect(rules.match("Foo.luau")?.suffixMissed).toBe(false);
+			});
+		});
+
+		describe("read", () => {
+			it("should read every field of a rule", () => {
+				const written = {
+					pattern: "*.rojo",
+					exclude: "*.ignore.rojo",
+					use: "project",
+					suffix: ".rojo",
+				};
+
+				expect(SyncRules.read([written])).toEqual({
+					rules: [written],
+					problems: [],
+				});
+			});
+
+			it.each([
+				["a rule that is not an object", "x"],
+				["a rule without a pattern", { use: "text" }],
+				["a pattern that is not a string", { pattern: 1, use: "text" }],
+				["a rule without a use", { pattern: "*.md" }],
+				["a use Rojo does not have", { pattern: "*.md", use: "stone" }],
+				[
+					"an exclude that is not a string",
+					{ pattern: "*.md", use: "text", exclude: 1 },
+				],
+				[
+					"a suffix that is not a string",
+					{ pattern: "*.md", use: "text", suffix: 1 },
+				],
+			])("should report %s", (_, rule) => {
+				const read = SyncRules.read([
+					{ pattern: "*.ok", use: "text" },
+					rule,
+				]);
+
+				expect(read.rules).toHaveLength(1);
+				expect(read.problems).toEqual([
+					{ index: 1, message: expect.any(String) },
+				]);
+			});
+		});
+
 		describe("in front of the defaults", () => {
 			it("should let a rule placed first win over the defaults", () => {
 				const rules = new SyncRules([
