@@ -387,7 +387,7 @@ describe("--place-id", () => {
 	it("should take none for no place ID", async () => {
 		const asked = questions({ placeIds: ["none"] });
 
-		expect(await asked.placeIds("lobby")).toEqual([]);
+		expect(await asked.placeIds("lobby")).toBe("none");
 		expect(asked.decided).toEqual([]);
 	});
 
@@ -398,6 +398,15 @@ describe("--place-id", () => {
 		expect(asked.decided).toEqual([
 			{ question: "placeIds", value: [], flag: "--place-id" },
 		]);
+	});
+
+	it("should take none of its own without a terminal when the config lists place IDs, and write that down nowhere", async () => {
+		const asked = questions({});
+
+		expect(
+			await asked.placeIds("lobby", "the place IDs 1 of rogen.json")
+		).toEqual([]);
+		expect(asked.decided).toEqual([]);
 	});
 
 	it.each([["abc"], ["0"], ["-4"], ["1.5"], ["1e3"]])(

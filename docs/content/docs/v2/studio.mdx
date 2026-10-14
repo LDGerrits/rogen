@@ -63,6 +63,8 @@ Each [place](/docs/v2/configuration#places) is served on its own port, and Studi
 
 `rogen init places/lobby` asks for the ID once, when it adds the place, and `--place-id 1818` answers it. Without a terminal it writes none. `rogen list` shows each place's port beside its place IDs.
 
+A list in the config's own `rogen.json` reaches every place that has none of its own, and `init` says when a place it adds keeps it. Since an unpublished place has the ID `0`, such a place refuses to connect until it is published as one of them. `"servePlaceIds": null` in the place's `rogen.json` drops the inherited list, and `rogen init places/lobby --place-id none` writes that.
+
 ## The Port
 
 `rogen serve` starts the server on the `servePort` of `rogen.json`, else on 34872. In Studio, connect to that port. Rojo remembers the port for a place after the first connect, so Auto Reconnect takes it back to the same one. See [`serve`](/docs/v2/cli#serve) for how Rogen picks the Rojo and the port.

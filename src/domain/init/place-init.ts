@@ -13,7 +13,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
 	CONFIG_FILE_NAMES,
 	DEFAULT_SOURCE_PATH,
-	RogenConfig,
+	PlaceConfig,
 	configFileContent,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
@@ -24,7 +24,8 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
-import { InitQuestions } from "./init-questions.js";
+import { InitQuestions, NONE } from "./init-questions.js";
+import { ResolvedConfigFile } from "../config/resolved-config.js";
 
 const WORKSPACE_SUFFIX = ".code-workspace";
 
@@ -71,8 +72,21 @@ export class PlaceInit {
 		const sourcePaths = await this.sourcePaths(folder, root);
 		if (sourcePaths === undefined) return ok(undefined);
 
-		const placeIds = await this.questions.placeIds(path.basename(folder));
+		const name = path.basename(folder);
+		const kept =
+			located.value.rootIds.length > 0
+				? `the place IDs ${located.value.rootIds.join(", ")} of ${this.named(rootFile)}`
+				: undefined;
+		const placeIds = await this.questions.placeIds(name, kept);
 		if (placeIds === undefined) return ok(undefined);
+		const servePlaceIds =
+			placeIds === NONE
+				? kept
+					? null
+					: undefined
+				: placeIds.length > 0
+					? [...placeIds]
+					: undefined;
 
 		const port = this.portOf(folder, known);
 		const place = toPosix(path.relative(root, folder));
@@ -83,9 +97,9 @@ export class PlaceInit {
 				.sort(compareStrings),
 			place
 		);
-		const config: RogenConfig = {
+		const config: PlaceConfig = {
 			servePort: port,
-			...(placeIds.length > 0 && { servePlaceIds: [...placeIds] }),
+			...(servePlaceIds !== undefined && { servePlaceIds }),
 			...(sourcePaths.sourcePaths && {
 				sourcePaths: sourcePaths.sourcePaths,
 			}),
@@ -105,6 +119,11 @@ export class PlaceInit {
 			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
 			notes: [
 				`${path.basename(folder)} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
+				...(kept && servePlaceIds === undefined
+					? [
+							`${name} keeps ${kept}, so a Studio on ${name} connects once ${name} is published as one of them. --place-id ${NONE} drops them.`,
+						]
+					: []),
 				...workspace.notes,
 			],
 			nextSteps: {
@@ -122,7 +141,12 @@ export class PlaceInit {
 
 	private async locate(
 		folder: string
-	): Promise<Result<{ root: string; rootFile: string }, Error>> {
+	): Promise<
+		Result<
+			{ root: string; rootFile: string; rootIds: readonly number[] },
+			Error
+		>
+	> {
 		const enclosing = await this.configService.findEnclosing(folder);
 		if (!enclosing)
 			return err(
@@ -160,7 +184,7 @@ export class PlaceInit {
 		const entry = await this.configService.read(rootFile);
 		return entry.status === "broken"
 			? err(new DiagnosticsError(entry.errors))
-			: ok({ root, rootFile });
+			: ok({ root, rootFile, rootIds: PlaceInit.servedIds(entry) });
 	}
 
 	private async configIn(folder: string): Promise<string | undefined> {
@@ -240,6 +264,16 @@ export class PlaceInit {
 				};
 			})
 		);
+	}
+
+	/** The place IDs a new place inherits: those of the project the config's places serve. */
+	private static servedIds({
+		config,
+		projects,
+	}: ResolvedConfigFile): number[] {
+		const served =
+			projects.find(({ stem }) => stem === config.serveProject) ?? config;
+		return served.project.servePlaceIds;
 	}
 
 	private static isStrictJson(text: string): boolean {

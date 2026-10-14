@@ -19,6 +19,7 @@ describe("init for a place", () => {
 	const root = path.resolve("/mock/my-game");
 	let memFs: MemoryFileSystemService;
 	let log: MockLogService;
+	let prompts: MockPromptService;
 
 	const run = async (
 		positionals: string[],
@@ -28,11 +29,12 @@ describe("init for a place", () => {
 		options: Record<string, string | readonly string[]> = {}
 	) => {
 		log = new MockLogService();
+		prompts = new MockPromptService(answers, interactive);
 		const harness = commandHarness({
 			cwd,
 			fs: memFs,
 			log,
-			prompt: new MockPromptService(answers, interactive),
+			prompt: prompts,
 			environment: new NativeEnvironmentService({}, cwd),
 		});
 		return harness.run("init", { positionals, options });
@@ -235,6 +237,103 @@ describe("init for a place", () => {
 			expect(log.texts("info").join("\n")).toContain(
 				", --place-id none."
 			);
+		});
+
+		describe("when the config lists place IDs", () => {
+			const listing = (extra: Record<string, unknown> = {}) =>
+				write("rogen.json", {
+					routes: { "*": "ReplicatedStorage" },
+					placePaths: ["places/*"],
+					servePlaceIds: [1818, 2020],
+					...extra,
+				});
+			const info = () => log.texts("info").join("\n");
+
+			it("should offer to keep them, and say the place keeps them", async () => {
+				await listing();
+
+				await run(["places/lobby"], { [PLACE_ID]: "" }, true);
+
+				expect(
+					prompts.prompts.find(({ message }) => message === PLACE_ID)
+						?.description
+				).toContain("keep the place IDs 1818, 2020 of rogen.json");
+				expect(
+					await readJson("places/lobby/rogen.json")
+				).not.toHaveProperty("servePlaceIds");
+				expect(info()).toContain(
+					"lobby keeps the place IDs 1818, 2020 of rogen.json, so a Studio on lobby connects once lobby is published as one of them. --place-id none drops them."
+				);
+			});
+
+			it("should keep them without a terminal, and not call that none", async () => {
+				await listing();
+
+				await run(["places/lobby"]);
+
+				expect(info()).toContain(
+					"lobby keeps the place IDs 1818, 2020"
+				);
+				expect(info()).not.toContain("--place-id none.");
+				expect(info()).not.toContain(", --place-id none");
+			});
+
+			it.each([
+				["--place-id none", [], false, { "place-id": ["none"] }],
+				["the answer none", { [PLACE_ID]: "none" }, true, {}],
+			] as const)(
+				"should drop them with null for %s",
+				async (_, answers, interactive, options) => {
+					await listing();
+
+					await run(
+						["places/lobby"],
+						answers,
+						interactive,
+						root,
+						options
+					);
+
+					expect(
+						(await readJson("places/lobby/rogen.json"))
+							.servePlaceIds
+					).toBeNull();
+					expect(info()).not.toContain("keeps the place IDs");
+				}
+			);
+
+			it("should say nothing of them when the place has its own", async () => {
+				await listing();
+
+				await run(["places/lobby"], [], false, root, {
+					"place-id": ["3030"],
+				});
+
+				expect(info()).not.toContain("keeps the place IDs");
+			});
+
+			it("should name the ones of the project the places serve", async () => {
+				await write("rogen.json", {
+					routes: { "*": "ReplicatedStorage" },
+					placePaths: ["places/*"],
+					serveProject: "release",
+					projects: { release: { servePlaceIds: [42] } },
+				});
+
+				await run(["places/lobby"]);
+
+				expect(info()).toContain(
+					"lobby keeps the place IDs 42 of rogen.json"
+				);
+			});
+		});
+
+		it("should write nothing for the answer none when the config lists no place IDs", async () => {
+			await run(["places/lobby"], { [PLACE_ID]: "none" }, true);
+
+			expect(
+				await readJson("places/lobby/rogen.json")
+			).not.toHaveProperty("servePlaceIds");
 		});
 
 		it("should take it from --place-id, and ask nothing", async () => {

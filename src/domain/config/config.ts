@@ -32,6 +32,11 @@ export interface RogenConfig {
 	readonly placePaths?: string[];
 }
 
+/** What a place's `rogen.json` holds: a config's keys, `null` removing one the place inherits. */
+export type PlaceConfig = {
+	readonly [K in keyof RogenConfig]?: RogenConfig[K] | null;
+};
+
 interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
@@ -90,7 +95,7 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
-export function configFileContent(config: RogenConfig): string {
+export function configFileContent(config: PlaceConfig): string {
 	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }
 

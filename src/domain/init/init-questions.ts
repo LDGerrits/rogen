@@ -13,7 +13,7 @@ import { InitChoices, InitDecision } from "./init-service.js";
 import { TreeChoice } from "./tree-plan.js";
 
 /** What a list flag says to take none of. */
-const NONE = "none";
+export const NONE = "none";
 
 /** `value` is one of `known`, else a usage error naming them, the closest first. */
 function oneOf(
@@ -121,23 +121,29 @@ export class InitQuestions {
 				: folder;
 	}
 
-	/** The place IDs the server of a place is for; none when the place isn't published yet. */
-	async placeIds(place: string): Promise<readonly number[] | undefined> {
+	/** The place IDs the server of a place is for: its own, none of its own (`[]`), or `none` at all. */
+	async placeIds(
+		place: string,
+		inherited?: string
+	): Promise<readonly number[] | typeof NONE | undefined> {
 		const given = this.choices.placeIds;
-		if (given !== undefined)
-			return InitQuestions.distinct(
-				listOf(given, "--place-id").map((id) =>
-					InitQuestions.toPlaceId(id)
-				)
-			);
+		if (given !== undefined) {
+			const ids = listOf(given, "--place-id");
+			return ids.length === 0
+				? NONE
+				: InitQuestions.distinct(
+						ids.map((id) => InitQuestions.toPlaceId(id))
+					);
+		}
 		if (!this.interactive) {
-			this.decide("placeIds", [], "--place-id");
+			if (!inherited) this.decide("placeIds", [], "--place-id");
 			return [];
 		}
 		const answer = await this.promptService.text({
 			message: "Place ID",
-			description: `The published ${place} place's ID, so that a Studio on another place refuses to connect to its port. Leave empty if it isn't published yet. Separate several with commas.`,
+			description: `The published ${place} place's ID, so that a Studio on another place refuses to connect to its port. ${inherited ? `Leave empty to keep ${inherited}, or type ${NONE} for none.` : "Leave empty if it isn't published yet."} Separate several with commas.`,
 			validate: (value) => {
+				if (value.trim() === NONE) return undefined;
 				const bad = splitList(value).find(
 					(id) => !InitQuestions.isPlaceId(id)
 				);
@@ -146,11 +152,11 @@ export class InitQuestions {
 					: `'${bad}' is not a place ID, a whole number above 0.`;
 			},
 		});
-		return answer === undefined
-			? undefined
-			: InitQuestions.distinct(
-					splitList(answer).map((id) => InitQuestions.toPlaceId(id))
-				);
+		if (answer === undefined) return undefined;
+		if (answer.trim() === NONE) return NONE;
+		return InitQuestions.distinct(
+			splitList(answer).map((id) => InitQuestions.toPlaceId(id))
+		);
 	}
 
 	private static distinct(ids: readonly number[]): number[] {
