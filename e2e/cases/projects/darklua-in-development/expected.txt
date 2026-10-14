@@ -16,7 +16,9 @@ stdout:
     sync path: (none)
     projects:
       default: default.project.json
+        rojo serve default.project.json
       dist: dist.project.json (served)
+        rojo serve dist.project.json
   1 config.
 
 written:

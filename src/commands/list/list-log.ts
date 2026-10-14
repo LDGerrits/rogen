@@ -39,6 +39,7 @@ const projectShape = S.named(
 		served: S.boolean,
 		port: S.optional(S.integer),
 		placeIds: S.optional(S.array(S.integer)),
+		rojo: S.optional(S.array(S.string)),
 		serving: S.nullable(servingShape),
 	})
 );
@@ -94,6 +95,16 @@ const servingLine = ({ server, host, port, clients }: ServingNow): string =>
 				: `, ${clients} Studio connected`
 	}`;
 
+const portOf = (project: ResolvedConfig): number | undefined =>
+	project.placeServePort ?? project.project.servePort;
+
+/** The Rojo command that serves the project, unless its config lists places and is never served. */
+const rojoServe = (
+	project: ResolvedConfig,
+	file: (project: ResolvedConfig) => string
+): string[] | undefined =>
+	project.hasPlaces ? undefined : ["rojo", "serve", file(project)];
+
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
@@ -106,6 +117,7 @@ interface ListedProject {
 	readonly served: boolean;
 	readonly port?: number;
 	readonly placeIds?: readonly number[];
+	readonly rojo?: readonly string[];
 	readonly serving: ListedServing | null;
 }
 
@@ -240,8 +252,8 @@ export class ListLog {
 				!project.hasPlaces
 					? ["served"]
 					: []),
-				...(project.placeServePort !== undefined
-					? [`port ${project.placeServePort}`]
+				...(portOf(project) !== undefined
+					? [`port ${portOf(project)}`]
 					: []),
 				...(placeIds.length > 0
 					? [`place IDs ${placeIds.join(", ")}`]
@@ -249,6 +261,9 @@ export class ListLog {
 			];
 			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 		};
+		const rojo = (project: ResolvedConfig): string[] =>
+			rojoServe(project, ({ projectFile }) => relative(projectFile)) ??
+			[];
 		const running = (project: ResolvedConfig): string => {
 			const now = serving.get(project.projectFile);
 			return now ? `serving: ${servingLine(now)}` : "";
@@ -267,6 +282,9 @@ export class ListLog {
 				...(resolved.projects.length === 0
 					? [
 							`project file: ${relative(config.projectFile)}${notes(config, false)}`,
+							...(rojo(config).length > 0
+								? [`rojo: ${rojo(config).join(" ")}`]
+								: []),
 							...(running(config) ? [running(config)] : []),
 						]
 					: [
@@ -274,6 +292,10 @@ export class ListLog {
 								.map(
 									(project) =>
 										`\n  ${project.stem}: ${relative(project.projectFile)}${notes(project, true)}${
+											rojo(project).length > 0
+												? `\n    ${rojo(project).join(" ")}`
+												: ""
+										}${
 											running(project)
 												? `, ${running(project)}`
 												: ""
@@ -355,15 +377,19 @@ function configDetails(
 		serving: servingJson(serving.get(config.projectFile)),
 		projects: projects.map((project) => {
 			const { servePlaceIds: placeIds } = project.project;
+			const rojo = rojoServe(project, ({ projectFile }) =>
+				toNative(projectFile)
+			);
 			return {
 				name: project.stem,
 				file: toNative(project.projectFile),
 				served:
 					project.stem === project.serveProject && !project.hasPlaces,
-				...(project.placeServePort !== undefined
-					? { port: project.placeServePort }
+				...(portOf(project) !== undefined
+					? { port: portOf(project) }
 					: {}),
 				...(placeIds.length > 0 ? { placeIds } : {}),
+				...(rojo ? { rojo } : {}),
 				serving: servingJson(serving.get(project.projectFile)),
 			};
 		}),

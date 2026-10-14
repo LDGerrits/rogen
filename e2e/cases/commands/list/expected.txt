@@ -11,9 +11,11 @@ stdout:
       * -> ReplicatedStorage/shared
     sync path: game/dist
     project file: game/default.project.json
+    rojo: rojo serve game/default.project.json
   lobby/rogen.json
     source paths: lobby/core, lobby/places/lobby
     routes: same as Game
     sync path: (none)
     project file: lobby/default.project.json
+    rojo: rojo serve lobby/default.project.json
   2 configs.

@@ -26,6 +26,8 @@ src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inven
 
 - **Feature Folders:** Keep a feature's client, server and shared code in one folder.
 - **Routes:** Declare where each kind of code goes, and route files with a folder, a marker file or an `@` suffix (`Save@server.luau`).
+- **A Rojo Superset:** `rogen.json` is a Rojo project file with routes added, so Rojo's keys and documentation still apply. Rogen's commands take Rojo's names and flags (`build -o`, `serve`, `sourcemap`, `upload`).
+- **Projects and Places:** One config writes more project files (a Darklua build, a release without the specs), and a repository with several places shares one root config between them.
 - **Shared Code:** List several source paths; the later one wins a clash, so shared code can be overridden.
 - **Watch Mode:** Rebuild as files change, and reload when the config does. `rogen serve` also starts Rojo.
 - **Toolchains:** Luau, roblox-ts and Darklua, set up by `rogen init`.

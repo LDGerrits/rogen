@@ -1,7 +1,7 @@
 $ rogen check
 exit 1
 stdout:
-  default.project.json - warning: this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date. (output.differs)
+  default.project.json - warning: this file differs from what 'rogen build' would write. It is written from rogen.json, so edit that and run 'rogen build'. (output.differs)
 
 $ rogen build
 exit 0

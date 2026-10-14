@@ -12,8 +12,11 @@ stdout:
     sync path: (none)
     projects:
       default: default.project.json
+        rojo serve default.project.json
       dist: dist.project.json (served)
+        rojo serve dist.project.json
       release: release.project.json
+        rojo serve release.project.json
   1 config.
 
 $ rogen list --json
@@ -46,18 +49,33 @@ stdout:
             "name": "default",
             "file": "<dir>/default.project.json",
             "served": false,
+            "rojo": [
+              "rojo",
+              "serve",
+              "<dir>/default.project.json"
+            ],
             "serving": null
           },
           {
             "name": "dist",
             "file": "<dir>/dist.project.json",
             "served": true,
+            "rojo": [
+              "rojo",
+              "serve",
+              "<dir>/dist.project.json"
+            ],
             "serving": null
           },
           {
             "name": "release",
             "file": "<dir>/release.project.json",
             "served": false,
+            "rojo": [
+              "rojo",
+              "serve",
+              "<dir>/release.project.json"
+            ],
             "serving": null
           }
         ],

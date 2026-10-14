@@ -251,7 +251,7 @@ export class CoreBuildService implements BuildService {
 					warningDiagnostic(
 						"output.differs",
 						{ resource: projectFile },
-						`this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date.`
+						`this file differs from what 'rogen build' would write. It is written from rogen.json, so edit that and run 'rogen build'.`
 					),
 				],
 			},

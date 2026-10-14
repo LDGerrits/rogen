@@ -1,0 +1,97 @@
+---
+title: Several Places
+description: Set up Rogen for a game with more than one place.
+---
+
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
+
+A game with a lobby, a match and a shop is several places that share code. Rogen keeps what they share in one root `rogen.json`, and each **place** is a folder under it. A place inherits the root's keys and projects, adds its own code, and gets its own project files in its own folder, so each place has its own sourcemap for the editor.
+
+<Steps>
+
+<Step>
+### Set Up the Root
+
+In the folder that holds the shared code, run `rogen init` as for any [setup](/docs/v2/setups/luau). The root's `rogen.json` has the routes, the `tree` and the packages every place uses.
+
+</Step>
+
+<Step>
+### Add a Place
+
+Below the root, run `rogen init` with the place's folder:
+
+```bash
+rogen init places/lobby
+```
+
+In a terminal it asks, when no `placePaths` glob lists the folder yet, whether to add the parent as a glob (`places/*`, the default) or only this folder, then which source paths the place has, and its place ID. It writes the place's `rogen.json`, builds its project file, and writes a `.code-workspace` that lists the root and every place:
+
+```
+places/
+  lobby/
+    rogen.json
+    src/
+  arena/
+    src/
+rogen.json
+src/
+```
+
+```json title="places/lobby/rogen.json"
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"servePort": 34872
+}
+```
+
+A place needs no `rogen.json`: `places/arena` above is a place named `arena` just by matching the glob. A place's `rogen.json` holds what differs. See [Places](/docs/v2/configuration#places) for what a place inherits and what it never does.
+
+</Step>
+
+<Step>
+### Put Code Where It Belongs
+
+Code every place needs goes in the root's `src`. A place's own code goes in its `src`, which Rogen adds after the root's: both are routed by the root's routes, and the place's code wins a clash.
+
+```
+src/Inventory/Server/InventoryService.luau        every place
+places/lobby/src/Lobby/Server/LobbyService.luau   the lobby only
+```
+
+</Step>
+
+<Step>
+### Serve
+
+```bash
+rogen serve
+```
+
+At the root, `serve` serves every place on its own port and never the root, which is only the shared code. A place without a `servePort` gets 34872 plus its index among the places without one, sorted by path, and `rogen init` pins the port into the place it adds so adding another place never moves it. `rogen list` shows each place's project file and port. Run `rogen serve` inside a place, or name it (`rogen serve places/lobby`), to serve just that one.
+
+Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port. Give each place its `servePlaceIds` and Rojo refuses the connection from any other place: see [Several places](/docs/v2/studio#several-places).
+
+</Step>
+
+<Step>
+### Open the Editor
+
+Open the `.code-workspace` that `init` wrote. luau-lsp starts one language server per workspace folder, so each place gets the sourcemap of its own project file. `rogen sourcemap`, run at the root, writes a `sourcemap.json` beside each place's project file for tools that don't run an editor.
+
+</Step>
+
+</Steps>
+
+## Projects in Places
+
+A project of the root is a project of every place. `release` in the root's `rogen.json` writes `release.project.json` in each place's folder, and `rogen build release -o game.rbxl` inside a place builds that place's release. A place may declare projects of its own too.
+
+## Darklua with Places
+
+Each place's Darklua config sits beside that place's sourcemap. A place inherits the root's `syncPath`, written relative to its folder, so every place has its own `dist`. The processed copy of the shared code is the same from every place as long as the places mount it at the same instance paths. A place that mounts it somewhere else sets its own `syncPath`. See the [Darklua guide](/docs/v2/setups/darklua).
+
+<Callout type="info">
+	A config that lists places is never served, and it can't set `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`: each place sets its own ([`config.placeSetting`](/docs/v2/diagnostics#config-placesetting)).
+</Callout>

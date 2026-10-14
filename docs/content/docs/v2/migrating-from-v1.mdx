@@ -95,12 +95,23 @@ Route marker files now take `@` too: v1's `.server` becomes `@server`. So do mod
 
 ### Tags
 
-v2 has no tags. A file that v1 built only while a tag was on now lives in a source path that only the build wanting it lists, in a folder of its own with its own `rogen.json`. That source path comes later in `sourcePaths`, so its files win a clash without a warning, and a file with no plain twin is simply added. Or leave the files out of the build that doesn't want them with `globIgnorePaths`. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+v2 has no tags. A file that v1 built only while a tag was on now lives in an **overlay source path**, a folder of its own that only the builds wanting it list. A later source path wins a clash without a warning, and a file with no plain twin is simply added. Put the overlay in the description if your everyday build wants it, and leave it out of the [project](/docs/v2/configuration#projects) that doesn't. A list in a project replaces the list, so the project restates only the paths it keeps:
 
 ```
 v1: src/Teleport/Teleport.luau, src/Teleport/TeleportDev.luau (tag dev)
-v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (source path of the dev build)
+v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 ```
+
+```json title="rogen.json"
+{
+	"sourcePaths": ["src", "dev"],
+	"projects": {
+		"release": { "sourcePaths": ["src"] }
+	}
+}
+```
+
+`rogen build` writes `default.project.json` with the overlay and `release.project.json` without it. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 <Callout type="warn" title="Old tag names ship">
 	v1 dropped `TeleportDev.luau` when `dev` was off. In v2 it's an ordinary file that ships in every build, and a dot suffix such as `Teleport.dev.luau` is part of the name, so move these files before your first v2 release.
@@ -164,22 +175,25 @@ v1 sent unmatched files to `ReplicatedStorage`, which could leak server code to 
 
 ### Modes and Profiles
 
-Each v2 config is one tree and one output, so a second v1 mode becomes a `rogen.json` in a folder of its own, which you build with `rogen build prod`. It states its own routes, since a config doesn't inherit from another:
+A v1 mode changed which files a build had and where Rojo read them. In v2 it is a **project** of the same `rogen.json`: the description with the keys that differ, written beside `default.project.json` as `<name>.project.json`. Nothing else is repeated, because a project inherits every key it doesn't set.
 
-```json title="prod/rogen.json"
+```json title="rogen.json"
 {
-	"sourcePaths": ["../src"],
+	"sourcePaths": ["src"],
 	"routes": {
 		"Server": "ServerScriptService",
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"syncPath": "../dist"
+	"serveProject": "dist",
+	"projects": {
+		"dist": { "syncPath": "dist" }
+	}
 }
 ```
 
-A v1 mode that only flipped tags becomes a `rogen.json` that lists the source path of the tagged files, or leaves out the files it doesn't want with `globIgnorePaths`.
+`rogen build` writes every project, `rogen serve` serves the one `serveProject` names, and `rogen serve release` or `rogen build release -o game.rbxl` picks another by name. A v1 mode that only flipped tags becomes a project with its own `sourcePaths`, as above.
 
 ## Config Fields
 
@@ -187,10 +201,10 @@ A v1 mode that only flipped tags becomes a `rogen.json` that lists the source pa
 |---|---|
 | `.rogen.json`, or the first `*.rogen.json` | `rogen.json` (or `rogen.jsonc`), one per folder; `init` writes it |
 | `source` | `sourcePaths` |
-| modes (`luau`, `ts`, `darklua`, custom) | one `rogen.json` per tree, each in a folder of its own |
-| a mode's `build` | `syncPath` |
+| modes (`luau`, `ts`, `darklua`, custom) | `projects`, each the description with some keys changed |
+| a mode's `build` | `syncPath`, in the description or in a project |
 | a mode's `output` | removed. Rogen writes `default.project.json` beside `rogen.json` |
-| `tags` at the root and in modes | removed. A source path that only the build wanting those files lists, or `globIgnorePaths` |
+| `tags` at the root and in modes | removed. An overlay source path that only the projects wanting those files list, or `globIgnorePaths` |
 | `globIgnorePaths` | `globIgnorePaths`, Rojo's own key, which Rogen also writes to the project file |
 | `aliases` and built-in service keywords | `routes`. Only declared keys route |
 | `casing`, `unwrap` | route targets as paths |
@@ -212,12 +226,12 @@ A v1 mode that only flipped tags becomes a `rogen.json` that lists the source pa
 
 | v1 | v2 |
 |---|---|
-| `-m, --mode <mode>` | removed. Build the folder that holds the settings: `rogen build prod` |
+| `-m, --mode <mode>` | removed. Name a project: `rogen build release`, `rogen serve dist` |
 | `-b, --build <path>` | removed. Set `syncPath` in `rogen.json` |
 | `-s, --source <path>` | removed. Set `sourcePaths` in `rogen.json` |
-| `-o, --output <path>` | removed. Rogen writes `default.project.json` beside `rogen.json` |
-| `-p, --project <path>` | removed. Set `tree` in `rogen.json` |
-| `-t, --tag <tag>` | removed. Build the folder whose `rogen.json` lists the source path |
+| `-o, --output <path>` | not the same. Rogen writes the project files beside `rogen.json`; `rogen build -o game.rbxl` has Rojo build a place file from one |
+| `-p, --project <path>` | removed. Set `tree` in `rogen.json`. `-p` now builds a plugin: `rogen build -p Tool.rbxm` |
+| `-t, --tag <tag>` | removed. Name the project whose `sourcePaths` list the overlay |
 | `-v, --version` | `-V, --version` |
 
 <Callout type="warn" title="-v changed meaning">

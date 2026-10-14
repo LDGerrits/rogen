@@ -60,18 +60,15 @@ A few things to keep in mind:
 
 ## Place Files
 
-Rogen writes the project file, not the place file. To get an `.rbxl` or `.rbxm` for publishing or a test run, build the project file with Rojo:
+Rogen writes the project files, and `-o` has Rojo make a place or model file from one of them, as `rojo build` does:
 
 ```bash
-rogen build
-rojo build default.project.json -o game.rbxl
+rogen build -o game.rbxl
 ```
 
-Rojo, and not Rogen, runs the second command, and `rogen build` needs no Rojo to run. Which Rojo version builds the file is yours to pin in `rokit.toml`.
+It writes every project file first and then runs the Rojo your toolchain file pins on `default.project.json`, so the place always matches the files. Name another project to build that one: a place that differs from your default build, such as one with the specs in it or without the dev packages, is a [project](/docs/v2/configuration#projects), built with `rogen build release -o game.rbxl`. See [Testing](/docs/v2/testing). `-p Tool.rbxm` builds a plugin into Roblox's plugins folder, and `rogen upload` uploads the place. Without `-o`, `rogen build` needs no Rojo, and running `rojo build default.project.json -o game.rbxl` yourself after it works the same.
 
 With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first, so the place holds the compiled code the `syncPath` points at.
-
-A place that differs from your default build, such as one with the specs in it or without the dev packages, is a [project](/docs/v2/configuration#projects): `rojo build release.project.json -o game.rbxl`. See [Testing](/docs/v2/testing).
 
 ## Building While Watching
 

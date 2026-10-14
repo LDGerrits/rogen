@@ -140,7 +140,7 @@ A repository with several places puts what they share in a root `rogen.json` and
 }
 ```
 
-Each folder that matches is a **place**. It inherits the root's keys and projects, adds its own code, and gets its own project files in its own folder, so an editor that starts one language server per folder gets one sourcemap per place. A place needs no config: a folder with no `rogen.json` is a place named after the folder. A place's `rogen.json` holds what differs, and is applied over the root's:
+Each folder that matches is a **place**. It inherits the root's keys and projects, adds its own code, and gets its own project files in its own folder, so an editor that starts one language server per folder gets one sourcemap per place. The [Several Places guide](/docs/v2/setups/places) walks through it. A place needs no config: a folder with no `rogen.json` is a place named after the folder. A place's `rogen.json` holds what differs, and is applied over the root's:
 
 ```json title="places/lobby/rogen.json"
 { "name": "Lobby", "servePort": 34880 }
@@ -231,7 +231,7 @@ A config is one folder's project file, so these keys are gone. Each is an error 
 | `variants`, `conflicts` | None. A file that replaces another goes in a later source path; sets that exclude each other are a project each. |
 | `server` | None: `rogen serve` starts Rojo. |
 
-There are no config names either: no `<name>.rogen.json`, no `default.rogen.json`, and a command's argument is a folder or a project file, not a config name. The `-o` flag is gone with `outFile`. A `rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
+There are no config names either: no `<name>.rogen.json`, no `default.rogen.json`, and a command's argument is a folder or a project file, not a config name. `-o` no longer names the project file, as it did with `outFile`: on `build` it names the place file Rojo builds. A `rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ## Diagnostics
 

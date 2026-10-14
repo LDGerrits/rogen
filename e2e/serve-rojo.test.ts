@@ -214,6 +214,49 @@ describeWithRojo("end to end serve", () => {
 		expect(await serving.stop()).toBe(0);
 	}, 40_000);
 
+	it("should serve the project serveProject names, and not the description", async () => {
+		writeProjectFile(
+			serve.dir,
+			"rogen.json",
+			config(serve.port, {
+				serveProject: "dist",
+				projects: { dist: { name: "Dist" } },
+			})
+		);
+
+		const serving = serve.start();
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving Dist (dist) with Rojo 7.7.1 at 127.0.0.1:${serve.port}.`
+			);
+		}, 20_000);
+		expect(await rojoProject(serve.port)).toBe("Dist");
+		expect(await serving.stop()).toBe(0);
+	}, 40_000);
+
+	it("should serve the project file it is given", async () => {
+		writeProjectFile(
+			serve.dir,
+			"rogen.json",
+			config(serve.port, {
+				projects: {
+					release: { name: "Release", servePort: serve.port + 1 },
+				},
+			})
+		);
+
+		const serving = serve.start(["release.project.json"]);
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving Release (release) with Rojo 7.7.1 at 127.0.0.1:${serve.port + 1}.`
+			);
+		}, 20_000);
+		expect(await rojoProject(serve.port)).toBeUndefined();
+		expect(await serving.stop()).toBe(0);
+	}, 40_000);
+
 	it("should name the project after its folder when rogen.json sets no name", async () => {
 		writeProjectFile(
 			serve.dir,

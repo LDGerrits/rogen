@@ -29,6 +29,7 @@ stdout:
       * -> ReplicatedStorage/Shared
     sync path: (none)
     project file: ../../default.project.json
+    rojo: rojo serve ../../default.project.json
   1 config.
 
 $ rogen where Server/Save.luau

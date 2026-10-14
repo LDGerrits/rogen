@@ -69,6 +69,7 @@ describe("list command", () => {
 				"  * -> ReplicatedStorage",
 				"sync path: out",
 				"project file: default.project.json",
+				"rojo: rojo serve default.project.json",
 			].join("\n"),
 		]);
 	});
@@ -90,9 +91,49 @@ describe("list command", () => {
 				"sync path: (none)",
 				"projects:",
 				"  default: default.project.json",
+				"    rojo serve default.project.json",
 				"  dist: dist.project.json (served)",
+				"    rojo serve dist.project.json",
 			].join("\n")
 		);
+	});
+
+	it("should show the port a project pins, though it is no place", async () => {
+		await write("rogen.json", {
+			servePort: 34900,
+			projects: { dist: { servePort: 34901 } },
+		});
+
+		await run();
+
+		const [text] = under("rogen.json");
+		expect(text).toContain(
+			"default: default.project.json (served, port 34900)"
+		);
+		expect(text).toContain("dist: dist.project.json (port 34901)");
+	});
+
+	it("should give each project the Rojo command that serves it with --json, and none to a config that lists places", async () => {
+		await write("rogen.json", {
+			placePaths: ["places/*"],
+			projects: { dist: {} },
+		});
+		await fs.createDirectory("/repo/places/lobby");
+
+		await run({ json: true });
+
+		const [config] = JSON.parse(logService.texts("print")[0]).configs as {
+			projects: { name: string; rojo?: string[] }[];
+			places: { projects: { name: string; rojo?: string[] }[] }[];
+		}[];
+		expect(config.projects.map(({ rojo }) => rojo)).toEqual([
+			undefined,
+			undefined,
+		]);
+		expect(config.places[0].projects.map(({ rojo }) => rojo)).toEqual([
+			["rojo", "serve", "/repo/places/lobby/default.project.json"],
+			["rojo", "serve", "/repo/places/lobby/dist.project.json"],
+		]);
 	});
 
 	it("should say a name that is both a folder and a project is the folder", async () => {
@@ -303,6 +344,11 @@ describe("list command", () => {
 								name: "default",
 								file: "/repo/default.project.json",
 								served: true,
+								rojo: [
+									"rojo",
+									"serve",
+									"/repo/default.project.json",
+								],
 								serving: null,
 							},
 						],
@@ -562,6 +608,7 @@ describe("list command", () => {
 					"routes: same as Game",
 					"sync path: (none)",
 					"project file: places/arena/default.project.json (port 34872)",
+					"rojo: rojo serve places/arena/default.project.json",
 				].join("\n"),
 			]);
 			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");

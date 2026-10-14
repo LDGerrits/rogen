@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  src - warning: 1 file here is mounted by nothing in the tree, and the config declares no routes, so Rojo never syncs it. Add "routes" to place them, or mount the folder with "$path". (scan.unmountedSource)
+  src - warning: 1 file here is mounted by nothing in the tree, and the config declares no routes, so Rojo never syncs it. Add "routes" to place them (rogen init writes a starting set), or mount the folder with "$path". (scan.unmountedSource)
 
 written:
   default.project.json

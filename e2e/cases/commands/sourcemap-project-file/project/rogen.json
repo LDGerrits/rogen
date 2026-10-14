@@ -1,0 +1,22 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage"
+	},
+	"projects": {
+		"release": {
+			"globIgnorePaths": [
+				"**/*.spec.luau"
+			]
+		},
+		"dist": {
+			"name": "Dist"
+		}
+	}
+}
