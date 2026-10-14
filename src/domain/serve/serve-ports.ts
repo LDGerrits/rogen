@@ -18,7 +18,7 @@ import { ServerRecords } from "./server-records.js";
 const FREE_PORT_SEARCH = 20;
 
 const shellWord = (arg: string): string =>
-	/^[\w@%+=:,./-]+$/.test(arg) ? arg : JSON.stringify(arg);
+	/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;
 
 export function namesakesOf(
 	config: ResolvedConfig,

@@ -327,13 +327,13 @@ describe("CoreServeService", () => {
 			});
 
 			const error = await errorOf({
-				serverArgs: ["--allowed-hosts=studio.local"],
+				serverArgs: ["--allowed-hosts"],
 			});
 
 			expect(error).toEqual(
 				new UsageError(
 					"--allowed-hosts needs Rojo 7.7.0 or later, and the Rojo that runs here is 7.6.1.",
-					"Change your Rojo pin to 7.7.0 or later, or leave the flag out."
+					"Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH, or leave the flag out."
 				)
 			);
 		});
@@ -592,7 +592,7 @@ describe("CoreServeService", () => {
 			).toEqual({
 				run: {
 					command:
-						'rogen serve . --port 34873 -- --address 0.0.0.0 --allowed-hosts "my pc"',
+						"rogen serve . --port 34873 -- --address 0.0.0.0 --allowed-hosts 'my pc'",
 					cwd: "/repo",
 				},
 			});

@@ -528,7 +528,7 @@ describe("ConfigDiscovery.findEnclosing", () => {
 			]);
 
 			expect(errorOf(result).message).toMatch(
-				/different projects in different places of one config/
+				/name different projects of one config/
 			);
 		});
 

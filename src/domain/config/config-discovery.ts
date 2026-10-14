@@ -171,8 +171,8 @@ export class ConfigDiscovery {
 				if (!samePlace && !sameProject)
 					return err(
 						new UsageError(
-							`"${refs[at]}" and "${refs[index]}" name different projects in different places of one config, and a project named applies to every place named.`,
-							"Name the same project for each place, or serve the places one at a time."
+							`"${refs[at]}" and "${refs[index]}" name different projects of one config, and a project named applies to every place named.`,
+							"Name the same project for each place, or run the command once per place."
 						)
 					);
 				if (

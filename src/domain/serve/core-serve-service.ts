@@ -84,7 +84,7 @@ export class CoreServeService implements ServeService {
 			return err(
 				new UsageError(
 					`${tooNew.flag} needs ${server.name} ${tooNew.since} or later, and the ${server.name} that runs here is ${version}.`,
-					`Change your ${server.name} pin to ${tooNew.since} or later, or leave the flag out.`
+					`Change your ${server.name} pin to ${tooNew.since} or later, or update the ${server.name} on the PATH, or leave the flag out.`
 				)
 			);
 

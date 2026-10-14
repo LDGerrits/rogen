@@ -75,7 +75,7 @@ function serverArgsOf(line: ServeLine): Result<string[], UsageError> {
 	const given: string[] = [];
 	for (const { name } of ServerFlags) {
 		const value = line.options[name];
-		if (value === undefined || value.length === 0) continue;
+		if (value === undefined) continue;
 		const flag = `--${name}`;
 		if (
 			passthrough.some(

@@ -175,7 +175,9 @@ export class SyncServer {
 			const release = RojoVersion.of(since);
 			if (
 				found.isBefore(release) &&
-				flagValue(serverArgs, [flag]) !== undefined
+				serverArgs.some(
+					(arg) => arg === flag || arg.startsWith(`${flag}=`)
+				)
 			)
 				return { flag, since: release };
 		}

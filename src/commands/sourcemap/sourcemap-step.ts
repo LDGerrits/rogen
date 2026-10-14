@@ -1,4 +1,5 @@
 import path from "path";
+import { groupBy } from "../../base/collections.js";
 import { UsageError } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
 import { joinedWithAnd } from "../../base/strings.js";
@@ -49,17 +50,14 @@ export class SourcemapStep implements RojoStep {
 						`-o names one file, and this selects ${projects.length} projects. Name one place, or leave -o out to write a ${SOURCEMAP_FILE} beside each project file.`
 					)
 				);
-			const shared = projects.find((project, index) =>
-				projects
-					.slice(0, index)
-					.some((before) => before.projectDir === project.projectDir)
+			const byFolder = groupBy(projects, ({ projectDir }) => projectDir);
+			const sharing = [...byFolder.values()].find(
+				(group) => group.length > 1
 			);
-			if (shared) {
-				const sharing = projects.filter(
-					({ projectDir }) => projectDir === shared.projectDir
-				);
+			if (sharing) {
 				const folder =
-					toPosix(path.relative(this.cwd, shared.projectDir)) || ".";
+					toPosix(path.relative(this.cwd, sharing[0].projectDir)) ||
+					".";
 				return err(
 					new UsageError(
 						`${joinedWithAnd(sharing.map(({ label }) => label))} ${sharing.length === 2 ? "both" : "all"} have their project file in ${folder}, so ${sharing.length === 2 ? "both" : "all"} sourcemaps would be ${SOURCEMAP_FILE} there.`,
