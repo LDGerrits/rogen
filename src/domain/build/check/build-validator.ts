@@ -1,34 +1,34 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
-import { isObject } from "../../base/objects.js";
-import { isInside, joinPosix, toPosix } from "../../base/path.js";
-import { capitalized, joinedWithAnd } from "../../base/strings.js";
+import { compareStrings } from "../../../base/collections.js";
+import { isObject } from "../../../base/objects.js";
+import { isInside, joinPosix, toPosix } from "../../../base/path.js";
+import { capitalized, joinedWithAnd } from "../../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
 	DiagnosticRelated,
 	warningDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
-import { DeclaredKeys } from "../config/declared-keys.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
+} from "../../../platform/diagnostics/diagnostic.js";
+import { DeclaredKeys } from "../../config/declared-keys.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	ScriptRun,
 	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
 	scriptFate,
 	instanceKey,
-} from "../roblox/roblox.js";
-import { RojoFile, scriptRunOf } from "../rojo/rojo.js";
-import { RojoNode } from "../rojo/rojo-project.js";
-import { FolderMeta } from "./folder-meta.js";
+} from "../../roblox/roblox.js";
+import { RojoFile, scriptRunOf } from "../../rojo/rojo.js";
+import { RojoNode } from "../../rojo/rojo-project.js";
+import { FolderMeta } from "../folder-meta.js";
 import {
 	MisspellingKind,
 	MisspellingOf,
 	NotedName,
-} from "./misspelling-finder.js";
-import { Placement } from "./placement.js";
-import { RoutedFile } from "./router.js";
-import { Assembly } from "./tree-assembler.js";
+} from "../misspelling-finder.js";
+import { Placement } from "../placement.js";
+import { RoutedFile } from "../router.js";
+import { Assembly } from "../tree-assembler.js";
 
 const ROJO_NODE_FIELDS: ReadonlySet<string> = new Set([
 	"$className",

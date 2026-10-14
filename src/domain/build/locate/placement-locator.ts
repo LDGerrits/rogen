@@ -1,12 +1,12 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
-import { isMatch } from "../../base/glob.js";
-import { ancestors, contains, toPosix } from "../../base/path.js";
-import { IndexReader } from "../../platform/fs/index-service.js";
-import { InstanceReference } from "../roblox/roblox.js";
-import { FileLocation, PlacedLocation } from "./build-service.js";
-import { Placement } from "./placement.js";
-import { RoutedFile } from "./router.js";
+import { compareStrings } from "../../../base/collections.js";
+import { isMatch } from "../../../base/glob.js";
+import { ancestors, contains, toPosix } from "../../../base/path.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
+import { InstanceReference } from "../../roblox/roblox.js";
+import { FileLocation, PlacedLocation } from "../build-service.js";
+import { Placement } from "../placement.js";
+import { RoutedFile } from "../router.js";
 
 /** Whether `location` is a file placed at `reference` or inside it, as itself or as a copied init script. */
 export function placesInstance(

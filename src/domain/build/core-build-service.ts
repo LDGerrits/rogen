@@ -32,7 +32,7 @@ import {
 	Locations,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
-import { Locator } from "./locator.js";
+import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 /** A config built in memory, or the reason it wasn't. */

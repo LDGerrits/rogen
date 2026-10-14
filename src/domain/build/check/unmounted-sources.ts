@@ -1,16 +1,16 @@
 import path from "path";
-import { isMatch } from "../../base/glob.js";
-import { contains, joinPosix } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
+import { isMatch } from "../../../base/glob.js";
+import { contains, joinPosix } from "../../../base/path.js";
+import { plural } from "../../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
-import { isDirectoryType } from "../../platform/fs/file-system-service.js";
-import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
-import { RojoFile } from "../rojo/rojo.js";
-import { rojoPathTarget } from "../rojo/rojo-project.js";
+} from "../../../platform/diagnostics/diagnostic.js";
+import { isDirectoryType } from "../../../platform/fs/file-system-service.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
+import { RojoFile } from "../../rojo/rojo.js";
+import { rojoPathTarget } from "../../rojo/rojo-project.js";
 
 /** A config without routes routes nothing and scans no source path, so the files Rojo reads in the folder it would have scanned go unsynced unless its tree mounts them. */
 export class UnmountedSources {

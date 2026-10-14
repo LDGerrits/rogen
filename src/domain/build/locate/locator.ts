@@ -1,20 +1,23 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
-import { toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { compareStrings } from "../../../base/collections.js";
+import { toPosix } from "../../../base/path.js";
+import { Result, err, ok } from "../../../base/result.js";
 import {
 	Diagnostic,
 	diagnosticsReaching,
 	isRenameFix,
-} from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileReader, FileType } from "../../platform/fs/file-system-service.js";
-import { IndexReader } from "../../platform/fs/index-service.js";
-import { DeclaredKeys } from "../config/declared-keys.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
-import { InstanceReference } from "../roblox/roblox.js";
-import { RojoFile } from "../rojo/rojo.js";
-import { SyncTool } from "../toolchain/toolchain.js";
+} from "../../../platform/diagnostics/diagnostic.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
+import {
+	FileReader,
+	FileType,
+} from "../../../platform/fs/file-system-service.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
+import { DeclaredKeys } from "../../config/declared-keys.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
+import { InstanceReference } from "../../roblox/roblox.js";
+import { RojoFile } from "../../rojo/rojo.js";
+import { SyncTool } from "../../toolchain/toolchain.js";
 import {
 	Asked,
 	ConfigLocations,
@@ -23,8 +26,8 @@ import {
 	InstanceLocation,
 	LocateQuery,
 	Locations,
-} from "./build-service.js";
-import { ConfigBuilder } from "./config-builder.js";
+} from "../build-service.js";
+import { ConfigBuilder } from "../config-builder.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
 

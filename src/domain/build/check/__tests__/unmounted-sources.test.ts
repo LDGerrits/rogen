@@ -1,9 +1,14 @@
-import { toPosix } from "../../../base/path.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
+import { toPosix } from "../../../../base/path.js";
+import { DiagnosticSeverity } from "../../../../platform/diagnostics/diagnostic.js";
+import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import { UnmountedSources } from "../unmounted-sources.js";
-import { abs, configOf, indexOf, writeFiles } from "./fixtures.js";
+import {
+	abs,
+	configOf,
+	indexOf,
+	writeFiles,
+} from "../../__tests__/fixtures.js";
 
 describe("UnmountedSources", () => {
 	let fs: MemoryFileSystemService;

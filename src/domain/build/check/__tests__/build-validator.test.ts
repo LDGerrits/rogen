@@ -1,10 +1,10 @@
-import { toPosix } from "../../../base/path.js";
-import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
+import { toPosix } from "../../../../base/path.js";
+import { DiagnosticSeverity } from "../../../../platform/diagnostics/diagnostic.js";
+import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import { BuildValidator } from "../build-validator.js";
-import { MetaReader } from "../meta-reader.js";
-import { TreeAssembler } from "../tree-assembler.js";
+import { MetaReader } from "../../meta-reader.js";
+import { TreeAssembler } from "../../tree-assembler.js";
 import {
 	abs,
 	buildAndPlace,
@@ -14,7 +14,7 @@ import {
 	placeFiles,
 	syncTools,
 	writeFiles,
-} from "./fixtures.js";
+} from "../../__tests__/fixtures.js";
 
 describe("BuildValidator", () => {
 	describe("validate", () => {

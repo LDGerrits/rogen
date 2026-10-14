@@ -1,18 +1,18 @@
 import path from "path";
-import { ancestors, stemOf, toPosix } from "../../base/path.js";
-import { listLimited } from "../../base/strings.js";
+import { ancestors, stemOf, toPosix } from "../../../base/path.js";
+import { listLimited } from "../../../base/strings.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
-} from "../../platform/diagnostics/diagnostic.js";
+} from "../../../platform/diagnostics/diagnostic.js";
 import {
 	FileReader,
 	isDirectoryType,
-} from "../../platform/fs/file-system-service.js";
-import { RojoFile } from "../rojo/rojo.js";
-import { Placement } from "./placement.js";
-import { SyncLayout } from "./sync-layout.js";
-import { MetaReplacement } from "../toolchain/toolchain.js";
+} from "../../../platform/fs/file-system-service.js";
+import { RojoFile } from "../../rojo/rojo.js";
+import { Placement } from "../placement.js";
+import { SyncLayout } from "../sync-layout.js";
+import { MetaReplacement } from "../../toolchain/toolchain.js";
 
 const LISTED_PATHS = 3;
 

@@ -7,13 +7,13 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary } from "./build.js";
 import { SyncTool } from "../toolchain/toolchain.js";
-import { BuildValidator } from "./build-validator.js";
+import { BuildValidator } from "./check/build-validator.js";
 import { MetaReader } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
-import { SyncPathCheck } from "./sync-path-check.js";
+import { SyncPathCheck } from "./check/sync-path-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
-import { UnmountedSources } from "./unmounted-sources.js";
+import { UnmountedSources } from "./check/unmounted-sources.js";
 
 /** One config built in memory, which the run goes on to write. */
 export interface BuiltConfig {

@@ -1,8 +1,8 @@
 import path from "path";
-import { ancestors, isInside, toPosix } from "../../base/path.js";
-import { FileType } from "../../platform/fs/file-system-service.js";
-import { IndexReader } from "../../platform/fs/index-service.js";
-import { RojoFile } from "../rojo/rojo.js";
+import { ancestors, isInside, toPosix } from "../../../base/path.js";
+import { FileType } from "../../../platform/fs/file-system-service.js";
+import { IndexReader } from "../../../platform/fs/index-service.js";
+import { RojoFile } from "../../rojo/rojo.js";
 
 /** `index` with the source files that don't exist yet, and their folders, added on top; `index` itself is untouched. */
 export class PlannedFilesIndex implements IndexReader {

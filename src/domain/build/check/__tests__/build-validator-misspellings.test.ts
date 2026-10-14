@@ -1,11 +1,16 @@
-import { toPosix } from "../../../base/path.js";
+import { toPosix } from "../../../../base/path.js";
 import {
 	DiagnosticSeverity,
 	isRenameFix,
-} from "../../../platform/diagnostics/diagnostic.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { abs, buildAndPlace, configOf, writeFiles } from "./fixtures.js";
+} from "../../../../platform/diagnostics/diagnostic.js";
+import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-system-service.js";
+import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
+import {
+	abs,
+	buildAndPlace,
+	configOf,
+	writeFiles,
+} from "../../__tests__/fixtures.js";
 
 describe("BuildValidator rules", () => {
 	const at = (...segments: string[]) => toPosix(abs(...segments));
