@@ -163,6 +163,7 @@ describe("mergePatch", () => {
 		const merged = mergePatch({}, patch);
 
 		expect(Object.keys(merged)).toEqual(["__proto__"]);
-		expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
+		expect(merged.x).toBeUndefined();
+		expect(({} as Record<string, unknown>).x).toBeUndefined();
 	});
 });

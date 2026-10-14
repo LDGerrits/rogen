@@ -56,6 +56,7 @@ export class CoreConfigService implements ConfigService {
 		);
 		const missing = this.missingProject(opened, projects);
 		if (missing) return err(missing);
+		const home = opened.find(({ file }) => file === homeConfig);
 		return ok(
 			new CoreConfigSelection(
 				opened,
@@ -65,7 +66,7 @@ export class CoreConfigService implements ConfigService {
 					? { directory, list: () => this.configsIn(directory) }
 					: undefined,
 				projects,
-				await this.tiesOf(homeConfig, folders)
+				await this.tiesOf(homeConfig, home, folders)
 			)
 		);
 	}
@@ -99,11 +100,14 @@ export class CoreConfigService implements ConfigService {
 	/** What to tell of each name that is both a folder with a config and a project of the config here: the folder is what it names. */
 	private async tiesOf(
 		homeConfig: string | undefined,
+		/** The config of `homeConfig` when the selection holds it. */
+		opened: ManagedConfig | undefined,
 		folders: readonly string[]
 	): Promise<string[]> {
 		if (folders.length === 0 || !homeConfig) return [];
 		const projects = buildableProjects(
-			(await ManagedConfig.open(homeConfig, this.loader)).entry
+			(opened ?? (await ManagedConfig.open(homeConfig, this.loader)))
+				.entry
 		);
 		return folders.flatMap((name) =>
 			projects.some(({ stem }) => stem === name)

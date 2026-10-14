@@ -194,8 +194,8 @@ export class RootScanner {
 		private readonly index: IndexReader,
 		private readonly ignored: readonly string[],
 		private readonly mounts: TreeMounts,
-		/** The project file the build writes, which a source path that holds it must not scan. */
-		private readonly projectFile: string
+		/** The project files the config writes, which a source path that holds them must not scan. */
+		private readonly projectFiles: readonly string[]
 	) {}
 
 	scan(sourcePath: string): ScannedRoot {
@@ -249,8 +249,10 @@ export class RootScanner {
 				isFileType(type) && isConfigFileName(name)
 					? name
 					: isFileType(type) &&
-						  samePath(path.join(dir, name), this.projectFile)
-						? path.basename(this.projectFile)
+						  this.projectFiles.some((file) =>
+								samePath(path.join(dir, name), file)
+						  )
+						? name
 						: this.ignoringGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
@@ -264,16 +266,18 @@ export class RootScanner {
 				});
 			else kept.push([name, type]);
 		}
-		// Left out before it exists too, or the first build and the one after it would write different files.
-		const outName = path.basename(this.projectFile);
-		if (
-			samePath(path.dirname(this.projectFile), dir) &&
-			!listing.has(outName)
-		)
-			walk.leftOut.set(joinPosix(dir, outName), {
-				status: "ignored",
-				pattern: outName,
-			});
+		// Left out before they exist too, or the first build and the one after it would write different files.
+		for (const projectFile of this.projectFiles) {
+			const outName = path.basename(projectFile);
+			if (
+				samePath(path.dirname(projectFile), dir) &&
+				!listing.has(outName)
+			)
+				walk.leftOut.set(joinPosix(dir, outName), {
+					status: "ignored",
+					pattern: outName,
+				});
+		}
 		return kept;
 	}
 

@@ -61,13 +61,26 @@ describe("GitIgnore", () => {
 			).toBeUndefined();
 		});
 
-		it("should not take a comment, or a negation, for an ignore line", () => {
-			const planned = new GitIgnore(
-				"# default.project.json\n!/sourcemap.json\n"
-			).planned(FILES);
+		it("should not take a comment for an ignore line", () => {
+			const planned = new GitIgnore("# default.project.json\n").planned(
+				FILES
+			);
 
-			expect(planned?.content).toContain("/default.project.json");
-			expect(planned?.content).toContain("\n/sourcemap.json\n");
+			expect(planned?.content).toContain("\n/default.project.json\n");
+		});
+
+		it("should leave out a file that a line un-ignores, since the user chose to commit it", () => {
+			const planned = new GitIgnore(
+				"*.json\n!default.project.json\n!/sourcemap.json\n"
+			).planned([
+				"default.project.json",
+				"dist.project.json",
+				"sourcemap.json",
+			]);
+
+			expect(planned?.content).toBe(
+				"*.json\n!default.project.json\n!/sourcemap.json\n\n# Written by Rogen from rogen.json\n/dist.project.json\n"
+			);
 		});
 
 		it("should never write a pattern for all project files", () => {

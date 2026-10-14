@@ -21,6 +21,8 @@ export interface ResolvedConfigSpec {
 	readonly file?: string;
 	/** `default`, or the name of a project. */
 	readonly stem?: string;
+	/** Every project the config file writes. */
+	readonly projectStems?: readonly string[];
 	readonly serveProject?: string;
 	readonly name?: string;
 	readonly sourcePaths?: readonly string[];
@@ -38,6 +40,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	return new ResolvedConfig({
 		file,
 		stem: spec.stem ?? "default",
+		projectStems: spec.projectStems ?? [spec.stem ?? "default"],
 		serveProject: spec.serveProject ?? "default",
 		projectName: spec.name ?? "repo",
 		project: RojoProject.parse(
@@ -64,7 +67,8 @@ export function mockEntry(
 	file = "/repo/rogen.json",
 	projects: Readonly<Record<string, ResolvedConfigSpec>> = {}
 ): ValidConfigEntry {
-	const config = mockConfig({ file, ...resolved });
+	const projectStems = ["default", ...Object.keys(projects)];
+	const config = mockConfig({ file, projectStems, ...resolved });
 	return {
 		status: "valid",
 		file,
@@ -72,6 +76,7 @@ export function mockEntry(
 		projects: Object.entries(projects).map(([stem, changes]) =>
 			mockConfig({
 				file,
+				projectStems,
 				serveProject: resolved.serveProject,
 				...resolved,
 				...changes,

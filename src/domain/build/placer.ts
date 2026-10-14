@@ -104,7 +104,7 @@ export class Placer {
 			this.index,
 			this.config.ignored,
 			this.tree.mounts,
-			this.config.projectFile
+			this.config.projectFiles
 		);
 		return this.config.sourcePaths.map((sourcePath) =>
 			scanner.scan(sourcePath)

@@ -36,16 +36,15 @@ export class GitIgnore {
 		}
 	}
 
-	/** The file with the `fileNames` it doesn't ignore yet added at its end, each anchored to this folder, or `undefined` when it ignores them all. */
+	/** The file with the `fileNames` it doesn't mention yet added at its end, each anchored to this folder, or `undefined` when it mentions them all. A file a line un-ignores is left out: the user chose to commit it. */
 	planned(fileNames: readonly string[]): PlannedFile | undefined {
-		const ignored = new Set(
-			(this.text ?? "")
-				.split(/\r?\n/)
-				.map((line) => line.trim())
-				.filter((line) => line !== "" && !/^[#!]/.test(line))
-				.map((line) => line.replace(/^\//, ""))
-		);
-		const missing = fileNames.filter((name) => !ignored.has(name));
+		const lines = (this.text ?? "")
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.filter((line) => line !== "" && !line.startsWith("#"))
+			.map((line) => line.replace(/^(!?)\//, "$1"));
+		const mentioned = new Set(lines.map((line) => line.replace(/^!/, "")));
+		const missing = fileNames.filter((name) => !mentioned.has(name));
 		if (missing.length === 0) return undefined;
 
 		const added = [HEADING, ...missing.map((name) => `/${name}`)];

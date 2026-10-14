@@ -58,22 +58,28 @@ export function mergePatch(
 	base: Readonly<Record<string, unknown>>,
 	patch: Readonly<Record<string, unknown>>
 ): Record<string, unknown> {
-	const merged: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(base))
-		setOwn(merged, key, structuredClone(value));
+	const merged = structuredClone(base) as Record<string, unknown>;
+	applyPatch(merged, patch);
+	return merged;
+}
+
+/** Applies `patch` to `target`, which is the caller's own copy. */
+function applyPatch(
+	target: Record<string, unknown>,
+	patch: Readonly<Record<string, unknown>>
+): void {
 	for (const [key, value] of Object.entries(patch)) {
 		if (value === null) {
-			delete merged[key];
+			delete target[key];
 			continue;
 		}
-		const existing = getOwn(merged, key);
-		setOwn(
-			merged,
-			key,
-			isObject(value)
-				? mergePatch(isObject(existing) ? existing : {}, value)
-				: structuredClone(value)
-		);
+		if (!isObject(value)) {
+			setOwn(target, key, structuredClone(value));
+			continue;
+		}
+		const existing = getOwn(target, key);
+		const merged = isObject(existing) ? existing : {};
+		applyPatch(merged, value);
+		setOwn(target, key, merged);
 	}
-	return merged;
 }

@@ -40,6 +40,7 @@ export class ConfigValidator {
 	constructor(
 		private readonly config: ProjectSource,
 		private readonly serveProject: string,
+		private readonly projectStems: readonly string[],
 		warnings: readonly Diagnostic[]
 	) {
 		this.problems.add(warnings);
@@ -66,6 +67,7 @@ export class ConfigValidator {
 			new ResolvedConfig({
 				file: this.config.file,
 				stem: this.config.stem,
+				projectStems: this.projectStems,
 				serveProject: this.serveProject,
 				projectName: name ?? (path.basename(this.dir) || FALLBACK_NAME),
 				project:

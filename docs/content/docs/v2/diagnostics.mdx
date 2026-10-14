@@ -162,6 +162,16 @@ rogen.json:5:5 - error: project name "a/b" is invalid: it is the stem of a/b.pro
 
 Rename the project, for example `dist` or `release`. See [Projects](/docs/v2/configuration#projects).
 
+### `config.ambiguousProject` [#config-ambiguousproject]
+
+Error. Two keys of `projects` differ only in letter case. On Windows and macOS file names ignore case, so both would write the same project file, and the second would overwrite the first.
+
+```
+rogen.json:7:5 - error: "Dist" and "dist" differ only in letter case, so on Windows and macOS both would write the same project file. Keep one of them. (config.ambiguousProject)
+```
+
+Keep one of them. A spelling of `default` in another case is [`config.reservedProject`](#config-reservedproject) for the same reason. See [Projects](/docs/v2/configuration#projects).
+
 ### `config.projectKey` [#config-projectkey]
 
 Error. A project sets `projects` or `serveProject`. Those say which projects there are and which one `rogen serve` serves, so they belong to the whole config.

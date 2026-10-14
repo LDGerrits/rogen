@@ -191,6 +191,8 @@ export interface ResolvedConfigFields {
 	readonly file: string;
 	/** The project this describes: `default`, or the name of an entry of `projects`. */
 	readonly stem: string;
+	/** Every project the config file writes, `default` first. */
+	readonly projectStems: readonly string[];
 	/** The project `rogen serve` serves when none is named. */
 	readonly serveProject: string;
 	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
@@ -213,6 +215,7 @@ export interface ResolvedConfigFields {
 export class ResolvedConfig {
 	readonly file: string;
 	readonly stem: string;
+	readonly projectStems: readonly string[];
 	readonly serveProject: string;
 	readonly projectName: string;
 	readonly project: RojoProject<ParsedProjectFile>;
@@ -226,6 +229,7 @@ export class ResolvedConfig {
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
 		this.stem = fields.stem;
+		this.projectStems = fields.projectStems;
 		this.serveProject = fields.serveProject;
 		this.projectName = fields.projectName;
 		this.project = fields.project;
@@ -262,6 +266,13 @@ export class ResolvedConfig {
 	/** The project file the project is written to. */
 	get projectFile(): string {
 		return path.join(this.projectDir, projectFileName(this.stem));
+	}
+
+	/** Every project file the config file writes, which a source path that holds them must not scan. */
+	get projectFiles(): readonly string[] {
+		return this.projectStems.map((stem) =>
+			path.join(this.projectDir, projectFileName(stem))
+		);
 	}
 
 	/** The folders a build lists: its source paths, else the folder it would have scanned by default, to find files nothing mounts. */

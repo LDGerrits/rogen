@@ -5,6 +5,8 @@
 	"projects": {
 		"default": {},
 		"a/b": {},
-		"dist": { "serveProject": "dist", "projects": {} }
+		"dist": { "serveProject": "dist", "projects": {} },
+		"Dist": {},
+		"DEFAULT": {}
 	}
 }

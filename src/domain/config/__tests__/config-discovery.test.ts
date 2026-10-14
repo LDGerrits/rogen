@@ -221,6 +221,38 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
+		it("should fail, telling to name one, when two projects of one config are named", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+
+			const result = await discovery.discover([
+				"dist",
+				"release.project.json",
+			]);
+
+			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result).message).toBe(
+				'"dist" and "release.project.json" are projects of one config, and a command takes one project of a config: name one.'
+			);
+		});
+
+		it("should fail, telling to name one, when a project and its config are named", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+
+			const result = await discovery.discover(["dist", "."]);
+
+			expect(errorOf(result).message).toContain("name one");
+		});
+
+		it("should still say a project named twice was named twice", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+
+			const result = await discovery.discover(["dist", "dist"]);
+
+			expect(errorOf(result).message).toContain(
+				"was named more than once"
+			);
+		});
+
 		describe("a bare name", () => {
 			beforeEach(async () => {
 				await fs.writeFile("/repo/rogen.json", "{}");

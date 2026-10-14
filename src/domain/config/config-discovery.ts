@@ -101,10 +101,17 @@ export class ConfigDiscovery {
 			(file, index) => files.indexOf(file) !== index
 		);
 		if (repeated >= 0) {
+			const first = files.indexOf(files[repeated]);
+			const projects = [first, repeated].map(
+				(index) => resolved[index].project
+			);
 			return err(
 				new UsageError(
-					`"${refs[repeated]}" was named more than once; each config can ` +
-						`only be built once per invocation.`
+					projects[0] === projects[1]
+						? `"${refs[repeated]}" was named more than once; each config can ` +
+								`only be built once per invocation.`
+						: `"${refs[first]}" and "${refs[repeated]}" are projects of one ` +
+								`config, and a command takes one project of a config: name one.`
 				)
 			);
 		}

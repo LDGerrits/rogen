@@ -45,6 +45,7 @@ export function readProjectSources(config: ConfigFile): ProjectSources {
 		{ ...config, stem: DEFAULT_PROJECT, warnings: [] },
 	];
 	const declared = config.model.getValue<Record<string, unknown>>("projects");
+	const named = new Set<string>();
 
 	for (const [name, changes] of Object.entries(declared ?? {})) {
 		const at = (...section: string[]) =>
@@ -53,12 +54,14 @@ export function readProjectSources(config: ConfigFile): ProjectSources {
 			resource: config.file,
 			position: at(...section),
 		});
-		if (name === DEFAULT_PROJECT) {
+		if (name.toLowerCase() === DEFAULT_PROJECT) {
 			errors.push(
 				errorDiagnostic(
 					"config.reservedProject",
 					location(),
-					`"${DEFAULT_PROJECT}" is the description itself, written as ${DEFAULT_PROJECT}.project.json, so it can't name a project. Pick another name.`
+					name === DEFAULT_PROJECT
+						? `"${DEFAULT_PROJECT}" is the description itself, written as ${DEFAULT_PROJECT}.project.json, so it can't name a project. Pick another name.`
+						: `"${name}" would write ${DEFAULT_PROJECT}.project.json on Windows and macOS, where file names ignore letter case, and that file is the description itself. Pick another name.`
 				)
 			);
 			continue;
@@ -73,6 +76,20 @@ export function readProjectSources(config: ConfigFile): ProjectSources {
 			);
 			continue;
 		}
+		const clash = [...named].find(
+			(other) => other.toLowerCase() === name.toLowerCase()
+		);
+		if (clash !== undefined) {
+			errors.push(
+				errorDiagnostic(
+					"config.ambiguousProject",
+					location(),
+					`"${name}" and "${clash}" differ only in letter case, so on Windows and macOS both would write the same project file. Keep one of them.`
+				)
+			);
+			continue;
+		}
+		named.add(name);
 		if (!isObject(changes)) continue;
 
 		const keys = Object.keys(changes);

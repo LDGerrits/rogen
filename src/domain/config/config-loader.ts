@@ -72,15 +72,18 @@ export class ConfigLoader {
 			return { files: [file], value, resolved: err(failed) };
 
 		const [description, ...changed] = declared.sources;
+		const stems = declared.sources.map(({ stem }) => stem);
 		const resolvedDescription = new ConfigValidator(
 			description,
 			declared.serveProject,
+			stems,
 			keys.warnings
 		).validate();
 		const resolvedProjects = changed.map((source) =>
 			new ConfigValidator(
 				source,
 				declared.serveProject,
+				stems,
 				source.warnings
 			).validate()
 		);

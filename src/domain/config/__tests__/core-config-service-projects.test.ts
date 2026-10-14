@@ -270,6 +270,30 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
+			it("should refuse a spelling of default in another case, which writes the same file on Windows and macOS", async () => {
+				expect(
+					await failure({ projects: { Default: {} } })
+				).toMatchObject([
+					{
+						code: "config.reservedProject",
+						message: expect.stringContaining("ignore letter case"),
+					},
+				]);
+			});
+
+			it("should refuse two names that differ only in letter case", async () => {
+				expect(
+					await failure({ projects: { dist: {}, Dist: {} } })
+				).toMatchObject([
+					{
+						code: "config.ambiguousProject",
+						message: expect.stringContaining(
+							'"Dist" and "dist" differ only in letter case'
+						),
+					},
+				]);
+			});
+
 			it.each(["a/b", "a b", "-a", "a.b", ""])(
 				"should refuse %j as a project name",
 				async (name) => {
