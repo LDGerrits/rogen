@@ -37,7 +37,7 @@ export class BuildWatch {
 			: new WatchLog(
 					logService,
 					cwd,
-					`${this.step?.command === "sourcemap" ? "sourcemap" : "build"} --watch`
+					`${this.step?.command ?? "build"} --watch`
 				);
 
 		const stopped = new AbortController();

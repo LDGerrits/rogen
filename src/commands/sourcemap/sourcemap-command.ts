@@ -2,7 +2,8 @@ import { randomUUID } from "crypto";
 import path from "path";
 import { relativeTo } from "../../base/path.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { Result, err, ok } from "../../base/result.js";
+import { ErrorUtils } from "../../base/errors.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import {
 	ConfigArguments,
@@ -195,14 +196,20 @@ registerCommand(
 				}
 			const rojoFailure = failureOf(runs);
 			const printed = plans.some(({ printed }) => printed);
-			try {
-				if (printed && !rojoFailure && !failure)
-					logService.print(
-						(await fileSystemService.readFile(tmp)).trimEnd()
+			let unread: Error | undefined;
+			if (printed) {
+				if (!rojoFailure && !failure) {
+					const text = await tryWithAsync(() =>
+						fileSystemService.readFile(tmp)
 					);
-			} finally {
-				if (printed)
-					await fileSystemService.delete(tmp).catch(() => undefined);
+					if (text.isOk()) logService.print(text.value.trimEnd());
+					else
+						unread = ErrorUtils.wrap(
+							"Failed to read the sourcemap Rojo wrote",
+							text.error
+						);
+				}
+				await fileSystemService.delete(tmp).catch(() => undefined);
 			}
 
 			if (json)
@@ -248,7 +255,8 @@ registerCommand(
 						`${relativeTo(cwd, path.resolve(target.cwd, target.output))} · wrote`
 					);
 			});
-			if (rojoFailure) return err(rojoFailure);
+			const rojoProblem = rojoFailure ?? unread;
+			if (rojoProblem) return err(rojoProblem);
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 	}

@@ -80,6 +80,17 @@ describe("sourcemap command", () => {
 		expect(await fs.exists(output)).toBe(false);
 	});
 
+	it("should fail when Rojo succeeds but leaves no sourcemap to print", async () => {
+		const { log, running } = start(new MockConfigService([buildable()]));
+		const [rojo] = await spawnedCount(1);
+		rojo.exit({ code: 0, signal: null });
+
+		expect(((await running) as ResultError<Error>).error.message).toContain(
+			"Failed to read the sourcemap Rojo wrote"
+		);
+		expect(log.texts("print")).toEqual([]);
+	});
+
 	it("should pass -o, --include-non-scripts and --absolute to Rojo", async () => {
 		const { running } = start(new MockConfigService([buildable()]), {
 			output: "map.json",
