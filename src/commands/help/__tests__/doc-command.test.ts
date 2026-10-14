@@ -46,6 +46,18 @@ describe("doc command", () => {
 		expect(print).toHaveBeenCalledWith(DOCS_URL);
 	});
 
+	it("should say so when no browser opened", async () => {
+		browser = new MockBrowserService(false);
+		const info = jest.spyOn(logService, "info");
+
+		const result = await doc(true);
+
+		expect(result.isOk()).toBe(true);
+		expect(info).toHaveBeenCalledWith(
+			"No browser opened; open the address above."
+		);
+	});
+
 	it("should print the URL and open nothing without a terminal", async () => {
 		await doc(false);
 

@@ -78,10 +78,13 @@ registerCommand(
 
 			const environment = accessor.get(EnvironmentService);
 			logService.print(DOCS_URL);
-			if (environment.isInteractive)
-				await accessor
+			if (
+				environment.isInteractive &&
+				!(await accessor
 					.get(BrowserService)
-					.open(DOCS_URL, environment.cwd);
+					.open(DOCS_URL, environment.cwd))
+			)
+				logService.info("No browser opened; open the address above.");
 			return ok(undefined);
 		}
 	}

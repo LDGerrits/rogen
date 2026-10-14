@@ -14,10 +14,11 @@ describe("CoreBrowserService", () => {
 		processes.installed.set("xdg-open", "/usr/bin/xdg-open");
 		processes.outputs.set("xdg-open", OK);
 
-		const opened = await new CoreBrowserService(processes, "linux").open(
-			"https://example.com",
-			"/repo"
-		);
+		const opened = await new CoreBrowserService(
+			processes,
+			"linux",
+			"6.1.0"
+		).open("https://example.com", "/repo");
 
 		expect(opened).toBe(true);
 		expect(processes.execs).toEqual([
@@ -50,13 +51,78 @@ describe("CoreBrowserService", () => {
 	});
 
 	it("should say it could not when the program isn't installed", async () => {
-		const opened = await new CoreBrowserService(processes, "linux").open(
-			"u",
-			"/repo"
-		);
+		const opened = await new CoreBrowserService(
+			processes,
+			"linux",
+			"6.1.0"
+		).open("u", "/repo");
 
 		expect(opened).toBe(false);
 		expect(processes.execs).toEqual([]);
+	});
+
+	describe("on WSL", () => {
+		const release = "6.6.87.2-microsoft-standard-WSL2";
+
+		it("should open a URL with wslview when it is installed", async () => {
+			processes.installed.set("wslview", "/usr/bin/wslview");
+			processes.installed.set("explorer.exe", "/mnt/c/explorer.exe");
+			processes.outputs.set("wslview", OK);
+
+			const opened = await new CoreBrowserService(
+				processes,
+				"linux",
+				release
+			).open("u", "/repo");
+
+			expect(opened).toBe(true);
+			expect(processes.execs.map(({ file }) => file)).toEqual([
+				"wslview",
+			]);
+		});
+
+		it("should fall back to explorer.exe, whose exit code 1 means it opened the page", async () => {
+			processes.installed.set("explorer.exe", "/mnt/c/explorer.exe");
+			processes.outputs.set("explorer.exe", { ...OK, code: 1 });
+
+			const opened = await new CoreBrowserService(
+				processes,
+				"linux",
+				release
+			).open("https://example.com", "/repo");
+
+			expect(opened).toBe(true);
+			expect(processes.execs).toEqual([
+				{
+					file: "explorer.exe",
+					args: ["https://example.com"],
+					cwd: "/repo",
+				},
+			]);
+		});
+
+		it("should try explorer.exe when wslview fails", async () => {
+			processes.installed.set("wslview", "/usr/bin/wslview");
+			processes.installed.set("explorer.exe", "/mnt/c/explorer.exe");
+			processes.outputs.set("wslview", { ...OK, code: 2 });
+			processes.outputs.set("explorer.exe", { ...OK, code: 1 });
+
+			expect(
+				await new CoreBrowserService(processes, "linux", release).open(
+					"u",
+					"/repo"
+				)
+			).toBe(true);
+		});
+
+		it("should say it could not when neither is there", async () => {
+			expect(
+				await new CoreBrowserService(processes, "linux", release).open(
+					"u",
+					"/repo"
+				)
+			).toBe(false);
+		});
 	});
 
 	it("should say it could not when the program fails", async () => {
@@ -64,7 +130,10 @@ describe("CoreBrowserService", () => {
 		processes.outputs.set("xdg-open", { ...OK, code: 3 });
 
 		expect(
-			await new CoreBrowserService(processes, "linux").open("u", "/repo")
+			await new CoreBrowserService(processes, "linux", "6.1.0").open(
+				"u",
+				"/repo"
+			)
 		).toBe(false);
 	});
 });
