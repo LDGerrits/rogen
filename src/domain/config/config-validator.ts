@@ -2,6 +2,7 @@ import path from "path";
 import { escapedGlobPrefix } from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
+import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -15,7 +16,7 @@ import {
 	RojoNode,
 	RojoProject,
 } from "../rojo/rojo-project.js";
-import { SyncRules } from "../rojo/sync-rules.js";
+import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import { DEFAULT_SOURCE_PATH, fieldOf, sourcePathOverlap } from "./config.js";
@@ -168,6 +169,16 @@ export class ConfigValidator {
 				this.locate("syncRules", String(index)),
 				`"syncRules[${index}]": ${message}`
 			);
+		for (const { index, field } of SyncRules.unknownFields(
+			project.syncRules
+		)) {
+			const suggestion = closestMatch(field, SYNC_RULE_FIELDS);
+			this.problems.warning(
+				"config.unknownField",
+				this.locate("syncRules", String(index), field),
+				`"${field}" is not a field of a sync rule, so Rojo ignores it.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
+			);
+		}
 	}
 
 	private checkRoutes(): Map<string, Target> {

@@ -35,6 +35,7 @@ export class WrittenGlobs {
 
 	/** The glob as it is in the project, when a mount lies where it reaches and the move would leave that mount without it. */
 	original(glob: string, from?: string): string | undefined {
+		if (this.isAbsolute(glob) || glob.startsWith("*")) return undefined;
 		const inProject = this.inProject(glob, from);
 		return this.moved(glob, from) !== inProject &&
 			this.reachesMount(inProject)

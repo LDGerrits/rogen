@@ -1,0 +1,40 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  rogen.json:3:48 - warning: "sufix" is not a field of a sync rule, so Rojo ignores it. Did you mean "suffix"? (config.unknownField)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Notes": {
+          "$path": {
+            "optional": "src/Notes.md"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "syncRules": [
+    {
+      "pattern": "*.md",
+      "use": "text"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Notes: StringValue  <- src/Notes.md

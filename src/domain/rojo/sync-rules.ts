@@ -24,7 +24,7 @@ export const SYNC_RULE_USES = [
 	"ignore",
 ] as const;
 
-const SYNC_RULE_FIELDS: readonly string[] = [
+export const SYNC_RULE_FIELDS: readonly string[] = [
 	"pattern",
 	"exclude",
 	"use",
@@ -132,14 +132,22 @@ export class SyncRules {
 		return { rules, problems };
 	}
 
+	/** The fields of the rules in `values` that a rule does not have, which Rojo ignores. */
+	static unknownFields(
+		values: readonly unknown[]
+	): { readonly index: number; readonly field: string }[] {
+		return values.flatMap((value, index) =>
+			isObject(value)
+				? Object.keys(value)
+						.filter((field) => !SYNC_RULE_FIELDS.includes(field))
+						.map((field) => ({ index, field }))
+				: []
+		);
+	}
+
 	private static readRule(value: unknown): SyncRule | string {
 		if (!isObject(value)) return "a sync rule must be an object.";
 		const { pattern, exclude, use, suffix } = value;
-		const unknown = Object.keys(value).find(
-			(key) => !SYNC_RULE_FIELDS.includes(key)
-		);
-		if (unknown !== undefined)
-			return `a sync rule has no "${unknown}" field; it takes ${SYNC_RULE_FIELDS.join(", ")}.`;
 		if (typeof pattern !== "string")
 			return 'a sync rule needs a "pattern" string.';
 		if (!SYNC_RULE_USES.some((known) => known === use))

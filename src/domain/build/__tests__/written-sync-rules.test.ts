@@ -170,4 +170,21 @@ describe("WrittenSyncRules", () => {
 			])
 		).toEqual([{ pattern: "out/A.md", use: "text" }, rule]);
 	});
+
+	it("should not write a second rule for a pattern that begins with a wildcard in a place", () => {
+		const rule: SyncRule = { pattern: "**/*.note", use: "text" };
+
+		expect(
+			writtenBy(
+				[rule],
+				[],
+				{
+					file: abs("places/lobby/rogen.json"),
+					syncRulesDir: abs(""),
+					syncPath: abs("places/lobby/out"),
+				},
+				["src/Vendor", "places/lobby/src/Vendor"]
+			)
+		).toEqual([rule]);
+	});
 });

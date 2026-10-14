@@ -115,7 +115,7 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
-		it("should refuse a field a sync rule does not have", async () => {
+		it("should warn of a field a sync rule does not have", async () => {
 			await write(
 				"/repo/rogen.json",
 				`{
@@ -125,10 +125,11 @@ describe("CoreConfigService", () => {
 
 			await start();
 
-			expect(errors(0)).toMatchObject([
+			expect(errors(0)).toEqual([]);
+			expect(warningsOf(0)).toMatchObject([
 				{
-					code: "config.invalidSyncRule",
-					message: expect.stringContaining('no "sufix" field'),
+					code: "config.unknownField",
+					message: expect.stringContaining('Did you mean "suffix"?'),
 				},
 			]);
 		});
