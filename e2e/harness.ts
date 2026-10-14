@@ -43,6 +43,8 @@ export interface CaseSpec {
 	readonly output?: readonly FramedCommand[];
 	/** Variables the commands run with, on top of an environment that is not GitHub Actions'. */
 	readonly env?: Readonly<Record<string, string>>;
+	/** The text each step reads on its standard input. */
+	readonly stdin?: string;
 }
 
 /** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
@@ -54,6 +56,7 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	show: true,
 	output: true,
 	env: true,
+	stdin: true,
 };
 
 /** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
@@ -174,12 +177,18 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			const result = await run(
 				...invocation(cli, args),
 				path.join(dir, spec.cwd ?? ""),
-				spec.env
+				spec.env,
+				spec.stdin
 			);
 			const problem = outputProblem(args, result.stdout);
 			if (problem) throw new Error(`rogen ${args.join(" ")} ${problem}`);
 			sections.push(
-				formatStep(["rogen", ...args], result, showsStdout(args, spec))
+				formatStep(
+					["rogen", ...args],
+					result,
+					showsStdout(args, spec),
+					spec.stdin
+				)
 			);
 		}
 
@@ -234,15 +243,18 @@ async function run(
 	command: string,
 	args: readonly string[],
 	cwd: string,
-	env?: Readonly<Record<string, string>>
+	env?: Readonly<Record<string, string>>,
+	stdin = ""
 ): Promise<RunResult> {
 	try {
-		const { stdout, stderr } = await execFileAsync(command, [...args], {
+		const running = execFileAsync(command, [...args], {
 			cwd,
 			encoding: "utf8",
 			timeout: RUN_TIMEOUT_MS,
 			env: childEnv(env),
 		});
+		running.child.stdin?.end(stdin);
+		const { stdout, stderr } = await running;
 		return { exitCode: 0, stdout, stderr };
 	} catch (error) {
 		const failure = error as {
@@ -329,9 +341,22 @@ function readable(body: string, command: readonly string[]): string {
 export function formatStep(
 	command: readonly string[],
 	result: RunResult,
-	showStdout = true
+	showStdout = true,
+	stdin?: string
 ): string {
-	const lines = [`$ ${command.join(" ")}`, `exit ${result.exitCode}`];
+	const lines = [
+		`$ ${command.join(" ")}`,
+		...(stdin === undefined
+			? []
+			: [
+					"stdin:",
+					...stdin
+						.trimEnd()
+						.split("\n")
+						.map((l) => `  ${l}`),
+				]),
+		`exit ${result.exitCode}`,
+	];
 	for (const [label, text] of [
 		["stdout", result.stdout],
 		["stderr", result.stderr],

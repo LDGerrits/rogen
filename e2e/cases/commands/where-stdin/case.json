@@ -1,0 +1,10 @@
+{
+	"steps": [
+		[
+			"where",
+			"-"
+		]
+	],
+	"stdin": "12:30:01  Output\nServerScriptService.Combat.Hit:12: attempt to index nil\nStack Begin\nScript 'ServerScriptService.Combat.Hit', Line 12 - function strike\nScript 'ServerScriptService.Combat.Dodge', Line 3\nStarterPlayer.StarterPlayerScripts.Combat.Hud:7: bad argument\nStack End\n",
+	"rojo": false
+}

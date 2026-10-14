@@ -30,6 +30,7 @@ e2e/cases/<area>/<case>/
   checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - `env` sets variables for the commands, on top of an environment that is not GitHub Actions'.
+- `stdin` is the text every step reads on its standard input; the transcript shows it under `stdin:`.
 - Files that a run created or changed are listed under `written:`. `rogen.json` and
   `rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 

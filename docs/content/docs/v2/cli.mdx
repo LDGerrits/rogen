@@ -182,6 +182,18 @@ $ rogen where "ServerScriptService.Shop.Buy:4: attempt to index nil"
 ServerScriptService.Shop.Buy -> no file places it · src/Shop/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt)
 ```
 
+`rogen where -` turns a whole pasted log into links. It reads text on stdin and prints it back with every instance path that has a line number written as `file:line`, in both forms Studio prints: `ServerScriptService.Combat.Hit:12:` and `Script 'ServerScriptService.Combat.Hit', Line 12`. Other text passes through as it is, and an instance no file places stays as it was.
+
+```
+$ pbpaste | rogen where -
+src/Combat/Server/Hit.luau:12: attempt to index nil
+Stack Begin
+src/Combat/Server/Hit.luau:12 - function strike
+Stack End
+```
+
+At the root of several places the same instance exists in each of them. An instance that one file places, which includes a file the places share, is rewritten. One that several files place is left as it is and listed once on stderr with the files and their places, and the exit code stays 0. Run it from inside a place to get that place's answer. `-` takes no other path and no `--json`, and a pipe with nothing to rewrite needs no config.
+
 Unlike other commands, `where` takes paths, not projects, so it reads the `rogen.json` of the working directory, or of the nearest folder above that has one.
 
 A config that doesn't load answers nothing: `where` prints its errors and exits 1.

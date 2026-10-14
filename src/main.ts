@@ -29,6 +29,8 @@ import { ServiceCollection } from "./platform/instantiation/service-collection.j
 import { LogService } from "./platform/log/log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
+import { InputService } from "./platform/input/input-service.js";
+import { NativeInputService } from "./platform/input/native-input-service.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
@@ -242,6 +244,7 @@ class RogenMain {
 			color: !environmentService.isPlain,
 		});
 		services.set(PromptService, promptService);
+		services.set(InputService, new NativeInputService());
 
 		const fileSystemService = new DiskFileSystemService();
 		services.set(FileSystemService, fileSystemService);

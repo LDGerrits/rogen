@@ -1,0 +1,18 @@
+$ rogen where -
+stdin:
+  12:30:01  Output
+  ServerScriptService.Combat.Hit:12: attempt to index nil
+  Stack Begin
+  Script 'ServerScriptService.Combat.Hit', Line 12 - function strike
+  Script 'ServerScriptService.Combat.Dodge', Line 3
+  StarterPlayer.StarterPlayerScripts.Combat.Hud:7: bad argument
+  Stack End
+exit 0
+stdout:
+  12:30:01  Output
+  src/Combat/Server/Hit.luau:12: attempt to index nil
+  Stack Begin
+  src/Combat/Server/Hit.luau:12 - function strike
+  Script 'ServerScriptService.Combat.Dodge', Line 3
+  src/Combat/Client/Hud.luau:7: bad argument
+  Stack End

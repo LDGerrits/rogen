@@ -22,6 +22,8 @@ import { MemoryFileSystemService } from "../../platform/fs/memory-file-system-se
 import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js";
+import { InputService } from "../../platform/input/input-service.js";
+import { MockInputService } from "../../platform/input/__tests__/mock-input-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { MockPromptService } from "../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CoreServeService } from "../../domain/serve/core-serve-service.js";
@@ -54,6 +56,7 @@ export interface CommandHarnessOptions<L extends LogService> {
 	readonly environment?: EnvironmentService;
 	readonly log?: L;
 	readonly prompt?: PromptService;
+	readonly input?: InputService;
 	readonly config?: ConfigService;
 	readonly index?: IndexService;
 	readonly lifecycle?: LifecycleService;
@@ -103,6 +106,7 @@ export function commandHarness(
 	services.set(EnvironmentService, environment);
 	services.set(LogService, log);
 	services.set(PromptService, prompt);
+	services.set(InputService, options.input ?? new MockInputService());
 	services.set(FileSystemService, fs);
 	services.set(ConfigService, config);
 	services.set(IndexService, index);

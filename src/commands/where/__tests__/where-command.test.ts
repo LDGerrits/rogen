@@ -4,6 +4,8 @@ import { Result } from "../../../base/result.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { MockInputService } from "../../../platform/input/__tests__/mock-input-service.js";
+import { UsageError } from "../../../base/errors.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import {
 	CommandRegistry,
@@ -382,6 +384,141 @@ describe("where command", () => {
 					code: "config.removedField",
 				},
 			]);
+		});
+	});
+
+	describe("reading text on stdin", () => {
+		const pipe = async (text: string, ...more: string[]) => {
+			const harness = commandHarness({
+				fs,
+				input: new MockInputService(text),
+			});
+			logService = harness.log;
+			return harness.run("where", {
+				positionals: ["-", ...more],
+				options: {},
+			});
+		};
+
+		const text = () => logService.texts("print").join("\n");
+
+		const writeJson = (file: string, value: Record<string, unknown>) =>
+			fs.writeFile(`/repo/${file}`, JSON.stringify(value));
+
+		it("should write both forms Studio prints as file:line and leave the other text as it is", async () => {
+			await writeConfig("rogen.json", { routes: ROUTES });
+			await write("src/Inventory/Server/Save.luau");
+
+			const result = await pipe(
+				[
+					"12:30:01 Output",
+					"ServerScriptService.Inventory.Save:12: attempt to index nil",
+					"Stack Begin",
+					"Script 'ServerScriptService.Inventory.Save', Line 7 - function save",
+					"Stack End",
+					"",
+				].join("\n")
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(text()).toBe(
+				[
+					"12:30:01 Output",
+					"src/Inventory/Server/Save.luau:12: attempt to index nil",
+					"Stack Begin",
+					"src/Inventory/Server/Save.luau:7 - function save",
+					"Stack End",
+				].join("\n")
+			);
+			expect(logService.texts("warn")).toEqual([]);
+		});
+
+		it("should leave an instance no file places as it is", async () => {
+			await writeConfig("rogen.json", { routes: ROUTES });
+			await write("src/Inventory/Server/Save.luau");
+
+			await pipe("ServerScriptService.Other.Thing:3: boom");
+
+			expect(text()).toBe("ServerScriptService.Other.Thing:3: boom");
+		});
+
+		it("should pass text through when there is nothing to rewrite, even without a config", async () => {
+			const result = await pipe("hello\nworld\n");
+
+			expect(result.isOk()).toBe(true);
+			expect(text()).toBe("hello\nworld");
+		});
+
+		describe("at the root of several places", () => {
+			beforeEach(async () => {
+				await writeJson("rogen.json", {
+					name: "Game",
+					placePaths: ["places/*"],
+					routes: ROUTES,
+				});
+				await writeJson("places/lobby/rogen.json", {});
+				await writeJson("places/arena/rogen.json", {});
+				await write(
+					"src/Common/Util.luau",
+					"places/lobby/src/Server/Only.luau",
+					"places/lobby/src/Server/Main.luau",
+					"places/arena/src/Server/Main.luau"
+				);
+			});
+
+			it("should rewrite what one file places and what the places share", async () => {
+				await pipe(
+					"ReplicatedStorage.Shared.Common.Util:2: a\nServerScriptService.Only:5: b"
+				);
+
+				expect(text()).toBe(
+					"src/Common/Util.luau:2: a\nplaces/lobby/src/Server/Only.luau:5: b"
+				);
+			});
+
+			it("should leave what several files place as it is, and list it once on stderr", async () => {
+				const result = await pipe(
+					"ServerScriptService.Main:1: a\nScript 'ServerScriptService.Main', Line 2"
+				);
+
+				expect(result.isOk()).toBe(true);
+				expect(text()).toBe(
+					"ServerScriptService.Main:1: a\nScript 'ServerScriptService.Main', Line 2"
+				);
+				expect(logService.texts("warn")).toEqual([
+					expect.stringContaining("ServerScriptService.Main"),
+				]);
+				expect(logService.texts("warn")[0]).toContain(
+					"places/arena/src/Server/Main.luau"
+				);
+				expect(logService.texts("warn")[0]).toContain(
+					"places/lobby/src/Server/Main.luau"
+				);
+			});
+		});
+
+		describe("when the line is wrong", () => {
+			it("should fail for - beside another argument", async () => {
+				const result = await pipe("", "src");
+
+				expect(result.isErr()).toBe(true);
+				expect((result as { error: Error }).error).toBeInstanceOf(
+					UsageError
+				);
+			});
+
+			it("should fail for - with --json", async () => {
+				const harness = commandHarness({ fs });
+				const result = await harness.run("where", {
+					positionals: ["-"],
+					options: { json: true },
+				});
+
+				expect(result.isErr()).toBe(true);
+				expect((result as { error: Error }).error).toBeInstanceOf(
+					UsageError
+				);
+			});
 		});
 	});
 
