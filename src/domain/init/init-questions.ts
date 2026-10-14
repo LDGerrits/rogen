@@ -125,8 +125,10 @@ export class InitQuestions {
 	async placeIds(place: string): Promise<readonly number[] | undefined> {
 		const given = this.choices.placeIds;
 		if (given !== undefined)
-			return listOf(given, "--place-id").map((id) =>
-				InitQuestions.toPlaceId(id)
+			return InitQuestions.distinct(
+				listOf(given, "--place-id").map((id) =>
+					InitQuestions.toPlaceId(id)
+				)
 			);
 		if (!this.interactive) {
 			this.decide("placeIds", [], "--place-id");
@@ -146,7 +148,13 @@ export class InitQuestions {
 		});
 		return answer === undefined
 			? undefined
-			: splitList(answer).map((id) => InitQuestions.toPlaceId(id));
+			: InitQuestions.distinct(
+					splitList(answer).map((id) => InitQuestions.toPlaceId(id))
+				);
+	}
+
+	private static distinct(ids: readonly number[]): number[] {
+		return [...new Set(ids)];
 	}
 
 	private static isPlaceId(value: string): boolean {

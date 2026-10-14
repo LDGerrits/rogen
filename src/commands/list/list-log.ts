@@ -233,6 +233,7 @@ export class ListLog {
 		);
 		printed.push({ label: config.label, routes });
 		const notes = (project: ResolvedConfig, among: boolean): string => {
+			const { servePlaceIds: placeIds } = project.project;
 			const parts = [
 				...(among &&
 				project.stem === project.serveProject &&
@@ -242,8 +243,8 @@ export class ListLog {
 				...(project.placeServePort !== undefined
 					? [`port ${project.placeServePort}`]
 					: []),
-				...(project.project.servePlaceIds.length > 0
-					? [`place IDs ${project.project.servePlaceIds.join(", ")}`]
+				...(placeIds.length > 0
+					? [`place IDs ${placeIds.join(", ")}`]
 					: []),
 			];
 			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
@@ -352,17 +353,19 @@ function configDetails(
 		syncPath: config.syncPath ? toNative(config.syncPath) : null,
 		projectFile: toNative(config.projectFile),
 		serving: servingJson(serving.get(config.projectFile)),
-		projects: projects.map((project) => ({
-			name: project.stem,
-			file: toNative(project.projectFile),
-			served: project.stem === project.serveProject && !project.hasPlaces,
-			...(project.placeServePort !== undefined
-				? { port: project.placeServePort }
-				: {}),
-			...(project.project.servePlaceIds.length > 0
-				? { placeIds: project.project.servePlaceIds }
-				: {}),
-			serving: servingJson(serving.get(project.projectFile)),
-		})),
+		projects: projects.map((project) => {
+			const { servePlaceIds: placeIds } = project.project;
+			return {
+				name: project.stem,
+				file: toNative(project.projectFile),
+				served:
+					project.stem === project.serveProject && !project.hasPlaces,
+				...(project.placeServePort !== undefined
+					? { port: project.placeServePort }
+					: {}),
+				...(placeIds.length > 0 ? { placeIds } : {}),
+				serving: servingJson(serving.get(project.projectFile)),
+			};
+		}),
 	};
 }

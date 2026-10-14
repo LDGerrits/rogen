@@ -205,6 +205,22 @@ registerCommand(
 				return err(
 					new UsageError("init takes one folder, the place to add.")
 				);
+			if (line.positionals.length === 0) {
+				const { options } = line;
+				const flag =
+					options["place-id"] !== undefined
+						? "--place-id"
+						: options["place-listing"] !== undefined
+							? "--place-listing"
+							: undefined;
+				if (flag)
+					return err(
+						new UsageError(
+							`${flag} is for a place folder.`,
+							"Give the folder to add, as 'rogen init places/lobby'."
+						)
+					);
+			}
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const dryRun = Boolean(line.options["dry-run"]);

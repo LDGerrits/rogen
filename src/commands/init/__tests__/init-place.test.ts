@@ -334,6 +334,24 @@ describe("init for a place", () => {
 		);
 	});
 
+	describe("a flag for a place", () => {
+		it.each([
+			["place-id", ["1818"], "--place-id"],
+			["place-listing", "folder", "--place-listing"],
+		])(
+			"should refuse --%s when no place folder is given",
+			async (name, value, flag) => {
+				const result = await run([], [], false, root, {
+					[name]: value,
+				});
+
+				expect(failure(result).message).toContain(
+					`${flag} is for a place folder`
+				);
+			}
+		);
+	});
+
 	describe("what it refuses", () => {
 		it("should refuse a folder with no config above it", async () => {
 			await memFs.delete(path.join(root, "rogen.json"));

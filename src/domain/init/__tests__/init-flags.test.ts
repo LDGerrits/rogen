@@ -376,6 +376,14 @@ describe("--place-id", () => {
 		expect(asked.decided).toEqual([]);
 	});
 
+	it("should keep a place ID once, however often it is given", async () => {
+		expect(
+			await questions({ placeIds: ["1818", "2020", "1818"] }).placeIds(
+				"lobby"
+			)
+		).toEqual([1818, 2020]);
+	});
+
 	it("should take none for no place ID", async () => {
 		const asked = questions({ placeIds: ["none"] });
 
