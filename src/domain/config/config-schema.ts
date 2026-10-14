@@ -6,6 +6,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
 import { SYNC_RULE_USES } from "../rojo/sync-rules.js";
+import { isPlaceOwnKey } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
@@ -242,9 +243,6 @@ export const configSchema: JSONSchema = {
 	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
 };
 
-/** Keys a place has of its own, which it never inherits, so `null` removes nothing there. */
-const PLACE_OWN_KEYS = ["name", "sourcePaths"];
-
 /** A place's rogen.json: the config's keys, where `null` removes a key the place inherits. */
 export const placeConfigSchema: JSONSchema = {
 	type: "object",
@@ -252,7 +250,7 @@ export const placeConfigSchema: JSONSchema = {
 		...configSchema.properties,
 		...Object.fromEntries(
 			Object.entries(projectChangeSchemas).filter(
-				([key]) => !PLACE_OWN_KEYS.includes(key)
+				([key]) => !isPlaceOwnKey(key)
 			)
 		),
 	},

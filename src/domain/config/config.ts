@@ -32,9 +32,19 @@ export interface RogenConfig {
 	readonly placePaths?: string[];
 }
 
+/** Keys a place has of its own and never inherits from its config. */
+export const PLACE_OWN_KEYS = ["name", "sourcePaths"] as const;
+
+type Inherited = Exclude<
+	keyof RogenConfig,
+	| (typeof PLACE_OWN_KEYS)[number]
+	| "$schema"
+	| (typeof ROOT_ONLY_KEYS)[number]
+>;
+
 /** What a place's `rogen.json` holds: a config's keys, `null` removing one the place inherits. */
-export type PlaceConfig = {
-	readonly [K in keyof RogenConfig]?: RogenConfig[K] | null;
+export type PlaceConfig = Omit<RogenConfig, Inherited> & {
+	readonly [K in Inherited]?: RogenConfig[K] | null;
 };
 
 interface ConfigValues {
@@ -70,11 +80,17 @@ export const DEFAULT_PROJECT = "default";
 
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
-export const ROOT_ONLY_KEYS: readonly string[] = [
+export const ROOT_ONLY_KEYS = [
 	"projects",
 	"serveProject",
 	"placePaths",
-];
+] as const;
+
+export const isRootOnlyKey = (key: string): boolean =>
+	(ROOT_ONLY_KEYS as readonly string[]).includes(key);
+
+export const isPlaceOwnKey = (key: string): boolean =>
+	(PLACE_OWN_KEYS as readonly string[]).includes(key);
 
 /** Rojo's default port, given to the first place without a `servePort`. */
 export const FIRST_PLACE_PORT = 34872;

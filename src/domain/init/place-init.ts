@@ -24,7 +24,7 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
-import { InitQuestions, NONE } from "./init-questions.js";
+import { InitQuestions } from "./init-questions.js";
 import { ResolvedConfigFile } from "../config/resolved-config.js";
 
 const WORKSPACE_SUFFIX = ".code-workspace";
@@ -80,10 +80,8 @@ export class PlaceInit {
 		const placeIds = await this.questions.placeIds(name, kept);
 		if (placeIds === undefined) return ok(undefined);
 		const servePlaceIds =
-			placeIds === NONE
-				? kept
-					? null
-					: undefined
+			placeIds === null
+				? null
 				: placeIds.length > 0
 					? [...placeIds]
 					: undefined;
@@ -121,7 +119,7 @@ export class PlaceInit {
 				`${path.basename(folder)} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
 				...(kept && servePlaceIds === undefined
 					? [
-							`${name} keeps ${kept}, so a Studio on ${name} connects once ${name} is published as one of them. --place-id ${NONE} drops them.`,
+							`${name} keeps ${kept}, so a Studio on ${name} connects once ${name} is published as one of them. --place-id none drops them.`,
 						]
 					: []),
 				...workspace.notes,
@@ -260,7 +258,9 @@ export class PlaceInit {
 					: ({} as Record<string, unknown>);
 				return {
 					directory,
-					pinned: PlacePorts.pinnedBy(own.servePort ?? raw.servePort),
+					pinned: PlacePorts.pinnedBy(
+						"servePort" in own ? own.servePort : raw.servePort
+					),
 				};
 			})
 		);

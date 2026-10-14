@@ -387,7 +387,10 @@ describe("--place-id", () => {
 	it("should take none for no place ID", async () => {
 		const asked = questions({ placeIds: ["none"] });
 
-		expect(await asked.placeIds("lobby")).toBe("none");
+		expect(await asked.placeIds("lobby")).toEqual([]);
+		expect(
+			await asked.placeIds("lobby", "the place IDs 1 of rogen.json")
+		).toBeNull();
 		expect(asked.decided).toEqual([]);
 	});
 

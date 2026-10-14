@@ -8,7 +8,8 @@ import {
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { ProjectText } from "../rojo/project-text.js";
-import { placeConfigSchema, rogenKeys } from "./config-schema.js";
+import { configSchema, placeConfigSchema, rogenKeys } from "./config-schema.js";
+import { PlaceFinder } from "./place-finder.js";
 
 /** Writes a `rogen.json` the way `rojo fmt-project` writes a project file, and Rogen's keys after Rojo's. */
 export class ConfigFormatter {
@@ -17,7 +18,11 @@ export class ConfigFormatter {
 		noun: "a config",
 	});
 
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	private readonly finder: PlaceFinder;
+
+	constructor(private readonly fileSystemService: FileSystemService) {
+		this.finder = new PlaceFinder(fileSystemService);
+	}
 
 	/** Whether the file changed. A file with comments is left as it is, since the formatted text has none. */
 	async format(file: string): Promise<Result<boolean, Diagnostic[]>> {
@@ -43,7 +48,10 @@ export class ConfigFormatter {
 					`${name} may hold comments, and formatting writes none. Rename it to ${name.slice(0, -1)} to format it, or format it in your editor.`
 				),
 			]);
-		const document = this.documents.read(text, file, placeConfigSchema);
+		const schema = (await this.finder.rootOf(path.dirname(file)))
+			? placeConfigSchema
+			: configSchema;
+		const document = this.documents.read(text, file, schema);
 		if (document.isErr()) return err(document.error);
 		if (!ConfigFormatter.isStrict(text))
 			return err([

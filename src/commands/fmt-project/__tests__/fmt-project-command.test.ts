@@ -96,6 +96,17 @@ describe("fmt-project command", () => {
 		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
 	});
 
+	it("should still refuse null in a config that is not a place", async () => {
+		await harness.fs.writeFile(
+			"/repo/rogen.json",
+			JSON.stringify({ name: "Game", servePlaceIds: null })
+		);
+
+		await fmt();
+
+		expect(print).not.toHaveBeenCalledWith("formatted rogen.json");
+	});
+
 	it("should format only the place it is given when the root doesn't load", async () => {
 		await harness.fs.createDirectory("/repo/places/lobby");
 		await harness.fs.writeFile(

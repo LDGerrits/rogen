@@ -13,7 +13,7 @@ import { InitChoices, InitDecision } from "./init-service.js";
 import { TreeChoice } from "./tree-plan.js";
 
 /** What a list flag says to take none of. */
-export const NONE = "none";
+const NONE = "none";
 
 /** `value` is one of `known`, else a usage error naming them, the closest first. */
 function oneOf(
@@ -121,16 +121,17 @@ export class InitQuestions {
 				: folder;
 	}
 
-	/** The place IDs the server of a place is for: its own, none of its own (`[]`), or `none` at all. */
+	/** The place IDs a place's server is for: its own, `[]` for none of its own, or `null` to drop the `inherited` ones. */
 	async placeIds(
 		place: string,
 		inherited?: string
-	): Promise<readonly number[] | typeof NONE | undefined> {
+	): Promise<readonly number[] | null | undefined> {
+		const none = inherited ? null : [];
 		const given = this.choices.placeIds;
 		if (given !== undefined) {
 			const ids = listOf(given, "--place-id");
 			return ids.length === 0
-				? NONE
+				? none
 				: InitQuestions.distinct(
 						ids.map((id) => InitQuestions.toPlaceId(id))
 					);
@@ -153,7 +154,7 @@ export class InitQuestions {
 			},
 		});
 		if (answer === undefined) return undefined;
-		if (answer.trim() === NONE) return NONE;
+		if (answer.trim() === NONE) return none;
 		return InitQuestions.distinct(
 			splitList(answer).map((id) => InitQuestions.toPlaceId(id))
 		);

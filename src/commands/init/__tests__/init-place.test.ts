@@ -110,6 +110,21 @@ describe("init for a place", () => {
 		);
 	});
 
+	it("should count a place that drops the config's servePort with null as one that pins none", async () => {
+		await write("rogen.json", {
+			routes: { "*": "ReplicatedStorage" },
+			placePaths: ["places/*"],
+			servePort: 34900,
+		});
+		await write("places/arena/rogen.json", { servePort: null });
+
+		await run(["places/lobby"]);
+
+		expect((await readJson("places/lobby/rogen.json")).servePort).toBe(
+			34873
+		);
+	});
+
 	it("should give a place that sorts first a port that moves none of the places that pin none", async () => {
 		await memFs.createDirectory(path.join(root, "places/arena"));
 

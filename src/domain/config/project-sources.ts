@@ -12,7 +12,12 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigKeys } from "./config-keys.js";
-import { DEFAULT_PROJECT, PROJECT_NAME, ROOT_ONLY_KEYS } from "./config.js";
+import {
+	DEFAULT_PROJECT,
+	PROJECT_NAME,
+	isPlaceOwnKey,
+	isRootOnlyKey,
+} from "./config.js";
 import { PathRebaser } from "./path-rebaser.js";
 
 interface InheritedSource {
@@ -60,7 +65,7 @@ export class ProjectSourceReader {
 		this.dir = path.dirname(config.file);
 		this.description = Object.fromEntries(
 			Object.entries(config.model.contents).filter(
-				([key]) => key !== "$schema" && !ROOT_ONLY_KEYS.includes(key)
+				([key]) => key !== "$schema" && !isRootOnlyKey(key)
 			)
 		);
 	}
@@ -157,7 +162,7 @@ export class ProjectSourceReader {
 			position: at(...section),
 		});
 		const keys = Object.keys(changes);
-		for (const key of keys.filter((key) => ROOT_ONLY_KEYS.includes(key)))
+		for (const key of keys.filter((key) => isRootOnlyKey(key)))
 			errors.push(
 				errorDiagnostic(
 					"config.projectKey",
@@ -166,7 +171,7 @@ export class ProjectSourceReader {
 				)
 			);
 		const found = ConfigKeys.check(
-			keys.filter((key) => !ROOT_ONLY_KEYS.includes(key)),
+			keys.filter((key) => !isRootOnlyKey(key)),
 			(key) => location(key)
 		);
 		errors.push(...found.errors);
@@ -178,7 +183,7 @@ export class ProjectSourceReader {
 					this.startingValues(name),
 					Object.fromEntries(
 						Object.entries(changes).filter(
-							([key]) => !ROOT_ONLY_KEYS.includes(key)
+							([key]) => !isRootOnlyKey(key)
 						)
 					)
 				)
@@ -260,9 +265,8 @@ export class ProjectSourceReader {
 			).filter(
 				([key]) =>
 					key !== "$schema" &&
-					key !== "name" &&
-					key !== "sourcePaths" &&
-					!ROOT_ONLY_KEYS.includes(key)
+					!isPlaceOwnKey(key) &&
+					!isRootOnlyKey(key)
 			)
 		);
 		return mergePatch(inherited, this.description);
