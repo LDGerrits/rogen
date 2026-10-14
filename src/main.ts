@@ -75,8 +75,23 @@ function currentFolder(): string | undefined {
 	}
 }
 
-function printNotice(logService: LogService, notice: string | undefined): void {
-	if (notice) logService.notice(notice);
+/** The update notice of a run, looked up while the command runs. */
+class UpdateNotice {
+	private readonly found: Promise<string | undefined>;
+
+	constructor(
+		private readonly logService: LogService,
+		check: Promise<string | undefined> | undefined,
+		readonly printedFirst: boolean
+	) {
+		this.found =
+			check?.catch(() => undefined) ?? Promise.resolve(undefined);
+	}
+
+	async print(): Promise<void> {
+		const notice = await this.found;
+		if (notice) this.logService.notice(notice);
+	}
 }
 
 export default function run(): void {
@@ -146,13 +161,12 @@ class RogenMain {
 		);
 		services.set(CommandService, commandService);
 
-		const notice =
-			command === HELP_COMMAND
-				? undefined
-				: updateService.check().catch(() => undefined);
-		const noticeFirst =
-			commandRegistry.getCommand(command)?.metadata.longRunning;
-		if (noticeFirst) printNotice(logService, await notice);
+		const notice = new UpdateNotice(
+			logService,
+			command === HELP_COMMAND ? undefined : updateService.check(),
+			commandRegistry.getCommand(command)?.metadata.longRunning === true
+		);
+		if (notice.printedFirst) await notice.print();
 
 		const result = await commandService
 			.executeCommand(command, line)
@@ -164,7 +178,7 @@ class RogenMain {
 		process.exitCode = result.isErr()
 			? failure.finish(result.error, command)
 			: 0;
-		if (!noticeFirst) printNotice(logService, await notice);
+		if (!notice.printedFirst) await notice.print();
 	}
 
 	private createLogService(
