@@ -52,10 +52,17 @@ export const OutputNotation = {
 		};
 	},
 
-	/** Each named shape the declaration reaches, written out once. */
-	shapesOf(declaration: OutputDeclaration): Record<string, string> {
+	/** Each named shape the declaration reaches, and those of `others`, written out once. */
+	shapesOf(
+		declaration: OutputDeclaration,
+		...others: readonly OutputShape[]
+	): Record<string, string> {
 		const found = new Map<string, OutputShape>();
-		for (const shape of [declaration.document, declaration.lines])
+		for (const shape of [
+			declaration.document,
+			declaration.lines,
+			...others,
+		])
 			if (shape) namedShapes(shape, found);
 		return Object.fromEntries(
 			[...found].map(([name, shape]) => [name, write(shape)])

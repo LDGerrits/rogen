@@ -145,6 +145,10 @@ describe("rogen help --json", () => {
 				})
 			);
 			expect(build.examples).toContain("rogen build --json");
+			expect(build.failure).toBe(
+				"{diagnostics:[Diagnostic]}|{error:Error}"
+			);
+			expect(build.shapes.Error).toContain("kind:");
 			expect(build.output.document).toBe(
 				"{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}"
 			);

@@ -2,7 +2,7 @@ import { ErrorUtils, ProjectError, UsageError } from "../../../base/errors.js";
 import { DOCS_URL } from "../../product/product-service.js";
 import { errorDiagnostic } from "../diagnostic.js";
 import { DiagnosticsError } from "../diagnostics-error.js";
-import { failureToJson } from "../diagnostic-json.js";
+import { errorToJson, failureToJson } from "../diagnostic-json.js";
 
 describe("platform/diagnostics/diagnostics-error", () => {
 	describe("DiagnosticsError", () => {
@@ -93,6 +93,21 @@ describe("platform/diagnostics/diagnostics-error", () => {
 			});
 			expect(failureToJson(new ProjectError("No rogen.json."))).toEqual({
 				error: { kind: "project", message: "No rogen.json." },
+			});
+		});
+
+		it("should call diagnostics a project error when they are told as an error", () => {
+			const error = new DiagnosticsError([
+				errorDiagnostic(
+					"test.first",
+					{ resource: "/repo/a.json" },
+					"first."
+				),
+			]);
+
+			expect(errorToJson(error)).toEqual({
+				kind: "project",
+				message: error.message,
 			});
 		});
 

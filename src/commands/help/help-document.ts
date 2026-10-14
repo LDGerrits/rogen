@@ -4,7 +4,10 @@ import {
 	GlobalOptions,
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
-import { diagnosticUrl } from "../../platform/diagnostics/diagnostic-json.js";
+import {
+	diagnosticUrl,
+	failureShape,
+} from "../../platform/diagnostics/diagnostic-json.js";
 import { OutputNotation } from "../../platform/output/output-notation.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 
@@ -17,24 +20,22 @@ const EFFECTS = [
 	"longRunning",
 ] as const;
 
-const optionShape = S.named(
-	"Option",
-	S.object({
-		name: S.string,
-		short: S.optional(S.string),
-		type: S.enum("string", "boolean"),
-		multiple: S.optional(S.boolean),
-	})
-);
+const optionFields = {
+	name: S.string,
+	short: S.optional(S.string),
+	type: S.enum("string", "boolean"),
+	multiple: S.optional(S.boolean),
+};
 
-const argShape = S.named(
-	"Arg",
-	S.object({
-		name: S.string,
-		optional: S.optional(S.boolean),
-		variadic: S.optional(S.boolean),
-	})
-);
+const argFields = {
+	name: S.string,
+	optional: S.optional(S.boolean),
+	variadic: S.optional(S.boolean),
+};
+
+const optionShape = S.named("Option", S.object(optionFields));
+
+const argShape = S.named("Arg", S.object(argFields));
 
 const commandShape = S.named(
 	"Command",
@@ -58,23 +59,8 @@ const overviewShape = S.object({
 const detailShape = S.object({
 	name: S.string,
 	description: S.string,
-	args: S.array(
-		S.object({
-			name: S.string,
-			description: S.string,
-			optional: S.optional(S.boolean),
-			variadic: S.optional(S.boolean),
-		})
-	),
-	options: S.array(
-		S.object({
-			name: S.string,
-			short: S.optional(S.string),
-			type: S.enum("string", "boolean"),
-			multiple: S.optional(S.boolean),
-			description: S.string,
-		})
-	),
+	args: S.array(S.object({ ...argFields, description: S.string })),
+	options: S.array(S.object({ ...optionFields, description: S.string })),
 	passthrough: S.optional(
 		S.object({ name: S.string, description: S.string })
 	),
@@ -86,6 +72,7 @@ const detailShape = S.object({
 			lines: S.optional(S.string),
 		})
 	),
+	failure: S.optional(S.string),
 	shapes: S.optional(S.record(S.string)),
 });
 
@@ -148,7 +135,9 @@ export const HelpDocument = {
 			output,
 			passthrough,
 		} = command.metadata;
-		const shapes = output ? OutputNotation.shapesOf(output) : {};
+		const shapes = output
+			? OutputNotation.shapesOf(output, failureShape)
+			: {};
 		return {
 			name: command.id,
 			description: command.metadata.description,
@@ -163,7 +152,10 @@ export const HelpDocument = {
 			...(passthrough && { passthrough }),
 			effects: effectsOf(command),
 			examples,
-			...(output && { output: OutputNotation.describe(output) }),
+			...(output && {
+				output: OutputNotation.describe(output),
+				failure: OutputNotation.of(failureShape),
+			}),
 			...(Object.keys(shapes).length > 0 && { shapes }),
 		};
 	},

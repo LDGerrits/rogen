@@ -285,9 +285,11 @@ stdout:
     "output": {
       "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\"|\"mounted\",node:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
     },
+    "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
-      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}"
+      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}",
+      "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
     }
   }
 
@@ -321,9 +323,11 @@ stdout:
     "output": {
       "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\"|\"mounted\",node:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
     },
+    "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
-      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}"
+      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}",
+      "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
     }
   }
 

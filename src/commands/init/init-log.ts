@@ -186,10 +186,13 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
+		const built = buildDocument(run.builds, foundBy);
+		const written = this.writtenSoFar();
 		return this.print(
 			{
-				...this.writtenSoFar(),
-				built: buildDocument(run.builds, foundBy).configs,
+				...written,
+				changed: written.changed || built.changed,
+				built: built.configs,
 				notes: plan.notes,
 				nextSteps: plan.nextSteps,
 			},
