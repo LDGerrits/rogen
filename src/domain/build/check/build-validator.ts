@@ -180,8 +180,8 @@ export class BuildValidator {
 		return this.placement.roots
 			.flatMap(({ entries }) => entries)
 			.sort((a, b) => compareStrings(a.source, b.source))
-			.flatMap(({ source }) => {
-				const rule = this.config.fileAt(source).suffixMissedBy;
+			.flatMap(({ source, file }) => {
+				const rule = file.suffixMissedBy;
 				return rule
 					? [
 							warningDiagnostic(
@@ -582,9 +582,7 @@ export class BuildValidator {
 				location,
 				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(file.init.sitsIn, RojoFile.INIT_META)} instead.`
 			);
-		const fix =
-			this.placement.config.fileAt(entry.source).metaFile ??
-			`${fileName}${RojoFile.META_SUFFIX}`;
+		const fix = entry.file.metaFile ?? `${fileName}${RojoFile.META_SUFFIX}`;
 		return warningDiagnostic(
 			"meta.sharedWithScript",
 			location,

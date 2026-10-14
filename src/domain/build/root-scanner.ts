@@ -21,6 +21,8 @@ import { TreeMounts } from "./build-tree.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
+	/** The file as Rojo reads it with the project's sync rules, read once for the whole build. */
+	readonly file: RojoFile;
 	readonly sourcePath: string;
 	readonly relativePath: string;
 	/** The absolute POSIX source path. */
@@ -319,6 +321,7 @@ export class RootScanner {
 				} else if (file.kind) {
 					walk.entries.push({
 						kind: file.kind,
+						file,
 						sourcePath: walk.sourcePath,
 						relativePath: relativeTo(name),
 						source: joinPosix(dir, name),

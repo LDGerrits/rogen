@@ -29,30 +29,16 @@ describe("PathRebaser", () => {
 	});
 
 	describe("syncRules", () => {
-		it("should tag a sync rule with the folder its patterns are relative to", () => {
-			const rebased = PathRebaser.values(
-				{ syncRules: [{ pattern: "*.md", use: "text" }] },
-				"/repo",
-				"/repo/places/lobby"
-			);
-
-			expect(rebased.syncRules).toEqual([
-				{ pattern: "*.md", use: "text", origin: "/repo" },
-			]);
-		});
-
-		it("should leave a sync rule alone for the same folder or when it has an origin", () => {
+		it("should leave the sync rules as they are", () => {
 			const rules = [{ pattern: "*.md", use: "text" }];
-			const tagged = [{ pattern: "*.md", use: "text", origin: "/a" }];
 
 			expect(
-				PathRebaser.values({ syncRules: rules }, "/repo", "/repo")
-					.syncRules
+				PathRebaser.values(
+					{ syncRules: rules },
+					"/repo",
+					"/repo/places/lobby"
+				).syncRules
 			).toEqual(rules);
-			expect(
-				PathRebaser.values({ syncRules: tagged }, "/repo", "/repo/a")
-					.syncRules
-			).toEqual(tagged);
 		});
 	});
 

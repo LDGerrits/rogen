@@ -120,6 +120,9 @@ export class ConfigValidator {
 					path.posix.join(escapedGlobPrefix(toPosix(this.dir)), glob)
 				),
 				syncPath,
+				syncRulesDir: this.config.inherited?.syncRules
+					? toPosix(this.config.inherited.dir)
+					: undefined,
 				warnings: this.problems.diagnostics.filter(
 					(diagnostic) => !isError(diagnostic)
 				),

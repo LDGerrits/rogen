@@ -6,7 +6,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { LeftOut } from "./build.js";
-import { childrenBesideInit } from "../rojo/rojo.js";
+import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
 import { RojoProject, RojoProjectFile } from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
@@ -77,11 +77,11 @@ export class TreeAssembler {
 			projectFile: placement.tree.toFile(
 				project.getFile().tree,
 				globIgnorePaths,
-				new WrittenSyncRules(placement.config, placement.layout).of(
-					placement.roots.flatMap(({ entries }) =>
-						entries.map(({ source }) => source)
-					)
-				)
+				new WrittenSyncRules(
+					placement.config,
+					placement.layout,
+					placement.tree.globs
+				).of(placement.roots.flatMap(({ entries }) => entries))
 			),
 			meta,
 			metaOutcomes: applied.value,
@@ -166,7 +166,7 @@ export class TreeAssembler {
 		const { placement } = this;
 		const { layout } = placement;
 		return childrenBesideInit(placement.listing(dir), init, (name) =>
-			placement.config.fileAt(path.posix.join(dir, name))
+			RojoFile.at(path.posix.join(dir, name), placement.config.syncRules)
 		)
 			.map((name) => path.posix.join(dir, name))
 			.filter((sibling) => !layout.isReadOnly(sibling))
@@ -302,7 +302,7 @@ export class TreeAssembler {
 			rojoName:
 				placement.initDirOf(file) !== undefined
 					? undefined
-					: placement.config.fileAt(source).instanceName,
+					: file.entry.file.instanceName,
 		};
 	}
 }

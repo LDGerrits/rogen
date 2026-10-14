@@ -28,6 +28,7 @@ export interface ResolvedConfigSpec {
 	readonly ignored?: readonly string[];
 	readonly project?: Readonly<Record<string, unknown>>;
 	readonly syncPath?: string;
+	readonly syncRulesDir?: string;
 	readonly warnings?: readonly Diagnostic[];
 	readonly rootFile?: string;
 	readonly isPlace?: boolean;
@@ -57,6 +58,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 		),
 		ignored: spec.ignored ?? [],
 		syncPath: spec.syncPath,
+		syncRulesDir: spec.syncRulesDir,
 		warnings: spec.warnings ?? [],
 		rootFile: spec.rootFile,
 		isPlace: spec.isPlace,

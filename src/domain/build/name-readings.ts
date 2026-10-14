@@ -16,7 +16,7 @@ import {
 	SuffixMatch,
 } from "./name-reader.js";
 import { InstanceName } from "./instance-name.js";
-import { FileAt, ScannedFile, ScannedRoot } from "./root-scanner.js";
+import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A folder that never becomes an instance, as a warning names it. */
 export type InstancelessFolder =
@@ -61,8 +61,7 @@ export class NameReadings {
 	constructor(
 		private readonly keys: DeclaredKeys,
 		private readonly initNames: ReadonlySet<string>,
-		roots: readonly ScannedRoot[],
-		private readonly fileAt: FileAt
+		roots: readonly ScannedRoot[]
 	) {
 		this.reader = new NameReader(keys);
 		for (const root of roots) {
@@ -254,7 +253,7 @@ export class NameReadings {
 	} {
 		const { kind } = entry;
 		const fileName = path.posix.basename(entry.relativePath);
-		const file = this.fileAt(entry.source);
+		const { file } = entry;
 		return {
 			fileName,
 			kind,

@@ -24,6 +24,13 @@ export const SYNC_RULE_USES = [
 	"ignore",
 ] as const;
 
+const SYNC_RULE_FIELDS: readonly string[] = [
+	"pattern",
+	"exclude",
+	"use",
+	"suffix",
+];
+
 /** What a sync rule turns a file into, spelled as Rojo spells the `use` of a rule. */
 export type SyncRuleUse = (typeof SYNC_RULE_USES)[number];
 
@@ -34,8 +41,6 @@ export interface SyncRule {
 	readonly use: SyncRuleUse;
 	/** What is cut off the end of the file name to give the instance its name, the extension included; without it only the extension goes. */
 	readonly suffix?: string;
-	/** The absolute POSIX folder the patterns are relative to, when that is not the project's own: a rule a place inherits. */
-	readonly origin?: string;
 }
 
 export interface SyncRuleMatch {
@@ -89,16 +94,26 @@ export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 export class SyncRules {
 	static readonly DEFAULT = new SyncRules(DEFAULT_SYNC_RULES);
 
-	/** `dir` is the absolute POSIX folder the paths to match are relative to. */
+	/** `dir` is the absolute POSIX folder the paths to match are relative to; the patterns of the first `ownCount` rules are relative to `ownDir`. */
 	constructor(
 		private readonly rules: readonly SyncRule[],
 		private readonly ownCount = 0,
-		private readonly dir = ""
+		private readonly dir = "",
+		readonly ownDir = dir
 	) {}
 
-	/** `own` in front of Rojo's rules, the first match winning. */
-	static following(own: readonly SyncRule[], dir: string): SyncRules {
-		return new SyncRules([...own, ...DEFAULT_SYNC_RULES], own.length, dir);
+	/** `own` in front of Rojo's rules, the first match winning; their patterns are relative to `ownDir`, which differs from `dir` for rules a place inherits. */
+	static following(
+		own: readonly SyncRule[],
+		dir: string,
+		ownDir = dir
+	): SyncRules {
+		return new SyncRules(
+			[...own, ...DEFAULT_SYNC_RULES],
+			own.length,
+			dir,
+			ownDir
+		);
 	}
 
 	/** The rules a project's `syncRules` holds, and what is wrong with the ones it can't read. */
@@ -119,7 +134,12 @@ export class SyncRules {
 
 	private static readRule(value: unknown): SyncRule | string {
 		if (!isObject(value)) return "a sync rule must be an object.";
-		const { pattern, exclude, use, suffix, origin } = value;
+		const { pattern, exclude, use, suffix } = value;
+		const unknown = Object.keys(value).find(
+			(key) => !SYNC_RULE_FIELDS.includes(key)
+		);
+		if (unknown !== undefined)
+			return `a sync rule has no "${unknown}" field; it takes ${SYNC_RULE_FIELDS.join(", ")}.`;
 		if (typeof pattern !== "string")
 			return 'a sync rule needs a "pattern" string.';
 		if (!SYNC_RULE_USES.some((known) => known === use))
@@ -133,8 +153,12 @@ export class SyncRules {
 			...(exclude !== undefined && { exclude }),
 			use: use as SyncRuleUse,
 			...(suffix !== undefined && { suffix }),
-			...(typeof origin === "string" && { origin }),
 		};
+	}
+
+	/** `dir`, an absolute POSIX folder, relative to the folder the rules are written for. */
+	relativeDir(dir: string): string {
+		return path.posix.relative(this.dir, dir);
 	}
 
 	/** The rules the project wrote, in front of Rojo's. */
@@ -144,8 +168,15 @@ export class SyncRules {
 
 	/** The first rule that takes `filePath`, a path relative to the folder the rules are written for, written with `/`. */
 	match(filePath: string): SyncRuleMatch | undefined {
-		const index = this.rules.findIndex((rule) =>
-			this.takes(rule, filePath)
+		const fromOwnDir =
+			this.ownDir === this.dir
+				? filePath
+				: path.posix.relative(
+						this.ownDir,
+						joinPosix(this.dir, filePath)
+					);
+		const index = this.rules.findIndex((rule, at) =>
+			SyncRules.takes(rule, at < this.ownCount ? fromOwnDir : filePath)
 		);
 		if (index === -1) return undefined;
 		const rule = this.rules[index];
@@ -160,17 +191,13 @@ export class SyncRules {
 		};
 	}
 
-	private takes(
-		{ pattern, exclude, origin }: SyncRule,
+	private static takes(
+		{ pattern, exclude }: SyncRule,
 		filePath: string
 	): boolean {
-		const local =
-			origin === undefined
-				? filePath
-				: path.posix.relative(origin, joinPosix(this.dir, filePath));
 		return (
-			!(exclude && isGlobsetMatch(local, exclude)) &&
-			isGlobsetMatch(local, pattern)
+			!(exclude && isGlobsetMatch(filePath, exclude)) &&
+			isGlobsetMatch(filePath, pattern)
 		);
 	}
 

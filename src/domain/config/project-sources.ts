@@ -18,6 +18,8 @@ import { PathRebaser } from "./path-rebaser.js";
 interface InheritedSource {
 	readonly dir: string;
 	readonly sourcePaths?: readonly string[];
+	/** Whether the project's `syncRules` are the ones it takes from there, so their patterns are relative to `dir`. */
+	readonly syncRules: boolean;
 }
 
 /** The values of one project to write, and where in the config file each came from. */
@@ -181,7 +183,7 @@ export class ProjectSourceReader {
 					)
 				)
 			),
-			inherited: this.inheritedFrom(name),
+			inherited: this.inheritedFrom(name, changes),
 			warnings: found.warnings,
 			positionOf: (section) =>
 				at(...sectionPath(section)) ?? config.positionOf(section),
@@ -266,7 +268,10 @@ export class ProjectSourceReader {
 		return mergePatch(inherited, this.description);
 	}
 
-	private inheritedFrom(stem: string): InheritedSource | undefined {
+	private inheritedFrom(
+		stem: string,
+		changes: Readonly<Record<string, unknown>> = {}
+	): InheritedSource | undefined {
 		const { base } = this;
 		return (
 			base && {
@@ -275,6 +280,9 @@ export class ProjectSourceReader {
 					this.listedSource(stem).model.getValue<string[]>(
 						"sourcePaths"
 					),
+				syncRules:
+					this.description.syncRules === undefined &&
+					changes.syncRules === undefined,
 			}
 		);
 	}

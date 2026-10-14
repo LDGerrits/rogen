@@ -4,6 +4,7 @@ import path from "path";
 import { FileType } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { BuildSummary, LeftOut } from "./build.js";
 import { BuildTree } from "./build-tree.js";
 import { EntryReading, NameReadings } from "./name-readings.js";
@@ -140,7 +141,8 @@ export class Placement {
 	initDirOf(file: RoutedFile): string | undefined {
 		return file.init &&
 			new RojoFile(
-				path.basename(this.layout.emittedPath(file.entry.source))
+				path.basename(this.layout.emittedPath(file.entry.source)),
+				SyncRules.DEFAULT
 			).isInit
 			? file.init.sitsIn
 			: undefined;

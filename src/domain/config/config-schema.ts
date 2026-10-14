@@ -137,7 +137,6 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 		type: "array",
 		items: {
 			type: "object",
-			additionalProperties: false,
 			properties: {
 				pattern: {
 					type: "string",

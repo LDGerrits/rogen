@@ -1,26 +1,27 @@
-import path from "path";
 import { isGlobsetMatch, literalGlob } from "../../base/glob.js";
-import { toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { SyncRule } from "../rojo/sync-rules.js";
+import { ScannedFile } from "./root-scanner.js";
 import { SyncLayout } from "./sync-layout.js";
+import { WrittenGlobs } from "./written-globs.js";
 
-const GLOB_MAGIC = /[*?[\]{}]/;
-
-/** The sync rules of a project as its written file carries them: each pattern moved to the folder and the sync path the file is written for, or one literal rule per file the rule takes when the moved pattern would miss one. */
+/** The sync rules of a project as its written file carries them: each pattern moved to the folder and the sync path the file is written for, or one literal rule per file the rule takes when the moved pattern would miss one. A rule is also kept as it was where the tree mounts a folder the move leaves behind. */
 export class WrittenSyncRules {
 	constructor(
 		private readonly config: ResolvedConfig,
-		private readonly layout: SyncLayout
+		private readonly layout: SyncLayout,
+		private readonly globs: WrittenGlobs
 	) {}
 
-	/** `sources` are the absolute POSIX paths of the files the build scans. */
-	of(sources: readonly string[]): SyncRule[] {
+	of(entries: readonly ScannedFile[]): SyncRule[] {
 		return this.config.syncRules.own.flatMap((rule) => {
-			const taken = sources.filter(
-				(source) => this.config.fileAt(source).ownRule === rule
-			);
-			return this.moved(rule, taken) ?? this.literal(rule, taken);
+			const taken = entries
+				.filter(({ file }) => file.ownRule === rule)
+				.map(({ source }) => source);
+			return [
+				...(this.moved(rule, taken) ?? this.literal(rule, taken)),
+				...this.original(rule),
+			];
 		});
 	}
 
@@ -33,11 +34,12 @@ export class WrittenSyncRules {
 		rule: SyncRule,
 		taken: readonly string[]
 	): SyncRule[] | undefined {
-		const pattern = this.movedGlob(rule.pattern, rule.origin);
+		const from = this.config.syncRules.ownDir;
+		const pattern = this.globs.moved(rule.pattern, from);
 		const exclude =
 			rule.exclude === undefined
 				? undefined
-				: this.movedGlob(rule.exclude, rule.origin);
+				: this.globs.moved(rule.exclude, from);
 		if (pattern === undefined || (rule.exclude && exclude === undefined))
 			return undefined;
 		const takesAll = taken.every((source) => {
@@ -47,11 +49,9 @@ export class WrittenSyncRules {
 				!(exclude !== undefined && isGlobsetMatch(landed, exclude))
 			);
 		});
-		if (!takesAll) return undefined;
-		const { origin: _origin, ...written } = rule;
-		return [
-			{ ...written, pattern, ...(exclude !== undefined && { exclude }) },
-		];
+		return takesAll
+			? [{ ...rule, pattern, ...(exclude !== undefined && { exclude }) }]
+			: undefined;
 	}
 
 	private literal(rule: SyncRule, taken: readonly string[]): SyncRule[] {
@@ -62,22 +62,17 @@ export class WrittenSyncRules {
 		}));
 	}
 
-	/** A glob that begins with a wildcard takes the same files wherever they sit; one that begins with a folder name is moved with that folder; any other can't be moved. A moved glob is only kept when it still takes the files. */
-	private movedGlob(
-		glob: string,
-		origin: string | undefined
-	): string | undefined {
-		if (path.posix.isAbsolute(glob) || path.win32.isAbsolute(glob))
-			return glob;
-		if (glob.startsWith("*")) return glob;
-		const prefix =
-			origin === undefined
-				? ""
-				: path.posix.relative(toPosix(this.layout.projectDir), origin);
-		if (prefix === "" && this.layout.syncPath === undefined) return glob;
-		if (GLOB_MAGIC.test(glob.split("/")[0])) return undefined;
-		return this.layout.syncedGlob(
-			prefix === "" ? glob : path.posix.join(prefix, glob)
-		);
+	/** The rule as it is in the project, for the files a mount brings in under the pattern's old place. */
+	private original(rule: SyncRule): SyncRule[] {
+		const from = this.config.syncRules.ownDir;
+		const pattern = this.globs.original(rule.pattern, from);
+		if (pattern === undefined) return [];
+		const exclude =
+			rule.exclude === undefined
+				? undefined
+				: this.globs.inProject(rule.exclude, from);
+		return [
+			{ ...rule, pattern, ...(exclude !== undefined && { exclude }) },
+		];
 	}
 }

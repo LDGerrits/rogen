@@ -6,6 +6,7 @@ import { PlannedFilesIndex } from "../locate/planned-files-index.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
+import { RojoFile } from "../../rojo/rojo.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import {
 	abs,
@@ -546,7 +547,7 @@ describe("CoreBuildService.locate", () => {
 				listing,
 				[abs("src")],
 				[abs("src/Combat/Server/Hit.luau")],
-				(source) => configOf().fileAt(source)
+				(source) => RojoFile.at(source, configOf().syncRules)
 			);
 
 			expect(planned.getEntries(abs("src/Combat"))).toBeDefined();

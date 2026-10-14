@@ -17,6 +17,7 @@ import { DeclaredKeys } from "../../config/declared-keys.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import { RojoFile } from "../../rojo/rojo.js";
+import { SyncRules } from "../../rojo/sync-rules.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import {
 	Asked,
@@ -74,7 +75,8 @@ export class Locator {
 		const head = (/^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg) ??
 			/^(.+):$/.exec(arg))?.[1];
 		if (head === undefined) return arg;
-		return new RojoFile(path.basename(head)).kind !== undefined ||
+		return new RojoFile(path.basename(head), SyncRules.DEFAULT).kind !==
+			undefined ||
 			(await this.fileSystemService.exists(path.resolve(cwd, head)))
 			? head
 			: arg;
@@ -207,7 +209,7 @@ class ConfigLocator {
 			this.listing,
 			this.config.sourcePaths,
 			paths,
-			(source) => this.config.fileAt(source)
+			(source) => RojoFile.at(source, this.config.syncRules)
 		);
 		const planned = await this.locatorOf(
 			index,
@@ -369,7 +371,7 @@ class ConfigLocator {
 			this.listing,
 			this.config.sourcePaths,
 			[file],
-			(source) => this.config.fileAt(source)
+			(source) => RojoFile.at(source, this.config.syncRules)
 		);
 		const placement = this.builderOf(index).place(this.config);
 		return placement.isOk()

@@ -2,7 +2,6 @@ import path from "path";
 import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
-import { RojoFile } from "../rojo/rojo.js";
 import {
 	ParsedProjectFile,
 	RojoProject,
@@ -31,6 +30,8 @@ interface ResolvedConfigFields {
 	readonly ignored: readonly string[];
 	/** Absolute. */
 	readonly syncPath?: string;
+	/** The absolute POSIX folder the patterns of `syncRules` are relative to, when it is not the config's own: a place takes the rules of the config that lists it. */
+	readonly syncRulesDir?: string;
 	readonly warnings: readonly Diagnostic[];
 	/** The config file that lists this folder as a place; for anything else, `file` itself. */
 	readonly rootFile?: string;
@@ -81,19 +82,8 @@ export class ResolvedConfig {
 		this.keys = new DeclaredKeys(fields.routes.keys());
 		this.syncRules = SyncRules.following(
 			SyncRules.read(fields.project.syncRules).rules,
-			toPosix(this.projectDir)
-		);
-	}
-
-	/** The file at `source`, an absolute POSIX path, as Rojo reads it with this project's sync rules. */
-	fileAt(source: string): RojoFile {
-		return new RojoFile(
-			path.posix.basename(source),
-			this.syncRules,
-			path.posix.relative(
-				toPosix(this.projectDir),
-				path.posix.dirname(source)
-			)
+			toPosix(this.projectDir),
+			fields.syncRulesDir
 		);
 	}
 

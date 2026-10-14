@@ -1,0 +1,62 @@
+import { SyncLayout } from "../sync-layout.js";
+import { WrittenGlobs } from "../written-globs.js";
+import { abs, configOf, syncTools } from "./fixtures.js";
+
+const globsOf = (syncPath?: string, mounts: readonly string[] = []) => {
+	const config = configOf({ syncPath: syncPath && abs(syncPath) });
+	return new WrittenGlobs(
+		new SyncLayout(config, syncTools),
+		mounts.map((mount) => abs(mount))
+	);
+};
+
+describe("WrittenGlobs", () => {
+	it("should write a glob as it is when nothing moves", () => {
+		expect(globsOf().of("src/**/*.draft.luau")).toEqual([
+			"src/**/*.draft.luau",
+		]);
+	});
+
+	it("should move a glob under the sync path", () => {
+		expect(globsOf("out").of("src/**/*.draft.luau")).toEqual([
+			"out/**/*.draft.luau",
+		]);
+	});
+
+	it("should keep the glob as it was beside the move where a mount lies under it", () => {
+		expect(
+			globsOf("out", ["src/Vendor"]).of("src/**/*.draft.luau")
+		).toEqual(["out/**/*.draft.luau", "src/**/*.draft.luau"]);
+		expect(globsOf("out", ["src/Vendor"]).of("src/Vendor/*.x")).toEqual([
+			"out/Vendor/*.x",
+			"src/Vendor/*.x",
+		]);
+	});
+
+	it("should not keep the glob for a mount that lies elsewhere", () => {
+		expect(globsOf("out", ["vendor"]).of("src/*.x")).toEqual(["out/*.x"]);
+		expect(globsOf("out", ["src/Vendor"]).of("src/Other/*.x")).toEqual([
+			"out/Other/*.x",
+		]);
+	});
+
+	it("should leave a glob that begins with a wildcard where it is", () => {
+		expect(globsOf("out", ["src/Vendor"]).of("**/*.spec.luau")).toEqual([
+			"**/*.spec.luau",
+		]);
+	});
+
+	it("should not move a glob whose first folder is a pattern", () => {
+		const globs = globsOf("out", ["src/Vendor"]);
+
+		expect(globs.moved("{src,lib}/*.md")).toBeUndefined();
+		expect(globs.of("{src,lib}/*.md")).toEqual(["{src,lib}/*.md"]);
+	});
+
+	it("should rebase a glob from the folder it was written in", () => {
+		const config = configOf({ file: abs("places/lobby/rogen.json") });
+		const globs = new WrittenGlobs(new SyncLayout(config, syncTools), []);
+
+		expect(globs.of("src/*.md", abs(""))).toEqual(["../../src/*.md"]);
+	});
+});

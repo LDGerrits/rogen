@@ -702,7 +702,7 @@ describe("Router", () => {
 
 				const [file] = (await route()).unwrap().routed;
 
-				expect(file.entry).toEqual({
+				expect(file.entry).toMatchObject({
 					kind: "script",
 					sourcePath: abs("src"),
 					relativePath: "server/A.luau",

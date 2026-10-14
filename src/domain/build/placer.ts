@@ -9,6 +9,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { LeftOut } from "./build.js";
 import { BuildTree } from "./build-tree.js";
@@ -51,12 +52,7 @@ export class Placer {
 		);
 		if (sourcePathMounts.length > 0) return err(sourcePathMounts);
 		const roots = this.scan();
-		const readings = new NameReadings(
-			keys,
-			this.layout.initNames,
-			roots,
-			(source) => this.config.fileAt(source)
-		);
+		const readings = new NameReadings(keys, this.layout.initNames, roots);
 		const claims = new RootClaims(roots, readings);
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
 			new Router(this.config, readings).route(roots, claims);
@@ -110,7 +106,7 @@ export class Placer {
 			this.config.ignored,
 			this.tree.mounts,
 			this.config.projectFiles,
-			(source) => this.config.fileAt(source)
+			(source) => RojoFile.at(source, this.config.syncRules)
 		);
 		return this.config.sourcePaths.map((sourcePath) =>
 			scanner.scan(sourcePath)

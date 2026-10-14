@@ -88,13 +88,22 @@ export class RojoFile {
 	/** `dir` is the folder the file sits in, relative to the one the sync rules are written for. */
 	constructor(
 		readonly name: string,
-		private readonly rules: SyncRules = SyncRules.DEFAULT,
+		private readonly rules: SyncRules,
 		private readonly dir = ""
 	) {
 		this.match = INIT_FILE.test(name)
 			? SyncRules.DEFAULT.match(name)
 			: rules.match(joinPosix(dir, name));
 		this.stem = this.ownMatch ? this.ownMatch.name : stemOf(name);
+	}
+
+	/** The file at `source`, an absolute POSIX path, as Rojo reads it with `rules`, which are written for a folder. */
+	static at(source: string, rules: SyncRules): RojoFile {
+		return new RojoFile(
+			path.posix.basename(source),
+			rules,
+			rules.relativeDir(path.posix.dirname(source))
+		);
 	}
 
 	/** The match of a rule the project wrote. */
@@ -382,7 +391,7 @@ export function scriptRunOf(
 export function childrenBesideInit(
 	listing: ReadonlyMap<string, FileType>,
 	init: string,
-	fileNamed: (name: string) => RojoFile = (name) => new RojoFile(name)
+	fileNamed: (name: string) => RojoFile
 ): string[] {
 	return [...listing].flatMap(([name, type]) =>
 		isDirectoryType(type) ||

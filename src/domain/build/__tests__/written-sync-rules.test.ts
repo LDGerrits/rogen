@@ -1,5 +1,8 @@
+import { RojoFile } from "../../rojo/rojo.js";
 import { SyncRule } from "../../rojo/sync-rules.js";
+import { ScannedFile } from "../root-scanner.js";
 import { SyncLayout } from "../sync-layout.js";
+import { WrittenGlobs } from "../written-globs.js";
 import { WrittenSyncRules } from "../written-sync-rules.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
@@ -13,15 +16,29 @@ const module: SyncRule = {
 const writtenBy = (
 	rules: readonly object[],
 	sources: readonly string[] = [],
-	overrides: ResolvedConfigSpec = {}
+	overrides: ResolvedConfigSpec = {},
+	mounts: readonly string[] = []
 ) => {
 	const config = configOf({
 		project: { tree: {}, syncRules: rules },
 		...overrides,
 	});
-	return new WrittenSyncRules(config, new SyncLayout(config, syncTools)).of(
-		sources.map((source) => abs(source))
-	);
+	const layout = new SyncLayout(config, syncTools);
+	const entries: ScannedFile[] = sources.map((source) => ({
+		kind: "data",
+		file: RojoFile.at(abs(source), config.syncRules),
+		sourcePath: abs("src"),
+		relativePath: source,
+		source: abs(source),
+	}));
+	return new WrittenSyncRules(
+		config,
+		layout,
+		new WrittenGlobs(
+			layout,
+			mounts.map((mount) => abs(mount))
+		)
+	).of(entries);
 };
 
 describe("WrittenSyncRules", () => {
@@ -78,8 +95,9 @@ describe("WrittenSyncRules", () => {
 
 	it("should move a pattern from the folder its rule was written in", () => {
 		expect(
-			writtenBy([{ ...module, origin: abs("") }], [], {
+			writtenBy([module], [], {
 				file: abs("places/lobby/rogen.json"),
+				syncRulesDir: abs(""),
 			})
 		).toEqual([{ ...module, pattern: "../../src/*.module" }]);
 	});
@@ -129,5 +147,27 @@ describe("WrittenSyncRules", () => {
 			{ ...first, pattern: "out/A.md" },
 			{ pattern: "out/B.md", use: "text" },
 		]);
+	});
+
+	it("should keep the rule as it was where a mount lies under its old place", () => {
+		expect(
+			writtenBy([module], [], { syncPath: abs("out") }, ["src/Vendor"])
+		).toEqual([{ ...module, pattern: "out/*.module" }, module]);
+	});
+
+	it("should not keep the rule as it was for a mount elsewhere", () => {
+		expect(
+			writtenBy([module], [], { syncPath: abs("out") }, ["vendor"])
+		).toEqual([{ ...module, pattern: "out/*.module" }]);
+	});
+
+	it("should keep a pattern it can't move as it was where a mount lies", () => {
+		const rule: SyncRule = { pattern: "{src,lib}/*.md", use: "text" };
+
+		expect(
+			writtenBy([rule], ["src/A.md"], { syncPath: abs("out") }, [
+				"src/Vendor",
+			])
+		).toEqual([{ pattern: "out/A.md", use: "text" }, rule]);
 	});
 });

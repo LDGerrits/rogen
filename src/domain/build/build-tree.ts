@@ -15,6 +15,7 @@ import {
 } from "../rojo/rojo-project.js";
 import { SyncRule } from "../rojo/sync-rules.js";
 import { SyncLayout } from "./sync-layout.js";
+import { WrittenGlobs } from "./written-globs.js";
 
 interface TreeMount {
 	readonly path: string;
@@ -79,6 +80,8 @@ export class BuildTree {
 	readonly globIgnorePaths: string[];
 	/** Every path the tree's own `$path`s mount. Rojo reads these, not Rogen. */
 	readonly mounts: TreeMounts;
+	/** How the project's globs are written once the tree mounts what it mounts. */
+	readonly globs: WrittenGlobs;
 
 	constructor(
 		private readonly config: Pick<
@@ -88,14 +91,15 @@ export class BuildTree {
 		private readonly layout: SyncLayout
 	) {
 		const { project } = config;
-		this.globIgnorePaths = project.globIgnorePaths.map((glob) =>
-			layout.syncedGlob(glob)
-		);
 		this.project = new RojoProject(
 			{ tree: project.getFile().tree },
 			generatedContainer
 		);
 		this.mounts = this.mountsOf(project);
+		this.globs = new WrittenGlobs(layout, this.mounts.paths);
+		this.globIgnorePaths = project.globIgnorePaths.flatMap((glob) =>
+			this.globs.of(glob)
+		);
 	}
 
 	get disablesLegacyScripts(): boolean {

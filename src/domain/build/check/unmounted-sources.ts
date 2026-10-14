@@ -9,6 +9,7 @@ import {
 import { isDirectoryType } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
+import { RojoFile } from "../../rojo/rojo.js";
 import { rojoPathTarget } from "../../rojo/rojo-project.js";
 
 /** Finds the files Rojo reads in the folder a config without routes would have scanned, which go unsynced unless its tree mounts them; a nested project in the tree may mount what lies in its folder. */
@@ -27,13 +28,14 @@ export class UnmountedSources {
 				path.resolve(this.config.projectDir, rojoPathTarget(mounted))
 			)
 			.map((mount) =>
-				this.config.fileAt(toPosix(mount)).isProject
+				RojoFile.at(toPosix(mount), this.config.syncRules).isProject
 					? path.dirname(mount)
 					: mount
 			);
 		const loose = this.filesIn(defaultPath).filter(
 			(file) =>
-				this.config.fileAt(toPosix(file)).kind !== undefined &&
+				RojoFile.at(toPosix(file), this.config.syncRules).kind !==
+					undefined &&
 				!mounts.some((mount) => contains(mount, file)) &&
 				!this.config.ignored.some((glob) => isMatch(file, glob))
 		);

@@ -28,7 +28,7 @@ describe("domain/rojo/rojo", () => {
 				["Config.yaml", "data"],
 				["Config.yml", "data"],
 			])("should read %s as a %s", (name, kind) => {
-				expect(new RojoFile(name).kind).toBe(kind);
+				expect(new RojoFile(name, SyncRules.DEFAULT).kind).toBe(kind);
 			});
 
 			it.each([
@@ -44,7 +44,9 @@ describe("domain/rojo/rojo", () => {
 				".server",
 				"README",
 			])("should not read %s as an instance", (name) => {
-				expect(new RojoFile(name).kind).toBeUndefined();
+				expect(
+					new RojoFile(name, SyncRules.DEFAULT).kind
+				).toBeUndefined();
 			});
 		});
 
@@ -52,14 +54,18 @@ describe("domain/rojo/rojo", () => {
 			it.each(["Save.luau", "Save.lua", "Save.server.luau", "init.luau"])(
 				"should be true for %s",
 				(name) => {
-					expect(new RojoFile(name).isLuau).toBe(true);
+					expect(new RojoFile(name, SyncRules.DEFAULT).isLuau).toBe(
+						true
+					);
 				}
 			);
 
 			it.each(["Save.ts", "Hud.tsx", "Data.json", "Model.rbxm"])(
 				"should be false for %s",
 				(name) => {
-					expect(new RojoFile(name).isLuau).toBe(false);
+					expect(new RojoFile(name, SyncRules.DEFAULT).isLuau).toBe(
+						false
+					);
 				}
 			);
 		});
@@ -68,7 +74,9 @@ describe("domain/rojo/rojo", () => {
 			it.each(["Save.luau", "Save.lua", "init.luau", "Hit.mock.luau"])(
 				"should be true for %s",
 				(name) => {
-					expect(new RojoFile(name).isLuauModule).toBe(true);
+					expect(
+						new RojoFile(name, SyncRules.DEFAULT).isLuauModule
+					).toBe(true);
 				}
 			);
 
@@ -81,20 +89,33 @@ describe("domain/rojo/rojo", () => {
 				"Data.json",
 				"Model.rbxm",
 			])("should be false for %s", (name) => {
-				expect(new RojoFile(name).isLuauModule).toBe(false);
+				expect(new RojoFile(name, SyncRules.DEFAULT).isLuauModule).toBe(
+					false
+				);
 			});
 		});
 
 		describe("isMeta", () => {
 			it("should accept a meta file in lowercase only, and reject other JSON", () => {
-				expect(new RojoFile("Save.meta.json").isMeta).toBe(true);
-				expect(new RojoFile(RojoFile.INIT_META).isMeta).toBe(true);
-				expect(new RojoFile("Save.meta.jsonc").isMeta).toBe(true);
-				expect(new RojoFile(RojoFile.INIT_META_JSONC).isMeta).toBe(
-					true
-				);
-				expect(new RojoFile("SAVE.META.JSON").isMeta).toBe(false);
-				expect(new RojoFile("Save.json").isMeta).toBe(false);
+				expect(
+					new RojoFile("Save.meta.json", SyncRules.DEFAULT).isMeta
+				).toBe(true);
+				expect(
+					new RojoFile(RojoFile.INIT_META, SyncRules.DEFAULT).isMeta
+				).toBe(true);
+				expect(
+					new RojoFile("Save.meta.jsonc", SyncRules.DEFAULT).isMeta
+				).toBe(true);
+				expect(
+					new RojoFile(RojoFile.INIT_META_JSONC, SyncRules.DEFAULT)
+						.isMeta
+				).toBe(true);
+				expect(
+					new RojoFile("SAVE.META.JSON", SyncRules.DEFAULT).isMeta
+				).toBe(false);
+				expect(
+					new RojoFile("Save.json", SyncRules.DEFAULT).isMeta
+				).toBe(false);
 			});
 		});
 
@@ -111,7 +132,9 @@ describe("domain/rojo/rojo", () => {
 				["Notes.MD", undefined],
 				["Types.D.TS", undefined],
 			])("should read %s as %s", (name, fixed) => {
-				expect(new RojoFile(name).lowercasedExtension).toBe(fixed);
+				expect(
+					new RojoFile(name, SyncRules.DEFAULT).lowercasedExtension
+				).toBe(fixed);
 			});
 		});
 
@@ -123,7 +146,7 @@ describe("domain/rojo/rojo", () => {
 				"init.client.lua",
 				"init.plugin.luau",
 			])("should accept %s", (name) => {
-				expect(new RojoFile(name).isInit).toBe(true);
+				expect(new RojoFile(name, SyncRules.DEFAULT).isInit).toBe(true);
 			});
 
 			it.each([
@@ -137,7 +160,9 @@ describe("domain/rojo/rojo", () => {
 				"initial.luau",
 				"init.meta.json",
 			])("should reject %s", (name) => {
-				expect(new RojoFile(name).isInit).toBe(false);
+				expect(new RojoFile(name, SyncRules.DEFAULT).isInit).toBe(
+					false
+				);
 			});
 		});
 
@@ -263,8 +288,13 @@ describe("domain/rojo/rojo", () => {
 			});
 
 			it("should read a nested project", () => {
-				expect(new RojoFile("Sub.project.json").isProject).toBe(true);
-				expect(new RojoFile("Sub.model.json").isProject).toBe(false);
+				expect(
+					new RojoFile("Sub.project.json", SyncRules.DEFAULT)
+						.isProject
+				).toBe(true);
+				expect(
+					new RojoFile("Sub.model.json", SyncRules.DEFAULT).isProject
+				).toBe(false);
 			});
 		});
 
@@ -346,7 +376,9 @@ describe("domain/rojo/rojo", () => {
 				["Data.model.toml", "Data.model"],
 				["Names.project.csv", "Names.project"],
 			])("should name %s as %s", (fileName, name) => {
-				expect(new RojoFile(fileName).dataName).toBe(name);
+				expect(new RojoFile(fileName, SyncRules.DEFAULT).dataName).toBe(
+					name
+				);
 			});
 		});
 
@@ -361,7 +393,9 @@ describe("domain/rojo/rojo", () => {
 				["Gun.rbxm", "Gun"],
 				["Data.model.toml", "Data.model"],
 			])("should name %s as %s", (fileName, name) => {
-				expect(new RojoFile(fileName).instanceName).toBe(name);
+				expect(
+					new RojoFile(fileName, SyncRules.DEFAULT).instanceName
+				).toBe(name);
 			});
 		});
 
@@ -374,20 +408,24 @@ describe("domain/rojo/rojo", () => {
 				["Config.jsonc", "Config"],
 				["Notes.txt", "Notes"],
 			])("should read the meta of %s under %s", (fileName, name) => {
-				expect(new RojoFile(fileName).metaName).toBe(name);
+				expect(new RojoFile(fileName, SyncRules.DEFAULT).metaName).toBe(
+					name
+				);
 			});
 
 			it.each(["Crate.model.json", "Nested.project.json", "Gun.rbxm"])(
 				"should give %s no meta",
 				(fileName) => {
-					expect(new RojoFile(fileName).metaName).toBeUndefined();
+					expect(
+						new RojoFile(fileName, SyncRules.DEFAULT).metaName
+					).toBeUndefined();
 				}
 			);
 
 			it("should read .model and .project as part of the name outside .json files", () => {
-				expect(new RojoFile("Crate.model.toml").metaName).toBe(
-					"Crate.model"
-				);
+				expect(
+					new RojoFile("Crate.model.toml", SyncRules.DEFAULT).metaName
+				).toBe("Crate.model");
 			});
 		});
 
@@ -401,23 +439,26 @@ describe("domain/rojo/rojo", () => {
 
 		describe("metaFiles", () => {
 			it("should name the .jsonc Rojo applies over the .json first", () => {
-				expect(new RojoFile("Save.luau").metaFiles).toEqual([
-					"Save.meta.jsonc",
-					"Save.meta.json",
-				]);
-				expect(new RojoFile("Gun.rbxm").metaFiles).toEqual([]);
+				expect(
+					new RojoFile("Save.luau", SyncRules.DEFAULT).metaFiles
+				).toEqual(["Save.meta.jsonc", "Save.meta.json"]);
+				expect(
+					new RojoFile("Gun.rbxm", SyncRules.DEFAULT).metaFiles
+				).toEqual([]);
 			});
 		});
 
 		describe("metaFile", () => {
 			it("should name the meta file Rojo reads for a script", () => {
-				expect(new RojoFile("Save.server.luau").metaFile).toBe(
-					"Save.meta.json"
-				);
+				expect(
+					new RojoFile("Save.server.luau", SyncRules.DEFAULT).metaFile
+				).toBe("Save.meta.json");
 			});
 
 			it("should name none for a file that takes no meta", () => {
-				expect(new RojoFile("Gun.rbxm").metaFile).toBeUndefined();
+				expect(
+					new RojoFile("Gun.rbxm", SyncRules.DEFAULT).metaFile
+				).toBeUndefined();
 			});
 		});
 	});
@@ -594,12 +635,13 @@ describe("domain/rojo/rojo", () => {
 				["Linked", FileType.SymbolicLink | FileType.Directory],
 			]);
 
-			expect(childrenBesideInit(listing, "init.luau")).toEqual([
-				"Helper.luau",
-				"Data.json",
-				"Moves",
-				"Linked",
-			]);
+			expect(
+				childrenBesideInit(
+					listing,
+					"init.luau",
+					(name) => new RojoFile(name, SyncRules.DEFAULT)
+				)
+			).toEqual(["Helper.luau", "Data.json", "Moves", "Linked"]);
 		});
 
 		it("should count a file that only a sync rule of the project reads", () => {

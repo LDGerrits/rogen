@@ -119,7 +119,7 @@ describe("CoreConfigService", () => {
 			await write(
 				"/repo/rogen.json",
 				`{
-	"syncRules": [{ "pattern": "*.md", "use": "text", "origin": "/x" }]
+	"syncRules": [{ "pattern": "*.md", "use": "text", "sufix": ".md" }]
 }`
 			);
 
@@ -127,8 +127,8 @@ describe("CoreConfigService", () => {
 
 			expect(errors(0)).toMatchObject([
 				{
-					code: "config.unknownField",
-					message: expect.stringContaining("syncRules[0].origin"),
+					code: "config.invalidSyncRule",
+					message: expect.stringContaining('no "sufix" field'),
 				},
 			]);
 		});

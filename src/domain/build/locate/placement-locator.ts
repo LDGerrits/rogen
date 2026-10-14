@@ -126,9 +126,7 @@ export class PlacementLocator {
 
 	private placedAt(file: RoutedFile): PlacedLocation {
 		const others = this.placement.otherNodesOf(file);
-		const { isLuau, isLuauModule } = this.placement.config.fileAt(
-			file.entry.source
-		);
+		const { isLuau, isLuauModule } = file.entry.file;
 		return {
 			status: "placed",
 			source: file.entry.source,

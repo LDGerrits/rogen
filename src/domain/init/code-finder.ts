@@ -5,6 +5,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { RojoFile } from "../rojo/rojo.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
 
 export interface DirectoryLayout {
@@ -42,7 +43,8 @@ export class CodeFinder {
 		if (
 			visible.some(
 				([name, type]) =>
-					isFileType(type) && new RojoFile(name).kind === "script"
+					isFileType(type) &&
+					new RojoFile(name, SyncRules.DEFAULT).kind === "script"
 			)
 		)
 			return true;

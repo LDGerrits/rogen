@@ -281,7 +281,7 @@ describe("RootScanner", () => {
 
 				const { roots } = await scan();
 
-				expect(roots[0].entries).toEqual([
+				expect(roots[0].entries).toMatchObject([
 					{
 						kind: "script",
 						sourcePath: abs("src"),
@@ -313,7 +313,7 @@ describe("RootScanner", () => {
 
 				const { roots } = await scan();
 
-				expect(roots[0].entries).toEqual([
+				expect(roots[0].entries).toMatchObject([
 					{
 						kind: "script",
 						sourcePath: abs("src"),
@@ -517,7 +517,7 @@ describe("RootScanner", () => {
 					abs("core"),
 					abs("lobby"),
 				]);
-				expect(roots[0].entries).toEqual([
+				expect(roots[0].entries).toMatchObject([
 					{
 						kind: "script",
 						sourcePath: abs("core"),
@@ -525,7 +525,7 @@ describe("RootScanner", () => {
 						source: abs("core/Shared.luau"),
 					},
 				]);
-				expect(roots[1].entries).toEqual([
+				expect(roots[1].entries).toMatchObject([
 					{
 						kind: "script",
 						sourcePath: abs("lobby"),
@@ -588,7 +588,7 @@ describe("RootScanner", () => {
 
 				const { roots } = await scan();
 
-				expect(roots[0].entries).toEqual([
+				expect(roots[0].entries).toMatchObject([
 					{
 						kind: "script",
 						sourcePath: abs("src"),

@@ -114,7 +114,7 @@ Add a `routes` map, or remove `sourcePaths` and mount the folders in the `tree` 
 
 ### `config.invalidSyncRule` [#config-invalidsyncrule]
 
-Error. A rule in `syncRules` is not one Rojo can read: it is not an object, it has no `pattern` or `use`, its `use` is not one Rojo has, or its `exclude` or `suffix` is not a string.
+Error. A rule in `syncRules` is not one Rojo can read: it is not an object, it has no `pattern` or `use`, its `use` is not one Rojo has, its `exclude` or `suffix` is not a string, or it has a field a rule does not.
 
 ```
 rogen.json:7:5 - error: "syncRules[0]": a sync rule needs a "use" of serverScript, clientScript, ... (config.invalidSyncRule)

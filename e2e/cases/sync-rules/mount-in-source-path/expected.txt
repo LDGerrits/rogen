@@ -1,0 +1,53 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Vendor": {
+        "$path": "src/Vendor"
+      },
+      "shared": {
+        "$className": "Folder",
+        "Combat": {
+          "$path": {
+            "optional": "out/Combat"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "out/**/*.draft.luau",
+    "src/**/*.draft.luau"
+  ],
+  "syncRules": [
+    {
+      "pattern": "out/**/*.module",
+      "use": "moduleScript",
+      "suffix": ".module"
+    },
+    {
+      "pattern": "src/**/*.module",
+      "use": "moduleScript",
+      "suffix": ".module"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Vendor: Folder
+      Lib: ModuleScript  <- src/Vendor/Lib.module
+    shared: Folder
+      Combat: Folder
+        Hit: ModuleScript  <- out/Combat/Hit.module

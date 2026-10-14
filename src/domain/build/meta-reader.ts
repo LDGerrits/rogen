@@ -234,9 +234,8 @@ export class MetaReader {
 				entry.sourcePath,
 				path.dirname(entry.relativePath)
 			);
-			const siblings = placement.config
-				.fileAt(entry.source)
-				.metaFiles.map((name) => path.join(folder, name))
+			const siblings = entry.file.metaFiles
+				.map((name) => path.join(folder, name))
 				.filter(
 					(candidate) =>
 						metaFiles.has(candidate) &&

@@ -208,7 +208,7 @@ An ignored file that a `tree` `$path` mounts is still mounted: the glob never dr
 - `suffix` is what Rojo cuts off the end of the file name to name the instance, extension included. Without it only the extension goes. A file whose name doesn't end with the suffix keeps its whole name, extension included, and Rogen warns ([`scan.syncRuleSuffix`](/docs/v2/diagnostics#scan-syncrulesuffix)). The meta file of `Combat.module` is `Combat.meta.json`, found by the cut name.
 - Rules never apply to folders or `init` files, and a file a rule of yours doesn't take is read by Rojo's rules.
 
-Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `syncPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
+Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `syncPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. Where the `tree` mounts a folder under the old place of a moved pattern, Rogen also keeps the pattern as you wrote it, so Rojo reads that folder by it too (the same goes for `globIgnorePaths`). See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
 
 A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too.
 
