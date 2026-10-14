@@ -6,7 +6,9 @@ description: Set up Rogen with Darklua.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, the **sync path**, and Rojo syncs from there. Rogen still reads your source to decide where files go; it just points Rojo's paths at the sync path.
+[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, the **sync path**, and Rojo syncs from there. Rogen still reads your source to decide where files go; a [project](/docs/v2/configuration#projects) points Rojo's paths at the sync path.
+
+Two files matter here. `default.project.json` keeps pointing at your source, which is what luau-lsp builds `sourcemap.json` from and what Darklua's `convert_require` reads. A `dist` project points at the sync path, which is what Studio syncs. `rogen serve` serves the one `serveProject` names, so you never serve unprocessed code by accident.
 
 <Steps>
 
@@ -20,11 +22,11 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 <Step>
 ### Create the Config
 
-Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. Commit `default.project.json` with the rest, so a fresh clone works before anyone has run `rogen build`: see [Commit the project file](/docs/v2/core-concepts/output#commit-the-project-file).
+Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    `init` writes one `rogen.json`, with `"syncPath": "dist"`:
+    `init` writes one `rogen.json`, with a `dist` project that has `"syncPath": "dist"` and is the one `rogen serve` serves:
 
     ```json title="rogen.json"
     {
@@ -36,12 +38,15 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     		"Shared": "ReplicatedStorage/Shared",
     		"*": "ReplicatedStorage/Shared"
     	},
-    	"syncPath": "dist"
+    	"serveProject": "dist",
+    	"projects": {
+    		"dist": { "syncPath": "dist" }
+    	}
     }
     ```
   </Tab>
   <Tab value="roblox-ts">
-    `init` writes one `rogen.json`, with `"syncPath": "dist"`. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync path:
+    `init` writes one `rogen.json`. `rbxtsc` compiles `src` into `out`, which `default.project.json` points at, and Darklua processes `out` into the sync path of the `dist` project:
 
     ```json title="rogen.json"
     {
@@ -65,13 +70,17 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     		"shared": "ReplicatedStorage/shared",
     		"*": "ReplicatedStorage/shared"
     	},
-    	"syncPath": "dist"
+    	"syncPath": "out",
+    	"serveProject": "dist",
+    	"projects": {
+    		"dist": { "syncPath": "dist" }
+    	}
     }
     ```
   </Tab>
 </Tabs>
 
-Rojo syncs from the sync path, so `default.project.json` points into `dist`. There is one project file: the one you serve is the one luau-lsp builds `sourcemap.json` from, and Darklua's `convert_require` reads that same sourcemap. With roblox-ts, `rbxtsc` reads the same file too.
+Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `default.project.json` still maps your files for luau-lsp, `rbxtsc` and Darklua's sourcemap.
 
 </Step>
 
@@ -132,3 +141,25 @@ rogen.json - warning: 1 data file was turned into a Lua module under "dist" (src
 ```
 
 Either require the module (`require(script.Parent.Note)` returns the string), or copy the data files into `dist` after Darklua runs.
+
+## Darklua at Release Only
+
+If Darklua should process your code only for a release, serve the source while you work and give the processed code to a `release` project:
+
+```json title="rogen.json"
+{
+	"sourcePaths": ["src"],
+	"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
+	"projects": {
+		"release": { "syncPath": "dist" }
+	}
+}
+```
+
+`rogen serve` serves `default.project.json`, which reads `src`. A release runs Darklua, then builds the place from the other project file:
+
+```bash
+darklua process src dist
+rogen build
+rojo build release.project.json -o game.rbxl
+```

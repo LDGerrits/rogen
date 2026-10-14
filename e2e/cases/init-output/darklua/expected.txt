@@ -2,9 +2,11 @@ $ rogen init
 exit 0
 stdout:
   rogen init
+  Studio syncs from dist, where Darklua writes: rogen serve serves the dist project. default.project.json keeps pointing at your source, which luau-lsp and Darklua read.
   Created rogen.json.
   Created AGENTS.md.
   default.project.json · wrote
+  dist.project.json · wrote
   Next steps
     Run:
       rogen serve
@@ -21,6 +23,7 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
+  dist.project.json
   rogen.json
 
 rogen.json:
@@ -38,10 +41,20 @@ rogen.json:
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	},
-	"syncPath": "dist"
+	"serveProject": "dist",
+	"projects": {
+		"dist": {
+			"syncPath": "dist"
+		}
+	}
 }
 
 $ rojo sourcemap default.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau
+
+$ rojo sourcemap dist.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
     Save: Script  <- dist/Save.server.luau

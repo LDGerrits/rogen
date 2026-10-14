@@ -2,18 +2,24 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	DEFAULT_CONFIG_FILE,
+	DEFAULT_PROJECT_FILE,
 	RogenConfig,
 	configFileContent,
 } from "../config/config.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent-file.js";
 import { AgentHooks } from "./agent-hooks.js";
+import { GitIgnore } from "./git-ignore.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
 /** Collects what the setups write and say, and checks it against the directory once. */
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
+	/** The project files the config writes, and the sourcemap the tools beside it write. */
+	private written: string[] = [];
+	private gitIgnoreFile: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private hookFiles: readonly PlannedFile[] = [];
@@ -35,6 +41,16 @@ export class InitPlanBuilder {
 			fileName: DEFAULT_CONFIG_FILE,
 			content: configFileContent(config),
 		};
+		this.written = [
+			DEFAULT_PROJECT_FILE,
+			...Object.keys(config.projects ?? {}).map(projectFileName),
+			"sourcemap.json",
+		];
+	}
+
+	/** Keeps the files the config writes out of git; nothing is added when `gitIgnore` ignores them already. */
+	addGitIgnore(gitIgnore: GitIgnore): void {
+		this.gitIgnoreFile = gitIgnore.planned(this.written);
 	}
 
 	/** Rogen's rules for agents, written last; the one existing file `init` adds to. */
@@ -89,6 +105,7 @@ export class InitPlanBuilder {
 			asked: this.asked,
 			files: [
 				...written,
+				...(this.gitIgnoreFile ? [this.gitIgnoreFile] : []),
 				...(this.agentFile ? [this.agentFile] : []),
 				...this.hookFiles,
 			],

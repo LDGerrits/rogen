@@ -187,13 +187,15 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
-In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
+In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y` (or `--non-interactive`), `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
+
+In a git repository it adds the files it will write to `.gitignore`, asking first in a terminal: `default.project.json`, one for each project, and `sourcemap.json`, each by its exact name. When it finds a test runner, it also writes a `release` project that ignores the specs (see [Testing](/docs/v2/testing)), and with Darklua it writes a `dist` project that Studio syncs from (see [Darklua](/docs/v2/setups/darklua)).
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 
 `init` never overwrites a file it writes. If a hand-written `default.project.json` is in the way, it's lifted into `rogen.json` first: its `tree` and other keys move across, without the nodes that point into the source paths, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). A `default.project.json` inside a source path is not a tree, and the build warns about it ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)).
 
-Then `init` builds the config it wrote, so `default.project.json` exists before you run anything: `rojo serve` and `rbxtsc --rojo` find it, and the file is ready to commit. A hand-written project file in the way is replaced by that build, which is why it was lifted first. The build prints as `build` does, with its warnings and their codes, except the ones about the sync path, since the compiler hasn't run yet. If it fails, the files stay, the errors print, and `init` exits 1: fix the config and run `rogen build`. With `--json`, the document has the build's entry under `built`, shaped as in [`build --json`](#build---json). When it's done, `init` prints what to run next.
+Then `init` builds the config it wrote, so `default.project.json` exists before you run anything: `rojo serve` and `rbxtsc --rojo` find it, and the tools that read the file have it. A hand-written project file in the way is replaced by that build, which is why it was lifted first. The build prints as `build` does, with its warnings and their codes, except the ones about the sync path, since the compiler hasn't run yet. If it fails, the files stay, the errors print, and `init` exits 1: fix the config and run `rogen build`. With `--json`, the document has the build's entry under `built`, shaped as in [`build --json`](#build---json). When it's done, `init` prints what to run next.
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
@@ -217,7 +219,7 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
 | `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `watch`. On `init` it implies `--yes`. |
-| `-y, --yes` | `init` only: writes the defaults without asking. |
+| `-y`, `--yes`, `--non-interactive` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
 | `-v, --verbose` | Prints debug output. |
@@ -241,14 +243,14 @@ Warnings exit 0 on a developer's machine, but some should stop a merge, such as 
 # compile first when rogen.json has a syncPath, or output.nothingEmitted warns
 rogen build --deny-warnings
 # only if you commit project files: fail when they're out of date
-git diff --exit-code -- default.project.json
+git diff --exit-code -- '*.project.json'
 ```
 
 - Run the compiler or processor before `rogen build` when `syncPath` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync path.
 - `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
 - A place file comes from `rojo build` on the project file; see [Place Files](/docs/v2/core-concepts/output#place-files).
-- Whether to [commit the project file](/docs/v2/core-concepts/output#commit-the-project-file) is yours to decide, and committing it is what the last line of the snippet needs.
+- Whether to [commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files) is yours to decide, and committing them is what the last line of the snippet needs.
 - No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
 
 ### Annotations on GitHub

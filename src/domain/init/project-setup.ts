@@ -1,7 +1,11 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { DEFAULT_CONFIG_FILE } from "../config/config.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	ProjectChanges,
+	RogenConfig,
+} from "../config/config.js";
 import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitDirectory } from "./init-directory.js";
@@ -53,6 +57,43 @@ function generatedDirs({
 		...(syncPath ? [syncPath] : []),
 		...(darklua && compiler ? [compiler.outDir] : []),
 	];
+}
+
+/** The project that Studio syncs from when Darklua processes the code. */
+const PROCESSED_PROJECT = "dist";
+
+/** The project that leaves the specs out. */
+const RELEASE_PROJECT = "release";
+
+/** The keys of a new project's config that name its projects: Darklua's output is served, and a test runner's specs are left out of a release. */
+function projectsOf({
+	language,
+	darklua,
+	syncPath,
+	testRunner,
+	inherited,
+}: Pick<ProjectChoices, "language" | "darklua" | "syncPath"> & {
+	readonly testRunner: string | undefined;
+	/** The globs the lifted project file already ignores. */
+	readonly inherited: readonly string[];
+}): Pick<RogenConfig, "projects" | "serveProject"> {
+	const processed = darklua && syncPath ? { syncPath } : undefined;
+	const projects: Record<string, ProjectChanges> = {
+		...(processed && { [PROCESSED_PROJECT]: processed }),
+		...(testRunner && {
+			[RELEASE_PROJECT]: {
+				...processed,
+				globIgnorePaths: [
+					...inherited,
+					`**/*.spec.${language.extension}`,
+				],
+			},
+		}),
+	};
+	return {
+		...(processed && { serveProject: PROCESSED_PROJECT }),
+		...(Object.keys(projects).length > 0 && { projects }),
+	};
 }
 
 /** A new project: its `rogen.json`, with the tree it starts from. */
@@ -138,6 +179,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			derived,
 		});
 		const { compiler } = language;
+		const { testRunner } = this.directory.workspace;
+		const projects = projectsOf({
+			language,
+			darklua,
+			syncPath,
+			testRunner,
+			inherited: tree.fields.globIgnorePaths ?? [],
+		});
+		// With Darklua the default project keeps pointing at the code the compiler writes, or at the source, for the tools that read it.
+		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig({
 			...tree.fields,
 			sourcePaths: [...sourcePaths],
@@ -145,13 +196,24 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				choices.routes,
 				choices.fallback
 			),
-			...(syncPath && { syncPath }),
+			...(defaultSyncPath && { syncPath: defaultSyncPath }),
+			...projects,
 		});
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
 		for (const note of tree.notes) builder.addNote(note);
 		if (compiler && !darklua && syncPath) {
 			builder.addNote(
 				`Syncing from ${syncPath}, where ${compiler.name} compiles to.`
+			);
+		}
+		if (projects.serveProject) {
+			builder.addNote(
+				`Studio syncs from ${syncPath}, where Darklua writes: rogen serve serves the ${projects.serveProject} project. default.project.json keeps pointing at ${defaultSyncPath ?? "your source"}, which luau-lsp and Darklua read.`
+			);
+		}
+		if (testRunner) {
+			builder.addNote(
+				`Added a ${RELEASE_PROJECT} project that leaves the ${testRunner} specs out: rogen build writes ${RELEASE_PROJECT}.project.json beside default.project.json.`
 			);
 		}
 		this.planNextSteps(builder, choices, tree);

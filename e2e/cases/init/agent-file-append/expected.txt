@@ -23,7 +23,7 @@ Run the linter before committing.
 
 Rogen writes the Rojo project file from the folders and names under each `rogen.json`'s `sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
 
-- Never edit a `default.project.json` that Rogen writes: change `rogen.json`, whose `tree` holds what names can't express.
+- Edit code and `rogen.json`, never a `*.project.json` that Rogen writes (`default.project.json`, and one for each project under `projects`): change `rogen.json`, whose `tree` holds what names can't express.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.

@@ -1,0 +1,58 @@
+$ rogen init -y
+exit 0
+stdout:
+  rogen init
+  Studio syncs from dist, where Darklua writes: rogen serve serves the dist project. default.project.json keeps pointing at your source, which luau-lsp and Darklua read.
+  Created rogen.json.
+  Created AGENTS.md.
+  default.project.json · wrote
+  dist.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Have Darklua process your code into the sync path:
+      darklua process src dist
+    Add your own routes under "routes" in rogen.json.
+    Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rojo sourcemap default.project.json --output sourcemap.json --watch
+  Wrote 2 files.
+
+written:
+  AGENTS.md
+  default.project.json
+  dist.project.json
+  rogen.json
+
+rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"serveProject": "dist",
+	"projects": {
+		"dist": {
+			"syncPath": "dist"
+		}
+	}
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Main: ModuleScript  <- src/Main.luau
+
+$ rojo sourcemap dist.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Main: ModuleScript  <- dist/Main.luau

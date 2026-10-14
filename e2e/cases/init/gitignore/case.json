@@ -1,0 +1,14 @@
+{
+	"steps": [
+		[
+			"init",
+			"-y"
+		]
+	],
+	"output": [
+		"init"
+	],
+	"show": [
+		".gitignore"
+	]
+}

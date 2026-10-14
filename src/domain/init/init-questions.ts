@@ -79,6 +79,17 @@ export class InitQuestions {
 		});
 	}
 
+	/** Whether to keep the files Rogen writes out of git; a run that can't ask does, as Enter does. */
+	async addGitIgnore(): Promise<boolean | undefined> {
+		if (!this.interactive) return true;
+		return this.promptService.confirm({
+			message: "Keep the project files Rogen writes out of git?",
+			description:
+				"Adds them to .gitignore: Rogen rewrites them from rogen.json on every build, so committing them invites merge conflicts, and 'rogen build' writes them after a clone. Say no if collaborators or CI don't install Rogen, and 'rogen check' will guard the files you commit.",
+			initialValue: true,
+		});
+	}
+
 	/** Whether to add the hook that reports Rogen warnings to `agents`; a run that can't ask doesn't, since it edits the repo's tooling. */
 	async addAgentHook(
 		agents: readonly string[]

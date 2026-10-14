@@ -13,6 +13,8 @@ import { InitQuestions } from "./init-questions.js";
 import { AgentReader } from "./agent-reader.js";
 import { InitWriter } from "./init-writer.js";
 import { AgentSetup } from "./agent-setup.js";
+import { GitIgnore } from "./git-ignore.js";
+import { GitIgnoreSetup } from "./git-ignore-setup.js";
 import {
 	InitOptions,
 	InitPlan,
@@ -109,13 +111,19 @@ export class CoreInitService implements InitService {
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
 		// A first init starts a project; beside a config, the user says what to add.
-		if (!directory.hasConfigs)
+		if (!directory.hasConfigs) {
+			const { gitIgnore, inRepo } = await GitIgnore.read(
+				this.fileSystemService,
+				directory.path
+			);
 			return this.planWith(
 				directory,
 				questions,
 				new ProjectSetup(directory, questions, this.fileSystemService),
+				new GitIgnoreSetup(gitIgnore, inRepo, questions),
 				agents
 			);
+		}
 		const options = new InitAdditions(
 			questions,
 			agentFile.value,

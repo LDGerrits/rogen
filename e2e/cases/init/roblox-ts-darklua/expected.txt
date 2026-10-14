@@ -9,6 +9,7 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
+  dist.project.json
   rogen.json
 
 rogen.json:
@@ -41,10 +42,22 @@ rogen.json:
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"syncPath": "dist"
+	"syncPath": "out",
+	"serveProject": "dist",
+	"projects": {
+		"dist": {
+			"syncPath": "dist"
+		}
+	}
 }
 
 $ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
+    main: Script  <- out/server/main.server.luau
+
+$ rojo sourcemap dist.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService

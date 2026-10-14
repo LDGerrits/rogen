@@ -69,13 +69,16 @@ export const lifted = (content: string | object): ProjectTree => ({
 export interface ProjectPlanOptions {
 	readonly choices: ProjectChoices;
 	readonly existingFiles?: ReadonlySet<string>;
+	/** What the directory holds of the toolchain, such as a test runner. */
+	readonly workspace?: WorkspaceSpec;
 }
 
 export const planProject = ({
 	choices,
 	existingFiles = new Set(),
+	workspace,
 }: ProjectPlanOptions) => {
-	const target = directoryOf({ existing: [...existingFiles] });
+	const target = directoryOf({ existing: [...existingFiles], workspace });
 	return planOf(
 		new ProjectSetup(
 			target,
@@ -94,6 +97,7 @@ export const planResult = async (
 	planProject({
 		choices: await defaultProjectChoices(workspace),
 		existingFiles: new Set(existingFiles),
+		workspace,
 	});
 
 export const plan = async (...args: Parameters<typeof planResult>) =>

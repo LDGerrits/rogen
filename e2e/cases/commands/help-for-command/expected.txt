@@ -59,12 +59,14 @@ stdout:
     rogen init [options]
   
   Options:
-    -y, --yes   Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
-        --json  Print one JSON document instead of text.
+    -y, --yes              Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
+        --non-interactive  The same as -y: take every default without asking.
+        --json             Print one JSON document instead of text.
   
   Examples:
     rogen init
     rogen init -y
+    rogen init --non-interactive
   
   Global options:
     -h, --help     Print help.

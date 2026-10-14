@@ -22,6 +22,11 @@ const InitOptions = [
 		description:
 			"Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.",
 	},
+	{
+		name: "non-interactive",
+		type: "boolean",
+		description: "The same as -y: take every default without asking.",
+	},
 	JsonOption,
 ] as const;
 
@@ -34,7 +39,11 @@ registerCommand(
 					description:
 						"Writes a starting rogen.json, detecting the workspace and asking in a terminal.",
 					options: InitOptions,
-					examples: ["rogen init", "rogen init -y"],
+					examples: [
+						"rogen init",
+						"rogen init -y",
+						"rogen init --non-interactive",
+					],
 				},
 			});
 		}
@@ -52,7 +61,10 @@ registerCommand(
 				accessor.get(EnvironmentService).cwd
 			);
 			// A JSON document is read by a program, which can't answer a question.
-			const ask = !line.options.yes && !line.options.json;
+			const ask =
+				!line.options.yes &&
+				!line.options["non-interactive"] &&
+				!line.options.json;
 
 			if (!line.options.json) log.intro();
 			const planned = await initService.plan({ ask });
