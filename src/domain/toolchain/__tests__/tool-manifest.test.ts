@@ -73,6 +73,64 @@ describe("ToolManifest", () => {
 		});
 	});
 
+	describe("withPin", () => {
+		const pinned = (file: string, text: string) =>
+			parse(file, text).withPin("rojo", "rojo-rbx/rojo", "7.7.1");
+
+		it("should add the entry after the last one in the tools section", () => {
+			expect(
+				pinned(
+					"/repo/rokit.toml",
+					'# tools\n[tools]\nwally = "UpliftGames/wally@0.3.2"\n'
+				)
+			).toBe(
+				'# tools\n[tools]\nwally = "UpliftGames/wally@0.3.2"\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+		});
+
+		it("should keep what follows the tools section where it is", () => {
+			expect(
+				pinned(
+					"/repo/rokit.toml",
+					'[tools]\nwally = "UpliftGames/wally@0.3.2"\n\n[other]\nx = 1\n'
+				)
+			).toBe(
+				'[tools]\nwally = "UpliftGames/wally@0.3.2"\nrojo = "rojo-rbx/rojo@7.7.1"\n\n[other]\nx = 1\n'
+			);
+		});
+
+		it("should start the tools section when there is none", () => {
+			expect(pinned("/repo/rokit.toml", "")).toBe(
+				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+			expect(pinned("/repo/rokit.toml", "# nothing yet")).toBe(
+				'# nothing yet\n\n[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+		});
+
+		it("should add to an empty tools section", () => {
+			expect(pinned("/repo/rokit.toml", "[tools]\n")).toBe(
+				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+		});
+
+		it("should end a last entry that has no line break, and keep CRLF line breaks", () => {
+			expect(
+				pinned("/repo/rokit.toml", '[tools]\r\nwally = "u/w@1.0.0"')
+			).toBe(
+				'[tools]\r\nwally = "u/w@1.0.0"\r\nrojo = "rojo-rbx/rojo@7.7.1"\r\n'
+			);
+		});
+
+		it("should write what the file's own parser reads back", () => {
+			const text = pinned("/repo/foreman.toml", "[tools]\n");
+
+			expect(
+				parse("/repo/foreman.toml", text).nameOf("rojo-rbx/rojo")
+			).toBe("rojo");
+		});
+	});
+
 	describe("commands", () => {
 		it("should install and add with the manager the file belongs to", () => {
 			const manifest = parse("/repo/aftman.toml", "[tools]\n");

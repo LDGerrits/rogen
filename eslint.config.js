@@ -28,7 +28,12 @@ const modules = {
 		init: ["init-service"],
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
-		runner: ["rojo-runner", "sync-server"],
+		runner: [
+			"rojo-compatibility",
+			"rojo-runner",
+			"rojo-version",
+			"sync-server",
+		],
 		rojo: ["project-text", "rojo", "rojo-project", "sync-rules"],
 		serve: ["serve", "serve-service"],
 		toolchain: ["toolchain", "toolchain-service", "tool-manifest"],
@@ -84,7 +89,7 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 const domainDependencies = {
 	build: ["config", "roblox", "rojo", "toolchain"],
 	config: ["roblox", "rojo"],
-	init: ["config", "roblox", "rojo", "toolchain"],
+	init: ["config", "roblox", "rojo", "runner", "toolchain"],
 	legacy: ["config"],
 	roblox: [],
 	runner: ["toolchain"],

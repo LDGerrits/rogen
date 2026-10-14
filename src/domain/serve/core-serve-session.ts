@@ -8,6 +8,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ProjectChoice } from "../config/project-choice.js";
+import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
@@ -86,7 +87,8 @@ export class CoreServeSession
 		private readonly rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
-		private readonly ports: ServePorts
+		private readonly ports: ServePorts,
+		private readonly compatibility: RojoCompatibility
 	) {
 		super();
 		this._register(watch);
@@ -136,6 +138,13 @@ export class CoreServeSession
 			build.diagnostics.filter(isError)
 		);
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
+		const unreadable = await this.compatibility.problemsIn(
+			this.plan.executable,
+			first.reports.flatMap(({ build }) =>
+				isWritten(build) ? [build.config.projectFile] : []
+			)
+		);
+		if (unreadable.length > 0) return err(new DiagnosticsError(unreadable));
 		for (const target of this.plan.toStart) this.launch(target);
 		for (const target of this.plan.alreadyServed)
 			if (target.adopted) this.adopt(target);

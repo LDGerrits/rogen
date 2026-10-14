@@ -7,6 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessService } from "../../platform/process/process-service.js";
+import { RojoVersion } from "./rojo-version.js";
 import { SyncServer } from "./sync-server.js";
 import { ServerExecutable } from "./rojo-runner.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
@@ -71,6 +72,18 @@ export class ServerFinder {
 			signal
 		);
 		if (version.isErr()) return version;
+		if (RojoVersion.of(version.value).isBefore(server.floor))
+			return err(
+				new DiagnosticsError([
+					this.tooOld(
+						version.value,
+						pinned,
+						directory,
+						manifests,
+						resource
+					),
+				])
+			);
 		return ok({ server, file, version: version.value });
 	}
 
@@ -110,6 +123,32 @@ export class ServerFinder {
 					pin ? [pin] : []
 				),
 			])
+		);
+	}
+
+	private tooOld(
+		version: string,
+		pinned: PinnedCandidate | undefined,
+		directory: string,
+		manifests: readonly ToolManifest[],
+		resource: string
+	) {
+		const { floor, pinned: current, name, repository } = SyncServer.ROJO;
+		const why = `${name} ${version} is older than ${floor}, which Rogen needs because every file it writes carries "$schema".`;
+		if (pinned) {
+			const { manifest, command } = pinned;
+			return errorDiagnostic(
+				"rojo.tooOld",
+				{ resource: manifest.file },
+				`${why} In ${path.basename(manifest.file)}, change the pin to: ${manifest.pinOf(command, repository, current.toString())}, then run '${manifest.installCommand}'.`
+			);
+		}
+		const pin = this.pinFix(SyncServer.ROJO, directory, manifests);
+		return errorDiagnostic(
+			"rojo.tooOld",
+			{ resource },
+			`${why} Update the ${name} on the PATH, or pin a newer one ${pin ? `with '${pin.run.command}'` : "in a toolchain file"}.`,
+			pin ? [pin] : []
 		);
 	}
 

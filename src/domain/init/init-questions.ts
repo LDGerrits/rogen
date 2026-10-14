@@ -97,6 +97,16 @@ export class InitQuestions {
 		});
 	}
 
+	async addRojoPin(fileName: string): Promise<boolean | undefined> {
+		if (!this.interactive) return false;
+		return this.promptService.confirm({
+			message: `Pin Rojo in ${fileName}?`,
+			description:
+				"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
+			initialValue: true,
+		});
+	}
+
 	async addAgentHook(
 		agents: readonly string[]
 	): Promise<boolean | undefined> {

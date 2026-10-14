@@ -23,6 +23,7 @@ import { InitAdditions } from "./init-additions.js";
 import { Setup } from "./setup.js";
 import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
+import { RojoPinSetup } from "./rojo-pin-setup.js";
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -120,17 +121,24 @@ export class CoreInitService implements InitService {
 		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
+		const manifest = RojoPinSetup.manifestFor(
+			directory.path,
+			await this.toolchainService.readManifests(directory.path)
+		);
+		const pin = manifest && new RojoPinSetup(manifest, questions);
 		if (!directory.hasConfigs)
 			return this.planWith(
 				directory,
 				questions,
 				new ProjectSetup(directory, questions, this.fileSystemService),
-				agents
+				agents,
+				...(pin ? [pin] : [])
 			);
 		const options = new InitAdditions(
 			questions,
 			agentFile.value,
-			hooks.value
+			hooks.value,
+			pin
 		).options();
 		if (options.length === 0)
 			return err(

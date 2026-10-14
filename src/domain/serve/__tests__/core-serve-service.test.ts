@@ -12,6 +12,7 @@ import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
+import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
 import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
@@ -69,7 +70,7 @@ describe("CoreServeService", () => {
 			address.toString(),
 		]);
 
-	const serviceAt = (cwd: string) => {
+	const serviceAt = (cwd: string, compatibility?: RojoCompatibility) => {
 		configService = new CoreConfigService(
 			memFs,
 			new MockEnvironmentService(cwd)
@@ -81,7 +82,8 @@ describe("CoreServeService", () => {
 			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
 			requests,
 			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
-			new MockEnvironmentService(cwd, undefined, false, "/home/me")
+			new MockEnvironmentService(cwd, undefined, false, "/home/me"),
+			compatibility
 		);
 	};
 
@@ -702,6 +704,29 @@ describe("CoreServeService", () => {
 					},
 				],
 			]);
+		});
+
+		it("should not start Rojo 7.7.0 on Windows for a file with a glob that starts with ../", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.7.0",
+				stderr: "",
+			});
+			await memFs.writeFile(
+				"/repo/rogen.json",
+				config({ globIgnorePaths: ["../shared/*.md"] })
+			);
+			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
+
+			const started = await start();
+
+			if (started.isOk()) throw new Error("expected a failure");
+			expect(
+				(started.error as DiagnosticsError).diagnostics.map(
+					({ code, resource }) => [code, resource]
+				)
+			).toEqual([["rojo.windowsRules", "/repo/default.project.json"]]);
+			expect(processes.spawned).toEqual([]);
 		});
 
 		it("should tell when a Studio plugin connects to a server it started, and leaves it", async () => {

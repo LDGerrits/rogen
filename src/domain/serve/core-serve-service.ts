@@ -9,6 +9,7 @@ import { ConfigService } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
+import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { SyncServer } from "../runner/sync-server.js";
 import { ServePorts, namesakesOf } from "./serve-ports.js";
@@ -37,7 +38,10 @@ export class CoreServeService implements ServeService {
 		private readonly rojoRunner: RojoRunner,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
-		private readonly environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		private readonly compatibility = new RojoCompatibility(
+			fileSystemService
+		)
 	) {
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
@@ -117,7 +121,8 @@ export class CoreServeService implements ServeService {
 				this.rojoRunner,
 				this.probe,
 				this.records,
-				this.portsFor(plan.executable.server, plan.serverArgs)
+				this.portsFor(plan.executable.server, plan.serverArgs),
+				this.compatibility
 			)
 		);
 	}
