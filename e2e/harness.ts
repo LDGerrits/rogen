@@ -21,8 +21,10 @@ import "../src/commands/help/doc-command.js";
 import "../src/commands/help/help-command.js";
 import "../src/commands/init/init-command.js";
 import "../src/commands/list/list-command.js";
+import "../src/commands/plugin/plugin-command.js";
 import "../src/commands/serve/serve-command.js";
 import "../src/commands/sourcemap/sourcemap-command.js";
+import "../src/commands/upload/upload-command.js";
 import "../src/commands/where/where-command.js";
 
 const execFileAsync = promisify(execFile);

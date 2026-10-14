@@ -1,0 +1,38 @@
+$ rogen upload --asset_id 1 --api_key key --json
+exit 1
+stdout:
+  {
+    "changed": true,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "rojo": {
+      "command": "upload",
+      "outcome": "failed",
+      "project": "<dir>/default.project.json",
+      "messages": [
+        {
+          "severity": "error",
+          "text": "--universe_id must be provided to use the Open Cloud API"
+        }
+      ],
+      "diagnostics": [
+        {
+          "file": "<dir>/default.project.json",
+          "severity": "error",
+          "code": "rojo.commandFailed",
+          "message": "'rojo upload' failed (exit code 1): --universe_id must be provided to use the Open Cloud API",
+          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
+        }
+      ]
+    }
+  }
+
+written:
+  default.project.json

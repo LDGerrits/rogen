@@ -56,8 +56,10 @@ const modules = {
 		help: [],
 		init: [],
 		list: [],
+		plugin: [],
 		serve: [],
 		sourcemap: [],
+		upload: [],
 		where: [],
 	},
 };

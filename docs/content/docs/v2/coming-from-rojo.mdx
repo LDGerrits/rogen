@@ -96,4 +96,6 @@ Rogen replaces the project file you wrote, and Rojo's commands that read it keep
 - **`rojo serve`** still serves the project file. `rogen serve` builds it first, starts the server for you and rebuilds as files change; see [Studio](/docs/v2/studio) for the plugin settings.
 - **`rojo build`** makes a place file from it: see [Place Files](/docs/v2/core-concepts/output#place-files).
 - **`rojo sourcemap`** works on it as it does on any project file, for luau-lsp and other tools. `rogen sourcemap` writes the project files first and then runs it, and in a root with places writes a `sourcemap.json` for each: see [`sourcemap`](/docs/v2/cli#sourcemap-project).
+- **`rojo upload`** uploads it. `rogen upload` writes the project files first and then runs it, with Rojo's flags as Rojo spells them: see [`upload`](/docs/v2/cli#upload-project).
+- **`rojo plugin install`** installs Rojo's Studio plugin. `rogen plugin install` has the Rojo your project pins do it, so the plugin matches the server `rogen serve` starts: see [`plugin`](/docs/v2/cli#plugin-install-and-plugin-uninstall).
 - **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and can edit properties in the file it reads, which Rogen overwrites on its next build. Don't run it against a project file Rogen writes. Bring changes from a place back into the feature folders by hand.

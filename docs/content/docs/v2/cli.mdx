@@ -60,6 +60,18 @@ In a root with [places](/docs/v2/configuration#places) and no project named, it 
 
 `--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. It needs `-o`, or several projects, since a sourcemap that is printed has no room beside the watch output. `--json` needs the same, and prints [one document](#sourcemap---json) instead of the sourcemap.
 
+### `upload [project…]`
+
+Writes the project files, then runs Rojo's own `upload` on the project, as `rojo upload` does: Rojo builds it and uploads it to Roblox. Like `build -o`, it runs the Rojo your toolchain file pins, on the `default` project unless you name one, and never on the project `rogen serve` serves.
+
+Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the place or model to upload to, and Rogen refuses to run without it. `--api_key` and `--universe_id` upload with Open Cloud, to a place only, and `--cookie` gives the cookie to upload with. Without a key or a cookie Rojo looks for a cookie on this machine. Rogen never stores or prints them, but a flag is visible to other programs on the machine while it runs.
+
+It uploads one project, so a root with [places](/docs/v2/configuration#places) and no place named is an error that says to name one (`rogen upload places/lobby --asset_id 123`), and nothing is written. Nothing is written or uploaded either when the project files have errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)). `--json` prints [one document](#upload---json).
+
+### `plugin install` and `plugin uninstall`
+
+Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with the Rojo your toolchain file pins in this folder or above, else the one on the PATH, so the plugin matches the server `rogen serve` starts. Installing again overwrites the plugin. It reads no project, so it runs in any folder. On a platform Rojo can't install a plugin on, Rojo's error is shown and the exit code is 1.
+
 ### `serve [project…] [-- server args…]` [#serve]
 
 Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
@@ -213,7 +225,7 @@ Then `init` builds the config it wrote, so `default.project.json` exists before 
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
-In a folder with a `rokit.toml` where no toolchain file, there or above, pins Rojo, a terminal run also offers to add the pin to it, and then names `rokit install` and `rojo plugin install` as next steps. A later `init` lists it under **Rojo pin** until Rojo is pinned. A run that can't ask adds it only with `--rojo-pin`.
+In a folder with a `rokit.toml` where no toolchain file, there or above, pins Rojo, a terminal run also offers to add the pin to it, and then names `rokit install` and `rogen plugin install` as next steps. A later `init` lists it under **Rojo pin** until Rojo is pinned. A run that can't ask adds it only with `--rojo-pin`.
 
 Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask adds it only with `--agent-hook`, and `jq` is the one tool it needs besides `bash` and `git`.
 
@@ -278,11 +290,12 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | Flag | Effect |
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `sourcemap`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
+| `--json` | Prints one JSON document for `build`, `sourcemap`, `upload`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
 | `-o, --output <file>` | `build`: also builds the project into this place or model file with Rojo. `sourcemap`: writes the sourcemap there instead of printing it. |
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
 | `--watch` | `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write when `-o` or `-p` (`build`), or `-o` or several projects (`sourcemap`), asks for it. |
 | `--include-non-scripts`, `--absolute` | `sourcemap` only: Rojo's flags of the same name. |
+| `--asset_id`, `--api_key`, `--universe_id`, `--cookie` | `upload` only: Rojo's flags of the same name, with its underscores. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
 | `-n, --dry-run` | `init` only: prints what it would write and decide, and writes nothing. |
 | `--language`, `--[no-]darklua`, `--source-path`, `--sync-path`, `--project-file`, `--package`, `--route`, `--unmatched`, `--[no-]agent-rules`, `--[no-]agent-hook`, `--[no-]rojo-pin`, `--nested`, `--place-listing` | `init` only: answer a question. See [Choices as flags](#choices-as-flags). |
@@ -467,6 +480,31 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 ```
 
 `configs` is as in [`build --json`](#build---json). `sourcemaps` has an entry for each Rojo run, shaped as [`rojo` in `build --json`](#build---json) with `command` `sourcemap`, and `outcome` `built` when Rojo wrote the file: one for `-o`, and one for each place without it, whose `output` is the `sourcemap.json` beside the project file. `changed` is true when a project file was written or a sourcemap was. With `--watch`, it prints one JSON object per line as [`build --watch --json`](#build---watch) does.
+
+### `upload --json`
+
+```json
+{
+	"changed": false,
+	"configs": [
+		{
+			"config": "my-game",
+			"file": "/repo/rogen.json",
+			"projectFile": "/repo/default.project.json",
+			"outcome": "unchanged",
+			"diagnostics": []
+		}
+	],
+	"rojo": {
+		"command": "upload",
+		"outcome": "built",
+		"project": "/repo/default.project.json",
+		"messages": []
+	}
+}
+```
+
+`configs` is as in [`build --json`](#build---json), and `rojo` is shaped as `rojo` in it, with `command` `upload`. `outcome` is `built` when Rojo exited without an error, `failed` when it did not, and `notRun` when the project files had errors. The credentials are never in the document.
 
 ### `fmt-project --json`
 

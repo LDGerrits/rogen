@@ -14,8 +14,10 @@ stdout:
     help [name]               Prints usage, a command's details, or what a diagnostic code means.
     init [path]               Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
     list [project...]         Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
+    plugin <action>           Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
     serve [project...]        Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
     sourcemap [project...]    Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
+    upload [project...]       Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
     where [path...]           Prints where each file lands in the game, and why, with its warnings.
   
   Options:

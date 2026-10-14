@@ -556,7 +556,7 @@ describe("CoreInitService", () => {
 			).unwrap();
 
 			expect(plan?.nextSteps.setup).toEqual([
-				"Run 'rokit install', then 'rojo plugin install' to install Rojo and its Studio plugin.",
+				"Run 'rokit install', then 'rogen plugin install' to install Rojo and its Studio plugin.",
 			]);
 		});
 

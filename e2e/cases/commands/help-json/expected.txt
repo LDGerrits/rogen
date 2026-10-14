@@ -236,6 +236,20 @@ stdout:
         "effects": []
       },
       {
+        "name": "plugin",
+        "description": "Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.",
+        "args": [
+          {
+            "name": "action"
+          }
+        ],
+        "options": [],
+        "effects": [
+          "writesFiles",
+          "runsProcesses"
+        ]
+      },
+      {
         "name": "serve",
         "description": "Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
         "args": [
@@ -294,6 +308,43 @@ stdout:
           "writesFiles",
           "runsProcesses",
           "longRunning"
+        ]
+      },
+      {
+        "name": "upload",
+        "description": "Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "asset_id",
+            "type": "string"
+          },
+          {
+            "name": "api_key",
+            "type": "string"
+          },
+          {
+            "name": "universe_id",
+            "type": "string"
+          },
+          {
+            "name": "cookie",
+            "type": "string"
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "runsProcesses"
         ]
       },
       {

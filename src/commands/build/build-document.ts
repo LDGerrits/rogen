@@ -29,7 +29,7 @@ export const buildEntryShape = S.named(
 	})
 );
 
-/** What a run of Rojo's `build` or `sourcemap` reports: `built` when the file was written. */
+/** What a run of Rojo's `build`, `sourcemap` or `upload` reports: `built` when Rojo ran without an error. */
 export const rojoEntryShape = (command: RojoTarget["command"]) =>
 	S.named(
 		"RojoEntry",
@@ -92,7 +92,7 @@ export interface BuildEntry {
 
 /** What `-o` or `-p` asked Rojo to write. */
 export interface RojoTarget {
-	readonly command: "build" | "sourcemap";
+	readonly command: "build" | "sourcemap" | "upload";
 	readonly cwd: string;
 	readonly output?: string;
 	readonly plugin?: string;
