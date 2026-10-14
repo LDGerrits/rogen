@@ -72,7 +72,7 @@ export class ServerFinder {
 			signal
 		);
 		if (version.isErr()) return version;
-		if (RojoVersion.of(version.value).isBefore(server.floor))
+		if (RojoVersion.parse(version.value)?.isBefore(server.floor))
 			return err(
 				new DiagnosticsError([
 					this.tooOld(

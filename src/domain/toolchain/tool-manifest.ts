@@ -65,6 +65,11 @@ export class ToolManifest {
 		return undefined;
 	}
 
+	/** Whether a tool is listed under `name`, whatever it is. */
+	uses(name: string): boolean {
+		return this.tools.has(name);
+	}
+
 	pinOf(name: string, repository: string, version: string): string {
 		return this.manager.pinsInTable
 			? `${name} = { github = "${repository}", version = "${version}" }`
@@ -98,7 +103,7 @@ export class ToolManifest {
 			index < (next === -1 ? lines.length : next);
 			index++
 		)
-			if (lines[index].trim() !== "") last = index;
+			if (!/^(#|$)/.test(lines[index].trim())) last = index;
 		lines.splice(last + 1, 0, entry);
 		return lines.join(eol) + eol;
 	}

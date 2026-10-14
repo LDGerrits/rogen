@@ -50,6 +50,18 @@ describe("ToolManifest", () => {
 		});
 	});
 
+	describe("uses", () => {
+		it("should say whether a name is taken, by any tool", () => {
+			const manifest = parse(
+				"/repo/rokit.toml",
+				'[tools]\nrojo = "someone/fork@1.0.0"\n'
+			);
+
+			expect(manifest.uses("rojo")).toBe(true);
+			expect(manifest.uses("wally")).toBe(false);
+		});
+	});
+
 	describe("pinOf", () => {
 		it("should write the entry as the manager's file reads it", () => {
 			const rokit = parse("/repo/rokit.toml", "[tools]\n");
@@ -96,6 +108,17 @@ describe("ToolManifest", () => {
 				)
 			).toBe(
 				'[tools]\nwally = "UpliftGames/wally@0.3.2"\nrojo = "rojo-rbx/rojo@7.7.1"\n\n[other]\nx = 1\n'
+			);
+		});
+
+		it("should leave a comment that comes before the next section above it", () => {
+			expect(
+				pinned(
+					"/repo/rokit.toml",
+					'[tools]\nwally = "u/w@1.0.0"\n# the rest\n[other]\n'
+				)
+			).toBe(
+				'[tools]\nwally = "u/w@1.0.0"\nrojo = "rojo-rbx/rojo@7.7.1"\n# the rest\n[other]\n'
 			);
 		});
 

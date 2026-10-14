@@ -729,6 +729,32 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		it("should report a glob that starts with ../ once Rojo 7.7.0 is running on Windows", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.7.0",
+				stderr: "",
+			});
+			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
+			await start();
+			const errors: Error[] = [];
+			session.onDidError((error) => errors.push(error));
+
+			await memFs.writeFile(
+				"/repo/rogen.json",
+				config({ globIgnorePaths: ["../shared/*.md"] })
+			);
+			await settle();
+
+			expect(
+				errors.map((error) =>
+					(error as DiagnosticsError).diagnostics.map(
+						({ code }) => code
+					)
+				)
+			).toEqual([["rojo.windowsRules"]]);
+		});
+
 		it("should tell when a Studio plugin connects to a server it started, and leaves it", async () => {
 			await start();
 			requests.answer(

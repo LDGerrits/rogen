@@ -106,7 +106,10 @@ export class CoreServeSession
 				this._onDidUpdate.fire(update);
 				if (this.launched)
 					this.reconciling
-						.queue(() => this.reconcile())
+						.queue(async () => {
+							await this.reportIncompatible(update);
+							await this.reconcile();
+						})
 						.catch((error) =>
 							this._onDidError.fire(ErrorUtils.fromUnknown(error))
 						);
@@ -138,13 +141,14 @@ export class CoreServeSession
 			build.diagnostics.filter(isError)
 		);
 		if (errors.length > 0) return err(new DiagnosticsError(errors));
-		const unreadable = await this.compatibility.problemsIn(
+		const incompatible = await this.compatibility.problemsIn(
 			this.plan.executable,
 			first.reports.flatMap(({ build }) =>
 				isWritten(build) ? [build.config.projectFile] : []
 			)
 		);
-		if (unreadable.length > 0) return err(new DiagnosticsError(unreadable));
+		if (incompatible.length > 0)
+			return err(new DiagnosticsError(incompatible));
 		for (const target of this.plan.toStart) this.launch(target);
 		for (const target of this.plan.alreadyServed)
 			if (target.adopted) this.adopt(target);
@@ -179,6 +183,17 @@ export class CoreServeSession
 		this.stop().catch(onUnexpectedError);
 		for (const server of this.servers.values()) server[Symbol.dispose]();
 		super[Symbol.dispose]();
+	}
+
+	private async reportIncompatible(update: WatchUpdate): Promise<void> {
+		const problems = await this.compatibility.problemsIn(
+			this.plan.executable,
+			update.reports.flatMap(({ build }) =>
+				isWritten(build) ? [build.config.projectFile] : []
+			)
+		);
+		if (problems.length > 0)
+			this._onDidError.fire(new DiagnosticsError(problems));
 	}
 
 	private async reconcile(): Promise<void> {

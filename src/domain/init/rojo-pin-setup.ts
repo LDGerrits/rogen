@@ -17,7 +17,7 @@ export class RojoPinSetup implements Setup<boolean> {
 		private readonly questions: InitQuestions
 	) {}
 
-	/** The Rokit file in `directory` to pin Rojo in, unless a toolchain file there or above already pins it. */
+	/** The Rokit file in `directory` to pin Rojo in, unless a toolchain file there or above already pins it, or the file uses the name `rojo` for another tool. */
 	static manifestFor(
 		directory: string,
 		manifests: readonly ToolManifest[]
@@ -31,6 +31,7 @@ export class RojoPinSetup implements Setup<boolean> {
 		return manifests.find(
 			(manifest) =>
 				manifest.managerId === "rokit" &&
+				!manifest.uses(ROJO_NAME) &&
 				samePath(path.dirname(manifest.file), directory)
 		);
 	}

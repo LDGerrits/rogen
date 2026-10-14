@@ -591,6 +591,15 @@ describe("CoreInitService", () => {
 			expect(prompts.asked).not.toContain(QUESTION);
 		});
 
+		it("should not offer it when the file uses the name rojo for another tool", async () => {
+			await write("rokit.toml", '[tools]\nrojo = "someone/fork@1.0.0"\n');
+			const prompts = new MockPromptService({});
+
+			await serviceFor(prompts).plan();
+
+			expect(prompts.asked).not.toContain(QUESTION);
+		});
+
 		it("should not offer it without a Rokit file in the folder", async () => {
 			await write("aftman.toml", "[tools]\n");
 			await fileSystem.writeFile(
