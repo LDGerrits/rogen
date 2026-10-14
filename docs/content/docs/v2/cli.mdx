@@ -191,11 +191,11 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
-In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
+In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, and a flag from [Choices as flags](#choices-as-flags) answers its question in either case.
 
 When it finds a test runner, it also writes a `release` project that ignores the specs (see [Testing](/docs/v2/testing)), and with Darklua it writes a `dist` project that Studio syncs from (see [Darklua](/docs/v2/setups/darklua)).
 
-Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
+Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from, or `--nested` to start the project there anyway.
 
 `init` never overwrites a file it writes. If a hand-written `default.project.json` is in the way, it's lifted into `rogen.json` first: its `tree` and other keys move across, without the nodes that point into the source paths, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). A `default.project.json` inside a source path is not a tree, and the build warns about it ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)).
 
@@ -203,9 +203,33 @@ Then `init` builds the config it wrote, so `default.project.json` exists before 
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
-In a folder with a `rokit.toml` where no toolchain file, there or above, pins Rojo, a terminal run also offers to add the pin to it, and then names `rokit install` and `rojo plugin install` as next steps. A later `init` lists it under **Rojo pin** until Rojo is pinned. A run that can't ask never adds it.
+In a folder with a `rokit.toml` where no toolchain file, there or above, pins Rojo, a terminal run also offers to add the pin to it, and then names `rokit install` and `rojo plugin install` as next steps. A later `init` lists it under **Rojo pin** until Rojo is pinned. A run that can't ask adds it only with `--rojo-pin`.
 
-Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask never adds it, and `jq` is the one tool it needs besides `bash` and `git`.
+Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask adds it only with `--agent-hook`, and `jq` is the one tool it needs besides `bash` and `git`.
+
+#### Choices as flags
+
+Every question has a flag, so a program that can't answer prompts can still choose. A flag given skips its question in a terminal too. Without one, a run that can't ask takes the default, and `--json` lists each default it took under `decided`, with the flag that changes it.
+
+| Flag | Answers |
+|---|---|
+| `--language <id>` | `luau` or `roblox-ts`; detected from the folder otherwise. |
+| `--[no-]darklua` | Whether Darklua processes your code. Found from its config otherwise. |
+| `--source-path <path>` | A folder with your scripts. Repeat for several; one for roblox-ts. |
+| `--sync-path <path>` | With Darklua: the folder it writes into. |
+| `--project-file lift\|new` | With a hand-written `default.project.json`: lift its tree (the default) or start a new one. |
+| `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. |
+| `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. |
+| `--unmatched shared\|leave` | Where files that match no route go. |
+| `--[no-]agent-rules` | Rogen's rules for coding agents. Added by default. |
+| `--[no-]agent-hook` | The hook that reports warnings to the coding agents found. Not added by default. |
+| `--[no-]rojo-pin` | Rojo's pin in `rokit.toml`. Not added by default. |
+| `--nested` | Start a project below another `rogen.json`. |
+| `--place-listing glob\|folder` | With a place folder: list its parent as a glob (the default) or the folder. |
+
+Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values; `--agent-hook` without an agent that lacks the hook, or `--rojo-pin` with nothing to pin, is one too.
+
+`--dry-run` (`-n`) plans without writing or building: it prints the files it would write, and with `--json` the document of a real run with `dryRun: true`, `changed: false`, no `built`, and `wouldWrite` for the `outcome` of each file. Run `rogen init --dry-run --json` to see what `init` would do and decide, then pass flags for what to change.
 
 #### Adding a place
 
@@ -249,6 +273,8 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
 | `--watch` | `build` only: keeps the project files current, and with `-o` or `-p` runs Rojo's build after each write. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
+| `-n, --dry-run` | `init` only: prints what it would write and decide, and writes nothing. |
+| `--language`, `--[no-]darklua`, `--source-path`, `--sync-path`, `--project-file`, `--package`, `--route`, `--unmatched`, `--[no-]agent-rules`, `--[no-]agent-hook`, `--[no-]rojo-pin`, `--nested`, `--place-listing` | `init` only: answer a question. See [Choices as flags](#choices-as-flags). |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
 | `-v, --verbose` | Prints debug output. |
@@ -476,6 +502,10 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 		{ "file": "/repo/AGENTS.md", "outcome": "wrote", "appended": true }
 	],
 	"directories": [],
+	"decided": [
+		{ "question": "language", "value": "roblox-ts", "flag": "--language" },
+		{ "question": "agentRules", "value": true, "flag": "--agent-rules" }
+	],
 	"built": [
 		{
 			"config": "my-game",
@@ -495,7 +525,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and marks with `appended` the ones that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
+`decided` lists each choice a run that couldn't ask took for itself, with the flag that changes it; it leaves out what a flag answered. `files` lists what was written, in order, and marks with `appended` the ones that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
 
 ### `help --json`
 
@@ -519,7 +549,7 @@ An object with a `configs` array, one entry per config. Every entry has `config`
 
 In a terminal, Rogen draws a framed layout. It prints plain lines instead in pipes and redirects, with `NO_COLOR` or `TERM=dumb`, and when CI or a coding agent runs it.
 
-Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `--non-interactive` does. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
+Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `--non-interactive` does, unless a flag answers the question. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
 
 Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A warning about several files is one block in `build`, `watch` and `serve`, and its first line names the config. For one line per file, which is what an editor task or a CI annotation should read, use [`rogen check`](#check-path) or `--json`.
 

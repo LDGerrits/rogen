@@ -48,8 +48,22 @@ stdout:
     path  A folder below a rogen.json to add as a place of it: its own rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.
   
   Options:
-        --non-interactive  Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
-        --json             Print one JSON document instead of text.
+        --non-interactive              Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it. A flag below answers its question either way.
+        --json                         Print one JSON document instead of text.
+    -n, --dry-run                      Plan without writing or building: print the files it would write and the choices it took, then stop.
+        --language <id>                The language: luau or roblox-ts. Detected from the folder when not given.
+        --[no-]darklua                 Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given.
+        --source-path <path>           A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is. (repeatable)
+        --sync-path <path>             With Darklua: the folder it writes into, and Rojo syncs from.
+        --project-file <lift|new>      With a default.project.json already here: lift its tree into rogen.json (the default), or start a new tree.
+        --package <path>               A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given. (repeatable)
+        --route <id>                   A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. (repeatable)
+        --unmatched <shared|leave>     Where files that match no route go: into the shared route (the default), or nowhere, which Rogen warns about.
+        --[no-]agent-rules             Whether to add Rogen's rules for coding agents to the agent file. Added when not given. On a folder that has a config, asks for this addition.
+        --[no-]agent-hook              Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. On a folder that has a config, asks for this addition.
+        --[no-]rojo-pin                Whether to pin Rojo in rokit.toml. Not pinned when not given. On a folder that has a config, asks for this addition.
+        --nested                       Start a project in a folder below another rogen.json, which a run that can't ask refuses otherwise.
+        --place-listing <glob|folder>  With a place folder: list every folder beside it in the config's placePaths (the default), or only this one.
   
   Examples:
     rogen init

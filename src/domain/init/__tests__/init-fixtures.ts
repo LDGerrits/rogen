@@ -40,7 +40,7 @@ export function planOf<C>(
 	choices: C,
 	target: InitDirectory
 ): Result<InitPlan, Diagnostic[]> {
-	const builder = new InitPlanBuilder(target, false);
+	const builder = new InitPlanBuilder(target, false, []);
 	setup.plan(choices, builder);
 	return builder.build();
 }

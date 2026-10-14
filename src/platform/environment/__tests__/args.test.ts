@@ -22,6 +22,14 @@ const buildOptions: OptionDescriptor[] = [
 		multiple: true,
 		description: "",
 	},
+	{ name: "hook", type: "boolean", negatable: true, description: "" },
+	{ name: "dry", type: "boolean", description: "" },
+	{
+		name: "listing",
+		type: "string",
+		values: ["glob", "folder", "file"],
+		description: "",
+	},
 ];
 
 const optionsFor = (command?: string) =>
@@ -50,6 +58,46 @@ describe("parseArgs", () => {
 
 		expect(parsed.variant).toEqual(["a", "b"]);
 		expect(parsed.quiet).toBe(true);
+	});
+
+	describe("a negatable flag", () => {
+		it("should be true when given and false when negated", () => {
+			expect(values(["build", "--hook"]).hook).toBe(true);
+			expect(values(["build", "--no-hook"]).hook).toBe(false);
+			expect(values(["build"]).hook).toBeUndefined();
+		});
+
+		it("should not be negated when it isn't declared negatable", () => {
+			const result = parse(["build", "--no-dry"]);
+
+			expect(result.isErr() && result.error.message).toBe(
+				"Unknown option '--no-dry'. Did you mean '--dry'?"
+			);
+		});
+
+		it("should still be an unknown option when no flag has the name", () => {
+			const result = parse(["build", "--no-variant"]);
+
+			expect(result.isErr() && result.error.message).toContain(
+				"Unknown option '--no-variant'."
+			);
+		});
+	});
+
+	describe("an option with values", () => {
+		it("should take one of them", () => {
+			expect(values(["build", "--listing", "glob"]).listing).toBe("glob");
+		});
+
+		it("should refuse another as a usage error, naming the values with the closest first", () => {
+			const result = parse(["build", "--listing", "flder"]);
+
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
+			expect(result.isErr() && result.error).toMatchObject({
+				reason: "'flder' is not a value of '--listing'.",
+				hint: "The values are folder, glob and file.",
+			});
+		});
 	});
 
 	it("should take the command from the first positional, and leave the rest", () => {

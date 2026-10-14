@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["init", "--dry-run"],
+		["init", "--dry-run", "--json"]
+	],
+	"rojo": false
+}

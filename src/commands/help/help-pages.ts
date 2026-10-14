@@ -40,11 +40,14 @@ function usageArgs(command: Command): string {
 }
 
 function formatOption(option: OptionDescriptor): [string, string] {
+	const name = option.negatable ? `[no-]${option.name}` : option.name;
 	const flags = option.short
-		? `-${option.short}, --${option.name}`
-		: `    --${option.name}`;
+		? `-${option.short}, --${name}`
+		: `    --${name}`;
 	const value =
-		option.type === "string" ? ` <${option.placeholder ?? "value"}>` : "";
+		option.type === "string"
+			? ` <${option.values?.join("|") ?? option.placeholder ?? "value"}>`
+			: "";
 	const repeatable = option.multiple ? " (repeatable)" : "";
 	return [flags + value, option.description + repeatable];
 }

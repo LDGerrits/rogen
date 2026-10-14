@@ -112,6 +112,7 @@ export class PlaceInit {
 				],
 			},
 			asked: this.questions.interactive,
+			decided: this.questions.decided,
 		});
 	}
 

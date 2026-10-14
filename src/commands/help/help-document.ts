@@ -25,6 +25,8 @@ const optionFields = {
 	short: S.optional(S.string),
 	type: S.enum("string", "boolean"),
 	multiple: S.optional(S.boolean),
+	negatable: S.optional(S.boolean),
+	enum: S.optional(S.array(S.string)),
 };
 
 const argFields = {
@@ -85,11 +87,20 @@ const codeShape = S.object({
 /** The document of `help --json`: the commands, one command in full, or one diagnostic code. */
 export const helpDocumentShape = S.union(overviewShape, detailShape, codeShape);
 
-const optionBrief = ({ name, short, type, multiple }: OptionDescriptor) => ({
+const optionBrief = ({
+	name,
+	short,
+	type,
+	multiple,
+	negatable,
+	values,
+}: OptionDescriptor) => ({
 	name,
 	...(short && { short }),
 	type,
 	...(multiple && { multiple }),
+	...(negatable && { negatable }),
+	...(values && { enum: values }),
 });
 
 const argBrief = ({

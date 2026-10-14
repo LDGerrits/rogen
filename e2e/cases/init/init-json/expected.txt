@@ -14,6 +14,44 @@ stdout:
       }
     ],
     "directories": [],
+    "decided": [
+      {
+        "question": "language",
+        "value": "luau",
+        "flag": "--language"
+      },
+      {
+        "question": "darklua",
+        "value": false,
+        "flag": "--darklua"
+      },
+      {
+        "question": "sourcePaths",
+        "value": [
+          "src"
+        ],
+        "flag": "--source-path"
+      },
+      {
+        "question": "routes",
+        "value": [
+          "server",
+          "client",
+          "shared"
+        ],
+        "flag": "--route"
+      },
+      {
+        "question": "unmatched",
+        "value": "shared",
+        "flag": "--unmatched"
+      },
+      {
+        "question": "agentRules",
+        "value": true,
+        "flag": "--agent-rules"
+      }
+    ],
     "built": [
       {
         "config": "project",

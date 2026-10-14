@@ -9,7 +9,7 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlan } from "./init-service.js";
+import { InitDecision, InitPlan } from "./init-service.js";
 
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
@@ -26,7 +26,8 @@ export class InitPlanBuilder {
 
 	constructor(
 		private readonly directory: InitDirectory,
-		private readonly asked: boolean
+		private readonly asked: boolean,
+		private readonly decided: readonly InitDecision[]
 	) {}
 
 	setConfig(config: RogenConfig): void {
@@ -85,6 +86,7 @@ export class InitPlanBuilder {
 		return ok({
 			directory: this.directory.path,
 			asked: this.asked,
+			decided: this.decided,
 			files: [
 				...written,
 				...(this.agentFile ? [this.agentFile] : []),

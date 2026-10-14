@@ -4,6 +4,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
 import {
+	InitDecision,
 	InitPlan,
 	InitWritten,
 	NextSteps,
@@ -30,14 +31,24 @@ const S = OutputShape;
 /** The document of `init --json`. */
 export const initDocumentShape = S.object({
 	changed: S.boolean,
+	dryRun: S.optional(S.boolean),
 	files: S.array(
 		S.object({
 			file: S.string,
-			outcome: S.enum("wrote"),
+			outcome: S.enum("wrote", "wouldWrite"),
 			appended: S.optional(S.boolean),
 		})
 	),
 	directories: S.array(S.string),
+	decided: S.optional(
+		S.array(
+			S.object({
+				question: S.string,
+				value: S.union(S.string, S.boolean, S.array(S.string)),
+				flag: S.string,
+			})
+		)
+	),
 	error: S.optional(errorShape),
 	built: S.optional(S.array(buildEntryShape)),
 	notes: S.optional(S.array(S.string)),
@@ -80,6 +91,8 @@ export interface InitReporter {
 	written(item: InitWritten): void;
 	failed(error: Error): Result<void, Error>;
 	done(plan: InitPlan, run: BuildRun): Result<void, Error>;
+	/** The end of a dry run, which `written` told what it would write. */
+	planned(plan: InitPlan): Result<void, Error>;
 }
 
 export class InitLog implements InitReporter {
@@ -87,7 +100,8 @@ export class InitLog implements InitReporter {
 
 	constructor(
 		private readonly logService: LogService,
-		cwd: string
+		cwd: string,
+		private readonly dryRun = false
 	) {
 		this.buildLog = new BuildLog(logService, cwd);
 	}
@@ -102,20 +116,28 @@ export class InitLog implements InitReporter {
 	}
 
 	written(item: InitWritten): void {
+		const would = this.dryRun ? "Would create" : "Created";
 		if (item.kind === "directory") {
-			this.logService.success(`Created ${item.directory}/.`);
+			this.logService.success(`${would} ${item.directory}/.`);
 			return;
 		}
 		const { fileName, addition } = item.file;
 		this.logService.success(
 			addition !== undefined
-				? `Added ${addition} to ${fileName}.`
-				: `Created ${fileName}.`
+				? `${this.dryRun ? "Would add" : "Added"} ${addition} to ${fileName}.`
+				: `${would} ${fileName}.`
 		);
 	}
 
 	failed(error: Error): Result<void, Error> {
 		return err(error);
+	}
+
+	planned(plan: InitPlan): Result<void, Error> {
+		this.logService.outro(
+			`Would write ${plural(plan.files.length, "file")}. Nothing was written.`
+		);
+		return ok(undefined);
 	}
 
 	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
@@ -138,15 +160,17 @@ export class InitLog implements InitReporter {
 
 interface InitFile {
 	readonly file: string;
-	readonly outcome: "wrote";
+	readonly outcome: "wrote" | "wouldWrite";
 	/** Set when the file existed and something was added to it. */
 	readonly appended?: true;
 }
 
 interface InitDocument {
 	readonly changed: boolean;
+	readonly dryRun?: true;
 	readonly files: readonly InitFile[];
 	readonly directories: readonly string[];
+	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
 	readonly notes?: readonly string[];
@@ -156,13 +180,17 @@ interface InitDocument {
 export class InitJsonLog implements InitReporter {
 	private readonly files: InitFile[] = [];
 	private readonly directories: string[] = [];
+	private decided: readonly InitDecision[] = [];
 
 	constructor(
 		private readonly logService: LogService,
-		private readonly directory: string
+		private readonly directory: string,
+		private readonly dryRun = false
 	) {}
 
-	begin(): void {}
+	begin(plan: InitPlan): void {
+		this.decided = plan.decided;
+	}
 
 	written(item: InitWritten): void {
 		if (item.kind === "directory") {
@@ -171,7 +199,7 @@ export class InitJsonLog implements InitReporter {
 		}
 		this.files.push({
 			file: path.join(this.directory, item.file.fileName),
-			outcome: "wrote",
+			outcome: this.dryRun ? "wouldWrite" : "wrote",
 			...(item.file.addition !== undefined && {
 				appended: true as const,
 			}),
@@ -183,6 +211,14 @@ export class InitJsonLog implements InitReporter {
 			{ ...this.writtenSoFar(), error: errorToJson(error) },
 			error
 		);
+	}
+
+	planned(plan: InitPlan): Result<void, Error> {
+		return this.print({
+			...this.writtenSoFar(),
+			notes: plan.notes,
+			nextSteps: plan.nextSteps,
+		});
 	}
 
 	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
@@ -210,9 +246,12 @@ export class InitJsonLog implements InitReporter {
 
 	private writtenSoFar() {
 		return {
-			changed: this.files.length + this.directories.length > 0,
+			changed:
+				!this.dryRun && this.files.length + this.directories.length > 0,
+			...(this.dryRun && { dryRun: true as const }),
 			files: this.files,
 			directories: this.directories,
+			...(this.decided.length > 0 && { decided: this.decided }),
 		};
 	}
 }

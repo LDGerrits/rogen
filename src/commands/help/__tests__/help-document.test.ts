@@ -117,7 +117,7 @@ describe("rogen help --json", () => {
 		it("should be small enough to read before every task", async () => {
 			await help();
 
-			expect(String(print.mock.calls[0][0]).length).toBeLessThan(4000);
+			expect(String(print.mock.calls[0][0]).length).toBeLessThan(5000);
 		});
 	});
 

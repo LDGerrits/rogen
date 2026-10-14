@@ -135,6 +135,82 @@ stdout:
           {
             "name": "json",
             "type": "boolean"
+          },
+          {
+            "name": "dry-run",
+            "short": "n",
+            "type": "boolean"
+          },
+          {
+            "name": "language",
+            "type": "string"
+          },
+          {
+            "name": "darklua",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "source-path",
+            "type": "string",
+            "multiple": true
+          },
+          {
+            "name": "sync-path",
+            "type": "string"
+          },
+          {
+            "name": "project-file",
+            "type": "string",
+            "enum": [
+              "lift",
+              "new"
+            ]
+          },
+          {
+            "name": "package",
+            "type": "string",
+            "multiple": true
+          },
+          {
+            "name": "route",
+            "type": "string",
+            "multiple": true
+          },
+          {
+            "name": "unmatched",
+            "type": "string",
+            "enum": [
+              "shared",
+              "leave"
+            ]
+          },
+          {
+            "name": "agent-rules",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "agent-hook",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "rojo-pin",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "nested",
+            "type": "boolean"
+          },
+          {
+            "name": "place-listing",
+            "type": "string",
+            "enum": [
+              "glob",
+              "folder"
+            ]
           }
         ],
         "effects": [

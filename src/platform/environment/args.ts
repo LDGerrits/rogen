@@ -1,13 +1,21 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
-import { closestMatch, joinedWithAnd } from "../../base/strings.js";
+import {
+	closestMatch,
+	joinedClosestFirst,
+	joinedWithAnd,
+} from "../../base/strings.js";
 
 export interface OptionDescriptor {
 	readonly name: string;
 	readonly short?: string;
 	readonly type: "string" | "boolean";
 	readonly multiple?: boolean;
+	/** For a flag: whether `--no-<name>` is accepted and means false, as against not given. */
+	readonly negatable?: boolean;
+	/** For a string option: the only values it takes. */
+	readonly values?: readonly string[];
 	/** What help writes for a string option's value: `--out-file <path>`. Defaults to `value`. */
 	readonly placeholder?: string;
 	readonly description: string;
@@ -89,6 +97,7 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 		args,
 		options: toOptionTable(options),
 		allowPositionals: true,
+		allowNegative: true,
 		strict: false,
 		tokens: true,
 	});
@@ -113,6 +122,10 @@ function commandOf(
 		consumesWord: !redirected,
 	};
 }
+
+/** Whether the token is `--no-<flag>` for a flag called `<flag>`. */
+const isNegated = (token: OptionToken): boolean =>
+	token.rawName.startsWith("--no-") && token.rawName !== `--${token.name}`;
 
 /** `command` is `undefined` when the line names none. */
 function unknownOption(
@@ -152,14 +165,30 @@ function unknownOption(
 function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
-	ownersOf: (name: string) => string[],
+	ownersOf: (name: string, negated: boolean) => string[],
 	command: string | undefined
 ): UsageError | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
-		if (!option) {
-			return unknownOption(token, options, ownersOf(token.name), command);
+		if (!option || (isNegated(token) && !option.negatable)) {
+			return unknownOption(
+				token,
+				options,
+				ownersOf(token.name, isNegated(token)),
+				command
+			);
+		}
+		if (
+			option.type === "string" &&
+			option.values &&
+			token.value !== undefined &&
+			!option.values.includes(token.value)
+		) {
+			return new UsageError(
+				`'${token.value}' is not a value of '${token.rawName}'.`,
+				`The values are ${joinedClosestFirst(token.value, option.values)}.`
+			);
 		}
 		if (option.type === "boolean" && token.value !== undefined) {
 			return new UsageError(
@@ -194,10 +223,14 @@ export function parseArgs(
 ): Result<ParsedCli, Error> {
 	try {
 		const allOptions = optionsFor();
-		const ownersOf = (name: string) =>
+		const ownersOf = (name: string, negated: boolean) =>
 			commands
 				.filter((owner) =>
-					optionsFor(owner).some((option) => option.name === name)
+					optionsFor(owner).some(
+						(option) =>
+							option.name === name &&
+							(!negated || option.negatable)
+					)
 				)
 				.sort();
 		const { values, tokens = [] } = tokenize(args, allOptions);

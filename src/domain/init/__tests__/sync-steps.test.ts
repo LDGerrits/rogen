@@ -31,7 +31,7 @@ describe("SyncSteps", () => {
 		const target = directoryOf();
 
 		const steps = (set: SyncSteps) => {
-			const builder = new InitPlanBuilder(target, false);
+			const builder = new InitPlanBuilder(target, false, []);
 			set.plan(builder, target.path, {
 				processed: ["src"],
 				syncPath: set.syncPath,

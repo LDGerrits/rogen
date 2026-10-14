@@ -20,6 +20,8 @@ Left to itself, an agent assumes the path on disk is the instance path. It edits
 
 Run [`rogen init`](/docs/v2/cli#init). A first `init` adds the block below to your `AGENTS.md`, or to `CLAUDE.md` when that's the only one, and creates `AGENTS.md` when there's neither. In a terminal it asks first. Every agent that reads the file gets the rules, with nothing to install.
 
+An agent that runs `init` itself can't answer prompts: `rogen init --dry-run --json` shows what it would write and which choices it would take, and a flag answers each question (see [Choices as flags](/docs/v2/cli#choices-as-flags)).
+
 ## Add it to an existing repo
 
 Paste the block into `AGENTS.md`, or run `rogen init` again and pick **Agent instructions**:

@@ -33,6 +33,9 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 import { helpTexts } from "../help-texts.js";
 
+const flagText = (option: OptionDescriptor) =>
+	option.negatable ? `[no-]${option.name}` : option.name;
+
 describe("help command", () => {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
 	let store: DisposableStore;
@@ -363,12 +366,14 @@ describe("help command", () => {
 					...(command.metadata.options ?? []),
 				];
 				for (const option of options) {
-					expect(printed()).toContain(`--${option.name}`);
+					expect(printed()).toContain(`--${flagText(option)}`);
 
 					const argv = [
 						command.id,
 						`--${option.name}`,
-						...(option.type === "string" ? ["x"] : []),
+						...(option.type === "string"
+							? [option.values?.[0] ?? "x"]
+							: []),
 					];
 					expect(
 						parseArgs(argv, (id) => registry.getOptions(id), [
@@ -389,7 +394,7 @@ describe("help command", () => {
 			const everything = [...printedByAll].join("\n");
 
 			for (const option of registry.getOptions()) {
-				expect(everything).toContain(`--${option.name}`);
+				expect(everything).toContain(`--${flagText(option)}`);
 			}
 		});
 

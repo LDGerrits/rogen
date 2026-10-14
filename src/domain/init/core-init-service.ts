@@ -1,4 +1,4 @@
-import { ErrorUtils, ProjectError } from "../../base/errors.js";
+import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -42,15 +42,29 @@ export class CoreInitService implements InitService {
 		this.writer = new InitWriter(fileSystemService);
 	}
 
-	async plan({ ask = true, place }: InitOptions = {}): Promise<
-		Result<InitPlan | undefined, Error>
-	> {
+	async plan(
+		options: InitOptions = {}
+	): Promise<Result<InitPlan | undefined, Error>> {
+		try {
+			return await this.planWithin(options);
+		} catch (error) {
+			if (error instanceof UsageError) return err(error);
+			throw error;
+		}
+	}
+
+	private async planWithin({
+		ask = true,
+		place,
+		choices = {},
+	}: InitOptions): Promise<Result<InitPlan | undefined, Error>> {
 		if (place !== undefined)
 			return new PlaceInit(
 				this.fileSystemService,
 				new InitQuestions(
 					this.promptService,
-					ask && this.promptService.isInteractive
+					ask && this.promptService.isInteractive,
+					choices
 				),
 				this.toolchainService,
 				this.configService,
@@ -59,7 +73,11 @@ export class CoreInitService implements InitService {
 		const directory = await this.prepare();
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
-		const questions = new InitQuestions(this.promptService, interactive);
+		const questions = new InitQuestions(
+			this.promptService,
+			interactive,
+			choices
+		);
 		const nested = await this.checkNested(directory.value, questions);
 		if (nested.isErr() || nested.value === "cancelled")
 			return nested.map(() => undefined);
@@ -82,7 +100,7 @@ export class CoreInitService implements InitService {
 			new ProjectError(
 				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project.`,
 				`To use that project, run rogen from there: cd ${enclosing.directory}. ` +
-					`To start a separate project here anyway, run rogen init without --non-interactive in a terminal.`
+					`To start a separate project here anyway, run rogen init --nested.`
 			)
 		);
 	}
@@ -126,6 +144,17 @@ export class CoreInitService implements InitService {
 			await this.toolchainService.readManifests(directory.path)
 		);
 		const pin = manifest && new RojoPinSetup(manifest, questions);
+		const { choices } = questions;
+		if (choices.agentHook === true && !hooks.value.offered)
+			throw new UsageError(
+				"There is no hook to add.",
+				"No coding agent folder here (.claude, .codex, .cursor, ...) is missing it."
+			);
+		if (choices.rojoPin === true && !pin)
+			throw new UsageError(
+				"There is no Rojo pin to add.",
+				"Rojo is already pinned, or there is no rokit.toml here to pin it in."
+			);
 		if (!directory.hasConfigs)
 			return this.planWith(
 				directory,
@@ -134,12 +163,15 @@ export class CoreInitService implements InitService {
 				agents,
 				...(pin ? [pin] : [])
 			);
-		const options = new InitAdditions(
+		const additions = new InitAdditions(
 			questions,
 			agentFile.value,
 			hooks.value,
 			pin
-		).options();
+		);
+		const requested = additions.requested(choices);
+		if (requested) return this.planWith(directory, questions, ...requested);
+		const options = additions.options();
 		if (options.length === 0)
 			return err(
 				new DiagnosticsError(directory.checkFree(directory.configFiles))
@@ -165,7 +197,11 @@ export class CoreInitService implements InitService {
 			answered.push({ setup, choices: asked.value });
 		}
 
-		const builder = new InitPlanBuilder(directory, questions.interactive);
+		const builder = new InitPlanBuilder(
+			directory,
+			questions.interactive,
+			questions.decided
+		);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
 		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
@@ -173,8 +209,9 @@ export class CoreInitService implements InitService {
 
 	write(
 		plan: InitPlan,
-		onWritten: (written: InitWritten) => void
+		onWritten: (written: InitWritten) => void,
+		dryRun = false
 	): Promise<Result<void, Error>> {
-		return this.writer.write(plan, onWritten);
+		return this.writer.write(plan, onWritten, dryRun);
 	}
 }

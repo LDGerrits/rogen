@@ -887,8 +887,20 @@ describe("InitQuestions addAgentHook", () => {
 
 describe("InitQuestions whatToAdd", () => {
 	const options = [
-		{ id: "first", label: "First", hint: "the first", addition: 1 },
-		{ id: "second", label: "Second", hint: "the second", addition: 2 },
+		{
+			id: "first",
+			flag: "--first",
+			label: "First",
+			hint: "the first",
+			addition: 1,
+		},
+		{
+			id: "second",
+			flag: "--second",
+			label: "Second",
+			hint: "the second",
+			addition: 2,
+		},
 	];
 
 	it("should answer with the addition the user picks", async () => {
