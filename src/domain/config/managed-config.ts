@@ -17,7 +17,7 @@ export class ManagedConfig {
 		this._files = loaded.files;
 		this._entry = this.entryOf(loaded);
 		this.text = loaded.resolved.isOk()
-			? safeStringify(loaded.value)
+			? ManagedConfig.textOf(loaded)
 			: undefined;
 	}
 
@@ -27,6 +27,11 @@ export class ManagedConfig {
 		loader: ConfigLoader
 	): Promise<ManagedConfig> {
 		return new ManagedConfig(file, loader, await loader.load(file));
+	}
+
+	/** What identifies the version of the config: its own contents and its places'. */
+	private static textOf(loaded: LoadedConfig): string | undefined {
+		return safeStringify([loaded.value, loaded.placeValues]);
 	}
 
 	/** The latest snapshot. */
@@ -65,7 +70,7 @@ export class ManagedConfig {
 		const loaded = await this.loader.load(this.file);
 		this._entry = this.entryOf(loaded);
 		this._files = loaded.files;
-		if (loaded.resolved.isOk()) this.text = safeStringify(loaded.value);
+		if (loaded.resolved.isOk()) this.text = ManagedConfig.textOf(loaded);
 	}
 
 	/** Whether the reload changed the version that builds. A config that loads equal to it keeps it, so the version is its identity. */

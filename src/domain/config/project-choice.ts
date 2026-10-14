@@ -10,19 +10,19 @@ export class ProjectChoice {
 		return ProjectChoice.of(configs, named, () => DEFAULT_PROJECT);
 	}
 
-	/** The projects `rogen serve` serves: the `serveProject` of each config unless one is named. */
+	/** The projects `rogen serve` serves: the `serveProject` of each config unless one is named. A config that lists places is not served; its places are. */
 	static served(
 		configs: readonly ResolvedConfig[],
 		named: ReadonlyMap<string, string>
 	): ResolvedConfig[] {
 		return ProjectChoice.of(
-			configs,
+			configs.filter(({ hasPlaces }) => !hasPlaces),
 			named,
 			({ serveProject }) => serveProject
 		);
 	}
 
-	/** The one project of each config that is named for it, else the one `chosen` gives. */
+	/** The one project of each config that is named for it, else the one `chosen` gives. A project named for a config file is named for its places too. */
 	private static of(
 		configs: readonly ResolvedConfig[],
 		named: ReadonlyMap<string, string>,
@@ -30,7 +30,7 @@ export class ProjectChoice {
 	): ResolvedConfig[] {
 		return configs.filter(
 			(config) =>
-				config.stem === (named.get(config.file) ?? chosen(config))
+				config.stem === (named.get(config.rootFile) ?? chosen(config))
 		);
 	}
 }

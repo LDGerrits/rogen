@@ -1,0 +1,5 @@
+{
+	"steps": [["where", "../../src/Common/Util.luau"], ["where", "src/Main.server.luau"]],
+	"cwd": "places/arena",
+	"rojo": false
+}

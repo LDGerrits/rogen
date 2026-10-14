@@ -62,6 +62,7 @@ export class ServePorts {
 			address: new ServeAddress(
 				this.host ?? project?.serveAddress ?? server.defaultHost,
 				this.port.unwrapOr(undefined) ??
+					config.placeServePort ??
 					project?.servePort ??
 					server.defaultPort
 			),
@@ -187,7 +188,10 @@ export class ServePorts {
 	}
 
 	private ownPortIn(config: ResolvedConfig): string {
-		return `its own servePort in ${path.basename(config.file)}`;
+		const file = config.isPlace
+			? toPosix(path.relative(this.cwd, config.file))
+			: path.basename(config.file);
+		return `its own servePort in ${file}`;
 	}
 
 	private async freePortAfter(

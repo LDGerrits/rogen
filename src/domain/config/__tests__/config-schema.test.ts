@@ -37,6 +37,7 @@ describe("domain/config/config-schema", () => {
 			"syncPath",
 			"projects",
 			"serveProject",
+			"placePaths",
 		];
 
 		describe("schema shape", () => {
@@ -48,7 +49,7 @@ describe("domain/config/config-schema", () => {
 				expect([...rogenKeys].sort()).toEqual([...ROGEN_FIELDS].sort());
 			});
 
-			it("lets a project change any key but the schema's, projects' and serveProject's, and remove each with null", () => {
+			it("lets a project change any key but the schema's, projects', serveProject's and placePaths', and remove each with null", () => {
 				const projects = schema.properties!.projects
 					.additionalProperties as {
 					properties: Record<string, { type?: string | string[] }>;
@@ -62,6 +63,7 @@ describe("domain/config/config-schema", () => {
 									"$schema",
 									"projects",
 									"serveProject",
+									"placePaths",
 								].includes(field)
 						)
 						.sort()

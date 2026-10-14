@@ -1,0 +1,13 @@
+{
+	"name": "Game",
+	"placePaths": ["places/*"],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"projects": {
+		"release": {
+			"globIgnorePaths": ["**/*.spec.luau"]
+		}
+	}
+}

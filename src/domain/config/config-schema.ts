@@ -199,6 +199,14 @@ const wholeConfigSchemas: Readonly<Record<string, JSONSchema>> = {
 			"The project rogen serve serves when none is named: default, or " +
 			"a key of projects.",
 	},
+	placePaths: {
+		...strings,
+		description:
+			"Folder globs, relative to this file, of the places this config " +
+			"is shared by. Each matching folder is a place: it inherits this " +
+			"config, adds its own code, and gets its own project files in " +
+			"its folder. The config itself is never served; its places are.",
+	},
 };
 
 /** The keys a `rogen.json` may hold. */

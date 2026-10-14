@@ -33,6 +33,11 @@ export interface ResolvedConfigSpec {
 	readonly project?: Readonly<Record<string, unknown>>;
 	readonly syncPath?: string;
 	readonly warnings?: readonly Diagnostic[];
+	/** The config file that lists this one as a place. */
+	readonly rootFile?: string;
+	readonly isPlace?: boolean;
+	readonly hasPlaces?: boolean;
+	readonly placePort?: number;
 }
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
@@ -58,6 +63,10 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 		ignored: spec.ignored ?? [],
 		syncPath: spec.syncPath,
 		warnings: spec.warnings ?? [],
+		rootFile: spec.rootFile,
+		isPlace: spec.isPlace,
+		hasPlaces: spec.hasPlaces,
+		placePort: spec.placePort,
 	});
 }
 

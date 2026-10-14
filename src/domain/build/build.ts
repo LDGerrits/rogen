@@ -93,6 +93,11 @@ abstract class AbstractConfigBuild {
 		return this.config.file;
 	}
 
+	/** The config file the user names it by: the one that lists it, for a place. */
+	get rootFile(): string {
+		return this.config.rootFile;
+	}
+
 	get warnings(): readonly Diagnostic[] {
 		return this.findings.warnings;
 	}
@@ -136,6 +141,10 @@ export class UnloadedBuild {
 	/** What the config is asked for by. */
 	get label(): string {
 		return configLabel(this.file);
+	}
+
+	get rootFile(): string {
+		return this.file;
 	}
 
 	get warnings(): readonly Diagnostic[] {

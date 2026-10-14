@@ -68,4 +68,49 @@ describe("ProjectChoice", () => {
 			]);
 		});
 	});
+	describe("with places", () => {
+		const root = mockConfig({
+			file: "/repo/rogen.json",
+			hasPlaces: true,
+		});
+		const places = ["lobby", "arena"].flatMap((name) =>
+			["default", "release"].map((stem) =>
+				mockConfig({
+					file: `/repo/places/${name}/rogen.json`,
+					rootFile: "/repo/rogen.json",
+					isPlace: true,
+					stem,
+				})
+			)
+		);
+		const everything = [root, ...places];
+
+		it("should serve the places and never the config that lists them", () => {
+			expect(stems(ProjectChoice.served(everything, new Map()))).toEqual([
+				"/repo/places/lobby/rogen.json#default",
+				"/repo/places/arena/rogen.json#default",
+			]);
+		});
+
+		it("should apply the project named for the listing config to its places", () => {
+			const named = new Map([["/repo/rogen.json", "release"]]);
+
+			expect(stems(ProjectChoice.served(everything, named))).toEqual([
+				"/repo/places/lobby/rogen.json#release",
+				"/repo/places/arena/rogen.json#release",
+			]);
+			expect(stems(ProjectChoice.read(everything, named))).toEqual([
+				"/repo/places/lobby/rogen.json#release",
+				"/repo/places/arena/rogen.json#release",
+			]);
+		});
+
+		it("should read the description of the listing config and of each place", () => {
+			expect(stems(ProjectChoice.read(everything, new Map()))).toEqual([
+				"/repo/rogen.json#default",
+				"/repo/places/lobby/rogen.json#default",
+				"/repo/places/arena/rogen.json#default",
+			]);
+		});
+	});
 });

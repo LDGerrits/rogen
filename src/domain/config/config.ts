@@ -36,6 +36,7 @@ export interface RogenConfig {
 	readonly syncPath?: string;
 	readonly projects?: Record<string, ProjectChanges>;
 	readonly serveProject?: string;
+	readonly placePaths?: string[];
 }
 
 /** Anything that holds config values by field name, such as a config model. */
@@ -78,7 +79,14 @@ export const DEFAULT_PROJECT = "default";
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
 /** The keys that stand for the whole config, which a project can't change. */
-export const ROOT_ONLY_KEYS: readonly string[] = ["projects", "serveProject"];
+export const ROOT_ONLY_KEYS: readonly string[] = [
+	"projects",
+	"serveProject",
+	"placePaths",
+];
+
+/** The port the first place without a `servePort` is served on, which is Rojo's own default. */
+export const FIRST_PLACE_PORT = 34872;
 
 /** What a project's name may be, since the name is the stem of the file written. */
 export const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -209,6 +217,14 @@ export interface ResolvedConfigFields {
 	readonly syncPath?: string;
 	/** What the config says that is no error: a key Rojo will reject in the written file. */
 	readonly warnings: readonly Diagnostic[];
+	/** The config file that lists this folder as a place; for anything else, `file` itself. */
+	readonly rootFile?: string;
+	/** Whether this is a place of another config. */
+	readonly isPlace?: boolean;
+	/** Whether the config lists places, which makes it a shared root that is never served. */
+	readonly hasPlaces?: boolean;
+	/** The port this place is served on when no `servePort` says otherwise. */
+	readonly placePort?: number;
 }
 
 /** A config with its values validated: every path is absolute and every route target is parsed. */
@@ -224,6 +240,10 @@ export class ResolvedConfig {
 	readonly ignored: readonly string[];
 	readonly syncPath?: string;
 	readonly warnings: readonly Diagnostic[];
+	readonly rootFile: string;
+	readonly isPlace: boolean;
+	readonly hasPlaces: boolean;
+	readonly placePort?: number;
 	readonly keys: DeclaredKeys;
 
 	constructor(fields: ResolvedConfigFields) {
@@ -238,6 +258,10 @@ export class ResolvedConfig {
 		this.ignored = fields.ignored;
 		this.syncPath = fields.syncPath;
 		this.warnings = fields.warnings;
+		this.rootFile = fields.rootFile ?? fields.file;
+		this.isPlace = fields.isPlace ?? false;
+		this.hasPlaces = fields.hasPlaces ?? false;
+		this.placePort = fields.placePort;
 		this.keys = new DeclaredKeys(fields.routes.keys());
 	}
 
@@ -251,6 +275,13 @@ export class ResolvedConfig {
 	/** What tells this project from every other that is served or built: the config it is read from, and its name there. */
 	get id(): string {
 		return `${this.file}#${this.stem}`;
+	}
+
+	/** The port a place is served on unless a flag says otherwise: its `servePort`, else the one its place in the list gives. `undefined` for anything that is not a place. */
+	get placeServePort(): number | undefined {
+		return this.isPlace
+			? (this.project.servePort ?? this.placePort)
+			: undefined;
 	}
 
 	/** Whether this is the description itself, not an entry of `projects`. */
@@ -296,10 +327,29 @@ export interface ResolvedConfigFile {
 	readonly config: ResolvedConfig;
 	/** The entries of `projects`, in the order they are declared. */
 	readonly projects: readonly ResolvedConfig[];
+	/** The places it lists, sorted by path. */
+	readonly places?: readonly ResolvedConfigFile[];
 }
 
-/** Every project a resolved config file writes, the description first. */
-export const projectsOf = (resolved: ResolvedConfigFile): ResolvedConfig[] => [
-	resolved.config,
-	...resolved.projects,
-];
+/** The places of a resolved config file, or with a `scope` only those in those folders. */
+export function placesIn(
+	resolved: ResolvedConfigFile,
+	scope?: readonly string[]
+): ResolvedConfigFile[] {
+	return (resolved.places ?? []).filter(
+		({ config }) =>
+			scope === undefined ||
+			scope.some((folder) => samePath(config.projectDir, folder))
+	);
+}
+
+/** Every project a resolved config file writes, the description first and then each place's; with a `scope`, only the places in those folders. */
+export function projectsOf(
+	resolved: ResolvedConfigFile,
+	scope?: readonly string[]
+): ResolvedConfig[] {
+	return [
+		...(scope === undefined ? [resolved.config, ...resolved.projects] : []),
+		...placesIn(resolved, scope).flatMap((place) => projectsOf(place)),
+	];
+}

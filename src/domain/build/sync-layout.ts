@@ -1,5 +1,5 @@
 import path from "path";
-import { toPosix } from "../../base/path.js";
+import { containsPosix, toPosix } from "../../base/path.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
@@ -53,6 +53,22 @@ export class SyncLayout {
 		return this.tools.reduce(
 			(emitted, tool) => tool.emittedPath?.(emitted) ?? emitted,
 			path.join(this.syncPath, path.relative(this.commonRoot, filePath))
+		);
+	}
+
+	/** A glob of the project written as it matches the files under the sync path: one that lies inside the source paths' common root names those files, and goes to the sync path in their place. */
+	syncedGlob(glob: string): string {
+		if (this.syncPath === undefined) return glob;
+		const root = toPosix(this.commonRoot);
+		const dir = toPosix(this.projectDir);
+		const absolute = path.posix.join(dir, glob);
+		if (!containsPosix(root, absolute)) return glob;
+		return path.posix.relative(
+			dir,
+			path.posix.join(
+				toPosix(this.syncPath),
+				path.posix.relative(root, absolute)
+			)
 		);
 	}
 

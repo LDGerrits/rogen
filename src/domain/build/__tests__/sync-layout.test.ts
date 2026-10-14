@@ -258,4 +258,58 @@ describe("SyncLayout", () => {
 			});
 		});
 	});
+	describe("syncedGlob", () => {
+		const projectDir = abs("places/lobby");
+
+		it("should leave a glob alone without a sync path", () => {
+			const layout = layoutOf({
+				commonRoot: abs(""),
+				projectDir,
+				tools: syncTools,
+			});
+
+			expect(layout.syncedGlob("../../**/*.spec.luau")).toBe(
+				"../../**/*.spec.luau"
+			);
+		});
+
+		it("should move a glob inside the common root to the sync path", () => {
+			const layout = layoutOf({
+				commonRoot: abs(""),
+				syncPath: abs("places/lobby/dist"),
+				projectDir,
+				tools: syncTools,
+			});
+
+			expect(layout.syncedGlob("../../src/**/*.md")).toBe(
+				"dist/src/**/*.md"
+			);
+			expect(layout.syncedGlob("../../**/*.spec.luau")).toBe(
+				"dist/**/*.spec.luau"
+			);
+		});
+
+		it("should leave a glob outside the common root alone", () => {
+			const layout = layoutOf({
+				commonRoot: abs("src"),
+				syncPath: abs("dist"),
+				projectDir: abs(""),
+				tools: syncTools,
+			});
+
+			expect(layout.syncedGlob("**/*.spec.luau")).toBe("**/*.spec.luau");
+			expect(layout.syncedGlob("docs/**")).toBe("docs/**");
+		});
+
+		it("should replace the common root of a single source path", () => {
+			const layout = layoutOf({
+				commonRoot: abs("src"),
+				syncPath: abs("dist"),
+				projectDir: abs(""),
+				tools: syncTools,
+			});
+
+			expect(layout.syncedGlob("src/**/*.md")).toBe("dist/**/*.md");
+		});
+	});
 });

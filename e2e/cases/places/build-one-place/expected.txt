@@ -1,0 +1,43 @@
+$ rogen build places/lobby
+exit 0
+stdout:
+  rogen build · lobby
+  places/lobby/default.project.json · wrote
+  Built 1 config.
+
+$ rogen build places/arena places/lobby
+exit 0
+stdout:
+  rogen build · Arena, lobby
+  Arena
+    places/arena/default.project.json · wrote
+  lobby
+    places/lobby/default.project.json · unchanged
+  Built 2 configs.
+
+written:
+  places/arena/default.project.json
+  places/lobby/default.project.json
+
+$ rojo sourcemap places/arena/default.project.json
+Arena: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- ../../Packages/Roact.luau
+    Shared: Folder
+      Common: Folder
+        Util: ModuleScript  <- ../../src/Common/Util.luau
+      Rules: ModuleScript  <- src/Rules.luau
+  ServerScriptService: ServerScriptService
+    Main: Script  <- src/Main.server.luau
+
+$ rojo sourcemap places/lobby/default.project.json
+lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- ../../Packages/Roact.luau
+    Shared: Folder
+      Common: Folder
+        Util: ModuleScript  <- ../../src/Common/Util.luau
+  ServerScriptService: ServerScriptService
+    Main: Script  <- src/Main.server.luau

@@ -79,7 +79,7 @@ export class CoreBuildService implements BuildService {
 		// Selection order, each config's builds beside the ones that didn't load.
 		const builds = groupBy(
 			[...unloaded, ...settled],
-			(build) => build.file
+			(build) => build.rootFile
 		);
 		return new BuildRun(
 			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])

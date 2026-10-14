@@ -68,6 +68,7 @@ Rogen's keys:
 | `syncPath` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Path](/docs/v2/core-concepts/output#sync-path). |
 | `projects` | none | Other project files to write, each the description with some keys changed. See [Projects](#projects). |
 | `serveProject` | `default` | The project `rogen serve` serves. See [Projects](#projects). |
+| `placePaths` | none | Folder globs that make each matching folder a place. See [Places](#places). |
 
 Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths`, which it also reads:
 
@@ -120,6 +121,38 @@ This writes `default.project.json`, `dist.project.json` and `release.project.jso
 - A project inherits `name`. Every project file carries a `name`, yours or the folder's, because Rojo can't open a project file without one. Only `default.project.json` may go without, as Rojo names it after its folder.
 
 `rogen serve` serves the project `serveProject` names, `default` when it is not set, so a Darklua setup that serves `dist` never serves unprocessed code by accident. Every other command reads `default`. To use another, give its name or its file: `rogen serve release`, `rogen serve dist.project.json`. A bare name means a project of the config here, unless a folder of that name holds a `rogen.json` or a `default.project.json`: the folder wins, and Rogen says which project file to name instead. `rogen build` writes every project whichever you name, and `rogen list` shows each one's file and which is served.
+
+---
+
+## Places
+
+A repository with several places puts what they share in a root `rogen.json` and lists the places' folders in `placePaths`:
+
+```json title="rogen.json"
+{
+	"name": "Game",
+	"placePaths": ["places/*"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": { "Packages": { "$path": "Packages" } }
+	}
+}
+```
+
+Each folder that matches is a **place**. It inherits the root's keys and projects, adds its own code, and gets its own project files in its own folder, so an editor that starts one language server per folder gets one sourcemap per place. A place needs no config: a folder with no `rogen.json` is a place named after the folder. A place's `rogen.json` holds what differs, and is applied over the root's:
+
+```json title="places/lobby/rogen.json"
+{ "name": "Lobby", "servePort": 34880 }
+```
+
+- A place's `sourcePaths` are its own folders, relative to its folder (default `["src"]`), and Rogen adds them after the root's. The root's list is never replaced, so the shared code is in every place and a place's own code wins a clash. A project in a place's `rogen.json` replaces the place's own list only.
+- A relative path means the same folder wherever it is inherited: a `$path`, a `globIgnorePaths` glob and the `syncPath` of the root are written relative to each place's folder. A place may set its own `syncPath`.
+- `name` is not inherited by a place: a place is named after its folder unless it sets one. A project inherits the name of the place it is in.
+- A place may declare `projects` and `serveProject` of its own, and may not list places.
+- The root writes its own `default.project.json`, for the shared code, and is never served: `rogen serve` serves the places.
+- A place without a `servePort` is served on 34872 plus its index among the places without one, the places sorted by path, skipping ports other places pin. Studio remembers a place's port, so `rogen init <folder>` pins the port into the place it adds. A port in use is an error that names `servePort`.
+- A command run inside a place answers for that place. A command run at the root covers the root and every place, and a project named on the command line (`rogen build release`) is the project of that name in each place.
 
 ---
 

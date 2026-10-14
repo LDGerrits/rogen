@@ -48,7 +48,9 @@ registerCommand(
 			const serveService = accessor.get(ServeService);
 			const projectFiles = entries.flatMap((entry) =>
 				entry.status === "valid"
-					? projectsOf(entry).map(({ projectFile }) => projectFile)
+					? projectsOf(entry, entry.scope).map(
+							({ projectFile }) => projectFile
+						)
 					: []
 			);
 			const served = await serveService.servedBy(projectFiles);

@@ -241,6 +241,72 @@ describe("CoreWatchSession", () => {
 		});
 	});
 
+	describe("with places", () => {
+		const projectFiles = (update: WatchUpdate) =>
+			update.reports.map(({ build }) => build.config.projectFile).sort();
+
+		beforeEach(async () => {
+			await fs.createDirectory("/repo/places/lobby/src");
+			await fs.createDirectory("/repo/places/arena/src");
+			await writeConfig("/repo/rogen.json", {
+				placePaths: ["places/*"],
+			});
+			await write("/repo/places/arena/rogen.json", { servePort: 34900 });
+		});
+
+		it("should build the config and every place once it starts", async () => {
+			await start();
+
+			expect(updates).toHaveLength(1);
+			expect(projectFiles(updates[0])).toEqual([
+				"/repo/default.project.json",
+				"/repo/places/arena/default.project.json",
+				"/repo/places/lobby/default.project.json",
+			]);
+		});
+
+		it("should rebuild only the place whose own source holds a change", async () => {
+			await start();
+
+			await fs.writeFile("/repo/places/lobby/src/B.luau", "");
+			await settle();
+
+			expect(projectFiles(updates[1])).toEqual([
+				"/repo/places/lobby/default.project.json",
+			]);
+		});
+
+		it("should rebuild the config and every place for a change to the shared source", async () => {
+			await start();
+
+			await fs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(projectFiles(updates[1])).toEqual([
+				"/repo/default.project.json",
+				"/repo/places/arena/default.project.json",
+				"/repo/places/lobby/default.project.json",
+			]);
+		});
+
+		it("should rebuild the place whose rogen.json changed", async () => {
+			await start();
+
+			await write("/repo/places/arena/rogen.json", { name: "Arena" });
+			await settle();
+
+			expect(updates[1].cause).toMatchObject({ reloaded: true });
+			expect(projectFiles(updates[1])).toContain(
+				"/repo/places/arena/default.project.json"
+			);
+			expect(
+				JSON.parse(
+					await fs.readFile("/repo/places/arena/default.project.json")
+				)
+			).toMatchObject({ name: "Arena" });
+		});
+	});
+
 	it("should report a broken config and keep the last valid one, with nothing to rebuild", async () => {
 		await start();
 

@@ -40,14 +40,21 @@ export class CoreConfigSelection implements ReloadableSelection {
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
 		readonly named: ReadonlyMap<string, string> = new Map(),
-		readonly notes: readonly string[] = []
+		readonly notes: readonly string[] = [],
+		private readonly scopes: ReadonlyMap<
+			string,
+			readonly string[]
+		> = new Map()
 	) {
 		this._files = this.readFiles();
 		this.filePaths = new PathSet(this._files);
 	}
 
 	get entries(): readonly ConfigEntry[] {
-		return this.managed.map((config) => config.entry);
+		return this.managed.map(({ entry, file }) => {
+			const scope = this.scopes.get(file);
+			return scope ? { ...entry, scope } : entry;
+		});
 	}
 
 	get files(): ReadonlySet<string> {

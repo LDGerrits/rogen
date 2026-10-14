@@ -35,6 +35,7 @@ describe("ConfigDiscovery", () => {
 				projects: new Map(),
 				folders: [],
 				homeConfig: "/repo/rogen.json",
+				scopes: new Map(),
 			});
 		});
 
@@ -131,6 +132,7 @@ describe("ConfigDiscovery", () => {
 				projects: new Map(),
 				folders: [],
 				homeConfig: undefined,
+				scopes: new Map(),
 			});
 		});
 
@@ -377,6 +379,148 @@ describe("ConfigDiscovery.findEnclosing", () => {
 
 	const from = (cwd: string) =>
 		new ConfigDiscovery(fs, new MockEnvironmentService(cwd));
+
+	describe("places", () => {
+		beforeEach(async () => {
+			await fs.writeFile(
+				"/repo/rogen.json",
+				JSON.stringify({ placePaths: ["places/*"] })
+			);
+			await fs.createDirectory("/repo/places/lobby/src");
+			await fs.createDirectory("/repo/places/arena");
+			await fs.writeFile("/repo/places/arena/rogen.json", "{}");
+			await fs.createDirectory("/repo/tools");
+			await fs.writeFile("/repo/tools/rogen.json", "{}");
+		});
+
+		it("should read the whole root from the root", async () => {
+			const found = (await from("/repo").discover([])).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				scopes: new Map(),
+				everyConfig: true,
+			});
+		});
+
+		it("should scope to a place without a config of its own from inside it", async () => {
+			const found = (
+				await from("/repo/places/lobby/src").discover([])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				home: "/repo/places/lobby",
+				files: ["/repo/rogen.json"],
+				homeConfig: "/repo/rogen.json",
+				everyConfig: false,
+				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
+			});
+		});
+
+		it("should scope to a place with a config of its own from its folder", async () => {
+			const found = (
+				await from("/repo/places/arena").discover([])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
+			});
+		});
+
+		it("should read a config that no root lists as its own", async () => {
+			const found = (await from("/repo/tools").discover([])).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/tools/rogen.json"],
+				scopes: new Map(),
+			});
+		});
+
+		it("should resolve a place folder without a config to the config that lists it", async () => {
+			const found = (
+				await from("/repo").discover(["places/lobby"])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
+			});
+		});
+
+		it("should resolve a place's project file to the project of that place", async () => {
+			const found = (
+				await from("/repo").discover([
+					"places/arena/release.project.json",
+				])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				projects: new Map([["/repo/rogen.json", "release"]]),
+				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
+			});
+		});
+
+		it("should resolve a place's config file", async () => {
+			const found = (
+				await from("/repo").discover(["places/arena/rogen.json"])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
+			});
+		});
+
+		it("should join the places named into one scope", async () => {
+			const found = (
+				await from("/repo").discover(["places/lobby", "places/arena"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/rogen.json"]);
+			expect(found.scopes.get("/repo/rogen.json")).toEqual([
+				"/repo/places/lobby",
+				"/repo/places/arena",
+			]);
+		});
+
+		it("should refuse the same place named twice", async () => {
+			const result = await from("/repo").discover([
+				"places/lobby",
+				"places/lobby",
+			]);
+
+			expect(errorOf(result).message).toMatch(/named more than once/);
+		});
+
+		it("should refuse a place and the whole config named together", async () => {
+			const result = await from("/repo").discover([".", "places/lobby"]);
+
+			expect(errorOf(result).message).toMatch(/named more than once/);
+		});
+
+		it("should refuse two places named for different projects", async () => {
+			const result = await from("/repo").discover([
+				"places/lobby/a.project.json",
+				"places/arena/b.project.json",
+			]);
+
+			expect(errorOf(result).message).toMatch(/projects of one config/);
+		});
+
+		it("should read a bare name from inside a place as a project of the listing config", async () => {
+			const found = (
+				await from("/repo/places/lobby").discover(["release"])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				homeConfig: "/repo/rogen.json",
+				projects: new Map([["/repo/rogen.json", "release"]]),
+			});
+		});
+	});
 
 	it("should find the nearest parent folder with a config", async () => {
 		await fs.writeFile("/repo/rogen.json", "{}");

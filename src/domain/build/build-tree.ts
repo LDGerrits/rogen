@@ -78,7 +78,7 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 /** The tree a build merges its generated nodes into: the config's own, with its `$path`s kept relative to the project dir. */
 export class BuildTree {
 	private readonly project: RojoProject;
-	/** The config's `globIgnorePaths`, relative to the project dir. */
+	/** The config's `globIgnorePaths` as Rojo reads them, relative to the project dir. */
 	readonly globIgnorePaths: string[];
 	/** Every path the tree's own `$path`s mount. Rojo reads these, not Rogen. */
 	readonly mounts: TreeMounts;
@@ -91,7 +91,9 @@ export class BuildTree {
 		private readonly layout: SyncLayout
 	) {
 		const { project } = config;
-		this.globIgnorePaths = project.globIgnorePaths;
+		this.globIgnorePaths = project.globIgnorePaths.map((glob) =>
+			layout.syncedGlob(glob)
+		);
 		this.project = new RojoProject(
 			{ tree: project.getFile().tree },
 			generatedContainer

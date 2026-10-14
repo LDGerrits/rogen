@@ -1,3 +1,4 @@
+import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
 import { ConfigFileReader } from "../../platform/config/config-file.js";
@@ -13,6 +14,8 @@ import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./config.js";
 import { ConfigValidator } from "./config-validator.js";
+import { PlaceFolders } from "./place-folders.js";
+import { PlaceLoader } from "./place-loader.js";
 
 /** One read of one config, with everything a reload needs to compare against. */
 export interface LoadedConfig {
@@ -20,6 +23,8 @@ export interface LoadedConfig {
 	readonly files: readonly string[];
 	/** What the file holds, once it could be read. */
 	readonly value?: Readonly<Record<string, unknown>>;
+	/** What each place's config holds, by file. */
+	readonly placeValues?: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
 }
 
@@ -27,9 +32,15 @@ export interface LoadedConfig {
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 	private readonly fileChecks = new Set<ConfigFileCheck>();
+	private readonly places: PlaceLoader;
 
-	constructor(fileSystemService: FileReader) {
+	constructor(private readonly fileSystemService: FileReader) {
 		this.reader = new ConfigFileReader(fileSystemService, configSchema);
+		this.places = new PlaceLoader(
+			fileSystemService,
+			this.reader,
+			(file, value) => this.hintsOf(file, value)
+		);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
@@ -73,18 +84,28 @@ export class ConfigLoader {
 
 		const [description, ...changed] = declared.sources;
 		const stems = declared.sources.map(({ stem }) => stem);
+		const dir = path.dirname(file);
+		const placeDirs = (
+			await PlaceFolders.find(
+				this.fileSystemService,
+				dir,
+				config.model.getValue<string[]>("placePaths") ?? []
+			)
+		).filter((placeDir) => placeDir !== dir);
 		const resolvedDescription = new ConfigValidator(
 			description,
 			declared.serveProject,
 			stems,
-			keys.warnings
+			keys.warnings,
+			{ placeDirs }
 		).validate();
 		const resolvedProjects = changed.map((source) =>
 			new ConfigValidator(
 				source,
 				declared.serveProject,
 				stems,
-				source.warnings
+				source.warnings,
+				{ placeDirs }
 			).validate()
 		);
 		const problems = [resolvedDescription, ...resolvedProjects].flatMap(
@@ -96,14 +117,33 @@ export class ConfigLoader {
 				value,
 				resolved: err(uniqueDiagnostics(problems)),
 			};
+		const places = await this.places.load(
+			file,
+			{
+				dir,
+				sources: declared.sources,
+				serveProject: declared.serveProject,
+			},
+			placeDirs
+		);
+		const files = [file, ...places.files];
+		if (places.resolved.isErr())
+			return {
+				files,
+				value,
+				placeValues: places.values,
+				resolved: err(places.resolved.error),
+			};
 		return {
-			files: [file],
+			files,
 			value,
+			placeValues: places.values,
 			resolved: resolvedDescription.map((resolvedConfig) => ({
 				config: resolvedConfig,
 				projects: resolvedProjects.flatMap((result) =>
 					result.isOk() ? [result.value] : []
 				),
+				places: places.resolved.unwrap(),
 			})),
 		};
 	}

@@ -18,6 +18,8 @@ export const ConfigArguments = [
 
 interface ConfigEntryFields {
 	readonly file: string;
+	/** The folders of the places of this config that are read, when the selection reads only them; none when it reads the config and all its places. */
+	readonly scope?: readonly string[];
 }
 
 export interface ValidConfigEntry
@@ -53,7 +55,7 @@ export function buildableConfig(
 /** Every project that builds for `entry`, the description first. */
 export function buildableProjects(entry: ConfigEntry): ResolvedConfig[] {
 	const file = buildableFile(entry);
-	return file ? projectsOf(file) : [];
+	return file ? projectsOf(file, entry.scope) : [];
 }
 
 /** What a reload says of one config: new errors, a recovery, or joining or leaving the selection. */

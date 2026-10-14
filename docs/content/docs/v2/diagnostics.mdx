@@ -182,6 +182,26 @@ rogen.json:6:7 - error: "serveProject" is set once for the whole config, not by 
 
 Move the key to the root of `rogen.json`. See [Projects](/docs/v2/configuration#projects).
 
+### `config.placeListsPlaces` [#config-placelistsplaces]
+
+Error. A place's own `rogen.json` sets `placePaths`. A place is a folder that another config lists, and places don't nest.
+
+```
+places/lobby/rogen.json:2:3 - error: a place can't list places: "placePaths" belongs to the config that lists this folder. Remove it. (config.placeListsPlaces)
+```
+
+Remove the key from the place. See [Places](/docs/v2/configuration#places).
+
+### `config.placeInSourcePath` [#config-placeinsourcepath]
+
+Error. A place lies inside one of the source paths of the config that lists it. The config would read the place's files as its own, and the place would mount them again.
+
+```
+rogen.json:3:3 - error: the place /repo/src/places/lobby is inside the source path /repo/src, so its files would belong to both. Move the place out of the source path, or the source path out of the place. (config.placeInSourcePath)
+```
+
+Move the places out of the source paths, for example to `places/*` beside `src`. See [Places](/docs/v2/configuration#places).
+
 ### `config.unknownServeProject` [#config-unknownserveproject]
 
 Error. `serveProject` names a project that doesn't exist. It takes `default`, or a key of `projects`.

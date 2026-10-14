@@ -133,6 +133,62 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(serve.port + 1)).toBeUndefined();
 	}, 60_000);
 
+	it("should serve every place, each under its folder's name and port, and never the config that lists them", async () => {
+		writeProjectFile(
+			serve.dir,
+			"rogen.json",
+			config(serve.port, { placePaths: ["places/*"] })
+		);
+		for (const [index, folder] of ["lobby", "arena"].entries()) {
+			writeProjectFile(
+				serve.dir,
+				`places/${folder}/rogen.json`,
+				JSON.stringify({ servePort: serve.port + 1 + index })
+			);
+			writeProjectFile(serve.dir, `places/${folder}/src/A.luau`);
+		}
+
+		const serving = serve.start();
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving arena with Rojo 7.7.1 at 127.0.0.1:${serve.port + 2}.`
+			);
+			expect(serving.output).toContain(
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${serve.port + 1}.`
+			);
+		}, 30_000);
+		expect(serving.output).not.toContain("Serving Game");
+		expect(await rojoProject(serve.port)).toBeUndefined();
+		expect(await rojoProject(serve.port + 1)).toBe("lobby");
+		expect(await rojoProject(serve.port + 2)).toBe("arena");
+		expect(await serving.stop()).toBe(0);
+	}, 60_000);
+
+	it("should serve only the place it is run in", async () => {
+		writeProjectFile(
+			serve.dir,
+			"rogen.json",
+			config(serve.port, { placePaths: ["places/*"] })
+		);
+		for (const [index, folder] of ["lobby", "arena"].entries())
+			writeProjectFile(
+				serve.dir,
+				`places/${folder}/rogen.json`,
+				JSON.stringify({ servePort: serve.port + 1 + index })
+			);
+
+		const serving = serve.start([], path.join(serve.dir, "places/lobby"));
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving lobby with Rojo 7.7.1 at 127.0.0.1:${serve.port + 1}.`
+			);
+		}, 30_000);
+		expect(await rojoProject(serve.port + 2)).toBeUndefined();
+		expect(await serving.stop()).toBe(0);
+	}, 60_000);
+
 	it("should serve only the project in the folder it is given", async () => {
 		writeProjectFile(
 			serve.dir,

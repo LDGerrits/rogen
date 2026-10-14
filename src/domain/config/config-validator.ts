@@ -26,6 +26,16 @@ import {
 
 const FALLBACK_NAME = "project";
 
+/** What a validator is told about the config beyond the project: the places around it. */
+export interface PlaceContext {
+	/** The config file that lists this folder, for a place. */
+	readonly rootFile?: string;
+	/** The folders of the places the config lists, when it lists any. */
+	readonly placeDirs?: readonly string[];
+	/** The port a place is served on when it pins none. */
+	readonly placePort?: number;
+}
+
 const NAME_RULE = "use letters and digits only, starting with a letter";
 
 /** Checks every rule on the values of one project to write that doesn't need the source tree, and hands back the config with its route targets parsed. */
@@ -36,21 +46,34 @@ export class ConfigValidator {
 	private readonly dir: string;
 	private readonly routes: Readonly<Record<string, string>>;
 	private readonly sourcePaths: readonly string[];
+	/** How many of the source paths a place takes from the config that lists it, which come first. */
+	private readonly inheritedCount: number;
 
 	constructor(
 		private readonly config: ProjectSource,
 		private readonly serveProject: string,
 		private readonly projectStems: readonly string[],
-		warnings: readonly Diagnostic[]
+		warnings: readonly Diagnostic[],
+		private readonly context: PlaceContext = {}
 	) {
 		this.problems.add(warnings);
 		this.dir = path.dirname(config.file);
 		this.routes = fieldOf(config.model, "routes") ?? {};
-		const written = fieldOf(config.model, "sourcePaths");
-		this.sourcePaths = (
-			written ??
-			(Object.keys(this.routes).length > 0 ? [DEFAULT_SOURCE_PATH] : [])
-		).map((sourcePath) => path.resolve(this.dir, sourcePath));
+		const routed = Object.keys(this.routes).length > 0;
+		const defaults = routed ? [DEFAULT_SOURCE_PATH] : [];
+		const { inherited } = config;
+		const inheritedPaths = inherited
+			? (inherited.sourcePaths ?? defaults).map((sourcePath) =>
+					path.resolve(inherited.dir, sourcePath)
+				)
+			: [];
+		this.inheritedCount = inheritedPaths.length;
+		this.sourcePaths = [
+			...inheritedPaths,
+			...(fieldOf(config.model, "sourcePaths") ?? defaults).map(
+				(sourcePath) => path.resolve(this.dir, sourcePath)
+			),
+		];
 	}
 
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
@@ -60,6 +83,7 @@ export class ConfigValidator {
 		this.checkSyncRules();
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
+		this.checkPlaces();
 		const syncPath = this.checkSyncPath();
 
 		const name = project.name;
@@ -81,6 +105,10 @@ export class ConfigValidator {
 				warnings: this.problems.diagnostics.filter(
 					(diagnostic) => !isError(diagnostic)
 				),
+				rootFile: this.context.rootFile,
+				isPlace: this.context.rootFile !== undefined,
+				hasPlaces: (this.context.placeDirs?.length ?? 0) > 0,
+				placePort: this.context.placePort,
 			})
 		);
 	}
@@ -173,7 +201,13 @@ export class ConfigValidator {
 		this.sourcePaths.forEach((sourcePath, index) => {
 			const overlap = sourcePathOverlap(this.sourcePaths, index);
 			if (!overlap) return;
-			const location = this.locate("sourcePaths", String(index));
+			const location =
+				index < this.inheritedCount
+					? { resource: this.config.file }
+					: this.locate(
+							"sourcePaths",
+							String(index - this.inheritedCount)
+						);
 			if (overlap.kind === "duplicate") {
 				this.problems.error(
 					"config.duplicateSourcePath",
@@ -188,6 +222,21 @@ export class ConfigValidator {
 				);
 			}
 		});
+	}
+
+	/** A place inside a source path would be read as source by the config that lists it, and mounted by its own. */
+	private checkPlaces(): void {
+		for (const placeDir of this.context.placeDirs ?? []) {
+			const sourcePath = this.sourcePaths.find((dir) =>
+				contains(dir, placeDir)
+			);
+			if (sourcePath === undefined) continue;
+			this.problems.error(
+				"config.placeInSourcePath",
+				this.locateKey("placePaths"),
+				`the place ${placeDir} is inside the source path ${sourcePath}, so its files would belong to both. Move the place out of the source path, or the source path out of the place.`
+			);
+		}
 	}
 
 	/** The sync path is where tools write the code Rogen's source paths hold, so neither may lie in the other: Rogen would read the tools' output as source. */

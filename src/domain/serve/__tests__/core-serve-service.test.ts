@@ -69,6 +69,22 @@ describe("CoreServeService", () => {
 			address.toString(),
 		]);
 
+	const serviceAt = (cwd: string) => {
+		configService = new CoreConfigService(
+			memFs,
+			new MockEnvironmentService(cwd)
+		);
+		const index = new CoreIndexService(memFs);
+		return new CoreServeService(
+			configService,
+			memFs,
+			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
+			requests,
+			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
+			new MockEnvironmentService(cwd, undefined, false, "/home/me")
+		);
+	};
+
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
 		await memFs.createDirectory("/repo/src");
@@ -86,19 +102,7 @@ describe("CoreServeService", () => {
 			])
 		);
 		requests = new MockRequestService();
-		configService = new CoreConfigService(
-			memFs,
-			new MockEnvironmentService("/repo")
-		);
-		const index = new CoreIndexService(memFs);
-		service = new CoreServeService(
-			configService,
-			memFs,
-			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
-			requests,
-			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
-			new MockEnvironmentService("/repo", undefined, false, "/home/me")
-		);
+		service = serviceAt("/repo");
 	});
 
 	afterEach(async () => {
@@ -221,6 +225,52 @@ describe("CoreServeService", () => {
 				"Lobby",
 				"shop",
 			]);
+		});
+
+		describe("with places", () => {
+			beforeEach(async () => {
+				await memFs.writeFile(
+					"/repo/rogen.json",
+					config({ name: "Game", placePaths: ["places/*"] })
+				);
+				await memFs.writeFile(
+					"/repo/places/lobby/rogen.json",
+					JSON.stringify({ name: "Lobby" })
+				);
+				await memFs.createDirectory("/repo/places/arena");
+			});
+
+			it("should serve each place on a port from 34872 by path, and never the config that lists them", async () => {
+				const servePlan = await plan();
+
+				expect(served(servePlan)).toEqual([
+					["arena", "127.0.0.1:34872"],
+					["Lobby", "127.0.0.1:34873"],
+				]);
+			});
+
+			it("should serve only the place it is run in", async () => {
+				service = serviceAt("/repo/places/lobby");
+
+				const servePlan = await plan();
+
+				expect(served(servePlan)).toEqual([
+					["Lobby", "127.0.0.1:34873"],
+				]);
+			});
+
+			it("should name the place's own rogen.json in a taken port's error", async () => {
+				requests.answer(
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("Other")
+				);
+
+				const error = (await errorOf()) as DiagnosticsError;
+
+				expect(error.diagnostics[0].message).toContain(
+					"Give arena its own servePort in places/arena/rogen.json"
+				);
+			});
 		});
 
 		it("should serve only the named configs", async () => {

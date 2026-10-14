@@ -50,11 +50,12 @@ export class CoreConfigService implements ConfigService {
 			projects,
 			folders,
 			homeConfig,
+			scopes,
 		} = discovered.value;
 		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, this.loader))
 		);
-		const missing = this.missingProject(opened, projects);
+		const missing = this.missingProject(opened, projects, scopes);
 		if (missing) return err(missing);
 		const home = opened.find(({ file }) => file === homeConfig);
 		return ok(
@@ -66,7 +67,8 @@ export class CoreConfigService implements ConfigService {
 					? { directory, list: () => this.configsIn(directory) }
 					: undefined,
 				projects,
-				await this.tiesOf(homeConfig, home, folders)
+				await this.tiesOf(homeConfig, home, folders),
+				scopes
 			)
 		);
 	}
@@ -81,13 +83,19 @@ export class CoreConfigService implements ConfigService {
 	/** An error when a config that loads doesn't have a project named for it. */
 	private missingProject(
 		opened: readonly ManagedConfig[],
-		projects: ReadonlyMap<string, string>
+		projects: ReadonlyMap<string, string>,
+		scopes: ReadonlyMap<string, readonly string[]>
 	): UsageError | undefined {
 		for (const config of opened) {
 			const project = projects.get(config.file);
-			const stems = buildableProjects(config.entry).map(
-				({ stem }) => stem
-			);
+			const stems = [
+				...new Set(
+					buildableProjects({
+						...config.entry,
+						scope: scopes.get(config.file),
+					}).map(({ stem }) => stem)
+				),
+			];
 			if (project === undefined || stems.length === 0) continue;
 			if (!stems.includes(project))
 				return new UsageError(

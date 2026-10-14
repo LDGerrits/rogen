@@ -524,4 +524,107 @@ describe("list command", () => {
 			]);
 		});
 	});
+	describe("places", () => {
+		beforeEach(async () => {
+			await write("rogen.json", {
+				name: "Game",
+				placePaths: ["places/*"],
+				routes: {
+					Server: "ServerScriptService",
+					"*": "ReplicatedStorage",
+				},
+			});
+			await write("places/lobby/rogen.json", { name: "Lobby" });
+			await fs.createDirectory("/repo/places/arena");
+		});
+
+		it("should list the config, then each place with its folder and port", async () => {
+			const result = await run();
+
+			expect(result.isOk()).toBe(true);
+			expect(steps()).toEqual([
+				"rogen.json",
+				"places/arena (place)",
+				"places/lobby (place)",
+			]);
+			expect(under("rogen.json")).toEqual([
+				[
+					"source paths: src",
+					"routes:\n  Server -> ServerScriptService\n  * -> ReplicatedStorage",
+					"sync path: (none)",
+					"places: arena, Lobby",
+					"project file: default.project.json",
+				].join("\n"),
+			]);
+			expect(under("places/arena (place)")).toEqual([
+				[
+					"source paths: src, places/arena/src",
+					"routes: same as Game",
+					"sync path: (none)",
+					"project file: places/arena/default.project.json (port 34872)",
+				].join("\n"),
+			]);
+			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");
+		});
+
+		it("should say the config is not served when it has projects", async () => {
+			await write("rogen.json", {
+				placePaths: ["places/*"],
+				routes: { "*": "ReplicatedStorage" },
+				projects: { dist: {} },
+			});
+
+			await run();
+
+			expect(under("rogen.json")[0]).toContain(
+				"projects:\n  default: default.project.json\n  dist: dist.project.json"
+			);
+			expect(under("places/arena (place)")[0]).toContain(
+				"default: places/arena/default.project.json (served, port 34872)"
+			);
+		});
+
+		it("should close with the configs and the places", async () => {
+			await run();
+
+			expect(logService.texts("outro")).toEqual([
+				"1 config and 2 places.",
+			]);
+		});
+
+		it("should list each place with its port with --json", async () => {
+			await run({ json: true });
+
+			const { configs } = JSON.parse(logService.texts("print")[0]) as {
+				configs: {
+					served: boolean;
+					projects: { served: boolean }[];
+					places: {
+						place: string;
+						folder: string;
+						projects: {
+							name: string;
+							served: boolean;
+							port: number;
+						}[];
+					}[];
+				}[];
+			};
+			expect(configs[0].served).toBe(false);
+			expect(configs[0].projects.map(({ served }) => served)).toEqual([
+				false,
+			]);
+			expect(
+				configs[0].places.map(({ place, folder, projects }) => [
+					place,
+					folder,
+					projects[0].served,
+					projects[0].port,
+				])
+			).toEqual([
+				["arena", "/repo/places/arena", true, 34872],
+				["Lobby", "/repo/places/lobby", true, 34873],
+			]);
+		});
+	});
 });

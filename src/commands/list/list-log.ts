@@ -1,10 +1,11 @@
 import { relativeTo, toNative } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
+import { joinedWithAnd, plural } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import {
 	ResolvedConfig,
+	ResolvedConfigFile,
 	configLabel,
-	projectsOf,
+	placesIn,
 } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
@@ -41,6 +42,8 @@ export interface ListedProject {
 	readonly file: string;
 	/** Whether `rogen serve` serves it when no project is named. */
 	readonly served: boolean;
+	/** The port a place's project is served on; absent for anything that is not a place. */
+	readonly port?: number;
 	readonly serving: ListedServing | null;
 }
 
@@ -66,6 +69,13 @@ export interface ConfigDetails {
 	readonly projects: readonly ListedProject[];
 }
 
+/** What `--json` lists of a place of a config. */
+export interface ListedPlace extends ConfigDetails {
+	readonly place: string;
+	/** The place's folder. */
+	readonly folder: string;
+}
+
 /** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
 export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly config: string;
@@ -73,6 +83,8 @@ export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly status: ConfigEntry["status"];
 	/** Whether `rogen serve` starts a server for it: it loads. */
 	readonly served: boolean;
+	/** The places it lists, when it lists any. */
+	readonly places?: readonly ListedPlace[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
@@ -102,7 +114,7 @@ export class ListLog {
 		);
 	}
 
-	/** The intro, one block per config (its file, then its values or its errors), and the closing line when every config loads. `home` is the folder the configs are read from. */
+	/** The intro, one block per config (its file, then its values or its errors) and one per place, and the closing line when every config loads. `home` is the folder the configs are read from. */
 	print(
 		entries: readonly ConfigEntry[],
 		home?: string,
@@ -110,63 +122,113 @@ export class ListLog {
 	): void {
 		const { logService } = this;
 		new BuildLog(logService, this.cwd).begin("list", [], home);
-		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
+		let configs = 0;
+		let places = 0;
 		for (const entry of entries) {
 			if (entry.status === "broken") {
-				logService.section(relative(entry.file));
+				logService.section(relativeTo(this.cwd, entry.file));
 				for (const error of entry.errors) logService.diagnostic(error);
 				continue;
 			}
-			const { config } = entry;
-			const label = config.label;
-			const projects = projectsOf(entry);
-			const routes = routeLines(config);
-			const sameAs = printed.find(
-				(other) =>
-					other.routes.length === routes.length &&
-					other.routes.every((line, index) => line === routes[index])
-			);
-			printed.push({ label, routes });
-			logService.section(
-				relative(entry.file),
-				[
-					`source paths: ${listed(config.sourcePaths.map(relative))}`,
-					sameAs
-						? `routes: same as ${sameAs.label}`
-						: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
-					`sync path: ${listed(config.syncPath ? [relative(config.syncPath)] : [])}`,
-					...(entry.projects.length === 0
-						? [
-								`project file: ${relative(config.projectFile)}`,
-								...(serving.get(config.projectFile)
-									? [
-											`serving: ${servingLine(serving.get(config.projectFile)!)}`,
-										]
-									: []),
-							]
-						: [
-								`projects:${projects
-									.map(
-										(project) =>
-											`\n  ${project.stem}: ${relative(project.projectFile)}${
-												project.stem ===
-												project.serveProject
-													? " (served)"
-													: ""
-											}${
-												serving.get(project.projectFile)
-													? `, serving: ${servingLine(serving.get(project.projectFile)!)}`
-													: ""
-											}`
-									)
-									.join("")}`,
-							]),
-				].join("\n")
-			);
+			if (entry.scope === undefined) {
+				configs++;
+				this.printConfig(
+					relativeTo(this.cwd, entry.file),
+					entry,
+					entry.config.hasPlaces
+						? placesIn(entry).map(({ config }) => config.label)
+						: [],
+					printed,
+					serving
+				);
+			}
+			for (const place of placesIn(entry, entry.scope)) {
+				places++;
+				this.printConfig(
+					`${relativeTo(this.cwd, place.config.projectDir)} (place)`,
+					place,
+					[],
+					printed,
+					serving
+				);
+			}
 		}
 		if (ListLog.failure(entries) === undefined)
-			logService.outro(`${plural(entries.length, "config")}.`);
+			logService.outro(
+				`${joinedWithAnd([
+					...(configs > 0 || places === 0
+						? [plural(configs, "config")]
+						: []),
+					...(places > 0 ? [plural(places, "place")] : []),
+				])}.`
+			);
+	}
+
+	private printConfig(
+		title: string,
+		resolved: ResolvedConfigFile,
+		placeNames: readonly string[],
+		printed: { label: string; routes: readonly string[] }[],
+		serving: ServingByConfig
+	): void {
+		const relative = (file: string) => relativeTo(this.cwd, file);
+		const { config } = resolved;
+		const projects = [config, ...resolved.projects];
+		const routes = routeLines(config);
+		const sameAs = printed.find(
+			(other) =>
+				other.routes.length === routes.length &&
+				other.routes.every((line, index) => line === routes[index])
+		);
+		printed.push({ label: config.label, routes });
+		const notes = (project: ResolvedConfig, among: boolean): string => {
+			const parts = [
+				...(among &&
+				project.stem === project.serveProject &&
+				!project.hasPlaces
+					? ["served"]
+					: []),
+				...(project.placeServePort !== undefined
+					? [`port ${project.placeServePort}`]
+					: []),
+			];
+			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
+		};
+		const running = (project: ResolvedConfig): string => {
+			const now = serving.get(project.projectFile);
+			return now ? `serving: ${servingLine(now)}` : "";
+		};
+		this.logService.section(
+			title,
+			[
+				`source paths: ${listed(config.sourcePaths.map(relative))}`,
+				sameAs
+					? `routes: same as ${sameAs.label}`
+					: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
+				`sync path: ${listed(config.syncPath ? [relative(config.syncPath)] : [])}`,
+				...(placeNames.length > 0
+					? [`places: ${placeNames.join(", ")}`]
+					: []),
+				...(resolved.projects.length === 0
+					? [
+							`project file: ${relative(config.projectFile)}${notes(config, false)}`,
+							...(running(config) ? [running(config)] : []),
+						]
+					: [
+							`projects:${projects
+								.map(
+									(project) =>
+										`\n  ${project.stem}: ${relative(project.projectFile)}${notes(project, true)}${
+											running(project)
+												? `, ${running(project)}`
+												: ""
+										}`
+								)
+								.join("")}`,
+						]),
+			].join("\n")
+		);
 	}
 
 	json(
@@ -181,9 +243,26 @@ export class ListLog {
 						: configLabel(entry.file),
 				file: toNative(entry.file),
 				status: entry.status,
-				served: entry.status === "valid",
-				...(entry.status === "valid"
-					? configDetails(projectsOf(entry), serving)
+				served:
+					entry.status === "valid" &&
+					(entry.scope !== undefined || !entry.config.hasPlaces),
+				...(entry.status === "valid" && entry.scope === undefined
+					? configDetails([entry.config, ...entry.projects], serving)
+					: {}),
+				...(entry.status === "valid" &&
+				placesIn(entry, entry.scope).length > 0
+					? {
+							places: placesIn(entry, entry.scope).map(
+								(place) => ({
+									place: place.config.label,
+									folder: toNative(place.config.projectDir),
+									...configDetails(
+										[place.config, ...place.projects],
+										serving
+									),
+								})
+							),
+						}
 					: {}),
 				diagnostics:
 					entry.status === "broken"
@@ -223,7 +302,10 @@ function configDetails(
 		projects: projects.map((project) => ({
 			name: project.stem,
 			file: toNative(project.projectFile),
-			served: project.stem === project.serveProject,
+			served: project.stem === project.serveProject && !project.hasPlaces,
+			...(project.placeServePort !== undefined
+				? { port: project.placeServePort }
+				: {}),
 			serving: servingJson(serving.get(project.projectFile)),
 		})),
 	};
