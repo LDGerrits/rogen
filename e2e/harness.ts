@@ -239,6 +239,16 @@ async function run(
 	}
 }
 
+/** The one JSON document of a `rogen --json` step, indented so a transcript stays readable. */
+function readable(body: string, command: readonly string[]): string {
+	if (command[0] !== "rogen" || !command.includes("--json")) return body;
+	try {
+		return JSON.stringify(JSON.parse(body), null, 2);
+	} catch {
+		return body;
+	}
+}
+
 export function formatStep(
 	command: readonly string[],
 	result: RunResult,
@@ -249,7 +259,9 @@ export function formatStep(
 		["stdout", result.stdout],
 		["stderr", result.stderr],
 	] as const) {
-		const body = stripVTControlCharacters(text).trimEnd();
+		const stripped = stripVTControlCharacters(text).trimEnd();
+		const body =
+			label === "stdout" ? readable(stripped, command) : stripped;
 		if (!body) continue;
 		if (label === "stdout" && !showStdout)
 			lines.push("stdout: (not shown)");
@@ -394,7 +406,10 @@ export class RunningRogen {
 		cwd: string = dir,
 		command = "build --watch"
 	) {
-		const [file, commandArgs] = invocation(cli, [...command.split(" "), ...args]);
+		const [file, commandArgs] = invocation(cli, [
+			...command.split(" "),
+			...args,
+		]);
 		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],

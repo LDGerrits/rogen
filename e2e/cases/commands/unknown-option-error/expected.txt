@@ -36,7 +36,9 @@ stderr:
 $ rogen build --nope --json
 exit 2
 stdout:
-  {"error":"Unknown option '--nope'. Run 'rogen help build' to see what build accepts."}
+  {
+    "error": "Unknown option '--nope'. Run 'rogen help build' to see what build accepts."
+  }
 
 $ rogen --nope
 exit 2

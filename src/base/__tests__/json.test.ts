@@ -39,9 +39,9 @@ describe("safeStringify", () => {
 });
 
 describe("formatJsonDocument", () => {
-	it("should indent with two spaces and end without a newline", () => {
-		expect(formatJsonDocument({ a: [1] })).toBe(
-			'{\n  "a": [\n    1\n  ]\n}'
+	it("should print one line without whitespace between tokens", () => {
+		expect(formatJsonDocument({ a: [1, { b: "x y" }] })).toBe(
+			'{"a":[1,{"b":"x y"}]}'
 		);
 	});
 });

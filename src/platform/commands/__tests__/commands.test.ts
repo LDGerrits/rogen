@@ -287,7 +287,7 @@ describe("AbstractCommand", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.entries.map(({ text }) => text)).toEqual([
-				'{\n  "done": true\n}',
+				'{"done":true}',
 			]);
 		});
 

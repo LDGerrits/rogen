@@ -22,4 +22,6 @@ stdout:
 $ rogen doc nope --json
 exit 2
 stdout:
-  {"error":"Unknown topic \"nope\". The topics are routing, config, layout, output."}
+  {
+    "error": "Unknown topic \"nope\". The topics are routing, config, layout, output."
+  }
