@@ -200,10 +200,14 @@ export class PlaceInit {
 				: await this.questions.placeListing(`${parent}/*`, relative);
 		if (entry === undefined) return ok("cancelled");
 		const placePaths = [...globs, entry];
-		if (rootFile.endsWith("c"))
+		if (
+			!PlaceInit.isStrictJson(
+				await this.fileSystemService.readFile(rootFile)
+			)
+		)
 			return err(
 				new UsageError(
-					`${this.named(rootFile)} may hold comments, which Rogen would lose by rewriting it. Add ${JSON.stringify(placePaths)} as "placePaths" there yourself: "placePaths": ${JSON.stringify(placePaths)}.`
+					`${this.named(rootFile)} holds comments or a trailing comma, which Rogen would lose by rewriting it. Add this key to it yourself: "placePaths": ${JSON.stringify(placePaths)}.`
 				)
 			);
 		return ok({
@@ -240,6 +244,15 @@ export class PlaceInit {
 				};
 			})
 		);
+	}
+
+	private static isStrictJson(text: string): boolean {
+		try {
+			JSON.parse(text);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	private async rawConfig(file: string): Promise<Record<string, unknown>> {
@@ -291,22 +304,19 @@ export class PlaceInit {
 		};
 	}
 
-	/** The port the place is served on: the first free one among the places, counted by path, with the others as they are. */
+	/** The port the place is served on: the first one no place pins and none of the places that pin no port is served on, so no place moves to make room. */
 	private portOf(folder: string, known: readonly KnownPlace[]): number {
-		const places = [
-			...known.filter(
-				({ directory }) => toPosix(directory) !== toPosix(folder)
-			),
-			{ directory: folder, pinned: undefined },
-		].sort((a, b) =>
-			compareStrings(toPosix(a.directory), toPosix(b.directory))
-		);
-		const ports = PlacePorts.assign(places.map(({ pinned }) => pinned));
-		return ports[
-			places.findIndex(
-				({ directory }) => toPosix(directory) === toPosix(folder)
-			)
-		] as number;
+		const others = known
+			.filter(({ directory }) => toPosix(directory) !== toPosix(folder))
+			.sort((a, b) =>
+				compareStrings(toPosix(a.directory), toPosix(b.directory))
+			);
+		const pinned = others.map(({ pinned }) => pinned);
+		const taken = new Set([
+			...pinned.filter((port) => port !== undefined),
+			...PlacePorts.assign(pinned).filter((port) => port !== undefined),
+		]);
+		return PlacePorts.firstFree(taken);
 	}
 
 	/** The workspace file that lists the config's folder and every place, unless one is there already, and then what to add to it. */

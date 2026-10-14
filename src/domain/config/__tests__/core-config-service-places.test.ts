@@ -427,6 +427,19 @@ describe("CoreConfigService places", () => {
 			]);
 		});
 
+		it("should skip a port that a project of another place pins", async () => {
+			const found = await resolve(ROOT, {
+				arena: { projects: { test: { servePort: 34872 } } },
+				lobby: null,
+			});
+
+			expect(portsOf(found).filter(([, port]) => port)).toEqual([
+				["arena", 34873],
+				["arena", 34873],
+				["lobby", 34874],
+			]);
+		});
+
 		it("should give the root none", async () => {
 			const [root] = await resolve();
 
@@ -463,6 +476,19 @@ describe("CoreConfigService places", () => {
 		it("should refuse a place inside a source path of the root", async () => {
 			await resolve({ ...ROOT, placePaths: ["src/places/*"] }, {});
 			await fs.createDirectory("/repo/src/places/lobby");
+			await start();
+
+			expect(errors().map(({ code }) => code)).toEqual([
+				"config.placeInSourcePath",
+			]);
+		});
+
+		it("should refuse a source path inside a place", async () => {
+			await resolve(
+				{ ...ROOT, placePaths: ["*"], sourcePaths: ["app/src"] },
+				{}
+			);
+			await fs.createDirectory("/repo/app/src");
 			await start();
 
 			expect(errors().map(({ code }) => code)).toEqual([

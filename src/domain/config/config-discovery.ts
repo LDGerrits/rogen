@@ -118,7 +118,8 @@ export class ConfigDiscovery {
 			const found = await this.configOf(
 				path.resolve(cwd, ref),
 				ref,
-				homeConfig
+				homeConfig,
+				around?.place
 			);
 			if (found.isErr()) return err(found.error);
 			resolved.push(found.value);
@@ -215,8 +216,15 @@ export class ConfigDiscovery {
 	private async configOf(
 		target: string,
 		ref: string,
-		homeConfig: string | undefined
+		homeConfig: string | undefined,
+		/** The place the working directory is in, which a project named by its bare name applies to. */
+		homePlace: string | undefined
 	): Promise<Result<NamedConfig, Error>> {
+		const inHome = (project: string): NamedConfig => ({
+			file: homeConfig as string,
+			project,
+			...(homePlace !== undefined && { place: homePlace }),
+		});
 		const base = path.basename(target);
 		if (await this.fileSystemService.isDirectory(target)) {
 			const config = await this.configIn(target, `"${ref}"`);
@@ -226,9 +234,7 @@ export class ConfigDiscovery {
 				(await this.fileSystemService.exists(
 					path.join(target, DEFAULT_PROJECT_FILE)
 				));
-			const listing = countsAsFolder
-				? await this.places.rootOf(target)
-				: undefined;
+			const listing = await this.places.rootOf(target);
 			if (listing)
 				return ok({
 					file: listing,
@@ -237,7 +243,7 @@ export class ConfigDiscovery {
 				});
 			if (config.isErr())
 				return isBareName(ref) && homeConfig && !countsAsFolder
-					? ok({ file: homeConfig, project: ref })
+					? ok(inHome(ref))
 					: err(config.error);
 			return ok({
 				file: config.value,
@@ -256,8 +262,7 @@ export class ConfigDiscovery {
 			return ok({ file: config.value, ...project });
 		}
 		if (!(await this.fileSystemService.exists(target))) {
-			if (isBareName(ref) && homeConfig)
-				return ok({ file: homeConfig, project: ref });
+			if (isBareName(ref) && homeConfig) return ok(inHome(ref));
 			return err(
 				new UsageError(
 					`"${ref}" not found: name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`

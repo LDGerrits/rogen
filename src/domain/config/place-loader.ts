@@ -86,9 +86,12 @@ export class PlaceLoader {
 				resolved: err(uniqueDiagnostics(problems)),
 			};
 
+		const portOf = (source: ProjectSource) =>
+			PlacePorts.pinnedBy(source.model.getValue("servePort"));
 		const ports = PlacePorts.assign(
-			read.map(({ sources }) =>
-				PlacePorts.pinnedBy(sources[0].model.getValue("servePort"))
+			read.map(({ sources }) => portOf(sources[0])),
+			read.flatMap(({ sources }) =>
+				sources.flatMap((source) => portOf(source) ?? [])
 			)
 		);
 		const places = read.map(

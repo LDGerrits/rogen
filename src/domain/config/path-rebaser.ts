@@ -12,6 +12,8 @@ export class PathRebaser {
 
 	/** `glob` as it matches the same files from the folder `to`. */
 	static glob(glob: string, from: string, to: string): string {
+		if (path.posix.isAbsolute(glob) || path.win32.isAbsolute(glob))
+			return glob;
 		const prefix = toPosix(path.relative(to, from));
 		return prefix === "" ? glob : path.posix.join(prefix, glob);
 	}

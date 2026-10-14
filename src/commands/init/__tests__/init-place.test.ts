@@ -106,6 +106,14 @@ describe("init for a place", () => {
 		);
 	});
 
+	it("should give a place that sorts first a port that moves none of the places that pin none", async () => {
+		await memFs.createDirectory(path.join(root, "places/arena"));
+
+		await run(["places/aaa"]);
+
+		expect((await readJson("places/aaa/rogen.json")).servePort).toBe(34873);
+	});
+
 	it("should add the parent folder as a glob to placePaths, without asking, when nothing is a place yet", async () => {
 		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
 
@@ -304,6 +312,20 @@ describe("init for a place", () => {
 			);
 			expect(await read("rogen.jsonc")).toContain("// routes");
 			expect(await exists("places/lobby/rogen.json")).toBe(false);
+		});
+
+		it("should not rewrite a rogen.json that holds comments either", async () => {
+			await write(
+				"rogen.json",
+				'{ // routes\n "routes": { "*": "ReplicatedStorage" } }'
+			);
+
+			const result = await run(["places/lobby"]);
+
+			expect(failure(result).message).toContain(
+				'"placePaths": ["places/*"]'
+			);
+			expect(await read("rogen.json")).toContain("// routes");
 		});
 
 		it("should take one folder only", async () => {

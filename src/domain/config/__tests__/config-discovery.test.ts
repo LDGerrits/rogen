@@ -509,6 +509,29 @@ describe("ConfigDiscovery.findEnclosing", () => {
 			expect(errorOf(result).message).toMatch(/projects of one config/);
 		});
 
+		it("should take the bare name of a listed place that has no config for the place", async () => {
+			const found = (
+				await from("/repo/places").discover(["lobby"])
+			).unwrap();
+
+			expect(found).toMatchObject({
+				files: ["/repo/rogen.json"],
+				folders: ["lobby"],
+				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
+			});
+			expect(found.projects.size).toBe(0);
+		});
+
+		it("should scope a project named from inside a place to that place", async () => {
+			const found = (
+				await from("/repo/places/lobby").discover(["release"])
+			).unwrap();
+
+			expect(found.scopes).toEqual(
+				new Map([["/repo/rogen.json", ["/repo/places/lobby"]]])
+			);
+		});
+
 		it("should read a bare name from inside a place as a project of the listing config", async () => {
 			const found = (
 				await from("/repo/places/lobby").discover(["release"])

@@ -224,17 +224,22 @@ export class ConfigValidator {
 		});
 	}
 
-	/** A place inside a source path would be read as source by the config that lists it, and mounted by its own. */
+	/** A place inside a source path would be read as source by the config that lists it, and a source path inside a place would be read by the place too. */
 	private checkPlaces(): void {
 		for (const placeDir of this.context.placeDirs ?? []) {
-			const sourcePath = this.sourcePaths.find((dir) =>
+			const around = this.sourcePaths.find((dir) =>
 				contains(dir, placeDir)
 			);
-			if (sourcePath === undefined) continue;
+			const inside = this.sourcePaths.find((dir) =>
+				contains(placeDir, dir)
+			);
+			if (around === undefined && inside === undefined) continue;
 			this.problems.error(
 				"config.placeInSourcePath",
 				this.locateKey("placePaths"),
-				`the place ${placeDir} is inside the source path ${sourcePath}, so its files would belong to both. Move the place out of the source path, or the source path out of the place.`
+				around !== undefined
+					? `the place ${placeDir} is inside the source path ${around}, so its files would belong to both. Move the place out of the source path, or the source path out of the place.`
+					: `the source path ${inside} is inside the place ${placeDir}, so the place would read it as its own code too. Move the source path out of the place, or the place out of the way.`
 			);
 		}
 	}
