@@ -48,10 +48,15 @@ export class CoreConfigService implements ConfigService {
 				this.loader,
 				directory,
 				everyConfig
-					? { directory, list: () => this.discovery.list(directory) }
+					? { directory, list: () => this.configsIn(directory) }
 					: undefined
 			)
 		);
+	}
+
+	/** The config of `directory` a followed folder holds: the first when both names appear, since it takes a restart to refuse that. */
+	private async configsIn(directory: string): Promise<string[]> {
+		return (await this.discovery.list(directory)).slice(0, 1);
 	}
 
 	findEnclosing(): Promise<EnclosingConfigs | undefined> {

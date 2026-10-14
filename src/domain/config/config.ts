@@ -60,10 +60,10 @@ export const isConfigFileName = (fileName: string): boolean =>
 export const configLabel = (file: string): string =>
 	path.basename(path.dirname(file));
 
-/** The project file a folder's config writes beside itself. */
 /** The folder Rogen scans when a config declares routes and no source paths. */
 export const DEFAULT_SOURCE_PATH = "src";
 
+/** The project file a folder's config writes beside itself. */
 export const DEFAULT_PROJECT_FILE = "default.project.json";
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
@@ -83,10 +83,6 @@ export function schemaUrlFor(version: string): string {
 
 /** The schema a project file written by this release points at. */
 export const PROJECT_SCHEMA_URL = SCHEMA_URL.replace(/[^/]+$/, "project.json");
-
-export function projectSchemaUrlFor(version: string): string {
-	return schemaUrlFor(version).replace(/[^/]+$/, "project.json");
-}
 
 /** A config file's text as Rogen writes one: strict JSON that points at this release's schema. */
 export function configFileContent(config: RogenConfig): string {

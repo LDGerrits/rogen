@@ -192,7 +192,7 @@ describe("domain/config/config-schema", () => {
 			).toContain('"globIgnorePaths"');
 			expect(
 				configRemovedFieldAdvice("exclude", location)?.message
-			).toContain("null in a project");
+			).toContain("remove it from the tree");
 		});
 
 		it("leaves any other field to the unknown field warning", () => {

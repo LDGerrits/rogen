@@ -8,7 +8,6 @@ import {
 	configLabel,
 	fieldOf,
 	isConfigFileName,
-	projectSchemaUrlFor,
 	sourcePathOverlap,
 	schemaUrlFor,
 } from "../config.js";
@@ -112,7 +111,9 @@ describe("domain/config/config", () => {
 			const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
 				version: string;
 			};
-			expect(PROJECT_SCHEMA_URL).toBe(projectSchemaUrlFor(pkg.version));
+			expect(PROJECT_SCHEMA_URL).toBe(
+				schemaUrlFor(pkg.version).replace("rogen.json", "project.json")
+			);
 			expect(PROJECT_SCHEMA_URL).toBe(
 				"https://ldgerrits.github.io/rogen/schema/2/project.json"
 			);

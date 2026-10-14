@@ -166,21 +166,20 @@ export const projectFileSchema: JSONSchema = {
 
 /** What replaces each field a config no longer has. */
 const removedFields: Readonly<Record<string, string>> = {
-	modes: 'Put what a mode set in a project ("projects"), which can set "globIgnorePaths".',
-	mode: "Modes are gone with \"modes\". Build the project that holds the settings by name, as 'rogen build <project>'.",
-	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it.",
+	modes: 'Put what a mode set in a rogen.json in a folder of its own, which can set "globIgnorePaths".',
+	mode: "Modes are gone with \"modes\". Build the folder that holds the settings, as 'rogen build <folder>'.",
+	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
-		'A file that replaces another goes in a later source path, which wins a clash, and a project ("projects") lists that source path.',
+		"A file that replaces another goes in a later source path, which wins a clash.",
 	conflicts:
-		'Variants are gone, and so are their conflict groups. Sets that exclude each other are one project ("projects") each, listing their own source path.',
+		"Variants are gone, and so are their conflict groups. Sets that exclude each other are one rogen.json each, in a folder of its own, listing its own source path.",
 	extends:
-		'A rogen.json describes one folder. A second output is a project ("projects"), and a game with several places has a folder for each ("placePaths").',
+		"A rogen.json describes one folder. A second output is a rogen.json in another folder, which lists its own source paths.",
 	template:
 		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
-	outFile:
-		'Rogen writes default.project.json beside rogen.json, and a project ("projects") writes <name>.project.json beside it.',
+	outFile: "Rogen writes default.project.json beside rogen.json.",
 	exclude:
-		'"globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project ("projects").',
+		'"globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, remove it from the tree.',
 	rootDirs: 'It is called "sourcePaths" now.',
 	syncDir: 'It is called "syncPath" now.',
 };

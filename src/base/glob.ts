@@ -50,7 +50,11 @@ function globsetSource(glob: string): string {
 			if (run >= 2 && atStart && glob[end + 1] === "/") {
 				source += "(?:.*/)?";
 				end++;
-			} else if (run >= 2 && index > 0 && end === glob.length - 1) {
+			} else if (
+				run >= 2 &&
+				glob[index - 1] === "/" &&
+				end === glob.length - 1
+			) {
 				source = `${source.slice(0, -1)}(?:/.*)?`;
 			} else source += ".*";
 			index = end;

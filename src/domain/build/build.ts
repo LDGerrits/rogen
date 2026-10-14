@@ -213,7 +213,7 @@ export class SharedDiagnostics {
 		return new SharedDiagnostics(false);
 	}
 
-	/** Configs that read one folder find the same warnings, each filed under its own config. */
+	/** Configs that read the same source paths find the same warnings, each filed under its own config. */
 	static warnings(): SharedDiagnostics {
 		return new SharedDiagnostics(true);
 	}

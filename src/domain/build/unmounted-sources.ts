@@ -9,9 +9,10 @@ import {
 import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { rojoPathTarget } from "../rojo/rojo-project.js";
 
-/** A config without routes routes nothing and scans no source path, so files in the folder it would have scanned go unsynced unless its tree mounts them. */
+/** A config without routes routes nothing and scans no source path, so the files Rojo reads in the folder it would have scanned go unsynced unless its tree mounts them. */
 export class UnmountedSources {
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -28,6 +29,7 @@ export class UnmountedSources {
 			);
 		const loose = this.filesIn(defaultPath).filter(
 			(file) =>
+				new RojoFile(path.basename(file)).kind !== undefined &&
 				!mounts.some((mount) => contains(mount, file)) &&
 				!this.config.ignored.some((glob) => isMatch(file, glob))
 		);

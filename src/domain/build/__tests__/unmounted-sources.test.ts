@@ -142,6 +142,12 @@ describe("UnmountedSources", () => {
 		expect(await warningsOf()).toEqual([]);
 	});
 
+	it("should not count files Rojo doesn't read", async () => {
+		await write("src/README.md", "src/.gitkeep", "src/Types.d.ts");
+
+		expect(await warningsOf()).toEqual([]);
+	});
+
 	it("should not warn when the src folder holds no files", async () => {
 		await fs.createDirectory(abs("src/empty/deeper"));
 

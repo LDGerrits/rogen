@@ -87,6 +87,18 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it("should keep the config it has when a second config file appears beside it", async () => {
+			await start();
+
+			await write("/repo/rogen.jsonc", { routes: ROUTED });
+			const reload = await selection.reload(["/repo/rogen.jsonc"]);
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/rogen.json",
+			]);
+			expect(reload).toEqual({ changed: [], notices: [] });
+		});
+
 		it("should not look for new configs when the selection named its configs", async () => {
 			await write("/repo/lobby/rogen.json", {});
 			await start({ names: ["lobby"] });

@@ -65,9 +65,9 @@ Rename the key to the one suggested, or remove it. A config with v1 keys also ge
 Error. The config has a key that Rogen removed or renamed. The error is at the key, and the message says what to do instead.
 
 ```
-rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a project ("projects"), which can set "globIgnorePaths". (config.removedField)
-rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a project ("projects"), and a game with several places has a folder for each ("placePaths"). (config.removedField)
-rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project ("projects"). (config.removedField)
+rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a rogen.json in a folder of its own, which can set "globIgnorePaths". (config.removedField)
+rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a rogen.json in another folder, which lists its own source paths. (config.removedField)
+rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, remove it from the tree. (config.removedField)
 ```
 
 Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`. `extends` is gone: a `rogen.json` describes one folder. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
