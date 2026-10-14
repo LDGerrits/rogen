@@ -315,10 +315,13 @@ class ConfigLocator {
 		reference: InstanceReference
 	): Promise<string[]> {
 		const target = this.config.routes.get(key);
-		const names =
-			target && ConfigLocator.belowRoute(target.instancePath, reference);
-		if (!names) return [];
-		const { below, leaf } = names;
+		if (!target) return [];
+		const beneath = ConfigLocator.belowRoute(
+			target.instancePath,
+			reference
+		);
+		if (!beneath) return [];
+		const { below, leaf } = beneath;
 		const folders = new Set<string>();
 		for (const sourcePath of this.config.sourcePaths) {
 			const { dir, matched } = this.deepestExisting(sourcePath, below);

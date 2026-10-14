@@ -45,10 +45,6 @@ export class CoreWatchSession
 	private activeWatch = "";
 	private stopping: Promise<void> | undefined;
 
-	get configs(): readonly ResolvedConfig[] {
-		return this.buildSet.configs;
-	}
-
 	constructor(
 		private readonly selection: ReloadableSelection,
 		private buildSet: BuildSet,
@@ -59,6 +55,10 @@ export class CoreWatchSession
 		super();
 		this.batcher = this._register(new ChangeBatcher());
 		this.plan = new WatchPlan(this.selection.configs);
+	}
+
+	get configs(): readonly ResolvedConfig[] {
+		return this.buildSet.configs;
 	}
 
 	async start(): Promise<Result<void, Error>> {

@@ -47,7 +47,7 @@ interface PlacedEntry {
 	readonly rojoName: string | undefined;
 }
 
-const needsRojoIgnore = ([, why]: readonly [string, LeftOut]): boolean =>
+const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "replaced" &&
 	why.status !== "displaced" &&
 	why.status !== "mounted";
@@ -124,9 +124,9 @@ export class TreeAssembler {
 	): string[] {
 		return leftOut
 			.filter(
-				(left) =>
-					!mounts.some((mount) => contains(left[0], mount)) &&
-					needsRojoIgnore(left)
+				([source, why]) =>
+					!mounts.some((mount) => contains(source, mount)) &&
+					needsRojoIgnore(why)
 			)
 			.map(([source]) => source)
 			.sort(compareStrings);
