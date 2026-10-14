@@ -60,6 +60,12 @@ interface ClaimedFolder {
 	readonly dir: string;
 }
 
+/** Where a path's signal for a route stands: it took the route, repeats the one that governs, or lost to it. */
+type Standing = "governs" | "restates" | "outranked";
+
+const speaksForRoute = (standing: Standing, signed: boolean) =>
+	standing === "governs" || (signed && standing === "restates");
+
 class Claims {
 	route: { readonly key: string; readonly match: RouteMatch } | undefined;
 	readonly ignoredAts: IgnoredAt[] = [];
@@ -70,10 +76,35 @@ class Claims {
 		return this.route?.key ?? DeclaredKeys.FALLBACK_ROUTE;
 	}
 
-	claimRoute(key: string, match: RouteMatch): boolean {
-		if (this.route) return false;
+	claim(key: string, match: RouteMatch): Standing {
+		if (this.route) return this.standingOf(key);
 		this.route = { key, match };
-		return true;
+		return "governs";
+	}
+
+	/** A `@` signal: losing it is reported as an ignored `@` when `at` says where. */
+	signed(
+		key: string,
+		match: RouteMatch,
+		depth: number,
+		at?: IgnoredAt
+	): Standing {
+		const standing = this.claim(key, match);
+		this.recordSigned(standing, depth, at);
+		return standing;
+	}
+
+	/** A signal that carries no `@`: losing it outranks the folders it would have routed. */
+	unsigned(key: string, match: RouteMatch, depth: number): Standing {
+		const standing = this.claim(key, match);
+		if (standing === "outranked")
+			this.outrankedFolders.push({ key, depth });
+		return standing;
+	}
+
+	/** A `@` signal that cannot take the route itself, as a folder's inner routes cannot. */
+	outrankSigned(key: string, depth: number, at: IgnoredAt): void {
+		this.recordSigned(this.standingOf(key), depth, at);
 	}
 
 	get outrankedFolderRoutes(): string[] {
@@ -82,17 +113,14 @@ class Claims {
 			.map(({ key }) => key);
 	}
 
-	outrankSigned(key: string, depth: number, at?: IgnoredAt): boolean {
-		if (this.route?.key === key) {
-			this.restatedDepth = Math.max(this.restatedDepth, depth);
-			return true;
-		}
-		if (at) this.ignoredAts.push(at);
-		return false;
+	private standingOf(key: string): "restates" | "outranked" {
+		return this.route?.key === key ? "restates" : "outranked";
 	}
 
-	outrankBare(key: string, depth: number): void {
-		if (this.route?.key !== key) this.outrankedFolders.push({ key, depth });
+	private recordSigned(standing: Standing, depth: number, at?: IgnoredAt) {
+		if (standing === "restates")
+			this.restatedDepth = Math.max(this.restatedDepth, depth);
+		else if (standing === "outranked" && at) this.ignoredAts.push(at);
 	}
 }
 
@@ -297,18 +325,12 @@ export class Router {
 	): void {
 		const depth = depthOf(dir);
 		for (const { fileName, key } of dirs.markersAt(dir)) {
-			if (!claims.claimRoute(key, "marker"))
-				claims.outrankSigned(key, depth, {
-					key,
-					dir,
-					marker: fileName,
-				});
+			claims.signed(key, "marker", depth, { key, dir, marker: fileName });
 		}
 		for (const { key, source, at } of dirs.initRoutesAt(dir)) {
-			if (source === entry.source || claims.claimRoute(key, "init"))
-				continue;
-			if (at) claims.outrankSigned(key, depth);
-			else claims.outrankBare(key, depth);
+			if (source === entry.source) continue;
+			if (at) claims.signed(key, "init", depth);
+			else claims.unsigned(key, "init", depth);
 		}
 	}
 
@@ -316,13 +338,12 @@ export class Router {
 		if (folder.route === undefined) return true;
 		const { route, dir } = folder;
 		const depth = depthOf(dir);
-		let routes = claims.claimRoute(route, "folder");
-		if (!routes && folder.at)
-			routes = claims.outrankSigned(route, depth, { key: route, dir });
-		else if (!routes) claims.outrankBare(route, depth);
+		const standing = folder.at
+			? claims.signed(route, "folder", depth, { key: route, dir })
+			: claims.unsigned(route, "folder", depth);
 		for (const key of folder.innerRoutes)
 			claims.outrankSigned(key, depth, { key, dir });
-		return routes;
+		return speaksForRoute(standing, folder.at);
 	}
 
 	private claimLeaf(read: EntryReading, claims: Claims): LeafName {
@@ -330,11 +351,11 @@ export class Router {
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
 			const { key, start } = span;
-			const routes =
-				claims.claimRoute(key, "suffix") ||
-				(stem[start] === "@" &&
-					claims.outrankSigned(key, Infinity, { key }));
-			if (routes) routeSpan ??= span;
+			const signed = stem[start] === "@";
+			const standing = signed
+				? claims.signed(key, "suffix", Infinity, { key })
+				: claims.claim(key, "suffix");
+			if (speaksForRoute(standing, signed)) routeSpan ??= span;
 		}
 
 		const stripped = InstanceName.withoutSpans(
