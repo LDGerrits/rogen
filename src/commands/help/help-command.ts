@@ -19,20 +19,16 @@ registerCommand(
 				id: HELP_COMMAND,
 				metadata: {
 					description:
-						"Prints usage, a command's details, a topic, or what a diagnostic code means.",
+						"Prints usage, a command's details, or what a diagnostic code means.",
 					args: [
 						{
 							name: "name",
 							description:
-								"A command, a topic, or a diagnostic code such as route.strayAt.",
+								"A command, or a diagnostic code such as route.strayAt.",
 							isOptional: true,
 						},
 					],
-					examples: [
-						"rogen help where",
-						"rogen help routing",
-						"rogen help route.strayAt",
-					],
+					examples: ["rogen help where", "rogen help route.strayAt"],
 				},
 			});
 		}

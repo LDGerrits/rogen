@@ -72,7 +72,7 @@ export class ConfigFormatter {
 
 	private static isStrict(text: string): boolean {
 		try {
-			JSON.parse(text);
+			JSON.parse(text.replace(/^\uFEFF/, ""));
 			return true;
 		} catch {
 			return false;

@@ -55,17 +55,16 @@ stdout:
 $ rogen help --help
 exit 0
 stdout:
-  Prints usage, a command's details, a topic, or what a diagnostic code means.
+  Prints usage, a command's details, or what a diagnostic code means.
   
   Usage:
     rogen help [name] [options]
   
   Arguments:
-    name  A command, a topic, or a diagnostic code such as route.strayAt.
+    name  A command, or a diagnostic code such as route.strayAt.
   
   Examples:
     rogen help where
-    rogen help routing
     rogen help route.strayAt
   
   Global options:

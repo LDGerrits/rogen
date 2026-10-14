@@ -76,6 +76,23 @@ describe("fmt-project command", () => {
 		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
 	});
 
+	it("should format only the place it is given when the root doesn't load", async () => {
+		await harness.fs.createDirectory("/repo/places/lobby");
+		await harness.fs.writeFile(
+			"/repo/rogen.json",
+			'{ "placePaths": ["places/*"], "name": "Game", "routes": 5 }'
+		);
+		await harness.fs.writeFile(
+			"/repo/places/lobby/rogen.json",
+			JSON.stringify({ sourcePaths: ["src"], name: "Lobby" })
+		);
+
+		await fmt("places/lobby");
+
+		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
+		expect(print).not.toHaveBeenCalledWith("formatted rogen.json");
+	});
+
 	it("should refuse a rogen.jsonc and exit with the diagnostic", async () => {
 		await harness.fs.writeFile("/repo/rogen.jsonc", CONFIG);
 

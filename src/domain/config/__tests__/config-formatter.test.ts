@@ -94,6 +94,17 @@ describe("ConfigFormatter", () => {
 		expect(await fs.readFile("/repo/rogen.json")).toBe(text);
 	});
 
+	it("should format a file that starts with a byte order mark", async () => {
+		await fs.writeFile("/repo/rogen.json", `\uFEFF${TABBED}`);
+
+		const result = await format();
+
+		expect(result.unwrap()).toBe(true);
+		expect(JSON.parse(await fs.readFile("/repo/rogen.json")).name).toBe(
+			"Game"
+		);
+	});
+
 	it("should report a file that isn't JSON where it breaks", async () => {
 		await fs.writeFile("/repo/rogen.json", '{ "name": ');
 

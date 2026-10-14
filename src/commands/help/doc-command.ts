@@ -22,7 +22,7 @@ registerCommand(
 					args: [
 						{
 							name: "topic",
-							description: `One of ${DocTopics.NAMES.join(", ")}. The documentation is opened when none is given, and its URL printed when there is no terminal to open it from.`,
+							description: `One of ${DocTopics.NAMES.join(", ")}. Without one, the documentation's address is printed, and the documentation opened in a browser when there is a terminal.`,
 							isOptional: true,
 						},
 					],
@@ -46,11 +46,11 @@ registerCommand(
 			}
 
 			const environment = accessor.get(EnvironmentService);
+			logService.print(DOCS_URL);
 			if (environment.isInteractive)
 				await accessor
 					.get(BrowserService)
 					.open(DOCS_URL, environment.cwd);
-			logService.print(DOCS_URL);
 			return ok(undefined);
 		}
 	}

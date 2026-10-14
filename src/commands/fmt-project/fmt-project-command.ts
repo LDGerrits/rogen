@@ -1,3 +1,4 @@
+import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { relativeTo } from "../../base/path.js";
 import {
@@ -5,6 +6,7 @@ import {
 	ConfigEntry,
 	ConfigService,
 } from "../../domain/config/config-service.js";
+import { CONFIG_FILE_NAMES } from "../../domain/config/config.js";
 import { projectsOf } from "../../domain/config/resolved-config.js";
 import {
 	AbstractCommand,
@@ -42,13 +44,11 @@ registerCommand(
 			const fileSystemService = accessor.get(FileSystemService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await accessor
-				.get(ConfigService)
-				.select(line.positionals);
+			const configService = accessor.get(ConfigService);
+			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			const configService = accessor.get(ConfigService);
 			const failures = [];
 			for (const file of await this.filesOf(
 				selection.value.entries,
@@ -68,11 +68,19 @@ registerCommand(
 			fileSystemService: FileSystemService
 		): Promise<string[]> {
 			const files = new Set(
-				entries.flatMap((entry) =>
-					entry.status === "valid"
-						? projectsOf(entry, entry.scope).map(({ file }) => file)
-						: [entry.file]
-				)
+				entries.flatMap((entry) => {
+					if (entry.status === "valid")
+						return projectsOf(entry, entry.scope).map(
+							({ file }) => file
+						);
+					return entry.scope
+						? entry.scope.flatMap((folder) =>
+								CONFIG_FILE_NAMES.map((name) =>
+									path.join(folder, name)
+								)
+							)
+						: [entry.file];
+				})
 			);
 			const found = [];
 			for (const file of files)
