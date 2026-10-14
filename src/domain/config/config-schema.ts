@@ -5,7 +5,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
-import { DeclaredKeys } from "./config.js";
+import { DeclaredKeys } from "./declared-keys.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
 

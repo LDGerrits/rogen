@@ -4,7 +4,8 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DEFAULT_PROJECT, ResolvedConfig } from "../config/config.js";
+import { DEFAULT_PROJECT } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { containerClassName, instanceKey } from "../roblox/roblox.js";
 import {
 	RojoNode,
@@ -15,7 +16,7 @@ import {
 import { SyncLayout } from "./sync-layout.js";
 
 /** A path on disk that the tree mounts at `node`. */
-export interface TreeMount {
+interface TreeMount {
 	readonly path: string;
 	readonly node: readonly string[];
 }

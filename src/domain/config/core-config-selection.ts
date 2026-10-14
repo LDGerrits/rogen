@@ -7,7 +7,8 @@ import {
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ResolvedConfig, isConfigFileName } from "./config.js";
+import { ResolvedConfig } from "./resolved-config.js";
+import { isConfigFileName } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ManagedConfig } from "./managed-config.js";
 import {
@@ -22,7 +23,7 @@ const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 	entry.status === "broken" ? entry.errors : [];
 
 /** The folder a selection was picked from, and how to list the configs in it now. */
-export interface PickedFolder {
+interface PickedFolder {
 	readonly directory: string;
 	/** Absolute, sorted; none when the folder has no config or can't be read. */
 	list(): Promise<readonly string[]>;

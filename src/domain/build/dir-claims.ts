@@ -3,14 +3,14 @@ import { NameReadings } from "./name-readings.js";
 import { ScannedRoot } from "./root-scanner.js";
 
 /** The route an init script's suffix gives the folder it sits in, and whether it's spelled `@key`. */
-export interface InitRoute {
+interface InitRoute {
 	readonly key: string;
 	readonly source: string;
 	readonly at: boolean;
 }
 
 /** A marker file in a folder, with the route key it spells. */
-export interface FolderMarker {
+interface FolderMarker {
 	readonly fileName: string;
 	readonly key: string;
 }

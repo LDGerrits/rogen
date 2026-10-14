@@ -10,7 +10,8 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileReader, FileType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { SyncTool } from "./build.js";

@@ -23,7 +23,7 @@ export type ProjectTree =
 	  };
 
 /** What a new project's tree is made of. */
-export interface TreeInputs {
+interface TreeInputs {
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
 	/** The folders Rogen generates nodes for now, which a lift leaves out. */

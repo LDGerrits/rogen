@@ -9,7 +9,7 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
 	InstanceReference,
@@ -45,7 +45,7 @@ export interface PlacedLocation extends Located {
 	readonly named?: true;
 }
 
-export interface UnplacedLocation extends Located {
+interface UnplacedLocation extends Located {
 	/** `notInstance` exists but isn't an instance. */
 	readonly status: "outside" | "notInstance" | "missing" | "empty";
 	/** A `missing` path that is named as a folder, by ending in a separator. */
@@ -53,7 +53,7 @@ export interface UnplacedLocation extends Located {
 }
 
 /** The path can't be placed because the build of its config stops on an error; `by` is the first of them. */
-export interface BlockedLocation extends Located {
+interface BlockedLocation extends Located {
 	readonly status: "blocked";
 	readonly by: Diagnostic;
 	/** `by` is about the path itself, not about a file the build stops on instead. */

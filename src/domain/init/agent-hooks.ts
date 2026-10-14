@@ -10,7 +10,7 @@ export interface AgentInUse {
 }
 
 /** What `init` finds of the hook in a directory. */
-export interface AgentHooksParts {
+interface AgentHooksParts {
 	/** Whether the script is there already, which `init` never writes over. */
 	readonly scriptExists: boolean;
 	readonly inUse: readonly AgentInUse[];

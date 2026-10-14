@@ -6,7 +6,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { isWritten } from "../build/build.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { ProjectChoice } from "../config/project-choice.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";

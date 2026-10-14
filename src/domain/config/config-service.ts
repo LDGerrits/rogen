@@ -3,7 +3,11 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ResolvedConfig, ResolvedConfigFile, projectsOf } from "./config.js";
+import {
+	ResolvedConfig,
+	ResolvedConfigFile,
+	projectsOf,
+} from "./resolved-config.js";
 
 /** The positional words that name the configs a command reads. */
 export const ConfigArguments = [

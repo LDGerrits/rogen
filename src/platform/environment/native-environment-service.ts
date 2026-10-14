@@ -51,7 +51,7 @@ function userCacheDir(
 }
 
 /** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, the user's home and temporary folders, its id, and the platform it runs on. */
-export interface ProcessContext {
+interface ProcessContext {
 	readonly env: Variables;
 	readonly isTerminal: boolean;
 	readonly userHome: string;
@@ -70,7 +70,7 @@ const nativeProcess = (): ProcessContext => ({
 });
 
 /** The flags that say how a run prints; only `json` is read from a line that fails to parse. */
-export interface OutputFlags {
+interface OutputFlags {
 	readonly json?: boolean;
 	readonly verbose?: boolean;
 	readonly quiet?: boolean;

@@ -12,7 +12,7 @@ const ADOPTED_POLL_MS = 2_000;
 const REFUSED_POLLS_TO_STOP = 2;
 
 /** What happens to an adopted server, told to the session that adopted it. */
-export interface AdoptedServerListener {
+interface AdoptedServerListener {
 	/** It stopped answering for its project. */
 	stopped(stop: ServerExitEvent): void;
 	/** A step of its own failed unexpectedly. */

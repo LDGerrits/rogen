@@ -1,4 +1,5 @@
-import { DEFAULT_PROJECT, ResolvedConfig } from "./config.js";
+import { DEFAULT_PROJECT } from "./config.js";
+import { ResolvedConfig } from "./resolved-config.js";
 
 /** Which project of each config a command works on. */
 export class ProjectChoice {

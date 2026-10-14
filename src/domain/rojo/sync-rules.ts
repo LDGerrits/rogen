@@ -32,7 +32,7 @@ export interface SyncRule {
 }
 
 /** The rule that gets a file a rule matched, and the name it gives the instance. */
-export interface SyncRuleMatch {
+interface SyncRuleMatch {
 	readonly rule: SyncRule;
 	readonly name: string;
 }

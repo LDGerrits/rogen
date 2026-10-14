@@ -5,7 +5,7 @@ import { ServerInfo } from "../runner/sync-server.js";
 import { ServeAddress } from "./serve.js";
 
 /** What a serve records of the project file it serves. */
-export interface ServedBuild {
+interface ServedBuild {
 	readonly projectFile: string;
 	/** How many Studio plugins are connected; none when the server doesn't say. */
 	readonly clients?: number;

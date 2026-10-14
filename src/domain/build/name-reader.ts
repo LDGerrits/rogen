@@ -1,4 +1,4 @@
-import { DeclaredKeys } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 import { InstanceName, SuffixSpan } from "./instance-name.js";
 import { Misspelling, MisspellingFinder } from "./misspelling-finder.js";

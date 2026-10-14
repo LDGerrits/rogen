@@ -11,7 +11,7 @@ const CODES = {
 	gray: [90, 39],
 } as const;
 
-export type StyleName = keyof typeof CODES;
+type StyleName = keyof typeof CODES;
 
 /** `text` in `format`, whatever the stream: only a run that draws (a terminal, with colours allowed) calls this, and Rogen decides that by its own rules, which the checks of Node's `util.styleText` and of the colour libraries would second-guess. */
 export function style(

@@ -2,7 +2,7 @@ import { groupBy } from "../../base/collections.js";
 import { isInside, toPosix } from "../../base/path.js";
 import path from "path";
 import { FileType } from "../../platform/fs/file-system-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { BuildSummary, LeftOut } from "./build.js";
 import { BuildTree } from "./build-tree.js";
@@ -53,7 +53,7 @@ export interface DisplacedFile {
 }
 
 /** What a placement is made of, by name, since several parts share a type. */
-export interface PlacementParts {
+interface PlacementParts {
 	readonly config: ResolvedConfig;
 	readonly layout: SyncLayout;
 	readonly tree: BuildTree;
@@ -71,7 +71,7 @@ export interface PlacementParts {
 }
 
 /** A meta file the scan found. */
-export interface ScannedMetaFile {
+interface ScannedMetaFile {
 	readonly sourcePath: string;
 	/** Its path in the source path. */
 	readonly relativePath: string;

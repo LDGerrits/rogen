@@ -10,16 +10,16 @@ import { Result, err, ok } from "./result.js";
 
 const BYTE_ORDER_MARK = 0xfeff;
 
-export interface JsoncPosition {
+interface JsoncPosition {
 	readonly line: number;
 	readonly column: number;
 }
 
-export interface JsoncError extends JsoncPosition {
+interface JsoncError extends JsoncPosition {
 	readonly message: string;
 }
 
-export interface JsoncProperty extends JsoncPosition {
+interface JsoncProperty extends JsoncPosition {
 	readonly name: string;
 	readonly value: JsoncNode;
 }
@@ -34,7 +34,7 @@ export type JsoncNode = JsoncPosition &
 		| { readonly kind: "string" | "number" | "boolean" | "null" }
 	);
 
-export interface JsoncDocument {
+interface JsoncDocument {
 	readonly root: JsoncNode | undefined;
 	readonly value: unknown;
 	readonly errors: readonly JsoncError[];

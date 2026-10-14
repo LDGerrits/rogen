@@ -11,7 +11,7 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
 import {

@@ -7,7 +7,7 @@ export interface OptionalRojoPath {
 	readonly optional: string;
 }
 
-export type RojoPath = string | OptionalRojoPath;
+type RojoPath = string | OptionalRojoPath;
 
 function isRojoPath(value: unknown): value is RojoPath {
 	return (

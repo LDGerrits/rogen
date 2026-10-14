@@ -139,7 +139,7 @@ export interface LanguageDetector {
 	detect(cwd: string): Promise<Language>;
 }
 
-export interface DetectedWorkspaceFields {
+interface DetectedWorkspaceFields {
 	readonly darklua: Darklua;
 	/** Every language, as the language question lists them. The first is the one assumed when none is present. */
 	readonly languages: readonly Language[];

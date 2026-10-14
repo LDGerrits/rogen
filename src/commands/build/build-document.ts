@@ -19,7 +19,7 @@ export interface BuildEntry {
 }
 
 /** What a build did to each config, as one JSON document. */
-export interface BuildDocument {
+interface BuildDocument {
 	readonly configs: readonly BuildEntry[];
 }
 

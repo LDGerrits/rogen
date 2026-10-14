@@ -1,10 +1,11 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { PlaceFolders } from "../place-folders.js";
+import { PlaceFinder } from "../place-finder.js";
 
-describe("PlaceFolders", () => {
+describe("PlaceFinder folders", () => {
 	let fs: MemoryFileSystemService;
 
-	const find = (...globs: string[]) => PlaceFolders.find(fs, "/repo", globs);
+	const find = (...globs: string[]) =>
+		new PlaceFinder(fs).folders("/repo", globs);
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();

@@ -21,7 +21,7 @@ import { PlaceFinder } from "./place-finder.js";
 const PROJECT_SUFFIXES = [".project.json", ".project.jsonc"];
 
 /** The config files a command reads, and the folder it looked in. */
-export interface DiscoveredConfigs {
+interface DiscoveredConfigs {
 	/** The working directory, or the nearest folder above it with a config when the working directory has none. */
 	readonly home: string;
 	/** Absolute paths. */
@@ -72,47 +72,55 @@ export class ConfigDiscovery {
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
-		const cwd = this.environmentService.cwd;
 		const around = await this.placeAround();
 		const home = await this.home();
-		if (refs.length === 0) {
-			if (around)
-				return ok({
-					home: around.place,
-					files: [around.file],
-					everyConfig: false,
-					projects: new Map(),
-					folders: [],
-					homeConfig: around.file,
-					scopes: new Map([[around.file, [around.place]]]),
-				});
-			if (home.isErr()) return err(home.error);
-			const { directory, fileNames } = home.value;
-			if (fileNames.length > 1)
-				return err(
-					new UsageError(
-						`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
-					)
-				);
+		return refs.length === 0
+			? this.discoverHere(around, home)
+			: this.discoverNamed(refs, around, home);
+	}
+
+	/** The config of the working directory: the place it is in, else the folder found. */
+	private discoverHere(
+		around: PlaceAround | undefined,
+		home: Result<EnclosingConfigs, Error>
+	): Result<DiscoveredConfigs, Error> {
+		if (around)
 			return ok({
-				home: directory,
-				files: fileNames.map((name) => path.join(directory, name)),
-				everyConfig: true,
+				home: around.place,
+				files: [around.file],
+				everyConfig: false,
 				projects: new Map(),
 				folders: [],
-				homeConfig:
-					fileNames.length === 1
-						? path.join(directory, fileNames[0])
-						: undefined,
-				scopes: new Map(),
+				homeConfig: around.file,
+				scopes: new Map([[around.file, [around.place]]]),
 			});
-		}
+		if (home.isErr()) return err(home.error);
+		const { directory, fileNames } = home.value;
+		if (fileNames.length > 1)
+			return err(
+				new UsageError(
+					`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+				)
+			);
+		return ok({
+			home: directory,
+			files: fileNames.map((name) => path.join(directory, name)),
+			everyConfig: true,
+			projects: new Map(),
+			folders: [],
+			homeConfig: this.configOfHome(home),
+			scopes: new Map(),
+		});
+	}
 
-		const homeConfig = around
-			? around.file
-			: home.isOk() && home.value.fileNames.length === 1
-				? path.join(home.value.directory, home.value.fileNames[0])
-				: undefined;
+	/** The configs `refs` names, each resolved from the working directory. */
+	private async discoverNamed(
+		refs: readonly string[],
+		around: PlaceAround | undefined,
+		home: Result<EnclosingConfigs, Error>
+	): Promise<Result<DiscoveredConfigs, Error>> {
+		const cwd = this.environmentService.cwd;
+		const homeConfig = around ? around.file : this.configOfHome(home);
 		const resolved: NamedConfig[] = [];
 		for (const ref of refs) {
 			const found = await this.configOf(
@@ -128,13 +136,8 @@ export class ConfigDiscovery {
 		const merged = this.merge(resolved, refs);
 		if (merged.isErr()) return err(merged.error);
 		const { files, projects, scopes } = merged.value;
-
 		return ok({
-			home: around
-				? around.place
-				: home.isOk()
-					? home.value.directory
-					: cwd,
+			home: around?.place ?? (home.isOk() ? home.value.directory : cwd),
 			files,
 			everyConfig: false,
 			projects,
@@ -144,6 +147,15 @@ export class ConfigDiscovery {
 			homeConfig,
 			scopes,
 		});
+	}
+
+	/** The one config file of the folder found, when it has exactly one. */
+	private configOfHome(
+		home: Result<EnclosingConfigs, Error>
+	): string | undefined {
+		return home.isOk() && home.value.fileNames.length === 1
+			? path.join(home.value.directory, home.value.fileNames[0])
+			: undefined;
 	}
 
 	/** One entry per config file from the names: places of one config join into its scope; a config named twice, or two projects of it, is an error. */
@@ -226,41 +238,10 @@ export class ConfigDiscovery {
 			...(homePlace !== undefined && { place: homePlace }),
 		});
 		const base = path.basename(target);
-		if (await this.fileSystemService.isDirectory(target)) {
-			const config = await this.configIn(target, `"${ref}"`);
-			const countsAsFolder =
-				config.isOk() ||
-				!isBareName(ref) ||
-				(await this.fileSystemService.exists(
-					path.join(target, DEFAULT_PROJECT_FILE)
-				));
-			const listing = await this.places.rootOf(target);
-			if (listing)
-				return ok({
-					file: listing,
-					place: target,
-					...(isBareName(ref) ? { folder: ref } : {}),
-				});
-			if (config.isErr())
-				return isBareName(ref) && homeConfig && !countsAsFolder
-					? ok(inHome(ref))
-					: err(config.error);
-			return ok({
-				file: config.value,
-				...(isBareName(ref) ? { folder: ref } : {}),
-			});
-		}
-		if (PROJECT_SUFFIXES.some((suffix) => base.endsWith(suffix))) {
-			const stem = base.slice(0, base.indexOf(".project."));
-			const project = stem === DEFAULT_PROJECT ? {} : { project: stem };
-			const folder = path.dirname(target);
-			const listing = await this.places.rootOf(folder);
-			if (listing)
-				return ok({ file: listing, place: folder, ...project });
-			const config = await this.configIn(folder, `"${ref}"`);
-			if (config.isErr()) return err(config.error);
-			return ok({ file: config.value, ...project });
-		}
+		if (await this.fileSystemService.isDirectory(target))
+			return this.folderRef(target, ref, homeConfig ? inHome : undefined);
+		if (PROJECT_SUFFIXES.some((suffix) => base.endsWith(suffix)))
+			return this.projectFileRef(target, base, ref);
 		if (!(await this.fileSystemService.exists(target))) {
 			if (isBareName(ref) && homeConfig) return ok(inHome(ref));
 			return err(
@@ -269,17 +250,64 @@ export class ConfigDiscovery {
 				)
 			);
 		}
-		const listing = isConfigFileName(base)
-			? await this.places.rootOf(path.dirname(target))
-			: undefined;
-		if (listing) return ok({ file: listing, place: path.dirname(target) });
-		return isConfigFileName(base)
-			? ok({ file: target })
-			: err(
-					new UsageError(
-						`"${ref}" is not a folder with a rogen.json, nor a *.project.json path.`
-					)
-				);
+		return this.configFileRef(target, base, ref);
+	}
+
+	/** A folder: the place it is, else the folder's config, else, for a bare name that is no folder with a config, the project of that name here. */
+	private async folderRef(
+		target: string,
+		ref: string,
+		projectHere: ((project: string) => NamedConfig) | undefined
+	): Promise<Result<NamedConfig, Error>> {
+		const config = await this.configIn(target, `"${ref}"`);
+		const folder = isBareName(ref) ? { folder: ref } : {};
+		const listing = await this.places.rootOf(target);
+		if (listing) return ok({ file: listing, place: target, ...folder });
+		if (config.isOk()) return ok({ file: config.value, ...folder });
+		const countsAsFolder =
+			!isBareName(ref) ||
+			(await this.fileSystemService.exists(
+				path.join(target, DEFAULT_PROJECT_FILE)
+			));
+		return projectHere && !countsAsFolder
+			? ok(projectHere(ref))
+			: err(config.error);
+	}
+
+	/** A `*.project.json` path: that project of the place or config in its folder. */
+	private async projectFileRef(
+		target: string,
+		base: string,
+		ref: string
+	): Promise<Result<NamedConfig, Error>> {
+		const stem = base.slice(0, base.indexOf(".project."));
+		const project = stem === DEFAULT_PROJECT ? {} : { project: stem };
+		const folder = path.dirname(target);
+		const listing = await this.places.rootOf(folder);
+		if (listing) return ok({ file: listing, place: folder, ...project });
+		const config = await this.configIn(folder, `"${ref}"`);
+		return config.isErr()
+			? err(config.error)
+			: ok({ file: config.value, ...project });
+	}
+
+	/** An existing file that is no project file: it has to be a config. */
+	private async configFileRef(
+		target: string,
+		base: string,
+		ref: string
+	): Promise<Result<NamedConfig, Error>> {
+		if (!isConfigFileName(base))
+			return err(
+				new UsageError(
+					`"${ref}" is not a folder with a rogen.json, nor a *.project.json path.`
+				)
+			);
+		const folder = path.dirname(target);
+		const listing = await this.places.rootOf(folder);
+		return ok(
+			listing ? { file: listing, place: folder } : { file: target }
+		);
 	}
 
 	/** The config file in `directory`; an error when it holds none or both names. */

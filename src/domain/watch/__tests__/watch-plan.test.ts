@@ -1,7 +1,7 @@
 import path from "path";
 import { IgnoredPath, WatchFilter } from "../../../platform/watcher/watcher.js";
 import { mockConfig } from "../../config/__tests__/mock-config-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { WatchPlan } from "../watch-plan.js";
 
 const isIgnored = (target: string, ignored: readonly IgnoredPath[]) =>

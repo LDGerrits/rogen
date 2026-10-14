@@ -6,7 +6,7 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	abs,
 	builderOf,

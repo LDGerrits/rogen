@@ -64,7 +64,7 @@ export class UsageError extends Error {
 	override readonly name = "UsageError";
 }
 
-export type UnexpectedErrorHandler = (error: Error) => void;
+type UnexpectedErrorHandler = (error: Error) => void;
 
 // Throws on the next tick so a silent failure doesn't stay silent.
 const defaultUnexpectedErrorHandler: UnexpectedErrorHandler = (error) => {

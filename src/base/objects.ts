@@ -30,29 +30,6 @@ export function getOwn<T>(
 	return Object.hasOwn(source, key) ? source[key] : undefined;
 }
 
-/** Deeply merges objects into a new one, leaving the originals alone. */
-export function mergeDeep<T = Record<string, unknown>>(
-	...objects: unknown[]
-): T {
-	return objects.reduce((acc: Record<string, unknown>, obj) => {
-		if (!isObject(obj)) return acc;
-
-		for (const key of Object.keys(obj)) {
-			const accVal = getOwn(acc, key);
-			const objVal = getOwn(obj, key);
-
-			if (isObject(accVal) && isObject(objVal)) {
-				setOwn(acc, key, mergeDeep({ ...accVal }, objVal));
-			} else if (isObject(objVal)) {
-				setOwn(acc, key, mergeDeep({}, objVal));
-			} else {
-				setOwn(acc, key, objVal);
-			}
-		}
-		return acc;
-	}, {}) as T;
-}
-
 /** `base` with `patch` applied as JSON merge patch does: objects merge by key, anything else replaces, and `null` removes the key. Lists replace. Leaves both alone. */
 export function mergePatch(
 	base: Readonly<Record<string, unknown>>,

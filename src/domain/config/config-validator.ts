@@ -1,11 +1,12 @@
 import path from "path";
 import { escapedGlobPrefix } from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
-import { Result } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
 	isError,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
@@ -16,18 +17,14 @@ import {
 } from "../rojo/rojo-project.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
-import {
-	DEFAULT_SOURCE_PATH,
-	DeclaredKeys,
-	ResolvedConfig,
-	fieldOf,
-	sourcePathOverlap,
-} from "./config.js";
+import { DEFAULT_SOURCE_PATH, fieldOf, sourcePathOverlap } from "./config.js";
+import { DeclaredKeys } from "./declared-keys.js";
+import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const FALLBACK_NAME = "project";
 
 /** What a validator is told about the config beyond the project: the places around it. */
-export interface PlaceContext {
+interface PlaceContext {
 	/** The config file that lists this folder, for a place. */
 	readonly rootFile?: string;
 	/** The folders of the places the config lists, when it lists any. */
@@ -74,6 +71,31 @@ export class ConfigValidator {
 				(sourcePath) => path.resolve(this.dir, sourcePath)
 			),
 		];
+	}
+
+	/** Validates every project of one config file, the description first; `warnings` are the keys' own, which belong to the description. Any project's error fails the file. */
+	static validateFile(
+		sources: readonly ProjectSource[],
+		serveProject: string,
+		warnings: readonly Diagnostic[],
+		context: PlaceContext = {}
+	): Result<ResolvedConfigFile, Diagnostic[]> {
+		const stems = sources.map(({ stem }) => stem);
+		const results = sources.map((source, index) =>
+			new ConfigValidator(
+				source,
+				serveProject,
+				stems,
+				index === 0 ? warnings : source.warnings,
+				context
+			).validate()
+		);
+		const problems = results.flatMap((result) =>
+			result.isErr() ? result.error : []
+		);
+		if (problems.length > 0) return err(uniqueDiagnostics(problems));
+		const [config, ...projects] = results.map((result) => result.unwrap());
+		return ok({ config, projects });
 	}
 
 	validate(): Result<ResolvedConfig, Diagnostic[]> {

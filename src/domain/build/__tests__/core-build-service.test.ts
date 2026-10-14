@@ -15,7 +15,8 @@ import {
 	brokenEntry,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
-import { PROJECT_SCHEMA_URL, ResolvedConfig } from "../../config/config.js";
+import { PROJECT_SCHEMA_URL } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { BuildSet, LoadedBuild } from "../build.js";
 import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";

@@ -4,9 +4,9 @@ import { unescapedGlob } from "../../base/glob.js";
 import {
 	ResolvedConfig,
 	ResolvedConfigFile,
-	configLabel,
 	placesIn,
-} from "../../domain/config/config.js";
+} from "../../domain/config/resolved-config.js";
+import { configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -37,7 +37,7 @@ const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
 /** One project of a config, as `--json` lists it. */
-export interface ListedProject {
+interface ListedProject {
 	readonly name: string;
 	readonly file: string;
 	/** Whether `rogen serve` serves it when no project is named. */
@@ -55,7 +55,7 @@ interface ListedServing {
 }
 
 /** What `--json` lists of a config that loads, fully resolved. */
-export interface ConfigDetails {
+interface ConfigDetails {
 	readonly projectName: string;
 	readonly sourcePaths: readonly string[];
 	readonly commonRoot: string | null;
@@ -70,14 +70,14 @@ export interface ConfigDetails {
 }
 
 /** What `--json` lists of a place of a config. */
-export interface ListedPlace extends ConfigDetails {
+interface ListedPlace extends ConfigDetails {
 	readonly place: string;
 	/** The place's folder. */
 	readonly folder: string;
 }
 
 /** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
-export interface ListedConfig extends Partial<ConfigDetails> {
+interface ListedConfig extends Partial<ConfigDetails> {
 	readonly config: string;
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
@@ -89,7 +89,7 @@ export interface ListedConfig extends Partial<ConfigDetails> {
 }
 
 /** What `list --json` prints. */
-export interface ListDocument {
+interface ListDocument {
 	readonly configs: readonly ListedConfig[];
 }
 

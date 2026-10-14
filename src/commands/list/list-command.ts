@@ -9,7 +9,7 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { projectsOf } from "../../domain/config/config.js";
+import { projectsOf } from "../../domain/config/resolved-config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";

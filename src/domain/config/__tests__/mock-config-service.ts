@@ -4,7 +4,7 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
-import { ResolvedConfig } from "../config.js";
+import { ResolvedConfig } from "../resolved-config.js";
 import {
 	BrokenConfigEntry,
 	ConfigEntry,

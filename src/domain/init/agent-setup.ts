@@ -7,7 +7,7 @@ import { InitQuestions } from "./init-questions.js";
 import { Setup } from "./setup.js";
 
 /** What `init` adds for coding agents. */
-export interface AgentChoices {
+interface AgentChoices {
 	/** Rogen's rules, in the repo's agent file. */
 	readonly rules: boolean;
 	/** The hook that reports Rogen warnings, registered with each agent in use. */

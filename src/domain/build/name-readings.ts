@@ -1,6 +1,6 @@
 import path from "path";
 import { joinPosix, stemOf } from "../../base/path.js";
-import { DeclaredKeys } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
 import {
 	Misspelling,

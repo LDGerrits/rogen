@@ -28,7 +28,7 @@ export async function tryWithAsync<T>(
 	}
 }
 
-export class ResultOk<T> {
+class ResultOk<T> {
 	constructor(readonly value: T) {}
 
 	isOk(): this is ResultOk<T> {

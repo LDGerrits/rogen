@@ -1,6 +1,6 @@
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfig } from "../config.js";
+import { ResolvedConfig } from "../resolved-config.js";
 import { ReloadableSelection, buildableConfig } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 

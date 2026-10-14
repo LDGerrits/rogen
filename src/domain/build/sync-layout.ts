@@ -1,6 +1,6 @@
 import path from "path";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
 import { DataReplacement, MetaReplacement, SyncTool } from "./build.js";

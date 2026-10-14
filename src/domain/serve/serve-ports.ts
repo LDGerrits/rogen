@@ -8,7 +8,7 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { ServerInfo, SyncServer } from "../runner/sync-server.js";
 import { ServeAddress } from "./serve.js";
 import { ServeTarget } from "./serve-service.js";

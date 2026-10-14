@@ -11,7 +11,7 @@ import {
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 
 /** What one config says about a path: where it lands, and the diagnostics a build raises about it. */
-export interface FileAnswer {
+interface FileAnswer {
 	readonly kind: "file";
 	readonly label: string;
 	readonly location: FileLocation;
@@ -21,7 +21,7 @@ export interface FileAnswer {
 }
 
 /** What one config says about an instance no file places. */
-export interface InstanceAnswer {
+interface InstanceAnswer {
 	readonly kind: "instance";
 	readonly label: string;
 	readonly instance: string;

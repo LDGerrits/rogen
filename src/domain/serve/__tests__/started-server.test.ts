@@ -6,7 +6,7 @@ import {
 	MockConfigSelection,
 	mockConfig,
 } from "../../config/__tests__/mock-config-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
 import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";

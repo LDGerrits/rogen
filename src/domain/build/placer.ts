@@ -8,7 +8,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { LeftOut, SyncTool } from "./build.js";
 import { BuildTree } from "./build-tree.js";
 import { InitScripts } from "./init-scripts.js";

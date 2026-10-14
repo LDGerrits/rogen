@@ -9,7 +9,7 @@ import {
 	IndexService,
 	Listing,
 } from "../../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	ResolvedConfigSpec,
 	mockConfig,

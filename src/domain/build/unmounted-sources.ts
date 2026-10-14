@@ -8,7 +8,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { rojoPathTarget } from "../rojo/rojo-project.js";
 

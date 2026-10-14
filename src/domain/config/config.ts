@@ -1,14 +1,7 @@
 import path from "path";
 import { formatJsonFile } from "../../base/json.js";
-import { commonAncestor, isInside, samePath } from "../../base/path.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { Target } from "../roblox/roblox.js";
-import {
-	ParsedProjectFile,
-	RojoNode,
-	RojoProject,
-	projectFileName,
-} from "../rojo/rojo-project.js";
+import { isInside, samePath } from "../../base/path.js";
+import { RojoNode, projectFileName } from "../rojo/rojo-project.js";
 
 /** What a project of a `rogen.json` may change: any key of the description. `null` removes a key. */
 export type ProjectChanges = Partial<
@@ -40,7 +33,7 @@ export interface RogenConfig {
 }
 
 /** Anything that holds config values by field name, such as a config model. */
-export interface ConfigValues {
+interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
 
@@ -115,7 +108,7 @@ export function configFileContent(config: RogenConfig): string {
 }
 
 /** How a source path overlaps another of `sourcePaths`; a file under both would belong to both. */
-export type SourcePathOverlap =
+type SourcePathOverlap =
 	| { readonly kind: "duplicate" }
 	| { readonly kind: "nested"; readonly outer: string };
 
@@ -129,227 +122,4 @@ export function sourcePathOverlap(
 	if (first !== index) return { kind: "duplicate" };
 	const outer = sourcePaths.find((other) => isInside(sourcePath, other));
 	return outer === undefined ? undefined : { kind: "nested", outer };
-}
-
-/** The route keys a config declares; a name spells a key exactly or with its first letter flipped. */
-export class DeclaredKeys {
-	/** The route that takes every file no other route claims. */
-	static readonly FALLBACK_ROUTE = "*";
-
-	static readonly NAME = /^[A-Za-z][A-Za-z0-9]*$/;
-
-	/** Every route key but the fallback, which no name can spell. */
-	readonly routeKeys: ReadonlySet<string>;
-
-	constructor(routeKeys: Iterable<string>) {
-		this.routeKeys = new Set(
-			[...routeKeys].filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
-		);
-	}
-
-	/** Whether `text` can be a key: letters and digits, starting with a letter. */
-	static isName(text: string): boolean {
-		return DeclaredKeys.NAME.test(text);
-	}
-
-	/** Keys that share this identity match the same names. */
-	static identityOf(key: string): string {
-		return key.slice(0, 1).toLowerCase() + key.slice(1);
-	}
-
-	/** The same name with the first letter in the other case. */
-	static flipFirstLetter(name: string): string {
-		const first = name[0];
-		const flipped =
-			first === first.toLowerCase()
-				? first.toUpperCase()
-				: first.toLowerCase();
-		return flipped + name.slice(1);
-	}
-
-	isRoute(key: string): boolean {
-		return this.routeKeys.has(key);
-	}
-
-	/** The key `name` spells, exactly or with the first letter in the other case. */
-	resolve(name: string): string | undefined {
-		return this.resolveIn(name, this.routeKeys);
-	}
-
-	/** The key `name` only differs from beyond the first letter's case, when `name` doesn't spell a key. */
-	nearMiss(name: string): string | undefined {
-		if (this.resolve(name) !== undefined) return undefined;
-		const lower = name.toLowerCase();
-		return [...this.routeKeys].find((key) => key.toLowerCase() === lower);
-	}
-
-	private resolveIn(
-		name: string,
-		keys: ReadonlySet<string>
-	): string | undefined {
-		if (name === "") return undefined;
-		if (keys.has(name)) return name;
-		const flipped = DeclaredKeys.flipFirstLetter(name);
-		return keys.has(flipped) ? flipped : undefined;
-	}
-}
-
-export interface ResolvedConfigFields {
-	/** The config file itself. */
-	readonly file: string;
-	/** The project this describes: `default`, or the name of an entry of `projects`. */
-	readonly stem: string;
-	/** Every project the config file writes, `default` first. */
-	readonly projectStems: readonly string[];
-	/** The project `rogen serve` serves when none is named. */
-	readonly serveProject: string;
-	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
-	readonly projectName: string;
-	/** The Rojo project file the config describes, its tree as the user wrote it and the keys Rogen doesn't read passed through. Every `$path` and glob is relative to the config's folder. */
-	readonly project: RojoProject<ParsedProjectFile>;
-	/** Absolute. */
-	readonly sourcePaths: readonly string[];
-	/** In declaration order. */
-	readonly routes: ReadonlyMap<string, Target>;
-	/** `globIgnorePaths` as globs on absolute POSIX paths, which keep scanned files out of routing. */
-	readonly ignored: readonly string[];
-	/** Absolute. */
-	readonly syncPath?: string;
-	/** What the config says that is no error: a key Rojo will reject in the written file. */
-	readonly warnings: readonly Diagnostic[];
-	/** The config file that lists this folder as a place; for anything else, `file` itself. */
-	readonly rootFile?: string;
-	/** Whether this is a place of another config. */
-	readonly isPlace?: boolean;
-	/** Whether the config lists places, which makes it a shared root that is never served. */
-	readonly hasPlaces?: boolean;
-	/** The port this place is served on when no `servePort` says otherwise. */
-	readonly placePort?: number;
-}
-
-/** A config with its values validated: every path is absolute and every route target is parsed. */
-export class ResolvedConfig {
-	readonly file: string;
-	readonly stem: string;
-	readonly projectStems: readonly string[];
-	readonly serveProject: string;
-	readonly projectName: string;
-	readonly project: RojoProject<ParsedProjectFile>;
-	readonly sourcePaths: readonly string[];
-	readonly routes: ReadonlyMap<string, Target>;
-	readonly ignored: readonly string[];
-	readonly syncPath?: string;
-	readonly warnings: readonly Diagnostic[];
-	readonly rootFile: string;
-	readonly isPlace: boolean;
-	readonly hasPlaces: boolean;
-	readonly placePort?: number;
-	readonly keys: DeclaredKeys;
-
-	constructor(fields: ResolvedConfigFields) {
-		this.file = fields.file;
-		this.stem = fields.stem;
-		this.projectStems = fields.projectStems;
-		this.serveProject = fields.serveProject;
-		this.projectName = fields.projectName;
-		this.project = fields.project;
-		this.sourcePaths = fields.sourcePaths;
-		this.routes = fields.routes;
-		this.ignored = fields.ignored;
-		this.syncPath = fields.syncPath;
-		this.warnings = fields.warnings;
-		this.rootFile = fields.rootFile ?? fields.file;
-		this.isPlace = fields.isPlace ?? false;
-		this.hasPlaces = fields.hasPlaces ?? false;
-		this.placePort = fields.placePort;
-		this.keys = new DeclaredKeys(fields.routes.keys());
-	}
-
-	/** What the project is asked for by: the name of the game, and for a project of the config its own name beside it. */
-	get label(): string {
-		return this.stem === DEFAULT_PROJECT
-			? this.projectName
-			: `${this.projectName} (${this.stem})`;
-	}
-
-	/** What tells this project from every other that is served or built: the config it is read from, and its name there. */
-	get id(): string {
-		return `${this.file}#${this.stem}`;
-	}
-
-	/** The port a place is served on unless a flag says otherwise: its `servePort`, else the one its place in the list gives. `undefined` for anything that is not a place. */
-	get placeServePort(): number | undefined {
-		return this.isPlace
-			? (this.project.servePort ?? this.placePort)
-			: undefined;
-	}
-
-	/** Whether this is the description itself, not an entry of `projects`. */
-	get isDefault(): boolean {
-		return this.stem === DEFAULT_PROJECT;
-	}
-
-	/** The directory the project file is written to, and every path in it is relative to. */
-	get projectDir(): string {
-		return path.dirname(this.file);
-	}
-
-	/** The project file the project is written to. */
-	get projectFile(): string {
-		return path.join(this.projectDir, projectFileName(this.stem));
-	}
-
-	/** Every project file the config file writes, which a source path that holds them must not scan. */
-	get projectFiles(): readonly string[] {
-		return this.projectStems.map((stem) =>
-			path.join(this.projectDir, projectFileName(stem))
-		);
-	}
-
-	/** The folders a build lists: its source paths, else the folder it would have scanned by default, to find files nothing mounts. */
-	get indexedPaths(): readonly string[] {
-		return this.routes.size > 0
-			? this.sourcePaths
-			: [path.join(this.projectDir, DEFAULT_SOURCE_PATH)];
-	}
-
-	/** The deepest directory holding every source path, or `undefined` without any. */
-	get commonRoot(): string | undefined {
-		return this.sourcePaths.length > 0
-			? commonAncestor(this.sourcePaths)
-			: undefined;
-	}
-}
-
-/** A `rogen.json` resolved: the description, and the projects it writes beside it. */
-export interface ResolvedConfigFile {
-	/** The description itself, written as `default.project.json`. */
-	readonly config: ResolvedConfig;
-	/** The entries of `projects`, in the order they are declared. */
-	readonly projects: readonly ResolvedConfig[];
-	/** The places it lists, sorted by path. */
-	readonly places?: readonly ResolvedConfigFile[];
-}
-
-/** The places of a resolved config file, or with a `scope` only those in those folders. */
-export function placesIn(
-	resolved: ResolvedConfigFile,
-	scope?: readonly string[]
-): ResolvedConfigFile[] {
-	return (resolved.places ?? []).filter(
-		({ config }) =>
-			scope === undefined ||
-			scope.some((folder) => samePath(config.projectDir, folder))
-	);
-}
-
-/** Every project a resolved config file writes, the description first and then each place's; with a `scope`, only the places in those folders. */
-export function projectsOf(
-	resolved: ResolvedConfigFile,
-	scope?: readonly string[]
-): ResolvedConfig[] {
-	return [
-		...(scope === undefined ? [resolved.config, ...resolved.projects] : []),
-		...placesIn(resolved, scope).flatMap((place) => projectsOf(place)),
-	];
 }

@@ -9,13 +9,13 @@ import {
 } from "../diagnostics/diagnostic.js";
 
 /** What kind of file is read, which words its diagnostics: `config` gives `config.wrongType` and "a config must be a JSON object". */
-export interface JsoncDocumentKind {
+interface JsoncDocumentKind {
 	readonly codePrefix: string;
 	/** The file as a sentence starts with it, article included. */
 	readonly noun: string;
 }
 
-export interface JsoncObject {
+interface JsoncObject {
 	readonly root: Extract<JsoncNode, { kind: "object" }>;
 	readonly value: Record<string, unknown>;
 }

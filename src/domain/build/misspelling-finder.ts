@@ -1,9 +1,9 @@
 import { editDistance, closestMatches } from "../../base/strings.js";
-import { DeclaredKeys } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { RUN_SCRIPT_SUFFIXES } from "../rojo/rojo.js";
 
 /** An `@` followed by a near miss of a declared route, or by a route that isn't at the end of the name. */
-export interface StrayAt {
+interface StrayAt {
 	readonly kind: "strayAt";
 	/** The name after the `@`, up to the next dot. */
 	readonly text: string;
@@ -16,7 +16,7 @@ export interface StrayAt {
 }
 
 /** A declared route key after a dot, where only `@` routes: a dot-file, or a dot part of a name. */
-export interface DotRoute {
+interface DotRoute {
 	readonly kind: "dotRoute";
 	readonly text: string;
 	readonly key: string;
@@ -24,7 +24,7 @@ export interface DotRoute {
 }
 
 /** A folder whose whole name is one edit from a declared route key. */
-export interface FolderTypo {
+interface FolderTypo {
 	readonly kind: "folderTypo";
 	/** The folder's name with its parentheses and `^` off. */
 	readonly text: string;

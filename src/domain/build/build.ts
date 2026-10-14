@@ -6,14 +6,15 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { ResolvedConfig, configLabel } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
+import { configLabel } from "../config/config.js";
 import {
 	ConfigSelection,
 	buildableProjects,
 } from "../config/config-service.js";
 
 /** How a route key matched a file by its name. */
-export type MatchForm = "folder" | "marker" | "suffix";
+type MatchForm = "folder" | "marker" | "suffix";
 
 /** How the governing route matched the file; `init` is the route suffix of an init script in one of its folders, `copy` an init script placed where its folder's other files route it, and `fallback` the `*` route. */
 export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
@@ -38,7 +39,7 @@ export type LeftOut =
 	/** The tree defines the node it would be, or a `$path` above it. */
 	| { readonly status: "displaced"; readonly node: readonly string[] };
 
-export interface RootSummary {
+interface RootSummary {
 	readonly sourcePath: string;
 	readonly files: number;
 	readonly ignored: number;
@@ -47,7 +48,7 @@ export interface RootSummary {
 	readonly skippedLinks: number;
 }
 
-export interface RouteSummary {
+interface RouteSummary {
 	readonly key: string;
 	readonly target: string;
 	readonly files: number;
@@ -205,7 +206,7 @@ export interface BuildFindings {
 }
 
 /** What one config adds to a run's diagnostics of one kind. */
-export interface SharedPart {
+interface SharedPart {
 	/** The diagnostics no earlier config raised. */
 	readonly fresh: readonly Diagnostic[];
 	/** The earlier configs that raised every one of them, when it had some and added none; empty otherwise. */
@@ -256,7 +257,7 @@ export class SharedDiagnostics {
 }
 
 /** One build of a run, with what it adds to the run's warnings and errors. */
-export interface BuildShare {
+interface BuildShare {
 	readonly build: ConfigBuild;
 	/** Its warnings, then its sync path's. */
 	readonly warnings: SharedPart;

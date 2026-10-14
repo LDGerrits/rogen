@@ -5,7 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { ReloadableSelection } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
 import { ServerExecutable } from "../runner/rojo-runner.js";

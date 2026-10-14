@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import { fileSystemError } from "../../../platform/fs/file-system-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { MetaReader } from "../meta-reader.js";
 import { abs, configOf, indexOf, placeFiles, syncTools } from "./fixtures.js";
 

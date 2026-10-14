@@ -9,7 +9,7 @@ import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
-import { ResolvedConfig } from "../../domain/config/config.js";
+import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
 import { toNative } from "../../base/path.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";

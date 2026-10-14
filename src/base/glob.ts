@@ -1,7 +1,7 @@
 import picomatch from "picomatch";
 import { isWindows } from "./platform.js";
 
-export type GlobPattern = string;
+type GlobPattern = string;
 
 const MAGIC = /[(){}|[\]*?!+@]/g;
 

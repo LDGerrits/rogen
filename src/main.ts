@@ -80,16 +80,25 @@ function printNotice(logService: LogService, notice: string | undefined): void {
 }
 
 export default function run(): void {
-	main().catch((error) => {
+	new RogenMain().main().catch((error) => {
 		console.error("Fatal Error:", error);
 		process.exitCode = 1;
 	});
 }
 
-async function main(): Promise<void> {
-	const disposables = new DisposableStore();
+/** The composition root: reads the command line, builds the services in dependency order and runs the command. */
+class RogenMain {
+	private readonly disposables = new DisposableStore();
 
-	try {
+	async main(): Promise<void> {
+		try {
+			await this.startup();
+		} finally {
+			this.disposables[Symbol.dispose]();
+		}
+	}
+
+	private async startup(): Promise<void> {
 		const commandRegistry = Registry.as<CommandRegistry>(
 			Extensions.Commands
 		);
@@ -108,16 +117,7 @@ async function main(): Promise<void> {
 			{ ...options, json },
 			cwd ?? path.parse(process.execPath).root
 		);
-		const logService: LogService = environmentService.isPlain
-			? new PlainLogService(
-					environmentService.cwd,
-					environmentService.annotationsIn
-				)
-			: new TerminalLogService(
-					environmentService.cwd,
-					environmentService.annotationsIn
-				);
-		logService.setLevel(environmentService.logLevel);
+		const logService = this.createLogService(environmentService);
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
@@ -134,98 +134,14 @@ async function main(): Promise<void> {
 			);
 			return;
 		}
-		const promptService = new ConsolePromptService({
-			interactive: environmentService.isInteractive,
-			color: !environmentService.isPlain,
-		});
 
 		// Default handler throws async, which would crash `watch`.
 		setUnexpectedErrorHandler((error) => logService.error(error));
 
-		const fileSystemService = new DiskFileSystemService();
-
-		const services = new ServiceCollection();
-
-		const configService = new CoreConfigService(
-			fileSystemService,
-			environmentService
-		);
-		services.set(ConfigService, configService);
-		disposables.add(configService.registerFileCheck(LegacyConfig.check));
-
-		services.set(EnvironmentService, environmentService);
-		services.set(LogService, logService);
-		services.set(PromptService, promptService);
-		const indexService = new CoreIndexService(fileSystemService);
-		services.set(FileSystemService, fileSystemService);
-		services.set(IndexService, indexService);
-		const toolchainService = new CoreToolchainService(fileSystemService);
-		services.set(ToolchainService, toolchainService);
-		const requestService = new NativeRequestService();
-		services.set(RequestService, requestService);
-		const buildService = new CoreBuildService(
-			fileSystemService,
-			indexService,
-			toolchainService.syncTools
-		);
-		services.set(BuildService, buildService);
-		services.set(
-			InitService,
-			new CoreInitService(
-				fileSystemService,
-				promptService,
-				environmentService,
-				toolchainService,
-				configService
-			)
-		);
-		const productService = new CoreProductService(
-			fileSystemService,
-			import.meta.dirname,
-			typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined
-		);
-		services.set(ProductService, productService);
-		const releaseService = new CoreReleaseService(
-			fileSystemService,
-			requestService,
-			environmentService.cacheDir
-		);
-		const updateService = new CoreUpdateService(
-			releaseService,
-			productService,
+		const { services, updateService } = this.createServices(
 			environmentService,
-			toolchainService,
-			fileSystemService,
-			import.meta.dirname
+			logService
 		);
-		services.set(
-			LifecycleService,
-			disposables.add(new NativeLifecycleService())
-		);
-		const watcher = disposables.add(new DiskWatcher(logService));
-		services.set(Watcher, watcher);
-		const watchService = new CoreWatchService(
-			watcher,
-			indexService,
-			buildService
-		);
-		services.set(WatchService, watchService);
-		const processService = new NativeProcessService();
-		services.set(ProcessService, processService);
-		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
-		services.set(RojoRunner, rojoRunner);
-		services.set(
-			ServeService,
-			new CoreServeService(
-				configService,
-				fileSystemService,
-				rojoRunner,
-				requestService,
-				watchService,
-				environmentService
-			)
-		);
-
 		const commandService = new CoreCommandService(
 			services,
 			logService,
@@ -254,7 +170,116 @@ async function main(): Promise<void> {
 			? failure.finish(result.error, command)
 			: 0;
 		if (!noticeFirst) printNotice(logService, await notice);
-	} finally {
-		disposables[Symbol.dispose]();
+	}
+
+	private createLogService(
+		environmentService: EnvironmentService
+	): LogService {
+		const logService: LogService = environmentService.isPlain
+			? new PlainLogService(
+					environmentService.cwd,
+					environmentService.annotationsIn
+				)
+			: new TerminalLogService(
+					environmentService.cwd,
+					environmentService.annotationsIn
+				);
+		logService.setLevel(environmentService.logLevel);
+		return logService;
+	}
+
+	/** Constructs every service in dependency order and registers each under its identifier. */
+	private createServices(
+		environmentService: EnvironmentService,
+		logService: LogService
+	): { services: ServiceCollection; updateService: CoreUpdateService } {
+		const { disposables } = this;
+		const services = new ServiceCollection();
+		services.set(EnvironmentService, environmentService);
+		services.set(LogService, logService);
+		const promptService = new ConsolePromptService({
+			interactive: environmentService.isInteractive,
+			color: !environmentService.isPlain,
+		});
+		services.set(PromptService, promptService);
+
+		const fileSystemService = new DiskFileSystemService();
+		services.set(FileSystemService, fileSystemService);
+		const indexService = new CoreIndexService(fileSystemService);
+		services.set(IndexService, indexService);
+		const requestService = new NativeRequestService();
+		services.set(RequestService, requestService);
+		const processService = new NativeProcessService();
+		services.set(ProcessService, processService);
+		services.set(
+			LifecycleService,
+			disposables.add(new NativeLifecycleService())
+		);
+		const watcher = disposables.add(new DiskWatcher(logService));
+		services.set(Watcher, watcher);
+		const productService = new CoreProductService(
+			fileSystemService,
+			import.meta.dirname,
+			typeof ROGEN_VERSION === "string" ? ROGEN_VERSION : undefined
+		);
+		services.set(ProductService, productService);
+
+		const configService = new CoreConfigService(
+			fileSystemService,
+			environmentService
+		);
+		services.set(ConfigService, configService);
+		disposables.add(configService.registerFileCheck(LegacyConfig.check));
+		const toolchainService = new CoreToolchainService(fileSystemService);
+		services.set(ToolchainService, toolchainService);
+		const buildService = new CoreBuildService(
+			fileSystemService,
+			indexService,
+			toolchainService.syncTools
+		);
+		services.set(BuildService, buildService);
+		services.set(
+			InitService,
+			new CoreInitService(
+				fileSystemService,
+				promptService,
+				environmentService,
+				toolchainService,
+				configService
+			)
+		);
+		const watchService = new CoreWatchService(
+			watcher,
+			indexService,
+			buildService
+		);
+		services.set(WatchService, watchService);
+		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
+		services.set(RojoRunner, rojoRunner);
+		services.set(
+			ServeService,
+			new CoreServeService(
+				configService,
+				fileSystemService,
+				rojoRunner,
+				requestService,
+				watchService,
+				environmentService
+			)
+		);
+
+		const updateService = new CoreUpdateService(
+			new CoreReleaseService(
+				fileSystemService,
+				requestService,
+				environmentService.cacheDir
+			),
+			productService,
+			environmentService,
+			toolchainService,
+			fileSystemService,
+			import.meta.dirname
+		);
+		return { services, updateService };
 	}
 }

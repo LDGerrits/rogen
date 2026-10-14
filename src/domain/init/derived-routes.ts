@@ -1,6 +1,6 @@
 import path from "path";
 import { containsPosix, normalizeDir } from "../../base/path.js";
-import { DeclaredKeys } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { isSupportedService } from "../roblox/supported-services.js";
 import { MountedPath, rojoPathTarget } from "../rojo/rojo-project.js";
 import { StarterProject } from "./starter-project.js";

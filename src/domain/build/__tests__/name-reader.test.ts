@@ -1,4 +1,4 @@
-import { DeclaredKeys } from "../../config/config.js";
+import { DeclaredKeys } from "../../config/declared-keys.js";
 import {
 	Misspelling,
 	MisspellingKind,

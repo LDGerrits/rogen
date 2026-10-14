@@ -1,4 +1,4 @@
-export type JSONSchemaType =
+type JSONSchemaType =
 	"string" | "number" | "boolean" | "null" | "array" | "object";
 
 export interface JSONSchema {

@@ -27,7 +27,7 @@ const READY_POLL_MS = { first: 200, max: 1_000 };
 const SLOW_START_MS = 10_000;
 
 /** What happens to a started server, told to the session that started it. */
-export interface StartedServerListener {
+interface StartedServerListener {
 	/** It answers for its project. */
 	served(serving: ServerReadyEvent): void;
 	/** It printed something worth showing. */

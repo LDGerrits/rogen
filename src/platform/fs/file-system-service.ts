@@ -44,7 +44,7 @@ export interface FileSystemService extends FileReader {
 }
 
 /** The codes a file system rejects with, as Node's own errors carry them. */
-export type FileSystemErrorCode =
+type FileSystemErrorCode =
 	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP" | "EINVAL";
 
 /** An error shaped like Node's, so a caller checks `code` alike on every file system. */

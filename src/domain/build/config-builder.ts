@@ -3,7 +3,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { BuildFindings, BuildSummary, SyncTool } from "./build.js";
 import { BuildValidator } from "./build-validator.js";
@@ -25,7 +25,7 @@ export interface BuiltConfig {
 }
 
 /** What `examine` found for one config: it assembled, with the warnings the build raises (without the sync path's), or a meta or assembly error stopped it. */
-export type ExaminedConfig =
+type ExaminedConfig =
 	| {
 			readonly kind: "assembled";
 			readonly placement: Placement;

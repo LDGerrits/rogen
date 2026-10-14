@@ -58,7 +58,7 @@ type LocationFields =
 export type WhereFileEntry = FileEntryBase & LocationFields;
 
 /** One config's answer about an instance no file places. */
-export interface WhereInstanceEntry {
+interface WhereInstanceEntry {
 	readonly config: string;
 	readonly instance: string;
 	readonly status: "noFile";
@@ -69,10 +69,10 @@ export interface WhereInstanceEntry {
 	readonly diagnostics: readonly [];
 }
 
-export type WhereEntry = WhereFileEntry | WhereInstanceEntry;
+type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 
 /** Where each path lands, config by config, as one JSON document. */
-export interface WhereDocument {
+interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
 	/** Why the configs that didn't load did not answer. */
 	readonly diagnostics: readonly DiagnosticJson[];

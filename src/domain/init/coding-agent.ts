@@ -11,7 +11,7 @@ const SCRIPT_NAMED = new RegExp(
 );
 
 /** What registering the hook does to an agent's hook file. */
-export type HookRegistration =
+type HookRegistration =
 	| { readonly kind: "added"; readonly text: string }
 	| { readonly kind: "present" }
 	| { readonly kind: "unreadable" };

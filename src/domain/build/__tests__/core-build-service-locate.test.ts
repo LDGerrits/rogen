@@ -5,7 +5,7 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { PlannedFilesIndex } from "../planned-files-index.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import {
 	abs,

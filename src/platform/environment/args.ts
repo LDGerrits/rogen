@@ -25,7 +25,7 @@ type OptionValue<D extends OptionDescriptor> = D extends {
 			: boolean | string | readonly string[];
 
 /** The values a line gives the options of `O`, keyed by name; an option not given is absent. */
-export type OptionValues<O extends readonly OptionDescriptor[]> = {
+type OptionValues<O extends readonly OptionDescriptor[]> = {
 	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
 };
 
@@ -72,7 +72,7 @@ export interface CommandLine<
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
-export interface ParsedCli {
+interface ParsedCli {
 	readonly command: string;
 	readonly line: CommandLine;
 }

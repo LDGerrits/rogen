@@ -1,4 +1,4 @@
-import { DeclaredKeys } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 
@@ -13,7 +13,7 @@ type StandardRouteId =
 /** A standard route, or one derived from a mount, named `mount:<key>`. */
 export type RouteId = StandardRouteId | `mount:${string}`;
 
-export interface RouteOption {
+interface RouteOption {
 	readonly id: RouteId;
 	readonly key: string;
 	readonly target: string;

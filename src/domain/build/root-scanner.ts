@@ -34,7 +34,7 @@ export interface UnclaimedMeta {
 }
 
 /** What a scan found under one source path. */
-export interface ScannedRootParts {
+interface ScannedRootParts {
 	readonly sourcePath: string;
 	/** False for a source path the index doesn't hold, which contributes nothing. */
 	readonly exists: boolean;

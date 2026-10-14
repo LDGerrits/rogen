@@ -2,10 +2,10 @@ import path from "path";
 import { contains, outermostDirs } from "../../base/path.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { OutputFile } from "../build/build.js";
-import { ResolvedConfig } from "../config/config.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 
 /** The project file names the project in `projectsFor`. */
-export type WatchPlanConfig = Pick<
+type WatchPlanConfig = Pick<
 	ResolvedConfig,
 	"indexedPaths" | "projectFile" | "syncPath"
 >;

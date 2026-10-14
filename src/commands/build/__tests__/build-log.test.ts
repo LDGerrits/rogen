@@ -7,7 +7,7 @@ import {
 	UnwrittenBuild,
 	WrittenBuild,
 } from "../../../domain/build/build.js";
-import { ResolvedConfig } from "../../../domain/config/config.js";
+import { ResolvedConfig } from "../../../domain/config/resolved-config.js";
 import {
 	Diagnostic,
 	errorDiagnostic,

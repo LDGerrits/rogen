@@ -18,7 +18,6 @@ import {
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { PlaceFinder } from "../config/place-finder.js";
-import { PlaceFolders } from "../config/place-folders.js";
 import { PlacePorts } from "../config/place-ports.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
@@ -60,6 +59,69 @@ export class PlaceInit {
 
 	async plan(target: string): Promise<Result<InitPlan | undefined, Error>> {
 		const folder = path.resolve(this.cwd, target);
+		const located = await this.locate(folder);
+		if (located.isErr()) return located;
+		const { root, rootFile } = located.value;
+
+		const listed = await this.listing(rootFile, root, folder);
+		if (listed.isErr()) return listed;
+		if (listed.value === "cancelled") return ok(undefined);
+		const known = await this.knownPlaces(
+			root,
+			listed.value.placePaths,
+			listed.value.raw
+		);
+		const sourcePaths = await this.sourcePaths(folder, root);
+		if (sourcePaths === undefined) return ok(undefined);
+
+		const port = this.portOf(folder, known);
+		const place = toPosix(path.relative(root, folder));
+		const workspace = await this.workspace(
+			root,
+			[...new Set([...known.map((one) => one.directory), folder])]
+				.map((directory) => toPosix(path.relative(root, directory)))
+				.sort(compareStrings),
+			place
+		);
+		const config: RogenConfig = {
+			servePort: port,
+			...(sourcePaths.sourcePaths && {
+				sourcePaths: sourcePaths.sourcePaths,
+			}),
+			...(sourcePaths.syncPath && { syncPath: sourcePaths.syncPath }),
+		};
+		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
+		return ok({
+			directory: root,
+			files: [
+				...(listed.value.edit ? [listed.value.edit] : []),
+				{ fileName: configFile, content: configFileContent(config) },
+				...(workspace.file ? [workspace.file] : []),
+			],
+			directories: sourcePaths.directories.map((directory) =>
+				path.posix.join(place, directory)
+			),
+			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
+			notes: [
+				`${path.basename(folder)} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
+				...workspace.notes,
+			],
+			nextSteps: {
+				setup: [],
+				run: ["rogen serve"],
+				darklua: [],
+				edits: [
+					`Put the code of ${path.basename(folder)} in ${path.posix.join(place, sourcePaths.directories[0] ?? DEFAULT_SOURCE_PATH)}: it gets the routes and the tree of ${this.named(rootFile)}, and the code in its source paths wins a clash with the shared code.`,
+				],
+			},
+			asked: this.questions.interactive,
+		});
+	}
+
+	/** The config above `folder` that can list it, or why none can. */
+	private async locate(
+		folder: string
+	): Promise<Result<{ root: string; rootFile: string }, Error>> {
 		const enclosing = await this.configService.findEnclosing(folder);
 		if (!enclosing)
 			return err(
@@ -75,7 +137,6 @@ export class PlaceInit {
 			);
 		const root = enclosing.directory;
 		const rootFile = path.join(root, enclosing.fileNames[0]);
-
 		const above = await this.finder.rootOf(root);
 		if (above)
 			return err(
@@ -94,69 +155,10 @@ export class PlaceInit {
 					),
 				])
 			);
-
 		const entry = await this.configService.read(rootFile);
-		if (entry.status === "broken")
-			return err(new DiagnosticsError(entry.errors));
-
-		const listed = await this.listing(rootFile, root, folder);
-		if (listed.isErr()) return listed;
-		if (listed.value === "cancelled") return ok(undefined);
-		const known = await this.knownPlaces(
-			root,
-			listed.value.placePaths,
-			listed.value.raw
-		);
-
-		const sourcePaths = await this.sourcePaths(folder, root);
-		if (sourcePaths === undefined) return ok(undefined);
-		const port = this.portOf(folder, known);
-
-		const place = path.relative(root, folder);
-		const placeRoute = toPosix(place);
-		const config: RogenConfig = {
-			servePort: port,
-			...(sourcePaths.sourcePaths && {
-				sourcePaths: sourcePaths.sourcePaths,
-			}),
-			...(sourcePaths.syncPath && { syncPath: sourcePaths.syncPath }),
-		};
-		const folders = [
-			...new Set([...known.map((one) => one.directory), folder]),
-		]
-			.map((directory) => toPosix(path.relative(root, directory)))
-			.sort(compareStrings);
-		const workspace = await this.workspace(root, folders, placeRoute);
-
-		const files: PlannedFile[] = [
-			...(listed.value.edit ? [listed.value.edit] : []),
-			{
-				fileName: path.posix.join(placeRoute, CONFIG_FILE_NAMES[0]),
-				content: configFileContent(config),
-			},
-			...(workspace.file ? [workspace.file] : []),
-		];
-		return ok({
-			directory: root,
-			files,
-			directories: sourcePaths.directories.map((directory) =>
-				path.posix.join(placeRoute, directory)
-			),
-			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
-			notes: [
-				`${path.basename(folder)} is served on port ${port}, which its ${path.posix.join(placeRoute, CONFIG_FILE_NAMES[0])} pins so adding another place never moves it.`,
-				...workspace.notes,
-			],
-			nextSteps: {
-				setup: [],
-				run: ["rogen serve"],
-				darklua: [],
-				edits: [
-					`Put the code of ${path.basename(folder)} in ${path.posix.join(placeRoute, sourcePaths.directories[0] ?? DEFAULT_SOURCE_PATH)}: it gets the routes and the tree of ${this.named(rootFile)}, and the code in its source paths wins a clash with the shared code.`,
-				],
-			},
-			asked: this.questions.interactive,
-		});
+		return entry.status === "broken"
+			? err(new DiagnosticsError(entry.errors))
+			: ok({ root, rootFile });
 	}
 
 	/** The config file in `folder`, if it has one. */
@@ -227,11 +229,7 @@ export class PlaceInit {
 		placePaths: readonly string[],
 		raw: Record<string, unknown>
 	): Promise<KnownPlace[]> {
-		const folders = await PlaceFolders.find(
-			this.fileSystemService,
-			root,
-			placePaths
-		);
+		const folders = await this.finder.folders(root, placePaths);
 		return Promise.all(
 			folders.map(async (directory) => {
 				const file = await this.configIn(directory);

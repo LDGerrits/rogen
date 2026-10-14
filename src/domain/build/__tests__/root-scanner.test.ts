@@ -6,7 +6,7 @@ import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { ResolvedConfig } from "../../config/resolved-config.js";
 import { ScannedRoot } from "../root-scanner.js";
 import {
 	abs,

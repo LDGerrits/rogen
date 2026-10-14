@@ -109,7 +109,7 @@ export class InitLog implements InitReporter {
 }
 
 /** What `--json` prints of a run: what it wrote, kept as it is written, so a failed write still names the files before it. */
-export interface InitDocument {
+interface InitDocument {
 	readonly files: readonly string[];
 	readonly appended: readonly string[];
 	readonly directories: readonly string[];

@@ -7,7 +7,7 @@ import {
 } from "../../platform/fs/file-changes.js";
 import { ChangeBurst } from "./watch-service.js";
 
-export interface ChangeBatcherOptions {
+interface ChangeBatcherOptions {
 	readonly burstThreshold: number;
 	readonly debounceMs: number;
 }

@@ -9,7 +9,8 @@ import {
 	DiagnosticRelated,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import {
 	ScriptRun,
 	WHERE_SCRIPTS_RUN,

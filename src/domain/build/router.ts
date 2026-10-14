@@ -1,6 +1,7 @@
 import path from "path";
 import { dirnamePosix, joinPosix } from "../../base/path.js";
-import { DeclaredKeys, ResolvedConfig } from "../config/config.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoScriptSuffix } from "../rojo/rojo.js";
 import { RouteMatch } from "./build.js";
 import { DirClaims, RootClaims } from "./dir-claims.js";
@@ -14,7 +15,7 @@ import {
 import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A node one of the file's own folders becomes, with that folder as an absolute POSIX path. */
-export interface FolderNode {
+interface FolderNode {
 	readonly instancePath: readonly string[];
 	readonly folder: string;
 }
@@ -39,14 +40,14 @@ export interface RoutedFile {
 }
 
 /** The two folders of an init script, which differ when a routing or invisible folder sits between them. */
-export interface InitFolders {
+interface InitFolders {
 	/** The nearest of its folders that becomes a node, which the script is; an absolute POSIX path. */
 	readonly becomes: string;
 	/** The directory it sits in, which Rojo reads it through; an absolute POSIX path. */
 	readonly sitsIn: string;
 }
 
-export interface IgnoredAt {
+interface IgnoredAt {
 	readonly key: string;
 	/** The folder that spells it, or holds the marker that does, relative to the source path; none for the file's own name. */
 	readonly dir?: string;

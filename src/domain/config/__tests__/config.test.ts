@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { mockConfig } from "./mock-config-service.js";
+import { DeclaredKeys } from "../declared-keys.js";
 import {
-	DeclaredKeys,
 	PROJECT_SCHEMA_URL,
 	SCHEMA_URL,
 	configLabel,

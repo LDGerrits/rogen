@@ -1,20 +1,22 @@
 import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
-import { ConfigFileReader } from "../../platform/config/config-file.js";
+import {
+	ConfigFile,
+	ConfigFileReader,
+} from "../../platform/config/config-file.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
-	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
-import { readProjectSources } from "./project-sources.js";
+import { ProjectSourceReader } from "./project-sources.js";
 import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
-import { ResolvedConfigFile } from "./config.js";
+import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
-import { PlaceFolders } from "./place-folders.js";
+import { PlaceFinder } from "./place-finder.js";
 import { PlaceLoader } from "./place-loader.js";
 
 /** One read of one config, with everything a reload needs to compare against. */
@@ -33,8 +35,10 @@ export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 	private readonly fileChecks = new Set<ConfigFileCheck>();
 	private readonly places: PlaceLoader;
+	private readonly finder: PlaceFinder;
 
-	constructor(private readonly fileSystemService: FileReader) {
+	constructor(fileSystemService: FileReader) {
+		this.finder = new PlaceFinder(fileSystemService);
 		this.reader = new ConfigFileReader(fileSystemService, configSchema);
 		this.places = new PlaceLoader(
 			fileSystemService,
@@ -63,60 +67,46 @@ export class ConfigLoader {
 				]),
 			};
 		}
-
 		const config = loaded.value;
 		const value = config.model.contents;
 		const hints = this.hintsOf(file, value);
 		if (hints.length > 0)
 			return { files: [file], value, resolved: err(hints) };
+		return this.resolve(config);
+	}
 
+	/** Resolves a config that read and passed the file checks: its projects first, then the places it lists. */
+	private async resolve(config: ConfigFile): Promise<LoadedConfig> {
+		const { file } = config;
+		const value = config.model.contents;
 		const keys = ConfigKeys.check(
 			config.model.keys,
 			(key): DiagnosticLocation => ({
-				resource: config.file,
+				resource: file,
 				position: config.positionOfKey(key),
 			})
 		);
-		const declared = readProjectSources(config);
+		const declared = new ProjectSourceReader(config).read();
 		const failed = [...keys.errors, ...declared.errors];
 		if (failed.length > 0)
 			return { files: [file], value, resolved: err(failed) };
 
-		const [description, ...changed] = declared.sources;
-		const stems = declared.sources.map(({ stem }) => stem);
 		const dir = path.dirname(file);
 		const placeDirs = (
-			await PlaceFolders.find(
-				this.fileSystemService,
+			await this.finder.folders(
 				dir,
 				config.model.getValue<string[]>("placePaths") ?? []
 			)
 		).filter((placeDir) => placeDir !== dir);
-		const resolvedDescription = new ConfigValidator(
-			description,
+		const own = ConfigValidator.validateFile(
+			declared.sources,
 			declared.serveProject,
-			stems,
 			keys.warnings,
 			{ placeDirs }
-		).validate();
-		const resolvedProjects = changed.map((source) =>
-			new ConfigValidator(
-				source,
-				declared.serveProject,
-				stems,
-				source.warnings,
-				{ placeDirs }
-			).validate()
 		);
-		const problems = [resolvedDescription, ...resolvedProjects].flatMap(
-			(result) => (result.isErr() ? result.error : [])
-		);
-		if (problems.length > 0)
-			return {
-				files: [file],
-				value,
-				resolved: err(uniqueDiagnostics(problems)),
-			};
+		if (own.isErr())
+			return { files: [file], value, resolved: err(own.error) };
+
 		const places = await this.places.load(
 			file,
 			{
@@ -126,24 +116,13 @@ export class ConfigLoader {
 			},
 			placeDirs
 		);
-		const files = [file, ...places.files];
-		if (places.resolved.isErr())
-			return {
-				files,
-				value,
-				placeValues: places.values,
-				resolved: err(places.resolved.error),
-			};
 		return {
-			files,
+			files: [file, ...places.files],
 			value,
 			placeValues: places.values,
-			resolved: resolvedDescription.map((resolvedConfig) => ({
-				config: resolvedConfig,
-				projects: resolvedProjects.flatMap((result) =>
-					result.isOk() ? [result.value] : []
-				),
-				places: places.resolved.unwrap(),
+			resolved: places.resolved.map((resolved) => ({
+				...own.value,
+				places: resolved,
 			})),
 		};
 	}

@@ -12,22 +12,19 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import {
-	CONFIG_FILE_NAMES,
-	DEFAULT_CONFIG_FILE,
-	ResolvedConfigFile,
-} from "./config.js";
+import { CONFIG_FILE_NAMES, DEFAULT_CONFIG_FILE } from "./config.js";
+import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigKeys } from "./config-keys.js";
 import { ConfigValidator } from "./config-validator.js";
 import { PlacePorts } from "./place-ports.js";
 import {
 	PlaceBase,
 	ProjectSource,
-	readProjectSources,
+	ProjectSourceReader,
 } from "./project-sources.js";
 
 /** The places a config lists, loaded. */
-export interface LoadedPlaces {
+interface LoadedPlaces {
 	/** Every place config file that exists. */
 	readonly files: readonly string[];
 	/** What each of those holds, by file. */
@@ -71,7 +68,7 @@ export class PlaceLoader {
 					position: config.positionOfKey(key),
 				})
 			);
-			const declared = readProjectSources(config, base);
+			const declared = new ProjectSourceReader(config, base).read();
 			problems.push(...keys.errors, ...declared.errors);
 			read.push({
 				sources: declared.sources,
@@ -94,34 +91,21 @@ export class PlaceLoader {
 				sources.flatMap((source) => portOf(source) ?? [])
 			)
 		);
-		const places = read.map(
-			({ sources, serveProject, warnings }, index) => {
-				const stems = sources.map(({ stem }) => stem);
-				return sources.map((source, position) =>
-					new ConfigValidator(
-						source,
-						serveProject,
-						stems,
-						position === 0 ? warnings : source.warnings,
-						{ rootFile, placePort: ports[index] }
-					).validate()
-				);
-			}
+		const places = read.map(({ sources, serveProject, warnings }, index) =>
+			ConfigValidator.validateFile(sources, serveProject, warnings, {
+				rootFile,
+				placePort: ports[index],
+			})
 		);
-		const failed = places
-			.flat()
-			.flatMap((result) => (result.isErr() ? result.error : []));
+		const failed = places.flatMap((result) =>
+			result.isErr() ? result.error : []
+		);
 		if (failed.length > 0)
 			return { files, values, resolved: err(uniqueDiagnostics(failed)) };
 		return {
 			files,
 			values,
-			resolved: ok(
-				places.map(([description, ...projects]) => ({
-					config: description.unwrap(),
-					projects: projects.map((result) => result.unwrap()),
-				}))
-			),
+			resolved: ok(places.map((result) => result.unwrap())),
 		};
 	}
 

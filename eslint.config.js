@@ -19,10 +19,11 @@ const modules = {
 		config: [
 			"config",
 			"config-service",
+			"declared-keys",
 			"place-finder",
-			"place-folders",
 			"place-ports",
 			"project-choice",
+			"resolved-config",
 		],
 		init: ["init-service"],
 		legacy: ["legacy-config"],
