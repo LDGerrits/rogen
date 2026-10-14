@@ -258,6 +258,45 @@ stdout:
         ]
       },
       {
+        "name": "sourcemap",
+        "description": "Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "output",
+            "short": "o",
+            "type": "string"
+          },
+          {
+            "name": "include-non-scripts",
+            "type": "boolean"
+          },
+          {
+            "name": "absolute",
+            "type": "boolean"
+          },
+          {
+            "name": "watch",
+            "type": "boolean"
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "runsProcesses",
+          "longRunning"
+        ]
+      },
+      {
         "name": "where",
         "description": "Prints where each file lands in the game, and why, with its warnings.",
         "args": [

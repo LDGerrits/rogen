@@ -50,6 +50,16 @@ With `--json`, `build --watch` prints one JSON object per line, as [`serve --jso
 
 It's safe to run `build` while `build --watch` is running. Press Ctrl+C to stop.
 
+### `sourcemap [project…]`
+
+Writes the project files, then runs Rojo's own `sourcemap` on the project and prints what it makes, as `rojo sourcemap` does, so `rogen sourcemap | jq` pipes. Like `build -o`, it runs the Rojo your toolchain file pins, on the `default` project unless you name one, and never on the project `rogen serve` serves: a [Darklua](/docs/v2/core-concepts/output#sync-path) repo's `serveProject` maps `dist`, and a sourcemap for luau-lsp or Darklua has to come from the source tree.
+
+`-o <file>` writes the sourcemap there instead, and `--include-non-scripts` and `--absolute` are Rojo's flags, passed on. Nothing is written when the project files have errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)).
+
+In a root with [places](/docs/v2/configuration#places) and no project named, it writes a `sourcemap.json` beside each place's project file, which is where luau-lsp and Darklua look for it, and prints `places/lobby/sourcemap.json · wrote` for each. The root's own project is left out; name it to map it. `-o` names one file, so it is an error with several projects. Name one place (`rogen sourcemap places/lobby`) to print that place's sourcemap.
+
+`--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. It needs `-o`, or several projects, since a sourcemap that is printed has no room beside the watch output. `--json` needs the same, and prints [one document](#sourcemap---json) instead of the sourcemap.
+
 ### `serve [project…] [-- server args…]` [#serve]
 
 Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
@@ -268,10 +278,11 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | Flag | Effect |
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve` and `build --watch`. On `init` it implies `--non-interactive`. |
-| `-o, --output <file>` | `build` only: also builds the project into this place or model file with Rojo. |
+| `--json` | Prints one JSON document for `build`, `sourcemap`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
+| `-o, --output <file>` | `build`: also builds the project into this place or model file with Rojo. `sourcemap`: writes the sourcemap there instead of printing it. |
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
-| `--watch` | `build` only: keeps the project files current, and with `-o` or `-p` runs Rojo's build after each write. |
+| `--watch` | `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write when `-o` or `-p` (`build`), or `-o` or several projects (`sourcemap`), asks for it. |
+| `--include-non-scripts`, `--absolute` | `sourcemap` only: Rojo's flags of the same name. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
 | `-n, --dry-run` | `init` only: prints what it would write and decide, and writes nothing. |
 | `--language`, `--[no-]darklua`, `--source-path`, `--sync-path`, `--project-file`, `--package`, `--route`, `--unmatched`, `--[no-]agent-rules`, `--[no-]agent-hook`, `--[no-]rojo-pin`, `--nested`, `--place-listing` | `init` only: answer a question. See [Choices as flags](#choices-as-flags). |
@@ -426,6 +437,36 @@ With `-o` or `-p`, the document also has `rojo`, the Rojo build that ran after t
 `outcome` is `built`, `failed` or `notRun`: Rojo isn't run when the project files have errors, and then `project` is `null`. `output` is the absolute path `-o` names, and `plugin` is the name `-p` gives (one of the two). `messages` is what Rojo said, with `severity` `error`, `warning` or `info`. A failed run has `diagnostics` with `rojo.commandFailed` (or what kept Rojo from starting), and the exit code is 1.
 
 A config that doesn't load is an entry like the others: `projectFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
+
+### `sourcemap --json`
+
+```json
+{
+	"changed": true,
+	"configs": [
+		{
+			"config": "my-game",
+			"file": "/repo/rogen.json",
+			"projectFile": "/repo/default.project.json",
+			"outcome": "unchanged",
+			"diagnostics": []
+		}
+	],
+	"sourcemaps": [
+		{
+			"command": "sourcemap",
+			"outcome": "built",
+			"project": "/repo/default.project.json",
+			"output": "/repo/sourcemap.json",
+			"messages": [
+				{ "severity": "info", "text": "Created sourcemap at sourcemap.json" }
+			]
+		}
+	]
+}
+```
+
+`configs` is as in [`build --json`](#build---json). `sourcemaps` has an entry for each Rojo run, shaped as [`rojo` in `build --json`](#build---json) with `command` `sourcemap`, and `outcome` `built` when Rojo wrote the file: one for `-o`, and one for each place without it, whose `output` is the `sourcemap.json` beside the project file. `changed` is true when a project file was written or a sourcemap was. With `--watch`, it prints one JSON object per line as [`build --watch --json`](#build---watch) does.
 
 ### `fmt-project --json`
 

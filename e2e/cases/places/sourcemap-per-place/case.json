@@ -1,0 +1,1 @@
+{"steps":[["sourcemap"],["sourcemap","-o","sourcemap.json"],["sourcemap","places/arena"],["sourcemap","--json"]],"show":["places/arena/sourcemap.json","places/lobby/sourcemap.json"],"rojo":false}

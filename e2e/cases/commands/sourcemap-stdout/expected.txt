@@ -1,0 +1,12 @@
+$ rogen sourcemap
+exit 0
+stdout:
+  {"name":"Game","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"A","className":"Script","filePaths":["src/A.server.luau"]}]}]}
+
+$ rogen sourcemap --include-non-scripts
+exit 0
+stdout:
+  {"name":"Game","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"A","className":"Script","filePaths":["src/A.server.luau"]}]}]}
+
+written:
+  default.project.json

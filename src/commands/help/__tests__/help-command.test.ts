@@ -14,6 +14,7 @@ import "../help-command.js";
 import "../../init/init-command.js";
 import "../../list/list-command.js";
 import "../../serve/serve-command.js";
+import "../../sourcemap/sourcemap-command.js";
 import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";

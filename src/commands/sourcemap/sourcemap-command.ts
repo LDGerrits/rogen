@@ -1,0 +1,255 @@
+import { randomUUID } from "crypto";
+import path from "path";
+import { relativeTo } from "../../base/path.js";
+import { DisposableStore } from "../../base/disposable.js";
+import { Result, err, ok } from "../../base/result.js";
+import { BuildService } from "../../domain/build/build-service.js";
+import {
+	ConfigArguments,
+	ConfigService,
+} from "../../domain/config/config-service.js";
+import {
+	RojoCommandRun,
+	RojoCommandService,
+} from "../../domain/runner/rojo-command-service.js";
+import {
+	AbstractCommand,
+	registerCommand,
+} from "../../platform/commands/commands.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import {
+	CommandLine,
+	JsonOption,
+	OptionDescriptor,
+} from "../../platform/environment/args.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { LogService } from "../../platform/log/log-service.js";
+import { BuildLog } from "../build/build-log.js";
+import { rojoEntry } from "../build/build-document.js";
+import { BuildWatch } from "../build/build-watch.js";
+import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
+import {
+	sourcemapDocument,
+	sourcemapDocumentShape,
+	sourcemapLineShape,
+} from "./sourcemap-document.js";
+import { SourcemapStep } from "./sourcemap-step.js";
+
+const OutputOption = {
+	name: "output",
+	short: "o",
+	type: "string",
+	placeholder: "output",
+	description:
+		"Write the sourcemap to this file instead of printing it. With several projects selected, each gets a sourcemap.json beside its project file and -o is refused.",
+} as const satisfies OptionDescriptor;
+
+const IncludeNonScriptsOption = {
+	name: "include-non-scripts",
+	type: "boolean",
+	description:
+		"Include instances that are not scripts, such as folders' files and models.",
+} as const satisfies OptionDescriptor;
+
+const AbsoluteOption = {
+	name: "absolute",
+	type: "boolean",
+	description:
+		"Write absolute paths in the sourcemap instead of paths relative to the project.",
+} as const satisfies OptionDescriptor;
+
+const WatchOption = {
+	name: "watch",
+	type: "boolean",
+	description:
+		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. It needs -o, or several projects. A script edited in place changes no name, so nothing is written. Press Ctrl+C to stop; --json prints one JSON object per line.",
+} as const satisfies OptionDescriptor;
+
+const SourcemapOptions = [
+	JsonOption,
+	OutputOption,
+	IncludeNonScriptsOption,
+	AbsoluteOption,
+	WatchOption,
+] as const;
+
+/** What went wrong across the runs: the first failure that is no diagnostic, else every diagnostic. */
+function failureOf(
+	runs: readonly (Result<RojoCommandRun, Error> | undefined)[]
+): Error | undefined {
+	const failures = runs.flatMap((ran) =>
+		ran === undefined
+			? []
+			: ran.isErr()
+				? [ran.error]
+				: (ran.value.failure ?? [])
+	);
+	const other = failures.find(
+		(failure) => !(failure instanceof DiagnosticsError)
+	);
+	if (other) return other;
+	return DiagnosticsError.of(
+		failures.flatMap((failure) =>
+			failure instanceof DiagnosticsError ? failure.diagnostics : []
+		)
+	);
+}
+
+registerCommand(
+	class SourcemapCommand extends AbstractCommand<typeof SourcemapOptions> {
+		constructor() {
+			super({
+				id: "sourcemap",
+				metadata: {
+					description:
+						"Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
+					args: ConfigArguments,
+					options: SourcemapOptions,
+					output: {
+						document: sourcemapDocumentShape,
+						lines: sourcemapLineShape,
+					},
+					effects: ["writesFiles", "runsProcesses"],
+					longRunningWith: "watch",
+					examples: [
+						"rogen sourcemap",
+						"rogen sourcemap -o sourcemap.json",
+						"rogen sourcemap places/lobby --include-non-scripts",
+						"rogen sourcemap --watch -o sourcemap.json",
+						"rogen sourcemap --json",
+					],
+				},
+			});
+		}
+
+		async run(
+			accessor: ServicesAccessor,
+			line: CommandLine<typeof SourcemapOptions>
+		): Promise<Result<void, Error>> {
+			const { json, watch, output } = line.options;
+			const rojoService = accessor.get(RojoCommandService);
+			const cwd = accessor.get(EnvironmentService).cwd;
+			const step = new SourcemapStep(
+				rojoService,
+				{
+					output,
+					includeNonScripts: Boolean(
+						line.options["include-non-scripts"]
+					),
+					absolute: Boolean(line.options.absolute),
+				},
+				cwd,
+				!json && !watch
+			);
+			if (watch) {
+				const store = new DisposableStore();
+				const shutdown = this.untilShutdown(accessor, store);
+				try {
+					return await new BuildWatch(
+						accessor,
+						line.positionals,
+						Boolean(json),
+						step
+					).run(store, shutdown);
+				} finally {
+					store[Symbol.dispose]();
+				}
+			}
+
+			const logService = accessor.get(LogService);
+			const fileSystemService = accessor.get(FileSystemService);
+			const selection = await accessor
+				.get(ConfigService)
+				.select(line.positionals);
+			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
+
+			const planned = step.plans(selection.value);
+			if (planned.isErr()) return planned;
+			const plans = planned.value;
+
+			const build = await accessor
+				.get(BuildService)
+				.build(selection.value);
+			const failure = build.failure(false);
+
+			const tmp = path.join(
+				accessor.get(EnvironmentService).tmpDir,
+				`rogen-sourcemap-${randomUUID()}.json`
+			);
+			const runs: (Result<RojoCommandRun, Error> | undefined)[] = [];
+			if (!failure)
+				for (const plan of plans) {
+					const ran = await rojoService.run(selection.value, {
+						command: step.command,
+						flags: plan.printed
+							? [...plan.flags, "--output", tmp]
+							: plan.flags,
+						cwd: plan.cwd,
+						project: plan.project,
+					});
+					runs.push(ran);
+					if (ran.isErr()) break;
+				}
+			const rojoFailure = failureOf(runs);
+			const printed = plans.some(({ printed }) => printed);
+			try {
+				if (printed && !rojoFailure && !failure)
+					logService.print(
+						(await fileSystemService.readFile(tmp)).trimEnd()
+					);
+			} finally {
+				if (printed)
+					await fileSystemService.delete(tmp).catch(() => undefined);
+			}
+
+			if (json)
+				return this.printJson(
+					logService,
+					sourcemapDocument(
+						build.builds,
+						plans.map((plan, index) =>
+							rojoEntry(plan.target, runs[index])
+						)
+					),
+					failure ?? rojoFailure
+				);
+			const buildLog = new BuildLog(logService, cwd);
+			if (printed)
+				buildLog.diagnostics(
+					build.builds.flatMap((one) => [
+						...one.warnings,
+						...one.errors,
+					])
+				);
+			else
+				buildLog.report(
+					build,
+					selection.value.home,
+					false,
+					"sourcemap"
+				);
+			runs.forEach((ran, index) => {
+				if (!ran?.isOk()) return;
+				const { messages, failure: runFailure } = ran.value;
+				(runFailure ? reportRojoBesideFailure : reportRojo)(
+					logService,
+					messages.filter(
+						({ severity }) =>
+							severity === "warning" || severity === "error"
+					),
+					cwd
+				);
+				const { target } = plans[index];
+				if (!runFailure && target.output !== undefined)
+					logService.success(
+						`${relativeTo(cwd, path.resolve(target.cwd, target.output))} · wrote`
+					);
+			});
+			if (rojoFailure) return err(rojoFailure);
+			return failure ? this.reported(failure) : ok(undefined);
+		}
+	}
+);

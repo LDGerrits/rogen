@@ -89,6 +89,25 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should write the sourcemap after each write when it is sourcemap --watch", async () => {
+		const map = path.join(project.dir, "sourcemap.json");
+		session = new RunningRogen(
+			bundle.cli,
+			project.dir,
+			["-o", "sourcemap.json"],
+			undefined,
+			"sourcemap --watch"
+		);
+		await eventually(() => {
+			expect(fs.readFileSync(map, "utf8")).toContain("A");
+		});
+
+		writeProjectFile(project.dir, "src/Added.luau");
+		await eventually(() => {
+			expect(fs.readFileSync(map, "utf8")).toContain("Added");
+		});
+	}, 30_000);
+
 	it("should count the warnings a rebuild doesn't repeat", async () => {
 		writeProjectFile(project.dir, "src/Save@sever.luau");
 		const running = start();

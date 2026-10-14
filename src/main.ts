@@ -67,6 +67,7 @@ import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
 import "./commands/list/list-command.js";
 import "./commands/serve/serve-command.js";
+import "./commands/sourcemap/sourcemap-command.js";
 import "./commands/where/where-command.js";
 
 /** Baked in by `scripts/bundle.ts`; undefined in a run from source. */
