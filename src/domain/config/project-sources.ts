@@ -173,7 +173,7 @@ export class ProjectSourceReader {
 			stem: name,
 			model: new ConfigModel(
 				mergePatch(
-					this.underlying(name),
+					this.startingValues(name),
 					Object.fromEntries(
 						Object.entries(changes).filter(
 							([key]) => !ROOT_ONLY_KEYS.includes(key)
@@ -195,7 +195,7 @@ export class ProjectSourceReader {
 		const unchanged = (stem: string): ProjectSource => ({
 			...config,
 			stem,
-			model: new ConfigModel(this.underlying(stem)),
+			model: new ConfigModel(this.startingValues(stem)),
 			inherited: this.inheritedFrom(stem),
 			warnings: [],
 		});
@@ -203,7 +203,7 @@ export class ProjectSourceReader {
 			...config,
 			stem: DEFAULT_PROJECT,
 			model: base
-				? new ConfigModel(this.underlying(DEFAULT_PROJECT))
+				? new ConfigModel(this.startingValues(DEFAULT_PROJECT))
 				: config.model,
 			inherited: this.inheritedFrom(DEFAULT_PROJECT),
 			warnings: [],
@@ -240,18 +240,18 @@ export class ProjectSourceReader {
 		return serveProject;
 	}
 
-	private taken(stem: string): ProjectSource {
+	private listedSource(stem: string): ProjectSource {
 		const sources = this.base?.sources ?? [];
 		return sources.find((source) => source.stem === stem) ?? sources[0];
 	}
 
-	private underlying(stem: string): Record<string, unknown> {
+	private startingValues(stem: string): Record<string, unknown> {
 		const { base } = this;
 		if (!base) return this.description;
 		const inherited = Object.fromEntries(
 			Object.entries(
 				PathRebaser.values(
-					this.taken(stem).model.contents,
+					this.listedSource(stem).model.contents,
 					base.dir,
 					this.dir
 				)
@@ -272,7 +272,9 @@ export class ProjectSourceReader {
 			base && {
 				dir: base.dir,
 				sourcePaths:
-					this.taken(stem).model.getValue<string[]>("sourcePaths"),
+					this.listedSource(stem).model.getValue<string[]>(
+						"sourcePaths"
+					),
 			}
 		);
 	}

@@ -28,17 +28,17 @@ describe("WatchedConfig", () => {
 		expect(watched.reads("C:/repo/src/other.meta.json")).toBe(false);
 	});
 
-	it("should be settled only when no rebuild is queued and the latest did not fail", async () => {
+	it("should know what it reads only when no rebuild is queued and the latest did not fail", async () => {
 		const watched = new WatchedConfig();
 		const gate = new DeferredPromise<void>();
 		const queued = watched.queue(() => gate.p);
 
-		expect(watched.settled).toBe(false);
+		expect(watched.readsKnown).toBe(false);
 		gate.complete();
 		await queued;
 		await Promise.resolve();
 
-		expect(watched.settled).toBe(true);
+		expect(watched.readsKnown).toBe(true);
 	});
 
 	it("should run queued rebuilds one at a time, in order", async () => {

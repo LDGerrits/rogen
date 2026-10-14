@@ -127,12 +127,12 @@ export class ServePorts {
 	private async portTaken(
 		target: ServeTarget,
 		holder: ServerInfo | undefined,
-		from: string | undefined,
+		holderFolder: string | undefined,
 		targets: readonly ServeTarget[]
 	): Promise<Diagnostic> {
 		const { config, address } = target;
 		const by = holder
-			? `${holder.server.name} serving ${holder.project}${from ? ` from ${from}` : ""}`
+			? `${holder.server.name} serving ${holder.project}${holderFolder ? ` from ${holderFolder}` : ""}`
 			: "another program";
 		const free = address.isLocal
 			? await this.freePortAfter(address, targets)

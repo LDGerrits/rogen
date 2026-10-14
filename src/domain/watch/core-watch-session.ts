@@ -46,7 +46,7 @@ export class CoreWatchSession
 
 	constructor(
 		private readonly selection: ReloadableSelection,
-		private set: BuildSet,
+		private buildSet: BuildSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
 		private readonly buildService: BuildService
@@ -105,7 +105,7 @@ export class CoreWatchSession
 
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const watched = [...this.watched.values()];
-		if (!this.started || watched.some((config) => !config.settled)) {
+		if (!this.started || watched.some((config) => !config.readsKnown)) {
 			return changes.filter((change) => this.isWatched(change.path));
 		}
 		return changes.filter(
@@ -130,10 +130,10 @@ export class CoreWatchSession
 		watched: WatchedConfig,
 		projectFile: string
 	): Promise<RebuildReport | undefined> {
-		if (!this.set.configOf(projectFile)) return undefined;
+		if (!this.buildSet.configOf(projectFile)) return undefined;
 		return watched.finished(
 			await this.buildService.rebuild(
-				this.set,
+				this.buildSet,
 				projectFile,
 				this.listing,
 				watched.latest
@@ -248,7 +248,7 @@ export class CoreWatchSession
 	}
 
 	private refreshSet(): void {
-		this.set = new BuildSet(this.selection.configs);
+		this.buildSet = new BuildSet(this.selection.configs);
 	}
 
 	private forgetRemoved(): void {

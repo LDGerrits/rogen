@@ -17,23 +17,23 @@ export function normalizeFileChanges(
 	changes: readonly FileChange[]
 ): FileChange[] {
 	const map = new Map<string, FileChange>();
-	const first = new Map<string, FileChangeType>();
+	const firstTypeByPath = new Map<string, FileChangeType>();
 
 	for (const change of changes) {
 		const existing = map.get(change.path);
 
 		if (!existing) {
 			map.set(change.path, change);
-			first.set(change.path, change.type);
+			firstTypeByPath.set(change.path, change.type);
 			continue;
 		}
 
 		if (
-			first.get(change.path) === FileChangeType.ADDED &&
+			firstTypeByPath.get(change.path) === FileChangeType.ADDED &&
 			change.type === FileChangeType.DELETED
 		) {
 			map.delete(change.path);
-			first.delete(change.path);
+			firstTypeByPath.delete(change.path);
 		} else if (
 			existing.type === FileChangeType.ADDED &&
 			change.type === FileChangeType.UPDATED

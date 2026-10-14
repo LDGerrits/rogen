@@ -35,7 +35,7 @@ export class WatchedConfig {
 		return this.latest?.outcome === "failed";
 	}
 
-	get settled(): boolean {
+	get readsKnown(): boolean {
 		return this.pending === 0 && !this.failing;
 	}
 

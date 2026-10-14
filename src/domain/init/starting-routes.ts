@@ -108,14 +108,14 @@ export class StartingRoutes {
 
 	starting(
 		ticked: readonly RouteId[],
-		fallback: boolean
+		alwaysWriteFallback: boolean
 	): Record<string, string> {
 		const routes = this.options.filter(({ id }) => ticked.includes(id));
 		return {
 			...Object.fromEntries(
 				routes.map(({ key, target }) => [key, target])
 			),
-			...((fallback || routes.length === 0) && {
+			...((alwaysWriteFallback || routes.length === 0) && {
 				[DeclaredKeys.FALLBACK_ROUTE]: this.fallbackTarget,
 			}),
 		};

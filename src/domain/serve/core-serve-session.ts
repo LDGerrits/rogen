@@ -71,7 +71,7 @@ export class CoreServeSession
 		string,
 		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
 	>();
-	private readonly built = new Set<string>();
+	private readonly writtenConfigs = new Set<string>();
 	private launched = false;
 	private readonly reconciling = new Sequencer();
 	private readonly firstUpdate = new DeferredPromise<
@@ -94,10 +94,10 @@ export class CoreServeSession
 			watch.onDidUpdate((update) => {
 				for (const { build } of update.reports) {
 					if (!isWritten(build)) {
-						this.built.delete(build.config.id);
+						this.writtenConfigs.delete(build.config.id);
 						continue;
 					}
-					this.built.add(build.config.id);
+					this.writtenConfigs.add(build.config.id);
 				}
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);
@@ -199,7 +199,7 @@ export class CoreServeSession
 		const address = target.address.toString();
 		const started = this.servers.get(config.id);
 		if (started?.target.address.toString() === address) return;
-		if (!this.built.has(config.id)) return;
+		if (!this.writtenConfigs.has(config.id)) return;
 
 		const others = this.targets.filter(
 			(other) => other.config.id !== config.id

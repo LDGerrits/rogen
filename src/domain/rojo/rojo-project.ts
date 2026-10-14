@@ -205,11 +205,15 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			...(isObject(existing) ? existing : {}),
 			...data,
 		};
-		if (updated.$path && updated.$className === "Folder") {
-			delete updated.$className;
-			delete updated.$ignoreUnknownInstances;
-		}
-		setOwn(parent, leaf, updated);
+		setOwn(parent, leaf, RojoProject.withoutFolderClass(updated));
+	}
+
+	private static withoutFolderClass(node: RojoNode): RojoNode {
+		if (!node.$path || node.$className !== "Folder") return node;
+		const withoutClass = { ...node };
+		delete withoutClass.$className;
+		delete withoutClass.$ignoreUnknownInstances;
+		return withoutClass;
 	}
 
 	mountedPaths(): MountedPath[] {

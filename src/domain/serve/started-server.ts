@@ -46,9 +46,9 @@ export interface RunningServer {
 export class StartedServer extends AbstractDisposable implements RunningServer {
 	private readonly child: RojoProcess;
 	private exited = false;
-	private ending = false;
-	private record: Promise<void> | undefined;
-	private answering: ServerInfo | undefined;
+	private stoppedOnPurpose = false;
+	private recordWrite: Promise<void> | undefined;
+	private answeredWith: ServerInfo | undefined;
 	private connected = 0;
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
@@ -77,7 +77,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		let said = false;
 		this._register(
 			this.child.onDidConnection((change) => {
-				if (this.ending || this.exited) return;
+				if (this.stoppedOnPurpose || this.exited) return;
 				const opened = change === "opened";
 				this.connected = Math.max(
 					0,
@@ -100,7 +100,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this._register(
 			this.child.onDidExit((exit) => {
 				this.exited = true;
-				if (!this.ending)
+				if (!this.stoppedOnPurpose)
 					this.listener.stopped(this.stopOf(exit, said));
 			})
 		);
@@ -111,7 +111,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	}
 
 	async terminate(): Promise<void> {
-		this.ending = true;
+		this.stoppedOnPurpose = true;
 		this.ready.cancel();
 		await this.child.terminate();
 	}
@@ -123,13 +123,20 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	}
 
 	private updateRecord(): Promise<void> {
-		if (!this.record || !this.answering || this.ending || this.exited)
+		if (
+			!this.recordWrite ||
+			!this.answeredWith ||
+			this.stoppedOnPurpose ||
+			this.exited
+		)
 			return Promise.resolve();
-		const info = this.answering;
-		this.record = this.record.then(() =>
-			this.ending || this.exited ? undefined : this.writeRecord(info)
+		const info = this.answeredWith;
+		this.recordWrite = this.recordWrite.then(() =>
+			this.stoppedOnPurpose || this.exited
+				? undefined
+				: this.writeRecord(info)
 		);
-		return this.record;
+		return this.recordWrite;
 	}
 
 	private writeRecord(info: ServerInfo): Promise<void> {
@@ -147,8 +154,8 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 	}
 
 	async unrecord(): Promise<void> {
-		if (!this.record) return;
-		await this.record;
+		if (!this.recordWrite) return;
+		await this.recordWrite;
 		await this.records.remove(this.target.address).catch(() => undefined);
 	}
 
@@ -157,13 +164,13 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this.probe
 			.probe(target.address, this.plan.executable.server)
 			.then((state) => {
-				if (this.ending || this.exited) return;
+				if (this.stoppedOnPurpose || this.exited) return;
 				if (
 					state.kind === "serving" &&
 					state.info.project === target.project
 				) {
-					this.answering = state.info;
-					this.record = this.writeRecord(state.info);
+					this.answeredWith = state.info;
+					this.recordWrite = this.writeRecord(state.info);
 					this.listener.served({ target, info: state.info });
 					return;
 				}

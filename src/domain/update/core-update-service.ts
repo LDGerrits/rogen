@@ -32,13 +32,7 @@ export class CoreUpdateService implements UpdateService {
 		const current = Version.parse(installed);
 		if (!current) return undefined;
 
-		let newest: Version | undefined;
-		for (const text of published) {
-			const version = Version.parse(text);
-			if (!version || (version.isPrerelease && !current.isPrerelease))
-				continue;
-			if (!newest || version.compareTo(newest) > 0) newest = version;
-		}
+		const newest = this.newestVisibleTo(current, published);
 		if (!newest || newest.compareTo(current) <= 0) return undefined;
 		if (!(await this.releaseService.announce(newest.toString())))
 			return undefined;
@@ -46,15 +40,30 @@ export class CoreUpdateService implements UpdateService {
 		return `Rogen ${newest} is out (you have ${current}). ${await this.fix(newest)}`;
 	}
 
+	/** A stable version hears of stable releases only; a prerelease of the later prereleases too. */
+	private newestVisibleTo(
+		current: Version,
+		published: readonly string[]
+	): Version | undefined {
+		let newest: Version | undefined;
+		for (const text of published) {
+			const version = Version.parse(text);
+			if (!version || (version.isPrerelease && !current.isPrerelease))
+				continue;
+			if (!newest || version.compareTo(newest) > 0) newest = version;
+		}
+		return newest;
+	}
+
 	private async fix(version: Version): Promise<string> {
 		const project = /^(.*?)[\\/]node_modules[\\/]/.exec(
 			this.installDir
 		)?.[1];
 		if (project !== undefined) {
-			const local = await this.fileReader.exists(
+			const installedAsDependency = await this.fileReader.exists(
 				path.join(project, "package.json")
 			);
-			return `Update with: npm i ${local ? "" : "-g "}${PACKAGE_NAME}@${version}`;
+			return `Update with: npm i ${installedAsDependency ? "" : "-g "}${PACKAGE_NAME}@${version}`;
 		}
 		const repository = REPOSITORY.toLowerCase();
 		for (const manifest of await this.toolchainService.readManifests(

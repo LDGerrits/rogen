@@ -108,13 +108,13 @@ export class ServerOutput extends AbstractDisposable {
 	private say(
 		severity: ServerMessage["severity"],
 		said: string,
-		logged = true
+		isLogRecord = true
 	): void {
 		if (said === "") return;
 		const text = RUST_NOISE.test(said)
 			? undefined
 			: this.server.tidied(said);
-		const change = logged ? this.server.connectionIn(said) : undefined;
+		const change = isLogRecord ? this.server.connectionIn(said) : undefined;
 		if (change) this._onDidConnection.fire(change);
 		if (severity === "debug" || !text) {
 			this._onDidMessage.fire({ severity: "debug", text: said });

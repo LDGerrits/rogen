@@ -64,7 +64,7 @@ export class CoreConfigService implements ConfigService {
 				this.loader,
 				directory,
 				noneNamed
-					? { directory, list: () => this.configsIn(directory) }
+					? { directory, list: () => this.firstConfigIn(directory) }
 					: undefined,
 				projects,
 				await this.tiesOf(homeConfig, home, folders),
@@ -122,7 +122,7 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	private async configsIn(directory: string): Promise<string[]> {
+	private async firstConfigIn(directory: string): Promise<string[]> {
 		return (await this.discovery.list(directory)).slice(0, 1);
 	}
 

@@ -37,7 +37,7 @@ interface DiscoveredConfigs {
 interface NamedConfig {
 	readonly file: string;
 	readonly project?: string;
-	readonly folder?: string;
+	readonly folderName?: string;
 	readonly place?: string;
 }
 
@@ -130,8 +130,8 @@ export class ConfigDiscovery {
 			files,
 			noneNamed: false,
 			projects,
-			folders: resolved.flatMap(({ folder }) =>
-				folder === undefined ? [] : [folder]
+			folders: resolved.flatMap(({ folderName }) =>
+				folderName === undefined ? [] : [folderName]
 			),
 			homeConfig,
 			scopes,
@@ -243,7 +243,7 @@ export class ConfigDiscovery {
 		projectHere: ((project: string) => NamedConfig) | undefined
 	): Promise<Result<NamedConfig, Error>> {
 		const config = await this.configIn(target, `"${ref}"`);
-		const folder = isBareName(ref) ? { folder: ref } : {};
+		const folder = isBareName(ref) ? { folderName: ref } : {};
 		const listing = await this.places.rootOf(target);
 		if (listing) return ok({ file: listing, place: target, ...folder });
 		if (config.isOk()) return ok({ file: config.value, ...folder });

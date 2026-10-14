@@ -10,13 +10,8 @@ export class LegacyConfig {
 
 	private static readonly KEYS = ["source", "aliases"];
 	private static readonly MODE_KEYS = ["output", "build"];
-	private static readonly NAME_MAPS = [
-		"routes",
-		"variants",
-		"modes",
-		"tree",
-		"projects",
-	];
+	private static readonly NAME_MAPS = ["routes", "tree", "projects"];
+	private static readonly BETA_NAME_MAPS = ["variants", "modes"];
 
 	static detects(value: unknown): boolean {
 		if (typeof value !== "object" || value === null) return false;
@@ -24,8 +19,7 @@ export class LegacyConfig {
 		return fields.some(
 			([key, field]) =>
 				LegacyConfig.KEYS.includes(key) ||
-				(!LegacyConfig.NAME_MAPS.includes(key) &&
-					LegacyConfig.isMode(field))
+				(!LegacyConfig.isNameMap(key) && LegacyConfig.isMode(field))
 		);
 	}
 
@@ -39,6 +33,13 @@ export class LegacyConfig {
 					),
 				]
 			: [];
+	}
+
+	private static isNameMap(key: string): boolean {
+		return (
+			LegacyConfig.NAME_MAPS.includes(key) ||
+			LegacyConfig.BETA_NAME_MAPS.includes(key)
+		);
 	}
 
 	private static isMode(field: unknown): boolean {
