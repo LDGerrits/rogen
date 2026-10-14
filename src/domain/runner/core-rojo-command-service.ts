@@ -58,10 +58,21 @@ export class CoreRojoCommandService implements RojoCommandService {
 			path.relative(request.cwd, project.projectFile),
 			request.flags,
 			request.cwd,
-			project.projectFile,
 			request.signal
 		);
-		return ok({ project, ...ran });
+		return ok({
+			project,
+			messages: ran.messages,
+			...(ran.failure && {
+				failure: new DiagnosticsError([
+					errorDiagnostic(
+						"rojo.commandFailed",
+						{ resource: project.projectFile },
+						ran.failure
+					),
+				]),
+			}),
+		});
 	}
 
 	async runBare(
@@ -74,30 +85,31 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 		if (executable.isErr()) return executable;
 		const [command, ...flags] = request.args;
-		return ok(
-			await this.spawn(
-				executable.value,
-				command,
-				undefined,
-				flags,
-				request.cwd,
-				request.cwd,
-				request.signal,
-				request.args.join(" ")
-			)
+		const ran = await this.spawn(
+			executable.value,
+			command,
+			undefined,
+			flags,
+			request.cwd,
+			request.signal,
+			request.args.join(" ")
 		);
+		return ok({
+			messages: ran.messages,
+			...(ran.failure && { failure: new Error(ran.failure) }),
+		});
 	}
 
+	/** Runs `command`, and says why it failed when Rojo exited with an error. */
 	private async spawn(
 		executable: ServerExecutable,
 		command: string,
 		projectFile: string | undefined,
 		flags: readonly string[],
 		cwd: string,
-		resource: string,
 		signal: AbortSignal | undefined,
 		described = command
-	): Promise<RojoBareRun> {
+	): Promise<{ messages: ServerMessage[]; failure?: string }> {
 		if (signal?.aborted) return { messages: [] };
 		const rojo = this.rojoRunner.start(
 			executable,
@@ -127,13 +139,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
 		return {
 			messages,
-			failure: new DiagnosticsError([
-				errorDiagnostic(
-					"rojo.commandFailed",
-					{ resource },
-					`'${executable.server.id} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`
-				),
-			]),
+			failure: `'${executable.server.id} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`,
 		};
 	}
 

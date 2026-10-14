@@ -31,13 +31,15 @@ export interface RojoBareRequest {
 export interface RojoBareRun {
 	/** What Rojo said, in order. */
 	readonly messages: readonly ServerMessage[];
-	/** Why the run failed, when Rojo exited with an error. */
-	readonly failure?: DiagnosticsError;
+	/** Why the run failed, when Rojo exited with an error; no file is to blame. */
+	readonly failure?: Error;
 }
 
 export interface RojoCommandRun extends RojoBareRun {
 	/** The project Rojo ran on. */
 	readonly project: ResolvedConfig;
+	/** Why the run failed, when Rojo exited with an error, about the project file. */
+	readonly failure?: DiagnosticsError;
 }
 
 export interface RojoCommandService {

@@ -1,4 +1,5 @@
 import { ResultError } from "../../../base/result.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import {
@@ -256,18 +257,16 @@ describe("CoreRojoCommandService", () => {
 			expect(processes.spawned[0].options.cwd).toBe("/repo");
 		});
 
-		it("should return a run with a failure about the folder when Rojo exits with an error", async () => {
+		it("should return a run with a failure that names no file when Rojo exits with an error", async () => {
 			const running = install();
 			await finish(["ERROR: no plugins folder"], 1);
 
 			const ran = (await running).unwrap();
 
-			expect(ran.failure?.diagnostics[0]).toMatchObject({
-				code: "rojo.commandFailed",
-				resource: "/repo",
-				message:
-					"'rojo plugin install' failed (exit code 1): no plugins folder",
-			});
+			expect(ran.failure?.message).toBe(
+				"'rojo plugin install' failed (exit code 1): no plugins folder"
+			);
+			expect(ran.failure).not.toBeInstanceOf(DiagnosticsError);
 		});
 
 		it("should fail without running Rojo when no Rojo is found", async () => {

@@ -64,7 +64,7 @@ In a root with [places](/docs/v2/configuration#places) and no project named, it 
 
 Writes the project files, then runs Rojo's own `upload` on the project, as `rojo upload` does: Rojo builds it and uploads it to Roblox. Like `build -o`, it runs the Rojo your toolchain file pins, on the `default` project unless you name one, and never on the project `rogen serve` serves.
 
-Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the place or model to upload to, and Rogen refuses to run without it. `--api_key` and `--universe_id` upload with Open Cloud, to a place only, and `--cookie` gives the cookie to upload with. Without a key or a cookie Rojo looks for a cookie on this machine. Rogen never stores or prints them, but a flag is visible to other programs on the machine while it runs.
+Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the place or model to upload to, and Rogen refuses to run without it. `--api_key` and `--universe_id` upload with Open Cloud, to a place only, and `--cookie` gives the cookie to upload with. Without a key or a cookie Rojo looks for a cookie on this machine. Rogen stores none of them and leaves them out of its own output, but a flag is visible to other programs on the machine while Rojo runs.
 
 It uploads one project, so a root with [places](/docs/v2/configuration#places) and no place named is an error that says to name one (`rogen upload places/lobby --asset_id 123`), and nothing is written. Nothing is written or uploaded either when the project files have errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)). `--json` prints [one document](#upload---json).
 
@@ -504,7 +504,7 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 }
 ```
 
-`configs` is as in [`build --json`](#build---json), and `rojo` is shaped as `rojo` in it, with `command` `upload`. `outcome` is `built` when Rojo exited without an error, `failed` when it did not, and `notRun` when the project files had errors. The credentials are never in the document.
+`configs` is as in [`build --json`](#build---json), and `rojo` is shaped as `rojo` in it, with `command` `upload`. `outcome` is `built` when Rojo exited without an error, `failed` when it did not, and `notRun` when the project files had errors. The flags you gave are not in it.
 
 ### `fmt-project --json`
 
