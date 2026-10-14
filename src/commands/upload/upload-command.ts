@@ -122,7 +122,7 @@ registerCommand(
 			const build = await accessor
 				.get(BuildService)
 				.build(selection.value);
-			const failure = build.failure(false);
+			const failure = build.failure();
 			const uploaded =
 				failure || project === undefined
 					? undefined
@@ -151,7 +151,6 @@ registerCommand(
 			new BuildLog(logService, cwd).report(
 				build,
 				selection.value.home,
-				false,
 				"upload"
 			);
 			if (uploaded?.isOk())

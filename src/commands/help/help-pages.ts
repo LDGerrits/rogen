@@ -26,56 +26,110 @@ const EXIT_CODES = `Exit codes: ${Object.entries(ExitCodes)
 	.map(([code, meaning]) => `${code} ${meaning}`)
 	.join(", ")}.`;
 
+const ROOT_EXAMPLES = [
+	"rogen build",
+	"rogen serve",
+	"rogen help build",
+	"rogen help route.strayAt",
+];
+
 export type HelpTarget =
 	| { readonly kind: "command"; readonly command: Command }
 	| { readonly kind: "code"; readonly code: string };
 
-function usageArgs(command: Command): string {
-	return (command.metadata.args ?? [])
-		.map((arg) => {
-			const name = arg.isVariadic ? `${arg.name}...` : arg.name;
-			return arg.isOptional ? `[${name}]` : `<${name}>`;
-		})
-		.join(" ");
+const INDENT = "    ";
+const GAP = "    ";
+
+/** A name as a value or argument is written: `allowed-hosts` is `ALLOWED_HOSTS`. */
+const capitalised = (name: string) =>
+	name.toUpperCase().replace(/[\s-]+/g, "_");
+
+type Argument = NonNullable<Command["metadata"]["args"]>[number];
+
+function usageArgs(command: Command): string[] {
+	return (command.metadata.args ?? []).map((arg) => {
+		if (arg.subcommands) return "<SUBCOMMAND>";
+		const name = capitalised(arg.name);
+		const written = arg.isOptional ? `[${name}]` : `<${name}>`;
+		return arg.isVariadic ? `${written}...` : written;
+	});
 }
 
 function formatOption(option: OptionDescriptor): [string, string] {
 	const name = option.negatable ? `[no-]${option.name}` : option.name;
-	const flags = option.short
-		? `-${option.short}, --${name}`
-		: `    --${name}`;
+	const flags = `${option.short ? `-${option.short}, ` : INDENT}--${name}`;
 	const value =
 		option.type === "string"
-			? ` <${option.values?.join("|") ?? option.placeholder ?? "value"}>`
+			? ` <${capitalised(option.placeholder ?? option.name)}>`
 			: "";
-	const repeatable = option.multiple ? " (repeatable)" : "";
-	return [flags + value, option.description + repeatable];
+	return [
+		flags + value,
+		[
+			option.description,
+			option.multiple && option.type === "string"
+				? "(repeatable)"
+				: undefined,
+			option.default === undefined
+				? undefined
+				: `[default: ${option.default}]`,
+			option.values && `[possible values: ${option.values.join(", ")}]`,
+		]
+			.filter((part) => part !== undefined)
+			.join(" "),
+	];
+}
+
+function formatArgument(arg: Argument): [string, string] {
+	return [
+		`<${capitalised(arg.name)}>${arg.isVariadic ? "..." : ""}`,
+		arg.description,
+	];
 }
 
 function formatColumns(rows: [string, string][]): string[] {
 	const width = Math.max(0, ...rows.map(([left]) => left.length));
-	return rows.map(([left, right]) => `  ${left.padEnd(width)}  ${right}`);
+	return rows.map(
+		([left, right]) => `${INDENT}${left.padEnd(width)}${GAP}${right}`
+	);
+}
+
+const sortedOptions = (options: readonly OptionDescriptor[]) =>
+	[...options].sort((a, b) => a.name.localeCompare(b.name));
+
+function formatSections(
+	header: string,
+	description: string,
+	sections: readonly (readonly [string, readonly string[]])[]
+): string {
+	return [
+		header,
+		description,
+		...sections
+			.filter(([, lines]) => lines.length > 0)
+			.flatMap(([title, lines]) => ["", `${title}:`, ...lines]),
+	].join("\n");
 }
 
 function formatHelp(
 	commands: ReadonlyMap<string, Command>,
 	globalOptions: readonly OptionDescriptor[]
 ): string {
-	const rows = [...commands.values()].map((command): [string, string] => [
-		[command.id, usageArgs(command)].filter(Boolean).join(" "),
-		command.metadata.description,
-	]);
+	const subcommands = [...commands.values()]
+		.sort((a, b) => a.id.localeCompare(b.id))
+		.map((command): [string, string] => [
+			command.id,
+			command.metadata.description,
+		]);
 	return [
-		"Rogen - Feature-based architecture for Roblox",
-		"",
-		"Usage:",
-		"  rogen [command] [name...] [options]",
-		"",
-		"Commands:",
-		...formatColumns(rows),
-		"",
-		"Options:",
-		...formatColumns(globalOptions.map(formatOption)),
+		formatSections("rogen", "Feature-based architecture for Roblox", [
+			["USAGE", [`${INDENT}rogen [OPTIONS] <SUBCOMMAND>`]],
+			[
+				"OPTIONS",
+				formatColumns(sortedOptions(globalOptions).map(formatOption)),
+			],
+			["SUBCOMMANDS", formatColumns(subcommands)],
+			["EXAMPLES", ROOT_EXAMPLES.map((line) => `${INDENT}${line}`)],
+		]),
 		"",
 		"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
 		"",
@@ -97,49 +151,44 @@ function formatCommandHelp(
 	const usage = [
 		"rogen",
 		command.id,
-		usageArgs(command),
-		"[options]",
-		passthrough && `[-- ${passthrough.name}...]`,
+		"[OPTIONS]",
+		...usageArgs(command),
+		passthrough && `[-- <${capitalised(passthrough.name)}>...]`,
 	]
 		.filter(Boolean)
 		.join(" ");
+	const subcommands = args.flatMap((arg) => arg.subcommands ?? []);
 
-	const sections = [description, "", "Usage:", `  ${usage}`];
-
-	const argRows = [
-		...args.map((arg): [string, string] => [arg.name, arg.description]),
-		...(passthrough
-			? [
-					[`-- ${passthrough.name}`, passthrough.description] as [
-						string,
-						string,
-					],
-				]
-			: []),
-	];
-	if (argRows.length > 0) {
-		sections.push("", "Arguments:", ...formatColumns(argRows));
-	}
-
-	if (options.length > 0) {
-		sections.push(
-			"",
-			"Options:",
-			...formatColumns(options.map(formatOption))
-		);
-	}
-
-	if (examples.length > 0) {
-		sections.push("", "Examples:", ...examples.map((line) => `  ${line}`));
-	}
-
-	sections.push(
-		"",
-		"Global options:",
-		...formatColumns(globalOptions.map(formatOption))
-	);
-
-	return sections.join("\n");
+	return formatSections(`rogen-${command.id}`, description, [
+		["USAGE", [`${INDENT}${usage}`]],
+		[
+			"ARGS",
+			formatColumns([
+				...args.filter((arg) => !arg.subcommands).map(formatArgument),
+				...(passthrough
+					? [
+							[
+								`-- <${capitalised(passthrough.name)}>...`,
+								passthrough.description,
+							] as [string, string],
+						]
+					: []),
+			]),
+		],
+		[
+			"OPTIONS",
+			formatColumns(
+				sortedOptions([...globalOptions, ...options]).map(formatOption)
+			),
+		],
+		[
+			"SUBCOMMANDS",
+			formatColumns(
+				subcommands.map((sub) => [sub.name, sub.description])
+			),
+		],
+		["EXAMPLES", examples.map((line) => `${INDENT}${line}`)],
+	]);
 }
 
 export class HelpPages {

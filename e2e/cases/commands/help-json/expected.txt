@@ -20,10 +20,6 @@ stdout:
             "type": "boolean"
           },
           {
-            "name": "deny-warnings",
-            "type": "boolean"
-          },
-          {
             "name": "output",
             "short": "o",
             "type": "string"
@@ -240,7 +236,11 @@ stdout:
         "description": "Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.",
         "args": [
           {
-            "name": "action"
+            "name": "action",
+            "enum": [
+              "install",
+              "uninstall"
+            ]
           }
         ],
         "options": [],
@@ -368,6 +368,16 @@ stdout:
     ],
     "globalOptions": [
       {
+        "name": "color",
+        "type": "string",
+        "enum": [
+          "auto",
+          "always",
+          "never"
+        ],
+        "default": "auto"
+      },
+      {
         "name": "help",
         "short": "h",
         "type": "boolean"
@@ -380,7 +390,8 @@ stdout:
       {
         "name": "verbose",
         "short": "v",
-        "type": "boolean"
+        "type": "boolean",
+        "multiple": true
       },
       {
         "name": "quiet",

@@ -13,7 +13,10 @@ import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
 
 const PluginOptions = [] as const;
 
-const ACTIONS = ["install", "uninstall"];
+const SUBCOMMANDS = [
+	{ name: "install", description: "Installs Rojo's Studio plugin." },
+	{ name: "uninstall", description: "Removes Rojo's Studio plugin." },
+];
 
 registerCommand(
 	class PluginCommand extends AbstractCommand<typeof PluginOptions> {
@@ -28,6 +31,7 @@ registerCommand(
 							name: "action",
 							description:
 								"install, or uninstall to remove the plugin.",
+							subcommands: SUBCOMMANDS,
 						},
 					],
 					options: PluginOptions,
@@ -45,7 +49,10 @@ registerCommand(
 			line: CommandLine<typeof PluginOptions>
 		): Promise<Result<void, Error>> {
 			const [action, ...rest] = line.positionals;
-			if (!ACTIONS.includes(action) || rest.length > 0)
+			if (
+				!SUBCOMMANDS.some(({ name }) => name === action) ||
+				rest.length > 0
+			)
 				return err(
 					new UsageError("'rogen plugin' takes install or uninstall.")
 				);

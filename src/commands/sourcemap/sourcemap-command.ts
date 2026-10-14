@@ -174,7 +174,7 @@ registerCommand(
 			const build = await accessor
 				.get(BuildService)
 				.build(selection.value);
-			const failure = build.failure(false);
+			const failure = build.failure();
 
 			const tmp = path.join(
 				accessor.get(EnvironmentService).tmpDir,
@@ -231,13 +231,7 @@ registerCommand(
 						...one.errors,
 					])
 				);
-			else
-				buildLog.report(
-					build,
-					selection.value.home,
-					false,
-					"sourcemap"
-				);
+			else buildLog.report(build, selection.value.home, "sourcemap");
 			runs.forEach((ran, index) => {
 				if (!ran?.isOk()) return;
 				const { messages, failure: runFailure } = ran.value;

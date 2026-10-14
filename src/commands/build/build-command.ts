@@ -31,12 +31,6 @@ import {
 import { BuildStep } from "./build-step.js";
 import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
 
-const DenyWarningsOption = {
-	name: "deny-warnings",
-	type: "boolean",
-	description: "Exit 1 when any config has a warning.",
-} as const satisfies OptionDescriptor;
-
 const OutputOption = {
 	name: "output",
 	short: "o",
@@ -64,7 +58,6 @@ const WatchOption = {
 
 const BuildOptions = [
 	JsonOption,
-	DenyWarningsOption,
 	OutputOption,
 	PluginOption,
 	WatchOption,
@@ -90,6 +83,10 @@ registerCommand(
 					formerCommands: {
 						watch: "'rogen watch' is now 'rogen build --watch'.",
 					},
+					formerOptions: {
+						"--deny-warnings":
+							"Run 'rogen check', which exits 1 on any diagnostic, warnings included.",
+					},
 					examples: [
 						"rogen build",
 						"rogen build places/lobby",
@@ -97,7 +94,6 @@ registerCommand(
 						"rogen build --watch",
 						"rogen build --watch -o game.rbxl",
 						"rogen build --json",
-						"rogen build --deny-warnings",
 					],
 				},
 			});
@@ -109,12 +105,6 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const flags = this.rojoFlags(line);
 			if (flags.isErr()) return flags;
-			if (line.options.watch && line.options["deny-warnings"])
-				return err(
-					new UsageError(
-						"--deny-warnings judges a single build, so it doesn't go with --watch."
-					)
-				);
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const step =
 				flags.value &&
@@ -153,8 +143,7 @@ registerCommand(
 
 			const run = await buildService.build(selection.value);
 
-			const denyWarnings = Boolean(line.options["deny-warnings"]);
-			const failure = run.failure(denyWarnings);
+			const failure = run.failure();
 			const plan = plans?.isOk() ? plans.value[0] : undefined;
 			const built =
 				failure || plan === undefined
@@ -192,11 +181,7 @@ registerCommand(
 					},
 					failure ?? rojoFailure
 				);
-			new BuildLog(logService, cwd).report(
-				run,
-				selection.value.home,
-				denyWarnings
-			);
+			new BuildLog(logService, cwd).report(run, selection.value.home);
 			if (built?.isOk())
 				(rojoFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,

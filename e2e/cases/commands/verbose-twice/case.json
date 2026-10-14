@@ -1,0 +1,4 @@
+{
+	"steps": [["build", "-vv"], ["build", "-v", "-v"]],
+	"rojo": false
+}

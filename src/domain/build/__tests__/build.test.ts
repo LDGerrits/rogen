@@ -111,7 +111,7 @@ describe("domain/build/build", () => {
 			expect(new BuildRun([written(lobby, [shared])]).failed).toBe(false);
 		});
 
-		it("should give the failure of a run: its errors, or its warnings only when they are denied", () => {
+		it("should fail a run with its errors, and not with its warnings", () => {
 			const error = errorDiagnostic(
 				"x.error",
 				{ resource: abs("src/A.luau") },
@@ -120,14 +120,9 @@ describe("domain/build/build", () => {
 			const warned = new BuildRun([written(lobby, [shared])]);
 			const broken = new BuildRun([new FailedBuild(lobby, [error])]);
 
-			expect(warned.failure(false)).toBeUndefined();
-			expect(warned.failure(true)?.message).toBe(
-				"1 warning denied by --deny-warnings."
-			);
-			expect(broken.failure(false)).toMatchObject({
-				diagnostics: [error],
-			});
-			expect(new BuildRun([]).failure(true)).toBeUndefined();
+			expect(warned.failure()).toBeUndefined();
+			expect(broken.failure()).toMatchObject({ diagnostics: [error] });
+			expect(new BuildRun([]).failure()).toBeUndefined();
 		});
 	});
 

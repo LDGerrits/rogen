@@ -412,7 +412,7 @@ describe("BuildLog report, warnings", () => {
 });
 
 describe("BuildLog report, closing line", () => {
-	const closing = (warnings: number, denyWarnings = false) => {
+	const closing = (warnings: number) => {
 		const logService = new MockLogService();
 		new BuildLog(logService, cwd).report(
 			new BuildRun([
@@ -432,9 +432,7 @@ describe("BuildLog report, closing line", () => {
 					summaryOf(),
 					[]
 				),
-			]),
-			undefined,
-			denyWarnings
+			])
 		);
 		return logService.lines.at(-1);
 	};
@@ -446,13 +444,6 @@ describe("BuildLog report, closing line", () => {
 	it("should count the warnings", () => {
 		expect(closing(1)).toBe("outro: Built 1 config with 1 warning.");
 		expect(closing(2)).toBe("outro: Built 1 config with 2 warnings.");
-	});
-
-	it("should say that --deny-warnings fails the run, when it does", () => {
-		expect(closing(1, true)).toBe(
-			"outro: Built 1 config with 1 warning; --deny-warnings fails the run."
-		);
-		expect(closing(0, true)).toBe("outro: Built 1 config.");
 	});
 });
 
@@ -540,7 +531,7 @@ describe("BuildLog.diagnostics", () => {
 });
 
 describe("BuildLog report, when quiet", () => {
-	const quietly = (denyWarnings: boolean) => {
+	const quietly = () => {
 		const logService = new MockLogService();
 		logService.setLevel(LogLevel.Error);
 		new BuildLog(logService, cwd).report(
@@ -561,20 +552,12 @@ describe("BuildLog report, when quiet", () => {
 					summaryOf(),
 					[]
 				),
-			]),
-			undefined,
-			denyWarnings
+			])
 		);
 		return logService.lines;
 	};
 
-	it("should print nothing of a warning that does not fail the run", () => {
-		expect(quietly(false)).toEqual([]);
-	});
-
-	it("should print the warnings that fail the run under --deny-warnings", () => {
-		expect(quietly(true)).toEqual([
-			"diagnosticWarning: /repo/src/F.luau - warning: bad. (x.w)",
-		]);
+	it("should print nothing of a warning", () => {
+		expect(quietly()).toEqual([]);
 	});
 });

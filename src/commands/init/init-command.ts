@@ -173,6 +173,10 @@ registerCommand(
 					options: InitOptions,
 					output: { document: initDocumentShape },
 					effects: ["writesFiles"],
+					formerOptions: {
+						"--yes": "Use --non-interactive.",
+						"-y": "Use --non-interactive.",
+					},
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",

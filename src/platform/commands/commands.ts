@@ -74,6 +74,11 @@ interface CommandMetadata<
 		readonly description: string;
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
+		/** For a word that picks what to do, as `install` does for `plugin`: help lists them as subcommands. */
+		readonly subcommands?: readonly {
+			readonly name: string;
+			readonly description: string;
+		}[];
 	}[];
 	readonly options?: O;
 	/** What the words after `--` are for; a command without it takes none. */
@@ -94,6 +99,8 @@ interface CommandMetadata<
 	readonly longRunningWith?: string;
 	/** What to say of a first word that was a command and now is a flag or another command, by that word. */
 	readonly formerCommands?: Readonly<Record<string, string>>;
+	/** What to say of an option this command used to take, by the name as typed (`--yes`, `-y`): what replaces it. */
+	readonly formerOptions?: Readonly<Record<string, string>>;
 }
 
 export interface CommandRegistry {
@@ -102,6 +109,8 @@ export interface CommandRegistry {
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
 	getOptions(commandId?: string): readonly OptionDescriptor[];
+	/** The former options of every command, by the name as typed. */
+	getFormerOptions(): Readonly<Record<string, string>>;
 }
 
 function sameOption(a: OptionDescriptor, b: OptionDescriptor): boolean {
@@ -160,6 +169,15 @@ class CoreCommandRegistry implements CommandRegistry {
 
 	getCommands(): ReadonlyMap<string, Command> {
 		return new Map(this.commands);
+	}
+
+	getFormerOptions(): Readonly<Record<string, string>> {
+		return Object.assign(
+			{},
+			...[...this.commands.values()].map(
+				({ metadata }) => metadata.formerOptions
+			)
+		);
 	}
 
 	getOptions(commandId?: string): readonly OptionDescriptor[] {

@@ -1,15 +1,15 @@
-$ rogen build --deny-warnings
-exit 1
+$ rogen build
+exit 0
 stdout:
   rogen build · project
   default.project.json · wrote
-  Built 1 config with 1 warning; --deny-warnings fails the run.
+  Built 1 config with 1 warning.
 stderr:
   rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
     src/Save@sever.luau (did you mean "@Server"?)
 
-$ rogen build --deny-warnings --json
-exit 1
+$ rogen build --json
+exit 0
 stdout:
   {
     "changed": false,
@@ -45,16 +45,6 @@ stdout:
       }
     ]
   }
-
-$ rogen build
-exit 0
-stdout:
-  rogen build · project
-  default.project.json · unchanged
-  Built 1 config with 1 warning.
-stderr:
-  rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Save@sever.luau (did you mean "@Server"?)
 
 written:
   default.project.json

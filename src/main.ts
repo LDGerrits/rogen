@@ -141,7 +141,8 @@ class RogenMain {
 		const argsResult = parseArgs(
 			rawArgs,
 			(command) => commandRegistry.getOptions(command),
-			[...commandRegistry.getCommands().keys()]
+			[...commandRegistry.getCommands().keys()],
+			commandRegistry.getFormerOptions()
 		);
 
 		const json = hasFlag(rawArgs, JsonOption);
@@ -158,7 +159,7 @@ class RogenMain {
 			process.exitCode = failure.finish(argsResult.error);
 			return;
 		}
-		const { command, line } = argsResult.value;
+		const { command, line, bare } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
 			process.exitCode = failure.finish(
 				new UsageError(
@@ -202,7 +203,9 @@ class RogenMain {
 
 		process.exitCode = result.isErr()
 			? failure.finish(result.error, command)
-			: 0;
+			: bare
+				? 2
+				: 0;
 		if (!notice.printedFirst) await notice.print();
 	}
 

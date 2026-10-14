@@ -230,7 +230,7 @@ describe("where command", () => {
 			);
 			logService.setLevel(LogLevel.Debug);
 
-			await run({ _: ["src"], verbose: true });
+			await run({ _: ["src"], verbose: [true] });
 
 			expect(
 				logService.entries
@@ -266,7 +266,7 @@ describe("where command", () => {
 			await write("src/Util.luau");
 			logService.setLevel(LogLevel.Debug);
 
-			await run({ _: ["src/Util.luau"], verbose: true });
+			await run({ _: ["src/Util.luau"], verbose: [true] });
 
 			expect(notes()).toHaveLength(1);
 			expect(
@@ -353,7 +353,7 @@ describe("where command", () => {
 		});
 
 		it("should print nothing but the document, however loud the log level", async () => {
-			await run({ json: true, verbose: true });
+			await run({ json: true, verbose: [true] });
 
 			expect(
 				logService.entries.filter(({ kind }) => kind !== "print")

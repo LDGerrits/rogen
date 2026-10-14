@@ -315,8 +315,8 @@ describe("build command", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(diagnostic.mock.calls).toMatchObject([
-			[{ message: expect.stringContaining("doesn't exist yet") }, false],
-			[{ code: "meta.wrongType" }, false],
+			[{ message: expect.stringContaining("doesn't exist yet") }],
+			[{ code: "meta.wrongType" }],
 		]);
 	});
 
@@ -424,7 +424,7 @@ describe("build command", () => {
 		]);
 	});
 
-	describe("--deny-warnings", () => {
+	describe("a warning", () => {
 		const withWarning = async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			return new MockConfigService([
@@ -432,77 +432,25 @@ describe("build command", () => {
 			]);
 		};
 
-		it("should exit 1 on a warning, and still write the project file", async () => {
-			const logService = new MockLogService();
-
-			const result = await run(await withWarning(), logService, {
-				positionals: [],
-				options: { "deny-warnings": true },
-			});
-
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
-			expect(await fs.exists(abs("default.project.json"))).toBe(true);
-			expect(logService.lines.at(-1)).toMatch(
-				/1 warning.*--deny-warnings/
-			);
-		});
-
-		it("should exit 0 on a warning without the flag", async () => {
+		it("should exit 0, and write the project file", async () => {
 			const logService = new MockLogService();
 
 			const result = await run(await withWarning(), logService);
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.lines.at(-1)).toMatch(/1 warning/);
-			expect(logService.lines.at(-1)).not.toContain("--deny-warnings");
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+			expect(logService.lines.at(-1)).toMatch(/1 warning\.$/);
 		});
 
-		it("should exit 0 with the flag when there is no warning", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-
-			const logService = new MockLogService();
-
-			const result = await run(
-				new MockConfigService([buildable()]),
-				logService,
-				{ positionals: [], options: { "deny-warnings": true } }
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(logService.lines.at(-1)).not.toMatch(/warning/);
-		});
-
-		it("should still fail on errors", async () => {
-			const result = await run(
-				new MockConfigService([
-					brokenEntry([
-						errorDiagnostic(
-							"config.removedField",
-							{ resource: "/repo/rogen.json" },
-							"boom."
-						),
-					]),
-				]),
-				new MockLogService(),
-				{ positionals: [], options: { "deny-warnings": true } }
-			);
-
-			expect(result.isErr()).toBe(true);
-		});
-
-		it("should exit 1 with --json and keep the warning's severity and code", async () => {
+		it("should keep its severity and code under --json", async () => {
 			const logService = new MockLogService();
 
 			const result = await run(await withWarning(), logService, {
 				positionals: [],
-				options: { json: true, "deny-warnings": true },
+				options: { json: true },
 			});
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
+			expect(result.isOk()).toBe(true);
 			const document = logService.json<{
 				configs: { diagnostics: unknown[] }[];
 			}>();
@@ -775,16 +723,12 @@ describe("build command", () => {
 				"build",
 				"lobby",
 				"places/arena",
-				"--deny-warnings",
 				"--json"
 			).unwrap();
 
 			expect(command).toBe("build");
 			expect(line.positionals).toEqual(["lobby", "places/arena"]);
-			expect(line.options).toEqual({
-				"deny-warnings": true,
-				json: true,
-			});
+			expect(line.options).toEqual({ json: true });
 		});
 
 		it.each(["--variant", "--no-variant", "--mode"])(
@@ -1051,15 +995,6 @@ describe("build command", () => {
 			);
 			expect(await fs.exists(abs("a/default.project.json"))).toBe(false);
 			expect(processes.spawned).toEqual([]);
-		});
-
-		it("should refuse --deny-warnings with --watch", async () => {
-			const { running } = await withRojo({
-				watch: true,
-				"deny-warnings": true,
-			});
-
-			expect((await running).isErr()).toBe(true);
 		});
 
 		it("should refuse -o and -p together", async () => {

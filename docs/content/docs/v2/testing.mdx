@@ -82,7 +82,7 @@ rojo build release.project.json -o game.rbxl
 </Steps>
 
 <Callout type="info">
-	Add `--deny-warnings` to `rogen build` in CI, so a spec that lands nowhere is
+	Run `rogen check` in CI, so a spec that lands nowhere is
 	found before the run. jest-roblox's own exit code then says whether the tests
 	passed.
 </Callout>

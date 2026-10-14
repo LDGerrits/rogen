@@ -1,6 +1,4 @@
-import { ProjectError } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
-import { plural } from "../../base/strings.js";
 import {
 	Diagnostic,
 	diagnosticKey,
@@ -272,7 +270,7 @@ export class BuildRun {
 		return this.builds.flatMap(({ errors }) => errors);
 	}
 
-	/** The warnings the run says, one several configs share counted once: what `--deny-warnings` counts. */
+	/** The warnings the run says, one several configs share counted once: what the closing line says. */
 	get warningCount(): number {
 		return this.shares.reduce(
 			(count, { warnings }) => count + warnings.fresh.length,
@@ -280,13 +278,10 @@ export class BuildRun {
 		);
 	}
 
-	/** Why the run fails: an error, or, when warnings are denied, a warning it says. */
-	failure(denyWarnings: boolean): Error | undefined {
-		if (this.errors.length > 0) return new DiagnosticsError(this.errors);
-		return denyWarnings && this.warningCount > 0
-			? new ProjectError(
-					`${plural(this.warningCount, "warning")} denied by --deny-warnings.`
-				)
+	/** Why the run fails: its errors. */
+	failure(): Error | undefined {
+		return this.errors.length > 0
+			? new DiagnosticsError(this.errors)
 			: undefined;
 	}
 

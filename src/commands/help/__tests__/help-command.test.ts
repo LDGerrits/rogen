@@ -114,11 +114,131 @@ describe("help command", () => {
 		});
 	});
 
+	describe("the layout", () => {
+		const section = (text: string, title: string) => {
+			const lines = text.split("\n");
+			const start = lines.indexOf(`${title}:`);
+			const rest = lines.slice(start + 1);
+			const end = rest.indexOf("");
+			return rest.slice(0, end === -1 ? undefined : end);
+		};
+
+		it("should head the root help with its description, USAGE, OPTIONS, SUBCOMMANDS and EXAMPLES in order", async () => {
+			await help();
+
+			const titles = printed()
+				.split("\n")
+				.filter((line) => /^[A-Z]+:$/.test(line));
+			expect(titles).toEqual([
+				"USAGE:",
+				"OPTIONS:",
+				"SUBCOMMANDS:",
+				"EXAMPLES:",
+			]);
+			expect(printed().split("\n").slice(0, 2)).toEqual([
+				"rogen",
+				"Feature-based architecture for Roblox",
+			]);
+			expect(section(printed(), "USAGE")).toEqual([
+				"    rogen [OPTIONS] <SUBCOMMAND>",
+			]);
+		});
+
+		it("should list the subcommands by name", async () => {
+			await help();
+
+			const names = section(printed(), "SUBCOMMANDS").map(
+				(line) => line.trim().split(/\s+/)[0]
+			);
+			expect(names).toEqual([...registry.getCommands().keys()].sort());
+		});
+
+		it("should merge the global options into a command's, sorted by name", async () => {
+			await help("build");
+
+			const names = section(printed(), "OPTIONS").map(
+				(line) => /--([a-z-]+)/.exec(line)?.[1]
+			);
+			expect(names).toEqual([...names].sort());
+			expect(names).toEqual(
+				expect.arrayContaining(["color", "help", "output", "version"])
+			);
+		});
+
+		it("should show a value's capitalised name, its default and its possible values", async () => {
+			await help("build");
+
+			expect(printed()).toMatch(
+				/--color <COLOR> +Whether to colour the output\. \[default: auto\] \[possible values: auto, always, never\]/
+			);
+			expect(printed()).toMatch(/-o, --output <OUTPUT> /);
+		});
+
+		it("should line up a long-only option under the short ones", async () => {
+			await help("build");
+
+			expect(section(printed(), "OPTIONS")).toEqual(
+				expect.arrayContaining([
+					expect.stringMatching(/^ {4}-h, --help /),
+					expect.stringMatching(/^ {8}--color /),
+				])
+			);
+		});
+
+		it("should list a command's subcommands in place of an argument", async () => {
+			await help("plugin");
+
+			expect(section(printed(), "USAGE")).toEqual([
+				"    rogen plugin [OPTIONS] <SUBCOMMAND>",
+			]);
+			expect(printed()).not.toContain("ARGS:");
+			expect(
+				section(printed(), "SUBCOMMANDS").map(
+					(line) => line.trim().split(/\s+/)[0]
+				)
+			).toEqual(["install", "uninstall"]);
+		});
+
+		it("should leave out a section that has nothing to list", async () => {
+			await help("list");
+
+			expect(printed()).not.toContain("SUBCOMMANDS:");
+		});
+
+		it("should print the same for 'help build', 'build --help' and 'build -h'", async () => {
+			const parsed = (argv: string[]) =>
+				parseArgs(argv, (id) => registry.getOptions(id), [
+					...registry.getCommands().keys(),
+				]).unwrap();
+			const texts: string[] = [];
+			for (const argv of [
+				["help", "build"],
+				["build", "--help"],
+				["build", "-h"],
+			]) {
+				info.mockClear();
+				const { command, line } = parsed(argv);
+				await harness.run(command, line);
+				texts.push(printed());
+			}
+
+			expect(texts[1]).toBe(texts[0]);
+			expect(texts[2]).toBe(texts[0]);
+		});
+	});
+
 	describe("rogen help <command>", () => {
 		it("should print the command's usage and arguments", async () => {
 			await help("build");
 
-			expect(printed()).toContain("rogen build [project...] [options]");
+			expect(printed().split("\n").slice(0, 5)).toEqual([
+				"rogen-build",
+				registry.getCommand("build")?.metadata.description,
+				"",
+				"USAGE:",
+				"    rogen build [OPTIONS] [PROJECT]...",
+			]);
+			expect(printed()).toContain("<PROJECT>...");
 			expect(printed()).toContain("A folder with a rogen.json");
 		});
 
@@ -132,10 +252,10 @@ describe("help command", () => {
 					command.metadata.examples?.length
 				).toBeGreaterThanOrEqual(2);
 				expect(text).toContain(
-					`Examples:\n  ${command.metadata.examples?.[0]}`
+					`EXAMPLES:\n    ${command.metadata.examples?.[0]}`
 				);
-				expect(text.indexOf("Examples:")).toBeGreaterThan(
-					text.indexOf("Arguments:")
+				expect(text.indexOf("EXAMPLES:")).toBeGreaterThan(
+					text.indexOf("OPTIONS:")
 				);
 			}
 		});
@@ -289,10 +409,10 @@ describe("help command", () => {
 
 			await help("placeholder");
 
-			expect(printed()).toContain("-t, --thing <path>");
+			expect(printed()).toContain("-t, --thing <PATH>");
 		});
 
-		it("should write <value> for a string option without a placeholder", async () => {
+		it("should write the capitalised name for a string option without a placeholder", async () => {
 			const options = [
 				{
 					name: "thing",
@@ -322,7 +442,7 @@ describe("help command", () => {
 
 			await help("placeholder-fallback");
 
-			expect(printed()).toContain("--thing <value>");
+			expect(printed()).toContain("--thing <THING>");
 		});
 
 		it("should mark an option that may repeat", async () => {

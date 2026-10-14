@@ -74,7 +74,7 @@ Check a thing once, where it lives, and leave it out of the other cases.
   several projects as folders (`build-several-projects`, `build-same-errors-error`),
   the forms `[PROJECT]` takes (`build-project-path`, `build-project-argument-error`,
   `from-subfolder`), a stale `default.project.json` (`check-stale-project-file-warning`),
-  `--json`, `--quiet`, `--verbose`, `--deny-warnings`, help, and the unknown
+  `--json`, `--quiet`, `--verbose`, `--color`, help, and the unknown
   and removed commands and options.
 
 A new case needs no `output`. Add it only when the printed output of `build` or

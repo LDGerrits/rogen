@@ -52,7 +52,7 @@ describe("rogen help --json", () => {
 			]);
 			expect(
 				globalOptions.map(({ name }: { name: string }) => name)
-			).toEqual(["help", "version", "verbose", "quiet"]);
+			).toEqual(["color", "help", "version", "verbose", "quiet"]);
 			expect(Object.keys(exitCodes)).toEqual(["0", "1", "2"]);
 			expect(Object.keys(errorKinds)).toEqual([
 				"usage",

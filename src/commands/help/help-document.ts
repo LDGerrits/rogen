@@ -27,12 +27,14 @@ const optionFields = {
 	multiple: S.optional(S.boolean),
 	negatable: S.optional(S.boolean),
 	enum: S.optional(S.array(S.string)),
+	default: S.optional(S.string),
 };
 
 const argFields = {
 	name: S.string,
 	optional: S.optional(S.boolean),
 	variadic: S.optional(S.boolean),
+	enum: S.optional(S.array(S.string)),
 };
 
 const optionShape = S.named("Option", S.object(optionFields));
@@ -94,6 +96,7 @@ const optionBrief = ({
 	multiple,
 	negatable,
 	values,
+	default: fallback,
 }: OptionDescriptor) => ({
 	name,
 	...(short && { short }),
@@ -101,16 +104,19 @@ const optionBrief = ({
 	...(multiple && { multiple }),
 	...(negatable && { negatable }),
 	...(values && { enum: values }),
+	...(fallback !== undefined && { default: fallback }),
 });
 
 const argBrief = ({
 	name,
 	isOptional,
 	isVariadic,
+	subcommands,
 }: NonNullable<Command["metadata"]["args"]>[number]) => ({
 	name,
 	...(isOptional && { optional: true }),
 	...(isVariadic && { variadic: true }),
+	...(subcommands && { enum: subcommands.map(({ name }) => name) }),
 });
 
 const effectsOf = ({ metadata }: Command) => [

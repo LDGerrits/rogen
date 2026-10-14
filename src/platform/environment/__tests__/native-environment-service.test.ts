@@ -1,8 +1,11 @@
 import { LogLevel } from "../../log/log-service.js";
 import { NativeEnvironmentService } from "../native-environment-service.js";
 
-const inTerminal = (env: Record<string, string | undefined>) =>
-	new NativeEnvironmentService({}, "/mock/cwd", {
+const inTerminal = (
+	env: Record<string, string | undefined>,
+	flags: ConstructorParameters<typeof NativeEnvironmentService>[0] = {}
+) =>
+	new NativeEnvironmentService(flags, "/mock/cwd", {
 		env,
 		isTerminal: true,
 		userHome: "/mock/home",
@@ -18,9 +21,10 @@ describe("NativeEnvironmentService", () => {
 
 	it.each([
 		[{}, LogLevel.Info],
-		[{ verbose: true }, LogLevel.Debug],
+		[{ verbose: [true] }, LogLevel.Debug],
+		[{ verbose: [true, true] }, LogLevel.Trace],
 		[{ quiet: true }, LogLevel.Error],
-		[{ verbose: true, quiet: true }, LogLevel.Error],
+		[{ verbose: [true], quiet: true }, LogLevel.Error],
 	])("should read the log level from %j", (flags, level) => {
 		const env = new NativeEnvironmentService(flags, "/mock/cwd", {
 			env: {},
@@ -104,6 +108,41 @@ describe("NativeEnvironmentService", () => {
 
 		it("should print plain lines when an agent runs it", () => {
 			expect(inTerminal({ CLAUDECODE: "1" }).isPlain).toBe(true);
+		});
+
+		it("should print plain lines under --color never in a terminal", () => {
+			expect(inTerminal({}, { color: "never" }).isPlain).toBe(true);
+		});
+
+		it("should draw under --color always without a terminal, despite NO_COLOR or an agent", () => {
+			const piped = new NativeEnvironmentService(
+				{ color: "always" },
+				"/mock/cwd",
+				{
+					env: { NO_COLOR: "1", CLAUDECODE: "1" },
+					isTerminal: false,
+					userHome: "/mock/home",
+					tmpDir: "/mock/tmp",
+					pid: 4242,
+					platform: "linux",
+				}
+			);
+
+			expect(piped.isPlain).toBe(false);
+			expect(piped.isInteractive).toBe(false);
+		});
+
+		it("should follow the terminal under --color auto", () => {
+			expect(
+				inTerminal({ NO_COLOR: "1" }, { color: "auto" }).isPlain
+			).toBe(true);
+			expect(inTerminal({}, { color: "auto" }).isPlain).toBe(false);
+		});
+
+		it("should print plain lines under --json whatever --color says", () => {
+			expect(
+				inTerminal({}, { json: true, color: "always" }).isPlain
+			).toBe(true);
 		});
 
 		it("should print plain lines under --json in a terminal", () => {

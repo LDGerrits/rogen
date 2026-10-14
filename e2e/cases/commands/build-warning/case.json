@@ -1,0 +1,5 @@
+{
+	"steps": [["build"], ["build", "--json"]],
+	"rojo": false,
+	"output": ["build"]
+}

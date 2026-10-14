@@ -16,26 +16,41 @@ export interface OptionDescriptor {
 	readonly negatable?: boolean;
 	/** For a string option: the only values it takes. */
 	readonly values?: readonly string[];
-	/** What help writes for a string option's value: `--out-file <path>`. Defaults to `value`. */
+	/** What help writes for a string option's value: `--output <path>`. Defaults to `value`. */
 	readonly placeholder?: string;
+	/** For a string option: what it is when not given, which help shows. */
+	readonly default?: string;
 	readonly description: string;
 }
 
 type OptionValue<D extends OptionDescriptor> = D extends {
 	readonly type: "boolean";
+	readonly multiple: true;
 }
-	? boolean
-	: D extends { readonly multiple: true }
-		? readonly string[]
-		: D extends { readonly type: "string" }
-			? string
-			: boolean | string | readonly string[];
+	? readonly boolean[]
+	: D extends { readonly type: "boolean" }
+		? boolean
+		: D extends { readonly multiple: true }
+			? readonly string[]
+			: D extends { readonly type: "string" }
+				? string
+				: boolean | string | readonly string[] | readonly boolean[];
 
 type OptionValues<O extends readonly OptionDescriptor[]> = {
 	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
 };
 
+export const COLOR_CHOICES = ["auto", "always", "never"] as const;
+
 export const GlobalOptions = [
+	{
+		name: "color",
+		type: "string",
+		values: COLOR_CHOICES,
+		placeholder: "color",
+		default: "auto",
+		description: "Whether to colour the output.",
+	},
 	{ name: "help", short: "h", type: "boolean", description: "Print help." },
 	{
 		name: "version",
@@ -47,7 +62,8 @@ export const GlobalOptions = [
 		name: "verbose",
 		short: "v",
 		type: "boolean",
-		description: "Print debug output.",
+		multiple: true,
+		description: "Print debug output; -vv, trace output.",
 	},
 	{
 		name: "quiet",
@@ -78,6 +94,8 @@ export interface CommandLine<
 interface ParsedCli {
 	readonly command: string;
 	readonly line: CommandLine;
+	/** Whether the line names no command and asks for neither help nor the version. */
+	readonly bare: boolean;
 }
 
 function toOptionTable(options: readonly OptionDescriptor[]) {
@@ -132,8 +150,11 @@ function unknownOption(
 	{ name, rawName }: OptionToken,
 	options: readonly OptionDescriptor[],
 	owners: readonly string[],
-	command: string | undefined
+	command: string | undefined,
+	formerOptions: Readonly<Record<string, string>>
 ): UsageError {
+	const former = formerOptions[rawName];
+	if (former) return new UsageError(`'${rawName}' is gone.`, former);
 	const help = command
 		? `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`
 		: `Run 'rogen ${HELP_COMMAND}' to see the commands.`;
@@ -166,7 +187,8 @@ function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
 	ownersOf: (name: string, negated: boolean) => string[],
-	command: string | undefined
+	command: string | undefined,
+	formerOptions: Readonly<Record<string, string>>
 ): UsageError | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
@@ -176,7 +198,8 @@ function findOptionProblem(
 				token,
 				options,
 				ownersOf(token.name, isNegated(token)),
-				command
+				command,
+				formerOptions
 			);
 		}
 		if (
@@ -219,7 +242,9 @@ function findOptionProblem(
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
-	commands: readonly string[]
+	commands: readonly string[],
+	/** What to say of an option that is gone, by the name as typed: `--yes`. */
+	formerOptions: Readonly<Record<string, string>> = {}
 ): Result<ParsedCli, Error> {
 	try {
 		const allOptions = optionsFor();
@@ -250,7 +275,8 @@ export function parseArgs(
 				tokens,
 				optionsFor(names),
 				ownersOf,
-				positionals.length > 0 ? names : undefined
+				positionals.length > 0 ? names : undefined,
+				formerOptions
 			);
 			if (problem) return err(problem);
 		}
@@ -261,6 +287,7 @@ export function parseArgs(
 		}
 		return ok({
 			command: runs,
+			bare: positionals.length === 0 && !values.version && !values.help,
 			line: {
 				positionals: consumesWord ? positionals.slice(1) : positionals,
 				...(terminator && {

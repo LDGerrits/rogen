@@ -1,30 +1,38 @@
 $ rogen help
 exit 0
 stdout:
-  Rogen - Feature-based architecture for Roblox
+  rogen
+  Feature-based architecture for Roblox
   
-  Usage:
-    rogen [command] [name...] [options]
+  USAGE:
+      rogen [OPTIONS] <SUBCOMMAND>
   
-  Commands:
-    build [project...]        Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
-    check [path...]           Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    fmt-project [project...]  Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
-    doc [topic]               Opens the documentation in a browser, or prints one topic of it offline.
-    help [name]               Prints usage, a command's details, or what a diagnostic code means.
-    init [path]               Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]         Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    plugin <action>           Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
-    serve [project...]        Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    sourcemap [project...]    Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
-    upload [project...]       Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
-    where [path...]           Prints where each file lands in the game, and why, with its warnings.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
+      -h, --help             Print help.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output.
+      -V, --version          Print the version.
   
-  Options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  SUBCOMMANDS:
+      build          Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
+      check          Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
+      doc            Opens the documentation in a browser, or prints one topic of it offline.
+      fmt-project    Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
+      help           Prints usage, a command's details, or what a diagnostic code means.
+      init           Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
+      list           Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
+      plugin         Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
+      serve          Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
+      sourcemap      Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
+      upload         Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
+      where          Prints where each file lands in the game, and why, with its warnings.
+  
+  EXAMPLES:
+      rogen build
+      rogen serve
+      rogen help build
+      rogen help route.strayAt
   
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   
@@ -33,62 +41,78 @@ stdout:
 $ rogen --help
 exit 0
 stdout:
-  Rogen - Feature-based architecture for Roblox
+  rogen
+  Feature-based architecture for Roblox
   
-  Usage:
-    rogen [command] [name...] [options]
+  USAGE:
+      rogen [OPTIONS] <SUBCOMMAND>
   
-  Commands:
-    build [project...]        Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
-    check [path...]           Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    fmt-project [project...]  Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
-    doc [topic]               Opens the documentation in a browser, or prints one topic of it offline.
-    help [name]               Prints usage, a command's details, or what a diagnostic code means.
-    init [path]               Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]         Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    plugin <action>           Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
-    serve [project...]        Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    sourcemap [project...]    Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
-    upload [project...]       Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
-    where [path...]           Prints where each file lands in the game, and why, with its warnings.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
+      -h, --help             Print help.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output.
+      -V, --version          Print the version.
   
-  Options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  SUBCOMMANDS:
+      build          Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
+      check          Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
+      doc            Opens the documentation in a browser, or prints one topic of it offline.
+      fmt-project    Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
+      help           Prints usage, a command's details, or what a diagnostic code means.
+      init           Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
+      list           Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
+      plugin         Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
+      serve          Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
+      sourcemap      Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
+      upload         Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
+      where          Prints where each file lands in the game, and why, with its warnings.
+  
+  EXAMPLES:
+      rogen build
+      rogen serve
+      rogen help build
+      rogen help route.strayAt
   
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
 
 $ rogen
-exit 0
+exit 2
 stdout:
-  Rogen - Feature-based architecture for Roblox
+  rogen
+  Feature-based architecture for Roblox
   
-  Usage:
-    rogen [command] [name...] [options]
+  USAGE:
+      rogen [OPTIONS] <SUBCOMMAND>
   
-  Commands:
-    build [project...]        Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
-    check [path...]           Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    fmt-project [project...]  Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
-    doc [topic]               Opens the documentation in a browser, or prints one topic of it offline.
-    help [name]               Prints usage, a command's details, or what a diagnostic code means.
-    init [path]               Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]         Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    plugin <action>           Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
-    serve [project...]        Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    sourcemap [project...]    Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
-    upload [project...]       Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
-    where [path...]           Prints where each file lands in the game, and why, with its warnings.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
+      -h, --help             Print help.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output.
+      -V, --version          Print the version.
   
-  Options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  SUBCOMMANDS:
+      build          Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
+      check          Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
+      doc            Opens the documentation in a browser, or prints one topic of it offline.
+      fmt-project    Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
+      help           Prints usage, a command's details, or what a diagnostic code means.
+      init           Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
+      list           Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
+      plugin         Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.
+      serve          Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
+      sourcemap      Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.
+      upload         Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.
+      where          Prints where each file lands in the game, and why, with its warnings.
+  
+  EXAMPLES:
+      rogen build
+      rogen serve
+      rogen help build
+      rogen help route.strayAt
   
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   

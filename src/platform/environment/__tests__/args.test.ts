@@ -8,7 +8,13 @@ import {
 } from "../args.js";
 
 const globals: OptionDescriptor[] = [
-	{ name: "verbose", short: "v", type: "boolean", description: "" },
+	{
+		name: "verbose",
+		short: "v",
+		type: "boolean",
+		multiple: true,
+		description: "",
+	},
 	{ name: "help", short: "h", type: "boolean", description: "" },
 	{ name: "version", short: "V", type: "boolean", description: "" },
 	{ name: "quiet", short: "q", type: "boolean", description: "" },
@@ -39,7 +45,13 @@ const optionsFor = (command?: string) =>
 
 const commands = ["build", "watch", "help", "init"];
 
-const parse = (argv: string[]) => parseArgs(argv, optionsFor, commands);
+const formerOptions = {
+	"--yes": "Use --non-interactive.",
+	"-y": "Use --non-interactive.",
+};
+
+const parse = (argv: string[]) =>
+	parseArgs(argv, optionsFor, commands, formerOptions);
 
 const values = (argv: string[]) => parse(argv).unwrap().line.options;
 
@@ -115,8 +127,38 @@ describe("parseArgs", () => {
 	});
 
 	it("should read -v as --verbose and -V as --version", () => {
-		expect(values(["build", "-v"]).verbose).toBe(true);
+		expect(values(["build", "-v"]).verbose).toEqual([true]);
 		expect(values(["build", "-V"]).version).toBe(true);
+	});
+
+	it("should count -v each time it is given", () => {
+		expect(values(["build", "-vv"]).verbose).toEqual([true, true]);
+		expect(values(["-v", "build", "--verbose"]).verbose).toEqual([
+			true,
+			true,
+		]);
+	});
+
+	it("should say a former option is gone, and what replaces it", () => {
+		const long = parse(["init", "--yes"]);
+		const short = parse(["init", "-y"]);
+
+		expect(long.isErr() && long.error).toMatchObject({
+			reason: "'--yes' is gone.",
+			hint: "Use --non-interactive.",
+		});
+		expect(short.isErr() && short.error).toMatchObject({
+			reason: "'-y' is gone.",
+		});
+	});
+
+	it("should mark a line with no command, --help or --version as bare", () => {
+		expect(parse([]).unwrap().bare).toBe(true);
+		expect(parse(["-q"]).unwrap().bare).toBe(true);
+		expect(parse(["--help"]).unwrap().bare).toBe(false);
+		expect(parse(["-V"]).unwrap().bare).toBe(false);
+		expect(parse(["help"]).unwrap().bare).toBe(false);
+		expect(parse(["build"]).unwrap().bare).toBe(false);
 	});
 
 	it("should leave the positionals empty for a bare line", () => {
@@ -195,6 +237,7 @@ describe("parseArgs", () => {
 	it("should check a --help or --version line against the command it names", () => {
 		expect(parse(["build", "--variant", "a", "--help"]).unwrap()).toEqual({
 			command: "help",
+			bare: false,
 			line: {
 				positionals: ["build"],
 				options: { variant: ["a"], help: true },

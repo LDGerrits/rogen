@@ -1,6 +1,6 @@
 {
 	"steps": [
-		["build", "--deny-warnings", "--help"],
+		["build", "--output", "game.rbxl", "--help"],
 		["build", "--json", "--help"],
 		["help", "--help"]
 	],

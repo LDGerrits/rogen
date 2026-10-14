@@ -1,0 +1,24 @@
+$ rogen build -vv
+exit 0
+stdout: (not shown)
+stderr:
+  [trace] CommandService#executeCommand build
+  [debug] src: 1 file
+  [debug] route Server -> ServerScriptService: 0 files
+  [debug] route * -> ReplicatedStorage/Shared: 1 file
+  rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+    src/Save@sever.luau (did you mean "@Server"?)
+
+$ rogen build -v -v
+exit 0
+stdout: (not shown)
+stderr:
+  [trace] CommandService#executeCommand build
+  [debug] src: 1 file
+  [debug] route Server -> ServerScriptService: 0 files
+  [debug] route * -> ReplicatedStorage/Shared: 1 file
+  rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+    src/Save@sever.luau (did you mean "@Server"?)
+
+written:
+  default.project.json

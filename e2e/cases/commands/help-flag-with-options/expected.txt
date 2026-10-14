@@ -1,35 +1,33 @@
-$ rogen build --deny-warnings --help
+$ rogen build --output game.rbxl --help
 exit 0
 stdout:
+  rogen-build
   Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.
   
-  Usage:
-    rogen build [project...] [options]
+  USAGE:
+      rogen build [OPTIONS] [PROJECT]...
   
-  Arguments:
-    project  A folder with a rogen.json, a *.project.json path, or the name of a project of the rogen.json here. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
+  ARGS:
+      <PROJECT>...    A folder with a rogen.json, a *.project.json path, or the name of a project of the rogen.json here. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
-  Options:
-        --json             Print one JSON document instead of text.
-        --deny-warnings    Exit 1 when any config has a warning.
-    -o, --output <output>  Also build the project into this place or model file with Rojo (.rbxl, .rbxlx, .rbxm or .rbxmx).
-    -p, --plugin <plugin>  Also build the project into Roblox's plugins folder with Rojo, under this file name.
-        --watch            Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. A script edited in place changes no name, so it isn't written. Press Ctrl+C to stop; --json prints one JSON object per line.
+  OPTIONS:
+          --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto, always, never]
+      -h, --help               Print help.
+          --json               Print one JSON document instead of text.
+      -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl, .rbxlx, .rbxm or .rbxmx).
+      -p, --plugin <PLUGIN>    Also build the project into Roblox's plugins folder with Rojo, under this file name.
+      -q, --quiet              Only print errors.
+      -v, --verbose            Print debug output; -vv, trace output.
+      -V, --version            Print the version.
+          --watch              Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. A script edited in place changes no name, so it isn't written. Press Ctrl+C to stop; --json prints one JSON object per line.
   
-  Examples:
-    rogen build
-    rogen build places/lobby
-    rogen build -o game.rbxl
-    rogen build --watch
-    rogen build --watch -o game.rbxl
-    rogen build --json
-    rogen build --deny-warnings
-  
-  Global options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  EXAMPLES:
+      rogen build
+      rogen build places/lobby
+      rogen build -o game.rbxl
+      rogen build --watch
+      rogen build --watch -o game.rbxl
+      rogen build --json
 
 $ rogen build --json --help
 exit 0
@@ -50,11 +48,6 @@ stdout:
         "name": "json",
         "type": "boolean",
         "description": "Print one JSON document instead of text."
-      },
-      {
-        "name": "deny-warnings",
-        "type": "boolean",
-        "description": "Exit 1 when any config has a warning."
       },
       {
         "name": "output",
@@ -85,8 +78,7 @@ stdout:
       "rogen build -o game.rbxl",
       "rogen build --watch",
       "rogen build --watch -o game.rbxl",
-      "rogen build --json",
-      "rogen build --deny-warnings"
+      "rogen build --json"
     ],
     "output": {
       "document": "{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}",
@@ -105,25 +97,25 @@ stdout:
 $ rogen help --help
 exit 0
 stdout:
+  rogen-help
   Prints usage, a command's details, or what a diagnostic code means.
   
-  Usage:
-    rogen help [name] [options]
+  USAGE:
+      rogen help [OPTIONS] [NAME]
   
-  Arguments:
-    name  A command, or a diagnostic code such as route.strayAt.
+  ARGS:
+      <NAME>    A command, or a diagnostic code such as route.strayAt.
   
-  Options:
-        --json  Print one JSON document instead of text.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
+      -h, --help             Print help.
+          --json             Print one JSON document instead of text.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output.
+      -V, --version          Print the version.
   
-  Examples:
-    rogen help where
-    rogen help route.strayAt
-    rogen help --json
-    rogen help build --json
-  
-  Global options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  EXAMPLES:
+      rogen help where
+      rogen help route.strayAt
+      rogen help --json
+      rogen help build --json

@@ -66,7 +66,28 @@ stderr:
 $ rogen init -y
 exit 2
 stderr:
-  error: Unknown option '-y'. Run 'rogen help init' to see what init accepts.
+  error: '-y' is gone. Use --non-interactive.
+
+$ rogen init --yes
+exit 2
+stderr:
+  error: '--yes' is gone. Use --non-interactive.
+
+$ rogen build --deny-warnings
+exit 2
+stderr:
+  error: '--deny-warnings' is gone. Run 'rogen check', which exits 1 on any diagnostic, warnings included.
+
+$ rogen check --deny-warnings --json
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "'--deny-warnings' is gone.",
+      "hint": "Run 'rogen check', which exits 1 on any diagnostic, warnings included."
+    }
+  }
 
 $ rogen build --all --json
 exit 2

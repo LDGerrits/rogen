@@ -65,8 +65,10 @@ const nativeProcess = (): ProcessContext => ({
 
 interface OutputFlags {
 	readonly json?: boolean;
-	readonly verbose?: boolean;
+	/** One `true` for each `-v` given. */
+	readonly verbose?: readonly boolean[];
 	readonly quiet?: boolean;
+	readonly color?: string;
 }
 
 export class NativeEnvironmentService implements EnvironmentService {
@@ -83,7 +85,7 @@ export class NativeEnvironmentService implements EnvironmentService {
 	readonly pid: number;
 
 	constructor(
-		{ json, verbose, quiet }: OutputFlags,
+		{ json, verbose = [], quiet, color }: OutputFlags,
 		readonly cwd: string,
 		{
 			env,
@@ -102,13 +104,18 @@ export class NativeEnvironmentService implements EnvironmentService {
 		this.pid = pid;
 		this.logLevel = quiet
 			? LogLevel.Error
-			: verbose
-				? LogLevel.Debug
-				: LogLevel.Info;
+			: verbose.length > 1
+				? LogLevel.Trace
+				: verbose.length === 1
+					? LogLevel.Debug
+					: LogLevel.Info;
 		this.isInteractive =
 			isTerminal && env.TERM !== "dumb" && !isAutomated(env);
 		this.isPlain =
-			json === true || !this.isInteractive || isSet(env.NO_COLOR);
+			json === true ||
+			color === "never" ||
+			(color !== "always" &&
+				(!this.isInteractive || isSet(env.NO_COLOR)));
 		this.checksForUpdates =
 			this.isInteractive &&
 			json !== true &&
