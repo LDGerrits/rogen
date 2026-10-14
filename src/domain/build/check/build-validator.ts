@@ -369,14 +369,18 @@ export class BuildValidator {
 		];
 	}
 
-	private deadScript(): Diagnostic[] {
-		const dead = this.placement.files.flatMap((file) => {
+	private scriptsThatNeverRun(): { file: RoutedFile; run: ScriptRun }[] {
+		return this.placement.files.flatMap((file) => {
 			const run = this.scriptRunOf(file);
 			return run !== undefined &&
 				scriptFate(run, file.instancePath) === "neverRuns"
 				? [{ file, run }]
 				: [];
 		});
+	}
+
+	private deadScript(): Diagnostic[] {
+		const dead = this.scriptsThatNeverRun();
 		if (dead.length === 0) return [];
 
 		const related = dead.map(({ file, run }) => ({
@@ -431,47 +435,50 @@ export class BuildValidator {
 	}
 
 	private reservedName(): Diagnostic[] {
-		const { routed } = this.placement;
 		return reservedKeys(this.assembly.projectFile.tree, []).flatMap(
 			(key) => {
-				const under = routed.filter(({ instancePath }) =>
-					key.every((name, index) => instancePath[index] === name)
-				);
-				const file =
-					under.find(
-						({ instancePath }) => instancePath.length === key.length
-					) ?? under[0];
+				const file = this.fileNamedBy(key);
 				if (!file) return [];
-				const fileName = path.posix.basename(file.entry.source);
-				const renamable =
+				const isTheNode =
 					file.instancePath.length === key.length &&
-					file.init === undefined &&
-					fileName.startsWith("$") &&
-					fileName.length > 1;
+					file.init === undefined;
 				return [
 					warningDiagnostic(
 						"tree.reservedName",
 						{ resource: file.entry.source },
-						`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${file.instancePath.length === key.length && file.init === undefined ? "the file" : "the folder"} without the $.`,
-						renamable
-							? [
-									{
-										rename: {
-											from: file.entry.source,
-											to: path.posix.join(
-												path.posix.dirname(
-													file.entry.source
-												),
-												fileName.slice(1)
-											),
-										},
-									},
-								]
-							: []
+						`the project file gets the instance "${instanceKey(key)}", and Rojo reserves a leading $ for its own fields, so it warns of it on every build. Rename ${isTheNode ? "the file" : "the folder"} without the $.`,
+						isTheNode ? BuildValidator.withoutDollar(file) : []
 					),
 				];
 			}
 		);
+	}
+
+	private fileNamedBy(key: readonly string[]): RoutedFile | undefined {
+		const under = this.placement.routed.filter(({ instancePath }) =>
+			key.every((name, index) => instancePath[index] === name)
+		);
+		return (
+			under.find(
+				({ instancePath }) => instancePath.length === key.length
+			) ?? under[0]
+		);
+	}
+
+	private static withoutDollar({ entry }: RoutedFile): DiagnosticFix[] {
+		const fileName = path.posix.basename(entry.source);
+		if (!fileName.startsWith("$") || fileName.length === 1) return [];
+		return [
+			{
+				rename: {
+					from: entry.source,
+					to: path.posix.join(
+						path.posix.dirname(entry.source),
+						fileName.slice(1)
+					),
+				},
+			},
+		];
 	}
 
 	private instanceClash(): Diagnostic[] {
@@ -529,15 +536,17 @@ export class BuildValidator {
 					this.sharedWithFile(meta, outcome.file, outcome.instance)
 				);
 			if (outcome.kind === "treePath")
-				return [
-					warningDiagnostic(
-						"meta.treePath",
-						{ resource: outcome.meta.file },
-						`the tree gives "${outcome.instance}" its own $path, so this meta isn't copied there. Set the fields on the tree's node instead.`
-					),
-				];
+				return [this.metaOnTreePath(outcome.meta, outcome.instance)];
 			return [];
 		});
+	}
+
+	private metaOnTreePath(meta: FolderMeta, instance: string): Diagnostic {
+		return warningDiagnostic(
+			"meta.treePath",
+			{ resource: meta.file },
+			`the tree gives "${instance}" its own $path, so this meta isn't copied there. Set the fields on the tree's node instead.`
+		);
 	}
 
 	private sharedWithFile(
