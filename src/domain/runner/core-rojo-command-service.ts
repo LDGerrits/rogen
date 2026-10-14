@@ -33,7 +33,9 @@ export class CoreRojoCommandService implements RojoCommandService {
 	): Promise<Result<RojoCommandRun, Error>> {
 		const valid = selection.requireValid();
 		if (valid.isErr()) return valid;
-		const chosen = this.choose(selection, request.command);
+		const chosen = request.project
+			? ok(request.project)
+			: this.choose(selection, request.command);
 		if (chosen.isErr()) return chosen;
 		const project = chosen.value;
 
@@ -89,11 +91,15 @@ export class CoreRojoCommandService implements RojoCommandService {
 		});
 	}
 
+	projects(selection: ConfigSelection): ResolvedConfig[] {
+		return ProjectChoice.read(selection.configs, selection.named);
+	}
+
 	choose(
 		selection: ConfigSelection,
 		command: string
 	): Result<ResolvedConfig, UsageError> {
-		const chosen = ProjectChoice.read(selection.configs, selection.named);
+		const chosen = this.projects(selection);
 		if (chosen.length === 1) return ok(chosen[0]);
 		return err(
 			new UsageError(

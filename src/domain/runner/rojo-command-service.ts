@@ -13,6 +13,8 @@ export interface RojoCommandRequest {
 	readonly flags: readonly string[];
 	/** Where Rojo runs, so a path in `flags` is relative to it. */
 	readonly cwd: string;
+	/** The one of the selection's projects to run on, when it holds several and the caller runs on each. */
+	readonly project?: ResolvedConfig;
 	/** Ends the checks and the run. */
 	readonly signal?: AbortSignal;
 }
@@ -35,7 +37,10 @@ export interface RojoCommandService {
 		command: string
 	): Result<ResolvedConfig, UsageError>;
 
-	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects, when its files are broken, or when the Rojo can't read them; a Rojo that exits with an error comes back as a run with a `failure`. */
+	/** Every project a Rojo command may run on: each the selection names, else the `default` of each config. */
+	projects(selection: ConfigSelection): ResolvedConfig[];
+
+	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects and the request names none, when its files are broken, or when the Rojo can't read them; a Rojo that exits with an error comes back as a run with a `failure`. */
 	run(
 		selection: ConfigSelection,
 		request: RojoCommandRequest

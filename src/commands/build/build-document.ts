@@ -29,30 +29,34 @@ export const buildEntryShape = S.named(
 	})
 );
 
-const rojoEntryShape = S.named(
-	"RojoEntry",
-	S.object({
-		command: S.enum("build"),
-		outcome: S.enum("built", "failed", "notRun"),
-		project: S.nullable(S.string),
-		output: S.optional(S.string),
-		plugin: S.optional(S.string),
-		messages: S.array(
-			S.object({
-				severity: S.enum("error", "warning", "info"),
-				text: S.string,
-			})
-		),
-		diagnostics: S.optional(S.array(diagnosticShape)),
-		error: S.optional(errorShape),
-	})
-);
+/** What a run of Rojo's `build` or `sourcemap` reports: `built` when the file was written. */
+export const rojoEntryShape = (command: RojoTarget["command"]) =>
+	S.named(
+		"RojoEntry",
+		S.object({
+			command: S.enum(command),
+			outcome: S.enum("built", "failed", "notRun"),
+			project: S.nullable(S.string),
+			output: S.optional(S.string),
+			plugin: S.optional(S.string),
+			messages: S.array(
+				S.object({
+					severity: S.enum("error", "warning", "info"),
+					text: S.string,
+				})
+			),
+			diagnostics: S.optional(S.array(diagnosticShape)),
+			error: S.optional(errorShape),
+		})
+	);
+
+const buildRojoEntryShape = rojoEntryShape("build");
 
 /** The document of `build --json`. */
 export const buildDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(buildEntryShape),
-	rojo: S.optional(rojoEntryShape),
+	rojo: S.optional(buildRojoEntryShape),
 });
 
 /** The lines `build --watch --json` and `serve --json` have in common, each keyed by what it reports. */
@@ -72,7 +76,7 @@ export const watchLineShapes = {
 /** One line of `build --watch --json`. */
 export const buildLineShape = S.union(
 	watchLineShapes.build,
-	S.object({ rojo: rojoEntryShape }),
+	S.object({ rojo: buildRojoEntryShape }),
 	watchLineShapes.notice,
 	watchLineShapes.error
 );
@@ -86,8 +90,9 @@ export interface BuildEntry {
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-/** What `-o` or `-p` asked Rojo to build into. */
+/** What `-o` or `-p` asked Rojo to write. */
 export interface RojoTarget {
+	readonly command: "build" | "sourcemap";
 	readonly cwd: string;
 	readonly output?: string;
 	readonly plugin?: string;
@@ -95,7 +100,7 @@ export interface RojoTarget {
 
 /** Rojo's build for `-o` or `-p`: `notRun` when the project files had errors, so Rojo had nothing to build. */
 export interface RojoEntry {
-	readonly command: "build";
+	readonly command: RojoTarget["command"];
 	readonly outcome: "built" | "failed" | "notRun";
 	readonly project: string | null;
 	/** The absolute path `-o` names. */
@@ -137,7 +142,7 @@ export function rojoEntry(
 	ran: Result<RojoCommandRun, Error> | undefined
 ): RojoEntry {
 	const named = {
-		command: "build" as const,
+		command: target.command,
 		...(target.output !== undefined && {
 			output: toNative(path.resolve(target.cwd, target.output)),
 		}),

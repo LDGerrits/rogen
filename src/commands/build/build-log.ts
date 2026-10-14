@@ -121,9 +121,14 @@ export class BuildLog {
 		);
 	}
 
-	report(run: BuildRun, home?: string, denyWarnings = false): void {
+	report(
+		run: BuildRun,
+		home?: string,
+		denyWarnings = false,
+		command = "build"
+	): void {
 		this.begin(
-			"build",
+			command,
 			run.builds.map(({ label }) => label),
 			home
 		);

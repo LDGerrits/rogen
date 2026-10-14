@@ -113,6 +113,28 @@ describe("CoreRojoCommandService", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
+	it("should run on the project the request names when the selection holds several", async () => {
+		const chosen = new MockConfigSelection([
+			mockEntry({}, "/repo/a/rogen.json"),
+			mockEntry({}, "/repo/b/rogen.json"),
+		]);
+		const [, second] = service.projects(chosen);
+
+		const running = service.run(chosen, {
+			command: "sourcemap",
+			flags: [],
+			cwd: "/repo/b",
+			project: second,
+		});
+		await finish([], 0);
+
+		expect((await running).unwrap().project).toBe(second);
+		expect(processes.spawned[0].args).toEqual([
+			"sourcemap",
+			"default.project.json",
+		]);
+	});
+
 	it("should fail without running Rojo when no Rojo is found", async () => {
 		processes.installed.clear();
 

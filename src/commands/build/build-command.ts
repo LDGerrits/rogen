@@ -28,7 +28,7 @@ import {
 	buildLineShape,
 	rojoEntry,
 } from "./build-document.js";
-import { oneProject } from "./one-project.js";
+import { BuildStep } from "./build-step.js";
 import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
 
 const DenyWarningsOption = {
@@ -115,6 +115,16 @@ registerCommand(
 						"--deny-warnings judges a single build, so it doesn't go with --watch."
 					)
 				);
+			const cwd = accessor.get(EnvironmentService).cwd;
+			const step =
+				flags.value &&
+				new BuildStep(
+					accessor.get(RojoCommandService),
+					flags.value,
+					cwd,
+					line.options.output,
+					line.options.plugin
+				);
 			if (line.options.watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
@@ -123,11 +133,7 @@ registerCommand(
 						accessor,
 						line.positionals,
 						Boolean(line.options.json),
-						flags.value && {
-							flags: flags.value,
-							output: line.options.output,
-							plugin: line.options.plugin,
-						}
+						step
 					).run(store, shutdown);
 				} finally {
 					store[Symbol.dispose]();
@@ -137,33 +143,29 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const logService = accessor.get(LogService);
-			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			if (flags.value !== undefined) {
-				const unique = oneProject(
-					accessor.get(RojoCommandService),
-					selection.value
-				);
-				if (unique.isErr()) return unique;
-			}
+			const plans = step?.plans(selection.value);
+			if (plans?.isErr()) return plans;
 
 			const run = await buildService.build(selection.value);
 
 			const denyWarnings = Boolean(line.options["deny-warnings"]);
 			const failure = run.failure(denyWarnings);
+			const plan = plans?.isOk() ? plans.value[0] : undefined;
 			const built =
-				failure || flags.value === undefined
+				failure || plan === undefined
 					? undefined
 					: await accessor
 							.get(RojoCommandService)
 							.run(selection.value, {
 								command: "build",
-								flags: flags.value,
+								flags: plan.flags,
 								cwd,
+								project: plan.project,
 							});
 			const rojoFailure =
 				built === undefined
@@ -177,7 +179,15 @@ registerCommand(
 					{
 						...buildDocument(run.builds),
 						...(flags.value && {
-							rojo: rojoEntry({ cwd, ...line.options }, built),
+							rojo: rojoEntry(
+								{
+									command: "build",
+									cwd,
+									output: line.options.output,
+									plugin: line.options.plugin,
+								},
+								built
+							),
 						}),
 					},
 					failure ?? rojoFailure

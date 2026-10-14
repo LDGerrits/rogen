@@ -4,30 +4,22 @@ import { ErrorUtils } from "../../base/errors.js";
 import { Result, ok } from "../../base/result.js";
 import { isWritten } from "../../domain/build/build.js";
 import { ConfigService } from "../../domain/config/config-service.js";
-import { ProjectChoice } from "../../domain/config/project-choice.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { oneProject } from "./one-project.js";
+import { RojoStep } from "./rojo-step.js";
 import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
 
-export interface RojoWatchTarget {
-	/** Rojo's flags for the build. */
-	readonly flags: readonly string[];
-	readonly output?: string;
-	readonly plugin?: string;
-}
-
-/** `rogen build --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo's build after each write when asked to. */
+/** `rogen build --watch` and `rogen sourcemap --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo after each write when asked to. */
 export class BuildWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,
 		private readonly refs: readonly string[],
 		private readonly json: boolean,
-		/** What to build with Rojo after each write, when the files are also to be built into a place or plugin. */
-		private readonly rojo: RojoWatchTarget | undefined
+		/** What to run Rojo for after each write, when the files are not all that is wanted. */
+		private readonly step: RojoStep | undefined
 	) {}
 
 	/** Runs until `shutdown` settles; `store` is the caller's, and holds what the run subscribes to. */
@@ -42,19 +34,20 @@ export class BuildWatch {
 		const cwd = accessor.get(EnvironmentService).cwd;
 		const log: WatchReporter = this.json
 			? new WatchJsonLog(logService)
-			: new WatchLog(logService, cwd, "build --watch");
+			: new WatchLog(
+					logService,
+					cwd,
+					`${this.step?.command === "sourcemap" ? "sourcemap" : "build"} --watch`
+				);
 
 		const stopped = new AbortController();
 		store.add({ [Symbol.dispose]: () => stopped.abort() });
 		const selection = await configService.select(this.refs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
-		if (this.rojo !== undefined) {
-			const unique = oneProject(
-				accessor.get(RojoCommandService),
-				selection.value
-			);
-			if (unique.isErr()) return unique;
+		if (this.step !== undefined) {
+			const planned = this.step.plans(selection.value);
+			if (planned.isErr()) return planned;
 		}
 		const watched = watchService.watch(selection.value);
 		if (watched.isErr()) return watched;
@@ -63,40 +56,47 @@ export class BuildWatch {
 		log.begin(session.configs, selection.value.home);
 
 		const rojoRuns = new Sequencer();
-		let rojoWaiting = false;
+		const waiting = new Set<string>();
 		store.add(
 			session.onDidUpdate((update) => {
 				log.update(update);
-				const { rojo } = this;
-				if (rojo === undefined) return;
-				const chosen = ProjectChoice.read(
-					selection.value.configs,
-					selection.value.named
-				).map(({ id }) => id);
-				if (
-					!update.reports.some(
-						({ build }) =>
-							isWritten(build) && chosen.includes(build.config.id)
-					)
-				)
+				const { step } = this;
+				if (step === undefined) return;
+				const plans = step.plans(selection.value);
+				if (plans.isErr()) {
+					log.error(plans.error);
 					return;
-				if (rojoWaiting) return;
-				rojoWaiting = true;
-				rojoRuns
-					.queue(async () => {
-						rojoWaiting = false;
-						const ran = await accessor
-							.get(RojoCommandService)
-							.run(selection.value, {
-								command: "build",
-								flags: rojo.flags,
-								cwd,
-								signal: stopped.signal,
-							});
-						if (stopped.signal.aborted) return;
-						log.rojo(ran, { cwd, ...rojo });
-					})
-					.catch((error) => log.error(ErrorUtils.fromUnknown(error)));
+				}
+				for (const plan of plans.value) {
+					const id = plan.project.id;
+					if (
+						!update.reports.some(
+							({ build }) =>
+								isWritten(build) && build.config.id === id
+						) ||
+						waiting.has(id)
+					)
+						continue;
+					waiting.add(id);
+					rojoRuns
+						.queue(async () => {
+							waiting.delete(id);
+							const ran = await accessor
+								.get(RojoCommandService)
+								.run(selection.value, {
+									command: step.command,
+									flags: plan.flags,
+									cwd: plan.cwd,
+									project: plan.project,
+									signal: stopped.signal,
+								});
+							if (stopped.signal.aborted) return;
+							log.rojo(ran, plan.target);
+						})
+						.catch((error) =>
+							log.error(ErrorUtils.fromUnknown(error))
+						);
+				}
 			})
 		);
 		store.add(session.onDidError((error) => log.error(error)));
