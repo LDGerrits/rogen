@@ -147,8 +147,11 @@ export class CoreServeSession
 				isWritten(build) ? [build.config.projectFile] : []
 			)
 		);
-		if (incompatible.length > 0)
-			return err(new DiagnosticsError(incompatible));
+		if (incompatible.length > 0) {
+			const refusal = new DiagnosticsError(incompatible);
+			this._onDidError.fire(refusal);
+			return err(refusal);
+		}
 		for (const target of this.plan.toStart) this.launch(target);
 		for (const target of this.plan.alreadyServed)
 			if (target.adopted) this.adopt(target);

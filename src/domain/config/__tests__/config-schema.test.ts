@@ -6,7 +6,6 @@ import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
 import {
 	configRemovedFieldAdvice,
 	configSchema,
-	projectFileSchema,
 	rogenKeys,
 	rojoKeys,
 } from "../config-schema.js";
@@ -136,19 +135,6 @@ describe("domain/config/config-schema", () => {
 			for (const field of ROGEN_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
 			}
-		});
-	});
-
-	describe("projectFileSchema", () => {
-		it("declares only Rojo's keys", () => {
-			expect(Object.keys(projectFileSchema.properties!).sort()).toEqual(
-				[...rojoKeys].sort()
-			);
-			expect(projectFileSchema.additionalProperties).toBe(false);
-		});
-
-		it("says the file is written from a rogen.json", () => {
-			expect(projectFileSchema.description).toContain("rogen.json");
 		});
 	});
 

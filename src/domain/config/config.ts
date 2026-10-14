@@ -90,8 +90,6 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
-export const PROJECT_SCHEMA_URL = SCHEMA_URL.replace(/[^/]+$/, "project.json");
-
 export function configFileContent(config: RogenConfig): string {
 	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }

@@ -7,7 +7,6 @@ written:
 
 default.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {

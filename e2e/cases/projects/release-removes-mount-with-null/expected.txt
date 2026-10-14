@@ -8,7 +8,6 @@ written:
 
 release.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "project",
   "tree": {
     "$className": "DataModel",

@@ -13,7 +13,6 @@ written:
 
 default.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",

@@ -39,11 +39,8 @@ const INDENT = "  ";
 
 /** A project file as text, formatted as `rojo fmt-project` would. */
 export class ProjectText {
-	static of(file: RojoProjectFile, schema: string): string {
-		const { $schema: _written, ...fields } = file as RojoProjectFile & {
-			$schema?: string;
-		};
-		const all: Record<string, unknown> = { $schema: schema, ...fields };
+	static of(file: RojoProjectFile): string {
+		const all: Record<string, unknown> = { ...file };
 		const entries: [string, unknown][] = [];
 		for (const key of FILE_KEYS)
 			if (key in all)

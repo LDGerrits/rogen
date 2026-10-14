@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { PROJECT_SCHEMA_URL } from "../../config/config.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputFile } from "../build.js";
 import { OutputWriter } from "../output-writer.js";
@@ -39,14 +38,13 @@ describe("OutputWriter", () => {
 	});
 
 	describe("write", () => {
-		it("should write the schema first and the tree as Rojo formats it, without a trailing newline", async () => {
+		it("should write the tree as Rojo formats it, without a trailing newline", async () => {
 			const result = await write(treeOf());
 
 			expect(result.unwrap()).toBe(true);
 			expect(await fs.readFile(projectFile)).toBe(
 				[
 					"{",
-					`  "$schema": ${JSON.stringify(PROJECT_SCHEMA_URL)},`,
 					'  "tree": {',
 					'    "$className": "DataModel",',
 					'    "ReplicatedStorage": {',
@@ -58,15 +56,11 @@ describe("OutputWriter", () => {
 			);
 		});
 
-		it("should write the name between the schema and the tree when the file has one", async () => {
+		it("should write the name before the tree when the file has one", async () => {
 			await write(named("lobby"));
 
 			const content = await fs.readFile(projectFile);
-			expect(Object.keys(JSON.parse(content))).toEqual([
-				"$schema",
-				"name",
-				"tree",
-			]);
+			expect(Object.keys(JSON.parse(content))).toEqual(["name", "tree"]);
 			expect(JSON.parse(content).name).toBe("lobby");
 		});
 
@@ -75,7 +69,7 @@ describe("OutputWriter", () => {
 
 			expect(
 				Object.keys(JSON.parse(await fs.readFile(projectFile)))
-			).toEqual(["$schema", "tree"]);
+			).toEqual(["tree"]);
 		});
 
 		it("should write through a temporary file and leave none behind", async () => {

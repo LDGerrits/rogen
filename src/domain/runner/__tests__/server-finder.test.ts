@@ -167,46 +167,4 @@ describe("ServerFinder", () => {
 		);
 		expect(diagnostic.fixes).toBeUndefined();
 	});
-
-	describe("the floor", () => {
-		const outputs = (stdout: string) =>
-			processes.outputs.set("/bin/rojo", { code: 0, stdout, stderr: "" });
-
-		it("should name the pinned line to change when the pinned Rojo is older than 7.5.0", async () => {
-			await fs.writeFile(
-				"/repo/game/rokit.toml",
-				'[tools]\nrojo = "rojo-rbx/rojo@7.4.4"\n'
-			);
-			processes.installed.set("rojo", "/bin/rojo");
-			outputs("Rojo 7.4.4\n");
-
-			const diagnostic = await diagnosticOf();
-
-			expect(diagnostic.code).toBe("rojo.tooOld");
-			expect(diagnostic.resource).toBe("/repo/game/rokit.toml");
-			expect(diagnostic.message).toBe(
-				'Rojo 7.4.4 is older than 7.5.0, which Rogen needs because every file it writes carries "$schema". In rokit.toml, change the pin to: rojo = "rojo-rbx/rojo@7.7.1", then run \'rokit install\'.'
-			);
-		});
-
-		it("should say to update the Rojo on the PATH when none is pinned", async () => {
-			processes.installed.set("rojo", "/bin/rojo");
-			outputs("Rojo 7.2.0\n");
-
-			const diagnostic = await diagnosticOf();
-
-			expect(diagnostic.code).toBe("rojo.tooOld");
-			expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
-			expect(diagnostic.message).toBe(
-				`Rojo 7.2.0 is older than 7.5.0, which Rogen needs because every file it writes carries "$schema". Update the Rojo on the PATH, or pin a newer one with 'rokit add rojo-rbx/rojo'.`
-			);
-		});
-
-		it("should accept a Rojo at exactly 7.5.0", async () => {
-			processes.installed.set("rojo", "/bin/rojo");
-			outputs("Rojo 7.5.0\n");
-
-			expect((await find()).unwrap().version).toBe("7.5.0");
-		});
-	});
 });

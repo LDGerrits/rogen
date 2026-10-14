@@ -622,6 +622,7 @@ describe("CoreServeService", () => {
 		let said: string[];
 		let changes: string[];
 		let connections: string[];
+		let errored: Error[];
 
 		const settle = async () => {
 			for (let i = 0; i < 20; i++)
@@ -652,6 +653,8 @@ describe("CoreServeService", () => {
 				said.push("stopped");
 				stops.push(stop);
 			});
+			errored = [];
+			session.onDidError((error) => errored.push(error));
 			changes = [];
 			session.onDidChange((change: ServeChangeEvent) =>
 				changes.push(
@@ -726,6 +729,7 @@ describe("CoreServeService", () => {
 					({ code, resource }) => [code, resource]
 				)
 			).toEqual([["rojo.windowsRules", "/repo/default.project.json"]]);
+			expect(errored).toEqual([started.error]);
 			expect(processes.spawned).toEqual([]);
 		});
 

@@ -792,13 +792,12 @@ Read what the server said just above it, which usually says why. When it said no
 
 ## Rojo
 
-### `rojo.tooOld` [#rojo-tooold]
+### `rojo.syncRulesUnsupported` [#rojo-syncrulesunsupported]
 
-Error. The Rojo that would run is older than the one Rogen needs, because every file Rogen writes carries `$schema`, which Rojo rejects before 7.5.0. Rogen checks before it writes anything. When a toolchain file pins Rojo, the message gives the line to change in it; otherwise it says to update the Rojo on the PATH.
+Error. The Rojo that would run is older than 7.5.0, which is the first to read `syncRules`, and a file Rogen wrote has some, so Rojo would refuse the file. A file with no sync rules runs on older Rojo. Rogen checks before it serves anything.
 
 ```
-rokit.toml - error: Rojo 7.4.4 is older than 7.5.0, which Rogen needs because every file it writes carries "$schema". In rokit.toml, change the pin to: rojo = "rojo-rbx/rojo@7.7.1", then run 'rokit install'. (rojo.tooOld)
-rogen.json - error: Rojo 7.2.0 is older than 7.5.0, which Rogen needs because every file it writes carries "$schema". Update the Rojo on the PATH, or pin a newer one with 'rokit add rojo-rbx/rojo'. (rojo.tooOld)
+default.project.json - error: Rojo 7.4.4 does not read "syncRules" before 7.5.0, and this file has 2. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH. (rojo.syncRulesUnsupported)
 ```
 
 Change the pin, run the manager's install command, and run the command again. See [Installation](/docs/v2/installation).

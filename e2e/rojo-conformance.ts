@@ -11,7 +11,7 @@ const readJson = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
 export interface RoundTrip {
 	/** The project file as Rojo's test has it. */
 	readonly original: unknown;
-	/** The project file `rogen build` wrote from it, without `$schema`. */
+	/** The project file `rogen build` wrote from it. */
 	readonly written: unknown;
 	readonly rogen: { readonly status: number | null; readonly stderr: string };
 	/** The place `rojo build` makes of each, as text; `undefined` when Rojo failed. */
@@ -50,7 +50,6 @@ export function roundTrip(cli: string, name: string): RoundTrip {
 			return { original, written: undefined, rogen, placeOfOriginal };
 
 		const written = readJson(file);
-		delete written.$schema;
 		return {
 			original,
 			written,

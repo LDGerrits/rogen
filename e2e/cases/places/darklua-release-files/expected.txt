@@ -42,7 +42,6 @@ written:
 
 places/arena/release.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "arena",
   "tree": {
     "$className": "DataModel",

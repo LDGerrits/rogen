@@ -9,7 +9,6 @@ written:
 
 default.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -29,7 +28,6 @@ default.project.json:
 
 dist.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "project",
   "tree": {
     "$className": "DataModel",
@@ -50,7 +48,6 @@ dist.project.json:
 
 test.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "Test",
   "tree": {
     "$className": "DataModel",

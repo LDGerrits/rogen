@@ -242,15 +242,6 @@ export const configSchema: JSONSchema = {
 	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
 };
 
-export const projectFileSchema: JSONSchema = {
-	type: "object",
-	description:
-		"A Rojo project file that Rogen wrote from a rogen.json. Edit the " +
-		"rogen.json, not this file: the next build overwrites it.",
-	additionalProperties: false,
-	properties: rojoFields,
-};
-
 const removedFields: Readonly<Record<string, string>> = {
 	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
 	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",

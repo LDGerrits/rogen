@@ -3,7 +3,6 @@ import { randomUUID } from "crypto";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { PROJECT_SCHEMA_URL } from "../config/config.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -14,7 +13,7 @@ export class OutputWriter {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
 	static textOf(projectFile: RojoProjectFile): string {
-		return ProjectText.of(projectFile, PROJECT_SCHEMA_URL);
+		return ProjectText.of(projectFile);
 	}
 
 	/** Whether the file changed; unchanged bytes are left alone. */

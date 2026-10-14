@@ -21,8 +21,9 @@ interface SyncServerFields {
 	readonly name: string;
 	/** Where toolchain managers install it from, as `owner/repo`. */
 	readonly repository: string;
-	/** The oldest release Rogen runs, and the one it pins for a project that has none. */
-	readonly floor: string;
+	/** The first release that reads `syncRules`. */
+	readonly syncRulesSince: string;
+	/** The release Rogen pins for a project that has none. */
 	readonly pinned: string;
 	readonly defaultHost: string;
 	readonly defaultPort: number;
@@ -56,7 +57,7 @@ export class SyncServer {
 		id: "rojo",
 		name: "Rojo",
 		repository: "rojo-rbx/rojo",
-		floor: "7.5.0",
+		syncRulesSince: "7.5.0",
 		pinned: "7.7.1",
 		defaultHost: "127.0.0.1",
 		defaultPort: 34872,
@@ -93,7 +94,7 @@ export class SyncServer {
 	readonly id: string;
 	readonly name: string;
 	readonly repository: string;
-	readonly floor: RojoVersion;
+	readonly syncRulesSince: RojoVersion;
 	readonly pinned: RojoVersion;
 	readonly defaultHost: string;
 	readonly defaultPort: number;
@@ -103,7 +104,7 @@ export class SyncServer {
 		this.id = fields.id;
 		this.name = fields.name;
 		this.repository = fields.repository;
-		this.floor = RojoVersion.of(fields.floor);
+		this.syncRulesSince = RojoVersion.of(fields.syncRulesSince);
 		this.pinned = RojoVersion.of(fields.pinned);
 		this.defaultHost = fields.defaultHost;
 		this.defaultPort = fields.defaultPort;

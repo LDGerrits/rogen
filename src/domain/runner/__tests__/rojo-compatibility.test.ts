@@ -59,6 +59,39 @@ describe("RojoCompatibility", () => {
 		}
 	);
 
+	it("should refuse a Rojo before 7.5.0 for a file with sync rules", async () => {
+		await written({
+			name: "game",
+			syncRules: [
+				{ pattern: "*.md", use: "text" },
+				{ pattern: "*.txt", use: "text" },
+			],
+		});
+
+		const [problem] = await problems("7.4.4", false);
+
+		expect(problem.code).toBe("rojo.syncRulesUnsupported");
+		expect(problem.resource).toBe("/repo/default.project.json");
+		expect(problem.message).toBe(
+			'Rojo 7.4.4 does not read "syncRules" before 7.5.0, and this file has 2. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH.'
+		);
+	});
+
+	it("should leave a Rojo before 7.5.0 alone for a file without sync rules", async () => {
+		await written({ name: "game", globIgnorePaths: ["**/*.spec.luau"] });
+
+		expect(await problems("7.4.4", false)).toEqual([]);
+	});
+
+	it("should accept sync rules from Rojo 7.5.0", async () => {
+		await written({
+			name: "game",
+			syncRules: [{ pattern: "*.md", use: "text" }],
+		});
+
+		expect(await problems("7.5.0", false)).toEqual([]);
+	});
+
 	it("should not refuse Rojo 7.7.0 anywhere but Windows", async () => {
 		await written({ name: "game", globIgnorePaths: ["../x"] });
 
