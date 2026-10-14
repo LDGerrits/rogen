@@ -54,13 +54,8 @@ class ListingDraft {
 	}
 
 	delete(dir: string, name: string): void {
-		const type = this.get(dir)?.get(name);
-		if (type === undefined) {
-			this.remove(joinPosix(dir, name));
-			return;
-		}
-		this.edit(dir).delete(name);
-		if (isDirectoryType(type)) this.remove(joinPosix(dir, name));
+		if (this.get(dir)?.has(name)) this.edit(dir).delete(name);
+		this.remove(joinPosix(dir, name));
 	}
 }
 
