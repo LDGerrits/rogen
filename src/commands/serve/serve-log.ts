@@ -26,6 +26,12 @@ const S = OutputShape;
 
 const serverEventFields = { config: S.string, server: S.string };
 
+const connectionFields = {
+	...serverEventFields,
+	project: S.string,
+	port: S.integer,
+};
+
 /** One line of `serve --json`. */
 export const serveLineShape = S.union(
 	watchLineShapes.build,
@@ -45,10 +51,10 @@ export const serveLineShape = S.union(
 		}),
 	}),
 	S.object({
-		connected: S.object({ ...serverEventFields, clients: S.integer }),
+		connected: S.object({ ...connectionFields, clients: S.integer }),
 	}),
 	S.object({
-		disconnected: S.object({ ...serverEventFields, clients: S.integer }),
+		disconnected: S.object({ ...connectionFields, clients: S.integer }),
 	}),
 	S.object({
 		output: S.object({
@@ -241,6 +247,8 @@ export class ServeJsonLog implements ServeReporter {
 			[opened ? "connected" : "disconnected"]: {
 				config: target.config.label,
 				server: serverFor(target, this.plan).id,
+				project: target.project,
+				port: target.address.port,
 				clients,
 			},
 		});

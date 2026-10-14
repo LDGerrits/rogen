@@ -359,6 +359,8 @@ describe("serve command", () => {
 					connected: {
 						config: "repo",
 						server: "rojo",
+						project: "repo",
+						port: 34872,
 						clients: 1,
 					},
 				},
@@ -366,6 +368,8 @@ describe("serve command", () => {
 					disconnected: {
 						config: "repo",
 						server: "rojo",
+						project: "repo",
+						port: 34872,
 						clients: 0,
 					},
 				},
