@@ -2,7 +2,7 @@
 	"steps": [
 		[
 			"init",
-			"-y"
+			"--non-interactive"
 		],
 		[
 			"build"

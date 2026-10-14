@@ -2,11 +2,11 @@
 	"steps": [
 		[
 			"init",
-			"-y"
+			"--non-interactive"
 		],
 		[
 			"init",
-			"-y"
+			"--non-interactive"
 		]
 	],
 	"show": [

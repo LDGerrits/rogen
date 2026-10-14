@@ -1,4 +1,4 @@
-$ rogen init -y
+$ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 

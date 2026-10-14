@@ -3,9 +3,9 @@
 		[
 			"init",
 			"--non-interactive"
+		],
+		[
+			"build"
 		]
-	],
-	"output": [
-		"init"
 	]
 }

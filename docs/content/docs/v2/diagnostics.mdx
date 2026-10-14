@@ -678,7 +678,7 @@ Copy the data files unchanged into the sync path after the processor runs, or re
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `rogen.json` or `rogen.jsonc`, and `init` never overwrites one. A run that can't ask (no terminal, `-y`, `--json`, CI or an agent) stops here when there is nothing else to add; in a terminal, `init` offers the agent instructions and the agent hook beside an existing config.
+Error. The folder already has a `rogen.json` or `rogen.jsonc`, and `init` never overwrites one. A run that can't ask (no terminal, `--non-interactive`, `--json`, CI or an agent) stops here when there is nothing else to add; in a terminal, `init` offers the agent instructions and the agent hook beside an existing config.
 
 ```
 rogen.json - error: this config already exists. Delete it to write a new one. (init.configExists)

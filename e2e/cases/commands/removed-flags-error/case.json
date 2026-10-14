@@ -13,6 +13,7 @@
 		["list", "--all"],
 		["where", "--all"],
 		["init", "--no-input"],
+		["init", "-y"],
 		["build", "--all", "--json"]
 	],
 	"rojo": false

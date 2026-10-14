@@ -187,7 +187,7 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
-In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `-y` (or `--non-interactive`), `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
+In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
 
 In a git repository it adds the files it will write to `.gitignore`, asking first in a terminal: `default.project.json`, one for each project, and `sourcemap.json`, each by its exact name. When it finds a test runner, it also writes a `release` project that ignores the specs (see [Testing](/docs/v2/testing)), and with Darklua it writes a `dist` project that Studio syncs from (see [Darklua](/docs/v2/setups/darklua)).
 
@@ -218,8 +218,8 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | Flag | Effect |
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `watch`. On `init` it implies `--yes`. |
-| `-y`, `--yes`, `--non-interactive` | `init` only: writes the defaults without asking. |
+| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `watch`. On `init` it implies `--non-interactive`. |
+| `--non-interactive` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
 | `-v, --verbose` | Prints debug output. |
@@ -422,7 +422,7 @@ An object with a `configs` array, one entry per config. Every entry has `config`
 
 In a terminal, Rogen draws a framed layout. It prints plain lines instead in pipes and redirects, with `NO_COLOR` or `TERM=dumb`, and when CI or a coding agent runs it.
 
-Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `-y` does. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
+Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `--non-interactive` does. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
 
 Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A warning about several files is one block in `build`, `watch` and `serve`, and its first line names the config. For one line per file, which is what an editor task or a CI annotation should read, use [`rogen check`](#check-path) or `--json`.
 

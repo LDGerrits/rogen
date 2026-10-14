@@ -55,7 +55,7 @@ rogen init
 - A mount of a source path itself (`"ReplicatedStorage/Common": { "$path": "src" }`) becomes the `*` route, which takes files that match no route. Otherwise `*` goes where the `shared` folder went.
 - A mount deeper down (`src/server/Admin`) can't be a route. `init` says so, and it needs a marker such as `Admin@server`, or a move.
 
-In a terminal, the **Routes** question offers these routes ticked, with the hint `from default.project.json`, beside the standard ones. With `-y` or `--json`, `init` takes them.
+In a terminal, the **Routes** question offers these routes ticked, with the hint `from default.project.json`, beside the standard ones. With `--non-interactive` or `--json`, `init` takes them.
 
 </Step>
 

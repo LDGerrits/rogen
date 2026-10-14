@@ -71,7 +71,7 @@ export class CoreInitService implements InitService {
 			new Error(
 				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project. ` +
 					`To use that project, run rogen from there: cd ${enclosing.directory}. ` +
-					`To start a separate project here anyway, run rogen init without -y in a terminal.`
+					`To start a separate project here anyway, run rogen init without --non-interactive in a terminal.`
 			)
 		);
 	}

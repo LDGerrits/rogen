@@ -521,7 +521,7 @@ describe("init command", () => {
 	});
 
 	describe("--non-interactive", () => {
-		it("should take every default without asking, as -y does", async () => {
+		it("should take every default without asking, as a run without a terminal does", async () => {
 			await write(".gitignore", "");
 			const prompts = new MockPromptService([], true);
 

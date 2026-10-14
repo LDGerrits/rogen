@@ -63,6 +63,11 @@ exit 2
 stderr:
   error: Unknown option '--no-input'. Run 'rogen help init' to see what init accepts.
 
+$ rogen init -y
+exit 2
+stderr:
+  error: Unknown option '-y'. Run 'rogen help init' to see what init accepts.
+
 $ rogen build --all --json
 exit 2
 stdout:

@@ -1,15 +1,10 @@
 $ rogen init --non-interactive
 exit 0
-stdout:
-  rogen init
-  Created rogen.json.
-  Created AGENTS.md.
-  default.project.json · wrote
-  Next steps
-    Run:
-      rogen serve
-    Add your own routes under "routes" in rogen.json.
-  Wrote 2 files.
+stdout: (not shown)
+
+$ rogen build
+exit 0
+stdout: (not shown)
 
 written:
   AGENTS.md
@@ -37,4 +32,8 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
-      Main: ModuleScript  <- src/Main.luau
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- src/Inventory/Save.server.luau
