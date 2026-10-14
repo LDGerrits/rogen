@@ -432,90 +432,8 @@ describe("init command", () => {
 		});
 	});
 
-	describe("git", () => {
-		const accepting = () =>
-			new MockPromptService({
-				"Keep the project files Rogen writes out of git?": true,
-			});
-
-		it("should add the files it will write to the .gitignore here, anchored to this folder", async () => {
-			await write(".gitignore", "node_modules/\n");
-
-			await runInit(accepting());
-
-			expect(await read(".gitignore")).toBe(
-				"node_modules/\n\n# Written by Rogen from rogen.json\n/default.project.json\n/sourcemap.json\n"
-			);
-		});
-
-		it("should add a project file for each project", async () => {
-			await write(".gitignore", "");
-			await write("package.json", '{"devDependencies":{"jest":"1"}}');
-
-			await runInit(accepting());
-
-			expect(await read(".gitignore")).toContain(
-				"/release.project.json\n"
-			);
-		});
-
-		it("should never ignore project files by a pattern", async () => {
-			await write(".gitignore", "");
-			await write("package.json", '{"devDependencies":{"jest":"1"}}');
-
-			await runInit(accepting());
-
-			expect(await read(".gitignore")).not.toContain("*");
-		});
-
-		it("should create a .gitignore in a folder that is in a git repository", async () => {
-			await memFs.createDirectory(path.join(cwd, ".git"));
-
-			await runInit(accepting());
-
-			expect(await read(".gitignore")).toBe(
-				"# Written by Rogen from rogen.json\n/default.project.json\n/sourcemap.json\n"
-			);
-		});
-
-		it("should find the repository in a folder above", async () => {
-			await memFs.createDirectory(path.join(path.dirname(cwd), ".git"));
-
-			await runInit(accepting());
-
-			expect(await exists(".gitignore")).toBe(true);
-		});
-
-		it("should write no .gitignore outside a repository", async () => {
-			await runInit(new MockPromptService({}));
-
-			expect(await exists(".gitignore")).toBe(false);
-		});
-
-		it("should leave a .gitignore that ignores the files already as it is", async () => {
-			const text = "/default.project.json\n/sourcemap.json\n";
-			await write(".gitignore", text);
-
-			await runInit(accepting());
-
-			expect(await read(".gitignore")).toBe(text);
-		});
-
-		it("should say it added them", async () => {
-			await write(".gitignore", "");
-			const log = new MockLogService();
-
-			await runInit(accepting(), log);
-
-			expect(log.texts("success")).toContain(
-				"Added the files Rogen writes to .gitignore."
-			);
-		});
-	});
-
 	describe("--non-interactive", () => {
 		it("should take every default without asking, as a run without a terminal does", async () => {
-			await write(".gitignore", "");
 			const prompts = new MockPromptService([], true);
 
 			const result = await runInit(prompts, new MockLogService(), {
@@ -525,28 +443,6 @@ describe("init command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(prompts.asked).toEqual([]);
 			expect(await exists("rogen.json")).toBe(true);
-		});
-
-		it("should leave the .gitignore alone, since it edits the repo's tooling", async () => {
-			await write(".gitignore", "node_modules/\n");
-
-			await runInit(
-				new MockPromptService([], true),
-				new MockLogService(),
-				{
-					"non-interactive": true,
-				}
-			);
-
-			expect(await read(".gitignore")).toBe("node_modules/\n");
-		});
-
-		it("should leave the .gitignore alone without a terminal", async () => {
-			await memFs.createDirectory(path.join(cwd, ".git"));
-
-			await runInit();
-
-			expect(await exists(".gitignore")).toBe(false);
 		});
 	});
 
@@ -564,30 +460,6 @@ describe("init command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(interactive).toEqual(await readJson("rogen.json"));
-		});
-
-		it("should ask before it changes the .gitignore, and leave it when the answer is no", async () => {
-			await write(".gitignore", "node_modules/\n");
-			const prompts = new MockPromptService({
-				"Keep the project files Rogen writes out of git?": false,
-			});
-
-			await runInit(prompts);
-
-			expect(prompts.asked).toContain(
-				"Keep the project files Rogen writes out of git?"
-			);
-			expect(await read(".gitignore")).toBe("node_modules/\n");
-		});
-
-		it("should not ask about git outside a repository", async () => {
-			const prompts = new MockPromptService({});
-
-			await runInit(prompts);
-
-			expect(prompts.asked).not.toContain(
-				"Keep the project files Rogen writes out of git?"
-			);
 		});
 
 		it("should write the answers", async () => {
