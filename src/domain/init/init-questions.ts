@@ -121,6 +121,47 @@ export class InitQuestions {
 				: folder;
 	}
 
+	/** The place IDs the server of a place is for; none when the place isn't published yet. */
+	async placeIds(place: string): Promise<readonly number[] | undefined> {
+		const given = this.choices.placeIds;
+		if (given !== undefined)
+			return listOf(given, "--place-id").map((id) =>
+				InitQuestions.toPlaceId(id)
+			);
+		if (!this.interactive) {
+			this.decide("placeIds", [], "--place-id");
+			return [];
+		}
+		const answer = await this.promptService.text({
+			message: "Place ID",
+			description: `The published ${place} place's ID, so that a Studio on another place refuses to connect to its port. Leave empty if it isn't published yet. Separate several with commas.`,
+			validate: (value) => {
+				const bad = splitList(value).find(
+					(id) => !InitQuestions.isPlaceId(id)
+				);
+				return bad === undefined
+					? undefined
+					: `'${bad}' is not a place ID, a whole number above 0.`;
+			},
+		});
+		return answer === undefined
+			? undefined
+			: splitList(answer).map((id) => InitQuestions.toPlaceId(id));
+	}
+
+	private static isPlaceId(value: string): boolean {
+		return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
+	}
+
+	private static toPlaceId(value: string): number {
+		if (!InitQuestions.isPlaceId(value))
+			throw new UsageError(
+				`'${value}' is not a place ID.`,
+				"A place ID is a whole number above 0, as Roblox shows it in the place's URL."
+			);
+		return Number(value);
+	}
+
 	async whatToAdd<T>(
 		configFile: string,
 		options: readonly AdditionOption<T>[]

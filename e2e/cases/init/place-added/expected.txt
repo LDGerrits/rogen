@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   lobby is served on port 34872, which its places/lobby/rogen.json pins so adding another place never moves it.
-  Took the defaults: --place-listing glob, --source-path src.
+  Took the defaults: --place-listing glob, --source-path src, --place-id none.
   Added "places/*" as a place path to rogen.json.
   Created places/lobby/rogen.json.
   Created project.code-workspace.

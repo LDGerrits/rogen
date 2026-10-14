@@ -447,6 +447,49 @@ describe("CoreConfigService places", () => {
 		});
 	});
 
+	describe("place IDs", () => {
+		const idsOf = (place: { project: { getFile(): object } } | undefined) =>
+			(place?.project.getFile() as { servePlaceIds?: number[] })
+				?.servePlaceIds;
+
+		it("should write a place's servePlaceIds to that place's file only", async () => {
+			const places = { arena: { servePlaceIds: [111] }, lobby: null };
+
+			expect(idsOf(await placeNamed("arena", ROOT, places))).toEqual([
+				111,
+			]);
+			expect(
+				idsOf(await placeNamed("lobby", ROOT, places))
+			).toBeUndefined();
+		});
+
+		it("should let a place's servePlaceIds replace the root's", async () => {
+			const root = { ...ROOT, servePlaceIds: [1, 2] };
+			const places = { arena: { servePlaceIds: [111] }, lobby: null };
+
+			expect(idsOf(await placeNamed("arena", root, places))).toEqual([
+				111,
+			]);
+			expect(idsOf(await placeNamed("lobby", root, places))).toEqual([
+				1, 2,
+			]);
+		});
+
+		it("should give a project of a place the place's servePlaceIds, or its own", async () => {
+			const found = await resolve(ROOT, {
+				arena: {
+					servePlaceIds: [111],
+					projects: { test: { servePlaceIds: [222] } },
+				},
+			});
+			const arena = found.filter(
+				({ isPlace, projectName }) => isPlace && projectName === "arena"
+			);
+
+			expect(arena.map(idsOf)).toEqual([[111], [222]]);
+		});
+	});
+
 	describe("what is wrong", () => {
 		it("should refuse a place that lists places", async () => {
 			await resolve(ROOT, { lobby: { placePaths: ["x/*"] } });

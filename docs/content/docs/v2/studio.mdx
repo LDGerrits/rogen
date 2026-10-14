@@ -46,9 +46,22 @@ Rojo refuses to connect from any other place, and says which IDs it expects. `bl
 <Callout type="warn">
 	A place that was never saved to Roblox has the place ID `0`, which no list
 	holds, so a listed project refuses it. Add the IDs once the places are
-	published. `rogen init` doesn't ask for them, since they usually don't exist
-	yet.
+	published. `rogen init` asks for the ID of a place it adds, and an empty answer
+	writes none.
 </Callout>
+
+### Several places
+
+Each [place](/docs/v2/configuration#places) is served on its own port, and Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port and sync that place's code. Give each place its own `servePlaceIds` in its `rogen.json`, and Rojo refuses the connection from any other place, with an error that names `servePlaceIds`:
+
+```json title="places/lobby/rogen.json"
+{
+	"servePort": 34872,
+	"servePlaceIds": [1818]
+}
+```
+
+`rogen init places/lobby` asks for the ID once, when it adds the place, and `--place-id 1818` answers it. Without a terminal it writes none. `rogen list` shows each place's port beside its place IDs.
 
 ## The Port
 

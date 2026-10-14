@@ -567,6 +567,50 @@ describe("list command", () => {
 			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");
 		});
 
+		it("should say which place IDs belong to which port", async () => {
+			await write("places/lobby/rogen.json", {
+				name: "Lobby",
+				servePlaceIds: [1818, 2020],
+			});
+
+			await run();
+
+			expect(under("places/lobby (place)")[0]).toContain(
+				"places/lobby/default.project.json (port 34873, place IDs 1818, 2020)"
+			);
+			expect(under("places/arena (place)")[0]).toContain(
+				"default.project.json (port 34872)"
+			);
+		});
+
+		it("should give each project its place IDs with --json, and none to a project without", async () => {
+			await write("places/lobby/rogen.json", {
+				name: "Lobby",
+				servePlaceIds: [1818, 2020],
+			});
+
+			await run({ json: true });
+
+			const { configs } = JSON.parse(logService.texts("print")[0]) as {
+				configs: {
+					places: {
+						place: string;
+						projects: { port: number; placeIds?: number[] }[];
+					}[];
+				}[];
+			};
+			expect(
+				configs[0].places.map(({ place, projects }) => [
+					place,
+					projects[0].port,
+					projects[0].placeIds,
+				])
+			).toEqual([
+				["arena", 34872, undefined],
+				["Lobby", 34873, [1818, 2020]],
+			]);
+		});
+
 		it("should say the config is not served when it has projects", async () => {
 			await write("rogen.json", {
 				placePaths: ["places/*"],

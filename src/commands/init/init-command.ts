@@ -131,6 +131,14 @@ const InitOptions = [
 		description:
 			"With a place folder: list every folder beside it in the config's placePaths (the default), or only this one.",
 	},
+	{
+		name: "place-id",
+		type: "string",
+		multiple: true,
+		placeholder: "id",
+		description:
+			"With a place folder: a place ID that the place's server is for, so a Studio on another place refuses to connect; repeat for several, or none. None when not given.",
+	},
 ] as const;
 
 /** The flags, as the choices `init` is not to ask about. Their values were checked against `values` when the line was parsed. */
@@ -140,6 +148,7 @@ function choicesOf(
 	return {
 		nested: options.nested,
 		placeListing: options["place-listing"] as InitChoices["placeListing"],
+		placeIds: options["place-id"],
 		agentRules: options["agent-rules"],
 		rojoPin: options["rojo-pin"],
 		agentHook: options["agent-hook"],

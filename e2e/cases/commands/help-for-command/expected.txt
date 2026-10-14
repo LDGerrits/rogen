@@ -83,6 +83,10 @@ stdout:
           --package <PATH>                   A package folder to mount as it is; repeat for several,
                                              or none for no mounts. The installed ones when not given.
                                              (repeatable)
+          --place-id <ID>                    With a place folder: a place ID that the place's server
+                                             is for, so a Studio on another place refuses to connect;
+                                             repeat for several, or none. None when not given.
+                                             (repeatable)
           --place-listing <PLACE_LISTING>    With a place folder: list every folder beside it in the
                                              config's placePaths (the default), or only this one.
                                              [possible values: glob, folder]

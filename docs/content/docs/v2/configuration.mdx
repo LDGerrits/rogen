@@ -153,6 +153,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 - A place may declare `projects` and `serveProject` of its own, and may not list places.
 - The root writes its own `default.project.json`, for the shared code, and is never served: `rogen serve` serves the places.
 - A place without a `servePort` is served on 34872 plus its index among the places without one, the places sorted by path, skipping ports other places pin. Studio remembers a place's port, so `rogen init <folder>` pins the port into the place it adds. A port in use is an error that names `servePort`.
+- A place's `servePlaceIds` are for that place's project files only, and replace the root's list when the root has one. With several places served, they are what makes a Studio connected to the wrong place's port refuse to sync. See [Studio](/docs/v2/studio#place-ids).
 - `rogen build --watch` and `rogen serve` follow a place's `rogen.json` and the `placePaths` of the config. A folder that starts matching one while they run, because it was created or because it was given a `rogen.json`, is found when they restart.
 - A command run inside a place answers for that place. A command run at the root covers the root and every place, and a project named on the command line (`rogen build release`) is the project of that name in each place.
 

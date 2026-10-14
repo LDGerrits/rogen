@@ -71,6 +71,9 @@ export class PlaceInit {
 		const sourcePaths = await this.sourcePaths(folder, root);
 		if (sourcePaths === undefined) return ok(undefined);
 
+		const placeIds = await this.questions.placeIds(path.basename(folder));
+		if (placeIds === undefined) return ok(undefined);
+
 		const port = this.portOf(folder, known);
 		const place = toPosix(path.relative(root, folder));
 		const workspace = await this.workspace(
@@ -82,6 +85,7 @@ export class PlaceInit {
 		);
 		const config: RogenConfig = {
 			servePort: port,
+			...(placeIds.length > 0 && { servePlaceIds: [...placeIds] }),
 			...(sourcePaths.sourcePaths && {
 				sourcePaths: sourcePaths.sourcePaths,
 			}),

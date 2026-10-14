@@ -38,6 +38,7 @@ const projectShape = S.named(
 		file: S.string,
 		served: S.boolean,
 		port: S.optional(S.integer),
+		placeIds: S.optional(S.array(S.integer)),
 		serving: S.nullable(servingShape),
 	})
 );
@@ -104,6 +105,7 @@ interface ListedProject {
 	readonly file: string;
 	readonly served: boolean;
 	readonly port?: number;
+	readonly placeIds?: readonly number[];
 	readonly serving: ListedServing | null;
 }
 
@@ -240,6 +242,9 @@ export class ListLog {
 				...(project.placeServePort !== undefined
 					? [`port ${project.placeServePort}`]
 					: []),
+				...(project.project.servePlaceIds.length > 0
+					? [`place IDs ${project.project.servePlaceIds.join(", ")}`]
+					: []),
 			];
 			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 		};
@@ -353,6 +358,9 @@ function configDetails(
 			served: project.stem === project.serveProject && !project.hasPlaces,
 			...(project.placeServePort !== undefined
 				? { port: project.placeServePort }
+				: {}),
+			...(project.project.servePlaceIds.length > 0
+				? { placeIds: project.project.servePlaceIds }
 				: {}),
 			serving: servingJson(serving.get(project.projectFile)),
 		})),

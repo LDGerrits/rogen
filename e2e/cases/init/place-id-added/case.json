@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init", "places/lobby", "--place-id", "1818", "--non-interactive"],
+		["list"]
+	],
+	"output": ["init"],
+	"show": ["places/lobby/rogen.json", "places/lobby/default.project.json"]
+}

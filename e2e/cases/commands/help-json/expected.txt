@@ -213,6 +213,11 @@ stdout:
               "glob",
               "folder"
             ]
+          },
+          {
+            "name": "place-id",
+            "type": "string",
+            "multiple": true
           }
         ],
         "effects": [

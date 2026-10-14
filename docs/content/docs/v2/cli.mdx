@@ -260,6 +260,7 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--[no-]rojo-pin` | Rojo's pin in `rokit.toml`. Not added by default. |
 | `--nested` | Start a project below another `rogen.json`. |
 | `--place-listing glob\|folder` | With a place folder: list its parent as a glob (the default) or the folder. |
+| `--place-id <id>` | With a place folder: the place ID the place's server is for, written as its `servePlaceIds`. Repeat for several, or `none`. |
 
 Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values, as is `--agent-hook` with no coding agent here, `--rojo-pin` with no `rokit.toml`, and a flag that shapes a new config (`--language`, `--route`, …) beside one that exists. An addition that is already there is not an error: the run adds nothing and succeeds, so a script can repeat it.
 
@@ -267,13 +268,13 @@ Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those 
 
 #### Adding a place
 
-`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
+`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, asks for the place's place ID and writes it as the place's `servePlaceIds` (an empty answer, `--place-id none`, or a run without a terminal writes none, since an unpublished place has no ID yet), builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
 
 When no `placePaths` of the config lists the folder, `init` adds an entry to it. In a terminal it asks whether to list the folder's parent as a glob (`places/*`, the default) or the folder itself; without a terminal it takes the glob. A folder right in the config's folder is listed itself. `init` rewrites a `rogen.json`, and refuses a `rogen.jsonc` rather than lose its comments, saying which line to add.
 
 ### `list [project…]`
 
-Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). A config that lists places is followed by a block for each place, with its folder and, for each project, the port it is served on. It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
+Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). A config that lists places is followed by a block for each place, with its folder and, for each project, the port it is served on and the place IDs its `servePlaceIds` lists (`port 34873, place IDs 1818, 2020`), so you can see which place ID belongs to which port; `--json` has them as `placeIds`. It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
 
 ### `fmt-project [project…]`
 
@@ -310,7 +311,7 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | `--asset_id`, `--api_key`, `--universe_id`, `--cookie` | `upload` only: Rojo's flags of the same name, with its underscores. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
 | `-n, --dry-run` | `init` only: prints what it would write and decide, and writes nothing. |
-| `--language`, `--[no-]darklua`, `--source-path`, `--sync-path`, `--project-file`, `--package`, `--route`, `--unmatched`, `--[no-]agent-rules`, `--[no-]agent-hook`, `--[no-]rojo-pin`, `--nested`, `--place-listing` | `init` only: answer a question. See [Choices as flags](#choices-as-flags). |
+| `--language`, `--[no-]darklua`, `--source-path`, `--sync-path`, `--project-file`, `--package`, `--route`, `--unmatched`, `--[no-]agent-rules`, `--[no-]agent-hook`, `--[no-]rojo-pin`, `--nested`, `--place-listing`, `--place-id` | `init` only: answer a question. See [Choices as flags](#choices-as-flags). |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
 | `-v, --verbose` | Prints debug output; `-vv` also prints trace output. |

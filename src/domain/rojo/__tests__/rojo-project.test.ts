@@ -313,6 +313,17 @@ describe("RojoProject", () => {
 		});
 	});
 
+	describe("servePlaceIds", () => {
+		it("should keep the place IDs that are whole numbers above 0", () => {
+			const project = RojoProject.parse(
+				'{ "servePlaceIds": [1818, "x", 0, -2, 1.5, 2020] }'
+			).unwrap();
+
+			expect(project.servePlaceIds).toEqual([1818, 2020]);
+			expect(RojoProject.parse("{}").unwrap().servePlaceIds).toEqual([]);
+		});
+	});
+
 	describe("mergeMissing", () => {
 		const additions = (tree: RojoNode) =>
 			new RojoProject({ tree }, folders);

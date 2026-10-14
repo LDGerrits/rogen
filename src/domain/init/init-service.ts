@@ -13,6 +13,8 @@ export interface NextSteps {
 export interface InitChoices {
 	readonly nested?: boolean;
 	readonly placeListing?: "glob" | "folder";
+	/** Place IDs, or `none`. */
+	readonly placeIds?: readonly string[];
 	readonly agentRules?: boolean;
 	readonly rojoPin?: boolean;
 	readonly agentHook?: boolean;

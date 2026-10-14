@@ -360,3 +360,54 @@ describe("the yes or no questions", () => {
 		]);
 	});
 });
+
+describe("--place-id", () => {
+	const questions = (choices: InitChoices, interactive = false) =>
+		new InitQuestions(
+			new MockPromptService([], interactive),
+			interactive,
+			choices
+		);
+
+	it("should take the place IDs it is given, and ask nothing", async () => {
+		const asked = questions({ placeIds: ["1818", "2020"] });
+
+		expect(await asked.placeIds("lobby")).toEqual([1818, 2020]);
+		expect(asked.decided).toEqual([]);
+	});
+
+	it("should take none for no place ID", async () => {
+		const asked = questions({ placeIds: ["none"] });
+
+		expect(await asked.placeIds("lobby")).toEqual([]);
+		expect(asked.decided).toEqual([]);
+	});
+
+	it("should write down that a run that can't ask took none", async () => {
+		const asked = questions({});
+
+		expect(await asked.placeIds("lobby")).toEqual([]);
+		expect(asked.decided).toEqual([
+			{ question: "placeIds", value: [], flag: "--place-id" },
+		]);
+	});
+
+	it.each([["abc"], ["0"], ["-4"], ["1.5"], ["1e3"]])(
+		"should refuse %s as a place ID",
+		async (value) => {
+			const error = await refused(
+				questions({ placeIds: [value] }).placeIds("lobby")
+			);
+
+			expect(error.message).toContain(`'${value}'`);
+		}
+	);
+
+	it("should refuse none beside a place ID", async () => {
+		const error = await refused(
+			questions({ placeIds: ["none", "1"] }).placeIds("lobby")
+		);
+
+		expect(error.message).toContain("can't be combined");
+	});
+});
