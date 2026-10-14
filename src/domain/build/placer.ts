@@ -9,8 +9,8 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { LeftOut } from "./build.js";
 import { SyncTool } from "../toolchain/toolchain.js";
+import { LeftOut } from "./build.js";
 import { BuildTree } from "./build-tree.js";
 import { InitScripts } from "./init-scripts.js";
 import { NameReadings } from "./name-readings.js";
