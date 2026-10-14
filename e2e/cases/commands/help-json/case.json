@@ -1,0 +1,10 @@
+{
+	"steps": [
+		["help", "--json"],
+		["where", "--help", "--json"],
+		["help", "where", "--json"],
+		["help", "route.strayAt", "--json"],
+		["help", "nope", "--json"]
+	],
+	"rojo": false
+}

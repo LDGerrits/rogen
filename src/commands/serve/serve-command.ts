@@ -52,6 +52,7 @@ registerCommand(
 					},
 					options: ServeOptions,
 					output: { lines: serveLineShape },
+					effects: ["writesFiles", "runsProcesses"],
 					examples: [
 						"rogen serve",
 						"rogen serve places/lobby",

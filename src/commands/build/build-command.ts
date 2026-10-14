@@ -84,6 +84,7 @@ registerCommand(
 						document: buildDocumentShape,
 						lines: buildLineShape,
 					},
+					effects: ["writesFiles", "runsProcesses"],
 					unknownWordOffer: "To build a project",
 					longRunningWith: "watch",
 					formerCommands: {

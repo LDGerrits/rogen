@@ -62,6 +62,9 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
+/** What a run of a command can do beyond printing; a command that does none of them is read-only. `longRunning` is not declared here, since a command says it with `longRunning` and `longRunningWith`. */
+export type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
+
 interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
@@ -81,6 +84,8 @@ interface CommandMetadata<
 	readonly examples?: readonly string[];
 	/** The JSON this command prints with `--json`; a command with a `--json` option declares it. */
 	readonly output?: OutputDeclaration;
+	/** What it can do beyond printing, declared by every command: `[]` for one that only reads. */
+	readonly effects?: readonly CommandEffect[];
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
 	readonly unknownWordOffer?: string;
 	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */

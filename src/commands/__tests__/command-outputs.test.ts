@@ -31,6 +31,7 @@ describe("the output of the commands", () => {
 			"check",
 			"doc",
 			"fmt-project",
+			"help",
 			"init",
 			"list",
 			"serve",

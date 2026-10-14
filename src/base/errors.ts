@@ -54,6 +54,13 @@ export const ErrorUtils = {
 	},
 };
 
+/** What each exit code of a run means. */
+export const ExitCodes = {
+	0: "done (warnings included)",
+	1: "the project has errors",
+	2: "the command line is wrong",
+} as const;
+
 /** What went wrong in a word a program can branch on, each with the exit code its run ends with. */
 export const ErrorKinds = {
 	usage: { exitCode: 2, meaning: "the command line is wrong" },

@@ -35,6 +35,7 @@ registerCommand(
 						"Opens the documentation in a browser, or prints one topic of it offline.",
 					options: DocOptions,
 					output: { document: DocOutput },
+					effects: ["opensBrowser"],
 					args: [
 						{
 							name: "topic",

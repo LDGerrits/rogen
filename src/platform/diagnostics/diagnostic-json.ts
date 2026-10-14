@@ -74,6 +74,10 @@ export const diagnosticShape = OutputShape.named(
 const diagnosticAnchor = (code: string): string =>
 	code.replace(".", "-").toLowerCase();
 
+/** Where the docs explain `code`. */
+export const diagnosticUrl = (code: string): string =>
+	`${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`;
+
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 	const { resource, position, severity, code, message, related, fixes } =
 		diagnostic;
@@ -83,7 +87,7 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 		severity: SEVERITY_LABELS[severity],
 		code,
 		message,
-		url: `${DOCS_URL}/diagnostics#${diagnosticAnchor(code)}`,
+		url: diagnosticUrl(code),
 		...(related && {
 			related: related.map((item) => ({
 				file: toNative(item.resource),

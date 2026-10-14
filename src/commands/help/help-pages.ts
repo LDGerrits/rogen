@@ -1,4 +1,4 @@
-import { UsageError } from "../../base/errors.js";
+import { ExitCodes, UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { Command } from "../../platform/commands/commands.js";
 import {
@@ -22,8 +22,13 @@ function codeNamed(name: string): string | undefined {
 	return ending.length === 1 ? ending[0] : undefined;
 }
 
-const EXIT_CODES =
-	"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.";
+const EXIT_CODES = `Exit codes: ${Object.entries(ExitCodes)
+	.map(([code, meaning]) => `${code} ${meaning}`)
+	.join(", ")}.`;
+
+export type HelpTarget =
+	| { readonly kind: "command"; readonly command: Command }
+	| { readonly kind: "code"; readonly code: string };
 
 function usageArgs(command: Command): string {
 	return (command.metadata.args ?? [])
@@ -141,14 +146,22 @@ export class HelpPages {
 		return formatHelp(this.commands, GlobalOptions);
 	}
 
-	find(target: string): string | undefined {
+	/** The command or diagnostic code `target` names. */
+	resolve(target: string): HelpTarget | undefined {
 		const code = codeNamed(target);
-		if (isCode(target)) return code && helpTexts.diagnostics[code];
+		const named =
+			code === undefined ? undefined : { kind: "code" as const, code };
+		if (isCode(target)) return named;
 		const name = target.toLowerCase();
 		const command = this.commands.get(name);
-		if (command) return formatCommandHelp(command, GlobalOptions);
-		if (DocTopics.has(name)) return undefined;
-		return code && helpTexts.diagnostics[code];
+		if (command) return { kind: "command", command };
+		return DocTopics.has(name) ? undefined : named;
+	}
+
+	textOf(target: HelpTarget): string {
+		return target.kind === "command"
+			? formatCommandHelp(target.command, GlobalOptions)
+			: helpTexts.diagnostics[target.code];
 	}
 
 	unknown(target: string): UsageError {

@@ -47,6 +47,7 @@ registerCommand(
 					],
 					options: InitOptions,
 					output: { document: initDocumentShape },
+					effects: ["writesFiles"],
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",

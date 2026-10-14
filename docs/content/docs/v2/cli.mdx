@@ -235,6 +235,8 @@ Prints usage, or a command's arguments, options and examples. `rogen --version` 
 
 `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
+With `--json`, `help` answers a program: see [`help --json`](#help---json).
+
 ## Options
 
 Anything you want every time belongs in `rogen.json`. `where`, `check` and `list` take only `--json`.
@@ -242,7 +244,7 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | Flag | Effect |
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `check`, `list`, `init`, `fmt-project` and `doc`, and one JSON object per line for `serve` and `build --watch`. On `init` it implies `--non-interactive`. |
+| `--json` | Prints one JSON document for `build`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve` and `build --watch`. On `init` it implies `--non-interactive`. |
 | `-o, --output <file>` | `build` only: also builds the project into this place or model file with Rojo. |
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
 | `--watch` | `build` only: keeps the project files current, and with `-o` or `-p` runs Rojo's build after each write. |
@@ -487,6 +489,20 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 ```
 
 `files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
+
+### `help --json`
+
+Offline, in two steps, so a program reads only what it asks for. Every document is generated from the table the text help comes from, and the text help is unchanged.
+
+`rogen help --json` is the tree: `version`, `commands`, `globalOptions`, `exitCodes` and `errorKinds`. Each command has its `name`, `description`, `args` (`name`, and `optional` or `variadic` when true), `options` (`name`, `short`, `type`, and `multiple` when true) and `effects`: what a run can do beyond printing, from `writesFiles`, `runsProcesses`, `opensBrowser` and `longRunning`. A command with none of them only reads.
+
+`rogen help <command> --json` adds the descriptions of the arguments and options, the `examples`, and the shape of what the command prints with `--json` as `output` (`document` for one document, `lines` for a command that prints one line per event). `rogen <command> --help --json` prints the same, and `rogen --help --json` the tree. The shapes are written compactly: `{a:string,b?:int}` is an object whose `b` may be left out, `[T]` an array, `A|B` either shape, `{*:T}` an object of any keys, and a capitalised name such as `Diagnostic` a shape that `shapes` writes out once.
+
+```json
+{"name":"check","description":"…","args":[…],"options":[…],"effects":[],"examples":["rogen check src --json"],"output":{"document":"{diagnostics:[Diagnostic],stoppedBy?:[Diagnostic]}"},"shapes":{"Diagnostic":"{file:string,line?:int,…}"}}
+```
+
+`rogen help <code> --json` prints `{ "code", "text", "url" }`: the text `rogen help <code>` prints, and the link to its section of the [Diagnostics](/docs/v2/diagnostics) page. A name that is neither a command nor a code is a `usage` [error](#errors) whose `hint` names the closest one.
 
 ### `list --json`
 

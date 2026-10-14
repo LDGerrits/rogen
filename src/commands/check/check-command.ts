@@ -50,6 +50,7 @@ registerCommand(
 					],
 					options: CheckOptions,
 					output: { document: CheckOutput },
+					effects: [],
 					examples: [
 						"rogen check src/Inventory/Server/Save.luau",
 						"rogen check src --json",

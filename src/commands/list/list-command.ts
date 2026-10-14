@@ -28,6 +28,7 @@ registerCommand(
 					args: ConfigArguments,
 					options: ListOptions,
 					output: { document: listDocumentShape },
+					effects: [],
 					examples: ["rogen list", "rogen list --json"],
 				},
 			});

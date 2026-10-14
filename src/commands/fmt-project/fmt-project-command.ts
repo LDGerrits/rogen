@@ -72,6 +72,7 @@ registerCommand(
 					args: ConfigArguments,
 					options: FmtProjectOptions,
 					output: { document: FmtProjectOutput },
+					effects: ["writesFiles"],
 					examples: [
 						"rogen fmt-project",
 						"rogen fmt-project places/lobby",

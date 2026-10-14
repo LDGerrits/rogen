@@ -36,6 +36,7 @@ registerCommand(
 					],
 					options: WhereOptions,
 					output: { document: whereDocumentShape },
+					effects: [],
 					examples: [
 						"rogen where src/Inventory/Server/Save.luau",
 						"rogen where ServerScriptService.Inventory.Save:12",
