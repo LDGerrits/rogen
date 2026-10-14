@@ -1,0 +1,5 @@
+{
+	"steps": [["build"]],
+	"output": ["build"],
+	"show": ["places/arena/default.project.json", "places/lobby/default.project.json"]
+}

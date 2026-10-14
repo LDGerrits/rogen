@@ -1,16 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
-import { configSchema } from "../src/domain/config/config-schema.js";
+import { placeConfigSchema } from "../src/domain/config/config-schema.js";
 import { schemaChannels } from "./schema-channels.js";
 
-/** Writes the config schema under `outDir/<channel>/rogen.json` for every channel `version` publishes to. */
+/** Writes the schema of a place's config, which fits every config but for its `null`s, under `outDir/<channel>/rogen.json` for every channel `version` publishes to. */
 export function generateSchema(
 	outDir: string,
 	version: string,
 	published: readonly string[]
 ): readonly string[] {
-	const config = JSON.stringify(configSchema, null, "\t");
+	const config = JSON.stringify(placeConfigSchema, null, "\t");
 	const channels = schemaChannels(version, published);
 	for (const channel of channels) {
 		const dir = path.join(outDir, channel);

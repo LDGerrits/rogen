@@ -8,7 +8,7 @@ import {
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
 import { ProjectText } from "../rojo/project-text.js";
-import { configSchema, rogenKeys } from "./config-schema.js";
+import { placeConfigSchema, rogenKeys } from "./config-schema.js";
 
 /** Writes a `rogen.json` the way `rojo fmt-project` writes a project file, and Rogen's keys after Rojo's. */
 export class ConfigFormatter {
@@ -43,7 +43,7 @@ export class ConfigFormatter {
 					`${name} may hold comments, and formatting writes none. Rename it to ${name.slice(0, -1)} to format it, or format it in your editor.`
 				),
 			]);
-		const document = this.documents.read(text, file, configSchema);
+		const document = this.documents.read(text, file, placeConfigSchema);
 		if (document.isErr()) return err(document.error);
 		if (!ConfigFormatter.isStrict(text))
 			return err([

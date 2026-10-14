@@ -76,6 +76,26 @@ describe("fmt-project command", () => {
 		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
 	});
 
+	it("should format a place that drops a key it inherits with null", async () => {
+		await harness.fs.createDirectory("/repo/places/lobby");
+		await harness.fs.writeFile(
+			"/repo/rogen.json",
+			JSON.stringify({
+				placePaths: ["places/*"],
+				name: "Game",
+				servePlaceIds: [1818],
+			})
+		);
+		await harness.fs.writeFile(
+			"/repo/places/lobby/rogen.json",
+			JSON.stringify({ servePlaceIds: null, servePort: 34872 })
+		);
+
+		await fmt();
+
+		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
+	});
+
 	it("should format only the place it is given when the root doesn't load", async () => {
 		await harness.fs.createDirectory("/repo/places/lobby");
 		await harness.fs.writeFile(

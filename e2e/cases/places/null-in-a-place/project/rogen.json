@@ -1,0 +1,22 @@
+{
+	"name": "Game",
+	"placePaths": [
+		"places/*"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			}
+		}
+	},
+	"servePlaceIds": [
+		1818
+	]
+}

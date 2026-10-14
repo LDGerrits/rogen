@@ -29,5 +29,16 @@ describe("scripts/generate-schema", () => {
 				expect(Object.keys(schema.properties)).toContain("sourcePaths");
 			}
 		});
+
+		it("should accept null where a place drops a key it inherits, since an editor can't tell a place from its config", () => {
+			generateSchema(outDir, "2.1.0", []);
+
+			const { properties } = JSON.parse(
+				fs.readFileSync(path.join(outDir, "2", "rogen.json"), "utf8")
+			) as { properties: Record<string, { type?: string[] }> };
+			expect(properties.servePlaceIds.type).toContain("null");
+			expect(properties.syncPath.type).toContain("null");
+			expect([properties.sourcePaths.type].flat()).not.toContain("null");
+		});
 	});
 });

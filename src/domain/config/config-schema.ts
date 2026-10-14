@@ -242,6 +242,22 @@ export const configSchema: JSONSchema = {
 	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
 };
 
+/** Keys a place has of its own, which it never inherits, so `null` removes nothing there. */
+const PLACE_OWN_KEYS = ["name", "sourcePaths"];
+
+/** A place's rogen.json: the config's keys, where `null` removes a key the place inherits. */
+export const placeConfigSchema: JSONSchema = {
+	type: "object",
+	properties: {
+		...configSchema.properties,
+		...Object.fromEntries(
+			Object.entries(projectChangeSchemas).filter(
+				([key]) => !PLACE_OWN_KEYS.includes(key)
+			)
+		),
+	},
+};
+
 const removedFields: Readonly<Record<string, string>> = {
 	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
 	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",
