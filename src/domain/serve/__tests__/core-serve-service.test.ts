@@ -351,7 +351,7 @@ describe("CoreServeService", () => {
 			expect(error).toEqual(
 				new UsageError(
 					"--port names one server's port, and this serves arena, lobby and shop.",
-					"Name one place, as 'rogen serve arena --port <port>'."
+					"Name one place, as 'rogen serve <place> --port <port>'."
 				)
 			);
 		});

@@ -81,7 +81,7 @@ export class ServePorts {
 			.join(" ");
 		return new UsageError(
 			`${joinedWithAnd(names)} names one server's ${joinedWithAnd(whats)}, and this serves ${joinedWithAnd(targets.map(({ config }) => config.label))}.`,
-			`Name one place, as 'rogen serve ${this.refOf(targets[0].config)} ${example}'.`
+			`Name one place, as 'rogen serve <place> ${example}'.`
 		);
 	}
 
