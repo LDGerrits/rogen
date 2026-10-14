@@ -93,6 +93,51 @@ describe("fmt-project command", () => {
 		expect(print).not.toHaveBeenCalledWith("formatted rogen.json");
 	});
 
+	it("should tell each file's outcome with --json", async () => {
+		await harness.fs.writeFile("/repo/rogen.json", CONFIG);
+
+		await harness.run("fmt-project", {
+			positionals: [],
+			options: { json: true },
+		});
+		await harness.run("fmt-project", {
+			positionals: [],
+			options: { json: true },
+		});
+
+		const [first, second] = print.mock.calls.map((call: unknown[]) =>
+			JSON.parse(String(call[0]))
+		);
+		expect(first).toEqual({
+			files: [
+				{
+					file: "/repo/rogen.json",
+					outcome: "formatted",
+					diagnostics: [],
+				},
+			],
+		});
+		expect(second.files[0].outcome).toBe("unchanged");
+		expect(print).toHaveBeenCalledTimes(2);
+	});
+
+	it("should tell a refused file in the document, and exit 1", async () => {
+		await harness.fs.writeFile("/repo/rogen.jsonc", CONFIG);
+
+		const result = await harness.run("fmt-project", {
+			positionals: [],
+			options: { json: true },
+		});
+
+		expect(result.isErr()).toBe(true);
+		const document = JSON.parse(String(print.mock.calls[0][0]));
+		expect(document.files[0]).toMatchObject({
+			file: "/repo/rogen.jsonc",
+			outcome: "failed",
+			diagnostics: [{ code: "format.commentsLost", severity: "error" }],
+		});
+	});
+
 	it("should refuse a rogen.jsonc and exit with the diagnostic", async () => {
 		await harness.fs.writeFile("/repo/rogen.jsonc", CONFIG);
 

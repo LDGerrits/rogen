@@ -1,0 +1,8 @@
+{
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"projects": { "release": { "routes": { "*": "ReplicatedStorage/Game" }, "globIgnorePaths": ["**/*.spec.luau"], "name": "Release" } },
+	"servePort": 34873,
+	"name": "Game",
+	"tree": { "ReplicatedStorage": { "$className": "ReplicatedStorage" }, "$className": "DataModel" }
+}

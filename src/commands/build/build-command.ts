@@ -22,7 +22,7 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
 import { BuildWatch } from "./build-watch.js";
-import { buildDocument } from "./build-document.js";
+import { buildDocument, rojoEntry } from "./build-document.js";
 import { oneProject } from "./one-project.js";
 import { reportRojo } from "./report-rojo.js";
 
@@ -113,7 +113,11 @@ registerCommand(
 						accessor,
 						line.positionals,
 						Boolean(line.options.json),
-						flags.value
+						flags.value && {
+							flags: flags.value,
+							output: line.options.output,
+							plugin: line.options.plugin,
+						}
 					).run(store, shutdown);
 				} finally {
 					store[Symbol.dispose]();
@@ -151,23 +155,31 @@ registerCommand(
 								flags: flags.value,
 								cwd,
 							});
-			const rojoFailure = built?.isErr() ? built.error : undefined;
-			if (line.options.json) {
-				if (rojoFailure) logService.error(rojoFailure.message);
+			const rojoFailure =
+				built === undefined
+					? undefined
+					: built.isErr()
+						? built.error
+						: built.value.failure;
+			if (line.options.json)
 				return this.printJson(
 					logService,
-					buildDocument(run.builds),
+					{
+						...buildDocument(run.builds),
+						...(flags.value && {
+							rojo: rojoEntry({ cwd, ...line.options }, built),
+						}),
+					},
 					failure ?? rojoFailure
 				);
-			}
 			new BuildLog(logService, cwd).report(
 				run,
 				selection.value.home,
 				denyWarnings
 			);
+			if (rojoFailure) return err(rojoFailure);
 			if (built?.isOk())
 				reportRojo(logService, built.value.messages, cwd);
-			if (rojoFailure) return err(rojoFailure);
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 

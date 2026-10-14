@@ -274,6 +274,25 @@ describe("build --watch", () => {
 			expect(processes.spawned[0].terminated).toBe(true);
 		});
 
+		it("should print a line for each Rojo build with --json", async () => {
+			void startWatch([], { output: "game.rbxl", json: true });
+			await settle();
+			processes.spawned[0].print("ERROR: boom\n");
+			await finishRojo(0, 1);
+
+			const lines = logService
+				.texts("print")
+				.map((line) => JSON.parse(line));
+			expect(lines).toContainEqual({
+				rojo: expect.objectContaining({
+					command: "build",
+					outcome: "failed",
+					output: "/repo/game.rbxl",
+					messages: [{ severity: "error", text: "boom" }],
+				}),
+			});
+		});
+
 		it("should run no Rojo without -o or -p", async () => {
 			void startWatch();
 			await settle();

@@ -1,5 +1,6 @@
 import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -21,6 +22,8 @@ export interface RojoCommandRun {
 	readonly project: ResolvedConfig;
 	/** What Rojo said, in order. */
 	readonly messages: readonly ServerMessage[];
+	/** Why the run failed, when Rojo exited with an error. */
+	readonly failure?: DiagnosticsError;
 }
 
 export interface RojoCommandService {
@@ -32,7 +35,7 @@ export interface RojoCommandService {
 		command: string
 	): Result<ResolvedConfig, UsageError>;
 
-	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects, when its files are broken, when the Rojo can't read them, or when Rojo exits with an error. */
+	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects, when its files are broken, or when the Rojo can't read them; a Rojo that exits with an error comes back as a run with a `failure`. */
 	run(
 		selection: ConfigSelection,
 		request: RojoCommandRequest

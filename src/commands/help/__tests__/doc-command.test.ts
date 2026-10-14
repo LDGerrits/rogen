@@ -64,6 +64,32 @@ describe("doc command", () => {
 		}
 	);
 
+	it("should print the address and the topics as JSON, and open nothing", async () => {
+		const result = await harnessFor(true).run("doc", {
+			positionals: [],
+			options: { json: true },
+		});
+
+		expect(result.isOk()).toBe(true);
+		expect(browser.opened).toEqual([]);
+		expect(JSON.parse(String(print.mock.calls[0][0]))).toEqual({
+			url: DOCS_URL,
+			topics: ["routing", "config", "layout", "output"],
+		});
+	});
+
+	it("should print a topic as JSON", async () => {
+		await harnessFor(false).run("doc", {
+			positionals: ["Layout"],
+			options: { json: true },
+		});
+
+		expect(JSON.parse(String(print.mock.calls[0][0]))).toEqual({
+			topic: "layout",
+			text: helpTexts.topics.layout,
+		});
+	});
+
 	it("should read a topic in any case", async () => {
 		await doc(false, "Routing");
 

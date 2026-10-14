@@ -82,18 +82,21 @@ describe("CoreRojoCommandService", () => {
 		expect(processes.spawned[0].args[1]).toBe("release.project.json");
 	});
 
-	it("should fail with what Rojo said when it exits with an error", async () => {
+	it("should return a run with a failure, and what Rojo said, when it exits with an error", async () => {
 		const running = run();
 		await finish(["ERROR: could not write a.rbxl"], 1);
 
-		const result = await running;
+		const ran = (await running).unwrap();
 
-		expect((result as ResultError<Error>).error.message).toContain(
-			"rojo.commandFailed"
-		);
-		expect((result as ResultError<Error>).error.message).toContain(
-			"'rojo build' failed (exit code 1): could not write a.rbxl"
-		);
+		expect(ran.failure?.diagnostics[0]).toMatchObject({
+			code: "rojo.commandFailed",
+			resource: "/repo/default.project.json",
+			message:
+				"'rojo build' failed (exit code 1): could not write a.rbxl",
+		});
+		expect(ran.messages).toEqual([
+			{ severity: "error", text: "could not write a.rbxl" },
+		]);
 	});
 
 	it("should fail when the selection holds several projects", async () => {
@@ -134,7 +137,7 @@ describe("CoreRojoCommandService", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it("should fail when Rojo is interrupted by something else", async () => {
+	it("should call a Rojo that something else interrupted a failure", async () => {
 		const running = run();
 		await new Promise((resolve) => setImmediate(resolve));
 		processes.spawned[0].exit({
@@ -143,7 +146,7 @@ describe("CoreRojoCommandService", () => {
 			interrupted: true,
 		});
 
-		expect((await running).isErr()).toBe(true);
+		expect((await running).unwrap().failure).toBeDefined();
 	});
 
 	it("should name the one project, or say there is none, before it runs", () => {

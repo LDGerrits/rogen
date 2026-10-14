@@ -4,21 +4,24 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { BrowserService } from "../../platform/browser/browser-service.js";
-import { CommandLine } from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { DocTopics } from "./doc-topics.js";
 
+const DocOptions = [JsonOption] as const;
+
 registerCommand(
-	class DocCommand extends AbstractCommand {
+	class DocCommand extends AbstractCommand<typeof DocOptions> {
 		constructor() {
 			super({
 				id: "doc",
 				metadata: {
 					description:
 						"Opens the documentation in a browser, or prints one topic of it offline.",
+					options: DocOptions,
 					args: [
 						{
 							name: "topic",
@@ -26,14 +29,18 @@ registerCommand(
 							isOptional: true,
 						},
 					],
-					examples: ["rogen doc", "rogen doc routing"],
+					examples: [
+						"rogen doc",
+						"rogen doc routing",
+						"rogen doc --json",
+					],
 				},
 			});
 		}
 
 		async run(
 			accessor: ServicesAccessor,
-			line: CommandLine<readonly []>
+			line: CommandLine<typeof DocOptions>
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
 			const [topic] = line.positionals;
@@ -41,9 +48,20 @@ registerCommand(
 			if (topic !== undefined) {
 				const text = DocTopics.textOf(topic);
 				if (text === undefined) return err(DocTopics.unknown(topic));
+				if (line.options.json)
+					return this.printJson(logService, {
+						topic: topic.toLowerCase(),
+						text,
+					});
 				logService.print(text);
 				return ok(undefined);
 			}
+
+			if (line.options.json)
+				return this.printJson(logService, {
+					url: DOCS_URL,
+					topics: DocTopics.NAMES,
+				});
 
 			const environment = accessor.get(EnvironmentService);
 			logService.print(DOCS_URL);

@@ -46,7 +46,7 @@ A block prints only the diagnostics the last one didn't have, so a standing warn
 
 With no project named, it follows the folder: a `rogen.json` that appears is built from then on, and one you delete is dropped, each with a line saying so. With names, it watches the projects you named.
 
-With `--json`, `build --watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, and a `notice` line when a config is added, removed, broken or recovered.
+With `--json`, `build --watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, a `notice` line when a config is added, removed, broken or recovered, and, with `-o` or `-p`, a `rojo` line after each Rojo build, shaped as [`rojo` in `build --json`](#build---json).
 
 It's safe to run `build` while `build --watch` is running. Press Ctrl+C to stop.
 
@@ -242,7 +242,7 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | Flag | Effect |
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `build --watch`. On `init` it implies `--non-interactive`. |
+| `--json` | Prints one JSON document for `build`, `where`, `check`, `list`, `init`, `fmt-project` and `doc`, and one JSON object per line for `serve` and `build --watch`. On `init` it implies `--non-interactive`. |
 | `-o, --output <file>` | `build` only: also builds the project into this place or model file with Rojo. |
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
 | `--watch` | `build` only: keeps the project files current, and with `-o` or `-p` runs Rojo's build after each write. |
@@ -363,7 +363,37 @@ A config with [projects](/docs/v2/configuration#projects) has an entry for each 
 
 `outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
 
+With `-o` or `-p`, the document also has `rojo`, the Rojo build that ran after the files were written:
+
+```json
+{
+	"command": "build",
+	"outcome": "built",
+	"project": "/repo/default.project.json",
+	"output": "/repo/game.rbxl",
+	"messages": [{ "severity": "info", "text": "Built project to game.rbxl" }]
+}
+```
+
+`outcome` is `built`, `failed` or `notRun`: Rojo isn't run when the project files have errors, and then `project` is `null`. `output` is the absolute path `-o` names, and `plugin` is the name `-p` gives (one of the two). `messages` is what Rojo said, with `severity` `error`, `warning` or `info`. A failed run has `diagnostics` with `rojo.commandFailed` (or what kept Rojo from starting), and the exit code is 1.
+
 A config that doesn't load is an entry like the others: `projectFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
+
+### `fmt-project --json`
+
+```json
+{
+	"files": [
+		{ "file": "/repo/rogen.json", "outcome": "formatted", "diagnostics": [] }
+	]
+}
+```
+
+One entry per `rogen.json` it looked at, a root's places included. `outcome` is `formatted`, `unchanged` or `failed`, and a failed file's `diagnostics` say why ([`format.commentsLost`](/docs/v2/diagnostics#format-commentslost) for a file with comments). The exit code is 1 when any file failed; the others are still formatted.
+
+### `doc --json`
+
+`rogen doc --json` prints `{ "url": "...", "topics": ["routing", "config", "layout", "output"] }` and opens nothing. `rogen doc <topic> --json` prints `{ "topic": "routing", "text": "..." }`, the text as `rogen doc routing` prints it. An unknown topic is a usage error: `{ "error": "..." }` and exit 2.
 
 ### `serve --json`
 

@@ -11,17 +11,23 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { oneProject } from "./one-project.js";
-import { reportRojo } from "./report-rojo.js";
 import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
 
 /** `rogen build --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo's build after each write when asked to. */
+export interface RojoWatchTarget {
+	/** Rojo's flags for the build. */
+	readonly flags: readonly string[];
+	readonly output?: string;
+	readonly plugin?: string;
+}
+
 export class BuildWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,
 		private readonly refs: readonly string[],
 		private readonly json: boolean,
-		/** Rojo's build flags, when the files are also to be built into a place or plugin. */
-		private readonly rojoFlags: readonly string[] | undefined
+		/** What to build with Rojo after each write, when the files are also to be built into a place or plugin. */
+		private readonly rojo: RojoWatchTarget | undefined
 	) {}
 
 	/** Runs until `shutdown` settles; `store` is the caller's, and holds what the run subscribes to. */
@@ -43,7 +49,7 @@ export class BuildWatch {
 		const selection = await configService.select(this.refs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
-		if (this.rojoFlags !== undefined) {
+		if (this.rojo !== undefined) {
 			const unique = oneProject(
 				accessor.get(RojoCommandService),
 				selection.value
@@ -61,8 +67,8 @@ export class BuildWatch {
 		store.add(
 			session.onDidUpdate((update) => {
 				log.update(update);
-				const flags = this.rojoFlags;
-				if (flags === undefined) return;
+				const { rojo } = this;
+				if (rojo === undefined) return;
 				const chosen = ProjectChoice.read(
 					selection.value.configs,
 					selection.value.named
@@ -83,14 +89,12 @@ export class BuildWatch {
 							.get(RojoCommandService)
 							.run(selection.value, {
 								command: "build",
-								flags,
+								flags: rojo.flags,
 								cwd,
 								signal: stopped.signal,
 							});
 						if (stopped.signal.aborted) return;
-						if (ran.isErr()) log.error(ran.error);
-						else if (!this.json)
-							reportRojo(logService, ran.value.messages, cwd);
+						log.rojo(ran, { cwd, ...rojo });
 					})
 					.catch((error) => log.error(ErrorUtils.fromUnknown(error)));
 			})

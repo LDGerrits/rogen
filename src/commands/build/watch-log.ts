@@ -13,7 +13,10 @@ import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
 import { toNative } from "../../base/path.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
-import { buildEntry } from "./build-document.js";
+import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
+import { Result } from "../../base/result.js";
+import { RojoTarget, buildEntry, rojoEntry } from "./build-document.js";
+import { reportRojo } from "./report-rojo.js";
 import { BuildLog } from "./build-log.js";
 
 interface WatchChange {
@@ -96,6 +99,8 @@ export interface WatchReporter {
 	begin(configs: readonly ResolvedConfig[], home?: string): void;
 	update(update: WatchUpdate): void;
 	error(error: Error): void;
+	/** Rojo's build after a write, or why it couldn't run. */
+	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void;
 	end(): void;
 }
 
@@ -120,6 +125,12 @@ export class WatchLog implements WatchReporter {
 
 	error(error: Error): void {
 		this.logService.error(error.message);
+	}
+
+	rojo(ran: Result<RojoCommandRun, Error>): void {
+		if (ran.isErr()) this.error(ran.error);
+		else if (ran.value.failure) this.error(ran.value.failure);
+		else reportRojo(this.logService, ran.value.messages, this.cwd);
 	}
 
 	end(message = "Stopped watching."): void {
@@ -205,6 +216,10 @@ export class WatchJsonLog implements WatchReporter {
 
 	error(error: Error): void {
 		this.line({ error: error.message });
+	}
+
+	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void {
+		this.line({ rojo: rojoEntry(target, ran) });
 	}
 
 	line(value: unknown): void {

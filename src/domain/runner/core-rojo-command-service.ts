@@ -76,15 +76,17 @@ export class CoreRojoCommandService implements RojoCommandService {
 		const how = exit.error
 			? exit.error.message
 			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
-		return err(
-			new DiagnosticsError([
+		return ok({
+			project,
+			messages,
+			failure: new DiagnosticsError([
 				errorDiagnostic(
 					"rojo.commandFailed",
 					{ resource: project.projectFile },
 					`'${executable.value.server.id} ${request.command}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`
 				),
-			])
-		);
+			]),
+		});
 	}
 
 	choose(

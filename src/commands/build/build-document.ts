@@ -1,9 +1,14 @@
+import path from "path";
 import { toNative } from "../../base/path.js";
+import { Result } from "../../base/result.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
+import { ServerMessage } from "../../domain/runner/sync-server.js";
 import {
 	DiagnosticJson,
 	diagnosticToJson,
+	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 
 export interface BuildEntry {
@@ -13,6 +18,29 @@ export interface BuildEntry {
 	readonly outcome: "wrote" | "unchanged" | "notWritten";
 	readonly blockedBy?: readonly string[];
 	readonly diagnostics: readonly DiagnosticJson[];
+}
+
+/** What `-o` or `-p` asked Rojo to build into. */
+export interface RojoTarget {
+	readonly cwd: string;
+	readonly output?: string;
+	readonly plugin?: string;
+}
+
+/** Rojo's build for `-o` or `-p`: `notRun` when the project files had errors, so Rojo had nothing to build. */
+export interface RojoEntry {
+	readonly command: "build";
+	readonly outcome: "built" | "failed" | "notRun";
+	readonly project: string | null;
+	/** The absolute path `-o` names. */
+	readonly output?: string;
+	/** The file name `-p` names. */
+	readonly plugin?: string;
+	/** What Rojo said, bar its debug output. */
+	readonly messages: readonly ServerMessage[];
+	readonly diagnostics?: readonly DiagnosticJson[];
+	/** Why it failed, when that isn't a diagnostic. */
+	readonly error?: string;
 }
 
 interface BuildDocument {
@@ -33,6 +61,37 @@ export function buildEntry(
 			blockedBy: build.blockedBy,
 		}),
 		diagnostics: diagnostics.map(diagnosticToJson),
+	};
+}
+
+export function rojoEntry(
+	target: RojoTarget,
+	ran: Result<RojoCommandRun, Error> | undefined
+): RojoEntry {
+	const named = {
+		command: "build" as const,
+		...(target.output !== undefined && {
+			output: toNative(path.resolve(target.cwd, target.output)),
+		}),
+		...(target.plugin !== undefined && { plugin: target.plugin }),
+	};
+	if (ran === undefined)
+		return { ...named, outcome: "notRun", project: null, messages: [] };
+	if (ran.isErr())
+		return {
+			...named,
+			outcome: "failed",
+			project: null,
+			messages: [],
+			...failureToJson(ran.error),
+		};
+	const { project, messages, failure } = ran.value;
+	return {
+		...named,
+		outcome: failure ? "failed" : "built",
+		project: toNative(project.projectFile),
+		messages: messages.filter(({ severity }) => severity !== "debug"),
+		...(failure && failureToJson(failure)),
 	};
 }
 

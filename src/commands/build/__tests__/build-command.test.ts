@@ -917,6 +917,104 @@ describe("build command", () => {
 			expect(processes.spawned).toEqual([]);
 		});
 
+		describe("with --json", () => {
+			const document = (log: MockLogService) =>
+				JSON.parse(log.texts("print")[0]);
+
+			it("should tell Rojo's build beside the configs", async () => {
+				const { running, log } = await withRojo({
+					output: "game.rbxl",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.print("Built project to game.rbxl\n");
+				rojo.exit({ code: 0, signal: null });
+
+				expect((await running).isOk()).toBe(true);
+				expect(document(log).rojo).toEqual({
+					command: "build",
+					outcome: "built",
+					project: abs("default.project.json"),
+					output: abs("game.rbxl"),
+					messages: [
+						{
+							severity: "info",
+							text: "Built project to game.rbxl",
+						},
+					],
+				});
+				expect(document(log).configs).toHaveLength(1);
+			});
+
+			it("should tell a plugin by its name", async () => {
+				const { running, log } = await withRojo({
+					plugin: "Tool.rbxm",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.exit({ code: 0, signal: null });
+				await running;
+
+				expect(document(log).rojo).toMatchObject({
+					plugin: "Tool.rbxm",
+				});
+				expect(document(log).rojo.output).toBeUndefined();
+			});
+
+			it("should tell a failed Rojo with its diagnostic, and exit 1", async () => {
+				const { running, log } = await withRojo({
+					output: "g.rbxl",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.print("ERROR: no such folder\n");
+				rojo.exit({ code: 1, signal: null });
+
+				const result = await running;
+
+				expect(result.isErr()).toBe(true);
+				const { rojo: entry } = document(log);
+				expect(entry.outcome).toBe("failed");
+				expect(entry.messages).toEqual([
+					{ severity: "error", text: "no such folder" },
+				]);
+				expect(entry.diagnostics[0]).toMatchObject({
+					code: "rojo.commandFailed",
+					severity: "error",
+				});
+			});
+
+			it("should say Rojo did not run when the build had errors", async () => {
+				const { running, log } = await withRojo(
+					{ output: "g.rbxl", json: true },
+					new MockConfigService([
+						brokenEntry([
+							errorDiagnostic(
+								"config.invalidSyntax",
+								{ resource: abs("rogen.json") },
+								"bad"
+							),
+						]),
+					])
+				);
+
+				await running;
+
+				expect(document(log).rojo).toMatchObject({
+					outcome: "notRun",
+					project: null,
+					messages: [],
+				});
+			});
+
+			it("should leave rojo out when no output was asked for", async () => {
+				const { running, log } = await withRojo({ json: true });
+				await running;
+
+				expect(document(log).rojo).toBeUndefined();
+			});
+		});
+
 		it("should write nothing when several projects leave Rojo none to run on", async () => {
 			await fs.writeFile(abs("a/src/A.luau"), "");
 			await fs.writeFile(abs("b/src/A.luau"), "");
