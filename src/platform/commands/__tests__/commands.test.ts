@@ -172,30 +172,19 @@ describe("CommandRegistry", () => {
 			metadata: { description: id, formerOptions },
 		});
 
-		it("should gather what every command says of its former options", () => {
+		it("should give what the command says of its former options, and nothing of another's", () => {
 			store.add(
 				registry.registerCommand(
 					formerly("a", { "--old": "Use --new." })
 				)
 			);
-			store.add(
-				registry.registerCommand(formerly("b", { "-x": "Use -y." }))
-			);
-			store.add(registry.registerCommand(command("c")));
+			store.add(registry.registerCommand(command("b")));
 
-			expect(registry.getFormerOptions()).toMatchObject({
+			expect(registry.getFormerOptions("a")).toEqual({
 				"--old": "Use --new.",
-				"-x": "Use -y.",
 			});
-		});
-
-		it("should drop them once the command is disposed", () => {
-			const registration = registry.registerCommand(
-				formerly("a", { "--old": "Use --new." })
-			);
-			registration[Symbol.dispose]();
-
-			expect(registry.getFormerOptions()).not.toHaveProperty("--old");
+			expect(registry.getFormerOptions("b")).toEqual({});
+			expect(registry.getFormerOptions("none")).toEqual({});
 		});
 	});
 

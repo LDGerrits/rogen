@@ -45,13 +45,16 @@ const optionsFor = (command?: string) =>
 
 const commands = ["build", "watch", "help", "init"];
 
-const formerOptions = {
-	"--yes": "Use --non-interactive.",
-	"-y": "Use --non-interactive.",
-};
+const formerOptionsFor = (command: string): Record<string, string> =>
+	command === "init"
+		? {
+				"--yes": "Use --non-interactive.",
+				"-y": "Use --non-interactive.",
+			}
+		: {};
 
 const parse = (argv: string[]) =>
-	parseArgs(argv, optionsFor, commands, formerOptions);
+	parseArgs(argv, optionsFor, commands, formerOptionsFor);
 
 const values = (argv: string[]) => parse(argv).unwrap().line.options;
 
@@ -150,6 +153,14 @@ describe("parseArgs", () => {
 		expect(short.isErr() && short.error).toMatchObject({
 			reason: "'-y' is gone.",
 		});
+	});
+
+	it("should call a former option unknown on another command", () => {
+		const result = parse(["build", "--yes"]);
+
+		expect(result.isErr() && result.error.message).toContain(
+			"Unknown option '--yes'."
+		);
 	});
 
 	it("should mark a line with no command, --help or --version as bare", () => {

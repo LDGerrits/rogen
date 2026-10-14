@@ -142,7 +142,7 @@ class RogenMain {
 			rawArgs,
 			(command) => commandRegistry.getOptions(command),
 			[...commandRegistry.getCommands().keys()],
-			commandRegistry.getFormerOptions()
+			(command) => commandRegistry.getFormerOptions(command)
 		);
 
 		const json = hasFlag(rawArgs, JsonOption);

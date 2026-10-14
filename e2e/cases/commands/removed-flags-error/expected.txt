@@ -84,10 +84,15 @@ stdout:
   {
     "error": {
       "kind": "usage",
-      "message": "'--deny-warnings' is gone.",
-      "hint": "Run 'rogen check', which exits 1 on any diagnostic, warnings included."
+      "message": "Unknown option '--deny-warnings'.",
+      "hint": "Run 'rogen help check' to see what check accepts."
     }
   }
+
+$ rogen build --yes
+exit 2
+stderr:
+  error: Unknown option '--yes'. Run 'rogen help build' to see what build accepts.
 
 $ rogen build --all --json
 exit 2

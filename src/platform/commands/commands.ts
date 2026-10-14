@@ -109,8 +109,8 @@ export interface CommandRegistry {
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
 	getOptions(commandId?: string): readonly OptionDescriptor[];
-	/** The former options of every command, by the name as typed. */
-	getFormerOptions(): Readonly<Record<string, string>>;
+	/** What a command says of the options it used to take, by the name as typed. */
+	getFormerOptions(commandId: string): Readonly<Record<string, string>>;
 }
 
 function sameOption(a: OptionDescriptor, b: OptionDescriptor): boolean {
@@ -171,13 +171,8 @@ class CoreCommandRegistry implements CommandRegistry {
 		return new Map(this.commands);
 	}
 
-	getFormerOptions(): Readonly<Record<string, string>> {
-		return Object.assign(
-			{},
-			...[...this.commands.values()].map(
-				({ metadata }) => metadata.formerOptions
-			)
-		);
+	getFormerOptions(commandId: string): Readonly<Record<string, string>> {
+		return this.commands.get(commandId)?.metadata.formerOptions ?? {};
 	}
 
 	getOptions(commandId?: string): readonly OptionDescriptor[] {

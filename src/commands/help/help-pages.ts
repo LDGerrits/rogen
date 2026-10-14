@@ -44,6 +44,8 @@ const GAP = "    ";
 const capitalised = (name: string) =>
 	name.toUpperCase().replace(/[\s-]+/g, "_");
 
+const compareNames = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
 type Argument = NonNullable<Command["metadata"]["args"]>[number];
 
 function usageArgs(command: Command): string[] {
@@ -66,9 +68,7 @@ function formatOption(option: OptionDescriptor): [string, string] {
 		flags + value,
 		[
 			option.description,
-			option.multiple && option.type === "string"
-				? "(repeatable)"
-				: undefined,
+			option.multiple ? "(repeatable)" : undefined,
 			option.default === undefined
 				? undefined
 				: `[default: ${option.default}]`,
@@ -94,7 +94,7 @@ function formatColumns(rows: [string, string][]): string[] {
 }
 
 const sortedOptions = (options: readonly OptionDescriptor[]) =>
-	[...options].sort((a, b) => a.name.localeCompare(b.name));
+	[...options].sort((a, b) => compareNames(a.name, b.name));
 
 function formatSections(
 	header: string,
@@ -115,7 +115,7 @@ function formatHelp(
 	globalOptions: readonly OptionDescriptor[]
 ): string {
 	const subcommands = [...commands.values()]
-		.sort((a, b) => a.id.localeCompare(b.id))
+		.sort((a, b) => compareNames(a.id, b.id))
 		.map((command): [string, string] => [
 			command.id,
 			command.metadata.description,

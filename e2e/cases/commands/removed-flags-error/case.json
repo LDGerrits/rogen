@@ -17,6 +17,7 @@
 		["init", "--yes"],
 		["build", "--deny-warnings"],
 		["check", "--deny-warnings", "--json"],
+		["build", "--yes"],
 		["build", "--all", "--json"]
 	],
 	"rojo": false

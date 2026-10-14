@@ -11,7 +11,7 @@ stdout:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
       -h, --help             Print help.
       -q, --quiet            Only print errors.
-      -v, --verbose          Print debug output; -vv, trace output.
+      -v, --verbose          Print debug output; -vv, trace output. (repeatable)
       -V, --version          Print the version.
   
   SUBCOMMANDS:
@@ -51,7 +51,7 @@ stdout:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
       -h, --help             Print help.
       -q, --quiet            Only print errors.
-      -v, --verbose          Print debug output; -vv, trace output.
+      -v, --verbose          Print debug output; -vv, trace output. (repeatable)
       -V, --version          Print the version.
   
   SUBCOMMANDS:
@@ -91,7 +91,7 @@ stdout:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto, always, never]
       -h, --help             Print help.
       -q, --quiet            Only print errors.
-      -v, --verbose          Print debug output; -vv, trace output.
+      -v, --verbose          Print debug output; -vv, trace output. (repeatable)
       -V, --version          Print the version.
   
   SUBCOMMANDS:

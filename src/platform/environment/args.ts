@@ -243,8 +243,10 @@ export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
 	commands: readonly string[],
-	/** What to say of an option that is gone, by the name as typed: `--yes`. */
-	formerOptions: Readonly<Record<string, string>> = {}
+	/** What a command says of an option it no longer takes, by the name as typed: `--yes`. */
+	formerOptionsFor: (
+		command: string
+	) => Readonly<Record<string, string>> = () => ({})
 ): Result<ParsedCli, Error> {
 	try {
 		const allOptions = optionsFor();
@@ -276,7 +278,7 @@ export function parseArgs(
 				optionsFor(names),
 				ownersOf,
 				positionals.length > 0 ? names : undefined,
-				formerOptions
+				formerOptionsFor(names)
 			);
 			if (problem) return err(problem);
 		}
