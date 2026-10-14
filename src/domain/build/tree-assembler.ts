@@ -47,6 +47,11 @@ interface PlacedEntry {
 	readonly rojoName: string | undefined;
 }
 
+const needsRojoIgnore = ([, why]: readonly [string, LeftOut]): boolean =>
+	why.status !== "replaced" &&
+	why.status !== "displaced" &&
+	why.status !== "mounted";
+
 const literalGlob = (filePath: string): string =>
 	filePath.replace(/[[\]{}*?]/g, "[$&]");
 
@@ -119,11 +124,9 @@ export class TreeAssembler {
 	): string[] {
 		return leftOut
 			.filter(
-				([source, why]) =>
-					!mounts.some((mount) => contains(source, mount)) &&
-					why.status !== "replaced" &&
-					why.status !== "displaced" &&
-					why.status !== "mounted"
+				(left) =>
+					!mounts.some((mount) => contains(left[0], mount)) &&
+					needsRojoIgnore(left)
 			)
 			.map(([source]) => source)
 			.sort(compareStrings);
@@ -171,45 +174,22 @@ export class TreeAssembler {
 		const placed = this.placement.nodes.map((file) =>
 			this.placeEntry(file)
 		);
-		const claims = new InstanceMap<number>();
-		const entriesByDir = new Map<string, PlacedEntry[]>();
-		const namedDirs = new Set<string>();
-		for (const entry of placed) {
-			const { instancePath, folderNodes, entry: scanned } = entry.file;
-			for (let length = 1; length <= instancePath.length; length++) {
-				const claimed = instancePath.slice(0, length);
-				claims.set(claimed, (claims.get(claimed) ?? 0) + 1);
-			}
-
-			const sourcePath = toPosix(scanned.sourcePath);
-			for (const { folder } of folderNodes) namedDirs.add(folder);
-			for (const dir of ancestors(entry.source)) {
-				if (!isInside(dir, sourcePath)) break;
-				const inDir = entriesByDir.get(dir);
-				if (inDir) inDir.push(entry);
-				else entriesByDir.set(dir, [entry]);
-			}
-		}
-
-		const blocked = new Set<string>();
-		for (const source of leftOut)
-			for (const dir of ancestors(source)) {
-				if (blocked.has(dir)) break;
-				blocked.add(dir);
-			}
+		const claims = TreeAssembler.claimsOf(placed);
+		const { entriesByDir, namedDirs } = TreeAssembler.dirsOf(placed);
+		const blocked = TreeAssembler.dirsAbove(leftOut);
+		const holdsUnplacedFolder = this.unplacedFolderFinder(entriesByDir);
 
 		const collapsed = new Map<string, readonly string[]>();
 		const covering = new Collapsed(collapsed);
 		const outermostFirst = [...entriesByDir].sort(
 			([a], [b]) => a.split("/").length - b.split("/").length
 		);
-		const holdsEmpty = this.emptyFolderFinder(entriesByDir);
 		for (const [dir, entries] of outermostFirst) {
 			if (
 				blocked.has(dir) ||
 				!namedDirs.has(dir) ||
 				covering.covers(dir) ||
-				holdsEmpty(dir)
+				holdsUnplacedFolder(dir)
 			)
 				continue;
 			const instancePath = this.instancePathOf(dir, entries);
@@ -223,24 +203,60 @@ export class TreeAssembler {
 		return collapsed;
 	}
 
-	private emptyFolderFinder(
+	private static claimsOf(placed: readonly PlacedEntry[]) {
+		const claims = new InstanceMap<number>();
+		for (const { file } of placed)
+			for (let length = 1; length <= file.instancePath.length; length++) {
+				const claimed = file.instancePath.slice(0, length);
+				claims.set(claimed, (claims.get(claimed) ?? 0) + 1);
+			}
+		return claims;
+	}
+
+	private static dirsOf(placed: readonly PlacedEntry[]) {
+		const entriesByDir = new Map<string, PlacedEntry[]>();
+		const namedDirs = new Set<string>();
+		for (const entry of placed) {
+			const sourcePath = toPosix(entry.file.entry.sourcePath);
+			for (const { folder } of entry.file.folderNodes)
+				namedDirs.add(folder);
+			for (const dir of ancestors(entry.source)) {
+				if (!isInside(dir, sourcePath)) break;
+				const inDir = entriesByDir.get(dir);
+				if (inDir) inDir.push(entry);
+				else entriesByDir.set(dir, [entry]);
+			}
+		}
+		return { entriesByDir, namedDirs };
+	}
+
+	private static dirsAbove(sources: readonly string[]): Set<string> {
+		const dirs = new Set<string>();
+		for (const source of sources)
+			for (const dir of ancestors(source)) {
+				if (dirs.has(dir)) break;
+				dirs.add(dir);
+			}
+		return dirs;
+	}
+
+	private unplacedFolderFinder(
 		placedDirs: ReadonlyMap<string, readonly PlacedEntry[]>
 	): (dir: string) => boolean {
 		const { placement } = this;
 		const known = new Map<string, boolean>();
-		const holdsEmpty = (dir: string): boolean => {
+		const holds = (dir: string): boolean => {
 			const cached = known.get(dir);
 			if (cached !== undefined) return cached;
 			const found = [...placement.listing(dir)].some(([name, type]) => {
 				if (!isDirectoryType(type)) return false;
 				const child = path.posix.join(dir, name);
-				return !placedDirs.has(child) || holdsEmpty(child);
+				return !placedDirs.has(child) || holds(child);
 			});
 			known.set(dir, found);
 			return found;
 		};
-		return (dir) =>
-			placement.layout.syncPath === undefined && holdsEmpty(dir);
+		return (dir) => placement.layout.syncPath === undefined && holds(dir);
 	}
 
 	private instancePathOf(
