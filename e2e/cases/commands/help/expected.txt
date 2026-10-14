@@ -19,7 +19,7 @@ stdout:
       build          Writes the project files; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
-      fmt-project    Formats rogen.json as 'rojo fmt-project' formats a project
+      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
       init           Writes a starting rogen.json, or adds a place to one
       list           Lists the configs, their projects and their ports
@@ -61,7 +61,7 @@ stdout:
       build          Writes the project files; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
-      fmt-project    Formats rogen.json as 'rojo fmt-project' formats a project
+      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
       init           Writes a starting rogen.json, or adds a place to one
       list           Lists the configs, their projects and their ports
@@ -103,7 +103,7 @@ stdout:
       build          Writes the project files; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
-      fmt-project    Formats rogen.json as 'rojo fmt-project' formats a project
+      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
       init           Writes a starting rogen.json, or adds a place to one
       list           Lists the configs, their projects and their ports

@@ -146,16 +146,14 @@ describe("help command", () => {
 		it("should list each subcommand with its summary on one line", async () => {
 			await help();
 
-			expect(section(printed(), "SUBCOMMANDS")).toEqual(
+			expect(
+				section(printed(), "SUBCOMMANDS").map((line) =>
+					line.trim().split(/ {2,}/)
+				)
+			).toEqual(
 				[...registry.getCommands().values()]
 					.sort((a, b) => (a.id < b.id ? -1 : 1))
-					.map((command) =>
-						expect.stringMatching(
-							new RegExp(
-								`^ {4}${command.id} +${command.metadata.summary.replace(/[.()']/g, "\\$&")}$`
-							)
-						)
-					)
+					.map((command) => [command.id, command.metadata.summary])
 			);
 		});
 
@@ -187,6 +185,20 @@ describe("help command", () => {
 					expect(line.search(/\S/)).toBe(column);
 			}
 		);
+
+		it("should wrap a code's prose at 100 columns and keep its quoted lines whole", async () => {
+			await help("route.strayAt");
+
+			const lines = printed().split("\n");
+			expect(
+				lines.filter(
+					(line) => line.length > 100 && !line.startsWith(" ")
+				)
+			).toEqual([]);
+			expect(lines).toContain(
+				'  rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
+			);
+		});
 
 		it("should merge the global options into a command's, sorted by name", async () => {
 			await help("build");

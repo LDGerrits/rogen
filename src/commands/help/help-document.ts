@@ -10,6 +10,7 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { OutputNotation } from "../../platform/output/output-notation.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
+import { helpTexts } from "./help-texts.js";
 
 const S = OutputShape;
 
@@ -182,7 +183,11 @@ export const HelpDocument = {
 	},
 
 	/** What a diagnostic code means, and where the docs explain it. */
-	code(code: string, text: string) {
-		return { code, text, url: diagnosticUrl(code) };
+	code(code: string) {
+		return {
+			code,
+			text: helpTexts.diagnostics[code],
+			url: diagnosticUrl(code),
+		};
 	},
 } as const;

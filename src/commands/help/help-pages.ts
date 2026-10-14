@@ -236,7 +236,12 @@ export class HelpPages {
 	textOf(target: HelpTarget): string {
 		return target.kind === "command"
 			? formatCommandHelp(target.command, GlobalOptions)
-			: helpTexts.diagnostics[target.code];
+			: helpTexts.diagnostics[target.code]
+					.split("\n")
+					.flatMap((line) =>
+						line.startsWith(" ") ? [line] : wrapped(line, WIDTH)
+					)
+					.join("\n");
 	}
 
 	unknown(target: string): UsageError {

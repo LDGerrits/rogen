@@ -305,29 +305,35 @@ export function parseArgs(
 	}
 }
 
+/** `argv` up to the first `--`, which ends the options. */
+const ownArgs = (argv: readonly string[]): readonly string[] => {
+	const end = argv.indexOf("--");
+	return end === -1 ? argv : argv.slice(0, end);
+};
+
 export function hasFlag(
 	argv: readonly string[],
 	option: OptionDescriptor
 ): boolean {
-	const end = argv.indexOf("--");
-	return (end === -1 ? argv : argv.slice(0, end)).includes(
-		`--${option.name}`
-	);
+	return ownArgs(argv).includes(`--${option.name}`);
 }
 
-/** The last value of a string option with choices in `argv`, read without parsing, so a line the parser rejects still has it. */
+/** The last valid value of a string option with choices in `argv`, read without parsing, so a line the parser rejects still has it. */
 export function choiceIn<V extends string>(
 	argv: readonly string[],
-	option: OptionDescriptor & { readonly values: readonly V[] }
+	option: { readonly name: string; readonly values: readonly V[] }
 ): V | undefined {
-	const end = argv.indexOf("--");
-	const own = end === -1 ? argv : argv.slice(0, end);
+	const own = ownArgs(argv);
 	const flag = `--${option.name}`;
-	let found: string | undefined;
-	own.forEach((arg, index) => {
-		if (arg === flag) found = own[index + 1];
-		else if (arg.startsWith(`${flag}=`)) found = arg.slice(flag.length + 1);
-	});
-	const values: readonly V[] = option.values;
-	return values.find((value) => value === found);
+	for (let index = own.length - 1; index >= 0; index--) {
+		const value =
+			own[index] === flag
+				? own[index + 1]
+				: own[index].startsWith(`${flag}=`)
+					? own[index].slice(flag.length + 1)
+					: undefined;
+		const choice = option.values.find((one) => one === value);
+		if (choice) return choice;
+	}
+	return undefined;
 }

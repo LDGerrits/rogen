@@ -69,7 +69,7 @@ registerCommand(
 				id: "fmt-project",
 				metadata: {
 					summary:
-						"Formats rogen.json as 'rojo fmt-project' formats a project",
+						"Formats rogen.json the way 'rojo fmt-project' does",
 					description:
 						"Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
 					args: ConfigArguments,

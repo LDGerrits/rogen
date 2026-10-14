@@ -277,7 +277,7 @@ Opens the documentation in your browser, and prints its address. Without a termi
 
 ### `help [name]`
 
-Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and every line is wrapped at 100 columns. `rogen help build`, `rogen build --help` and `rogen build -h` print the same. `rogen --version` prints the installed version.
+Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and descriptions and prose are wrapped at 100 columns, as Rojo wraps its help. `rogen help build`, `rogen build --help` and `rogen build -h` print the same. `rogen --version` prints the installed version.
 
 `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 

@@ -89,7 +89,7 @@ registerCommand(
 					logService,
 					found.kind === "command"
 						? HelpDocument.command(found.command)
-						: HelpDocument.code(found.code, pages.textOf(found))
+						: HelpDocument.code(found.code)
 				);
 			logService.print(pages.textOf(found));
 			return ok(undefined);
