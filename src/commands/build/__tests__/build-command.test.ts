@@ -897,6 +897,24 @@ describe("build command", () => {
 			);
 		});
 
+		it("should show the warnings Rojo printed before it failed, and its error once", async () => {
+			const { running, log } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("[WARN rojo] odd file\n");
+			rojo.print("ERROR: no such folder\n");
+			rojo.exit({ code: 1, signal: null });
+
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "warn",
+				text: "Rojo: odd file",
+			});
+			expect(
+				log.entries.filter(({ kind }) => kind === "error")
+			).toHaveLength(0);
+		});
+
 		it("should not run Rojo when the build has errors", async () => {
 			const { running } = await withRojo(
 				{ output: "g.rbxl" },

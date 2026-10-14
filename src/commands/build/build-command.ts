@@ -24,7 +24,7 @@ import { BuildLog } from "./build-log.js";
 import { BuildWatch } from "./build-watch.js";
 import { buildDocument, rojoEntry } from "./build-document.js";
 import { oneProject } from "./one-project.js";
-import { reportRojo } from "./report-rojo.js";
+import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
 
 const DenyWarningsOption = {
 	name: "deny-warnings",
@@ -177,9 +177,13 @@ registerCommand(
 				selection.value.home,
 				denyWarnings
 			);
-			if (rojoFailure) return err(rojoFailure);
 			if (built?.isOk())
-				reportRojo(logService, built.value.messages, cwd);
+				(rojoFailure ? reportRojoBesideFailure : reportRojo)(
+					logService,
+					built.value.messages,
+					cwd
+				);
+			if (rojoFailure) return err(rojoFailure);
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 

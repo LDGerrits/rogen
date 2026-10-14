@@ -16,7 +16,7 @@ import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js"
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
 import { RojoTarget, buildEntry, rojoEntry } from "./build-document.js";
-import { reportRojo } from "./report-rojo.js";
+import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
 import { BuildLog } from "./build-log.js";
 
 interface WatchChange {
@@ -129,8 +129,14 @@ export class WatchLog implements WatchReporter {
 
 	rojo(ran: Result<RojoCommandRun, Error>): void {
 		if (ran.isErr()) this.error(ran.error);
-		else if (ran.value.failure) this.error(ran.value.failure);
-		else reportRojo(this.logService, ran.value.messages, this.cwd);
+		else if (ran.value.failure) {
+			reportRojoBesideFailure(
+				this.logService,
+				ran.value.messages,
+				this.cwd
+			);
+			this.error(ran.value.failure);
+		} else reportRojo(this.logService, ran.value.messages, this.cwd);
 	}
 
 	end(message = "Stopped watching."): void {

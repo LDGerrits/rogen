@@ -28,3 +28,16 @@ export function reportRojo(
 	for (const message of messages)
 		reportServerMessage(logService, "Rojo", message, cwd);
 }
+
+/** What Rojo said that its failure doesn't repeat: the failure carries its errors. */
+export function reportRojoBesideFailure(
+	logService: LogService,
+	messages: readonly ServerMessage[],
+	cwd: string
+): void {
+	reportRojo(
+		logService,
+		messages.filter(({ severity }) => severity !== "error"),
+		cwd
+	);
+}

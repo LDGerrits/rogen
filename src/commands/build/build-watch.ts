@@ -13,7 +13,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { oneProject } from "./one-project.js";
 import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
 
-/** `rogen build --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo's build after each write when asked to. */
 export interface RojoWatchTarget {
 	/** Rojo's flags for the build. */
 	readonly flags: readonly string[];
@@ -21,6 +20,7 @@ export interface RojoWatchTarget {
 	readonly plugin?: string;
 }
 
+/** `rogen build --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo's build after each write when asked to. */
 export class BuildWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,

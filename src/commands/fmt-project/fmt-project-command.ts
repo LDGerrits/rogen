@@ -89,14 +89,14 @@ registerCommand(
 			)) {
 				const formatted = await configService.format(file);
 				if (formatted.isErr()) failures.push(...formatted.error);
-				files.push(formattedFile(file, formatted));
+				const entry = formattedFile(file, formatted);
+				files.push(entry);
+				if (!line.options.json && entry.outcome === "formatted")
+					logService.print(`formatted ${relativeTo(cwd, file)}`);
 			}
 			const failure = DiagnosticsError.of(failures);
 			if (line.options.json)
 				return this.printJson(logService, { files }, failure);
-			for (const { file, outcome } of files)
-				if (outcome === "formatted")
-					logService.print(`formatted ${relativeTo(cwd, file)}`);
 			return failure ? err(failure) : ok(undefined);
 		}
 
