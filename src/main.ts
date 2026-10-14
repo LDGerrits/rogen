@@ -159,7 +159,8 @@ class RogenMain {
 		if (cwd === undefined && command !== HELP_COMMAND) {
 			process.exitCode = failure.finish(
 				new UsageError(
-					"The current folder no longer exists. cd to one that does, then run rogen again."
+					"The current folder no longer exists.",
+					"cd to one that does, then run rogen again."
 				),
 				command
 			);

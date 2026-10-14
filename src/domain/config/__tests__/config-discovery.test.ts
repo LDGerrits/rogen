@@ -219,7 +219,7 @@ describe("ConfigDiscovery", () => {
 
 			expect(errorOf(result)).toBeInstanceOf(UsageError);
 			expect(errorOf(result).message).toBe(
-				`"places/nowhere" not found: name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
+				`"places/nowhere" not found. Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
 			);
 		});
 

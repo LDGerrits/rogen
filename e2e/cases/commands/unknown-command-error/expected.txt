@@ -7,7 +7,11 @@ $ rogen deploy --json
 exit 2
 stdout:
   {
-    "error": "Unknown command \"deploy\". To build a project, run 'rogen build deploy'; run 'rogen help' to see the commands."
+    "error": {
+      "kind": "usage",
+      "message": "Unknown command \"deploy\".",
+      "hint": "To build a project, run 'rogen build deploy'; run 'rogen help' to see the commands."
+    }
   }
 
 $ rogen biuld
@@ -24,5 +28,9 @@ $ rogen prod --json
 exit 2
 stdout:
   {
-    "error": "Unknown command \"prod\". To build a project, run 'rogen build prod'; run 'rogen help' to see the commands."
+    "error": {
+      "kind": "usage",
+      "message": "Unknown command \"prod\".",
+      "hint": "To build a project, run 'rogen build prod'; run 'rogen help' to see the commands."
+    }
   }

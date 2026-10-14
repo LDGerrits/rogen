@@ -138,7 +138,10 @@ describe("init command", () => {
 				appended: [],
 				files: [path.join(cwd, "rogen.json")],
 				directories: [],
-				error: "Failed to write AGENTS.md: disk full",
+				error: {
+					kind: "io",
+					message: "Failed to write AGENTS.md: disk full",
+				},
 			});
 		});
 

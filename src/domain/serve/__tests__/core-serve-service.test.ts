@@ -337,7 +337,7 @@ describe("CoreServeService", () => {
 
 			expect(error).toBeInstanceOf(UsageError);
 			expect(error.message).toBe(
-				"lobby and shop both serve on port 34872.\nGive each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve lobby'."
+				"lobby and shop both serve on port 34872. Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve lobby'."
 			);
 		});
 
@@ -351,7 +351,7 @@ describe("CoreServeService", () => {
 			});
 
 			expect(error.message).toBe(
-				"arena, lobby and shop all serve on port 40000.\nThe --port after '--' applies to every config: serve one at a time, as 'rogen serve arena -- --port <port>'."
+				"arena, lobby and shop all serve on port 40000. The --port after '--' applies to every config: serve one at a time, as 'rogen serve arena -- --port <port>'."
 			);
 		});
 

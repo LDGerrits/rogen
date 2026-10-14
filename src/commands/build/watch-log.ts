@@ -12,7 +12,10 @@ import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
 import { toNative } from "../../base/path.js";
-import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
+import {
+	diagnosticToJson,
+	errorToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
 import { RojoTarget, buildEntry, rojoEntry } from "./build-document.js";
@@ -221,7 +224,7 @@ export class WatchJsonLog implements WatchReporter {
 	}
 
 	error(error: Error): void {
-		this.line({ error: error.message });
+		this.line({ error: errorToJson(error) });
 	}
 
 	rojo(ran: Result<RojoCommandRun, Error>, target: RojoTarget): void {

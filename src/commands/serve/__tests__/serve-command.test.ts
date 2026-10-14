@@ -643,7 +643,11 @@ describe("serve command", () => {
 		await failureOf(serve([], { json: true }));
 
 		expect(
-			printed().filter((line) => line.error === "no access")
+			printed().filter((line) =>
+				(line.error as { message?: string })?.message?.startsWith(
+					"no access"
+				)
+			)
 		).toHaveLength(1);
 	});
 

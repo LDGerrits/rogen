@@ -2,7 +2,7 @@ import * as childProcess from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import { AbstractDisposable } from "../../base/disposable.js";
-import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
+import { ErrorUtils, ToolError, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event, NullEvent } from "../../base/event.js";
 import { isWindows } from "../../base/platform.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -53,7 +53,7 @@ export function launch(
 	const expanded = [file, ...args].find(expandedByShell);
 	if (expanded !== undefined)
 		return err(
-			new Error(
+			new ToolError(
 				`${path.basename(file)} is a batch file, which Windows runs through cmd.exe, and cmd.exe would expand the % in "${expanded}" as a variable. Run the program itself (an .exe) or leave the % out of its path and arguments.`
 			)
 		);

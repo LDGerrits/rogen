@@ -1,3 +1,4 @@
+import { ProjectError } from "../../base/errors.js";
 import { relativeTo, toNative } from "../../base/path.js";
 import { joinedWithAnd, plural } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
@@ -91,7 +92,7 @@ export class ListLog {
 		).length;
 		if (broken === 0) return undefined;
 		const verb = broken === 1 ? "has" : "have";
-		return new Error(
+		return new ProjectError(
 			broken === entries.length
 				? `${plural(broken, "config")} ${verb} errors.`
 				: `${broken} of ${entries.length} configs ${verb} errors.`

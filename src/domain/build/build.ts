@@ -1,3 +1,4 @@
+import { ProjectError } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import {
@@ -283,7 +284,7 @@ export class BuildRun {
 	failure(denyWarnings: boolean): Error | undefined {
 		if (this.errors.length > 0) return new DiagnosticsError(this.errors);
 		return denyWarnings && this.warningCount > 0
-			? new Error(
+			? new ProjectError(
 					`${plural(this.warningCount, "warning")} denied by --deny-warnings.`
 				)
 			: undefined;

@@ -2,5 +2,9 @@ $ rogen help --json
 exit 2
 stdout:
   {
-    "error": "help doesn't take '--json'. build, check, doc, fmt-project, init, list, serve and where do."
+    "error": {
+      "kind": "usage",
+      "message": "help doesn't take '--json'.",
+      "hint": "build, check, doc, fmt-project, init, list, serve and where do."
+    }
   }

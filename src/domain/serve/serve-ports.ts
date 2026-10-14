@@ -80,7 +80,7 @@ export class ServePorts {
 		const fix = portGiven
 			? `The --port after '--' applies to every config: serve one at a time, as 'rogen serve ${first} -- --port <port>'.`
 			: `Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve ${first}'.`;
-		return new UsageError([...lines, fix].join("\n"));
+		return new UsageError(lines.join("\n"), fix);
 	}
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */

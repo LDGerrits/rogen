@@ -1,5 +1,6 @@
+import { ErrorKind, KindedError, errorKind } from "../../base/errors.js";
 import { toNative } from "../../base/path.js";
-import { DOCS_URL } from "../product/product-service.js";
+import { DOCS_URL, REPOSITORY } from "../product/product-service.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -71,13 +72,37 @@ export function diagnosticsJson(diagnostics: readonly Diagnostic[]): {
 	return { diagnostics: diagnostics.map(diagnosticToJson) };
 }
 
+export interface ErrorJson {
+	readonly kind: ErrorKind;
+	readonly message: string;
+	readonly hint?: string;
+}
+
+/** A failure that isn't a list of diagnostics, as a program reads it; a bug says where to report it. */
+export function errorToJson(error: Error): ErrorJson {
+	const kind = errorKind(error);
+	if (error instanceof KindedError)
+		return {
+			kind,
+			message: error.reason,
+			...(error.hint && { hint: error.hint }),
+		};
+	return {
+		kind,
+		message:
+			kind === "internal"
+				? `${error.message}${/[.!?]$/.test(error.message) ? "" : "."} This is a bug in Rogen: report it at https://github.com/${REPOSITORY}/issues.`
+				: error.message,
+	};
+}
+
 /** What a `--json` run prints when it fails before it has anything else to show. */
 export function failureToJson(
 	error: Error
 ):
 	| { readonly diagnostics: readonly DiagnosticJson[] }
-	| { readonly error: string } {
+	| { readonly error: ErrorJson } {
 	return error instanceof DiagnosticsError
 		? diagnosticsJson(error.diagnostics)
-		: { error: error.message };
+		: { error: errorToJson(error) };
 }

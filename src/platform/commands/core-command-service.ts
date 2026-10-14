@@ -23,14 +23,12 @@ export class CoreCommandService implements CommandService {
 
 		const command = this.registry.getCommand(commandId);
 
-		if (!command)
-			return err(
-				new UsageError(unknownCommand(commandId, this.registry))
-			);
+		if (!command) return err(unknownCommand(commandId, this.registry));
 		if (line.passthrough?.length && !command.metadata.passthrough) {
 			return err(
 				new UsageError(
-					`${commandId} takes nothing after '--'. Run 'rogen ${HELP_COMMAND} ${commandId}' to see what it accepts.`
+					`${commandId} takes nothing after '--'.`,
+					`Run 'rogen ${HELP_COMMAND} ${commandId}' to see what it accepts.`
 				)
 			);
 		}
@@ -45,21 +43,28 @@ export class CoreCommandService implements CommandService {
 }
 
 /** What to say of `commandId`: the version flag, its closest command, or what the command that takes the word would do. */
-function unknownCommand(commandId: string, registry: CommandRegistry): string {
-	const prefix = `Unknown command "${commandId}".`;
+function unknownCommand(
+	commandId: string,
+	registry: CommandRegistry
+): UsageError {
+	const reason = `Unknown command "${commandId}".`;
 	if (commandId === "version")
-		return `${prefix} Did you mean 'rogen --version'?`;
+		return new UsageError(reason, "Did you mean 'rogen --version'?");
 	const commands = registry.getCommands();
 	for (const { metadata } of commands.values()) {
 		const former = metadata.formerCommands?.[commandId];
-		if (former) return `${prefix} ${former}`;
+		if (former) return new UsageError(reason, former);
 	}
 	const suggestion = closestMatch(commandId, commands.keys());
-	if (suggestion) return `${prefix} Did you mean 'rogen ${suggestion}'?`;
+	if (suggestion)
+		return new UsageError(reason, `Did you mean 'rogen ${suggestion}'?`);
 	const offering = [...commands.values()].find(
 		({ metadata }) => metadata.unknownWordOffer !== undefined
 	);
-	return offering
-		? `${prefix} ${offering.metadata.unknownWordOffer}, run 'rogen ${offering.id} ${commandId}'; run 'rogen ${HELP_COMMAND}' to see the commands.`
-		: `${prefix} Run 'rogen ${HELP_COMMAND}' to see the commands.`;
+	return new UsageError(
+		reason,
+		offering
+			? `${offering.metadata.unknownWordOffer}, run 'rogen ${offering.id} ${commandId}'; run 'rogen ${HELP_COMMAND}' to see the commands.`
+			: `Run 'rogen ${HELP_COMMAND}' to see the commands.`
+	);
 }

@@ -37,7 +37,11 @@ $ rogen build --nope --json
 exit 2
 stdout:
   {
-    "error": "Unknown option '--nope'. Run 'rogen help build' to see what build accepts."
+    "error": {
+      "kind": "usage",
+      "message": "Unknown option '--nope'.",
+      "hint": "Run 'rogen help build' to see what build accepts."
+    }
   }
 
 $ rogen --nope

@@ -1,3 +1,7 @@
+import {
+	ErrorJson,
+	errorToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -104,7 +108,7 @@ interface InitDocument {
 	readonly files: readonly string[];
 	readonly appended: readonly string[];
 	readonly directories: readonly string[];
-	readonly error?: string;
+	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
 	readonly notes?: readonly string[];
 	readonly nextSteps?: NextSteps;
@@ -134,7 +138,7 @@ export class InitJsonLog implements InitReporter {
 
 	failed(error: Error): Result<void, Error> {
 		return this.print(
-			{ ...this.writtenSoFar(), error: error.message },
+			{ ...this.writtenSoFar(), error: errorToJson(error) },
 			error
 		);
 	}

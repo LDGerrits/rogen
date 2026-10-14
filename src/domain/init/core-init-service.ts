@@ -1,4 +1,4 @@
-import { ErrorUtils } from "../../base/errors.js";
+import { ErrorUtils, ProjectError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -79,9 +79,9 @@ export class CoreInitService implements InitService {
 		if (answer) return ok("go");
 		if (questions.interactive) return ok("cancelled");
 		return err(
-			new Error(
-				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project. ` +
-					`To use that project, run rogen from there: cd ${enclosing.directory}. ` +
+			new ProjectError(
+				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project.`,
+				`To use that project, run rogen from there: cd ${enclosing.directory}. ` +
 					`To start a separate project here anyway, run rogen init without --non-interactive in a terminal.`
 			)
 		);

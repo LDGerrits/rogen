@@ -1,0 +1,9 @@
+$ rogen init --non-interactive --json
+exit 1
+stdout:
+  {
+    "error": {
+      "kind": "io",
+      "message": "Failed to read AGENTS.md: illegal operation on a directory"
+    }
+  }

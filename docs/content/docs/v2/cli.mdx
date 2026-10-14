@@ -297,7 +297,7 @@ When GitHub Actions runs `build` or `check` (`GITHUB_ACTIONS` is `true`), each d
 
 ## JSON output
 
-`--json` prints exactly one JSON document on stdout, on one line without indentation (`serve` and `build --watch` print one object per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints `{ "error": "<message>" }`, exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
+`--json` prints exactly one JSON document on stdout, on one line without indentation (`serve` and `build --watch` print one object per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints an `internal` error (see [Errors](#errors)), exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
 
 Diagnostics look like this. Match on `code`, since the wording of `message` can change. `line` and `column` are omitted when the problem is a whole file. `url` points at the code's section on the [Diagnostics](/docs/v2/diagnostics) page.
 
@@ -341,7 +341,24 @@ A warning about several files, such as `route.strayAt` or `tree.deadScript`, is 
 
 A diagnostic is about a file when its `file` is that file or `related[].file` includes it. A program that wants every warning about the files it just changed filters on that, instead of reading `message`.
 
-If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": "..." }` for anything that isn't a diagnostic.
+If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": {...} }` for anything that isn't a diagnostic, never both.
+
+### Errors
+
+A failure that isn't a list of diagnostics prints `{ "error": { "kind", "message", "hint"? } }`. Branch on `kind`; `message` says what happened, and `hint` is there only when one next step can be named: the closest valid name, the command to run, the flag that bypasses a refusal.
+
+```json
+{"error":{"kind":"usage","message":"Unknown command \"biuld\".","hint":"Did you mean 'rogen build'?"}}
+```
+
+| `kind` | Exit code | Meaning |
+|---|---|---|
+| `usage` | 2 | The command line is wrong: an unknown command, option, option value or name. |
+| `project` | 1 | The project isn't in a state the command can run on: no `rogen.json` where one is needed, an `init` inside another project. |
+| `tool` | 1 | A program Rogen needs is missing or failed, with no diagnostic to say more. A missing or failing Rojo is a diagnostic with the command that fixes it. |
+| `io` | 1 | A file or directory couldn't be read or written. |
+| `cancelled` | 1 | The run was cancelled, such as an `init` the user declined. |
+| `internal` | 1 | A bug in Rogen; `message` says where to report it. |
 
 ### `build --json`
 
@@ -393,7 +410,7 @@ One entry per `rogen.json` it looked at, a root's places included. `outcome` is 
 
 ### `doc --json`
 
-`rogen doc --json` prints `{ "url": "...", "topics": ["routing", "config", "layout", "output"] }` and opens nothing. `rogen doc <topic> --json` prints `{ "topic": "routing", "text": "..." }`, the text as `rogen doc routing` prints it. An unknown topic is a usage error: `{ "error": "..." }` and exit 2.
+`rogen doc --json` prints `{ "url": "...", "topics": ["routing", "config", "layout", "output"] }` and opens nothing. `rogen doc <topic> --json` prints `{ "topic": "routing", "text": "..." }`, the text as `rogen doc routing` prints it. An unknown topic is a `usage` [error](#errors) and exit 2.
 
 ### `serve --json`
 
@@ -415,7 +432,7 @@ One JSON object per line on stdout, each keyed by what it reports, and nothing e
 | `stopped` | a server stops | `config`, `server`, `reason`: `exited` when it stopped on its own, with its `code` and `signal` (an adopted server has neither: it stopped answering); `removed` or `moved` when its config was deleted, or moved to another address (a `serving` line follows for the new server); `shutdown` when `serve` was asked to stop, as the last lines of a clean run. A line about an adopted server has `adopted: true`: apart from `exited`, it means `serve` stopped building for it, and the server runs on |
 | `error` | an unexpected failure that `serve` survives | the message |
 
-`project` is the name in the project file, not the config's. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": "..." }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
+`project` is the name in the project file, not the config's. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": {...} }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
 
 ### `check --json`
 
@@ -469,7 +486,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
 
 ### `list --json`
 

@@ -122,7 +122,8 @@ export class PlaceInit {
 		if (!enclosing)
 			return err(
 				new UsageError(
-					`No ${CONFIG_FILE_NAMES[0]} found above ${folder}. Run 'rogen init' in the folder that holds the code the places share first.`
+					`No ${CONFIG_FILE_NAMES[0]} found above ${folder}.`,
+					"Run 'rogen init' in the folder that holds the code the places share first."
 				)
 			);
 		if (enclosing.fileNames.length > 1)

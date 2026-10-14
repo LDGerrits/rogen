@@ -174,7 +174,7 @@ describe("parseArgs", () => {
 		const result = parse(["--help", "--variant", "a"]);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"'--variant' goes after a command: build takes it."
+			"'--variant' goes after a command. build takes it."
 		);
 	});
 

@@ -39,4 +39,4 @@ stderr:
 $ rogen help layout
 exit 2
 stderr:
-  error: "layout" is a topic, not a command: run 'rogen doc layout'.
+  error: "layout" is a topic, not a command. Run 'rogen doc layout'.

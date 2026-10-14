@@ -47,19 +47,81 @@ export const ErrorUtils = {
 	},
 
 	/** `Failed to write a.json: permission denied` for `what` and `cause`. */
-	wrap(what: string, cause: Error): Error {
-		return new Error(`${what}: ${failureReason(cause)}`, { cause });
+	wrap(what: string, cause: Error): IoError {
+		return new IoError(`${what}: ${failureReason(cause)}`, undefined, {
+			cause,
+		});
 	},
 };
 
+/** What went wrong in a word a program can branch on, each with the exit code its run ends with. */
+export const ErrorKinds = {
+	usage: { exitCode: 2, meaning: "the command line is wrong" },
+	project: {
+		exitCode: 1,
+		meaning: "the project is not in a state the command can run on",
+	},
+	tool: {
+		exitCode: 1,
+		meaning: "a program Rogen needs is missing or failed",
+	},
+	io: {
+		exitCode: 1,
+		meaning: "a file or directory could not be read or written",
+	},
+	cancelled: { exitCode: 1, meaning: "the run was cancelled" },
+	internal: { exitCode: 1, meaning: "a bug in Rogen" },
+} as const;
+
+export type ErrorKind = keyof typeof ErrorKinds;
+
+/** A failure that knows its kind, and the one next step to name when there is one; `message` reads as `reason` then `hint`. */
+export abstract class KindedError extends Error {
+	abstract readonly kind: ErrorKind;
+
+	constructor(
+		readonly reason: string,
+		readonly hint?: string,
+		options?: ErrorOptions
+	) {
+		super(hint ? `${reason} ${hint}` : reason, options);
+	}
+}
+
 /** The user backed out; not a failure to report. */
-export class CancelledError extends Error {
+export class CancelledError extends KindedError {
 	override readonly name = "CancelledError";
+	readonly kind = "cancelled";
 }
 
 /** The command line is wrong rather than the project. */
-export class UsageError extends Error {
+export class UsageError extends KindedError {
 	override readonly name = "UsageError";
+	readonly kind = "usage";
+}
+
+/** The project can't be run on as it is: no config where one is needed, a nested project the user hasn't confirmed. */
+export class ProjectError extends KindedError {
+	override readonly name = "ProjectError";
+	readonly kind = "project";
+}
+
+/** A program Rogen needs is missing or failed without a diagnostic to say so. */
+export class ToolError extends KindedError {
+	override readonly name = "ToolError";
+	readonly kind = "tool";
+}
+
+/** A file or directory could not be read or written. */
+export class IoError extends KindedError {
+	override readonly name = "IoError";
+	readonly kind = "io";
+}
+
+/** The kind of `error`: the one it carries, `io` for a failed system call, else `internal`. */
+export function errorKind(error: Error): ErrorKind {
+	if (error instanceof KindedError) return error.kind;
+	return ErrorUtils.isSystemError(error) ? "io" : "internal";
 }
 
 type UnexpectedErrorHandler = (error: Error) => void;

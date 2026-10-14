@@ -1,5 +1,5 @@
 import path from "path";
-import { UsageError } from "../../base/errors.js";
+import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
@@ -230,7 +230,8 @@ export class ConfigDiscovery {
 			if (isBareName(ref) && homeConfig) return ok(inHome(ref));
 			return err(
 				new UsageError(
-					`"${ref}" not found: name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
+					`"${ref}" not found.`,
+					"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
 				)
 			);
 		}
@@ -298,11 +299,14 @@ export class ConfigDiscovery {
 		const names = await this.list(directory);
 		if (names.length === 1) return ok(names[0]);
 		return err(
-			new UsageError(
-				names.length === 0
-					? `${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}). Run 'rogen init' to create one.`
-					: `${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
-			)
+			names.length === 0
+				? new UsageError(
+						`${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}).`,
+						"Run 'rogen init' to create one."
+					)
+				: new UsageError(
+						`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+					)
 		);
 	}
 
@@ -325,8 +329,9 @@ export class ConfigDiscovery {
 		);
 		if (listing.isErr()) {
 			return err(
-				new Error(
+				new IoError(
 					`Could not look for a config file in ${cwd}: ${listing.error.message}`,
+					undefined,
 					{ cause: listing.error }
 				)
 			);
@@ -339,8 +344,9 @@ export class ConfigDiscovery {
 		return enclosing
 			? ok(enclosing)
 			: err(
-					new Error(
-						`No ${CONFIG_FILE_NAMES[0]} found in ${cwd}. Run 'rogen init' to create one.`
+					new ProjectError(
+						`No ${CONFIG_FILE_NAMES[0]} found in ${cwd}.`,
+						"Run 'rogen init' to create one."
 					)
 				);
 	}

@@ -203,7 +203,7 @@ describe("help command", () => {
 					UsageError
 				);
 				expect((result as ResultError<Error>).error.message).toBe(
-					`"${topic}" is a topic, not a command: run 'rogen doc ${topic.toLowerCase()}'.`
+					`"${topic}" is a topic, not a command. Run 'rogen doc ${topic.toLowerCase()}'.`
 				);
 				expect(info).not.toHaveBeenCalled();
 			}

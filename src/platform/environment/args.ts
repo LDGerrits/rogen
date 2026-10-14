@@ -120,15 +120,21 @@ function unknownOption(
 	options: readonly OptionDescriptor[],
 	owners: readonly string[],
 	command: string | undefined
-): string {
+): UsageError {
 	const help = command
 		? `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`
 		: `Run 'rogen ${HELP_COMMAND}' to see the commands.`;
 	if (owners.length > 0) {
 		const many = owners.length > 1;
 		return command
-			? `${command} doesn't take '${rawName}'. ${joinedWithAnd(owners)} ${many ? "do" : "does"}.`
-			: `'${rawName}' goes after a command: ${joinedWithAnd(owners)} ${many ? "take" : "takes"} it.`;
+			? new UsageError(
+					`${command} doesn't take '${rawName}'.`,
+					`${joinedWithAnd(owners)} ${many ? "do" : "does"}.`
+				)
+			: new UsageError(
+					`'${rawName}' goes after a command.`,
+					`${joinedWithAnd(owners)} ${many ? "take" : "takes"} it.`
+				);
 	}
 	const suggestion = rawName.startsWith("--")
 		? closestMatch(
@@ -136,9 +142,10 @@ function unknownOption(
 				options.map((option) => option.name)
 			)
 		: undefined;
-	return suggestion
-		? `Unknown option '${rawName}'. Did you mean '--${suggestion}'?`
-		: `Unknown option '${rawName}'. ${help}`;
+	return new UsageError(
+		`Unknown option '${rawName}'.`,
+		suggestion ? `Did you mean '--${suggestion}'?` : help
+	);
 }
 
 /** Node's wording varies by version and talks about positionals, so options are checked here. */
@@ -147,7 +154,7 @@ function findOptionProblem(
 	options: readonly OptionDescriptor[],
 	ownersOf: (name: string) => string[],
 	command: string | undefined
-): string | undefined {
+): UsageError | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
@@ -155,21 +162,25 @@ function findOptionProblem(
 			return unknownOption(token, options, ownersOf(token.name), command);
 		}
 		if (option.type === "boolean" && token.value !== undefined) {
-			return `Option '${token.rawName}' is a flag and takes no value.`;
+			return new UsageError(
+				`Option '${token.rawName}' is a flag and takes no value.`
+			);
 		}
 		const missing =
 			token.value === undefined ||
 			token.value === "" ||
 			(!token.inlineValue && token.value.startsWith("-"));
 		if (option.type === "string" && missing) {
-			return `Option '${token.rawName}' needs a value.`;
+			return new UsageError(`Option '${token.rawName}' needs a value.`);
 		}
 		if (
 			option.type === "string" &&
 			/^-[^-]/.test(token.rawName) &&
 			token.value?.startsWith("=")
 		) {
-			return `Option '${token.rawName}' takes its value after a space, not after '='.`;
+			return new UsageError(
+				`Option '${token.rawName}' takes its value after a space, not after '='.`
+			);
 		}
 	}
 	return undefined;
@@ -208,7 +219,7 @@ export function parseArgs(
 				ownersOf,
 				positionals.length > 0 ? names : undefined
 			);
-			if (problem) return err(new UsageError(problem));
+			if (problem) return err(problem);
 		}
 		if (values.verbose && values.quiet) {
 			return err(

@@ -105,7 +105,8 @@ export class CoreConfigService implements ConfigService {
 			if (project === undefined || stems.length === 0) continue;
 			if (!stems.includes(project))
 				return new UsageError(
-					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}. Name a folder with a rogen.json, a *.project.json path, or one of them.`
+					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}.`,
+					"Name a folder with a rogen.json, a *.project.json path, or one of them."
 				);
 		}
 		return undefined;

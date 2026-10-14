@@ -24,9 +24,10 @@ export class DocTopics {
 	static unknown(name: string): UsageError {
 		const closest = closestMatch(name, DocTopics.NAMES);
 		return new UsageError(
+			`Unknown topic "${name}".`,
 			closest
-				? `Unknown topic "${name}". Did you mean 'rogen doc ${closest}'?`
-				: `Unknown topic "${name}". The topics are ${DocTopics.NAMES.join(", ")}.`
+				? `Did you mean 'rogen doc ${closest}'?`
+				: `The topics are ${DocTopics.NAMES.join(", ")}.`
 		);
 	}
 }

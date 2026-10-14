@@ -7,6 +7,7 @@ import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { ServerMessage } from "../../domain/runner/sync-server.js";
 import {
 	DiagnosticJson,
+	ErrorJson,
 	diagnosticToJson,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
@@ -40,7 +41,7 @@ export interface RojoEntry {
 	readonly messages: readonly ServerMessage[];
 	readonly diagnostics?: readonly DiagnosticJson[];
 	/** Why it failed, when that isn't a diagnostic. */
-	readonly error?: string;
+	readonly error?: ErrorJson;
 }
 
 interface BuildDocument {

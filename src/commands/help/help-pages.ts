@@ -154,7 +154,8 @@ export class HelpPages {
 	unknown(target: string): UsageError {
 		if (DocTopics.has(target))
 			return new UsageError(
-				`"${target}" is a topic, not a command: run 'rogen doc ${target.toLowerCase()}'.`
+				`"${target}" is a topic, not a command.`,
+				`Run 'rogen doc ${target.toLowerCase()}'.`
 			);
 		const codes = Object.keys(helpTexts.diagnostics);
 		const named = new Map<string, string>();
@@ -172,9 +173,10 @@ export class HelpPages {
 		const closest = closestMatch(target, named.keys());
 		const suggestion = closest && named.get(closest);
 		return new UsageError(
+			`Unknown ${what} "${target}".`,
 			suggestion
-				? `Unknown ${what} "${target}". Did you mean 'rogen help ${suggestion}'?`
-				: `Unknown ${what} "${target}". Run 'rogen help' to see the commands.`
+				? `Did you mean 'rogen help ${suggestion}'?`
+				: "Run 'rogen help' to see the commands."
 		);
 	}
 }

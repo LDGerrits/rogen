@@ -7,5 +7,9 @@ $ rogen watch --json
 exit 2
 stdout:
   {
-    "error": "Unknown command \"watch\". 'rogen watch' is now 'rogen build --watch'."
+    "error": {
+      "kind": "usage",
+      "message": "Unknown command \"watch\".",
+      "hint": "'rogen watch' is now 'rogen build --watch'."
+    }
   }
