@@ -23,6 +23,8 @@ registerCommand(
 			super({
 				id: "list",
 				metadata: {
+					summary:
+						"Lists the configs, their projects and their ports",
 					description:
 						"Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
 					args: ConfigArguments,

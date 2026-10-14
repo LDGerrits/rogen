@@ -69,6 +69,8 @@ registerCommand(
 			super({
 				id: "build",
 				metadata: {
+					summary:
+						"Writes the project files; with -o or -p, builds with Rojo",
 					description:
 						"Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
 					args: ConfigArguments,

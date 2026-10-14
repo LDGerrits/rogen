@@ -101,6 +101,8 @@ registerCommand(
 				id: "serve",
 				metadata: {
 					longRunning: true,
+					summary:
+						"Builds, serves with Rojo, and rebuilds on changes",
 					description:
 						"Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
 					args: ConfigArguments,

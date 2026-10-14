@@ -31,6 +31,8 @@ registerCommand(
 			super({
 				id: "doc",
 				metadata: {
+					summary:
+						"Opens the documentation, or prints one topic offline",
 					description:
 						"Opens the documentation in a browser, or prints one topic of it offline.",
 					options: DocOptions,

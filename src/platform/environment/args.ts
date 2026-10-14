@@ -42,15 +42,17 @@ type OptionValues<O extends readonly OptionDescriptor[]> = {
 
 export const COLOR_CHOICES = ["auto", "always", "never"] as const;
 
+export const ColorOption = {
+	name: "color",
+	type: "string",
+	values: COLOR_CHOICES,
+	placeholder: "color",
+	default: "auto",
+	description: "Whether to colour the output.",
+} as const satisfies OptionDescriptor;
+
 export const GlobalOptions = [
-	{
-		name: "color",
-		type: "string",
-		values: COLOR_CHOICES,
-		placeholder: "color",
-		default: "auto",
-		description: "Whether to colour the output.",
-	},
+	ColorOption,
 	{ name: "help", short: "h", type: "boolean", description: "Print help." },
 	{
 		name: "version",
@@ -311,4 +313,21 @@ export function hasFlag(
 	return (end === -1 ? argv : argv.slice(0, end)).includes(
 		`--${option.name}`
 	);
+}
+
+/** The last value of a string option with choices in `argv`, read without parsing, so a line the parser rejects still has it. */
+export function choiceIn<V extends string>(
+	argv: readonly string[],
+	option: OptionDescriptor & { readonly values: readonly V[] }
+): V | undefined {
+	const end = argv.indexOf("--");
+	const own = end === -1 ? argv : argv.slice(0, end);
+	const flag = `--${option.name}`;
+	let found: string | undefined;
+	own.forEach((arg, index) => {
+		if (arg === flag) found = own[index + 1];
+		else if (arg.startsWith(`${flag}=`)) found = arg.slice(flag.length + 1);
+	});
+	const values: readonly V[] = option.values;
+	return values.find((value) => value === found);
 }

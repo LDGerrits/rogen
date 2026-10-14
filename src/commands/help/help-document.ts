@@ -45,6 +45,7 @@ const commandShape = S.named(
 	"Command",
 	S.object({
 		name: S.string,
+		summary: S.string,
 		description: S.string,
 		args: S.array(argShape),
 		options: S.array(optionShape),
@@ -62,6 +63,7 @@ const overviewShape = S.object({
 
 const detailShape = S.object({
 	name: S.string,
+	summary: S.string,
 	description: S.string,
 	args: S.array(S.object({ ...argFields, description: S.string })),
 	options: S.array(S.object({ ...optionFields, description: S.string })),
@@ -133,6 +135,7 @@ export const HelpDocument = {
 			version,
 			commands: [...commands.values()].map((command) => ({
 				name: command.id,
+				summary: command.metadata.summary,
 				description: command.metadata.description,
 				args: (command.metadata.args ?? []).map(argBrief),
 				options: (command.metadata.options ?? []).map(optionBrief),
@@ -157,6 +160,7 @@ export const HelpDocument = {
 			: {};
 		return {
 			name: command.id,
+			summary: command.metadata.summary,
 			description: command.metadata.description,
 			args: (command.metadata.args ?? []).map((arg) => ({
 				...argBrief(arg),

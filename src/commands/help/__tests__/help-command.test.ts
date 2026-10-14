@@ -78,16 +78,6 @@ describe("help command", () => {
 	});
 
 	describe("rogen help", () => {
-		it("should list every registered command with its description", async () => {
-			const result = await help();
-
-			expect(result.isOk()).toBe(true);
-			for (const command of registry.getCommands().values()) {
-				expect(printed()).toContain(command.id);
-				expect(printed()).toContain(command.metadata.description);
-			}
-		});
-
 		it("should list every global option", async () => {
 			await help();
 
@@ -153,12 +143,58 @@ describe("help command", () => {
 			expect(names).toEqual([...registry.getCommands().keys()].sort());
 		});
 
+		it("should list each subcommand with its summary on one line", async () => {
+			await help();
+
+			expect(section(printed(), "SUBCOMMANDS")).toEqual(
+				[...registry.getCommands().values()]
+					.sort((a, b) => (a.id < b.id ? -1 : 1))
+					.map((command) =>
+						expect.stringMatching(
+							new RegExp(
+								`^ {4}${command.id} +${command.metadata.summary.replace(/[.()']/g, "\\$&")}$`
+							)
+						)
+					)
+			);
+		});
+
+		it("should give every command a summary short enough for one line", () => {
+			for (const command of registry.getCommands().values())
+				expect(command.metadata.summary).toMatch(
+					/^[A-Z][^\n]{0,58}[^.\n]$/
+				);
+		});
+
+		it.each(["", "build", "serve", "init"])(
+			"should keep every line of %j within 100 columns, carrying a long text on under its column",
+			async (target) => {
+				await help(...(target ? [target] : []));
+
+				const examples = section(printed(), "EXAMPLES");
+				const tooLong = printed()
+					.split("\n")
+					.filter(
+						(line) => line.length > 100 && !examples.includes(line)
+					);
+				expect(tooLong).toEqual([]);
+				const options = section(printed(), "OPTIONS");
+				const column = /^ +\S.*? {4,}(?=\S)/.exec(options[0])![0]
+					.length;
+				for (const line of options.filter(
+					(line) => !/^ {4}(-| {4}-)/.test(line)
+				))
+					expect(line.search(/\S/)).toBe(column);
+			}
+		);
+
 		it("should merge the global options into a command's, sorted by name", async () => {
 			await help("build");
 
-			const names = section(printed(), "OPTIONS").map(
-				(line) => /--([a-z-]+)/.exec(line)?.[1]
-			);
+			const names = section(printed(), "OPTIONS").flatMap((line) => {
+				const name = /^ {4}(?:-\w, | {4})--([a-z-]+)/.exec(line)?.[1];
+				return name === undefined ? [] : [name];
+			});
 			expect(names).toEqual([...names].sort());
 			expect(names).toEqual(
 				expect.arrayContaining(["color", "help", "output", "version"])
@@ -168,7 +204,7 @@ describe("help command", () => {
 		it("should show a value's capitalised name, its default and its possible values", async () => {
 			await help("build");
 
-			expect(printed()).toMatch(
+			expect(printed().replace(/\n +/g, " ")).toMatch(
 				/--color <COLOR> +Whether to colour the output\. \[default: auto\] \[possible values: auto, always, never\]/
 			);
 			expect(printed()).toMatch(/-o, --output <OUTPUT> /);
@@ -231,13 +267,15 @@ describe("help command", () => {
 		it("should print the command's usage and arguments", async () => {
 			await help("build");
 
-			expect(printed().split("\n").slice(0, 5)).toEqual([
-				"rogen-build",
-				registry.getCommand("build")?.metadata.description,
-				"",
-				"USAGE:",
-				"    rogen build [OPTIONS] [PROJECT]...",
-			]);
+			const [head, usage] = printed().split("\n\n");
+			const [title, ...description] = head.split("\n");
+			expect(title).toBe("rogen-build");
+			expect(description.join(" ")).toBe(
+				registry.getCommand("build")?.metadata.description
+			);
+			expect(usage).toBe(
+				"USAGE:\n    rogen build [OPTIONS] [PROJECT]..."
+			);
 			expect(printed()).toContain("<PROJECT>...");
 			expect(printed()).toContain("A folder with a rogen.json");
 		});
@@ -394,6 +432,7 @@ describe("help command", () => {
 							super({
 								id: "placeholder",
 								metadata: {
+									summary: "Does a thing",
 									description: "A test command.",
 									options,
 								},
@@ -427,6 +466,7 @@ describe("help command", () => {
 							super({
 								id: "placeholder-fallback",
 								metadata: {
+									summary: "Does a thing",
 									description: "A test command.",
 									options,
 								},
@@ -461,6 +501,7 @@ describe("help command", () => {
 							super({
 								id: "repeatable",
 								metadata: {
+									summary: "Does a thing",
 									description: "A test command.",
 									options,
 								},

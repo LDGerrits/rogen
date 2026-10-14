@@ -39,6 +39,21 @@ export type HelpTarget =
 
 const INDENT = "    ";
 const GAP = "    ";
+/** The width help is wrapped to, as Rojo's is. */
+const WIDTH = 100;
+
+/** `text` broken at spaces into lines of at most `width`, a longer word on a line of its own. */
+function wrapped(text: string, width: number): string[] {
+	const lines: string[] = [];
+	let line = "";
+	for (const word of text.split(" ")) {
+		if (line && line.length + 1 + word.length > width) {
+			lines.push(line);
+			line = word;
+		} else line = line ? `${line} ${word}` : word;
+	}
+	return [...lines, line];
+}
 
 /** A name as a value or argument is written: `allowed-hosts` is `ALLOWED_HOSTS`. */
 const capitalised = (name: string) =>
@@ -88,8 +103,13 @@ function formatArgument(arg: Argument): [string, string] {
 
 function formatColumns(rows: [string, string][]): string[] {
 	const width = Math.max(0, ...rows.map(([left]) => left.length));
-	return rows.map(
-		([left, right]) => `${INDENT}${left.padEnd(width)}${GAP}${right}`
+	const column = INDENT.length + width + GAP.length;
+	return rows.flatMap(([left, right]) =>
+		wrapped(right, WIDTH - column).map((line, index) =>
+			index === 0
+				? `${INDENT}${left.padEnd(width)}${GAP}${line}`
+				: `${" ".repeat(column)}${line}`
+		)
 	);
 }
 
@@ -103,7 +123,7 @@ function formatSections(
 ): string {
 	return [
 		header,
-		description,
+		...wrapped(description, WIDTH),
 		...sections
 			.filter(([, lines]) => lines.length > 0)
 			.flatMap(([title, lines]) => ["", `${title}:`, ...lines]),
@@ -118,7 +138,7 @@ function formatHelp(
 		.sort((a, b) => compareNames(a.id, b.id))
 		.map((command): [string, string] => [
 			command.id,
-			command.metadata.description,
+			command.metadata.summary,
 		]);
 	return [
 		formatSections("rogen", "Feature-based architecture for Roblox", [
@@ -131,9 +151,12 @@ function formatHelp(
 			["EXAMPLES", ROOT_EXAMPLES.map((line) => `${INDENT}${line}`)],
 		]),
 		"",
-		"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
+		...wrapped(
+			"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
+			WIDTH
+		),
 		"",
-		EXIT_CODES,
+		...wrapped(EXIT_CODES, WIDTH),
 	].join("\n");
 }
 

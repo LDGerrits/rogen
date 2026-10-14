@@ -160,6 +160,8 @@ registerCommand(
 			super({
 				id: "init",
 				metadata: {
+					summary:
+						"Writes a starting rogen.json, or adds a place to one",
 					description:
 						"Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.",
 					args: [

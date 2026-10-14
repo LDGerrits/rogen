@@ -32,7 +32,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async (accessor, args) => {
 						calls.push([accessor.get(LogService), args]);
 						return ok(undefined);
@@ -56,7 +56,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => err(error),
 				})
 			);
@@ -77,7 +77,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => {
 						throw error;
 					},
@@ -96,7 +96,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => {
 						throw new TypeError("oops");
 					},
@@ -115,7 +115,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => ok(undefined),
 				})
 			);
@@ -139,6 +139,7 @@ describe("CoreCommandService", () => {
 				registry.registerCommand({
 					id: "foo",
 					metadata: {
+						summary: "Does a thing",
 						description: "foo",
 						passthrough: { name: "args", description: "" },
 					},
@@ -189,6 +190,7 @@ describe("CoreCommandService", () => {
 				registry.registerCommand({
 					id: "build",
 					metadata: {
+						summary: "Does a thing",
 						description: "build",
 						unknownWordOffer: "To build a config",
 					},
@@ -211,6 +213,7 @@ describe("CoreCommandService", () => {
 				registry.registerCommand({
 					id: "build",
 					metadata: {
+						summary: "Does a thing",
 						description: "build",
 						formerCommands: {
 							watch: "'rogen watch' is now 'rogen build --watch'.",
@@ -245,7 +248,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "build",
-					metadata: { description: "build" },
+					metadata: { summary: "Does a thing", description: "build" },
 					handler: async () => ok(undefined),
 				})
 			);

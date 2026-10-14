@@ -37,6 +37,8 @@ registerCommand(
 			super({
 				id: "check",
 				metadata: {
+					summary:
+						"Prints the diagnostics, and exits 1 when there are any",
 					description:
 						"Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.",
 					args: [

@@ -23,6 +23,8 @@ registerCommand(
 			super({
 				id: "where",
 				metadata: {
+					summary:
+						"Prints where each file lands in the game, and why",
 					description:
 						"Prints where each file lands in the game, and why, with its warnings.",
 					args: [

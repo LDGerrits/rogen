@@ -9,8 +9,10 @@ import {
 import { CommandFailure } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import {
+	ColorOption,
 	HELP_COMMAND,
 	JsonOption,
+	choiceIn,
 	hasFlag,
 	parseArgs,
 } from "./platform/environment/args.js";
@@ -146,7 +148,9 @@ class RogenMain {
 		);
 
 		const json = hasFlag(rawArgs, JsonOption);
-		const options = argsResult.isOk() ? argsResult.value.line.options : {};
+		const options = argsResult.isOk()
+			? argsResult.value.line.options
+			: { color: choiceIn(rawArgs, ColorOption) };
 		const cwd = currentFolder();
 		const environmentService = new NativeEnvironmentService(
 			{ ...options, json },

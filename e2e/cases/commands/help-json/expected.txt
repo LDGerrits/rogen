@@ -6,6 +6,7 @@ stdout:
     "commands": [
       {
         "name": "build",
+        "summary": "Writes the project files; with -o or -p, builds with Rojo",
         "description": "Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
         "args": [
           {
@@ -42,6 +43,7 @@ stdout:
       },
       {
         "name": "check",
+        "summary": "Prints the diagnostics, and exits 1 when there are any",
         "description": "Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.",
         "args": [
           {
@@ -60,6 +62,7 @@ stdout:
       },
       {
         "name": "fmt-project",
+        "summary": "Formats rogen.json as 'rojo fmt-project' formats a project",
         "description": "Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
         "args": [
           {
@@ -80,6 +83,7 @@ stdout:
       },
       {
         "name": "doc",
+        "summary": "Opens the documentation, or prints one topic offline",
         "description": "Opens the documentation in a browser, or prints one topic of it offline.",
         "args": [
           {
@@ -99,6 +103,7 @@ stdout:
       },
       {
         "name": "help",
+        "summary": "Prints usage, a command's details, or what a code means",
         "description": "Prints usage, a command's details, or what a diagnostic code means.",
         "args": [
           {
@@ -116,6 +121,7 @@ stdout:
       },
       {
         "name": "init",
+        "summary": "Writes a starting rogen.json, or adds a place to one",
         "description": "Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.",
         "args": [
           {
@@ -215,6 +221,7 @@ stdout:
       },
       {
         "name": "list",
+        "summary": "Lists the configs, their projects and their ports",
         "description": "Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
         "args": [
           {
@@ -233,6 +240,7 @@ stdout:
       },
       {
         "name": "plugin",
+        "summary": "Installs or removes Rojo's Studio plugin",
         "description": "Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.",
         "args": [
           {
@@ -251,6 +259,7 @@ stdout:
       },
       {
         "name": "serve",
+        "summary": "Builds, serves with Rojo, and rebuilds on changes",
         "description": "Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
         "args": [
           {
@@ -286,6 +295,7 @@ stdout:
       },
       {
         "name": "sourcemap",
+        "summary": "Writes the project files, then a sourcemap with Rojo",
         "description": "Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
         "args": [
           {
@@ -325,6 +335,7 @@ stdout:
       },
       {
         "name": "upload",
+        "summary": "Writes the project files, then uploads them with Rojo",
         "description": "Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
         "args": [
           {
@@ -362,6 +373,7 @@ stdout:
       },
       {
         "name": "where",
+        "summary": "Prints where each file lands in the game, and why",
         "description": "Prints where each file lands in the game, and why, with its warnings.",
         "args": [
           {
@@ -450,6 +462,7 @@ exit 0
 stdout:
   {
     "name": "where",
+    "summary": "Prints where each file lands in the game, and why",
     "description": "Prints where each file lands in the game, and why, with its warnings.",
     "args": [
       {
@@ -488,6 +501,7 @@ exit 0
 stdout:
   {
     "name": "where",
+    "summary": "Prints where each file lands in the game, and why",
     "description": "Prints where each file lands in the game, and why, with its warnings.",
     "args": [
       {

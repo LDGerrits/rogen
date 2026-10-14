@@ -68,6 +68,8 @@ registerCommand(
 			super({
 				id: "upload",
 				metadata: {
+					summary:
+						"Writes the project files, then uploads them with Rojo",
 					description:
 						"Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
 					args: ConfigArguments,

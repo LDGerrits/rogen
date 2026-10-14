@@ -104,6 +104,8 @@ registerCommand(
 			super({
 				id: "sourcemap",
 				metadata: {
+					summary:
+						"Writes the project files, then a sourcemap with Rojo",
 					description:
 						"Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
 					args: ConfigArguments,

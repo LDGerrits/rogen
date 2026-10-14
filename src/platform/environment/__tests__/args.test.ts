@@ -3,7 +3,9 @@ import {
 	GlobalOptions,
 	OptionDescriptor,
 	JsonOption,
+	ColorOption,
 	hasFlag,
+	choiceIn,
 	parseArgs,
 } from "../args.js";
 
@@ -356,5 +358,25 @@ describe("hasFlag", () => {
 
 	it("should not see a flag that is absent", () => {
 		expect(hasFlag(["build", "lobby"], JsonOption)).toBe(false);
+	});
+});
+
+describe("choiceIn", () => {
+	it("should read a choice next to an option the parser rejects", () => {
+		expect(
+			choiceIn(["build", "--color", "never", "--bogus"], ColorOption)
+		).toBe("never");
+		expect(
+			choiceIn(["build", "--color=always", "--bogus"], ColorOption)
+		).toBe("always");
+	});
+
+	it("should read nothing for a value that isn't a choice, or after --", () => {
+		expect(
+			choiceIn(["build", "--color", "blue"], ColorOption)
+		).toBeUndefined();
+		expect(
+			choiceIn(["serve", "--", "--color", "never"], ColorOption)
+		).toBeUndefined();
 	});
 });

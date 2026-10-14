@@ -25,6 +25,8 @@ registerCommand(
 			super({
 				id: HELP_COMMAND,
 				metadata: {
+					summary:
+						"Prints usage, a command's details, or what a code means",
 					description:
 						"Prints usage, a command's details, or what a diagnostic code means.",
 					args: [

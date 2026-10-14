@@ -68,6 +68,8 @@ export type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
 interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
+	/** One line for the list of commands in the root help, without a full stop, as Rojo's are. */
+	readonly summary: string;
 	readonly description: string;
 	readonly args?: readonly {
 		readonly name: string;

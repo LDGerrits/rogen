@@ -277,7 +277,7 @@ Opens the documentation in your browser, and prints its address. Without a termi
 
 ### `help [name]`
 
-Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. `rogen help build`, `rogen build --help` and `rogen build -h` print the same. `rogen --version` prints the installed version.
+Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and every line is wrapped at 100 columns. `rogen help build`, `rogen build --help` and `rogen build -h` print the same. `rogen --version` prints the installed version.
 
 `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
@@ -608,12 +608,12 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 Offline, in two steps, so a program reads only what it asks for. Every document is generated from the table the text help comes from, and the text help is unchanged.
 
-`rogen help --json` is the tree: `version`, `commands`, `globalOptions`, `exitCodes` and `errorKinds`. Each command has its `name`, `description`, `args` (`name`, and `optional` or `variadic` when true), `options` (`name`, `short`, `type`, and `multiple` when true) and `effects`: what a run can do beyond printing, from `writesFiles`, `runsProcesses`, `opensBrowser` and `longRunning`. A command with none of them only reads.
+`rogen help --json` is the tree: `version`, `commands`, `globalOptions`, `exitCodes` and `errorKinds`. Each command has its `name`, `summary` (the line the root help lists), `description`, `args` (`name`, and `optional` or `variadic` when true), `options` (`name`, `short`, `type`, and `multiple` when true) and `effects`: what a run can do beyond printing, from `writesFiles`, `runsProcesses`, `opensBrowser` and `longRunning`. A command with none of them only reads.
 
 `rogen help <command> --json` adds the descriptions of the arguments and options, the `examples`, and the shape of what the command prints with `--json` as `output` (`document` for one document, `lines` for a command that prints one line per event). `rogen <command> --help --json` prints the same, and `rogen --help --json` the tree. The shapes are written compactly: `{a:string,b?:int}` is an object whose `b` may be left out, `[T]` an array, `A|B` either shape, `{*:T}` an object of any keys, and a capitalised name such as `Diagnostic` a shape that `shapes` writes out once.
 
 ```json
-{"name":"check","description":"…","args":[…],"options":[…],"effects":[],"examples":["rogen check src --json"],"output":{"document":"{diagnostics:[Diagnostic],stoppedBy?:[Diagnostic]}"},"shapes":{"Diagnostic":"{file:string,line?:int,…}"}}
+{"name":"check","summary":"…","description":"…","args":[…],"options":[…],"effects":[],"examples":["rogen check src --json"],"output":{"document":"{diagnostics:[Diagnostic],stoppedBy?:[Diagnostic]}"},"shapes":{"Diagnostic":"{file:string,line?:int,…}"}}
 ```
 
 `rogen help <code> --json` prints `{ "code", "text", "url" }`: the text `rogen help <code>` prints, and the link to its section of the [Diagnostics](/docs/v2/diagnostics) page. A name that is neither a command nor a code is a `usage` [error](#errors) whose `hint` names the closest one.
