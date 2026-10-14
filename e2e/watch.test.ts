@@ -74,6 +74,20 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should build the place with Rojo after each write when given -o", async () => {
+		const place = path.join(project.dir, "game.rbxlx");
+		start(["-o", "game.rbxlx"]);
+		await eventually(() => {
+			expect(fs.existsSync(place)).toBe(true);
+			expect(fs.readFileSync(place, "utf8")).toContain("A");
+		});
+
+		writeProjectFile(project.dir, "src/Added.luau");
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("Added");
+		});
+	}, 30_000);
+
 	it("should count the warnings a rebuild doesn't repeat", async () => {
 		writeProjectFile(project.dir, "src/Save@sever.luau");
 		const running = start();
@@ -266,7 +280,9 @@ describeWithRojo("end to end watch", () => {
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
-		expect(running.output).toContain("rogen watch · project · in ..");
+		expect(running.output).toContain(
+			"rogen build --watch · project · in .."
+		);
 
 		writeProjectFile(
 			project.dir,

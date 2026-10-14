@@ -19,14 +19,18 @@ Writes `default.project.json`, and a file for each of its [projects](/docs/v2/co
 
 Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 config with 4 warnings.`
 
-### `watch [project…]`
+#### `build -o` and `-p`
 
-Builds, then rebuilds whenever files or the config change. Only names matter, so editing inside a script never triggers a rebuild.
+`rogen build -o game.rbxl` writes the project files, then runs Rojo's own `build` on the project and passes it `--output game.rbxl`: a place or model file, as `rojo build` makes. `-p Tool.rbxm` passes `--plugin`, which builds into Roblox's plugins folder. The Rojo that runs is the one your toolchain file pins, as for [`serve`](#serve). Rojo builds one project, `default` unless you name one (`rogen build release -o game.rbxl`), so a root with several places needs you to name one. Nothing is built when the project files have errors, and a failed Rojo build exits 1 with what Rojo said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)).
 
-A config reloads when `rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `watch` prints the error and keeps using the last valid version.
+#### `build --watch`
+
+Builds, then rebuilds whenever files or the config change. Only names matter, so editing inside a script never triggers a rebuild. With `-o` or `-p`, Rojo's build runs again after each write, and Rogen never passes `--watch` to Rojo. A script edited in place changes no name, so the file Rojo built keeps its old contents until a name changes; run the build again, or use `rogen serve`.
+
+A config reloads when `rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `build --watch` prints the error and keeps using the last valid version.
 
 ```
-┌  rogen watch · my-game
+┌  rogen build --watch · my-game
 │
 ◇  12:04:31 · 2 files changed
 │  ✔ default.project.json · wrote
@@ -40,11 +44,11 @@ A config reloads when `rogen.json` changes, and CLI overrides carry over. If you
 
 A block prints only the diagnostics the last one didn't have, so a standing warning isn't repeated. The result line counts what it left out (`3 warnings as before`), which tells you they are still there, and what went away since the last block (`1 warning fixed`).
 
-With no project named, `watch` follows the folder: a `rogen.json` that appears is built from then on, and one you delete is dropped, each with a line saying so. With names, it watches the projects you named.
+With no project named, it follows the folder: a `rogen.json` that appears is built from then on, and one you delete is dropped, each with a line saying so. With names, it watches the projects you named.
 
-With `--json`, `watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, and a `notice` line when a config is added, removed, broken or recovered.
+With `--json`, `build --watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, and a `notice` line when a config is added, removed, broken or recovered.
 
-It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
+It's safe to run `build` while `build --watch` is running. Press Ctrl+C to stop.
 
 ### `serve [project…] [-- server args…]` [#serve]
 
@@ -238,7 +242,10 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | Flag | Effect |
 |---|---|
 | `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `watch`. On `init` it implies `--non-interactive`. |
+| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `build --watch`. On `init` it implies `--non-interactive`. |
+| `-o, --output <file>` | `build` only: also builds the project into this place or model file with Rojo. |
+| `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
+| `--watch` | `build` only: keeps the project files current, and with `-o` or `-p` runs Rojo's build after each write. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
@@ -268,7 +275,7 @@ git diff --exit-code -- '*.project.json'
 
 - Run the compiler or processor before `rogen build` when `syncPath` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync path.
-- `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
+- `build --watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
 - A place file comes from `rojo build` on the project file; see [Place Files](/docs/v2/core-concepts/output#place-files).
 - Whether to [commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files) is yours to decide, and committing them is what the last line of the snippet needs.
 - No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
@@ -290,7 +297,7 @@ When GitHub Actions runs `build` or `check` (`GITHUB_ACTIONS` is `true`), each d
 
 ## JSON output
 
-`--json` prints exactly one JSON document on stdout (`serve` and `watch` print one per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints `{ "error": "<message>" }`, exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
+`--json` prints exactly one JSON document on stdout (`serve` and `build --watch` print one per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints `{ "error": "<message>" }`, exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
 
 Diagnostics look like this. Match on `code`, since the wording of `message` can change. `line` and `column` are omitted when the problem is a whole file. `url` points at the code's section on the [Diagnostics](/docs/v2/diagnostics) page.
 
@@ -454,6 +461,6 @@ When a newer stable release is out, Rogen prints one line on stderr after a comm
 Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3". Then run rokit install.
 ```
 
-`watch` and `serve` print it once, before the first build. A prerelease hears about later prereleases as well. It says nothing under CI or an agent (the run [described above](#output) as automated), in a pipe, with `--json`, with `--quiet`, or for `--version` and `help`, and it names each version once a day.
+`build --watch` and `serve` print it once, before the first build. A prerelease hears about later prereleases as well. It says nothing under CI or an agent (the run [described above](#output) as automated), in a pipe, with `--json`, with `--quiet`, or for `--version` and `help`, and it names each version once a day.
 
 This is the one time Rogen goes on the network unasked. It reads GitHub's list of Rogen releases, in the background and at most once a day, and keeps the answer in a file in your cache folder (`$XDG_CACHE_HOME`, else `~/Library/Caches` on macOS, `%LOCALAPPDATA%` on Windows or `~/.cache`). The line comes from what the last check found, so no command waits for the network to print; a command that ends before a check does stays open for it, two seconds at most. An offline machine, a rate limit or a bad reply print nothing. Set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1` to stop both the request and the line.

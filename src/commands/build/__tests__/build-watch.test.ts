@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import "../watch-command.js";
+import "../build-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";
@@ -9,6 +9,7 @@ import { MockEnvironmentService } from "../../../platform/environment/__tests__/
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockLifecycleService } from "../../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
@@ -23,12 +24,13 @@ const isStagingOf = (folder: string, file: string): boolean =>
 		file
 	);
 
-describe("watch command", () => {
+describe("build --watch", () => {
 	let memFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let configService: CoreConfigService;
 	let lifecycle: MockLifecycleService;
 	let logService: MockLogService;
+	let processes: MockProcessService;
 
 	const settle = async () => {
 		await jest.advanceTimersByTimeAsync(250);
@@ -57,8 +59,12 @@ describe("watch command", () => {
 			config: configService,
 			lifecycle,
 			watcher,
+			processes,
 		});
-		return harness.run("watch", { positionals: names, options });
+		return harness.run("build", {
+			positionals: names,
+			options: { watch: true, ...options },
+		});
 	};
 
 	const run = async (
@@ -96,6 +102,13 @@ describe("watch command", () => {
 		watcher = new MemoryWatcher(memFs, new NullLogService());
 		lifecycle = new MockLifecycleService();
 		logService = new MockLogService();
+		processes = new MockProcessService();
+		processes.installed.set("rojo", "/bin/rojo");
+		processes.outputs.set("/bin/rojo", {
+			code: 0,
+			stdout: "Rojo 7.7.1\n",
+			stderr: "",
+		});
 		configService = new CoreConfigService(
 			memFs,
 			new MockEnvironmentService("/repo")
@@ -161,6 +174,80 @@ describe("watch command", () => {
 					],
 				},
 			});
+		});
+	});
+
+	describe("with -o", () => {
+		const finishRojo = async (index: number, code = 0) => {
+			await settle();
+			processes.spawned[index].exit({ code, signal: null });
+			await settle();
+		};
+
+		it("should run Rojo's build after each write, and never pass it --watch", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			expect(processes.spawned).toHaveLength(1);
+			expect(processes.spawned[0].args).toEqual([
+				"build",
+				"default.project.json",
+				"--output",
+				"game.rbxl",
+			]);
+			await finishRojo(0);
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			await finishRojo(1);
+
+			expect(processes.spawned).toHaveLength(2);
+			for (const rojo of processes.spawned)
+				expect(rojo.args).not.toContain("--watch");
+		});
+
+		it("should not run Rojo for a round that wrote nothing", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			await finishRojo(0);
+
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			await finishRojo(1);
+			await memFs.writeFile("/repo/src/A.luau", "changed");
+			await settle();
+
+			expect(processes.spawned).toHaveLength(2);
+		});
+
+		it("should report a failed run and go on watching", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			processes.spawned[0].print("ERROR: boom\n");
+			await finishRojo(0, 1);
+
+			expect(logService.texts("error").join("\n")).toContain(
+				"'rojo build' failed (exit code 1): boom"
+			);
+			await memFs.writeFile("/repo/src/A.luau", "");
+			await settle();
+			expect(processes.spawned).toHaveLength(2);
+		});
+
+		it("should end the Rojo build that runs when it stops", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+
+			lifecycle.shutdown();
+			await settle();
+
+			expect(processes.spawned[0].terminated).toBe(true);
+		});
+
+		it("should run no Rojo without -o or -p", async () => {
+			void startWatch();
+			await settle();
+
+			expect(processes.spawned).toEqual([]);
 		});
 	});
 
@@ -325,7 +412,7 @@ describe("watch command", () => {
 
 			expect(logService.entries[0]).toEqual({
 				kind: "intro",
-				text: "rogen watch · lobby, arena",
+				text: "rogen build --watch · lobby, arena",
 			});
 		});
 
@@ -612,19 +699,20 @@ describe("watch command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept projects and --json", () => {
+		it("should accept projects, --watch and --json", () => {
 			expect(
-				parse("watch", "lobby", "places/arena", "--json").isOk()
+				parse(
+					"build",
+					"--watch",
+					"lobby",
+					"places/arena",
+					"--json"
+				).isOk()
 			).toBe(true);
 		});
 
-		it("should reject the output overrides", () => {
-			expect(parse("watch", "-o", "x").isErr()).toBe(true);
-			expect(parse("watch", "--out-file", "x").isErr()).toBe(true);
-		});
-
 		it("should reject --all", () => {
-			expect(parse("watch", "--all").isErr()).toBe(true);
+			expect(parse("build", "--watch", "--all").isErr()).toBe(true);
 		});
 	});
 });

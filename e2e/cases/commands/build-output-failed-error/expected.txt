@@ -1,0 +1,13 @@
+$ rogen build -o missing/game.rbxlx
+exit 1
+stdout: (not shown)
+stderr:
+  default.project.json - error: 'rojo build' failed (exit code 1): failed to create file `missing/game.rbxlx`: No such file or directory (os error 2) (rojo.commandFailed)
+
+$ rogen build -o a.rbxl -p b.rbxm
+exit 2
+stderr:
+  error: -o builds a place or model file and -p a plugin: give one of them.
+
+written:
+  default.project.json

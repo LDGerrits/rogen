@@ -12,7 +12,7 @@ import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { WatchJsonLog, WatchLog } from "../watch/watch-log.js";
+import { WatchJsonLog, WatchLog } from "../build/watch-log.js";
 import {
 	diagnosticToJson,
 	diagnosticsJson,

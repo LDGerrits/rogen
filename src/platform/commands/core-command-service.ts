@@ -50,6 +50,10 @@ function unknownCommand(commandId: string, registry: CommandRegistry): string {
 	if (commandId === "version")
 		return `${prefix} Did you mean 'rogen --version'?`;
 	const commands = registry.getCommands();
+	for (const { metadata } of commands.values()) {
+		const former = metadata.formerCommands?.[commandId];
+		if (former) return `${prefix} ${former}`;
+	}
 	const suggestion = closestMatch(commandId, commands.keys());
 	if (suggestion) return `${prefix} Did you mean 'rogen ${suggestion}'?`;
 	const offering = [...commands.values()].find(

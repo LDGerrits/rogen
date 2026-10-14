@@ -82,6 +82,10 @@ interface CommandMetadata<
 	readonly unknownWordOffer?: string;
 	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */
 	readonly longRunning?: boolean;
+	/** The boolean option that makes the command run until it is stopped, as `longRunning` says of every run. */
+	readonly longRunningWith?: string;
+	/** What to say of a first word that was a command and now is a flag or another command, by that word. */
+	readonly formerCommands?: Readonly<Record<string, string>>;
 }
 
 export interface CommandRegistry {

@@ -146,7 +146,7 @@ export class ServerFinder {
 		const argon = manifests.some((manifest) =>
 			manifest.nameOf(ARGON_REPOSITORY)
 		)
-			? " Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them."
+			? " Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them."
 			: "";
 		return errorDiagnostic(
 			"serve.noServer",

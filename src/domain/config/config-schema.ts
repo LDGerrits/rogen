@@ -245,7 +245,7 @@ export const configSchema: JSONSchema = {
 const removedFields: Readonly<Record<string, string>> = {
 	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
 	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",
-	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it.",
+	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later source path, which wins a clash.",
 	conflicts:

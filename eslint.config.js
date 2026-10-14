@@ -29,6 +29,7 @@ const modules = {
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],
 		runner: [
+			"rojo-command-service",
 			"rojo-compatibility",
 			"rojo-runner",
 			"rojo-version",
@@ -42,14 +43,13 @@ const modules = {
 	},
 	// A command's own file is imported only by the composition root, for its side effect.
 	commands: {
-		build: ["build-log", "build-document"],
+		build: ["build-log", "build-document", "watch-log"],
 		check: [],
 		"fmt-project": [],
 		help: [],
 		init: [],
 		list: [],
 		serve: [],
-		watch: ["watch-log"],
 		where: [],
 	},
 };
@@ -93,7 +93,7 @@ const domainDependencies = {
 	init: ["config", "roblox", "rojo", "runner", "toolchain"],
 	legacy: ["config"],
 	roblox: [],
-	runner: ["toolchain"],
+	runner: ["config", "toolchain"],
 	rojo: ["roblox"],
 	serve: ["build", "config", "runner", "watch"],
 	toolchain: [],

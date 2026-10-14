@@ -6,4 +6,4 @@ stderr:
 $ rogen help wacth
 exit 2
 stderr:
-  error: Unknown command "wacth". Did you mean 'rogen help watch'?
+  error: Unknown command "wacth". Run 'rogen help' to see the commands.

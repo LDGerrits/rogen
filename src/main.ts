@@ -54,6 +54,9 @@ import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import { CoreRojoRunner } from "./domain/runner/core-rojo-runner.js";
 import { RojoRunner } from "./domain/runner/rojo-runner.js";
+import { CoreRojoCommandService } from "./domain/runner/core-rojo-command-service.js";
+import { RojoCommandService } from "./domain/runner/rojo-command-service.js";
+import { RojoCompatibility } from "./domain/runner/rojo-compatibility.js";
 import { CoreServeService } from "./domain/serve/core-serve-service.js";
 import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
@@ -64,7 +67,6 @@ import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
 import "./commands/list/list-command.js";
 import "./commands/serve/serve-command.js";
-import "./commands/watch/watch-command.js";
 import "./commands/where/where-command.js";
 
 /** Baked in by `scripts/bundle.ts`; undefined in a run from source. */
@@ -77,6 +79,18 @@ function currentFolder(): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+/** Whether the command runs until it is stopped, so the update notice comes before it starts. */
+function isLongRunning(
+	metadata: { longRunning?: boolean; longRunningWith?: string } | undefined,
+	options: Readonly<Record<string, unknown>>
+): boolean {
+	return (
+		metadata?.longRunning === true ||
+		(metadata?.longRunningWith !== undefined &&
+			options[metadata.longRunningWith] === true)
+	);
 }
 
 /** The update notice of a run, looked up while the command runs. */
@@ -168,7 +182,10 @@ class RogenMain {
 		const notice = new UpdateNotice(
 			logService,
 			command === HELP_COMMAND ? undefined : updateService.check(),
-			commandRegistry.getCommand(command)?.metadata.longRunning === true
+			isLongRunning(
+				commandRegistry.getCommand(command)?.metadata,
+				line.options
+			)
 		);
 		if (notice.printedFirst) await notice.print();
 
@@ -269,6 +286,13 @@ class RogenMain {
 		services.set(WatchService, watchService);
 		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
 		services.set(RojoRunner, rojoRunner);
+		services.set(
+			RojoCommandService,
+			new CoreRojoCommandService(
+				rojoRunner,
+				new RojoCompatibility(fileSystemService)
+			)
+		);
 		services.set(
 			ServeService,
 			new CoreServeService(

@@ -769,10 +769,10 @@ Error. `rogen serve` found no Rojo: it is not pinned in a `rokit.toml`, `aftman.
 
 ```
 rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. (serve.noServer)
-rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them. (serve.noServer)
+rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them. (serve.noServer)
 ```
 
-Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rojo plugin install`. Rogen never installs anything. To serve with Argon, run `rogen watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
+Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rojo plugin install`. Rogen never installs anything. To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
 
 ### `serve.notInstalled` [#serve-notinstalled]
 
@@ -835,6 +835,16 @@ shop/default.project.json - error: Rojo 7.7.0 on Windows applies no sync rule or
 ```
 
 Move to Rojo 7.7.1 or newer. See [CLI](/docs/v2/cli#serve).
+
+### `rojo.commandFailed` [#rojo-commandfailed]
+
+Error. Rojo exited with an error while Rogen ran it, such as `rojo build` for `rogen build -o`. The message gives how it exited and what Rojo said.
+
+```
+default.project.json - error: 'rojo build' failed (exit code 1): Failed to write to game.rbxl. (rojo.commandFailed)
+```
+
+Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the build again.
 
 ## Migration
 

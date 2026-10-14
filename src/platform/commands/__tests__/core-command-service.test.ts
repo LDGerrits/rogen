@@ -206,6 +206,30 @@ describe("CoreCommandService", () => {
 			);
 		});
 
+		it("should say what replaced a command that is now a flag of another", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "build",
+					metadata: {
+						description: "build",
+						formerCommands: {
+							watch: "'rogen watch' is now 'rogen build --watch'.",
+						},
+					},
+					handler: async () => ok(undefined),
+				})
+			);
+
+			const result = await commandService.executeCommand("watch", {
+				positionals: ["watch"],
+				options: {},
+			});
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"watch\". 'rogen watch' is now 'rogen build --watch'."
+			);
+		});
+
 		it("should point at help when no command takes an unknown word", async () => {
 			const result = await commandService.executeCommand("prod", {
 				positionals: ["prod"],

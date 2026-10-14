@@ -5,7 +5,10 @@ import { ConfigService } from "../../domain/config/config-service.js";
 import { CoreConfigService } from "../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../domain/init/core-init-service.js";
 import { InitService } from "../../domain/init/init-service.js";
+import { CoreRojoCommandService } from "../../domain/runner/core-rojo-command-service.js";
 import { CoreRojoRunner } from "../../domain/runner/core-rojo-runner.js";
+import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
+import { RojoCompatibility } from "../../domain/runner/rojo-compatibility.js";
 import { CoreToolchainService } from "../../domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "../../domain/toolchain/toolchain-service.js";
 import { CoreCommandService } from "../../platform/commands/core-command-service.js";
@@ -119,12 +122,17 @@ export function commandHarness(
 	services.set(RequestService, requests);
 	services.set(BrowserService, options.browser ?? new MockBrowserService());
 	services.set(ProductService, options.product ?? new MockProductService());
+	const rojoRunner = new CoreRojoRunner(toolchain, processes);
+	services.set(
+		RojoCommandService,
+		new CoreRojoCommandService(rojoRunner, new RojoCompatibility(fs, false))
+	);
 	services.set(
 		ServeService,
 		new CoreServeService(
 			config,
 			fs,
-			new CoreRojoRunner(toolchain, processes),
+			rojoRunner,
 			requests,
 			watch,
 			environment

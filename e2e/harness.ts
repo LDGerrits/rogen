@@ -380,7 +380,7 @@ export async function eventually(
 	}
 }
 
-/** A `rogen` command that keeps running, `watch` unless `command` says otherwise. */
+/** A `rogen` command that keeps running, `build --watch` unless `command` says otherwise. */
 export class RunningRogen {
 	private readonly child: ChildProcess;
 	readonly exited: Promise<number | null>;
@@ -392,9 +392,9 @@ export class RunningRogen {
 		dir: string,
 		args: readonly string[] = [],
 		cwd: string = dir,
-		command = "watch"
+		command = "build --watch"
 	) {
-		const [file, commandArgs] = invocation(cli, [command, ...args]);
+		const [file, commandArgs] = invocation(cli, [...command.split(" "), ...args]);
 		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],

@@ -13,8 +13,8 @@ import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
 import { toNative } from "../../base/path.js";
 import { diagnosticToJson } from "../../platform/diagnostics/diagnostic-json.js";
-import { buildEntry } from "../build/build-document.js";
-import { BuildLog } from "../build/build-log.js";
+import { buildEntry } from "./build-document.js";
+import { BuildLog } from "./build-log.js";
 
 interface WatchChange {
 	readonly sourceFiles: number;

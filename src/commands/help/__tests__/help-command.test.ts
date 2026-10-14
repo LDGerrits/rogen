@@ -14,7 +14,6 @@ import "../help-command.js";
 import "../../init/init-command.js";
 import "../../list/list-command.js";
 import "../../serve/serve-command.js";
-import "../../watch/watch-command.js";
 import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
@@ -156,10 +155,10 @@ describe("help command", () => {
 		});
 
 		it("should suggest the command a misspelled one is closest to", async () => {
-			const result = await help("wacth");
+			const result = await help("bulid");
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command \"wacth\". Did you mean 'rogen help watch'?"
+				"Unknown command \"bulid\". Did you mean 'rogen help build'?"
 			);
 		});
 	});

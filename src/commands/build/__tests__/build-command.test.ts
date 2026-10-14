@@ -22,6 +22,7 @@ import {
 	Extensions,
 	ReportedError,
 } from "../../../platform/commands/commands.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
@@ -791,7 +792,6 @@ describe("build command", () => {
 		);
 
 		it.each([
-			"-o",
 			"--out-file",
 			"--all",
 			"-c",
@@ -809,6 +809,127 @@ describe("build command", () => {
 			"--show-config",
 		])("should reject the old flag %s", (flag) => {
 			expect(parse("build", flag).isErr()).toBe(true);
+		});
+	});
+
+	describe("-o and -p", () => {
+		let processes: MockProcessService;
+
+		const withRojo = async (
+			options: CommandLine["options"],
+			config = new MockConfigService([buildable()])
+		) => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const log = new MockLogService();
+			const running = commandHarness({
+				fs,
+				log,
+				config,
+				processes,
+			}).run("build", { positionals: [], options });
+			return { log, running };
+		};
+
+		const rojoStarted = async () => {
+			for (let i = 0; i < 50 && processes.spawned.length === 0; i++)
+				await new Promise((resolve) => setImmediate(resolve));
+			return processes.spawned[0];
+		};
+
+		beforeEach(() => {
+			processes = new MockProcessService();
+			processes.installed.set("rojo", "/bin/rojo");
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.7.1\n",
+				stderr: "",
+			});
+		});
+
+		it("should write the project file, then run Rojo's build on it with --output", async () => {
+			const { running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.exit({ code: 0, signal: null });
+
+			expect((await running).isOk()).toBe(true);
+			expect(rojo.file).toBe("/bin/rojo");
+			expect(rojo.args).toEqual([
+				"build",
+				"default.project.json",
+				"--output",
+				"game.rbxl",
+			]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		});
+
+		it("should pass --plugin for -p", async () => {
+			const { running } = await withRojo({ plugin: "Tool.rbxm" });
+			const rojo = await rojoStarted();
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(rojo.args.slice(2)).toEqual(["--plugin", "Tool.rbxm"]);
+		});
+
+		it("should show what Rojo said", async () => {
+			const { running, log } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("[WARN rojo] a warning\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "warn",
+				text: "Rojo: a warning",
+			});
+		});
+
+		it("should fail when Rojo fails", async () => {
+			const { running } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("ERROR: no such folder\n");
+			rojo.exit({ code: 1, signal: null });
+
+			const result = await running;
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"'rojo build' failed (exit code 1): no such folder"
+			);
+		});
+
+		it("should not run Rojo when the build has errors", async () => {
+			const { running } = await withRojo(
+				{ output: "g.rbxl" },
+				new MockConfigService([
+					brokenEntry([
+						errorDiagnostic(
+							"config.invalidSyntax",
+							{
+								resource: abs("rogen.json"),
+							},
+							"bad"
+						),
+					]),
+				])
+			);
+
+			expect((await running).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should refuse -o and -p together", async () => {
+			const { running } = await withRojo({ output: "a", plugin: "b" });
+
+			expect((await running).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should run no Rojo without -o or -p", async () => {
+			const { running } = await withRojo({});
+
+			expect((await running).isOk()).toBe(true);
+			expect(processes.spawned).toEqual([]);
 		});
 	});
 });
