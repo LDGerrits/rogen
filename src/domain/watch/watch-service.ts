@@ -6,6 +6,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { LoadedBuild } from "../build/build.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 
 /** Changes that came too fast to follow, so they were dropped. */
@@ -53,6 +54,8 @@ export interface WatchUpdate {
 
 /** A running watch; the caller owns it and disposes it. */
 export interface WatchSession extends Disposable {
+	/** The configs it builds now. */
+	readonly configs: readonly ResolvedConfig[];
 	/** Fired once per round of rebuilds. */
 	readonly onDidUpdate: Event<WatchUpdate>;
 	/** A step failed unexpectedly; the watch goes on. */

@@ -68,10 +68,7 @@ registerCommand(
 				if (watched.isErr()) return watched;
 				const session = store.add(watched.value);
 				if (shutdown.isSettled) return ok(undefined);
-				log.begin(
-					selection.value.requireValid().unwrap(),
-					selection.value.home
-				);
+				log.begin(session.configs, selection.value.home);
 
 				store.add(session.onDidUpdate((update) => log.update(update)));
 				store.add(session.onDidError((error) => log.error(error)));

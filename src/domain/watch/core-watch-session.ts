@@ -1,3 +1,4 @@
+import { ResolvedConfig } from "../config/resolved-config.js";
 import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
@@ -43,6 +44,10 @@ export class CoreWatchSession
 	private listing = Listing.EMPTY;
 	private activeWatch = "";
 	private stopping: Promise<void> | undefined;
+
+	get configs(): readonly ResolvedConfig[] {
+		return this.buildSet.configs;
+	}
 
 	constructor(
 		private readonly selection: ReloadableSelection,
