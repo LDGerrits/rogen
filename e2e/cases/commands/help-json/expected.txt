@@ -263,6 +263,18 @@ stdout:
           {
             "name": "json",
             "type": "boolean"
+          },
+          {
+            "name": "address",
+            "type": "string"
+          },
+          {
+            "name": "port",
+            "type": "string"
+          },
+          {
+            "name": "allowed-hosts",
+            "type": "string"
           }
         ],
         "effects": [

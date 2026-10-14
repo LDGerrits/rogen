@@ -14,7 +14,11 @@ import {
 	ExitCodeError,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { CommandLine, JsonOption } from "../../platform/environment/args.js";
+import {
+	CommandLine,
+	JsonOption,
+	OptionDescriptor,
+} from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -25,12 +29,39 @@ import {
 	serveLineShape,
 } from "./serve-log.js";
 
+const AddressOption = {
+	name: "address",
+	type: "string",
+	placeholder: "address",
+	description:
+		"The address to listen on, for one project. Rojo's own flag; a project's serveAddress sets it in rogen.json.",
+} as const satisfies OptionDescriptor;
+
+const PortOption = {
+	name: "port",
+	type: "string",
+	placeholder: "port",
+	description:
+		"The port to listen on, for one project. Rojo's own flag; a project's servePort sets it in rogen.json.",
+} as const satisfies OptionDescriptor;
+
+const AllowedHostsOption = {
+	name: "allowed-hosts",
+	type: "string",
+	placeholder: "allowed_hosts",
+	description:
+		"Hosts, besides the address, that may reach every server. Rojo's own flag.",
+} as const satisfies OptionDescriptor;
+
 const ServeOptions = [
 	{
 		...JsonOption,
 		description:
 			"Print one JSON object per line: each build, each server when it serves, and failures.",
 	},
+	AddressOption,
+	PortOption,
+	AllowedHostsOption,
 ] as const;
 
 type ServeLine = CommandLine<typeof ServeOptions>;
@@ -48,15 +79,15 @@ registerCommand(
 					passthrough: {
 						name: "server args",
 						description:
-							"Passed to every server untouched, such as --port 34873. A project's own servePort and serveAddress go in its rogen.json.",
+							"Passed to every server untouched, after the flags above.",
 					},
 					options: ServeOptions,
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
 					examples: [
 						"rogen serve",
-						"rogen serve places/lobby",
-						"rogen serve -- --port 34873",
+						"rogen serve places/lobby --port 34873",
+						"rogen serve . test",
 					],
 				},
 			});
@@ -67,6 +98,16 @@ registerCommand(
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
+			const { address, port } = line.options;
+			const allowedHosts = line.options["allowed-hosts"];
+			const serverArgs = [
+				...(address === undefined ? [] : ["--address", address]),
+				...(port === undefined ? [] : ["--port", port]),
+				...(allowedHosts === undefined
+					? []
+					: ["--allowed-hosts", allowedHosts]),
+				...(line.passthrough ?? []),
+			];
 
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
@@ -76,7 +117,7 @@ registerCommand(
 				const plan = await serveService.prepare({
 					signal: stopChecks.signal,
 					refs: line.positionals,
-					serverArgs: line.passthrough ?? [],
+					serverArgs,
 				});
 				if (shutdown.isSettled) return ok(undefined);
 				if (plan.isErr()) return plan;

@@ -688,6 +688,83 @@ describe("serve command", () => {
 		]);
 	});
 
+	it("should pass --address, --port and --allowed-hosts to the server before the words after --", async () => {
+		void serve(
+			[],
+			{
+				address: "0.0.0.0",
+				port: "40000",
+				"allowed-hosts": "studio.local",
+			},
+			["--log-level", "x"]
+		);
+		await settle();
+
+		expect(processes.spawned[0].args).toEqual([
+			"serve",
+			"default.project.json",
+			"--address",
+			"0.0.0.0",
+			"--port",
+			"40000",
+			"--allowed-hosts",
+			"studio.local",
+			"--log-level",
+			"x",
+		]);
+	});
+
+	it("should start one server for each project named, each on its own port", async () => {
+		await memFs.writeFile(
+			"/repo/lobby/rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
+				servePort: 40001,
+			})
+		);
+
+		void serve([".", "lobby"], { json: true });
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+		});
+		requests.answer("http://127.0.0.1:40001/api/rojo", {
+			projectName: "lobby",
+			serverVersion: "7.7.1",
+		});
+		await settle();
+
+		expect(processes.spawned.map(({ args }) => args)).toEqual([
+			["serve", "default.project.json"],
+			["serve", "lobby/default.project.json"],
+		]);
+		expect(
+			printed().flatMap(({ serving }) =>
+				serving ? [[serving.config, serving.port]] : []
+			)
+		).toEqual([
+			["repo", 34872],
+			["lobby", 40001],
+		]);
+	});
+
+	it("should refuse --port for several projects, starting none", async () => {
+		await memFs.writeFile(
+			"/repo/lobby/rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
+			})
+		);
+
+		const error = await failureOf(serve([".", "lobby"], { port: "40000" }));
+
+		expect(error.message).toContain("--port names one server's port");
+		expect(processes.spawned).toEqual([]);
+	});
+
 	it("should serve the named project, and build only that one", async () => {
 		await memFs.writeFile(
 			"/repo/lobby/rogen.json",

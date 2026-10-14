@@ -72,7 +72,7 @@ It uploads one project, so a root with [places](/docs/v2/configuration#places) a
 
 Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with the Rojo your toolchain file pins in this folder or above, else the one on the PATH, so the plugin matches the server `rogen serve` starts. Installing again overwrites the plugin. It reads no project, so it runs in any folder. On a platform Rojo can't install a plugin on, Rojo's error is shown and the exit code is 1.
 
-### `serve [project…] [-- server args…]` [#serve]
+### `serve [project…] [--port <port>] [--address <address>] [--allowed-hosts <hosts>] [-- server args…]` [#serve]
 
 Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
 
@@ -94,13 +94,13 @@ Servers start only after the first build succeeds. If it fails, nothing starts, 
 
 **Which Rojo.** Rogen runs the Rojo the project pins in `rokit.toml`, `aftman.toml` or `foreman.toml`, in the folder of the config or any folder above, so the pinned version runs. With none pinned, it uses the one on the PATH. With no Rojo at all, `serve` exits 1 with [`serve.noServer`](/docs/v2/diagnostics#serve-noserver). `serve` only starts Rojo: to serve with Argon, see [Studio](/docs/v2/studio#serve-with-argon). Rogen never installs or bundles Rojo, since it has to match the Studio plugin you installed. It runs `rojo --version` first, so a broken install fails before the build. A Rojo before 7.5.0 does not read `syncRules`, so `serve` stops with [`rojo.syncRulesUnsupported`](/docs/v2/diagnostics#rojo-syncrulesunsupported) when a file it wrote has any. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, so `serve` stops with [`rojo.windowsRules`](/docs/v2/diagnostics#rojo-windowsrules) when a file it wrote has one.
 
-**Port.** There is no Rogen flag. The port is the server's own:
+**Port.** `--port` and `--address` are Rojo's own flags, and name one server:
 
 | Port | Host |
 |---|---|
-| `--port` after `--`, else `servePort` in `rogen.json`, else 34872 | `--address` after `--`, else `serveAddress`, else `127.0.0.1` |
+| `--port`, else `servePort` in `rogen.json`, else 34872 | `--address`, else `serveAddress`, else `127.0.0.1` |
 
-Two served projects on one port exit 2, with the fix: give each its own `servePort` in its `rogen.json`, or serve one at a time. A `servePort` in `rogen.json` is committed, so every teammate's plugin matches.
+Two served projects on one port exit 2, with the fix: give each its own `servePort` in its `rogen.json`, or serve one at a time. `rogen serve . test` serves the game and the config in the `test` folder, such as a test place, on two ports for two Studio windows; with several projects `--port` and `--address` exit 2 with `Name one place`, since one port or address can't fit two servers. `--allowed-hosts` goes to every server. A `servePort` in `rogen.json` is committed, so every teammate's plugin matches.
 
 **Already running.** Before building, Rogen asks each port what serves there. A Rojo server only says the name of its project, and a server another `rogen serve` started is also known by its project file:
 
@@ -109,7 +109,7 @@ Two served projects on one port exit 2, with the fix: give each its own `servePo
 - **Another project named here has the same project name,** and no `rogen serve` started the server. Rogen can't tell which one it serves, so it refuses with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken): stop that server and run `rogen serve` again.
 - **Anything else holds the port,** including an Argon server and a second checkout of the same project, such as a git worktree. `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), which names what holds it (and the other checkout's folder) and a free port to use instead.
 
-**After `--`.** Everything after `--` goes to the server untouched, such as `rogen serve -- --port 34873`. Rogen reads the port and host flags from it, so the running check asks the port the server will use. Other commands take nothing after `--`: `rogen build -- x` exits 2.
+**After `--`.** Everything after `--` goes to the server untouched, after the flags above, and a `--port` or `--address` there counts as the flag. Rogen reads both, so the running check asks the port the server will use. Other commands take nothing after `--`: `rogen build -- x` exits 2.
 
 **Studio.** When the Rojo is 7.7 or later, Rogen starts it with `RUST_LOG=info,librojo::web=debug`, which makes it log each plugin that connects and leaves (the `info` is your own `RUST_LOG`, if you set one), and says so: `Studio connected to my-game.`, `Studio connected to my-game (2 connected).`, `Studio disconnected from my-game, 1 still connected.`. A connection that drops without a goodbye, such as Studio crashing, counts as leaving. More than one connection is normal: a playtest server holds its own. A `RUST_LOG` you set stays: Rogen adds its directive after yours. An older Rojo logs differently, and a server Rogen didn't start can't be read, so for those no such line is printed; the `serving` line of `--json` says which case it is with `reportsConnections`. The count is also kept in the serve's record, so `rogen list` shows it from another terminal.
 
@@ -375,7 +375,7 @@ A `serve` error whose fix is a command has a `run` fix instead: the command, and
 
 ```json
 "fixes": [
-	{ "run": { "command": "rogen serve -- --port 34873", "cwd": "/repo" } }
+	{ "run": { "command": "rogen serve --port 34873", "cwd": "/repo" } }
 ]
 ```
 

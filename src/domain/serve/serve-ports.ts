@@ -63,8 +63,29 @@ export class ServePorts {
 		};
 	}
 
+	/** The error for a flag that names one server when several are served. */
+	oneProjectError(targets: readonly ServeTarget[]): UsageError | undefined {
+		const given = [
+			...(this.port.unwrapOr(undefined) === undefined
+				? []
+				: [{ flag: "--port", what: "port" }]),
+			...(this.host === undefined
+				? []
+				: [{ flag: "--address", what: "address" }]),
+		];
+		if (given.length === 0 || targets.length < 2) return undefined;
+		const names = given.map(({ flag }) => flag);
+		const whats = given.map(({ what }) => what);
+		const example = given
+			.map(({ flag, what }) => `${flag} <${what}>`)
+			.join(" ");
+		return new UsageError(
+			`${joinedWithAnd(names)} names one server's ${joinedWithAnd(whats)}, and this serves ${joinedWithAnd(targets.map(({ config }) => config.label))}.`,
+			`Name one place, as 'rogen serve ${this.refOf(targets[0].config)} ${example}'.`
+		);
+	}
+
 	clashOf(targets: readonly ServeTarget[]): UsageError | undefined {
-		const portGiven = this.port.unwrapOr(undefined) !== undefined;
 		const byPort = new Map<number, ServeTarget[]>();
 		for (const target of targets) {
 			const sharing = byPort.get(target.address.port) ?? [];
@@ -77,10 +98,10 @@ export class ServePorts {
 				`${joinedWithAnd(sharing.map(({ config }) => config.label))} ${sharing.length === 2 ? "both" : "all"} serve on port ${port}.`
 		);
 		const first = this.refOf(clashes[0][1][0].config);
-		const fix = portGiven
-			? `The --port after '--' applies to every config: serve one at a time, as 'rogen serve ${first} -- --port <port>'.`
-			: `Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve ${first}'.`;
-		return new UsageError(lines.join("\n"), fix);
+		return new UsageError(
+			lines.join("\n"),
+			`Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve ${first}'.`
+		);
 	}
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
@@ -137,7 +158,7 @@ export class ServePorts {
 		const free = address.isLocal
 			? await this.freePortAfter(address, targets)
 			: undefined;
-		const command = `rogen serve ${this.refOf(config)} -- --port ${free ?? "<port>"}`;
+		const command = `rogen serve ${this.refOf(config)} --port ${free ?? "<port>"}`;
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },

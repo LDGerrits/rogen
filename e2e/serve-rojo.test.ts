@@ -245,6 +245,34 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
+	it("should refuse --port for several projects, and serve one project on it", async () => {
+		writeProjectFile(
+			serve.dir,
+			"lobby/rogen.json",
+			config(serve.port + 1, { name: "Lobby" })
+		);
+
+		const refused = serve.start([
+			".",
+			"lobby",
+			"--port",
+			`${serve.port + 2}`,
+		]);
+
+		expect(await refused.exited).toBe(2);
+		expect(refused.output).toContain("--port names one server's port");
+		expect(await rojoProject(serve.port + 2)).toBeUndefined();
+
+		const serving = serve.start(["lobby", "--port", `${serve.port + 2}`]);
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving Lobby with Rojo 7.7.1 at 127.0.0.1:${serve.port + 2}.`
+			);
+		}, 30_000);
+		expect(await rojoProject(serve.port + 2)).toBe("Lobby");
+	}, 60_000);
+
 	it("should restart the server where its servePort moves it", async () => {
 		const serving = serve.start();
 		await eventually(() => {

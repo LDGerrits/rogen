@@ -308,7 +308,7 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should take the port and address given after --", async () => {
+		it("should take the port and address given as flags", async () => {
 			const servePlan = await plan({
 				serverArgs: ["--port", "40000", "--address", "0.0.0.0"],
 			});
@@ -319,13 +319,11 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should refuse a port after -- that isn't one", async () => {
+		it("should refuse a port that isn't one", async () => {
 			const error = await errorOf({ serverArgs: ["--port", "high"] });
 
 			expect(error).toEqual(
-				new UsageError(
-					"The --port after '--' takes a number from 1 to 65535."
-				)
+				new UsageError("--port takes a number from 1 to 65535.")
 			);
 		});
 
@@ -341,7 +339,7 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should say a --port after -- is shared by every config served", async () => {
+		it("should ask for one project when a port is given to several", async () => {
 			for (const name of ["lobby", "shop", "arena"])
 				await memFs.writeFile(`/repo/${name}/rogen.json`, place());
 
@@ -350,9 +348,41 @@ describe("CoreServeService", () => {
 				serverArgs: ["--port", "40000"],
 			});
 
-			expect(error.message).toBe(
-				"arena, lobby and shop all serve on port 40000. The --port after '--' applies to every config: serve one at a time, as 'rogen serve arena -- --port <port>'."
+			expect(error).toEqual(
+				new UsageError(
+					"--port names one server's port, and this serves arena, lobby and shop.",
+					"Name one place, as 'rogen serve arena --port <port>'."
+				)
 			);
+		});
+
+		it("should ask for one project when an address is given to several", async () => {
+			for (const name of ["lobby", "shop"])
+				await memFs.writeFile(`/repo/${name}/rogen.json`, place());
+
+			const error = await errorOf({
+				refs: ["lobby", "shop"],
+				serverArgs: ["--address=0.0.0.0"],
+			});
+
+			expect(error.message).toContain(
+				"--address names one server's address, and this serves lobby and shop."
+			);
+		});
+
+		it("should give each project its own port when none is given", async () => {
+			await memFs.writeFile("/repo/lobby/rogen.json", place());
+			await memFs.writeFile(
+				"/repo/shop/rogen.json",
+				place({ servePort: 40001 })
+			);
+
+			const servePlan = await plan({ refs: ["lobby", "shop"] });
+
+			expect(served(servePlan)).toEqual([
+				["lobby", "127.0.0.1:34872"],
+				["shop", "127.0.0.1:40001"],
+			]);
 		});
 
 		it("should find a config a server already serves, and start nothing for it", async () => {
@@ -506,12 +536,12 @@ describe("CoreServeService", () => {
 			expect(diagnostic.code).toBe("serve.portTaken");
 			expect(diagnostic.resource).toBe("/repo/rogen.json");
 			expect(diagnostic.message).toBe(
-				"Port 34872 is taken by Rojo serving Other, so repo can't be served there. Give repo its own servePort in rogen.json, or run 'rogen serve . -- --port 34874'."
+				"Port 34872 is taken by Rojo serving Other, so repo can't be served there. Give repo its own servePort in rogen.json, or run 'rogen serve . --port 34874'."
 			);
 			expect(diagnostic.fixes).toEqual([
 				{
 					run: {
-						command: "rogen serve . -- --port 34874",
+						command: "rogen serve . --port 34874",
 						cwd: "/repo",
 					},
 				},
@@ -533,7 +563,7 @@ describe("CoreServeService", () => {
 
 			expect(error.diagnostics[0].resource).toBe("/repo/rogen.json");
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34900 is taken by another program, so repo can't be served there. Give repo its own servePort in rogen.json, or run 'rogen serve . -- --port 34901'."
+				"Port 34900 is taken by another program, so repo can't be served there. Give repo its own servePort in rogen.json, or run 'rogen serve . --port 34901'."
 			);
 		});
 
@@ -553,7 +583,7 @@ describe("CoreServeService", () => {
 			const error = (await errorOf()) as DiagnosticsError;
 
 			expect(error.diagnostics[0].message).toContain(
-				"or run 'rogen serve . -- --port <port>'."
+				"or run 'rogen serve . --port <port>'."
 			);
 			expect(error.diagnostics[0].fixes ?? []).toEqual([]);
 		});
@@ -999,7 +1029,7 @@ describe("CoreServeService", () => {
 					"lobby/default.project.json",
 				]);
 				expect(changes).toEqual([
-					"refused Lobby: Port 34901 is taken by another program, so Lobby can't be served there. Give Lobby its own servePort in rogen.json, or run 'rogen serve lobby -- --port 34902'.",
+					"refused Lobby: Port 34901 is taken by another program, so Lobby can't be served there. Give Lobby its own servePort in rogen.json, or run 'rogen serve lobby --port 34902'.",
 				]);
 			});
 
@@ -1015,7 +1045,7 @@ describe("CoreServeService", () => {
 				]);
 				expect(changes).toEqual([
 					"retired repo (removed)",
-					"refused Lobby: Port 34900 is taken by another program, so Lobby can't be served there. Give Lobby its own servePort in rogen.jsonc, or run 'rogen serve . -- --port 34901'.",
+					"refused Lobby: Port 34900 is taken by another program, so Lobby can't be served there. Give Lobby its own servePort in rogen.jsonc, or run 'rogen serve . --port 34901'.",
 				]);
 			});
 

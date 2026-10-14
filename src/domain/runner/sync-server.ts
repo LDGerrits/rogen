@@ -173,11 +173,7 @@ export class SyncServer {
 		const port = /^\d+$/.test(value) ? Number(value) : NaN;
 		return port > 0 && port < 65536
 			? ok(port)
-			: err(
-					new UsageError(
-						"The --port after '--' takes a number from 1 to 65535."
-					)
-				);
+			: err(new UsageError("--port takes a number from 1 to 65535."));
 	}
 }
 

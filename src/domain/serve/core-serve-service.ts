@@ -86,6 +86,8 @@ export class CoreServeService implements ServeService {
 		const targets: ServeTarget[] = [];
 		for (const config of served) targets.push(ports.targetOf(config));
 
+		const oneProject = ports.oneProjectError(targets);
+		if (oneProject) return err(oneProject);
 		const clash = ports.clashOf(targets);
 		if (clash) return err(clash);
 
