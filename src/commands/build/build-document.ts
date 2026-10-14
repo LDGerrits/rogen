@@ -50,6 +50,7 @@ const rojoEntryShape = S.named(
 
 /** The document of `build --json`. */
 export const buildDocumentShape = S.object({
+	changed: S.boolean,
 	configs: S.array(buildEntryShape),
 	rojo: S.optional(rojoEntryShape),
 });
@@ -109,6 +110,8 @@ export interface RojoEntry {
 }
 
 interface BuildDocument {
+	/** Whether any project file was written. */
+	readonly changed: boolean;
 	readonly configs: readonly BuildEntry[];
 }
 
@@ -165,7 +168,11 @@ export function buildDocument(
 	diagnosticsOf: (build: ConfigBuild) => readonly Diagnostic[] = (build) =>
 		build.diagnostics
 ): BuildDocument {
+	const configs = builds.map((build) =>
+		buildEntry(build, diagnosticsOf(build))
+	);
 	return {
-		configs: builds.map((build) => buildEntry(build, diagnosticsOf(build))),
+		changed: configs.some(({ outcome }) => outcome === "wrote"),
+		configs,
 	};
 }

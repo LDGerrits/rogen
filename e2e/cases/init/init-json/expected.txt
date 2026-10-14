@@ -2,11 +2,17 @@ $ rogen init --json
 exit 0
 stdout:
   {
+    "changed": true,
     "files": [
-      "<dir>/rogen.json",
-      "<dir>/AGENTS.md"
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/AGENTS.md",
+        "outcome": "wrote"
+      }
     ],
-    "appended": [],
     "directories": [],
     "built": [
       {

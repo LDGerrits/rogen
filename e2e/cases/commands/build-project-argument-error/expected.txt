@@ -22,6 +22,7 @@ $ rogen build lobby --json
 exit 0
 stdout:
   {
+    "changed": true,
     "configs": [
       {
         "config": "lobby",

@@ -146,7 +146,7 @@ describe("rogen help --json", () => {
 			);
 			expect(build.examples).toContain("rogen build --json");
 			expect(build.output.document).toBe(
-				"{configs:[BuildEntry],rojo?:RojoEntry}"
+				"{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}"
 			);
 			expect(Object.keys(build.shapes)).toEqual(
 				expect.arrayContaining([

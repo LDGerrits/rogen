@@ -331,6 +331,8 @@ A `serve` error whose fix is a command has a `run` fix instead: the command, and
 ]
 ```
 
+The commands that write files, `build`, `fmt-project` and `init`, say so the same way: a top-level `changed` comes first, `true` when the run wrote anything, and each file has an `outcome` of `wrote`, `unchanged`, `failed` or `notWritten`. A program asks the same question of all three.
+
 Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (its project name) and `file` (the absolute path of its `rogen.json`). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
 
 A warning about several files, such as `route.strayAt` or `tree.deadScript`, is filed under the config and lists every file it is about in `related`, each with what it says about that file. The list is complete, while the text output stops at ten lines.
@@ -366,6 +368,7 @@ A failure that isn't a list of diagnostics prints `{ "error": { "kind", "message
 
 ```json
 {
+	"changed": true,
 	"configs": [
 		{
 			"config": "my-game",
@@ -402,13 +405,14 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 
 ```json
 {
+	"changed": true,
 	"files": [
-		{ "file": "/repo/rogen.json", "outcome": "formatted", "diagnostics": [] }
+		{ "file": "/repo/rogen.json", "outcome": "wrote", "diagnostics": [] }
 	]
 }
 ```
 
-One entry per `rogen.json` it looked at, a root's places included. `outcome` is `formatted`, `unchanged` or `failed`, and a failed file's `diagnostics` say why ([`format.commentsLost`](/docs/v2/diagnostics#format-commentslost) for a file with comments). The exit code is 1 when any file failed; the others are still formatted.
+One entry per `rogen.json` it looked at, a root's places included. `outcome` is `wrote`, `unchanged` or `failed`, and a failed file's `diagnostics` say why ([`format.commentsLost`](/docs/v2/diagnostics#format-commentslost) for a file with comments). The exit code is 1 when any file failed; the others are still formatted.
 
 ### `doc --json`
 
@@ -466,8 +470,11 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ```json
 {
-	"files": ["/repo/rogen.json", "/repo/AGENTS.md"],
-	"appended": [],
+	"changed": true,
+	"files": [
+		{ "file": "/repo/rogen.json", "outcome": "wrote" },
+		{ "file": "/repo/AGENTS.md", "outcome": "wrote", "appended": true }
+	],
 	"directories": [],
 	"built": [
 		{
@@ -488,7 +495,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
+`files` lists what was written, in order, and marks with `appended` the ones that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
 
 ### `help --json`
 

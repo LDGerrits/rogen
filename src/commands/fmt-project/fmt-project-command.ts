@@ -29,10 +29,11 @@ import { LogService } from "../../platform/log/log-service.js";
 const FmtProjectOptions = [JsonOption] as const;
 
 const FmtProjectOutput = OutputShape.object({
+	changed: OutputShape.boolean,
 	files: OutputShape.array(
 		OutputShape.object({
 			file: OutputShape.string,
-			outcome: OutputShape.enum("formatted", "unchanged", "failed"),
+			outcome: OutputShape.enum("wrote", "unchanged", "failed"),
 			diagnostics: OutputShape.array(diagnosticShape),
 		})
 	),
@@ -40,7 +41,7 @@ const FmtProjectOutput = OutputShape.object({
 
 interface FormattedFile {
 	readonly file: string;
-	readonly outcome: "formatted" | "unchanged" | "failed";
+	readonly outcome: "wrote" | "unchanged" | "failed";
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
@@ -53,7 +54,7 @@ function formattedFile(
 		outcome: formatted.isErr()
 			? "failed"
 			: formatted.value
-				? "formatted"
+				? "wrote"
 				: "unchanged",
 		diagnostics: formatted.isErr()
 			? formatted.error.map(diagnosticToJson)
@@ -105,12 +106,21 @@ registerCommand(
 				if (formatted.isErr()) failures.push(...formatted.error);
 				const entry = formattedFile(file, formatted);
 				files.push(entry);
-				if (!line.options.json && entry.outcome === "formatted")
+				if (!line.options.json && entry.outcome === "wrote")
 					logService.print(`formatted ${relativeTo(cwd, file)}`);
 			}
 			const failure = DiagnosticsError.of(failures);
 			if (line.options.json)
-				return this.printJson(logService, { files }, failure);
+				return this.printJson(
+					logService,
+					{
+						changed: files.some(
+							({ outcome }) => outcome === "wrote"
+						),
+						files,
+					},
+					failure
+				);
 			return failure ? err(failure) : ok(undefined);
 		}
 

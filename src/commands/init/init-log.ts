@@ -29,8 +29,14 @@ const S = OutputShape;
 
 /** The document of `init --json`. */
 export const initDocumentShape = S.object({
-	files: S.array(S.string),
-	appended: S.array(S.string),
+	changed: S.boolean,
+	files: S.array(
+		S.object({
+			file: S.string,
+			outcome: S.enum("wrote"),
+			appended: S.optional(S.boolean),
+		})
+	),
 	directories: S.array(S.string),
 	error: S.optional(errorShape),
 	built: S.optional(S.array(buildEntryShape)),
@@ -130,9 +136,16 @@ export class InitLog implements InitReporter {
 	}
 }
 
+interface InitFile {
+	readonly file: string;
+	readonly outcome: "wrote";
+	/** Set when the file existed and something was added to it. */
+	readonly appended?: true;
+}
+
 interface InitDocument {
-	readonly files: readonly string[];
-	readonly appended: readonly string[];
+	readonly changed: boolean;
+	readonly files: readonly InitFile[];
 	readonly directories: readonly string[];
 	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
@@ -141,8 +154,7 @@ interface InitDocument {
 }
 
 export class InitJsonLog implements InitReporter {
-	private readonly files: string[] = [];
-	private readonly appended: string[] = [];
+	private readonly files: InitFile[] = [];
 	private readonly directories: string[] = [];
 
 	constructor(
@@ -157,9 +169,13 @@ export class InitJsonLog implements InitReporter {
 			this.directories.push(path.join(this.directory, item.directory));
 			return;
 		}
-		const file = path.join(this.directory, item.file.fileName);
-		this.files.push(file);
-		if (item.file.addition !== undefined) this.appended.push(file);
+		this.files.push({
+			file: path.join(this.directory, item.file.fileName),
+			outcome: "wrote",
+			...(item.file.addition !== undefined && {
+				appended: true as const,
+			}),
+		});
 	}
 
 	failed(error: Error): Result<void, Error> {
@@ -191,8 +207,8 @@ export class InitJsonLog implements InitReporter {
 
 	private writtenSoFar() {
 		return {
+			changed: this.files.length + this.directories.length > 0,
 			files: this.files,
-			appended: this.appended,
 			directories: this.directories,
 		};
 	}

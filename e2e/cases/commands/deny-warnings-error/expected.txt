@@ -12,6 +12,7 @@ $ rogen build --deny-warnings --json
 exit 1
 stdout:
   {
+    "changed": false,
     "configs": [
       {
         "config": "project",

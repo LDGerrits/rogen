@@ -109,14 +109,16 @@ describe("fmt-project command", () => {
 			JSON.parse(String(call[0]))
 		);
 		expect(first).toEqual({
+			changed: true,
 			files: [
 				{
 					file: "/repo/rogen.json",
-					outcome: "formatted",
+					outcome: "wrote",
 					diagnostics: [],
 				},
 			],
 		});
+		expect(second.changed).toBe(false);
 		expect(second.files[0].outcome).toBe("unchanged");
 		expect(print).toHaveBeenCalledTimes(2);
 	});

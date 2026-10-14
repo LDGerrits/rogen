@@ -2,10 +2,11 @@ $ rogen fmt-project --json
 exit 0
 stdout:
   {
+    "changed": true,
     "files": [
       {
         "file": "<dir>/rogen.json",
-        "outcome": "formatted",
+        "outcome": "wrote",
         "diagnostics": []
       }
     ]
@@ -15,6 +16,7 @@ $ rogen fmt-project --json
 exit 0
 stdout:
   {
+    "changed": false,
     "files": [
       {
         "file": "<dir>/rogen.json",

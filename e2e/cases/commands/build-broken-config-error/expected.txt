@@ -10,6 +10,7 @@ $ rogen build broken ok --json
 exit 1
 stdout:
   {
+    "changed": false,
     "configs": [
       {
         "config": "broken",

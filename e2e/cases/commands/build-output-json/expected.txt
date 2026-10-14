@@ -2,6 +2,7 @@ $ rogen build -o game.rbxlx --json
 exit 0
 stdout:
   {
+    "changed": true,
     "configs": [
       {
         "config": "Game",
@@ -33,6 +34,7 @@ $ rogen build -o missing/game.rbxlx --json
 exit 1
 stdout:
   {
+    "changed": false,
     "configs": [
       {
         "config": "Game",

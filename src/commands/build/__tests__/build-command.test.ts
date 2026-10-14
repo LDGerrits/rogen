@@ -562,6 +562,7 @@ describe("build command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(document).toEqual({
+				changed: true,
 				configs: [
 					{
 						config: "repo",
@@ -587,6 +588,7 @@ describe("build command", () => {
 			);
 
 			expect(document.configs[0].outcome).toBe("unchanged");
+			expect(document.changed).toBe(false);
 		});
 
 		it("should list a config's warnings with their codes", async () => {
@@ -721,6 +723,7 @@ describe("build command", () => {
 				ReportedError
 			);
 			expect(document).toEqual({
+				changed: false,
 				configs: [
 					{
 						config: "repo",

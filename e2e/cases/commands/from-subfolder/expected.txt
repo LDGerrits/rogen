@@ -41,6 +41,7 @@ $ rogen build ../../default.project.json --json
 exit 0
 stdout:
   {
+    "changed": false,
     "configs": [
       {
         "config": "project",

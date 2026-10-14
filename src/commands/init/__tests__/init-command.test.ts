@@ -81,10 +81,10 @@ describe("init command", () => {
 				"print",
 			]);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
-				appended: [],
+				changed: true,
 				files: [
-					path.join(cwd, "rogen.json"),
-					path.join(cwd, "AGENTS.md"),
+					{ file: path.join(cwd, "rogen.json"), outcome: "wrote" },
+					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
 				],
 				directories: [path.join(cwd, "src")],
 				built: [
@@ -135,8 +135,10 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
-				appended: [],
-				files: [path.join(cwd, "rogen.json")],
+				changed: true,
+				files: [
+					{ file: path.join(cwd, "rogen.json"), outcome: "wrote" },
+				],
 				directories: [],
 				error: {
 					kind: "io",
@@ -172,7 +174,7 @@ describe("init command", () => {
 			);
 		});
 
-		it("should list an appended agent file under appended in JSON", async () => {
+		it("should mark an appended agent file in JSON", async () => {
 			await write("CLAUDE.md", "Use tabs.\n");
 			const logService = new MockLogService();
 
@@ -180,9 +182,13 @@ describe("init command", () => {
 				json: true,
 			});
 
-			expect(JSON.parse(logService.entries[0].text).appended).toEqual([
-				path.join(cwd, "CLAUDE.md"),
-			]);
+			expect(JSON.parse(logService.entries[0].text).files).toContainEqual(
+				{
+					file: path.join(cwd, "CLAUDE.md"),
+					outcome: "wrote",
+					appended: true,
+				}
+			);
 		});
 	});
 

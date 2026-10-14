@@ -89,7 +89,7 @@ stdout:
       "rogen build --deny-warnings"
     ],
     "output": {
-      "document": "{configs:[BuildEntry],rojo?:RojoEntry}",
+      "document": "{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}",
       "lines": "{build:BuildEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",file:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}"
     },
     "shapes": {
