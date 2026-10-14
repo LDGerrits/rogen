@@ -13,4 +13,15 @@ describe("NativeInputService", () => {
 			""
 		);
 	});
+
+	it("should say it is a terminal only when the stream is one", () => {
+		expect(
+			new NativeInputService(
+				Object.assign(Readable.from([]), { isTTY: true })
+			).isTerminal
+		).toBe(true);
+		expect(new NativeInputService(Readable.from([])).isTerminal).toBe(
+			false
+		);
+	});
 });

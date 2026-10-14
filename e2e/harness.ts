@@ -253,6 +253,7 @@ async function run(
 			timeout: RUN_TIMEOUT_MS,
 			env: childEnv(env),
 		});
+		running.child.stdin?.on("error", () => undefined);
 		running.child.stdin?.end(stdin);
 		const { stdout, stderr } = await running;
 		return { exitCode: 0, stdout, stderr };

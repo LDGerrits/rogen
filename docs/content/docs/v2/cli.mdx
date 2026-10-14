@@ -192,7 +192,7 @@ src/Combat/Server/Hit.luau:12 - function strike
 Stack End
 ```
 
-At the root of several places the same instance exists in each of them. An instance that one file places, which includes a file the places share, is rewritten. One that several files place is left as it is and listed once on stderr with the files and their places, and the exit code stays 0. Run it from inside a place to get that place's answer. `-` takes no other path and no `--json`, and a pipe with nothing to rewrite needs no config.
+At the root of several places the same instance exists in each of them. An instance that one file places, which includes a file the places share, is rewritten. One that several files place is left as it is and listed once on stderr with the files and their places, and the exit code stays 0. Run it from inside a place to get that place's answer. `-` takes no other path and no `--json`, and it needs a pipe, not a terminal. Text with nothing to rewrite needs no config. When a config can't answer, the text is printed as it is and `where` exits 1 with the errors.
 
 Unlike other commands, `where` takes paths, not projects, so it reads the `rogen.json` of the working directory, or of the nearest folder above that has one.
 

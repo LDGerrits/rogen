@@ -28,9 +28,12 @@ export function studioPathsIn(text: string): StudioPath[] {
 				});
 		}
 	found.sort((a, b) => a.start - b.start);
-	return found.filter(
-		(path, at) => at === 0 || path.start >= found[at - 1].end
-	);
+	let end = 0;
+	return found.filter((path) => {
+		if (path.start < end) return false;
+		end = path.end;
+		return true;
+	});
 }
 
 /** `text` with each of `paths` that `fileOf` gives a file for written as `file:line`. */

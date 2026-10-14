@@ -17,7 +17,11 @@ import { LogService } from "../../platform/log/log-service.js";
 import { WhereAnswers } from "./where-answers.js";
 import { whereDocument, whereDocumentShape } from "./where-document.js";
 import { WhereLog } from "./where-log.js";
-import { rewriteStudioPaths, studioPathsIn } from "./studio-paths.js";
+import {
+	StudioPath,
+	rewriteStudioPaths,
+	studioPathsIn,
+} from "./studio-paths.js";
 
 const WhereOptions = [JsonOption] as const;
 
@@ -95,60 +99,92 @@ registerCommand(
 						"Run 'rogen where -' on its own, or name the paths without '-'."
 					)
 				);
-			const logService = accessor.get(LogService);
-			const cwd = accessor.get(EnvironmentService).cwd;
-			const text = await accessor.get(InputService).readAll();
-			const paths = studioPathsIn(text);
-			const files = new Map<string, string>();
-			let failure: DiagnosticsError | undefined;
-			if (paths.length > 0) {
-				const selection = await accessor.get(ConfigService).select([]);
-				if (selection.isErr()) return selection;
-				const spans = new Map(
-					paths.map(({ reference, start, end }) => [
-						reference.text,
-						text.slice(start, end),
-					])
+			const input = accessor.get(InputService);
+			if (input.isTerminal)
+				return err(
+					new UsageError(
+						"'-' reads text on stdin, and stdin is a terminal.",
+						"Pipe the text in, as 'pbpaste | rogen where -'."
+					)
 				);
-				const located = await accessor
-					.get(BuildService)
-					.locate(selection.value, {
-						args: [...spans.values()],
-						cwd,
-					});
-				if (located.isErr()) return located;
-				failure = DiagnosticsError.of(located.value.errors);
-				for (const [instance, candidates] of filesPlacing(
-					located.value
-				)) {
-					if (candidates.size === 1) {
-						const [file] = candidates.keys();
-						files.set(instance, relativeTo(cwd, file));
-					} else
-						logService.warn(
-							`${instance} is placed by more than one file, so it is left as it is: ${[
-								...candidates,
-							]
-								.map(
-									([file, labels]) =>
-										`${[...labels].join(", ")}: ${relativeTo(cwd, file)}`
-								)
-								.join("; ")}.`
-						);
-				}
-			}
-			logService.print(
-				rewriteStudioPaths(text, paths, (name) =>
-					files.get(name)
-				).replace(/\n$/, "")
+			const logService = accessor.get(LogService);
+			const text = await input.readAll();
+			const paths = studioPathsIn(text);
+			const placed =
+				paths.length > 0
+					? await this.filesPlacing(accessor, text, paths)
+					: ok({
+							files: new Map<string, string>(),
+							failure: undefined,
+						});
+			const files = placed.isOk() ? placed.value.files : new Map();
+			const rewritten = rewriteStudioPaths(text, paths, (name) =>
+				files.get(name)
+			).replace(/\r?\n$/, "");
+			if (rewritten !== "") logService.print(rewritten);
+			if (placed.isErr()) return placed;
+			return placed.value.failure
+				? err(placed.value.failure)
+				: ok(undefined);
+		}
+
+		/** The file that places each instance in `paths`, relative to the working directory; one that several files place is warned about and left out. Fails when no config can answer; carries the errors of those that didn't load. */
+		private async filesPlacing(
+			accessor: ServicesAccessor,
+			text: string,
+			paths: readonly StudioPath[]
+		): Promise<
+			Result<
+				{
+					files: Map<string, string>;
+					failure: DiagnosticsError | undefined;
+				},
+				Error
+			>
+		> {
+			const cwd = accessor.get(EnvironmentService).cwd;
+			const selection = await accessor.get(ConfigService).select([]);
+			if (selection.isErr()) return selection;
+			const spans = new Map(
+				paths.map(({ reference, start, end }) => [
+					reference.text,
+					text.slice(start, end),
+				])
 			);
-			return failure ? err(failure) : ok(undefined);
+			const located = await accessor
+				.get(BuildService)
+				.locate(selection.value, { args: [...spans.values()], cwd });
+			if (located.isErr()) return located;
+			const logService = accessor.get(LogService);
+			const files = new Map<string, string>();
+			for (const [instance, candidates] of filesByInstance(
+				located.value
+			)) {
+				if (candidates.size === 1) {
+					const [file] = candidates.keys();
+					files.set(instance, relativeTo(cwd, file));
+				} else
+					logService.warn(
+						`${instance} is placed by more than one file, so it is left as it is: ${[
+							...candidates,
+						]
+							.map(
+								([file, labels]) =>
+									`${[...labels].join(", ")}: ${relativeTo(cwd, file)}`
+							)
+							.join("; ")}.`
+					);
+			}
+			return ok({
+				files,
+				failure: DiagnosticsError.of(located.value.errors),
+			});
 		}
 	}
 );
 
 /** For each instance asked about: the files that place it, each with the configs it is placed in. Instances no file places are left out. */
-function filesPlacing(
+function filesByInstance(
 	locations: Locations
 ): Map<string, Map<string, Set<string>>> {
 	const placing = new Map<string, Map<string, Set<string>>>();

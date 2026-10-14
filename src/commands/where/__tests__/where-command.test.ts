@@ -497,6 +497,43 @@ describe("where command", () => {
 			});
 		});
 
+		it("should keep a Windows line ending and print nothing for empty input", async () => {
+			await writeConfig("rogen.json", { routes: ROUTES });
+			await write("src/Inventory/Server/Save.luau");
+
+			await pipe("a\r\nServerScriptService.Inventory.Save:1\r\n");
+			expect(text()).toBe("a\r\nsrc/Inventory/Server/Save.luau:1");
+
+			logService.clear();
+			await pipe("");
+			expect(logService.texts("print")).toEqual([]);
+		});
+
+		it("should print the text as it is, then fail, when no config can answer", async () => {
+			const result = await pipe(
+				"ServerScriptService.Inventory.Save:12: x"
+			);
+
+			expect(result.isErr()).toBe(true);
+			expect(text()).toBe("ServerScriptService.Inventory.Save:12: x");
+		});
+
+		it("should fail for - when stdin is a terminal", async () => {
+			const harness = commandHarness({
+				fs,
+				input: new MockInputService("", true),
+			});
+			const result = await harness.run("where", {
+				positionals: ["-"],
+				options: {},
+			});
+
+			expect(result.isErr()).toBe(true);
+			expect((result as { error: Error }).error).toBeInstanceOf(
+				UsageError
+			);
+		});
+
 		describe("when the line is wrong", () => {
 			it("should fail for - beside another argument", async () => {
 				const result = await pipe("", "src");
