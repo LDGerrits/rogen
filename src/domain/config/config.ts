@@ -32,12 +32,10 @@ export interface RogenConfig {
 	readonly placePaths?: string[];
 }
 
-/** Anything that holds config values by field name, such as a config model. */
 interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
 
-/** What `values` holds under the top-level field `key`, typed as the config declares it. */
 export function fieldOf<K extends keyof RogenConfig>(
 	values: ConfigValues,
 	key: K
@@ -45,16 +43,13 @@ export function fieldOf<K extends keyof RogenConfig>(
 	return values.getValue<RogenConfig[K]>(key);
 }
 
-/** The file names a folder's config goes by. */
 export const CONFIG_FILE_NAMES: readonly string[] = [
 	"rogen.json",
 	"rogen.jsonc",
 ];
 
-/** The config a folder starts with. */
 export const DEFAULT_CONFIG_FILE = "rogen.json";
 
-/** Whether `fileName` is the name of a config file. */
 export const isConfigFileName = (fileName: string): boolean =>
 	CONFIG_FILE_NAMES.includes(fileName);
 
@@ -68,28 +63,24 @@ export const DEFAULT_SOURCE_PATH = "src";
 /** The project that is the description itself, which no entry of `projects` may take the name of. */
 export const DEFAULT_PROJECT = "default";
 
-/** The project file a folder's config writes beside itself. */
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
-/** The keys that stand for the whole config, which a project can't change. */
 export const ROOT_ONLY_KEYS: readonly string[] = [
 	"projects",
 	"serveProject",
 	"placePaths",
 ];
 
-/** The port the first place without a `servePort` is served on, which is Rojo's own default. */
+/** Rojo's default port, given to the first place without a `servePort`. */
 export const FIRST_PLACE_PORT = 34872;
 
-/** What a project's name may be, since the name is the stem of the file written. */
 export const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
-/** The schema a config written by this release points at. */
 export const SCHEMA_URL = schemaUrlFor("2.0.0-beta.1");
 
-/** Where a release's configs point: its major, except a pre-release of a later minor or patch, which may add fields its major doesn't have yet. */
+/** A release's schema channel: its major, or the exact version of a pre-release that is not x.0.0-. */
 export function schemaChannel(version: string): string {
 	const exact = version.includes("-") && !/^\d+\.0\.0-/.test(version);
 	return exact ? version : version.split(".")[0];
@@ -99,20 +90,17 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
-/** The schema a project file written by this release points at. */
 export const PROJECT_SCHEMA_URL = SCHEMA_URL.replace(/[^/]+$/, "project.json");
 
-/** A config file's text as Rogen writes one: strict JSON that points at this release's schema. */
 export function configFileContent(config: RogenConfig): string {
 	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }
 
-/** How a source path overlaps another of `sourcePaths`; a file under both would belong to both. */
 type SourcePathOverlap =
 	| { readonly kind: "duplicate" }
 	| { readonly kind: "nested"; readonly outer: string };
 
-/** How the source path at `index` overlaps an earlier or enclosing one, if it does. All paths absolute. */
+/** How the source path at `index` overlaps an earlier or enclosing one. Paths are absolute. */
 export function sourcePathOverlap(
 	sourcePaths: readonly string[],
 	index: number

@@ -11,7 +11,6 @@ import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 
-/** Collects what the setups write and say, and checks it against the directory once. */
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
@@ -29,7 +28,6 @@ export class InitPlanBuilder {
 		private readonly asked: boolean
 	) {}
 
-	/** The config the project starts with. */
 	setConfig(config: RogenConfig): void {
 		this.config = {
 			fileName: DEFAULT_CONFIG_FILE,
@@ -37,19 +35,16 @@ export class InitPlanBuilder {
 		};
 	}
 
-	/** Rogen's rules for agents, written last; the one existing file `init` adds to. */
 	addAgentFile(file: AgentFile): void {
 		this.agentFile = file.planned;
 		this.agentStep = file.nextStep;
 	}
 
-	/** The hook's script and the agents' files, written after the agent rules. */
 	addAgentHook(hooks: AgentHooks): void {
 		this.hookFiles = hooks.files;
 		this.addSetup(...hooks.setup);
 	}
 
-	/** A source path this run chose, which `write` creates if it isn't there. */
 	addDirectory(directory: string): void {
 		this.directories.add(directory);
 	}
@@ -58,12 +53,11 @@ export class InitPlanBuilder {
 		this.notes.push(note);
 	}
 
-	/** One-time edits; the same edit from two setups is said once. */
+	/** The same edit from two setups is said once. */
 	addSetup(...lines: readonly string[]): void {
 		for (const line of lines) this.setup.add(line);
 	}
 
-	/** Long-running commands, each for its own terminal. */
 	addRun(...commands: readonly string[]): void {
 		this.run.push(...commands);
 	}
@@ -76,7 +70,6 @@ export class InitPlanBuilder {
 		this.edits.push(...lines);
 	}
 
-	/** Fails when the config it would write already exists. */
 	build(): Result<InitPlan, Diagnostic[]> {
 		const written = this.config ? [this.config] : [];
 		const taken = this.directory.checkFree(
@@ -99,7 +92,6 @@ export class InitPlanBuilder {
 				setup: [...this.setup],
 				run: [...this.run],
 				darklua: [...this.darklua],
-				// Before the edits that always come last.
 				edits: [
 					...(this.agentStep ? [this.agentStep] : []),
 					...this.edits,

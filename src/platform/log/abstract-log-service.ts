@@ -32,7 +32,7 @@ export abstract class AbstractLogService implements LogService {
 	protected level: LogLevel = LogLevel.Info;
 	private frameOpen = false;
 
-	/** Diagnostics are written relative to `cwd` when one is given. Annotations are written when `annotationsIn` names the folder their paths are relative to. */
+	/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to. */
 	constructor(
 		private readonly cwd?: string,
 		private readonly annotationsIn?: string
@@ -66,7 +66,6 @@ export abstract class AbstractLogService implements LogService {
 		return result;
 	}
 
-	// Walks the cause chain so wrapped errors aren't silently dropped.
 	private formatError(error: Error): string {
 		const parts = [error.stack || error.message];
 		const seen = new Set<unknown>([error]);

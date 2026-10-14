@@ -10,7 +10,6 @@ import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { TreeChoice } from "./tree-plan.js";
 
-/** One thing `init` can add beside the config here, and what adding it does. */
 export interface AdditionOption<T> {
 	readonly id: string;
 	readonly label: string;
@@ -27,15 +26,12 @@ const splitList = (value: string): string[] =>
 		.map((entry) => entry.trim())
 		.filter((entry) => entry !== "");
 
-/** The questions `init` asks; each owns its default, which a run that can't ask takes without prompting. */
 export class InitQuestions {
-	/** `interactive` is false for a run that may not ask, even in a terminal. */
 	constructor(
 		private readonly promptService: PromptService,
 		readonly interactive: boolean
 	) {}
 
-	/** Whether to start a project below `enclosing`'s configs; a run that can't ask never does. */
 	async startNestedProject({
 		directory,
 		fileNames,
@@ -49,7 +45,6 @@ export class InitQuestions {
 		});
 	}
 
-	/** How to list a place in `placePaths`: the glob that matches its parent's folders (the default), or the folder itself; a run that can't ask takes the glob. */
 	async placeListing(
 		glob: string,
 		folder: string
@@ -74,7 +69,6 @@ export class InitQuestions {
 				: folder;
 	}
 
-	/** What to add beside the config in `configFile`, among `options`, which are never empty; a run that can't ask takes the first, as Enter does. */
 	async whatToAdd<T>(
 		configFile: string,
 		options: readonly AdditionOption<T>[]
@@ -93,7 +87,6 @@ export class InitQuestions {
 		return options.find((option) => option.id === id)?.addition;
 	}
 
-	/** Whether to add Rogen's rules to the agent file; a run that can't ask adds them, as Enter does. */
 	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {
 		if (!this.interactive) return true;
 		return this.promptService.confirm({
@@ -104,7 +97,6 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether to add the hook that reports Rogen warnings to `agents`; a run that can't ask doesn't, since it edits the repo's tooling. */
 	async addAgentHook(
 		agents: readonly string[]
 	): Promise<boolean | undefined> {
@@ -116,7 +108,6 @@ export class InitQuestions {
 		});
 	}
 
-	/** The language the project is written in, the detected one unless told otherwise. */
 	async language({
 		workspace,
 	}: InitDirectory): Promise<Language | undefined> {
@@ -136,7 +127,6 @@ export class InitQuestions {
 		return id === undefined ? undefined : workspace.languageFor(id);
 	}
 
-	/** Whether Darklua processes the code, as it does when the workspace has a config for it. */
 	darklua({ workspace }: InitDirectory): Promise<boolean | undefined> {
 		const found = workspace.darkluaConfig !== undefined;
 		if (!this.interactive) return Promise.resolve(found);
@@ -149,7 +139,6 @@ export class InitQuestions {
 		});
 	}
 
-	/** The folders of the project's code. */
 	async sourcePaths(
 		directory: InitDirectory,
 		language: Language
@@ -180,7 +169,6 @@ export class InitQuestions {
 			: splitList(answer).map(normalizeDir);
 	}
 
-	/** Lifts the hand-written project file the config would replace, else starts a new tree. */
 	async tree(directory: InitDirectory): Promise<TreeChoice | undefined> {
 		if (!directory.hasHandWrittenProject) return { kind: "new" };
 		const lift: TreeChoice = { kind: "lift", from: DEFAULT_PROJECT_FILE };
@@ -207,7 +195,6 @@ export class InitQuestions {
 		return answer === "lift" ? lift : { kind: "new" };
 	}
 
-	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in one of the `read` folders, the source paths and a compiler's output, or Darklua would write over what is read. */
 	async syncPath(
 		{ workspace }: InitDirectory,
 		read: readonly string[]
@@ -235,7 +222,6 @@ export class InitQuestions {
 		return answer === undefined ? undefined : normalizeDir(answer);
 	}
 
-	/** What the packages question offers: the package manager's folders, then the language's own. */
 	private offeredMounts(
 		directory: InitDirectory,
 		language: Language
@@ -254,7 +240,6 @@ export class InitQuestions {
 		return { path, optional: !installed, landing };
 	}
 
-	/** The language's always-mounted folders plus the offered ones in `ticked`. */
 	private selectMounts(
 		directory: InitDirectory,
 		language: Language,
@@ -268,7 +253,6 @@ export class InitQuestions {
 		];
 	}
 
-	/** The folders placed in the game as they are; a run that can't ask takes the ones that start ticked. */
 	async mounts(
 		directory: InitDirectory,
 		language: Language
@@ -277,7 +261,6 @@ export class InitQuestions {
 		const startsTicked = offered
 			.filter(({ ticked }) => ticked)
 			.map(({ path }) => path);
-		// With no package manager and no package folder there is nothing to ask about, and Enter would tick nothing.
 		const nothingToMount =
 			directory.workspace.packageManager === undefined &&
 			!offered.some(({ installed }) => installed);

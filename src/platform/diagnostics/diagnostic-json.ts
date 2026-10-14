@@ -16,22 +16,17 @@ export interface DiagnosticJson {
 	readonly severity: "error" | "warning";
 	readonly code: string;
 	readonly message: string;
-	/** The code's section on the diagnostics page. */
 	readonly url: string;
-	/** As the diagnostic's, with native paths. */
 	readonly related?: readonly {
 		readonly file: string;
 		readonly message: string;
 	}[];
-	/** As the diagnostic's, with native paths. */
 	readonly fixes?: readonly DiagnosticFix[];
 }
 
-/** The anchor of `code`'s section on the diagnostics page: `route.dotRoute` is `route-dotroute`. */
 const diagnosticAnchor = (code: string): string =>
 	code.replace(".", "-").toLowerCase();
 
-/** The form a `--json` run prints. */
 export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 	const { resource, position, severity, code, message, related, fixes } =
 		diagnostic;
@@ -52,7 +47,6 @@ export function diagnosticToJson(diagnostic: Diagnostic): DiagnosticJson {
 	};
 }
 
-/** A fix with native paths, as a `--json` run prints it. */
 export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
 	if (isRenameFix(fix)) {
 		return {
@@ -71,7 +65,6 @@ export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
 	};
 }
 
-/** The document a `--json` run prints for `diagnostics`. */
 export function diagnosticsJson(diagnostics: readonly Diagnostic[]): {
 	readonly diagnostics: DiagnosticJson[];
 } {

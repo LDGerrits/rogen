@@ -19,21 +19,16 @@ import {
 
 export interface ResolvedConfigSpec {
 	readonly file?: string;
-	/** `default`, or the name of a project. */
 	readonly stem?: string;
-	/** Every project the config file writes. */
 	readonly projectStems?: readonly string[];
 	readonly serveProject?: string;
 	readonly name?: string;
 	readonly sourcePaths?: readonly string[];
 	readonly routes?: Readonly<Record<string, string>>;
-	/** Globs on absolute POSIX paths. */
 	readonly ignored?: readonly string[];
-	/** The Rojo project file the config describes; a bare DataModel without one. */
 	readonly project?: Readonly<Record<string, unknown>>;
 	readonly syncPath?: string;
 	readonly warnings?: readonly Diagnostic[];
-	/** The config file that lists this one as a place. */
 	readonly rootFile?: string;
 	readonly isPlace?: boolean;
 	readonly hasPlaces?: boolean;
@@ -70,7 +65,6 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	});
 }
 
-/** A config that loads, with a project for each name in `projects`, which are the description with `changes` over it. */
 export function mockEntry(
 	resolved: ResolvedConfigSpec = {},
 	file = "/repo/rogen.json",
@@ -95,7 +89,6 @@ export function mockEntry(
 	};
 }
 
-/** A config whose latest load failed with `errors`; `lastValid` is what a watch keeps building. */
 export function brokenEntry(
 	errors: readonly Diagnostic[],
 	file = "/repo/rogen.json",
@@ -112,7 +105,6 @@ export function brokenEntry(
 	};
 }
 
-/** A selection of valid `configs`. */
 export function selectionOf(
 	...configs: readonly ResolvedConfig[]
 ): MockConfigSelection {
@@ -126,7 +118,6 @@ export function selectionOf(
 	);
 }
 
-/** A selection of fixed entries; a reload changes nothing. */
 export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
 	readonly followedFolder = undefined;

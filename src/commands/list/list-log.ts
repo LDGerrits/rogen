@@ -16,7 +16,6 @@ import {
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 
-/** The server that a running serve serves each project file with, by the project file; none for one nothing serves. */
 export type ServingByConfig = ReadonlyMap<string, ServingNow | undefined>;
 
 /** A running serve in words: `Rojo at 127.0.0.1:34872, 1 Studio connected`. */
@@ -32,17 +31,13 @@ const servingLine = ({ server, host, port, clients }: ServingNow): string =>
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
-/** The resolved routes as `key -> target`, in the config's order. */
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
-/** One project of a config, as `--json` lists it. */
 interface ListedProject {
 	readonly name: string;
 	readonly file: string;
-	/** Whether `rogen serve` serves it when no project is named. */
 	readonly served: boolean;
-	/** The port a place's project is served on; absent for anything that is not a place. */
 	readonly port?: number;
 	readonly serving: ListedServing | null;
 }
@@ -54,7 +49,6 @@ interface ListedServing {
 	readonly clients: number | null;
 }
 
-/** What `--json` lists of a config that loads, fully resolved. */
 interface ConfigDetails {
 	readonly projectName: string;
 	readonly sourcePaths: readonly string[];
@@ -63,44 +57,34 @@ interface ConfigDetails {
 	readonly globIgnorePaths: readonly string[];
 	readonly syncPath: string | null;
 	readonly projectFile: string;
-	/** The server a running serve serves the project file with, and how many Studio plugins are connected to it when it says. */
 	readonly serving: ListedServing | null;
-	/** Every project the config writes, `default` first. */
 	readonly projects: readonly ListedProject[];
 }
 
-/** What `--json` lists of a place of a config. */
 interface ListedPlace extends ConfigDetails {
 	readonly place: string;
-	/** The place's folder. */
 	readonly folder: string;
 }
 
-/** What `--json` lists of one config: where it is, whether it loads, and its details when it does. */
 interface ListedConfig extends Partial<ConfigDetails> {
 	readonly config: string;
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
-	/** Whether `rogen serve` starts a server for it: it loads. */
 	readonly served: boolean;
-	/** The places it lists, when it lists any. */
 	readonly places?: readonly ListedPlace[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-/** What `list --json` prints. */
 interface ListDocument {
 	readonly configs: readonly ListedConfig[];
 }
 
-/** The configs a run read: as lines relative to the working dir, or as one JSON document with an entry per config. */
 export class ListLog {
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
 	) {}
 
-	/** The run's result when some configs are broken; none when every one loads. */
 	static failure(entries: readonly ConfigEntry[]): Error | undefined {
 		const broken = entries.filter(
 			({ status }) => status === "broken"
@@ -114,7 +98,6 @@ export class ListLog {
 		);
 	}
 
-	/** The intro, one block per config (its file, then its values or its errors) and one per place, and the closing line when every config loads. `home` is the folder the configs are read from. */
 	print(
 		entries: readonly ConfigEntry[],
 		home?: string,

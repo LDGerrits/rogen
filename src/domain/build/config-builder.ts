@@ -21,17 +21,15 @@ export interface BuiltConfig {
 	readonly projectFile: RojoProjectFile;
 	readonly findings: BuildFindings;
 	readonly summary: BuildSummary;
-	/** The files whose contents the build read, which a change to must rebuild it. */
+	/** The files the build read; a change to one must rebuild it. */
 	readonly readFiles: readonly string[];
 }
 
-/** What `examine` found for one config: it assembled, with the warnings the build raises (without the sync path's), or a meta or assembly error stopped it. */
 type ExaminedConfig =
 	| {
 			readonly kind: "assembled";
 			readonly placement: Placement;
 			readonly projectFile: RojoProjectFile;
-			/** The files read to assemble the project file. */
 			readonly readFiles: readonly string[];
 			readonly warnings: readonly Diagnostic[];
 	  }
@@ -84,7 +82,7 @@ export class ConfigBuilder {
 		});
 	}
 
-	/** Runs every phase of `build` but the sync path check, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the sync path check. A meta or assembly error doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {

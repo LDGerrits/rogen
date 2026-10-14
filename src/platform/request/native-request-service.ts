@@ -25,7 +25,7 @@ function failureOf(error: unknown): RequestFailure {
 		: "failed";
 }
 
-/** Speaks HTTP over Node's own client, not `fetch`, which refuses ports a browser would, such as 6000 or 10080. */
+/** HTTP over Node's own client, as `fetch` refuses ports a browser would, such as 6000 or 10080. */
 export class NativeRequestService implements RequestService {
 	declare readonly _serviceBrand: undefined;
 

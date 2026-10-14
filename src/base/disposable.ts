@@ -2,7 +2,6 @@ export interface Disposable {
 	[Symbol.dispose](): void;
 }
 
-/** Does nothing when disposed. */
 export const NullDisposable: Disposable = Object.freeze({
 	[Symbol.dispose]() {},
 });

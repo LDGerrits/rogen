@@ -11,7 +11,6 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
-/** What every answer about a path carries, whichever way it lands. */
 interface FileEntryBase {
 	readonly config: string;
 	readonly source: string;
@@ -19,7 +18,6 @@ interface FileEntryBase {
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-/** What a location adds to its source, by status. */
 type LocationFields =
 	| {
 			readonly status: "placed";
@@ -54,31 +52,24 @@ type LocationFields =
 				| "empty";
 	  };
 
-/** One config's answer about a path. */
 export type WhereFileEntry = FileEntryBase & LocationFields;
 
-/** One config's answer about an instance no file places. */
 interface WhereInstanceEntry {
 	readonly config: string;
 	readonly instance: string;
 	readonly status: "noFile";
-	/** Where a new file for it goes. */
 	readonly folders?: readonly string[];
-	/** The renames that would place it. */
 	readonly fixes?: readonly ReturnType<typeof fixToJson>[];
 	readonly diagnostics: readonly [];
 }
 
 type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 
-/** Where each path lands, config by config, as one JSON document. */
 interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
-	/** Why the configs that didn't load did not answer. */
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-/** What `location` adds to its source and status in the document. */
 function fieldsOf(location: FileLocation): LocationFields {
 	switch (location.status) {
 		case "placed": {
@@ -150,7 +141,6 @@ function entryOf(answer: Answer): WhereEntry {
 	};
 }
 
-/** One entry per config and path, in the order the text form lists the paths. */
 export function whereDocument(answers: WhereAnswers): WhereDocument {
 	return {
 		locations: answers.bySource().flat().map(entryOf),

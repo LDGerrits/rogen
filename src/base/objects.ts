@@ -8,7 +8,7 @@ export function isObject(obj: unknown): obj is Record<string, unknown> {
 	);
 }
 
-/** Sets `key` on `target` as an own property, so a key such as `__proto__` is kept as data instead of reaching the prototype. */
+/** Sets `key` as an own property, so `__proto__` stays data. */
 export function setOwn<T>(
 	target: Record<string, T>,
 	key: string,
@@ -22,7 +22,7 @@ export function setOwn<T>(
 	});
 }
 
-/** The own property `key` of `source`; what the prototype chain holds under the name does not count. */
+/** The own property `key` of `source`, ignoring the prototype chain. */
 export function getOwn<T>(
 	source: Readonly<Record<string, T>>,
 	key: string
@@ -30,7 +30,7 @@ export function getOwn<T>(
 	return Object.hasOwn(source, key) ? source[key] : undefined;
 }
 
-/** `base` with `patch` applied as JSON merge patch does: objects merge by key, anything else replaces, and `null` removes the key. Lists replace. Leaves both alone. */
+/** `base` with `patch` applied as JSON merge patch; lists replace and neither input changes. */
 export function mergePatch(
 	base: Readonly<Record<string, unknown>>,
 	patch: Readonly<Record<string, unknown>>
@@ -40,7 +40,6 @@ export function mergePatch(
 	return merged;
 }
 
-/** Applies `patch` to `target`, which is the caller's own copy. */
 function applyPatch(
 	target: Record<string, unknown>,
 	patch: Readonly<Record<string, unknown>>

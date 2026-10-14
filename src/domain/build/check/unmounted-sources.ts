@@ -12,7 +12,7 @@ import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { rojoPathTarget } from "../../rojo/rojo-project.js";
 
-/** A config without routes routes nothing and scans no source path, so the files Rojo reads in the folder it would have scanned go unsynced unless its tree mounts them. */
+/** Finds the files Rojo reads in the folder a config without routes would have scanned, which go unsynced unless its tree mounts them. */
 export class UnmountedSources {
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -44,7 +44,6 @@ export class UnmountedSources {
 				];
 	}
 
-	/** Every file below `dir`, as POSIX paths. */
 	private filesIn(dir: string): string[] {
 		const entries = this.index.getEntries(dir);
 		if (!entries) return [];

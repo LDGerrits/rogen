@@ -53,7 +53,6 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
 
-			// The positionals are paths, so the config here is read.
 			const selection = await configService.select([]);
 			if (selection.isErr()) return selection;
 			const located = await buildService.locate(selection.value, {

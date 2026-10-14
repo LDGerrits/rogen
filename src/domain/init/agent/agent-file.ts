@@ -5,18 +5,16 @@ const AGENTS_MD = "AGENTS.md";
 const CLAUDE_MD = "CLAUDE.md";
 const MARKER = "<!-- rogen -->";
 
-/** The file a repo's coding agents read, which takes Rogen's rules: `AGENTS.md`, else a lone `CLAUDE.md`, else a new `AGENTS.md`. */
+/** The file a repo's coding agents read: `AGENTS.md`, else a lone `CLAUDE.md`, else a new `AGENTS.md`. */
 export class AgentFile {
 	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD] as const;
 
 	private constructor(
 		readonly fileName: string,
 		private readonly text: string | undefined,
-		/** A `CLAUDE.md` beside `AGENTS.md`, which may already hold the block, or not import it. */
 		private readonly claudeText: string | undefined
 	) {}
 
-	/** One file only: a `CLAUDE.md` that imports `AGENTS.md` would load the rules twice. `textOf` gives the text of each of `FILE_NAMES`, or `undefined` when it isn't there. */
 	static choose(textOf: (fileName: string) => string | undefined): AgentFile {
 		const agentsText = textOf(AGENTS_MD);
 		const claudeText = textOf(CLAUDE_MD);
@@ -27,14 +25,13 @@ export class AgentFile {
 			: new AgentFile(AGENTS_MD, undefined, undefined);
 	}
 
-	/** Whether either agent file already holds the block, so a second copy would load twice. */
 	get hasBlock(): boolean {
 		return [this.text, this.claudeText].some(
 			(text) => text?.includes(MARKER) ?? false
 		);
 	}
 
-	/** The file with the block appended after a blank line, every byte before it kept, or the block alone. */
+	/** Appended after a blank line, every byte before it kept. */
 	get planned(): PlannedFile {
 		if (this.text === undefined)
 			return { fileName: this.fileName, content: agentBlock };
@@ -47,7 +44,7 @@ export class AgentFile {
 		};
 	}
 
-	/** Claude Code reads `CLAUDE.md`, so one beside `AGENTS.md` has to import it to see the rules. */
+	/** Claude Code reads `CLAUDE.md`, not `AGENTS.md`, so a `CLAUDE.md` beside it must import it. */
 	get nextStep(): string | undefined {
 		return this.claudeText !== undefined &&
 			!this.claudeText.includes(`@${AGENTS_MD}`)

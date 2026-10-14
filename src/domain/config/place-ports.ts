@@ -2,7 +2,7 @@ import { FIRST_PLACE_PORT } from "./config.js";
 
 /** The ports places are served on when they pin none. */
 export class PlacePorts {
-	/** For each place in the order given, `undefined` when it pins a port, else the first port from 34872 that no place pins, no `reserved` port is and no earlier place took. */
+	/** For each place, `undefined` when it pins a port, else the first free port from 34872 that no pin, `reserved` port or earlier place takes. */
 	static assign(
 		pinned: readonly (number | undefined)[],
 		reserved: Iterable<number> = []
@@ -16,7 +16,7 @@ export class PlacePorts {
 		);
 	}
 
-	/** The first port from 34872 that is not in `taken`, which now includes it. */
+	/** The first port from 34872 not in `taken`, which it is added to. */
 	static firstFree(taken: Set<number>): number {
 		let port = FIRST_PLACE_PORT;
 		while (taken.has(port)) port++;
@@ -24,7 +24,6 @@ export class PlacePorts {
 		return port;
 	}
 
-	/** `value` when it is a port a place can pin. */
 	static pinnedBy(value: unknown): number | undefined {
 		return typeof value === "number" &&
 			Number.isInteger(value) &&

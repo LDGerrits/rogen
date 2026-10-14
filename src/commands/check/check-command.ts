@@ -60,7 +60,6 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
 
-			// The positionals are paths, so the config here is read.
 			const selection = await configService.select([]);
 			if (selection.isErr()) return selection;
 			const found = await buildService.diagnose(
@@ -84,7 +83,6 @@ registerCommand(
 					},
 					failure
 				);
-			// The findings are what was asked for, so they go to stdout and survive --quiet.
 			for (const diagnostic of failure?.diagnostics ?? []) {
 				logService.print(renderDiagnostic(diagnostic, cwd));
 				logService.annotate(diagnostic);

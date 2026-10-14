@@ -16,18 +16,15 @@ const PLAYER_SCRIPT_CONTAINERS: readonly string[] = [
 	"StarterCharacterScripts",
 ];
 
-/** The services whose contents never replicate to clients. */
 const SERVER_ONLY_SERVICES: readonly string[] = [
 	"ServerScriptService",
 	"ServerStorage",
 ];
 
-/** Whether everything in the service stays on the server. */
 export function isServerOnlyService(service: string): boolean {
 	return SERVER_ONLY_SERVICES.includes(service);
 }
 
-/** The services where a legacy Script runs. */
 const SERVER_SCRIPT_SERVICES: readonly string[] = [
 	"ServerScriptService",
 	"Workspace",
@@ -44,13 +41,10 @@ const CLIENT_SCRIPT_SERVICES: readonly string[] = [
 export type ScriptRun =
 	"Script" | "LocalScript" | "Server" | "Client" | "Plugin";
 
-/** Where scripts are kept for code to clone out, so a script there that never runs isn't a mistake. */
 const SCRIPT_STORAGE_SERVICE = "ServerStorage";
 
-/** Where each kind of script runs, as a sentence for a warning about one that doesn't. */
 export const WHERE_SCRIPTS_RUN = `A Script runs in ${joinedWithOr(SERVER_SCRIPT_SERVICES)}, and a LocalScript in ${joinedWithOr([...PLAYER_SCRIPT_CONTAINERS, ...CLIENT_SCRIPT_SERVICES])}. A Script with RunContext Client never runs in ${joinedWithOr(SERVER_ONLY_SERVICES.filter((service) => service !== SCRIPT_STORAGE_SERVICE))}, which clients can't see.`;
 
-/** What becomes of a script that runs as `run` at `instancePath`: it runs, it is stored for code to clone out, or it never runs. */
 export function scriptFate(
 	run: ScriptRun,
 	instancePath: readonly string[]
@@ -59,7 +53,6 @@ export function scriptFate(
 	return instancePath[0] === SCRIPT_STORAGE_SERVICE ? "stored" : "neverRuns";
 }
 
-/** Whether `instancePath` starts at StarterPlayer's or the character's script container. */
 function isPlayerScriptContainer(instancePath: readonly string[]): boolean {
 	const [service, child] = instancePath;
 	return (
@@ -67,7 +60,6 @@ function isPlayerScriptContainer(instancePath: readonly string[]): boolean {
 	);
 }
 
-/** Whether a script that runs as `run` ever runs at `instancePath`, as Roblox documents it; no script runs from ServerStorage. */
 function scriptRunsAt(
 	run: ScriptRun,
 	instancePath: readonly string[]
@@ -84,14 +76,12 @@ function scriptRunsAt(
 		case "Server":
 			return service !== SCRIPT_STORAGE_SERVICE;
 		case "Client":
-			// Clients never receive what is in a server-only service.
 			return !isServerOnlyService(service);
 		case "Plugin":
 			return true;
 	}
 }
 
-/** Where a route puts files: a service Rojo can write to, and the folders below it. */
 export class Target {
 	constructor(
 		readonly service: SupportedService,
@@ -131,7 +121,6 @@ export class Target {
 		return ok(new Target(service, folders));
 	}
 
-	/** The service a misspelled one most likely meant; a player script container is reached through StarterPlayer. */
 	private static serviceFor(name: string): string | undefined {
 		const container = closestMatch(name, PLAYER_SCRIPT_CONTAINERS);
 		if (container) return `StarterPlayer/${container}`;
@@ -142,7 +131,6 @@ export class Target {
 		return [this.service, ...this.folders];
 	}
 
-	/** Whether the target is StarterPlayer's or the character's script container, where scripts run only with legacy run contexts. */
 	get isPlayerScripts(): boolean {
 		return isPlayerScriptContainer(this.instancePath);
 	}
@@ -152,7 +140,6 @@ export class Target {
 	}
 }
 
-/** Luau's reserved words, which can't be written after a dot. */
 const RESERVED_WORDS: ReadonlySet<string> = new Set([
 	"and",
 	"break",
@@ -177,7 +164,6 @@ const RESERVED_WORDS: ReadonlySet<string> = new Set([
 	"while",
 ]);
 
-/** The containers whose contents Roblox clones into the player or character at runtime, so their edit-time path is not where the code that runs finds them. */
 const CLONED_AT_RUNTIME: readonly {
 	readonly container: readonly string[];
 	readonly into: string;
@@ -194,7 +180,7 @@ const CLONED_AT_RUNTIME: readonly {
 	{ container: ["StarterPack"], into: "each player" },
 ];
 
-/** Why nothing under a container that is cloned at runtime can be reached by its path, such as `StarterPlayerScripts is cloned into each player`; `undefined` anywhere else. */
+/** Why a path under a runtime-cloned container can't be required, or `undefined` elsewhere. */
 export function whyNotRequirable(
 	instancePath: readonly string[]
 ): string | undefined {
@@ -207,7 +193,7 @@ export function whyNotRequirable(
 	);
 }
 
-/** The Luau expression that reaches the instance at `instancePath`, as `game:GetService("ReplicatedStorage").Shared.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is reserved. `undefined` under the containers cloned at runtime, where that path names the template and not the copy. */
+/** The Luau expression that reaches `instancePath`, or `undefined` under a runtime-cloned container. */
 export function requireExpression(
 	instancePath: readonly string[]
 ): string | undefined {
@@ -247,7 +233,7 @@ export class InstanceReference {
 		readonly namesScript = false
 	) {}
 
-	/** Reads a pasted error line or stack frame: a quoted name is taken from its quotes, a leading `game.` and everything from the first `:` go. `undefined` unless it starts with a supported service. */
+	/** Reads a pasted error line or stack frame; `undefined` unless it starts with a supported service. */
 	static parse(input: string): InstanceReference | undefined {
 		const quote = InstanceReference.QUOTED.exec(input);
 		const unquoted = input
@@ -277,7 +263,7 @@ export class InstanceReference {
 		return this.text.split(this.separator)[0];
 	}
 
-	/** Whether `instancePath` is this instance, or inside it unless a line number says it is a script. Names may hold the separator, so whole keys are compared rather than split segments. */
+	/** Whether `instancePath` is this instance, or inside it unless a line number says it is a script. */
 	contains(instancePath: readonly string[]): boolean {
 		const key = instancePath.join(this.separator);
 		return (
@@ -289,7 +275,6 @@ export class InstanceReference {
 
 const INSTANCE_SEPARATOR = "/";
 
-/** An instance path written as one key, such as `ReplicatedStorage/Shared/Util`. */
 export function instanceKey(instancePath: readonly string[]): string {
 	return instancePath.join(INSTANCE_SEPARATOR);
 }

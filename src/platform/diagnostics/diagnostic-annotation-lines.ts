@@ -35,7 +35,7 @@ function lineOf(annotation: Annotation, workspace: string): string {
 	return `::${command} ${properties.join(",")}::${escapeData(messageRelativeTo(message, workspace))}`;
 }
 
-/** The workflow commands that make GitHub Actions show `diagnostic` on the pull request: one for it, or for each file when it is about several, with paths relative to `workspace`, the folder the repository is checked out in. */
+/** GitHub Actions workflow commands that show `diagnostic` on the pull request, one per file when it is about several. */
 export function diagnosticAnnotationLines(
 	diagnostic: Diagnostic,
 	workspace: string

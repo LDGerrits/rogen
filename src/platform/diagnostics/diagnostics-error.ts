@@ -15,7 +15,6 @@ export class DiagnosticsError extends Error {
 		this.diagnostics = unique;
 	}
 
-	/** The error for `diagnostics`; none when there are none. */
 	static of(
 		diagnostics: readonly Diagnostic[]
 	): DiagnosticsError | undefined {

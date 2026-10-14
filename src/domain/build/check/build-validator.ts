@@ -39,7 +39,6 @@ const ROJO_NODE_FIELDS: ReadonlySet<string> = new Set([
 	"$id",
 ]);
 
-/** The instance paths of the nodes of `node` whose key starts with `$` without being one of Rojo's fields. */
 function reservedKeys(
 	node: RojoNode,
 	at: readonly string[]
@@ -54,7 +53,6 @@ function reservedKeys(
 	});
 }
 
-/** A rename for every noted name that has one, not only the names a message lists. */
 function renames(
 	noted: ReadonlyMap<string, NotedName<unknown>>
 ): DiagnosticFix[] {
@@ -65,7 +63,7 @@ function renames(
 		);
 }
 
-/** Reports on a finished build. It works out what to say from what the phases hold, but never re-decides what they decided. */
+/** Reports on a finished build without re-deciding what its phases decided. */
 export class BuildValidator {
 	private readonly placement: Placement;
 	private readonly config: ResolvedConfig;
@@ -75,7 +73,6 @@ export class BuildValidator {
 		this.config = assembly.placement.config;
 	}
 
-	/** One warning list, in the order the rules run. */
 	validate(): Diagnostic[] {
 		return [
 			...this.missingSourcePath(),
@@ -113,7 +110,6 @@ export class BuildValidator {
 			);
 	}
 
-	/** Routing starts below a source path, so a source path named like a route key routes nothing by that name. */
 	private sourcePathNamedAfterKey(): Diagnostic[] {
 		const configDir = path.dirname(this.config.file);
 		const named = this.config.sourcePaths.flatMap((sourcePath) => {
@@ -126,7 +122,6 @@ export class BuildValidator {
 					sourcePath,
 					shown: toPosix(path.relative(configDir, sourcePath)),
 					key,
-					// A parent inside the project can be the source path itself; the config's own folder or one above it would scan far too much.
 					parent: isInside(parent, configDir)
 						? relativeParent
 						: undefined,
@@ -243,7 +238,6 @@ export class BuildValidator {
 		});
 	}
 
-	/** An `@` means nothing else, so one that routes nowhere is a typo or a misplaced suffix. */
 	private strayAt(): Diagnostic[] {
 		return this.misspelt(
 			"route.strayAt",
@@ -257,7 +251,6 @@ export class BuildValidator {
 		);
 	}
 
-	/** A route key after a dot routes nothing, so what it names falls through to the route above it. */
 	private dotRoute(): Diagnostic[] {
 		return this.misspelt(
 			"route.dotRoute",
@@ -269,7 +262,6 @@ export class BuildValidator {
 		);
 	}
 
-	/** A folder one edit from a declared route key falls through to the route above it, as its files would not if it were spelt right. */
 	private folderTypo(): Diagnostic[] {
 		return this.misspelt(
 			"route.folderTypo",
@@ -280,7 +272,6 @@ export class BuildValidator {
 		);
 	}
 
-	/** One warning for every name with a misspelling of `kind`: `headline` for how many, then a line for each, and the renames that fix them. */
 	private misspelt<K extends MisspellingKind>(
 		code: string,
 		kind: K,
@@ -322,7 +313,6 @@ export class BuildValidator {
 			);
 	}
 
-	/** The files a bare server routing folder holds but a replicating route governs, with the server routes ignored. */
 	private shipped(): { file: RoutedFile; ignored: string[] }[] {
 		const { routes } = this.config;
 		return this.placement.files.flatMap((file) => {
@@ -334,7 +324,6 @@ export class BuildValidator {
 					);
 				}
 			);
-			// A Script's source stays on the server, and a LocalScript is client code to begin with.
 			const isScript =
 				this.placement.readingOf(file).scriptSuffix !== undefined;
 			return ignored.length > 0 &&
@@ -345,7 +334,6 @@ export class BuildValidator {
 		});
 	}
 
-	/** A bare server routing folder that an outer route outranks is an ordinary folder, which sends its modules to clients when the outer route replicates. */
 	private serverCodeShipped(): Diagnostic[] {
 		const shipped = this.shipped();
 		if (shipped.length === 0) return [];
@@ -381,7 +369,6 @@ export class BuildValidator {
 		];
 	}
 
-	/** A script that its class or run context and its service rule out running. ServerStorage holds scripts that code clones out, so it never counts. */
 	private deadScript(): Diagnostic[] {
 		const dead = this.placement.files.flatMap((file) => {
 			const run = this.scriptRunOf(file);
@@ -412,7 +399,6 @@ export class BuildValidator {
 		];
 	}
 
-	/** One warning about the config for a group of things: `headline`, a line for each of `lines`, then the `tail`; `related` names the files for a program. */
 	private grouped(
 		code: string,
 		headline: string,
@@ -444,7 +430,6 @@ export class BuildValidator {
 			: `a Script with RunContext ${run}`;
 	}
 
-	/** Rojo keeps an instance named with a leading `$` but warns of it on every build, since it reserves the sign for its own fields. Only a key the project file gets counts: a file inside a folder written as one `$path` is Rojo's to name. */
 	private reservedName(): Diagnostic[] {
 		const { routed } = this.placement;
 		return reservedKeys(this.assembly.projectFile.tree, []).flatMap(
@@ -489,7 +474,6 @@ export class BuildValidator {
 		);
 	}
 
-	/** Only one file can become an instance, so the others give way to the last. */
 	private instanceClash(): Diagnostic[] {
 		return this.placement.clashes.flatMap(({ instance, winner, losers }) =>
 			losers.map(({ entry }) =>
@@ -502,7 +486,6 @@ export class BuildValidator {
 		);
 	}
 
-	/** Rojo can't give scripts a run context there, so they'd never run. */
 	private runContextTarget(): Diagnostic[] {
 		if (!this.placement.tree.disablesLegacyScripts) return [];
 		const routes = [...this.config.routes]
@@ -519,7 +502,6 @@ export class BuildValidator {
 			: [];
 	}
 
-	/** One warning per file or folder the tree displaced. */
 	private nodeClash(): Diagnostic[] {
 		const clashes = new Map<
 			string,
@@ -540,7 +522,6 @@ export class BuildValidator {
 		);
 	}
 
-	/** Folder meta the build couldn't copy: a file is what Rojo reads at the node, or the tree's `$path` is. */
 	private metaNotCopied(): Diagnostic[] {
 		return this.assembly.metaOutcomes.flatMap((outcome) => {
 			if (outcome.kind === "shared")
@@ -603,7 +584,6 @@ export class BuildValidator {
 		});
 	}
 
-	/** Meta in folders that never become an instance. */
 	private metaAppliesToNothing(): Diagnostic[] {
 		const metas = this.assembly.metaOutcomes.flatMap((outcome) =>
 			outcome.kind === "appliesToNothing"

@@ -12,7 +12,6 @@ import { Setup } from "../setup.js";
 
 export const directory = path.resolve("/mock/my-game");
 
-/** Which folders of the directory hold code, and whether `src` is there. */
 export interface LayoutSpec {
 	readonly codeFolders?: readonly string[];
 	readonly hasSrc?: boolean;
@@ -36,7 +35,6 @@ export function directoryOf(spec: DirectorySpec = {}): InitDirectory {
 	);
 }
 
-/** What `setup` plans for `choices` in `target`. */
 export function planOf<C>(
 	setup: Setup<C>,
 	choices: C,

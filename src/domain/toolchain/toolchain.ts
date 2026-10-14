@@ -1,14 +1,12 @@
 import path from "path";
 import { commonAncestor, toPosix } from "../../base/path.js";
 
-/** What a sync tool writes in place of a `.meta.json`. */
 export interface MetaReplacement {
 	readonly suffix: string;
 	/** Says why, in the warning about the meta Rojo no longer applies. */
 	readonly note: string;
 }
 
-/** What a sync tool does to a data file: it writes a Lua module in its place, which Rojo syncs as a ModuleScript. */
 export interface DataReplacement {
 	/** What the module's name ends in instead of the data file's extension. */
 	readonly suffix: string;
@@ -16,22 +14,17 @@ export interface DataReplacement {
 	readonly note: string;
 }
 
-/** A tool that rewrites code between the source paths and the sync path, which Rojo reads in their place; the build asks it, and never names one. */
+/** A tool that rewrites code between the source paths and the sync path. */
 export interface SyncTool {
 	readonly id: string;
-	/** The path the tool writes for a source path, when it renames it. */
 	emittedPath?(source: string): string;
-	/** Whether the tool reads a source but never writes anything for it. */
 	readsOnly?(source: string): boolean;
 	/** A script name the tool writes as Rojo's `init`, which makes the file its folder too. */
 	readonly initName?: string;
-	/** What it writes instead of a `.meta.json`, which Rojo then no longer applies. */
 	readonly metaReplacement?: MetaReplacement;
-	/** What it writes instead of a data file, such as a `.txt`, which Rojo then no longer finds. */
 	readonly dataReplacement?: DataReplacement;
 }
 
-/** A package manager: where it keeps its manifest and installed packages, and how they mount. */
 export class PackageManager {
 	static readonly WALLY = new PackageManager(
 		"wally",
@@ -45,7 +38,6 @@ export class PackageManager {
 		"roblox_packages",
 		"roblox_server_packages"
 	);
-	/** In the order they win when a workspace has several manifests. */
 	static readonly PRIORITY: readonly PackageManager[] = [
 		PackageManager.PESDE,
 		PackageManager.WALLY,
@@ -85,51 +77,40 @@ export class PackageManager {
 	}
 }
 
-/** A file `init` writes, relative to the directory it runs in. */
 export interface PlannedFile {
 	readonly fileName: string;
 	readonly content: string;
-	/** The file exists, and `content` is its text with this added at the end, named as the line that says so names it. */
+	/** Set when the file already exists: names what `content` adds to it. */
 	readonly addition?: string;
 }
 
 /** A folder placed in the game as it is, never scanned or routed. */
 export interface Mount {
 	readonly path: string;
-	/** A mount that isn't installed yet is written as an optional `$path`. */
 	readonly optional: boolean;
 	/** The instance path the folder becomes, such as `ReplicatedStorage/Packages`. */
 	readonly landing: string;
 }
 
-/** A mount as the packages question offers it. */
 export interface MountCandidate {
 	readonly path: string;
 	readonly installed: boolean;
 	readonly landing: string;
-	/** Whether the question starts with it ticked. */
 	readonly ticked: boolean;
 }
 
-/** A compile step between the source paths and what Rojo syncs, as roblox-ts has, as this workspace configures it. */
 export interface Compiler {
 	/** Names the compiler in notes, such as "Syncing from out, where roblox-ts compiles to." */
 	readonly name: string;
-	/** Where it writes here, and so what Rojo or a processor reads instead of the source paths. */
 	readonly outDir: string;
-	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
 	/** The edit that makes it compile the shared code from `sourcePath`, when its config compiles another folder. */
 	sourcePathStep(sourcePath: string): string;
 }
 
-/** How `init`'s questions word one language. */
 export interface LanguageCopy {
-	/** Its name in the language question. */
 	readonly label: string;
-	/** The language question's hint when the workspace uses this language. */
 	readonly detectedHint?: string;
-	/** Added to the packages question's description. */
 	readonly packagesNote?: string;
 	/** Only for a language whose compiler reads a single source path. */
 	readonly sourcePath?: {
@@ -138,15 +119,12 @@ export interface LanguageCopy {
 	};
 }
 
-/** A language `init` can set up, as this workspace uses it; what differs between languages is answered here. */
 export interface Language {
 	readonly id: string;
 	readonly copy: LanguageCopy;
 	/** The script extension written in examples, such as `Analytics.mock.luau`. */
 	readonly extension: string;
-	/** The package manager offered when the workspace has none. */
 	readonly defaultPackageManager?: PackageManager;
-	/** Set when code is compiled before Rojo syncs it. */
 	readonly compiler?: Compiler;
 	/** Whether the workspace uses this language. Whether or not it does, the user may still pick it. */
 	readonly present: boolean;
@@ -159,31 +137,24 @@ export interface Language {
 	configuredSourcePath(): string | undefined;
 	/** Folders mounted without asking. */
 	alwaysMounted(): readonly MountCandidate[];
-	/** Folders the packages question offers beside the package manager's. */
 	offeredMounts(): readonly MountCandidate[];
 }
 
-/** Reads what a workspace holds of one language. */
 export interface LanguageDetector {
 	detect(cwd: string): Promise<Language>;
 }
 
 interface DetectedWorkspaceFields {
 	readonly darklua: Darklua;
-	/** Every language, as the language question lists them. The first is the one assumed when none is present. */
 	readonly languages: readonly Language[];
-	/** The Darklua config file the workspace has, if any. */
 	readonly darkluaConfig?: string;
 	readonly packageManager?: PackageManager;
-	/** The installed package directories, of any manager. */
 	readonly packageDirs: ReadonlySet<string>;
-	/** The test runner the package manifests name, such as Jest. */
 	readonly testRunner?: string;
 }
 
 /** What `init` found in the workspace: facts only, never decisions. */
 export class DetectedWorkspace {
-	/** Darklua as this workspace can be set up for it. */
 	readonly darklua: Darklua;
 	readonly languages: readonly Language[];
 	readonly darkluaConfig?: string;
@@ -219,7 +190,6 @@ export class DetectedWorkspace {
 		return language;
 	}
 
-	/** The package manager's folders, offered for `language`. */
 	packageMounts(language: Language): MountCandidate[] {
 		const manager = this.packageManager ?? language.defaultPackageManager;
 		return (
@@ -231,9 +201,8 @@ export class DetectedWorkspace {
 	}
 }
 
-/** Darklua, the one processor `init` sets up: it writes processed code into the sync path, which Rojo syncs instead. */
+/** Darklua, the one processor `init` sets up. */
 export class Darklua {
-	/** What a build needs to know of Darklua: it writes a `.meta.lua` for each `.meta.json`, and a `.lua` for each data file. */
 	static readonly SYNC_TOOL: SyncTool = {
 		id: "darklua",
 		metaReplacement: {
@@ -246,14 +215,12 @@ export class Darklua {
 		},
 	};
 
-	/** Where Darklua writes unless told otherwise. */
 	readonly defaultSyncPath = "dist";
 	readonly configFiles: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
 	];
 
-	/** Keeps the sourcemap that `convert_require` reads current, from the source-rooted project. */
 	sourcemapCommand(projectFile: string): string {
 		return `rojo sourcemap ${projectFile} --output sourcemap.json --watch`;
 	}

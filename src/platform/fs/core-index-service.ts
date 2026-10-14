@@ -11,10 +11,8 @@ import { IndexService, Listing } from "./index-service.js";
 
 type Directories = Map<string, ReadonlyMap<string, FileType>>;
 
-/** A copy of a listing's directories that an update edits, leaving the listing it came from as it was. */
 class ListingDraft {
 	readonly directories: Directories;
-	/** The directories this draft copied before editing, so each is copied once. */
 	private readonly edited = new Map<string, Map<string, FileType>>();
 
 	constructor(base: Listing) {
@@ -25,7 +23,6 @@ class ListingDraft {
 		return this.directories.get(dir);
 	}
 
-	/** The entries of `dir` to change, created when it isn't listed. */
 	edit(dir: string): Map<string, FileType> {
 		let entries = this.edited.get(dir);
 		if (!entries) {
@@ -36,7 +33,6 @@ class ListingDraft {
 		return entries;
 	}
 
-	/** Drops `dir` and every directory listed under it. */
 	remove(dir: string): void {
 		const children = this.directories.get(dir);
 		if (!children) return;
@@ -47,7 +43,6 @@ class ListingDraft {
 		this.edited.delete(dir);
 	}
 
-	/** Whether an ancestor of `posixPath` is recorded as something other than a directory, such as a link nothing descends into. */
 	liesUnderLink(posixPath: string): boolean {
 		for (let child = path.posix.dirname(posixPath); ;) {
 			const parent = path.posix.dirname(child);
@@ -58,10 +53,8 @@ class ListingDraft {
 		}
 	}
 
-	/** Drops the entry `name` of `dir`, and what is listed under it. */
 	delete(dir: string, name: string): void {
 		const type = this.get(dir)?.get(name);
-		// A source path has no listed parent, but is listed itself.
 		if (type === undefined) {
 			this.remove(joinPosix(dir, name));
 			return;
@@ -104,7 +97,6 @@ export class CoreIndexService implements IndexService {
 		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
 	}
 
-	/** `undefined` when the directory doesn't exist or is not a directory: a source path that is a file, or a folder replaced by one. */
 	private async readDirectory(
 		dir: string
 	): Promise<[string, FileType][] | undefined> {
@@ -142,18 +134,16 @@ export class CoreIndexService implements IndexService {
 				if (listed === undefined) continue;
 				await this.addEntry(draft, dir, name, listed);
 			} else if (change.type === FileChangeType.DELETED) {
-				// A folder that can't be read any more is reported deleted too, but dropping it would drop its files from the project; failing keeps the listing as it was.
-				await this.probe(listingOf, dir);
+				await this.assertReadable(listingOf, dir);
 				if (isDirectoryType(change.fileType))
-					await this.probe(listingOf, posixPath);
+					await this.assertReadable(listingOf, posixPath);
 				draft.delete(dir, name);
 			}
 		}
 		return new Listing(draft.directories);
 	}
 
-	/** Reads `dir` through `listingOf`, failing only when it exists but may not be read. */
-	private async probe(
+	private async assertReadable(
 		listingOf: (dir: string) => Promise<unknown>,
 		dir: string
 	): Promise<void> {
@@ -174,7 +164,6 @@ export class CoreIndexService implements IndexService {
 		const previous = entries.get(name);
 		entries.set(name, type);
 
-		// A directory already listed is kept; the changes under it arrive on their own.
 		const fullPosixPath = joinPosix(posixDir, name);
 		if (previous === type && draft.get(fullPosixPath)) return;
 		if (previous !== undefined && isDirectoryType(previous))

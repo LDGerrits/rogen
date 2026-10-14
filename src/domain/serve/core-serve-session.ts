@@ -28,7 +28,7 @@ import { ServerRecords } from "./server-records.js";
 import { RunningServer, StartedServer } from "./started-server.js";
 import { AdoptedServer } from "./adopted-server.js";
 
-/** A watch of the plan's configs, and a server for each config to serve: one it starts where nothing serves, or one it adopts where a server no serve started already does, kept in step with the configs as they change. */
+/** Watches the plan's configs and keeps a started or adopted server for each config to serve. */
 export class CoreServeSession
 	extends AbstractDisposable
 	implements ServeSession
@@ -66,18 +66,14 @@ export class CoreServeSession
 	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
 
 	private readonly servers = new Map<string, RunningServer>();
-	/** The servers being stopped on purpose, which the session's own stop waits for. */
 	private readonly retirements = new Set<Promise<void>>();
-	/** The configs whose server can't be started at the address they were last seen at, so what the session said of them is said once. */
 	private readonly declined = new Map<
 		string,
 		{ readonly kind: "refused" | "elsewhere"; readonly address: string }
 	>();
-	/** The configs whose latest build wrote their project file, which a new server can serve. */
 	private readonly built = new Set<string>();
 	private launched = false;
 	private readonly reconciling = new Sequencer();
-	/** The first round of builds, or the error that ended it before it said anything. */
 	private readonly firstUpdate = new DeferredPromise<
 		WatchUpdate | Error | undefined
 	>();
@@ -152,7 +148,6 @@ export class CoreServeSession
 		return ok(undefined);
 	}
 
-	/** Ends every server without waiting on a reconcile in flight, which starts nothing once the session stops. */
 	stop(): Promise<void> {
 		this.stopping = true;
 		this.stopped ??= (async () => {
@@ -171,14 +166,12 @@ export class CoreServeSession
 		return this.stopped;
 	}
 
-	/** Ends the servers if `stop` wasn't awaited, then drops the subscriptions. */
 	override [Symbol.dispose](): void {
 		this.stop().catch(onUnexpectedError);
 		for (const server of this.servers.values()) server[Symbol.dispose]();
 		super[Symbol.dispose]();
 	}
 
-	/** Starts a server for each config to serve now that has none, and stops those whose config is gone or extended. */
 	private async reconcile(): Promise<void> {
 		const { selection } = this.plan;
 		const configs = ProjectChoice.served(
@@ -198,7 +191,6 @@ export class CoreServeSession
 		}
 	}
 
-	/** Serves `config` where its rogen.json puts it now, unless it is served there already or can't be. A server moving to a port it can't have stays where it is. */
 	private async follow(
 		config: ResolvedConfig,
 		configs: readonly ResolvedConfig[]
@@ -224,7 +216,6 @@ export class CoreServeSession
 			(await this.stillDeclined(target, declinedHere))
 		)
 			return;
-		// Its own server holds the port when only the host moved, so the port has nothing else to tell.
 		const samePort = started?.target.address.port === target.address.port;
 		const checked = holder
 			? err(this.ports.sharedPort(target, holder))
@@ -239,7 +230,6 @@ export class CoreServeSession
 		await this.settle(target, started, declinedHere, checked);
 	}
 
-	/** Says what came of checking `target`, and acts on it: a refusal is said once, a server already serving it is left be, and else the server moves or starts. */
 	private async settle(
 		target: ServeTarget,
 		started: RunningServer | undefined,
@@ -275,7 +265,6 @@ export class CoreServeSession
 		this.launch(checked.value);
 	}
 
-	/** Whether the server at `target`'s address is still as it was when `kind` was declined: only a port that freed up, or a change of the server on it, changes anything, and one probe tells. */
 	private async stillDeclined(
 		target: ServeTarget,
 		kind: "refused" | "elsewhere"

@@ -23,7 +23,6 @@ export class ScriptedTerminal {
 		});
 	}
 
-	/** Everything written, escape codes included. */
 	get raw(): string {
 		return this.written;
 	}

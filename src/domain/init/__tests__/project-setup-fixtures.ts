@@ -57,7 +57,6 @@ export const defaultProjectChoices = async (
 	return (await setup.ask()).unwrap() as ProjectChoices;
 };
 
-/** A lifted project file with the text `content`. */
 export const lifted = (content: string | object): ProjectTree => ({
 	kind: "lift",
 	from: "default.project.json",
@@ -69,7 +68,6 @@ export const lifted = (content: string | object): ProjectTree => ({
 export interface ProjectPlanOptions {
 	readonly choices: ProjectChoices;
 	readonly existingFiles?: ReadonlySet<string>;
-	/** What the directory holds of the toolchain, such as a test runner. */
 	readonly workspace?: WorkspaceSpec;
 }
 

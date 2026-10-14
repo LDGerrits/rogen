@@ -11,11 +11,9 @@ import {
 } from "../../platform/fs/file-system-service.js";
 import { StarterProject } from "./starter-project.js";
 
-/** Reads a hand-written project file `init` lifts into the config. */
 export class ProjectReader {
 	constructor(
 		private readonly fileReader: FileReader,
-		/** The directory `init` runs in. */
 		private readonly directory: string
 	) {}
 

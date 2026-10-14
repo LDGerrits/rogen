@@ -3,7 +3,7 @@ import { BuildTree } from "./build-tree.js";
 import { InitToCopy, RoutedFile } from "./router.js";
 import { InstanceMap } from "../roblox/roblox.js";
 
-/** The init scripts that stand for their whole folder: copied to every node the folder becomes, and dropped when nothing is left at a node to parent. */
+/** The init scripts that stand for their whole folder: copied to every node the folder becomes. */
 export class InitScripts {
 	constructor(private readonly tree: BuildTree) {}
 
@@ -21,13 +21,11 @@ export class InitScripts {
 		);
 	}
 
-	/** An init ModuleScript no route sends anywhere is every node its folder becomes, so each of the others gets a copy of it. */
 	private copies(
 		toCopy: readonly InitToCopy[],
 		routed: readonly RoutedFile[]
 	): RoutedFile[] {
 		if (toCopy.length === 0) return [];
-		// An init script that can be placed is its own folder's node, so a copy doesn't take it.
 		const owned = new InstanceMap<true>();
 		for (const file of routed)
 			if (file.init) owned.set(file.instancePath, true);
@@ -62,7 +60,7 @@ export class InitScripts {
 		});
 	}
 
-	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the tree keeps carries it. Repeats, since a dropped init script empties the folders above it. */
+	/** Drops the init scripts that have nothing left at their node to parent. */
 	withoutLoneInits(nodes: readonly RoutedFile[]): readonly RoutedFile[] {
 		let kept = nodes;
 		for (;;) {

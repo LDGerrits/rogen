@@ -51,7 +51,6 @@ registerCommand(
 				return ok(undefined);
 			}
 
-			// `rogen build --help` and `rogen help build` both name the command.
 			const [target] = line.positionals;
 
 			const pages = new HelpPages(

@@ -17,11 +17,10 @@ export class ManagedConfig {
 		this._files = loaded.files;
 		this._entry = this.entryOf(loaded);
 		this.text = loaded.resolved.isOk()
-			? ManagedConfig.textOf(loaded)
+			? ManagedConfig.identityOf(loaded)
 			: undefined;
 	}
 
-	/** Loads `file`. */
 	static async open(
 		file: string,
 		loader: ConfigLoader
@@ -29,27 +28,22 @@ export class ManagedConfig {
 		return new ManagedConfig(file, loader, await loader.load(file));
 	}
 
-	/** What identifies the version of the config: its own contents and its places'. */
-	private static textOf(loaded: LoadedConfig): string | undefined {
+	private static identityOf(loaded: LoadedConfig): string | undefined {
 		return safeStringify([loaded.value, loaded.placeValues]);
 	}
 
-	/** The latest snapshot. */
 	get entry(): ConfigEntry {
 		return this._entry;
 	}
 
-	/** Every file the config reads. */
 	get files(): readonly string[] {
 		return this._files;
 	}
 
-	/** Whether it reads one of `changed`. */
 	reads(changed: PathSet): boolean {
 		return this._files.some((file) => changed.has(file));
 	}
 
-	/** The entry `loaded` makes, a broken one keeping the last valid version this config had. */
 	private entryOf(loaded: LoadedConfig): ConfigEntry {
 		const fields = { file: this.file };
 		if (loaded.resolved.isOk())
@@ -70,10 +64,11 @@ export class ManagedConfig {
 		const loaded = await this.loader.load(this.file);
 		this._entry = this.entryOf(loaded);
 		this._files = loaded.files;
-		if (loaded.resolved.isOk()) this.text = ManagedConfig.textOf(loaded);
+		if (loaded.resolved.isOk())
+			this.text = ManagedConfig.identityOf(loaded);
 	}
 
-	/** Whether the reload changed the version that builds. A config that loads equal to it keeps it, so the version is its identity. */
+	/** Whether the version that builds changed. A reload that loads equal keeps the previous entry. */
 	async reload(): Promise<boolean> {
 		const before = { text: this.text, built: buildableFile(this.entry) };
 		await this.load();

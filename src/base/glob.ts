@@ -5,12 +5,12 @@ type GlobPattern = string;
 
 const MAGIC = /[(){}|[\]*?!+@]/g;
 
-/** `directory` as a glob prefix that matches only itself: a folder named `a (1)` or `{b}` would otherwise be read as part of the pattern. */
+/** `directory` as a glob prefix matching only itself, so `a (1)` or `{b}` isn't read as pattern. */
 export function escapedGlobPrefix(directory: string): string {
 	return directory.replace(MAGIC, "[$&]");
 }
 
-/** `glob` as its author wrote it, with the escapes of `escapedGlobPrefix` taken off. */
+/** `glob` as written, without the escapes of `escapedGlobPrefix`. */
 export function unescapedGlob(glob: GlobPattern): string {
 	return glob.replace(/\[([(){}|[\]*?!+@])\]/g, "$1");
 }
@@ -24,7 +24,7 @@ export function isMatch(path: string, glob: GlobPattern): boolean {
 
 const regExpCache = new Map<string, RegExp>();
 
-/** Whether `path`, written with `/`, matches `glob` as Rust's globset reads it, which is what Rojo reads: `*`, `?` and `[...]` cross folders, `**` is a whole run of them, and `{a,b}` offers alternatives. */
+/** Whether `path`, written with `/`, matches `glob` as Rust's globset, and so Rojo, reads it. */
 export function isGlobsetMatch(path: string, glob: GlobPattern): boolean {
 	let expression = regExpCache.get(glob);
 	if (!expression) {
@@ -34,7 +34,6 @@ export function isGlobsetMatch(path: string, glob: GlobPattern): boolean {
 	return expression.test(path);
 }
 
-/** The regular expression source for `glob`. */
 function globsetSource(glob: string): string {
 	let source = "";
 	let depth = 0;

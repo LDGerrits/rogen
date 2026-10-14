@@ -10,12 +10,11 @@ export interface Event<T> {
 	(listener: (e: T) => void, disposables?: DisposableStore): Disposable;
 }
 
-/** An event that never fires. */
 export const NullEvent: Event<never> = () => NullDisposable;
 
 type Listener<T> = (e: T) => void;
 
-/** One subscription, so a function that subscribes twice is told twice and is dropped once for each. */
+/** One subscription, so a function subscribed twice is told twice. */
 interface Subscription<T> {
 	readonly listener: Listener<T>;
 }

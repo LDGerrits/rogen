@@ -15,10 +15,8 @@ import { ServeTarget } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
-/** How many ports past a taken one are tried for a free one to suggest. */
 const FREE_PORT_SEARCH = 20;
 
-/** The other configs of `configs` with `config`'s project name, which a server that only says that name could be serving. */
 export function namesakesOf(
 	config: ResolvedConfig,
 	configs: readonly ResolvedConfig[]
@@ -29,25 +27,21 @@ export function namesakesOf(
 	);
 }
 
-/** Where each config of one serve is served, and whether its port is free for it, when the serve starts and whenever its configs change. */
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
 
-	/** `serverArgs` are the words after `--`, which the server gets as they are. */
 	constructor(
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly server: SyncServer,
 		serverArgs: readonly string[],
-		/** The folder commands in messages run from. */
 		private readonly cwd: string
 	) {
 		this.host = server.hostIn(serverArgs);
 		this.port = server.portIn(serverArgs);
 	}
 
-	/** The error in the `--port` after `--`, when its value isn't a port. */
 	get portError(): UsageError | undefined {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
@@ -69,7 +63,6 @@ export class ServePorts {
 		};
 	}
 
-	/** Two targets on one port can't both be served; the command line is what has to change. */
 	clashOf(targets: readonly ServeTarget[]): UsageError | undefined {
 		const portGiven = this.port.unwrapOr(undefined) !== undefined;
 		const byPort = new Map<number, ServeTarget[]>();
@@ -90,7 +83,7 @@ export class ServePorts {
 		return new UsageError([...lines, fix].join("\n"));
 	}
 
-	/** `target` once its port is free, or with `servedBy` set when its project is already served there (`adopted` when no serve recorded that server); else why it can't be served. */
+	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
 	async check(
 		target: ServeTarget,
 		others: readonly ServeTarget[],
@@ -122,7 +115,6 @@ export class ServePorts {
 		);
 	}
 
-	/** Why `target` can't be served beside `holder`'s server on its port, which is one of the targets this serve runs. */
 	sharedPort(target: ServeTarget, holder: ServeTarget): Diagnostic {
 		const { config, address } = target;
 		return errorDiagnostic(
@@ -132,7 +124,6 @@ export class ServePorts {
 		);
 	}
 
-	/** `from` is the folder of the project file the holder serves, when a serve recorded it. */
 	private async portTaken(
 		target: ServeTarget,
 		holder: ServerInfo | undefined,
@@ -161,7 +152,6 @@ export class ServePorts {
 		);
 	}
 
-	/** Why `target` can't be told apart from its `namesakes` on `holder`, which no serve recorded. */
 	private unknownServer(
 		target: ServeTarget,
 		holder: ServerInfo,
@@ -178,7 +168,6 @@ export class ServePorts {
 		);
 	}
 
-	/** `config` as a command run from `cwd` names it: its folder, and for a project that folder doesn't serve by default, its project file. */
 	private refOf(config: ResolvedConfig): string {
 		const folder =
 			toPosix(path.relative(this.cwd, path.dirname(config.file))) || ".";

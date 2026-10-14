@@ -2,55 +2,41 @@ import { Result } from "../../base/result.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
-/** What to do after `init`, grouped by how it is done. */
 export interface NextSteps {
-	/** One-time edits before anything runs. */
 	readonly setup: readonly string[];
-	/** Long-running commands, one terminal each. */
 	readonly run: readonly string[];
-	/** Commands that have Darklua process the code into the sync path. */
 	readonly darklua: readonly string[];
-	/** Pointers to what to change in the written files. */
 	readonly edits: readonly string[];
 }
 
-/** Everything `init` writes and says, decided before anything is written. */
 export interface InitPlan {
-	/** The absolute directory the files go into. */
 	readonly directory: string;
-	/** In the order they are written. */
 	readonly files: readonly PlannedFile[];
-	/** Source paths the config names that `init` creates when they don't exist yet, relative to `directory`. */
+	/** Relative to `directory`; created by `init` when missing. */
 	readonly directories: readonly string[];
-	/** The file names of the configs it writes, which are built once written; none when it only adds agent files. */
 	readonly configs: readonly string[];
-	/** Lines printed before the files are written. */
 	readonly notes: readonly string[];
 	readonly nextSteps: NextSteps;
-	/** Whether the run asked its questions, rather than taking every default. */
 	readonly asked: boolean;
 }
 
-/** What `write` has just put on disk: a file, or a directory that did not exist. */
 export type InitWritten =
 	| { readonly kind: "file"; readonly file: PlannedFile }
 	| { readonly kind: "directory"; readonly directory: string };
 
 export interface InitOptions {
-	/** Whether `init` may ask at all; it asks only in a terminal a person can answer. */
 	readonly ask?: boolean;
-	/** A folder to add as a place of the config above it, in place of starting a project here. */
 	readonly place?: string;
 }
 
-/** Writes a starter `rogen.json` into the working directory in two steps, so a caller can print between them. */
+/** Writes a starter `rogen.json` in two steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
-	/** Asks what to write and writes nothing; `ok(undefined)` means the user cancelled. With `ask` false it takes every default, as a run without a terminal does. */
+	/** `ok(undefined)` means the user cancelled; with `ask` false it takes every default. */
 	plan(options?: InitOptions): Promise<Result<InitPlan | undefined, Error>>;
 
-	/** Writes the plan's files, then creates the directories that don't exist yet, calling `onWritten` after each and stopping at the first that fails. A directory that exists is left alone and not reported. */
+	/** A directory that exists is left alone and not reported. */
 	write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void

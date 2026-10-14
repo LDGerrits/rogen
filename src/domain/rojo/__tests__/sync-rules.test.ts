@@ -148,7 +148,6 @@ const USES: Readonly<Record<string, SyncRule["use"]>> = {
 	Yaml: "yaml",
 };
 
-/** The rules `default_sync_rules` lists in `source`. */
 function rulesIn(source: string): SyncRule[] {
 	const body = source.slice(source.indexOf("pub fn default_sync_rules"));
 	return [...body.matchAll(SYNC_RULE_MACRO)].map(

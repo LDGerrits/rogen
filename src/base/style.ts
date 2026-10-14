@@ -1,4 +1,3 @@
-/** The ANSI codes that turn each style on and off. */
 const CODES = {
 	dim: [2, 22],
 	strikethrough: [9, 29],
@@ -13,7 +12,7 @@ const CODES = {
 
 type StyleName = keyof typeof CODES;
 
-/** `text` in `format`, whatever the stream: only a run that draws (a terminal, with colours allowed) calls this, and Rogen decides that by its own rules, which the checks of Node's `util.styleText` and of the colour libraries would second-guess. */
+/** `text` in `format`; the caller decides whether the stream draws, so `util.styleText`'s checks are skipped. */
 export function style(
 	format: StyleName | readonly StyleName[],
 	text: string

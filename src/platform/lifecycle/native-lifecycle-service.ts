@@ -22,7 +22,6 @@ export class NativeLifecycleService
 	private listenForSignals(): void {
 		if (this.listening) return;
 		this.listening = true;
-		// `once`, so a second signal falls through to the default and kills a stuck process.
 		const listener = () => this._onWillShutdown.fire();
 		for (const signal of SHUTDOWN_SIGNALS) {
 			process.once(signal, listener);
@@ -31,7 +30,7 @@ export class NativeLifecycleService
 		this.listenForClosedOutput();
 	}
 
-	/** A reader that quits, as `head -1` does, is a request to stop; the write it leaves behind would otherwise crash the process with the servers it started running. */
+	/** A reader that quits, as `head -1` does, is a request to stop; its leftover write would crash the process. */
 	private listenForClosedOutput(): void {
 		let closed = false;
 		const listener = (error: NodeJS.ErrnoException) => {

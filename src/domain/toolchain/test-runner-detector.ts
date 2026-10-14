@@ -2,7 +2,6 @@ import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { PackageManager } from "./toolchain.js";
 
-/** A test runner's name, as `init` says it, and how a package source names it: as a whole path segment, so `ts-jest` is no runner. */
 const RUNNERS = [
 	{ name: "Jest", pattern: /(?:^|\/)jest(?:-[a-z]+)?(?:@|$)/i },
 	{ name: "TestEZ", pattern: /(?:^|\/)testez(?:@|$)/i },
@@ -12,11 +11,9 @@ const NPM_SECTIONS = ["dependencies", "devDependencies"];
 const TOML_SECTION = /^\s*\[([^\]]*)\]/;
 const TOML_STRING = /"([^"]*)"/g;
 
-/** The test runner a workspace's package manifests name, which tells that it has specs a release can leave out. */
 export class TestRunnerDetector {
 	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** The first runner a manifest in `cwd` depends on, or `undefined` when none does. */
 	async detect(cwd: string): Promise<string | undefined> {
 		const [npm, ...toml] = await Promise.all(
 			[
@@ -42,7 +39,6 @@ export class TestRunnerDetector {
 		}
 	}
 
-	/** The strings under a `dependencies` table of a manifest, which name the packages. */
 	private static tomlPackages(text: string | undefined): string[] {
 		let inDependencies = false;
 		const sources: string[] = [];

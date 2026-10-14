@@ -15,17 +15,15 @@ import {
 } from "../rojo/rojo-project.js";
 import { SyncLayout } from "./sync-layout.js";
 
-/** A path on disk that the tree mounts at `node`. */
 interface TreeMount {
 	readonly path: string;
 	readonly node: readonly string[];
 }
 
-/** The paths the tree's own `$path`s mount, which Rojo reads and Rogen leaves alone, and the places a mount can't go. */
+/** The paths the tree's own `$path`s mount, which Rojo reads and Rogen leaves alone. */
 export class TreeMounts {
 	constructor(
 		private readonly mounts: readonly TreeMount[],
-		/** The config file, which every mount error points at. */
 		private readonly file: string
 	) {}
 
@@ -39,17 +37,15 @@ export class TreeMounts {
 		return this.mounts.map((mount) => toPosix(mount.path));
 	}
 
-	/** The mounts at or inside `dir`. */
 	inside(dir: string): TreeMount[] {
 		return this.mounts.filter((mount) => isInside(mount.path, dir));
 	}
 
-	/** The mount at `absolutePath`, compared as paths, since a case-insensitive file system makes `Vendor` and `vendor` one folder. */
+	/** The mount at `absolutePath`, compared as paths so `Vendor` and `vendor` match on a case-insensitive file system. */
 	at(absolutePath: string): TreeMount | undefined {
 		return this.mounts.find((mount) => samePath(mount.path, absolutePath));
 	}
 
-	/** A mount at a source path or above one would hand the whole source path to Rojo, leaving Rogen nothing to place there. */
 	sourcePathErrors(sourcePaths: readonly string[]): Diagnostic[] {
 		return this.mounts.flatMap(({ path: mounted, node }) => {
 			const sourcePath = sourcePaths.find((dir) =>
@@ -68,7 +64,6 @@ export class TreeMounts {
 	}
 }
 
-/** Studio can't drift from disk inside a folder Rogen owns, so unknown children are removed on sync. */
 function generatedContainer(instancePath: readonly string[]): RojoNode {
 	const $className = containerClassName(instancePath);
 	return $className === "Folder"
@@ -102,7 +97,6 @@ export class BuildTree {
 		this.mounts = this.mountsOf(project);
 	}
 
-	/** Whether the config disables legacy scripts, which leaves scripts under the player containers without a run context. */
 	get disablesLegacyScripts(): boolean {
 		return this.config.project.emitLegacyScripts === false;
 	}
@@ -124,12 +118,11 @@ export class BuildTree {
 		return this.project.getNode(instancePath);
 	}
 
-	/** The tree with generated containers being what a build creates, ready to have nodes inserted. */
 	edit(): RojoProject {
 		return new RojoProject(this.project.getFile(), generatedContainer);
 	}
 
-	/** The node of `file` the tree defines: its own, or a folder of its that the tree gives a `$path`, which is that folder's whole content. `source` is the file, or the folder, that names the node. */
+	/** The node of `file` the tree defines: its own, or a folder of its that the tree gives a `$path`; `source` is the file, or the folder, that names the node. */
 	displacing(file: {
 		readonly entry: {
 			readonly source: string;
@@ -161,7 +154,7 @@ export class BuildTree {
 		};
 	}
 
-	/** The project file to write: the config's Rojo keys, and `tree` as the tree. Only `default.project.json` can go without a `name`, since Rojo names it after its folder and crashes on any other project file that has none. */
+	/** The project file to write; Rojo names `default.project.json` after its folder, but crashes on any other project file without a `name`. */
 	toFile(
 		tree: RojoNode,
 		globIgnorePaths: readonly string[]

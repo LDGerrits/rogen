@@ -1,11 +1,10 @@
-/** A release's version, `major.minor.patch` with a dotted prerelease after a dash, ordered as semver orders them. */
 export class Version {
 	private constructor(
 		private readonly numbers: readonly [number, number, number],
 		private readonly prerelease: readonly string[]
 	) {}
 
-	/** `undefined` for any text that isn't a version. Build metadata after a plus is dropped. */
+	/** Build metadata after a plus is dropped. */
 	static parse(text: string): Version | undefined {
 		const match =
 			/^v?(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?(?:\+[\w.-]+)?$/.exec(
@@ -22,7 +21,6 @@ export class Version {
 		return this.prerelease.length > 0;
 	}
 
-	/** Negative when this is older than `other`, positive when newer, and 0 when they are the same release. */
 	compareTo(other: Version): number {
 		for (let i = 0; i < 3; i++) {
 			const difference = this.numbers[i] - other.numbers[i];
@@ -55,7 +53,6 @@ export class Version {
 
 const isNumeric = (identifier: string) => /^\d+$/.test(identifier);
 
-/** Numbers compare as numbers and go before words, which compare as text. */
 function compareIdentifiers(a: string, b: string): number {
 	if (isNumeric(a) && isNumeric(b)) return Number(a) - Number(b);
 	if (isNumeric(a)) return -1;

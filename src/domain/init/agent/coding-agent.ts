@@ -2,7 +2,6 @@ import { isObject } from "../../../base/objects.js";
 
 export const HOOK_SCRIPT_FILE = ".agents/hooks/rogen-check.sh";
 
-/** A hook file that names the script has the hook. */
 const SCRIPT_NAMED = new RegExp(
 	HOOK_SCRIPT_FILE.slice(HOOK_SCRIPT_FILE.lastIndexOf("/") + 1).replace(
 		".",
@@ -10,19 +9,14 @@ const SCRIPT_NAMED = new RegExp(
 	)
 );
 
-/** What registering the hook does to an agent's hook file. */
 type HookRegistration =
 	| { readonly kind: "added"; readonly text: string }
 	| { readonly kind: "present" }
 	| { readonly kind: "unreadable" };
 
-/** What an agent's hook file needs for the hook. */
 export interface HookEntry {
-	/** The event the agent runs it on when its turn ends. */
 	readonly event: string;
-	/** The entry in the event's list, as the agent writes it. */
 	readonly entry: unknown;
-	/** What a file without one starts with, for an agent whose files carry one. */
 	readonly version?: number;
 }
 
@@ -30,7 +24,7 @@ function indentOf(text: string): string {
 	return /^\t/m.test(text) ? "\t" : (/^( +)\S/m.exec(text)?.[1] ?? "\t");
 }
 
-/** The file's text with the entry added to its event, or why it can't be: the file names the script already, or isn't plain JSON of the shape the agents read. `text` is `undefined` when the file doesn't exist. */
+/** `text` is `undefined` when the file doesn't exist. */
 export function withHook(
 	text: string | undefined,
 	{ event, entry, version }: HookEntry
@@ -63,16 +57,11 @@ export function withHook(
 	};
 }
 
-/** A coding agent that runs a hook when its turn ends, and where it reads it from. */
 export interface CodingAgent {
 	readonly name: string;
-	/** The hook file `init` adds the hook to. */
 	readonly settingsFile: string;
-	/** Paths in the project that say the agent is in use. */
 	readonly signs: readonly string[];
-	/** What the user still does by hand once it's written. */
 	readonly afterwards?: string;
-	/** What its hook file needs for the hook. */
 	readonly hook: HookEntry;
 }
 

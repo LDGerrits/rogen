@@ -4,18 +4,14 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/sync-server.js";
 import { ServeAddress } from "./serve.js";
 
-/** What a serve records of the project file it serves. */
 interface ServedBuild {
 	readonly projectFile: string;
-	/** How many Studio plugins are connected; none when the server doesn't say. */
 	readonly clients?: number;
 }
 
-/** What a serve recorded of a server it started. */
 export interface ServerRecord extends ServedBuild {
 	readonly host: string;
 	readonly port: number;
-	/** The id of the sync server. */
 	readonly server: string;
 	readonly project: string;
 	readonly session?: string;
@@ -44,7 +40,6 @@ function recordIn(value: unknown): ServerRecord | undefined {
 	};
 }
 
-/** The records of the servers running serves started, one per port, in a folder every serve on the machine shares. */
 export class ServerRecords {
 	private readonly dir: string;
 
@@ -55,7 +50,7 @@ export class ServerRecords {
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}
 
-	/** What the serve that started the server on `address` recorded of it, when it is still the one that answers with `info`. A server only names its project, so this is how another checkout of the same project tells the server isn't its own. */
+	/** The record of the serve that started the server on `address`, when its project and session match `info`. */
 	async recordOf(
 		address: ServeAddress,
 		info: ServerInfo
@@ -68,7 +63,7 @@ export class ServerRecords {
 			: undefined;
 	}
 
-	/** Every record that can be read, whether or not its server still runs. */
+	/** Every readable record, including those of servers that no longer run. */
 	async all(): Promise<ServerRecord[]> {
 		let entries: [string, unknown][];
 		try {

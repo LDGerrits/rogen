@@ -1,16 +1,12 @@
 import path from "path";
 
-/** A toolchain manager, by the file a project pins its tools in. */
 interface ToolchainManager {
 	readonly id: string;
 	readonly fileName: string;
-	/** Whether it has an `add` command that pins a tool. */
 	readonly adds: boolean;
-	/** Whether it pins a tool in a table, `name = { github = "owner/repo", version = "1.2.3" }`, rather than as `name = "owner/repo@1.2.3"`. */
 	readonly pinsInTable: boolean;
 }
 
-/** In the order Rokit reads them, which reads the files of the other two as well. */
 const MANAGERS: readonly ToolchainManager[] = [
 	{ id: "rokit", fileName: "rokit.toml", adds: true, pinsInTable: false },
 	{ id: "aftman", fileName: "aftman.toml", adds: true, pinsInTable: false },
@@ -19,7 +15,6 @@ const MANAGERS: readonly ToolchainManager[] = [
 
 const unquoted = (key: string) => key.replace(/^(["'])(.*)\1$/, "$2");
 
-/** A `[tools]` entry's source: `owner/repo@version`, or a table with `source`, `github` or `gitlab`. */
 function sourceOf(value: string): string | undefined {
 	const spec = /^["']([^"'@]+)@[^"']*["']$/.exec(value);
 	if (spec) return spec[1];
@@ -29,7 +24,6 @@ function sourceOf(value: string): string | undefined {
 	return table?.[1];
 }
 
-/** The tools one file of a toolchain manager pins, by the name each runs as. */
 export class ToolManifest {
 	static readonly FILE_NAMES: readonly string[] = MANAGERS.map(
 		({ fileName }) => fileName
@@ -38,11 +32,10 @@ export class ToolManifest {
 	private constructor(
 		readonly file: string,
 		private readonly manager: ToolchainManager,
-		/** Each tool's name to its source repository, in lower case. */
 		private readonly tools: ReadonlyMap<string, string>
 	) {}
 
-	/** Reads `text` as the file `file`, whose name says which manager it belongs to; `undefined` for any other file. */
+	/** `undefined` when `file` is not the manifest of a known manager. */
 	static parse(file: string, text: string): ToolManifest | undefined {
 		const manager = MANAGERS.find(
 			({ fileName }) => fileName === path.basename(file)
@@ -64,7 +57,6 @@ export class ToolManifest {
 		return new ToolManifest(file, manager, tools);
 	}
 
-	/** The name the tool from `repository` runs as, when this file pins it. */
 	nameOf(repository: string): string | undefined {
 		const wanted = repository.toLowerCase();
 		for (const [name, source] of this.tools)
@@ -72,19 +64,16 @@ export class ToolManifest {
 		return undefined;
 	}
 
-	/** The entry that pins `version` of the tool from `repository` as `name`, written as this file's manager reads it. */
 	pinOf(name: string, repository: string, version: string): string {
 		return this.manager.pinsInTable
 			? `${name} = { github = "${repository}", version = "${version}" }`
 			: `${name} = "${repository}@${version}"`;
 	}
 
-	/** The command that installs every tool the file pins. */
 	get installCommand(): string {
 		return `${this.manager.id} install`;
 	}
 
-	/** The command that pins the tool from `repository` in this file, if the manager has one. */
 	addCommand(repository: string): string | undefined {
 		return this.manager.adds
 			? `${this.manager.id} add ${repository}`

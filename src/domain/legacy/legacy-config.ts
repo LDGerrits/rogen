@@ -5,13 +5,11 @@ import {
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { FailedConfigFile } from "../config/config-service.js";
 
-/** A config written for Rogen 1, which Rogen 2 doesn't read. All knowledge of Rogen 1 sits in this module. */
 export class LegacyConfig {
 	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
 
 	private static readonly KEYS = ["source", "aliases"];
 	private static readonly MODE_KEYS = ["output", "build"];
-	/** Fields of a Rogen 2 config whose keys are names the user picks, so a route called `build`, an instance called `output`, or a mode or variant map of the Rogen 2 beta, would look like a Rogen 1 mode. */
 	private static readonly NAME_MAPS = [
 		"routes",
 		"variants",
@@ -20,7 +18,6 @@ export class LegacyConfig {
 		"projects",
 	];
 
-	/** Whether `value`, the JSON of a config file, has the keys of a Rogen 1 config. */
 	static detects(value: unknown): boolean {
 		if (typeof value !== "object" || value === null) return false;
 		const fields = Object.entries(value);
@@ -32,7 +29,6 @@ export class LegacyConfig {
 		);
 	}
 
-	/** The error for a config file that is a Rogen 1 config, which Rogen 2 refuses to read as its own; none for any other. */
 	static check({ file, value }: FailedConfigFile): readonly Diagnostic[] {
 		return LegacyConfig.detects(value)
 			? [
@@ -45,7 +41,6 @@ export class LegacyConfig {
 			: [];
 	}
 
-	/** A Rogen 1 mode, such as `luau` or `darklua`, is an object that sets `output` or `build`. */
 	private static isMode(field: unknown): boolean {
 		return (
 			typeof field === "object" &&

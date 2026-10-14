@@ -11,39 +11,35 @@ import { DEFAULT_PROJECT, DEFAULT_SOURCE_PATH } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 interface ResolvedConfigFields {
-	/** The config file itself. */
 	readonly file: string;
 	/** The project this describes: `default`, or the name of an entry of `projects`. */
 	readonly stem: string;
 	/** Every project the config file writes, `default` first. */
 	readonly projectStems: readonly string[];
-	/** The project `rogen serve` serves when none is named. */
 	readonly serveProject: string;
 	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
 	readonly projectName: string;
-	/** The Rojo project file the config describes, its tree as the user wrote it and the keys Rogen doesn't read passed through. Every `$path` and glob is relative to the config's folder. */
+	/** The Rojo project file the config describes; every `$path` and glob is relative to the config's folder. */
 	readonly project: RojoProject<ParsedProjectFile>;
 	/** Absolute. */
 	readonly sourcePaths: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** `globIgnorePaths` as globs on absolute POSIX paths, which keep scanned files out of routing. */
+	/** `globIgnorePaths` as globs on absolute POSIX paths. */
 	readonly ignored: readonly string[];
 	/** Absolute. */
 	readonly syncPath?: string;
-	/** What the config says that is no error: a key Rojo will reject in the written file. */
 	readonly warnings: readonly Diagnostic[];
 	/** The config file that lists this folder as a place; for anything else, `file` itself. */
 	readonly rootFile?: string;
-	/** Whether this is a place of another config. */
 	readonly isPlace?: boolean;
-	/** Whether the config lists places, which makes it a shared root that is never served. */
+	/** Whether the config lists places; such a config is never served. */
 	readonly hasPlaces?: boolean;
 	/** The port this place is served on when no `servePort` says otherwise. */
 	readonly placePort?: number;
 }
 
-/** A config with its values validated: every path is absolute and every route target is parsed. */
+/** A config with its values validated: paths are absolute and route targets are parsed. */
 export class ResolvedConfig {
 	readonly file: string;
 	readonly stem: string;
@@ -88,48 +84,43 @@ export class ResolvedConfig {
 			: `${this.projectName} (${this.stem})`;
 	}
 
-	/** What tells this project from every other that is served or built: the config it is read from, and its name there. */
+	/** Tells this project from every other that is served or built: its config file and its name there. */
 	get id(): string {
 		return `${this.file}#${this.stem}`;
 	}
 
-	/** The port a place is served on unless a flag says otherwise: its `servePort`, else the one its place in the list gives. `undefined` for anything that is not a place. */
+	/** The port a place is served on unless a flag says otherwise: its `servePort`, else the one its position in the list gives. */
 	get placeServePort(): number | undefined {
 		return this.isPlace
 			? (this.project.servePort ?? this.placePort)
 			: undefined;
 	}
 
-	/** Whether this is the description itself, not an entry of `projects`. */
 	get isDefault(): boolean {
 		return this.stem === DEFAULT_PROJECT;
 	}
 
-	/** The directory the project file is written to, and every path in it is relative to. */
 	get projectDir(): string {
 		return path.dirname(this.file);
 	}
 
-	/** The project file the project is written to. */
 	get projectFile(): string {
 		return path.join(this.projectDir, projectFileName(this.stem));
 	}
 
-	/** Every project file the config file writes, which a source path that holds them must not scan. */
 	get projectFiles(): readonly string[] {
 		return this.projectStems.map((stem) =>
 			path.join(this.projectDir, projectFileName(stem))
 		);
 	}
 
-	/** The folders a build lists: its source paths, else the folder it would have scanned by default, to find files nothing mounts. */
+	/** The folders a build lists to find files nothing mounts: its source paths, else the default folder. */
 	get indexedPaths(): readonly string[] {
 		return this.routes.size > 0
 			? this.sourcePaths
 			: [path.join(this.projectDir, DEFAULT_SOURCE_PATH)];
 	}
 
-	/** The deepest directory holding every source path, or `undefined` without any. */
 	get commonRoot(): string | undefined {
 		return this.sourcePaths.length > 0
 			? commonAncestor(this.sourcePaths)
@@ -137,17 +128,14 @@ export class ResolvedConfig {
 	}
 }
 
-/** A `rogen.json` resolved: the description, and the projects it writes beside it. */
+/** A `rogen.json` resolved: the description and the projects it writes beside it. */
 export interface ResolvedConfigFile {
-	/** The description itself, written as `default.project.json`. */
 	readonly config: ResolvedConfig;
-	/** The entries of `projects`, in the order they are declared. */
 	readonly projects: readonly ResolvedConfig[];
 	/** The places it lists, sorted by path. */
 	readonly places?: readonly ResolvedConfigFile[];
 }
 
-/** The places of a resolved config file, or with a `scope` only those in those folders. */
 export function placesIn(
 	resolved: ResolvedConfigFile,
 	scope?: readonly string[]
@@ -159,7 +147,7 @@ export function placesIn(
 	);
 }
 
-/** Every project a resolved config file writes, the description first and then each place's; with a `scope`, only the places in those folders. */
+/** Every project a resolved config file writes, the description first, then each place's; a `scope` limits the places to those folders. */
 export function projectsOf(
 	resolved: ResolvedConfigFile,
 	scope?: readonly string[]

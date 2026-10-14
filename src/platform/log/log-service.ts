@@ -29,15 +29,13 @@ export interface LogService {
 	notice(text: string): void;
 	intro(title: string): void;
 	step(title: string): void;
-	/** A step with its lines under it, written at any level but off, for what the user asked for. */
 	section(title: string, body?: string): void;
 	success(message: string): void;
 	outro(message: string): void;
-	/** Closes the frame `intro` opened with `message`; does nothing when none is open. */
 	closeFrame(message: string): void;
-	/** Written as `file:line:col - severity: message` with no severity prefix of its own, so editors and CI can parse it. One that `failing` made the run fail is written wherever errors are. */
+	/** Written as `file:line:col - severity: message` so editors and CI can parse it; a failing one goes where errors do. */
 	diagnostic(diagnostic: Diagnostic, failing?: boolean): void;
-	/** Writes the workflow commands that make GitHub Actions show `diagnostic` on the pull request, on stderr; nothing unless the run asked for them. Called with a diagnostic as the command found it, not as `diagnostic` printed it. */
+	/** Writes GitHub Actions workflow commands on stderr if the run asked for them; takes the diagnostic as the command found it. */
 	annotate(diagnostic: Diagnostic): void;
 }
 

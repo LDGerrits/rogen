@@ -21,29 +21,25 @@ export interface ServeRequest {
 	readonly refs: readonly string[];
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
-	/** Ends the checks that run other programs, when the run is stopped before it has started. */
+	/** Aborts the checks that run other programs. */
 	readonly signal?: AbortSignal;
 }
 
-/** One config a serve serves. */
 export interface ServeTarget {
 	readonly config: ResolvedConfig;
 	/** The name of its project file, which a running server reports. */
 	readonly project: string;
 	readonly address: ServeAddress;
-	/** What already serves its project, when something does. */
 	readonly servedBy?: ServerInfo;
-	/** Whether `servedBy` is a server no serve started, which this serve builds for instead of starting one, and stops with. */
+	/** Whether `servedBy` is a server no serve started. */
 	readonly adopted?: boolean;
 }
 
-/** A target a server already serves. */
 export type ServedTarget = ServeTarget & { readonly servedBy: ServerInfo };
 
 export const isServed = (target: ServeTarget): target is ServedTarget =>
 	target.servedBy !== undefined;
 
-/** What a serve will do: the configs it builds, the server it runs, and each config it serves. */
 export class ServePlan {
 	constructor(
 		readonly selection: ReloadableSelection,
@@ -52,17 +48,14 @@ export class ServePlan {
 		readonly serverArgs: readonly string[]
 	) {}
 
-	/** The targets a server already serves. */
 	get alreadyServed(): ServedTarget[] {
 		return this.targets.filter(isServed);
 	}
 
-	/** The targets this serve starts a server for. */
 	get toStart(): ServeTarget[] {
 		return this.targets.filter(({ servedBy }) => servedBy === undefined);
 	}
 
-	/** The targets a server no serve started already serves, which this serve builds for. */
 	get adopted(): ServedTarget[] {
 		return this.alreadyServed.filter(({ adopted }) => adopted);
 	}
@@ -79,12 +72,10 @@ export interface ServerReadyEvent {
 	readonly info: ServerInfo;
 }
 
-/** A server that a running serve serves a project file with. */
 export interface ServingNow {
 	readonly server: SyncServer;
 	readonly host: string;
 	readonly port: number;
-	/** How many Studio plugins are connected; none when the server doesn't say. */
 	readonly clients?: number;
 }
 
@@ -93,11 +84,9 @@ export interface ServerConnectionEvent {
 	readonly target: ServeTarget;
 	/** Whether a plugin connected, else one left. */
 	readonly opened: boolean;
-	/** How many are connected now. */
 	readonly clients: number;
 }
 
-/** Something a server the session started said that is worth showing. */
 export interface ServerOutputEvent {
 	readonly target: ServeTarget;
 	readonly message: ServerMessage;
@@ -120,40 +109,38 @@ export type ServerExitEvent = {
 	| { readonly failure?: undefined; readonly exitCode?: undefined }
 );
 
-/** How the servers changed with the configs, after the session started them. A config that comes to be served starts its server as at the start, and says so through `onDidServe`. */
+/** How the servers changed with the configs after the session started them. */
 export type ServeChangeEvent =
-	/** A server stopped on purpose: its config is gone, or its rogen.json moved it to another address, where a new server starts. */
+	/** A server stopped on purpose: its config is gone or moved to another address. */
 	| {
 			readonly kind: "retired";
 			readonly target: ServeTarget;
 			readonly reason: "removed" | "moved";
 	  }
-	/** A config to serve now couldn't be served, as its port is taken or it names another server than this serve runs; the others go on, and so does its own server if it has one. */
+	/** A config to serve couldn't be served: its port is taken or it names another server than this serve runs. */
 	| {
 			readonly kind: "refused";
 			readonly target: ServeTarget;
 			readonly diagnostic: Diagnostic;
 	  }
-	/** A config to serve now is already served by a server the session didn't start. */
+	/** A config to serve is already served by a server the session didn't start. */
 	| { readonly kind: "servedElsewhere"; readonly target: ServedTarget };
 
-/** A running serve: a watch of the plan's configs, and a server for each target nothing served, or the adopted one that serves it. The caller owns it and disposes it. */
+/** A running serve; the caller owns it and disposes it. */
 export interface ServeSession extends Disposable {
 	readonly onDidUpdate: Event<WatchUpdate>;
 	/** A step failed unexpectedly; the serve goes on. */
 	readonly onDidError: Event<Error>;
 	/** Fired once for each server started, when it answers. */
 	readonly onDidServe: Event<ServerReadyEvent>;
-	/** Fired when a Studio plugin connects to a server the session started, or leaves it. A server that doesn't say who connects fires nothing. */
+	/** Fired when a Studio plugin connects to a server the session started, or leaves it; a server that doesn't say fires nothing. */
 	readonly onDidConnect: Event<ServerConnectionEvent>;
 	/** Fired for each message a server prints; its own info logs and noise come as `debug`. */
 	readonly onDidOutput: Event<ServerOutputEvent>;
-	/** Fired when the configs to serve change while it serves. */
 	readonly onDidChange: Event<ServeChangeEvent>;
-	/** Fired when a server stops before the session does, after what it said, or when an adopted one stops answering for its project. */
+	/** Fired when a server stops before the session does, or an adopted one stops answering for its project. */
 	readonly onDidExit: Event<ServerExitEvent>;
 
-	/** The targets it runs or adopted a server for now. */
 	readonly targets: readonly ServeTarget[];
 
 	/** Builds, then starts the servers. Fails with the build's errors, starting none, when the first build fails or throws. */
@@ -162,11 +149,10 @@ export interface ServeSession extends Disposable {
 	stop(): Promise<void>;
 }
 
-/** Builds and watches configs, and starts the sync server that serves their project files to Studio. */
 export interface ServeService {
 	readonly _serviceBrand: undefined;
 
-	/** Selects the configs to watch and to serve, finds the server, and asks each served config's port what serves there. Fails when a config is broken, no server can run, two configs share a port, or something else holds one. */
+	/** Fails when a config is broken, no server can run, two configs share a port, or something else holds one. */
 	prepare(request: ServeRequest): Promise<Result<ServePlan, Error>>;
 
 	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */

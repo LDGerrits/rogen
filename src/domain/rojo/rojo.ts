@@ -23,13 +23,11 @@ const SCRIPT_SUFFIXES = ["server", "client", "plugin"] as const;
 
 export type RojoScriptSuffix = (typeof SCRIPT_SUFFIXES)[number];
 
-/** The script suffixes that say which side a script runs on, and that a declared key of the same name routes. */
 export const RUN_SCRIPT_SUFFIXES: ReadonlySet<string> = new Set([
 	"server",
 	"client",
 ]);
 
-/** What each rule of Rojo's table turns a file into. */
 const KIND_OF_USE: Readonly<Record<SyncRuleUse, RojoFileKind | undefined>> = {
 	serverScript: "script",
 	clientScript: "script",
@@ -51,11 +49,9 @@ const KIND_OF_USE: Readonly<Record<SyncRuleUse, RojoFileKind | undefined>> = {
 	ignore: undefined,
 };
 
-/** Sources a compiler turns into Luau first, which Rojo's table does not list. */
 const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 const INIT_FILE = /^init(\.(server|client|plugin))?\.luau?$/;
 
-/** A file name as Rojo reads it: what it turns the file into, and which names it takes from it. */
 export class RojoFile {
 	static readonly SCRIPT_EXTENSIONS: readonly string[] = [
 		".luau",
@@ -75,23 +71,20 @@ export class RojoFile {
 		this.stem = stemOf(name);
 	}
 
-	/** The trailing `.server`, `.client` or `.plugin` of a stem; Rojo reads the script class only right before the extension. */
 	static scriptSuffixOf(stem: string): RojoScriptSuffix | undefined {
 		return SCRIPT_SUFFIXES.find((suffix) => stem.endsWith(`.${suffix}`));
 	}
 
-	/** A script stem without its script class. */
 	static scriptNameOf(stem: string): string {
 		const suffix = RojoFile.scriptSuffixOf(stem);
 		return suffix ? stem.slice(0, -(suffix.length + 1)) : stem;
 	}
 
-	/** Rojo reads `.model.json` and `.project.json` as a model and a nested project; only the part before the suffix is ours to name. */
+	/** Rojo reads `.model.json` and `.project.json` as a model and a nested project. */
 	static dataNameOf(stem: string): string {
 		return stem.replace(/(?<=.)\.(model|project)$/, "");
 	}
 
-	/** `fileName` without its meta suffix, or `undefined` for a file name that isn't a meta file. */
 	static metaStemOf(fileName: string): string | undefined {
 		for (const suffix of [RojoFile.META_SUFFIX_JSONC, RojoFile.META_SUFFIX])
 			if (fileName.endsWith(suffix))
@@ -99,7 +92,6 @@ export class RojoFile {
 		return undefined;
 	}
 
-	/** Whether `fileName` is the meta file Rojo reads for the folder it lies in. */
 	static isInitMeta(fileName: string): boolean {
 		return (
 			fileName === RojoFile.INIT_META ||
@@ -111,7 +103,7 @@ export class RojoFile {
 		return RojoFile.metaStemOf(this.name) !== undefined;
 	}
 
-	/** The name with an extension Rojo would read written as it reads it, when only the letter case keeps Rojo from reading the file: Rojo ignores `Foo.LUAU` and `Foo.MODEL.JSON`. */
+	/** The name with its extension lowercased when only that keeps Rojo from reading the file: Rojo ignores `Foo.LUAU`. */
 	get lowercasedExtension(): string | undefined {
 		if (this.kind !== undefined || this.isMeta) return undefined;
 		if (this.name.toLowerCase().endsWith(".d.ts")) return undefined;
@@ -126,7 +118,6 @@ export class RojoFile {
 			: undefined;
 	}
 
-	/** What Rojo turns the file into, or `undefined` when it isn't an instance on its own. */
 	get kind(): RojoFileKind | undefined {
 		if (this.name.endsWith(".d.ts") || this.isMeta) return undefined;
 
@@ -136,23 +127,19 @@ export class RojoFile {
 		return match && KIND_OF_USE[match.rule.use];
 	}
 
-	/** Whether the file is Luau source, which Rojo reads as it is; a `.ts` source is compiled first. */
 	get isLuau(): boolean {
 		const extension = path.extname(this.name);
 		return extension === ".luau" || extension === ".lua";
 	}
 
-	/** Whether Rojo makes the file a ModuleScript: Luau source with no `.server`, `.client` or `.plugin`. A `.ts` source is compiled first, so it is not. */
 	get isLuauModule(): boolean {
 		return this.isLuau && RojoFile.scriptSuffixOf(this.stem) === undefined;
 	}
 
-	/** Whether Rojo reads the file as its folder, which also means a `$path` can't point at it. */
 	get isInit(): boolean {
 		return INIT_FILE.test(this.name);
 	}
 
-	/** The name Rojo gives the file when it enumerates the directory itself. */
 	get instanceName(): string {
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
 		if (this.kind !== "data") return this.stem;
@@ -170,7 +157,6 @@ export class RojoFile {
 		return [".json", ".jsonc"].includes(path.extname(this.name));
 	}
 
-	/** The name Rojo reads the file's `.meta.json` under, or none for a file that takes no meta. */
 	get metaName(): string | undefined {
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
 		if (this.kind === "data" && this.dataName === this.stem) {
@@ -179,7 +165,6 @@ export class RojoFile {
 		return undefined;
 	}
 
-	/** The meta files Rojo reads for the file, the one it prefers first; none for a file that takes no meta. */
 	get metaFiles(): string[] {
 		const name = this.metaName;
 		return name === undefined
@@ -189,7 +174,6 @@ export class RojoFile {
 				);
 	}
 
-	/** The `.meta.json` Rojo reads for the file, or none for a file that takes no meta. */
 	get metaFile(): string | undefined {
 		const name = this.metaName;
 		return name === undefined
@@ -198,7 +182,6 @@ export class RojoFile {
 	}
 }
 
-/** What a `.meta.json` sets on the instance it applies to. */
 export interface RojoMetaFields {
 	readonly className?: string;
 	readonly properties?: Readonly<Record<string, unknown>>;
@@ -221,20 +204,18 @@ const META_SCHEMA: JSONSchema = {
 	},
 };
 
-/** What a `.meta.json` sets, and what is wrong with it short of making Rojo refuse it. */
 export interface ParsedMeta {
 	readonly fields: RojoMetaFields;
 	readonly typos: readonly Diagnostic[];
 }
 
-/** A `.meta.json` as Rojo reads it. */
 export class RojoMeta {
 	private static readonly documents = new JsoncDocumentReader({
 		codePrefix: "meta",
 		noun: "a meta file",
 	});
 
-	/** The fields `text` sets, with a warning for each that is a slip from one Rojo reads, such as `classname`; or why Rojo would refuse `file`. A field that resembles none, such as `$schema`, is left alone. */
+	/** Warns of each field that looks like a slip for one Rojo reads; the error is why Rojo would refuse `file`. */
 	static parse(text: string, file: string): Result<ParsedMeta, Diagnostic[]> {
 		if (text.startsWith(BYTE_ORDER_MARK))
 			return err([
@@ -272,7 +253,7 @@ export class RojoMeta {
 		});
 	}
 
-	/** The fields of two metas for one instance, `over` applied after `base`, as Rojo applies a `.meta.jsonc` after a `.meta.json`: properties merge, and any other field `over` sets replaces the one in `base`. */
+	/** Applies `over` after `base`, as Rojo applies a `.meta.jsonc` after a `.meta.json`; properties merge. */
 	static merged(base: RojoMetaFields, over: RojoMetaFields): RojoMetaFields {
 		return {
 			...base,
@@ -283,7 +264,7 @@ export class RojoMeta {
 		};
 	}
 
-	/** The fields `meta` adds to a project's `node`, by Rojo's precedence: a field the project sets wins, and properties merge with the project's winning. */
+	/** The fields `meta` adds to `node`; a field the project sets wins. */
 	static fieldsUnder(
 		meta: RojoMetaFields,
 		node: RojoNode
@@ -313,7 +294,7 @@ const RUN_CONTEXTS: Readonly<Record<string, ScriptRun>> = {
 	Plugin: "Plugin",
 };
 
-/** How Rojo makes a script with `suffix` run: by its class with legacy scripts on, else by its run context, and a `RunContext` its meta sets wins over both for a Script. `undefined` for a file that isn't a `.server` or `.client` script. */
+/** How Rojo makes a `.server` or `.client` script run; `undefined` for any other. */
 export function scriptRunOf(
 	suffix: RojoScriptSuffix | undefined,
 	legacyScripts: boolean,
@@ -329,7 +310,7 @@ export function scriptRunOf(
 	return suffix === "server" ? "Server" : "Client";
 }
 
-/** What Rojo reads as children of the instance an init script makes its directory, from that directory's listing: every directory, and every other file that is an instance on its own. */
+/** What Rojo reads as children of an init script's directory: every directory and every other instance file. */
 export function childrenBesideInit(
 	listing: ReadonlyMap<string, FileType>,
 	init: string

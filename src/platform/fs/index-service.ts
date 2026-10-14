@@ -3,7 +3,6 @@ import { createServiceIdentifier } from "../instantiation/instantiation.js";
 import { FileChange } from "./file-changes.js";
 import { FileType } from "./file-system-service.js";
 
-/** A listing of directories, read in memory. */
 export interface IndexReader {
 	/** `undefined` when the directory was never listed or doesn't exist. */
 	getEntries(dirPath: string): ReadonlyMap<string, FileType> | undefined;
@@ -32,13 +31,12 @@ export class Listing implements IndexReader {
 	}
 }
 
-/** Lists directories into memory, so a build reads memory instead of the disk. Holds nothing itself: each listing belongs to whoever asked for it. */
+/** Lists directories into memory so a build reads memory, not the disk. Holds nothing itself. */
 export interface IndexService {
 	readonly _serviceBrand: undefined;
 
-	/** Lists `dirs` and everything under them. A directory that doesn't exist isn't listed. */
 	list(dirs: readonly string[]): Promise<Listing>;
-	/** `base` with `changes` applied, as a fresh listing would have them: an added entry's type is read from the disk, not the change, an added directory is listed whole, and an entry that is gone by then is skipped. `base` itself is left as it was. */
+	/** `base` with `changes` applied as a fresh listing would have them; `base` is unchanged. */
 	update(base: Listing, changes: readonly FileChange[]): Promise<Listing>;
 }
 

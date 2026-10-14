@@ -18,7 +18,6 @@ interface InstanceResolution {
 	readonly clashes: InstanceClash[];
 }
 
-/** Decides which of the routed files stay in the tree when several share an instance path: the last wins. */
 export class InstanceResolver {
 	resolve(routed: readonly RoutedFile[]): InstanceResolution {
 		const clashes: InstanceClash[] = [];

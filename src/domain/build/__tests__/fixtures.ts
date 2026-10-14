@@ -52,7 +52,6 @@ export const buildServiceOf = (
 	extraTools: readonly SyncTool[] = []
 ) => new CoreBuildService(fs, index, [...syncTools, ...extraTools]);
 
-/** Where `targets` land in `config` alone. */
 export async function locateIn(
 	buildService: BuildService,
 	config: ResolvedConfig,
@@ -80,7 +79,6 @@ export async function writeFiles(
 	for (const file of paths) await fs.writeFile(abs(file), "");
 }
 
-/** What `sourcePaths` hold in `fs`, listed. */
 export function indexOf(
 	fs: MemoryFileSystemService,
 	sourcePaths: readonly string[]
@@ -88,7 +86,6 @@ export function indexOf(
 	return new CoreIndexService(fs).list(sourcePaths);
 }
 
-/** Builds `config` from what `fs` holds in its source paths, and places it again to show where each file landed. */
 export async function buildAndPlace(
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig
@@ -102,14 +99,12 @@ export async function buildAndPlace(
 	}));
 }
 
-/** Each file as `source -> instance path`, its source relative to `src`, with a copy marked. */
 export const placedLines = (files: readonly RoutedFile[]): string[] =>
 	files.map(
 		(file) =>
 			`${file.entry.source.slice(abs("src").length + 1)} -> ${file.instancePath.join("/")}${file.routeMatch === "copy" ? " (copy)" : ""}`
 	);
 
-/** The routes the router tests place files by. */
 export const ROUTER_ROUTES = {
 	ReplicatedFirst: "ReplicatedFirst",
 	server: "ServerScriptService",
@@ -117,7 +112,6 @@ export const ROUTER_ROUTES = {
 	"*": "ReplicatedStorage/shared",
 };
 
-/** Builds and places the files `fs` holds under `sourcePaths`, and sums up where each landed. */
 export async function routeFiles(
 	fs: MemoryFileSystemService,
 	overrides: ResolvedConfigSpec = {},
@@ -149,7 +143,6 @@ export const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
 
 export const optional = (target: string) => ({ optional: target });
 
-/** Builds the files `fs` holds under the config's source paths, with the sync tools of `extraTools` beside the standard ones. */
 export async function assembleResultOf(
 	fs: MemoryFileSystemService,
 	overrides: ResolvedConfigSpec = {},
@@ -160,11 +153,9 @@ export async function assembleResultOf(
 	return builderOf(fs, index, extraTools).build(config);
 }
 
-/** Checks a built project file against Rojo's schema, which wants the name that Rojo itself derives for a default.project.json. */
 export const expectBuiltProject = (file: RojoProjectFile): void =>
 	expectRojoProject({ name: "project", ...file });
 
-/** The project file `assembleResult` builds, checked against Rojo's schema, with the build's warnings. */
 export async function assembleFilesOf(
 	fs: MemoryFileSystemService,
 	overrides: ResolvedConfigSpec = {},

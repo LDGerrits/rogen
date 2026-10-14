@@ -29,7 +29,7 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 	null: "null",
 };
 
-/** Parses JSONC text into a JSON object and checks it against a schema, saying every problem it finds as a diagnostic. */
+/** Parses JSONC into a JSON object checked against a schema; every problem is a diagnostic. */
 export class JsoncDocumentReader {
 	constructor(private readonly kind: JsoncDocumentKind) {}
 

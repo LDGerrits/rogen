@@ -16,7 +16,6 @@ function isRojoPath(value: unknown): value is RojoPath {
 	);
 }
 
-/** The file or directory a `$path` points at, whichever form it's written in. */
 export function rojoPathTarget(rojoPath: RojoPath): string {
 	return typeof rojoPath === "string" ? rojoPath : rojoPath.optional;
 }
@@ -31,7 +30,6 @@ export interface RojoNode {
 	[key: string]: unknown;
 }
 
-/** A node's children: every key Rojo reads as an instance name, in file order. */
 function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(
 		(entry): entry is [string, RojoNode] =>
@@ -39,7 +37,6 @@ function childNodes(node: RojoNode): [string, RojoNode][] {
 	);
 }
 
-/** A Rojo project file: the name of the game and its tree of nodes, with the settings Rojo reads beside them. */
 export interface RojoProjectFile {
 	name?: string;
 	tree: RojoNode;
@@ -71,7 +68,6 @@ export interface ProjectFile {
 	readonly serveAddress?: unknown;
 }
 
-/** A project file read from disk, whose other fields pass through untouched. */
 export interface ParsedProjectFile extends ProjectFile {
 	readonly [key: string]: unknown;
 }
@@ -80,13 +76,11 @@ export interface ParsedProjectFile extends ProjectFile {
 const plainContainer: ContainerFactory = (instancePath) =>
 	instancePath.length === 1 ? {} : { $className: "Folder" };
 
-/** The suffix of a Rojo project file, such as `default.project.json`. */
 const PROJECT_SUFFIX = ".project.json";
 
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
 
-/** The stem of a Rojo project file's name, or `undefined` when the name isn't a project file's. */
 export const stemOfProjectFile = (fileName: string): string | undefined =>
 	fileName.endsWith(PROJECT_SUFFIX)
 		? fileName.slice(0, -PROJECT_SUFFIX.length)
@@ -103,7 +97,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		this.project = structuredClone(project);
 	}
 
-	/** A file without a `tree` gets a bare DataModel; it fails when the text, its tree or a node in it isn't an object. */
+	/** A file without a `tree` gets a bare DataModel. */
 	static parse(text: string): Result<RojoProject<ParsedProjectFile>, Error> {
 		const parsed = parse(text);
 		if (parsed.isErr()) return err(parsed.error);
@@ -138,13 +132,11 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return undefined;
 	}
 
-	/** The project's own name, when it has a non-empty one. */
 	get name(): string | undefined {
 		const { name } = this.project;
 		return typeof name === "string" && name !== "" ? name : undefined;
 	}
 
-	/** The port Rojo serves the project on, when the project sets a valid one. */
 	get servePort(): number | undefined {
 		const { servePort } = this.project;
 		return typeof servePort === "number" &&
@@ -155,7 +147,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: undefined;
 	}
 
-	/** The address Rojo listens on, when the project sets one. */
 	get serveAddress(): string | undefined {
 		const { serveAddress } = this.project;
 		return typeof serveAddress === "string" && serveAddress !== ""
@@ -163,7 +154,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: undefined;
 	}
 
-	/** The `globIgnorePaths` entries that are strings. */
 	get globIgnorePaths(): string[] {
 		const { globIgnorePaths } = this.project;
 		return Array.isArray(globIgnorePaths)
@@ -171,7 +161,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: [];
 	}
 
-	/** Whether Rojo emits legacy scripts; `undefined` when the project doesn't say. */
 	get emitLegacyScripts(): boolean | undefined {
 		const { emitLegacyScripts } = this.project;
 		return typeof emitLegacyScripts === "boolean"
@@ -179,7 +168,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: undefined;
 	}
 
-	/** A project file with this project's fields and the given tree and globs; fields Rogen doesn't model pass through. */
+	/** This project's fields with the given tree and globs; fields Rogen doesn't model pass through. */
 	toFile(parts: {
 		readonly tree: RojoNode;
 		readonly globIgnorePaths: readonly string[];
@@ -192,7 +181,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return file;
 	}
 
-	/** A copy, so what the caller does to it can't reach back into the model. */
 	getFile(): T {
 		return structuredClone(this.project);
 	}
@@ -207,7 +195,7 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return isObject(current) ? current : undefined;
 	}
 
-	/** Merges `data` into the node at `instancePath`, creating missing ancestors; a node that gets a `$path` drops a `Folder` class. Throws when an ancestor isn't a node. */
+	/** Merges `data` into the node at `instancePath`, creating missing ancestors; a node that gets a `$path` loses a `Folder` class. */
 	insertNode(instancePath: readonly string[], data: Partial<RojoNode>): void {
 		if (instancePath.length === 0) return;
 		const parent = this.ensureNode(instancePath.slice(0, -1));
@@ -224,7 +212,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		setOwn(parent, leaf, updated);
 	}
 
-	/** Every `$path` in the tree, depth first, the root's included. */
 	mountedPaths(): MountedPath[] {
 		const found: MountedPath[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {

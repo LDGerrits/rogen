@@ -30,27 +30,25 @@ export type FolderReading = FolderNameReading & {
 	readonly nearMissKey?: string;
 };
 
-/** An entry read once: its folders and the suffixes on its name. */
 export interface EntryReading {
 	/** The folders above the entry, outermost first. */
 	readonly folders: readonly FolderReading[];
 	readonly fileName: string;
 	readonly kind: RojoFileKind;
 	readonly stem: string;
-	/** The script class Rojo reads from the stem: a `.server`, `.client` or `.plugin` script; none for any other file. */
+	/** The script class Rojo reads from the stem; none for any other file. */
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly match: SuffixMatch;
-	/** Whether it is an init script once its route keys are off its name, a route it doesn't govern too. */
+	/** Whether it is an init script once its route keys are off its name. */
 	readonly isInit: boolean;
 }
 
-/** Every folder, marker and suffix the route keys can claim, read once and shared by the stages and rules. */
+/** Every folder, marker and suffix the route keys can claim, read once. */
 export class NameReadings {
 	private readonly _folders = new Map<string, FolderReading>();
 	private readonly _markers = new Map<string, MarkerReading>();
 	private readonly _entries = new Map<string, EntryReading>();
 	private readonly _nearMisses = new Map<string, string>();
-	/** Each marker, folder above an entry, or entry whose name misspells a key; first found first. */
 	private readonly misspellings = new Map<
 		string,
 		readonly NotedName<Misspelling>[]
@@ -60,7 +58,6 @@ export class NameReadings {
 
 	constructor(
 		private readonly keys: DeclaredKeys,
-		/** The script names that make a file its folder. */
 		private readonly initNames: ReadonlySet<string>,
 		roots: readonly ScannedRoot[]
 	) {
@@ -88,7 +85,7 @@ export class NameReadings {
 		return this._markers;
 	}
 
-	/** Each marker or folder above an entry whose name only differs from a declared key in letter case, with that key; first found first. */
+	/** Each marker or folder above an entry whose name differs from a declared key only in letter case, with that key; first found first. */
 	get nearMisses(): ReadonlyMap<string, string> {
 		return this._nearMisses;
 	}
@@ -144,7 +141,7 @@ export class NameReadings {
 		return read;
 	}
 
-	/** Why the folder `dir` of a source path can never become an instance by its name; `undefined` for one that can, if a route places something through it. */
+	/** Why the folder `dir` of a source path never becomes an instance by its name; `undefined` for one that can. */
 	instanceless(
 		sourcePath: string,
 		dir: string
@@ -180,7 +177,6 @@ export class NameReadings {
 			this._nearMisses.set(resource, key);
 	}
 
-	/** Notes what the name at `resource` misspells, with the path one rename fixes it to; a resource is read once, so the first noting holds. */
 	private noteMisspellings(
 		resource: string,
 		misspellings: readonly Misspelling[]

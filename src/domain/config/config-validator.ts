@@ -23,27 +23,22 @@ import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const FALLBACK_NAME = "project";
 
-/** What a validator is told about the config beyond the project: the places around it. */
 interface PlaceContext {
-	/** The config file that lists this folder, for a place. */
 	readonly rootFile?: string;
-	/** The folders of the places the config lists, when it lists any. */
 	readonly placeDirs?: readonly string[];
-	/** The port a place is served on when it pins none. */
 	readonly placePort?: number;
 }
 
 const NAME_RULE = "use letters and digits only, starting with a letter";
 
-/** Checks every rule on the values of one project to write that doesn't need the source tree, and hands back the config with its route targets parsed. */
+/** Checks every rule on one project's values that doesn't need the source tree, and returns the config with its route targets parsed. */
 export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
-	/** The declared keys by their identity, so a second that differs only in case is reported. */
 	private readonly claimed = new Map<string, string>();
 	private readonly dir: string;
 	private readonly routes: Readonly<Record<string, string>>;
 	private readonly sourcePaths: readonly string[];
-	/** How many of the source paths a place takes from the config that lists it, which come first. */
+	/** How many leading source paths a place takes from the config that lists it. */
 	private readonly inheritedCount: number;
 
 	constructor(
@@ -73,7 +68,7 @@ export class ConfigValidator {
 		];
 	}
 
-	/** Validates every project of one config file, the description first; `warnings` are the keys' own, which belong to the description. Any project's error fails the file. */
+	/** Validates every project of one config file, the description first; `warnings` are the description's. Any project's error fails the file. */
 	static validateFile(
 		sources: readonly ProjectSource[],
 		serveProject: string,
@@ -149,7 +144,6 @@ export class ConfigValidator {
 		};
 	}
 
-	/** The Rojo project file the config describes: its keys but Rogen's and the schema's, with a bare DataModel for a tree the config doesn't give. */
 	private readProject(): RojoProject<ParsedProjectFile> {
 		const rojo = Object.fromEntries(
 			Object.entries(this.config.model.contents).filter(
@@ -192,7 +186,6 @@ export class ConfigValidator {
 		return targets;
 	}
 
-	/** A route target names a service, which only a DataModel holds. */
 	private checkRoot(
 		project: RojoProject<ParsedProjectFile>,
 		routed: boolean
@@ -246,7 +239,6 @@ export class ConfigValidator {
 		});
 	}
 
-	/** A place inside a source path would be read as source by the config that lists it, and a source path inside a place would be read by the place too. */
 	private checkPlaces(): void {
 		for (const placeDir of this.context.placeDirs ?? []) {
 			const around = this.sourcePaths.find((dir) =>
@@ -266,7 +258,6 @@ export class ConfigValidator {
 		}
 	}
 
-	/** The sync path is where tools write the code Rogen's source paths hold, so neither may lie in the other: Rogen would read the tools' output as source. */
 	private checkSyncPath(): string | undefined {
 		const written = fieldOf(this.config.model, "syncPath");
 		if (written === undefined) return undefined;
@@ -284,7 +275,6 @@ export class ConfigValidator {
 		return syncPath;
 	}
 
-	/** Two keys that differ only in the case of their first letter would match the same names. */
 	private claim(key: string, location: DiagnosticLocation): void {
 		const identity = DeclaredKeys.identityOf(key);
 		const other = this.claimed.get(identity);

@@ -27,7 +27,7 @@ import { SyncLayout } from "./sync-layout.js";
 import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
-/** Finds where every file of a config lands: scans the source paths, routes each file, then decides across files: copies init scripts, lets the last file with an instance path win and lets the tree win. */
+/** Finds where every file of a config lands: scans the source paths, routes each file, then resolves clashes across files. */
 export class Placer {
 	private readonly layout: SyncLayout;
 	private readonly tree: BuildTree;
@@ -99,7 +99,6 @@ export class Placer {
 		);
 	}
 
-	/** Reads the source paths from the index, in `sourcePaths` order, which decides clashes between them. */
 	private scan(): ScannedRoot[] {
 		const scanner = new RootScanner(
 			this.index,
@@ -112,7 +111,6 @@ export class Placer {
 		);
 	}
 
-	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, unless the tree displaces the file. A marker in a clash is that error's. */
 	private ignoredAtErrors(
 		nodes: readonly RoutedFile[],
 		markerClashes: MarkerClashes
@@ -153,7 +151,6 @@ export class Placer {
 			});
 	}
 
-	/** An init script that can be placed but has no folder of its own to be leaves Rojo nothing to read it as. */
 	private withoutFolderErrors(
 		withoutFolder: readonly InitWithoutFolder[]
 	): Diagnostic[] {
@@ -166,7 +163,6 @@ export class Placer {
 		);
 	}
 
-	/** The script is its folder, so a `^` on it hoists nothing the folder couldn't. */
 	private hoistedInitErrors(
 		hoistedInits: readonly HoistedInit[]
 	): Diagnostic[] {
@@ -180,7 +176,6 @@ export class Placer {
 		});
 	}
 
-	/** Leaves out the files whose node the tree already defines; the tree wins. */
 	private yieldToTree(placed: readonly RoutedFile[]): {
 		readonly nodes: readonly RoutedFile[];
 		readonly leftOut: [string, LeftOut][];

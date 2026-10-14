@@ -22,10 +22,9 @@ import {
 const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
 	entry.status === "broken" ? entry.errors : [];
 
-/** The folder a selection was picked from, and how to list the configs in it now. */
 interface PickedFolder {
 	readonly directory: string;
-	/** Absolute, sorted; none when the folder has no config or can't be read. */
+	/** Absolute and sorted; empty when the folder has no config or can't be read. */
 	list(): Promise<readonly string[]>;
 }
 
@@ -136,7 +135,6 @@ export class CoreConfigSelection implements ReloadableSelection {
 		});
 	}
 
-	/** Brings `managed` in line with the folder's configs now, loading the added ones. */
 	private async followFolder(): Promise<{
 		added: readonly ManagedConfig[];
 		removed: readonly string[];
@@ -162,7 +160,6 @@ export class CoreConfigSelection implements ReloadableSelection {
 	}
 }
 
-/** What a user hasn't been told of a reload that took `before` to `after`. */
 function noticeOf(
 	before: ConfigEntry,
 	after: ConfigEntry
@@ -182,7 +179,6 @@ function noticeOf(
 		: undefined;
 }
 
-/** What a user is told of a config that joined the selection. */
 function addedNotice(entry: ConfigEntry): ConfigNotice {
 	return entry.status === "valid"
 		? { kind: "added", file: entry.file }

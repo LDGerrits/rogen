@@ -5,24 +5,21 @@ export interface EnvironmentService {
 	readonly _serviceBrand: undefined;
 
 	readonly cwd: string;
-	/** The user's home folder, where tools keep their global settings. */
 	readonly userHome: string;
-	/** The folder for temporary files every process on the machine shares. */
 	readonly tmpDir: string;
-	/** The user's folder for what a program can fetch again, which no project owns: `XDG_CACHE_HOME`, else the system's usual place. */
+	/** `XDG_CACHE_HOME`, else the system's usual place for what a program can fetch again. */
 	readonly cacheDir: string;
-	/** Where the repository is checked out, which the paths of GitHub Actions annotations are relative to, when this run should write them: GitHub Actions runs the process and it isn't printing JSON. None otherwise. */
+	/** Where the repository is checked out, set when this run should write GitHub Actions annotations. */
 	readonly annotationsIn?: string;
-	/** This process's id, which tells the records a serve leaves in `tmpDir` as its own. */
+	/** This process's id, so a serve's records in `tmpDir` can be told as its own. */
 	readonly pid: number;
 
-	/** How much to print: errors only under `--quiet`, debug output under `--verbose`. */
 	readonly logLevel: LogLevel;
 	/** Whether a person can answer a question: stdin and stdout are terminals, the terminal isn't dumb, and no agent or CI runs the process. */
 	readonly isInteractive: boolean;
-	/** Whether to print plain lines instead of drawing: the run prints JSON or isn't interactive, or `NO_COLOR` is set. */
+	/** Whether to print plain lines: JSON, not interactive, or `NO_COLOR`. */
 	readonly isPlain: boolean;
-	/** Whether to tell the user a newer Rogen is out: a person is at a terminal and neither prints JSON nor asks for `--quiet`, and neither `ROGEN_NO_UPDATE_CHECK` nor `NO_UPDATE_NOTIFIER` asks for silence. */
+	/** Whether to announce a newer Rogen: a person at a terminal, no JSON or `--quiet`, and no opt-out variable. */
 	readonly checksForUpdates: boolean;
 }
 

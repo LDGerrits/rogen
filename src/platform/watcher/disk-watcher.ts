@@ -7,10 +7,8 @@ import { FileChangeType } from "../fs/file-changes.js";
 import { AbstractWatcher } from "./abstract-watcher.js";
 import { WatchFilter, WatchOptions } from "./watcher.js";
 
-/** How often the roots are looked at again. */
 const REVIVAL_INTERVAL_MS = 500;
 
-/** What each event of chokidar reports. */
 const CHOKIDAR_EVENTS = [
 	["add", FileChangeType.ADDED, FileType.File],
 	["addDir", FileChangeType.ADDED, FileType.Directory],
@@ -24,9 +22,7 @@ export class DiskWatcher extends AbstractWatcher {
 	/** Links seen that aren't followed; chokidar reports nothing about them, so their coming and going is reported here. */
 	private unfollowed = new Set<string>();
 	private ready = false;
-	/** What the watch was asked to watch. */
 	private roots: string[] = [];
-	/** What each root was last seen as, to tell one that was replaced. */
 	private readonly seen = new Map<string, string | undefined>();
 	private revival: NodeJS.Timeout | undefined;
 	/** Ends a start still waiting for chokidar, which never reports ready once closed. */
@@ -50,7 +46,6 @@ export class DiskWatcher extends AbstractWatcher {
 		for (const [event, type, fileType] of CHOKIDAR_EVENTS)
 			this.watcher.on(event, (p) => this.fireEvent(type, p, fileType));
 
-		// A link nothing descends into is never watched, so any activity rechecks the ones seen.
 		this.watcher.on("raw", () => this.dropRemovedLinks());
 
 		this.watcher.on("error", (error) =>
@@ -70,7 +65,7 @@ export class DiskWatcher extends AbstractWatcher {
 		this.watchForReturns();
 	}
 
-	/** Looks for the roots again every so often, and watches a root that came back or began as a new place afresh, since chokidar loses a root that was deleted and never sees one that did not exist. */
+	/** Rewatches roots that came back or began as a new place: chokidar loses a deleted root and never sees one that did not exist. */
 	private watchForReturns(): void {
 		for (const root of this.roots) this.seen.set(root, identityOf(root));
 		this.revival = setInterval(
@@ -102,13 +97,11 @@ export class DiskWatcher extends AbstractWatcher {
 		this.revival = undefined;
 	}
 
-	/** Doesn't wait for a start's initial scan to finish. */
 	override stop(): Promise<void> {
 		this.cancelStart?.();
 		return super.stop();
 	}
 
-	/** Skips a link that can't be followed and reports it once, as a link, after the initial scan. */
 	private skipUnfollowable(target: string): boolean {
 		if (!isUnfollowableLink(target)) return false;
 		const posixTarget = toPosix(target);
@@ -165,7 +158,6 @@ function clearThrottles(watcher: chokidar.FSWatcher): void {
 		for (const { clear } of [...actions.values()]) clear();
 }
 
-/** Which file or folder `target` is now, so one deleted and made again differs from the one before; `undefined` when it isn't there. */
 function identityOf(target: string): string | undefined {
 	const stats = fs.statSync(target, { throwIfNoEntry: false });
 	return stats && `${stats.ino}:${stats.birthtimeMs}`;

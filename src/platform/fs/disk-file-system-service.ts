@@ -123,7 +123,6 @@ export class DiskFileSystemService implements FileSystemService {
 	}
 
 	async writeFile(filePath: string, content: string): Promise<void> {
-		// Automatically builds missing directories
 		const dir = path.dirname(filePath);
 		if (!(await this.exists(dir))) await this.createDirectory(dir);
 

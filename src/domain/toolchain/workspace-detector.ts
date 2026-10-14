@@ -8,7 +8,6 @@ import {
 	PackageManager,
 } from "./toolchain.js";
 
-/** Reads what a workspace uses of the languages and tools it was given. */
 export class WorkspaceDetector {
 	/** `languages` lists the first as the one assumed when none is detected. */
 	constructor(
@@ -44,7 +43,6 @@ export class WorkspaceDetector {
 		});
 	}
 
-	/** The first of Darklua's config files that exists, or `undefined` when there is none. */
 	private async darkluaConfigIn(
 		has: (name: string) => Promise<boolean>
 	): Promise<string | undefined> {
@@ -52,7 +50,6 @@ export class WorkspaceDetector {
 		return this.darklua.configFiles.find((_file, index) => found[index]);
 	}
 
-	/** Which package manager the workspace uses, a Pesde manifest winning over a Wally one, and every installed package directory in manager order. */
 	private async packagesIn(has: (name: string) => Promise<boolean>): Promise<{
 		readonly packageManager?: PackageManager;
 		readonly packageDirs: readonly string[];

@@ -17,44 +17,35 @@ import {
 import { EnclosingConfigs } from "./config-service.js";
 import { PlaceFinder } from "./place-finder.js";
 
-/** The suffixes of the project files Rojo reads by name. */
 const PROJECT_SUFFIXES = [".project.json", ".project.jsonc"];
 
-/** The config files a command reads, and the folder it looked in. */
 interface DiscoveredConfigs {
-	/** The working directory, or the nearest folder above it with a config when the working directory has none. */
+	/** The working directory, or the nearest folder above it with a config. */
 	readonly home: string;
-	/** Absolute paths. */
 	readonly files: readonly string[];
-	/** Whether none was named, so `files` is the config of `home`. */
-	readonly everyConfig: boolean;
-	/** The project a config was named for, by a `*.project.json` path or a bare name, by config file; whether the config has it is for the config to say. */
+	readonly noneNamed: boolean;
+	/** The project each config was named for, by config file. */
 	readonly projects: ReadonlyMap<string, string>;
-	/** The bare names that are also a folder with a config: the folder is what they name. */
+	/** The bare names that are also a folder with a config. */
 	readonly folders: readonly string[];
-	/** The config of `home`, the one a bare project name belongs to. */
+	/** The config of `home`, which a bare project name belongs to. */
 	readonly homeConfig: string | undefined;
-	/** The folders of the places of a config that were named, or that the working directory is in, by config file; the config has no entry when it was named whole. */
+	/** The place folders named or holding the working directory, by config file; a config named whole has no entry. */
 	readonly scopes: ReadonlyMap<string, readonly string[]>;
 }
 
-/** What one named path stands for. */
 interface NamedConfig {
 	readonly file: string;
 	readonly project?: string;
-	/** Set when a bare name is a folder with a config. */
 	readonly folder?: string;
-	/** Set when the name is a place of `file`. */
 	readonly place?: string;
 }
 
-/** The config that lists the folder the working directory is in, and the folder. */
 interface PlaceAround {
 	readonly file: string;
 	readonly place: string;
 }
 
-/** Whether `ref` could be a project's name rather than a path. */
 const isBareName = (ref: string): boolean => PROJECT_NAME.test(ref);
 
 /** Finds which config files a command reads: in the working directory, else in the nearest folder above that has one. */
@@ -68,7 +59,7 @@ export class ConfigDiscovery {
 		this.places = new PlaceFinder(fileSystemService);
 	}
 
-	/** The config files `refs` names, each a folder, a config file, a `*.project.json` path or the name of a project of the config here, or the config of the folder found when it names none. A path resolves from the working directory. */
+	/** The config files `refs` names (a folder, config file, `*.project.json` path or project name), else those of the folder found. Paths resolve from the working directory. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -79,7 +70,6 @@ export class ConfigDiscovery {
 			: this.discoverNamed(refs, around, home);
 	}
 
-	/** The config of the working directory: the place it is in, else the folder found. */
 	private discoverHere(
 		around: PlaceAround | undefined,
 		home: Result<EnclosingConfigs, Error>
@@ -88,7 +78,7 @@ export class ConfigDiscovery {
 			return ok({
 				home: around.place,
 				files: [around.file],
-				everyConfig: false,
+				noneNamed: false,
 				projects: new Map(),
 				folders: [],
 				homeConfig: around.file,
@@ -105,7 +95,7 @@ export class ConfigDiscovery {
 		return ok({
 			home: directory,
 			files: fileNames.map((name) => path.join(directory, name)),
-			everyConfig: true,
+			noneNamed: true,
 			projects: new Map(),
 			folders: [],
 			homeConfig: this.configOfHome(home),
@@ -113,7 +103,6 @@ export class ConfigDiscovery {
 		});
 	}
 
-	/** The configs `refs` names, each resolved from the working directory. */
 	private async discoverNamed(
 		refs: readonly string[],
 		around: PlaceAround | undefined,
@@ -139,7 +128,7 @@ export class ConfigDiscovery {
 		return ok({
 			home: around?.place ?? (home.isOk() ? home.value.directory : cwd),
 			files,
-			everyConfig: false,
+			noneNamed: false,
 			projects,
 			folders: resolved.flatMap(({ folder }) =>
 				folder === undefined ? [] : [folder]
@@ -149,7 +138,6 @@ export class ConfigDiscovery {
 		});
 	}
 
-	/** The one config file of the folder found, when it has exactly one. */
 	private configOfHome(
 		home: Result<EnclosingConfigs, Error>
 	): string | undefined {
@@ -158,7 +146,6 @@ export class ConfigDiscovery {
 			: undefined;
 	}
 
-	/** One entry per config file from the names: places of one config join into its scope; a config named twice, or two projects of it, is an error. */
 	private merge(
 		resolved: readonly NamedConfig[],
 		refs: readonly string[]
@@ -211,7 +198,6 @@ export class ConfigDiscovery {
 		return ok({ files, projects, scopes });
 	}
 
-	/** The config that lists the folder the working directory is in, when the nearest folder at or above it that has a config or is a place is a place. */
 	private async placeAround(): Promise<PlaceAround | undefined> {
 		let directory = this.environmentService.cwd;
 		for (;;) {
@@ -224,12 +210,10 @@ export class ConfigDiscovery {
 		}
 	}
 
-	/** What `target`, a path the user named as `ref`, stands for: a folder's config, a config file, the project a project file of a folder's config stands for, or else a project of the config here. */
 	private async configOf(
 		target: string,
 		ref: string,
 		homeConfig: string | undefined,
-		/** The place the working directory is in, which a project named by its bare name applies to. */
 		homePlace: string | undefined
 	): Promise<Result<NamedConfig, Error>> {
 		const inHome = (project: string): NamedConfig => ({
@@ -253,7 +237,6 @@ export class ConfigDiscovery {
 		return this.configFileRef(target, base, ref);
 	}
 
-	/** A folder: the place it is, else the folder's config, else, for a bare name that is no folder with a config, the project of that name here. */
 	private async folderRef(
 		target: string,
 		ref: string,
@@ -274,7 +257,6 @@ export class ConfigDiscovery {
 			: err(config.error);
 	}
 
-	/** A `*.project.json` path: that project of the place or config in its folder. */
 	private async projectFileRef(
 		target: string,
 		base: string,
@@ -291,7 +273,6 @@ export class ConfigDiscovery {
 			: ok({ file: config.value, ...project });
 	}
 
-	/** An existing file that is no project file: it has to be a config. */
 	private async configFileRef(
 		target: string,
 		base: string,
@@ -310,7 +291,6 @@ export class ConfigDiscovery {
 		);
 	}
 
-	/** The config file in `directory`; an error when it holds none or both names. */
 	private async configIn(
 		directory: string,
 		named: string
@@ -326,7 +306,7 @@ export class ConfigDiscovery {
 		);
 	}
 
-	/** The config files directly in `directory`, as absolute paths; none when it can't be read. */
+	/** Absolute paths; none when the folder can't be read. */
 	async list(directory: string): Promise<string[]> {
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(directory)
@@ -338,7 +318,6 @@ export class ConfigDiscovery {
 				);
 	}
 
-	/** The folder configs are read from: the working directory when it has one, else the nearest folder above that does. */
 	private async home(): Promise<Result<EnclosingConfigs, Error>> {
 		const cwd = this.environmentService.cwd;
 		const listing = await tryWithAsync(() =>
@@ -366,7 +345,6 @@ export class ConfigDiscovery {
 				);
 	}
 
-	/** The nearest parent of `from`, the working directory unless given, that has a config. */
 	async findEnclosing(
 		from = this.environmentService.cwd
 	): Promise<EnclosingConfigs | undefined> {

@@ -19,7 +19,6 @@ export type ScriptedAnswer =
 
 export type ScriptedAnswers = Readonly<Record<string, ScriptedAnswer>>;
 
-/** Answers in the order asked, or by question. */
 export type PromptScript = readonly ScriptedAnswer[] | ScriptedAnswers;
 
 const isAnswerList = (
@@ -28,7 +27,6 @@ const isAnswerList = (
 
 const scriptedByQuestion = new Set<MockPromptService>();
 
-// A named answer no question took would let a test pass on the default.
 afterEach(() => {
 	const unused = [...scriptedByQuestion].flatMap((prompts) =>
 		prompts.unusedAnswers()
@@ -53,7 +51,6 @@ export class MockPromptService implements PromptService {
 	private readonly answers: ScriptedAnswer[] = [];
 	private readonly byQuestion?: ScriptedAnswers;
 
-	/** Scripted by question, a question not named takes its default, or fails when it has none. */
 	constructor(
 		answers: PromptScript = [],
 		readonly isInteractive = true

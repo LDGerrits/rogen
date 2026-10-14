@@ -26,7 +26,6 @@ export interface Watcher {
 
 export const Watcher = createServiceIdentifier<Watcher>("watcher");
 
-/** Whether a watch leaves `target` out: it lies below a subfolder of a `shallow` directory and no `paths` entry reaches it. */
 function isBeyondShallow(
 	target: string,
 	paths: readonly string[],
@@ -45,7 +44,6 @@ function isBeyondShallow(
 	});
 }
 
-/** Whether `target` is one of `ignored`, or lies under one; a pattern matches the posix form of the whole path. */
 function isIgnored(target: string, ignored: readonly IgnoredPath[]): boolean {
 	const posixTarget = toPosix(target);
 	return ignored.some((entry) => {
@@ -54,7 +52,7 @@ function isIgnored(target: string, ignored: readonly IgnoredPath[]): boolean {
 	});
 }
 
-/** What a watch of `paths` with `options` looks at, decided the same way by every watcher. */
+/** What a watch of `paths` with `options` looks at, the same for every watcher. */
 export class WatchFilter {
 	private readonly paths: readonly string[];
 	private readonly shallow: readonly string[];
@@ -66,7 +64,6 @@ export class WatchFilter {
 		this.ignored = options.ignored ?? [];
 	}
 
-	/** Whether the watch leaves `target` out, however far a walk has got: it is ignored, or lies beyond a shallow directory. */
 	skips(target: string): boolean {
 		return (
 			isIgnored(target, this.ignored) ||
@@ -74,7 +71,6 @@ export class WatchFilter {
 		);
 	}
 
-	/** Whether a change at `target` is reported: it lies in what is watched and the watch doesn't skip it. */
 	reports(target: string): boolean {
 		const posixTarget = toPosix(target);
 		return (

@@ -24,13 +24,11 @@ export function placesInstance(
 /** Answers where paths land in a placed build, so `where` reports what `build` does. */
 export class PlacementLocator {
 	private readonly scanned: Map<string, FileLocation>;
-	/** The folder each init script becomes, by the script's source. */
 	private readonly initOf = new Map<string, string>();
 
 	constructor(
 		private readonly placement: Placement,
 		private readonly index: IndexReader,
-		/** Whether the path is there now, which `index` can't say once it holds paths that don't exist yet. */
 		private readonly exists: (source: string) => boolean = () => true
 	) {
 		this.scanned = this.locateScanned();
@@ -39,7 +37,7 @@ export class PlacementLocator {
 	/** Where each of `paths` lands, or every scanned path without `paths`. A directory stands for what's in it. */
 	locate(
 		paths?: readonly string[],
-		/** The paths among `paths` that were asked about as folders, which can't be told apart once resolved. */
+		/** The paths among `paths` that were asked about as folders. */
 		folders: ReadonlySet<string> = new Set()
 	): FileLocation[] {
 		if (!paths) return [...this.scanned.values()].sort(this.bySource);
@@ -56,7 +54,6 @@ export class PlacementLocator {
 		return [...found.values()];
 	}
 
-	/** The placed files at `reference` or inside it, by source. */
 	locateInstance(reference: InstanceReference): PlacedLocation[] {
 		return [...this.scanned.values()]
 			.filter((location) => placesInstance(location, reference))
@@ -83,7 +80,6 @@ export class PlacementLocator {
 		return [];
 	}
 
-	/** The folders of the placed files that sit directly under `parent`, sorted. A folder's init script is placed as the folder, so it counts for its parent's folder, or its own when it is `parent`. */
 	private foldersUnder(
 		placed: readonly PlacedLocation[],
 		parent: string,
@@ -188,7 +184,6 @@ export class PlacementLocator {
 			path.posix.dirname(target),
 			path.posix.basename(target)
 		);
-		// Only a trailing separator says folder: a bare `Module` is as likely a file missing its extension.
 		const folder = !exists && folders.has(target);
 		return [
 			{
@@ -200,7 +195,6 @@ export class PlacementLocator {
 		];
 	}
 
-	/** A path in no source path: Rojo reads it when the tree mounts it, except a file inside the mount that `globIgnorePaths` ignores, and nobody does otherwise. */
 	private outsideRoots(target: string): FileLocation {
 		const { mounts } = this.placement.tree;
 		const exists = this.exists(target);

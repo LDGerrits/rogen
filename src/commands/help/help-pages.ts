@@ -7,7 +7,6 @@ import {
 } from "../../platform/environment/args.js";
 import { helpTexts } from "./help-texts.js";
 
-/** A section of the reference, by name; its text ships in the binary. */
 interface HelpTopic {
 	readonly name: string;
 	readonly description: string;
@@ -36,7 +35,7 @@ const TOPICS: readonly HelpTopic[] = [
 /** A diagnostic code has a dot, which no command or topic does. */
 const isCode = (name: string) => name.includes(".");
 
-/** The code `name` writes, ignoring case; a name without its module stands for the one code that ends in it. */
+/** A name without its module stands for the one code that ends in it. */
 function codeNamed(name: string): string | undefined {
 	const codes = Object.keys(helpTexts.diagnostics);
 	const lower = name.toLowerCase();
@@ -167,7 +166,6 @@ function formatCommandHelp(
 	return sections.join("\n");
 }
 
-/** The pages of `rogen help`: the overview, and the one a command, a topic or a diagnostic code names. */
 export class HelpPages {
 	constructor(private readonly commands: ReadonlyMap<string, Command>) {}
 
@@ -175,7 +173,6 @@ export class HelpPages {
 		return formatHelp(this.commands, GlobalOptions);
 	}
 
-	/** The page `target` names: a diagnostic code, a command or a topic; none when it names nothing. */
 	find(target: string): string | undefined {
 		const code = codeNamed(target);
 		if (isCode(target)) return code && helpTexts.diagnostics[code];
@@ -187,10 +184,8 @@ export class HelpPages {
 		return code && helpTexts.diagnostics[code];
 	}
 
-	/** Why nothing is named `target`, and the closest name that is. */
 	unknown(target: string): UsageError {
 		const codes = Object.keys(helpTexts.diagnostics);
-		// A command or topic wins over the end of a code.
 		const named = new Map<string, string>();
 		const add = (name: string, standsFor: string) => {
 			if (!named.has(name)) named.set(name, standsFor);

@@ -2,14 +2,12 @@ import { dirnamePosix, joinPosix } from "../../base/path.js";
 import { NameReadings } from "./name-readings.js";
 import { ScannedRoot } from "./root-scanner.js";
 
-/** The route an init script's suffix gives the folder it sits in, and whether it's spelled `@key`. */
 interface InitRoute {
 	readonly key: string;
 	readonly source: string;
 	readonly at: boolean;
 }
 
-/** A marker file in a folder, with the route key it spells. */
 interface FolderMarker {
 	readonly fileName: string;
 	readonly key: string;
@@ -28,12 +26,10 @@ export class DirClaims {
 		this.initRoutes = this.initRoutesOf();
 	}
 
-	/** Every folder that holds a marker or an init script that routes. */
 	dirs(): Set<string> {
 		return new Set([...this.markers.keys(), ...this.initRoutes.keys()]);
 	}
 
-	/** The markers of `dir` that spell a route key. */
 	markersAt(dir: string): FolderMarker[] {
 		return (this.markers.get(dir) ?? []).flatMap((fileName) => {
 			const key = this.readings.markers.get(
@@ -43,19 +39,16 @@ export class DirClaims {
 		});
 	}
 
-	/** The routes the init scripts of `dir` give it. */
 	initRoutesAt(dir: string): readonly InitRoute[] {
 		return this.initRoutes.get(dir) ?? [];
 	}
 
-	/** The routes each folder's init scripts give it. */
 	private initRoutesOf(): Map<string, InitRoute[]> {
 		const routes = new Map<string, InitRoute[]>();
 		for (const entry of this.root.entries) {
 			const read = this.readings.entryReading(entry.source);
 			if (!read.isInit) continue;
 			const { stem, match } = read;
-			// Only the last `@key` of a name routes; the ones before it are outranked.
 			const [governing] = match.spans;
 			if (!governing) continue;
 			const dir = dirnamePosix(entry.relativePath);
@@ -72,7 +65,7 @@ export class DirClaims {
 	}
 }
 
-/** The claims of every source path, built once for the routing and the checks that read them. */
+/** The claims of every source path, built once for the routing and the checks. */
 export class RootClaims {
 	private readonly byRoot = new Map<ScannedRoot, DirClaims>();
 

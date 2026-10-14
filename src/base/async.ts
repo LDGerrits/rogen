@@ -16,7 +16,6 @@ export class Sequencer {
 	}
 }
 
-/** A promise whose resolution or rejection is controlled from outside. */
 export class DeferredPromise<T> {
 	private completeCallback!: (value: T | Promise<T>) => void;
 	private errorCallback!: (err: unknown) => void;
@@ -60,7 +59,6 @@ export class RunOnceScheduler implements Disposable {
 		private readonly delay: number
 	) {}
 
-	/** Starts the wait over, for `delay` ms or the scheduler's own. */
 	schedule(delay = this.delay): void {
 		this.cancel();
 		if (this.disposed) return;

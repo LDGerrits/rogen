@@ -17,7 +17,6 @@ export interface ConfigFile {
 	readonly model: ConfigModel;
 	/** Where the value at `section` starts in the file, for pointing a diagnostic at it. */
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
-	/** Where the top-level field `key` is written. */
 	positionOfKey(key: string): DiagnosticPosition | undefined;
 }
 
@@ -26,9 +25,7 @@ export type ConfigFileFailure =
 	| {
 			readonly kind: "unreadable";
 			readonly diagnostics: readonly Diagnostic[];
-			/** The file isn't there, rather than there and unreadable. */
 			readonly missing: boolean;
-			/** Why, without a Node error code. */
 			readonly reason: string;
 	  }
 	| {
@@ -38,7 +35,6 @@ export type ConfigFileFailure =
 			readonly value: unknown;
 	  };
 
-/** Reads config files and checks them against `schema`. */
 export class ConfigFileReader {
 	private readonly documents: JsoncDocumentReader;
 
@@ -52,7 +48,7 @@ export class ConfigFileReader {
 		});
 	}
 
-	/** Never throws for a problem the user can cause; those come back as diagnostics. */
+	/** Problems the user can cause come back as diagnostics, never thrown. */
 	async read(file: string): Promise<Result<ConfigFile, ConfigFileFailure>> {
 		const text = await tryWithAsync(() => this.fileReader.readFile(file));
 		if (text.isErr()) {

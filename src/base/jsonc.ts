@@ -153,7 +153,6 @@ function describeSyntaxError(code: ParseErrorCode): string {
 
 type PositionAt = (offset: number) => JsoncPosition;
 
-/** Finds the line of an offset by binary search over the line starts, which are listed once. */
 function positionsIn(text: string): PositionAt {
 	const lineStarts = [0];
 	for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1))

@@ -14,17 +14,13 @@ import {
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { DirectoryLayout } from "./code-finder.js";
 
-/** The directory `init` writes into: what is in it, what the toolchain found there, and which paths could be written. */
 export class InitDirectory {
 	private readonly names: PathSet;
 
 	constructor(
-		/** The absolute path. */
 		readonly path: string,
-		/** The names of the entries in it. */
 		private readonly entries: ReadonlySet<string>,
 		readonly workspace: DetectedWorkspace,
-		/** Which of its folders hold code. */
 		readonly layout: DirectoryLayout,
 		/** Whether the file system takes `Src` and `src` for one name, as Windows' and macOS' do. */
 		caseInsensitive = ignoresPathCase
@@ -36,22 +32,18 @@ export class InitDirectory {
 		return this.names.has(fileName);
 	}
 
-	/** Whether a config is here; a first `init` finds none. */
 	get hasConfigs(): boolean {
 		return this.configFiles.length > 0;
 	}
 
-	/** The config files here, sorted. */
 	get configFiles(): string[] {
 		return [...this.entries].filter(isConfigFileName).sort();
 	}
 
-	/** Whether a project file is here that no config wrote, since a first `init` finds no config. */
 	get hasHandWrittenProject(): boolean {
 		return this.has(DEFAULT_PROJECT_FILE);
 	}
 
-	/** One diagnostic per file in `fileNames` that already exists here; only a config is safe to tell the user to delete. */
 	checkFree(fileNames: readonly string[]): Diagnostic[] {
 		return fileNames
 			.filter((fileName) => this.has(fileName))
@@ -79,7 +71,6 @@ export class InitDirectory {
 		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_SOURCE_PATH;
 	}
 
-	/** The hint line naming the code folders `sourcePath` doesn't cover, or `undefined` when there are none. */
 	otherCodeFoldersHint(sourcePath: string): string | undefined {
 		const [topLevel] = sourcePath.split("/");
 		const others = this.layout.codeFolders.filter(
@@ -90,7 +81,6 @@ export class InitDirectory {
 			: undefined;
 	}
 
-	/** The first reason `entries` can't be a config's source paths, decided by the config's own overlap rule. */
 	sourcePathsProblem(entries: readonly string[]): string | undefined {
 		if (entries.length === 0) return "Enter at least one source path.";
 		for (const entry of entries) {

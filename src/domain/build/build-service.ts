@@ -35,7 +35,7 @@ interface Located {
 export interface PlacedLocation extends Located {
 	readonly status: "placed";
 	readonly instancePath: readonly string[];
-	/** The other nodes an init script is, where its folder becomes a node in another route; only a copied init script has them. */
+	/** The other nodes an init script is, where its folder becomes a node in another route. */
 	readonly alsoAt?: readonly (readonly string[])[];
 	readonly route: string;
 	readonly routeMatch: RouteMatch;
@@ -64,7 +64,7 @@ interface BlockedLocation extends Located {
 export type FileLocation =
 	PlacedLocation | (LeftOut & Located) | UnplacedLocation | BlockedLocation;
 
-/** What a build raises about `location`: for a file the user named, everything that reaches it, a folder's diagnostics included; for any other, only what is about that path. */
+/** What a build raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path. */
 export function diagnosticsOf(
 	location: FileLocation,
 	diagnostics: readonly Diagnostic[]
@@ -74,7 +74,7 @@ export function diagnosticsOf(
 		: diagnosticsAbout(diagnostics, location.source);
 }
 
-/** The expression that requires the module a placed location is, if it is one and its path holds at runtime. */
+/** The expression that requires the module a placed location is, if its path holds at runtime. */
 export function requireExpressionOf(
 	location: FileLocation
 ): string | undefined {
@@ -84,7 +84,7 @@ export function requireExpressionOf(
 		: undefined;
 }
 
-/** For a file the user named: the call that requires it, or why none can. Nothing for a `.ts` source, which is imported by path, or for a file that isn't code. */
+/** For a file the user named: the call that requires it, or why none can. */
 export function requireNoteOf(location: FileLocation): string | undefined {
 	if (location.status !== "placed" || !location.named) return undefined;
 	const file = new RojoFile(path.posix.basename(location.source));
@@ -113,29 +113,24 @@ export interface InstanceFix {
 	readonly rename: RenameFix["rename"];
 }
 
-/** Where `locate` found things in one config. */
 export interface ConfigLocations {
 	readonly config: ResolvedConfig;
 	/** One per path argument; every file when no argument was given. */
 	readonly files: readonly FileLocation[];
-	/** One per instance argument. */
 	readonly instances: readonly InstanceLocation[];
-	/** The path arguments, resolved; a diagnostic about one is about a file that places nothing too. */
 	readonly queried: readonly string[];
 	/** What a build of the config raises, without the sync path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }
 
-/** One thing `where` was asked about: a path, resolved and written with slashes, or an instance as `reference.text` has it. */
+/** One thing `where` was asked about: a path, resolved and written with slashes, or an instance. */
 export type Asked = { readonly path: string } | { readonly instance: string };
 
-/** What `locate` found, config by config. */
 export interface Locations {
 	/** No path or instance was asked about, so `files` holds every file. */
 	readonly everyFile: boolean;
 	/** Everything asked about, in the order it was given. */
 	readonly asked: readonly Asked[];
-	/** The configs that load; each answers for itself. */
 	readonly configs: readonly ConfigLocations[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
@@ -147,7 +142,6 @@ export interface LocateQuery {
 	readonly cwd: string;
 }
 
-/** What `diagnose` found. */
 export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
@@ -158,10 +152,10 @@ export interface Diagnosis {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** The run, one build per project of each selected config in order: builds each one that loads, checking its sync path, then writes them in order. A config that doesn't load or a build failure writes nothing, and a failed write leaves the rest unwritten. */
+	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
 	build(selection: ConfigSelection): Promise<BuildRun>;
 
-	/** Builds the project written to `projectFile` in a watch's `set` from the listing the watch holds, and writes it. The sync path is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
+	/** Builds and writes the project at `projectFile` in a watch's `set`; the sync path is checked only when `previous` holds no answer for this version of the config. */
 	rebuild(
 		set: BuildSet,
 		projectFile: string,
@@ -169,13 +163,13 @@ export interface BuildService {
 		previous?: LoadedBuild
 	): Promise<LoadedBuild>;
 
-	/** What a build raises about each of `targets.args` (see `diagnosticsReaching`), and why any config didn't load; with no arguments, what a build of every config raises, once per file it is about, and nothing is written. Fails as `locate` does. */
+	/** What a build raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config. Writes nothing; fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,
 		targets?: LocateQuery
 	): Promise<Result<Diagnosis, DiagnosticsError>>;
 
-	/** Where each argument lands in every config of `selection`: a path (relative to `cwd`) gives its file, and a directory stands for what's in it. An argument that starts with a service gives the files placed at that instance or inside it, unless `cwd` holds an entry of that name. No arguments give every file. A config that doesn't load, or that the set blocks, answers nothing, and its errors come back beside the answers of the rest. */
+	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. */
 	locate(
 		selection: ConfigSelection,
 		targets?: LocateQuery

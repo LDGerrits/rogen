@@ -13,7 +13,6 @@ export interface OptionDescriptor {
 	readonly description: string;
 }
 
-/** An option's value; one whose descriptor isn't known exactly may hold any. */
 type OptionValue<D extends OptionDescriptor> = D extends {
 	readonly type: "boolean";
 }
@@ -24,12 +23,10 @@ type OptionValue<D extends OptionDescriptor> = D extends {
 			? string
 			: boolean | string | readonly string[];
 
-/** The values a line gives the options of `O`, keyed by name; an option not given is absent. */
 type OptionValues<O extends readonly OptionDescriptor[]> = {
 	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
 };
 
-/** The options every command takes. */
 export const GlobalOptions = [
 	{ name: "help", short: "h", type: "boolean", description: "Print help." },
 	{
@@ -52,10 +49,8 @@ export const GlobalOptions = [
 	},
 ] as const satisfies readonly OptionDescriptor[];
 
-/** The command that answers `--help`, `--version` and a bare line. */
 export const HELP_COMMAND = "help";
 
-/** For the commands whose answer a program reads. */
 export const JsonOption = {
 	name: "json",
 	type: "boolean",
@@ -146,7 +141,7 @@ function unknownOption(
 		: `Unknown option '${rawName}'. ${help}`;
 }
 
-/** Node's own wording varies by version and talks about positionals, so the options are checked here. `ownersOf` names the commands that take an option. */
+/** Node's wording varies by version and talks about positionals, so options are checked here. */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
@@ -180,7 +175,7 @@ function findOptionProblem(
 	return undefined;
 }
 
-/** Finds the command with every known option (`optionsFor(undefined)`), then checks the line against the options of the command it names. A line for a command that doesn't exist is returned unchecked, for the command service to report. */
+/** Finds the command with every known option, then checks the line against that command's options; a line for an unknown command is returned unchecked. */
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
@@ -235,7 +230,6 @@ export function parseArgs(
 	}
 }
 
-/** Whether `option` was typed by its long name before any `--`, however the rest of the line parses. */
 export function hasFlag(
 	argv: readonly string[],
 	option: OptionDescriptor

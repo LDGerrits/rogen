@@ -8,7 +8,6 @@ export interface HttpResponse {
 	readonly body: Uint8Array;
 }
 
-/** Why a request got no response: nothing listens there, it took too long, or something else went wrong. */
 export type RequestFailure = "refused" | "timeout" | "failed";
 
 export class RequestError extends Error {
@@ -24,17 +23,13 @@ export class RequestError extends Error {
 }
 
 export interface RequestOptions {
-	/** Milliseconds to wait before giving up. */
 	readonly timeout: number;
-	/** Sent with the request, for a server that wants to know who asks. */
 	readonly headers?: Readonly<Record<string, string>>;
 }
 
-/** Makes HTTP requests. */
 export interface RequestService {
 	readonly _serviceBrand: undefined;
 
-	/** A `GET` of `url` that gives up after `timeout` milliseconds; any status is a response. */
 	request(
 		url: string,
 		options: RequestOptions
@@ -44,7 +39,6 @@ export interface RequestService {
 export const RequestService =
 	createServiceIdentifier<RequestService>("requestService");
 
-/** The body's value, read as MessagePack or JSON as its content type says. */
 export function readBody(response: HttpResponse): Result<unknown, Error> {
 	const type = response.contentType?.split(";")[0].trim().toLowerCase();
 	if (type === "application/msgpack" || type === "application/x-msgpack")

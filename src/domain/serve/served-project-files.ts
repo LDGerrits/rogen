@@ -4,14 +4,12 @@ import { ServeAddress } from "./serve.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecord, ServerRecords } from "./server-records.js";
 
-/** The project files that running serves serve. */
 export class ServedProjectFiles {
 	constructor(
 		private readonly records: ServerRecords,
 		private readonly probe: ServerProbe
 	) {}
 
-	/** For each of `files` that a running serve serves, the record of that serve. The records are read once, and each server is asked once. */
 	async serving(
 		files: readonly string[]
 	): Promise<ReadonlyMap<string, ServerRecord>> {
@@ -33,7 +31,6 @@ export class ServedProjectFiles {
 		return found;
 	}
 
-	/** Whether the server of `record` still answers, as the one the serve started: a crashed serve leaves its record behind. */
 	private async isRunning(record: ServerRecord): Promise<boolean> {
 		const server = SyncServer.byId(record.server);
 		if (!server) return false;

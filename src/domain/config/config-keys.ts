@@ -12,9 +12,8 @@ import {
 
 const KNOWN_KEYS: readonly string[] = [...rojoKeys, ...rogenKeys];
 
-/** What the keys of a config or a project say that is wrong. */
 export class ConfigKeys {
-	/** A key Rogen read once is told as removed; one that is neither Rojo's nor Rogen's passes through with a warning. */
+	/** A removed key is an error; a key neither Rojo's nor Rogen's passes through with a warning. */
 	static check(
 		keys: readonly string[],
 		locationOf: (key: string) => DiagnosticLocation

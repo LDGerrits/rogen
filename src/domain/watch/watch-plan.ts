@@ -4,17 +4,13 @@ import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { OutputFile } from "../build/build.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 
-/** The project file names the project in `projectsFor`. */
 type WatchPlanConfig = Pick<
 	ResolvedConfig,
 	"indexedPaths" | "projectFile" | "syncPath"
 >;
 
-/** What a watch watches and what it skips, for a set of configs. */
 export class WatchPlan {
-	/** The dirs to watch and index: every config's source paths, minus any inside another. */
 	readonly roots: readonly string[];
-	/** Paths the watcher skips: the files Rogen writes and the dirs Rojo syncs from. */
 	readonly ignored: readonly IgnoredPath[];
 	private readonly claims: readonly {
 		readonly projectFile: string;
@@ -49,7 +45,6 @@ export class WatchPlan {
 		];
 	}
 
-	/** The project file of every project with a source path that contains `changePath`, each once. */
 	projectsFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
 		return this.claims

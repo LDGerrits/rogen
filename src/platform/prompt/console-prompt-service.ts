@@ -36,7 +36,6 @@ import {
 
 type State = Prompt<unknown>["state"];
 
-/** Puts text in a style; without colours it leaves the text as it is. */
 type Styler = typeof style;
 
 const plain: Styler = (_format, text) => text;
@@ -51,15 +50,11 @@ interface Frame {
 	readonly state: State;
 	readonly message: string;
 	readonly details: PromptDetails;
-	/** Lines under the title while the prompt is open. */
 	readonly body: readonly string[];
-	/** The answer shown once the prompt is submitted or cancelled. */
 	readonly answer: string;
-	/** Lines under the closing corner, such as the keys or an error. */
 	readonly footer?: readonly string[];
 }
 
-/** Draws one prompt: its description and hint only while it's open, then just the title and answer. */
 function drawFrame(output: Writable, frame: Frame, style: Styler): string {
 	const dim = (text: string) => style("dim", text);
 	const struck = (text: string) => style(["strikethrough", "dim"], text);
@@ -106,9 +101,7 @@ interface PromptStreams {
 }
 
 interface PromptSession extends PromptStreams {
-	/** Whether a person can answer, as the environment decides (`EnvironmentService.isInteractive`). */
 	readonly interactive: boolean;
-	/** Whether the prompts are drawn in colours, as the environment decides (`EnvironmentService.isPlain` says not). */
 	readonly color: boolean;
 }
 

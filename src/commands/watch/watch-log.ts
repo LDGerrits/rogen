@@ -48,7 +48,6 @@ const CHANGE_VERBS: Record<FileChangeType, string> = {
 
 const LISTED_CHANGES = 20;
 
-/** One line per changed file, up to a limit, for `--verbose`. */
 function describeFileChanges(
 	changes: readonly FileChange[],
 	cwd: string
@@ -80,7 +79,6 @@ function titleOf(cause: WatchCause, cwd: string): string {
 	}
 }
 
-/** `diagnostics` counted with `what` said of them: `3 warnings as before`. */
 function counted(
 	diagnostics: readonly Diagnostic[],
 	what: string
@@ -94,21 +92,16 @@ function counted(
 	return parts.length > 0 ? `${parts.join(" and ")} ${what}` : undefined;
 }
 
-/** What a watch tells its user, as it happens. */
 export interface WatchReporter {
-	/** Opens the output: the configs watched. */
 	begin(configs: readonly ResolvedConfig[], home?: string): void;
 	update(update: WatchUpdate): void;
-	/** A step of the watch failed unexpectedly; the watch goes on. */
 	error(error: Error): void;
 	end(): void;
 }
 
-/** How `watch` reports each round of rebuilds. */
 export class WatchLog implements WatchReporter {
 	private readonly buildLog: BuildLog;
 
-	/** `command` is the one whose output it is: `serve` reports its rebuilds as `watch` does. */
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string,
@@ -117,7 +110,6 @@ export class WatchLog implements WatchReporter {
 		this.buildLog = new BuildLog(logService, cwd);
 	}
 
-	/** Opens the output: the configs watched. */
 	begin(configs: readonly ResolvedConfig[], home?: string): void {
 		this.buildLog.begin(
 			this.command,
@@ -126,7 +118,6 @@ export class WatchLog implements WatchReporter {
 		);
 	}
 
-	/** A step of the watch failed unexpectedly; the watch goes on. */
 	error(error: Error): void {
 		this.logService.error(error.message);
 	}
@@ -199,7 +190,6 @@ export class WatchLog implements WatchReporter {
 	}
 }
 
-/** How `watch --json` reports each round of rebuilds, as one JSON object per line: each notice, then each build. */
 export class WatchJsonLog implements WatchReporter {
 	constructor(private readonly logService: LogService) {}
 
@@ -213,7 +203,6 @@ export class WatchJsonLog implements WatchReporter {
 			this.line({ build: buildEntry(build) });
 	}
 
-	/** A step of the watch failed unexpectedly; the watch goes on. */
 	error(error: Error): void {
 		this.line({ error: error.message });
 	}

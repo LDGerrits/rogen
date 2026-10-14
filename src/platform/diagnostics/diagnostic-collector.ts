@@ -31,7 +31,6 @@ export class DiagnosticCollector {
 		this.collected.push(...diagnostics);
 	}
 
-	/** `value` when nothing collected is an error, otherwise everything collected. */
 	toResult<T>(value: T): Result<T, Diagnostic[]> {
 		return this.hasErrors ? err([...this.collected]) : ok(value);
 	}

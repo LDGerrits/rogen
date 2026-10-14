@@ -33,14 +33,13 @@ export interface UnclaimedMeta {
 	readonly hint?: string;
 }
 
-/** What a scan found under one source path. */
 interface ScannedRootParts {
 	readonly sourcePath: string;
 	/** False for a source path the index doesn't hold, which contributes nothing. */
 	readonly exists: boolean;
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
-	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; Rojo applies them, they're never entries. */
+	/** `.meta.json` and `.meta.jsonc` files, `init.meta.json` included; they are never entries. */
 	readonly metaFiles: readonly string[];
 	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
@@ -87,7 +86,7 @@ export class ScannedRoot implements ScannedRootParts {
 		return this.countLeftOut("ignored");
 	}
 
-	/** The tree nodes that mount a path that exists under this source path; a node counts once, whatever case its path is spelt in. */
+	/** The tree nodes that mount a path under this source path; a node counts once. */
 	get mountedCount(): number {
 		const nodes = new Set<string>();
 		for (const [mounted, why] of this.leftOut)
@@ -179,7 +178,6 @@ export class ScannedRoot implements ScannedRootParts {
 	}
 }
 
-/** What one walk of a source path collects. */
 interface Walk {
 	readonly sourcePath: string;
 	readonly entries: ScannedFile[];
@@ -194,7 +192,6 @@ export class RootScanner {
 		private readonly index: IndexReader,
 		private readonly ignored: readonly string[],
 		private readonly mounts: TreeMounts,
-		/** The project files the config writes, which a source path that holds them must not scan. */
 		private readonly projectFiles: readonly string[]
 	) {}
 
@@ -236,7 +233,6 @@ export class RootScanner {
 		return this.ignored.find((glob) => isMatch(posixPath, glob));
 	}
 
-	/** The entries of `dir` that the tree doesn't mount, `globIgnorePaths` doesn't match and aren't a Rogen config; the rest are recorded as left out. */
 	private keptEntries(
 		walk: Walk,
 		dir: string,
@@ -266,7 +262,6 @@ export class RootScanner {
 				});
 			else kept.push([name, type]);
 		}
-		// Left out before they exist too, or the first build and the one after it would write different files.
 		for (const projectFile of this.projectFiles) {
 			const outName = path.basename(projectFile);
 			if (
@@ -298,7 +293,6 @@ export class RootScanner {
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
 			} else {
-				// A key can't contain a dot, so a file with a type (`@Foo.luau`, `.eslintrc.json`) is never a marker.
 				const file = new RojoFile(name);
 				const lowercased = file.lowercasedExtension;
 				if (lowercased !== undefined) {

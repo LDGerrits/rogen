@@ -17,7 +17,6 @@ import {
 	wasInterrupted,
 } from "./process-service.js";
 
-/** How long a process asked to stop gets before it is killed. */
 const KILL_GRACE_MS = 5_000;
 
 /** How long an exited process's output may take to drain; a process it started can hold the pipes open for good. */
@@ -27,7 +26,6 @@ const DRAIN_MS = 250;
 const needsShell = (file: string, windows: boolean) =>
 	windows && /\.(cmd|bat)$/i.test(file);
 
-/** An argument as `cmd.exe` reads it back as one word. */
 const shellQuoted = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
 
 /** `cmd.exe` expands `%NAME%` even inside quotes, and nothing escapes it there. */
@@ -39,7 +37,7 @@ interface Launch {
 	readonly windowsVerbatimArguments: boolean;
 }
 
-/** Runs a batch file through `cmd.exe` with the line quoted here, which Node's own `shell` option warns against; fails for an argument that `cmd.exe` would rewrite. */
+/** Runs a batch file through `cmd.exe` with the line quoted here, as Node's `shell` option warns against; fails for an argument `cmd.exe` would rewrite. */
 export function launch(
 	file: string,
 	args: readonly string[],
@@ -71,7 +69,6 @@ export function launch(
 	});
 }
 
-/** A process that never started: it has already failed with `error`. */
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidOutputLine: Event<string> = NullEvent;
@@ -157,7 +154,7 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 	private async end(): Promise<ProcessExit> {
 		if (this.exit || this.child.pid === undefined) return this.exited;
 		if (isWindows) {
-			// A toolchain manager's shim starts the real program as its own child, which outlives the shim unless the tree ends.
+			// A toolchain shim starts the real program as a child that outlives it unless the tree ends.
 			await new Promise<void>((resolve) =>
 				childProcess.execFile(
 					"taskkill",

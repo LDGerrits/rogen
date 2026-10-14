@@ -5,7 +5,6 @@ import { AgentSetup } from "./agent-setup.js";
 import { AdditionOption, InitQuestions } from "./init-questions.js";
 import { AnsweredSetup, Setup } from "./setup.js";
 
-/** What can be added beside the config here, and what adding each asks and writes. */
 export class InitAdditions {
 	constructor(
 		private readonly questions: InitQuestions,
@@ -13,7 +12,7 @@ export class InitAdditions {
 		private readonly hooks: AgentHooks
 	) {}
 
-	/** The agent rules until they are there; the hook where an agent is in use, unless the run can't ask, since it edits the repo's tooling. */
+	/** The hook is not offered to a run that can't ask, since it edits the repo's tooling. */
 	options(): AdditionOption<Setup<unknown>>[] {
 		const { questions, agentFile, hooks } = this;
 		const agents = new AgentSetup(agentFile, hooks, questions);

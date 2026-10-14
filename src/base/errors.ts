@@ -1,6 +1,6 @@
 import { safeStringify } from "./json.js";
 
-/** Why a system call failed, in words for the user: Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
+/** Node's `EACCES: permission denied, open '/x'` becomes `permission denied`. */
 export function failureReason(error: Error): string {
 	const code = /^[A-Z][A-Z0-9]+: /;
 	if (!code.test(error.message)) return error.message;
@@ -9,8 +9,7 @@ export function failureReason(error: Error): string {
 
 export const ErrorUtils = {
 	fromUnknown(error: unknown): Error {
-		// Use the object string instead of instanceof to
-		// bypass the instanceof memory-reference trap
+		// Errors from another realm fail instanceof.
 		if (
 			error instanceof Error ||
 			(typeof error === "object" &&
@@ -27,7 +26,6 @@ export const ErrorUtils = {
 		);
 	},
 
-	/** Whether `error` carries one of the Node error codes `codes`, such as `ENOENT`. */
 	hasCode(error: unknown, ...codes: string[]): boolean {
 		return (
 			typeof error === "object" &&
@@ -38,7 +36,7 @@ export const ErrorUtils = {
 		);
 	},
 
-	/** Whether `error` is a failed system call: its code is an errno such as `EACCES`, which the environment causes and a bug does not. */
+	/** Whether `error` is a failed system call, which the environment causes and a bug does not. */
 	isSystemError(error: unknown): error is Error & { readonly code: string } {
 		return (
 			error instanceof Error &&
@@ -48,25 +46,24 @@ export const ErrorUtils = {
 		);
 	},
 
-	/** `cause` as an error that says what failed and why: `Failed to write a.json: permission denied`. */
+	/** `Failed to write a.json: permission denied` for `what` and `cause`. */
 	wrap(what: string, cause: Error): Error {
 		return new Error(`${what}: ${failureReason(cause)}`, { cause });
 	},
 };
 
-/** The user backed out: not a failure to report, only a message to end on. */
+/** The user backed out; not a failure to report. */
 export class CancelledError extends Error {
 	override readonly name = "CancelledError";
 }
 
-/** The command line is wrong rather than the project: an unknown command, option or name, or a combination that isn't allowed. */
+/** The command line is wrong rather than the project. */
 export class UsageError extends Error {
 	override readonly name = "UsageError";
 }
 
 type UnexpectedErrorHandler = (error: Error) => void;
 
-// Throws on the next tick so a silent failure doesn't stay silent.
 const defaultUnexpectedErrorHandler: UnexpectedErrorHandler = (error) => {
 	setTimeout(() => {
 		throw error;
@@ -76,7 +73,6 @@ const defaultUnexpectedErrorHandler: UnexpectedErrorHandler = (error) => {
 let unexpectedErrorHandler: UnexpectedErrorHandler =
 	defaultUnexpectedErrorHandler;
 
-/** Returns the previous handler so a caller can restore it. */
 export function setUnexpectedErrorHandler(
 	newHandler: UnexpectedErrorHandler
 ): UnexpectedErrorHandler {
@@ -89,7 +85,6 @@ export function onUnexpectedError(error: unknown): void {
 	try {
 		unexpectedErrorHandler(ErrorUtils.fromUnknown(error));
 	} catch (handlerError) {
-		// Don't let a bad handler break the caller (usually Emitter.fire).
 		defaultUnexpectedErrorHandler(ErrorUtils.fromUnknown(handlerError));
 	}
 }

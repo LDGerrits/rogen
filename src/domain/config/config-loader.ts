@@ -19,18 +19,14 @@ import { ConfigValidator } from "./config-validator.js";
 import { PlaceFinder } from "./place-finder.js";
 import { PlaceLoader } from "./place-loader.js";
 
-/** One read of one config, with everything a reload needs to compare against. */
+/** One read of one config, with what a reload compares against. */
 export interface LoadedConfig {
-	/** Every file the config reads. */
 	readonly files: readonly string[];
-	/** What the file holds, once it could be read. */
 	readonly value?: Readonly<Record<string, unknown>>;
-	/** What each place's config holds, by file. */
 	readonly placeValues?: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
 }
 
-/** Reads a config file, then resolves and validates it. */
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 	private readonly fileChecks = new Set<ConfigFileCheck>();
@@ -75,7 +71,6 @@ export class ConfigLoader {
 		return this.resolve(config);
 	}
 
-	/** Resolves a config that read and passed the file checks: its projects first, then the places it lists. */
 	private async resolve(config: ConfigFile): Promise<LoadedConfig> {
 		const { file } = config;
 		const value = config.model.contents;

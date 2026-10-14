@@ -21,7 +21,6 @@ export type SyncRuleUse =
 	| "yaml"
 	| "ignore";
 
-/** One rule that tells Rojo what a file is, as a project's `syncRules` list writes it. */
 export interface SyncRule {
 	readonly pattern: string;
 	/** A file this matches is left to the rules after this one. */
@@ -31,13 +30,12 @@ export interface SyncRule {
 	readonly suffix?: string;
 }
 
-/** The rule that gets a file a rule matched, and the name it gives the instance. */
 interface SyncRuleMatch {
 	readonly rule: SyncRule;
 	readonly name: string;
 }
 
-/** The rules Rojo applies after a project's own, in its order. Init files and meta files are read apart from them, as in Rojo, and so are compiler sources. */
+/** The rules Rojo applies after a project's own, in its order. */
 export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 	{ pattern: "*.server.lua", use: "serverScript", suffix: ".server.lua" },
 	{ pattern: "*.server.luau", use: "serverScript", suffix: ".server.luau" },
@@ -70,7 +68,6 @@ export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 	{ pattern: "*.{yml,yaml}", use: "yaml" },
 ];
 
-/** A list of sync rules and the one way Rojo applies them to a file. */
 export class SyncRules {
 	static readonly DEFAULT = new SyncRules(DEFAULT_SYNC_RULES);
 
@@ -86,7 +83,6 @@ export class SyncRules {
 		return rule && { rule, name: SyncRules.nameOf(rule, filePath) };
 	}
 
-	/** The instance name a rule gives `filePath`: the suffix cut off, or the whole file name when it does not end with it. */
 	private static nameOf(rule: SyncRule, filePath: string): string {
 		const fileName = filePath.slice(filePath.lastIndexOf("/") + 1);
 		if (rule.suffix !== undefined)

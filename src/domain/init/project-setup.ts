@@ -17,21 +17,17 @@ import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { SyncSteps } from "./sync-steps.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
-/** Every answer the new-project questions give, whether asked or defaulted. */
 export interface ProjectChoices {
 	readonly language: Language;
-	/** Darklua when it processes the code, else `undefined`. */
 	readonly darklua: Darklua | undefined;
 	readonly sourcePaths: readonly string[];
 	readonly syncPath?: string;
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
 	readonly routes: readonly RouteId[];
-	/** Whether files that match no route go to the shared target, or are left out. */
 	readonly fallback: boolean;
 }
 
-/** The routes the nodes a lifted project file loses become; asking and planning both read them from here, so the ids they use agree. */
 function derivedRoutesOf(
 	tree: ProjectTree,
 	dirs: readonly string[]
@@ -41,7 +37,6 @@ function derivedRoutesOf(
 		: undefined;
 }
 
-/** The folders Rogen generates the code of: the source paths, what is synced, and a compiler's output when Darklua processes it. */
 function generatedDirs({
 	language,
 	darklua,
@@ -59,13 +54,10 @@ function generatedDirs({
 	];
 }
 
-/** The project that Studio syncs from when Darklua processes the code. */
 const PROCESSED_PROJECT = "dist";
 
-/** The project that leaves the specs out. */
 const RELEASE_PROJECT = "release";
 
-/** The keys of a new project's config that name its projects: Darklua's output is served, and a test runner's specs are left out of a release. */
 function projectsOf({
 	language,
 	darklua,
@@ -74,7 +66,6 @@ function projectsOf({
 	inherited,
 }: Pick<ProjectChoices, "language" | "darklua" | "syncPath"> & {
 	readonly testRunner: string | undefined;
-	/** The globs the lifted project file already ignores. */
 	readonly inherited: readonly string[];
 }): Pick<RogenConfig, "projects" | "serveProject"> {
 	const processed = darklua && syncPath ? { syncPath } : undefined;
@@ -96,7 +87,6 @@ function projectsOf({
 	};
 }
 
-/** A new project: its `rogen.json`, with the tree it starts from. */
 export class ProjectSetup implements Setup<ProjectChoices> {
 	constructor(
 		private readonly directory: InitDirectory,
@@ -154,7 +144,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 	}
 
-	/** The tree as the project gets it: a lifted file is read. */
 	private async resolveTree(
 		chosen: TreeChoice
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
@@ -187,7 +176,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			testRunner,
 			inherited: tree.fields.globIgnorePaths ?? [],
 		});
-		// With Darklua the default project keeps pointing at the code the compiler writes, or at the source, for the tools that read it.
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig({
 			...tree.fields,
@@ -219,7 +207,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		this.planNextSteps(builder, choices, tree);
 	}
 
-	/** What the user does next: the compiler's source path, the edits, and the commands that build and serve. */
 	private planNextSteps(
 		builder: InitPlanBuilder,
 		{ language, darklua, sourcePaths, syncPath }: ProjectChoices,

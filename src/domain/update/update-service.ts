@@ -1,10 +1,9 @@
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 
-/** Tells the user when a newer Rogen is out. */
 export interface UpdateService {
 	readonly _serviceBrand: undefined;
 
-	/** Starts the check and answers with the notice to print, or `undefined` when there is none. It answers from what the last check found, so it never waits for the network, and it starts the next check beside the command. Nothing at all for a run nobody reads at a terminal. */
+	/** The notice to print, or `undefined`. Answers from the last check without waiting for the network, and starts the next check. */
 	check(): Promise<string | undefined>;
 }
 

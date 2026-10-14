@@ -17,7 +17,6 @@ import { BuildEntry, buildDocument } from "../build/build-document.js";
 
 const indent = (line: string) => `  ${line}`;
 
-/** The next steps as printed: long-running commands grouped, since each keeps its terminal busy. */
 const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...setup,
 	...(run.length > 0
@@ -35,23 +34,18 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
-/** What a build found, less the sync path's warnings: the compiler they ask for hasn't run in a project that was just written. */
 const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.warnings,
 	...build.errors,
 ];
 
-/** How a run of `init` tells what it wrote and built, in lines for a person or as one document for a program. */
 export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
-	/** The run failed with `error`; answers with the result the run ends with. */
 	failed(error: Error): Result<void, Error>;
-	/** Everything was written and built; answers with the result the run ends with. */
 	done(plan: InitPlan, run: BuildRun): Result<void, Error>;
 }
 
-/** How `init` tells the user what it wrote and built. */
 export class InitLog implements InitReporter {
 	private readonly buildLog: BuildLog;
 
@@ -66,7 +60,6 @@ export class InitLog implements InitReporter {
 		this.logService.intro("rogen init");
 	}
 
-	/** The notes the plan carries, set apart from the last answer by a blank gutter line when the run asked. */
 	begin(plan: InitPlan): void {
 		if (plan.asked) this.logService.info("");
 		for (const note of plan.notes) this.logService.info(note);
@@ -89,7 +82,6 @@ export class InitLog implements InitReporter {
 		return err(error);
 	}
 
-	/** What the build of each written config said, then the next steps, or that the build failed. */
 	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
 		for (const build of run.builds)
 			this.buildLog.outcome(build, foundBy(build));
@@ -108,7 +100,6 @@ export class InitLog implements InitReporter {
 	}
 }
 
-/** What `--json` prints of a run: what it wrote, kept as it is written, so a failed write still names the files before it. */
 interface InitDocument {
 	readonly files: readonly string[];
 	readonly appended: readonly string[];
@@ -119,7 +110,6 @@ interface InitDocument {
 	readonly nextSteps?: NextSteps;
 }
 
-/** Prints what `init` did as one JSON document, naming the files written even when a step failed. */
 export class InitJsonLog implements InitReporter {
 	private readonly files: string[] = [];
 	private readonly appended: string[] = [];
@@ -161,7 +151,6 @@ export class InitJsonLog implements InitReporter {
 		);
 	}
 
-	/** Prints `document`; a run that failed with `failure` only has its exit code left to set, since the document says what went wrong. */
 	private print(
 		document: InitDocument,
 		failure?: Error

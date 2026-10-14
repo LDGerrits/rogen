@@ -7,7 +7,7 @@ export function toPosix(filePath: string): string {
 	return filePath.replace(/\\/g, POSIX_SEP);
 }
 
-/** Paths found however they are written: a watcher reports POSIX paths on every system, and a file system that ignores letter case (Windows' and macOS') makes `Src` and `src` one path. */
+/** Paths compared however written: POSIX from watchers, case-folded where the file system ignores case. */
 export class PathSet {
 	private readonly keys: ReadonlySet<string>;
 
@@ -28,7 +28,6 @@ export class PathSet {
 	}
 }
 
-/** `filePath` as the platform writes it, the form a path is printed in. */
 export function toNative(
 	filePath: string,
 	platform: typeof path.posix = path
@@ -48,7 +47,7 @@ export function dirnamePosix(relativePath: string): string {
 	return dir === "." ? "" : dir;
 }
 
-/** `a` and `b` as `path.relative` compares them: it follows the host's case rule, which is wrong for macOS' file system, so a file system that ignores case folds both. */
+/** Folds `a` and `b` where the file system ignores case, which `path.relative` gets wrong on macOS. */
 function foldedForRelative(
 	a: string,
 	b: string,
@@ -57,7 +56,7 @@ function foldedForRelative(
 	return caseInsensitive ? [a.toLowerCase(), b.toLowerCase()] : [a, b];
 }
 
-/** Whether two paths name one place, compared as paths, since a case-insensitive file system makes `Src` and `src` one folder. */
+/** Whether two paths name one place, folding case where the file system does. */
 export function samePath(
 	a: string,
 	b: string,
@@ -109,7 +108,7 @@ export function containsPosix(parent: string, child: string): boolean {
 	return child === parent || child.startsWith(`${parent}/`);
 }
 
-/** As `containsPosix`, but a file system that ignores letter case (Windows' and macOS') makes `Src` and `src` one folder. */
+/** As `containsPosix`, folding case where the file system does. */
 export function containsPath(
 	parent: string,
 	child: string,
@@ -133,7 +132,6 @@ export function relativeTo(from: string, filePath: string): string {
 	return path.relative(from, filePath) || ".";
 }
 
-/** A file name without its last extension. */
 export function stemOf(fileName: string): string {
 	return fileName.slice(0, fileName.length - path.extname(fileName).length);
 }

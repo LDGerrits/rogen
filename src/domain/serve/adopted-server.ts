@@ -5,21 +5,16 @@ import { ServedTarget, ServerExitEvent } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
 import { RunningServer } from "./started-server.js";
 
-/** How often an adopted server is asked whether it still serves. */
 const ADOPTED_POLL_MS = 2_000;
 
-/** How many polls in a row must find nothing listening before the server counts as stopped, so a restart or a busy moment is not one. */
 const REFUSED_POLLS_TO_STOP = 2;
 
-/** What happens to an adopted server, told to the session that adopted it. */
 interface AdoptedServerListener {
-	/** It stopped answering for its project. */
 	stopped(stop: ServerExitEvent): void;
-	/** A step of its own failed unexpectedly. */
 	failed(error: Error): void;
 }
 
-/** A server no serve started that serves a target's project; its process is out of sight, so its port is asked until it stops. */
+/** A server that serves a target's project but that no serve started; only its port can be asked. */
 export class AdoptedServer extends AbstractDisposable implements RunningServer {
 	private ending = false;
 	private refused = 0;
@@ -48,10 +43,8 @@ export class AdoptedServer extends AbstractDisposable implements RunningServer {
 		this[Symbol.dispose]();
 	}
 
-	/** Nothing to drop: no serve recorded it. */
 	async unrecord(): Promise<void> {}
 
-	/** Another session or project on the port is another server; nothing listening twice in a row is none; a slow answer is neither. */
 	private ask(): void {
 		const { target } = this;
 		const { servedBy } = target;

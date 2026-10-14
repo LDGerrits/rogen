@@ -7,20 +7,17 @@ import {
 import { RojoFile } from "../rojo/rojo.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
 
-/** The folders of a directory that hold code. */
 export interface DirectoryLayout {
-	/** Top-level folders holding Luau or TypeScript code, sorted. */
 	readonly codeFolders: readonly string[];
 }
 
 const isHiddenOrVendored = (name: string): boolean =>
 	name.startsWith(".") || name === "node_modules";
 
-/** Finds the code a directory holds. */
 export class CodeFinder {
 	constructor(private readonly fileReader: FileReader) {}
 
-	/** The code folders of `cwd`; the folders the toolchain finds `workspace` uses for packages and compiled code are not code. */
+	/** Excludes the folders the toolchain uses for packages and compiled code. */
 	async layoutOf(
 		cwd: string,
 		workspace: DetectedWorkspace
@@ -34,7 +31,6 @@ export class CodeFinder {
 		return { codeFolders };
 	}
 
-	/** Whether `dir` holds a script anywhere below it, outside hidden and vendored folders. */
 	async holdsCode(dir: string): Promise<boolean> {
 		let entries;
 		try {

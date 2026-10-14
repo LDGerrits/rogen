@@ -31,13 +31,10 @@ import { ConfigBuilder } from "../config-builder.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
 
-/** What `where` asked about: the paths, resolved, and the instances. */
 interface Targets {
 	readonly paths: readonly string[];
-	/** The resolved paths among `paths` that the argument named as a folder, by a trailing separator. */
 	readonly folders: ReadonlySet<string>;
 	readonly instances: readonly InstanceReference[];
-	/** The paths and instances in the order they were given. */
 	readonly asked: readonly Asked[];
 }
 
@@ -73,7 +70,6 @@ export class Locator {
 		});
 	}
 
-	/** `arg` without a `:line`, `:line:col` or bare `:` after the path, and what follows it (`: attempt to index nil`), as a linter or a log prints it. It is only cut when what is left exists or has a file type Rojo reads, so a Windows drive letter or a colon in a name stays. */
 	private async withoutPosition(arg: string, cwd: string): Promise<string> {
 		const head = (/^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg) ??
 			/^(.+):$/.exec(arg))?.[1];
@@ -84,7 +80,6 @@ export class Locator {
 			: arg;
 	}
 
-	/** An argument is an instance when it reads as one and the working dir holds no entry named like its service. */
 	private async classify({ args, cwd }: LocateQuery): Promise<Targets> {
 		const paths: string[] = [];
 		const folders = new Set<string>();
@@ -101,7 +96,6 @@ export class Locator {
 				instances.push(reference);
 				asked.push({ instance: reference.text });
 			} else {
-				// A backslash is a separator on every platform, so a Windows-style path answers as its slash form does.
 				const arg = await this.withoutPosition(toPosix(given), cwd);
 				const resolved = path.resolve(cwd, arg);
 				paths.push(resolved);
@@ -113,7 +107,6 @@ export class Locator {
 	}
 }
 
-/** Answers `where` for one config over a listing, placing files exactly as a build does. */
 class ConfigLocator {
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -153,7 +146,6 @@ class ConfigLocator {
 				});
 		}
 
-		// A planned file can move the files that exist, and an instance is only ever made by those.
 		const existing = await this.locatorOf(this.listing);
 		if (existing.isErr()) return err(existing.error);
 		const { locator } = existing.value;
@@ -178,7 +170,6 @@ class ConfigLocator {
 		});
 	}
 
-	/** The answer for `paths` when the build of the config stops on `errors`: none can be placed, and each is told the error that is about it, else the first. */
 	private async blocked(
 		paths: readonly string[],
 		errors: readonly Diagnostic[]
@@ -200,7 +191,6 @@ class ConfigLocator {
 		);
 	}
 
-	/** Where `paths` land, placing the ones that don't exist yet as if they did. */
 	private async locatePaths(
 		paths: readonly string[],
 		folders: ReadonlySet<string>
@@ -228,7 +218,6 @@ class ConfigLocator {
 		}));
 	}
 
-	/** The files placed at `reference`; when none is, the folders a new file goes in and the renames that would place one. */
 	private async locateInstance(
 		locator: PlacementLocator,
 		diagnostics: readonly Diagnostic[],
@@ -250,7 +239,6 @@ class ConfigLocator {
 		};
 	}
 
-	/** The renames among `diagnostics` after which a file places `reference`, each checked by placing the renamed path as `build` would. */
 	private async renamesPlacing(
 		diagnostics: readonly Diagnostic[],
 		reference: InstanceReference
@@ -281,7 +269,6 @@ class ConfigLocator {
 		return found;
 	}
 
-	/** The folders a first file for `reference` goes in: for each route whose target leads its path, the deepest folder in a source path that holds the path's leading names, then the route's folder. Only those where a file placed there lands at `reference`. */
 	private async foldersForNewFile(
 		reference: InstanceReference
 	): Promise<string[]> {
@@ -303,7 +290,6 @@ class ConfigLocator {
 		return [...new Set(found)].sort(compareStrings);
 	}
 
-	/** The folders under the route `key` where a first file for `reference` lands at it; none when the route's target doesn't lead the path. */
 	private async foldersUnderRoute(
 		key: string,
 		reference: InstanceReference
@@ -344,7 +330,6 @@ class ConfigLocator {
 		return [...folders];
 	}
 
-	/** The deepest folder of `sourcePath` that holds the leading `names`, and how many of them it holds. */
 	private deepestExisting(
 		sourcePath: string,
 		names: readonly string[]
@@ -362,7 +347,6 @@ class ConfigLocator {
 		return { dir, matched };
 	}
 
-	/** Where a file at `file`, which need not exist, lands in `config`; nothing when the config can't be placed. Placing is all it takes, so the later phases don't run. */
 	private async placeNew(file: string): Promise<FileLocation[]> {
 		const index = new PlannedFilesIndex(
 			this.listing,
@@ -379,7 +363,6 @@ class ConfigLocator {
 			: [];
 	}
 
-	/** Places `config` over `index` through the builder, so `where` places files as `build` does. */
 	private async locatorOf(
 		index: IndexReader,
 		exists?: (source: string) => boolean
@@ -404,7 +387,6 @@ class ConfigLocator {
 		return new ConfigBuilder(this.fileSystemService, index, this.tools);
 	}
 
-	/** Whether each of `paths` is there now: not one the index only plans, and in the listing or on disk. Any other path the locator names is a file the scan found. */
 	private async existence(
 		index: PlannedFilesIndex,
 		paths: readonly string[]

@@ -3,17 +3,14 @@ import { Event } from "../../base/event.js";
 import { Result } from "../../base/result.js";
 import { createServiceIdentifier } from "../instantiation/instantiation.js";
 
-/** How a process ended: its exit code, or the signal that ended it, or why it never started. */
 export interface ProcessExit {
 	readonly code: number | null;
 	readonly signal: string | null;
-	/** Set when the process couldn't be started. */
 	readonly error?: Error;
-	/** Set when Ctrl+C or a termination request ended it along with this process: only Windows' console sends one to every process on it; elsewhere a process this one starts has a group of its own, so only a request this one makes ends it. */
+	/** Ended by Ctrl+C or a termination request: Windows' console sends one to every process on it, elsewhere only this process's own request ends a child. */
 	readonly interrupted?: boolean;
 }
 
-/** A process that ran to the end, with what it printed. */
 export interface ProcessOutput {
 	readonly code: number | null;
 	readonly stdout: string;
@@ -30,7 +27,6 @@ export interface SpawnOptions {
 
 export interface ExecOptions {
 	readonly cwd: string;
-	/** Milliseconds the program may run before it is ended. */
 	readonly timeout: number;
 	readonly signal?: AbortSignal;
 }
@@ -42,33 +38,26 @@ const INTERRUPTING_SIGNALS: ReadonlySet<string> = new Set([
 	"SIGTERM",
 ]);
 
-/** Whether the process was ended the way Ctrl+C or a termination request ends one. */
 export const wasInterrupted = ({ code, signal }: ProcessExit): boolean =>
 	(signal !== null && INTERRUPTING_SIGNALS.has(signal)) ||
 	(code !== null && INTERRUPTED_CODES.has(code));
 
-/** An exit code as its platform shows it: Windows status codes, such as a crash's, in hex. */
 export const exitCodeText = (code: number): string =>
 	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
 
-/** A process this one started; disposing it ends it. */
 export interface ChildProcess extends Disposable {
 	/** Each line it printed, on either stream, as the line completes; one the process left unfinished comes when it exits. */
 	readonly onDidOutputLine: Event<string>;
-	/** Fires once, when the process has exited or failed to start, after the lines it printed. */
 	readonly onDidExit: Event<ProcessExit>;
 
 	/** Ends the process and every process it started, and resolves once it has exited. Safe to call after it exited. */
 	terminate(): Promise<ProcessExit>;
 }
 
-/** Runs other programs. */
 export interface ProcessService {
 	readonly _serviceBrand: undefined;
 
-	/** The file `command` runs: the first match on the PATH, with the platform's executable extensions; `undefined` when there is none. */
 	which(command: string): Promise<string | undefined>;
-	/** Runs `file` to the end; fails when it can't start, outlives `timeout` milliseconds or is ended through `signal`. */
 	exec(
 		file: string,
 		args: readonly string[],

@@ -16,13 +16,11 @@ import { SyncLayout } from "../sync-layout.js";
 
 const LISTED_PATHS = 3;
 
-/** What a source path's top-level entries emit, and whether any of it is in the sync path. */
 interface EmittedTops {
 	readonly paths: readonly string[];
 	readonly synced: boolean;
 }
 
-/** What one check of a placement reads: its sync path, and what its source paths emit. */
 interface SyncPathRun {
 	readonly placement: Placement;
 	readonly syncPath: string;
@@ -33,7 +31,6 @@ interface SyncPathRun {
 export class SyncPathCheck {
 	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** Warns when the sync path lacks what the tools should have written for the source paths and their meta files. */
 	async check(placement: Placement): Promise<Diagnostic[]> {
 		const { syncPath } = placement.layout;
 		if (syncPath === undefined) return [];
@@ -49,7 +46,6 @@ export class SyncPathCheck {
 		];
 	}
 
-	/** What each source path's top-level entries emit, and whether any of it is in the sync path; read once for every check. */
 	private async emittedTops({
 		config,
 		layout,
@@ -65,7 +61,6 @@ export class SyncPathCheck {
 		return tops;
 	}
 
-	/** Warns once per source path whose top-level entries have no emitted counterpart under `syncPath`. */
 	private async nothingEmitted({
 		placement: { config, layout },
 		syncPath,
@@ -75,7 +70,6 @@ export class SyncPathCheck {
 			layout.relativeToProject(target) || ".";
 		const warnings: Diagnostic[] = [];
 
-		// Without the sync path every source path would warn alike, and the nearest path that exists says nothing.
 		if (
 			!(await this.fileSystemService.isDirectory(syncPath)) &&
 			[...emittedTops.values()].some(({ paths }) => paths.length > 0)
@@ -112,7 +106,6 @@ export class SyncPathCheck {
 		return warnings;
 	}
 
-	/** Warns once for claimed meta with no copy under `syncPath`, skipping source paths `nothingEmitted` reports. */
 	private async metaNotSynced({
 		placement,
 		syncPath,
@@ -165,7 +158,6 @@ export class SyncPathCheck {
 		];
 	}
 
-	/** Warns once for data files whose emitted path is missing while a `.lua` with the same stem exists: a processor converted them, so Rojo finds nothing, or a module, where it expects the data. */
 	private async dataFileConverted({
 		placement,
 		syncPath,
@@ -219,7 +211,6 @@ export class SyncPathCheck {
 		];
 	}
 
-	/** The first of `replacements` whose file, `stem` and its suffix, exists. */
 	private async replacementAt<T extends { readonly suffix: string }>(
 		stem: string,
 		replacements: readonly T[]
@@ -234,7 +225,6 @@ export class SyncPathCheck {
 		return undefined;
 	}
 
-	/** Skips dot-files, which are mostly markers a compiler never emits. */
 	private async topLevelEmitted(
 		sourcePath: string,
 		layout: SyncLayout
@@ -251,7 +241,6 @@ export class SyncPathCheck {
 		return false;
 	}
 
-	/** Looks for `emitted` one level up or down from where it was expected, the way a shifted common root moves it. */
 	private async findShifted(
 		syncPath: string,
 		emitted: string

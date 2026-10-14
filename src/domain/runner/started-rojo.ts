@@ -8,7 +8,6 @@ import { RojoProcess } from "./rojo-runner.js";
 import { ServerOutput } from "./server-output.js";
 import { ServerMessage, SyncServer } from "./sync-server.js";
 
-/** A Rojo process and the reader of its output. */
 export class StartedRojo extends AbstractDisposable implements RojoProcess {
 	private readonly _onDidMessage = this._register(
 		new Emitter<ServerMessage>()

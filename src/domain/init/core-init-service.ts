@@ -120,7 +120,6 @@ export class CoreInitService implements InitService {
 		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
-		// A first init starts a project; beside a config, the user says what to add.
 		if (!directory.hasConfigs)
 			return this.planWith(
 				directory,
@@ -145,7 +144,6 @@ export class CoreInitService implements InitService {
 		return this.planWith(directory, questions, addition);
 	}
 
-	/** Asks each setup its questions in turn, then plans what the answers write. */
 	private async planWith(
 		directory: InitDirectory,
 		questions: InitQuestions,

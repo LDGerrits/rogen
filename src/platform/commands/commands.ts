@@ -28,7 +28,6 @@ export class ReportedError extends Error {
 	}
 }
 
-/** A failure that ends the run with a given exit code, such as the code a child process stopped with. */
 export class ExitCodeError extends Error {
 	override readonly name = "ExitCodeError";
 
@@ -78,7 +77,6 @@ interface CommandMetadata<
 		readonly name: string;
 		readonly description: string;
 	};
-	/** Two or three command lines that show the command at work, as help prints them. */
 	readonly examples?: readonly string[];
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
 	readonly unknownWordOffer?: string;
@@ -91,7 +89,6 @@ export interface CommandRegistry {
 	registerCommand(command: Command): Disposable;
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
-	/** Global options plus the given command's own, or every registered command's when no id is given. */
 	getOptions(commandId?: string): readonly OptionDescriptor[];
 }
 
@@ -176,7 +173,6 @@ export const Extensions = {
 
 Registry.add(Extensions.Commands, new CoreCommandRegistry());
 
-/** What a command is, as `rogen help` and the argument parser read it. */
 interface CommandDescriptor<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
@@ -184,7 +180,6 @@ interface CommandDescriptor<
 	readonly metadata: CommandMetadata<O>;
 }
 
-/** A command as an object: a subclass describes itself to the constructor and does its work in `run`, on a line typed by the options it declares. */
 export abstract class AbstractCommand<
 	O extends readonly OptionDescriptor[] = readonly [],
 > {
@@ -195,7 +190,7 @@ export abstract class AbstractCommand<
 		line: CommandLine<O>
 	): Promise<Result<void, Error>>;
 
-	/** Settles when the process is asked to shut down. The subscription is `store`'s, and made at once, so a request during the awaits that follow still counts. */
+	/** Settles when the process is asked to shut down; subscribed at once, so a request during later awaits still counts. */
 	protected untilShutdown(
 		accessor: ServicesAccessor,
 		store: DisposableStore
@@ -209,12 +204,11 @@ export abstract class AbstractCommand<
 		return shutdown;
 	}
 
-	/** The run failed with `failure`, which it has already told the user in full, so only the exit code is left to set. */
 	protected reported(failure: Error): Result<void, Error> {
 		return err(new ReportedError(failure));
 	}
 
-	/** Prints the run's one JSON document. A run that failed passes `failure`, which then only sets the exit code, since the document says what went wrong. */
+	/** Prints the run's one JSON document; a failed run passes `failure`, which then only sets the exit code. */
 	protected printJson(
 		logService: LogService,
 		document: unknown,
@@ -225,7 +219,7 @@ export abstract class AbstractCommand<
 	}
 }
 
-/** Contributes one instance of `ctor` to the command registry. The parser checked the line against the options the command declares, which is what lets its handler read it as typed. */
+/** Contributes one instance of `ctor` to the command registry. */
 export function registerCommand<O extends readonly OptionDescriptor[]>(
 	ctor: new () => AbstractCommand<O>
 ): Disposable {

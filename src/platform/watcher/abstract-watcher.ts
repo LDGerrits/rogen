@@ -19,7 +19,6 @@ export abstract class AbstractWatcher
 	readonly onDidChangeFile: Event<readonly FileChange[]> =
 		this._onDidChangeFile.event;
 
-	/** Watches and stops run one at a time, so neither tears down a watch that is still starting. */
 	private readonly operations = new Sequencer();
 
 	constructor(protected readonly logService: LogService) {
@@ -40,7 +39,6 @@ export abstract class AbstractWatcher
 		return this.operations.queue(() => this.stopWatching());
 	}
 
-	/** Called with nothing being watched. */
 	protected abstract startWatching(
 		paths: readonly string[],
 		options: WatchOptions

@@ -6,24 +6,19 @@ import {
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 
-/** What a build did to one config, as the document lists it. */
 export interface BuildEntry {
 	readonly config: string;
 	readonly file: string;
-	/** `null` for a config that didn't load. */
 	readonly projectFile: string | null;
 	readonly outcome: "wrote" | "unchanged" | "notWritten";
-	/** The labels of the configs whose failure stopped this one from being written. */
 	readonly blockedBy?: readonly string[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
-/** What a build did to each config, as one JSON document. */
 interface BuildDocument {
 	readonly configs: readonly BuildEntry[];
 }
 
-/** What a build did to one config. `diagnostics` stands in for everything the build found, for a caller that leaves some out. */
 export function buildEntry(
 	build: ConfigBuild,
 	diagnostics: readonly Diagnostic[] = build.diagnostics
@@ -41,7 +36,6 @@ export function buildEntry(
 	};
 }
 
-/** What a build did to each of `builds`, with `diagnosticsOf` standing in for what one found. */
 export function buildDocument(
 	builds: readonly ConfigBuild[],
 	diagnosticsOf: (build: ConfigBuild) => readonly Diagnostic[] = (build) =>

@@ -44,7 +44,7 @@ export class CoreCommandService implements CommandService {
 	}
 }
 
-/** What to say of `commandId`: the version flag, the command it's closest to, or what the command that offers to take the word would do with it. */
+/** What to say of `commandId`: the version flag, its closest command, or what the command that takes the word would do. */
 function unknownCommand(commandId: string, registry: CommandRegistry): string {
 	const prefix = `Unknown command "${commandId}".`;
 	if (commandId === "version")

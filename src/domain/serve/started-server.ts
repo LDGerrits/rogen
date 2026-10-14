@@ -20,51 +20,36 @@ import {
 import { PortState, ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
-/** How often a started server is asked whether it serves yet, at first and at most. */
 const READY_POLL_MS = { first: 200, max: 1_000 };
 
-/** How long a started server may go without answering for its project before the user is told. */
 const SLOW_START_MS = 10_000;
 
-/** What happens to a started server, told to the session that started it. */
 interface StartedServerListener {
-	/** It answers for its project. */
 	served(serving: ServerReadyEvent): void;
-	/** It printed something worth showing. */
 	said(said: ServerOutputEvent): void;
-	/** It stopped before it was told to. */
 	stopped(stop: ServerExitEvent): void;
-	/** A Studio plugin connected to it or left it. */
 	connection(change: ServerConnectionEvent): void;
-	/** A step of its own failed unexpectedly. */
 	failed(error: Error): void;
 }
 
-/** A server the session serves a config with, whether it started the process or adopted one that was already running. */
+/** A server the session serves a config with, started by it or adopted. */
 export interface RunningServer {
 	readonly target: ServeTarget;
 	/** Ends what the session holds of it: its process if it started one, else only its watching. */
 	terminate(): Promise<void>;
-	/** Terminates it, drops its record and everything it holds. */
+	/** Terminates it and drops its record and everything it holds. */
 	retire(): Promise<void>;
-	/** Drops its record, if it has one. */
 	unrecord(): Promise<void>;
 	[Symbol.dispose](): void;
 }
 
-/** A server process the session started for one config, from its start until it is stopped: it reads its output, asks its port until it answers, and records itself once it does. */
 export class StartedServer extends AbstractDisposable implements RunningServer {
 	private readonly child: RojoProcess;
 	private exited = false;
-	/** Told to stop, by the session or because its config no longer wants it there; its exit is no failure. */
 	private ending = false;
-	/** The write of its record, once it answered. */
 	private record: Promise<void> | undefined;
-	/** What the server said when it answered, which its record keeps naming. */
 	private answering: ServerInfo | undefined;
-	/** How many Studio plugins are connected, as far as its output says. */
 	private connected = 0;
-	/** The next time its port is asked whether it answers yet. */
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
 	private readonly startedAt = Date.now();
@@ -125,21 +110,18 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		this.ready.schedule();
 	}
 
-	/** Ends the process without a failure to report, and stops asking its port. */
 	async terminate(): Promise<void> {
 		this.ending = true;
 		this.ready.cancel();
 		await this.child.terminate();
 	}
 
-	/** Ends the process, drops its record and everything it holds. */
 	async retire(): Promise<void> {
 		await this.terminate();
 		await this.unrecord();
 		this[Symbol.dispose]();
 	}
 
-	/** Writes the record again once its last write is done, unless the server is going away. */
 	private updateRecord(): Promise<void> {
 		if (!this.record || !this.answering || this.ending || this.exited)
 			return Promise.resolve();
@@ -164,14 +146,12 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 			);
 	}
 
-	/** Drops the record of the server, once its write is done, so no late write outlives it. */
 	async unrecord(): Promise<void> {
 		if (!this.record) return;
 		await this.record;
 		await this.records.remove(this.target.address).catch(() => undefined);
 	}
 
-	/** Asks the server's port whether it answers for the project, and asks again later while it runs and doesn't. */
 	private askReady(): void {
 		const { target } = this;
 		this.probe
@@ -199,7 +179,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 			);
 	}
 
-	/** Says once that the server has not answered for its project in a while, and what does answer on its port, if anything; it goes on asking. */
 	private warnWhenSlow(state: PortState): void {
 		if (this.toldSlow || Date.now() - this.startedAt < SLOW_START_MS)
 			return;
@@ -219,7 +198,6 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		});
 	}
 
-	/** `said` tells whether the server said anything worth showing, which then says why it stopped. */
 	private stopOf(exit: ProcessExit, said: boolean): ServerExitEvent {
 		const interrupted = exit.interrupted === true;
 		const { server } = this.plan.executable;

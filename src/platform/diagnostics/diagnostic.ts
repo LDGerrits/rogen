@@ -18,7 +18,6 @@ export interface DiagnosticPosition {
 
 /** `position` is optional: a diagnostic about a whole file or directory has no line to point at. */
 export interface DiagnosticLocation {
-	/** An absolute path: a file, a directory or a config. */
 	readonly resource: string;
 	readonly position?: DiagnosticPosition;
 }
@@ -37,9 +36,7 @@ export type DiagnosticFix = RenameFix | RunFix;
 export const isRenameFix = (fix: DiagnosticFix): fix is RenameFix =>
 	"rename" in fix;
 
-/** A file a diagnostic is also about, and what it says about that file. */
 export interface DiagnosticRelated {
-	/** An absolute path. */
 	readonly resource: string;
 	readonly message: string;
 }
@@ -97,7 +94,6 @@ export const SEVERITY_LABELS: Record<DiagnosticSeverity, "error" | "warning"> =
 		[DiagnosticSeverity.Warning]: "warning",
 	};
 
-/** Drops `prefix` wherever it starts a path, not where it is the tail of a longer one. */
 function stripPrefix(text: string, prefix: string): string {
 	let result = "";
 	let from = 0;
@@ -113,7 +109,6 @@ function stripPrefix(text: string, prefix: string): string {
 	return result + text.slice(from);
 }
 
-/** `text` with the paths under `dir` written relative to it. */
 export function messageRelativeTo(text: string, dir: string): string {
 	const bare = dir.replace(/[\\/]+$/, "");
 	if (bare === "") return text;
@@ -123,7 +118,6 @@ export function messageRelativeTo(text: string, dir: string): string {
 	);
 }
 
-/** `message` ending in `(code)`: on its first line, since a grouped diagnostic lists its related entries on the lines after it. */
 function messageWithCode(message: string, code: string): string {
 	const end = message.indexOf("\n");
 	return end === -1
@@ -131,7 +125,6 @@ function messageWithCode(message: string, code: string): string {
 		: `${message.slice(0, end)} (${code})${message.slice(end)}`;
 }
 
-/** `error: message (code)`, with any path in the message written relative to `cwd`. */
 export function diagnosticSummary(
 	diagnostic: Diagnostic,
 	cwd?: string
@@ -145,7 +138,6 @@ export function diagnosticSummary(
 	return `${SEVERITY_LABELS[diagnostic.severity]}: ${message}`;
 }
 
-/** With `cwd`, the resource and any path in the message are written relative to it. */
 export function renderDiagnostic(diagnostic: Diagnostic, cwd?: string): string {
 	const { position } = diagnostic;
 	const resource =
@@ -180,7 +172,6 @@ export function diagnosticKey(
 	].join("\0");
 }
 
-/** `diagnostics` once each, in order. */
 export function uniqueDiagnostics(
 	diagnostics: readonly Diagnostic[]
 ): Diagnostic[] {
@@ -194,7 +185,6 @@ export function uniqueDiagnostics(
 	];
 }
 
-/** The diagnostics of `after` that `before` didn't hold, compared as the user reads them. */
 export function newDiagnostics(
 	before: readonly Diagnostic[],
 	after: readonly Diagnostic[]
@@ -203,7 +193,6 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
-/** `diagnostic` as it reads about one related file: that file's message, and only the fixes that rename it. */
 function narrowedTo(
 	diagnostic: Omit<Diagnostic, "related">,
 	{ resource, message }: DiagnosticRelated
@@ -221,7 +210,7 @@ function narrowedTo(
 	};
 }
 
-/** The diagnostics about `source`, each narrowed to it: a grouped one becomes the entry of its `related` that names `source`, with only the fixes that rename it. */
+/** The diagnostics about `source`, each narrowed to it. */
 export function diagnosticsAbout(
 	diagnostics: readonly Diagnostic[],
 	source: string
@@ -236,7 +225,6 @@ export function diagnosticsAbout(
 			return entries.map((entry) =>
 				narrowedTo(rest, { ...entry, resource: source })
 			);
-		// A group is about its related files; its own resource is the config.
 		return !related?.length && toPosix(diagnostic.resource) === target
 			? [rest]
 			: [];
@@ -265,7 +253,6 @@ export function diagnosticsReaching(
 	});
 }
 
-/** Every diagnostic once per file it is about: a grouped one becomes an entry per related file, and any other stays as it is. */
 export function diagnosticsPerFile(
 	diagnostics: readonly Diagnostic[]
 ): Diagnostic[] {

@@ -7,7 +7,6 @@ import { AgentHooks, AgentInUse } from "./agent/agent-hooks.js";
 import { HOOK_SCRIPT_FILE, CODING_AGENTS } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
 
-/** Reads what a directory holds for the coding agents it uses: their instruction files and their hooks. */
 export class AgentReader {
 	constructor(private readonly fileSystemService: FileReader) {}
 
@@ -52,7 +51,7 @@ export class AgentReader {
 		);
 	}
 
-	/** The text of `fileName`, or `undefined` when it isn't there. Fails on a file it can't read rather than take it for missing, which would write over it. */
+	/** `undefined` when absent; fails on an unreadable file rather than report it missing. */
 	private async readIfThere(
 		directory: InitDirectory,
 		fileName: string,

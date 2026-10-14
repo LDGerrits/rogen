@@ -20,7 +20,7 @@ const FILE_KEYS = [
 	"syncRules",
 ];
 
-/** The keys of a node around its children, which sit between the two groups, in the order Rojo writes them. */
+/** The node keys around the children, in the order Rojo writes them. */
 const NODE_KEYS_BEFORE = ["$className", "$id"];
 const NODE_KEYS_AFTER = [
 	"$properties",
@@ -29,7 +29,6 @@ const NODE_KEYS_AFTER = [
 	"$path",
 ];
 
-/** An object whose keys print in the order given, which a plain object can't keep for a key like `10`. */
 type Entries = readonly (readonly [string, unknown])[];
 
 class Ordered {
@@ -38,7 +37,7 @@ class Ordered {
 
 const INDENT = "  ";
 
-/** A project file as text, formatted as `rojo fmt-project` formats it, so running that on the file changes nothing. */
+/** A project file as text, formatted as `rojo fmt-project` would. */
 export class ProjectText {
 	static of(file: RojoProjectFile, schema: string): string {
 		const { $schema: _written, ...fields } = file as RojoProjectFile & {

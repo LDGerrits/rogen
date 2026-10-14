@@ -6,15 +6,12 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { ServerMessage, SyncServer } from "./sync-server.js";
 
-/** The Rojo a command runs, as found and checked. */
 export interface ServerExecutable {
 	readonly server: SyncServer;
-	/** The file that runs it. */
 	readonly file: string;
 	readonly version: string;
 }
 
-/** A Rojo process Rogen started, from its start until it exits: its output read into messages. */
 export interface RojoProcess extends Disposable {
 	/** Fired for each message it prints; its own info logs and noise come as `debug`. */
 	readonly onDidMessage: Event<ServerMessage>;
@@ -27,7 +24,6 @@ export interface RojoProcess extends Disposable {
 	terminate(): Promise<void>;
 }
 
-/** Finds the pinned Rojo and runs it. */
 export interface RojoRunner {
 	readonly _serviceBrand: undefined;
 

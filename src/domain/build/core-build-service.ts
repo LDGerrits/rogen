@@ -35,7 +35,6 @@ import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
-/** A config built in memory, or the reason it wasn't. */
 type Attempt = BuiltConfig | FailedBuild;
 
 export class CoreBuildService implements BuildService {
@@ -46,7 +45,6 @@ export class CoreBuildService implements BuildService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		/** What each tool that writes the sync path tells a build; the build names none of them. */
 		private readonly syncTools: readonly SyncTool[]
 	) {
 		this.writer = new OutputWriter(fileSystemService);
@@ -56,7 +54,7 @@ export class CoreBuildService implements BuildService {
 		return this.buildAll(selection, true);
 	}
 
-	/** Builds every selected config as `build` does, and writes nothing: the same builds with the same diagnostics, each config that built cleanly left as not written. */
+	/** Builds every selected config as `build` does, and writes nothing. */
 	check(selection: ConfigSelection): Promise<BuildRun> {
 		return this.buildAll(selection, false);
 	}
@@ -76,7 +74,6 @@ export class CoreBuildService implements BuildService {
 			unloaded.map(({ label }) => label),
 			write
 		);
-		// Selection order, each config's builds beside the ones that didn't load.
 		const builds = groupBy(
 			[...unloaded, ...settled],
 			(build) => build.rootFile
@@ -94,7 +91,6 @@ export class CoreBuildService implements BuildService {
 	): Promise<LoadedBuild> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
-		// The sync path changes only with the config or its compiler, so an answer for this version still holds.
 		const syncWarnings =
 			previous?.config === config ? previous.syncWarnings : undefined;
 		const attempts = await this.attempt(
@@ -109,7 +105,6 @@ export class CoreBuildService implements BuildService {
 		selection: ConfigSelection,
 		targets?: LocateQuery
 	): Promise<Result<Locations, DiagnosticsError>> {
-		// What stops a config's build stops its answer too: it would describe a project that can't be built.
 		const { set } = BuildSet.partition(selection);
 		const errors = uniqueDiagnostics(
 			selection.entries.flatMap((entry) =>
@@ -178,7 +173,6 @@ export class CoreBuildService implements BuildService {
 		});
 	}
 
-	/** Builds each config from `listing` in memory, in order. */
 	private async attempt(
 		configs: readonly {
 			readonly config: ResolvedConfig;
@@ -207,7 +201,6 @@ export class CoreBuildService implements BuildService {
 		return attempts;
 	}
 
-	/** Writes the built configs in order unless one failed, `unloaded` names a config that didn't load, or `write` is off. */
 	private async settle(
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
@@ -236,7 +229,6 @@ export class CoreBuildService implements BuildService {
 		);
 	}
 
-	/** The built config with a warning when the project file on disk isn't what a build would write. */
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
 		const { projectFile } = attempt.config;
 		const onDisk = await tryWithAsync(async () =>
@@ -266,7 +258,6 @@ export class CoreBuildService implements BuildService {
 		};
 	}
 
-	/** Writes each config in turn; one that fails to write leaves the rest unwritten. */
 	private async writeInOrder(
 		built: readonly BuiltConfig[]
 	): Promise<LoadedBuild[]> {

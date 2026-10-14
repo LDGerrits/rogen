@@ -11,10 +11,8 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 
-/** How many warnings of one code a config prints before the rest are counted. */
 const LISTED_PER_CODE = 10;
 
-/** A grouped diagnostic lists each related file on a line of its message after the first; this keeps ten and counts the rest. */
 function withListCapped(diagnostic: Diagnostic): Diagnostic {
 	const count = diagnostic.related?.length ?? 0;
 	if (count <= LISTED_PER_CODE) return diagnostic;
@@ -31,13 +29,11 @@ function withListCapped(diagnostic: Diagnostic): Diagnostic {
 	};
 }
 
-/** `diagnostic` with `note` after its message. */
 const noted = (diagnostic: Diagnostic, note: string): Diagnostic => ({
 	...diagnostic,
 	message: `${diagnostic.message} ${note}`,
 });
 
-/** At most `LISTED_PER_CODE` warnings of one code; the last one printed says how many more there were. Errors always print, since the build stops on them. */
 function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	const totals = new Map<string, number>();
 	const warnings = diagnostics.filter(
@@ -60,7 +56,6 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	});
 }
 
-/** One line per source path and route. */
 function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
 		({ sourcePath, files, ignored, mounted, skippedLinks }) =>
@@ -93,21 +88,18 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	];
 }
 
-/** `in <folder>`, relative to `cwd`, for a `home` that isn't `cwd` itself. */
 function inFolder(cwd: string, home: string | undefined): string | undefined {
 	return home === undefined || relativeTo(cwd, home) === "."
 		? undefined
 		: `in ${relativeTo(cwd, home)}`;
 }
 
-/** How `build` and `watch` tell the user what they built, relative to where they run. */
 export class BuildLog {
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
 	) {}
 
-	/** `same warnings as lobby`, for a config whose diagnostics of `kind` earlier configs all said. */
 	static sameAs(
 		kind: "errors" | "warnings",
 		labels: readonly string[]
@@ -117,7 +109,6 @@ export class BuildLog {
 			: undefined;
 	}
 
-	/** Opens the output: the command and the configs it builds, and the folder they are in when that isn't the working directory. */
 	begin(command: string, labels: readonly string[], home?: string): void {
 		this.logService.intro(
 			[
@@ -130,7 +121,6 @@ export class BuildLog {
 		);
 	}
 
-	/** The whole output of a build: each config's outcome, warnings and errors, then the closing line. An error an earlier config printed is not printed again; the line says so. */
 	report(run: BuildRun, home?: string, denyWarnings = false): void {
 		this.begin(
 			"build",
@@ -154,12 +144,10 @@ export class BuildLog {
 		else this.end(run.builds.length, run.warningCount, denyWarnings);
 	}
 
-	/** Heads the lines about one config, when a run builds several. */
 	private heading(label: string): void {
 		this.logService.step(label);
 	}
 
-	/** One config's line for what the run did to its project file, ending in the `notes` that apply, then `diagnostics`, which `failing` makes the run fail. */
 	outcome(
 		build: ConfigBuild,
 		diagnostics: readonly Diagnostic[],
@@ -207,16 +195,13 @@ export class BuildLog {
 		this.diagnostics(diagnostics, failing);
 	}
 
-	/** `failing` when the diagnostics are what fails the run, as every warning is under `--deny-warnings`. */
 	diagnostics(diagnostics: readonly Diagnostic[], failing = false): void {
-		// Annotated whole, since the text caps what it lists; GitHub decides how many annotations it shows.
 		for (const diagnostic of diagnostics)
 			this.logService.annotate(diagnostic);
 		for (const diagnostic of capped(diagnostics))
 			this.logService.diagnostic(diagnostic, failing);
 	}
 
-	/** Closes the output of a build that wrote every config, counting its warnings. */
 	private end(
 		configs: number,
 		warnings: number,
@@ -230,7 +215,6 @@ export class BuildLog {
 		);
 	}
 
-	/** The `--verbose` lines for one config: what the build placed, once built. */
 	private details(summary?: BuildSummary): void {
 		for (const line of summary ? describeBuild(summary, this.cwd) : [])
 			this.logService.debug(line);

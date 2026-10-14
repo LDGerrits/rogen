@@ -17,7 +17,6 @@ import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** A placed build with its project file; what the rules report on. */
 export interface Assembly {
 	readonly placement: Placement;
 	readonly projectFile: RojoProjectFile;
@@ -25,7 +24,6 @@ export interface Assembly {
 	readonly metaOutcomes: readonly FolderMetaOutcome[];
 }
 
-/** Directories written as one `$path`, mapped to the instance each becomes. */
 class Collapsed implements CollapsedDirs {
 	constructor(
 		private readonly instances: ReadonlyMap<string, readonly string[]>
@@ -43,15 +41,12 @@ class Collapsed implements CollapsedDirs {
 	}
 }
 
-/** A file placed in the tree, as the directory it sits in would name it. */
 interface PlacedEntry {
 	readonly file: RoutedFile;
 	readonly source: string;
-	/** None for an init script Rojo reads as the directory itself. */
 	readonly rojoName: string | undefined;
 }
 
-/** A path as a Rojo glob that matches only that path: `Foo[1].luau` or `{a,b}.luau` would otherwise be read as a pattern. */
 const literalGlob = (filePath: string): string =>
 	filePath.replace(/[[\]{}*?]/g, "[$&]");
 
@@ -84,7 +79,6 @@ export class TreeAssembler {
 		});
 	}
 
-	/** Merges the placed files into `project`, collapsing a directory into one `$path` where Rojo would see the same files. */
 	private merge(project: RojoProject): {
 		collapsed: Collapsed;
 		globIgnorePaths: string[];
@@ -119,7 +113,6 @@ export class TreeAssembler {
 		};
 	}
 
-	/** The left-out paths Rojo is told to ignore. A replaced file may share the winner's emitted path, and the tree mounts a displaced or mounted one; Rojo must read a mount, so a left-out folder that holds one can't be ignored either, and it is never collapsed, so nothing else reads it. */
 	private ignoredSources(
 		leftOut: readonly [string, LeftOut][],
 		mounts: readonly string[]
@@ -136,7 +129,6 @@ export class TreeAssembler {
 			.sort(compareStrings);
 	}
 
-	/** Inserts the collapsed directories and the files the collapsed ones don't cover; returns the init script name of each folder that holds one, by folder. */
 	private insertNodes(
 		project: RojoProject,
 		collapsed: Collapsed
@@ -163,7 +155,6 @@ export class TreeAssembler {
 		return initDirs;
 	}
 
-	/** What Rojo would read beside the init script `init` in `dir`, which every node it is leaves to the nodes those files are placed at. */
 	private besideInit(dir: string, init: string): string[] {
 		const { placement } = this;
 		const { layout } = placement;
@@ -173,7 +164,6 @@ export class TreeAssembler {
 			.map((sibling) => literalGlob(layout.rojoPath(sibling).optional));
 	}
 
-	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
 	private collapsibleDirs(
 		leftOut: readonly string[],
 		isReserved: (instancePath: readonly string[]) => boolean
@@ -233,7 +223,6 @@ export class TreeAssembler {
 		return collapsed;
 	}
 
-	/** Whether a directory has a folder below it that nothing in it places: Rojo reading the directory would make that a Folder, which the files Rogen places one by one never do. Tools that write the sync path decide what it holds, so only a build without one asks. */
 	private emptyFolderFinder(
 		placedDirs: ReadonlyMap<string, readonly PlacedEntry[]>
 	): (dir: string) => boolean {
@@ -254,7 +243,6 @@ export class TreeAssembler {
 			placement.layout.syncPath === undefined && holdsEmpty(dir);
 	}
 
-	/** The instance the directory becomes, if every entry sits where Rojo would put it. Never a service itself. */
 	private instancePathOf(
 		dir: string,
 		entries: readonly PlacedEntry[]

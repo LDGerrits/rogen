@@ -15,11 +15,8 @@ import { ConfigKeys } from "./config-keys.js";
 import { DEFAULT_PROJECT, PROJECT_NAME, ROOT_ONLY_KEYS } from "./config.js";
 import { PathRebaser } from "./path-rebaser.js";
 
-/** What a place takes from the config that lists it. */
 interface InheritedSource {
-	/** The folder the listing config is in. */
 	readonly dir: string;
-	/** The listing config's own `sourcePaths` for the project, as written, when it gives them. */
 	readonly sourcePaths?: readonly string[];
 }
 
@@ -29,32 +26,27 @@ export interface ProjectSource {
 	/** `default`, or the name of an entry of `projects`. */
 	readonly stem: string;
 	readonly model: ConfigModel;
-	/** Set for a project of a place. */
 	readonly inherited?: InheritedSource;
-	/** What the keys of the project's own changes warn of. */
 	readonly warnings: readonly Diagnostic[];
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
 	positionOfKey(key: string): DiagnosticPosition | undefined;
 }
 
-/** What a config says about its projects: one source for each project to write, `default` first, and the problems that keep a project from being one. */
 interface ProjectSources {
 	readonly sources: readonly ProjectSource[];
 	readonly errors: readonly Diagnostic[];
-	/** The project `rogen serve` serves when none is named. */
 	readonly serveProject: string;
 }
 
-/** The listing config's sources, which a place builds its own on. */
+/** The listing config's sources, which a place builds on. */
 export interface PlaceBase {
-	/** The folder the listing config is in. */
 	readonly dir: string;
 	/** One per project of the listing config, `default` first. */
 	readonly sources: readonly ProjectSource[];
 	readonly serveProject: string;
 }
 
-/** Reads what a config says about its projects: each entry of `projects` applied to the description; for a place, to what it takes from `base` and its own description. */
+/** Reads a config's projects: each entry of `projects` applied to the description; a place applies it on what it takes from `base`. */
 export class ProjectSourceReader {
 	private readonly dir: string;
 	private readonly description: Record<string, unknown>;
@@ -79,7 +71,6 @@ export class ProjectSourceReader {
 		return { sources, errors, serveProject };
 	}
 
-	/** A place can't list places. */
 	private placeErrors(): Diagnostic[] {
 		const { config, base } = this;
 		return base && config.model.keys.includes("placePaths")
@@ -96,7 +87,6 @@ export class ProjectSourceReader {
 			: [];
 	}
 
-	/** The sources of the entries of `projects` that are valid, by name; the others add their problems to `errors`. */
 	private declaredProjects(errors: Diagnostic[]): Map<string, ProjectSource> {
 		const { config, base } = this;
 		const declared =
@@ -120,7 +110,6 @@ export class ProjectSourceReader {
 		return sources;
 	}
 
-	/** Why `name` can't name a project, if it can't. */
 	private nameProblem(
 		name: string,
 		named: ReadonlySet<string>,
@@ -154,7 +143,6 @@ export class ProjectSourceReader {
 				);
 	}
 
-	/** The source of the project `name`, the description with `changes` applied. */
 	private projectSource(
 		name: string,
 		changes: Record<string, unknown>,
@@ -201,7 +189,7 @@ export class ProjectSourceReader {
 		};
 	}
 
-	/** Every project, `default` first: those of the listing config in its order, then those only this config declares. */
+	/** `default` first, then the listing config's projects in its order, then those only this config declares. */
 	private inOrder(declared: Map<string, ProjectSource>): ProjectSource[] {
 		const { config, base } = this;
 		const unchanged = (stem: string): ProjectSource => ({
@@ -229,7 +217,6 @@ export class ProjectSourceReader {
 		return [description, ...inherited, ...own];
 	}
 
-	/** The project `rogen serve` serves; an error when it is none of the projects. */
 	private serveProject(
 		sources: readonly ProjectSource[],
 		errors: Diagnostic[]
@@ -253,13 +240,11 @@ export class ProjectSourceReader {
 		return serveProject;
 	}
 
-	/** The listing config's source for `stem`, else its description for a project only this config declares. */
 	private taken(stem: string): ProjectSource {
 		const sources = this.base?.sources ?? [];
 		return sources.find((source) => source.stem === stem) ?? sources[0];
 	}
 
-	/** The values a project starts from: what the listing config gives it, rebased to this folder and without its name and source paths, under this config's description. */
 	private underlying(stem: string): Record<string, unknown> {
 		const { base } = this;
 		if (!base) return this.description;

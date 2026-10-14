@@ -206,7 +206,6 @@ export class MemoryFileSystemService
 			]);
 	}
 
-	/** Whether a link to a directory leads back to the directory it is in or one of its ancestors, so nothing descends into it. */
 	private leadsBack(dirPath: string, child: Node): boolean {
 		if (child.type !== FileType.SymbolicLink) return false;
 		if (this.lookup(child.target)?.type !== FileType.Directory)

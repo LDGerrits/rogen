@@ -23,16 +23,12 @@ import {
 	ProjectSourceReader,
 } from "./project-sources.js";
 
-/** The places a config lists, loaded. */
 interface LoadedPlaces {
-	/** Every place config file that exists. */
 	readonly files: readonly string[];
-	/** What each of those holds, by file. */
 	readonly values: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile[], Diagnostic[]>;
 }
 
-/** One place's config and the sources of its projects, before anything is validated. */
 interface PlaceSources {
 	readonly sources: readonly ProjectSource[];
 	readonly serveProject: string;
@@ -44,7 +40,6 @@ export class PlaceLoader {
 	constructor(
 		private readonly files: FileReader,
 		private readonly reader: ConfigFileReader,
-		/** What a registered file check says of a place's file. */
 		private readonly hintsOf: (file: string, value: unknown) => Diagnostic[]
 	) {}
 
@@ -109,7 +104,6 @@ export class PlaceLoader {
 		};
 	}
 
-	/** The config of a place's folder, or an empty one when it holds none. */
 	private async read(
 		folder: string,
 		problems: Diagnostic[],

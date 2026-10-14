@@ -4,11 +4,10 @@ import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { InitPlan, InitWritten } from "./init-service.js";
 
-/** Puts the files and directories of an `init` plan on disk. */
 export class InitWriter {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	/** Writes the plan's files, then creates its directories that don't exist yet, calling `onWritten` after each and stopping at the first that fails. */
+	/** Stops at the first write that fails, calling `onWritten` after each. */
 	async write(
 		plan: InitPlan,
 		onWritten: (written: InitWritten) => void

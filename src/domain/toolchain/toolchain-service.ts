@@ -2,17 +2,15 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { DetectedWorkspace, SyncTool } from "./toolchain.js";
 import { ToolManifest } from "./tool-manifest.js";
 
-/** The languages and tools Rogen knows and what a workspace uses of them. */
 export interface ToolchainService {
 	readonly _serviceBrand: undefined;
 
-	/** What each tool that writes a sync path tells a build, which names none of them; the composition root hands them to the build. */
 	readonly syncTools: readonly SyncTool[];
 
-	/** What `directory` uses: facts only, never decisions. Only `init` asks; builds do what the config says. */
+	/** What `directory` uses: facts only, never decisions. */
 	detect(directory: string): Promise<DetectedWorkspace>;
 
-	/** The toolchain files that pin tools for `directory`: its own and those of every folder above it, the nearest first. */
+	/** The manifests for `directory` and every folder above it, nearest first. */
 	readManifests(directory: string): Promise<readonly ToolManifest[]>;
 }
 

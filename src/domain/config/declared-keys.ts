@@ -1,11 +1,9 @@
 /** The route keys a config declares; a name spells a key exactly or with its first letter flipped. */
 export class DeclaredKeys {
-	/** The route that takes every file no other route claims. */
 	static readonly FALLBACK_ROUTE = "*";
 
 	static readonly NAME = /^[A-Za-z][A-Za-z0-9]*$/;
 
-	/** Every route key but the fallback, which no name can spell. */
 	readonly routeKeys: ReadonlySet<string>;
 
 	constructor(routeKeys: Iterable<string>) {
@@ -14,7 +12,6 @@ export class DeclaredKeys {
 		);
 	}
 
-	/** Whether `text` can be a key: letters and digits, starting with a letter. */
 	static isName(text: string): boolean {
 		return DeclaredKeys.NAME.test(text);
 	}
@@ -24,7 +21,6 @@ export class DeclaredKeys {
 		return key.slice(0, 1).toLowerCase() + key.slice(1);
 	}
 
-	/** The same name with the first letter in the other case. */
 	static flipFirstLetter(name: string): string {
 		const first = name[0];
 		const flipped =
@@ -43,7 +39,7 @@ export class DeclaredKeys {
 		return this.resolveIn(name, this.routeKeys);
 	}
 
-	/** The key `name` only differs from beyond the first letter's case, when `name` doesn't spell a key. */
+	/** A key that matches `name` ignoring case beyond the first letter, when `name` spells no key. */
 	nearMiss(name: string): string | undefined {
 		if (this.resolve(name) !== undefined) return undefined;
 		const lower = name.toLowerCase();

@@ -49,7 +49,6 @@ export function makeRojoDir(prefix: string): string {
 	return dir;
 }
 
-/** Fails the test when Rojo rejects the project file. */
 export function sourcemap(dir: string, projectFile: string): SourcemapNode {
 	const result = runRojo(dir, [
 		"sourcemap",
@@ -61,7 +60,6 @@ export function sourcemap(dir: string, projectFile: string): SourcemapNode {
 	return JSON.parse(result.stdout);
 }
 
-/** Fails the test when Rojo accepts the project file. */
 export function sourcemapError(dir: string, projectFile: string): string {
 	const result = runRojo(dir, [
 		"sourcemap",

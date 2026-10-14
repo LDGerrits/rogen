@@ -44,7 +44,6 @@ registerCommand(
 			});
 		}
 
-		/** Watches until the process is asked to shut down. */
 		async run(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof WatchOptions>
@@ -59,7 +58,6 @@ registerCommand(
 						accessor.get(EnvironmentService).cwd
 					);
 
-			// Subscribed first, so Ctrl+C while the configs load still stops the run.
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
 			try {
@@ -70,7 +68,6 @@ registerCommand(
 				if (watched.isErr()) return watched;
 				const session = store.add(watched.value);
 				if (shutdown.isSettled) return ok(undefined);
-				// The watch started, so every config is valid.
 				log.begin(
 					selection.value.requireValid().unwrap(),
 					selection.value.home

@@ -55,14 +55,12 @@ registerCommand(
 			});
 		}
 
-		/** Serves until the process is asked to shut down, or a server stops. */
 		async run(
 			accessor: ServicesAccessor,
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
 
-			// Subscribed first, so Ctrl+C while the server or the ports are checked still stops the run.
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
 			const stopChecks = new AbortController();
@@ -73,7 +71,6 @@ registerCommand(
 					refs: line.positionals,
 					serverArgs: line.passthrough ?? [],
 				});
-				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.
 				if (shutdown.isSettled) return ok(undefined);
 				if (plan.isErr()) return plan;
 
@@ -102,7 +99,6 @@ registerCommand(
 			}
 		}
 
-		/** Runs `session` until shutdown or until a server stops, and answers with the server's exit code when it failed. */
 		private async serve(
 			session: ServeSession,
 			log: ServeReporter,

@@ -24,15 +24,10 @@ const scopePath = (scope: string) => `node_modules/${scope}`;
 const scopeLanding = (scope: string) =>
 	`${INCLUDE_LANDING}/${scopePath(scope)}`;
 
-/** What `RobloxTsDetector` read from the workspace, which only roblox-ts asks for. */
 export interface RobloxTsFacts {
-	/** `compilerOptions.outDir`, when tsconfig.json exists. */
 	readonly outDir?: string;
-	/** `compilerOptions.sourcePath`. */
 	readonly sourcePath?: string;
-	/** The installed package scopes under `node_modules`. */
 	readonly rbxtsScopes?: readonly string[];
-	/** Whether the runtime's `include` folder exists. */
 	readonly includeInstalled?: boolean;
 }
 
@@ -49,7 +44,6 @@ function compilerOption(tsconfig: unknown, key: string): string | undefined {
 	return typeof value === "string" && value !== "" ? value : undefined;
 }
 
-/** `dir` and every folder above it, nearest first. */
 function ancestorsOf(dir: string): string[] {
 	const parent = path.dirname(dir);
 	return parent === dir ? [dir] : [dir, ...ancestorsOf(parent)];
@@ -65,9 +59,7 @@ const DECLARATION_FILE = /\.d\.ts$/i;
 /** roblox-ts names a file `init` when the name's first dot part is `index`. */
 const INDEX_FILE = /(?<=^|[\\/])index(?=\.[^\\/]*$)/;
 
-/** The roblox-ts compiler as this workspace configures it. */
 export class RobloxTsCompiler implements Compiler {
-	/** What a build needs to know of roblox-ts: it writes `.luau` for each `.ts`, `init` for `index`, and only reads declaration files. */
 	static readonly SYNC_TOOL: SyncTool = {
 		id: "roblox-ts",
 		emittedPath: (source) =>
@@ -94,7 +86,6 @@ export class RobloxTsCompiler implements Compiler {
 	}
 }
 
-/** roblox-ts: TypeScript compiled to Luau before Rojo syncs it. */
 export class RobloxTs implements Language {
 	readonly id = "roblox-ts";
 	readonly copy: LanguageCopy = {
@@ -168,7 +159,6 @@ export class RobloxTs implements Language {
 	}
 }
 
-/** Reads what roblox-ts leaves in a workspace: tsconfig.json, `include` and the installed scopes. */
 export class RobloxTsDetector implements LanguageDetector {
 	constructor(private readonly fileSystemService: FileReader) {}
 
@@ -202,7 +192,6 @@ export class RobloxTsDetector implements LanguageDetector {
 		);
 	}
 
-	/** The facts of `tsconfig.json`, each from the first file of its `extends` chain that sets it. */
 	private async readTsconfig(
 		cwd: string,
 		file: string
@@ -230,7 +219,6 @@ export class RobloxTsDetector implements LanguageDetector {
 		};
 	}
 
-	/** `file` and the files it extends, nearest first; of several in an `extends` list the last has the last word, so it comes first. A file that can't be read or parsed, or that closes a loop, ends its branch. */
 	private async readChain(
 		file: string,
 		seen: readonly string[] = []
@@ -242,7 +230,6 @@ export class RobloxTsDetector implements LanguageDetector {
 			if (parsed.isErr()) return [];
 			value = parsed.value;
 		} catch {
-			// An unreadable tsconfig.json means the defaults, not a failed init.
 			return [];
 		}
 		const base = isObject(value) ? value.extends : undefined;
@@ -258,7 +245,6 @@ export class RobloxTsDetector implements LanguageDetector {
 		return chain;
 	}
 
-	/** The file an `extends` names: a relative path, or a package in the `node_modules` of the file's folder or of any folder above it; `.json` may be left off. */
 	private async resolveExtends(
 		from: string,
 		specifier: string

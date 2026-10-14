@@ -47,7 +47,6 @@ export class CoreServeService implements ServeService {
 		this.served = new ServedProjectFiles(this.records, this.probe);
 	}
 
-	/** The ports of a serve of `server`, which gets `serverArgs` as they are. */
 	private portsFor(
 		server: SyncServer,
 		serverArgs: readonly string[]

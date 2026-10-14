@@ -55,7 +55,6 @@ const node: JSONSchema = {
 const numbers: JSONSchema = { type: "array", items: { type: "number" } };
 const strings: JSONSchema = { type: "array", items: { type: "string" } };
 
-/** `schema` that also accepts `null`, which a project uses to remove a key; the keys below it do too. */
 function removable(schema: JSONSchema): JSONSchema {
 	const types = [schema.type ?? []].flat();
 	return {
@@ -78,7 +77,6 @@ function removable(schema: JSONSchema): JSONSchema {
 	};
 }
 
-/** The keys of Rojo's project file, in the order Rojo writes them. */
 const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	$schema: {
 		type: "string",
@@ -167,7 +165,6 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 			"plain Luau.",
 	},
 };
-/** What a project may change: any key of the description but the ones that stand for the whole config. */
 const projectChangeSchemas: Readonly<Record<string, JSONSchema>> =
 	Object.fromEntries(
 		Object.entries({ ...rojoFields, ...rogenSchemas })
@@ -209,20 +206,17 @@ const wholeConfigSchemas: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-/** The keys a `rogen.json` may hold. */
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
 export const rogenKeys: readonly string[] = [
 	...Object.keys(rogenSchemas),
 	...Object.keys(wholeConfigSchemas),
 ];
 
-/** What a `rogen.json` may hold: Rojo's keys and Rogen's. A key outside both passes through with a warning. */
 export const configSchema: JSONSchema = {
 	type: "object",
 	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
 };
 
-/** What a project file Rogen wrote may hold: Rojo's keys. */
 export const projectFileSchema: JSONSchema = {
 	type: "object",
 	description:
@@ -232,7 +226,6 @@ export const projectFileSchema: JSONSchema = {
 	properties: rojoFields,
 };
 
-/** What replaces each field a config no longer has. */
 const removedFields: Readonly<Record<string, string>> = {
 	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
 	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",
@@ -252,7 +245,7 @@ const removedFields: Readonly<Record<string, string>> = {
 	syncDir: 'It is called "syncPath" now.',
 };
 
-/** The words for a field that Rogen once read and doesn't now, in place of "not a Rojo key". */
+/** Advice for a field Rogen once read and no longer does, in place of the unknown-key warning. */
 export function configRemovedFieldAdvice(
 	path: string,
 	location: DiagnosticLocation

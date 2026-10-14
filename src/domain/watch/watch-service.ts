@@ -8,11 +8,9 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { LoadedBuild } from "../build/build.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 
-/** Why the configs were rebuilt. */
 /** Changes that came too fast to follow, so they were dropped. */
 export interface ChangeBurst {
 	readonly dropped: number;
-	/** How many it follows before it gives up. */
 	readonly threshold: number;
 	/** Whether the burst has stopped, so `dropped` counts the changes since the first report. */
 	readonly ended: boolean;
@@ -20,7 +18,6 @@ export interface ChangeBurst {
 
 export type WatchCause =
 	| { readonly kind: "initial" }
-	/** Too many changes at once to follow, so they were dropped and everything was rebuilt. */
 	| ({ readonly kind: "burst" } & ChangeBurst)
 	| {
 			readonly kind: "change";
@@ -30,15 +27,15 @@ export type WatchCause =
 			readonly reloaded: boolean;
 	  };
 
-/** One config's rebuild in a round, with what it says that the config's previous rebuild didn't. */
+/** One config's rebuild in a round, with what it says that the previous rebuild didn't. */
 export interface RebuildReport {
 	/** `build.config` is the version that was built. */
 	readonly build: LoadedBuild;
 	/** The diagnostics of `build` its previous rebuild didn't have, in print order. */
 	readonly unreported: readonly Diagnostic[];
-	/** The diagnostics of `build` that the block leaves out because the previous rebuild had them too. */
+	/** The diagnostics of `build` that the previous rebuild had too. */
 	readonly repeated: readonly Diagnostic[];
-	/** The diagnostics of the previous rebuild that `build` no longer has; one that only changed its text isn't fixed. */
+	/** The diagnostics of the previous rebuild that `build` no longer has. */
 	readonly fixed: readonly Diagnostic[];
 	/** It failed with the same errors as the previous rebuild. */
 	readonly repeatedFailure: boolean;
@@ -48,9 +45,8 @@ export interface RebuildReport {
 export interface WatchUpdate {
 	readonly at: Date;
 	readonly cause: WatchCause;
-	/** The source changes behind it. */
 	readonly changes: readonly FileChange[];
-	/** What the reloads of this round said about the configs: added, removed, broken (the last valid version of each still builds) or loading again. */
+	/** What the config reloads of this round said: added, removed, broken or loading again. */
 	readonly notices: readonly ConfigNotice[];
 	readonly reports: readonly RebuildReport[];
 }
@@ -68,11 +64,10 @@ export interface WatchSession extends Disposable {
 	stop(): Promise<void>;
 }
 
-/** Watches a selection's configs and rebuilds them as their sources and files change. */
 export interface WatchService {
 	readonly _serviceBrand: undefined;
 
-	/** Fails as a build would when a config is broken or the configs can't be built together. The session reloads `selection` as its files change; the caller starts it, stops it and disposes it. One session at a time: they share the process's watcher. */
+	/** Fails as a build would when a config is broken or the configs can't be built together. The caller starts, stops and disposes the session; one at a time, as sessions share the process's watcher. */
 	watch(
 		selection: ReloadableSelection
 	): Result<WatchSession, DiagnosticsError>;

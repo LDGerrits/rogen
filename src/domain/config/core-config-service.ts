@@ -46,7 +46,7 @@ export class CoreConfigService implements ConfigService {
 		const {
 			home: directory,
 			files,
-			everyConfig,
+			noneNamed,
 			projects,
 			folders,
 			homeConfig,
@@ -63,7 +63,7 @@ export class CoreConfigService implements ConfigService {
 				opened,
 				this.loader,
 				directory,
-				everyConfig
+				noneNamed
 					? { directory, list: () => this.configsIn(directory) }
 					: undefined,
 				projects,
@@ -73,14 +73,12 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	/** The config as the user names it. */
 	private relative(file: string): string {
 		return (
 			toPosix(path.relative(this.environmentService.cwd, file)) || file
 		);
 	}
 
-	/** An error when a config that loads doesn't have a project named for it. */
 	private missingProject(
 		opened: readonly ManagedConfig[],
 		projects: ReadonlyMap<string, string>,
@@ -105,10 +103,8 @@ export class CoreConfigService implements ConfigService {
 		return undefined;
 	}
 
-	/** What to tell of each name that is both a folder with a config and a project of the config here: the folder is what it names. */
 	private async tiesOf(
 		homeConfig: string | undefined,
-		/** The config of `homeConfig` when the selection holds it. */
 		opened: ManagedConfig | undefined,
 		folders: readonly string[]
 	): Promise<string[]> {
@@ -126,7 +122,6 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	/** The config of `directory` a followed folder holds: the first when both names appear, since it takes a restart to refuse that. */
 	private async configsIn(directory: string): Promise<string[]> {
 		return (await this.discovery.list(directory)).slice(0, 1);
 	}

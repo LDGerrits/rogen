@@ -5,10 +5,8 @@ import { EnvironmentService } from "./environment-service.js";
 
 type Variables = Readonly<Record<string, string | undefined>>;
 
-/** Set by CI services and by agents in general; `0` and `false` turn them off. */
 const GENERIC_VARIABLES = ["CI", "AGENT", "AI_AGENT"];
 
-/** Set by a coding agent's harness for the commands it runs, and never in a person's own terminal. */
 const HARNESS_VARIABLES = [
 	"CLAUDECODE",
 	"CODEX_SANDBOX",
@@ -23,13 +21,11 @@ const HARNESS_VARIABLES = [
 const isSet = (value: string | undefined) =>
 	value !== undefined && value !== "";
 
-/** Whether a variable is turned on: set, and not `0` or `false`. */
 function isOn(value: string | undefined): boolean {
 	const lowered = value?.toLowerCase();
 	return isSet(lowered) && lowered !== "0" && lowered !== "false";
 }
 
-/** Whether `env` says an agent or CI, not a person, runs the process. */
 function isAutomated(env: Variables): boolean {
 	return (
 		GENERIC_VARIABLES.some((name) => isOn(env[name])) ||
@@ -37,7 +33,6 @@ function isAutomated(env: Variables): boolean {
 	);
 }
 
-/** The folder the user's programs keep what they can fetch again. */
 function userCacheDir(
 	env: Variables,
 	platform: NodeJS.Platform,
@@ -50,7 +45,6 @@ function userCacheDir(
 	return path.join(userHome, ".cache");
 }
 
-/** The process Rogen runs in: its variables, whether stdin and stdout are both terminals, the user's home and temporary folders, its id, and the platform it runs on. */
 interface ProcessContext {
 	readonly env: Variables;
 	readonly isTerminal: boolean;
@@ -69,7 +63,6 @@ const nativeProcess = (): ProcessContext => ({
 	platform: process.platform,
 });
 
-/** The flags that say how a run prints; only `json` is read from a line that fails to parse. */
 interface OutputFlags {
 	readonly json?: boolean;
 	readonly verbose?: boolean;

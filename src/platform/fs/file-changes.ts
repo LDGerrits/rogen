@@ -17,7 +17,6 @@ export function normalizeFileChanges(
 	changes: readonly FileChange[]
 ): FileChange[] {
 	const map = new Map<string, FileChange>();
-	/** What the path first did, since only one that did not exist before may cancel out. */
 	const first = new Map<string, FileChangeType>();
 
 	for (const change of changes) {

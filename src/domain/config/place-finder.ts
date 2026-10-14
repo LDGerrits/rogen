@@ -13,12 +13,11 @@ import { CONFIG_FILE_NAMES } from "./config.js";
 
 /** Finds the places of a config, and which config lists a folder as one. */
 export class PlaceFinder {
-	/** What each config file lists, read once. */
 	private readonly listed = new Map<string, Promise<string[]>>();
 
 	constructor(private readonly files: FileReader) {}
 
-	/** The config file of the nearest folder above `folder` that lists it as a place, if any does. A config that can't be read lists nothing. */
+	/** The config file of the nearest folder above `folder` that lists it as a place. An unreadable config lists nothing. */
 	async rootOf(folder: string): Promise<string | undefined> {
 		for (const above of ancestors(folder)) {
 			const relative = toPosix(path.relative(above, folder));
@@ -39,7 +38,7 @@ export class PlaceFinder {
 		return undefined;
 	}
 
-	/** The folders under `root` that `globs` match, once each, sorted by path. A name starting with a dot, and `node_modules`, are never entered. */
+	/** The folders under `root` that `globs` match, sorted. Dot-folders and `node_modules` are never entered. */
 	async folders(root: string, globs: readonly string[]): Promise<string[]> {
 		const found = new Set<string>();
 		for (const glob of globs) {

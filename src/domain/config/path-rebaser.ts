@@ -4,13 +4,11 @@ import { isObject } from "../../base/objects.js";
 
 /** A path or glob written relative to one folder, written again relative to another. */
 export class PathRebaser {
-	/** `value` as the folder `to` reaches the same place; an absolute path stays. */
 	static path(value: string, from: string, to: string): string {
 		if (path.isAbsolute(value)) return value;
 		return toPosix(path.relative(to, path.resolve(from, value))) || ".";
 	}
 
-	/** `glob` as it matches the same files from the folder `to`. */
 	static glob(glob: string, from: string, to: string): string {
 		if (path.posix.isAbsolute(glob) || path.win32.isAbsolute(glob))
 			return glob;
@@ -18,7 +16,7 @@ export class PathRebaser {
 		return prefix === "" ? glob : path.posix.join(prefix, glob);
 	}
 
-	/** The values of a config that name paths, written for the folder `to` instead of `from`: the `$path`s of the tree, `globIgnorePaths` and `syncPath`. */
+	/** Rebases the path-valued keys: the tree's `$path`s, `globIgnorePaths` and `syncPath`. */
 	static values(
 		values: Readonly<Record<string, unknown>>,
 		from: string,

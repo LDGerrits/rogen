@@ -12,7 +12,6 @@ import { WorkspaceDetector } from "./workspace-detector.js";
 export class CoreToolchainService implements ToolchainService {
 	declare readonly _serviceBrand: undefined;
 
-	/** What each tool tells a build, which the composition root hands to the build service; the build never asks the toolchain. */
 	readonly syncTools: readonly SyncTool[] = [
 		Darklua.SYNC_TOOL,
 		RobloxTsCompiler.SYNC_TOOL,
@@ -39,17 +38,21 @@ export class CoreToolchainService implements ToolchainService {
 			for (const fileName of ToolManifest.FILE_NAMES) {
 				const file = path.join(dir, fileName);
 				if (!(await this.fileSystemService.exists(file))) continue;
-				try {
-					const manifest = ToolManifest.parse(
-						file,
-						await this.fileSystemService.readFile(file)
-					);
-					if (manifest) manifests.push(manifest);
-				} catch {
-					// An unreadable toolchain file pins nothing; the manager reports it when it runs.
-				}
+				const manifest = await this.manifestAt(file);
+				if (manifest) manifests.push(manifest);
 			}
 		}
 		return manifests;
+	}
+
+	private async manifestAt(file: string): Promise<ToolManifest | undefined> {
+		try {
+			return ToolManifest.parse(
+				file,
+				await this.fileSystemService.readFile(file)
+			);
+		} catch {
+			return undefined;
+		}
 	}
 }

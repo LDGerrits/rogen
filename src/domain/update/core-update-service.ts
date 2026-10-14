@@ -14,7 +14,6 @@ import { Version } from "./version.js";
 export class CoreUpdateService implements UpdateService {
 	declare readonly _serviceBrand: undefined;
 
-	/** `installDir` is where the program runs from, which tells an install through npm from the others. */
 	constructor(
 		private readonly releaseService: ReleaseService,
 		private readonly productService: ProductService,
@@ -33,7 +32,6 @@ export class CoreUpdateService implements UpdateService {
 		const current = Version.parse(installed);
 		if (!current) return undefined;
 
-		// A stable version hears of stable releases only; a prerelease of the later prereleases too.
 		let newest: Version | undefined;
 		for (const text of published) {
 			const version = Version.parse(text);
@@ -48,13 +46,11 @@ export class CoreUpdateService implements UpdateService {
 		return `Rogen ${newest} is out (you have ${current}). ${await this.fix(newest)}`;
 	}
 
-	/** What to do about it, by how this Rogen was installed. */
 	private async fix(version: Version): Promise<string> {
 		const project = /^(.*?)[\\/]node_modules[\\/]/.exec(
 			this.installDir
 		)?.[1];
 		if (project !== undefined) {
-			// A folder with a package.json installed it as a dependency; npm's global folder has none.
 			const local = await this.fileReader.exists(
 				path.join(project, "package.json")
 			);

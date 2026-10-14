@@ -31,7 +31,7 @@ describe("ConfigDiscovery", () => {
 			expect(found).toEqual({
 				home: "/repo",
 				files: ["/repo/rogen.json"],
-				everyConfig: true,
+				noneNamed: true,
 				projects: new Map(),
 				folders: [],
 				homeConfig: "/repo/rogen.json",
@@ -128,7 +128,7 @@ describe("ConfigDiscovery", () => {
 			expect(found).toEqual({
 				home: "/repo",
 				files: ["/repo/places/lobby/rogen.json"],
-				everyConfig: false,
+				noneNamed: false,
 				projects: new Map(),
 				folders: [],
 				homeConfig: undefined,
@@ -399,7 +399,7 @@ describe("ConfigDiscovery.findEnclosing", () => {
 			expect(found).toMatchObject({
 				files: ["/repo/rogen.json"],
 				scopes: new Map(),
-				everyConfig: true,
+				noneNamed: true,
 			});
 		});
 
@@ -412,7 +412,7 @@ describe("ConfigDiscovery.findEnclosing", () => {
 				home: "/repo/places/lobby",
 				files: ["/repo/rogen.json"],
 				homeConfig: "/repo/rogen.json",
-				everyConfig: false,
+				noneNamed: false,
 				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
 			});
 		});

@@ -33,14 +33,12 @@ export class SyncLayout {
 		]);
 	}
 
-	/** What the tools write instead of a `.meta.json`, which Rojo then no longer applies. */
 	get metaReplacements(): MetaReplacement[] {
 		return this.tools.flatMap(
 			({ metaReplacement }) => metaReplacement ?? []
 		);
 	}
 
-	/** What the tools write instead of a data file. */
 	get dataReplacements(): DataReplacement[] {
 		return this.tools.flatMap(
 			({ dataReplacement }) => dataReplacement ?? []
@@ -60,7 +58,7 @@ export class SyncLayout {
 		);
 	}
 
-	/** A glob of the project written as it matches the files under the sync path: one that lies inside the source paths' common root names those files, and goes to the sync path in their place. */
+	/** A glob of the project written as it matches the files under the sync path. */
 	syncedGlob(glob: string): string {
 		if (this.syncPath === undefined) return glob;
 		const root = toPosix(this.commonRoot);
@@ -81,7 +79,6 @@ export class SyncLayout {
 		return this.tools.some((tool) => tool.readsOnly?.(source));
 	}
 
-	/** The `$path` Rojo mounts for `filePath`. Optional, since a compiler may not have written it yet. */
 	rojoPath(filePath: string): OptionalRojoPath {
 		return { optional: this.relativeToProject(this.emittedPath(filePath)) };
 	}

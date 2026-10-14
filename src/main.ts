@@ -63,7 +63,7 @@ import "./commands/serve/serve-command.js";
 import "./commands/watch/watch-command.js";
 import "./commands/where/where-command.js";
 
-/** The version `scripts/bundle.ts` bakes into a bundle; undefined in a run from source. */
+/** Baked in by `scripts/bundle.ts`; undefined in a run from source. */
 declare const ROGEN_VERSION: string | undefined;
 
 /** The folder rogen runs in, or `undefined` when it was deleted under the shell. */
@@ -86,7 +86,6 @@ export default function run(): void {
 	});
 }
 
-/** The composition root: reads the command line, builds the services in dependency order and runs the command. */
 class RogenMain {
 	private readonly disposables = new DisposableStore();
 
@@ -109,7 +108,6 @@ class RogenMain {
 			[...commandRegistry.getCommands().keys()]
 		);
 
-		// Read from the raw line, so a parse error is reported the way the flags ask.
 		const json = hasFlag(rawArgs, JsonOption);
 		const options = argsResult.isOk() ? argsResult.value.line.options : {};
 		const cwd = currentFolder();
@@ -135,7 +133,6 @@ class RogenMain {
 			return;
 		}
 
-		// Default handler throws async, which would crash `watch`.
 		setUnexpectedErrorHandler((error) => logService.error(error));
 
 		const { services, updateService } = this.createServices(
@@ -149,12 +146,10 @@ class RogenMain {
 		);
 		services.set(CommandService, commandService);
 
-		// Started before the command so the check runs beside it. It never fails a run, and `--version` and `help` don't ask.
 		const notice =
 			command === HELP_COMMAND
 				? undefined
 				: updateService.check().catch(() => undefined);
-		// A command that never ends can't tell the user afterwards.
 		const noticeFirst =
 			commandRegistry.getCommand(command)?.metadata.longRunning;
 		if (noticeFirst) printNotice(logService, await notice);
@@ -188,7 +183,6 @@ class RogenMain {
 		return logService;
 	}
 
-	/** Constructs every service in dependency order and registers each under its identifier. */
 	private createServices(
 		environmentService: EnvironmentService,
 		logService: LogService

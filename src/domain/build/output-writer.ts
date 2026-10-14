@@ -13,7 +13,6 @@ import { OutputFile } from "./build.js";
 export class OutputWriter {
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	/** The bytes a project file is written as. */
 	static textOf(projectFile: RojoProjectFile): string {
 		return ProjectText.of(projectFile, PROJECT_SCHEMA_URL);
 	}
@@ -25,7 +24,6 @@ export class OutputWriter {
 	): Promise<Result<boolean, DiagnosticsError>> {
 		const projectFile = output.path;
 		const content = OutputWriter.textOf(tree);
-		// A fresh staging file per write, so concurrent writers never share one.
 		const temporary = output.stagingFile(randomUUID());
 
 		const written = await tryWithAsync(async (): Promise<boolean> => {

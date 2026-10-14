@@ -7,7 +7,7 @@ import {
 	PackageManager,
 } from "./toolchain.js";
 
-/** Plain Luau: Rojo syncs the source paths as they are. It's what `init` assumes when no other language is found. */
+/** Plain Luau, the language assumed when no other is found. */
 export class Luau implements Language, LanguageDetector {
 	readonly id = "luau";
 	readonly copy: LanguageCopy = { label: "Luau" };
@@ -16,7 +16,6 @@ export class Luau implements Language, LanguageDetector {
 	readonly present = false;
 	readonly reservedFolders: readonly string[] = [];
 
-	/** Luau leaves nothing of its own in the workspace, so there is nothing to read. */
 	async detect(): Promise<Language> {
 		return this;
 	}

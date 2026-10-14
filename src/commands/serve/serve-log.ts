@@ -19,40 +19,30 @@ import {
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 
-/** Who serves `info`'s project, as a person reads it: `Rojo 7.7.1`. */
 const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;
 
-/** What a serve tells its user, as it happens. */
 export interface ServeReporter {
-	/** Opens the output: the configs served, the server, and those a server already serves. */
 	begin(): void;
 	update(update: WatchUpdate): void;
 	serving(serving: ServerReadyEvent): void;
 	said(said: ServerOutputEvent): void;
-	/** A Studio plugin connected to a server this serve started, or left it. */
 	connection(change: ServerConnectionEvent): void;
 	stopped(stop: ServerExitEvent): void;
-	/** How the servers followed the configs as they changed. */
 	changed(change: ServeChangeEvent): void;
-	/** Says each server running at the end was stopped because the run was asked to stop. */
 	shutdown(targets: readonly ServeTarget[]): void;
 	error(error: Error): void;
-	/** Ends the output of a run whose errors the lines before already told. */
 	abort(error: Error): void;
 	end(message: string): void;
 }
 
-/** The server that serves `target`: the one already serving it, else the one the serve runs. */
 const serverFor = (target: ServeTarget, plan: ServePlan): SyncServer =>
 	target.servedBy?.server ?? plan.executable.server;
 
-/** Why a server was stopped on purpose, as the end of a sentence. */
 const RETIRED_BECAUSE = {
 	removed: "its config is gone",
 	moved: "its address changed",
 } as const;
 
-/** Reports a serve in lines for a person. */
 export class ServeLog implements ServeReporter {
 	private readonly watchLog: WatchLog;
 
@@ -81,7 +71,6 @@ export class ServeLog implements ServeReporter {
 		);
 	}
 
-	/** What a server said, as Rogen's own line, with the paths under the working folder relative to it; what Rogen drops shows only with `--verbose`. */
 	said(said: ServerOutputEvent): void {
 		const { plan } = this;
 		const { message } = said;
@@ -156,9 +145,7 @@ export class ServeLog implements ServeReporter {
 	}
 }
 
-/** Reports a serve as one JSON object per line for a program, each keyed by what it reports. */
 export class ServeJsonLog implements ServeReporter {
-	/** The errors already printed, which `abort` does not print again. */
 	private readonly told = new WeakSet<Error>();
 	private readonly watchLog: WatchJsonLog;
 
@@ -263,7 +250,6 @@ export class ServeJsonLog implements ServeReporter {
 		});
 	}
 
-	/** `adopted` says the server runs on: this serve only stopped building for it, unless it `exited` itself. */
 	private stoppedJson(
 		target: ServeTarget,
 		reason: string,

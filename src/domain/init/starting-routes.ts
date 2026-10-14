@@ -23,7 +23,6 @@ interface RouteOption {
 
 interface RouteTemplate {
 	readonly id: StandardRouteId;
-	/** The shared route's target is spelled like its key, so it has none here. */
 	readonly target?: string;
 	readonly hint: string;
 	readonly ticked: boolean;
@@ -63,20 +62,17 @@ const ROUTES: readonly RouteTemplate[] = [
 	},
 ];
 
-/** The routes `init` offers to write, spelled the way `language` spells route keys. */
 export class StartingRoutes {
-	/** With `derived`, its routes come first and start ticked, and replace the standard route of the same key. */
+	/** With `derived`, its routes come first, start ticked, and replace the standard route of the same key. */
 	constructor(
 		private readonly language: Language,
 		private readonly derived?: DerivedRoutes
 	) {}
 
-	/** Where files that match no route go by default. */
 	get sharedTarget(): string {
 		return `ReplicatedStorage/${this.language.routeKey("shared")}`;
 	}
 
-	/** Where files that match no route go: where the project file mounted the source path, or its shared code, else the standard place. */
 	get fallbackTarget(): string {
 		return this.derived?.fallback ?? this.sharedTarget;
 	}
@@ -106,12 +102,10 @@ export class StartingRoutes {
 		return [...derived, ...standard];
 	}
 
-	/** The routes that start ticked. */
 	get tickedByDefault(): RouteId[] {
 		return this.options.filter(({ ticked }) => ticked).map(({ id }) => id);
 	}
 
-	/** With no route ticked the fallback is written anyway, because a config with no routes can't build. */
 	starting(
 		ticked: readonly RouteId[],
 		fallback: boolean

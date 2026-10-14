@@ -12,16 +12,15 @@ interface ChangeBatcherOptions {
 	readonly debounceMs: number;
 }
 
-// Longer than the 100 ms the watcher holds back a deletion to spot an editor's save by rename, so the temporary file's add and delete arrive together and cancel out.
+// Longer than chokidar's 100 ms atomic-write delay, so an editor's temporary file add and delete cancel out.
 const DEFAULT_OPTIONS: ChangeBatcherOptions = {
 	burstThreshold: 200,
 	debounceMs: 200,
 };
 
-/** Waits for file changes to stop arriving, then emits them together; past a threshold it gives up following them and reports an overflow instead, then one more when a burst that goes on has stopped. */
+/** Emits file changes together once they stop arriving; past a threshold it reports an overflow instead. */
 export class ChangeBatcher extends AbstractDisposable {
 	private buffer: FileChange[] = [];
-	/** Within a burst: the changes dropped since the overflow was reported. */
 	private droppedInBurst: number | undefined;
 	private readonly flush: RunOnceScheduler;
 
@@ -31,7 +30,6 @@ export class ChangeBatcher extends AbstractDisposable {
 	readonly onDidEmitChanges: Event<FileChange[]> =
 		this._onDidEmitChanges.event;
 
-	/** Too many changes to follow one by one; the buffer was dropped. */
 	private readonly _onDidOverflow = this._register(
 		new Emitter<ChangeBurst>()
 	);

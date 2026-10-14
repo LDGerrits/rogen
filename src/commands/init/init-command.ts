@@ -64,7 +64,6 @@ registerCommand(
 				logService,
 				accessor.get(EnvironmentService).cwd
 			);
-			// A JSON document is read by a program, which can't answer a question.
 			const ask = !line.options["non-interactive"] && !line.options.json;
 
 			if (!line.options.json) log.intro();
@@ -89,12 +88,10 @@ registerCommand(
 			return reporter.done(plan, built.value);
 		}
 
-		/** The project file of the config the plan wrote, so `rojo serve` and the compiler have one to read. */
 		private async buildConfigs(
 			accessor: ServicesAccessor,
 			plan: InitPlan
 		): Promise<Result<BuildRun, Error>> {
-			// No names would select every config in the folder.
 			if (plan.configs.length === 0) return ok(new BuildRun([]));
 			const selection = await accessor
 				.get(ConfigService)

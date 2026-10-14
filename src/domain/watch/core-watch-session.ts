@@ -20,7 +20,7 @@ import {
 	ChangeBurst,
 } from "./watch-service.js";
 
-/** A running watch: reloads a changed config, re-plans what it watches, and rebuilds each affected config; rebuilds of one config never overlap. */
+/** A running watch; rebuilds of one config never overlap. */
 export class CoreWatchSession
 	extends AbstractDisposable
 	implements WatchSession
@@ -28,7 +28,6 @@ export class CoreWatchSession
 	private readonly _onDidUpdate = this._register(new Emitter<WatchUpdate>());
 	readonly onDidUpdate: Event<WatchUpdate> = this._onDidUpdate.event;
 
-	/** A step failed unexpectedly; the watch goes on. */
 	private readonly _onDidError = this._register(new Emitter<Error>());
 	readonly onDidError: Event<Error> = this._onDidError.event;
 
@@ -41,14 +40,12 @@ export class CoreWatchSession
 	private started = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
-	/** What the source paths held after the latest change; only the intake replaces it, and a rebuild reads the one it started with. */
 	private listing = Listing.EMPTY;
 	private activeWatch = "";
 	private stopping: Promise<void> | undefined;
 
 	constructor(
 		private readonly selection: ReloadableSelection,
-		/** The configs that build, from the latest load, and which of them can't. */
 		private set: BuildSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
@@ -59,7 +56,6 @@ export class CoreWatchSession
 		this.plan = new WatchPlan(this.selection.configs);
 	}
 
-	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
 	async start(): Promise<Result<void, Error>> {
 		if (this.starting) throw new Error("A watch starts once.");
 		this.starting = true;
@@ -94,7 +90,6 @@ export class CoreWatchSession
 		return ok(undefined);
 	}
 
-	/** Lets the work already started finish, drops anything queued after, and stops the watcher. Safe to call twice. */
 	stop(): Promise<void> {
 		this.stopping ??= (async () => {
 			await Promise.allSettled([...this.pending]);
@@ -103,13 +98,11 @@ export class CoreWatchSession
 		return this.stopping;
 	}
 
-	/** Stops the session if `stop` wasn't awaited, then drops its subscriptions. */
 	override [Symbol.dispose](): void {
 		this.stop().catch(onUnexpectedError);
 		super[Symbol.dispose]();
 	}
 
-	/** An update to a file no build read changes nothing; while what a build read is unknown, every update counts. */
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
 		const watched = [...this.watched.values()];
 		if (!this.started || watched.some((config) => !config.settled)) {
@@ -124,7 +117,6 @@ export class CoreWatchSession
 		);
 	}
 
-	/** Whether the session acts on `file`; the folder watched for configs reports its other entries too. */
 	private isWatched(file: string): boolean {
 		return (
 			!this.selection.followedFolder ||
@@ -149,7 +141,6 @@ export class CoreWatchSession
 		);
 	}
 
-	/** Runs `task`, turning a throw into `onDidError`; queued work is dropped once the session stops. */
 	private guarded<T>(task: () => Promise<T>): () => Promise<T | undefined> {
 		return async () => {
 			if (this.stopping) return undefined;
@@ -191,7 +182,6 @@ export class CoreWatchSession
 		this.track(this.intake.queue(this.guarded(task)));
 	}
 
-	/** Fires once `results` settle, after every earlier update; nothing fires for a round with nothing to say. */
 	private announce(
 		cause: WatchCause,
 		results: readonly Promise<RebuildReport | undefined>[],
@@ -221,7 +211,6 @@ export class CoreWatchSession
 		);
 	}
 
-	/** The folder watched for configs added to it and deleted from it. */
 	private get shallowDirs(): string[] {
 		return this.selection.followedFolder
 			? [this.selection.followedFolder]
@@ -251,7 +240,6 @@ export class CoreWatchSession
 		this.listing = await this.indexService.list(this.plan.roots);
 	}
 
-	/** Whether the plan changed enough to restart the watcher and reindex. */
 	private async refreshPlan(): Promise<boolean> {
 		this.plan = new WatchPlan(this.selection.configs);
 		if (this.watchKey() === this.activeWatch) return false;
@@ -259,12 +247,10 @@ export class CoreWatchSession
 		return true;
 	}
 
-	/** Takes the configs the selection holds now as the set to build. */
 	private refreshSet(): void {
 		this.set = new BuildSet(this.selection.configs);
 	}
 
-	/** Drops what the session knows of configs that left the selection. */
 	private forgetRemoved(): void {
 		const current = new Set(
 			this.selection.configs.map(({ projectFile }) => projectFile)
@@ -281,7 +267,6 @@ export class CoreWatchSession
 		return changed;
 	}
 
-	/** Reloads until the watch plan settles, since a reload can change what's watched. */
 	private async applyConfigChanges(files: readonly string[]): Promise<{
 		reloaded: string[];
 		reindexed: boolean;
@@ -295,7 +280,6 @@ export class CoreWatchSession
 			}
 			if (!(await this.refreshPlan())) break;
 			reindexed = true;
-			// A config edited while the watcher restarted was never reported.
 			toReload = [...this.selection.files];
 		}
 		this.refreshSet();

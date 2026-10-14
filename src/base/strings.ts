@@ -10,12 +10,12 @@ export function listLimited(items: readonly string[], limit: number): string {
 	return items.length > limit ? `${listed}, …` : listed;
 }
 
-/** `count` and `noun`, adding an s unless there is one: `1 file`, `3 files`. */
+/** `1 file`, `3 files`. */
 export function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-/** Says how many entries of a capped list were left out: `1 more like it isn't listed.` */
+/** `1 more like it isn't listed.` */
 export function unlistedNote(count: number): string {
 	return `${count} more like it ${count === 1 ? "isn't" : "aren't"} listed.`;
 }
@@ -47,7 +47,7 @@ export function editDistance(a: string, b: string): number {
 	return previous[b.length];
 }
 
-/** The candidate `word` most likely misspells, judged as TypeScript does: up to two edits in five letters, ignoring case. */
+/** The candidate `word` most likely misspells, as TypeScript judges it. */
 export function closestMatch(
 	word: string,
 	candidates: Iterable<string>
@@ -55,7 +55,7 @@ export function closestMatch(
 	return closestMatches(word, candidates)[0];
 }
 
-/** Every candidate as close to `word` as the closest one, in the order given, judged as `closestMatch` judges. */
+/** Every candidate as close to `word` as the closest one. */
 export function closestMatches(
 	word: string,
 	candidates: Iterable<string>

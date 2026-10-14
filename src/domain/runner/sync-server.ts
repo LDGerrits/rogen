@@ -2,13 +2,10 @@ import { UsageError } from "../../base/errors.js";
 import { isObject } from "../../base/objects.js";
 import { Result, err, ok } from "../../base/result.js";
 
-/** What a running sync server says it serves. */
 export interface ServerInfo {
 	readonly server: SyncServer;
-	/** The name of the project file it serves. */
 	readonly project: string;
 	readonly version: string;
-	/** Rojo's id for this run of the server. */
 	readonly session?: string;
 }
 
@@ -25,20 +22,17 @@ interface SyncServerFields {
 	readonly repository: string;
 	readonly defaultHost: string;
 	readonly defaultPort: number;
-	/** The path that answers what it serves. */
 	readonly infoPath: string;
 	readonly hostFlags: readonly string[];
 	readonly portFlags: readonly string[];
 	/** A line that starts one of its log records, with the groups `level` and `text`. */
 	readonly logRecord: RegExp;
-	/** What it prints that tells a Rogen user nothing: its banner, and what Rogen's own probes and writes make it say. */
 	readonly noise: readonly RegExp[];
 	/** How it tells that a Studio plugin connected, when it does: the first version to log it, the log records that say so, and the filter that makes it print them. */
 	readonly connections?: {
 		readonly since: readonly [major: number, minor: number];
 		readonly opened: RegExp;
 		readonly closed: RegExp;
-		/** The variables that make it print them, each from what the user already set, so a filter of the user's stays. */
 		readonly logEnv: Readonly<
 			Record<string, (inherited: string | undefined) => string>
 		>;
@@ -52,7 +46,7 @@ interface SyncServerFields {
 const text = (value: unknown): string | undefined =>
 	typeof value === "string" ? value : undefined;
 
-/** A program that serves a project file to its Studio plugin, and the one Rogen runs for every Rojo command. Rogen starts the one a project pins, and never bundles one: it has to match the plugin the user installed. */
+/** A program that serves a project file to its Studio plugin. */
 export class SyncServer {
 	static readonly ROJO = new SyncServer({
 		id: "rojo",
@@ -110,7 +104,6 @@ export class SyncServer {
 		return id === SyncServer.ROJO.id ? SyncServer.ROJO : undefined;
 	}
 
-	/** Whether this version of it says in its output when a Studio plugin connects or leaves. */
 	reportsConnections(version: string): boolean {
 		const since = this.fields.connections?.since;
 		const found = /^(\d+)\.(\d+)/.exec(version);
@@ -119,7 +112,6 @@ export class SyncServer {
 		return major > since[0] || (major === since[0] && minor >= since[1]);
 	}
 
-	/** Whether `text`, the text of one of its log records, says a Studio plugin connected or left. */
 	connectionIn(text: string): "opened" | "closed" | undefined {
 		const { connections } = this.fields;
 		if (connections?.opened.test(text)) return "opened";
@@ -127,19 +119,16 @@ export class SyncServer {
 		return undefined;
 	}
 
-	/** The environment variables that make it print the records `connectionIn` reads, each from what the environment already holds. */
 	get env(): Readonly<
 		Record<string, (inherited: string | undefined) => string>
 	> {
 		return this.fields.connections?.logEnv ?? {};
 	}
 
-	/** The command that installs its Studio plugin. */
 	get pluginCommand(): string {
 		return `${this.id} plugin install`;
 	}
 
-	/** The level and text of `line` when it starts one of its log records. */
 	logRecordOf(
 		line: string
 	): { readonly level: string; readonly text: string } | undefined {
@@ -147,7 +136,6 @@ export class SyncServer {
 		return groups && { level: groups.level, text: groups.text };
 	}
 
-	/** `text` trimmed; `undefined` when it is noise. */
 	tidied(text: string): string | undefined {
 		const tidy = text.trim();
 		return this.fields.noise.some((noise) => noise.test(tidy))
@@ -155,17 +143,14 @@ export class SyncServer {
 			: tidy;
 	}
 
-	/** What an answer from `infoPath` says, when it is this server's answer. */
 	readInfo(value: unknown): ServerInfo | undefined {
 		return isObject(value) ? this.fields.readInfo(this, value) : undefined;
 	}
 
-	/** The value `serverArgs` give the host flag, if any. */
 	hostIn(serverArgs: readonly string[]): string | undefined {
 		return flagValue(serverArgs, this.fields.hostFlags);
 	}
 
-	/** The port `serverArgs` give, if any: `undefined` when none; an error when the value isn't a port. */
 	portIn(
 		serverArgs: readonly string[]
 	): Result<number | undefined, UsageError> {

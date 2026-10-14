@@ -4,13 +4,10 @@ import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { ServerMessage, SyncServer } from "./sync-server.js";
 
-/** How long a record waits for more of its lines before it is passed on. */
 const RECORD_QUIET_MS = 50;
 
-/** How long the same message is said only once; servers often log one failure twice. */
 const REPEAT_MS = 2_000;
 
-/** What each log level shows as; a level not here shows as `info`. */
 const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 	ERROR: "error",
 	WARN: "warning",
@@ -20,18 +17,17 @@ const SEVERITIES: Readonly<Record<string, ServerMessage["severity"]>> = {
 	TRACE: "debug",
 };
 
-/** Rust's own lines: a CLI error or warning, and the hint that follows a panic. In capitals it is a message the server wrote itself, as a paragraph that ends at the blank line. */
+/** Rust's own lines: a CLI error or warning; in capitals, a message the server wrote itself, as a paragraph that ends at the blank line. */
 const RUST_RECORD = /^(?<level>error|warning|ERROR|WARNING): (?<text>.*)$/;
 const RUST_NOISE = /^note: run with `RUST_BACKTRACE=1`/;
 
 interface PendingRecord {
 	readonly severity: ServerMessage["severity"];
 	readonly parts: string[];
-	/** A paragraph of text lines, not a cause chain: it runs to the blank line, and its lines make one sentence. */
 	readonly paragraph: boolean;
 }
 
-/** Reads what a server prints into messages: its warnings and errors, each on one line without its debug detail, and as `debug` its banner, its info logs and the noise Rogen causes. */
+/** Reads what a server prints into messages; its banner, info logs and the noise Rogen causes come as `debug`. */
 export class ServerOutput extends AbstractDisposable {
 	private readonly _onDidMessage = this._register(
 		new Emitter<ServerMessage>()
@@ -41,7 +37,6 @@ export class ServerOutput extends AbstractDisposable {
 	private readonly _onDidConnection = this._register(
 		new Emitter<"opened" | "closed">()
 	);
-	/** Fired for each log record that says a Studio plugin connected or left. */
 	readonly onDidConnection: Event<"opened" | "closed"> =
 		this._onDidConnection.event;
 
@@ -56,14 +51,12 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	/** Reads one line the server printed. */
 	readLine(line: string): void {
 		this.read(stripVTControlCharacters(line));
 		this.quiet.cancel();
 		if (this.pending) this.quiet.schedule();
 	}
 
-	/** Passes on what is left, once the server has stopped printing. */
 	end(): void {
 		this.flush();
 	}
@@ -77,7 +70,6 @@ export class ServerOutput extends AbstractDisposable {
 			this.pending = {
 				severity: level in SEVERITIES ? SEVERITIES[level] : "info",
 				parts: [record.text],
-				// A message in capitals that is no log record of the server's is one it wrote itself.
 				paragraph: logged === undefined && record.level === level,
 			};
 			return;
@@ -113,7 +105,6 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	/** `logged` says the text is a log record of the server's, not a line it printed on its own. */
 	private say(
 		severity: ServerMessage["severity"],
 		said: string,

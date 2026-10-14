@@ -9,15 +9,11 @@ import {
 import { DirClaims, RootClaims } from "./dir-claims.js";
 import { ScannedRoot } from "./root-scanner.js";
 
-/** A directory whose markers, an init script's route suffix among them, route its folder to more than one place. */
 interface MarkerClash {
-	/** An absolute POSIX path. */
 	readonly dir: string;
-	/** The marker files and init scripts that route it, sorted. */
 	readonly names: readonly string[];
 }
 
-/** The directories whose markers disagree. Markers in one directory all sit at one level, so no order could choose between two routes; claiming them in scan order would pick one silently. */
 export class MarkerClashes {
 	private readonly clashes: readonly MarkerClash[];
 
@@ -36,7 +32,6 @@ export class MarkerClashes {
 		);
 	}
 
-	/** Two routes at one level of a folder leave nothing to decide between them. */
 	diagnostics(): Diagnostic[] {
 		return this.clashes.map(({ dir, names }) =>
 			errorDiagnostic(

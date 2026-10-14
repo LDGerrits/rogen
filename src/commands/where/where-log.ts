@@ -12,7 +12,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
-/** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows, and a glob of Rogen's own has no folder to be relative to. */
+/** A glob that exclusion matched, from `cwd`; it keeps its slashes, which path.relative would turn into backslashes on Windows. */
 function patternRelativeTo(cwd: string, escaped: string): string {
 	const pattern = unescapedGlob(escaped);
 	if (!/^([A-Za-z]:)?\//.test(pattern)) return pattern;
@@ -21,7 +21,6 @@ function patternRelativeTo(cwd: string, escaped: string): string {
 	return path.posix.relative(rooted(toPosix(cwd)), rooted(pattern)) || ".";
 }
 
-/** One line: the path, where it lands, and why. */
 function describeLocation(location: FileLocation, cwd: string): string {
 	const relative = (file: string) => relativeTo(cwd, file);
 	return `${relative(location.source)} -> ${outcomeOf(location, cwd)}`;
@@ -68,19 +67,16 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 	}
 }
 
-/** Where files land, one line per path however many configs answered. */
 export class WhereLog {
 	constructor(
 		private readonly cwd: string,
 		private readonly answers: WhereAnswers
 	) {}
 
-	/** One line per path when every config agrees; otherwise each config's line, headed by its name. Under each, a line for every diagnostic a build raises about the path. An `outside` answer counts only when every config gives it. Paths keep the order they were first given in, or are sorted. */
 	lines(): string[] {
 		return this.blocks().flatMap(({ lines }) => lines);
 	}
 
-	/** The lines of each path; under a file the user named, how to require it or why that can't be. For a listing, the expressions that require its modules, which a person only asks to see. */
 	blocks(): {
 		lines: string[];
 		requireLines: string[];
@@ -132,7 +128,6 @@ export class WhereLog {
 		});
 	}
 
-	/** Prints the lines of each path, with how to require a file the user named; for a listing, the requires are debug lines. */
 	print(logService: LogService): void {
 		const blocks = this.blocks();
 		if (blocks.length === 0) {
@@ -150,7 +145,6 @@ export class WhereLog {
 		}
 	}
 
-	/** What to say when there is nothing to list because no source path holds a file; `undefined` when no config answered at all. */
 	emptyLine(): string | undefined {
 		const sourcePaths = [
 			...new Set(
@@ -164,7 +158,6 @@ export class WhereLog {
 			: undefined;
 	}
 
-	/** One indented line for each diagnostic about the answer's path: its severity, what it says about the path and its code, which `rogen help <code>` explains. */
 	private noted(answer: Answer): string[] {
 		if (answer.kind !== "file") return [];
 		return answer.diagnostics.map(
@@ -172,7 +165,6 @@ export class WhereLog {
 		);
 	}
 
-	/** The notes every answer has once, then the ones only some have, headed by their config. */
 	private sharedNotes(answers: readonly Answer[]): string[] {
 		const notes = answers.map((answer) => this.noted(answer));
 		const shared = notes[0].filter((note) =>
@@ -188,7 +180,6 @@ export class WhereLog {
 		];
 	}
 
-	/** The renames that would place the instance and where a new file for it goes, as the end of its line. */
 	private whereToAdd(
 		folders: readonly string[],
 		fixes: readonly InstanceFix[]

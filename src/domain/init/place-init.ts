@@ -28,20 +28,17 @@ import { InitQuestions } from "./init-questions.js";
 
 const WORKSPACE_SUFFIX = ".code-workspace";
 
-/** What the config that lists the place says: the entries of `placePaths` once the place is in them, what the file holds, and the edit that gets them there. */
 interface Listing {
 	readonly placePaths: readonly string[];
 	readonly raw: Record<string, unknown>;
 	readonly edit?: PlannedFile;
 }
 
-/** A place of the config that lists it, as far as its port is concerned. */
 interface KnownPlace {
 	readonly directory: string;
 	readonly pinned: number | undefined;
 }
 
-/** Adds a folder as a place of the config above it: the place's own `rogen.json`, the entry in `placePaths` that lists it, and the workspace file that lists every place. */
 export class PlaceInit {
 	private readonly finder: PlaceFinder;
 	private readonly code: CodeFinder;
@@ -118,7 +115,6 @@ export class PlaceInit {
 		});
 	}
 
-	/** The config above `folder` that can list it, or why none can. */
 	private async locate(
 		folder: string
 	): Promise<Result<{ root: string; rootFile: string }, Error>> {
@@ -161,7 +157,6 @@ export class PlaceInit {
 			: ok({ root, rootFile });
 	}
 
-	/** The config file in `folder`, if it has one. */
 	private async configIn(folder: string): Promise<string | undefined> {
 		for (const name of CONFIG_FILE_NAMES) {
 			const file = path.join(folder, name);
@@ -170,12 +165,10 @@ export class PlaceInit {
 		return undefined;
 	}
 
-	/** `file` as a command run here names it. */
 	private named(file: string): string {
 		return toPosix(path.relative(this.cwd, file)) || file;
 	}
 
-	/** The edit of `rootFile` that lists the place, none when its `placePaths` already do. */
 	private async listing(
 		rootFile: string,
 		root: string,
@@ -223,7 +216,6 @@ export class PlaceInit {
 		});
 	}
 
-	/** The places `placePaths` names that are there now, each with the port it pins, its own or the one it inherits. */
 	private async knownPlaces(
 		root: string,
 		placePaths: readonly string[],
@@ -258,7 +250,6 @@ export class PlaceInit {
 		return parsed.isOk() && isObject(parsed.value) ? parsed.value : {};
 	}
 
-	/** The place's own source paths, when they are not `src`, and what a compiler asks of the place. */
 	private async sourcePaths(
 		folder: string,
 		root: string
@@ -302,7 +293,6 @@ export class PlaceInit {
 		};
 	}
 
-	/** The port the place is served on: the first one no place pins and none of the places that pin no port is served on, so no place moves to make room. */
 	private portOf(folder: string, known: readonly KnownPlace[]): number {
 		const others = known
 			.filter(({ directory }) => toPosix(directory) !== toPosix(folder))
@@ -317,7 +307,6 @@ export class PlaceInit {
 		return PlacePorts.firstFree(taken);
 	}
 
-	/** The workspace file that lists the config's folder and every place, unless one is there already, and then what to add to it. */
 	private async workspace(
 		root: string,
 		folders: readonly string[],

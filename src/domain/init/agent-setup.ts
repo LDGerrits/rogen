@@ -6,15 +6,11 @@ import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { Setup } from "./setup.js";
 
-/** What `init` adds for coding agents. */
 interface AgentChoices {
-	/** Rogen's rules, in the repo's agent file. */
 	readonly rules: boolean;
-	/** The hook that reports Rogen warnings, registered with each agent in use. */
 	readonly hook: boolean;
 }
 
-/** Rogen's rules for coding agents and the hook that reports warnings, each asked for unless it is there already. */
 export class AgentSetup implements Setup<AgentChoices> {
 	constructor(
 		private readonly agentFile: AgentFile,

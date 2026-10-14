@@ -6,14 +6,9 @@ import { Mount } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { StarterProject } from "./starter-project.js";
 
-/** What the tree question answers. */
 export type TreeChoice =
-	/** Start a DataModel tree that mounts the packages, when there are any. */
-	| { readonly kind: "new" }
-	/** Lift a hand-written project file into the config. */
-	| { readonly kind: "lift"; readonly from: string };
+	{ readonly kind: "new" } | { readonly kind: "lift"; readonly from: string };
 
-/** The tree a new project chose, with a lifted file read in. */
 export type ProjectTree =
 	| { readonly kind: "new" }
 	| {
@@ -22,17 +17,14 @@ export type ProjectTree =
 			readonly project: StarterProject;
 	  };
 
-/** What a new project's tree is made of. */
 interface TreeInputs {
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
-	/** The folders Rogen generates nodes for now, which a lift leaves out. */
 	readonly dirs: readonly string[];
-	/** The routes the nodes a lift leaves out become. */
 	readonly derived: DerivedRoutes | undefined;
 }
 
-/** The name of the folder a mount at `target` lies in or is: a file's folder is where its marker goes. */
+/** The name of the folder a mount at `target` lies in or is; a file's folder is where its marker goes. */
 function folderNameOf(target: string): string {
 	const name = path.posix.basename(target);
 	return path.posix.extname(name) === ""
@@ -40,10 +32,8 @@ function folderNameOf(target: string): string {
 		: path.posix.basename(path.posix.dirname(target));
 }
 
-/** The Rojo keys and tree a new project's config starts with, and what `init` says about them. */
 export class TreePlan {
 	private constructor(
-		/** The keys of the config that come from the tree: its `tree`, and a lifted file's other Rojo keys. */
 		readonly fields: RogenConfig,
 		readonly notes: readonly string[],
 		readonly edits: readonly string[]

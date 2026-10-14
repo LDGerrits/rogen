@@ -12,32 +12,28 @@ import { ServerExecutable } from "./rojo-runner.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 
-/** How long `--version` may take; a toolchain manager may download the tool first. */
+/** A toolchain manager may download the tool before `--version` answers. */
 const VERSION_TIMEOUT_MS = 60_000;
 
 interface Candidate {
 	readonly server: SyncServer;
-	/** The name it runs as. */
 	readonly command: string;
 	readonly manifest?: ToolManifest;
 }
 
-/** A candidate a toolchain file pins. */
 interface PinnedCandidate extends Candidate {
 	readonly manifest: ToolManifest;
 }
 
-/** The repository Argon is installed from, which Rogen doesn't start but tells the user to run. */
 const ARGON_REPOSITORY = "argon-rbx/argon";
 
-/** Finds the Rojo a project pins in its toolchain files, else the one on the PATH, so the version the project pins is the one that runs. */
 export class ServerFinder {
 	constructor(
 		private readonly toolchainService: ToolchainService,
 		private readonly processService: ProcessService
 	) {}
 
-	/** `directory` is where the server will run, and where toolchain files are looked for, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */
+	/** Toolchain files are looked for in `directory`, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */
 	async find(
 		directory: string,
 		resource: string,
@@ -78,7 +74,6 @@ export class ServerFinder {
 		return ok({ server, file, version: version.value });
 	}
 
-	/** Runs `--version`, which proves the server starts, through its toolchain manager when one pins it. */
 	private async versionOf(
 		candidate: Candidate,
 		file: string,
@@ -161,7 +156,6 @@ export class ServerFinder {
 		);
 	}
 
-	/** The command that pins `server` in the nearest toolchain file, or with Rokit when there is none. */
 	private pinFix(
 		server: SyncServer,
 		directory: string,

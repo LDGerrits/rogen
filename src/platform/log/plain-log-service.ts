@@ -48,7 +48,6 @@ export class PlainLogService extends AbstractLogService {
 			case "debug":
 			case "trace": {
 				const line = `[${kind}] ${text}`;
-				// On stderr, so stdout holds only results, and only JSON under --json.
 				console.error(this.inStep ? indented(line) : line);
 				break;
 			}

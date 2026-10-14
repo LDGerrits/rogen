@@ -16,13 +16,12 @@ export function isDirectoryType(type: FileType): boolean {
 	return (type & FileType.Directory) !== 0;
 }
 
-/** What a consumer that only looks at files needs. */
 export interface FileReader {
 	exists(filePath: string): Promise<boolean>;
 	isFile(filePath: string): Promise<boolean>;
 	isDirectory(filePath: string): Promise<boolean>;
 
-	/** The entries in order of name, as text, whatever order the system lists them in. A symlink or junction is reported as `SymbolicLink` combined with the type of its target. */
+	/** Entries in name order, as text. A symlink or junction is `SymbolicLink` combined with its target's type. */
 	readDirectory(filePath: string): Promise<[string, FileType][]>;
 
 	readFile(filePath: string): Promise<string>;
@@ -43,11 +42,9 @@ export interface FileSystemService extends FileReader {
 	): Promise<void>;
 }
 
-/** The codes a file system rejects with, as Node's own errors carry them. */
 type FileSystemErrorCode =
 	"ENOENT" | "ENOTDIR" | "EISDIR" | "EEXIST" | "ELOOP" | "EINVAL";
 
-/** An error shaped like Node's, so a caller checks `code` alike on every file system. */
 export function fileSystemError(
 	code: FileSystemErrorCode,
 	message: string,
@@ -56,7 +53,7 @@ export function fileSystemError(
 	return Object.assign(new Error(message, { cause }), { code });
 }
 
-/** Why renaming onto `existing` is refused, as Node refuses it: a path in the way unless told to overwrite, and a directory in the way always. */
+/** Why renaming onto `existing` is refused, as Node refuses it. */
 export function renameRefusal(
 	existing: FileType | undefined,
 	overwrite: boolean,
@@ -77,7 +74,6 @@ export function renameRefusal(
 	return undefined;
 }
 
-/** Whether `error` says the path isn't there, by its code and not its wording. */
 export function isMissingPath(error: Error): boolean {
 	return ErrorUtils.hasCode(error, "ENOENT");
 }

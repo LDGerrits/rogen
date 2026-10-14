@@ -6,18 +6,14 @@ import { MountedPath, rojoPathTarget } from "../rojo/rojo-project.js";
 import { StarterProject } from "./starter-project.js";
 import { instanceKey } from "../roblox/roblox.js";
 
-/** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out because Rogen generates that code now. */
+/** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out. */
 export class DerivedRoutes {
-	/** Route key to target, one for each mount of a folder directly in a source path. */
 	readonly routes = new Map<string, string>();
-	/** Where files that match no route go: the target a source path was mounted at, else the one of the shared route. */
 	readonly fallback: string | undefined;
-	/** The mounts inside a source path that no route can reproduce, as their `$path` and the node they were at. */
 	readonly unrouted: { readonly target: string; readonly node: string }[] =
 		[];
 
 	constructor(
-		/** The project file the mounts were in. */
 		readonly from: string,
 		removed: readonly MountedPath[],
 		sourcePaths: readonly string[]
@@ -58,7 +54,6 @@ export class DerivedRoutes {
 			)?.[1];
 	}
 
-	/** The routes for the mounts in `project` that point into `sourcePaths`; `undefined` when it holds none. */
 	static of(
 		from: string,
 		project: StarterProject,

@@ -9,7 +9,6 @@ const CHECK_TIMEOUT_MS = 2_000;
 const RELEASES_URL = `https://api.github.com/repos/${REPOSITORY}/releases?per_page=30`;
 
 interface Cache {
-	/** When the last check ended, however it ended. */
 	readonly checkedAt: number;
 	readonly versions: readonly string[];
 	readonly announced?: { readonly version: string; readonly at: number };
@@ -17,7 +16,6 @@ interface Cache {
 
 const EMPTY: Cache = { checkedAt: 0, versions: [] };
 
-/** The versions the tags of a release listing name, read leniently: a listing in any other shape names none. */
 function versionsOf(listing: unknown): string[] {
 	if (!Array.isArray(listing)) return [];
 	const versions: string[] = [];
@@ -34,7 +32,7 @@ function versionsOf(listing: unknown): string[] {
 	return versions;
 }
 
-/** Reads GitHub's release listing once a day into a file of the user's cache folder, and never lets a failure of any step reach the caller. A command that ends before a check does keeps the process open until it ends, which the timeout bounds. */
+/** Reads GitHub's release listing once a day into the user's cache folder; a failure never reaches the caller. */
 export class CoreReleaseService implements ReleaseService {
 	declare readonly _serviceBrand: undefined;
 
@@ -86,7 +84,6 @@ export class CoreReleaseService implements ReleaseService {
 				? readBody(response.value)
 				: undefined;
 		const versions = listing?.isOk() ? versionsOf(listing.value) : [];
-		// A failed check is not tried again for a day, so an offline machine isn't asked each run.
 		await this.write({
 			...cache,
 			checkedAt: this.now(),
@@ -123,7 +120,7 @@ export class CoreReleaseService implements ReleaseService {
 				JSON.stringify(cache)
 			);
 		} catch {
-			// A cache folder that can't be written only costs the next run a new check.
+			// Nothing to do: a cache that can't be written only costs a new check.
 		}
 	}
 }

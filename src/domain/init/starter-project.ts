@@ -19,13 +19,11 @@ const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 const describe = ({ path, instancePath }: MountedPath): string =>
 	`${normalizeDir(rojoPathTarget(path))} at ${instanceKey(instancePath)}`;
 
-/** The Rojo project `init` starts a config from: what it mounts, and what a lift of a hand-written project file leaves out or gains. */
 export class StarterProject {
 	private constructor(
 		private readonly project: RojoProject<ParsedProjectFile>
 	) {}
 
-	/** A DataModel that mounts `mounts`, each at its landing. */
 	static fromMounts(mounts: readonly Mount[]): StarterProject {
 		const project = new RojoProject<ParsedProjectFile>({
 			tree: { $className: "DataModel" },
@@ -35,14 +33,12 @@ export class StarterProject {
 		return new StarterProject(project);
 	}
 
-	/** Fails when `text` isn't a project file. */
 	static parse(text: string): Result<StarterProject, Error> {
 		return RojoProject.parse(text).map(
 			(project) => new StarterProject(project)
 		);
 	}
 
-	/** This project without the nodes that point into `dirs`, each with its `$path` and where it was; `undefined` when a dir is the whole folder. */
 	withoutNodesIn(
 		dirs: readonly string[]
 	): { project: StarterProject; removed: MountedPath[] } | undefined {
@@ -56,7 +52,7 @@ export class StarterProject {
 		return { project: new StarterProject(edited), removed };
 	}
 
-	/** This project plus the `mounts` it lacks, as `<path> at <node>`; a node already there wins and its mounts are `skipped`. */
+	/** A node already there wins and its mounts are `skipped`. */
 	withMounts(mounts: readonly Mount[]): {
 		project: StarterProject;
 		added: string[];
@@ -84,7 +80,6 @@ export class StarterProject {
 		};
 	}
 
-	/** The project as a config's keys: Rojo's, without the schema, which the config brings its own. */
 	toConfig(): RogenConfig {
 		const { $schema: _schema, ...keys } = this.project.getFile();
 		return keys as RogenConfig;

@@ -1,4 +1,3 @@
-/** The file and text of the record a serve left for the Rojo server on `port`. */
 export const recordFile = (
 	port: number,
 	project: string,

@@ -11,7 +11,6 @@ const SYMBOLS = {
 const nested = (text: string, symbol?: string) =>
 	clack.log.message(symbol ? `${symbol} ${text}` : text, { spacing: 0 });
 
-/** Draws with the prompt library's gutter and symbols, the same look as the init questions. */
 export class TerminalLogService extends AbstractLogService {
 	declare readonly _serviceBrand: undefined;
 

@@ -32,7 +32,6 @@ export class PlannedFilesIndex implements IndexReader {
 		}
 	}
 
-	/** Whether `target` is one of the paths added on top of the index, which doesn't exist. */
 	isPlanned(target: string): boolean {
 		return (
 			this.added

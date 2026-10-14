@@ -45,12 +45,10 @@ import { Watcher } from "../../platform/watcher/watcher.js";
 
 export interface CommandHarnessOptions<L extends LogService> {
 	readonly cwd?: string;
-	/** The file system to run over, which must hold `cwd`; a new one with only `cwd` when absent. */
 	readonly fs?: MemoryFileSystemService;
 	readonly environment?: EnvironmentService;
 	readonly log?: L;
 	readonly prompt?: PromptService;
-	/** In place of the real config service, for a test that scripts what the configs resolve to. */
 	readonly config?: ConfigService;
 	readonly index?: IndexService;
 	readonly lifecycle?: LifecycleService;
@@ -63,14 +61,12 @@ export interface CommandHarnessOptions<L extends LogService> {
 export interface CommandHarness<L extends LogService> {
 	readonly fs: MemoryFileSystemService;
 	readonly log: L;
-	/** Runs `command` the way `rogen <command>` does, over the harness's services. */
 	run(
 		command: string,
 		line?: Partial<CommandLine>
 	): Promise<Result<void, Error>>;
 }
 
-/** The services `main.ts` wires, over an in-memory file system; tests change one service by naming it. */
 export function commandHarness(
 	options?: CommandHarnessOptions<MockLogService>
 ): CommandHarness<MockLogService>;
@@ -82,7 +78,6 @@ export function commandHarness(
 ): CommandHarness<LogService> {
 	const { cwd = "/repo" } = options;
 	const fs = options.fs ?? new MemoryFileSystemService();
-	// A given file system starts the command at once, as main.ts does, for a test that acts while it starts.
 	const ready = options.fs ? undefined : fs.createDirectory(cwd);
 
 	const log = options.log ?? new MockLogService();
@@ -153,7 +148,6 @@ export function commandHarness(
 	};
 }
 
-/** Adds the legacy config check, as main.ts does. */
 function legacyChecked(config: CoreConfigService): CoreConfigService {
 	config.registerFileCheck(LegacyConfig.check);
 	return config;

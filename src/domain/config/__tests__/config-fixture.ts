@@ -5,7 +5,6 @@ import { ReloadableSelection, buildableConfig } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 export interface Refs {
-	/** Folders or project file paths; the config here when absent. */
 	readonly names?: string[];
 }
 
@@ -13,12 +12,10 @@ export let fs: MemoryFileSystemService;
 export let service: CoreConfigService;
 export let selection: ReloadableSelection;
 
-/** A fresh `/repo` and a config service over it before each test. */
 export function useConfigFixture(): void {
 	beforeEach(() => useFileSystem(new MemoryFileSystemService()));
 }
 
-/** Runs the service over `next` from `home`, for a test that needs another file system. */
 export async function useFileSystem(
 	next: MemoryFileSystemService,
 	home = "/repo"
@@ -48,7 +45,6 @@ export const plain = (config: ResolvedConfig | undefined) =>
 		project: config.project.getFile(),
 	};
 
-/** Selects the configs `refs` names, as the matching command line would. */
 export const start = async ({ names = [] }: Refs = {}, cwd = "/repo") => {
 	service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
 	const result = await service.select(names);

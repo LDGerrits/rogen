@@ -30,7 +30,6 @@ export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 		return this.reasons[Symbol.iterator]();
 	}
 
-	/** The paths left out for `status`, with why. */
 	withStatus<S extends LeftOut["status"]>(
 		status: S
 	): [string, Extract<LeftOut, { status: S }>][] {
@@ -52,28 +51,21 @@ export interface DisplacedFile {
 	readonly source: string;
 }
 
-/** What a placement is made of, by name, since several parts share a type. */
 interface PlacementParts {
 	readonly config: ResolvedConfig;
 	readonly layout: SyncLayout;
 	readonly tree: BuildTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
-	/** Every node a route sends a file to, in scan order, then the copies of init scripts. */
 	readonly routedNodes: readonly RoutedFile[];
-	/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last source path wins across roots. */
 	readonly nodes: readonly RoutedFile[];
-	/** Every path the build leaves out of the tree. */
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
-	/** The routed files the tree displaced, in scan order. */
 	readonly displaced: readonly DisplacedFile[];
 }
 
-/** A meta file the scan found. */
 interface ScannedMetaFile {
 	readonly sourcePath: string;
-	/** Its path in the source path. */
 	readonly relativePath: string;
 	readonly file: string;
 }
@@ -123,7 +115,6 @@ export class Placement {
 		);
 	}
 
-	/** What the name of `file` says it is. */
 	readingOf(file: RoutedFile): EntryReading {
 		return this.readings.entryReading(file.entry.source);
 	}
@@ -139,14 +130,13 @@ export class Placement {
 		);
 	}
 
-	/** The other nodes a copied init script is. */
 	otherNodesOf(file: RoutedFile): readonly RoutedFile[] {
 		return (this.nodesBySource.get(file.entry.source) ?? []).filter(
 			(node) => node !== file
 		);
 	}
 
-	/** The directory Rojo reads an init script through, if it does, since it never reads a file with its init name alone. */
+	/** The directory Rojo reads an init script through, if it does. */
 	initDirOf(file: RoutedFile): string | undefined {
 		return file.init &&
 			new RojoFile(
@@ -156,7 +146,6 @@ export class Placement {
 			: undefined;
 	}
 
-	/** What the index holds in `dir`, which lies in one of the source paths. */
 	listing(dir: string): ReadonlyMap<string, FileType> {
 		const root = this.roots.find((candidate) =>
 			isInside(dir, toPosix(candidate.sourcePath))
@@ -164,13 +153,11 @@ export class Placement {
 		return root?.listing(path.normalize(dir)) ?? new Map();
 	}
 
-	/** Meta no file claims, across every source path; computed once. */
 	unclaimedMeta(): UnclaimedMeta[] {
 		this.unclaimed ??= this.roots.flatMap((root) => root.unclaimedMeta());
 		return this.unclaimed;
 	}
 
-	/** What the build did, counted for the summary. */
 	summary(): BuildSummary {
 		return {
 			roots: this.roots.map((root) => ({

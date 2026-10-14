@@ -18,11 +18,9 @@ export class FolderMeta {
 		/** The folder, relative to the source path; the source path itself is "". */
 		readonly dir: string,
 		readonly fields: RojoMetaFields,
-		/** The other files merged into it, when the folder holds both an `init.meta.json` and an `init.meta.jsonc`. */
 		private readonly merged: readonly string[] = []
 	) {}
 
-	/** Every file it was read from. */
 	get files(): string[] {
 		return [this.file, ...this.merged];
 	}
@@ -49,7 +47,7 @@ export type FolderMetaOutcome =
 			readonly meta: FolderMeta;
 			readonly treeNode: RojoNode;
 	  }
-	/** A file other than the folder's init script is what Rojo reads at the node, so every meta reaching it applies to nothing. */
+	/** A file other than the folder's init script is what Rojo reads at the node, so no meta reaching it applies. */
 	| {
 			readonly kind: "shared";
 			readonly instance: string;
@@ -104,7 +102,6 @@ export class FolderMetaApplier {
 		return ok(outcomes);
 	}
 
-	/** One outcome per node the folders of the placed and displaced files reach with some meta. */
 	private decide(
 		project: RojoProject,
 		problems: DiagnosticCollector
@@ -121,7 +118,6 @@ export class FolderMetaApplier {
 		])) {
 			const instance = instanceKey(nodePath);
 			const shared = sharedWithFile.get(nodePath);
-			// A node's file can be the init script of a folder that names it, which is that folder itself, so that folder's meta reaches it.
 			const ownDir = shared?.init?.becomes;
 			const reached = this.metasReaching(node);
 			if (reached.length === 0) continue;
@@ -142,7 +138,6 @@ export class FolderMetaApplier {
 					metas: others,
 					file: shared,
 				});
-			// Rojo applies the meta of the directory it reads for an init script itself.
 			const initDir = shared && this.placement.initDirOf(shared);
 			const metas = shared
 				? reached.filter(
@@ -166,7 +161,6 @@ export class FolderMetaApplier {
 		return outcomes;
 	}
 
-	/** The metas of the folders that reach `node` and aren't collapsed into a `$path`, those of earlier source paths first. */
 	private metasReaching(node: ReachedNode): FolderMeta[] {
 		const { sourcePaths } = this.placement.config;
 		return [...node.dirs]
@@ -179,7 +173,6 @@ export class FolderMetaApplier {
 			);
 	}
 
-	/** Reports each pair of metas of one source path that apply to `instance`, once, since neither ranks above the other. */
 	private reportSameRootClashes(
 		reached: readonly FolderMeta[],
 		instance: string,
@@ -198,7 +191,6 @@ export class FolderMetaApplier {
 		}
 	}
 
-	/** The metas in folders that never become an instance, decided by the folder's name and by whether a route governs it. */
 	private instanceless(): FolderMetaOutcome[] {
 		const { readings, routed } = this.placement;
 		const named = new Set(
@@ -225,7 +217,6 @@ export class FolderMetaApplier {
 		);
 	}
 
-	/** A ref must be unique, so one meta's id can't be copied onto several instances. */
 	private checkIds(
 		outcomes: readonly FolderMetaOutcome[],
 		problems: DiagnosticCollector
@@ -264,7 +255,6 @@ export class FolderMetaApplier {
 		return reached;
 	}
 
-	/** Each group of metas from one source path that reach the same node. */
 	private sameRootClashes(metas: readonly FolderMeta[]): FolderMeta[][] {
 		return [...groupBy(metas, ({ sourcePath }) => sourcePath).values()]
 			.filter((group) => group.length > 1)
