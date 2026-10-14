@@ -210,7 +210,7 @@ class ConfigLocator {
 		);
 		const planned = await this.locatorOf(
 			index,
-			await this.existence(index, paths)
+			await this.existsOnDisk(index, paths)
 		);
 		return planned.map(({ locator, diagnostics }) => ({
 			files: locator.locate(paths, folders),
@@ -272,17 +272,10 @@ class ConfigLocator {
 	private async foldersForNewFile(
 		reference: InstanceReference
 	): Promise<string[]> {
-		const keys = [...this.config.routes.keys()];
-		const routed = (
-			await Promise.all(
-				keys
-					.filter((key) => key !== DeclaredKeys.FALLBACK_ROUTE)
-					.map((key) => this.foldersUnderRoute(key, reference))
-			)
-		).flat();
+		const declared = await this.foldersUnderDeclaredRoutes(reference);
 		const found =
-			routed.length > 0
-				? routed
+			declared.length > 0
+				? declared
 				: await this.foldersUnderRoute(
 						DeclaredKeys.FALLBACK_ROUTE,
 						reference
@@ -290,22 +283,42 @@ class ConfigLocator {
 		return [...new Set(found)].sort(compareStrings);
 	}
 
+	private async foldersUnderDeclaredRoutes(
+		reference: InstanceReference
+	): Promise<string[]> {
+		const keys = [...this.config.routes.keys()].filter(
+			(key) => key !== DeclaredKeys.FALLBACK_ROUTE
+		);
+		return (
+			await Promise.all(
+				keys.map((key) => this.foldersUnderRoute(key, reference))
+			)
+		).flat();
+	}
+
+	private static belowRoute(
+		lead: readonly string[],
+		reference: InstanceReference
+	): { readonly below: string[]; readonly leaf: string } | undefined {
+		const names = reference.text.split(reference.separator);
+		if (
+			names.length <= lead.length ||
+			!lead.every((name, index) => name === names[index])
+		)
+			return undefined;
+		const rest = names.slice(lead.length);
+		return { below: rest.slice(0, -1), leaf: rest[rest.length - 1] };
+	}
+
 	private async foldersUnderRoute(
 		key: string,
 		reference: InstanceReference
 	): Promise<string[]> {
 		const target = this.config.routes.get(key);
-		if (!target) return [];
-		const names = reference.text.split(reference.separator);
-		const lead = target.instancePath;
-		if (
-			names.length <= lead.length ||
-			!lead.every((name, index) => name === names[index])
-		)
-			return [];
-		const rest = names.slice(lead.length);
-		const leaf = rest[rest.length - 1];
-		const below = rest.slice(0, -1);
+		const names =
+			target && ConfigLocator.belowRoute(target.instancePath, reference);
+		if (!names) return [];
+		const { below, leaf } = names;
 		const folders = new Set<string>();
 		for (const sourcePath of this.config.sourcePaths) {
 			const { dir, matched } = this.deepestExisting(sourcePath, below);
@@ -358,7 +371,7 @@ class ConfigLocator {
 			? new PlacementLocator(
 					placement.value,
 					index,
-					await this.existence(index, [file])
+					await this.existsOnDisk(index, [file])
 				).locate([file])
 			: [];
 	}
@@ -387,22 +400,25 @@ class ConfigLocator {
 		return new ConfigBuilder(this.fileSystemService, index, this.tools);
 	}
 
-	private async existence(
+	private async existsOnDisk(
 		index: PlannedFilesIndex,
 		paths: readonly string[]
 	): Promise<(source: string) => boolean> {
 		const known = new Map<string, boolean>();
-		for (const target of paths) {
+		for (const target of paths)
 			known.set(
 				toPosix(target),
-				!index.isPlanned(target) &&
-					(this.listing.hasEntry(
-						path.dirname(target),
-						path.basename(target)
-					) ||
-						(await this.fileSystemService.exists(target)))
+				!index.isPlanned(target) && (await this.isOnDisk(target))
 			);
-		}
 		return (source) => known.get(source) ?? !index.isPlanned(source);
+	}
+
+	private async isOnDisk(target: string): Promise<boolean> {
+		return (
+			this.listing.hasEntry(
+				path.dirname(target),
+				path.basename(target)
+			) || (await this.fileSystemService.exists(target))
+		);
 	}
 }
