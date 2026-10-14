@@ -189,7 +189,7 @@ Writes a starting `rogen.json`. It detects the language, Darklua and your packag
 
 In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
 
-In a git repository it adds the files it will write to `.gitignore`, asking first in a terminal: `default.project.json`, one for each project, and `sourcemap.json`, each by its exact name. When it finds a test runner, it also writes a `release` project that ignores the specs (see [Testing](/docs/v2/testing)), and with Darklua it writes a `dist` project that Studio syncs from (see [Darklua](/docs/v2/setups/darklua)).
+In a terminal, in a git repository, it asks whether to add the files it will write to `.gitignore`; a run that can't ask never touches it: `default.project.json`, one for each project, and `sourcemap.json`, each by its exact name. When it finds a test runner, it also writes a `release` project that ignores the specs (see [Testing](/docs/v2/testing)), and with Darklua it writes a `dist` project that Studio syncs from (see [Darklua](/docs/v2/setups/darklua)).
 
 Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
 

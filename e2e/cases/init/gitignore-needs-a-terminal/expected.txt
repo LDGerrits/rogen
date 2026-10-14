@@ -3,27 +3,18 @@ exit 0
 stdout:
   rogen init
   Created rogen.json.
-  Added the files Rogen writes to .gitignore.
   Created AGENTS.md.
   default.project.json · wrote
   Next steps
     Run:
       rogen serve
     Add your own routes under "routes" in rogen.json.
-  Wrote 3 files.
+  Wrote 2 files.
 
 written:
-  .gitignore
   AGENTS.md
   default.project.json
   rogen.json
-
-.gitignore:
-node_modules/
-
-# Written by Rogen from rogen.json
-/default.project.json
-/sourcemap.json
 
 rogen.json:
 {

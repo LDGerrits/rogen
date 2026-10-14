@@ -79,9 +79,9 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether to keep the files Rogen writes out of git; a run that can't ask does, as Enter does. */
+	/** Whether to keep the files Rogen writes out of git; a run that can't ask doesn't, since it edits the repo's tooling. */
 	async addGitIgnore(): Promise<boolean | undefined> {
-		if (!this.interactive) return true;
+		if (!this.interactive) return false;
 		return this.promptService.confirm({
 			message: "Keep the project files Rogen writes out of git?",
 			description:

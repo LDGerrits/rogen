@@ -44,7 +44,7 @@ Next steps
 }
 ```
 
-In a terminal, `init` asks about your source paths, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It adds the project files it will write to `.gitignore`, and a `release` project without the specs when it finds a test runner: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
+In a terminal, `init` asks about your source paths, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). In a terminal it offers to add the project files it will write to `.gitignore`, and a `release` project without the specs when it finds a test runner: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 </Step>
 
