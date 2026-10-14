@@ -140,7 +140,11 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			path.join(dir, "rokit.toml")
 		);
 		for (const [link, target] of Object.entries(spec.links ?? {})) {
-			fs.symlinkSync(target, path.join(dir, link), "dir");
+			const linkPath = path.join(dir, link);
+			const resolved = path.resolve(path.dirname(linkPath), target);
+			const isFile =
+				fs.existsSync(resolved) && fs.statSync(resolved).isFile();
+			fs.symlinkSync(target, linkPath, isFile ? "file" : "dir");
 		}
 
 		const before = snapshot(dir);
