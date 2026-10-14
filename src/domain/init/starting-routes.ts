@@ -23,12 +23,15 @@ interface RouteOption {
 
 interface RouteTemplate {
 	readonly id: StandardRouteId;
-	readonly target?: string;
 	readonly hint: string;
 	readonly ticked: boolean;
 }
 
-const ROUTES: readonly RouteTemplate[] = [
+interface FixedRoute extends RouteTemplate {
+	readonly target: string;
+}
+
+const ROUTES: readonly (FixedRoute | RouteTemplate)[] = [
 	{
 		id: "server",
 		target: "ServerScriptService",
@@ -90,15 +93,13 @@ export class StartingRoutes {
 		const taken = new Set(
 			derived.map(({ key }) => DeclaredKeys.identityOf(key))
 		);
-		const standard = ROUTES.map(
-			({ id, target, hint, ticked }): RouteOption => ({
-				id,
-				key: this.language.routeKey(id),
-				target: target ?? this.sharedTarget,
-				hint,
-				ticked,
-			})
-		).filter(({ key }) => !taken.has(DeclaredKeys.identityOf(key)));
+		const standard = ROUTES.map((template): RouteOption => ({
+			id: template.id,
+			key: this.language.routeKey(template.id),
+			target: "target" in template ? template.target : this.sharedTarget,
+			hint: template.hint,
+			ticked: template.ticked,
+		})).filter(({ key }) => !taken.has(DeclaredKeys.identityOf(key)));
 		return [...derived, ...standard];
 	}
 
