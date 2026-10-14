@@ -25,8 +25,7 @@ export function namesakesOf(
 ): ResolvedConfig[] {
 	return configs.filter(
 		(other) =>
-			other.file !== config.file &&
-			other.projectName === config.projectName
+			other.id !== config.id && other.projectName === config.projectName
 	);
 }
 
@@ -178,11 +177,13 @@ export class ServePorts {
 		);
 	}
 
-	/** The folder of `config` as a command run from `cwd` names it. */
+	/** `config` as a command run from `cwd` names it: its folder, and for a project that folder doesn't serve by default, its project file. */
 	private refOf(config: ResolvedConfig): string {
-		return (
-			toPosix(path.relative(this.cwd, path.dirname(config.file))) || "."
-		);
+		const folder =
+			toPosix(path.relative(this.cwd, path.dirname(config.file))) || ".";
+		return config.stem === config.serveProject
+			? folder
+			: toPosix(path.relative(this.cwd, config.projectFile));
 	}
 
 	private ownPortIn(config: ResolvedConfig): string {

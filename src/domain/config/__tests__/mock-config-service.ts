@@ -14,11 +14,14 @@ import {
 	ConfigService,
 	EnclosingConfigs,
 	ValidConfigEntry,
-	buildableConfig,
+	buildableProjects,
 } from "../config-service.js";
 
 export interface ResolvedConfigSpec {
 	readonly file?: string;
+	/** `default`, or the name of a project. */
+	readonly stem?: string;
+	readonly serveProject?: string;
 	readonly name?: string;
 	readonly sourcePaths?: readonly string[];
 	readonly routes?: Readonly<Record<string, string>>;
@@ -34,6 +37,8 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	const file = spec.file ?? "/repo/rogen.json";
 	return new ResolvedConfig({
 		file,
+		stem: spec.stem ?? "default",
+		serveProject: spec.serveProject ?? "default",
 		projectName: spec.name ?? "repo",
 		project: RojoProject.parse(
 			JSON.stringify(
@@ -53,12 +58,27 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 	});
 }
 
+/** A config that loads, with a project for each name in `projects`, which are the description with `changes` over it. */
 export function mockEntry(
 	resolved: ResolvedConfigSpec = {},
-	file = "/repo/rogen.json"
+	file = "/repo/rogen.json",
+	projects: Readonly<Record<string, ResolvedConfigSpec>> = {}
 ): ValidConfigEntry {
 	const config = mockConfig({ file, ...resolved });
-	return { status: "valid", file, config };
+	return {
+		status: "valid",
+		file,
+		config,
+		projects: Object.entries(projects).map(([stem, changes]) =>
+			mockConfig({
+				file,
+				serveProject: resolved.serveProject,
+				...resolved,
+				...changes,
+				stem,
+			})
+		),
+	};
 }
 
 /** A config whose latest load failed with `errors`; `lastValid` is what a watch keeps building. */
@@ -71,7 +91,10 @@ export function brokenEntry(
 		status: "broken",
 		file,
 		errors,
-		lastValid: lastValid && mockConfig({ file, ...lastValid }),
+		lastValid: lastValid && {
+			config: mockConfig({ file, ...lastValid }),
+			projects: [],
+		},
 	};
 }
 
@@ -84,6 +107,7 @@ export function selectionOf(
 			status: "valid",
 			file: config.file,
 			config,
+			projects: [],
 		}))
 	);
 }
@@ -95,13 +119,15 @@ export class MockConfigSelection implements ReloadableSelection {
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],
-		readonly home = "/repo"
+		readonly home = "/repo",
+		readonly named: ReadonlyMap<string, string> = new Map(),
+		readonly notes: readonly string[] = []
 	) {
 		this.files = new Set(entries.map(({ file }) => file));
 	}
 
 	get configs(): ResolvedConfig[] {
-		return this.entries.flatMap((entry) => buildableConfig(entry) ?? []);
+		return this.entries.flatMap(buildableProjects);
 	}
 
 	reads(file: string): boolean {

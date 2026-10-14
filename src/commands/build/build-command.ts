@@ -35,7 +35,7 @@ registerCommand(
 				id: "build",
 				metadata: {
 					description:
-						"Writes default.project.json beside the rogen.json here, or beside each named one.",
+						"Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.",
 					args: ConfigArguments,
 					options: BuildOptions,
 					unknownWordOffer: "To build a project",
@@ -60,6 +60,7 @@ registerCommand(
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
 			const run = await buildService.build(selection.value);
 

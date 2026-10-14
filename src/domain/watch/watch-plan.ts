@@ -4,10 +4,10 @@ import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { OutputFile } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
 
-/** `file` names the config in `configsFor`. */
+/** The project file names the project in `projectsFor`. */
 export type WatchPlanConfig = Pick<
 	ResolvedConfig,
-	"file" | "indexedPaths" | "projectFile" | "syncPath"
+	"indexedPaths" | "projectFile" | "syncPath"
 >;
 
 /** What a watch watches and what it skips, for a set of configs. */
@@ -17,13 +17,13 @@ export class WatchPlan {
 	/** Paths the watcher skips: the files Rogen writes and the dirs Rojo syncs from. */
 	readonly ignored: readonly IgnoredPath[];
 	private readonly claims: readonly {
-		readonly file: string;
+		readonly projectFile: string;
 		readonly roots: readonly string[];
 	}[];
 
 	constructor(configs: readonly WatchPlanConfig[]) {
 		this.claims = configs.map((config) => ({
-			file: config.file,
+			projectFile: config.projectFile,
 			roots: config.indexedPaths.map((dir) => path.resolve(dir)),
 		}));
 		this.roots = outermostDirs(this.claims.flatMap(({ roots }) => roots));
@@ -49,12 +49,12 @@ export class WatchPlan {
 		];
 	}
 
-	/** Every config with a source path that contains `changePath`, each once. */
-	configsFor(changePath: string): readonly string[] {
+	/** The project file of every project with a source path that contains `changePath`, each once. */
+	projectsFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
 		return this.claims
 			.filter(({ roots }) => roots.some((root) => contains(root, target)))
-			.map(({ file }) => file);
+			.map(({ projectFile }) => projectFile);
 	}
 
 	watches(changePath: string): boolean {

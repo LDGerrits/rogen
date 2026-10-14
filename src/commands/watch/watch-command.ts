@@ -65,6 +65,7 @@ registerCommand(
 			try {
 				const selection = await configService.select(line.positionals);
 				if (selection.isErr()) return selection;
+				for (const note of selection.value.notes) logService.warn(note);
 				const watched = watchService.watch(selection.value);
 				if (watched.isErr()) return watched;
 				const session = store.add(watched.value);

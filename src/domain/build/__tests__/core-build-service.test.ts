@@ -386,7 +386,7 @@ describe("CoreBuildService", () => {
 		): Promise<LoadedBuild> =>
 			buildServiceOfFs().rebuild(
 				set,
-				abs("rogen.json"),
+				abs("default.project.json"),
 				await new CoreIndexService(fs).list([abs("src")]),
 				previous
 			);

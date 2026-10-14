@@ -9,6 +9,7 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { projectsOf } from "../../domain/config/config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
@@ -23,7 +24,7 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its source paths, routes, sync path and project file; with --json, each fully resolved.",
+						"Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
 					examples: ["rogen list", "rogen list --json"],
@@ -45,19 +46,16 @@ registerCommand(
 			const report = new ListLog(logService, cwd);
 			const broken = ListLog.failure(entries);
 			const serveService = accessor.get(ServeService);
-			const served = await serveService.servedBy(
-				entries.flatMap((entry) =>
-					entry.status === "valid" ? [entry.config.projectFile] : []
-				)
+			const projectFiles = entries.flatMap((entry) =>
+				entry.status === "valid"
+					? projectsOf(entry).map(({ projectFile }) => projectFile)
+					: []
 			);
+			const served = await serveService.servedBy(projectFiles);
 			const serving: ServingByConfig = new Map(
-				entries.map((entry) => [
-					entry.file,
-					entry.status === "valid"
-						? served.get(entry.config.projectFile)
-						: undefined,
-				])
+				projectFiles.map((file) => [file, served.get(file)])
 			);
+			for (const note of selection.value.notes) logService.warn(note);
 
 			if (line.options.json)
 				return this.printJson(

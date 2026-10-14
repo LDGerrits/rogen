@@ -7,6 +7,7 @@ import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/config.js";
+import { ProjectChoice } from "../config/project-choice.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
 import {
@@ -97,10 +98,10 @@ export class CoreServeSession
 			watch.onDidUpdate((update) => {
 				for (const { build } of update.reports) {
 					if (!isWritten(build)) {
-						this.built.delete(build.config.file);
+						this.built.delete(build.config.id);
 						continue;
 					}
-					this.built.add(build.config.file);
+					this.built.add(build.config.id);
 				}
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);
@@ -143,7 +144,7 @@ export class CoreServeSession
 		for (const target of this.plan.alreadyServed)
 			if (target.adopted) this.adopt(target);
 			else
-				this.declined.set(target.config.file, {
+				this.declined.set(target.config.id, {
 					kind: "elsewhere",
 					address: target.address.toString(),
 				});
@@ -179,8 +180,12 @@ export class CoreServeSession
 
 	/** Starts a server for each config to serve now that has none, and stops those whose config is gone or extended. */
 	private async reconcile(): Promise<void> {
-		const { configs } = this.plan.selection;
-		const wanted = new Set(configs.map(({ file }) => file));
+		const { selection } = this.plan;
+		const configs = ProjectChoice.served(
+			selection.configs,
+			selection.named
+		);
+		const wanted = new Set(configs.map(({ id }) => id));
 		for (const [file, server] of this.servers) {
 			if (this.stopping) return;
 			if (!wanted.has(file)) await this.retire(server, "removed");
@@ -200,17 +205,17 @@ export class CoreServeSession
 	): Promise<void> {
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
-		const started = this.servers.get(config.file);
+		const started = this.servers.get(config.id);
 		if (started?.target.address.toString() === address) return;
-		if (!this.built.has(config.file)) return;
+		if (!this.built.has(config.id)) return;
 
 		const others = this.targets.filter(
-			(other) => other.config.file !== config.file
+			(other) => other.config.id !== config.id
 		);
 		const holder = others.find(
 			(other) => other.address.port === target.address.port
 		);
-		const prior = this.declined.get(config.file);
+		const prior = this.declined.get(config.id);
 		const declinedHere =
 			prior?.address === address ? prior.kind : undefined;
 		if (
@@ -241,7 +246,7 @@ export class CoreServeSession
 		declinedHere: "refused" | "elsewhere" | undefined,
 		checked: Result<ServeTarget, Diagnostic>
 	): Promise<void> {
-		const { file } = target.config;
+		const file = target.config.id;
 		const address = target.address.toString();
 		if (checked.isErr()) {
 			if (declinedHere !== "refused")
@@ -291,7 +296,7 @@ export class CoreServeSession
 		reason: "removed" | "moved"
 	): Promise<void> {
 		const { target } = server;
-		this.servers.delete(target.config.file);
+		this.servers.delete(target.config.id);
 		const retired = server.retire();
 		this.retirements.add(retired);
 		try {
@@ -318,7 +323,7 @@ export class CoreServeSession
 				failed: (error) => this._onDidError.fire(error),
 			}
 		);
-		this.servers.set(target.config.file, server);
+		this.servers.set(target.config.id, server);
 	}
 
 	private adopt(target: ServedTarget): void {
@@ -327,6 +332,6 @@ export class CoreServeSession
 			stopped: (stop) => this._onDidExit.fire(stop),
 			failed: (error) => this._onDidError.fire(error),
 		});
-		this.servers.set(target.config.file, server);
+		this.servers.set(target.config.id, server);
 	}
 }

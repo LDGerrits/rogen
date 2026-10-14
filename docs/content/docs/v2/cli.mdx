@@ -9,13 +9,13 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [project…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` prints usage. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, or the path to its `default.project.json`. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command, and a bare `rogen` prints usage. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
 ### `build [project…]`
 
-Writes `default.project.json` beside the `rogen.json` of the working directory, or beside each one you name. You can build several projects at once, as long as none is named twice. Projects that share a source path share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
+Writes `default.project.json`, and a file for each of its [projects](/docs/v2/configuration#projects), beside the `rogen.json` of the working directory, or beside each one you name. Every project is written whichever one you name, and a failure in one writes none. You can build several projects at once, as long as none is named twice. Projects that share a source path share one scan, and a project file whose bytes wouldn't change isn't written, so building everything is cheap.
 
 Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 config with 4 warnings.`
 
@@ -48,7 +48,7 @@ It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
 
 ### `serve [project…] [-- server args…]` [#serve]
 
-Builds, starts Rojo on `default.project.json`, and rebuilds on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
+Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
 
 ```
 rogen serve · my-game
@@ -60,7 +60,7 @@ rogen serve · my-game
 error: Rojo: Snapshot error: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon after the string or word in object property on line 2 column 1
 ```
 
-With no project named, `serve` builds, watches and serves the `rogen.json` it finds. Name projects to serve those instead: `rogen serve game` serves that folder's project, and a project from another folder is watched on its own.
+With no project named, `serve` builds, watches and serves the `rogen.json` it finds. Name projects to serve those instead: `rogen serve game` serves that folder's `serveProject`, `rogen serve release` or `rogen serve game/release.project.json` serves that project of the config, and a project from another folder is watched on its own.
 
 Servers start only after the first build succeeds. If it fails, nothing starts, the errors print and `serve` exits 1. A server that has not answered for its project after ten seconds is reported once, saying what else answers on its port if something does, and `serve` goes on waiting. Press Ctrl+C to stop: it reaches the server, and Rogen ends every process it started.
 
@@ -201,7 +201,7 @@ Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot
 
 ### `list [project…]`
 
-Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line), sync path and project file. A config that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
+Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
 
 ### `help [name]`
 
@@ -330,6 +330,8 @@ If a command fails before it has anything else to report, you get `{ "diagnostic
 }
 ```
 
+A config with [projects](/docs/v2/configuration#projects) has an entry for each project file, the description first. The `config` of a project is its name beside the project's, such as `my-game (dist)`.
+
 `outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
 
 A config that doesn't load is an entry like the others: `projectFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
@@ -412,7 +414,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config. Every entry has `config`, `file`, `status` (`valid` or `broken`), `served` (whether `rogen serve` starts a server for it, which it does when it loads) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows), `sourcePaths`, `commonRoot`, `routes`, `globIgnorePaths`, `syncPath`, `projectFile` and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. A broken config has only the five. If the config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config. Every entry has `config`, `file`, `status` (`valid` or `broken`), `served` (whether `rogen serve` starts a server for it, which it does when it loads) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows), `sourcePaths`, `commonRoot`, `routes`, `globIgnorePaths`, `syncPath`, `projectFile` and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. It also has `projects`, one entry for the description and each [project](/docs/v2/configuration#projects), `default` first: `name`, `file`, `served` (whether `rogen serve` serves it unless you name another) and `serving`, as above. A broken config has only the five. If the config has errors, the exit code is 1.
 
 ## Output
 

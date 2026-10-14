@@ -55,6 +55,29 @@ const node: JSONSchema = {
 const numbers: JSONSchema = { type: "array", items: { type: "number" } };
 const strings: JSONSchema = { type: "array", items: { type: "string" } };
 
+/** `schema` that also accepts `null`, which a project uses to remove a key; the keys below it do too. */
+function removable(schema: JSONSchema): JSONSchema {
+	const types = [schema.type ?? []].flat();
+	return {
+		...schema,
+		...(types.length > 0 && !types.includes("null")
+			? { type: [...types, "null"] }
+			: {}),
+		...(schema.properties
+			? {
+					properties: Object.fromEntries(
+						Object.entries(schema.properties).map(
+							([key, value]) => [key, removable(value)]
+						)
+					),
+				}
+			: {}),
+		...(typeof schema.additionalProperties === "object"
+			? { additionalProperties: removable(schema.additionalProperties) }
+			: {}),
+	};
+}
+
 /** The keys of Rojo's project file, in the order Rojo writes them. */
 const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	$schema: {
@@ -144,14 +167,51 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 			"plain Luau.",
 	},
 };
+/** What a project may change: any key of the description but the ones that stand for the whole config. */
+const projectChangeSchemas: Readonly<Record<string, JSONSchema>> =
+	Object.fromEntries(
+		Object.entries({ ...rojoFields, ...rogenSchemas })
+			.filter(([key]) => key !== "$schema")
+			.map(([key, schema]) => [key, removable(schema)])
+	);
+
+const projectsSchema: JSONSchema = {
+	type: "object",
+	description:
+		"Other project files to write beside default.project.json, each " +
+		"named for its file: dist writes dist.project.json. A project is " +
+		"the description with the keys it sets changed: a list replaces " +
+		"the list, routes, tree and the nodes below them merge by key, " +
+		"and null removes a key. default is the description itself and " +
+		"can't be a project name.",
+	additionalProperties: {
+		type: "object",
+		properties: projectChangeSchemas,
+	},
+};
+
+const wholeConfigSchemas: Readonly<Record<string, JSONSchema>> = {
+	projects: projectsSchema,
+	serveProject: {
+		type: "string",
+		default: "default",
+		description:
+			"The project rogen serve serves when none is named: default, or " +
+			"a key of projects.",
+	},
+};
+
 /** The keys a `rogen.json` may hold. */
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
-export const rogenKeys: readonly string[] = Object.keys(rogenSchemas);
+export const rogenKeys: readonly string[] = [
+	...Object.keys(rogenSchemas),
+	...Object.keys(wholeConfigSchemas),
+];
 
 /** What a `rogen.json` may hold: Rojo's keys and Rogen's. A key outside both passes through with a warning. */
 export const configSchema: JSONSchema = {
 	type: "object",
-	properties: { ...rojoFields, ...rogenSchemas },
+	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
 };
 
 /** What a project file Rogen wrote may hold: Rojo's keys. */
@@ -166,20 +226,20 @@ export const projectFileSchema: JSONSchema = {
 
 /** What replaces each field a config no longer has. */
 const removedFields: Readonly<Record<string, string>> = {
-	modes: 'Put what a mode set in a rogen.json in a folder of its own, which can set "globIgnorePaths".',
-	mode: "Modes are gone with \"modes\". Build the folder that holds the settings, as 'rogen build <folder>'.",
+	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
+	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",
 	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later source path, which wins a clash.",
 	conflicts:
-		"Variants are gone, and so are their conflict groups. Sets that exclude each other are one rogen.json each, in a folder of its own, listing its own source path.",
+		'Variants are gone, and so are their conflict groups. Sets that exclude each other are one project each under "projects", listing their own "sourcePaths".',
 	extends:
-		"A rogen.json describes one folder. A second output is a rogen.json in another folder, which lists its own source paths.",
+		'A rogen.json describes one folder. A second output is a project under "projects", which changes the keys it needs, or a rogen.json in another folder.',
 	template:
 		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
 	outFile: "Rogen writes default.project.json beside rogen.json.",
 	exclude:
-		'"globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, remove it from the tree.',
+		'"globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project under "projects".',
 	rootDirs: 'It is called "sourcePaths" now.',
 	syncDir: 'It is called "syncPath" now.',
 };

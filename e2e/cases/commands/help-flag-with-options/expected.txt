@@ -1,13 +1,13 @@
 $ rogen build --deny-warnings --help
 exit 0
 stdout:
-  Writes default.project.json beside the rogen.json here, or beside each named one.
+  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
   
   Usage:
     rogen build [project...] [options]
   
   Arguments:
-    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
+    project  A folder with a rogen.json, a *.project.json path, or the name of a project of the rogen.json here. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
         --json           Print one JSON document instead of text.
@@ -28,13 +28,13 @@ stdout:
 $ rogen build --json --help
 exit 0
 stdout:
-  Writes default.project.json beside the rogen.json here, or beside each named one.
+  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
   
   Usage:
     rogen build [project...] [options]
   
   Arguments:
-    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
+    project  A folder with a rogen.json, a *.project.json path, or the name of a project of the rogen.json here. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
         --json           Print one JSON document instead of text.

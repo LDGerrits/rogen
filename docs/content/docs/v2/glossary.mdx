@@ -17,7 +17,8 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Tree**: The instance tree in `rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
-- **Project**: The Rojo project file Rogen writes, `default.project.json`, beside the `rogen.json` it comes from. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
+- **Project file**: A Rojo project file Rogen writes beside the `rogen.json` it comes from: `default.project.json`, and one `<name>.project.json` for each project. Rogen owns them. See [Output and Sync](/docs/v2/core-concepts/output#output).
+- **Project**: A variation of the config with some keys changed, written as `<name>.project.json` and listed under `projects`. `default` is the config itself, `serveProject` names the one `rogen serve` serves, and `null` removes a key. See [Projects](/docs/v2/configuration#projects).
 
 - **Build**: One complete run that turns the source paths into a project. See [CLI](/docs/v2/cli#build-project).
 
@@ -64,6 +65,6 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Configuration
 
-- **Config**: A folder's `rogen.json`: a Rojo project file plus `sourcePaths`, `routes` and `syncPath`. See [Configuration](/docs/v2/configuration).
+- **Config**: A folder's `rogen.json`: a Rojo project file plus `sourcePaths`, `routes`, `syncPath` and `projects`. See [Configuration](/docs/v2/configuration).
 
 - **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `rogen.json` with v1's keys is an error that links to the [migration page](/docs/v2/migrating-from-v1).

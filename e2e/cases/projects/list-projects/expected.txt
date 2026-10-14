@@ -1,0 +1,67 @@
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  rogen.json
+    source paths: src
+    routes:
+      server -> ServerScriptService
+      client -> StarterPlayer/StarterPlayerScripts
+      shared -> ReplicatedStorage/shared
+      * -> ReplicatedStorage/shared
+    sync path: (none)
+    projects:
+      default: default.project.json
+      dist: dist.project.json (served)
+      release: release.project.json
+  1 config.
+
+$ rogen list --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "status": "valid",
+        "served": true,
+        "projectName": "project",
+        "sourcePaths": [
+          "<dir>/src"
+        ],
+        "commonRoot": "<dir>/src",
+        "routes": {
+          "server": "ServerScriptService",
+          "client": "StarterPlayer/StarterPlayerScripts",
+          "shared": "ReplicatedStorage/shared",
+          "*": "ReplicatedStorage/shared"
+        },
+        "globIgnorePaths": [],
+        "syncPath": null,
+        "projectFile": "<dir>/default.project.json",
+        "serving": null,
+        "projects": [
+          {
+            "name": "default",
+            "file": "<dir>/default.project.json",
+            "served": false,
+            "serving": null
+          },
+          {
+            "name": "dist",
+            "file": "<dir>/dist.project.json",
+            "served": true,
+            "serving": null
+          },
+          {
+            "name": "release",
+            "file": "<dir>/release.project.json",
+            "served": false,
+            "serving": null
+          }
+        ],
+        "diagnostics": []
+      }
+    ]
+  }

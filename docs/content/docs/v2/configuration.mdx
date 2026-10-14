@@ -5,7 +5,7 @@ description: Every field of rogen.json, the Rojo project file that also says whe
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file with three more keys: `sourcePaths` says where your code is, `routes` where it goes, and `syncPath` where Rojo reads it from. Rojo's own keys keep their meaning, and Rogen writes them to `default.project.json` beside the config. Comments and trailing commas are fine.
+A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file with more keys: `sourcePaths` says where your code is, `routes` where it goes, `syncPath` where Rojo reads it from, and `projects` which other project files to write from the same description. Rojo's own keys keep their meaning, and Rogen writes them to `default.project.json` beside the config. Comments and trailing commas are fine.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -53,19 +53,21 @@ A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file wi
   </Tab>
 </Tabs>
 
-A command given no folder reads the `rogen.json` of the working directory, or of the nearest folder above it that has one. Give it a folder with a `rogen.json`, or the path to that folder's `default.project.json`, to read another: `rogen build game`. All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
+A command given no folder reads the `rogen.json` of the working directory, or of the nearest folder above it that has one. Give it a folder with a `rogen.json`, the path to one of that folder's project files, or the name of one of its [projects](#projects), to read another: `rogen build game`. All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
 
 ---
 
 ## Fields
 
-Rogen's three keys:
+Rogen's keys:
 
 | Field | Default | What it does |
 |---|---|---|
 | `sourcePaths` | `["src"]` when `routes` exist | The folders to scan and watch. They merge into one tree, and the later one wins a clash. See [Several Source Paths](/docs/v2/core-concepts/project-layout#several-source-paths). Without `routes` it is an error. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Only declared keys route. Without it, nothing is routed and no source path is scanned. See [Routing](/docs/v2/core-concepts/routing). |
 | `syncPath` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Path](/docs/v2/core-concepts/output#sync-path). |
+| `projects` | none | Other project files to write, each the description with some keys changed. See [Projects](#projects). |
+| `serveProject` | `default` | The project `rogen serve` serves. See [Projects](#projects). |
 
 Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths`, which it also reads:
 
@@ -81,6 +83,43 @@ Rojo's keys. Rogen passes each to the project file as it is, except `globIgnoreP
 | `syncbackRules` | Rojo's syncback rules. |
 
 A key that is on neither list passes through with a warning, since Rojo will reject the written file by that name ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error. `syncRules` is not supported yet, and a config that sets it is an error.
+
+---
+
+## Projects
+
+A **project** is the description with some keys changed, written beside `default.project.json` as `<name>.project.json`. Use one when the same code needs a second project file: a Darklua build that Studio reads while your editor reads the source, a release without the dev packages, a test place.
+
+```json title="rogen.json"
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": { "DevPackages": { "$path": "DevPackages" } }
+	},
+	"sourcePaths": ["src", "dev"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"serveProject": "dist",
+	"projects": {
+		"dist": { "syncPath": "dist" },
+		"release": {
+			"sourcePaths": ["src"],
+			"tree": { "ReplicatedStorage": { "DevPackages": null } },
+			"globIgnorePaths": ["**/*.spec.luau"]
+		}
+	}
+}
+```
+
+This writes `default.project.json`, `dist.project.json` and `release.project.json`. A project may change any key of the description, Rojo's keys included:
+
+- A value replaces the inherited one, and a list replaces the list: `"sourcePaths": ["src"]` in `release` leaves the `dev` overlay out.
+- `routes`, `tree` and the nodes below it merge by key, so a project restates only what changes.
+- `null` removes a key, as in JSON merge patch: `"DevPackages": null` drops the mount from `release.project.json`. A `null` in the description itself is an error, since there is nothing to remove.
+- `projects` and `serveProject` belong to the whole config, and a project can't set them. `default` is the description itself and can't be a project name.
+- A project inherits `name`. Every project file carries a `name`, yours or the folder's, because Rojo can't open a project file without one. Only `default.project.json` may go without, as Rojo names it after its folder.
+
+`rogen serve` serves the project `serveProject` names, `default` when it is not set, so a Darklua setup that serves `dist` never serves unprocessed code by accident. Every other command reads `default`. To use another, give its name or its file: `rogen serve release`, `rogen serve dist.project.json`. A bare name means a project of the config here, unless a folder of that name holds a `rogen.json` or a `default.project.json`: the folder wins, and Rogen says which project file to name instead. `rogen build` writes every project whichever you name, and `rogen list` shows each one's file and which is served.
 
 ---
 
@@ -121,13 +160,15 @@ A config is one folder's project file, so these keys are gone. Each is an error 
 
 | Key | Replacement |
 |---|---|
-| `extends` | None: a `rogen.json` describes one folder. Repeat the keys in the other folder's `rogen.json`. |
+| `extends` | None: a `rogen.json` describes one folder. A second output with changed keys is a [project](#projects); a different folder has its own `rogen.json`. |
 | `template` | Write the tree inline: move the template's `tree` and its other keys into `rogen.json`. |
 | `outFile` | Rogen writes `default.project.json` beside `rogen.json`. |
-| `exclude` | `globIgnorePaths`. |
+| `exclude` | `globIgnorePaths`, and `null` for a mounted node in a [project](#projects). |
 | `rootDirs` | `sourcePaths`. |
 | `syncDir` | `syncPath`. |
-| `modes`, `mode`, `variants`, `conflicts`, `server` | None. A file that replaces another goes in a later source path. |
+| `modes`, `mode` | A [project](#projects) with the keys the mode set. |
+| `variants`, `conflicts` | None. A file that replaces another goes in a later source path; sets that exclude each other are a project each. |
+| `server` | None: `rogen serve` starts Rojo. |
 
 There are no config names either: no `<name>.rogen.json`, no `default.rogen.json`, and a command's argument is a folder or a project file, not a config name. The `-o` flag is gone with `outFile`. A `rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 

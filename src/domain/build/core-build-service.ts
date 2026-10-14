@@ -1,3 +1,4 @@
+import { groupBy } from "../../base/collections.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -12,10 +13,10 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
+import { ProjectChoice } from "../config/project-choice.js";
 import {
 	BuildRun,
 	BuildSet,
-	ConfigBuild,
 	FailedBuild,
 	LoadedBuild,
 	OutputFile,
@@ -75,9 +76,10 @@ export class CoreBuildService implements BuildService {
 			unloaded.map(({ label }) => label),
 			write
 		);
-		// Selection order, each config's build beside the ones that didn't load.
-		const builds = new Map<string, ConfigBuild>(
-			[...unloaded, ...settled].map((build) => [build.file, build])
+		// Selection order, each config's builds beside the ones that didn't load.
+		const builds = groupBy(
+			[...unloaded, ...settled],
+			(build) => build.file
 		);
 		return new BuildRun(
 			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])
@@ -86,12 +88,12 @@ export class CoreBuildService implements BuildService {
 
 	async rebuild(
 		set: BuildSet,
-		file: string,
+		projectFile: string,
 		listing: IndexReader,
 		previous?: LoadedBuild
 	): Promise<LoadedBuild> {
-		const config = set.configOf(file);
-		if (!config) throw new Error(`${file} is not in the set.`);
+		const config = set.configOf(projectFile);
+		if (!config) throw new Error(`${projectFile} is not in the set.`);
 		// The sync path changes only with the config or its compiler, so an answer for this version still holds.
 		const syncWarnings =
 			previous?.config === config ? previous.syncWarnings : undefined;
@@ -115,12 +117,15 @@ export class CoreBuildService implements BuildService {
 			)
 		);
 
-		const listing = await this.indexService.list(set.indexedPaths);
+		const read = new BuildSet(
+			ProjectChoice.read(set.configs, selection.named)
+		);
+		const listing = await this.indexService.list(read.indexedPaths);
 		const located = await new Locator(
 			this.fileSystemService,
 			listing,
 			this.syncTools
-		).locate(set.configs, targets);
+		).locate(read.configs, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])

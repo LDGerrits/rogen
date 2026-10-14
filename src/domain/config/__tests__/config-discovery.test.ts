@@ -32,6 +32,9 @@ describe("ConfigDiscovery", () => {
 				home: "/repo",
 				files: ["/repo/rogen.json"],
 				everyConfig: true,
+				projects: new Map(),
+				folders: [],
+				homeConfig: "/repo/rogen.json",
 			});
 		});
 
@@ -125,6 +128,9 @@ describe("ConfigDiscovery", () => {
 				home: "/repo",
 				files: ["/repo/places/lobby/rogen.json"],
 				everyConfig: false,
+				projects: new Map(),
+				folders: [],
+				homeConfig: undefined,
 			});
 		});
 
@@ -177,14 +183,23 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
-		it("should fail for a project file that rogen.json doesn't write", async () => {
-			const result = await discovery.discover([
-				"places/lobby/release.project.json",
-			]);
+		it("should name the project a *.project.json path stands for", async () => {
+			const found = (
+				await discovery.discover(["places/lobby/dist.project.json"])
+			).unwrap();
 
-			expect(errorOf(result).message).toBe(
-				'No project "release" in /repo/places/lobby: a rogen.json writes default.project.json.'
+			expect(found.files).toEqual(["/repo/places/lobby/rogen.json"]);
+			expect(found.projects).toEqual(
+				new Map([["/repo/places/lobby/rogen.json", "dist"]])
 			);
+		});
+
+		it("should name no project for default.project.json, which is the description", async () => {
+			const found = (
+				await discovery.discover(["places/lobby/default.project.json"])
+			).unwrap();
+
+			expect(found.projects).toEqual(new Map());
 		});
 
 		it("should fail for a project file in a folder with no config", async () => {
@@ -202,8 +217,85 @@ describe("ConfigDiscovery", () => {
 
 			expect(errorOf(result)).toBeInstanceOf(UsageError);
 			expect(errorOf(result).message).toBe(
-				`"places/nowhere" not found: name a folder with a rogen.json, or a *.project.json path.`
+				`"places/nowhere" not found: name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
 			);
+		});
+
+		describe("a bare name", () => {
+			beforeEach(async () => {
+				await fs.writeFile("/repo/rogen.json", "{}");
+			});
+
+			it("should be a project of the config here when nothing by that name exists", async () => {
+				const found = (await discovery.discover(["dist"])).unwrap();
+
+				expect(found.files).toEqual(["/repo/rogen.json"]);
+				expect(found.projects).toEqual(
+					new Map([["/repo/rogen.json", "dist"]])
+				);
+				expect(found.folders).toEqual([]);
+			});
+
+			it("should be a project of the config found above when the working directory has none", async () => {
+				await fs.createDirectory("/repo/tools");
+
+				const found = (
+					await from("/repo/tools").discover(["dist"])
+				).unwrap();
+
+				expect(found.files).toEqual(["/repo/rogen.json"]);
+				expect(found.projects).toEqual(
+					new Map([["/repo/rogen.json", "dist"]])
+				);
+			});
+
+			it("should be the folder when a folder with a rogen.json has that name, and say so", async () => {
+				await fs.createDirectory("/repo/dist");
+				await fs.writeFile("/repo/dist/rogen.json", "{}");
+
+				const found = (await discovery.discover(["dist"])).unwrap();
+
+				expect(found.files).toEqual(["/repo/dist/rogen.json"]);
+				expect(found.projects).toEqual(new Map());
+				expect(found.folders).toEqual(["dist"]);
+			});
+
+			it("should fail for a folder that holds only a default.project.json, which counts as a folder", async () => {
+				await fs.createDirectory("/repo/dist");
+				await fs.writeFile("/repo/dist/default.project.json", "{}");
+
+				const result = await discovery.discover(["dist"]);
+
+				expect(errorOf(result).message).toContain(
+					"holds no rogen.json"
+				);
+			});
+
+			it("should be a project when a folder of that name holds no config", async () => {
+				await fs.createDirectory("/repo/dist");
+				await fs.writeFile("/repo/dist/Main.luau", "");
+
+				const found = (await discovery.discover(["dist"])).unwrap();
+
+				expect(found.files).toEqual(["/repo/rogen.json"]);
+				expect(found.projects).toEqual(
+					new Map([["/repo/rogen.json", "dist"]])
+				);
+			});
+
+			it("should not be taken for a project when it has a path in it", async () => {
+				const result = await discovery.discover(["a/dist"]);
+
+				expect(errorOf(result)).toBeInstanceOf(UsageError);
+			});
+
+			it("should fail as not found when there is no config to hold the project", async () => {
+				await fs.delete("/repo/rogen.json");
+
+				const result = await discovery.discover(["dist"]);
+
+				expect(errorOf(result).message).toContain("not found");
+			});
 		});
 
 		it("should fail for a file that is neither", async () => {

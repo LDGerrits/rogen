@@ -52,3 +52,28 @@ export function mergeDeep<T = Record<string, unknown>>(
 		return acc;
 	}, {}) as T;
 }
+
+/** `base` with `patch` applied as JSON merge patch does: objects merge by key, anything else replaces, and `null` removes the key. Lists replace. Leaves both alone. */
+export function mergePatch(
+	base: Readonly<Record<string, unknown>>,
+	patch: Readonly<Record<string, unknown>>
+): Record<string, unknown> {
+	const merged: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(base))
+		setOwn(merged, key, structuredClone(value));
+	for (const [key, value] of Object.entries(patch)) {
+		if (value === null) {
+			delete merged[key];
+			continue;
+		}
+		const existing = getOwn(merged, key);
+		setOwn(
+			merged,
+			key,
+			isObject(value)
+				? mergePatch(isObject(existing) ? existing : {}, value)
+				: structuredClone(value)
+		);
+	}
+	return merged;
+}

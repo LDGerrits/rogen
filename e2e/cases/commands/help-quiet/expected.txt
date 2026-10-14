@@ -7,11 +7,11 @@ stdout:
     rogen [command] [name...] [options]
   
   Commands:
-    build [project...]  Writes default.project.json beside the rogen.json here, or beside each named one.
+    build [project...]  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
     check [path...]     Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
     help [name]         Prints usage, a command's details, a topic, or what a diagnostic code means.
     init                Writes a starting rogen.json, detecting the workspace and asking in a terminal.
-    list [project...]   Lists every config here with its source paths, routes, sync path and project file; with --json, each fully resolved.
+    list [project...]   Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
     serve [project...]  Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
     watch [project...]  Builds, then rebuilds whenever sources or configs change.
     where [path...]     Prints where each file lands in the game, and why, with its warnings.

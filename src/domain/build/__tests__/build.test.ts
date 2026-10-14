@@ -171,8 +171,10 @@ describe("domain/build/build", () => {
 			const set = BuildSet.of(selectionOf(lobby, arena)).unwrap();
 
 			expect(set.configs).toEqual([lobby, arena]);
-			expect(set.configOf(abs("arena/rogen.json"))).toBe(arena);
-			expect(set.configOf(abs("other/rogen.json"))).toBeUndefined();
+			expect(set.configOf(abs("arena/default.project.json"))).toBe(arena);
+			expect(
+				set.configOf(abs("other/default.project.json"))
+			).toBeUndefined();
 		});
 
 		it("should fail with every error when a config of the selection is broken", () => {
@@ -188,7 +190,12 @@ describe("domain/build/build", () => {
 
 		it("should split a selection into the configs that load and the builds that did not", () => {
 			const selection = new MockConfigSelection([
-				{ status: "valid", file: lobby.file, config: lobby },
+				{
+					status: "valid",
+					file: lobby.file,
+					config: lobby,
+					projects: [],
+				},
 				brokenEntry([failure], abs("arena/rogen.json")),
 			]);
 

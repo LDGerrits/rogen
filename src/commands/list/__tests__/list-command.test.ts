@@ -73,6 +73,39 @@ describe("list command", () => {
 		]);
 	});
 
+	it("should list the projects with their files in place of the one project file, and mark the one that is served", async () => {
+		await write("rogen.json", {
+			routes: { "*": "ReplicatedStorage" },
+			serveProject: "dist",
+			projects: { dist: { syncPath: "dist" } },
+		});
+
+		await run();
+
+		expect(under("rogen.json")[0]).toBe(
+			[
+				"source paths: src",
+				"routes:",
+				"  * -> ReplicatedStorage",
+				"sync path: (none)",
+				"projects:",
+				"  default: default.project.json",
+				"  dist: dist.project.json (served)",
+			].join("\n")
+		);
+	});
+
+	it("should say a name that is both a folder and a project is the folder", async () => {
+		await write("rogen.json", { projects: { lobby: {} } });
+		await write("lobby/rogen.json", {});
+
+		await run({ _: ["lobby"] });
+
+		expect(logService.texts("warn")).toEqual([
+			'"lobby" is a folder with a rogen.json and also a project of rogen.json: using the folder. To use the project, name its file, lobby.project.json.',
+		]);
+	});
+
 	it("should print no extends, extended by or template line", async () => {
 		await write("rogen.json", {
 			routes: { "*": "Workspace" },
@@ -265,7 +298,46 @@ describe("list command", () => {
 						syncPath: "/repo/out",
 						projectFile: "/repo/default.project.json",
 						serving: null,
+						projects: [
+							{
+								name: "default",
+								file: "/repo/default.project.json",
+								served: true,
+								serving: null,
+							},
+						],
 						diagnostics: [],
+					},
+				],
+			});
+		});
+
+		it("should list each project with its file and say which one serve serves", async () => {
+			await write("rogen.json", {
+				routes: { "*": "ReplicatedStorage" },
+				serveProject: "dist",
+				projects: { dist: { syncPath: "dist" }, release: {} },
+			});
+
+			await run({ json: true });
+
+			expect(entry("repo")).toMatchObject({
+				projectFile: "/repo/default.project.json",
+				projects: [
+					{
+						name: "default",
+						file: "/repo/default.project.json",
+						served: false,
+					},
+					{
+						name: "dist",
+						file: "/repo/dist.project.json",
+						served: true,
+					},
+					{
+						name: "release",
+						file: "/repo/release.project.json",
+						served: false,
 					},
 				],
 			});

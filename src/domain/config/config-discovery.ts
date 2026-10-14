@@ -7,7 +7,13 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { CONFIG_FILE_NAMES, isConfigFileName } from "./config.js";
+import {
+	CONFIG_FILE_NAMES,
+	DEFAULT_PROJECT,
+	DEFAULT_PROJECT_FILE,
+	PROJECT_NAME,
+	isConfigFileName,
+} from "./config.js";
 import { EnclosingConfigs } from "./config-service.js";
 
 /** The suffixes of the project files Rojo reads by name. */
@@ -21,7 +27,24 @@ export interface DiscoveredConfigs {
 	readonly files: readonly string[];
 	/** Whether none was named, so `files` is the config of `home`. */
 	readonly everyConfig: boolean;
+	/** The project a config was named for, by a `*.project.json` path or a bare name, by config file; whether the config has it is for the config to say. */
+	readonly projects: ReadonlyMap<string, string>;
+	/** The bare names that are also a folder with a config: the folder is what they name. */
+	readonly folders: readonly string[];
+	/** The config of `home`, the one a bare project name belongs to. */
+	readonly homeConfig: string | undefined;
 }
+
+/** What one named path stands for. */
+interface NamedConfig {
+	readonly file: string;
+	readonly project?: string;
+	/** Set when a bare name is a folder with a config. */
+	readonly folder?: string;
+}
+
+/** Whether `ref` could be a project's name rather than a path. */
+const isBareName = (ref: string): boolean => PROJECT_NAME.test(ref);
 
 /** Finds which config files a command reads: in the working directory, else in the nearest folder above that has one. */
 export class ConfigDiscovery {
@@ -30,7 +53,7 @@ export class ConfigDiscovery {
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** The config files `refs` names, each a folder, a config file or a `*.project.json` path, or the config of the folder found when it names none. A path resolves from the working directory. */
+	/** The config files `refs` names, each a folder, a config file, a `*.project.json` path or the name of a project of the config here, or the config of the folder found when it names none. A path resolves from the working directory. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -49,23 +72,38 @@ export class ConfigDiscovery {
 				home: directory,
 				files: fileNames.map((name) => path.join(directory, name)),
 				everyConfig: true,
+				projects: new Map(),
+				folders: [],
+				homeConfig:
+					fileNames.length === 1
+						? path.join(directory, fileNames[0])
+						: undefined,
 			});
 		}
 
-		const resolved: string[] = [];
+		const homeConfig =
+			home.isOk() && home.value.fileNames.length === 1
+				? path.join(home.value.directory, home.value.fileNames[0])
+				: undefined;
+		const resolved: NamedConfig[] = [];
 		for (const ref of refs) {
-			const found = await this.configOf(path.resolve(cwd, ref), ref);
+			const found = await this.configOf(
+				path.resolve(cwd, ref),
+				ref,
+				homeConfig
+			);
 			if (found.isErr()) return err(found.error);
 			resolved.push(found.value);
 		}
 
-		const repeated = resolved.findIndex(
-			(file, index) => resolved.indexOf(file) !== index
+		const files = resolved.map(({ file }) => file);
+		const repeated = files.findIndex(
+			(file, index) => files.indexOf(file) !== index
 		);
 		if (repeated >= 0) {
 			return err(
 				new UsageError(
-					`"${refs[repeated]}" was named more than once; each project can ` +
+					`"${refs[repeated]}" was named more than once; each config can ` +
 						`only be built once per invocation.`
 				)
 			);
@@ -73,40 +111,65 @@ export class ConfigDiscovery {
 
 		return ok({
 			home: home.isOk() ? home.value.directory : cwd,
-			files: resolved,
+			files,
 			everyConfig: false,
+			projects: new Map(
+				resolved.flatMap(({ file, project }) =>
+					project === undefined ? [] : [[file, project]]
+				)
+			),
+			folders: resolved.flatMap(({ folder }) =>
+				folder === undefined ? [] : [folder]
+			),
+			homeConfig,
 		});
 	}
 
-	/** The config `target`, a path the user named as `ref`, stands for: a folder's own, a config file, or the config of the folder a project file lies in. */
+	/** What `target`, a path the user named as `ref`, stands for: a folder's config, a config file, the project a project file of a folder's config stands for, or else a project of the config here. */
 	private async configOf(
 		target: string,
-		ref: string
-	): Promise<Result<string, Error>> {
+		ref: string,
+		homeConfig: string | undefined
+	): Promise<Result<NamedConfig, Error>> {
 		const base = path.basename(target);
-		if (await this.fileSystemService.isDirectory(target))
-			return this.configIn(target, `"${ref}"`);
+		if (await this.fileSystemService.isDirectory(target)) {
+			const config = await this.configIn(target, `"${ref}"`);
+			if (config.isErr()) {
+				const countsAsFolder = await this.fileSystemService.exists(
+					path.join(target, DEFAULT_PROJECT_FILE)
+				);
+				return isBareName(ref) && homeConfig && !countsAsFolder
+					? ok({ file: homeConfig, project: ref })
+					: err(config.error);
+			}
+			return ok({
+				file: config.value,
+				...(isBareName(ref) ? { folder: ref } : {}),
+			});
+		}
 		if (PROJECT_SUFFIXES.some((suffix) => base.endsWith(suffix))) {
 			const stem = base.slice(0, base.indexOf(".project."));
-			const folder = path.dirname(target);
-			const config = await this.configIn(folder, `"${ref}"`);
-			if (config.isErr()) return config;
-			return stem === "default"
-				? config
-				: err(
-						new UsageError(
-							`No project "${stem}" in ${folder}: a rogen.json writes default.project.json.`
-						)
-					);
+			const config = await this.configIn(
+				path.dirname(target),
+				`"${ref}"`
+			);
+			if (config.isErr()) return err(config.error);
+			return ok({
+				file: config.value,
+				...(stem === DEFAULT_PROJECT ? {} : { project: stem }),
+			});
 		}
-		if (!(await this.fileSystemService.exists(target)))
+		if (!(await this.fileSystemService.exists(target))) {
+			if (isBareName(ref) && homeConfig)
+				return ok({ file: homeConfig, project: ref });
 			return err(
 				new UsageError(
-					`"${ref}" not found: name a folder with a rogen.json, or a *.project.json path.`
+					`"${ref}" not found: name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
 				)
 			);
+		}
 		return isConfigFileName(base)
-			? ok(target)
+			? ok({ file: target })
 			: err(
 					new UsageError(
 						`"${ref}" is not a folder with a rogen.json, nor a *.project.json path.`

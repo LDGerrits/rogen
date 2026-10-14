@@ -65,12 +65,12 @@ Rename the key to the one suggested, or remove it. A config with v1 keys also ge
 Error. The config has a key that Rogen removed or renamed. The error is at the key, and the message says what to do instead.
 
 ```
-rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a rogen.json in a folder of its own, which can set "globIgnorePaths". (config.removedField)
-rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a rogen.json in another folder, which lists its own source paths. (config.removedField)
-rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, remove it from the tree. (config.removedField)
+rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json. (config.removedField)
+rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a project under "projects", which changes the keys it needs, or a rogen.json in another folder. (config.removedField)
+rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project under "projects". (config.removedField)
 ```
 
-Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`. `extends` is gone: a `rogen.json` describes one folder. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, and a mounted node is dropped with `null` in a project. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -141,6 +141,46 @@ rogen.json:7:13 - error: "Server" and "server" differ only in the case of their 
 ```
 
 Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
+
+### `config.reservedProject` [#config-reservedproject]
+
+Error. A key of `projects` is `default`. That name stands for the description itself, which Rogen writes as `default.project.json`, so no project can take it.
+
+```
+rogen.json:5:5 - error: "default" is the description itself, written as default.project.json, so it can't name a project. Pick another name. (config.reservedProject)
+```
+
+Rename the project, or move its keys to the root of `rogen.json`. See [Projects](/docs/v2/configuration#projects).
+
+### `config.invalidProjectName` [#config-invalidprojectname]
+
+Error. A key of `projects` can't be the stem of a project file. The name becomes `<name>.project.json`, so it takes letters, digits, `-` and `_`, and starts with a letter or digit.
+
+```
+rogen.json:5:5 - error: project name "a/b" is invalid: it is the stem of a/b.project.json, so use letters, digits, "-" and "_", starting with a letter or digit. (config.invalidProjectName)
+```
+
+Rename the project, for example `dist` or `release`. See [Projects](/docs/v2/configuration#projects).
+
+### `config.projectKey` [#config-projectkey]
+
+Error. A project sets `projects` or `serveProject`. Those say which projects there are and which one `rogen serve` serves, so they belong to the whole config.
+
+```
+rogen.json:6:7 - error: "serveProject" is set once for the whole config, not by a project. Move it out of "dist". (config.projectKey)
+```
+
+Move the key to the root of `rogen.json`. See [Projects](/docs/v2/configuration#projects).
+
+### `config.unknownServeProject` [#config-unknownserveproject]
+
+Error. `serveProject` names a project that doesn't exist. It takes `default`, or a key of `projects`.
+
+```
+rogen.json:4:19 - error: "serveProject" names "dist", which is not a project. Use "default", "release". (config.unknownServeProject)
+```
+
+Fix the name, or add the project. See [Projects](/docs/v2/configuration#projects).
 
 ## Routes
 

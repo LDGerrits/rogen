@@ -7,7 +7,13 @@ import {
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
+	projectFileName,
 } from "../rojo/rojo-project.js";
+
+/** What a project of a `rogen.json` may change: any key of the description. `null` removes a key. */
+export type ProjectChanges = Partial<
+	Omit<RogenConfig, "$schema" | "projects" | "serveProject">
+>;
 
 /** What a `rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
 export interface RogenConfig {
@@ -28,6 +34,8 @@ export interface RogenConfig {
 	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
 	readonly syncPath?: string;
+	readonly projects?: Record<string, ProjectChanges>;
+	readonly serveProject?: string;
 }
 
 /** Anything that holds config values by field name, such as a config model. */
@@ -63,8 +71,17 @@ export const configLabel = (file: string): string =>
 /** The folder Rogen scans when a config declares routes and no source paths. */
 export const DEFAULT_SOURCE_PATH = "src";
 
+/** The project that is the description itself, which no entry of `projects` may take the name of. */
+export const DEFAULT_PROJECT = "default";
+
 /** The project file a folder's config writes beside itself. */
-export const DEFAULT_PROJECT_FILE = "default.project.json";
+export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
+
+/** The keys that stand for the whole config, which a project can't change. */
+export const ROOT_ONLY_KEYS: readonly string[] = ["projects", "serveProject"];
+
+/** What a project's name may be, since the name is the stem of the file written. */
+export const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
@@ -172,6 +189,10 @@ export class DeclaredKeys {
 export interface ResolvedConfigFields {
 	/** The config file itself. */
 	readonly file: string;
+	/** The project this describes: `default`, or the name of an entry of `projects`. */
+	readonly stem: string;
+	/** The project `rogen serve` serves when none is named. */
+	readonly serveProject: string;
 	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
 	readonly projectName: string;
 	/** The Rojo project file the config describes, its tree as the user wrote it and the keys Rogen doesn't read passed through. Every `$path` and glob is relative to the config's folder. */
@@ -191,6 +212,8 @@ export interface ResolvedConfigFields {
 /** A config with its values validated: every path is absolute and every route target is parsed. */
 export class ResolvedConfig {
 	readonly file: string;
+	readonly stem: string;
+	readonly serveProject: string;
 	readonly projectName: string;
 	readonly project: RojoProject<ParsedProjectFile>;
 	readonly sourcePaths: readonly string[];
@@ -202,6 +225,8 @@ export class ResolvedConfig {
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
+		this.stem = fields.stem;
+		this.serveProject = fields.serveProject;
 		this.projectName = fields.projectName;
 		this.project = fields.project;
 		this.sourcePaths = fields.sourcePaths;
@@ -212,9 +237,21 @@ export class ResolvedConfig {
 		this.keys = new DeclaredKeys(fields.routes.keys());
 	}
 
-	/** What the config is asked for by. */
+	/** What the project is asked for by: the name of the game, and for a project of the config its own name beside it. */
 	get label(): string {
-		return this.projectName;
+		return this.stem === DEFAULT_PROJECT
+			? this.projectName
+			: `${this.projectName} (${this.stem})`;
+	}
+
+	/** What tells this project from every other that is served or built: the config it is read from, and its name there. */
+	get id(): string {
+		return `${this.file}#${this.stem}`;
+	}
+
+	/** Whether this is the description itself, not an entry of `projects`. */
+	get isDefault(): boolean {
+		return this.stem === DEFAULT_PROJECT;
 	}
 
 	/** The directory the project file is written to, and every path in it is relative to. */
@@ -222,9 +259,9 @@ export class ResolvedConfig {
 		return path.dirname(this.file);
 	}
 
-	/** The project file the config writes. */
+	/** The project file the project is written to. */
 	get projectFile(): string {
-		return path.join(this.projectDir, DEFAULT_PROJECT_FILE);
+		return path.join(this.projectDir, projectFileName(this.stem));
 	}
 
 	/** The folders a build lists: its source paths, else the folder it would have scanned by default, to find files nothing mounts. */
@@ -241,3 +278,17 @@ export class ResolvedConfig {
 			: undefined;
 	}
 }
+
+/** A `rogen.json` resolved: the description, and the projects it writes beside it. */
+export interface ResolvedConfigFile {
+	/** The description itself, written as `default.project.json`. */
+	readonly config: ResolvedConfig;
+	/** The entries of `projects`, in the order they are declared. */
+	readonly projects: readonly ResolvedConfig[];
+}
+
+/** Every project a resolved config file writes, the description first. */
+export const projectsOf = (resolved: ResolvedConfigFile): ResolvedConfig[] => [
+	resolved.config,
+	...resolved.projects,
+];

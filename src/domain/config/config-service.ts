@@ -3,14 +3,14 @@ import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { ResolvedConfig } from "./config.js";
+import { ResolvedConfig, ResolvedConfigFile, projectsOf } from "./config.js";
 
 /** The positional words that name the configs a command reads. */
 export const ConfigArguments = [
 	{
 		name: "project",
 		description:
-			"A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
+			"A folder with a rogen.json, a *.project.json path, or the name of a project of the rogen.json here. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
 		isOptional: true,
 		isVariadic: true,
 	},
@@ -20,9 +20,9 @@ interface ConfigEntryFields {
 	readonly file: string;
 }
 
-export interface ValidConfigEntry extends ConfigEntryFields {
+export interface ValidConfigEntry
+	extends ConfigEntryFields, ResolvedConfigFile {
 	readonly status: "valid";
-	readonly config: ResolvedConfig;
 }
 
 export interface BrokenConfigEntry extends ConfigEntryFields {
@@ -30,17 +30,30 @@ export interface BrokenConfigEntry extends ConfigEntryFields {
 	/** Never empty. */
 	readonly errors: readonly Diagnostic[];
 	/** The version a watch keeps building while the file is broken; none if it was never valid. */
-	readonly lastValid: ResolvedConfig | undefined;
+	readonly lastValid: ResolvedConfigFile | undefined;
 }
 
 /** One config as it last loaded; a reload replaces it rather than mutating it. */
 export type ConfigEntry = ValidConfigEntry | BrokenConfigEntry;
 
-/** What builds for `entry`: the config now, else its last valid version. */
+/** What builds for `entry`: the file as it is now, else its last valid version. */
+export function buildableFile(
+	entry: ConfigEntry
+): ResolvedConfigFile | undefined {
+	return entry.status === "valid" ? entry : entry.lastValid;
+}
+
+/** The description that builds for `entry`: its config now, else its last valid version. */
 export function buildableConfig(
 	entry: ConfigEntry
 ): ResolvedConfig | undefined {
-	return entry.status === "valid" ? entry.config : entry.lastValid;
+	return buildableFile(entry)?.config;
+}
+
+/** Every project that builds for `entry`, the description first. */
+export function buildableProjects(entry: ConfigEntry): ResolvedConfig[] {
+	const file = buildableFile(entry);
+	return file ? projectsOf(file) : [];
 }
 
 /** What a reload says of one config: new errors, a recovery, or joining or leaving the selection. */
@@ -68,12 +81,16 @@ export interface ConfigReload {
 /** The configs one invocation picked, as a command that reads them once sees them. */
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
-	/** The configs that build now: a broken entry's last valid version, or none. */
+	/** Every project that builds now, the description of each config first: a broken entry's last valid version, or none. */
 	readonly configs: readonly ResolvedConfig[];
+	/** The project each config was asked for by name or project-file path, by config file. */
+	readonly named: ReadonlyMap<string, string>;
+	/** What picking the configs had to say, such as that a name matched both a folder and a project. */
+	readonly notes: readonly string[];
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with a config when it has none. */
 	readonly home: string;
 
-	/** The configs, or every error when any entry is broken now. */
+	/** The projects of every config, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
 }
 

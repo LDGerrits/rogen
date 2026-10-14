@@ -1,0 +1,10 @@
+{
+	"steps": [
+		[
+			"build"
+		]
+	],
+	"show": [
+		"test.project.json"
+	]
+}

@@ -6,6 +6,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 
 import { ConfigService } from "../config/config-service.js";
+import { ProjectChoice } from "../config/project-choice.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
@@ -66,7 +67,7 @@ export class CoreServeService implements ServeService {
 		const selection = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const served = configs.value;
+		const served = ProjectChoice.served(configs.value, selection.named);
 		const executable = await this.rojoRunner.find(
 			selection.home,
 			served[0]?.file ?? selection.home,

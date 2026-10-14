@@ -75,8 +75,8 @@ describe("domain/watch/watch-plan", () => {
 			]);
 
 			expect(plan.roots).toEqual(["/repo/lobby/src"]);
-			expect(plan.configsFor("/repo/lobby/src/A.luau")).toEqual([
-				"/repo/lobby/rogen.json",
+			expect(plan.projectsFor("/repo/lobby/src/A.luau")).toEqual([
+				"/repo/lobby/default.project.json",
 			]);
 		});
 
@@ -87,16 +87,16 @@ describe("domain/watch/watch-plan", () => {
 		});
 	});
 
-	describe("configsFor", () => {
+	describe("projectsFor", () => {
 		it("should return every config whose roots contain the path", () => {
 			const plan = new WatchPlan([
 				config("/repo/rogen.json", ["/repo/src"]),
 				config("/repo/lobby/rogen.json", ["/repo/src/shared"]),
 			]);
 
-			expect(plan.configsFor("/repo/src/shared/A.luau")).toEqual([
-				"/repo/rogen.json",
-				"/repo/lobby/rogen.json",
+			expect(plan.projectsFor("/repo/src/shared/A.luau")).toEqual([
+				"/repo/default.project.json",
+				"/repo/lobby/default.project.json",
 			]);
 		});
 
@@ -105,8 +105,8 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/rogen.json", ["/repo/src", "/repo/src/shared"]),
 			]);
 
-			expect(plan.configsFor("/repo/src/shared/A.luau")).toEqual([
-				"/repo/rogen.json",
+			expect(plan.projectsFor("/repo/src/shared/A.luau")).toEqual([
+				"/repo/default.project.json",
 			]);
 		});
 
@@ -116,8 +116,8 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/lobby/rogen.json", ["/repo/places/lobby"]),
 			]);
 
-			expect(plan.configsFor("/repo/places/lobby/A.luau")).toEqual([
-				"/repo/lobby/rogen.json",
+			expect(plan.projectsFor("/repo/places/lobby/A.luau")).toEqual([
+				"/repo/lobby/default.project.json",
 			]);
 		});
 
@@ -126,7 +126,9 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/rogen.json", ["/repo/src"]),
 			]);
 
-			expect(plan.configsFor("/repo/src")).toEqual(["/repo/rogen.json"]);
+			expect(plan.projectsFor("/repo/src")).toEqual([
+				"/repo/default.project.json",
+			]);
 		});
 
 		it("should not claim a sibling that shares a name prefix", () => {
@@ -134,7 +136,7 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/rogen.json", ["/repo/src"]),
 			]);
 
-			expect(plan.configsFor("/repo/src-old/A.luau")).toEqual([]);
+			expect(plan.projectsFor("/repo/src-old/A.luau")).toEqual([]);
 		});
 
 		it("should claim a path outside the config's own directory", () => {
@@ -142,8 +144,8 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/places/lobby/rogen.json", ["/repo/shared"]),
 			]);
 
-			expect(plan.configsFor("/repo/shared/A.luau")).toEqual([
-				"/repo/places/lobby/rogen.json",
+			expect(plan.projectsFor("/repo/shared/A.luau")).toEqual([
+				"/repo/places/lobby/default.project.json",
 			]);
 		});
 	});

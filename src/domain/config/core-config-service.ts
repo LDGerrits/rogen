@@ -1,4 +1,8 @@
+import path from "path";
 import { Disposable } from "../../base/disposable.js";
+import { UsageError } from "../../base/errors.js";
+import { toPosix } from "../../base/path.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -11,6 +15,7 @@ import {
 	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
+	buildableProjects,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
@@ -23,7 +28,7 @@ export class CoreConfigService implements ConfigService {
 
 	constructor(
 		fileSystemService: FileSystemService,
-		environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
 			fileSystemService,
@@ -38,19 +43,74 @@ export class CoreConfigService implements ConfigService {
 		const discovered = await this.discovery.discover(refs);
 		if (discovered.isErr()) return err(discovered.error);
 
-		const { home: directory, files, everyConfig } = discovered.value;
-		const named = await Promise.all(
+		const {
+			home: directory,
+			files,
+			everyConfig,
+			projects,
+			folders,
+			homeConfig,
+		} = discovered.value;
+		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, this.loader))
 		);
+		const missing = this.missingProject(opened, projects);
+		if (missing) return err(missing);
 		return ok(
 			new CoreConfigSelection(
-				named,
+				opened,
 				this.loader,
 				directory,
 				everyConfig
 					? { directory, list: () => this.configsIn(directory) }
-					: undefined
+					: undefined,
+				projects,
+				await this.tiesOf(homeConfig, folders)
 			)
+		);
+	}
+
+	/** The config as the user names it. */
+	private relative(file: string): string {
+		return (
+			toPosix(path.relative(this.environmentService.cwd, file)) || file
+		);
+	}
+
+	/** An error when a config that loads doesn't have a project named for it. */
+	private missingProject(
+		opened: readonly ManagedConfig[],
+		projects: ReadonlyMap<string, string>
+	): UsageError | undefined {
+		for (const config of opened) {
+			const project = projects.get(config.file);
+			const stems = buildableProjects(config.entry).map(
+				({ stem }) => stem
+			);
+			if (project === undefined || stems.length === 0) continue;
+			if (!stems.includes(project))
+				return new UsageError(
+					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}. Name a folder with a rogen.json, a *.project.json path, or one of them.`
+				);
+		}
+		return undefined;
+	}
+
+	/** What to tell of each name that is both a folder with a config and a project of the config here: the folder is what it names. */
+	private async tiesOf(
+		homeConfig: string | undefined,
+		folders: readonly string[]
+	): Promise<string[]> {
+		if (folders.length === 0 || !homeConfig) return [];
+		const projects = buildableProjects(
+			(await ManagedConfig.open(homeConfig, this.loader)).entry
+		);
+		return folders.flatMap((name) =>
+			projects.some(({ stem }) => stem === name)
+				? [
+						`"${name}" is a folder with a rogen.json and also a project of ${this.relative(homeConfig)}: using the folder. To use the project, name its file, ${name}.project.json.`,
+					]
+				: []
 		);
 	}
 

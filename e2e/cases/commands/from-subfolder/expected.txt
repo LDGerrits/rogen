@@ -15,7 +15,7 @@ stdout:
 $ rogen build ghost
 exit 2
 stderr:
-  error: "ghost" not found: name a folder with a rogen.json, or a *.project.json path.
+  error: No project "ghost" in ../../rogen.json, which has "default". Name a folder with a rogen.json, a *.project.json path, or one of them.
 
 $ rogen list
 exit 0

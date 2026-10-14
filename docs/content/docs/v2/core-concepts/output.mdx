@@ -9,7 +9,7 @@ Each **build** turns your source paths into one **project**: the Rojo project fi
 
 ## Output
 
-The output is always `default.project.json`, beside the `rogen.json` that describes it. It is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. It carries a `$schema` that says it was written from `rogen.json`, and `name` only when `rogen.json` sets one. Rojo names the project after its folder otherwise.
+The output is `default.project.json`, beside the `rogen.json` that describes it, and a `<name>.project.json` for each of its [projects](/docs/v2/configuration#projects). It is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. It carries a `$schema` that says it was written from `rogen.json`, and `name` only when `rogen.json` sets one. Rojo names the project after its folder otherwise. A project's file always carries a `name`, the config's or the folder's, since Rojo can't open a project file without one.
 
 Every other Rojo key in `rogen.json` (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
 
@@ -50,13 +50,13 @@ With one source path, `syncPath` simply takes its place. With several, Rogen kee
 A few things to keep in mind:
 
 - `syncPath` only affects paths Rogen generates. `tree` paths like Wally's `Packages` are copied through untouched.
-- Rojo syncs from the sync path, and there is one project file. The one you serve is the one luau-lsp and Darklua read, so its `$path`s point into the sync path, not into your source. See the [Darklua guide](/docs/v2/setups/darklua).
+- Rojo syncs from the sync path, but luau-lsp and Darklua read a sourcemap of your source. Keep `default.project.json` pointing at the source, and give the sync path to a [project](/docs/v2/configuration#projects) that Studio serves. See the [Darklua guide](/docs/v2/setups/darklua).
 - If none of the paths Rogen writes for a source path exist after a build, Rogen warns and suggests the closest match. Usually the compiler just hasn't run yet.
 - Rogen never reads the sync path, so compiled leftovers whose source is gone still sync. Clean it as part of your compile step.
 
 ## Serving
 
-`rogen serve` builds, starts Rojo on `default.project.json`, and rebuilds as `watch` does. Rojo reads the port from the project file, so a `servePort` in `rogen.json` applies. When a Rojo you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which Rojo runs, the port, `--json` and exit codes.
+`rogen serve` builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds as `watch` does. Rojo reads the port from the project file, so a `servePort` in `rogen.json` applies. When a Rojo you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which Rojo runs, the port, `--json` and exit codes.
 
 ## Place Files
 
@@ -71,7 +71,7 @@ Rojo, and not Rogen, runs the second command, and `rogen build` needs no Rojo to
 
 With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first, so the place holds the compiled code the `syncPath` points at.
 
-A place that differs from your default build, such as one with the specs in it, comes from a `rogen.json` of its own in another folder. See [Testing](/docs/v2/testing).
+A place that differs from your default build, such as one with the specs in it or without the dev packages, is a [project](/docs/v2/configuration#projects): `rojo build release.project.json -o game.rbxl`. See [Testing](/docs/v2/testing).
 
 ## Building While Watching
 

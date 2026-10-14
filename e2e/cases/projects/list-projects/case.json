@@ -1,0 +1,12 @@
+{
+	"steps": [
+		[
+			"list"
+		],
+		[
+			"list",
+			"--json"
+		]
+	],
+	"rojo": false
+}

@@ -86,7 +86,9 @@ export class CoreWatchSession
 		if (watching.isErr()) return watching;
 		this.announce(
 			{ kind: "initial" },
-			this.selection.configs.map(({ file }) => this.queueRebuild(file))
+			this.selection.configs.map(({ projectFile }) =>
+				this.queueRebuild(projectFile)
+			)
 		);
 		this.started = true;
 		return ok(undefined);
@@ -134,13 +136,13 @@ export class CoreWatchSession
 
 	private async rebuild(
 		watched: WatchedConfig,
-		file: string
+		projectFile: string
 	): Promise<RebuildReport | undefined> {
-		if (!this.set.configOf(file)) return undefined;
+		if (!this.set.configOf(projectFile)) return undefined;
 		return watched.finished(
 			await this.buildService.rebuild(
 				this.set,
-				file,
+				projectFile,
 				this.listing,
 				watched.latest
 			)
@@ -169,15 +171,17 @@ export class CoreWatchSession
 		void tracked.finally(() => this.pending.delete(tracked));
 	}
 
-	private queueRebuild(file: string): Promise<RebuildReport | undefined> {
-		let watched = this.watched.get(file);
+	private queueRebuild(
+		projectFile: string
+	): Promise<RebuildReport | undefined> {
+		let watched = this.watched.get(projectFile);
 		if (!watched) {
 			watched = new WatchedConfig();
-			this.watched.set(file, watched);
+			this.watched.set(projectFile, watched);
 		}
 		const config = watched;
 		const queued = config.queue(
-			this.guarded(() => this.rebuild(config, file))
+			this.guarded(() => this.rebuild(config, projectFile))
 		);
 		this.track(queued);
 		return queued;
@@ -262,9 +266,11 @@ export class CoreWatchSession
 
 	/** Drops what the session knows of configs that left the selection. */
 	private forgetRemoved(): void {
-		const current = new Set(this.selection.configs.map(({ file }) => file));
-		for (const file of this.watched.keys())
-			if (!current.has(file)) this.watched.delete(file);
+		const current = new Set(
+			this.selection.configs.map(({ projectFile }) => projectFile)
+		);
+		for (const projectFile of this.watched.keys())
+			if (!current.has(projectFile)) this.watched.delete(projectFile);
 	}
 
 	private async reloadConfigs(
@@ -320,12 +326,11 @@ export class CoreWatchSession
 		}
 
 		const affected = new Set([
-			...reloaded,
-			...(reindexed
-				? this.selection.configs.map(({ file }) => file)
-				: []),
+			...this.selection.configs
+				.filter(({ file }) => reindexed || reloaded.includes(file))
+				.map(({ projectFile }) => projectFile),
 			...sourceChanges.flatMap((change) =>
-				this.plan.configsFor(change.path)
+				this.plan.projectsFor(change.path)
 			),
 		]);
 		this.announce(
@@ -348,7 +353,9 @@ export class CoreWatchSession
 			this.listing = await this.indexService.list(this.plan.roots);
 		this.announce(
 			{ kind: "burst", ...burst },
-			this.selection.configs.map(({ file }) => this.queueRebuild(file))
+			this.selection.configs.map(({ projectFile }) =>
+				this.queueRebuild(projectFile)
+			)
 		);
 	}
 }

@@ -1,0 +1,10 @@
+{
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage" },
+	"serveProject": "missing",
+	"projects": {
+		"default": {},
+		"a/b": {},
+		"dist": { "serveProject": "dist", "projects": {} }
+	}
+}

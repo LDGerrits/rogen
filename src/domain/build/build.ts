@@ -7,7 +7,10 @@ import {
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig, configLabel } from "../config/config.js";
-import { ConfigSelection } from "../config/config-service.js";
+import {
+	ConfigSelection,
+	buildableProjects,
+} from "../config/config-service.js";
 
 /** How a route key matched a file by its name. */
 export type MatchForm = "folder" | "marker" | "suffix";
@@ -373,7 +376,7 @@ export class BuildSet {
 		return {
 			set: new BuildSet(
 				selection.entries.flatMap((entry) =>
-					entry.status === "valid" ? [entry.config] : []
+					entry.status === "valid" ? buildableProjects(entry) : []
 				)
 			),
 			unloaded: selection.entries.flatMap((entry) =>
@@ -384,8 +387,11 @@ export class BuildSet {
 		};
 	}
 
-	configOf(file: string): ResolvedConfig | undefined {
-		return this.configs.find((config) => config.file === file);
+	/** The project that is written to `projectFile`. */
+	configOf(projectFile: string): ResolvedConfig | undefined {
+		return this.configs.find(
+			(config) => config.projectFile === projectFile
+		);
 	}
 
 	/** Every folder of every config that one listing covers. */

@@ -2,7 +2,6 @@ import path from "path";
 import { escapedGlobPrefix } from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
-import { ConfigFile } from "../../platform/config/config-file.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -15,6 +14,7 @@ import {
 	RojoNode,
 	RojoProject,
 } from "../rojo/rojo-project.js";
+import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import {
 	DEFAULT_SOURCE_PATH,
@@ -28,7 +28,7 @@ const FALLBACK_NAME = "project";
 
 const NAME_RULE = "use letters and digits only, starting with a letter";
 
-/** Checks every rule on a config's values that doesn't need the source tree, and hands back the config with its route targets parsed. */
+/** Checks every rule on the values of one project to write that doesn't need the source tree, and hands back the config with its route targets parsed. */
 export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
 	/** The declared keys by their identity, so a second that differs only in case is reported. */
@@ -38,7 +38,8 @@ export class ConfigValidator {
 	private readonly sourcePaths: readonly string[];
 
 	constructor(
-		private readonly config: ConfigFile,
+		private readonly config: ProjectSource,
+		private readonly serveProject: string,
 		warnings: readonly Diagnostic[]
 	) {
 		this.problems.add(warnings);
@@ -64,6 +65,8 @@ export class ConfigValidator {
 		return this.problems.toResult(
 			new ResolvedConfig({
 				file: this.config.file,
+				stem: this.config.stem,
+				serveProject: this.serveProject,
 				projectName: name ?? (path.basename(this.dir) || FALLBACK_NAME),
 				project:
 					project ?? new RojoProject<ParsedProjectFile>({ tree: {} }),

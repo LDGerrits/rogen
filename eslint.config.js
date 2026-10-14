@@ -16,7 +16,7 @@ const layersAbove = {
 const modules = {
 	domain: {
 		build: ["build", "build-service"],
-		config: ["config", "config-service"],
+		config: ["config", "config-service", "project-choice"],
 		init: ["init-service"],
 		legacy: ["legacy-config"],
 		roblox: ["roblox", "supported-services"],

@@ -1,12 +1,12 @@
 $ rogen build ghost.project.json
 exit 2
 stderr:
-  error: No project "ghost" in <dir>: a rogen.json writes default.project.json.
+  error: No project "ghost" in rogen.json, which has "default". Name a folder with a rogen.json, a *.project.json path, or one of them.
 
 $ rogen build lobby/other.project.json
 exit 2
 stderr:
-  error: No project "other" in <dir>/lobby: a rogen.json writes default.project.json.
+  error: No project "other" in lobby/rogen.json, which has "default". Name a folder with a rogen.json, a *.project.json path, or one of them.
 
 $ rogen build README.md
 exit 2
@@ -16,7 +16,7 @@ stderr:
 $ rogen build lobby lobby
 exit 2
 stderr:
-  error: "lobby" was named more than once; each project can only be built once per invocation.
+  error: "lobby" was named more than once; each config can only be built once per invocation.
 
 $ rogen build lobby --json
 exit 0

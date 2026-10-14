@@ -1,0 +1,35 @@
+{
+	"sourcePaths": [
+		"src",
+		"dev"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			},
+			"DevPackages": {
+				"$path": "DevPackages"
+			}
+		}
+	},
+	"projects": {
+		"release": {
+			"sourcePaths": [
+				"src"
+			],
+			"tree": {
+				"ReplicatedStorage": {
+					"DevPackages": null
+				}
+			}
+		}
+	}
+}

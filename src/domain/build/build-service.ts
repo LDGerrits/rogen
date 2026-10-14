@@ -158,13 +158,13 @@ export interface Diagnosis {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** The run, one build per selected config in order: builds each one that loads, checking its sync path, then writes them in order. A config that doesn't load, one the set blocks or a build failure writes nothing, and a failed write leaves the rest unwritten. */
+	/** The run, one build per project of each selected config in order: builds each one that loads, checking its sync path, then writes them in order. A config that doesn't load or a build failure writes nothing, and a failed write leaves the rest unwritten. */
 	build(selection: ConfigSelection): Promise<BuildRun>;
 
-	/** Builds the config `file` of a watch's `set` from the listing the watch holds, and writes it; one the set blocks fails without building. The sync path is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
+	/** Builds the project written to `projectFile` in a watch's `set` from the listing the watch holds, and writes it. The sync path is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
 	rebuild(
 		set: BuildSet,
-		file: string,
+		projectFile: string,
 		listing: IndexReader,
 		previous?: LoadedBuild
 	): Promise<LoadedBuild>;

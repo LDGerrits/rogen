@@ -2,6 +2,7 @@ import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Result, ok } from "../../base/result.js";
+import { ConfigArguments } from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
 	ServeService,
@@ -38,15 +39,7 @@ registerCommand(
 					longRunning: true,
 					description:
 						"Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
-					args: [
-						{
-							name: "project",
-							description:
-								"A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
-							isOptional: true,
-							isVariadic: true,
-						},
-					],
+					args: ConfigArguments,
 					passthrough: {
 						name: "server args",
 						description:
@@ -91,6 +84,8 @@ registerCommand(
 							accessor.get(EnvironmentService).cwd,
 							plan.value
 						);
+				for (const note of plan.value.selection.notes)
+					accessor.get(LogService).warn(note);
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(

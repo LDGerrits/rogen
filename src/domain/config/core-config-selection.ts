@@ -15,7 +15,7 @@ import {
 	ConfigNotice,
 	ConfigReload,
 	ReloadableSelection,
-	buildableConfig,
+	buildableProjects,
 } from "./config-service.js";
 
 const errorsOf = (entry: ConfigEntry): readonly Diagnostic[] =>
@@ -38,7 +38,9 @@ export class CoreConfigSelection implements ReloadableSelection {
 		private managed: readonly ManagedConfig[],
 		private readonly loader: ConfigLoader,
 		readonly home: string,
-		private readonly folder: PickedFolder | undefined
+		private readonly folder: PickedFolder | undefined,
+		readonly named: ReadonlyMap<string, string> = new Map(),
+		readonly notes: readonly string[] = []
 	) {
 		this._files = this.readFiles();
 		this.filePaths = new PathSet(this._files);
@@ -71,7 +73,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 	}
 
 	get configs(): ResolvedConfig[] {
-		return this.entries.flatMap((entry) => buildableConfig(entry) ?? []);
+		return this.entries.flatMap(buildableProjects);
 	}
 
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError> {
@@ -103,7 +105,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 			this.filePaths = new PathSet(this._files);
 			const added = membership.added.map((config) => ({
 				file: config.file,
-				changed: buildableConfig(config.entry) !== undefined,
+				changed: buildableProjects(config.entry).length > 0,
 				notice: addedNotice(config.entry),
 			}));
 			const everyChange = [...reloaded, ...added];

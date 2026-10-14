@@ -31,7 +31,13 @@ describe("domain/config/config-schema", () => {
 			"syncRules",
 			"syncbackRules",
 		];
-		const ROGEN_FIELDS = ["sourcePaths", "routes", "syncPath"];
+		const ROGEN_FIELDS = [
+			"sourcePaths",
+			"routes",
+			"syncPath",
+			"projects",
+			"serveProject",
+		];
 
 		describe("schema shape", () => {
 			it("declares Rojo's keys and Rogen's", () => {
@@ -40,6 +46,45 @@ describe("domain/config/config-schema", () => {
 				);
 				expect([...rojoKeys].sort()).toEqual([...ROJO_FIELDS].sort());
 				expect([...rogenKeys].sort()).toEqual([...ROGEN_FIELDS].sort());
+			});
+
+			it("lets a project change any key but the schema's, projects' and serveProject's, and remove each with null", () => {
+				const projects = schema.properties!.projects
+					.additionalProperties as {
+					properties: Record<string, { type?: string | string[] }>;
+				};
+
+				expect(Object.keys(projects.properties).sort()).toEqual(
+					[...ROJO_FIELDS, ...ROGEN_FIELDS]
+						.filter(
+							(field) =>
+								![
+									"$schema",
+									"projects",
+									"serveProject",
+								].includes(field)
+						)
+						.sort()
+				);
+				for (const field of Object.values(projects.properties))
+					expect([field.type].flat()).toContain("null");
+			});
+
+			it("lets a project remove a route and a node of the tree with null", () => {
+				const { properties } = schema.properties!.projects
+					.additionalProperties as {
+					properties: Record<
+						string,
+						{ additionalProperties: { type: string[] } }
+					>;
+				};
+
+				expect(properties.routes.additionalProperties.type).toContain(
+					"null"
+				);
+				expect(properties.tree.additionalProperties.type).toContain(
+					"null"
+				);
 			});
 
 			it.each([
@@ -192,7 +237,7 @@ describe("domain/config/config-schema", () => {
 			).toContain('"globIgnorePaths"');
 			expect(
 				configRemovedFieldAdvice("exclude", location)?.message
-			).toContain("remove it from the tree");
+			).toContain("null in a project");
 		});
 
 		it("leaves any other field to the unknown field warning", () => {

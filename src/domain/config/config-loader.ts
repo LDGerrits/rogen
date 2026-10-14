@@ -1,24 +1,17 @@
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
-import { closestMatch } from "../../base/strings.js";
-import {
-	ConfigFile,
-	ConfigFileReader,
-} from "../../platform/config/config-file.js";
+import { ConfigFileReader } from "../../platform/config/config-file.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
-	warningDiagnostic,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import {
-	configRemovedFieldAdvice,
-	configSchema,
-	rogenKeys,
-	rojoKeys,
-} from "./config-schema.js";
+import { ConfigKeys } from "./config-keys.js";
+import { readProjectSources } from "./project-sources.js";
+import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
-import { ResolvedConfig } from "./config.js";
+import { ResolvedConfigFile } from "./config.js";
 import { ConfigValidator } from "./config-validator.js";
 
 /** One read of one config, with everything a reload needs to compare against. */
@@ -27,10 +20,8 @@ export interface LoadedConfig {
 	readonly files: readonly string[];
 	/** What the file holds, once it could be read. */
 	readonly value?: Readonly<Record<string, unknown>>;
-	readonly resolved: Result<ResolvedConfig, Diagnostic[]>;
+	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
 }
-
-const KNOWN_KEYS: readonly string[] = [...rojoKeys, ...rogenKeys];
 
 /** Reads a config file, then resolves and validates it. */
 export class ConfigLoader {
@@ -68,44 +59,50 @@ export class ConfigLoader {
 		if (hints.length > 0)
 			return { files: [file], value, resolved: err(hints) };
 
-		const keys = ConfigLoader.checkKeys(config);
-		if (keys.errors.length > 0)
-			return { files: [file], value, resolved: err(keys.errors) };
-		const resolved = new ConfigValidator(config, keys.warnings).validate();
-		return { files: [file], value, resolved };
-	}
-
-	/** A key Rogen read once is told as removed; one that is neither Rojo's nor Rogen's passes through with a warning. */
-	private static checkKeys(config: ConfigFile): {
-		readonly errors: Diagnostic[];
-		readonly warnings: Diagnostic[];
-	} {
-		const errors: Diagnostic[] = [];
-		const warnings: Diagnostic[] = [];
-		for (const key of config.model.keys) {
-			if (KNOWN_KEYS.includes(key)) continue;
-			const location: DiagnosticLocation = {
+		const keys = ConfigKeys.check(
+			config.model.keys,
+			(key): DiagnosticLocation => ({
 				resource: config.file,
 				position: config.positionOfKey(key),
+			})
+		);
+		const declared = readProjectSources(config);
+		const failed = [...keys.errors, ...declared.errors];
+		if (failed.length > 0)
+			return { files: [file], value, resolved: err(failed) };
+
+		const [description, ...changed] = declared.sources;
+		const resolvedDescription = new ConfigValidator(
+			description,
+			declared.serveProject,
+			keys.warnings
+		).validate();
+		const resolvedProjects = changed.map((source) =>
+			new ConfigValidator(
+				source,
+				declared.serveProject,
+				source.warnings
+			).validate()
+		);
+		const problems = [resolvedDescription, ...resolvedProjects].flatMap(
+			(result) => (result.isErr() ? result.error : [])
+		);
+		if (problems.length > 0)
+			return {
+				files: [file],
+				value,
+				resolved: err(uniqueDiagnostics(problems)),
 			};
-			const removed = configRemovedFieldAdvice(key, location);
-			if (removed) {
-				errors.push(removed);
-				continue;
-			}
-			const suggestion = closestMatch(
-				key,
-				KNOWN_KEYS.filter((known) => !config.model.keys.includes(known))
-			);
-			warnings.push(
-				warningDiagnostic(
-					"config.unknownField",
-					location,
-					`"${key}" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
-				)
-			);
-		}
-		return { errors, warnings };
+		return {
+			files: [file],
+			value,
+			resolved: resolvedDescription.map((resolvedConfig) => ({
+				config: resolvedConfig,
+				projects: resolvedProjects.flatMap((result) =>
+					result.isOk() ? [result.value] : []
+				),
+			})),
+		};
 	}
 
 	private hintsOf(file: string, value: unknown): Diagnostic[] {
