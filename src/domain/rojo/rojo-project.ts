@@ -122,7 +122,8 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		);
 	}
 
-	private static findNonNode(
+	/** The path to the first child below `node` that isn't an object; `at` is where `node` is. */
+	static findNonNode(
 		node: RojoNode,
 		at: readonly string[]
 	): readonly string[] | undefined {

@@ -12,7 +12,7 @@ import {
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
 import { ProjectSourceReader } from "./project-sources.js";
-import { configSchema, placeConfigSchema } from "./config-schema.js";
+import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
@@ -38,7 +38,7 @@ export class ConfigLoader {
 		this.reader = new ConfigFileReader(fileSystemService, configSchema);
 		this.places = new PlaceLoader(
 			fileSystemService,
-			new ConfigFileReader(fileSystemService, placeConfigSchema),
+			this.reader,
 			(file, value) => this.hintsOf(file, value)
 		);
 	}

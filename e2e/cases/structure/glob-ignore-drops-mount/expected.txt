@@ -18,9 +18,6 @@ default.project.json:
     "$className": "DataModel",
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
-      "DevPackages": {
-        "$path": "DevPackages"
-      },
       "Packages": {
         "$path": "Packages"
       },
@@ -43,7 +40,6 @@ default.project.json:
 $ rojo sourcemap default.project.json
 game: DataModel
   ReplicatedStorage: ReplicatedStorage
-    DevPackages: Folder
     Packages: Folder
       P: ModuleScript  <- Packages/P.luau
     shared: Folder

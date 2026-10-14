@@ -24,7 +24,10 @@ release.project.json:
         }
       }
     }
-  }
+  },
+  "globIgnorePaths": [
+    "DevPackages/**"
+  ]
 }
 
 $ rojo sourcemap default.project.json

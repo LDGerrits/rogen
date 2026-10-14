@@ -1,8 +1,7 @@
 {
 	"name": "Game",
-	"placePaths": [
-		"places/*"
-	],
+	"placePaths": ["places/*"],
+	"servePort": 34900,
 	"routes": {
 		"server": "ServerScriptService",
 		"client": "StarterPlayer/StarterPlayerScripts",
@@ -10,13 +9,6 @@
 	},
 	"tree": {
 		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"Packages": {
-				"$path": "Packages"
-			}
-		}
-	},
-	"servePlaceIds": [
-		1818
-	]
+		"ReplicatedStorage": { "Packages": { "$path": "Packages" } }
+	}
 }

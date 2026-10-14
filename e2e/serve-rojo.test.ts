@@ -138,7 +138,10 @@ describeWithRojo("end to end serve", () => {
 		writeProjectFile(
 			serve.dir,
 			"rogen.json",
-			config(serve.port, { placePaths: ["places/*"] })
+			config(serve.port, {
+				placePaths: ["places/*"],
+				servePort: undefined,
+			})
 		);
 		for (const [index, folder] of ["lobby", "arena"].entries()) {
 			writeProjectFile(
@@ -170,7 +173,10 @@ describeWithRojo("end to end serve", () => {
 		writeProjectFile(
 			serve.dir,
 			"rogen.json",
-			config(serve.port, { placePaths: ["places/*"] })
+			config(serve.port, {
+				placePaths: ["places/*"],
+				servePort: undefined,
+			})
 		);
 		for (const [index, folder] of ["lobby", "arena"].entries())
 			writeProjectFile(

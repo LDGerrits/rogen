@@ -137,7 +137,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"With a place folder: a place ID that the place's server is for, so a Studio on another place refuses to connect; repeat for several, or none, which also drops the config's place IDs. When not given, the place has none of its own and keeps the config's.",
+			"With a place folder: a place ID that the place's server is for, so a Studio on another place refuses to connect; repeat for several, or none. None when not given.",
 	},
 ] as const;
 

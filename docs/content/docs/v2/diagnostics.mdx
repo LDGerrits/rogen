@@ -48,7 +48,7 @@ Error. A field holds the wrong kind of value, such as a string where `sourcePath
 rogen.json:2:14 - error: "sourcePaths": expected an array, found a string. (config.wrongType)
 ```
 
-Give the field the type the message names. See [Configuration](/docs/v2/configuration#fields).
+Give the field the type the message names. `null` is never a value in a `rogen.json`, and it removes nothing: leave the key out, or in a project, ignore the folder a mount points at with `globIgnorePaths`. A node of the `tree` must be an object, so `"DevPackages": null` there gets the same error. See [Configuration](/docs/v2/configuration#fields).
 
 ### `config.unknownField` [#config-unknownfield]
 
@@ -67,10 +67,10 @@ Error. The config has a key that Rogen removed or renamed. The error is at the k
 ```
 rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json. (config.removedField)
 rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a project under "projects", which changes the keys it needs, or a rogen.json in another folder. (config.removedField)
-rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project under "projects". (config.removedField)
+rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo. (config.removedField)
 ```
 
-Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, and a mounted node is dropped with `null` in a project. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -191,6 +191,16 @@ places/lobby/rogen.json:2:3 - error: a place can't list places: "placePaths" bel
 ```
 
 Remove the key from the place. See [Places](/docs/v2/configuration#places).
+
+### `config.placeSetting` [#config-placesetting]
+
+Error. A `rogen.json` that lists places sets `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`, in the config or in one of its projects. Each place is served on its own and is its own place in Studio, and the config that lists them is never served, so no place takes these from it.
+
+```
+rogen.json:3:3 - error: "servePort" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place. (config.placeSetting)
+```
+
+Move the key into the `rogen.json` of each place it belongs to. See [Places](/docs/v2/configuration#places).
 
 ### `config.placeInSourcePath` [#config-placeinsourcepath]
 

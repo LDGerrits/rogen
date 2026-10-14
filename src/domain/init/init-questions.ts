@@ -121,30 +121,23 @@ export class InitQuestions {
 				: folder;
 	}
 
-	/** The place IDs a place's server is for: its own, `[]` for none of its own, or `null` to drop the `inherited` ones. */
-	async placeIds(
-		place: string,
-		inherited?: string
-	): Promise<readonly number[] | null | undefined> {
-		const none = inherited ? null : [];
+	/** The place IDs the server of a place is for; none when the place isn't published yet. */
+	async placeIds(place: string): Promise<readonly number[] | undefined> {
 		const given = this.choices.placeIds;
-		if (given !== undefined) {
-			const ids = listOf(given, "--place-id");
-			return ids.length === 0
-				? none
-				: InitQuestions.distinct(
-						ids.map((id) => InitQuestions.toPlaceId(id))
-					);
-		}
+		if (given !== undefined)
+			return InitQuestions.distinct(
+				listOf(given, "--place-id").map((id) =>
+					InitQuestions.toPlaceId(id)
+				)
+			);
 		if (!this.interactive) {
-			if (!inherited) this.decide("placeIds", [], "--place-id");
+			this.decide("placeIds", [], "--place-id");
 			return [];
 		}
 		const answer = await this.promptService.text({
 			message: "Place ID",
-			description: `The published ${place} place's ID, so that a Studio on another place refuses to connect to its port. ${inherited ? `Leave empty to keep ${inherited}, or type ${NONE} for none.` : "Leave empty if it isn't published yet."} Separate several with commas.`,
+			description: `The published ${place} place's ID, so that a Studio on another place refuses to connect to its port. Leave empty if it isn't published yet. Separate several with commas.`,
 			validate: (value) => {
-				if (value.trim() === NONE) return undefined;
 				const bad = splitList(value).find(
 					(id) => !InitQuestions.isPlaceId(id)
 				);
@@ -153,11 +146,11 @@ export class InitQuestions {
 					: `'${bad}' is not a place ID, a whole number above 0.`;
 			},
 		});
-		if (answer === undefined) return undefined;
-		if (answer.trim() === NONE) return none;
-		return InitQuestions.distinct(
-			splitList(answer).map((id) => InitQuestions.toPlaceId(id))
-		);
+		return answer === undefined
+			? undefined
+			: InitQuestions.distinct(
+					splitList(answer).map((id) => InitQuestions.toPlaceId(id))
+				);
 	}
 
 	private static distinct(ids: readonly number[]): number[] {

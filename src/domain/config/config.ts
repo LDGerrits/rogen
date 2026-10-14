@@ -3,7 +3,7 @@ import { formatJsonFile } from "../../base/json.js";
 import { isInside, samePath } from "../../base/path.js";
 import { RojoNode, projectFileName } from "../rojo/rojo-project.js";
 
-/** What a project of a `rogen.json` may change: any key of the description. `null` removes a key. */
+/** What a project of a `rogen.json` may change: any key of the description. */
 export type ProjectChanges = Partial<
 	Omit<RogenConfig, "$schema" | "projects" | "serveProject">
 >;
@@ -31,21 +31,6 @@ export interface RogenConfig {
 	readonly serveProject?: string;
 	readonly placePaths?: string[];
 }
-
-/** Keys a place has of its own and never inherits from its config. */
-export const PLACE_OWN_KEYS = ["name", "sourcePaths"] as const;
-
-type Inherited = Exclude<
-	keyof RogenConfig,
-	| (typeof PLACE_OWN_KEYS)[number]
-	| "$schema"
-	| (typeof ROOT_ONLY_KEYS)[number]
->;
-
-/** What a place's `rogen.json` holds: a config's keys, `null` removing one the place inherits. */
-export type PlaceConfig = Omit<RogenConfig, Inherited> & {
-	readonly [K in Inherited]?: RogenConfig[K] | null;
-};
 
 interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
@@ -80,17 +65,27 @@ export const DEFAULT_PROJECT = "default";
 
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
-export const ROOT_ONLY_KEYS = [
+export const ROOT_ONLY_KEYS: readonly string[] = [
 	"projects",
 	"serveProject",
 	"placePaths",
-] as const;
+];
 
-export const isRootOnlyKey = (key: string): boolean =>
-	(ROOT_ONLY_KEYS as readonly string[]).includes(key);
+/** What one place sets for itself: a config that lists places can't, so no place inherits it. */
+export const PER_PLACE_KEYS: readonly string[] = [
+	"servePort",
+	"servePlaceIds",
+	"blockedPlaceIds",
+	"placeId",
+	"gameId",
+];
 
-export const isPlaceOwnKey = (key: string): boolean =>
-	(PLACE_OWN_KEYS as readonly string[]).includes(key);
+/** Keys a place never inherits from the config that lists it. */
+export const PLACE_OWN_KEYS: readonly string[] = [
+	"name",
+	"sourcePaths",
+	...PER_PLACE_KEYS,
+];
 
 /** Rojo's default port, given to the first place without a `servePort`. */
 export const FIRST_PLACE_PORT = 34872;
@@ -111,7 +106,7 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
-export function configFileContent(config: PlaceConfig): string {
+export function configFileContent(config: RogenConfig): string {
 	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }
 

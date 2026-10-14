@@ -249,15 +249,12 @@ describe("CoreConfigService places", () => {
 		]);
 	});
 
-	it("should let a place null a node of the root's tree", async () => {
-		const lobby = await placeNamed("lobby", ROOT, {
+	it("should refuse null in a place", async () => {
+		await resolve(ROOT, {
 			lobby: { tree: { ReplicatedStorage: { Vendor: null } } },
 		});
 
-		expect(lobby?.project.getFile().tree).toEqual({
-			$className: "DataModel",
-			ReplicatedStorage: {},
-		});
+		expect(errors().map(({ code }) => code)).toEqual(["config.wrongType"]);
 	});
 
 	it("should write a root with places its own project file", async () => {
@@ -463,30 +460,6 @@ describe("CoreConfigService places", () => {
 			).toBeUndefined();
 		});
 
-		it("should let a place's servePlaceIds replace the root's", async () => {
-			const root = { ...ROOT, servePlaceIds: [1, 2] };
-			const places = { arena: { servePlaceIds: [111] }, lobby: null };
-
-			expect(idsOf(await placeNamed("arena", root, places))).toEqual([
-				111,
-			]);
-			expect(idsOf(await placeNamed("lobby", root, places))).toEqual([
-				1, 2,
-			]);
-		});
-
-		it("should let a place drop the root's servePlaceIds with null", async () => {
-			const arena = await placeNamed(
-				"arena",
-				{ ...ROOT, servePlaceIds: [1, 2] },
-				{ arena: { servePlaceIds: null } }
-			);
-
-			expect(errors()).toEqual([]);
-			expect(arena).toBeDefined();
-			expect(idsOf(arena)).toBeUndefined();
-		});
-
 		it("should give a project of a place the place's servePlaceIds, or its own", async () => {
 			const found = await resolve(ROOT, {
 				arena: {
@@ -502,46 +475,46 @@ describe("CoreConfigService places", () => {
 		});
 	});
 
-	describe("null in a place", () => {
-		it("should let a place drop a node of the root's tree", async () => {
-			const lobby = await placeNamed("lobby", ROOT, {
-				lobby: { tree: { ReplicatedStorage: { Vendor: null } } },
-			});
+	describe("what a place sets for itself", () => {
+		it.each([
+			["servePort", 34900],
+			["servePlaceIds", [1]],
+			["blockedPlaceIds", [2]],
+			["placeId", 3],
+			["gameId", 4],
+		])(
+			"should refuse %s in the config that lists places",
+			async (key, value) => {
+				await resolve({ ...ROOT, [key]: value });
 
-			expect(errors()).toEqual([]);
-			expect(lobby?.project.getFile().tree).not.toHaveProperty(
-				"ReplicatedStorage.Vendor"
-			);
-		});
-
-		it("should let a place drop the root's syncPath", async () => {
-			const lobby = await placeNamed(
-				"lobby",
-				{ ...ROOT, syncPath: "dist" },
-				{ lobby: { syncPath: null } }
-			);
-
-			expect(errors()).toEqual([]);
-			expect(lobby?.syncPath).toBeUndefined();
-		});
-
-		it.each([["sourcePaths"], ["name"]])(
-			"should refuse null for %s, which a place does not inherit",
-			async (key) => {
-				await resolve(ROOT, { lobby: { [key]: null } });
-
-				expect(errors().map(({ code }) => code)).toEqual([
-					"config.wrongType",
+				expect(errors()).toEqual([
+					expect.objectContaining({
+						code: "config.placeSetting",
+						resource: "/repo/rogen.json",
+					}),
 				]);
 			}
 		);
 
-		it("should still refuse null in the root", async () => {
-			await resolve({ ...ROOT, servePlaceIds: null });
+		it("should refuse a place's setting in a project of the config that lists places", async () => {
+			await resolve({
+				...ROOT,
+				projects: { test: { servePort: 34900 } },
+			});
 
 			expect(errors().map(({ code }) => code)).toEqual([
-				"config.wrongType",
+				"config.placeSetting",
 			]);
+		});
+
+		it("should leave serveAddress to be shared by every place", async () => {
+			const lobby = await placeNamed(
+				"lobby",
+				{ ...ROOT, serveAddress: "0.0.0.0" },
+				{ lobby: null }
+			);
+
+			expect(lobby?.project.serveAddress).toBe("0.0.0.0");
 		});
 	});
 

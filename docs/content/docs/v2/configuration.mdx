@@ -106,8 +106,7 @@ A **project** is the description with some keys changed, written beside `default
 		"dist": { "syncPath": "dist" },
 		"release": {
 			"sourcePaths": ["src"],
-			"tree": { "ReplicatedStorage": { "DevPackages": null } },
-			"globIgnorePaths": ["**/*.spec.luau"]
+			"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"]
 		}
 	}
 }
@@ -117,7 +116,7 @@ This writes `default.project.json`, `dist.project.json` and `release.project.jso
 
 - A value replaces the inherited one, and a list replaces the list: `"sourcePaths": ["src"]` in `release` leaves the `dev` overlay out.
 - `routes`, `tree` and the nodes below it merge by key, so a project restates only what changes.
-- `null` removes a key, as in JSON merge patch: `"DevPackages": null` drops the mount from `release.project.json`. A `null` in the description itself is an error, since there is nothing to remove.
+- A project leaves a mount out with `globIgnorePaths`, which replaces the list: `"DevPackages/**"` in `release` drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files). A key can't be removed, and `null` is an error anywhere in a `rogen.json`.
 - `projects` and `serveProject` belong to the whole config, and a project can't set them. `default` is the description itself and can't be a project name.
 - A project inherits `name`. Every project file carries a `name`, yours or the folder's, because Rojo can't open a project file without one. Only `default.project.json` may go without, as Rojo names it after its folder.
 
@@ -149,12 +148,12 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 
 - A place's `sourcePaths` are its own folders, relative to its folder (default `["src"]`), and Rogen adds them after the root's. The root's list is never replaced, so the shared code is in every place and a place's own code wins a clash. A project in a place's `rogen.json` replaces the place's own list only.
 - A relative path means the same folder wherever it is inherited: a `$path`, a `globIgnorePaths` glob and the `syncPath` of the root are written relative to each place's folder. A place may set its own `syncPath`.
-- A key a place sets replaces the root's, and `null` removes one it inherits, as in a [project](#projects): `"syncPath": null`, or `null` for a node of the tree.
 - `name` is not inherited by a place: a place is named after its folder unless it sets one. A project inherits the name of the place it is in.
 - A place may declare `projects` and `serveProject` of its own, and may not list places.
 - The root writes its own `default.project.json`, for the shared code, and is never served: `rogen serve` serves the places.
+- A place sets `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` for itself. The root never serves, so no place inherits them, and setting one in the root or in one of its projects is an error ([`config.placeSetting`](/docs/v2/diagnostics#config-placesetting)).
 - A place without a `servePort` is served on 34872 plus its index among the places without one, the places sorted by path, skipping ports other places pin. Studio remembers a place's port, so `rogen init <folder>` pins the port into the place it adds. A port in use is an error that names `servePort`.
-- A place's `servePlaceIds` are for that place's project files only, and replace the root's list when the root has one. With several places served, they are what makes a Studio connected to the wrong place's port refuse to sync. See [Studio](/docs/v2/studio#place-ids).
+- With several places served, a place's `servePlaceIds` are what makes a Studio connected to the wrong place's port refuse to sync. See [Studio](/docs/v2/studio#place-ids).
 - `rogen build --watch` and `rogen serve` follow a place's `rogen.json` and the `placePaths` of the config. A folder that starts matching one while they run, because it was created or because it was given a `rogen.json`, is found when they restart.
 - A command run inside a place answers for that place. A command run at the root covers the root and every place, and a project named on the command line (`rogen build release`) is the project of that name in each place.
 
@@ -189,7 +188,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 { "globIgnorePaths": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
-An ignored file that a `tree` `$path` mounts is still mounted: the glob never drops a node, and a mount it matches stays in the project file as an empty `Folder`. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+A glob that names a folder or file a `tree` `$path` mounts, or covers all of it with `/**` (`"DevPackages"`, `"DevPackages/**"`), leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. A glob that ignores only some of the files in a mount (`**/*.spec.luau`) leaves the mount and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
 
 ## Sync Rules
 
@@ -225,7 +224,7 @@ A config is one folder's project file, so these keys are gone. Each is an error 
 | `extends` | None: a `rogen.json` describes one folder. A second output with changed keys is a [project](#projects); a different folder has its own `rogen.json`. |
 | `template` | Write the tree inline: move the template's `tree` and its other keys into `rogen.json`. |
 | `outFile` | Rogen writes `default.project.json` beside `rogen.json`. |
-| `exclude` | `globIgnorePaths`, and `null` for a mounted node in a [project](#projects). |
+| `exclude` | `globIgnorePaths`, which also leaves out a mount it ignores. |
 | `rootDirs` | `sourcePaths`. |
 | `syncDir` | `syncPath`. |
 | `modes`, `mode` | A [project](#projects) with the keys the mode set. |

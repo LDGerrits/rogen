@@ -1,5 +1,5 @@
 import path from "path";
-import { mergePatch, isObject } from "../../base/objects.js";
+import { mergeByKey, isObject } from "../../base/objects.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
 import {
 	ConfigModel,
@@ -14,9 +14,10 @@ import {
 import { ConfigKeys } from "./config-keys.js";
 import {
 	DEFAULT_PROJECT,
+	PER_PLACE_KEYS,
+	PLACE_OWN_KEYS,
 	PROJECT_NAME,
-	isPlaceOwnKey,
-	isRootOnlyKey,
+	ROOT_ONLY_KEYS,
 } from "./config.js";
 import { PathRebaser } from "./path-rebaser.js";
 
@@ -65,7 +66,7 @@ export class ProjectSourceReader {
 		this.dir = path.dirname(config.file);
 		this.description = Object.fromEntries(
 			Object.entries(config.model.contents).filter(
-				([key]) => key !== "$schema" && !isRootOnlyKey(key)
+				([key]) => key !== "$schema" && !ROOT_ONLY_KEYS.includes(key)
 			)
 		);
 	}
@@ -80,18 +81,52 @@ export class ProjectSourceReader {
 
 	private placeErrors(): Diagnostic[] {
 		const { config, base } = this;
-		return base && config.model.keys.includes("placePaths")
-			? [
+		if (!config.model.keys.includes("placePaths")) return [];
+		return base ? this.placeListsPlaces() : this.perPlaceKeys();
+	}
+
+	private placeListsPlaces(): Diagnostic[] {
+		const { config } = this;
+		return [
+			errorDiagnostic(
+				"config.placeListsPlaces",
+				{
+					resource: config.file,
+					position: config.positionOfKey("placePaths"),
+				},
+				'a place can\'t list places: "placePaths" belongs to the config that lists this folder. Remove it.'
+			),
+		];
+	}
+
+	private perPlaceKeys(): Diagnostic[] {
+		const { config } = this;
+		const projects =
+			config.model.getValue<Record<string, unknown>>("projects");
+		const refused = (
+			holder: unknown,
+			positionOf: (key: string) => DiagnosticPosition | undefined
+		) =>
+			Object.keys(isObject(holder) ? holder : {})
+				.filter((key) => PER_PLACE_KEYS.includes(key))
+				.map((key) =>
 					errorDiagnostic(
-						"config.placeListsPlaces",
-						{
-							resource: config.file,
-							position: config.positionOfKey("placePaths"),
-						},
-						'a place can\'t list places: "placePaths" belongs to the config that lists this folder. Remove it.'
-					),
-				]
-			: [];
+						"config.placeSetting",
+						{ resource: config.file, position: positionOf(key) },
+						`"${key}" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place.`
+					)
+				);
+		return [
+			...refused(config.model.contents, (key) =>
+				config.positionOfKey(key)
+			),
+			...Object.entries(isObject(projects) ? projects : {}).flatMap(
+				([name, changes]) =>
+					refused(changes, (key) =>
+						config.positionOf(["projects", name, key])
+					)
+			),
+		];
 	}
 
 	private declaredProjects(errors: Diagnostic[]): Map<string, ProjectSource> {
@@ -162,7 +197,7 @@ export class ProjectSourceReader {
 			position: at(...section),
 		});
 		const keys = Object.keys(changes);
-		for (const key of keys.filter((key) => isRootOnlyKey(key)))
+		for (const key of keys.filter((key) => ROOT_ONLY_KEYS.includes(key)))
 			errors.push(
 				errorDiagnostic(
 					"config.projectKey",
@@ -171,7 +206,7 @@ export class ProjectSourceReader {
 				)
 			);
 		const found = ConfigKeys.check(
-			keys.filter((key) => !isRootOnlyKey(key)),
+			keys.filter((key) => !ROOT_ONLY_KEYS.includes(key)),
 			(key) => location(key)
 		);
 		errors.push(...found.errors);
@@ -179,11 +214,11 @@ export class ProjectSourceReader {
 			file: config.file,
 			stem: name,
 			model: new ConfigModel(
-				mergePatch(
+				mergeByKey(
 					this.startingValues(name),
 					Object.fromEntries(
 						Object.entries(changes).filter(
-							([key]) => !isRootOnlyKey(key)
+							([key]) => !ROOT_ONLY_KEYS.includes(key)
 						)
 					)
 				)
@@ -265,11 +300,11 @@ export class ProjectSourceReader {
 			).filter(
 				([key]) =>
 					key !== "$schema" &&
-					!isPlaceOwnKey(key) &&
-					!isRootOnlyKey(key)
+					!PLACE_OWN_KEYS.includes(key) &&
+					!ROOT_ONLY_KEYS.includes(key)
 			)
 		);
-		return mergePatch(inherited, this.description);
+		return mergeByKey(inherited, this.description);
 	}
 
 	private inheritedFrom(

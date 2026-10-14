@@ -85,9 +85,8 @@ stdout:
                                              (repeatable)
           --place-id <ID>                    With a place folder: a place ID that the place's server
                                              is for, so a Studio on another place refuses to connect;
-                                             repeat for several, or none, which also drops the
-                                             config's place IDs. When not given, the place has none of
-                                             its own and keeps the config's. (repeatable)
+                                             repeat for several, or none. None when not given.
+                                             (repeatable)
           --place-listing <PLACE_LISTING>    With a place folder: list every folder beside it in the
                                              config's placePaths (the default), or only this one.
                                              [possible values: glob, folder]

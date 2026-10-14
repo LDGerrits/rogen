@@ -260,7 +260,7 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--[no-]rojo-pin` | Rojo's pin in `rokit.toml`. Not added by default. |
 | `--nested` | Start a project below another `rogen.json`. |
 | `--place-listing glob\|folder` | With a place folder: list its parent as a glob (the default) or the folder. |
-| `--place-id <id>` | With a place folder: the place ID the place's server is for, written as its `servePlaceIds`. Repeat for several, or `none`, which also drops a list the place would inherit. |
+| `--place-id <id>` | With a place folder: the place ID the place's server is for, written as its `servePlaceIds`. Repeat for several, or `none`. |
 
 Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values, as is `--agent-hook` with no coding agent here, `--rojo-pin` with no `rokit.toml`, and a flag that shapes a new config (`--language`, `--route`, …) beside one that exists. An addition that is already there is not an error: the run adds nothing and succeeds, so a script can repeat it.
 
@@ -268,7 +268,7 @@ Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those 
 
 #### Adding a place
 
-`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, asks for the place's place ID and writes it as the place's `servePlaceIds` (an empty answer or a run without a terminal writes none, since an unpublished place has no ID yet; when the config lists place IDs, the place keeps those, `init` says so, and the answer `none` or `--place-id none` drops them), builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
+`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, asks for the place's place ID and writes it as the place's `servePlaceIds` (an empty answer, `--place-id none`, or a run without a terminal writes none, since an unpublished place has no ID yet), builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
 
 When no `placePaths` of the config lists the folder, `init` adds an entry to it. In a terminal it asks whether to list the folder's parent as a glob (`places/*`, the default) or the folder itself; without a terminal it takes the glob. A folder right in the config's folder is listed itself. `init` rewrites a `rogen.json`, and refuses a `rogen.jsonc` rather than lose its comments, saying which line to add.
 

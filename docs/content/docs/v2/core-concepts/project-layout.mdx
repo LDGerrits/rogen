@@ -72,7 +72,7 @@ Rogen warns about metadata with nothing to apply to, such as an `init.meta.json`
 
 A `rogen.json` inside a source path is never built, whatever the globs say: a config is Rogen's own file, not game data. `rogen where` reports it as `ignored · matches rogen.json`.
 
-An ignored file that a `tree` `$path` mounts is still mounted: a glob never drops a mounted node, and the mount stays in the project file as an empty Folder. To sync a vendored library exactly as it is, [mount it in the tree](/docs/v2/configuration#tree) instead.
+A glob that ignores some of the files a `tree` `$path` mounts leaves the mount, and Rojo ignores those files. A glob that ignores all of a mount, by naming its folder or file or covering it with `/**`, leaves the mount out of the project file, where Rojo would keep an empty Folder. To sync a vendored library exactly as it is, [mount it in the tree](/docs/v2/configuration#tree) instead.
 
 ### Leaving Out `_` Files
 
