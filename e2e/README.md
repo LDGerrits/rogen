@@ -33,6 +33,14 @@ e2e/cases/<area>/<case>/
 - Files that a run created or changed are listed under `written:`. `rogen.json` and
   `rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 
+`rojo-conformance.test.ts` is the other seam: Rojo's own build-test projects
+(`rojo-build-tests/`, copied from Rojo at the pinned version by
+`node scripts/vendor-rojo-build-tests.ts`) are each saved as a `rogen.json`, and
+the `default.project.json` Rogen writes must equal the original apart from
+`$schema`, with `rojo build` making the same place from both. A project Rogen
+can't write back yet is listed in the test with what it needs; its test is
+`it.failing`, so it fails the day that works and the mark has to go.
+
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
 and fails in CI.
 
