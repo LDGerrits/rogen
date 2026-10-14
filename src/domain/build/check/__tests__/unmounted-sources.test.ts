@@ -71,6 +71,14 @@ describe("UnmountedSources", () => {
 		expect(warnings[0].message).toContain("1 file here");
 	});
 
+	it("should not warn when the tree mounts a nested project", async () => {
+		await write("src/A.luau", "nested.project.json");
+
+		expect(
+			await warningsOf({ project: mounting("nested.project.json") })
+		).toEqual([]);
+	});
+
 	it("should not warn when the config declares routes", async () => {
 		await write("src/A.luau");
 

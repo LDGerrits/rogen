@@ -1,0 +1,81 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  places/arena/default.project.json
+  places/lobby/default.project.json
+
+places/lobby/default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$className": "Folder",
+        "Common": {
+          "$path": {
+            "optional": "../../src/Common"
+          }
+        },
+        "Rules": {
+          "$path": {
+            "optional": "src/Rules.module"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Main": {
+        "$path": {
+          "optional": "src/Main@server.module"
+        }
+      }
+    }
+  },
+  "syncRules": [
+    {
+      "pattern": "*.module",
+      "use": "moduleScript",
+      "suffix": ".module"
+    },
+    {
+      "pattern": "../../src/Common/*.note",
+      "use": "text",
+      "suffix": ".note"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Common: Folder
+        Greeting: StringValue  <- src/Common/Greeting.note
+        Util: ModuleScript  <- src/Common/Util.module
+
+$ rojo sourcemap places/arena/default.project.json
+arena: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Arena: ModuleScript  <- src/Arena.module
+      Common: Folder
+        Greeting: StringValue  <- ../../src/Common/Greeting.note
+        Util: ModuleScript  <- ../../src/Common/Util.module
+
+$ rojo sourcemap places/lobby/default.project.json
+lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Common: Folder
+        Greeting: StringValue  <- ../../src/Common/Greeting.note
+        Util: ModuleScript  <- ../../src/Common/Util.module
+      Rules: ModuleScript  <- src/Rules.module
+  ServerScriptService: ServerScriptService
+    Main: ModuleScript  <- src/Main@server.module

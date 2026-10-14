@@ -51,7 +51,12 @@ export class Placer {
 		);
 		if (sourcePathMounts.length > 0) return err(sourcePathMounts);
 		const roots = this.scan();
-		const readings = new NameReadings(keys, this.layout.initNames, roots);
+		const readings = new NameReadings(
+			keys,
+			this.layout.initNames,
+			roots,
+			(source) => this.config.fileAt(source)
+		);
 		const claims = new RootClaims(roots, readings);
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
 			new Router(this.config, readings).route(roots, claims);
@@ -104,7 +109,8 @@ export class Placer {
 			this.index,
 			this.config.ignored,
 			this.tree.mounts,
-			this.config.projectFiles
+			this.config.projectFiles,
+			(source) => this.config.fileAt(source)
 		);
 		return this.config.sourcePaths.map((sourcePath) =>
 			scanner.scan(sourcePath)

@@ -1,6 +1,6 @@
 import path from "path";
 import { isMatch } from "../../../base/glob.js";
-import { contains, joinPosix } from "../../../base/path.js";
+import { contains, joinPosix, toPosix } from "../../../base/path.js";
 import { plural } from "../../../base/strings.js";
 import {
 	Diagnostic,
@@ -9,10 +9,9 @@ import {
 import { isDirectoryType } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
-import { RojoFile } from "../../rojo/rojo.js";
 import { rojoPathTarget } from "../../rojo/rojo-project.js";
 
-/** Finds the files Rojo reads in the folder a config without routes would have scanned, which go unsynced unless its tree mounts them. */
+/** Finds the files Rojo reads in the folder a config without routes would have scanned, which go unsynced unless its tree mounts them; a nested project in the tree may mount them, so then it finds none. */
 export class UnmountedSources {
 	constructor(
 		private readonly config: ResolvedConfig,
@@ -27,9 +26,13 @@ export class UnmountedSources {
 			.map(({ path: mounted }) =>
 				path.resolve(this.config.projectDir, rojoPathTarget(mounted))
 			);
+		if (
+			mounts.some((mount) => this.config.fileAt(toPosix(mount)).isProject)
+		)
+			return [];
 		const loose = this.filesIn(defaultPath).filter(
 			(file) =>
-				new RojoFile(path.basename(file)).kind !== undefined &&
+				this.config.fileAt(toPosix(file)).kind !== undefined &&
 				!mounts.some((mount) => contains(mount, file)) &&
 				!this.config.ignored.some((glob) => isMatch(file, glob))
 		);

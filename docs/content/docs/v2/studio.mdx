@@ -56,4 +56,4 @@ Rojo refuses to connect from any other place, and says which IDs it expects. `bl
 
 ## Serve With Argon
 
-`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen watch` to keep `default.project.json` current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own.
+`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen watch` to keep `default.project.json` current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own. A project file with [`syncRules`](/docs/v2/configuration#sync-rules) is Rojo's alone, since Argon rejects it.

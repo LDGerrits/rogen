@@ -16,7 +16,7 @@ export class PathRebaser {
 		return prefix === "" ? glob : path.posix.join(prefix, glob);
 	}
 
-	/** Rebases the path-valued keys: the tree's `$path`s, `globIgnorePaths` and `syncPath`. */
+	/** Rebases the path-valued keys: the tree's `$path`s, `globIgnorePaths`, `syncRules` with the folder their patterns are relative to, and `syncPath`. */
 	static values(
 		values: Readonly<Record<string, unknown>>,
 		from: string,
@@ -30,9 +30,19 @@ export class PathRebaser {
 					? PathRebaser.glob(glob, from, to)
 					: glob
 			);
+		if (Array.isArray(rebased.syncRules))
+			rebased.syncRules = rebased.syncRules.map((rule) =>
+				PathRebaser.rule(rule, from, to)
+			);
 		if (typeof rebased.syncPath === "string")
 			rebased.syncPath = PathRebaser.path(rebased.syncPath, from, to);
 		return rebased;
+	}
+
+	private static rule(rule: unknown, from: string, to: string): unknown {
+		if (!isObject(rule) || rule.origin !== undefined || from === to)
+			return rule;
+		return { ...rule, origin: toPosix(from) };
 	}
 
 	private static node(

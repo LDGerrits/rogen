@@ -1,0 +1,12 @@
+{
+	"name": "Game",
+	"placePaths": ["places/*"],
+	"syncRules": [
+		{ "pattern": "*.module", "use": "moduleScript", "suffix": ".module" },
+		{ "pattern": "src/Common/*.note", "use": "text", "suffix": ".note" }
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

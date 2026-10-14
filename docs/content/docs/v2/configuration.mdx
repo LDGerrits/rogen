@@ -70,7 +70,7 @@ Rogen's keys:
 | `serveProject` | `default` | The project `rogen serve` serves. See [Projects](#projects). |
 | `placePaths` | none | Folder globs that make each matching folder a place. See [Places](#places). |
 
-Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths`, which it also reads:
+Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths` and `syncRules`, which it also reads:
 
 | Field | What it does |
 |---|---|
@@ -78,12 +78,13 @@ Rojo's keys. Rogen passes each to the project file as it is, except `globIgnoreP
 | `name` | The project's name. The project file carries it only when you set one here; Rojo names the project after its folder otherwise. |
 | `tree` | The instance tree Rogen merges its generated nodes into. See [Tree](#tree). |
 | `globIgnorePaths` | Globs, relative to the config, of files Rojo ignores. Rogen keeps them out of routing too. See [Ignoring Files](#ignoring-files). |
+| `syncRules` | How a file name becomes an instance, in front of Rojo's own rules. Rogen reads files by them too. See [Sync Rules](#sync-rules). |
 | `servePort`, `serveAddress`, `serveAllowedHosts` | Where `rojo serve` listens. See [`serve`](/docs/v2/cli#serve). |
 | `servePlaceIds`, `blockedPlaceIds`, `placeId`, `gameId` | Which places may connect, and the ones a place file is published to. See [Studio](/docs/v2/studio#place-ids). |
 | `emitLegacyScripts` | Whether Rojo makes `Script` and `LocalScript` instances for `.server` and `.client` files, rather than a run context. |
 | `syncbackRules` | Rojo's syncback rules. |
 
-A key that is on neither list passes through with a warning, since Rojo will reject the written file by that name ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error. `syncRules` is not supported yet, and a config that sets it is an error.
+A key that is on neither list passes through with a warning, since Rojo will reject the written file by that name ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error.
 
 ---
 
@@ -187,6 +188,29 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 ```
 
 An ignored file that a `tree` `$path` mounts is still mounted: the glob never drops a node, and a mount it matches stays in the project file as an empty `Folder`. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+
+## Sync Rules
+
+`syncRules` is Rojo's own key: a list of rules that turn a file name into an instance, tried before Rojo's built-in rules, the first match winning. Rogen reads files by them, so a custom extension is named, routed and given its meta file as Rojo will read it.
+
+```json
+{
+	"syncRules": [
+		{ "pattern": "*.module", "use": "moduleScript", "suffix": ".module" },
+		{ "pattern": "*.hud", "use": "clientScript", "suffix": ".hud" },
+		{ "pattern": "*.skip", "use": "ignore" }
+	]
+}
+```
+
+- `pattern` is a glob matched against the path from the config's folder, and `*` crosses folders. `exclude` is a glob of files the rule leaves to the next one.
+- `use` is what the file becomes: `serverScript`, `clientScript`, `pluginScript`, `moduleScript`, `legacyClientScript`, `legacyServerScript`, `runContextServerScript`, `runContextClientScript`, `project`, `jsonModel`, `json`, `toml`, `csv`, `text`, `rbxm`, `rbxmx`, `yaml` or `ignore`. A file that `ignore` takes is left out of the tree.
+- `suffix` is what Rojo cuts off the end of the file name to name the instance, extension included. Without it only the extension goes. A file whose name doesn't end with the suffix keeps its whole name, extension included, and Rogen warns ([`scan.syncRuleSuffix`](/docs/v2/diagnostics#scan-syncrulesuffix)). The meta file of `Combat.module` is `Combat.meta.json`, found by the cut name.
+- Rules never apply to folders or `init` files, and a file a rule of yours doesn't take is read by Rojo's rules.
+
+Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `syncPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
+
+A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too.
 
 ## Removed Keys
 

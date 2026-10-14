@@ -112,15 +112,15 @@ rogen.json:3:3 - error: "sourcePaths" lists what routes scan, but the config dec
 
 Add a `routes` map, or remove `sourcePaths` and mount the folders in the `tree` with `$path`. `rogen init` writes `server`, `client`, `shared` and `*`. See [Routing](/docs/v2/core-concepts/routing).
 
-### `config.unsupportedField` [#config-unsupportedfield]
+### `config.invalidSyncRule` [#config-invalidsyncrule]
 
-Error. The config sets a key that Rojo reads and Rogen doesn't support yet. Today that is `syncRules`: Rogen would route files by rules it can't read.
+Error. A rule in `syncRules` is not one Rojo can read: it is not an object, it has no `pattern` or `use`, its `use` is not one Rojo has, or its `exclude` or `suffix` is not a string.
 
 ```
-rogen.json:6:3 - error: "syncRules" is not supported yet: Rogen would route files by rules it can't read. Remove it. (config.unsupportedField)
+rogen.json:7:5 - error: "syncRules[0]": a sync rule needs a "use" of serverScript, clientScript, ... (config.invalidSyncRule)
 ```
 
-Remove the key. See [Configuration](/docs/v2/configuration#fields).
+Fix the rule as the message says. See [Configuration](/docs/v2/configuration#sync-rules).
 
 ### `config.invalidRouteKey` [#config-invalidroutekey]
 
@@ -599,6 +599,16 @@ src/Save.LUAU - warning: Rojo reads an extension only in lowercase, so it ignore
 ```
 
 Rename the file as the message says. The same holds for `.JSON`, `.MODEL.JSON` and every other extension Rojo reads.
+
+### `scan.syncRuleSuffix` [#scan-syncrulesuffix]
+
+Warning. A sync rule takes a file but its `suffix` doesn't end the file's name. Rojo cuts the suffix off the name to name the instance, so with no suffix to cut it keeps the whole file name, extension included.
+
+```
+src/Notes.md - warning: the sync rule "*.md" cuts ".txt" off a file name, but this name does not end with it, so Rojo names the instance after the whole file name. Make the suffix end every file the pattern matches. (scan.syncRuleSuffix)
+```
+
+Change the `suffix`, or the `pattern`, so the suffix ends every file the pattern takes. See [Configuration](/docs/v2/configuration#sync-rules).
 
 ### `scan.nestedProject` [#scan-nestedproject]
 

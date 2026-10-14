@@ -1,0 +1,11 @@
+{
+	"syncRules": [
+		{ "pattern": "*.md", "use": "text", "suffix": ".txt" }
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	}
+}

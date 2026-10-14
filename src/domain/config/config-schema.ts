@@ -5,6 +5,7 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
+import { SYNC_RULE_USES } from "../rojo/sync-rules.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
@@ -134,10 +135,34 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	},
 	syncRules: {
 		type: "array",
-		items: { type: "object" },
+		items: {
+			type: "object",
+			properties: {
+				pattern: {
+					type: "string",
+					description: "A glob, relative to this file's folder.",
+				},
+				exclude: {
+					type: "string",
+					description: "A glob of files the rule leaves to the next.",
+				},
+				use: {
+					type: "string",
+					enum: [...SYNC_RULE_USES],
+					description: "What the file becomes.",
+				},
+				suffix: {
+					type: "string",
+					description:
+						"What is cut off the end of the file name to name the instance.",
+				},
+			},
+		},
 		description:
-			"Rojo's sync rules. Rogen doesn't support them yet, and " +
-			"refuses a config that sets them.",
+			"Rojo's sync rules: how a file name becomes an instance, tried " +
+			"before Rojo's own rules, the first match winning. Rogen reads " +
+			"files by them and writes them for Rojo. A file with sync rules " +
+			"is Rojo-only: Argon rejects it.",
 	},
 	syncbackRules: {
 		type: "object",

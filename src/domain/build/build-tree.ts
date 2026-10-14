@@ -13,6 +13,7 @@ import {
 	RojoProjectFile,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
+import { SyncRule } from "../rojo/sync-rules.js";
 import { SyncLayout } from "./sync-layout.js";
 
 interface TreeMount {
@@ -157,9 +158,14 @@ export class BuildTree {
 	/** The project file to write; Rojo names `default.project.json` after its folder, but crashes on any other project file without a `name`. */
 	toFile(
 		tree: RojoNode,
-		globIgnorePaths: readonly string[]
+		globIgnorePaths: readonly string[],
+		syncRules: readonly SyncRule[] = []
 	): RojoProjectFile {
-		const file = this.config.project.toFile({ tree, globIgnorePaths });
+		const file = this.config.project.toFile({
+			tree,
+			globIgnorePaths,
+			syncRules,
+		});
 		return this.config.stem === DEFAULT_PROJECT || file.name !== undefined
 			? file
 			: { ...file, name: this.config.projectName };

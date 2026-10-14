@@ -1,11 +1,12 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
+import { literalGlob } from "../../base/glob.js";
 import { ancestors, contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { isDirectoryType } from "../../platform/fs/file-system-service.js";
 import { LeftOut } from "./build.js";
-import { RojoFile, childrenBesideInit } from "../rojo/rojo.js";
+import { childrenBesideInit } from "../rojo/rojo.js";
 import { RojoProject, RojoProjectFile } from "../rojo/rojo-project.js";
 import {
 	CollapsedDirs,
@@ -15,6 +16,7 @@ import {
 import { BuildMeta } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
+import { WrittenSyncRules } from "./written-sync-rules.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
 export interface Assembly {
@@ -52,9 +54,6 @@ const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "displaced" &&
 	why.status !== "mounted";
 
-const literalGlob = (filePath: string): string =>
-	filePath.replace(/[[\]{}*?]/g, "[$&]");
-
 /** Turns a placed build and the meta it read into its Rojo tree. */
 export class TreeAssembler {
 	constructor(
@@ -77,7 +76,12 @@ export class TreeAssembler {
 			placement,
 			projectFile: placement.tree.toFile(
 				project.getFile().tree,
-				globIgnorePaths
+				globIgnorePaths,
+				new WrittenSyncRules(placement.config, placement.layout).of(
+					placement.roots.flatMap(({ entries }) =>
+						entries.map(({ source }) => source)
+					)
+				)
 			),
 			meta,
 			metaOutcomes: applied.value,
@@ -296,7 +300,7 @@ export class TreeAssembler {
 			rojoName:
 				placement.initDirOf(file) !== undefined
 					? undefined
-					: new RojoFile(path.posix.basename(source)).instanceName,
+					: placement.config.fileAt(source).instanceName,
 		};
 	}
 }

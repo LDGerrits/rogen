@@ -2,7 +2,7 @@ import path from "path";
 import { ancestors, isInside, toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
-import { RojoFile } from "../../rojo/rojo.js";
+import { FileAt } from "../root-scanner.js";
 
 /** `index` with the source files that don't exist yet, and their folders, added on top; `index` itself is untouched. */
 export class PlannedFilesIndex implements IndexReader {
@@ -11,12 +11,12 @@ export class PlannedFilesIndex implements IndexReader {
 	constructor(
 		private readonly index: IndexReader,
 		sourcePaths: readonly string[],
-		paths: readonly string[]
+		paths: readonly string[],
+		fileAt: FileAt
 	) {
 		for (const target of paths) {
 			const sourcePath = sourcePaths.find((dir) => isInside(target, dir));
-			if (!sourcePath || !new RojoFile(path.basename(target)).kind)
-				continue;
+			if (!sourcePath || !fileAt(toPosix(target)).kind) continue;
 			if (this.hasEntry(path.dirname(target), path.basename(target)))
 				continue;
 

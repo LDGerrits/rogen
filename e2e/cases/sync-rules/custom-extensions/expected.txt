@@ -1,0 +1,91 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Combat.module -> ReplicatedStorage/shared/Combat · route * (fallback)
+  src/Draft.skip -> ignored · matches *.skip
+  src/Greeting.note -> ReplicatedStorage/shared/Greeting · route * (fallback)
+  src/Menu@client.hud -> StarterPlayer/StarterPlayerScripts/Menu · route client (suffix)
+  src/Plain.luau -> ReplicatedStorage/shared/Plain · route * (fallback)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Combat": {
+          "$path": {
+            "optional": "src/Combat.module"
+          }
+        },
+        "Greeting": {
+          "$path": {
+            "optional": "src/Greeting.note"
+          }
+        },
+        "Plain": {
+          "$path": {
+            "optional": "src/Plain.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Menu": {
+          "$path": {
+            "optional": "src/Menu@client.hud"
+          }
+        }
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "src/Draft.skip"
+  ],
+  "syncRules": [
+    {
+      "pattern": "*.module",
+      "use": "moduleScript",
+      "suffix": ".module"
+    },
+    {
+      "pattern": "*.hud",
+      "use": "clientScript",
+      "suffix": ".hud"
+    },
+    {
+      "pattern": "*.note",
+      "use": "text",
+      "suffix": ".note"
+    },
+    {
+      "pattern": "*.skip",
+      "use": "ignore"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Combat: ModuleScript  <- src/Combat.meta.json, src/Combat.module
+      Greeting: StringValue  <- src/Greeting.note
+      Plain: ModuleScript  <- src/Plain.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Menu: LocalScript  <- src/Menu@client.hud

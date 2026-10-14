@@ -1,12 +1,14 @@
 import path from "path";
-import { commonAncestor, samePath } from "../../base/path.js";
+import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import {
 	ParsedProjectFile,
 	RojoProject,
 	projectFileName,
 } from "../rojo/rojo-project.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { DEFAULT_PROJECT, DEFAULT_SOURCE_PATH } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
@@ -57,6 +59,8 @@ export class ResolvedConfig {
 	readonly hasPlaces: boolean;
 	readonly placePort?: number;
 	readonly keys: DeclaredKeys;
+	/** The project's `syncRules` in front of Rojo's. */
+	readonly syncRules: SyncRules;
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
@@ -75,6 +79,22 @@ export class ResolvedConfig {
 		this.hasPlaces = fields.hasPlaces ?? false;
 		this.placePort = fields.placePort;
 		this.keys = new DeclaredKeys(fields.routes.keys());
+		this.syncRules = SyncRules.following(
+			SyncRules.read(fields.project.syncRules).rules,
+			toPosix(this.projectDir)
+		);
+	}
+
+	/** The file at `source`, an absolute POSIX path, as Rojo reads it with this project's sync rules. */
+	fileAt(source: string): RojoFile {
+		return new RojoFile(
+			path.posix.basename(source),
+			this.syncRules,
+			path.posix.relative(
+				toPosix(this.projectDir),
+				path.posix.dirname(source)
+			)
+		);
 	}
 
 	/** What the project is asked for by: the name of the game, and for a project of the config its own name beside it. */

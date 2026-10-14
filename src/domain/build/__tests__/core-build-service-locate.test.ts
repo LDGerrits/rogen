@@ -540,7 +540,8 @@ describe("CoreBuildService.locate", () => {
 			const planned = new PlannedFilesIndex(
 				listing,
 				[abs("src")],
-				[abs("src/Combat/Server/Hit.luau")]
+				[abs("src/Combat/Server/Hit.luau")],
+				(source) => configOf().fileAt(source)
 			);
 
 			expect(planned.getEntries(abs("src/Combat"))).toBeDefined();

@@ -412,4 +412,73 @@ describe("Placer", () => {
 			).toEqual(["Net/init.luau -> ReplicatedStorage/shared/Net"]);
 		});
 	});
+
+	describe("files read by the sync rules of the project", () => {
+		let fs: MemoryFileSystemService;
+
+		const placed = async (
+			files: readonly string[],
+			syncRules: readonly object[]
+		) => {
+			await writeFiles(fs, ...files);
+			return (
+				await buildAndPlace(
+					fs,
+					configOf({
+						routes: SHARED_ROUTES,
+						project: { tree: {}, syncRules },
+					})
+				)
+			).unwrap();
+		};
+
+		beforeEach(() => {
+			fs = new MemoryFileSystemService();
+		});
+
+		it("should name a file by its rule, and route it by the key in the name that is left", async () => {
+			const { placement } = await placed(
+				["src/Hud@client.hud", "src/Combat.module"],
+				[
+					{ pattern: "*.hud", use: "clientScript", suffix: ".hud" },
+					{
+						pattern: "*.module",
+						use: "moduleScript",
+						suffix: ".module",
+					},
+				]
+			);
+
+			expect(placedLines(placement.files)).toEqual([
+				"Combat.module -> ReplicatedStorage/Combat",
+				"Hud@client.hud -> StarterPlayer/StarterPlayerScripts/Hud",
+			]);
+		});
+
+		it("should leave out a file a rule ignores, and say which rule", async () => {
+			const { placement } = await placed(
+				["src/Draft.skip", "src/Real.luau"],
+				[{ pattern: "*.skip", use: "ignore" }]
+			);
+
+			expect(placedLines(placement.files)).toEqual([
+				"Real.luau -> ReplicatedStorage/Real",
+			]);
+			expect(placement.leftOut.get(abs("src/Draft.skip"))).toEqual({
+				status: "ignored",
+				pattern: "*.skip",
+			});
+		});
+
+		it("should read a file as Rojo does when no rule of the project takes it", async () => {
+			const { placement } = await placed(
+				["src/Save.server.luau"],
+				[{ pattern: "*.module", use: "moduleScript" }]
+			);
+
+			expect(placedLines(placement.files)).toEqual([
+				"Save.server.luau -> ServerScriptService/Save",
+			]);
+		});
+	});
 });

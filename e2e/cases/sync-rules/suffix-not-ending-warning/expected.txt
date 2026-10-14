@@ -1,0 +1,41 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  src/Notes.md - warning: the sync rule "*.md" cuts ".txt" off a file name, but this name does not end with it, so Rojo names the instance after the whole file name. Make the suffix end every file the pattern matches. (scan.syncRuleSuffix)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Notes.md": {
+          "$path": {
+            "optional": "src/Notes.md"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "syncRules": [
+    {
+      "pattern": "*.md",
+      "use": "text",
+      "suffix": ".txt"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Notes.md: StringValue  <- src/Notes.md

@@ -15,6 +15,11 @@ export function unescapedGlob(glob: GlobPattern): string {
 	return glob.replace(/\[([(){}|[\]*?!+@])\]/g, "$1");
 }
 
+/** `filePath` as a glob that matches only itself under Rust's globset. */
+export function literalGlob(filePath: string): string {
+	return filePath.replace(/[[\]{}*?]/g, "[$&]");
+}
+
 export function isMatch(path: string, glob: GlobPattern): boolean {
 	return picomatch.isMatch(path, glob, {
 		dot: true,

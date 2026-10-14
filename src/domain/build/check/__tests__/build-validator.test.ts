@@ -136,6 +136,51 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("a sync rule whose suffix does not end a file name", () => {
+			const suffixed = async (...files: string[]) => {
+				await write(...files);
+				return (
+					await route({
+						project: {
+							tree: {},
+							syncRules: [
+								{
+									pattern: "*.md",
+									use: "text",
+									suffix: ".txt",
+								},
+							],
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(
+						({ code }) => code === "scan.syncRuleSuffix"
+					);
+			};
+
+			it("should warn at each file the rule takes", async () => {
+				const warnings = await suffixed(
+					"src/B.md",
+					"src/A.md",
+					"src/C.luau"
+				);
+
+				expect(warnings).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: at("src", "A.md"),
+						message: expect.stringContaining('"*.md" cuts ".txt"'),
+					},
+					{ resource: at("src", "B.md") },
+				]);
+			});
+
+			it("should not warn for a file whose name ends with the suffix", async () => {
+				expect(await suffixed("src/A.txt")).toEqual([]);
+			});
+		});
+
 		describe("a source path named after a key", () => {
 			const named = async (
 				sourcePaths: string[],

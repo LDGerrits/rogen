@@ -1,0 +1,46 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Combat": {
+          "$path": {
+            "optional": "out/Combat"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "syncRules": [
+    {
+      "pattern": "out/*.module",
+      "use": "moduleScript",
+      "suffix": ".module"
+    },
+    {
+      "pattern": "*.note",
+      "use": "text",
+      "suffix": ".note"
+    }
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Combat: Folder
+        Greeting: StringValue  <- out/Combat/Greeting.note
+        Hit: ModuleScript  <- out/Combat/Hit.module

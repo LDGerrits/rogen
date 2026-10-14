@@ -80,7 +80,7 @@ describe("CoreConfigService", () => {
 			);
 		});
 
-		it("should refuse syncRules until they are supported", async () => {
+		it("should accept syncRules", async () => {
 			await write(
 				"/repo/rogen.json",
 				`{
@@ -90,13 +90,27 @@ describe("CoreConfigService", () => {
 
 			await start();
 
+			expect(errors(0)).toEqual([]);
+		});
+
+		it("should refuse a sync rule Rojo can't read", async () => {
+			await write(
+				"/repo/rogen.json",
+				`{
+	"syncRules": [
+		{ "pattern": "*.md", "use": "text" },
+		{ "pattern": "*.txt", "use": "stone" }
+	]
+}`
+			);
+
+			await start();
+
 			expect(errors(0)).toMatchObject([
 				{
-					code: "config.unsupportedField",
-					position: { line: 2, column: 2 },
-					message: expect.stringContaining(
-						'"syncRules" is not supported yet'
-					),
+					code: "config.invalidSyncRule",
+					position: { line: 4, column: 3 },
+					message: expect.stringContaining('"syncRules[1]"'),
 				},
 			]);
 		});

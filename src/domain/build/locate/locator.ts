@@ -206,7 +206,8 @@ class ConfigLocator {
 		const index = new PlannedFilesIndex(
 			this.listing,
 			this.config.sourcePaths,
-			paths
+			paths,
+			(source) => this.config.fileAt(source)
 		);
 		const planned = await this.locatorOf(
 			index,
@@ -367,7 +368,8 @@ class ConfigLocator {
 		const index = new PlannedFilesIndex(
 			this.listing,
 			this.config.sourcePaths,
-			[file]
+			[file],
+			(source) => this.config.fileAt(source)
 		);
 		const placement = this.builderOf(index).place(this.config);
 		return placement.isOk()

@@ -27,6 +27,9 @@ export interface ScannedFile {
 	readonly source: string;
 }
 
+/** The file at an absolute POSIX path, read as Rojo reads it. */
+export type FileAt = (source: string) => RojoFile;
+
 export interface UnclaimedMeta {
 	/** Absolute, POSIX-style. */
 	readonly path: string;
@@ -56,7 +59,8 @@ export class ScannedRoot implements ScannedRootParts {
 
 	constructor(
 		parts: ScannedRootParts,
-		private readonly index: IndexReader
+		private readonly index: IndexReader,
+		private readonly fileAt: FileAt
 	) {
 		({
 			sourcePath: this.sourcePath,
@@ -68,7 +72,11 @@ export class ScannedRoot implements ScannedRootParts {
 		} = parts);
 	}
 
-	static missing(sourcePath: string, index: IndexReader): ScannedRoot {
+	static missing(
+		sourcePath: string,
+		index: IndexReader,
+		fileAt: FileAt
+	): ScannedRoot {
 		return new ScannedRoot(
 			{
 				sourcePath,
@@ -78,7 +86,8 @@ export class ScannedRoot implements ScannedRootParts {
 				metaFiles: [],
 				leftOut: new Map(),
 			},
-			index
+			index,
+			fileAt
 		);
 	}
 
@@ -124,16 +133,17 @@ export class ScannedRoot implements ScannedRootParts {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
 			if (RojoFile.isInitMeta(fileName)) return [];
+			const dir = path.join(
+				this.sourcePath,
+				path.posix.dirname(metaFile)
+			);
 			const listing =
-				this.index.getEntries(
-					path.join(this.sourcePath, path.posix.dirname(metaFile))
-				) ?? new Map<string, FileType>();
+				this.index.getEntries(dir) ?? new Map<string, FileType>();
 			const siblings = [...listing]
 				.filter(([, type]) => isFileType(type))
-				.map(([sibling]) => sibling);
+				.map(([sibling]) => this.fileAt(joinPosix(dir, sibling)));
 			const name = RojoFile.metaStemOf(fileName) ?? fileName;
-			if (siblings.some((file) => new RojoFile(file).metaName === name))
-				return [];
+			if (siblings.some((file) => file.metaName === name)) return [];
 
 			const folder = listing.get(name);
 			return [
@@ -156,25 +166,22 @@ export class ScannedRoot implements ScannedRootParts {
 
 	private static hintFor(
 		name: string,
-		siblings: readonly string[],
+		siblings: readonly RojoFile[],
 		isFolder: boolean
 	): string | undefined {
 		if (isFolder) return `a folder's meta is ${name}/${RojoFile.INIT_META}`;
 		for (const file of siblings) {
-			if (stemOf(file) !== name) continue;
-			const metaName = new RojoFile(file).metaName;
-			if (metaName)
-				return `Rojo reads ${metaName}${RojoFile.META_SUFFIX}`;
+			if (stemOf(file.name) !== name) continue;
+			if (file.metaName)
+				return `Rojo reads ${file.metaName}${RojoFile.META_SUFFIX}`;
 		}
-		const withoutMeta = siblings.find((file) => {
-			const rojoFile = new RojoFile(file);
-			return (
-				rojoFile.metaName === undefined &&
-				rojoFile.kind !== undefined &&
-				[stemOf(file), rojoFile.dataName].includes(name)
-			);
-		});
-		return withoutMeta ? `${withoutMeta} takes no meta` : undefined;
+		const withoutMeta = siblings.find(
+			(file) =>
+				file.metaName === undefined &&
+				file.kind !== undefined &&
+				[stemOf(file.name), file.dataName].includes(name)
+		);
+		return withoutMeta ? `${withoutMeta.name} takes no meta` : undefined;
 	}
 }
 
@@ -192,7 +199,8 @@ export class RootScanner {
 		private readonly index: IndexReader,
 		private readonly ignored: readonly string[],
 		private readonly mounts: TreeMounts,
-		private readonly projectFiles: readonly string[]
+		private readonly projectFiles: readonly string[],
+		private readonly fileAt: FileAt
 	) {}
 
 	scan(sourcePath: string): ScannedRoot {
@@ -211,7 +219,7 @@ export class RootScanner {
 			),
 		};
 		if (!this.visit(walk, sourcePath)) {
-			return ScannedRoot.missing(sourcePath, this.index);
+			return ScannedRoot.missing(sourcePath, this.index, this.fileAt);
 		}
 		return new ScannedRoot(
 			{
@@ -224,7 +232,8 @@ export class RootScanner {
 				metaFiles: walk.metaFiles.sort(),
 				leftOut: walk.leftOut,
 			},
-			this.index
+			this.index,
+			this.fileAt
 		);
 	}
 
@@ -293,9 +302,14 @@ export class RootScanner {
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
 			} else {
-				const file = new RojoFile(name);
+				const file = this.fileAt(joinPosix(dir, name));
 				const lowercased = file.lowercasedExtension;
-				if (lowercased !== undefined) {
+				if (file.ignoredBy) {
+					walk.leftOut.set(joinPosix(dir, name), {
+						status: "ignored",
+						pattern: file.ignoredBy.pattern,
+					});
+				} else if (lowercased !== undefined) {
 					walk.leftOut.set(joinPosix(dir, name), {
 						status: "extensionCase",
 						rename: lowercased,

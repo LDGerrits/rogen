@@ -15,6 +15,7 @@ import {
 	RojoNode,
 	RojoProject,
 } from "../rojo/rojo-project.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import { DEFAULT_SOURCE_PATH, fieldOf, sourcePathOverlap } from "./config.js";
@@ -97,7 +98,7 @@ export class ConfigValidator {
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;
 		const project = this.readProject();
-		this.checkSyncRules();
+		this.checkSyncRules(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
 		this.checkPlaces();
@@ -156,12 +157,13 @@ export class ConfigValidator {
 		});
 	}
 
-	private checkSyncRules(): void {
-		if (this.config.model.keys.includes("syncRules"))
+	private checkSyncRules(project: RojoProject<ParsedProjectFile>): void {
+		for (const { index, message } of SyncRules.read(project.syncRules)
+			.problems)
 			this.problems.error(
-				"config.unsupportedField",
-				this.locateKey("syncRules"),
-				'"syncRules" is not supported yet: Rogen would route files by rules it can\'t read. Remove it.'
+				"config.invalidSyncRule",
+				this.locate("syncRules", String(index)),
+				`"syncRules[${index}]": ${message}`
 			);
 	}
 

@@ -1,5 +1,5 @@
 import path from "path";
-import { joinPosix, stemOf } from "../../base/path.js";
+import { joinPosix } from "../../base/path.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { RojoFile, RojoFileKind, RojoScriptSuffix } from "../rojo/rojo.js";
 import {
@@ -16,7 +16,7 @@ import {
 	SuffixMatch,
 } from "./name-reader.js";
 import { InstanceName } from "./instance-name.js";
-import { ScannedFile, ScannedRoot } from "./root-scanner.js";
+import { FileAt, ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A folder that never becomes an instance, as a warning names it. */
 export type InstancelessFolder =
@@ -59,7 +59,8 @@ export class NameReadings {
 	constructor(
 		private readonly keys: DeclaredKeys,
 		private readonly initNames: ReadonlySet<string>,
-		roots: readonly ScannedRoot[]
+		roots: readonly ScannedRoot[],
+		private readonly fileAt: FileAt
 	) {
 		this.reader = new NameReader(keys);
 		for (const root of roots) {
@@ -102,7 +103,7 @@ export class NameReadings {
 	}
 
 	private readEntry(root: ScannedRoot, entry: ScannedFile): void {
-		const { fileName, kind, stem } = NameReadings.suffixedNameOf(entry);
+		const { fileName, kind, stem } = this.suffixedNameOf(entry);
 		const folders = this.readFoldersAbove(
 			root.sourcePath,
 			entry.relativePath
@@ -242,18 +243,18 @@ export class NameReadings {
 		return above;
 	}
 
-	private static suffixedNameOf(entry: ScannedFile): {
+	private suffixedNameOf(entry: ScannedFile): {
 		readonly fileName: string;
 		readonly kind: RojoFileKind;
 		readonly stem: string;
 	} {
 		const { kind } = entry;
 		const fileName = path.posix.basename(entry.relativePath);
-		const stem = stemOf(fileName);
+		const file = this.fileAt(entry.source);
 		return {
 			fileName,
 			kind,
-			stem: kind === "data" ? new RojoFile(fileName).dataName : stem,
+			stem: kind === "data" ? file.dataName : file.stem,
 		};
 	}
 }

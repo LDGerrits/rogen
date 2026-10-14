@@ -79,6 +79,7 @@ export class BuildValidator {
 			...this.sourcePathNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.extensionCase(),
+			...this.syncRuleSuffix(),
 			...this.nestedProject(),
 			...this.unclaimedMeta(),
 			...this.caseMismatch(),
@@ -173,6 +174,24 @@ export class BuildValidator {
 					"this link points at nothing, or back at a directory that contains it, so it contributes nothing."
 				)
 			);
+	}
+
+	private syncRuleSuffix(): Diagnostic[] {
+		return this.placement.roots
+			.flatMap(({ entries }) => entries)
+			.sort((a, b) => compareStrings(a.source, b.source))
+			.flatMap(({ source }) => {
+				const rule = this.config.fileAt(source).suffixMissedBy;
+				return rule
+					? [
+							warningDiagnostic(
+								"scan.syncRuleSuffix",
+								{ resource: source },
+								`the sync rule "${rule.pattern}" cuts "${rule.suffix}" off a file name, but this name does not end with it, so Rojo names the instance after the whole file name. Make the suffix end every file the pattern matches.`
+							),
+						]
+					: [];
+			});
 	}
 
 	private nestedProject(): Diagnostic[] {
@@ -564,7 +583,7 @@ export class BuildValidator {
 				`this folder shares "${instance}" with ${entry.source}, the init script of another folder, which is what Rojo reads there, so its meta applies to nothing. Put it in ${joinPosix(file.init.sitsIn, RojoFile.INIT_META)} instead.`
 			);
 		const fix =
-			new RojoFile(fileName).metaFile ??
+			this.placement.config.fileAt(entry.source).metaFile ??
 			`${fileName}${RojoFile.META_SUFFIX}`;
 		return warningDiagnostic(
 			"meta.sharedWithScript",
