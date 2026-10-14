@@ -53,10 +53,13 @@ stdout:
 $ rogen help init
 exit 0
 stdout:
-  Writes a starting rogen.json, detecting the workspace and asking in a terminal.
+  Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
   
   Usage:
-    rogen init [options]
+    rogen init [path] [options]
+  
+  Arguments:
+    path  A folder below a rogen.json to add as a place of it: its own rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.
   
   Options:
         --non-interactive  Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
@@ -65,6 +68,7 @@ stdout:
   Examples:
     rogen init
     rogen init --non-interactive
+    rogen init places/lobby
   
   Global options:
     -h, --help     Print help.

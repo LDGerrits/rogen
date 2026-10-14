@@ -49,6 +49,31 @@ export class InitQuestions {
 		});
 	}
 
+	/** How to list a place in `placePaths`: the glob that matches its parent's folders (the default), or the folder itself; a run that can't ask takes the glob. */
+	async placeListing(
+		glob: string,
+		folder: string
+	): Promise<string | undefined> {
+		if (!this.interactive) return glob;
+		const answer = await this.promptService.select<"glob" | "folder">({
+			message: "How do you want to list this place?",
+			choices: [
+				{
+					value: "glob",
+					label: glob,
+					hint: "every folder there is a place",
+				},
+				{ value: "folder", label: folder, hint: "only this folder" },
+			],
+			initialValue: "glob",
+		});
+		return answer === undefined
+			? undefined
+			: answer === "glob"
+				? glob
+				: folder;
+	}
+
 	/** What to add beside the config in `configFile`, among `options`, which are never empty; a run that can't ask takes the first, as Enter does. */
 	async whatToAdd<T>(
 		configFile: string,

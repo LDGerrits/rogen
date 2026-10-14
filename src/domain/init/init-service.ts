@@ -39,6 +39,8 @@ export type InitWritten =
 export interface InitOptions {
 	/** Whether `init` may ask at all; it asks only in a terminal a person can answer. */
 	readonly ask?: boolean;
+	/** A folder to add as a place of the config above it, in place of starting a project here. */
+	readonly place?: string;
 }
 
 /** Writes a starter `rogen.json` into the working directory in two steps, so a caller can print between them. */

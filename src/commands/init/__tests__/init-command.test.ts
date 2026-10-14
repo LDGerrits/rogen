@@ -673,7 +673,21 @@ describe("init command", () => {
 		expect(errorMessage(result)).toContain("Permission denied");
 	});
 
-	it("should reject an argument", async () => {
+	it("should reject several arguments", async () => {
+		const result = await runInit(
+			new MockPromptService([], false),
+			undefined,
+			{},
+			["lobby", "shop"]
+		);
+
+		expect(errorMessage(result)).toBe(
+			"init takes one folder, the place to add."
+		);
+		expect(await exists("rogen.json")).toBe(false);
+	});
+
+	it("should reject a folder to add as a place when no config is above it", async () => {
 		const result = await runInit(
 			new MockPromptService([], false),
 			undefined,
@@ -681,7 +695,7 @@ describe("init command", () => {
 			["lobby"]
 		);
 
-		expect(errorMessage(result)).toBe("init takes no arguments.");
+		expect(errorMessage(result)).toContain("No rogen.json found above");
 		expect(await exists("rogen.json")).toBe(false);
 	});
 

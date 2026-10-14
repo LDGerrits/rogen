@@ -333,9 +333,11 @@ export class ConfigDiscovery {
 				);
 	}
 
-	/** The nearest parent of the working directory that has a config. */
-	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
-		let directory = this.environmentService.cwd;
+	/** The nearest parent of `from`, the working directory unless given, that has a config. */
+	async findEnclosing(
+		from = this.environmentService.cwd
+	): Promise<EnclosingConfigs | undefined> {
+		let directory = from;
 		for (;;) {
 			const parent = path.dirname(directory);
 			if (parent === directory) return undefined;

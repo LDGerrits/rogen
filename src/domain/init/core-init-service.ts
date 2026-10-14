@@ -21,6 +21,7 @@ import {
 } from "./init-service.js";
 import { InitAdditions } from "./init-additions.js";
 import { Setup } from "./setup.js";
+import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
 
 export class CoreInitService implements InitService {
@@ -40,9 +41,20 @@ export class CoreInitService implements InitService {
 		this.writer = new InitWriter(fileSystemService);
 	}
 
-	async plan({ ask = true }: InitOptions = {}): Promise<
+	async plan({ ask = true, place }: InitOptions = {}): Promise<
 		Result<InitPlan | undefined, Error>
 	> {
+		if (place !== undefined)
+			return new PlaceInit(
+				this.fileSystemService,
+				new InitQuestions(
+					this.promptService,
+					ask && this.promptService.isInteractive
+				),
+				this.toolchainService,
+				this.configService,
+				this.environmentService.cwd
+			).plan(place);
 		const directory = await this.prepare();
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;

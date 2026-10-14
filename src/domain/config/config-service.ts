@@ -140,8 +140,8 @@ export interface ConfigService {
 	select(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
-	/** The nearest folder above the working directory that has configs. */
-	findEnclosing(): Promise<EnclosingConfigs | undefined>;
+	/** The nearest folder above `from`, the working directory unless given, that has configs. */
+	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** Loads one config file as `select` would, outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
 	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */

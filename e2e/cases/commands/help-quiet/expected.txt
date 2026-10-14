@@ -10,7 +10,7 @@ stdout:
     build [project...]  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
     check [path...]     Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
     help [name]         Prints usage, a command's details, a topic, or what a diagnostic code means.
-    init                Writes a starting rogen.json, detecting the workspace and asking in a terminal.
+    init [path]         Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
     list [project...]   Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
     serve [project...]  Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
     watch [project...]  Builds, then rebuilds whenever sources or configs change.

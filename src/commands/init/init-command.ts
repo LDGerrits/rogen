@@ -31,9 +31,21 @@ registerCommand(
 				id: "init",
 				metadata: {
 					description:
-						"Writes a starting rogen.json, detecting the workspace and asking in a terminal.",
+						"Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.",
+					args: [
+						{
+							name: "path",
+							description:
+								"A folder below a rogen.json to add as a place of it: its own rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.",
+							isOptional: true,
+						},
+					],
 					options: InitOptions,
-					examples: ["rogen init", "rogen init --non-interactive"],
+					examples: [
+						"rogen init",
+						"rogen init --non-interactive",
+						"rogen init places/lobby",
+					],
 				},
 			});
 		}
@@ -42,8 +54,10 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
-			if (line.positionals.length > 0)
-				return err(new UsageError("init takes no arguments."));
+			if (line.positionals.length > 1)
+				return err(
+					new UsageError("init takes one folder, the place to add.")
+				);
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const log = new InitLog(
@@ -54,7 +68,10 @@ registerCommand(
 			const ask = !line.options["non-interactive"] && !line.options.json;
 
 			if (!line.options.json) log.intro();
-			const planned = await initService.plan({ ask });
+			const planned = await initService.plan({
+				ask,
+				place: line.positionals[0],
+			});
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));

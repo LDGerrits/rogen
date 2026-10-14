@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [project…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` prints usage. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command, and a bare `rogen` prints usage. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). A [place](/docs/v2/configuration#places) is a folder too: run inside one, a command answers for that place, and `rogen serve places/lobby` serves only it. At the root of a config that lists places, a command covers the config and every place, and a project name (`rogen build release`) means the project of that name in each. Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
@@ -60,7 +60,7 @@ rogen serve · my-game
 error: Rojo: Snapshot error: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon after the string or word in object property on line 2 column 1
 ```
 
-With no project named, `serve` builds, watches and serves the `rogen.json` it finds. Name projects to serve those instead: `rogen serve game` serves that folder's `serveProject`, `rogen serve release` or `rogen serve game/release.project.json` serves that project of the config, and a project from another folder is watched on its own.
+With no project named, `serve` builds, watches and serves the `rogen.json` it finds. A config that lists [places](/docs/v2/configuration#places) is never served, but each of its places is, on its own port: its `servePort`, else 34872 plus its index among the places without one, sorted by path. Name projects to serve those instead: `rogen serve game` serves that folder's `serveProject`, `rogen serve release` or `rogen serve game/release.project.json` serves that project of the config, and a project from another folder is watched on its own.
 
 Servers start only after the first build succeeds. If it fails, nothing starts, the errors print and `serve` exits 1. A server that has not answered for its project after ten seconds is reported once, saying what else answers on its port if something does, and `serve` goes on waiting. Press Ctrl+C to stop: it reaches the server, and Rogen ends every process it started.
 
@@ -183,7 +183,7 @@ With no path, `check` reports every diagnostic of the project, the sync path's i
 git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 ```
 
-### `init`
+### `init [path]`
 
 Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
@@ -201,9 +201,15 @@ A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `
 
 Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask never adds it, and `jq` is the one tool it needs besides `bash` and `git`.
 
+#### Adding a place
+
+`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
+
+When no `placePaths` of the config lists the folder, `init` adds an entry to it. In a terminal it asks whether to list the folder's parent as a glob (`places/*`, the default) or the folder itself; without a terminal it takes the glob. A folder right in the config's folder is listed itself. `init` rewrites a `rogen.json`, and refuses a `rogen.jsonc` rather than lose its comments, saying which line to add.
+
 ### `list [project…]`
 
-Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
+Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). A config that lists places is followed by a block for each place, with its folder and, for each project, the port it is served on. It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
 
 ### `help [name]`
 

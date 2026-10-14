@@ -2,7 +2,8 @@
 	"steps": [
 		[
 			"init",
-			"lobby"
+			"lobby",
+			"shop"
 		]
 	]
 }

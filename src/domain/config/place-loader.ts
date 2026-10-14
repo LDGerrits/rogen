@@ -15,11 +15,11 @@ import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	CONFIG_FILE_NAMES,
 	DEFAULT_CONFIG_FILE,
-	FIRST_PLACE_PORT,
 	ResolvedConfigFile,
 } from "./config.js";
 import { ConfigKeys } from "./config-keys.js";
 import { ConfigValidator } from "./config-validator.js";
+import { PlacePorts } from "./place-ports.js";
 import {
 	PlaceBase,
 	ProjectSource,
@@ -86,7 +86,11 @@ export class PlaceLoader {
 				resolved: err(uniqueDiagnostics(problems)),
 			};
 
-		const ports = PlaceLoader.ports(read);
+		const ports = PlacePorts.assign(
+			read.map(({ sources }) =>
+				PlacePorts.pinnedBy(sources[0].model.getValue("servePort"))
+			)
+		);
 		const places = read.map(
 			({ sources, serveProject, warnings }, index) => {
 				const stems = sources.map(({ stem }) => stem);
@@ -116,30 +120,6 @@ export class PlaceLoader {
 				}))
 			),
 		};
-	}
-
-	/** The port of each place that pins none, in the order the places are given: from the first port up, skipping the ones places pin. */
-	private static ports(
-		places: readonly PlaceSources[]
-	): (number | undefined)[] {
-		const pinned = places.map(({ sources }) =>
-			sources[0].model.getValue<unknown>("servePort")
-		);
-		const taken = new Set(
-			pinned.filter(
-				(port): port is number =>
-					typeof port === "number" &&
-					Number.isInteger(port) &&
-					port > 0 &&
-					port < 65536
-			)
-		);
-		let next = FIRST_PLACE_PORT;
-		return pinned.map((port) => {
-			if (typeof port === "number") return undefined;
-			while (taken.has(next)) next++;
-			return next++;
-		});
 	}
 
 	/** The config of a place's folder, or an empty one when it holds none. */

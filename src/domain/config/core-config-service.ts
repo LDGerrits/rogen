@@ -131,8 +131,8 @@ export class CoreConfigService implements ConfigService {
 		return (await this.discovery.list(directory)).slice(0, 1);
 	}
 
-	findEnclosing(): Promise<EnclosingConfigs | undefined> {
-		return this.discovery.findEnclosing();
+	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {
+		return this.discovery.findEnclosing(from);
 	}
 
 	async read(file: string): Promise<ConfigEntry> {
