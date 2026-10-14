@@ -12,6 +12,7 @@ import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
 import { SyncLayout } from "./sync-layout.js";
 import { InstanceClash } from "./instance-resolver.js";
+import { isPlayerScriptContainer } from "../roblox/roblox.js";
 
 /** Why each path is left out of the tree, by absolute POSIX path. */
 export class LeftOutPaths implements Iterable<[string, LeftOut]> {
@@ -52,6 +53,11 @@ export interface DisplacedFile {
 	readonly source: string;
 }
 
+export interface PlayerClientScripts {
+	readonly rulable: ReadonlySet<string>;
+	readonly inits: readonly RoutedFile[];
+}
+
 interface PlacementParts {
 	readonly config: ResolvedConfig;
 	readonly layout: SyncLayout;
@@ -88,6 +94,7 @@ export class Placement {
 	readonly files: readonly RoutedFile[];
 	private readonly nodesBySource: ReadonlyMap<string, readonly RoutedFile[]>;
 	private unclaimed: UnclaimedMeta[] | undefined;
+	private legacy: PlayerClientScripts | undefined;
 
 	constructor(parts: PlacementParts) {
 		this.config = parts.config;
@@ -135,6 +142,27 @@ export class Placement {
 		return (this.nodesBySource.get(file.entry.source) ?? []).filter(
 			(node) => node !== file
 		);
+	}
+
+	/** The client scripts in a player scripts container that `emitLegacyScripts: false` would make RunContext scripts: those a sync rule keeps LocalScripts, and the init scripts none can. */
+	get playerClientScripts(): PlayerClientScripts {
+		if (this.legacy) return this.legacy;
+		const rulable = new Set<string>();
+		const inits: RoutedFile[] = [];
+		const clients = this.tree.disablesLegacyScripts
+			? this.nodes.filter(
+					(file) =>
+						isPlayerScriptContainer(file.instancePath) &&
+						file.entry.file.ownRule === undefined &&
+						this.readingOf(file).scriptSuffix === "client"
+				)
+			: [];
+		for (const file of clients) {
+			if (this.initDirOf(file) !== undefined) inits.push(file);
+			else rulable.add(file.entry.source);
+		}
+		this.legacy = { rulable, inits };
+		return this.legacy;
 	}
 
 	/** The directory Rojo reads an init script through, if it does. */

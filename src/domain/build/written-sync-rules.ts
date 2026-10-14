@@ -13,8 +13,11 @@ export class WrittenSyncRules {
 		private readonly globs: WrittenGlobs
 	) {}
 
-	of(entries: readonly ScannedFile[]): SyncRule[] {
-		return this.config.syncRules.own.flatMap((rule) => {
+	of(
+		entries: readonly ScannedFile[],
+		legacyClients: ReadonlySet<string>
+	): SyncRule[] {
+		const own = this.config.syncRules.own.flatMap((rule) => {
 			const taken = entries
 				.filter(({ file }) => file.ownRule === rule)
 				.map(({ source }) => source);
@@ -22,6 +25,24 @@ export class WrittenSyncRules {
 				...(this.moved(rule, taken) ?? this.literal(rule, taken)),
 				...this.original(rule),
 			];
+		});
+		return [...own, ...this.legacyClient(legacyClients)];
+	}
+
+	/** One rule per client script that stays a LocalScript, since a rule applies to every file it matches. */
+	private legacyClient(sources: ReadonlySet<string>): SyncRule[] {
+		return [...sources].flatMap((source) => {
+			const landed = this.landed(source);
+			const suffix = /\.client\.[^.]+$/.exec(landed)?.[0];
+			return suffix === undefined
+				? []
+				: [
+						{
+							pattern: literalGlob(landed),
+							use: "legacyClientScript" as const,
+							suffix,
+						},
+					];
 		});
 	}
 

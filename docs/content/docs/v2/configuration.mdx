@@ -210,7 +210,9 @@ An ignored file that a `tree` `$path` mounts is still mounted: the glob never dr
 
 Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `syncPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. Where the `tree` mounts a folder under the old place of a moved pattern, Rogen also keeps the pattern as you wrote it, so Rojo reads that folder by it too (the same goes for `globIgnorePaths`). See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
 
-A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too.
+With `emitLegacyScripts: false`, Rogen also writes a `legacyClientScript` rule for each `.client` script a route puts in `StarterPlayerScripts` or `StarterCharacterScripts`, after yours, so they stay LocalScripts. It can't for an `init.client` script, which Rojo reads without rules ([`tree.runContextTarget`](/docs/v2/diagnostics#tree-runcontexttarget)).
+
+A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too. That includes the file of a project that sets `emitLegacyScripts: false` with routes into those containers.
 
 ## Removed Keys
 

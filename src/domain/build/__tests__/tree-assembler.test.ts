@@ -234,109 +234,134 @@ describe("TreeAssembler", () => {
 			});
 		});
 
-		describe("run context targets", () => {
-			const runContextWarnings = async (
+		describe("legacy client scripts", () => {
+			const PLAYER = "StarterPlayer/StarterPlayerScripts";
+
+			const assembleWith = async (
+				files: string[],
 				routes: Record<string, string>,
 				emitLegacyScripts?: boolean
 			) => {
-				await write("src/Hud.client.luau");
-				const project = {
-					tree: { $className: "DataModel" },
-					...(emitLegacyScripts !== undefined && {
-						emitLegacyScripts,
-					}),
-				};
-				const { warnings } = await assemble({ routes, project });
-				return warnings.filter(
-					({ code }) => code === "tree.runContextTarget"
-				);
+				await write(...files);
+				return assemble({
+					routes,
+					project: {
+						tree: { $className: "DataModel" },
+						...(emitLegacyScripts !== undefined && {
+							emitLegacyScripts,
+						}),
+					},
+				});
 			};
+
+			const ruleOf = (source: string) => ({
+				pattern: source,
+				use: "legacyClientScript",
+				suffix: expect.stringMatching(/^\.client\./),
+			});
 
 			it.each([
 				"StarterPlayer/StarterPlayerScripts",
 				"StarterPlayer/StarterCharacterScripts",
 				"StarterPlayer/StarterPlayerScripts/Ui",
 			])(
-				"should warn when emitLegacyScripts is false and a route targets %s",
+				"should write a rule for each client script a route puts in %s",
 				async (target) => {
-					const warnings = await runContextWarnings(
+					const { projectFile, warnings } = await assembleWith(
+						["src/Hud.client.luau", "src/Save.server.luau"],
 						{ "*": "ReplicatedStorage", client: target },
 						false
 					);
 
-					expect(warnings).toHaveLength(1);
-					expect(warnings[0]).toMatchObject({
-						resource: abs("default.project.json"),
-					});
-					expect(warnings[0].message).toContain(`"client"`);
-					expect(warnings[0].message).toContain(target);
-					expect(warnings[0].message).toContain("emitLegacyScripts");
-				}
-			);
-
-			it("should warn once per config, naming every offending route", async () => {
-				const warnings = await runContextWarnings(
-					{
-						client: "StarterPlayer/StarterPlayerScripts",
-						character: "StarterPlayer/StarterCharacterScripts",
-						"*": "ReplicatedStorage",
-					},
-					false
-				);
-
-				expect(warnings).toHaveLength(1);
-				expect(warnings[0].message).toContain(`"client"`);
-				expect(warnings[0].message).toContain(`"character"`);
-			});
-
-			it.each([undefined, true])(
-				"should not warn when emitLegacyScripts is %s",
-				async (emitLegacyScripts) => {
-					const warnings = await runContextWarnings(
-						{ client: "StarterPlayer/StarterPlayerScripts" },
-						emitLegacyScripts
-					);
-
+					expect(projectFile.syncRules).toEqual([
+						ruleOf("src/Hud.client.luau"),
+					]);
 					expect(warnings).toEqual([]);
 				}
 			);
 
-			it("should not warn when no route targets those containers", async () => {
-				const warnings = await runContextWarnings(
-					{
-						client: "ReplicatedStorage/client",
-						server: "StarterGui",
-					},
+			it("should write a rule for a client script in a folder routed there", async () => {
+				const { projectFile } = await assembleWith(
+					["src/Ui/Bar.client.luau", "src/Ui/Foo.client.lua"],
+					{ client: PLAYER },
 					false
 				);
 
-				expect(warnings).toEqual([]);
+				expect(projectFile.syncRules).toEqual([
+					ruleOf("src/Ui/Bar.client.luau"),
+					ruleOf("src/Ui/Foo.client.lua"),
+				]);
 			});
 
-			it("should not warn when the config says nothing about legacy scripts", async () => {
-				await write("src/Hud.client.luau");
+			it("should write no rule for a script that lands elsewhere", async () => {
+				const { projectFile } = await assembleWith(
+					["src/Hud.client.luau"],
+					{ "*": "ReplicatedStorage" },
+					false
+				);
 
-				const { warnings } = await assemble({
-					routes: { "*": "StarterPlayer/StarterPlayerScripts" },
+				expect(projectFile.syncRules).toBeUndefined();
+			});
+
+			it.each([undefined, true])(
+				"should write no rule when emitLegacyScripts is %s",
+				async (emitLegacyScripts) => {
+					const { projectFile } = await assembleWith(
+						["src/Hud.client.luau"],
+						{ client: PLAYER },
+						emitLegacyScripts
+					);
+
+					expect(projectFile.syncRules).toBeUndefined();
+				}
+			);
+
+			it("should leave a script a rule of the project takes to that rule", async () => {
+				await write("src/Hud.client.luau");
+				const rule = {
+					pattern: "src/*.client.luau",
+					use: "runContextClientScript",
+					suffix: ".client.luau",
+				};
+
+				const { projectFile } = await assemble({
+					routes: { client: PLAYER },
+					project: {
+						tree: { $className: "DataModel" },
+						emitLegacyScripts: false,
+						syncRules: [rule],
+					},
 				});
 
-				expect(warnings).toEqual([]);
+				expect(projectFile.syncRules).toEqual([rule]);
 			});
 
 			it("should still write the tree", async () => {
-				await write("src/Hud.client.luau");
-				const project = {
-					tree: { $className: "DataModel" },
-					emitLegacyScripts: false,
-				};
+				const { projectFile } = await assembleWith(
+					["src/Hud.client.luau"],
+					{ "*": PLAYER },
+					false
+				);
 
-				const { projectFile: value } = await assemble({
-					routes: { "*": "StarterPlayer/StarterPlayerScripts" },
-					project,
-				});
+				expect(projectFile.emitLegacyScripts).toBe(false);
+				expect(projectFile.tree.StarterPlayer).toBeDefined();
+			});
 
-				expect(value.emitLegacyScripts).toBe(false);
-				expect(value.tree.StarterPlayer).toBeDefined();
+			it("should warn of an init client script there, which no rule keeps a LocalScript", async () => {
+				const { warnings, projectFile } = await assembleWith(
+					["src/Hud/init.client.luau", "src/Hud/Child.client.luau"],
+					{ client: PLAYER },
+					false
+				);
+
+				const [warning] = warnings.filter(
+					({ code }) => code === "tree.runContextTarget"
+				);
+				expect(warning.message).toContain("src/Hud/init.client.luau");
+				expect(warning.message).toContain("emitLegacyScripts");
+				expect(projectFile.syncRules).toEqual([
+					ruleOf("src/Hud/Child.client.luau"),
+				]);
 			});
 		});
 

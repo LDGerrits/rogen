@@ -387,13 +387,15 @@ Move the script under a route whose target runs it, or drop `.server`/`.client` 
 
 ### `tree.runContextTarget` [#tree-runcontexttarget]
 
-Warning. The config sets `emitLegacyScripts: false`, but a route targets `StarterPlayerScripts` or `StarterCharacterScripts`, where RunContext scripts don't run as LocalScripts.
+Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there LocalScripts with a sync rule, but Rojo reads an init script without rules, so this one is a Script with RunContext Client.
 
 ```
-default.project.json - warning: emitLegacyScripts: false in rogen.json isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts ("client" → StarterPlayer/StarterPlayerScripts). Route it to another service, or remove emitLegacyScripts from rogen.json. (tree.runContextTarget)
+rogen.json - warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
+  src/Panel/init.client.luau -> StarterPlayer/StarterPlayerScripts/Panel
+Route the folder to another service, or remove emitLegacyScripts from the config.
 ```
 
-Remove `emitLegacyScripts` from `rogen.json`, or route client code elsewhere, such as `ReplicatedStorage` with RunContext Client. See [Configuration](/docs/v2/configuration#fields).
+Route the folder to a service such as `ReplicatedStorage` with RunContext Client, or remove `emitLegacyScripts` from `rogen.json`. See [Configuration](/docs/v2/configuration#fields).
 
 ### `tree.mountsSourcePath` [#tree-mountssourcepath]
 
