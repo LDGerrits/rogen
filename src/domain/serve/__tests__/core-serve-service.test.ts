@@ -319,6 +319,25 @@ describe("CoreServeService", () => {
 			);
 		});
 
+		it("should refuse a flag the Rojo that runs doesn't take yet, naming the release that added it", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.6.1",
+				stderr: "",
+			});
+
+			const error = await errorOf({
+				serverArgs: ["--allowed-hosts=studio.local"],
+			});
+
+			expect(error).toEqual(
+				new UsageError(
+					"--allowed-hosts needs Rojo 7.7.0 or later, and the Rojo that runs here is 7.6.1.",
+					"Change your Rojo pin to 7.7.0 or later, or leave the flag out."
+				)
+			);
+		});
+
 		it("should refuse a port that isn't one", async () => {
 			const error = await errorOf({ serverArgs: ["--port", "high"] });
 
@@ -351,23 +370,27 @@ describe("CoreServeService", () => {
 			expect(error).toEqual(
 				new UsageError(
 					"--port names one server's port, and this serves arena, lobby and shop.",
-					"Name one place, as 'rogen serve <place> --port <port>'."
+					"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its rogen.json."
 				)
 			);
 		});
 
-		it("should ask for one project when an address is given to several", async () => {
-			for (const name of ["lobby", "shop"])
-				await memFs.writeFile(`/repo/${name}/rogen.json`, place());
+		it("should serve every project at an address given to several, each on its own port", async () => {
+			await memFs.writeFile("/repo/lobby/rogen.json", place());
+			await memFs.writeFile(
+				"/repo/shop/rogen.json",
+				place({ servePort: 40001 })
+			);
 
-			const error = await errorOf({
+			const servePlan = await plan({
 				refs: ["lobby", "shop"],
 				serverArgs: ["--address=0.0.0.0"],
 			});
 
-			expect(error.message).toContain(
-				"--address names one server's address, and this serves lobby and shop."
-			);
+			expect(served(servePlan)).toEqual([
+				["lobby", "0.0.0.0:34872"],
+				["shop", "0.0.0.0:40001"],
+			]);
 		});
 
 		it("should give each project its own port when none is given", async () => {
@@ -546,6 +569,33 @@ describe("CoreServeService", () => {
 					},
 				},
 			]);
+		});
+
+		it("should keep the other server flags in the command it offers for a taken port", async () => {
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("Other")
+			);
+
+			const error = await errorOf({
+				serverArgs: [
+					"--address",
+					"0.0.0.0",
+					"--port=34872",
+					"--allowed-hosts",
+					"my pc",
+				],
+			});
+
+			expect(
+				(error as DiagnosticsError).diagnostics[0].fixes?.[0]
+			).toEqual({
+				run: {
+					command:
+						'rogen serve . --port 34873 -- --address 0.0.0.0 --allowed-hosts "my pc"',
+					cwd: "/repo",
+				},
+			});
 		});
 
 		it("should name the rogen.json of the config in a taken port's error", async () => {

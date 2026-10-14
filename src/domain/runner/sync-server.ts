@@ -30,6 +30,8 @@ interface SyncServerFields {
 	readonly infoPath: string;
 	readonly hostFlags: readonly string[];
 	readonly portFlags: readonly string[];
+	/** Its flags that older releases reject, with the release that added each. */
+	readonly flagsSince: Readonly<Record<string, string>>;
 	/** A line that starts one of its log records, with the groups `level` and `text`. */
 	readonly logRecord: RegExp;
 	readonly noise: readonly RegExp[];
@@ -64,6 +66,7 @@ export class SyncServer {
 		infoPath: "/api/rojo",
 		hostFlags: ["--address"],
 		portFlags: ["--port"],
+		flagsSince: { "--allowed-hosts": "7.7.0" },
 		logRecord: /^\[(?<level>[A-Z]+)\s*[^\]]*\]\s?(?<text>.*)$/,
 		noise: [/^Rojo server listening:$/, /^(Address|Port):/, /^Visit http/],
 		// Its plugin holds one websocket to the server, which logs it at debug level.
@@ -159,6 +162,40 @@ export class SyncServer {
 
 	readInfo(value: unknown): ServerInfo | undefined {
 		return isObject(value) ? this.fields.readInfo(this, value) : undefined;
+	}
+
+	/** The first of `serverArgs` that `version` rejects, with the release that added it. */
+	flagTooNewIn(
+		serverArgs: readonly string[],
+		version: string
+	): { readonly flag: string; readonly since: RojoVersion } | undefined {
+		const found = RojoVersion.parse(version);
+		if (!found) return undefined;
+		for (const [flag, since] of Object.entries(this.fields.flagsSince)) {
+			const release = RojoVersion.of(since);
+			if (
+				found.isBefore(release) &&
+				flagValue(serverArgs, [flag]) !== undefined
+			)
+				return { flag, since: release };
+		}
+		return undefined;
+	}
+
+	/** `serverArgs` without its port flags and their values. */
+	withoutPort(serverArgs: readonly string[]): string[] {
+		const kept: string[] = [];
+		for (let index = 0; index < serverArgs.length; index++) {
+			const arg = serverArgs[index];
+			if (this.fields.portFlags.includes(arg)) index++;
+			else if (
+				!this.fields.portFlags.some((flag) =>
+					arg.startsWith(`${flag}=`)
+				)
+			)
+				kept.push(arg);
+		}
+		return kept;
 	}
 
 	hostIn(serverArgs: readonly string[]): string | undefined {

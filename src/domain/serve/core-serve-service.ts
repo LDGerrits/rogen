@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -77,6 +78,15 @@ export class CoreServeService implements ServeService {
 			request.signal
 		);
 		if (executable.isErr()) return executable;
+		const { server, version } = executable.value;
+		const tooNew = server.flagTooNewIn(request.serverArgs, version);
+		if (tooNew)
+			return err(
+				new UsageError(
+					`${tooNew.flag} needs ${server.name} ${tooNew.since} or later, and the ${server.name} that runs here is ${version}.`,
+					`Change your ${server.name} pin to ${tooNew.since} or later, or leave the flag out.`
+				)
+			);
 
 		const ports = this.portsFor(
 			executable.value.server,
@@ -86,8 +96,8 @@ export class CoreServeService implements ServeService {
 		const targets: ServeTarget[] = [];
 		for (const config of served) targets.push(ports.targetOf(config));
 
-		const oneProject = ports.oneProjectError(targets);
-		if (oneProject) return err(oneProject);
+		const portForSeveral = ports.portForSeveral(targets);
+		if (portForSeveral) return err(portForSeveral);
 		const clash = ports.clashOf(targets);
 		if (clash) return err(clash);
 

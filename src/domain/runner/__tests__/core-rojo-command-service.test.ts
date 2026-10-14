@@ -6,6 +6,7 @@ import {
 	MockConfigSelection,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
+import { NamedProjects } from "../../config/config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoCommandService } from "../core-rojo-command-service.js";
 import { CoreRojoRunner } from "../core-rojo-runner.js";
@@ -74,7 +75,9 @@ describe("CoreRojoCommandService", () => {
 		const chosen = new MockConfigSelection(
 			[mockEntry({}, "/repo/rogen.json", { release: {} })],
 			"/repo",
-			new Map([["/repo/rogen.json", "release"]])
+			new Map([
+				["/repo/rogen.json", { names: ["release"], usual: false }],
+			])
 		);
 		const running = run(chosen);
 		await finish([], 0);
@@ -183,7 +186,7 @@ describe("CoreRojoCommandService", () => {
 	});
 
 	describe("with places", () => {
-		const places = (named = new Map<string, string>()) =>
+		const places = (named = new Map<string, NamedProjects>()) =>
 			new MockConfigSelection(
 				[
 					mockEntry({ hasPlaces: true }, "/repo/rogen.json"),
@@ -208,7 +211,9 @@ describe("CoreRojoCommandService", () => {
 		});
 
 		it("should keep the root when it is named", () => {
-			const named = new Map([["/repo/rogen.json", "default"]]);
+			const named = new Map([
+				["/repo/rogen.json", { names: ["default"], usual: false }],
+			]);
 
 			expect(service.projects(places(named))).toHaveLength(3);
 		});

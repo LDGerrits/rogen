@@ -13,6 +13,7 @@ import {
 	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
+	NamedProjects,
 	ValidConfigEntry,
 	buildableProjects,
 } from "../config-service.js";
@@ -127,7 +128,7 @@ export class MockConfigSelection implements ReloadableSelection {
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],
 		readonly home = "/repo",
-		readonly named: ReadonlyMap<string, string> = new Map(),
+		readonly named: ReadonlyMap<string, NamedProjects> = new Map(),
 		readonly notes: readonly string[] = []
 	) {
 		this.files = new Set(entries.map(({ file }) => file));
@@ -165,7 +166,8 @@ export class MockConfigService implements ConfigService {
 	constructor(
 		public entries: readonly ConfigEntry[] = [mockEntry()],
 		public enclosing: EnclosingConfigs | undefined = undefined,
-		public home = "/repo"
+		public home = "/repo",
+		public named: ReadonlyMap<string, NamedProjects> = new Map()
 	) {}
 
 	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
@@ -173,7 +175,7 @@ export class MockConfigService implements ConfigService {
 	}
 
 	async select(): Promise<Result<ReloadableSelection, Error>> {
-		return ok(new MockConfigSelection(this.entries, this.home));
+		return ok(new MockConfigSelection(this.entries, this.home, this.named));
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

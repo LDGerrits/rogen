@@ -1,7 +1,7 @@
 import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { onUnexpectedError } from "../../base/errors.js";
-import { Result, ok } from "../../base/result.js";
+import { UsageError, onUnexpectedError } from "../../base/errors.js";
+import { Result, err, ok } from "../../base/result.js";
 import { ConfigArguments } from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
@@ -49,8 +49,9 @@ const AllowedHostsOption = {
 	name: "allowed-hosts",
 	type: "string",
 	placeholder: "allowed_hosts",
+	multiple: true,
 	description:
-		"Hosts, besides the address, that may reach every server. Rojo's own flag.",
+		"A host, besides the address, that may reach every server. Rojo's own flag, from Rojo 7.7.0.",
 } as const satisfies OptionDescriptor;
 
 const ServeOptions = [
@@ -65,6 +66,33 @@ const ServeOptions = [
 ] as const;
 
 type ServeLine = CommandLine<typeof ServeOptions>;
+
+const ServerFlags = [AddressOption, PortOption, AllowedHostsOption] as const;
+
+/** What the server gets: Rojo's flags given to serve, then the words after `--`. */
+function serverArgsOf(line: ServeLine): Result<string[], UsageError> {
+	const passthrough = line.passthrough ?? [];
+	const given: string[] = [];
+	for (const { name } of ServerFlags) {
+		const value = line.options[name];
+		if (value === undefined || value.length === 0) continue;
+		const flag = `--${name}`;
+		if (
+			passthrough.some(
+				(arg) => arg === flag || arg.startsWith(`${flag}=`)
+			)
+		)
+			return err(
+				new UsageError(
+					`${flag} is given twice, as an option and after '--'.`,
+					"Give it once."
+				)
+			);
+		for (const one of typeof value === "string" ? [value] : value)
+			given.push(flag, one);
+	}
+	return ok([...given, ...passthrough]);
+}
 
 registerCommand(
 	class ServeCommand extends AbstractCommand<typeof ServeOptions> {
@@ -98,16 +126,8 @@ registerCommand(
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
-			const { address, port } = line.options;
-			const allowedHosts = line.options["allowed-hosts"];
-			const serverArgs = [
-				...(address === undefined ? [] : ["--address", address]),
-				...(port === undefined ? [] : ["--port", port]),
-				...(allowedHosts === undefined
-					? []
-					: ["--allowed-hosts", allowedHosts]),
-				...(line.passthrough ?? []),
-			];
+			const serverArgs = serverArgsOf(line);
+			if (serverArgs.isErr()) return serverArgs;
 
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
@@ -117,7 +137,7 @@ registerCommand(
 				const plan = await serveService.prepare({
 					signal: stopChecks.signal,
 					refs: line.positionals,
-					serverArgs,
+					serverArgs: serverArgs.value,
 				});
 				if (shutdown.isSettled) return ok(undefined);
 				if (plan.isErr()) return plan;

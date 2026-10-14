@@ -17,6 +17,9 @@ import { ServerRecords } from "./server-records.js";
 
 const FREE_PORT_SEARCH = 20;
 
+const shellWord = (arg: string): string =>
+	/^[\w@%+=:,./-]+$/.test(arg) ? arg : JSON.stringify(arg);
+
 export function namesakesOf(
 	config: ResolvedConfig,
 	configs: readonly ResolvedConfig[]
@@ -30,6 +33,8 @@ export function namesakesOf(
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
+	/** The server flags a command offered for another port passes on. */
+	private readonly otherArgs: readonly string[];
 
 	constructor(
 		private readonly probe: ServerProbe,
@@ -40,6 +45,7 @@ export class ServePorts {
 	) {
 		this.host = server.hostIn(serverArgs);
 		this.port = server.portIn(serverArgs);
+		this.otherArgs = server.withoutPort(serverArgs);
 	}
 
 	get portError(): UsageError | undefined {
@@ -63,25 +69,13 @@ export class ServePorts {
 		};
 	}
 
-	/** The error for a flag that names one server when several are served. */
-	oneProjectError(targets: readonly ServeTarget[]): UsageError | undefined {
-		const given = [
-			...(this.port.unwrapOr(undefined) === undefined
-				? []
-				: [{ flag: "--port", what: "port" }]),
-			...(this.host === undefined
-				? []
-				: [{ flag: "--address", what: "address" }]),
-		];
-		if (given.length === 0 || targets.length < 2) return undefined;
-		const names = given.map(({ flag }) => flag);
-		const whats = given.map(({ what }) => what);
-		const example = given
-			.map(({ flag, what }) => `${flag} <${what}>`)
-			.join(" ");
+	/** The error for a port given to several servers, which can't all listen on it. */
+	portForSeveral(targets: readonly ServeTarget[]): UsageError | undefined {
+		if (this.port.unwrapOr(undefined) === undefined || targets.length < 2)
+			return undefined;
 		return new UsageError(
-			`${joinedWithAnd(names)} names one server's ${joinedWithAnd(whats)}, and this serves ${joinedWithAnd(targets.map(({ config }) => config.label))}.`,
-			`Name one place, as 'rogen serve <place> ${example}'.`
+			`--port names one server's port, and this serves ${joinedWithAnd(targets.map(({ config }) => config.label))}.`,
+			"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its rogen.json."
 		);
 	}
 
@@ -158,7 +152,11 @@ export class ServePorts {
 		const free = address.isLocal
 			? await this.freePortAfter(address, targets)
 			: undefined;
-		const command = `rogen serve ${this.refOf(config)} --port ${free ?? "<port>"}`;
+		const rest =
+			this.otherArgs.length === 0
+				? ""
+				: ` -- ${this.otherArgs.map(shellWord).join(" ")}`;
+		const command = `rogen serve ${this.refOf(config)} --port ${free ?? "<port>"}${rest}`;
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },

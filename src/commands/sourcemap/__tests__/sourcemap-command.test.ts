@@ -178,6 +178,34 @@ describe("sourcemap command", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
+	it("should refuse two projects whose sourcemaps would both be one sourcemap.json", async () => {
+		const { running } = start(
+			new MockConfigService(
+				[
+					mockEntry(
+						{
+							name: "repo",
+							sourcePaths: [abs("", "src")],
+							routes: { "*": "ReplicatedStorage" },
+						},
+						abs("", "rogen.json"),
+						{ test: {} }
+					),
+				],
+				undefined,
+				"/repo",
+				new Map([
+					[abs("", "rogen.json"), { names: ["test"], usual: true }],
+				])
+			)
+		);
+
+		expect(((await running) as ResultError<Error>).error.message).toContain(
+			"repo and repo (test) both have their project file in ., so both sourcemaps would be sourcemap.json there."
+		);
+		expect(processes.spawned).toEqual([]);
+	});
+
 	it.each([{ json: true }, { watch: true }])(
 		"should ask for -o when %o would share the screen with the sourcemap",
 		async (options) => {

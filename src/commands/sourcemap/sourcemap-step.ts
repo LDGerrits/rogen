@@ -1,5 +1,7 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
+import { toPosix } from "../../base/path.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok } from "../../base/result.js";
 import { ConfigSelection } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
@@ -47,6 +49,24 @@ export class SourcemapStep implements RojoStep {
 						`-o names one file, and this selects ${projects.length} projects. Name one place, or leave -o out to write a ${SOURCEMAP_FILE} beside each project file.`
 					)
 				);
+			const shared = projects.find((project, index) =>
+				projects
+					.slice(0, index)
+					.some((before) => before.projectDir === project.projectDir)
+			);
+			if (shared) {
+				const sharing = projects.filter(
+					({ projectDir }) => projectDir === shared.projectDir
+				);
+				const folder =
+					toPosix(path.relative(this.cwd, shared.projectDir)) || ".";
+				return err(
+					new UsageError(
+						`${joinedWithAnd(sharing.map(({ label }) => label))} ${sharing.length === 2 ? "both" : "all"} have their project file in ${folder}, so ${sharing.length === 2 ? "both" : "all"} sourcemaps would be ${SOURCEMAP_FILE} there.`,
+						"Name one project, with -o for the file to write."
+					)
+				);
+			}
 			return ok(
 				projects.map((project) => {
 					const cwd = path.dirname(project.projectFile);

@@ -445,7 +445,9 @@ describe("CoreConfigService", () => {
 				await start({ names: ["dist.project.json"] });
 
 				expect(selection.named).toEqual(
-					new Map([["/repo/rogen.json", "dist"]])
+					new Map([
+						["/repo/rogen.json", { names: ["dist"], usual: false }],
+					])
 				);
 			});
 
@@ -455,7 +457,9 @@ describe("CoreConfigService", () => {
 				await start({ names: ["dist"] });
 
 				expect(selection.named).toEqual(
-					new Map([["/repo/rogen.json", "dist"]])
+					new Map([
+						["/repo/rogen.json", { names: ["dist"], usual: false }],
+					])
 				);
 			});
 

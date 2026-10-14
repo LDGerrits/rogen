@@ -694,7 +694,7 @@ describe("serve command", () => {
 			{
 				address: "0.0.0.0",
 				port: "40000",
-				"allowed-hosts": "studio.local",
+				"allowed-hosts": ["studio.local", "pc.lan"],
 			},
 			["--log-level", "x"]
 		);
@@ -709,9 +709,22 @@ describe("serve command", () => {
 			"40000",
 			"--allowed-hosts",
 			"studio.local",
+			"--allowed-hosts",
+			"pc.lan",
 			"--log-level",
 			"x",
 		]);
+	});
+
+	it("should refuse a flag given both as an option and after --, starting nothing", async () => {
+		const error = await failureOf(
+			serve([], { port: "40000" }, ["--port=40001"])
+		);
+
+		expect(error.message).toBe(
+			"--port is given twice, as an option and after '--'. Give it once."
+		);
+		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should start one server for each project named, each on its own port", async () => {

@@ -274,7 +274,8 @@ stdout:
           },
           {
             "name": "allowed-hosts",
-            "type": "string"
+            "type": "string",
+            "multiple": true
           }
         ],
         "effects": [

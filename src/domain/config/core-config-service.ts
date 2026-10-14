@@ -17,6 +17,7 @@ import {
 	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
+	NamedProjects,
 	buildableProjects,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
@@ -89,11 +90,11 @@ export class CoreConfigService implements ConfigService {
 
 	private missingProject(
 		opened: readonly ManagedConfig[],
-		projects: ReadonlyMap<string, string>,
+		projects: ReadonlyMap<string, NamedProjects>,
 		scopes: ReadonlyMap<string, readonly string[]>
 	): UsageError | undefined {
 		for (const config of opened) {
-			const project = projects.get(config.file);
+			const names = projects.get(config.file)?.names ?? [];
 			const stems = [
 				...new Set(
 					buildableProjects({
@@ -102,8 +103,8 @@ export class CoreConfigService implements ConfigService {
 					}).map(({ stem }) => stem)
 				),
 			];
-			if (project === undefined || stems.length === 0) continue;
-			if (!stems.includes(project))
+			const project = names.find((name) => !stems.includes(name));
+			if (project !== undefined && stems.length > 0)
 				return new UsageError(
 					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}.`,
 					"Name a folder with a rogen.json, a *.project.json path, or one of them."

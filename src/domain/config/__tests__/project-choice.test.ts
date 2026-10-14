@@ -1,6 +1,8 @@
 import { ProjectChoice } from "../project-choice.js";
 import { mockConfig } from "./mock-config-service.js";
 
+const only = (name: string) => ({ names: [name], usual: false });
+
 describe("ProjectChoice", () => {
 	const project = (file: string, stem: string, serveProject = "default") =>
 		mockConfig({ file, stem, serveProject });
@@ -31,7 +33,7 @@ describe("ProjectChoice", () => {
 				stems(
 					ProjectChoice.read(
 						[...lobby, ...arena],
-						new Map([["/repo/arena/rogen.json", "release"]])
+						new Map([["/repo/arena/rogen.json", only("release")]])
 					)
 				)
 			).toEqual([
@@ -57,8 +59,8 @@ describe("ProjectChoice", () => {
 					ProjectChoice.served(
 						[...lobby, ...arena],
 						new Map([
-							["/repo/lobby/rogen.json", "default"],
-							["/repo/arena/rogen.json", "release"],
+							["/repo/lobby/rogen.json", only("default")],
+							["/repo/arena/rogen.json", only("release")],
 						])
 					)
 				)
@@ -92,8 +94,28 @@ describe("ProjectChoice", () => {
 			]);
 		});
 
+		it("should take serveProject and the projects named with it", () => {
+			expect(
+				stems(
+					ProjectChoice.served(
+						[...lobby, ...arena],
+						new Map([
+							[
+								"/repo/lobby/rogen.json",
+								{ names: ["default"], usual: true },
+							],
+						])
+					)
+				)
+			).toEqual([
+				"/repo/lobby/rogen.json#default",
+				"/repo/lobby/rogen.json#dist",
+				"/repo/arena/rogen.json#default",
+			]);
+		});
+
 		it("should apply the project named for the listing config to its places", () => {
-			const named = new Map([["/repo/rogen.json", "release"]]);
+			const named = new Map([["/repo/rogen.json", only("release")]]);
 
 			expect(stems(ProjectChoice.served(everything, named))).toEqual([
 				"/repo/places/lobby/rogen.json#release",

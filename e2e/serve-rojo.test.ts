@@ -245,6 +245,30 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);
 
+	it("should serve a config and one of its projects on two ports", async () => {
+		writeProjectFile(
+			serve.dir,
+			"rogen.json",
+			config(serve.port, {
+				projects: { test: { name: "Test", servePort: serve.port + 1 } },
+			})
+		);
+
+		const serving = serve.start([".", "test"]);
+
+		await eventually(() => {
+			expect(serving.output).toContain(
+				`Serving Game with Rojo 7.7.1 at 127.0.0.1:${serve.port}.`
+			);
+			expect(serving.output).toContain(
+				`Serving Test (test) with Rojo 7.7.1 at 127.0.0.1:${serve.port + 1}.`
+			);
+		}, 30_000);
+		expect(await rojoProject(serve.port)).toBe("Game");
+		expect(await rojoProject(serve.port + 1)).toBe("Test");
+		expect(await serving.stop()).toBe(0);
+	}, 60_000);
+
 	it("should refuse --port for several projects, and serve one project on it", async () => {
 		writeProjectFile(
 			serve.dir,

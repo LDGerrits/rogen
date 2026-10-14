@@ -77,12 +77,18 @@ export interface ConfigReload {
 	readonly notices: readonly ConfigNotice[];
 }
 
+/** The projects a config was named for: these, and the one a command takes by default too when the config itself was named. */
+export interface NamedProjects {
+	readonly names: readonly string[];
+	readonly usual: boolean;
+}
+
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** Every project that builds now, each config's description first; a broken entry gives its last valid version or none. */
 	readonly configs: readonly ResolvedConfig[];
-	/** The project each config was asked for by name or project-file path, by config file. */
-	readonly named: ReadonlyMap<string, string>;
+	/** The projects each config was asked for by name or project-file path, by config file. */
+	readonly named: ReadonlyMap<string, NamedProjects>;
 	/** What picking had to say, such as a name matching both a folder and a project. */
 	readonly notes: readonly string[];
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with a config when it has none. */
