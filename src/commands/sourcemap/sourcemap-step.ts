@@ -28,13 +28,7 @@ export class SourcemapStep implements RojoStep {
 
 	plans(selection: ConfigSelection): Result<readonly RojoPlan[], UsageError> {
 		if (selection.requireValid().isErr()) return ok([]);
-		// A root that lists places is the sum of them, so it has a map only when named.
-		const projects = this.rojo
-			.projects(selection)
-			.filter(
-				({ hasPlaces, rootFile }) =>
-					!hasPlaces || selection.named.has(rootFile)
-			);
+		const projects = this.rojo.projects(selection);
 		if (projects.length === 0)
 			return err(
 				new UsageError(

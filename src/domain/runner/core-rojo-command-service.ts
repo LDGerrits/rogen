@@ -11,12 +11,14 @@ import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import {
+	RojoBareRequest,
+	RojoBareRun,
 	RojoCommandRequest,
 	RojoCommandRun,
 	RojoCommandService,
 } from "./rojo-command-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
-import { RojoRunner } from "./rojo-runner.js";
+import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
 import { ServerMessage } from "./sync-server.js";
 
 export class CoreRojoCommandService implements RojoCommandService {
@@ -50,13 +52,59 @@ export class CoreRojoCommandService implements RojoCommandService {
 		]);
 		if (problems.length > 0) return err(new DiagnosticsError(problems));
 
-		if (request.signal?.aborted) return ok({ project, messages: [] });
-		const rojo = this.rojoRunner.start(
+		const ran = await this.spawn(
 			executable.value,
 			request.command,
 			path.relative(request.cwd, project.projectFile),
 			request.flags,
-			request.cwd
+			request.cwd,
+			project.projectFile,
+			request.signal
+		);
+		return ok({ project, ...ran });
+	}
+
+	async runBare(
+		request: RojoBareRequest
+	): Promise<Result<RojoBareRun, Error>> {
+		const executable = await this.rojoRunner.find(
+			request.cwd,
+			request.cwd,
+			request.signal
+		);
+		if (executable.isErr()) return executable;
+		const [command, ...flags] = request.args;
+		return ok(
+			await this.spawn(
+				executable.value,
+				command,
+				undefined,
+				flags,
+				request.cwd,
+				request.cwd,
+				request.signal,
+				request.args.join(" ")
+			)
+		);
+	}
+
+	private async spawn(
+		executable: ServerExecutable,
+		command: string,
+		projectFile: string | undefined,
+		flags: readonly string[],
+		cwd: string,
+		resource: string,
+		signal: AbortSignal | undefined,
+		described = command
+	): Promise<RojoBareRun> {
+		if (signal?.aborted) return { messages: [] };
+		const rojo = this.rojoRunner.start(
+			executable,
+			command,
+			projectFile,
+			flags,
+			cwd
 		);
 		const messages: ServerMessage[] = [];
 		rojo.onDidMessage((message) => messages.push(message));
@@ -64,35 +112,36 @@ export class CoreRojoCommandService implements RojoCommandService {
 			rojo.onDidExit(resolve)
 		);
 		const onAbort = () => void rojo.terminate();
-		request.signal?.addEventListener("abort", onAbort, { once: true });
-		if (request.signal?.aborted) onAbort();
+		signal?.addEventListener("abort", onAbort, { once: true });
+		if (signal?.aborted) onAbort();
 		const exit = await ended;
-		request.signal?.removeEventListener("abort", onAbort);
+		signal?.removeEventListener("abort", onAbort);
 		rojo[Symbol.dispose]();
 
-		if (exit.code === 0 || request.signal?.aborted)
-			return ok({ project, messages });
+		if (exit.code === 0 || signal?.aborted) return { messages };
 		const said = messages
 			.filter(({ severity }) => severity === "error")
 			.map(({ text }) => text);
 		const how = exit.error
 			? exit.error.message
 			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
-		return ok({
-			project,
+		return {
 			messages,
 			failure: new DiagnosticsError([
 				errorDiagnostic(
 					"rojo.commandFailed",
-					{ resource: project.projectFile },
-					`'${executable.value.server.id} ${request.command}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`
+					{ resource },
+					`'${executable.server.id} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`
 				),
 			]),
-		});
+		};
 	}
 
 	projects(selection: ConfigSelection): ResolvedConfig[] {
-		return ProjectChoice.read(selection.configs, selection.named);
+		return ProjectChoice.read(selection.configs, selection.named).filter(
+			({ hasPlaces, rootFile }) =>
+				!hasPlaces || selection.named.has(rootFile)
+		);
 	}
 
 	choose(

@@ -181,6 +181,46 @@ describe("CoreRojoCommandService", () => {
 		);
 	});
 
+	describe("with places", () => {
+		const places = (named = new Map<string, string>()) =>
+			new MockConfigSelection(
+				[
+					mockEntry({ hasPlaces: true }, "/repo/rogen.json"),
+					mockEntry(
+						{ isPlace: true, rootFile: "/repo/rogen.json" },
+						"/repo/places/lobby/rogen.json"
+					),
+					mockEntry(
+						{ isPlace: true, rootFile: "/repo/rogen.json" },
+						"/repo/places/arena/rogen.json"
+					),
+				],
+				"/repo",
+				named
+			);
+
+		it("should leave out the root that lists them, which is the sum of them", () => {
+			expect(service.projects(places()).map(({ file }) => file)).toEqual([
+				"/repo/places/lobby/rogen.json",
+				"/repo/places/arena/rogen.json",
+			]);
+		});
+
+		it("should keep the root when it is named", () => {
+			const named = new Map([["/repo/rogen.json", "default"]]);
+
+			expect(service.projects(places(named))).toHaveLength(3);
+		});
+
+		it("should count the places alone when it says to name one", () => {
+			const chosen = service.choose(places(), "upload");
+
+			expect((chosen as ResultError<Error>).error.message).toBe(
+				"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json, or a project."
+			);
+		});
+	});
+
 	it("should end Rojo when the signal aborts", async () => {
 		const controller = new AbortController();
 		const running = service.run(selection(), {
@@ -195,5 +235,46 @@ describe("CoreRojoCommandService", () => {
 
 		expect((await running).isOk()).toBe(true);
 		expect(processes.spawned[0].terminated).toBe(true);
+	});
+
+	describe("runBare", () => {
+		const install = () =>
+			service.runBare({ args: ["plugin", "install"], cwd: "/repo" });
+
+		it("should run Rojo with the arguments alone, in the folder", async () => {
+			const running = install();
+			await finish(["Installed Rojo plugin"], 0);
+
+			const ran = (await running).unwrap();
+
+			expect(ran.messages).toEqual([
+				{ severity: "info", text: "Installed Rojo plugin" },
+			]);
+			expect(ran.failure).toBeUndefined();
+			expect(processes.spawned[0].file).toBe("/bin/rojo");
+			expect(processes.spawned[0].args).toEqual(["plugin", "install"]);
+			expect(processes.spawned[0].options.cwd).toBe("/repo");
+		});
+
+		it("should return a run with a failure about the folder when Rojo exits with an error", async () => {
+			const running = install();
+			await finish(["ERROR: no plugins folder"], 1);
+
+			const ran = (await running).unwrap();
+
+			expect(ran.failure?.diagnostics[0]).toMatchObject({
+				code: "rojo.commandFailed",
+				resource: "/repo",
+				message:
+					"'rojo plugin install' failed (exit code 1): no plugins folder",
+			});
+		});
+
+		it("should fail without running Rojo when no Rojo is found", async () => {
+			processes.installed.clear();
+
+			expect((await install()).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
 	});
 });

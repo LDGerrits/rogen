@@ -34,11 +34,11 @@ export interface RojoRunner {
 		signal?: AbortSignal
 	): Promise<Result<ServerExecutable, DiagnosticsError>>;
 
-	/** Starts `executable` as `rojo <command> <projectFile> <flags>` in `cwd`; the flags go last, untouched. */
+	/** Starts `executable` as `rojo <command> <projectFile> <flags>` in `cwd`; the flags go last, untouched. A command that reads no project, such as `plugin`, has none. */
 	start(
 		executable: ServerExecutable,
 		command: string,
-		projectFile: string,
+		projectFile: string | undefined,
 		flags: readonly string[],
 		cwd: string
 	): RojoProcess;

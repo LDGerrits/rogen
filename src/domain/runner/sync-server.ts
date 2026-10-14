@@ -138,8 +138,9 @@ export class SyncServer {
 		return this.fields.connections?.logEnv ?? {};
 	}
 
+	/** What installs its Studio plugin: Rogen runs the pinned Rojo's. */
 	get pluginCommand(): string {
-		return `${this.id} plugin install`;
+		return "rogen plugin install";
 	}
 
 	logRecordOf(

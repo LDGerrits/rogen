@@ -19,13 +19,25 @@ export interface RojoCommandRequest {
 	readonly signal?: AbortSignal;
 }
 
-export interface RojoCommandRun {
-	/** The project Rojo ran on. */
-	readonly project: ResolvedConfig;
+export interface RojoBareRequest {
+	/** Everything after `rojo`, such as `plugin install`. */
+	readonly args: readonly string[];
+	/** Where Rojo runs, and where the pinned one is looked for. */
+	readonly cwd: string;
+	/** Ends the checks and the run. */
+	readonly signal?: AbortSignal;
+}
+
+export interface RojoBareRun {
 	/** What Rojo said, in order. */
 	readonly messages: readonly ServerMessage[];
 	/** Why the run failed, when Rojo exited with an error. */
 	readonly failure?: DiagnosticsError;
+}
+
+export interface RojoCommandRun extends RojoBareRun {
+	/** The project Rojo ran on. */
+	readonly project: ResolvedConfig;
 }
 
 export interface RojoCommandService {
@@ -37,7 +49,7 @@ export interface RojoCommandService {
 		command: string
 	): Result<ResolvedConfig, UsageError>;
 
-	/** Every project a Rojo command may run on: each the selection names, else the `default` of each config. */
+	/** Every project a Rojo command may run on: each the selection names, else the `default` of each config. A root that lists places is the sum of them, so it is left out unless it is named. */
 	projects(selection: ConfigSelection): ResolvedConfig[];
 
 	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects and the request names none, when its files are broken, or when the Rojo can't read them; a Rojo that exits with an error comes back as a run with a `failure`. */
@@ -45,6 +57,9 @@ export interface RojoCommandService {
 		selection: ConfigSelection,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>>;
+
+	/** Runs the pinned Rojo on no project, for a command such as `plugin install`: the one a toolchain file in `cwd` or above pins, else the one on the PATH. Fails when there is none or it can't start; a Rojo that exits with an error comes back as a run with a `failure`. */
+	runBare(request: RojoBareRequest): Promise<Result<RojoBareRun, Error>>;
 }
 
 export const RojoCommandService =
