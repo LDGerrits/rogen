@@ -19,7 +19,12 @@ import {
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
-import { DEFAULT_SOURCE_PATH, fieldOf, sourcePathOverlap } from "./config.js";
+import {
+	DEFAULT_SOURCE_PATH,
+	PER_PLACE_KEYS,
+	fieldOf,
+	sourcePathOverlap,
+} from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
@@ -276,6 +281,15 @@ export class ConfigValidator {
 	}
 
 	private checkPlaces(): void {
+		if ((this.context.placeDirs?.length ?? 0) > 0)
+			for (const key of this.config.model.keys.filter((key) =>
+				PER_PLACE_KEYS.includes(key)
+			))
+				this.problems.error(
+					"config.placeSetting",
+					this.locateKey(key),
+					`"${key}" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place.`
+				);
 		for (const placeDir of this.context.placeDirs ?? []) {
 			const around = this.sourcePaths.find((dir) =>
 				contains(dir, placeDir)

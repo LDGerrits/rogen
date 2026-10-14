@@ -507,6 +507,12 @@ describe("CoreConfigService places", () => {
 			]);
 		});
 
+		it("should allow a setting while no folder matches placePaths, since the config is then served", async () => {
+			await resolve({ ...ROOT, servePort: 34900 }, {});
+
+			expect(errors()).toEqual([]);
+		});
+
 		it("should leave serveAddress to be shared by every place", async () => {
 			const lobby = await placeNamed(
 				"lobby",

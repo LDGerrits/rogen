@@ -14,7 +14,6 @@ import {
 import { ConfigKeys } from "./config-keys.js";
 import {
 	DEFAULT_PROJECT,
-	PER_PLACE_KEYS,
 	PLACE_OWN_KEYS,
 	PROJECT_NAME,
 	ROOT_ONLY_KEYS,
@@ -81,52 +80,18 @@ export class ProjectSourceReader {
 
 	private placeErrors(): Diagnostic[] {
 		const { config, base } = this;
-		if (!config.model.keys.includes("placePaths")) return [];
-		return base ? this.placeListsPlaces() : this.perPlaceKeys();
-	}
-
-	private placeListsPlaces(): Diagnostic[] {
-		const { config } = this;
-		return [
-			errorDiagnostic(
-				"config.placeListsPlaces",
-				{
-					resource: config.file,
-					position: config.positionOfKey("placePaths"),
-				},
-				'a place can\'t list places: "placePaths" belongs to the config that lists this folder. Remove it.'
-			),
-		];
-	}
-
-	private perPlaceKeys(): Diagnostic[] {
-		const { config } = this;
-		const projects =
-			config.model.getValue<Record<string, unknown>>("projects");
-		const refused = (
-			holder: unknown,
-			positionOf: (key: string) => DiagnosticPosition | undefined
-		) =>
-			Object.keys(isObject(holder) ? holder : {})
-				.filter((key) => PER_PLACE_KEYS.includes(key))
-				.map((key) =>
+		return base && config.model.keys.includes("placePaths")
+			? [
 					errorDiagnostic(
-						"config.placeSetting",
-						{ resource: config.file, position: positionOf(key) },
-						`"${key}" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place.`
-					)
-				);
-		return [
-			...refused(config.model.contents, (key) =>
-				config.positionOfKey(key)
-			),
-			...Object.entries(isObject(projects) ? projects : {}).flatMap(
-				([name, changes]) =>
-					refused(changes, (key) =>
-						config.positionOf(["projects", name, key])
-					)
-			),
-		];
+						"config.placeListsPlaces",
+						{
+							resource: config.file,
+							position: config.positionOfKey("placePaths"),
+						},
+						'a place can\'t list places: "placePaths" belongs to the config that lists this folder. Remove it.'
+					),
+				]
+			: [];
 	}
 
 	private declaredProjects(errors: Diagnostic[]): Map<string, ProjectSource> {

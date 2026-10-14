@@ -194,7 +194,7 @@ Remove the key from the place. See [Places](/docs/v2/configuration#places).
 
 ### `config.placeSetting` [#config-placesetting]
 
-Error. A `rogen.json` that lists places sets `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`, in the config or in one of its projects. Each place is served on its own and is its own place in Studio, and the config that lists them is never served, so no place takes these from it.
+Error. A `rogen.json` whose `placePaths` match a folder sets `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`, in the config or in one of its projects. Each place is served on its own and is its own place in Studio, and the config that lists them is never served, so no place takes these from it.
 
 ```
 rogen.json:3:3 - error: "servePort" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place. (config.placeSetting)
