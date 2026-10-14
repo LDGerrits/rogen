@@ -37,22 +37,59 @@ class Ordered {
 
 const INDENT = "  ";
 
+/** The key of a config that holds project files of its own. */
+const PROJECTS_KEY = "projects";
+
 /** A project file as text, formatted as `rojo fmt-project` would. */
 export class ProjectText {
 	static of(file: RojoProjectFile): string {
-		const all: Record<string, unknown> = { ...file };
+		return ProjectText.print(ProjectText.file({ ...file }, []), "");
+	}
+
+	/** A config as text: Rojo's keys in Rojo's order, then `rogenKeys` in the order given, then any other; each entry of `projects` the same way. */
+	static ofConfig(
+		config: Record<string, unknown>,
+		rogenKeys: readonly string[]
+	): string {
+		return ProjectText.print(ProjectText.file(config, rogenKeys), "");
+	}
+
+	private static file(
+		all: Record<string, unknown>,
+		rogenKeys: readonly string[]
+	): Ordered {
 		const entries: [string, unknown][] = [];
-		for (const key of FILE_KEYS)
+		const ordered = [...FILE_KEYS, ...rogenKeys];
+		for (const key of ordered)
 			if (key in all)
 				entries.push([
 					key,
-					key === "tree" && isObject(all.tree)
-						? ProjectText.node(all.tree)
-						: all[key],
+					ProjectText.fileValue(key, all[key], rogenKeys),
 				]);
 		for (const key of Object.keys(all))
-			if (!FILE_KEYS.includes(key)) entries.push([key, all[key]]);
-		return ProjectText.print(new Ordered(entries), "");
+			if (!ordered.includes(key)) entries.push([key, all[key]]);
+		return new Ordered(entries);
+	}
+
+	private static fileValue(
+		key: string,
+		value: unknown,
+		rogenKeys: readonly string[]
+	): unknown {
+		if (key === "tree" && isObject(value)) return ProjectText.node(value);
+		if (
+			key !== PROJECTS_KEY ||
+			!rogenKeys.includes(key) ||
+			!isObject(value)
+		)
+			return value;
+		const inner = rogenKeys.filter((rogen) => rogen !== PROJECTS_KEY);
+		return new Ordered(
+			Object.entries(value).map(([name, project]) => [
+				name,
+				isObject(project) ? ProjectText.file(project, inner) : project,
+			])
+		);
 	}
 
 	private static node(node: Record<string, unknown>): Ordered {

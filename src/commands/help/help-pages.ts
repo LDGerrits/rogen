@@ -5,32 +5,8 @@ import {
 	GlobalOptions,
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
+import { DocTopics } from "./doc-topics.js";
 import { helpTexts } from "./help-texts.js";
-
-interface HelpTopic {
-	readonly name: string;
-	readonly description: string;
-}
-
-const TOPICS: readonly HelpTopic[] = [
-	{
-		name: "routing",
-		description:
-			"How folders and names place a file, and what that means for requires.",
-	},
-	{
-		name: "config",
-		description: "Config fields, the tree, source paths and the sync path.",
-	},
-	{
-		name: "layout",
-		description: "Invisible folders, init scripts and .meta.json files.",
-	},
-	{
-		name: "output",
-		description: "Diagnostics, exit codes, --json, fixes and docs links.",
-	},
-];
 
 /** A diagnostic code has a dot, which no command or topic does. */
 const isCode = (name: string) => name.includes(".");
@@ -81,11 +57,6 @@ function formatHelp(
 		[command.id, usageArgs(command)].filter(Boolean).join(" "),
 		command.metadata.description,
 	]);
-	const topics = TOPICS.map(({ name, description }): [string, string] => [
-		name,
-		description,
-	]);
-
 	return [
 		"Rogen - Feature-based architecture for Roblox",
 		"",
@@ -95,13 +66,10 @@ function formatHelp(
 		"Commands:",
 		...formatColumns(rows),
 		"",
-		"Topics:",
-		...formatColumns(topics),
-		"",
 		"Options:",
 		...formatColumns(globalOptions.map(formatOption)),
 		"",
-		"Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
+		"Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.",
 		"",
 		EXIT_CODES,
 	].join("\n");
@@ -179,12 +147,15 @@ export class HelpPages {
 		const name = target.toLowerCase();
 		const command = this.commands.get(name);
 		if (command) return formatCommandHelp(command, GlobalOptions);
-		if (TOPICS.some((topic) => topic.name === name))
-			return helpTexts.topics[name];
+		if (DocTopics.has(name)) return undefined;
 		return code && helpTexts.diagnostics[code];
 	}
 
 	unknown(target: string): UsageError {
+		if (DocTopics.has(target))
+			return new UsageError(
+				`"${target}" is a topic, not a command: run 'rogen doc ${target.toLowerCase()}'.`
+			);
 		const codes = Object.keys(helpTexts.diagnostics);
 		const named = new Map<string, string>();
 		const add = (name: string, standsFor: string) => {
@@ -192,22 +163,18 @@ export class HelpPages {
 		};
 		if (isCode(target)) codes.forEach((code) => add(code, code));
 		else {
-			const names = [
-				...this.commands.keys(),
-				...TOPICS.map(({ name }) => name),
-			];
-			names.forEach((name) => add(name, name));
+			[...this.commands.keys()].forEach((name) => add(name, name));
 			codes.forEach((code) =>
 				add(code.slice(code.indexOf(".") + 1), code)
 			);
 		}
-		const what = isCode(target) ? "diagnostic code" : "command or topic";
+		const what = isCode(target) ? "diagnostic code" : "command";
 		const closest = closestMatch(target, named.keys());
 		const suggestion = closest && named.get(closest);
 		return new UsageError(
 			suggestion
 				? `Unknown ${what} "${target}". Did you mean 'rogen help ${suggestion}'?`
-				: `Unknown ${what} "${target}". Run 'rogen help' to see the commands and topics.`
+				: `Unknown ${what} "${target}". Run 'rogen help' to see the commands.`
 		);
 	}
 }

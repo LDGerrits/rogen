@@ -7,6 +7,8 @@ import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
+import { ConfigFormatter } from "./config-formatter.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
@@ -25,6 +27,7 @@ export class CoreConfigService implements ConfigService {
 
 	private readonly discovery: ConfigDiscovery;
 	private readonly loader: ConfigLoader;
+	private readonly formatter: ConfigFormatter;
 
 	constructor(
 		fileSystemService: FileSystemService,
@@ -35,6 +38,11 @@ export class CoreConfigService implements ConfigService {
 			environmentService
 		);
 		this.loader = new ConfigLoader(fileSystemService);
+		this.formatter = new ConfigFormatter(fileSystemService);
+	}
+
+	format(file: string): Promise<Result<boolean, Diagnostic[]>> {
+		return this.formatter.format(file);
 	}
 
 	async select(

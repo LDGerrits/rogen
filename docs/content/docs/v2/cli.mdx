@@ -213,11 +213,23 @@ When no `placePaths` of the config lists the folder, `init` adds an entry to it.
 
 Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). A config that lists places is followed by a block for each place, with its folder and, for each project, the port it is served on. It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
 
+### `fmt-project [project…]`
+
+Formats the `rogen.json` of the working directory, or of the projects you name, the way `rojo fmt-project` formats a project file: two-space indentation, no trailing newline, Rojo's keys first in Rojo's order, then Rogen's (`sourcePaths`, `routes`, `syncPath`, `projects`, `serveProject`, `placePaths`), then any other key. The children of the `tree` are sorted, and so are the keys of each [project](/docs/v2/configuration#projects). A root with places formats each place's `rogen.json` too. It prints `formatted <file>` for each file it changed.
+
+A file with comments or trailing commas is left as it is, since the formatted text has none, and a `rogen.jsonc` always is: [`format.commentsLost`](/docs/v2/diagnostics#format-commentslost). The project files Rogen writes are already in this format.
+
+### `doc [topic]`
+
+Opens the documentation in your browser, and prints its address. Without a terminal (an agent, CI, a pipe) it only prints the address.
+
+`rogen doc <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `config`, `layout` or `output`.
+
 ### `help [name]`
 
 Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
 
-`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
+`rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
 ## Options
 

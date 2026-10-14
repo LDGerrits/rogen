@@ -35,6 +35,8 @@ import { NativeProcessService } from "./platform/process/native-process-service.
 import { ProcessService } from "./platform/process/process-service.js";
 import { NativeRequestService } from "./platform/request/native-request-service.js";
 import { RequestService } from "./platform/request/request-service.js";
+import { BrowserService } from "./platform/browser/browser-service.js";
+import { CoreBrowserService } from "./platform/browser/core-browser-service.js";
 import { CoreReleaseService } from "./platform/release/core-release-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
@@ -56,6 +58,8 @@ import { CoreServeService } from "./domain/serve/core-serve-service.js";
 import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
 import "./commands/check/check-command.js";
+import "./commands/fmt-project/fmt-project-command.js";
+import "./commands/help/doc-command.js";
 import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
 import "./commands/list/list-command.js";
@@ -219,6 +223,7 @@ class RogenMain {
 		services.set(RequestService, requestService);
 		const processService = new NativeProcessService();
 		services.set(ProcessService, processService);
+		services.set(BrowserService, new CoreBrowserService(processService));
 		services.set(
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())

@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import fs from "fs";
+import path from "path";
 import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
 import {
 	CommandHarness,
@@ -7,6 +8,8 @@ import {
 } from "../../__tests__/command-harness.js";
 import "../../build/build-command.js";
 import "../../check/check-command.js";
+import "../../fmt-project/fmt-project-command.js";
+import "../doc-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
 import "../../list/list-command.js";
@@ -58,15 +61,14 @@ describe("help command", () => {
 	});
 
 	it("should have imported every command module, so the tests below cover them all", () => {
-		const commandDirs = fs
-			.readdirSync("src/commands", { withFileTypes: true })
-			.filter(
-				(entry) => entry.isDirectory() && entry.name !== "__tests__"
-			)
-			.map((entry) => entry.name);
+		const commandFiles = fs
+			.readdirSync("src/commands", { recursive: true, encoding: "utf8" })
+			.map((file) => path.basename(file))
+			.filter((file) => file.endsWith("-command.ts"))
+			.map((file) => file.slice(0, -"-command.ts".length));
 
 		expect([...registry.getCommands().keys()].sort()).toEqual(
-			commandDirs.sort()
+			commandFiles.sort()
 		);
 	});
 
@@ -149,7 +151,7 @@ describe("help command", () => {
 				UsageError
 			);
 			expect((result as ResultError<Error>).error.message).toContain(
-				'Unknown command or topic "prod"'
+				'Unknown command "prod"'
 			);
 		});
 
@@ -157,7 +159,7 @@ describe("help command", () => {
 			const result = await help("wacth");
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command or topic \"wacth\". Did you mean 'rogen help watch'?"
+				"Unknown command \"wacth\". Did you mean 'rogen help watch'?"
 			);
 		});
 	});
@@ -189,42 +191,30 @@ describe("help command", () => {
 			);
 			expect(info).not.toHaveBeenCalled();
 		});
-
-		it("should prefer a command or topic to the end of a code", async () => {
-			await help("Routing");
-
-			expect(printed()).toBe(helpTexts.topics.routing);
-		});
 	});
 
 	describe("rogen help <topic>", () => {
-		it.each(["routing", "config", "layout", "output"])(
-			"should print the %s topic as written",
+		it.each(["routing", "Config"])(
+			"should point %s to rogen doc rather than print it",
 			async (topic) => {
 				const result = await help(topic);
 
-				expect(result.isOk()).toBe(true);
-				expect(printed()).toBe(helpTexts.topics[topic]);
+				expect(result.isErr()).toBe(true);
+				expect((result as ResultError<Error>).error).toBeInstanceOf(
+					UsageError
+				);
+				expect((result as ResultError<Error>).error.message).toBe(
+					`"${topic}" is a topic, not a command: run 'rogen doc ${topic.toLowerCase()}'.`
+				);
+				expect(info).not.toHaveBeenCalled();
 			}
 		);
 
-		it("should list every topic with its description", async () => {
+		it("should list no topic in the overview", async () => {
 			await help();
 
-			expect(printed()).toContain("Topics:");
-			for (const topic of Object.keys(helpTexts.topics))
-				expect(printed()).toMatch(new RegExp(`^  ${topic} `, "m"));
-		});
-
-		it("should list exactly the topics whose text it embeds", async () => {
-			await help();
-
-			const listed = printed()
-				.split("Topics:\n")[1]
-				.split("\n\n")[0]
-				.split("\n")
-				.map((line) => line.trim().split(" ")[0]);
-			expect(listed.sort()).toEqual(Object.keys(helpTexts.topics).sort());
+			expect(printed()).not.toContain("Topics:");
+			expect(printed()).toContain("'rogen doc <topic>'");
 		});
 
 		it("should name no topic after a command", () => {
@@ -235,17 +225,6 @@ describe("help command", () => {
 					commands.includes(topic)
 				)
 			).toEqual([]);
-		});
-
-		it("should suggest the topic a misspelled one is closest to, as a usage error", async () => {
-			const result = await help("rouing");
-
-			expect((result as ResultError<Error>).error).toBeInstanceOf(
-				UsageError
-			);
-			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command or topic \"rouing\". Did you mean 'rogen help routing'?"
-			);
 		});
 	});
 

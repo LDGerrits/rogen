@@ -706,6 +706,28 @@ default.project.json - warning: 1 data file was turned into a Lua module under "
 
 Copy the data files unchanged into the sync path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
 
+## Format
+
+### `format.commentsLost` [#format-commentslost]
+
+Error. `rogen fmt-project` won't write a config that holds comments or trailing commas, since the formatted text has none. A `rogen.jsonc` is always refused, because it is meant to hold comments. Nothing is written.
+
+```
+rogen.json - error: rogen.json has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor. (format.commentsLost)
+```
+
+Remove the comments if you don't need them, or format the file in your editor. See [`rogen fmt-project`](/docs/v2/cli#rogen-fmt-project).
+
+### `format.writeFailed` [#format-writefailed]
+
+Error. `rogen fmt-project` couldn't write the formatted config to disk. The message gives the reason without the system's error code.
+
+```
+rogen.json - error: the config could not be written: permission denied. (format.writeFailed)
+```
+
+Check that the file is writable and that no other program locks it.
+
 ## Init
 
 ### `init.configExists` [#init-configexists]

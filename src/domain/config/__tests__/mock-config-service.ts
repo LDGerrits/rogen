@@ -183,6 +183,13 @@ export class MockConfigService implements ConfigService {
 		);
 	}
 
+	readonly formatted: string[] = [];
+
+	async format(file: string): Promise<Result<boolean, Diagnostic[]>> {
+		this.formatted.push(file);
+		return ok(false);
+	}
+
 	registerFileCheck(_check: ConfigFileCheck): Disposable {
 		return { [Symbol.dispose]: () => {} };
 	}

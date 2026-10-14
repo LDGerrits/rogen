@@ -35,7 +35,7 @@ Rogen writes the Rojo project file from the folders and names under each `rogen.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - Leave `rogen watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions). `rogen list --json` shows the same later as `serving.clients`, without the process that printed it.
-- Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
+- Before placing files or writing requires, read `rogen doc routing`. `rogen help` lists every command; read a command's help before guessing a flag.
 ````
 
 ## Check changed files automatically
@@ -141,5 +141,5 @@ npx skills add LDGerrits/rogen
 The block is loaded in every session, so it holds only what an agent gets wrong without being told, and the commands that answer the rest:
 
 1. **The block**, about 150 tokens: the rules and the commands that check them.
-2. **`rogen help <topic>`**, about 300 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
+2. **`rogen doc <topic>`**, about 300 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.

@@ -29,6 +29,8 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { MockLifecycleService } from "../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { MockProcessService } from "../../platform/process/__tests__/mock-process-service.js";
+import { BrowserService } from "../../platform/browser/browser-service.js";
+import { MockBrowserService } from "../../platform/browser/__tests__/mock-browser-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 import { MockRequestService } from "../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../platform/watcher/memory-watcher.js";
@@ -55,6 +57,7 @@ export interface CommandHarnessOptions<L extends LogService> {
 	readonly watcher?: Watcher;
 	readonly processes?: ProcessService;
 	readonly requests?: RequestService;
+	readonly browser?: BrowserService;
 	readonly product?: ProductService;
 }
 
@@ -114,6 +117,7 @@ export function commandHarness(
 	services.set(WatchService, watch);
 	services.set(ProcessService, processes);
 	services.set(RequestService, requests);
+	services.set(BrowserService, options.browser ?? new MockBrowserService());
 	services.set(ProductService, options.product ?? new MockProductService());
 	services.set(
 		ServeService,

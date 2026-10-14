@@ -7,20 +7,16 @@ stdout:
     rogen [command] [name...] [options]
   
   Commands:
-    build [project...]  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
-    check [path...]     Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    help [name]         Prints usage, a command's details, a topic, or what a diagnostic code means.
-    init [path]         Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]   Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    serve [project...]  Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    watch [project...]  Builds, then rebuilds whenever sources or configs change.
-    where [path...]     Prints where each file lands in the game, and why, with its warnings.
-  
-  Topics:
-    routing  How folders and names place a file, and what that means for requires.
-    config   Config fields, the tree, source paths and the sync path.
-    layout   Invisible folders, init scripts and .meta.json files.
-    output   Diagnostics, exit codes, --json, fixes and docs links.
+    build [project...]        Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
+    check [path...]           Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
+    fmt-project [project...]  Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.
+    doc [topic]               Opens the documentation in a browser, or prints one topic of it offline.
+    help [name]               Prints usage, a command's details, a topic, or what a diagnostic code means.
+    init [path]               Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
+    list [project...]         Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
+    serve [project...]        Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
+    watch [project...]        Builds, then rebuilds whenever sources or configs change.
+    where [path...]           Prints where each file lands in the game, and why, with its warnings.
   
   Options:
     -h, --help     Print help.
@@ -28,6 +24,6 @@ stdout:
     -v, --verbose  Print debug output.
     -q, --quiet    Only print errors.
   
-  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
+  Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.

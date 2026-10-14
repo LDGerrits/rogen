@@ -44,6 +44,7 @@ const modules = {
 	commands: {
 		build: ["build-log", "build-document"],
 		check: [],
+		"fmt-project": [],
 		help: [],
 		init: [],
 		list: [],

@@ -1,0 +1,6 @@
+{
+	// the name
+	"name": "Game",
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage" }
+}
