@@ -23,6 +23,7 @@ import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "./build-log.js";
 import { BuildWatch } from "./build-watch.js";
 import { buildDocument } from "./build-document.js";
+import { oneProject } from "./one-project.js";
 import { reportRojo } from "./report-rojo.js";
 
 const DenyWarningsOption = {
@@ -53,7 +54,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. A script edited in place changes no name, so it isn't written. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const BuildOptions = [
@@ -98,6 +99,12 @@ registerCommand(
 		): Promise<Result<void, Error>> {
 			const flags = this.rojoFlags(line);
 			if (flags.isErr()) return flags;
+			if (line.options.watch && line.options["deny-warnings"])
+				return err(
+					new UsageError(
+						"--deny-warnings judges a single build, so it doesn't go with --watch."
+					)
+				);
 			if (line.options.watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
@@ -121,6 +128,14 @@ registerCommand(
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
+
+			if (flags.value !== undefined) {
+				const unique = oneProject(
+					accessor.get(RojoCommandService),
+					selection.value
+				);
+				if (unique.isErr()) return unique;
+			}
 
 			const run = await buildService.build(selection.value);
 

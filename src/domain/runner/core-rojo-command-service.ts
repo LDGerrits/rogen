@@ -9,6 +9,7 @@ import {
 } from "../../platform/process/process-service.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
 import {
 	RojoCommandRequest,
 	RojoCommandRun,
@@ -30,12 +31,11 @@ export class CoreRojoCommandService implements RojoCommandService {
 		selection: ConfigSelection,
 		request: RojoCommandRequest
 	): Promise<Result<RojoCommandRun, Error>> {
-		const configs = selection.requireValid();
-		if (configs.isErr()) return configs;
-		const chosen = ProjectChoice.read(configs.value, selection.named);
-		if (chosen.length !== 1)
-			return err(CoreRojoCommandService.notOne(chosen.length, request));
-		const [project] = chosen;
+		const valid = selection.requireValid();
+		if (valid.isErr()) return valid;
+		const chosen = this.choose(selection, request.command);
+		if (chosen.isErr()) return chosen;
+		const project = chosen.value;
 
 		const executable = await this.rojoRunner.find(
 			selection.home,
@@ -48,6 +48,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 		]);
 		if (problems.length > 0) return err(new DiagnosticsError(problems));
 
+		if (request.signal?.aborted) return ok({ project, messages: [] });
 		const rojo = this.rojoRunner.start(
 			executable.value,
 			request.command,
@@ -62,11 +63,12 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 		const onAbort = () => void rojo.terminate();
 		request.signal?.addEventListener("abort", onAbort, { once: true });
+		if (request.signal?.aborted) onAbort();
 		const exit = await ended;
 		request.signal?.removeEventListener("abort", onAbort);
 		rojo[Symbol.dispose]();
 
-		if (exit.code === 0 || exit.interrupted || request.signal?.aborted)
+		if (exit.code === 0 || request.signal?.aborted)
 			return ok({ project, messages });
 		const said = messages
 			.filter(({ severity }) => severity === "error")
@@ -85,14 +87,18 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 	}
 
-	private static notOne(
-		count: number,
-		request: RojoCommandRequest
-	): UsageError {
-		return new UsageError(
-			count === 0
-				? `There is no project to run 'rojo ${request.command}' on.`
-				: `'rojo ${request.command}' runs on one project, and this selects ${count}. Name one: a folder with a rogen.json, or a project.`
+	choose(
+		selection: ConfigSelection,
+		command: string
+	): Result<ResolvedConfig, UsageError> {
+		const chosen = ProjectChoice.read(selection.configs, selection.named);
+		if (chosen.length === 1) return ok(chosen[0]);
+		return err(
+			new UsageError(
+				chosen.length === 0
+					? `There is no project to run 'rojo ${command}' on.`
+					: `'rojo ${command}' runs on one project, and this selects ${chosen.length}. Name one: a folder with a rogen.json, or a project.`
+			)
 		);
 	}
 }

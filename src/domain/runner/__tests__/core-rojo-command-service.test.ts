@@ -119,6 +119,43 @@ describe("CoreRojoCommandService", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
+	it("should not start Rojo when the signal has already aborted", async () => {
+		const controller = new AbortController();
+		controller.abort();
+
+		const result = await service.run(selection(), {
+			command: "build",
+			flags: [],
+			cwd: "/repo",
+			signal: controller.signal,
+		});
+
+		expect(result.isOk()).toBe(true);
+		expect(processes.spawned).toEqual([]);
+	});
+
+	it("should fail when Rojo is interrupted by something else", async () => {
+		const running = run();
+		await new Promise((resolve) => setImmediate(resolve));
+		processes.spawned[0].exit({
+			code: 130,
+			signal: null,
+			interrupted: true,
+		});
+
+		expect((await running).isErr()).toBe(true);
+	});
+
+	it("should name the one project, or say there is none, before it runs", () => {
+		expect(service.choose(selection(), "build").unwrap().stem).toBe(
+			"default"
+		);
+		const none = service.choose(new MockConfigSelection([]), "build");
+		expect((none as ResultError<Error>).error.message).toBe(
+			"There is no project to run 'rojo build' on."
+		);
+	});
+
 	it("should end Rojo when the signal aborts", async () => {
 		const controller = new AbortController();
 		const running = service.run(selection(), {

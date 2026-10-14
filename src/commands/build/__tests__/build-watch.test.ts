@@ -219,6 +219,37 @@ describe("build --watch", () => {
 			expect(processes.spawned).toHaveLength(2);
 		});
 
+		it("should run Rojo once more, not once per update, after a burst while it runs", async () => {
+			void startWatch([], { output: "game.rbxl" });
+			await settle();
+			for (const name of ["B", "C", "D"]) {
+				await memFs.writeFile(`/repo/src/${name}.luau`, "");
+				await settle();
+			}
+			await finishRojo(0);
+			await finishRojo(1);
+
+			expect(processes.spawned).toHaveLength(2);
+		});
+
+		it("should refuse to start when Rojo has several projects to run on", async () => {
+			await memFs.createDirectory("/repo/a");
+			await memFs.createDirectory("/repo/b");
+			await write(
+				"/repo/a/rogen.json",
+				config({ sourcePaths: ["../src"] })
+			);
+			await write(
+				"/repo/b/rogen.json",
+				config({ sourcePaths: ["../src"] })
+			);
+
+			const result = await startWatch(["a", "b"], { output: "g.rbxl" });
+
+			expect(result.isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
 		it("should report a failed run and go on watching", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();

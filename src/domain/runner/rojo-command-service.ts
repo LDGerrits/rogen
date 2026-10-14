@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
@@ -24,6 +25,12 @@ export interface RojoCommandRun {
 
 export interface RojoCommandService {
 	readonly _serviceBrand: undefined;
+
+	/** The one project a Rojo command runs on: the one the selection names, else `default`. Fails when it holds none or several, which the caller can say before it writes anything. */
+	choose(
+		selection: ConfigSelection,
+		command: string
+	): Result<ResolvedConfig, UsageError>;
 
 	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects, when its files are broken, when the Rojo can't read them, or when Rojo exits with an error. */
 	run(

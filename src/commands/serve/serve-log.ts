@@ -10,8 +10,8 @@ import {
 } from "../../domain/serve/serve-service.js";
 import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
-import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { reportServerMessage } from "../build/report-rojo.js";
 import { WatchJsonLog, WatchLog } from "../build/watch-log.js";
 import {
 	diagnosticToJson,
@@ -72,18 +72,12 @@ export class ServeLog implements ServeReporter {
 	}
 
 	said(said: ServerOutputEvent): void {
-		const { plan } = this;
-		const { message } = said;
-		if (message.severity === "debug") {
-			this.logService.debug(
-				`${plan.executable.server.name}: ${message.text}`
-			);
-			return;
-		}
-		const text = `${plan.executable.server.name}: ${messageRelativeTo(message.text, this.cwd)}`;
-		if (message.severity === "error") this.logService.error(text);
-		else if (message.severity === "warning") this.logService.warn(text);
-		else this.logService.info(text);
+		reportServerMessage(
+			this.logService,
+			this.plan.executable.server.name,
+			said.message,
+			this.cwd
+		);
 	}
 
 	connection({ target, opened, clients }: ServerConnectionEvent): void {

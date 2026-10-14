@@ -10,6 +10,7 @@ import { WatchService } from "../../domain/watch/watch-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { oneProject } from "./one-project.js";
 import { reportRojo } from "./report-rojo.js";
 import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
 
@@ -42,6 +43,13 @@ export class BuildWatch {
 		const selection = await configService.select(this.refs);
 		if (selection.isErr()) return selection;
 		for (const note of selection.value.notes) logService.warn(note);
+		if (this.rojoFlags !== undefined) {
+			const unique = oneProject(
+				accessor.get(RojoCommandService),
+				selection.value
+			);
+			if (unique.isErr()) return unique;
+		}
 		const watched = watchService.watch(selection.value);
 		if (watched.isErr()) return watched;
 		const session = store.add(watched.value);
@@ -49,6 +57,7 @@ export class BuildWatch {
 		log.begin(session.configs, selection.value.home);
 
 		const rojoRuns = new Sequencer();
+		let rojoWaiting = false;
 		store.add(
 			session.onDidUpdate((update) => {
 				log.update(update);
@@ -65,8 +74,11 @@ export class BuildWatch {
 					)
 				)
 					return;
+				if (rojoWaiting) return;
+				rojoWaiting = true;
 				rojoRuns
 					.queue(async () => {
+						rojoWaiting = false;
 						const ran = await accessor
 							.get(RojoCommandService)
 							.run(selection.value, {
@@ -89,7 +101,9 @@ export class BuildWatch {
 			if (started.isErr()) return started;
 			await shutdown.p;
 		} finally {
+			stopped.abort();
 			await session.stop();
+			await rojoRuns.queue(async () => {});
 		}
 		log.end();
 		return ok(undefined);

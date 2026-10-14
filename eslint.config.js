@@ -43,7 +43,7 @@ const modules = {
 	},
 	// A command's own file is imported only by the composition root, for its side effect.
 	commands: {
-		build: ["build-log", "build-document", "watch-log"],
+		build: ["build-log", "build-document", "report-rojo", "watch-log"],
 		check: [],
 		"fmt-project": [],
 		help: [],
