@@ -80,6 +80,41 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 	}
 }
 
+// The domain modules each domain module may import. A new edge is a design decision, made here.
+const domainDependencies = {
+	build: ["config", "roblox", "rojo", "toolchain"],
+	config: ["roblox", "rojo"],
+	init: ["config", "roblox", "rojo", "toolchain"],
+	legacy: ["config"],
+	roblox: [],
+	runner: ["toolchain"],
+	rojo: ["roblox"],
+	serve: ["build", "config", "runner", "watch"],
+	toolchain: [],
+	update: ["toolchain"],
+	watch: ["build", "config"],
+};
+
+for (const name of Object.keys(modules.domain)) {
+	if (!(name in domainDependencies)) {
+		throw new Error(
+			`Add the domain modules src/domain/${name} may import to domainDependencies in eslint.config.js.`
+		);
+	}
+}
+
+const visit = (name, path = []) => {
+	if (path.includes(name)) {
+		throw new Error(
+			`domainDependencies has a cycle: ${[...path, name].join(" -> ")}.`
+		);
+	}
+	for (const next of domainDependencies[name] ?? []) {
+		visit(next, [...path, name]);
+	}
+};
+Object.keys(domainDependencies).forEach((name) => visit(name));
+
 // Modules that only the composition root imports, so that dropping one is deleting its folder and a line of main.ts.
 const MAIN_ONLY_MODULES = ["legacy"];
 
@@ -114,10 +149,20 @@ const importRule = (prefix, name, files) =>
 				message: `Import ${name} through its public files.`,
 			};
 
+const dependencyRule = (layer, module, name, files, depth) =>
+	layer === "domain" && !domainDependencies[module].includes(name)
+		? {
+				regex: `${up(depth)}${name}/`,
+				message: `${module} does not depend on ${name}; add it to domainDependencies in eslint.config.js if it should.`,
+			}
+		: importRule(up(depth), name, files);
+
 const internalsPatterns = (layer, module, depth) => [
 	...Object.entries(modules[layer])
 		.filter(([name]) => name !== module)
-		.map(([name, files]) => importRule(up(depth), name, files)),
+		.map(([name, files]) =>
+			dependencyRule(layer, module, name, files, depth)
+		),
 	...(layer === "commands"
 		? Object.entries(modules.domain).map(([name, files]) =>
 				importRule(`${up(depth + 1)}domain/`, name, files)
