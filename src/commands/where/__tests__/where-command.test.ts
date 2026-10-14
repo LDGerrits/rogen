@@ -43,9 +43,9 @@ describe("where command", () => {
 	});
 
 	it("should print where each path lands and why, relative to the working directory", async () => {
-		await writeConfig("default.rogen.json", {
+		await writeConfig("rogen.json", {
 			routes: ROUTES,
-			exclude: ["**/*.spec.luau"],
+			globIgnorePaths: ["**/*.spec.luau"],
 		});
 		await write(
 			"src/Net/Http@client.luau",
@@ -65,15 +65,24 @@ describe("where command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(printed()).toEqual([
 			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
-			"src/Net/Http.spec.luau -> excluded · matches **/*.spec.luau",
+			"src/Net/Http.spec.luau -> ignored · matches **/*.spec.luau",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
 		]);
 	});
 
+	it("should say a file that is no instance is not one", async () => {
+		await writeConfig("rogen.json", { routes: ROUTES });
+		await write("src/Notes.md");
+
+		await run({ _: ["src/Notes.md"] });
+
+		expect(printed()).toEqual(["src/Notes.md -> not an instance"]);
+	});
+
 	describe("when an error elsewhere stops the build", () => {
 		beforeEach(async () => {
-			await writeConfig("default.rogen.json", {
+			await writeConfig("rogen.json", {
 				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
 			await write(
@@ -107,7 +116,7 @@ describe("where command", () => {
 	});
 
 	it("should show the misspelt folder a named file lies in, but not under a directory's files", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await writeConfig("rogen.json", { routes: ROUTES });
 		await write("src/F/Sever/A.luau");
 
 		await run({ _: ["src/F/Sever/A.luau"] });
@@ -120,8 +129,8 @@ describe("where command", () => {
 	});
 
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
-		await writeConfig("default.rogen.json", {
-			rootDirs: ["."],
+		await writeConfig("rogen.json", {
+			sourcePaths: ["."],
 			routes: { ...ROUTES, ReplicatedFirst: "ReplicatedFirst" },
 		});
 		await write("ReplicatedFirst/Boot.client.luau");
@@ -134,7 +143,7 @@ describe("where command", () => {
 	});
 
 	it("should print every file in the tree when given no path", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await writeConfig("rogen.json", { routes: ROUTES });
 		await write("src/B.luau", "src/A/Server/C.luau");
 
 		await run({});
@@ -146,60 +155,22 @@ describe("where command", () => {
 	});
 
 	it("should say there are no files rather than print nothing", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
+		await writeConfig("rogen.json", { routes: ROUTES });
 		await fs.createDirectory("/repo/src");
 
 		const result = await run({});
 
 		expect(result.isOk()).toBe(true);
-		expect(printed()).toEqual(["No files in the root dirs (src)."]);
-	});
-
-	describe("with several configs", () => {
-		beforeEach(async () => {
-			await writeConfig("default.rogen.json", { routes: ROUTES });
-			await writeConfig("lobby.rogen.json", {
-				routes: ROUTES,
-				rootDirs: ["src", "places/lobby"],
-			});
-			await write("src/Util.luau", "places/lobby/Queue.luau");
-		});
-
-		it("should print a line once when the configs agree, and only the placing config's line for a place's file", async () => {
-			await run({
-				_: ["src/Util.luau", "places/lobby/Queue.luau", "README.md"],
-			});
-
-			expect(printed()).toEqual([
-				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-				"lobby: places/lobby/Queue.luau -> ReplicatedStorage/Shared/Queue · route * (fallback)",
-				"README.md -> outside the root dirs",
-			]);
-		});
+		expect(printed()).toEqual(["No files in the source paths (src)."]);
 	});
 
 	it("should fail with the config's errors", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES, bogus: 1 });
+		await writeConfig("rogen.json", { routes: ROUTES, extends: "base" });
 
 		const result = await run({ _: ["src/A.luau"] });
 
 		expect(result.isErr()).toBe(true);
 		expect(printed()).toEqual([]);
-	});
-
-	it("should print the answers, then the errors of a config that doesn't load, and fail", async () => {
-		await writeConfig("default.rogen.json", { routes: ROUTES });
-		await writeConfig("broken.rogen.json", { routes: ROUTES, bogus: 1 });
-		await write("src/Util.luau");
-
-		const result = await run({ _: ["src/Util.luau"] });
-
-		expect(printed()).toEqual([
-			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-		]);
-		expect(result.isErr() && result.error.message).toContain(
-			"/repo/broken.rogen.json:1:"
-		);
 	});
 
 	it.each([
@@ -217,7 +188,7 @@ describe("where command", () => {
 	])(
 		"should read a backslash as a separator, so %s answers as with slashes",
 		async (_, backslashed, slashed) => {
-			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("rogen.json", { routes: ROUTES });
 			await write("src/A.luau");
 
 			await run({ _: [slashed] });
@@ -233,7 +204,7 @@ describe("where command", () => {
 		const notes = () => logService.texts("note");
 
 		beforeEach(async () => {
-			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("rogen.json", { routes: ROUTES });
 		});
 
 		it("should print a module's require as a note under its line", async () => {
@@ -313,9 +284,9 @@ describe("where command", () => {
 			).locations;
 
 		beforeEach(async () => {
-			await writeConfig("default.rogen.json", {
+			await writeConfig("rogen.json", {
 				routes: ROUTES,
-				exclude: ["**/*.spec.luau"],
+				globIgnorePaths: ["**/*.spec.luau"],
 			});
 			await write(
 				"src/Inventory/Server/Save.luau",
@@ -337,7 +308,7 @@ describe("where command", () => {
 			expect(printed()).not.toEqual([]);
 			expect(document()).toEqual([
 				{
-					config: "default",
+					config: "repo",
 					source: "/repo/src/Inventory/Server/Save.luau",
 					status: "placed",
 					exists: true,
@@ -349,15 +320,15 @@ describe("where command", () => {
 					diagnostics: [],
 				},
 				{
-					config: "default",
+					config: "repo",
 					source: "/repo/src/Net/Http.spec.luau",
-					status: "excluded",
+					status: "ignored",
 					exists: true,
 					pattern: "/repo/**/*.spec.luau",
 					diagnostics: [],
 				},
 				{
-					config: "default",
+					config: "repo",
 					source: "/repo/src/Nowhere.luau",
 					status: "placed",
 					exists: false,
@@ -371,6 +342,16 @@ describe("where command", () => {
 			]);
 		});
 
+		it("should give the status of a file that is no instance", async () => {
+			await write("src/Notes.md");
+
+			await run({ _: ["src/Notes.md"], json: true });
+
+			expect(document()).toMatchObject([
+				{ source: "/repo/src/Notes.md", status: "notInstance" },
+			]);
+		});
+
 		it("should print nothing but the document, however loud the log level", async () => {
 			await run({ json: true, verbose: true });
 
@@ -379,10 +360,10 @@ describe("where command", () => {
 			).toEqual([]);
 		});
 
-		it("should answer from the configs that load and print the errors of one that doesn't", async () => {
-			await writeConfig("broken.rogen.json", {
+		it("should print the errors of a config that doesn't load", async () => {
+			await writeConfig("rogen.json", {
 				routes: ROUTES,
-				bogus: 1,
+				extends: "base",
 			});
 
 			const result = await run({
@@ -394,11 +375,11 @@ describe("where command", () => {
 			const { locations, diagnostics } = JSON.parse(
 				printed().join("\n")
 			) as { locations: { config: string }[]; diagnostics: unknown[] };
-			expect(locations.map(({ config }) => config)).toEqual(["default"]);
+			expect(locations).toEqual([]);
 			expect(diagnostics).toMatchObject([
 				{
-					file: "/repo/broken.rogen.json",
-					code: "config.unknownField",
+					file: "/repo/rogen.json",
+					code: "config.removedField",
 				},
 			]);
 		});
@@ -416,6 +397,9 @@ describe("where command", () => {
 			expect(parse("where", "--variant", "mock").isErr()).toBe(true);
 			expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
 			expect(parse("where", "-c", "a.rogen.json").isErr()).toBe(true);
+			expect(parse("where", "--out-file", "a.project.json").isErr()).toBe(
+				true
+			);
 		});
 	});
 });

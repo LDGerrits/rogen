@@ -111,8 +111,8 @@ describe("help command", () => {
 		it("should print the command's usage and arguments", async () => {
 			await help("build");
 
-			expect(printed()).toContain("rogen build [config...] [options]");
-			expect(printed()).toContain("A config's name");
+			expect(printed()).toContain("rogen build [project...] [options]");
+			expect(printed()).toContain("A folder with a rogen.json");
 		});
 
 		it("should give every command examples, after its options", async () => {
@@ -274,9 +274,38 @@ describe("help command", () => {
 
 	describe("option table", () => {
 		it("should write an option's placeholder after it", async () => {
-			await help("build");
+			const options = [
+				{
+					name: "thing",
+					short: "t",
+					type: "string",
+					placeholder: "path",
+					description: "Takes a thing.",
+				},
+			] as const satisfies readonly OptionDescriptor[];
+			store.add(
+				registerCommand(
+					class extends AbstractCommand<typeof options> {
+						constructor() {
+							super({
+								id: "placeholder",
+								metadata: {
+									description: "A test command.",
+									options,
+								},
+							});
+						}
 
-			expect(printed()).toContain("-o, --out-file <path>");
+						async run(): Promise<Result<void, Error>> {
+							return ok(undefined);
+						}
+					}
+				)
+			);
+
+			await help("placeholder");
+
+			expect(printed()).toContain("-t, --thing <path>");
 		});
 
 		it("should write <value> for a string option without a placeholder", async () => {

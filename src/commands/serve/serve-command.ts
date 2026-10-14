@@ -2,7 +2,6 @@ import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { onUnexpectedError } from "../../base/errors.js";
 import { Result, ok } from "../../base/result.js";
-import { ConfigOptions } from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
 	ServeService,
@@ -21,7 +20,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ServeJsonLog, ServeLog, ServeReporter } from "./serve-log.js";
 
 const ServeOptions = [
-	...ConfigOptions,
 	{
 		...JsonOption,
 		description:
@@ -42,9 +40,9 @@ registerCommand(
 						"Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
 					args: [
 						{
-							name: "config",
+							name: "project",
 							description:
-								"A config to serve, by name or path; when configs extend it, the ones no other config extends are served instead. Every config here, or in the nearest folder above that has any, is built and watched either way; without names, each one no other config extends is served.",
+								"A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -52,12 +50,12 @@ registerCommand(
 					passthrough: {
 						name: "server args",
 						description:
-							"Passed to every server untouched, such as --port 34873. A place's own servePort and serveAddress go in its template.",
+							"Passed to every server untouched, such as --port 34873. A project's own servePort and serveAddress go in its rogen.json.",
 					},
 					options: ServeOptions,
 					examples: [
 						"rogen serve",
-						"rogen serve lobby",
+						"rogen serve places/lobby",
 						"rogen serve -- --port 34873",
 					],
 				},
@@ -80,7 +78,6 @@ registerCommand(
 				const plan = await serveService.prepare({
 					signal: stopChecks.signal,
 					refs: line.positionals,
-					options: line.options,
 					serverArgs: line.passthrough ?? [],
 				});
 				// Ctrl+C reaches the server's --version check too, so its failure says nothing then.

@@ -7,7 +7,7 @@ import { ToolManifest } from "./tool-manifest.js";
 export interface ToolchainService {
 	readonly _serviceBrand: undefined;
 
-	/** What each tool that writes a sync dir tells a build, which names none of them; the composition root hands them to the build. */
+	/** What each tool that writes a sync path tells a build, which names none of them; the composition root hands them to the build. */
 	readonly syncTools: readonly SyncTool[];
 
 	/** What `directory` uses: facts only, never decisions. Only `init` asks; builds do what the config says. */

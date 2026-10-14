@@ -50,215 +50,179 @@ describe("list command", () => {
 			harness.run("list", { positionals: _, options });
 	});
 
-	it("should show a config's root dirs, routes, sync dir and project file", async () => {
-		await write("default.rogen.json", {
-			rootDirs: ["src", "lobby"],
-			syncDir: "out",
+	it("should show a config's source paths, routes, sync path and project file", async () => {
+		await write("rogen.json", {
+			sourcePaths: ["src", "lobby"],
+			syncPath: "out",
 			routes: { Server: "ServerScriptService", "*": "ReplicatedStorage" },
 		});
 
 		const result = await run();
 
 		expect(result.isOk()).toBe(true);
-		expect(steps()).toEqual(["default.rogen.json"]);
-		expect(under("default.rogen.json")).toEqual([
+		expect(steps()).toEqual(["rogen.json"]);
+		expect(under("rogen.json")).toEqual([
 			[
-				"root dirs: src, lobby",
+				"source paths: src, lobby",
 				"routes:",
 				"  Server -> ServerScriptService",
 				"  * -> ReplicatedStorage",
-				"sync dir: out",
+				"sync path: out",
 				"project file: default.project.json",
 			].join("\n"),
 		]);
 	});
 
+	it("should print no extends, extended by or template line", async () => {
+		await write("rogen.json", {
+			routes: { "*": "Workspace" },
+			tree: { $className: "DataModel" },
+		});
+
+		await run();
+
+		expect(under("rogen.json")[0]).not.toMatch(
+			/extends|extended by|template/
+		);
+	});
+
 	describe("routes", () => {
 		const routes = { Server: "ServerScriptService", "*": "Workspace" };
 
-		it("should say 'same as' for a place that inherits the routes of an earlier config", async () => {
-			await write("default.rogen.json", { routes });
-			await write("lobby.rogen.json", { extends: "default.rogen.json" });
+		it("should say 'same as' for a config whose routes equal those of an earlier one", async () => {
+			await write("lobby/rogen.json", { routes });
+			await write("arena/rogen.json", { routes });
 
-			await run();
+			await run({ _: ["lobby", "arena"] });
 
-			expect(under("default.rogen.json")[0]).toContain(
+			expect(under("lobby/rogen.json")[0]).toContain(
 				"routes:\n  Server -> ServerScriptService\n  * -> Workspace"
 			);
-			expect(under("lobby.rogen.json").at(-1)).toContain(
-				"routes: same as default"
+			expect(under("arena/rogen.json").at(-1)).toContain(
+				"routes: same as lobby"
 			);
 		});
 
-		it("should print the routes of a place that overrides one", async () => {
-			await write("default.rogen.json", { routes });
-			await write("lobby.rogen.json", {
-				extends: "default.rogen.json",
-				routes: { Server: "Workspace" },
+		it("should print the routes of a config that differs in one", async () => {
+			await write("lobby/rogen.json", { routes });
+			await write("arena/rogen.json", {
+				routes: { ...routes, Server: "Workspace" },
 			});
 
-			await run();
+			await run({ _: ["lobby", "arena"] });
 
-			const details = under("lobby.rogen.json").at(-1)!;
+			const details = under("arena/rogen.json").at(-1)!;
 			expect(details).not.toContain("same as");
 			expect(details).toContain("  Server -> Workspace");
 		});
 
 		it("should not call routes the same when only their order differs", async () => {
-			await write("a.rogen.json", {
+			await write("a/rogen.json", {
 				routes: { Server: "Workspace", Client: "Workspace" },
 			});
-			await write("b.rogen.json", {
+			await write("b/rogen.json", {
 				routes: { Client: "Workspace", Server: "Workspace" },
 			});
 
-			await run();
+			await run({ _: ["a", "b"] });
 
-			expect(under("b.rogen.json")[0]).not.toContain("same as");
+			expect(under("b/rogen.json")[0]).not.toContain("same as");
 		});
 
 		it("should print none for a broken config", async () => {
-			await write("a.rogen.json", { routes });
-			await write("b.rogen.json", `{\n\t"bogus": 1\n}`);
+			await write("a/rogen.json", { routes });
+			await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
 
-			await run();
+			await run({ _: ["a", "b"] });
 
-			expect(under("b.rogen.json").join("\n")).not.toContain("routes");
+			expect(under("b/rogen.json").join("\n")).not.toContain("routes");
 		});
 	});
 
-	it("should show a config's template, and the templates it merges over", async () => {
-		await write("places/shared/template.project.json", { name: "Game" });
-		await write("places/lobby/template.project.json", { name: "Lobby" });
-		await write("default.rogen.json", {
-			template: "places/shared/template.project.json",
-		});
-		await write("lobby.rogen.json", {
-			extends: "./default.rogen.json",
-			template: "places/lobby/template.project.json",
-		});
+	it("should say so when there is no sync path", async () => {
+		await write("rogen.json", {});
 
 		await run();
 
-		expect(under("default.rogen.json")[0]).toContain(
-			"template: places/shared/template.project.json\n"
-		);
-		expect(under("lobby.rogen.json").at(-1)).toContain(
-			"template: places/lobby/template.project.json, over places/shared/template.project.json\n"
-		);
+		const [details] = under("rogen.json");
+		expect(details).toContain("sync path: (none)");
 	});
 
-	it("should say so when there is no sync dir", async () => {
-		await write("default.rogen.json", {});
-
-		await run();
-
-		const [details] = under("default.rogen.json");
-		expect(details).toContain("sync dir: (none)");
-	});
-
-	it("should show the extends chain of a config", async () => {
-		await write("root.rogen.json", {});
-		await write("base.rogen.json", { extends: "root.rogen.json" });
-		await write("default.rogen.json", { extends: "base.rogen.json" });
-
-		await run();
-
-		expect(under("default.rogen.json")[0]).toMatch(
-			/^extends: base\.rogen\.json -> root\.rogen\.json\n/
-		);
-	});
-
-	it("should show the configs that extend a config directly", async () => {
-		await write("default.rogen.json", {});
-		await write("lobby.rogen.json", { extends: "default.rogen.json" });
-		await write("lobby-sync.rogen.json", { extends: "lobby.rogen.json" });
-
-		await run();
-
-		expect(under("default.rogen.json")[0]).toMatch(
-			/^extended by: lobby\.rogen\.json\n/
-		);
-		expect(under("lobby.rogen.json")[0]).toMatch(
-			/^extends: default\.rogen\.json\nextended by: lobby-sync\.rogen\.json\n/
-		);
-	});
-
-	it("should list a named config with the configs that extend it", async () => {
-		await write("default.rogen.json", {});
-		await write("lobby.rogen.json", { extends: "default.rogen.json" });
-		await write("lobby-sync.rogen.json", { extends: "lobby.rogen.json" });
-		await write("arena.rogen.json", { extends: "default.rogen.json" });
-
-		await run({ _: ["lobby"] });
-
-		expect(steps()).toEqual(["lobby.rogen.json", "lobby-sync.rogen.json"]);
-	});
-
-	it("should list every config here, in name order", async () => {
-		await write("lobby.rogen.json", {});
-		await write("default.rogen.json", {});
+	it("should list the config here, and not those in other folders", async () => {
+		await write("rogen.json", {});
+		await write("lobby/rogen.json", {});
 		await write("notes.json", {});
 
 		await run();
 
-		expect(steps()).toEqual(["default.rogen.json", "lobby.rogen.json"]);
+		expect(steps()).toEqual(["rogen.json"]);
 	});
 
 	it("should report a broken config in place, print the rest and fail", async () => {
-		await write("a.rogen.json", {});
-		await write("b.rogen.json", `{\n\t"bogus": 1\n}`);
-		await write("c.rogen.json", {});
+		await write("a/rogen.json", {});
+		await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
+		await write("c/rogen.json", {});
 
-		const result = await run();
+		const result = await run({ _: ["a", "b", "c"] });
 
 		expect(steps()).toEqual([
-			"a.rogen.json",
-			"b.rogen.json",
-			"c.rogen.json",
+			"a/rogen.json",
+			"b/rogen.json",
+			"c/rogen.json",
 		]);
-		expect(under("b.rogen.json")).toEqual([
-			expect.stringContaining("/repo/b.rogen.json:2:2 - error:"),
+		expect(under("b/rogen.json")).toEqual([
+			expect.stringContaining("/repo/b/rogen.json:2:2 - error:"),
 		]);
 		expect(result.isErr()).toBe(true);
 	});
 
-	it("should still show the extends chain of a broken config", async () => {
-		await write("base.rogen.json", { bogus: 1 });
-		await write("broken.rogen.json", { extends: "base.rogen.json" });
+	it("should count every broken config when none loads", async () => {
+		await write("a/rogen.json", `{\n\t"extends": "a"\n}`);
+		await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
 
-		await run();
+		const result = await run({ _: ["a", "b"] });
 
-		const lines = under("broken.rogen.json");
-		expect(lines).toContain("extends: base.rogen.json");
-		expect(lines.join("\n")).toContain("error:");
+		expect((result as ResultError<Error>).error.message).toBe(
+			"2 configs have errors."
+		);
+	});
+
+	it("should say how many of the configs are broken when some load", async () => {
+		await write("a/rogen.json", {});
+		await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
+
+		const result = await run({ _: ["a", "b"] });
+
+		expect((result as ResultError<Error>).error.message).toBe(
+			"1 of 2 configs has errors."
+		);
 	});
 
 	it("should fail when there is no config here", async () => {
 		const result = await run();
 
 		expect((result as ResultError<Error>).error.message).toContain(
-			"No *.rogen.json found"
+			"No rogen.json found"
 		);
 	});
 
-	it("should list only the named configs", async () => {
-		await write("default.rogen.json", {});
-		await write("lobby.rogen.json", {});
-		await write("match.rogen.json", {});
+	it("should list only the named projects", async () => {
+		await write("rogen.json", {});
+		await write("lobby/rogen.json", {});
+		await write("match/rogen.json", {});
 
 		await run({ _: ["lobby", "match"] });
 
-		expect(steps()).toEqual(["lobby.rogen.json", "match.rogen.json"]);
+		expect(steps()).toEqual(["lobby/rogen.json", "match/rogen.json"]);
 	});
 
-	it("should list the config at an explicit path", async () => {
-		await write("default.rogen.json", {});
-		await write("places/lobby.rogen.json", {});
+	it("should list the project of a default.project.json path", async () => {
+		await write("rogen.json", {});
+		await write("places/lobby/rogen.json", {});
 
-		await run({ _: ["places/lobby.rogen.json"] });
+		await run({ _: ["places/lobby/default.project.json"] });
 
-		expect(steps()).toEqual(["places/lobby.rogen.json"]);
+		expect(steps()).toEqual(["places/lobby/rogen.json"]);
 	});
 
 	describe("with --json", () => {
@@ -268,73 +232,38 @@ describe("list command", () => {
 		const entry = (config: string) =>
 			document().configs.find((candidate) => candidate.config === config);
 
-		it("should list every template a config merges, the furthest first", async () => {
-			await write("places/shared/template.project.json", {
-				name: "Game",
-			});
-			await write("places/lobby/template.project.json", {
-				name: "Lobby",
-			});
-			await write("default.rogen.json", {
-				template: "places/shared/template.project.json",
-			});
-			await write("lobby.rogen.json", {
-				extends: "./default.rogen.json",
-				template: "places/lobby/template.project.json",
-			});
-
-			await run({ _: ["lobby"], json: true });
-
-			expect(document()).toMatchObject({
-				configs: [
-					{
-						projectName: "Lobby",
-						template: "/repo/places/lobby/template.project.json",
-						templates: [
-							"/repo/places/shared/template.project.json",
-							"/repo/places/lobby/template.project.json",
-						],
-					},
-				],
-			});
-		});
-
 		it("should print each config's resolved fields, identity first", async () => {
-			await write("base.rogen.json", {
-				routes: { Server: "ServerScriptService" },
-			});
-			await write("default.rogen.json", {
-				extends: "base.rogen.json",
-				rootDirs: ["src", "lobby"],
-				routes: { "*": "ReplicatedStorage/Shared" },
-				exclude: ["**/*.spec.luau"],
-				syncDir: "out",
+			await write("rogen.json", {
+				name: "Game",
+				sourcePaths: ["src", "lobby"],
+				routes: {
+					Server: "ServerScriptService",
+					"*": "ReplicatedStorage/Shared",
+				},
+				globIgnorePaths: ["**/*.spec.luau"],
+				syncPath: "out",
 			});
 
-			const result = await run({ _: ["default"], json: true });
+			const result = await run({ json: true });
 
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({
 				configs: [
 					{
-						config: "default",
-						file: "/repo/default.rogen.json",
+						config: "Game",
+						file: "/repo/rogen.json",
 						status: "valid",
-						extends: ["/repo/base.rogen.json"],
-						extendedBy: [],
 						served: true,
-						projectName: "repo",
-						rootDirs: ["/repo/src", "/repo/lobby"],
+						projectName: "Game",
+						sourcePaths: ["/repo/src", "/repo/lobby"],
 						commonRoot: "/repo",
 						routes: {
 							Server: "ServerScriptService",
 							"*": "ReplicatedStorage/Shared",
 						},
-						exclude: ["/repo/**/*.spec.luau"],
-						template: null,
-						templates: [],
-						syncDir: "/repo/out",
-						outFile: "/repo/default.project.json",
+						globIgnorePaths: ["/repo/**/*.spec.luau"],
+						syncPath: "/repo/out",
+						projectFile: "/repo/default.project.json",
 						serving: null,
 						diagnostics: [],
 					},
@@ -342,63 +271,48 @@ describe("list command", () => {
 			});
 		});
 
-		it("should say which configs extend each, and which serve starts a server for", async () => {
-			await write("default.rogen.json", {});
-			await write("lobby.rogen.json", { extends: "default.rogen.json" });
-			await write("lobby-sync.rogen.json", {
-				extends: "lobby.rogen.json",
-			});
+		it("should say every config that loads is served", async () => {
+			await write("lobby/rogen.json", {});
+			await write("arena/rogen.json", {});
 
-			await run({ json: true });
+			await run({ _: ["lobby", "arena"], json: true });
 
-			expect(entry("default")).toMatchObject({
-				extendedBy: ["/repo/lobby.rogen.json"],
-				served: false,
-			});
-			expect(entry("lobby")).toMatchObject({
-				extendedBy: ["/repo/lobby-sync.rogen.json"],
-				served: false,
-			});
-			expect(entry("lobby-sync")).toMatchObject({
-				extendedBy: [],
-				served: true,
-			});
+			expect(entry("lobby")).toMatchObject({ served: true });
+			expect(entry("arena")).toMatchObject({ served: true });
 		});
 
-		it("should print every config here when none is named", async () => {
-			await write("lobby.rogen.json", {});
-			await write("default.rogen.json", {});
+		it("should print the named projects in the order they are named", async () => {
+			await write("lobby/rogen.json", {});
+			await write("arena/rogen.json", {});
 
-			await run({ json: true });
+			await run({ _: ["lobby", "arena"], json: true });
 
 			expect(document().configs.map(({ config }) => config)).toEqual([
-				"default",
 				"lobby",
+				"arena",
 			]);
 		});
 
 		it("should print a broken config's diagnostics in place of its fields and fail without reporting again", async () => {
-			await write("a.rogen.json", {});
-			await write("b.rogen.json", `{\n\t"bogus": 1\n}`);
+			await write("a/rogen.json", {});
+			await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
 
-			const result = await run({ json: true });
+			const result = await run({ _: ["a", "b"], json: true });
 
 			expect(entry("a")).toMatchObject({ status: "valid" });
-			expect(entry("a")).toHaveProperty("rootDirs");
+			expect(entry("a")).toHaveProperty("sourcePaths");
 			expect(entry("b")).toEqual({
 				config: "b",
-				file: "/repo/b.rogen.json",
+				file: "/repo/b/rogen.json",
 				status: "broken",
-				extends: [],
-				extendedBy: [],
 				served: false,
 				diagnostics: [
 					expect.objectContaining({
-						file: "/repo/b.rogen.json",
+						file: "/repo/b/rogen.json",
 						line: 2,
 						column: 2,
 						severity: "error",
-						code: expect.any(String),
+						code: "config.removedField",
 					}),
 				],
 			});
@@ -408,7 +322,7 @@ describe("list command", () => {
 		});
 
 		it("should print nothing but the document", async () => {
-			await write("default.rogen.json", {});
+			await write("rogen.json", {});
 
 			await run({ json: true });
 
@@ -432,25 +346,29 @@ describe("list command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept names, paths and --json, but not the output overrides", () => {
+		it("should accept projects and --json, but not the output overrides", () => {
 			expect(
-				parse("list", "lobby", "places/a.rogen.json", "--json").isOk()
+				parse("list", "lobby", "places/arena", "--json").isOk()
 			).toBe(true);
 			expect(parse("list", "--variant", "mock").isErr()).toBe(true);
 			expect(parse("list", "-o", "out.project.json").isErr()).toBe(true);
+			expect(
+				parse("list", "--out-file", "out.project.json").isErr()
+			).toBe(true);
 			expect(parse("list", "--all").isErr()).toBe(true);
 		});
 	});
 
 	it("should print the report although it is quiet", async () => {
-		await write("default.rogen.json", { routes: { "*": "Workspace" } });
+		await write("rogen.json", { routes: { "*": "Workspace" } });
 		logService.setLevel(LogLevel.Error);
 
 		await run();
 
-		expect(logService.texts("section")).toEqual(["default.rogen.json"]);
+		expect(logService.texts("section")).toEqual(["rogen.json"]);
 		expect(logService.texts("intro")).toEqual([]);
 	});
+
 	describe("beside a running serve", () => {
 		const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 		let requests: MockRequestService;
@@ -462,7 +380,7 @@ describe("list command", () => {
 			logService = harness.log;
 			run = ({ _ = [], ...options } = {}) =>
 				harness.run("list", { positionals: _, options });
-			await write("default.rogen.json", {
+			await write("rogen.json", {
 				routes: { "*": "ReplicatedStorage" },
 			});
 		});
@@ -492,7 +410,7 @@ describe("list command", () => {
 
 				await run();
 
-				const [details] = under("default.rogen.json");
+				const [details] = under("rogen.json");
 				expect(details).toContain(`\n${line}`);
 			}
 		);
@@ -506,17 +424,14 @@ describe("list command", () => {
 
 			await run();
 
-			expect(under("default.rogen.json")[0]).not.toContain("serving:");
+			expect(under("rogen.json")[0]).not.toContain("serving:");
 		});
 
 		it("should print the serving server of each config, or null, with --json", async () => {
-			await write("lobby.rogen.json", {
-				extends: "default.rogen.json",
-				outFile: "lobby.project.json",
-			});
+			await write("lobby/rogen.json", { routes: { "*": "Workspace" } });
 			await serve(1);
 
-			await run({ json: true });
+			await run({ _: [".", "lobby"], json: true });
 
 			const { configs } = JSON.parse(logService.texts("print")[0]) as {
 				configs: { config: string; serving: unknown }[];
@@ -525,7 +440,7 @@ describe("list command", () => {
 				configs.map(({ config, serving }) => [config, serving])
 			).toEqual([
 				[
-					"default",
+					"repo",
 					{
 						server: "rojo",
 						host: "127.0.0.1",

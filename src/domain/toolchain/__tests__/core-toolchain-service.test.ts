@@ -6,14 +6,6 @@ import { DetectedWorkspace } from "../toolchain.js";
 const rbxts = (workspace: DetectedWorkspace) =>
 	workspace.languageFor("roblox-ts");
 
-const PLACE = {
-	name: "lobby",
-	rootDirs: ["src", "places/lobby"],
-	sharedRootDirs: ["src"],
-	outDir: "out/lobby",
-	projectFile: "lobby.project.json",
-};
-
 describe("CoreToolchainService.detect", () => {
 	const cwd = path.resolve("/mock/workspace");
 	let fs: MemoryFileSystemService;
@@ -160,7 +152,7 @@ describe("CoreToolchainService.detect", () => {
 			await write(
 				"tsconfig.base.json",
 				JSON.stringify({
-					compilerOptions: { outDir: "build", rootDir: "game" },
+					compilerOptions: { outDir: "build", sourcePath: "game" },
 					include: ["game"],
 				})
 			);
@@ -175,7 +167,7 @@ describe("CoreToolchainService.detect", () => {
 			const language = rbxts(await toolchain().detect(cwd));
 
 			expect(language.compiler?.outDir).toBe("lib");
-			expect(language.configuredRootDir()).toBe("game");
+			expect(language.configuredSourcePath()).toBe("game");
 		});
 
 		it("should read a base in another folder, with its paths made relative to here", async () => {
@@ -210,7 +202,7 @@ describe("CoreToolchainService.detect", () => {
 			await write(
 				"tsconfig.a.json",
 				JSON.stringify({
-					compilerOptions: { outDir: "from-a", rootDir: "game" },
+					compilerOptions: { outDir: "from-a", sourcePath: "game" },
 				})
 			);
 			await write(
@@ -222,18 +214,18 @@ describe("CoreToolchainService.detect", () => {
 			const language = rbxts(await toolchain().detect(cwd));
 
 			expect(language.compiler?.outDir).toBe("from-b");
-			expect(language.configuredRootDir()).toBe("game");
+			expect(language.configuredSourcePath()).toBe("game");
 		});
 
 		it("should find a package in a node_modules above the folder", async () => {
 			await write(
 				"../node_modules/@acme/tsconfig/tsconfig.json",
-				JSON.stringify({ compilerOptions: { rootDir: "shared" } })
+				JSON.stringify({ compilerOptions: { sourcePath: "shared" } })
 			);
 			await extending("@acme/tsconfig");
 
 			expect(
-				rbxts(await toolchain().detect(cwd)).configuredRootDir()
+				rbxts(await toolchain().detect(cwd)).configuredSourcePath()
 			).toBe("../node_modules/@acme/tsconfig/shared");
 		});
 
@@ -255,65 +247,24 @@ describe("CoreToolchainService.detect", () => {
 		});
 	});
 
-	describe("rootDir", () => {
-		it("should read compilerOptions.rootDir from tsconfig.json", async () => {
+	describe("sourcePath", () => {
+		it("should read compilerOptions.sourcePath from tsconfig.json", async () => {
 			await write(
 				"tsconfig.json",
-				JSON.stringify({ compilerOptions: { rootDir: "game" } })
+				JSON.stringify({ compilerOptions: { sourcePath: "game" } })
 			);
 
 			expect(
-				rbxts(await toolchain().detect(cwd)).configuredRootDir()
+				rbxts(await toolchain().detect(cwd)).configuredSourcePath()
 			).toBe("game");
 		});
 
-		it("should not report a rootDir when tsconfig.json has none", async () => {
+		it("should not report a sourcePath when tsconfig.json has none", async () => {
 			await write("tsconfig.json", "{}");
 
 			expect(
-				rbxts(await toolchain().detect(cwd)).configuredRootDir()
+				rbxts(await toolchain().detect(cwd)).configuredSourcePath()
 			).toBeUndefined();
-		});
-	});
-
-	describe("tsconfig include and tsBuildInfoFile", () => {
-		it("should report whether tsconfig.json sets include", async () => {
-			await write("tsconfig.json", '{"include":["src"]}');
-
-			const place = rbxts(
-				await toolchain().detect(cwd)
-			).compiler?.planPlace(PLACE);
-
-			expect(place?.setup).toEqual([]);
-		});
-
-		it("should report a tsconfig.json without include", async () => {
-			await write("tsconfig.json", "{}");
-
-			const workspace = await toolchain().detect(cwd);
-
-			const place = rbxts(workspace).compiler?.planPlace(PLACE);
-			expect(place?.setup).toEqual([
-				expect.stringContaining(
-					'Add "include": ["src"] to tsconfig.json'
-				),
-			]);
-			expect(place?.files[0].content).not.toContain("tsBuildInfoFile");
-		});
-
-		it("should read compilerOptions.tsBuildInfoFile", async () => {
-			await write(
-				"tsconfig.json",
-				'{"compilerOptions":{"tsBuildInfoFile":"out/tsconfig.tsbuildinfo"}}'
-			);
-
-			const place = rbxts(
-				await toolchain().detect(cwd)
-			).compiler?.planPlace(PLACE);
-
-			expect(place?.files[0].content).toContain(
-				'"tsBuildInfoFile": "out/lobby/tsconfig.tsbuildinfo"'
-			);
 		});
 	});
 

@@ -1,9 +1,0 @@
-{
-	"rootDirs": [
-		"src"
-	],
-	"routes": {
-		"server": "ServerScriptService",
-		"Server": "Workspace"
-	}
-}

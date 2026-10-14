@@ -41,7 +41,7 @@ export class CoreWatchSession
 	private started = false;
 	private notices: ConfigNotice[] = [];
 	private plan: WatchPlan;
-	/** What the root dirs held after the latest change; only the intake replaces it, and a rebuild reads the one it started with. */
+	/** What the source paths held after the latest change; only the intake replaces it, and a rebuild reads the one it started with. */
 	private listing = Listing.EMPTY;
 	private activeWatch = "";
 	private stopping: Promise<void> | undefined;
@@ -255,14 +255,9 @@ export class CoreWatchSession
 		return true;
 	}
 
-	/** Re-checks the configs as a set, and returns the config files whose block was lifted or put on. */
-	private refreshSet(): string[] {
-		const before = this.set.blockedFiles;
+	/** Takes the configs the selection holds now as the set to build. */
+	private refreshSet(): void {
 		this.set = new BuildSet(this.selection.configs);
-		const after = this.set.blockedFiles;
-		return [...new Set([...before, ...after])].filter(
-			(file) => before.has(file) !== after.has(file)
-		);
 	}
 
 	/** Drops what the session knows of configs that left the selection. */
@@ -284,7 +279,6 @@ export class CoreWatchSession
 	private async applyConfigChanges(files: readonly string[]): Promise<{
 		reloaded: string[];
 		reindexed: boolean;
-		reblocked: string[];
 	}> {
 		const reloaded = new Set<string>();
 		let reindexed = false;
@@ -298,9 +292,9 @@ export class CoreWatchSession
 			// A config edited while the watcher restarted was never reported.
 			toReload = [...this.selection.files];
 		}
-		const reblocked = this.refreshSet();
+		this.refreshSet();
 		this.forgetRemoved();
-		return { reloaded: [...reloaded], reindexed, reblocked };
+		return { reloaded: [...reloaded], reindexed };
 	}
 
 	private async onChanges(changes: FileChange[]): Promise<void> {
@@ -310,9 +304,8 @@ export class CoreWatchSession
 
 		let reloaded: string[] = [];
 		let reindexed = false;
-		let reblocked: string[] = [];
 		if (configFiles.length > 0) {
-			({ reloaded, reindexed, reblocked } =
+			({ reloaded, reindexed } =
 				await this.applyConfigChanges(configFiles));
 		}
 
@@ -328,7 +321,6 @@ export class CoreWatchSession
 
 		const affected = new Set([
 			...reloaded,
-			...reblocked,
 			...(reindexed
 				? this.selection.configs.map(({ file }) => file)
 				: []),

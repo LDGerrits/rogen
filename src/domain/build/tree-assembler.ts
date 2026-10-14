@@ -64,7 +64,7 @@ export class TreeAssembler {
 
 	assemble(): Result<Assembly, Diagnostic[]> {
 		const { placement, meta } = this;
-		const project = placement.template.edit();
+		const project = placement.tree.edit();
 		const { collapsed, globIgnorePaths } = this.merge(project);
 		const applied = new FolderMetaApplier(
 			placement,
@@ -75,7 +75,7 @@ export class TreeAssembler {
 
 		return ok({
 			placement,
-			projectFile: placement.template.toFile(
+			projectFile: placement.tree.toFile(
 				project.getFile().tree,
 				globIgnorePaths
 			),
@@ -90,15 +90,15 @@ export class TreeAssembler {
 		globIgnorePaths: string[];
 	} {
 		const { placement } = this;
-		const { layout, template, leftOut: allLeftOut } = placement;
+		const { layout, tree, leftOut: allLeftOut } = placement;
 		const leftOut = [...allLeftOut].filter(
 			([source]) => !layout.isReadOnly(source)
 		);
-		const ignored = this.ignoredSources(leftOut, template.mounts.paths);
+		const ignored = this.ignoredSources(leftOut, tree.mounts.paths);
 		const collapsed = new Collapsed(
 			this.collapsibleDirs(
 				leftOut.map(([source]) => source),
-				(instancePath) => template.getNode(instancePath) !== undefined
+				(instancePath) => tree.getNode(instancePath) !== undefined
 			)
 		);
 		const initDirs = this.insertNodes(project, collapsed);
@@ -107,9 +107,9 @@ export class TreeAssembler {
 			collapsed,
 			globIgnorePaths: [
 				...new Set([
-					...template.globIgnorePaths,
+					...tree.globIgnorePaths,
 					...ignored.map((source) =>
-						literalGlob(layout.syncPath(source).optional)
+						literalGlob(layout.rojoPath(source).optional)
 					),
 					...[...initDirs].flatMap(([dir, init]) =>
 						this.besideInit(dir, init)
@@ -119,7 +119,7 @@ export class TreeAssembler {
 		};
 	}
 
-	/** The left-out paths Rojo is told to ignore. A replaced file may share the winner's emitted path, and the template mounts a displaced or mounted one; Rojo must read a mount, so a left-out folder that holds one can't be ignored either, and it is never collapsed, so nothing else reads it. */
+	/** The left-out paths Rojo is told to ignore. A replaced file may share the winner's emitted path, and the tree mounts a displaced or mounted one; Rojo must read a mount, so a left-out folder that holds one can't be ignored either, and it is never collapsed, so nothing else reads it. */
 	private ignoredSources(
 		leftOut: readonly [string, LeftOut][],
 		mounts: readonly string[]
@@ -144,7 +144,7 @@ export class TreeAssembler {
 		const { placement } = this;
 		const { layout, nodes } = placement;
 		for (const [dir, instancePath] of collapsed.entries())
-			project.insertNode(instancePath, { $path: layout.syncPath(dir) });
+			project.insertNode(instancePath, { $path: layout.rojoPath(dir) });
 		const initDirs = new Map<string, string>();
 		for (const file of nodes) {
 			const { entry, instancePath } = file;
@@ -153,11 +153,11 @@ export class TreeAssembler {
 			if (dir !== undefined) {
 				initDirs.set(dir, path.posix.basename(entry.source));
 				project.insertNode(instancePath, {
-					$path: layout.syncPath(dir),
+					$path: layout.rojoPath(dir),
 				});
 			} else
 				project.insertNode(instancePath, {
-					$path: layout.syncPath(entry.source),
+					$path: layout.rojoPath(entry.source),
 				});
 		}
 		return initDirs;
@@ -170,7 +170,7 @@ export class TreeAssembler {
 		return childrenBesideInit(placement.listing(dir), init)
 			.map((name) => path.posix.join(dir, name))
 			.filter((sibling) => !layout.isReadOnly(sibling))
-			.map((sibling) => literalGlob(layout.syncPath(sibling).optional));
+			.map((sibling) => literalGlob(layout.rojoPath(sibling).optional));
 	}
 
 	/** Directories written as one `$path` because every file in them lands where Rojo would put it; only the outermost of nested ones. */
@@ -191,10 +191,10 @@ export class TreeAssembler {
 				claims.set(claimed, (claims.get(claimed) ?? 0) + 1);
 			}
 
-			const rootDir = toPosix(scanned.rootDir);
+			const sourcePath = toPosix(scanned.sourcePath);
 			for (const { folder } of folderNodes) namedDirs.add(folder);
 			for (const dir of ancestors(entry.source)) {
-				if (!isInside(dir, rootDir)) break;
+				if (!isInside(dir, sourcePath)) break;
 				const inDir = entriesByDir.get(dir);
 				if (inDir) inDir.push(entry);
 				else entriesByDir.set(dir, [entry]);
@@ -233,7 +233,7 @@ export class TreeAssembler {
 		return collapsed;
 	}
 
-	/** Whether a directory has a folder below it that nothing in it places: Rojo reading the directory would make that a Folder, which the files Rogen places one by one never do. Tools that write the sync dir decide what it holds, so only a build without one asks. */
+	/** Whether a directory has a folder below it that nothing in it places: Rojo reading the directory would make that a Folder, which the files Rogen places one by one never do. Tools that write the sync path decide what it holds, so only a build without one asks. */
 	private emptyFolderFinder(
 		placedDirs: ReadonlyMap<string, readonly PlacedEntry[]>
 	): (dir: string) => boolean {
@@ -251,7 +251,7 @@ export class TreeAssembler {
 			return found;
 		};
 		return (dir) =>
-			placement.layout.syncDir === undefined && holdsEmpty(dir);
+			placement.layout.syncPath === undefined && holdsEmpty(dir);
 	}
 
 	/** The instance the directory becomes, if every entry sits where Rojo would put it. Never a service itself. */

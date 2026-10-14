@@ -86,6 +86,22 @@ describe("platform/config/config-file", () => {
 			expect(result.isOk()).toBe(true);
 		});
 
+		it("should hand back what an invalid file holds when it parses as JSON", async () => {
+			const result = await read('{ "name": 1 }');
+
+			expect(
+				(result as ResultError<ConfigFileFailure>).error
+			).toMatchObject({ kind: "invalid", value: { name: 1 } });
+		});
+
+		it("should hand back nothing for a file that doesn't parse", async () => {
+			const result = await read("{ nope");
+
+			expect(
+				(result as ResultError<ConfigFileFailure>).error
+			).toMatchObject({ kind: "invalid", value: undefined });
+		});
+
 		it("should report a missing file as a diagnostic instead of throwing", async () => {
 			const result = await reader.read("/repo/nope.json");
 
@@ -347,6 +363,33 @@ describe("platform/config/config-file", () => {
 
 				expect(file.positionOf("flags")).toBeUndefined();
 				expect(file.positionOf("name.deeper")).toBeUndefined();
+			});
+		});
+
+		describe("positionOfKey", () => {
+			const text = `{
+	"name": "x",
+	"words": { "k": "v" }
+}`;
+
+			it("should return the line and column where a top-level key is written", async () => {
+				const file = (await read(text)).unwrap();
+
+				expect(file.positionOfKey("name")).toEqual({
+					line: 2,
+					column: 2,
+				});
+				expect(file.positionOfKey("words")).toEqual({
+					line: 3,
+					column: 2,
+				});
+			});
+
+			it("should return undefined for a key the file does not set", async () => {
+				const file = (await read(text)).unwrap();
+
+				expect(file.positionOfKey("flags")).toBeUndefined();
+				expect(file.positionOfKey("k")).toBeUndefined();
 			});
 		});
 	});

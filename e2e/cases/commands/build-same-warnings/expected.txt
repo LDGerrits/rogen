@@ -1,43 +1,38 @@
-$ rogen build
+$ rogen build lobby match
 exit 0
 stdout:
-  rogen build · default, lobby
-  default
-    default.project.json · wrote
+  rogen build · lobby, match
   lobby
-    lobby.project.json · wrote · same warnings as default
+    lobby/default.project.json · wrote
+  match
+    match/default.project.json · wrote · same warnings as lobby
   Built 2 configs with 1 warning.
 stderr:
-  default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
+  lobby/rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
     src/Inventory/Sever (did you mean "server"?)
 
-$ rogen where src/Inventory/inventory.rogen.json
-exit 0
-stdout:
-  src/Inventory/inventory.rogen.json -> excluded · matches *.rogen.json
-
 written:
-  default.project.json
-  lobby.project.json
+  lobby/default.project.json
+  match/default.project.json
 
-$ rojo sourcemap default.project.json
-project: DataModel
+$ rojo sourcemap lobby/default.project.json
+lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Inventory: Folder
         Sever: Folder
-          A: ModuleScript  <- src/Inventory/Sever/A.luau
+          A: ModuleScript  <- ../src/Inventory/Sever/A.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      B: ModuleScript  <- src/Inventory/Server/B.luau
+      B: ModuleScript  <- ../src/Inventory/Server/B.luau
 
-$ rojo sourcemap lobby.project.json
-project: DataModel
+$ rojo sourcemap match/default.project.json
+match: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
       Inventory: Folder
         Sever: Folder
-          A: ModuleScript  <- src/Inventory/Sever/A.luau
+          A: ModuleScript  <- ../src/Inventory/Sever/A.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
-      B: ModuleScript  <- src/Inventory/Server/B.luau
+      B: ModuleScript  <- ../src/Inventory/Server/B.luau

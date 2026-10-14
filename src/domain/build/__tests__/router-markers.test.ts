@@ -10,14 +10,14 @@ describe("Router", () => {
 
 		const route = (
 			overrides: ResolvedConfigSpec = {},
-			rootDirs: readonly string[] = [abs("src")]
-		) => routeFiles(fs, overrides, rootDirs);
+			sourcePaths: readonly string[] = [abs("src")]
+		) => routeFiles(fs, overrides, sourcePaths);
 
 		const paths = async (
 			overrides: ResolvedConfigSpec = {},
-			rootDirs?: readonly string[]
+			sourcePaths?: readonly string[]
 		) =>
-			(await route(overrides, rootDirs))
+			(await route(overrides, sourcePaths))
 				.unwrap()
 				.routed.map((file) => file.instancePath.join("/"));
 
@@ -39,7 +39,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should route everything under a marker in the root dir", async () => {
+			it("should route everything under a marker in the source path", async () => {
 				await write("src/@server", "src/Save.luau");
 
 				expect(await paths()).toEqual(["ServerScriptService/Save"]);
@@ -264,7 +264,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should not report a file the template displaces", async () => {
+			it("should not report a file the tree displaces", async () => {
 				await write(
 					"src/server/Net/@client",
 					"src/server/Net/Remote.luau"
@@ -272,15 +272,12 @@ describe("Router", () => {
 
 				expect(
 					await errors({
-						template: {
-							file: abs("template.project.json"),
-							project: {
-								name: "game",
-								tree: {
-									$className: "DataModel",
-									ServerScriptService: {
-										Net: { $path: "vendor/Net" },
-									},
+						project: {
+							name: "game",
+							tree: {
+								$className: "DataModel",
+								ServerScriptService: {
+									Net: { $path: "vendor/Net" },
 								},
 							},
 						},

@@ -1,19 +1,15 @@
-$ rogen list default --json
+$ rogen list --json
 exit 0
 stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
+        "config": "Game",
+        "file": "<dir>/rogen.json",
         "status": "valid",
-        "extends": [
-          "<dir>/base.rogen.json"
-        ],
-        "extendedBy": [],
         "served": true,
         "projectName": "Game",
-        "rootDirs": [
+        "sourcePaths": [
           "<dir>/src"
         ],
         "commonRoot": "<dir>/src",
@@ -23,15 +19,11 @@ stdout:
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "exclude": [
+        "globIgnorePaths": [
           "<dir>/**/*.spec.luau"
         ],
-        "template": "<dir>/template.project.json",
-        "templates": [
-          "<dir>/template.project.json"
-        ],
-        "syncDir": "<dir>/dist",
-        "outFile": "<dir>/default.project.json",
+        "syncPath": "<dir>/dist",
+        "projectFile": "<dir>/default.project.json",
         "serving": null,
         "diagnostics": []
       }

@@ -1,7 +1,0 @@
-{
-	"name": "Game",
-	"emitLegacyScripts": false,
-	"tree": {
-		"$className": "DataModel"
-	}
-}

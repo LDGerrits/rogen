@@ -26,7 +26,7 @@ describe("NameReadings", () => {
 				},
 				...overrides,
 			});
-			const index = await indexOf(fs, config.rootDirs);
+			const index = await indexOf(fs, config.sourcePaths);
 			return placeFiles(index, config, syncTools).unwrap().readings;
 		};
 

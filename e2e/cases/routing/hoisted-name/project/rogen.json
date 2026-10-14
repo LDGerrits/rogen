@@ -1,0 +1,9 @@
+{
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"character": "StarterPlayer/StarterCharacterScripts",
+		"*": "ReplicatedStorage/shared"
+	}
+}

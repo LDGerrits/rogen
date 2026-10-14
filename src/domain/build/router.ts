@@ -48,7 +48,7 @@ export interface InitFolders {
 
 export interface IgnoredAt {
 	readonly key: string;
-	/** The folder that spells it, or holds the marker that does, relative to the root dir; none for the file's own name. */
+	/** The folder that spells it, or holds the marker that does, relative to the source path; none for the file's own name. */
 	readonly dir?: string;
 	/** The marker file that spells it. */
 	readonly marker?: string;
@@ -66,10 +66,10 @@ export interface InitWithoutFolder {
 	readonly folder: InstancelessFolder;
 }
 
-/** How many folders deep a directory relative to the root dir is. */
+/** How many folders deep a directory relative to the source path is. */
 const depthOf = (dir: string) => (dir === "" ? 0 : dir.split("/").length);
 
-/** A folder above a file that becomes a node, by its name and its folder relative to the root dir. */
+/** A folder above a file that becomes a node, by its name and its folder relative to the source path. */
 interface ClaimedFolder {
 	readonly name: string;
 	readonly dir: string;
@@ -211,7 +211,7 @@ export class Router {
 	/** Why the folder an init script sits in names no node; every folder that names none has a reason. */
 	private instancelessFolderOf(entry: ScannedFile): InstancelessFolder {
 		const folder = this.readings.instanceless(
-			entry.rootDir,
+			entry.sourcePath,
 			dirnamePosix(entry.relativePath)
 		);
 		if (!folder)
@@ -258,7 +258,7 @@ export class Router {
 			parent = [...parent, folderName];
 			folderNodes.push({
 				instancePath: parent,
-				folder: joinPosix(entry.rootDir, dir),
+				folder: joinPosix(entry.sourcePath, dir),
 			});
 		}
 		const instancePath = leaf.isInit ? parent : [...parent, leaf.name];
@@ -280,7 +280,10 @@ export class Router {
 		folders: ClaimedPath["folders"]
 	): InitFolders {
 		return {
-			becomes: joinPosix(entry.rootDir, folders[folders.length - 1].dir),
+			becomes: joinPosix(
+				entry.sourcePath,
+				folders[folders.length - 1].dir
+			),
 			sitsIn: path.posix.dirname(entry.source),
 		};
 	}

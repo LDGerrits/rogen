@@ -4,70 +4,65 @@ import { JSONSchema } from "../../../base/json-schema.js";
 
 import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
 import {
-	configDefaults,
-	configMergePolicies,
 	configRemovedFieldAdvice,
 	configSchema,
+	projectFileSchema,
+	rogenKeys,
+	rojoKeys,
 } from "../config-schema.js";
 
 describe("domain/config/config-schema", () => {
 	describe("configSchema", () => {
 		const schema = configSchema;
 
-		const ROOT_FIELDS = [
+		const ROJO_FIELDS = [
 			"$schema",
-			"extends",
-			"rootDirs",
-			"routes",
-			"exclude",
-			"template",
-			"syncDir",
-			"outFile",
-		];
-
-		const UNSUPPORTED_FIELDS = [
-			"source",
-			"verbatim",
-			"unwrap",
-			"casing",
-			"aliases",
+			"name",
+			"tree",
+			"servePort",
+			"servePlaceIds",
+			"blockedPlaceIds",
+			"placeId",
+			"gameId",
+			"serveAddress",
+			"serveAllowedHosts",
+			"emitLegacyScripts",
 			"globIgnorePaths",
-			"luau",
-			"ts",
-			"darklua",
-			"profiles",
-			"outputs",
-			"sourceProject",
+			"syncRules",
+			"syncbackRules",
 		];
+		const ROGEN_FIELDS = ["sourcePaths", "routes", "syncPath"];
 
 		describe("schema shape", () => {
-			it("declares exactly the root config fields", () => {
+			it("declares Rojo's keys and Rogen's", () => {
 				expect(Object.keys(schema.properties!).sort()).toEqual(
-					[...ROOT_FIELDS].sort()
+					[...ROJO_FIELDS, ...ROGEN_FIELDS].sort()
 				);
+				expect([...rojoKeys].sort()).toEqual([...ROJO_FIELDS].sort());
+				expect([...rogenKeys].sort()).toEqual([...ROGEN_FIELDS].sort());
 			});
 
 			it.each([
 				"help/config.md",
 				"docs/content/docs/v2/configuration.mdx",
-			])("has every root field named in %s", (file) => {
+			])("has every Rogen field named in %s", (file) => {
 				const text = fs.readFileSync(
 					path.resolve(import.meta.dirname, "../../../..", file),
 					"utf8"
 				);
 
 				expect(
-					Object.keys(schema.properties!).filter(
+					ROGEN_FIELDS.filter(
 						(field) => !text.includes(`\`${field}\``)
 					)
 				).toEqual([]);
 			});
 
-			it("rejects unknown top-level keys", () => {
-				expect(schema.additionalProperties).toBe(false);
+			it("lets a key outside both lists pass for the loader to warn about", () => {
+				expect(schema.additionalProperties).toBeUndefined();
 			});
 
-			it.each(UNSUPPORTED_FIELDS)(
+			it.each(["source", "aliases", "extends", "template", "outFile"])(
 				"does not declare the unsupported field %s",
 				(field) => {
 					expect(schema.properties![field]).toBeUndefined();
@@ -76,29 +71,37 @@ describe("domain/config/config-schema", () => {
 		});
 
 		describe("defaults", () => {
-			it('defaults rootDirs to ["src"]', () => {
-				expect(schema.properties!.rootDirs.default).toEqual(["src"]);
+			it('defaults sourcePaths to ["src"]', () => {
+				expect(schema.properties!.sourcePaths.default).toEqual(["src"]);
 			});
 
 			it("defaults routes to {}", () => {
 				expect(schema.properties!.routes.default).toEqual({});
 			});
 
-			it("defaults exclude to []", () => {
-				expect(schema.properties!.exclude.default).toEqual([]);
-			});
-
-			it("has no static default for template, syncDir or outFile", () => {
-				expect(schema.properties!.template.default).toBeUndefined();
-				expect(schema.properties!.syncDir.default).toBeUndefined();
-				expect(schema.properties!.outFile.default).toBeUndefined();
+			it("has no static default for syncPath or the tree", () => {
+				expect(schema.properties!.syncPath.default).toBeUndefined();
+				expect(schema.properties!.tree.default).toBeUndefined();
 			});
 		});
 
-		it("carries a description on every field", () => {
-			for (const field of ROOT_FIELDS) {
+		it("carries a description on every Rogen field", () => {
+			for (const field of ROGEN_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
 			}
+		});
+	});
+
+	describe("projectFileSchema", () => {
+		it("declares only Rojo's keys", () => {
+			expect(Object.keys(projectFileSchema.properties!).sort()).toEqual(
+				[...rojoKeys].sort()
+			);
+			expect(projectFileSchema.additionalProperties).toBe(false);
+		});
+
+		it("says the file is written from a rogen.json", () => {
+			expect(projectFileSchema.description).toContain("rogen.json");
 		});
 	});
 
@@ -162,57 +165,43 @@ describe("domain/config/config-schema", () => {
 	});
 
 	describe("removed field advice", () => {
-		const location = { resource: "/repo/default.rogen.json" };
+		const location = { resource: "/repo/rogen.json" };
 
-		it.each(["modes", "mode", "variants", "conflicts", "server"])(
-			"says %s was removed and what to do instead",
-			(field) => {
-				expect(configRemovedFieldAdvice(field, location)).toMatchObject(
-					{
-						code: "config.removedField",
-						message: expect.stringContaining(
-							`"${field}" was removed.`
-						),
-					}
-				);
-			}
-		);
+		it.each([
+			"modes",
+			"mode",
+			"variants",
+			"conflicts",
+			"server",
+			"extends",
+			"template",
+			"outFile",
+			"exclude",
+			"rootDirs",
+			"syncDir",
+		])("says %s was removed and what to do instead", (field) => {
+			expect(configRemovedFieldAdvice(field, location)).toMatchObject({
+				code: "config.removedField",
+				message: expect.stringContaining(`"${field}" was removed.`),
+			});
+		});
 
-		it("leaves any other field to the unknown field message", () => {
+		it("names the replacement of exclude, and of a mounted node", () => {
+			expect(
+				configRemovedFieldAdvice("exclude", location)?.message
+			).toContain('"globIgnorePaths"');
+			expect(
+				configRemovedFieldAdvice("exclude", location)?.message
+			).toContain("null in a project");
+		});
+
+		it("leaves any other field to the unknown field warning", () => {
 			expect(
 				configRemovedFieldAdvice("exlude", location)
 			).toBeUndefined();
 			expect(
 				configRemovedFieldAdvice("toString", location)
 			).toBeUndefined();
-		});
-	});
-
-	describe("configMergePolicies", () => {
-		it("names a policy for every field", () => {
-			expect(Object.keys(configMergePolicies).sort()).toEqual(
-				Object.keys(configSchema.properties!).sort()
-			);
-		});
-
-		it("adds list entries, merges maps and replaces strings", () => {
-			expect(configMergePolicies).toMatchObject({
-				rootDirs: "append",
-				exclude: "append",
-				routes: "merge",
-				template: "replace",
-				syncDir: "replace",
-			});
-		});
-	});
-
-	describe("configDefaults", () => {
-		it("holds exactly the fields the schema gives a default", () => {
-			expect(configDefaults.contents).toEqual({
-				rootDirs: ["src"],
-				routes: {},
-				exclude: [],
-			});
 		});
 	});
 });

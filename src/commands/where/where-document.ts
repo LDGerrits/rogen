@@ -43,13 +43,13 @@ type LocationFields =
 			readonly status: "displaced" | "mounted";
 			readonly node: readonly string[];
 	  }
-	| { readonly status: "excluded"; readonly pattern: string }
+	| { readonly status: "ignored"; readonly pattern: string }
 	| {
 			readonly status:
 				| "unrouted"
 				| "skipped"
 				| "outside"
-				| "ignored"
+				| "notInstance"
 				| "missing"
 				| "empty";
 	  };
@@ -108,15 +108,15 @@ function fieldsOf(location: FileLocation): LocationFields {
 		case "displaced":
 		case "mounted":
 			return { status: location.status, node: location.node };
-		case "excluded":
+		case "ignored":
 			return {
-				status: "excluded",
+				status: "ignored",
 				pattern: unescapedGlob(location.pattern),
 			};
 		case "unrouted":
 		case "skipped":
 		case "outside":
-		case "ignored":
+		case "notInstance":
 		case "missing":
 		case "empty":
 			return { status: location.status };

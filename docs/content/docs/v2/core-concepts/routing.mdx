@@ -10,7 +10,7 @@ A **route** sends files to a **target**, a path that starts at a Roblox **servic
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    ```json title="default.rogen.json"
+    ```json title="rogen.json"
     {
     	"routes": {
     		"Server": "ServerScriptService",
@@ -22,7 +22,7 @@ A **route** sends files to a **target**, a path that starts at a Roblox **servic
     ```
   </Tab>
   <Tab value="roblox-ts">
-    ```json title="default.rogen.json"
+    ```json title="rogen.json"
     {
     	"routes": {
     		"server": "ServerScriptService",
@@ -110,7 +110,7 @@ Near misses aren't routed, but `rogen build` warns about them. Route keys other 
 
 ## The Governing Route
 
-When several routes apply to a path, the first one Rogen meets walking down from the root directory wins. That's the **governing route**, and everything below it is ignored: a deeper routing folder keeps its name, and a suffix only sets the class.
+When several routes apply to a path, the first one Rogen meets walking down from the source path wins. That's the **governing route**, and everything below it is ignored: a deeper routing folder keeps its name, and a suffix only sets the class.
 
 With routes `ReplicatedFirst`, `server` and `client`:
 
@@ -135,7 +135,7 @@ src/Shared/(Server)/Datastore.luau  ->  ReplicatedStorage/Shared/Datastore
 Rogen warns when such a folder's route points at `ServerScriptService` or `ServerStorage` but the file lands somewhere that replicates:
 
 ```
-default.rogen.json - warning: 1 file under a "Server" route ships to clients, because "Shared" governs it: (route.serverCodeShipped)
+rogen.json - warning: 1 file under a "Server" route ships to clients, because "Shared" governs it: (route.serverCodeShipped)
   src/Shared/Server/Datastore.luau -> ReplicatedStorage/Shared/Server/Datastore
 Move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder.
 ```
@@ -152,7 +152,7 @@ src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 ```
 
 <Callout type="info" title="RunContext scripts">
-	With `emitLegacyScripts: false` in your template, every script is a `Script` with a `RunContext`, which runs in more places. Rogen then only warns about `Client` scripts in `ServerScriptService`, or under `StarterPlayerScripts` and `StarterCharacterScripts`, where they'd run twice. It also reads a `RunContext` from the script's `.meta.json`.
+	With `emitLegacyScripts: false` in your `rogen.json`, every script is a `Script` with a `RunContext`, which runs in more places. Rogen then only warns about `Client` scripts in `ServerScriptService`, or under `StarterPlayerScripts` and `StarterCharacterScripts`, where they'd run twice. It also reads a `RunContext` from the script's `.meta.json`.
 </Callout>
 
 `rogen where` shows which route governs any file and how it matched.
@@ -165,7 +165,7 @@ The `*` route is the **fallback route**. It catches every file no other route ma
 "*": "ReplicatedStorage/Shared"
 ```
 
-Without it, those files are **unrouted**: Rogen leaves them out and warns about each one. It never picks a destination for you, so code can't end up on the client by accident. A config with no routes at all is an error.
+Without it, those files are **unrouted**: Rogen leaves them out and warns about each one. It never picks a destination for you, so code can't end up on the client by accident. A config with no `routes` at all routes nothing: no source path is scanned.
 
 <Callout type="info" title="Why declare both shared and *">
 	`*` only catches leftovers. You still need the `shared` key for `shared/` to act as a routing folder and for `@shared` to route, otherwise both keep their names in the game.

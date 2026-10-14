@@ -2,7 +2,7 @@ $ rogen check
 exit 1
 stdout:
   src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+  out - warning: the sync path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 $ rogen check src
 exit 1
@@ -13,4 +13,4 @@ $ rogen check -q
 exit 1
 stdout:
   src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
-  out - warning: the sync dir "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+  out - warning: the sync path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)

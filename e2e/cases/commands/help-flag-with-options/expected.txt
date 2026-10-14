@@ -1,22 +1,21 @@
-$ rogen build -o x.project.json --help
+$ rogen build --deny-warnings --help
 exit 0
 stdout:
-  Writes the project file of each config here, or of the named ones.
+  Writes default.project.json beside the rogen.json here, or beside each named one.
   
   Usage:
-    rogen build [config...] [options]
+    rogen build [project...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
+    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
-    -o, --out-file <path>  Overrides outFile, for one config.
-        --json             Print one JSON document instead of text.
-        --deny-warnings    Exit 1 when any config has a warning.
+        --json           Print one JSON document instead of text.
+        --deny-warnings  Exit 1 when any config has a warning.
   
   Examples:
     rogen build
-    rogen build places/lobby.rogen.json
+    rogen build places/lobby
     rogen build --json
     rogen build --deny-warnings
   
@@ -29,22 +28,21 @@ stdout:
 $ rogen build --json --help
 exit 0
 stdout:
-  Writes the project file of each config here, or of the named ones.
+  Writes default.project.json beside the rogen.json here, or beside each named one.
   
   Usage:
-    rogen build [config...] [options]
+    rogen build [project...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
+    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
-    -o, --out-file <path>  Overrides outFile, for one config.
-        --json             Print one JSON document instead of text.
-        --deny-warnings    Exit 1 when any config has a warning.
+        --json           Print one JSON document instead of text.
+        --deny-warnings  Exit 1 when any config has a warning.
   
   Examples:
     rogen build
-    rogen build places/lobby.rogen.json
+    rogen build places/lobby
     rogen build --json
     rogen build --deny-warnings
   

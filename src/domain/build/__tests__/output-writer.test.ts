@@ -2,22 +2,23 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { DisposableStore } from "../../../base/disposable.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { PROJECT_SCHEMA_URL } from "../../config/config.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
-
 import { OutputFile } from "../build.js";
 import { OutputWriter } from "../output-writer.js";
 
 const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
 
-const outFile = path.resolve("/repo", "default.project.json");
+const projectFile = path.resolve("/repo", "default.project.json");
 
 const treeOf = (): RojoProjectFile => ({
 	tree: {
 		ReplicatedStorage: { $className: "ReplicatedStorage" },
 		$className: "DataModel",
 	},
-	name: "repo",
 });
+
+const named = (name: string): RojoProjectFile => ({ ...treeOf(), name });
 
 describe("OutputWriter", () => {
 	let fs: MemoryFileSystemService;
@@ -25,7 +26,7 @@ describe("OutputWriter", () => {
 	let store: DisposableStore;
 
 	const write = (tree: RojoProjectFile) =>
-		writer.write(new OutputFile(outFile), tree);
+		writer.write(new OutputFile(projectFile), tree);
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
@@ -38,17 +39,43 @@ describe("OutputWriter", () => {
 	});
 
 	describe("write", () => {
-		it("should write the tree as JSON with sorted keys", async () => {
+		it("should write the schema first and the tree as Rojo formats it, without a trailing newline", async () => {
 			const result = await write(treeOf());
 
 			expect(result.unwrap()).toBe(true);
-			const content = await fs.readFile(outFile);
-			expect(JSON.parse(content)).toEqual(treeOf());
-			expect(Object.keys(JSON.parse(content))).toEqual(["name", "tree"]);
-			expect(Object.keys(JSON.parse(content).tree)).toEqual([
-				"$className",
-				"ReplicatedStorage",
+			expect(await fs.readFile(projectFile)).toBe(
+				[
+					"{",
+					`  "$schema": ${JSON.stringify(PROJECT_SCHEMA_URL)},`,
+					'  "tree": {',
+					'    "$className": "DataModel",',
+					'    "ReplicatedStorage": {',
+					'      "$className": "ReplicatedStorage"',
+					"    }",
+					"  }",
+					"}",
+				].join("\n")
+			);
+		});
+
+		it("should write the name between the schema and the tree when the file has one", async () => {
+			await write(named("lobby"));
+
+			const content = await fs.readFile(projectFile);
+			expect(Object.keys(JSON.parse(content))).toEqual([
+				"$schema",
+				"name",
+				"tree",
 			]);
+			expect(JSON.parse(content).name).toBe("lobby");
+		});
+
+		it("should write no name when the file has none", async () => {
+			await write(treeOf());
+
+			expect(
+				Object.keys(JSON.parse(await fs.readFile(projectFile)))
+			).toEqual(["$schema", "tree"]);
 		});
 
 		it("should write through a temporary file and leave none behind", async () => {
@@ -58,7 +85,7 @@ describe("OutputWriter", () => {
 			await write(treeOf());
 
 			const staged = events.filter((event) =>
-				stagingPattern(outFile).test(event)
+				stagingPattern(projectFile).test(event)
 			);
 			expect(staged.length).toBeGreaterThan(0);
 			for (const file of staged)
@@ -69,19 +96,19 @@ describe("OutputWriter", () => {
 			const events = new Set<string>();
 			store.add(
 				fs.onDidMutateFile((event) => {
-					if (stagingPattern(outFile).test(event.path))
+					if (stagingPattern(projectFile).test(event.path))
 						events.add(event.path);
 				})
 			);
 
 			await write(treeOf());
-			await write({ ...treeOf(), name: "other" });
+			await write(named("other"));
 
 			expect(events.size).toBe(2);
 		});
 
 		it("should let two concurrent writes to one output both succeed", async () => {
-			const other = { ...treeOf(), name: "other" };
+			const other = named("other");
 
 			const [first, second] = await Promise.all([
 				write(treeOf()),
@@ -90,8 +117,10 @@ describe("OutputWriter", () => {
 
 			expect(first.isOk()).toBe(true);
 			expect(second.isOk()).toBe(true);
-			const written = JSON.parse(await fs.readFile(outFile));
-			expect([treeOf(), other]).toContainEqual(written);
+			expect([
+				OutputWriter.textOf(treeOf()),
+				OutputWriter.textOf(other),
+			]).toContain(await fs.readFile(projectFile));
 		});
 
 		it("should not touch the file when the bytes are unchanged", async () => {
@@ -108,26 +137,30 @@ describe("OutputWriter", () => {
 		it("should rewrite the file when the tree changed", async () => {
 			await write(treeOf());
 
-			const result = await write({
-				...treeOf(),
-				name: "other",
-			});
+			const result = await write(named("other"));
 
 			expect(result.unwrap()).toBe(true);
-			expect(JSON.parse(await fs.readFile(outFile)).name).toBe("other");
+			expect(JSON.parse(await fs.readFile(projectFile)).name).toBe(
+				"other"
+			);
 		});
 
 		it("should replace a hand-written project file", async () => {
-			await fs.writeFile(outFile, '{ "name": "by hand", "tree": {} }');
+			await fs.writeFile(
+				projectFile,
+				'{ "name": "by hand", "tree": {} }'
+			);
 
 			const result = await write(treeOf());
 
 			expect(result.unwrap()).toBe(true);
-			expect(JSON.parse(await fs.readFile(outFile))).toEqual(treeOf());
+			expect(await fs.readFile(projectFile)).toBe(
+				OutputWriter.textOf(treeOf())
+			);
 		});
 
 		it("should return a diagnostic when the file cannot be written", async () => {
-			await fs.createDirectory(outFile);
+			await fs.createDirectory(projectFile);
 
 			const result = await write(treeOf());
 
@@ -136,13 +169,13 @@ describe("OutputWriter", () => {
 				result.isErr() ? result.error.diagnostics[0] : undefined
 			).toMatchObject({
 				code: "output.writeFailed",
-				resource: outFile,
+				resource: projectFile,
 				message:
 					"the project file could not be written: illegal operation on a directory.",
 			});
-			const entries = await fs.readDirectory(path.dirname(outFile));
+			const entries = await fs.readDirectory(path.dirname(projectFile));
 			expect(entries.map(([name]) => name)).toEqual([
-				path.basename(outFile),
+				path.basename(projectFile),
 			]);
 		});
 	});

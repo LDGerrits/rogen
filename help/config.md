@@ -1,15 +1,17 @@
 # Configs
 
-A config is `<name>.rogen.json`, parsed as JSONC. Its fields are `$schema`, `extends`, `rootDirs` (default `["src"]`), `routes`, `exclude`, `template`, `syncDir` and `outFile` (default `<name>.project.json`). Unknown keys are errors. A command given no names reads every `*.rogen.json` here.
+A folder's config is `rogen.json` (or `rogen.jsonc`), parsed as JSONC. It is a Rojo project file plus Rogen's keys: `sourcePaths` (default `["src"]` when `routes` exist), `routes` and `syncPath`. Rojo's keys (`name`, `tree`, `servePort`, `servePlaceIds`, `emitLegacyScripts`, `globIgnorePaths`, `$schema` and the rest) pass through to the project file Rogen writes beside it, `default.project.json`. A key on neither list passes through with a warning, since Rojo will reject the written file by that name. A command given no folder reads the `rogen.json` here, or in the nearest folder above that has one.
 
-- `extends` merges `routes` key by key, adds a child's `rootDirs` and `exclude` entries after its parent's (a repeated entry keeps its last position), lets the child replace strings, and merges a child's `template` over its parent's. `outFile` and `$schema` are never inherited. A child adds and never removes, so invert the chain to drop something. Write one by hand: `{ "extends": "./default.rogen.json" }`.
-- Several `rootDirs` merge into one tree, and the later one wins a clash. `["src"]` applies only when no config in the chain sets `rootDirs`. A place is a config that extends `default` and adds its own directory and template: `"rootDirs": ["places/lobby/src"], "template": "places/lobby/template.project.json"`, the template giving its name and its own `servePort`. Add one with `rogen init <name> --json`: it writes the place's config and the extra files Darklua or roblox-ts need, and lists the edits to make in its `nextSteps.setup`.
-- `exclude` lists globs, relative to the config, that are never built, such as `**/*.spec.luau`. A glob that matches a template `$path` drops that node too.
-- `template` is a `.project.json` Rogen merges its tree into. It holds what names can't express: the DataModel name, package mounts and `$properties`. The template wins a clash. A template `$path` into a root dir is Rojo's: Rogen skips that folder, so mount vendored code there to sync it as it is. A child config's template merges over its parent's: top-level fields such as `name` and `servePort` replace, the trees merge node by node, and a field both set on one node takes the child's value with a warning. So a place's template can be just `{ "name": "Lobby", "servePort": 34873 }`.
-- `syncDir` is the compiler's output (`out` for roblox-ts, `dist` for Darklua), where emitted `$path`s point.
-- With Darklua in a Luau project, `default.rogen.json` is rooted at the source for luau-lsp and Darklua, and `sync.rogen.json` extends it with `"syncDir": "dist"` for Rojo. `rogen build` builds both; `rogen serve` builds both and serves `sync`.
+- `tree` is the instance tree Rogen merges its generated nodes into, as in any Rojo project file. It holds what names can't express: the DataModel name, package mounts and `$properties`. The tree wins a clash. A `$path` into a source path is Rojo's: Rogen skips that folder, so mount vendored code there to sync it as it is. With `routes`, the tree's root must be a DataModel; without them any root is valid and the file is written as it is.
+- Without `routes`, nothing is routed and no source path is scanned, and `sourcePaths` is an error. Rogen warns when `src` holds files the tree doesn't mount.
+- Several `sourcePaths` merge into one tree, and the later one wins a clash. Paths are relative to the folder of `rogen.json`.
+- `globIgnorePaths` lists globs, relative to the folder, that Rojo ignores and Rogen keeps out of routing, such as `**/*.spec.luau`. It never drops a mounted node: an ignored mount stays as an empty Folder.
+- `syncPath` is the compiler's output (`out` for roblox-ts, `dist` for Darklua), where emitted `$path`s point.
+- `syncRules` isn't supported yet and is an error. `extends`, `template`, `outFile` and `exclude` are errors that name what replaces them.
+
+The project file carries `name` only when `rogen.json` sets one; Rojo names the project after its folder otherwise.
 
 Ownership:
 
-- `rogen build` overwrites the `*.project.json` each config writes: put changes in the config, or in the `template` it merges into.
-- The `syncDir` is compiler output: edit the sources in the root directories.
+- `rogen build` overwrites `default.project.json`: put changes in `rogen.json`.
+- The `syncPath` is compiler output: edit the sources in the source paths.

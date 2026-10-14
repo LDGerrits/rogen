@@ -30,7 +30,8 @@ export const answersOf = (
 		configs: configs.map(
 			([label, files, instances = [], diagnostics = []]) => ({
 				config: mockConfig({
-					file: `/repo/${label}.rogen.json`,
+					name: label,
+					file: `/repo/${label}/rogen.json`,
 					...spec,
 				}),
 				files,

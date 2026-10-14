@@ -1,12 +1,7 @@
 import { relativeTo, toNative } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
-import {
-	ResolvedConfig,
-	configLabel,
-	directExtendersOf,
-	leafConfigs,
-} from "../../domain/config/config.js";
+import { ResolvedConfig, configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -39,14 +34,12 @@ const routeLines = ({ routes }: ResolvedConfig): string[] =>
 /** What `--json` lists of a config that loads, fully resolved. */
 export interface ConfigDetails {
 	readonly projectName: string;
-	readonly rootDirs: readonly string[];
+	readonly sourcePaths: readonly string[];
 	readonly commonRoot: string | null;
 	readonly routes: Readonly<Record<string, string>>;
-	readonly exclude: readonly string[];
-	readonly template: string | null;
-	readonly templates: readonly string[];
-	readonly syncDir: string | null;
-	readonly outFile: string;
+	readonly globIgnorePaths: readonly string[];
+	readonly syncPath: string | null;
+	readonly projectFile: string;
 	/** The server a running serve serves the project file with, and how many Studio plugins are connected to it when it says. */
 	readonly serving: {
 		readonly server: string;
@@ -61,10 +54,7 @@ export interface ListedConfig extends Partial<ConfigDetails> {
 	readonly config: string;
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
-	readonly extends: readonly string[];
-	/** The configs listed that extend it directly. */
-	readonly extendedBy: readonly string[];
-	/** Whether `rogen serve` starts a server for it: it loads and no listed config extends it. */
+	/** Whether `rogen serve` starts a server for it: it loads. */
 	readonly served: boolean;
 	readonly diagnostics: readonly DiagnosticJson[];
 }
@@ -95,7 +85,7 @@ export class ListLog {
 		);
 	}
 
-	/** The intro, one block per config (its file, what it extends, then its values or its errors), and the closing line when every config loads. `home` is the folder the configs are read from. */
+	/** The intro, one block per config (its file, then its values or its errors), and the closing line when every config loads. `home` is the folder the configs are read from. */
 	print(
 		entries: readonly ConfigEntry[],
 		home?: string,
@@ -106,27 +96,13 @@ export class ListLog {
 		const relative = (file: string) => relativeTo(this.cwd, file);
 		const printed: { label: string; routes: readonly string[] }[] = [];
 		for (const entry of entries) {
-			const extenders = directExtendersOf(entry, entries);
-			const extended = [
-				...(entry.parents.length > 0
-					? [`extends: ${entry.parents.map(relative).join(" -> ")}`]
-					: []),
-				...(extenders.length > 0
-					? [
-							`extended by: ${extenders.map(({ file }) => relative(file)).join(", ")}`,
-						]
-					: []),
-			];
 			if (entry.status === "broken") {
-				logService.section(
-					relative(entry.file),
-					extended.join("\n") || undefined
-				);
+				logService.section(relative(entry.file));
 				for (const error of entry.errors) logService.diagnostic(error);
 				continue;
 			}
 			const { config } = entry;
-			const label = configLabel(entry.file);
+			const label = config.label;
 			const routes = routeLines(config);
 			const sameAs = printed.find(
 				(other) =>
@@ -137,18 +113,12 @@ export class ListLog {
 			logService.section(
 				relative(entry.file),
 				[
-					...extended,
-					`root dirs: ${listed(config.rootDirs.map(relative))}`,
+					`source paths: ${listed(config.sourcePaths.map(relative))}`,
 					sameAs
 						? `routes: same as ${sameAs.label}`
 						: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
-					...(config.template
-						? [
-								`template: ${[config.template.file, ...[...config.template.bases].reverse()].map(relative).join(", over ")}`,
-							]
-						: []),
-					`sync dir: ${listed(config.syncDir ? [relative(config.syncDir)] : [])}`,
-					`project file: ${relative(config.outFile)}`,
+					`sync path: ${listed(config.syncPath ? [relative(config.syncPath)] : [])}`,
+					`project file: ${relative(config.projectFile)}`,
 					...(serving.get(entry.file)
 						? [`serving: ${servingLine(serving.get(entry.file)!)}`]
 						: []),
@@ -163,17 +133,15 @@ export class ListLog {
 		entries: readonly ConfigEntry[],
 		serving: ServingByConfig = new Map()
 	): ListDocument {
-		const leaves = new Set(leafConfigs(entries));
 		return {
 			configs: entries.map((entry) => ({
-				config: configLabel(entry.file),
+				config:
+					entry.status === "valid"
+						? entry.config.label
+						: configLabel(entry.file),
 				file: toNative(entry.file),
 				status: entry.status,
-				extends: entry.parents.map((file) => toNative(file)),
-				extendedBy: directExtendersOf(entry, entries).map(({ file }) =>
-					toNative(file)
-				),
-				served: entry.status === "valid" && leaves.has(entry),
+				served: entry.status === "valid",
 				...(entry.status === "valid"
 					? configDetails(entry.config, serving.get(entry.file))
 					: {}),
@@ -192,20 +160,14 @@ function configDetails(
 ): ConfigDetails {
 	return {
 		projectName: config.projectName,
-		rootDirs: config.rootDirs.map((file) => toNative(file)),
+		sourcePaths: config.sourcePaths.map((file) => toNative(file)),
 		commonRoot: config.commonRoot ? toNative(config.commonRoot) : null,
 		routes: Object.fromEntries(
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
-		exclude: config.exclude.map(unescapedGlob),
-		template: config.template ? toNative(config.template.file) : null,
-		templates: config.template
-			? [...config.template.bases, config.template.file].map((file) =>
-					toNative(file)
-				)
-			: [],
-		syncDir: config.syncDir ? toNative(config.syncDir) : null,
-		outFile: toNative(config.outFile),
+		globIgnorePaths: config.ignored.map(unescapedGlob),
+		syncPath: config.syncPath ? toNative(config.syncPath) : null,
+		projectFile: toNative(config.projectFile),
 		serving: serving
 			? {
 					server: serving.server.id,

@@ -2,13 +2,13 @@ $ rogen init
 exit 0
 stdout:
   rogen init
-  Created default.rogen.json.
+  Created rogen.json.
   Created AGENTS.md.
   default.project.json · wrote
   Next steps
     Run:
       rogen serve
-    Add your own routes under "routes" in default.rogen.json.
+    Add your own routes under "routes" in rogen.json.
   Wrote 2 files.
 
 $ rogen build
@@ -18,12 +18,15 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {

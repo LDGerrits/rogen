@@ -10,7 +10,6 @@ import {
 	assembleFilesOf,
 	assembleResultOf,
 	optional,
-	templateOf,
 	writeFiles,
 } from "./fixtures.js";
 
@@ -103,14 +102,14 @@ describe("TreeAssembler", () => {
 				expect(storage.Bots).toEqual({ $path: optional("src/Bots") });
 			});
 
-			it("should copy the meta onto a folder an excluded file keeps from collapsing", async () => {
+			it("should copy the meta onto a folder an ignored file keeps from collapsing", async () => {
 				await write("src/Bots/Body.luau", "src/Bots/Http.luau");
 				await writeMeta("src/Bots/init.meta.json", {
 					className: "Actor",
 				});
 
 				const storage = await storageOf({
-					exclude: [abs("src/Bots/Http.luau")],
+					ignored: [abs("src/Bots/Http.luau")],
 				});
 
 				expect(storage.Bots).toEqual({
@@ -179,13 +178,13 @@ describe("TreeAssembler", () => {
 				expect(warnings[0].message).not.toContain("beside the script");
 			});
 
-			it("should let the template's $id win without counting the meta's", async () => {
+			it("should let the tree's $id win without counting the meta's", async () => {
 				await write(
 					"src/Combat/server/Hit.luau",
 					"src/Combat/client/Aim.luau"
 				);
 				await writeMeta("src/Combat/init.meta.json", { id: "combat" });
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ServerScriptService: {
@@ -193,11 +192,11 @@ describe("TreeAssembler", () => {
 							Combat: { $className: "Folder", $id: "server" },
 						},
 					},
-				});
+				};
 
 				const { projectFile: value } = await assemble({
 					routes: SPLIT,
-					template,
+					project,
 				});
 
 				expect(
@@ -213,20 +212,20 @@ describe("TreeAssembler", () => {
 				).toBe("combat");
 			});
 
-			it("should copy nothing from a folder whose files were all excluded", async () => {
+			it("should copy nothing from a folder whose files were all ignored", async () => {
 				await write("src/Mocks/Http.luau", "src/A.luau");
 				await writeMeta("src/Mocks/init.meta.json", {
 					className: "Actor",
 				});
 
 				const storage = await storageOf({
-					exclude: [abs("src/Mocks/**")],
+					ignored: [abs("src/Mocks/**")],
 				});
 
 				expect(storage.Mocks).toBeUndefined();
 			});
 
-			it("should copy nothing from a folder whose files lost their instances to a later root dir", async () => {
+			it("should copy nothing from a folder whose files lost their instances to a later source path", async () => {
 				await write(
 					"core/Combat/server/A.luau",
 					"lobby/Combat/server/A.luau"
@@ -236,7 +235,7 @@ describe("TreeAssembler", () => {
 				});
 
 				const { projectFile: value } = await assemble({
-					rootDirs: [abs("core"), abs("lobby")],
+					sourcePaths: [abs("core"), abs("lobby")],
 					routes: SPLIT,
 				});
 
@@ -307,7 +306,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should let the last root dir with a meta win each node", async () => {
+			it("should let the last source path with a meta win each node", async () => {
 				await write(
 					"core/Combat/server/A.luau",
 					"core/Combat/client/B.luau",
@@ -321,7 +320,7 @@ describe("TreeAssembler", () => {
 				});
 
 				const { projectFile: value } = await assemble({
-					rootDirs: [abs("core"), abs("lobby")],
+					sourcePaths: [abs("core"), abs("lobby")],
 					routes: SPLIT,
 				});
 
@@ -341,7 +340,7 @@ describe("TreeAssembler", () => {
 				).toMatchObject({ $className: "Actor" });
 			});
 
-			it("should keep an earlier root dir's meta when a later folder has none", async () => {
+			it("should keep an earlier source path's meta when a later folder has none", async () => {
 				await write(
 					"core/Combat/server/A.luau",
 					"lobby/Combat/server/C.luau"
@@ -351,7 +350,7 @@ describe("TreeAssembler", () => {
 				});
 
 				const { projectFile: value } = await assemble({
-					rootDirs: [abs("core"), abs("lobby")],
+					sourcePaths: [abs("core"), abs("lobby")],
 					routes: SPLIT,
 				});
 
@@ -362,7 +361,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should fail when two metas in one root dir reach one node, naming both", async () => {
+			it("should fail when two metas in one source path reach one node, naming both", async () => {
 				await write(
 					"src/server/Combat/A.luau",
 					"src/Combat/B.server.luau"
@@ -386,14 +385,14 @@ describe("TreeAssembler", () => {
 				);
 			});
 
-			it("should let the template's fields win on its container, merging properties", async () => {
+			it("should let the tree's fields win on its container, merging properties", async () => {
 				await write("src/Gui/client/Hud.luau");
 				await writeMeta("src/Gui/init.meta.json", {
 					className: "ScreenGui",
 					properties: { Enabled: false, ResetOnSpawn: false },
 					attributes: { FromMeta: true },
 				});
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						StarterPlayer: {
@@ -403,16 +402,16 @@ describe("TreeAssembler", () => {
 								Gui: {
 									$className: "Folder",
 									$properties: { Enabled: true },
-									$attributes: { FromTemplate: true },
+									$attributes: { FromTree: true },
 								},
 							},
 						},
 					},
-				});
+				};
 
 				const { projectFile: value, warnings } = await assemble({
 					routes: SPLIT,
-					template,
+					project,
 				});
 
 				expect(
@@ -425,26 +424,26 @@ describe("TreeAssembler", () => {
 				).toEqual({
 					$className: "Folder",
 					$properties: { Enabled: true, ResetOnSpawn: false },
-					$attributes: { FromTemplate: true },
+					$attributes: { FromTree: true },
 					Hud: { $path: optional("src/Gui/client/Hud.luau") },
 				});
 				expect(warnings).toEqual([
 					{
 						severity: DiagnosticSeverity.Warning,
-						code: "meta.templateClass",
+						code: "meta.treeClass",
 						resource: abs("src/Gui/init.meta.json"),
 						message:
-							'the template makes "StarterPlayer/StarterPlayerScripts/Gui" a Folder, so its class is kept over this meta\'s ScreenGui.',
+							'the tree makes "StarterPlayer/StarterPlayerScripts/Gui" a Folder, so its class is kept over this meta\'s ScreenGui.',
 					},
 				]);
 			});
 
-			it("should not warn about a class the template and the meta agree on", async () => {
+			it("should not warn about a class the tree and the meta agree on", async () => {
 				await write("src/Gui/client/Hud.luau");
 				await writeMeta("src/Gui/init.meta.json", {
 					className: "ScreenGui",
 				});
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						StarterPlayer: {
@@ -455,33 +454,33 @@ describe("TreeAssembler", () => {
 							},
 						},
 					},
-				});
+				};
 
 				const { warnings } = await assemble({
 					routes: SPLIT,
-					template,
+					project,
 				});
 
 				expect(warnings).toEqual([]);
 			});
 
-			it("should leave a folder under a template $path out, meta and all", async () => {
+			it("should leave a folder under a tree $path out, meta and all", async () => {
 				await write("src/Packages/server/A.luau");
 				await writeMeta("src/Packages/init.meta.json", {
 					className: "Actor",
 				});
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ServerScriptService: {
 							Packages: { $path: "Packages" },
 						},
 					},
-				});
+				};
 
 				const { projectFile: value, warnings } = await assemble({
 					routes: SPLIT,
-					template,
+					project,
 				});
 
 				expect(
@@ -489,31 +488,31 @@ describe("TreeAssembler", () => {
 				).toEqual({ $path: "Packages" });
 				expect(warnings).toMatchObject([
 					{
-						code: "tree.templateClash",
+						code: "tree.nodeClash",
 						resource: abs("src/Packages"),
 					},
 					{
-						code: "meta.templatePath",
+						code: "meta.treePath",
 						resource: abs("src/Packages/init.meta.json"),
 					},
 				]);
 			});
 
-			it("should still copy meta onto a template node when the template displaced a file in the folder", async () => {
+			it("should still copy meta onto a tree node when the tree displaced a file in the folder", async () => {
 				await write("src/Combat/Save.luau");
 				await writeMeta("src/Combat/init.meta.json", {
 					className: "Actor",
 				});
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: {
 							Combat: { Save: { $path: "hand/Save.luau" } },
 						},
 					},
-				});
+				};
 
-				const { projectFile: value } = await assemble({ template });
+				const { projectFile: value } = await assemble({ project });
 
 				expect(
 					nodeAt(value.tree, "ReplicatedStorage", "Combat")
@@ -523,7 +522,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should warn at each meta in a routing or invisible folder or a root dir", async () => {
+			it("should warn at each meta in a routing or invisible folder or a source path", async () => {
 				await write(
 					"src/Combat/server/A.luau",
 					"src/Combat/(group)/C.luau"
@@ -547,7 +546,7 @@ describe("TreeAssembler", () => {
 				expect(warnings).toMatchObject([
 					nothing("src/Combat/(group)", "an invisible folder"),
 					nothing("src/Combat/server", "a routing folder"),
-					nothing("src", "a root dir"),
+					nothing("src", "a source path"),
 				]);
 			});
 

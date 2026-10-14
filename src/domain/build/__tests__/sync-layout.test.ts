@@ -5,7 +5,7 @@ import { abs, configOf, syncTools } from "./fixtures.js";
 
 interface LayoutSpec {
 	readonly commonRoot: string;
-	readonly syncDir?: string;
+	readonly syncPath?: string;
 	readonly projectDir: string;
 	readonly tools: readonly SyncTool[];
 }
@@ -14,34 +14,34 @@ const layoutOf = ({ tools, ...config }: LayoutSpec) =>
 	new SyncLayout(config, tools);
 
 describe("SyncLayout", () => {
-	it("should take the project dir from the out file and the common root from the root dirs", () => {
+	it("should take the project dir from the config's folder and the common root from the source paths", () => {
 		const layout = new SyncLayout(
 			configOf({
-				rootDirs: [abs("src/server"), abs("src/shared")],
-				syncDir: abs("out"),
-				outFile: abs("game/default.project.json"),
+				sourcePaths: [abs("src/server"), abs("src/shared")],
+				syncPath: abs("out"),
+				file: abs("game/rogen.json"),
 			}),
 			syncTools
 		);
 
 		expect(layout).toMatchObject({
 			commonRoot: abs("src"),
-			syncDir: abs("out"),
+			syncPath: abs("out"),
 			projectDir: abs("game"),
 		});
 	});
 
-	it("should leave the sync dir out when there is none", () => {
+	it("should leave the sync path out when there is none", () => {
 		const layout = new SyncLayout(
-			configOf({ rootDirs: [abs("src")] }),
+			configOf({ sourcePaths: [abs("src")] }),
 			syncTools
 		);
 
-		expect(layout.syncDir).toBeUndefined();
+		expect(layout.syncPath).toBeUndefined();
 	});
 
-	it("should build in the project dir when there are no root dirs", () => {
-		const layout = new SyncLayout(configOf({ rootDirs: [] }), syncTools);
+	it("should build in the project dir when there are no source paths", () => {
+		const layout = new SyncLayout(configOf({ sourcePaths: [] }), syncTools);
 
 		expect(layout.commonRoot).toBe(abs("."));
 	});
@@ -75,31 +75,31 @@ describe("SyncLayout", () => {
 	describe("syncPath", () => {
 		const projectDir = abs(".");
 
-		it("should replace a single root dir with the sync dir", () => {
+		it("should replace a single source path with the sync path", () => {
 			const layout = layoutOf({
 				commonRoot: commonAncestor([abs("src")]),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: syncTools,
 			});
 
-			expect(layout.syncPath(abs("src/Foo.ts"))).toEqual({
+			expect(layout.rojoPath(abs("src/Foo.ts"))).toEqual({
 				optional: "out/Foo.luau",
 			});
 		});
 
-		it("should keep the distinguishing part of each root dir when there are several", () => {
+		it("should keep the distinguishing part of each source path when there are several", () => {
 			const layout = layoutOf({
 				commonRoot: commonAncestor([abs("core"), abs("lobby")]),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: syncTools,
 			});
 
-			expect(layout.syncPath(abs("core/Foo.luau"))).toEqual({
+			expect(layout.rojoPath(abs("core/Foo.luau"))).toEqual({
 				optional: "out/core/Foo.luau",
 			});
-			expect(layout.syncPath(abs("lobby/Bar.luau"))).toEqual({
+			expect(layout.rojoPath(abs("lobby/Bar.luau"))).toEqual({
 				optional: "out/lobby/Bar.luau",
 			});
 		});
@@ -112,31 +112,31 @@ describe("SyncLayout", () => {
 					abs("places/common/src"),
 					abs("places/common/test"),
 				]),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: syncTools,
 			});
 
-			expect(layout.syncPath(abs("places/main/src/server"))).toEqual({
+			expect(layout.rojoPath(abs("places/main/src/server"))).toEqual({
 				optional: "out/main/src/server",
 			});
-			expect(layout.syncPath(abs("places/common/src/server"))).toEqual({
+			expect(layout.rojoPath(abs("places/common/src/server"))).toEqual({
 				optional: "out/common/src/server",
 			});
 			expect(
-				layout.syncPath(abs("places/common/test/tests/server"))
+				layout.rojoPath(abs("places/common/test/tests/server"))
 			).toEqual({ optional: "out/common/test/tests/server" });
 		});
 
 		it("should emit a path relative to the project file's directory", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir: abs("places/main"),
 				tools: syncTools,
 			});
 
-			expect(layout.syncPath(abs("src/Foo.luau"))).toEqual({
+			expect(layout.rojoPath(abs("src/Foo.luau"))).toEqual({
 				optional: "../../out/Foo.luau",
 			});
 		});
@@ -144,15 +144,15 @@ describe("SyncLayout", () => {
 		it("should rewrite .ts and .tsx to .luau", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: syncTools,
 			});
 
-			expect(layout.syncPath(abs("src/A.ts"))).toEqual({
+			expect(layout.rojoPath(abs("src/A.ts"))).toEqual({
 				optional: "out/A.luau",
 			});
-			expect(layout.syncPath(abs("src/ui/B.tsx"))).toEqual({
+			expect(layout.rojoPath(abs("src/ui/B.tsx"))).toEqual({
 				optional: "out/ui/B.luau",
 			});
 		});
@@ -160,12 +160,12 @@ describe("SyncLayout", () => {
 		it("should rewrite nothing when no processor contributes", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: [],
 			});
 
-			expect(layout.syncPath(abs("src/A.ts"))).toEqual({
+			expect(layout.rojoPath(abs("src/A.ts"))).toEqual({
 				optional: "out/A.ts",
 			});
 		});
@@ -173,14 +173,14 @@ describe("SyncLayout", () => {
 		it("should apply whatever a processor contributes", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: [
 					{ id: "minify", emittedPath: (p: string) => `${p}.min` },
 				],
 			});
 
-			expect(layout.syncPath(abs("src/A.luau"))).toEqual({
+			expect(layout.rojoPath(abs("src/A.luau"))).toEqual({
 				optional: "out/A.luau.min",
 			});
 		});
@@ -188,7 +188,7 @@ describe("SyncLayout", () => {
 		it("should not rewrite any other extension", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: syncTools,
 			});
@@ -201,7 +201,7 @@ describe("SyncLayout", () => {
 				"A.tsx.bak",
 				"A.mts",
 			]) {
-				expect(layout.syncPath(abs("src", name))).toEqual({
+				expect(layout.rojoPath(abs("src", name))).toEqual({
 					optional: `out/${name}`,
 				});
 			}
@@ -210,17 +210,17 @@ describe("SyncLayout", () => {
 		it("should leave directories untouched apart from the root swap", () => {
 			const layout = layoutOf({
 				commonRoot: abs("src"),
-				syncDir: abs("out"),
+				syncPath: abs("out"),
 				projectDir,
 				tools: syncTools,
 			});
 
-			expect(layout.syncPath(abs("src/Inventory"))).toEqual({
+			expect(layout.rojoPath(abs("src/Inventory"))).toEqual({
 				optional: "out/Inventory",
 			});
 		});
 
-		describe("without a sync dir", () => {
+		describe("without a sync path", () => {
 			it("should point at the real path relative to the project file", () => {
 				const layout = layoutOf({
 					commonRoot: abs("src"),
@@ -228,7 +228,7 @@ describe("SyncLayout", () => {
 					tools: syncTools,
 				});
 
-				expect(layout.syncPath(abs("src/Foo.luau"))).toEqual({
+				expect(layout.rojoPath(abs("src/Foo.luau"))).toEqual({
 					optional: "src/Foo.luau",
 				});
 			});
@@ -241,7 +241,7 @@ describe("SyncLayout", () => {
 				});
 
 				expect(
-					layout.syncPath(abs("places/common/src/Foo.luau"))
+					layout.rojoPath(abs("places/common/src/Foo.luau"))
 				).toEqual({ optional: "../common/src/Foo.luau" });
 			});
 
@@ -252,7 +252,7 @@ describe("SyncLayout", () => {
 					tools: syncTools,
 				});
 
-				expect(layout.syncPath(abs("src/Foo.ts"))).toEqual({
+				expect(layout.rojoPath(abs("src/Foo.ts"))).toEqual({
 					optional: "src/Foo.ts",
 				});
 			});

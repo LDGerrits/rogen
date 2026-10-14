@@ -1,150 +1,83 @@
 import fs from "fs";
 import path from "path";
-import { PathSet } from "../../../base/path.js";
 import { mockConfig } from "./mock-config-service.js";
 import {
 	DeclaredKeys,
+	PROJECT_SCHEMA_URL,
 	SCHEMA_URL,
-	configFileName,
 	configLabel,
-	directExtendersOf,
 	fieldOf,
-	inFamilyOf,
-	leafConfigs,
-	rootDirOverlap,
+	isConfigFileName,
+	projectSchemaUrlFor,
+	sourcePathOverlap,
 	schemaUrlFor,
 } from "../config.js";
 
 describe("domain/config/config", () => {
-	describe("configFileName and configLabel", () => {
-		it("should add the suffix to a stem", () => {
-			expect(configFileName("lobby")).toBe("lobby.rogen.json");
+	describe("isConfigFileName", () => {
+		it.each(["rogen.json", "rogen.jsonc"])("should accept %s", (name) => {
+			expect(isConfigFileName(name)).toBe(true);
 		});
 
-		it("should take the stem back out of a config path", () => {
-			expect(configLabel("/repo/lobby.rogen.json")).toBe("lobby");
-		});
+		it.each(["default.rogen.json", "rogen.json5", "Rogen.json"])(
+			"should not accept %s",
+			(name) => {
+				expect(isConfigFileName(name)).toBe(false);
+			}
+		);
 	});
 
-	describe("config families", () => {
-		const link = (file: string, ...parents: string[]) => ({
-			file,
-			parents,
-		});
-		const base = link("/repo/base.rogen.json");
-		const lobby = link("/repo/lobby.rogen.json", "/repo/base.rogen.json");
-		const sync = link(
-			"/repo/lobby-sync.rogen.json",
-			"/repo/lobby.rogen.json",
-			"/repo/base.rogen.json"
-		);
-
-		it("should leave out every config that another extends, however far", () => {
-			expect(leafConfigs([base, lobby, sync])).toEqual([sync]);
-		});
-
-		it("should take an extends written in another letter case as the same file on a case-insensitive file system", () => {
-			const written = link(
-				"/repo/lobby.rogen.json",
-				"/repo/Base.rogen.json"
-			);
-
-			expect(leafConfigs([base, written], true)).toEqual([written]);
-			expect(leafConfigs([base, written], false)).toEqual([
-				base,
-				written,
-			]);
-		});
-
-		it("should put a config in the family of a file it is or extends", () => {
-			const files = new PathSet([lobby.file]);
-
-			expect(
-				[base, lobby, sync].filter((c) => inFamilyOf(c, files))
-			).toEqual([lobby, sync]);
-		});
-
-		it("should find the family however the file or its extends is written", () => {
-			const written = link(
-				"/repo/lobby-sync.rogen.json",
-				"/repo/Lobby.rogen.json"
-			);
-
-			expect(inFamilyOf(written, new PathSet([lobby.file], true))).toBe(
-				true
-			);
-			expect(inFamilyOf(written, new PathSet([lobby.file], false))).toBe(
-				false
-			);
-			expect(
-				inFamilyOf(
-					sync,
-					new PathSet(["\\repo\\lobby.rogen.json"], false)
-				)
-			).toBe(true);
-		});
-
-		it("should list only the configs whose nearest parent is the config", () => {
-			expect(directExtendersOf(base, [base, lobby, sync])).toEqual([
-				lobby,
-			]);
-			expect(directExtendersOf(lobby, [base, lobby, sync])).toEqual([
-				sync,
-			]);
-		});
-
-		it("should find the nearest parent in any letter case on a case-insensitive file system", () => {
-			const written = link(
-				"/repo/lobby.rogen.json",
-				"/repo/BASE.rogen.json"
-			);
-
-			expect(directExtendersOf(base, [written], true)).toEqual([written]);
-			expect(directExtendersOf(base, [written], false)).toEqual([]);
+	describe("configLabel", () => {
+		it("should be the name of the folder the config lies in", () => {
+			expect(configLabel("/repo/lobby/rogen.json")).toBe("lobby");
 		});
 	});
 
 	describe("fieldOf", () => {
 		const values = {
 			getValue: <T>(section?: string | readonly string[]) =>
-				(section === "syncDir" ? "dist" : undefined) as T | undefined,
+				(section === "syncPath" ? "dist" : undefined) as T | undefined,
 		};
 
 		it("should read a field the values hold, as the config declares it", () => {
-			const syncDir: string | undefined = fieldOf(values, "syncDir");
+			const syncPath: string | undefined = fieldOf(values, "syncPath");
 
-			expect(syncDir).toBe("dist");
+			expect(syncPath).toBe("dist");
 		});
 
 		it("should give undefined for a field they lack", () => {
-			expect(fieldOf(values, "template")).toBeUndefined();
+			expect(fieldOf(values, "tree")).toBeUndefined();
 		});
 	});
 
-	describe("rootDirOverlap", () => {
+	describe("sourcePathOverlap", () => {
 		const abs = (...segments: string[]) =>
 			path.resolve("/repo", ...segments);
 
-		it("should find the root dir another one sits inside", () => {
-			expect(rootDirOverlap([abs("src"), abs("src/lobby")], 1)).toEqual({
+		it("should find the source path another one sits inside", () => {
+			expect(
+				sourcePathOverlap([abs("src"), abs("src/lobby")], 1)
+			).toEqual({
 				kind: "nested",
 				outer: abs("src"),
 			});
 		});
 
-		it("should find a root dir listed again", () => {
-			expect(rootDirOverlap([abs("src"), abs("src")], 1)).toEqual({
+		it("should find a source path listed again", () => {
+			expect(sourcePathOverlap([abs("src"), abs("src")], 1)).toEqual({
 				kind: "duplicate",
 			});
 		});
 
-		it("should leave the first of two equal root dirs alone", () => {
-			expect(rootDirOverlap([abs("src"), abs("src")], 0)).toBeUndefined();
+		it("should leave the first of two equal source paths alone", () => {
+			expect(
+				sourcePathOverlap([abs("src"), abs("src")], 0)
+			).toBeUndefined();
 		});
 
 		it("should be undefined for siblings", () => {
 			expect(
-				rootDirOverlap([abs("core"), abs("lobby")], 0)
+				sourcePathOverlap([abs("core"), abs("lobby")], 0)
 			).toBeUndefined();
 		});
 	});
@@ -173,6 +106,16 @@ describe("domain/config/config", () => {
 				version: string;
 			};
 			expect(SCHEMA_URL).toBe(schemaUrlFor(pkg.version));
+		});
+
+		it("should give the project files Rogen writes a schema of their own", () => {
+			const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
+				version: string;
+			};
+			expect(PROJECT_SCHEMA_URL).toBe(projectSchemaUrlFor(pkg.version));
+			expect(PROJECT_SCHEMA_URL).toBe(
+				"https://ldgerrits.github.io/rogen/schema/2/project.json"
+			);
 		});
 	});
 
@@ -254,24 +197,39 @@ describe("domain/config/config", () => {
 	});
 
 	describe("ResolvedConfig", () => {
-		it("should be asked for by the name of its file", () => {
-			expect(mockConfig({ file: "/repo/lobby.rogen.json" }).label).toBe(
-				"lobby"
-			);
+		it("should be asked for by its project name", () => {
+			expect(mockConfig({ name: "Lobby" }).label).toBe("Lobby");
 		});
 
-		it("should build in the directory of its project file", () => {
+		it("should build in the directory of its config file", () => {
 			expect(
-				mockConfig({ outFile: "/repo/out/game.project.json" })
-					.projectDir
-			).toBe("/repo/out");
+				mockConfig({ file: "/repo/places/lobby/rogen.json" }).projectDir
+			).toBe("/repo/places/lobby");
 		});
 
-		it("should share the deepest directory of its root dirs", () => {
+		it("should write default.project.json beside its config", () => {
 			expect(
-				mockConfig({ rootDirs: ["/repo/a/x", "/repo/a/y"] }).commonRoot
+				mockConfig({ file: "/repo/places/lobby/rogen.json" })
+					.projectFile
+			).toBe("/repo/places/lobby/default.project.json");
+		});
+
+		it("should list the source paths, else the folder it would have scanned", () => {
+			expect(
+				mockConfig({
+					sourcePaths: ["/repo/a"],
+					routes: { server: "ServerScriptService" },
+				}).indexedPaths
+			).toEqual(["/repo/a"]);
+			expect(mockConfig().indexedPaths).toEqual(["/repo/src"]);
+		});
+
+		it("should share the deepest directory of its source paths", () => {
+			expect(
+				mockConfig({ sourcePaths: ["/repo/a/x", "/repo/a/y"] })
+					.commonRoot
 			).toBe("/repo/a");
-			expect(mockConfig({ rootDirs: [] }).commonRoot).toBeUndefined();
+			expect(mockConfig({ sourcePaths: [] }).commonRoot).toBeUndefined();
 		});
 
 		it("should know its declared keys from its routes", () => {
@@ -283,34 +241,6 @@ describe("domain/config/config", () => {
 			});
 
 			expect([...keys.routeKeys]).toEqual(["server"]);
-		});
-	});
-
-	describe("ResolvedTemplate", () => {
-		const template = (
-			project: Record<string, unknown>,
-			file = "/repo/t.json"
-		) => mockConfig({ template: { file, project } }).template!;
-
-		it("should equal a template with the same file and project", () => {
-			expect(template({ tree: {} }).equals(template({ tree: {} }))).toBe(
-				true
-			);
-		});
-
-		it("should differ when the project or its file does", () => {
-			expect(
-				template({ tree: {} }).equals(template({ tree: { A: {} } }))
-			).toBe(false);
-			expect(
-				template({ tree: {} }).equals(
-					template({ tree: {} }, "/repo/u.json")
-				)
-			).toBe(false);
-		});
-
-		it("should differ from no template", () => {
-			expect(template({ tree: {} }).equals(undefined)).toBe(false);
 		});
 	});
 });

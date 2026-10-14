@@ -1,13 +1,10 @@
-import path from "path";
-import { groupBy } from "../../base/collections.js";
-import { pathKey, toPosix } from "../../base/path.js";
+import { toPosix } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import {
 	Diagnostic,
-	errorDiagnostic,
 	diagnosticKey,
 } from "../../platform/diagnostics/diagnostic.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig, configLabel } from "../config/config.js";
 import { ConfigSelection } from "../config/config-service.js";
@@ -20,8 +17,8 @@ export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
 
 /** Why the scan left a path out; the path is the key it is stored under. */
 export type ScanLeftOut =
-	| { readonly status: "excluded"; readonly pattern: string }
-	/** The template mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
+	| { readonly status: "ignored"; readonly pattern: string }
+	/** The tree mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
 	| { readonly status: "mounted"; readonly node: readonly string[] }
 	/** A link that loops back to an ancestor or points at nothing, which Rojo must never walk. */
 	| { readonly status: "skipped" }
@@ -35,14 +32,14 @@ export type LeftOut =
 	| { readonly status: "unrouted" }
 	/** Another file took its instance path. */
 	| { readonly status: "replaced"; readonly by: string }
-	/** The template defines the node it would be, or a `$path` above it. */
+	/** The tree defines the node it would be, or a `$path` above it. */
 	| { readonly status: "displaced"; readonly node: readonly string[] };
 
 export interface RootSummary {
-	readonly rootDir: string;
+	readonly sourcePath: string;
 	readonly files: number;
-	readonly excluded: number;
-	/** Paths the template mounts, which Rojo reads instead. */
+	readonly ignored: number;
+	/** Paths the tree mounts, which Rojo reads instead. */
 	readonly mounted: number;
 	readonly skippedLinks: number;
 }
@@ -59,7 +56,7 @@ export interface BuildSummary {
 	readonly routes: readonly RouteSummary[];
 	readonly unrouted: number;
 	readonly replaced: number;
-	/** Left out because the template defines their node. */
+	/** Left out because the tree defines their node. */
 	readonly displaced: number;
 }
 
@@ -97,12 +94,12 @@ abstract class AbstractConfigBuild {
 		return this.findings.warnings;
 	}
 
-	/** What the sync dir check found for this version of the config, whether this build checked it or the previous one did; `undefined` while unknown. */
+	/** What the sync path check found for this version of the config, whether this build checked it or the previous one did; `undefined` while unknown. */
 	get syncWarnings(): readonly Diagnostic[] | undefined {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, sync dir warnings, then the errors that failed it. */
+	/** Everything the build has to say, in the order it is printed: warnings, sync path warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}
@@ -249,7 +246,7 @@ export class SharedDiagnostics {
 /** One build of a run, with what it adds to the run's warnings and errors. */
 export interface BuildShare {
 	readonly build: ConfigBuild;
-	/** Its warnings, then its sync dir's. */
+	/** Its warnings, then its sync path's. */
 	readonly warnings: SharedPart;
 	readonly errors: SharedPart;
 }
@@ -325,7 +322,7 @@ export interface DataReplacement {
 	readonly note: string;
 }
 
-/** A tool that rewrites code between the root dirs and the sync dir, which Rojo reads in their place; the build asks it, and never names one. */
+/** A tool that rewrites code between the source paths and the sync path, which Rojo reads in their place; the build asks it, and never names one. */
 export interface SyncTool {
 	readonly id: string;
 	/** The path the tool writes for a source path, when it renames it. */
@@ -359,62 +356,13 @@ export class OutputFile {
 	}
 }
 
-/** Nothing can be placed without a route. */
-function missingRoutes(config: ResolvedConfig): Diagnostic[] {
-	return config.routes.size > 0
-		? []
-		: [
-				errorDiagnostic(
-					"route.noRoutes",
-					{ resource: config.file },
-					"no routes declared, so nothing can be placed.\nAdd a \"routes\" map; 'rogen init' writes a starting set."
-				),
-			];
-}
-
-interface Blocker {
-	readonly diagnostic: Diagnostic;
-	readonly files: readonly string[];
-}
-
-/** The configs a run builds together, and the one rule for which of them can't be: one that declares no routes, or several that write one file. */
+/** The configs a run builds together. */
 export class BuildSet {
-	private readonly blockers: readonly Blocker[];
+	constructor(readonly configs: readonly ResolvedConfig[]) {}
 
-	constructor(readonly configs: readonly ResolvedConfig[]) {
-		const byOutFile = groupBy(configs, ({ outFile }) => pathKey(outFile));
-		this.blockers = [
-			...configs.flatMap((config) =>
-				missingRoutes(config).map((diagnostic) => ({
-					diagnostic,
-					files: [config.file],
-				}))
-			),
-			...[...byOutFile]
-				.filter(([, sharing]) => sharing.length > 1)
-				.map(([, sharing]) => {
-					const outFile = path.resolve(sharing[0].outFile);
-					const files = sharing.map(({ file }) => file);
-					return {
-						diagnostic: errorDiagnostic(
-							"output.sameOutFile",
-							{ resource: outFile },
-							`${files.map((file) => `"${path.basename(file)}"`).join(" and ")} write the same file, ${outFile}. Give each its own "outFile".`
-						),
-						files,
-					};
-				}),
-		];
-	}
-
-	/** The configs of `selection` when every one is valid now and they can be built together; otherwise every error. */
+	/** The configs of `selection` when every one is valid now; otherwise every error. */
 	static of(selection: ConfigSelection): Result<BuildSet, DiagnosticsError> {
-		const configs = selection.requireValid();
-		if (configs.isErr()) return configs;
-		const set = new BuildSet(configs.value);
-		return set.diagnostics.length > 0
-			? err(new DiagnosticsError([...set.diagnostics]))
-			: ok(set);
+		return selection.requireValid().map((configs) => new BuildSet(configs));
 	}
 
 	/** The configs of `selection` that load, as a set, and the others as builds that didn't. */
@@ -436,35 +384,12 @@ export class BuildSet {
 		};
 	}
 
-	/** Each problem once, in the order it is reported. */
-	get diagnostics(): readonly Diagnostic[] {
-		return this.blockers.map(({ diagnostic }) => diagnostic);
-	}
-
-	/** The config files some problem blocks. */
-	get blockedFiles(): ReadonlySet<string> {
-		return new Set(this.blockers.flatMap(({ files }) => files));
-	}
-
-	/** The problems that block the config file `file`; none when it can be built. */
-	blocking(file: string): readonly Diagnostic[] {
-		return this.blockers
-			.filter(({ files }) => files.includes(file))
-			.map(({ diagnostic }) => diagnostic);
-	}
-
 	configOf(file: string): ResolvedConfig | undefined {
 		return this.configs.find((config) => config.file === file);
 	}
 
-	/** The configs no problem blocks. */
-	get buildable(): ResolvedConfig[] {
-		const blocked = this.blockedFiles;
-		return this.configs.filter(({ file }) => !blocked.has(file));
-	}
-
-	/** Every root directory of every config that can be built, which one listing covers. */
-	get rootDirs(): string[] {
-		return this.buildable.flatMap(({ rootDirs }) => rootDirs);
+	/** Every folder of every config that one listing covers. */
+	get indexedPaths(): string[] {
+		return this.configs.flatMap(({ indexedPaths }) => indexedPaths);
 	}
 }

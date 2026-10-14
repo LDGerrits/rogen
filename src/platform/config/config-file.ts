@@ -1,6 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import { JSONSchema } from "../../base/json-schema.js";
-import { JsoncNode } from "../../base/jsonc.js";
+import { JsoncNode, parse } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -9,10 +9,7 @@ import {
 	errorDiagnostic,
 } from "../diagnostics/diagnostic.js";
 import { FileReader, isMissingPath } from "../fs/file-system-service.js";
-import {
-	JsoncDocumentReader,
-	UnknownFieldAdvisor,
-} from "../jsonc/jsonc-document-reader.js";
+import { JsoncDocumentReader } from "../jsonc/jsonc-document-reader.js";
 import { ConfigModel, ConfigSection, sectionPath } from "./config-models.js";
 
 export interface ConfigFile {
@@ -20,6 +17,8 @@ export interface ConfigFile {
 	readonly model: ConfigModel;
 	/** Where the value at `section` starts in the file, for pointing a diagnostic at it. */
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
+	/** Where the top-level field `key` is written. */
+	positionOfKey(key: string): DiagnosticPosition | undefined;
 }
 
 /** Why a config file didn't load: it couldn't be read at all, or what it holds is wrong. */
@@ -35,6 +34,8 @@ export type ConfigFileFailure =
 	| {
 			readonly kind: "invalid";
 			readonly diagnostics: readonly Diagnostic[];
+			/** What the file holds when it parses as JSON; `undefined` when it doesn't. */
+			readonly value: unknown;
 	  };
 
 /** Reads config files and checks them against `schema`. */
@@ -43,13 +44,12 @@ export class ConfigFileReader {
 
 	constructor(
 		private readonly fileReader: FileReader,
-		private readonly schema: JSONSchema,
-		adviseUnknown?: UnknownFieldAdvisor
+		private readonly schema: JSONSchema
 	) {
-		this.documents = new JsoncDocumentReader(
-			{ codePrefix: "config", noun: "a config" },
-			adviseUnknown
-		);
+		this.documents = new JsoncDocumentReader({
+			codePrefix: "config",
+			noun: "a config",
+		});
 	}
 
 	/** Never throws for a problem the user can cause; those come back as diagnostics. */
@@ -79,7 +79,12 @@ export class ConfigFileReader {
 	): Result<ConfigFile, ConfigFileFailure> {
 		const document = this.documents.read(text, file, this.schema);
 		if (document.isErr()) {
-			return err({ kind: "invalid", diagnostics: document.error });
+			const parsed = parse(text);
+			return err({
+				kind: "invalid",
+				diagnostics: document.error,
+				value: parsed.isOk() ? parsed.value : undefined,
+			});
 		}
 
 		const { root, value } = document.value;
@@ -87,6 +92,14 @@ export class ConfigFileReader {
 			file,
 			model: new ConfigModel(value),
 			positionOf: (section) => positionIn(root, section),
+			positionOfKey: (key) => {
+				const property = [...root.properties]
+					.reverse()
+					.find(({ name }) => name === key);
+				return (
+					property && { line: property.line, column: property.column }
+				);
+			},
 		});
 	}
 }

@@ -1,44 +1,36 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { closestMatch } from "../../base/strings.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
 	FileReader,
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import {
-	CONFIG_SUFFIX,
-	configFileName,
-	configLabel,
-	isConfigFileName,
-} from "./config.js";
+import { CONFIG_FILE_NAMES, isConfigFileName } from "./config.js";
 import { EnclosingConfigs } from "./config-service.js";
 
-/** Whether a config the command line gives is a path rather than a name: it holds a path separator or ends in `.json`. */
-function isConfigPath(ref: string): boolean {
-	return ref.includes("/") || ref.includes("\\") || ref.endsWith(".json");
-}
+/** The suffixes of the project files Rojo reads by name. */
+const PROJECT_SUFFIXES = [".project.json", ".project.jsonc"];
 
 /** The config files a command reads, and the folder it looked in. */
 export interface DiscoveredConfigs {
-	/** The working directory, or the nearest folder above it with configs when the working directory has none. */
+	/** The working directory, or the nearest folder above it with a config when the working directory has none. */
 	readonly home: string;
 	/** Absolute paths. */
 	readonly files: readonly string[];
-	/** Whether none was named, so `files` is every config in `home`. */
+	/** Whether none was named, so `files` is the config of `home`. */
 	readonly everyConfig: boolean;
 }
 
-/** Finds which config files a command reads: in the working directory, else in the nearest folder above that has any. */
+/** Finds which config files a command reads: in the working directory, else in the nearest folder above that has one. */
 export class ConfigDiscovery {
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** The config files `refs` names, each a name or a path, or every config in the folder found when it names none. A name resolves in that folder, a path from the working directory. */
+	/** The config files `refs` names, each a folder, a config file or a `*.project.json` path, or the config of the folder found when it names none. A path resolves from the working directory. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -47,6 +39,12 @@ export class ConfigDiscovery {
 		if (refs.length === 0) {
 			if (home.isErr()) return err(home.error);
 			const { directory, fileNames } = home.value;
+			if (fileNames.length > 1)
+				return err(
+					new UsageError(
+						`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+					)
+				);
 			return ok({
 				home: directory,
 				files: fileNames.map((name) => path.join(directory, name)),
@@ -54,38 +52,85 @@ export class ConfigDiscovery {
 			});
 		}
 
-		// With nothing to find configs in, a name fails as not found, in the working directory.
-		const directory = home.isOk() ? home.value.directory : cwd;
 		const resolved: string[] = [];
 		for (const ref of refs) {
-			const isPath = isConfigPath(ref);
-			const candidate = isPath
-				? path.resolve(cwd, ref)
-				: path.join(directory, configFileName(ref));
-			if (!(await this.fileSystemService.exists(candidate))) {
-				return err(
-					isPath
-						? new UsageError(`Config file not found: ${candidate}`)
-						: await this.notFound(ref, candidate, directory)
-				);
-			}
-			resolved.push(candidate);
+			const found = await this.configOf(path.resolve(cwd, ref), ref);
+			if (found.isErr()) return err(found.error);
+			resolved.push(found.value);
 		}
 
-		const duplicate = findDuplicate(resolved);
-		if (duplicate) {
+		const repeated = resolved.findIndex(
+			(file, index) => resolved.indexOf(file) !== index
+		);
+		if (repeated >= 0) {
 			return err(
 				new UsageError(
-					`"${duplicate}" was named more than once; each config can ` +
+					`"${refs[repeated]}" was named more than once; each project can ` +
 						`only be built once per invocation.`
 				)
 			);
 		}
 
-		return ok({ home: directory, files: resolved, everyConfig: false });
+		return ok({
+			home: home.isOk() ? home.value.directory : cwd,
+			files: resolved,
+			everyConfig: false,
+		});
 	}
 
-	/** Every `*.rogen.json` directly in `directory`, as sorted absolute paths; none when it can't be read. */
+	/** The config `target`, a path the user named as `ref`, stands for: a folder's own, a config file, or the config of the folder a project file lies in. */
+	private async configOf(
+		target: string,
+		ref: string
+	): Promise<Result<string, Error>> {
+		const base = path.basename(target);
+		if (await this.fileSystemService.isDirectory(target))
+			return this.configIn(target, `"${ref}"`);
+		if (PROJECT_SUFFIXES.some((suffix) => base.endsWith(suffix))) {
+			const stem = base.slice(0, base.indexOf(".project."));
+			const folder = path.dirname(target);
+			const config = await this.configIn(folder, `"${ref}"`);
+			if (config.isErr()) return config;
+			return stem === "default"
+				? config
+				: err(
+						new UsageError(
+							`No project "${stem}" in ${folder}: a rogen.json writes default.project.json.`
+						)
+					);
+		}
+		if (!(await this.fileSystemService.exists(target)))
+			return err(
+				new UsageError(
+					`"${ref}" not found: name a folder with a rogen.json, or a *.project.json path.`
+				)
+			);
+		return isConfigFileName(base)
+			? ok(target)
+			: err(
+					new UsageError(
+						`"${ref}" is not a folder with a rogen.json, nor a *.project.json path.`
+					)
+				);
+	}
+
+	/** The config file in `directory`; an error when it holds none or both names. */
+	private async configIn(
+		directory: string,
+		named: string
+	): Promise<Result<string, Error>> {
+		const names = await this.list(directory);
+		if (names.length === 1) return ok(names[0]);
+		return err(
+			new UsageError(
+				names.length === 0
+					? `${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}). Run 'rogen init' to create one.`
+					: `${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+			)
+		);
+	}
+
+	/** The config files directly in `directory`, as absolute paths; none when it can't be read. */
 	async list(directory: string): Promise<string[]> {
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(directory)
@@ -97,7 +142,7 @@ export class ConfigDiscovery {
 				);
 	}
 
-	/** The folder configs are read from: the working directory when it has any, else the nearest folder above that does. */
+	/** The folder configs are read from: the working directory when it has one, else the nearest folder above that does. */
 	private async home(): Promise<Result<EnclosingConfigs, Error>> {
 		const cwd = this.environmentService.cwd;
 		const listing = await tryWithAsync(() =>
@@ -120,12 +165,12 @@ export class ConfigDiscovery {
 			? ok(enclosing)
 			: err(
 					new Error(
-						`No *${CONFIG_SUFFIX} found in ${cwd}. Run 'rogen init' to create one.`
+						`No ${CONFIG_FILE_NAMES[0]} found in ${cwd}. Run 'rogen init' to create one.`
 					)
 				);
 	}
 
-	/** The nearest parent of the working directory that has configs. */
+	/** The nearest parent of the working directory that has a config. */
 	async findEnclosing(): Promise<EnclosingConfigs | undefined> {
 		let directory = this.environmentService.cwd;
 		for (;;) {
@@ -140,24 +185,6 @@ export class ConfigDiscovery {
 			if (fileNames.length > 0) return { directory, fileNames };
 		}
 	}
-
-	/** Suggests the config in `directory` that `name` is most likely a misspelling of, else lists the ones there. */
-	private async notFound(
-		name: string,
-		candidate: string,
-		directory: string
-	): Promise<Error> {
-		const labels = (await this.list(directory)).map(configLabel);
-		const suggestion = closestMatch(name, labels);
-		const hint = suggestion
-			? `Did you mean "${suggestion}"?`
-			: labels.length > 0
-				? `Configs here: ${labels.join(", ")}.`
-				: `Run 'rogen init' to create one.`;
-		return new UsageError(
-			`Config "${name}" not found: looked for ${candidate}. ${hint}`
-		);
-	}
 }
 
 function configFileNames(entries: readonly [string, FileType][]): string[] {
@@ -165,13 +192,4 @@ function configFileNames(entries: readonly [string, FileType][]): string[] {
 		.filter(([name, type]) => isFileType(type) && isConfigFileName(name))
 		.map(([name]) => name)
 		.sort();
-}
-
-function findDuplicate(paths: readonly string[]): string | undefined {
-	const seen = new Set<string>();
-	for (const candidate of paths) {
-		if (seen.has(candidate)) return candidate;
-		seen.add(candidate);
-	}
-	return undefined;
 }

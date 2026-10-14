@@ -6,18 +6,18 @@ import { MetaReader } from "../meta-reader.js";
 import { abs, configOf, indexOf, placeFiles, syncTools } from "./fixtures.js";
 
 describe("MetaReader", () => {
-	type Read = Pick<ResolvedConfig, "rootDirs" | "exclude">;
+	type Read = Pick<ResolvedConfig, "sourcePaths" | "ignored">;
 
 	describe("read", () => {
 		let fs: MemoryFileSystemService;
 
 		const read = async (overrides: Partial<Read> = {}) => {
 			const config: Read = {
-				rootDirs: [abs("src")],
-				exclude: [],
+				sourcePaths: [abs("src")],
+				ignored: [],
 				...overrides,
 			};
-			const index = await indexOf(fs, config.rootDirs);
+			const index = await indexOf(fs, config.sourcePaths);
 			const built = await new MetaReader(fs).read(
 				placeFiles(index, configOf(config), syncTools).unwrap()
 			);
@@ -84,7 +84,7 @@ describe("MetaReader", () => {
 			expect(result.unwrap()).toEqual([
 				{
 					file: abs("src/Combat/init.meta.json"),
-					rootDir: abs("src"),
+					sourcePath: abs("src"),
 					dir: "Combat",
 					fields: {
 						className: "Actor",
@@ -97,7 +97,7 @@ describe("MetaReader", () => {
 				},
 				{
 					file: abs("src/init.meta.json"),
-					rootDir: abs("src"),
+					sourcePath: abs("src"),
 					dir: "",
 					fields: {},
 					merged: [],
@@ -117,8 +117,8 @@ describe("MetaReader", () => {
 				placeFiles(
 					index,
 					configOf({
-						rootDirs: [abs("src")],
-						exclude: [],
+						sourcePaths: [abs("src")],
+						ignored: [],
 					}),
 					syncTools
 				).unwrap()
@@ -132,11 +132,11 @@ describe("MetaReader", () => {
 			]);
 		});
 
-		it("should skip a file's meta and an excluded folder's", async () => {
+		it("should skip a file's meta and an ignored folder's", async () => {
 			await fs.writeFile(abs("src/Save.meta.json"), "{ broken");
 			await fs.writeFile(abs("src/legacy/init.meta.json"), "{ broken");
 
-			const result = await read({ exclude: [abs("src/legacy")] });
+			const result = await read({ ignored: [abs("src/legacy")] });
 
 			expect(result.unwrap()).toEqual([]);
 		});
@@ -152,7 +152,7 @@ describe("MetaReader", () => {
 			expect(result.unwrap()).toEqual([
 				{
 					file: abs("src/Combat/init.meta.json"),
-					rootDir: abs("src"),
+					sourcePath: abs("src"),
 					dir: "Combat",
 					fields: { className: "Actor" },
 					merged: [],

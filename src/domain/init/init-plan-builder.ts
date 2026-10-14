@@ -1,9 +1,9 @@
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
+	DEFAULT_CONFIG_FILE,
 	RogenConfig,
 	configFileContent,
-	configFileName,
 } from "../config/config.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent-file.js";
@@ -13,10 +13,7 @@ import { InitPlan } from "./init-service.js";
 
 /** Collects what the setups write and say, and checks it against the directory once. */
 export class InitPlanBuilder {
-	private template: PlannedFile | undefined;
-	private readonly configs: PlannedFile[] = [];
-	private readonly placeTemplates: PlannedFile[] = [];
-	private readonly compilerConfigs: PlannedFile[] = [];
+	private config: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private hookFiles: readonly PlannedFile[] = [];
@@ -32,26 +29,12 @@ export class InitPlanBuilder {
 		private readonly asked: boolean
 	) {}
 
-	setTemplate(file: PlannedFile): void {
-		this.template = file;
-	}
-
-	/** A config named `<stem>.rogen.json`, written after the ones added before it. */
-	addConfig(stem: string, config: RogenConfig): void {
-		this.configs.push({
-			fileName: configFileName(stem),
+	/** The config the project starts with. */
+	setConfig(config: RogenConfig): void {
+		this.config = {
+			fileName: DEFAULT_CONFIG_FILE,
 			content: configFileContent(config),
-		});
-	}
-
-	/** A place's own template, written after every config. */
-	addPlaceTemplate(file: PlannedFile): void {
-		this.placeTemplates.push(file);
-	}
-
-	/** A compiler's own per-place config, written after every config. */
-	addCompilerFile(file: PlannedFile): void {
-		this.compilerConfigs.push(file);
+		};
 	}
 
 	/** Rogen's rules for agents, written last; the one existing file `init` adds to. */
@@ -66,7 +49,7 @@ export class InitPlanBuilder {
 		this.addSetup(...hooks.setup);
 	}
 
-	/** A root dir this run chose, which `write` creates if it isn't there. */
+	/** A source path this run chose, which `write` creates if it isn't there. */
 	addDirectory(directory: string): void {
 		this.directories.add(directory);
 	}
@@ -80,10 +63,9 @@ export class InitPlanBuilder {
 		for (const line of lines) this.setup.add(line);
 	}
 
-	/** Long-running commands, each for its own terminal; one that two setups add is listed once. */
+	/** Long-running commands, each for its own terminal. */
 	addRun(...commands: readonly string[]): void {
-		for (const command of commands)
-			if (!this.run.includes(command)) this.run.push(command);
+		this.run.push(...commands);
 	}
 
 	addDarkluaCommands(...commands: readonly string[]): void {
@@ -94,13 +76,9 @@ export class InitPlanBuilder {
 		this.edits.push(...lines);
 	}
 
-	/** Fails when a config or compiler file it would write already exists. */
+	/** Fails when the config it would write already exists. */
 	build(): Result<InitPlan, Diagnostic[]> {
-		const written = [
-			...this.configs,
-			...this.placeTemplates,
-			...this.compilerConfigs,
-		];
+		const written = this.config ? [this.config] : [];
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
 		);
@@ -110,13 +88,12 @@ export class InitPlanBuilder {
 			directory: this.directory.path,
 			asked: this.asked,
 			files: [
-				...(this.template ? [this.template] : []),
 				...written,
 				...(this.agentFile ? [this.agentFile] : []),
 				...this.hookFiles,
 			],
 			directories: [...this.directories],
-			configs: this.configs.map(({ fileName }) => fileName),
+			configs: written.map(({ fileName }) => fileName),
 			notes: [...this.notes],
 			nextSteps: {
 				setup: [...this.setup],

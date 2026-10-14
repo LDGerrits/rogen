@@ -1,7 +1,11 @@
 import { jest } from "@jest/globals";
 import path from "path";
 import { toPosix } from "../../../base/path.js";
-import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+	errorDiagnostic,
+} from "../../../platform/diagnostics/diagnostic.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
@@ -11,7 +15,7 @@ import {
 	brokenEntry,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
-import { ResolvedConfig } from "../../config/config.js";
+import { PROJECT_SCHEMA_URL, ResolvedConfig } from "../../config/config.js";
 import { BuildSet, LoadedBuild } from "../build.js";
 import { ConfigEntry } from "../../config/config-service.js";
 import { abs, buildServiceOf, configOf, locateIn } from "./fixtures.js";
@@ -28,9 +32,9 @@ describe("CoreBuildService", () => {
 	describe("build", () => {
 		const lobby = (spec: ResolvedConfigSpec = {}) =>
 			configOf({
-				file: abs("lobby.rogen.json"),
-				outFile: abs("lobby.project.json"),
-				rootDirs: [abs("lobby")],
+				file: abs("lobby/rogen.json"),
+				name: "lobby",
+				sourcePaths: [abs("lobby/src")],
 				...spec,
 			});
 
@@ -42,11 +46,9 @@ describe("CoreBuildService", () => {
 		const loadable = (file: string, spec: ResolvedConfigSpec = {}) =>
 			mockEntry(
 				{
-					rootDirs: [abs("src")],
+					name: path.basename(path.dirname(file)),
+					sourcePaths: [abs("src")],
 					routes: { "*": "ReplicatedStorage" },
-					outFile: abs(
-						`${path.basename(file, ".rogen.json")}.project.json`
-					),
 					...spec,
 				},
 				file
@@ -60,10 +62,10 @@ describe("CoreBuildService", () => {
 
 		beforeEach(async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
-			await fs.writeFile(abs("lobby/B.luau"), "");
+			await fs.writeFile(abs("lobby/src/B.luau"), "");
 		});
 
-		it("should index the root dirs it reads itself", async () => {
+		it("should index the source paths it reads itself", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
 			const [build] = (
@@ -71,7 +73,7 @@ describe("CoreBuildService", () => {
 			).builds;
 
 			expect(build).toMatchObject({
-				summary: { roots: [{ rootDir: abs("src"), files: 1 }] },
+				summary: { roots: [{ sourcePath: abs("src"), files: 1 }] },
 			});
 		});
 
@@ -93,21 +95,26 @@ describe("CoreBuildService", () => {
 					builds[0].errors.map(({ code }) => code)
 			).toEqual(["output.writeFailed"]);
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
-			expect(await fs.exists(abs("lobby.project.json"))).toBe(false);
+			expect(await fs.exists(abs("lobby/default.project.json"))).toBe(
+				false
+			);
 		});
 
 		it("should write every config's project file and say what each did", async () => {
 			const result = await runOf([configOf(), lobby()]);
 
 			expect(outcomesOf(result)).toEqual([
-				[abs("default.rogen.json"), "wrote"],
-				[abs("lobby.rogen.json"), "wrote"],
+				[abs("rogen.json"), "wrote"],
+				[abs("lobby/rogen.json"), "wrote"],
 			]);
 			expect(result).toMatchObject([
 				{ summary: { roots: [{ files: 1 }] } },
 				{ summary: { roots: [{ files: 1 }] } },
 			]);
-			expect(await fs.exists(abs("lobby.project.json"))).toBe(true);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+			expect(await fs.exists(abs("lobby/default.project.json"))).toBe(
+				true
+			);
 		});
 
 		it("should say unchanged for a project file that is up to date", async () => {
@@ -123,13 +130,13 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should write nothing when any config fails to build", async () => {
-			await fs.writeFile(abs("lobby/init.meta.json"), "{ nope");
+			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
 
 			const result = await runOf([configOf(), lobby()]);
 
 			expect(outcomesOf(result)).toEqual([
-				[abs("default.rogen.json"), "notWritten"],
-				[abs("lobby.rogen.json"), "failed"],
+				[abs("rogen.json"), "notWritten"],
+				[abs("lobby/rogen.json"), "failed"],
 			]);
 			expect(result[1]).toMatchObject({
 				errors: expect.arrayContaining([
@@ -144,24 +151,24 @@ describe("CoreBuildService", () => {
 			const result = (
 				await buildServiceOfFs().build(
 					new MockConfigSelection([
-						loadable(abs("default.rogen.json")),
+						loadable(abs("rogen.json")),
 						brokenEntry(
 							[
 								errorDiagnostic(
 									"config.invalidSyntax",
-									{ resource: abs("broken.rogen.json") },
+									{ resource: abs("broken/rogen.json") },
 									"invalid JSONC: expected '}'."
 								),
 							],
-							abs("broken.rogen.json")
+							abs("broken/rogen.json")
 						),
 					])
 				)
 			).builds;
 
 			expect(outcomesOf(result)).toEqual([
-				[abs("default.rogen.json"), "notWritten"],
-				[abs("broken.rogen.json"), "notLoaded"],
+				[abs("rogen.json"), "notWritten"],
+				[abs("broken/rogen.json"), "notLoaded"],
 			]);
 			expect(result[0]).toMatchObject({ blockedBy: ["broken"] });
 			expect(result[1]).toMatchObject({
@@ -175,25 +182,25 @@ describe("CoreBuildService", () => {
 			const result = (
 				await buildServiceOfFs().build(
 					new MockConfigSelection([
-						brokenEntry([], abs("a.rogen.json")),
-						loadable(abs("default.rogen.json")),
+						brokenEntry([], abs("a/rogen.json")),
+						loadable(abs("rogen.json")),
 					])
 				)
 			).builds;
 
-			expect(result.map(({ label }) => label)).toEqual(["a", "default"]);
+			expect(result.map(({ label }) => label)).toEqual(["a", "repo"]);
 		});
 
 		it("should block every other config on each one that fails or doesn't load", async () => {
-			await fs.writeFile(abs("lobby/init.meta.json"), "{ nope");
+			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
 
 			const result = (
 				await buildServiceOfFs().build(
 					new MockConfigSelection([
-						loadable(abs("default.rogen.json")),
-						brokenEntry([], abs("broken.rogen.json")),
-						loadable(abs("lobby.rogen.json"), {
-							rootDirs: [abs("lobby")],
+						loadable(abs("rogen.json")),
+						brokenEntry([], abs("broken/rogen.json")),
+						loadable(abs("lobby/rogen.json"), {
+							sourcePaths: [abs("lobby/src")],
 						}),
 					])
 				)
@@ -205,36 +212,76 @@ describe("CoreBuildService", () => {
 		});
 
 		it("should stop at the first config that cannot be written", async () => {
-			await fs.createDirectory(abs("lobby.project.json"));
-			await fs.writeFile(abs("arena/C.luau"), "");
+			await fs.createDirectory(abs("lobby/default.project.json"));
+			await fs.writeFile(abs("arena/src/C.luau"), "");
 
 			const result = await runOf([
 				configOf(),
 				lobby(),
 				lobby({
-					file: abs("arena.rogen.json"),
-					outFile: abs("arena.project.json"),
-					rootDirs: [abs("arena")],
+					file: abs("arena/rogen.json"),
+					name: "arena",
+					sourcePaths: [abs("arena/src")],
 				}),
 			]);
 
 			expect(outcomesOf(result)).toEqual([
-				[abs("default.rogen.json"), "wrote"],
-				[abs("lobby.rogen.json"), "failed"],
-				[abs("arena.rogen.json"), "notWritten"],
+				[abs("rogen.json"), "wrote"],
+				[abs("lobby/rogen.json"), "failed"],
+				[abs("arena/rogen.json"), "notWritten"],
 			]);
 			expect(result[1]).toMatchObject({
 				errors: [{ code: "output.writeFailed" }],
 			});
 			expect(result[2]).toMatchObject({ blockedBy: [result[1].label] });
-			expect(await fs.exists(abs("arena.project.json"))).toBe(false);
+			expect(await fs.exists(abs("arena/default.project.json"))).toBe(
+				false
+			);
 		});
 
-		it("should keep the sync dir warnings of a config that was not written", async () => {
-			await fs.writeFile(abs("lobby/init.meta.json"), "{ nope");
+		it("should write the tree of a config without routes as written, and scan nothing", async () => {
+			const tree = {
+				$className: "DataModel",
+				Workspace: { $className: "Workspace" },
+				ReplicatedStorage: { Vendor: { $path: "vendor" } },
+			};
+			const config = configOf({
+				routes: {},
+				sourcePaths: [],
+				project: { tree },
+			});
+
+			const [build] = await runOf([config]);
+
+			expect(build).toMatchObject({
+				outcome: "wrote",
+				summary: { roots: [], routes: [], unrouted: 0 },
+				warnings: [
+					{ code: "scan.unmountedSource", resource: abs("src") },
+				],
+			});
+			expect(
+				JSON.parse(await fs.readFile(abs("default.project.json")))
+			).toEqual({
+				$schema: PROJECT_SCHEMA_URL,
+				tree,
+			});
+		});
+
+		it("should not warn about a stale project file, which it is about to write", async () => {
+			await fs.writeFile(abs("default.project.json"), "{}");
+
+			const [build] = await runOf([configOf()]);
+
+			expect(build.outcome).toBe("wrote");
+			expect(build.warnings).toEqual([]);
+		});
+
+		it("should keep the sync path warnings of a config that was not written", async () => {
+			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
 
 			const result = await runOf([
-				configOf({ syncDir: abs("dist") }),
+				configOf({ syncPath: abs("dist") }),
 				lobby(),
 			]);
 
@@ -262,8 +309,8 @@ describe("CoreBuildService", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
-		it("should raise the diagnostics a build raises, the sync dir's included", async () => {
-			const config = configOf({ syncDir: abs("dist") });
+		it("should raise the diagnostics a build raises, the sync path's included", async () => {
+			const config = configOf({ syncPath: abs("dist") });
 
 			const [checked] = await checkOf(config);
 			const [built] = (
@@ -283,6 +330,53 @@ describe("CoreBuildService", () => {
 
 			expect(checked.outcome).toBe("failed");
 		});
+
+		describe("a project file on disk", () => {
+			it("should warn when it differs from what a build would write", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const [checked] = await checkOf(configOf());
+
+				expect(checked.warnings).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						code: "output.differs",
+						resource: abs("default.project.json"),
+						message: expect.stringContaining("rogen build"),
+					},
+				]);
+				expect(await fs.readFile(abs("default.project.json"))).toBe(
+					"{}"
+				);
+			});
+
+			it("should not warn when it holds the bytes a build would write", async () => {
+				const config = configOf();
+				await buildServiceOfFs().build(selectionOf(config));
+
+				const [checked] = await checkOf(config);
+
+				expect(checked.warnings).toEqual([]);
+			});
+
+			it("should warn when a build has not written it since the sources changed", async () => {
+				const config = configOf();
+				await buildServiceOfFs().build(selectionOf(config));
+				await fs.writeFile(abs("src/B.luau"), "");
+
+				const [checked] = await checkOf(config);
+
+				expect(checked.warnings).toMatchObject([
+					{ code: "output.differs" },
+				]);
+			});
+
+			it("should not warn when there is none", async () => {
+				const [checked] = await checkOf(configOf());
+
+				expect(checked.warnings).toEqual([]);
+			});
+		});
 	});
 
 	describe("rebuild", () => {
@@ -292,7 +386,7 @@ describe("CoreBuildService", () => {
 		): Promise<LoadedBuild> =>
 			buildServiceOfFs().rebuild(
 				set,
-				abs("default.rogen.json"),
+				abs("rogen.json"),
 				await new CoreIndexService(fs).list([abs("src")]),
 				previous
 			);
@@ -301,9 +395,9 @@ describe("CoreBuildService", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 		});
 
-		it("should check the sync dir of a config it hasn't built before", async () => {
+		it("should check the sync path of a config it hasn't built before", async () => {
 			const build = await rebuildOf(
-				new BuildSet([configOf({ syncDir: abs("dist") })])
+				new BuildSet([configOf({ syncPath: abs("dist") })])
 			);
 
 			expect(build.syncWarnings).toMatchObject([
@@ -311,8 +405,8 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
-		it("should keep what it knows of the sync dir while the config is the same", async () => {
-			const set = new BuildSet([configOf({ syncDir: abs("dist") })]);
+		it("should keep what it knows of the sync path while the config is the same", async () => {
+			const set = new BuildSet([configOf({ syncPath: abs("dist") })]);
 			const first = await rebuildOf(set);
 			await fs.writeFile(abs("dist/A.luau"), "");
 
@@ -321,30 +415,34 @@ describe("CoreBuildService", () => {
 			expect(again.syncWarnings).toBe(first.syncWarnings);
 		});
 
-		it("should check the sync dir again for a new version of the config", async () => {
+		it("should check the sync path again for a new version of the config", async () => {
 			const first = await rebuildOf(
-				new BuildSet([configOf({ syncDir: abs("dist") })])
+				new BuildSet([configOf({ syncPath: abs("dist") })])
 			);
 			await fs.writeFile(abs("dist/A.luau"), "");
 
 			const again = await rebuildOf(
-				new BuildSet([configOf({ syncDir: abs("dist") })]),
+				new BuildSet([configOf({ syncPath: abs("dist") })]),
 				first
 			);
 
 			expect(again.syncWarnings).toEqual([]);
 		});
 
-		it("should fail a config the set blocks without writing it", async () => {
-			const build = await rebuildOf(
-				new BuildSet([configOf({ routes: {} })])
-			);
+		it("should write the project file of the config", async () => {
+			const build = await rebuildOf(new BuildSet([configOf()]));
 
-			expect(build).toMatchObject({
-				outcome: "failed",
-				errors: [{ code: "route.noRoutes" }],
-			});
-			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+			expect(build.outcome).toBe("wrote");
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		});
+
+		it("should say unchanged for a project file that is up to date", async () => {
+			const set = new BuildSet([configOf()]);
+			const first = await rebuildOf(set);
+
+			const again = await rebuildOf(set, first);
+
+			expect(again.outcome).toBe("unchanged");
 		});
 	});
 
@@ -356,42 +454,18 @@ describe("CoreBuildService", () => {
 		const locate = (config: ResolvedConfig, ...args: string[]) =>
 			locateIn(buildServiceOfFs(), config, { args, cwd: abs() });
 
-		it("should answer from the configs the set leaves and return the errors of one it blocks", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-
-			const result = (
-				await buildServiceOfFs().locate(
-					selectionOf(
-						configOf({ routes: {}, file: abs("bare.rogen.json") }),
-						configOf({ routes, outFile: abs("lobby.project.json") })
-					),
-					{ args: ["src/A.luau"], cwd: abs() }
-				)
-			).unwrap();
-
-			expect(result.configs.map(({ config }) => config.label)).toEqual([
-				"default",
-			]);
-			expect(result.errors).toMatchObject([
-				{ code: "route.noRoutes", resource: abs("bare.rogen.json") },
-			]);
-		});
-
 		it("should return the errors in the order the configs were selected", async () => {
-			const broken = brokenEntry(
-				[
-					errorDiagnostic(
-						"config.invalidSyntax",
-						{ resource: abs("broken.rogen.json") },
-						"not JSON"
-					),
-				],
-				abs("broken.rogen.json")
-			);
-			const bare = mockEntry(
-				{ rootDirs: [abs("src")], routes: {} },
-				abs("bare.rogen.json")
-			);
+			const broken = (name: string) =>
+				brokenEntry(
+					[
+						errorDiagnostic(
+							`config.${name}`,
+							{ resource: abs(`${name}/rogen.json`) },
+							"not JSON"
+						),
+					],
+					abs(`${name}/rogen.json`)
+				);
 			const codes = async (...entries: ConfigEntry[]) =>
 				(
 					await buildServiceOfFs().locate(
@@ -402,68 +476,46 @@ describe("CoreBuildService", () => {
 					.unwrap()
 					.errors.map(({ code }) => code);
 
-			expect(await codes(bare, broken)).toEqual([
-				"route.noRoutes",
-				"config.invalidSyntax",
+			expect(await codes(broken("first"), broken("second"))).toEqual([
+				"config.first",
+				"config.second",
 			]);
-			expect(await codes(broken, bare)).toEqual([
-				"config.invalidSyntax",
-				"route.noRoutes",
+			expect(await codes(broken("second"), broken("first"))).toEqual([
+				"config.second",
+				"config.first",
 			]);
 		});
 
 		it("should return an error two configs share once, where the first of them is selected", async () => {
-			const broken = brokenEntry(
-				[
-					errorDiagnostic(
-						"config.invalidSyntax",
-						{ resource: abs("broken.rogen.json") },
-						"not JSON"
-					),
-				],
-				abs("broken.rogen.json")
+			const shared = errorDiagnostic(
+				"config.sharedField",
+				{ resource: abs("shared.json") },
+				"not JSON"
 			);
-			const sameOut = (file: string) =>
-				mockEntry(
-					{
-						rootDirs: [abs("src")],
-						routes,
-						outFile: abs("game.project.json"),
-					},
-					abs(file)
-				);
+			const broken = (name: string, ...errors: Diagnostic[]) =>
+				brokenEntry(errors, abs(`${name}/rogen.json`));
 
 			const result = (
 				await buildServiceOfFs().locate(
 					new MockConfigSelection([
-						sameOut("a.rogen.json"),
-						broken,
-						sameOut("b.rogen.json"),
+						broken("a", shared),
+						broken(
+							"b",
+							errorDiagnostic(
+								"config.invalidSyntax",
+								{ resource: abs("b/rogen.json") },
+								"not JSON"
+							)
+						),
+						broken("c", shared),
 					]),
 					{ args: [], cwd: abs() }
 				)
 			).unwrap();
 
 			expect(result.errors.map(({ code }) => code)).toEqual([
-				"output.sameOutFile",
+				"config.sharedField",
 				"config.invalidSyntax",
-			]);
-		});
-
-		it("should answer from no config that writes the file another writes, as build does", async () => {
-			const result = (
-				await buildServiceOfFs().locate(
-					selectionOf(
-						configOf({ routes }),
-						configOf({ routes, file: abs("lobby.rogen.json") })
-					),
-					{ args: ["src/A.luau"], cwd: abs() }
-				)
-			).unwrap();
-
-			expect(result.configs).toEqual([]);
-			expect(result.errors).toMatchObject([
-				{ code: "output.sameOutFile" },
 			]);
 		});
 
@@ -472,7 +524,7 @@ describe("CoreBuildService", () => {
 			const errors = [
 				errorDiagnostic(
 					"config.invalidSyntax",
-					{ resource: abs("broken.rogen.json") },
+					{ resource: abs("broken/rogen.json") },
 					"not JSON"
 				),
 			];
@@ -480,13 +532,13 @@ describe("CoreBuildService", () => {
 			const result = (
 				await buildServiceOfFs().locate(
 					new MockConfigSelection([
-						brokenEntry(errors, abs("broken.rogen.json")),
+						brokenEntry(errors, abs("broken/rogen.json")),
 						mockEntry(
 							{
-								rootDirs: [abs("src")],
+								sourcePaths: [abs("src")],
 								routes: { "*": "ReplicatedStorage" },
 							},
-							abs("default.rogen.json")
+							abs("rogen.json")
 						),
 					]),
 					{ args: [], cwd: abs() }
@@ -494,16 +546,46 @@ describe("CoreBuildService", () => {
 			).unwrap();
 
 			expect(result.configs.map(({ config }) => config.label)).toEqual([
-				"default",
+				"repo",
 			]);
 			expect(result.errors).toEqual(errors);
+		});
+
+		it("should fail with the errors of the configs that did not load, then those that stop a config from being placed", async () => {
+			const failure = errorDiagnostic(
+				"config.invalidSyntax",
+				{ resource: abs("broken/rogen.json") },
+				"not JSON"
+			);
+
+			const result = await buildServiceOfFs().locate(
+				new MockConfigSelection([
+					brokenEntry([failure], abs("broken/rogen.json")),
+					mockEntry({
+						sourcePaths: [abs("src")],
+						routes: { "*": "ReplicatedStorage" },
+						project: {
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: { $path: "src" },
+							},
+						},
+					}),
+				]),
+				{ args: [], cwd: abs() }
+			);
+
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
+				{ code: "config.invalidSyntax" },
+				{ code: "tree.mountsSourcePath", resource: abs("rogen.json") },
+			]);
 		});
 
 		it("should answer nothing when no config loads", async () => {
 			const result = (
 				await buildServiceOfFs().locate(
 					new MockConfigSelection([
-						brokenEntry([], abs("broken.rogen.json")),
+						brokenEntry([], abs("broken/rogen.json")),
 					]),
 					{ args: [], cwd: abs() }
 				)
@@ -552,24 +634,22 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
-		it("should name every config that declares no routes", async () => {
+		it("should say a file is outside a config that declares no routes", async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+
 			const result = (
-				await buildServiceOfFs().locate(
-					selectionOf(
-						configOf({ routes: {} }),
-						configOf({
-							routes: {},
-							file: abs("lobby.rogen.json"),
-							outFile: abs("lobby.project.json"),
-						})
-					),
-					{ args: [], cwd: abs() }
+				await locate(
+					configOf({ routes: {}, sourcePaths: [] }),
+					"src/A.luau"
 				)
 			).unwrap();
 
-			expect(result.errors).toMatchObject([
-				{ resource: abs("default.rogen.json") },
-				{ resource: abs("lobby.rogen.json") },
+			expect(result.files).toEqual([
+				{
+					status: "outside",
+					source: toPosix(abs("src/A.luau")),
+					exists: true,
+				},
 			]);
 		});
 
@@ -788,6 +868,28 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
+		it("should report what a check raises when no path is asked about", async () => {
+			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+
+			const found = (
+				await buildServiceOfFs().diagnose(
+					selectionOf(
+						configOf({
+							routes: {
+								server: "ServerScriptService",
+								"*": "ReplicatedStorage",
+							},
+						})
+					)
+				)
+			).unwrap();
+
+			expect(found.diagnostics).toMatchObject([
+				{ code: "route.folderTypo" },
+			]);
+			expect(found.stoppedBy).toEqual([]);
+		});
+
 		it("should report what is wrong with a meta file that applies to nothing, from the folder it is in", async () => {
 			await fs.writeFile(abs("src/I/Nope.meta.json"), "{}");
 			await fs.writeFile(abs("src/I/B.luau"), "");
@@ -829,111 +931,35 @@ describe("CoreBuildService", () => {
 			);
 		});
 
-		it("should report the error of a config the set blocks beside what reaches the path in the others", async () => {
+		it("should report the error of a config that did not load beside what reaches the path in the others", async () => {
 			await fs.writeFile(abs("src/F/Sever/A.luau"), "");
+			const failure = errorDiagnostic(
+				"config.invalidSyntax",
+				{ resource: abs("broken/rogen.json") },
+				"not JSON"
+			);
 
 			const result = (
 				await buildServiceOfFs().diagnose(
-					selectionOf(
-						configOf({ routes: {}, file: abs("bare.rogen.json") }),
-						configOf({
+					new MockConfigSelection([
+						brokenEntry([failure], abs("broken/rogen.json")),
+						mockEntry({
+							sourcePaths: [abs("src")],
 							routes: {
 								server: "ServerScriptService",
 								"*": "ReplicatedStorage",
 							},
-							outFile: abs("lobby.project.json"),
-						})
-					),
+						}),
+					]),
 					{ args: ["src/F/Sever/A.luau"], cwd: abs() }
 				)
 			).unwrap();
 
 			expect(result.diagnostics).toMatchObject([
-				{ code: "route.noRoutes", resource: abs("bare.rogen.json") },
+				{ code: "config.invalidSyntax" },
 				{ code: "route.folderTypo" },
 			]);
 			expect(result.stoppedBy).toEqual([]);
-		});
-	});
-
-	describe("build with configs the set blocks", () => {
-		const entryOf = (
-			spec: ResolvedConfigSpec = {},
-			file = abs("default.rogen.json")
-		) =>
-			mockEntry(
-				{
-					rootDirs: [abs("src")],
-					routes: { "*": "ReplicatedStorage" },
-					outFile: abs(
-						`${path.basename(file, ".rogen.json")}.project.json`
-					),
-					...spec,
-				},
-				file
-			);
-		const buildOf = async (...entries: ConfigEntry[]) =>
-			(await buildServiceOfFs().build(new MockConfigSelection(entries)))
-				.builds;
-
-		beforeEach(async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-		});
-
-		it("should fail a config that declares no routes and leave the others unwritten", async () => {
-			const builds = await buildOf(
-				entryOf({ routes: {} }, abs("bare.rogen.json")),
-				entryOf()
-			);
-
-			expect(builds).toMatchObject([
-				{
-					outcome: "failed",
-					errors: [
-						{
-							code: "route.noRoutes",
-							resource: abs("bare.rogen.json"),
-						},
-					],
-				},
-				{ outcome: "notWritten", blockedBy: ["bare"] },
-			]);
-			expect(await fs.exists(abs("default.project.json"))).toBe(false);
-		});
-
-		it("should fail each config that writes one file with the same error", async () => {
-			const builds = await buildOf(
-				entryOf(),
-				entryOf(
-					{ outFile: abs("default.project.json") },
-					abs("other.rogen.json")
-				)
-			);
-
-			expect(builds).toMatchObject([
-				{
-					outcome: "failed",
-					errors: [
-						{
-							code: "output.sameOutFile",
-							resource: abs("default.project.json"),
-						},
-					],
-				},
-				{ outcome: "failed", errors: [{ code: "output.sameOutFile" }] },
-			]);
-		});
-
-		it("should report a config that doesn't load beside one the set blocks", async () => {
-			const builds = await buildOf(
-				entryOf({ routes: {} }),
-				brokenEntry([], abs("broken.rogen.json"))
-			);
-
-			expect(builds.map(({ outcome }) => outcome)).toEqual([
-				"failed",
-				"notLoaded",
-			]);
 		});
 	});
 });

@@ -1,0 +1,14 @@
+{
+	"globIgnorePaths": [
+		"src/Common/Secret.luau"
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	}
+}

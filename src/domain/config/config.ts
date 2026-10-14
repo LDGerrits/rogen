@@ -1,32 +1,36 @@
 import path from "path";
-import { formatJsonFile, safeStringify } from "../../base/json.js";
-import {
-	PathSet,
-	commonAncestor,
-	isInside,
-	samePath,
-	toPosix,
-} from "../../base/path.js";
-import { ignoresPathCase } from "../../base/platform.js";
+import { formatJsonFile } from "../../base/json.js";
+import { commonAncestor, isInside, samePath } from "../../base/path.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
 import {
-	NodeClash,
 	ParsedProjectFile,
+	RojoNode,
 	RojoProject,
 } from "../rojo/rojo-project.js";
 
+/** What a `rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
 export interface RogenConfig {
 	readonly $schema?: string;
-	readonly extends?: string;
-	readonly rootDirs?: string[];
+	readonly name?: string;
+	readonly tree?: RojoNode;
+	readonly servePort?: number;
+	readonly serveAddress?: string;
+	readonly serveAllowedHosts?: string[];
+	readonly servePlaceIds?: number[];
+	readonly blockedPlaceIds?: number[];
+	readonly placeId?: number;
+	readonly gameId?: number;
+	readonly emitLegacyScripts?: boolean;
+	readonly globIgnorePaths?: string[];
+	readonly syncRules?: unknown[];
+	readonly syncbackRules?: Record<string, unknown>;
+	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
-	readonly exclude?: string[];
-	readonly template?: string;
-	readonly syncDir?: string;
-	readonly outFile?: string;
+	readonly syncPath?: string;
 }
 
-/** Anything that holds config values by field name, such as a config model or the chain of them. */
+/** Anything that holds config values by field name, such as a config model. */
 export interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
@@ -39,57 +43,28 @@ export function fieldOf<K extends keyof RogenConfig>(
 	return values.getValue<RogenConfig[K]>(key);
 }
 
-export const CONFIG_SUFFIX = ".rogen.json";
-export const DEFAULT_CONFIG_STEM = "default";
+/** The file names a folder's config goes by. */
+export const CONFIG_FILE_NAMES: readonly string[] = [
+	"rogen.json",
+	"rogen.jsonc",
+];
 
-export const configFileName = (stem: string): string =>
-	`${stem}${CONFIG_SUFFIX}`;
-
-/** The config a project starts with. */
-export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_CONFIG_STEM);
+/** The config a folder starts with. */
+export const DEFAULT_CONFIG_FILE = "rogen.json";
 
 /** Whether `fileName` is the name of a config file. */
 export const isConfigFileName = (fileName: string): boolean =>
-	fileName.endsWith(CONFIG_SUFFIX);
+	CONFIG_FILE_NAMES.includes(fileName);
 
-/** A config as the relations between configs see it: its file and the files of its `extends` chain, nearest first. */
-interface ExtendingConfig {
-	readonly file: string;
-	readonly parents: readonly string[];
-}
-
-/** The configs of `configs` that no other of them extends, which a serve starts a server for: the synced config over its source-rooted base, and each place over the config they share. A file counts as one however its path is written, as `extends` may spell it differently than the folder lists it. */
-export function leafConfigs<T extends ExtendingConfig>(
-	configs: readonly T[],
-	caseInsensitive = ignoresPathCase
-): T[] {
-	const extended = new PathSet(
-		configs.flatMap(({ parents }) => parents),
-		caseInsensitive
-	);
-	return configs.filter(({ file }) => !extended.has(file));
-}
-
-/** Whether `config` is one of `files` or extends one of them, however far down its chain. */
-export function inFamilyOf(config: ExtendingConfig, files: PathSet): boolean {
-	return files.has(config.file) || config.parents.some((p) => files.has(p));
-}
-
-/** The configs of `configs` whose nearest parent is `config`. */
-export function directExtendersOf<T extends ExtendingConfig>(
-	config: ExtendingConfig,
-	configs: readonly T[],
-	caseInsensitive = ignoresPathCase
-): T[] {
-	const file = new PathSet([config.file], caseInsensitive);
-	return configs.filter(
-		({ parents }) => parents.length > 0 && file.has(parents[0])
-	);
-}
-
-/** The name a config is asked for by, e.g. `lobby` for `lobby.rogen.json`. */
+/** The name a config is asked for by: its folder's. */
 export const configLabel = (file: string): string =>
-	path.basename(file, CONFIG_SUFFIX);
+	path.basename(path.dirname(file));
+
+/** The project file a folder's config writes beside itself. */
+/** The folder Rogen scans when a config declares routes and no source paths. */
+export const DEFAULT_SOURCE_PATH = "src";
+
+export const DEFAULT_PROJECT_FILE = "default.project.json";
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
@@ -106,25 +81,32 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
+/** The schema a project file written by this release points at. */
+export const PROJECT_SCHEMA_URL = SCHEMA_URL.replace(/[^/]+$/, "project.json");
+
+export function projectSchemaUrlFor(version: string): string {
+	return schemaUrlFor(version).replace(/[^/]+$/, "project.json");
+}
+
 /** A config file's text as Rogen writes one: strict JSON that points at this release's schema. */
 export function configFileContent(config: RogenConfig): string {
 	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
 }
 
-/** How a root dir overlaps another of `rootDirs`; a file under both would belong to both. */
-export type RootDirOverlap =
+/** How a source path overlaps another of `sourcePaths`; a file under both would belong to both. */
+export type SourcePathOverlap =
 	| { readonly kind: "duplicate" }
 	| { readonly kind: "nested"; readonly outer: string };
 
-/** How the root dir at `index` overlaps an earlier or enclosing one, if it does. All paths absolute. */
-export function rootDirOverlap(
-	rootDirs: readonly string[],
+/** How the source path at `index` overlaps an earlier or enclosing one, if it does. All paths absolute. */
+export function sourcePathOverlap(
+	sourcePaths: readonly string[],
 	index: number
-): RootDirOverlap | undefined {
-	const rootDir = rootDirs[index];
-	const first = rootDirs.findIndex((other) => samePath(other, rootDir));
+): SourcePathOverlap | undefined {
+	const sourcePath = sourcePaths[index];
+	const first = sourcePaths.findIndex((other) => samePath(other, sourcePath));
 	if (first !== index) return { kind: "duplicate" };
-	const outer = rootDirs.find((other) => isInside(rootDir, other));
+	const outer = sourcePaths.find((other) => isInside(sourcePath, other));
 	return outer === undefined ? undefined : { kind: "nested", outer };
 }
 
@@ -191,115 +173,75 @@ export class DeclaredKeys {
 	}
 }
 
-/** A field a template sets on a node that the template it merges over sets differently. */
-export interface TemplateClash extends NodeClash {
-	/** The template whose value won. */
-	readonly file: string;
-	/** The template whose value lost. */
-	readonly base: string;
-}
-
-/** The Rojo project file a config builds on top of: the nearest template its chain names, merged over the ones above it. */
-export class ResolvedTemplate {
-	constructor(
-		readonly file: string,
-		/** Every `$path` and glob is relative to `file`'s directory. */
-		readonly project: RojoProject<ParsedProjectFile>,
-		/** The templates it is merged over, the furthest first. */
-		readonly bases: readonly string[] = [],
-		readonly clashes: readonly TemplateClash[] = []
-	) {}
-
-	/** This template merged over `base`, whose paths are rebased to this one's directory. */
-	over(base: ResolvedTemplate): ResolvedTemplate {
-		const from = path.dirname(base.file);
-		const to = path.dirname(this.file);
-		const rebase = (target: string) =>
-			toPosix(path.relative(to, path.resolve(from, target)));
-		const rebased =
-			from === to ? base.project : base.project.rebased(rebase);
-		const { project, clashes } = rebased.overlaidWith(this.project);
-		return new ResolvedTemplate(
-			this.file,
-			project,
-			[...base.bases, base.file],
-			[
-				...base.clashes,
-				...clashes.map((clash) => ({
-					...clash,
-					file: this.file,
-					base: base.file,
-				})),
-			]
-		);
-	}
-
-	equals(other: ResolvedTemplate | undefined): boolean {
-		return (
-			other !== undefined &&
-			this.file === other.file &&
-			safeStringify(this.project.getFile()) ===
-				safeStringify(other.project.getFile())
-		);
-	}
-}
-
 export interface ResolvedConfigFields {
-	/** The config file itself, the leaf of its `extends` chain. */
+	/** The config file itself. */
 	readonly file: string;
-	/** The configs it extends, the nearest first. */
-	readonly parents: readonly string[];
+	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
 	readonly projectName: string;
-	readonly rootDirs: readonly string[];
+	/** The Rojo project file the config describes, its tree as the user wrote it and the keys Rogen doesn't read passed through. Every `$path` and glob is relative to the config's folder. */
+	readonly project: RojoProject<ParsedProjectFile>;
+	/** Absolute. */
+	readonly sourcePaths: readonly string[];
 	/** In declaration order. */
 	readonly routes: ReadonlyMap<string, Target>;
-	/** The globs left out, which drop scanned files and template mounts alike. */
-	readonly exclude: readonly string[];
-	readonly template?: ResolvedTemplate;
-	readonly syncDir?: string;
-	readonly outFile: string;
+	/** `globIgnorePaths` as globs on absolute POSIX paths, which keep scanned files out of routing. */
+	readonly ignored: readonly string[];
+	/** Absolute. */
+	readonly syncPath?: string;
+	/** What the config says that is no error: a key Rojo will reject in the written file. */
+	readonly warnings: readonly Diagnostic[];
 }
 
-/** A config with its layers merged and validated: every path is absolute and every route target is parsed. */
+/** A config with its values validated: every path is absolute and every route target is parsed. */
 export class ResolvedConfig {
 	readonly file: string;
-	readonly parents: readonly string[];
 	readonly projectName: string;
-	readonly rootDirs: readonly string[];
+	readonly project: RojoProject<ParsedProjectFile>;
+	readonly sourcePaths: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
-	readonly exclude: readonly string[];
-	readonly template?: ResolvedTemplate;
-	readonly syncDir?: string;
-	readonly outFile: string;
+	readonly ignored: readonly string[];
+	readonly syncPath?: string;
+	readonly warnings: readonly Diagnostic[];
 	readonly keys: DeclaredKeys;
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
-		this.parents = fields.parents;
 		this.projectName = fields.projectName;
-		this.rootDirs = fields.rootDirs;
+		this.project = fields.project;
+		this.sourcePaths = fields.sourcePaths;
 		this.routes = fields.routes;
-		this.exclude = fields.exclude;
-		this.template = fields.template;
-		this.syncDir = fields.syncDir;
-		this.outFile = fields.outFile;
+		this.ignored = fields.ignored;
+		this.syncPath = fields.syncPath;
+		this.warnings = fields.warnings;
 		this.keys = new DeclaredKeys(fields.routes.keys());
 	}
 
 	/** What the config is asked for by. */
 	get label(): string {
-		return configLabel(this.file);
+		return this.projectName;
 	}
 
 	/** The directory the project file is written to, and every path in it is relative to. */
 	get projectDir(): string {
-		return path.dirname(this.outFile);
+		return path.dirname(this.file);
 	}
 
-	/** The deepest directory holding every root dir, or `undefined` without any. */
+	/** The project file the config writes. */
+	get projectFile(): string {
+		return path.join(this.projectDir, DEFAULT_PROJECT_FILE);
+	}
+
+	/** The folders a build lists: its source paths, else the folder it would have scanned by default, to find files nothing mounts. */
+	get indexedPaths(): readonly string[] {
+		return this.routes.size > 0
+			? this.sourcePaths
+			: [path.join(this.projectDir, DEFAULT_SOURCE_PATH)];
+	}
+
+	/** The deepest directory holding every source path, or `undefined` without any. */
 	get commonRoot(): string | undefined {
-		return this.rootDirs.length > 0
-			? commonAncestor(this.rootDirs)
+		return this.sourcePaths.length > 0
+			? commonAncestor(this.sourcePaths)
 			: undefined;
 	}
 }

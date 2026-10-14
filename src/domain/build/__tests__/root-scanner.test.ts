@@ -18,9 +18,9 @@ import {
 } from "./fixtures.js";
 
 describe("RootScanner", () => {
-	type ScanOptions = Pick<ResolvedConfig, "rootDirs" | "exclude">;
+	type ScanOptions = Pick<ResolvedConfig, "sourcePaths" | "ignored">;
 
-	const scanRootDirs = (index: IndexReader, options: ScanOptions) =>
+	const scanSourcePaths = (index: IndexReader, options: ScanOptions) =>
 		placeFiles(index, configOf(options), syncTools).unwrap();
 
 	const glob = (pattern: string) => toPosix(abs(pattern));
@@ -32,11 +32,11 @@ describe("RootScanner", () => {
 
 		const scan = async (options: Partial<ScanOptions> = {}) => {
 			const scanOptions: ScanOptions = {
-				rootDirs: [abs("src")],
-				exclude: [],
+				sourcePaths: [abs("src")],
+				ignored: [],
 				...options,
 			};
-			const index = await newIndex().list(scanOptions.rootDirs);
+			const index = await newIndex().list(scanOptions.sourcePaths);
 			const config = configOf(scanOptions);
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
@@ -58,13 +58,13 @@ describe("RootScanner", () => {
 		});
 
 		describe("the project file it writes", () => {
-			it("should be left out when a root dir holds it", async () => {
-				await write("src/A.luau", "src/game.project.json");
+			it("should be left out when a source path holds it", async () => {
+				await write("src/A.luau", "src/default.project.json");
 				const index = await newIndex().list([abs("src")]);
 				const config = configOf({
-					rootDirs: [abs("src")],
-					exclude: [],
-					outFile: abs("src/game.project.json"),
+					sourcePaths: [abs("src")],
+					ignored: [],
+					file: abs("src/rogen.json"),
 				});
 
 				const [root] = builderOf(fs, index)
@@ -73,10 +73,10 @@ describe("RootScanner", () => {
 
 				expect(files(root)).toEqual(["script:A.luau"]);
 				expect(
-					root.leftOut.get(toPosix(abs("src/game.project.json")))
+					root.leftOut.get(toPosix(abs("src/default.project.json")))
 				).toEqual({
-					status: "excluded",
-					pattern: "game.project.json",
+					status: "ignored",
+					pattern: "default.project.json",
 				});
 			});
 		});
@@ -85,16 +85,16 @@ describe("RootScanner", () => {
 			await write("src/A.luau");
 			const index = await newIndex().list([abs("src")]);
 			const config = configOf({
-				rootDirs: [abs("src")],
-				exclude: [],
-				outFile: abs("src/game.project.json"),
+				sourcePaths: [abs("src")],
+				ignored: [],
+				file: abs("src/rogen.json"),
 			});
 
 			const [root] = builderOf(fs, index).place(config).unwrap().roots;
 
 			expect(
-				root.leftOut.get(toPosix(abs("src/game.project.json")))
-			).toEqual({ status: "excluded", pattern: "game.project.json" });
+				root.leftOut.get(toPosix(abs("src/default.project.json")))
+			).toEqual({ status: "ignored", pattern: "default.project.json" });
 		});
 
 		describe("recognised files", () => {
@@ -168,7 +168,7 @@ describe("RootScanner", () => {
 				]);
 			});
 
-			it("should leave an excluded .meta.json out of the meta files", async () => {
+			it("should leave an ignored .meta.json out of the meta files", async () => {
 				await write(
 					"src/A.luau",
 					"src/A.meta.json",
@@ -176,7 +176,7 @@ describe("RootScanner", () => {
 				);
 
 				const { roots } = await scan({
-					exclude: [glob("src/A.meta.json"), glob("src/legacy")],
+					ignored: [glob("src/A.meta.json"), glob("src/legacy")],
 				});
 
 				expect(roots[0].metaFiles).toEqual([]);
@@ -223,7 +223,7 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:Real.ts"]);
 			});
 
-			it("should record paths relative to the root dir with posix separators", async () => {
+			it("should record paths relative to the source path with posix separators", async () => {
 				await write("src/inventory/items/Sword.luau");
 
 				const { roots } = await scan();
@@ -231,7 +231,7 @@ describe("RootScanner", () => {
 				expect(roots[0].entries).toEqual([
 					{
 						kind: "script",
-						rootDir: abs("src"),
+						sourcePath: abs("src"),
 						relativePath: "inventory/items/Sword.luau",
 						source: abs("src/inventory/items/Sword.luau"),
 					},
@@ -263,13 +263,13 @@ describe("RootScanner", () => {
 				expect(roots[0].entries).toEqual([
 					{
 						kind: "script",
-						rootDir: abs("src"),
+						sourcePath: abs("src"),
 						relativePath: "Inventory/Helper.luau",
 						source: abs("src/Inventory/Helper.luau"),
 					},
 					{
 						kind: "script",
-						rootDir: abs("src"),
+						sourcePath: abs("src"),
 						relativePath: "Inventory/init.luau",
 						source: abs("src/Inventory/init.luau"),
 					},
@@ -331,21 +331,21 @@ describe("RootScanner", () => {
 				expect(roots[0].metaFiles).toEqual([".hidden.meta.json"]);
 			});
 
-			it("should not list a dot-file inside an excluded directory", async () => {
+			it("should not list a dot-file inside an ignored directory", async () => {
 				await write("src/legacy/.server");
 
-				const { roots } = await scan({ exclude: [glob("src/legacy")] });
+				const { roots } = await scan({ ignored: [glob("src/legacy")] });
 
 				expect(roots[0].markers).toEqual([]);
 			});
 		});
 
-		describe("exclude", () => {
+		describe("ignored", () => {
 			it("should leave a Rogen config out, as it is no game data", async () => {
 				await write(
 					"src/Keep.luau",
-					"src/Inventory/default.rogen.json",
-					"src/Inventory/lobby.rogen.json"
+					"src/Inventory/rogen.json",
+					"src/Inventory/rogen.jsonc"
 				);
 
 				const { roots } = await scan();
@@ -353,19 +353,21 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 				expect(
 					roots[0].leftOut.get(
-						toPosix(abs("src/Inventory/default.rogen.json"))
+						toPosix(abs("src/Inventory/rogen.json"))
 					)
-				).toEqual({
-					status: "excluded",
-					pattern: "*.rogen.json",
-				});
+				).toEqual({ status: "ignored", pattern: "rogen.json" });
+				expect(
+					roots[0].leftOut.get(
+						toPosix(abs("src/Inventory/rogen.jsonc"))
+					)
+				).toEqual({ status: "ignored", pattern: "rogen.jsonc" });
 			});
 
 			it("should remove matching files", async () => {
 				await write("src/Keep.luau", "src/Drop.spec.luau");
 
 				const { roots } = await scan({
-					exclude: [glob("**/*.spec.luau")],
+					ignored: [glob("**/*.spec.luau")],
 				});
 
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
@@ -378,7 +380,7 @@ describe("RootScanner", () => {
 					"src/tests/b/B.luau"
 				);
 
-				const { roots } = await scan({ exclude: [glob("**/tests")] });
+				const { roots } = await scan({ ignored: [glob("**/tests")] });
 
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 			});
@@ -387,24 +389,24 @@ describe("RootScanner", () => {
 				await write("places/main/src/A.luau", "places/main/src/B.luau");
 
 				const { roots } = await scan({
-					rootDirs: [abs("places/main/src")],
-					exclude: [glob("places/main/src/B.luau")],
+					sourcePaths: [abs("places/main/src")],
+					ignored: [glob("places/main/src/B.luau")],
 				});
 
 				expect(files(roots[0])).toEqual(["script:A.luau"]);
 			});
 
-			it("should remove an excluded init script before deciding whether the directory is a unit", async () => {
+			it("should remove an ignored init script before deciding whether the directory is a unit", async () => {
 				await write("src/Foo/init.luau", "src/Foo/Bar.luau");
 
 				const { roots } = await scan({
-					exclude: [glob("**/init.luau")],
+					ignored: [glob("**/init.luau")],
 				});
 
 				expect(files(roots[0])).toEqual(["script:Foo/Bar.luau"]);
 			});
 
-			it("should report the top-most excluded paths", async () => {
+			it("should report the top-most ignored paths", async () => {
 				await write(
 					"src/tests/A.luau",
 					"src/tests/b/B.luau",
@@ -412,7 +414,7 @@ describe("RootScanner", () => {
 				);
 
 				const { roots } = await scan({
-					exclude: [glob("**/tests"), glob("**/*.spec.luau")],
+					ignored: [glob("**/tests"), glob("**/*.spec.luau")],
 				});
 
 				expect([...roots[0].leftOut.keys()].sort()).toEqual([
@@ -421,11 +423,11 @@ describe("RootScanner", () => {
 				]);
 			});
 
-			it("should name the glob that excluded each path", async () => {
+			it("should name the glob that ignored each path", async () => {
 				await write("src/tests/A.luau", "src/X.spec.luau");
 
 				const { roots } = await scan({
-					exclude: [glob("**/tests"), glob("**/*.spec.luau")],
+					ignored: [glob("**/tests"), glob("**/*.spec.luau")],
 				});
 
 				expect(roots[0].leftOut).toEqual(
@@ -433,21 +435,21 @@ describe("RootScanner", () => {
 						[
 							abs("src/X.spec.luau"),
 							{
-								status: "excluded",
+								status: "ignored",
 								pattern: glob("**/*.spec.luau"),
 							},
 						],
 						[
 							abs("src/tests"),
-							{ status: "excluded", pattern: glob("**/tests") },
+							{ status: "ignored", pattern: glob("**/tests") },
 						],
 					])
 				);
 			});
 		});
 
-		describe("several root dirs", () => {
-			it("should record which root dir each entry came from, in root order", async () => {
+		describe("several source paths", () => {
+			it("should record which source path each entry came from, in root order", async () => {
 				await write(
 					"core/Shared.luau",
 					"lobby/Shared.luau",
@@ -455,17 +457,17 @@ describe("RootScanner", () => {
 				);
 
 				const { roots } = await scan({
-					rootDirs: [abs("core"), abs("lobby")],
+					sourcePaths: [abs("core"), abs("lobby")],
 				});
 
-				expect(roots.map((root) => root.rootDir)).toEqual([
+				expect(roots.map((root) => root.sourcePath)).toEqual([
 					abs("core"),
 					abs("lobby"),
 				]);
 				expect(roots[0].entries).toEqual([
 					{
 						kind: "script",
-						rootDir: abs("core"),
+						sourcePath: abs("core"),
 						relativePath: "Shared.luau",
 						source: abs("core/Shared.luau"),
 					},
@@ -473,13 +475,13 @@ describe("RootScanner", () => {
 				expect(roots[1].entries).toEqual([
 					{
 						kind: "script",
-						rootDir: abs("lobby"),
+						sourcePath: abs("lobby"),
 						relativePath: "Only.luau",
 						source: abs("lobby/Only.luau"),
 					},
 					{
 						kind: "script",
-						rootDir: abs("lobby"),
+						sourcePath: abs("lobby"),
 						relativePath: "Shared.luau",
 						source: abs("lobby/Shared.luau"),
 					},
@@ -490,10 +492,10 @@ describe("RootScanner", () => {
 				await write("b/X.luau", "a/X.luau");
 
 				const { roots } = await scan({
-					rootDirs: [abs("b"), abs("a")],
+					sourcePaths: [abs("b"), abs("a")],
 				});
 
-				expect(roots.map((root) => root.rootDir)).toEqual([
+				expect(roots.map((root) => root.sourcePath)).toEqual([
 					abs("b"),
 					abs("a"),
 				]);
@@ -507,7 +509,7 @@ describe("RootScanner", () => {
 
 				const { roots, warnings } = await scan();
 
-				expect(roots[0].rootDir).toBe(abs("src"));
+				expect(roots[0].sourcePath).toBe(abs("src"));
 				expect(files(roots[0])).toEqual([
 					"script:Shared/Util.luau",
 					"script:Shared/deep/Deep.luau",
@@ -536,7 +538,7 @@ describe("RootScanner", () => {
 				expect(roots[0].entries).toEqual([
 					{
 						kind: "script",
-						rootDir: abs("src"),
+						sourcePath: abs("src"),
 						relativePath: "Pkg/init.luau",
 						source: abs("src/Pkg/init.luau"),
 					},
@@ -561,7 +563,7 @@ describe("RootScanner", () => {
 				await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
 
 				const { roots } = await scan({
-					exclude: [glob("src/Shared/*.spec.luau")],
+					ignored: [glob("src/Shared/*.spec.luau")],
 				});
 
 				expect(files(roots[0])).toEqual(["script:Shared/Util.luau"]);
@@ -570,12 +572,12 @@ describe("RootScanner", () => {
 				]);
 			});
 
-			it("should not read what an excluded link points at", async () => {
+			it("should not read what an ignored link points at", async () => {
 				await write("shared/Util.luau");
 				await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
 
 				const { roots, warnings } = await scan({
-					exclude: [glob("src/Shared")],
+					ignored: [glob("src/Shared")],
 				});
 
 				expect(roots[0].entries).toEqual([]);
@@ -619,7 +621,7 @@ describe("RootScanner", () => {
 				]);
 			});
 
-			it("should warn once about a link that two overlapping root dirs both reach", async () => {
+			it("should warn once about a link that two overlapping source paths both reach", async () => {
 				await write("src/inner/A.luau");
 				await fs.createSymbolicLink(
 					abs("missing"),
@@ -627,13 +629,13 @@ describe("RootScanner", () => {
 				);
 
 				const { warnings } = await scan({
-					rootDirs: [abs("src"), abs("src/inner")],
+					sourcePaths: [abs("src"), abs("src/inner")],
 				});
 
 				expect(warnings).toHaveLength(1);
 			});
 
-			it("should skip a link that points above its root dir", async () => {
+			it("should skip a link that points above its source path", async () => {
 				await write("src/A.luau");
 				await fs.createSymbolicLink(abs("."), abs("src/Up"));
 
@@ -646,16 +648,16 @@ describe("RootScanner", () => {
 			});
 		});
 
-		describe("missing root dirs", () => {
+		describe("missing source paths", () => {
 			it("should warn and contribute nothing", async () => {
 				await write("core/A.luau");
 
 				const { roots, warnings } = await scan({
-					rootDirs: [abs("core"), abs("lobby")],
+					sourcePaths: [abs("core"), abs("lobby")],
 				});
 
 				expect(roots[1]).toMatchObject({
-					rootDir: abs("lobby"),
+					sourcePath: abs("lobby"),
 					exists: false,
 					entries: [],
 					markers: [],
@@ -666,13 +668,13 @@ describe("RootScanner", () => {
 				expect(warnings).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Warning,
-						code: "scan.missingRootDir",
+						code: "scan.missingSourcePath",
 						resource: abs("lobby"),
 					},
 				]);
 			});
 
-			it("should not warn when every root dir exists", async () => {
+			it("should not warn when every source path exists", async () => {
 				await write("src/A.luau");
 
 				const { warnings } = await scan();
@@ -680,7 +682,7 @@ describe("RootScanner", () => {
 				expect(warnings).toEqual([]);
 			});
 
-			it("should not warn about a root dir that exists but is empty", async () => {
+			it("should not warn about a source path that exists but is empty", async () => {
 				await fs.createDirectory(abs("src"));
 
 				const { roots, warnings } = await scan();
@@ -696,9 +698,9 @@ describe("RootScanner", () => {
 				const index = await newIndex().list([abs("src")]);
 				const readDirectory = jest.spyOn(fs, "readDirectory");
 
-				const result = scanRootDirs(index, {
-					rootDirs: [abs("src")],
-					exclude: [],
+				const result = scanSourcePaths(index, {
+					sourcePaths: [abs("src")],
+					ignored: [],
 				});
 
 				expect(result.roots[0].entries).toHaveLength(2);
@@ -708,12 +710,12 @@ describe("RootScanner", () => {
 			it("should scan one index for several configs with different excludes", async () => {
 				await write("src/A.luau", "src/B.luau");
 				const index = await newIndex().list([abs("src")]);
-				const base = { rootDirs: [abs("src")] };
+				const base = { sourcePaths: [abs("src")] };
 
-				const all = scanRootDirs(index, { ...base, exclude: [] });
-				const some = scanRootDirs(index, {
+				const all = scanSourcePaths(index, { ...base, ignored: [] });
+				const some = scanSourcePaths(index, {
 					...base,
-					exclude: [glob("**/B.luau")],
+					ignored: [glob("**/B.luau")],
 				});
 
 				expect(files(all.roots[0])).toEqual([
@@ -735,9 +737,9 @@ describe("RootScanner", () => {
 					},
 				]);
 
-				const result = scanRootDirs(index, {
-					rootDirs: [abs("src")],
-					exclude: [],
+				const result = scanSourcePaths(index, {
+					sourcePaths: [abs("src")],
+					ignored: [],
 				});
 
 				expect(files(result.roots[0])).toEqual([

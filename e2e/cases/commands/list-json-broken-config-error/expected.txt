@@ -4,21 +4,19 @@ stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
+        "config": "project",
+        "file": "<dir>/rogen.json",
         "status": "broken",
-        "extends": [],
-        "extendedBy": [],
         "served": false,
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
-            "line": 2,
-            "column": 2,
+            "file": "<dir>/rogen.json",
+            "line": 3,
+            "column": 8,
             "severity": "error",
-            "code": "config.unknownField",
-            "message": "unknown field \"bogus\".",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
+            "code": "config.wrongType",
+            "message": "\"routes.*\": expected a string, found a number.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-wrongtype"
           }
         ]
       }

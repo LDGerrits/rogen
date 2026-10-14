@@ -4,7 +4,7 @@ import { LegacyConfig } from "../legacy-config.js";
 describe("LegacyConfig", () => {
 	describe("detects", () => {
 		it("should recognise the keys only a v1 config has", () => {
-			for (const key of ["source", "aliases", "globIgnorePaths"])
+			for (const key of ["source", "aliases"])
 				expect(LegacyConfig.detects({ [key]: [] })).toBe(true);
 		});
 
@@ -18,19 +18,19 @@ describe("LegacyConfig", () => {
 		it("should not recognise a v2 config", () => {
 			expect(
 				LegacyConfig.detects({
-					rootDirs: ["src"],
+					sourcePaths: ["src"],
 					routes: { server: "ServerScriptService" },
-					variants: { mock: true },
-					template: "base.project.json",
+					globIgnorePaths: ["**/*.spec.luau"],
+					tree: { $className: "DataModel" },
 				})
 			).toBe(false);
 		});
 
-		it("should not take a route, variant or mode named build or output for a Rogen 1 mode", () => {
-			for (const key of ["routes", "variants", "modes"])
+		it("should not take a route, a tree node or a project named build or output for a Rogen 1 mode", () => {
+			for (const key of ["routes", "tree", "projects"])
 				expect(
 					LegacyConfig.detects({
-						rootDirs: ["src"],
+						sourcePaths: ["src"],
 						[key]: { build: "ServerStorage", output: "Workspace" },
 					})
 				).toBe(false);
@@ -43,7 +43,7 @@ describe("LegacyConfig", () => {
 	});
 
 	describe("check", () => {
-		it("should hint at the migration page for a v1 config", () => {
+		it("should point to the migration page for a v1 config", () => {
 			const [hint, ...others] = LegacyConfig.check({
 				file: "/repo/.rogen.json",
 				value: { source: ["src"] },
@@ -51,7 +51,7 @@ describe("LegacyConfig", () => {
 
 			expect(others).toEqual([]);
 			expect(hint).toMatchObject({
-				severity: DiagnosticSeverity.Warning,
+				severity: DiagnosticSeverity.Error,
 				code: "legacy.config",
 				resource: "/repo/.rogen.json",
 			});

@@ -1,4 +1,14 @@
 {
-	"steps": [["init"], ["build"]],
-	"show": ["default.project.json"]
+	"steps": [
+		[
+			"init"
+		],
+		[
+			"build"
+		]
+	],
+	"show": [
+		"rogen.json",
+		"default.project.json"
+	]
 }

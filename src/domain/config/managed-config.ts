@@ -1,38 +1,32 @@
 import { PathSet } from "../../base/path.js";
-import { Config } from "../../platform/config/config-models.js";
+import { safeStringify } from "../../base/json.js";
 import { ConfigLoader, LoadedConfig } from "./config-loader.js";
-import { ConfigOverrides } from "./layered-config.js";
 import { ConfigEntry, buildableConfig } from "./config-service.js";
 
 /** One config file that loads and reloads itself, and keeps its last valid version while the file is broken. */
 export class ManagedConfig {
 	private _entry: ConfigEntry;
-	private config: Config | undefined;
+	private text: string | undefined;
 	private _files: readonly string[];
 
 	private constructor(
 		readonly file: string,
 		private readonly loader: ConfigLoader,
-		private readonly overrides: ConfigOverrides,
 		loaded: LoadedConfig
 	) {
 		this._files = loaded.files;
 		this._entry = this.entryOf(loaded);
-		this.config = loaded.config;
+		this.text = loaded.resolved.isOk()
+			? safeStringify(loaded.value)
+			: undefined;
 	}
 
-	/** Loads `file` with `overrides`. */
+	/** Loads `file`. */
 	static async open(
 		file: string,
-		loader: ConfigLoader,
-		overrides: ConfigOverrides
+		loader: ConfigLoader
 	): Promise<ManagedConfig> {
-		return new ManagedConfig(
-			file,
-			loader,
-			overrides,
-			await loader.load(file, overrides)
-		);
+		return new ManagedConfig(file, loader, await loader.load(file));
 	}
 
 	/** The latest snapshot. */
@@ -40,7 +34,7 @@ export class ManagedConfig {
 		return this._entry;
 	}
 
-	/** Every file the config reads: its chain and its template. */
+	/** Every file the config reads. */
 	get files(): readonly string[] {
 		return this._files;
 	}
@@ -52,7 +46,7 @@ export class ManagedConfig {
 
 	/** The entry `loaded` makes, a broken one keeping the last valid version this config had. */
 	private entryOf(loaded: LoadedConfig): ConfigEntry {
-		const fields = { file: this.file, parents: loaded.chain.slice(1) };
+		const fields = { file: this.file };
 		if (loaded.resolved.isOk())
 			return {
 				...fields,
@@ -68,30 +62,20 @@ export class ManagedConfig {
 	}
 
 	private async load(): Promise<void> {
-		const loaded = await this.loader.load(this.file, this.overrides);
+		const loaded = await this.loader.load(this.file);
 		this._entry = this.entryOf(loaded);
 		this._files = loaded.files;
-		if (loaded.resolved.isOk()) this.config = loaded.config;
+		if (loaded.resolved.isOk()) this.text = safeStringify(loaded.value);
 	}
 
 	/** Whether the reload changed the version that builds. A config that loads equal to it keeps it, so the version is its identity. */
 	async reload(): Promise<boolean> {
-		const before = {
-			config: this.config,
-			built: buildableConfig(this.entry),
-		};
+		const before = { text: this.text, built: buildableConfig(this.entry) };
 		await this.load();
 		const built = buildableConfig(this.entry);
-		if (!this.config || !built) return false;
+		if (this.text === undefined || !built) return false;
 
-		const template = before.built?.template;
-		const same =
-			before.config !== undefined &&
-			before.config.equals(this.config) &&
-			(template
-				? template.equals(built.template)
-				: built.template === undefined);
-		if (!same) return true;
+		if (before.text !== this.text) return true;
 		if (this._entry?.status === "valid" && before.built)
 			this._entry = { ...this._entry, config: before.built };
 		return false;

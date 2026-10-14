@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError } from "../../base/errors.js";
-import { samePath } from "../../base/path.js";
+import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -18,6 +18,18 @@ import { ServerRecords } from "./server-records.js";
 /** How many ports past a taken one are tried for a free one to suggest. */
 const FREE_PORT_SEARCH = 20;
 
+/** The other configs of `configs` with `config`'s project name, which a server that only says that name could be serving. */
+export function namesakesOf(
+	config: ResolvedConfig,
+	configs: readonly ResolvedConfig[]
+): ResolvedConfig[] {
+	return configs.filter(
+		(other) =>
+			other.file !== config.file &&
+			other.projectName === config.projectName
+	);
+}
+
 /** Where each config of one serve is served, and whether its port is free for it, when the serve starts and whenever its configs change. */
 export class ServePorts {
 	private readonly host: string | undefined;
@@ -28,7 +40,9 @@ export class ServePorts {
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
 		private readonly server: SyncServer,
-		serverArgs: readonly string[]
+		serverArgs: readonly string[],
+		/** The folder commands in messages run from. */
+		private readonly cwd: string
 	) {
 		this.host = server.hostIn(serverArgs);
 		this.port = server.portIn(serverArgs);
@@ -42,7 +56,7 @@ export class ServePorts {
 	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own defaults. */
 	targetOf(config: ResolvedConfig): ServeTarget {
 		const { server } = this;
-		const project = config.template?.project;
+		const { project } = config;
 		return {
 			config,
 			project: config.projectName,
@@ -69,10 +83,10 @@ export class ServePorts {
 			([port, sharing]) =>
 				`${joinedWithAnd(sharing.map(({ config }) => config.label))} ${sharing.length === 2 ? "both" : "all"} serve on port ${port}.`
 		);
-		const first = clashes[0][1][0].config.label;
+		const first = this.refOf(clashes[0][1][0].config);
 		const fix = portGiven
 			? `The --port after '--' applies to every config: serve one at a time, as 'rogen serve ${first} -- --port <port>'.`
-			: `Give each its own servePort in its template, or serve one at a time, as 'rogen serve ${first}'.`;
+			: `Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve ${first}'.`;
 		return new UsageError([...lines, fix].join("\n"));
 	}
 
@@ -90,7 +104,7 @@ export class ServePorts {
 		if (holder?.project === target.project) {
 			if (
 				recorded &&
-				samePath(recorded.projectFile, target.config.outFile)
+				samePath(recorded.projectFile, target.config.projectFile)
 			)
 				return ok({ ...target, servedBy: holder });
 			if (!recorded)
@@ -113,8 +127,8 @@ export class ServePorts {
 		const { config, address } = target;
 		return errorDiagnostic(
 			"serve.portTaken",
-			{ resource: config.template?.file ?? config.file },
-			`Port ${address.port} is taken by the server of ${holder.config.label}, so ${config.label} can't be served there. Give ${config.label} ${this.ownPortIn(config)}, or serve it on its own, as 'rogen serve ${config.label}'.`
+			{ resource: config.file },
+			`Port ${address.port} is taken by the server of ${holder.config.label}, so ${config.label} can't be served there. Give ${config.label} ${this.ownPortIn(config)}, or serve it on its own, as 'rogen serve ${this.refOf(config)}'.`
 		);
 	}
 
@@ -132,19 +146,16 @@ export class ServePorts {
 		const free = address.isLocal
 			? await this.freePortAfter(address, targets)
 			: undefined;
-		const command = `rogen serve ${config.label} -- --port ${free ?? "<port>"}`;
+		const command = `rogen serve ${this.refOf(config)} -- --port ${free ?? "<port>"}`;
 		return errorDiagnostic(
 			"serve.portTaken",
-			{ resource: config.template?.file ?? config.file },
+			{ resource: config.file },
 			`Port ${address.port} is taken by ${by}, so ${config.label} can't be served there. Give ${config.label} ${this.ownPortIn(config)}, or run '${command}'.`,
 			free === undefined
 				? []
 				: [
 						{
-							run: {
-								command,
-								cwd: path.dirname(config.file),
-							},
+							run: { command, cwd: this.cwd },
 						},
 					]
 		);
@@ -158,19 +169,24 @@ export class ServePorts {
 	): Diagnostic {
 		const { config, address } = target;
 		const labels = [config, ...namesakes]
-			.map(({ label }) => label)
+			.map((named) => this.refOf(named))
 			.sort(compareStrings);
 		return errorDiagnostic(
 			"serve.portTaken",
-			{ resource: config.template?.file ?? config.file },
-			`Port ${address.port} is taken by ${holder.server.name} serving ${holder.project}, the name of ${joinedWithAnd(labels)}, so Rogen can't tell whether it serves ${config.label}. Stop it, and run 'rogen serve' again to start the server.`
+			{ resource: config.file },
+			`Port ${address.port} is taken by ${holder.server.name} serving ${holder.project}, the name of ${joinedWithAnd(labels)}, so Rogen can't tell whether it serves ${this.refOf(config)}. Stop it, and run 'rogen serve' again to start the server.`
+		);
+	}
+
+	/** The folder of `config` as a command run from `cwd` names it. */
+	private refOf(config: ResolvedConfig): string {
+		return (
+			toPosix(path.relative(this.cwd, path.dirname(config.file))) || "."
 		);
 	}
 
 	private ownPortIn(config: ResolvedConfig): string {
-		return config.template
-			? `its own servePort in ${path.basename(config.template.file)}`
-			: "a template with its own servePort";
+		return `its own servePort in ${path.basename(config.file)}`;
 	}
 
 	private async freePortAfter(

@@ -28,14 +28,14 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 		: []),
 	...(darklua.length > 0
 		? [
-				"Have Darklua process your code into the sync dir:",
+				"Have Darklua process your code into the sync path:",
 				...darklua.map(indent),
 			]
 		: []),
 	...edits,
 ];
 
-/** What a build found, less the sync dir's warnings: the compiler they ask for hasn't run in a project that was just written. */
+/** What a build found, less the sync path's warnings: the compiler they ask for hasn't run in a project that was just written. */
 const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.warnings,
 	...build.errors,
@@ -96,7 +96,7 @@ export class InitLog implements InitReporter {
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
-				`Wrote ${files}, but the build failed. Fix the config and run rogen build.`
+				`Wrote ${files}, but the build failed. Fix rogen.json and run rogen build.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}

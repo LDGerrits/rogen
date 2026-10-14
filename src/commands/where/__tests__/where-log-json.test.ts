@@ -16,7 +16,7 @@ describe("WhereLog", () => {
 		it("should hold the errors of the configs that didn't load beside the locations", () => {
 			const error = errorDiagnostic(
 				"config.invalidSyntax",
-				{ resource: "/repo/broken.rogen.json" },
+				{ resource: "/repo/broken/rogen.json" },
 				"bad."
 			);
 
@@ -26,7 +26,7 @@ describe("WhereLog", () => {
 				locations: [],
 				diagnostics: [
 					{
-						file: "/repo/broken.rogen.json",
+						file: "/repo/broken/rogen.json",
 						code: "config.invalidSyntax",
 					},
 				],
@@ -120,7 +120,7 @@ describe("WhereLog", () => {
 			],
 			[
 				{
-					status: "excluded",
+					status: "ignored",
 					source: "/repo/src/A.spec.luau",
 					exists: true,
 					pattern: "/repo/**/*.spec.luau",
@@ -140,7 +140,11 @@ describe("WhereLog", () => {
 				{},
 			],
 			[
-				{ status: "ignored", source: "/repo/src/U.luau", exists: true },
+				{
+					status: "notInstance",
+					source: "/repo/src/U.luau",
+					exists: true,
+				},
 				{},
 			],
 			[

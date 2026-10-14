@@ -1,6 +1,6 @@
 ---
 title: Testing
-description: Run your specs in Roblox with jest-roblox-cli, from a config that builds them in and leaves them out of production.
+description: Run your specs in Roblox with jest-roblox-cli, from a project that builds them in and leaves them out of production.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
@@ -8,70 +8,77 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 [jest-roblox-cli](https://github.com/christopher-buss/jest-roblox-cli) builds a place with Rojo, runs your Jest specs inside Roblox and prints the results. Rogen's part is the project file it builds the place from: one with the specs in it, which a production build must not have.
 
-The specs and the production build differ by an `exclude`, so one more config is all it takes. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
+The specs and the production build differ by a `globIgnorePaths` entry, and the project that has the specs lives in a folder of its own. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
 
 <Steps>
 
 <Step>
 ### Leave the Specs Out of Production
 
-The default config builds the specs in, so `rogen serve` shows them in Studio. A config that extends it can add an `exclude` for what a release leaves out. Put it in a folder of its own, like the test config below: beside `default.rogen.json`, it would take the place of the config `rogen serve` syncs to Studio.
+Ignore the specs in the `rogen.json` at the root, so `rogen serve` and a release build leave them out:
 
-```json title="release/release.rogen.json"
+```json title="rogen.json"
 {
-	"extends": "../default.rogen.json",
-	"exclude": ["../**/*.spec.luau"]
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"globIgnorePaths": ["**/*.spec.luau"]
 }
 ```
 
-A glob is relative to the file that wrote it, so this one starts with `..` to reach the files of the config above it. Add the globs for anything else that is only for development, such as a `DevPackages` mount, to its `exclude`. Build it with `rogen build release/release.rogen.json`, and give the project file it writes to `rojo build` for a place file: see [Place Files](/docs/v2/core-concepts/output#place-files).
+Anything else that is only for development, such as a `DevPackages` mount, goes in the `tree` of the test project below.
 
 </Step>
 
 <Step>
-### Add a Config for the Tests
+### Add a Project for the Tests
 
-Put it in a folder of its own, so the configs beside `default.rogen.json` stay what `rogen serve` and `rogen build` read: a config that extends `default` would take its place as the one `serve` syncs to Studio. `test/test.rogen.json` builds the specs whatever the release config leaves out, and sets `LoadStringEnabled`, which Jest needs and a game you ship should not have:
+Put it in a folder of its own, so the `rogen.json` at the root stays what `rogen serve` and `rogen build` read. `test/rogen.json` reads the same source and builds the specs, since it ignores nothing, and sets `LoadStringEnabled`, which Jest needs and a game you ship should not have:
 
-```json title="test/test.rogen.json"
+```json title="test/rogen.json"
 {
-	"extends": "../default.rogen.json",
-	"template": "template.project.json"
-}
-```
-
-```json title="test/template.project.json"
-{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"name": "GameTests",
 	"tree": {
 		"$className": "DataModel",
 		"ServerScriptService": { "$properties": { "LoadStringEnabled": true } }
+	},
+	"sourcePaths": ["../src"],
+	"routes": {
+		"Server": "ServerScriptService",
+		"Client": "StarterPlayer/StarterPlayerScripts",
+		"Shared": "ReplicatedStorage/Shared",
+		"*": "ReplicatedStorage/Shared"
 	}
 }
 ```
 
-The template merges over the default one, so it keeps the package mounts and the other properties you set there. The default config has to name its `rootDirs`, as `rogen init` does. Paths in a config are relative to the file that wrote them, and the `src` that applies when none is named would be looked for under `test/`: the build then warns that the root dir does not exist ([`scan.missingRootDir`](/docs/v2/diagnostics#scan-missingrootdir)), and the place holds no specs.
+A config doesn't inherit from another, so the test project states its own `tree` and `routes`; copy them from the root `rogen.json` and keep them in step. Paths in a config are relative to its folder, so the source path reaches back with `..`. With the default `src` instead, the build would warn that the source path does not exist ([`scan.missingSourcePath`](/docs/v2/diagnostics#scan-missingsourcepath)), and the place would hold no specs.
 
 </Step>
 
 <Step>
 ### Run Them
 
-Build the test project file, then point jest-roblox at it:
+Build the test project, then point jest-roblox at its project file:
 
 ```bash
-rogen build test/test.rogen.json
-jest-roblox --rojoProject test/test.project.json
+rogen build test
+jest-roblox --rojoProject test/default.project.json
 ```
 
-Its paths reach back into `../src`, so the specs are the files you edit. A plain `rogen build` still writes only `default.project.json`, with no specs, and jest-roblox looks for that one first when it isn't told otherwise, so pass `--rojoProject`, or set `rojoProject` in its config.
+Its paths reach back into `../src`, so the specs are the files you edit. A plain `rogen build` still writes only the root `default.project.json`, with no specs, and jest-roblox looks for that one first when it isn't told otherwise, so pass `--rojoProject`, or set `rojoProject` in its config.
 
 </Step>
 
 </Steps>
 
 <Callout type="info">
-	Add `--deny-warnings` to `rogen build test/test.rogen.json` in CI, so a spec
-	that lands nowhere is found before the run. jest-roblox's own exit code then
-	says whether the tests passed.
+	Add `--deny-warnings` to `rogen build test` in CI, so a spec that lands
+	nowhere is found before the run. jest-roblox's own exit code then says
+	whether the tests passed.
 </Callout>

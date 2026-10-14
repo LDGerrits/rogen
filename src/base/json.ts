@@ -1,9 +1,4 @@
-import { isObject, sortObject } from "./objects.js";
-
-/** `obj` as JSON with its keys in alphabetical order. */
-export function stableStringify(obj: unknown): string {
-	return formatJsonDocument(sortObject(obj));
-}
+import { isObject } from "./objects.js";
 
 /** `JSON.stringify` that breaks apart circular references. */
 export function safeStringify(obj: unknown): string {

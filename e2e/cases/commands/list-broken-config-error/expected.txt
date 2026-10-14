@@ -2,8 +2,8 @@ $ rogen list
 exit 1
 stdout:
   rogen list
-  default.rogen.json
+  rogen.json
   list failed.
 stderr:
-  default.rogen.json:2:2 - error: unknown field "bogus". (config.unknownField)
+  rogen.json:3:8 - error: "routes.*": expected a string, found a number. (config.wrongType)
   error: 1 config has errors.

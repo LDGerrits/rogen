@@ -1,4 +1,3 @@
-import { isDeepStrictEqual } from "util";
 import { getOwn, isObject, setOwn } from "../../base/objects.js";
 import { parse } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -42,7 +41,7 @@ function childNodes(node: RojoNode): [string, RojoNode][] {
 
 /** A Rojo project file: the name of the game and its tree of nodes, with the settings Rojo reads beside them. */
 export interface RojoProjectFile {
-	name: string;
+	name?: string;
 	tree: RojoNode;
 	servePort?: number;
 	servePlaceIds?: number[];
@@ -53,16 +52,6 @@ export interface RojoProjectFile {
 	emitLegacyScripts?: boolean;
 }
 
-/** A field two merged projects set on one node to different values; the overlay's wins. */
-export interface NodeClash {
-	readonly instancePath: readonly string[];
-	/** Such as `$path`, or `$properties.Gravity` for one property. */
-	readonly field: string;
-}
-
-/** Fields of a node that merge by name rather than as one value. */
-const KEYED_FIELDS = new Set(["$properties", "$attributes"]);
-
 /** The node to create for a missing ancestor, named by its instance path. */
 export type ContainerFactory = (instancePath: readonly string[]) => RojoNode;
 
@@ -72,7 +61,7 @@ export interface MountedPath {
 	readonly instancePath: readonly string[];
 }
 
-/** Any project file: Rogen's own output, or a template read from disk with fields Rogen doesn't model. */
+/** Any project file: Rogen's own output, or one read from disk with fields Rogen doesn't model. */
 export interface ProjectFile {
 	readonly tree: RojoNode;
 	readonly name?: unknown;
@@ -190,18 +179,13 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			: undefined;
 	}
 
-	/** A project file with this project's fields and the given name, tree and globs; fields Rogen doesn't model pass through. */
+	/** A project file with this project's fields and the given tree and globs; fields Rogen doesn't model pass through. */
 	toFile(parts: {
-		readonly name: string;
 		readonly tree: RojoNode;
 		readonly globIgnorePaths: readonly string[];
 	}): RojoProjectFile {
 		const { globIgnorePaths: _globs, ...fields } = this.getFile();
-		const file = {
-			...fields,
-			name: parts.name,
-			tree: parts.tree,
-		} as RojoProjectFile;
+		const file = { ...fields, tree: parts.tree } as RojoProjectFile;
 		if (parts.globIgnorePaths.length > 0) {
 			file.globIgnorePaths = [...parts.globIgnorePaths];
 		}
@@ -277,34 +261,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return removed;
 	}
 
-	/** Rewrites the target of every `$path`, keeping whether it is optional. */
-	private mapPaths(map: (target: string) => string): void {
-		const visit = (node: RojoNode) => {
-			if (isRojoPath(node.$path)) {
-				node.$path =
-					typeof node.$path === "string"
-						? map(node.$path)
-						: { optional: map(node.$path.optional) };
-			}
-			for (const [, child] of childNodes(node)) visit(child);
-		};
-		visit(this.project.tree);
-	}
-
-	/** A copy with every `$path` target and `globIgnorePaths` entry mapped, as when the file moves to another directory. */
-	rebased(map: (target: string) => string): RojoProject<T> {
-		const globs = this.globIgnorePaths;
-		const copy = new RojoProject<T>(
-			{
-				...this.getFile(),
-				...(globs.length > 0 && { globIgnorePaths: globs.map(map) }),
-			},
-			this.createContainer
-		);
-		copy.mapPaths(map);
-		return copy;
-	}
-
 	/** Adds the `$path` nodes of `additions` this project lacks; a node already there wins and its `$path` is skipped. */
 	mergeMissing(additions: RojoProject<ProjectFile>): {
 		added: MountedPath[];
@@ -346,72 +302,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		};
 		merge(this.project.tree, additions.getFile().tree, []);
 		return { added, skipped };
-	}
-
-	/** `overlay` merged over this project: its fields replace this one's, `globIgnorePaths` add up, and the trees merge node by node. */
-	overlaidWith(overlay: RojoProject<T>): {
-		project: RojoProject<T>;
-		clashes: NodeClash[];
-	} {
-		const base = this.getFile();
-		const over = overlay.getFile();
-		const clashes: NodeClash[] = [];
-		const merge = (
-			node: RojoNode,
-			from: RojoNode,
-			at: readonly string[]
-		) => {
-			for (const [key, value] of Object.entries(from)) {
-				const existing = getOwn(node, key);
-				if (!key.startsWith("$")) {
-					if (isObject(existing) && isObject(value))
-						merge(existing, value, [...at, key]);
-					else setOwn(node, key, value);
-				} else if (
-					KEYED_FIELDS.has(key) &&
-					isObject(existing) &&
-					isObject(value)
-				) {
-					for (const [name, field] of Object.entries(value)) {
-						if (
-							name in existing &&
-							!isDeepStrictEqual(existing[name], field)
-						)
-							clashes.push({
-								instancePath: at,
-								field: `${key}.${name}`,
-							});
-						setOwn(existing, name, field);
-					}
-				} else {
-					if (
-						existing !== undefined &&
-						!isDeepStrictEqual(existing, value)
-					)
-						clashes.push({ instancePath: at, field: key });
-					setOwn(node, key, value);
-				}
-			}
-		};
-		merge(base.tree, over.tree, []);
-		const globs = [
-			...new Set([
-				...new RojoProject(base).globIgnorePaths,
-				...overlay.globIgnorePaths,
-			]),
-		];
-		return {
-			project: new RojoProject(
-				{
-					...base,
-					...over,
-					tree: base.tree,
-					...(globs.length > 0 && { globIgnorePaths: globs }),
-				},
-				this.createContainer
-			),
-			clashes,
-		};
 	}
 
 	private ensureNode(instancePath: readonly string[]): RojoNode {

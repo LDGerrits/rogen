@@ -8,6 +8,7 @@ import { ResultError } from "../../../base/result.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
+	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
 	PromptScript,
@@ -18,7 +19,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
-const WHAT_TO_ADD = "default.rogen.json exists. What do you want to add?";
+const WHAT_TO_ADD = "rogen.json exists. What do you want to add?";
 const directory = path.resolve("/mock/my-game");
 
 describe("CoreInitService", () => {
@@ -50,10 +51,10 @@ describe("CoreInitService", () => {
 		it("should read the directory's toolchain", async () => {
 			await write("tsconfig.json", "{}");
 
-			const plan = (await serviceFor().plan([])).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
 			const config = plan?.files.find(
-				({ fileName }) => fileName === "default.rogen.json"
+				({ fileName }) => fileName === "rogen.json"
 			);
 			expect(JSON.parse(config?.content ?? "{}").routes).toHaveProperty(
 				"server"
@@ -64,33 +65,18 @@ describe("CoreInitService", () => {
 			const interactive = new MockPromptService([], true);
 
 			const plan = (
-				await serviceFor(interactive).plan([], { ask: false })
+				await serviceFor(interactive).plan({ ask: false })
 			).unwrap();
-			const unasked = (await serviceFor().plan([])).unwrap();
+			const unasked = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.files).toEqual(unasked?.files);
-		});
-
-		it("should write the config named on the command line", async () => {
-			const plan = (await serviceFor().plan(["lobby"])).unwrap();
-
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"lobby.rogen.json",
-				"AGENTS.md",
-			]);
-		});
-
-		it("should refuse more than one name", async () => {
-			const result = await serviceFor().plan(["a", "b"]);
-
-			expect(result.isErr()).toBe(true);
 		});
 
 		it("should fail when the directory can't be read", async () => {
 			const result = await serviceFor(
 				undefined,
 				path.join(directory, "missing")
-			).plan([]);
+			).plan();
 
 			expect(result.isErr()).toBe(true);
 		});
@@ -102,16 +88,14 @@ describe("CoreInitService", () => {
 		beforeEach(async () => {
 			await fileSystem.createDirectory(path.join(directory, "src"));
 			await fileSystem.createDirectory(nested);
-			await write("default.rogen.json", "{}");
+			await write("rogen.json", "{}");
 		});
 
 		it("should refuse, naming the folder that has the config, when it may not ask", async () => {
-			const result = await serviceFor(undefined, nested).plan([]);
+			const result = await serviceFor(undefined, nested).plan();
 
 			const message = (result as ResultError<Error>).error.message;
-			expect(message).toContain(
-				`${directory} already has default.rogen.json`
-			);
+			expect(message).toContain(`${directory} already has rogen.json`);
 			expect(message).toContain("run rogen from there: cd");
 		});
 
@@ -119,40 +103,37 @@ describe("CoreInitService", () => {
 			const result = await serviceFor(
 				new MockPromptService([], true),
 				nested
-			).plan([], { ask: false });
+			).plan({ ask: false });
 
 			expect(result.isErr()).toBe(true);
 		});
 
 		it("should ask first in a terminal, and go on when the user says yes", async () => {
 			const prompts = new MockPromptService({
-				[`${directory} already has default.rogen.json. Start a separate project here anyway?`]: true,
+				[`${directory} already has rogen.json. Start a separate project here anyway?`]: true,
 			});
 
-			const result = await serviceFor(prompts, nested).plan([]);
+			const result = await serviceFor(prompts, nested).plan();
 
-			expect(prompts.asked[0]).toContain("default.rogen.json");
+			expect(prompts.asked[0]).toContain("rogen.json");
 			expect(
 				result.unwrap()?.files.map(({ fileName }) => fileName)
-			).toContain("default.rogen.json");
+			).toContain("rogen.json");
 		});
 
 		it("should resolve to nothing when the user says no", async () => {
 			const prompts = new MockPromptService([false]);
 
-			const result = await serviceFor(prompts, nested).plan([]);
+			const result = await serviceFor(prompts, nested).plan();
 
 			expect(result.unwrap()).toBeUndefined();
 		});
 
 		it("should not ask or refuse once the folder has a config of its own", async () => {
-			await fileSystem.writeFile(
-				path.join(nested, "default.rogen.json"),
-				"{}"
-			);
+			await fileSystem.writeFile(path.join(nested, "rogen.json"), "{}");
 			const prompts = new MockPromptService([]);
 
-			const result = await serviceFor(prompts, nested).plan(["lobby"], {
+			const result = await serviceFor(prompts, nested).plan({
 				ask: false,
 			});
 
@@ -162,7 +143,7 @@ describe("CoreInitService", () => {
 
 	describe("agent instructions", () => {
 		const agentFile = async (prompts?: PromptService) => {
-			const plan = (await serviceFor(prompts).plan([])).unwrap();
+			const plan = (await serviceFor(prompts).plan()).unwrap();
 			return plan?.files.find(({ fileName }) => fileName.endsWith(".md"));
 		};
 
@@ -217,7 +198,7 @@ describe("CoreInitService", () => {
 				new Error("busy")
 			);
 
-			const result = await serviceFor().plan([]);
+			const result = await serviceFor().plan();
 
 			expect((result as ResultError<Error>).error.message).toBe(
 				"Failed to read AGENTS.md: busy"
@@ -228,44 +209,44 @@ describe("CoreInitService", () => {
 			await write("AGENTS.md", "");
 			await write("CLAUDE.md", "Use tabs.\n");
 
-			const plan = (await serviceFor().plan([])).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.nextSteps.edits[0]).toBe(
 				"Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules."
 			);
 		});
 
-		it("should not write it beside a config when it can't ask", async () => {
-			await write("lobby.rogen.json", "{}");
-
-			const plan = (await serviceFor().plan(["arena"])).unwrap();
-
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"arena.rogen.json",
-			]);
-		});
-
-		it("should offer it beside a config that isn't default, and write only it", async () => {
-			await write("lobby.rogen.json", "{}");
+		it("should offer it beside a config, and write only it", async () => {
+			await write("rogen.json", "{}");
 
 			const plan = (
-				await serviceFor(new MockPromptService(["agent"])).plan([])
+				await serviceFor(new MockPromptService(["agent"])).plan()
 			).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"AGENTS.md",
 			]);
+			expect(plan?.configs).toEqual([]);
 		});
 
-		it("should offer it beside default.rogen.json, and write only it", async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ routes: { "*": "ReplicatedStorage" } })
-			);
+		it("should not add the hook beside a config when it can't ask", async () => {
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", agentBlock);
+			await write(".claude/keep", "");
 
-			const plan = (
-				await serviceFor(new MockPromptService(["agent"])).plan([])
-			).unwrap();
+			const result = await serviceFor().plan();
+
+			expect(
+				result.isErr() &&
+					result.error instanceof DiagnosticsError &&
+					result.error.diagnostics
+			).toMatchObject([{ code: "init.configExists" }]);
+		});
+
+		it("should add it beside a config when it can't ask, as Enter would", async () => {
+			await write("rogen.jsonc", "{}");
+
+			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"AGENTS.md",
@@ -275,7 +256,7 @@ describe("CoreInitService", () => {
 
 	describe("what to add", () => {
 		const valuesListed = async (existing: string[]) => {
-			await write("default.rogen.json", "{}");
+			await write("rogen.json", "{}");
 			for (const file of existing) await write(file);
 			const prompts = new MockPromptService([CANCEL]);
 			let values: string[] = [];
@@ -284,17 +265,12 @@ describe("CoreInitService", () => {
 				values = options.choices.map(({ value }) => value);
 				return original(options);
 			}) as typeof prompts.select;
-			await serviceFor(prompts).plan([]);
+			await serviceFor(prompts).plan();
 			return values;
 		};
 
-		it("should offer a place and an extending config beside default, and agent instructions until they are there", async () => {
-			expect(await valuesListed([])).toEqual([
-				"place",
-				"extending",
-				"separate",
-				"agent",
-			]);
+		it("should offer agent instructions until they are there", async () => {
+			expect(await valuesListed([])).toEqual(["agent"]);
 			expect(await valuesListed(["AGENTS.md"])).toContain("agent");
 		});
 
@@ -312,7 +288,7 @@ describe("CoreInitService", () => {
 		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
 			plan?.files.map(({ fileName }) => fileName);
 		const planned = async (prompts = answersEverything()) =>
-			(await serviceFor(prompts).plan([])).unwrap();
+			(await serviceFor(prompts).plan()).unwrap();
 		const fileOf = (
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
@@ -324,7 +300,7 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
+				"rogen.json",
 				"AGENTS.md",
 				SCRIPT,
 				CLAUDE,
@@ -357,7 +333,7 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
+				"rogen.json",
 				"AGENTS.md",
 				SCRIPT,
 				CLAUDE,
@@ -392,7 +368,7 @@ describe("CoreInitService", () => {
 		it("should not write it in a run that can't ask", async () => {
 			await write(".claude/keep", "");
 
-			const plan = (await serviceFor().plan([])).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(names(plan)).not.toContain(SCRIPT);
 		});
@@ -452,7 +428,7 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
+				"rogen.json",
 				"AGENTS.md",
 				SCRIPT,
 				CODEX,
@@ -478,11 +454,7 @@ describe("CoreInitService", () => {
 
 			const plan = await planned();
 
-			expect(names(plan)).toEqual([
-				"default.rogen.json",
-				"AGENTS.md",
-				CODEX,
-			]);
+			expect(names(plan)).toEqual(["rogen.json", "AGENTS.md", CODEX]);
 		});
 
 		it("should leave a file that is not plain JSON alone, and say so", async () => {
@@ -492,7 +464,7 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(names(plan)).toEqual([
-				"default.rogen.json",
+				"rogen.json",
 				"AGENTS.md",
 				SCRIPT,
 				CODEX,
@@ -525,11 +497,8 @@ describe("CoreInitService", () => {
 			]);
 		});
 
-		it("should list it beside default.rogen.json, and write only it", async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ routes: { "*": "ReplicatedStorage" } })
-			);
+		it("should list it beside rogen.json, and write only it", async () => {
+			await write("rogen.json", "{}");
 			await write("AGENTS.md", agentBlock);
 			await write(".claude/keep", "");
 
@@ -544,7 +513,7 @@ describe("CoreInitService", () => {
 				new Error("busy")
 			);
 
-			const result = await serviceFor(answersEverything()).plan([]);
+			const result = await serviceFor(answersEverything()).plan();
 
 			expect((result as ResultError<Error>).error.message).toBe(
 				"Failed to read .claude/settings.json: busy"
@@ -554,89 +523,73 @@ describe("CoreInitService", () => {
 
 	describe("plan", () => {
 		it("should take every default when it can't ask", async () => {
-			const plan = (await serviceFor().plan([])).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"default.rogen.json",
+				"rogen.json",
 				"AGENTS.md",
 			]);
+			expect(plan?.configs).toEqual(["rogen.json"]);
 			expect(plan?.nextSteps.run).toEqual(["rogen serve"]);
 		});
 
 		it("should resolve to nothing when the user cancels", async () => {
 			const result = await serviceFor(
 				new MockPromptService([CANCEL])
-			).plan([]);
+			).plan();
 
 			expect(result.unwrap()).toBeUndefined();
 		});
 
-		it("should refuse to write over a config that exists", async () => {
-			await write("default.rogen.json", "{}");
-
-			const result = await serviceFor().plan([]);
-
-			expect(result.isErr()).toBe(true);
-		});
-
-		it("should plan a place from the resolved default config", async () => {
+		it("should lift a hand-written project file into rogen.json", async () => {
 			await write(
-				"default.rogen.json",
+				"default.project.json",
 				JSON.stringify({
-					rootDirs: ["src"],
-					routes: { "*": "ReplicatedStorage" },
+					name: "mine",
+					tree: { $className: "DataModel", Workspace: {} },
 				})
 			);
 
-			const plan = (
-				await serviceFor(
-					new MockPromptService(["place", "lobby", ""])
-				).plan([])
-			).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"lobby.rogen.json",
-				"places/lobby/template.project.json",
+			expect(JSON.parse(plan?.files[0].content ?? "{}")).toMatchObject({
+				name: "mine",
+				tree: { $className: "DataModel", Workspace: {} },
+			});
+			expect(plan?.notes).toEqual([
+				"Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
 			]);
-			expect(JSON.parse(plan?.files[0].content ?? "{}").rootDirs).toEqual(
-				["places/lobby/src"]
-			);
 		});
 
-		describe("beside an existing default.rogen.json", () => {
-			const config = JSON.stringify({
-				rootDirs: ["src"],
-				routes: { "*": "ReplicatedStorage" },
-			});
+		it("should fail when the hand-written project file is not a project file", async () => {
+			await write("default.project.json", "[]");
 
-			const planWith = async (
-				answers: PromptScript,
-				names: readonly string[] = [],
-				existing: readonly string[] = []
-			) => {
-				await write("default.rogen.json", config);
-				for (const file of existing) await write(file);
+			const result = await serviceFor().plan();
+
+			expect(
+				result.isErr() &&
+					result.error instanceof DiagnosticsError &&
+					result.error.diagnostics
+			).toMatchObject([{ code: "init.projectUnreadable" }]);
+		});
+
+		describe("beside an existing rogen.json", () => {
+			const planWith = async (answers: PromptScript) => {
+				await write("rogen.json", "{}");
 				const prompts = new MockPromptService(answers);
-				const result = await serviceFor(prompts).plan(names);
+				const result = await serviceFor(prompts).plan();
 				return { prompts, result };
 			};
 
-			it("should ask what to add, preselecting a place", async () => {
+			it("should ask what to add, preselecting agent instructions and asking nothing more", async () => {
 				const { prompts, result } = await planWith({
-					"Place name": "arena",
+					[WHAT_TO_ADD]: ACCEPT_DEFAULT,
 				});
 
-				expect(prompts.asked).toEqual([
-					WHAT_TO_ADD,
-					"Place name",
-					"Place folder",
-				]);
+				expect(prompts.asked).toEqual([WHAT_TO_ADD]);
 				expect(
 					result.unwrap()?.files.map(({ fileName }) => fileName)
-				).toEqual([
-					"arena.rogen.json",
-					"places/arena/template.project.json",
-				]);
+				).toEqual(["AGENTS.md"]);
 			});
 
 			it("should plan nothing when the user cancels what to add", async () => {
@@ -646,196 +599,35 @@ describe("CoreInitService", () => {
 				expect(result.unwrap()).toBeUndefined();
 			});
 
-			it("should add a place with its folder", async () => {
-				const { result } = await planWith({ "Place name": "arena" });
+			it("should fail naming the config when there is nothing left to add", async () => {
+				await write("AGENTS.md", agentBlock);
+				await write("rogen.json", "{}");
 
-				expect(
-					JSON.parse(result.unwrap()?.files[0].content ?? "{}")
-				).toMatchObject({
-					extends: "./default.rogen.json",
-					rootDirs: ["places/arena/src"],
-					template: "places/arena/template.project.json",
-				});
-			});
+				const result = await serviceFor(
+					new MockPromptService([])
+				).plan();
 
-			it("should reject a place folder inside default's root dirs", async () => {
-				await expect(
-					planWith({
-						"Place name": "arena",
-						"Place folder": "src/arena",
-					})
-				).rejects.toThrow(
-					"src/arena overlaps src, one of default's root dirs."
-				);
-			});
-
-			it("should take a place's hand-written project file as its template", async () => {
-				const { result } = await planWith(
-					{ "Place name": "arena" },
-					[],
-					["arena.project.json"]
-				);
-
-				const files = result.unwrap()?.files ?? [];
-				expect(files.map(({ fileName }) => fileName)).toContain(
-					"places/arena/template.project.json"
-				);
-			});
-
-			it("should add an extending config by name", async () => {
-				const { prompts, result } = await planWith([
-					"extending",
-					"prod",
-				]);
-
-				expect(
-					result.unwrap()?.files.map(({ fileName }) => fileName)
-				).toEqual(["prod.rogen.json"]);
-				expect(prompts.asked).toEqual([WHAT_TO_ADD, "Config name"]);
-			});
-
-			it("should reject an extending config whose project file exists", async () => {
-				await expect(
-					planWith(["extending", "prod"], [], ["prod.project.json"])
-				).rejects.toThrow("prod.project.json already exists.");
-			});
-
-			it("should ask every question again for a separate config", async () => {
-				const { prompts, result } = await planWith({
-					[WHAT_TO_ADD]: "separate",
-					"Config name": "test",
-				});
-
-				expect(
-					result.unwrap()?.files.map(({ fileName }) => fileName)
-				).toEqual(["test.rogen.json"]);
-				expect(prompts.asked.slice(0, 3)).toEqual([
-					WHAT_TO_ADD,
-					"Config name",
-					"Language",
-				]);
-			});
-
-			it("should fail at once when a given place name is taken", async () => {
-				const { prompts, result } = await planWith(
-					{},
-					["arena"],
-					["arena.rogen.json"]
-				);
-
-				expect(prompts.asked).toEqual([]);
 				expect(
 					result.isErr() &&
 						result.error instanceof DiagnosticsError &&
 						result.error.diagnostics
-				).toMatchObject([{ code: "init.configExists" }]);
+				).toMatchObject([
+					{
+						code: "init.configExists",
+						resource: path.join(directory, "rogen.json"),
+						message:
+							"this config already exists. Delete it to write a new one.",
+					},
+				]);
 			});
-
-			describe("when it can't ask", () => {
-				const planNamed = async (
-					names: readonly string[],
-					defaultConfig = config
-				) => {
-					await write("default.rogen.json", defaultConfig);
-					return serviceFor(new MockPromptService([], false)).plan(
-						names
-					);
-				};
-
-				it("should add the place named on the command line, as Enter would", async () => {
-					const plan = (await planNamed(["lobby"])).unwrap();
-
-					expect(plan?.files.map(({ fileName }) => fileName)).toEqual(
-						[
-							"lobby.rogen.json",
-							"places/lobby/template.project.json",
-						]
-					);
-					expect(
-						JSON.parse(plan?.files[0].content ?? "{}")
-					).toMatchObject({
-						extends: "./default.rogen.json",
-						rootDirs: ["places/lobby/src"],
-					});
-				});
-
-				it("should say how to add a place when none is named", async () => {
-					const result = await planNamed([]);
-
-					expect(
-						result.isErr() &&
-							result.error instanceof DiagnosticsError &&
-							result.error.diagnostics
-					).toMatchObject([
-						{
-							code: "init.configExists",
-							resource: path.join(
-								directory,
-								"default.rogen.json"
-							),
-							message:
-								"this config already exists. To add a place beside it, run 'rogen init <name>'.",
-						},
-					]);
-				});
-
-				it("should copy a taken project file to the place's template rather than refuse the name", async () => {
-					await write("lobby.project.json", "{}");
-
-					const plan = (await planNamed(["lobby"])).unwrap();
-
-					expect(plan?.files.map(({ fileName }) => fileName)).toEqual(
-						[
-							"lobby.rogen.json",
-							"places/lobby/template.project.json",
-						]
-					);
-					expect(plan?.notes).toContain(
-						"Copying lobby.project.json to places/lobby/template.project.json, since Rogen replaces lobby.project.json on every build."
-					);
-				});
-
-				it("should fail rather than add a place folder inside default's root dirs", async () => {
-					const result = await planNamed(
-						["lobby"],
-						JSON.stringify({
-							rootDirs: ["places"],
-							routes: { "*": "ReplicatedStorage" },
-						})
-					);
-
-					expect(
-						result.isErr() &&
-							result.error instanceof DiagnosticsError &&
-							result.error.diagnostics
-					).toMatchObject([
-						{
-							code: "init.invalidPlaceFolder",
-							resource: path.join(directory, "places/lobby"),
-							message:
-								"places/lobby overlaps places, one of default's root dirs. Pick a folder outside it.",
-						},
-					]);
-				});
-			});
-		});
-
-		it("should fail to plan a place when the default config is broken", async () => {
-			await write("default.rogen.json", "{ not json");
-
-			const result = await serviceFor(
-				new MockPromptService(["place", "lobby", ""])
-			).plan([]);
-
-			expect(result.isErr()).toBe(true);
 		});
 	});
 
 	describe("write", () => {
 		const planned = async (): Promise<InitPlan> =>
-			(await serviceFor().plan([])).unwrap() as InitPlan;
+			(await serviceFor().plan()).unwrap() as InitPlan;
 
-		it("should write the template, configs and compiler configs into the directory", async () => {
+		it("should write the config and the agent file into the directory", async () => {
 			await write("tsconfig.json", "{}");
 			const plan = await planned();
 			const names = plan.files.map(({ fileName }) => fileName);
@@ -843,7 +635,7 @@ describe("CoreInitService", () => {
 			const result = await serviceFor().write(plan, () => undefined);
 
 			expect(result.isOk()).toBe(true);
-			expect(names).toContain("default.rogen.json");
+			expect(names).toContain("rogen.json");
 			for (const name of names) {
 				expect(
 					await fileSystem.exists(path.join(directory, name))
@@ -859,7 +651,7 @@ describe("CoreInitService", () => {
 			expect(onWritten).toHaveBeenCalledWith({
 				kind: "file",
 				file: expect.objectContaining({
-					fileName: "default.rogen.json",
+					fileName: "rogen.json",
 				}),
 			});
 		});
@@ -873,7 +665,7 @@ describe("CoreInitService", () => {
 			const result = await serviceFor().write(await planned(), onWritten);
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Failed to write default.rogen.json: disk full"
+				"Failed to write rogen.json: disk full"
 			);
 			expect(onWritten).not.toHaveBeenCalled();
 		});
@@ -882,19 +674,19 @@ describe("CoreInitService", () => {
 			const onWritten = jest.fn<(written: InitWritten) => void>();
 			const plan = {
 				...(await planned()),
-				directories: ["places/lobby"],
+				directories: ["lib"],
 			};
 
 			const result = await serviceFor().write(plan, onWritten);
 
 			expect(result.isOk()).toBe(true);
-			expect(
-				await fileSystem.exists(path.join(directory, "places/lobby"))
-			).toBe(true);
+			expect(await fileSystem.exists(path.join(directory, "lib"))).toBe(
+				true
+			);
 			const last = onWritten.mock.calls[onWritten.mock.calls.length - 1];
 			expect(last[0]).toEqual({
 				kind: "directory",
-				directory: "places/lobby",
+				directory: "lib",
 			});
 		});
 
@@ -921,13 +713,13 @@ describe("CoreInitService", () => {
 			);
 			const plan = {
 				...(await planned()),
-				directories: ["places/lobby"],
+				directories: ["lib"],
 			};
 
 			const result = await serviceFor().write(plan, () => undefined);
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Failed to create places/lobby: read-only"
+				"Failed to create lib: read-only"
 			);
 		});
 	});

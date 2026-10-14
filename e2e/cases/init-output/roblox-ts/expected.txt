@@ -3,16 +3,15 @@ exit 0
 stdout:
   rogen init
   Syncing from dist-ts, where roblox-ts compiles to.
-  Created template.project.json.
-  Created default.rogen.json.
+  Created rogen.json.
   Created AGENTS.md.
   default.project.json · wrote
   Next steps
     Run each in its own terminal:
       rbxtsc -w
       rogen serve
-    Add your own routes under "routes" in default.rogen.json.
-  Wrote 3 files.
+    Add your own routes under "routes" in rogen.json.
+  Wrote 2 files.
 
 $ rogen build
 exit 0
@@ -21,13 +20,30 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
-  template.project.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"rbxts_include": {
+				"$path": {
+					"optional": "include"
+				},
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": {
+						"$path": {
+							"optional": "node_modules/@rbxts"
+						}
+					}
+				}
+			}
+		}
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {
@@ -36,8 +52,7 @@ default.rogen.json:
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"template": "template.project.json",
-	"syncDir": "dist-ts"
+	"syncPath": "dist-ts"
 }
 
 $ rojo sourcemap default.project.json
@@ -45,7 +60,3 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
     main: Script  <- dist-ts/server/main.server.luau
-
-$ rojo sourcemap template.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage

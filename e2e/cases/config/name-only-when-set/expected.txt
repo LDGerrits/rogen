@@ -1,0 +1,60 @@
+$ rogen build named unnamed
+exit 0
+stdout: (not shown)
+
+written:
+  named/default.project.json
+  unnamed/default.project.json
+
+named/default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "name": "Lobby",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "A": {
+          "$path": {
+            "optional": "src/A.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  }
+}
+
+unnamed/default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "A": {
+          "$path": {
+            "optional": "src/A.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  }
+}
+
+$ rojo sourcemap named/default.project.json
+Lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau
+
+$ rojo sourcemap unnamed/default.project.json
+unnamed: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

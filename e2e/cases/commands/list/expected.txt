@@ -1,26 +1,19 @@
-$ rogen list
+$ rogen list game lobby
 exit 0
 stdout:
   rogen list
-  default.rogen.json
-    extends: source.rogen.json
-    root dirs: src
+  game/rogen.json
+    source paths: game/src
     routes:
       server -> ServerScriptService
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync dir: dist
-    project file: default.project.json
-  lobby.rogen.json
-    root dirs: core, places/lobby
-    routes: same as default
-    sync dir: (none)
-    project file: out/lobby.project.json
-  source.rogen.json
-    extended by: default.rogen.json
-    root dirs: src
-    routes: same as default
-    sync dir: (none)
-    project file: source.project.json
-  3 configs.
+    sync path: game/dist
+    project file: game/default.project.json
+  lobby/rogen.json
+    source paths: lobby/core, lobby/places/lobby
+    routes: same as Game
+    sync path: (none)
+    project file: lobby/default.project.json
+  2 configs.

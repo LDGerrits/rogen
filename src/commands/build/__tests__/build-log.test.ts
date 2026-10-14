@@ -15,26 +15,15 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
-import {
-	ResolvedConfigSpec,
-	mockConfig,
-} from "../../../domain/config/__tests__/mock-config-service.js";
+import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { BuildLog } from "../build-log.js";
 
 const cwd = path.resolve("/repo");
 
-const debugLines = (
-	dir: string,
-	config: ResolvedConfig,
-	summary?: BuildSummary
-): string[] => {
+const debugLines = (dir: string, summary: BuildSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	const log = new BuildLog(logService, dir);
-	log.outcome(
-		summary ? builtOf(summary, "wrote", config) : failedOf([], config),
-		[]
-	);
+	new BuildLog(logService, dir).outcome(builtOf(summary), []);
 	return logService.texts("debug");
 };
 
@@ -57,9 +46,6 @@ const builtOf = (
 		: new WrittenBuild(config, outcome, findings, summary, []);
 };
 
-const configOf = (spec: ResolvedConfigSpec = {}): ResolvedConfig =>
-	mockConfig({ file: path.join(cwd, "match.rogen.json"), ...spec });
-
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	roots: [],
 	routes: [],
@@ -69,49 +55,26 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	...overrides,
 });
 
-const describeConfig = (config: ResolvedConfig, dir: string) =>
-	debugLines(dir, config);
-
 const describeBuild = (summary: BuildSummary, dir: string) =>
-	debugLines(dir, configOf(), summary);
-
-describe("BuildLog config lines", () => {
-	it("should say nothing about a config with no parent", () => {
-		expect(describeConfig(configOf(), cwd)).toEqual([]);
-	});
-
-	it("should name the extends chain relative to the working directory", () => {
-		expect(
-			describeConfig(
-				configOf({
-					parents: [
-						path.join(cwd, "default.rogen.json"),
-						path.join(cwd, "shared/base.rogen.json"),
-					],
-				}),
-				cwd
-			)
-		).toEqual(["extends: default.rogen.json -> shared/base.rogen.json"]);
-	});
-});
+	debugLines(dir, summary);
 
 describe("BuildLog build lines", () => {
-	it("should name each root dir relative to the working directory", () => {
+	it("should name each source path relative to the working directory", () => {
 		expect(
 			describeBuild(
 				summaryOf({
 					roots: [
 						{
-							rootDir: path.join(cwd, "src"),
+							sourcePath: path.join(cwd, "src"),
 							files: 3,
-							excluded: 0,
+							ignored: 0,
 							mounted: 0,
 							skippedLinks: 0,
 						},
 						{
-							rootDir: path.join(cwd, "lib"),
+							sourcePath: path.join(cwd, "lib"),
 							files: 1,
-							excluded: 2,
+							ignored: 2,
 							mounted: 1,
 							skippedLinks: 1,
 						},
@@ -121,7 +84,7 @@ describe("BuildLog build lines", () => {
 			)
 		).toEqual([
 			"src: 3 files",
-			"lib: 1 file, 2 excluded, 1 mounted, 1 skipped link",
+			"lib: 1 file, 2 ignored, 1 mounted, 1 skipped link",
 		]);
 	});
 
@@ -154,7 +117,7 @@ describe("BuildLog build lines", () => {
 				cwd
 			)
 		).toEqual([
-			"left out: 2 unrouted, 1 replaced by a file with the same name, 3 displaced by the template",
+			"left out: 2 unrouted, 1 replaced by a file with the same name, 3 displaced by the tree",
 		]);
 	});
 });
@@ -221,8 +184,8 @@ describe("BuildLog.outcome", () => {
 describe("BuildLog report", () => {
 	const configNamed = (label: string) =>
 		mockConfig({
-			file: path.join(cwd, `${label}.rogen.json`),
-			outFile: path.join(cwd, `${label}.project.json`),
+			name: label,
+			file: path.join(cwd, label, "rogen.json"),
 		});
 
 	const report = (builds: readonly ConfigBuild[]) => {
@@ -242,8 +205,8 @@ describe("BuildLog report", () => {
 				failedOf([], configNamed("match")),
 			])
 		).toEqual([
-			"lobby.project.json · not written · match failed",
-			"match.project.json · not written",
+			"lobby/default.project.json · not written · match failed",
+			"match/default.project.json · not written",
 		]);
 	});
 
@@ -257,7 +220,9 @@ describe("BuildLog report", () => {
 				]),
 				failedOf([], configNamed("match")),
 			])[1]
-		).toBe("lobby.project.json · not written · arena and match failed");
+		).toBe(
+			"lobby/default.project.json · not written · arena and match failed"
+		);
 	});
 
 	describe("errors", () => {
@@ -287,10 +252,10 @@ describe("BuildLog report", () => {
 				])
 			).toEqual([
 				"step: arena",
-				"error: arena.project.json · not written",
+				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"step: match",
-				"error: match.project.json · not written",
+				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
 			]);
@@ -304,10 +269,10 @@ describe("BuildLog report", () => {
 				])
 			).toEqual([
 				"step: arena",
-				"error: arena.project.json · not written",
+				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"step: match",
-				"error: match.project.json · not written · same errors as arena",
+				"error: match/default.project.json · not written · same errors as arena",
 				"outro: build failed.",
 			]);
 		});
@@ -320,7 +285,7 @@ describe("BuildLog report", () => {
 				]).slice(3)
 			).toEqual([
 				"step: match",
-				"error: match.project.json · not written",
+				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
 			]);
@@ -328,7 +293,7 @@ describe("BuildLog report", () => {
 
 		it("should close the frame with the failure and not with the built line", () => {
 			expect(all([failedOf([shared], configNamed("arena"))])).toEqual([
-				"error: arena.project.json · not written",
+				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"outro: build failed.",
 			]);
@@ -339,8 +304,8 @@ describe("BuildLog report", () => {
 describe("BuildLog report, warnings", () => {
 	const configNamed = (label: string) =>
 		mockConfig({
-			file: path.join(cwd, `${label}.rogen.json`),
-			outFile: path.join(cwd, `${label}.project.json`),
+			name: label,
+			file: path.join(cwd, label, "rogen.json"),
 		});
 
 	const writtenWith = (
@@ -367,7 +332,7 @@ describe("BuildLog report, warnings", () => {
 	const aboutSrc = (label: string) =>
 		warningDiagnostic(
 			"x.folder",
-			{ resource: path.join(cwd, `${label}.rogen.json`) },
+			{ resource: path.join(cwd, label, "rogen.json") },
 			"1 folder is odd:\n  src/Sever"
 		);
 
@@ -379,10 +344,10 @@ describe("BuildLog report, warnings", () => {
 			])
 		).toEqual([
 			"step: arena",
-			"success: arena.project.json · wrote",
-			"diagnosticWarning: /repo/arena.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
+			"success: arena/default.project.json · wrote",
+			"diagnosticWarning: /repo/arena/rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
 			"step: match",
-			"success: match.project.json · wrote · same warnings as arena",
+			"success: match/default.project.json · wrote · same warnings as arena",
 			"outro: Built 2 configs with 1 warning.",
 		]);
 	});
@@ -390,7 +355,7 @@ describe("BuildLog report, warnings", () => {
 	it("should print the warnings only a later config has, with no note", () => {
 		const own = warningDiagnostic(
 			"x.own",
-			{ resource: path.join(cwd, "match.rogen.json") },
+			{ resource: path.join(cwd, "match/rogen.json") },
 			"only here."
 		);
 
@@ -401,8 +366,8 @@ describe("BuildLog report, warnings", () => {
 			]).slice(3)
 		).toEqual([
 			"step: match",
-			"success: match.project.json · wrote",
-			"diagnosticWarning: /repo/match.rogen.json - warning: only here. (x.own)",
+			"success: match/default.project.json · wrote",
+			"diagnosticWarning: /repo/match/rogen.json - warning: only here. (x.own)",
 			"outro: Built 2 configs with 2 warnings.",
 		]);
 	});
@@ -419,7 +384,9 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("arena", [], [shared]),
 				writtenWith("match", [], [shared]),
 			])[4]
-		).toBe("success: match.project.json · wrote · same warnings as arena");
+		).toBe(
+			"success: match/default.project.json · wrote · same warnings as arena"
+		);
 	});
 
 	it("should keep both notes when the errors and the warnings are shared", () => {
@@ -439,7 +406,7 @@ describe("BuildLog report, warnings", () => {
 				line.startsWith("error: match")
 			)
 		).toBe(
-			"error: match.project.json · not written · same errors as arena · same warnings as arena"
+			"error: match/default.project.json · not written · same errors as arena · same warnings as arena"
 		);
 	});
 });
@@ -530,7 +497,7 @@ describe("BuildLog.diagnostics", () => {
 		}));
 		return warningDiagnostic(
 			"route.strayAt",
-			{ resource: "/repo/default.rogen.json" },
+			{ resource: "/repo/rogen.json" },
 			[
 				`${count} names:`,
 				...related.map(({ resource }) => `  ${resource} (hint)`),

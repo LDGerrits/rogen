@@ -1,0 +1,14 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  later - warning: this source path does not exist or is not a folder, so it contributes nothing. (scan.missingSourcePath)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

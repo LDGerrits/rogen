@@ -1,0 +1,10 @@
+{
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"chat": "TextChatService",
+		"teams": "Teams",
+		"*": "ReplicatedStorage"
+	}
+}

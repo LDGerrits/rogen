@@ -1,9 +1,0 @@
-{
-	"extends": "./shared/base.rogen.json",
-	"rootDirs": [
-		"src"
-	],
-	"exclude": [
-		"**/*.spec.luau"
-	]
-}

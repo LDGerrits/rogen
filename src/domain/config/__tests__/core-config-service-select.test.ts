@@ -1,13 +1,10 @@
 import { jest } from "@jest/globals";
-import { UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
 import { buildableConfig } from "../config-service.js";
 import {
-	Refs,
 	useConfigFixture,
-	fs,
 	service,
 	selection,
 	write,
@@ -17,181 +14,80 @@ import {
 	errors,
 } from "./config-fixture.js";
 
+const ROUTED = { server: "ServerScriptService" };
+
 describe("CoreConfigService", () => {
 	useConfigFixture();
 
 	describe("select", () => {
-		it("should select every config here when none is named, sorted", async () => {
-			await write("/repo/match.rogen.json", {});
-			await write("/repo/lobby.rogen.json", {});
-			await fs.writeFile("/repo/README.md", "");
-			await fs.createDirectory("/repo/dir.rogen.json");
-			await write("/repo/nested/other.rogen.json", {});
+		it("should select the config here when none is named", async () => {
+			await write("/repo/rogen.json", {});
 
-			const selection = (await start({ names: [] })).unwrap();
+			expect((await start()).isOk()).toBe(true);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
-				"/repo/lobby.rogen.json",
-				"/repo/match.rogen.json",
+				"/repo/rogen.json",
 			]);
+			expect(selection.home).toBe("/repo");
 		});
 
-		it("should select only the configs named, by name or path", async () => {
-			await write("/repo/default.rogen.json", {});
-			await write("/repo/places/lobby.rogen.json", {});
+		it("should select the config of each folder named", async () => {
+			await write("/repo/places/lobby/rogen.json", {});
+			await write("/repo/places/arena/rogen.jsonc", {});
 
-			const selection = (
-				await start({ names: ["places/lobby.rogen.json"] })
-			).unwrap();
+			await start({ names: ["places/lobby", "places/arena"] });
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
-				"/repo/places/lobby.rogen.json",
+				"/repo/places/lobby/rogen.json",
+				"/repo/places/arena/rogen.jsonc",
 			]);
 		});
 
-		it("should select a named config with the configs beside it that extend it, however far down", async () => {
-			await write("/repo/default.rogen.json", {});
-			await write("/repo/lobby.rogen.json", {
-				extends: "./default.rogen.json",
-			});
-			await write("/repo/lobby-sync.rogen.json", {
-				extends: "./lobby.rogen.json",
-			});
-			await write("/repo/match.rogen.json", {});
-
-			const selection = (await start({ names: ["default"] })).unwrap();
-
-			expect(selection.entries.map(({ file }) => file)).toEqual([
-				"/repo/default.rogen.json",
-				"/repo/lobby-sync.rogen.json",
-				"/repo/lobby.rogen.json",
-			]);
-		});
-
-		it("should not look beyond a named config's folder for configs that extend it", async () => {
-			await write("/repo/default.rogen.json", {});
-			await write("/repo/places/lobby.rogen.json", {
-				extends: "../default.rogen.json",
-			});
-
-			const selection = (await start({ names: ["default"] })).unwrap();
-
-			expect(selection.entries.map(({ file }) => file)).toEqual([
-				"/repo/default.rogen.json",
-			]);
-		});
-
-		it("should apply -o to the named config only, not to those that extend it", async () => {
-			await write("/repo/lobby.rogen.json", {});
-			await write("/repo/lobby-sync.rogen.json", {
-				extends: "./lobby.rogen.json",
-			});
-
-			const selection = (
-				await start({
-					names: ["lobby"],
-					overrides: { outFile: "a.json" },
-				})
-			).unwrap();
-
-			expect(selection.configs.map(({ outFile }) => outFile)).toEqual([
-				"/repo/a.json",
-				"/repo/lobby-sync.project.json",
-			]);
-		});
-
-		const refusal = async (refs: Refs) => {
-			await write("/repo/lobby.rogen.json", {});
-			await write("/repo/match.rogen.json", {});
-			const result = await start(refs);
-			return result.isErr() ? result.error : undefined;
-		};
-
-		it("should refuse -o with several named configs", async () => {
-			const error = await refusal({
-				names: ["lobby", "match.rogen.json"],
-				overrides: { outFile: "a.json" },
-			});
-
-			expect(error).toBeInstanceOf(UsageError);
-			expect(error?.message).toBe(
-				"-o targets a single config, but 2 configs were named. Name one config, or set outFile in the file."
-			);
-		});
-
-		it("should refuse -o when none is named and several are here", async () => {
-			const error = await refusal({
-				names: [],
-				overrides: { outFile: "a.json" },
-			});
-
-			expect(error?.message).toBe(
-				"-o targets a single config, but 2 configs are here. Name one config, or set outFile in the file."
-			);
-		});
-
-		it("should allow -o with one config", async () => {
-			await write("/repo/lobby.rogen.json", {});
-
-			const result = await start({
-				names: ["lobby"],
-				overrides: { outFile: "a.json" },
-			});
-
-			expect(result.isOk()).toBe(true);
-		});
-
-		it("should allow -o when none is named and one is here", async () => {
-			await write("/repo/lobby.rogen.json", {});
-
-			const result = await start({
-				names: [],
-				overrides: { outFile: "a.json" },
-			});
-
-			expect(result.isOk()).toBe(true);
-		});
-
-		it("should resolve the default config with defaults applied", async () => {
-			await write("/repo/default.rogen.json", {});
+		it("should resolve the config with its defaults", async () => {
+			await write("/repo/rogen.json", {});
 
 			expect((await start()).isOk()).toBe(true);
 
 			const [entry] = selection.entries;
-			expect(entry.file).toBe("/repo/default.rogen.json");
 			expect(entry.status).toBe("valid");
 			expect(plain(resolved(0))).toMatchObject({
-				rootDirs: ["/repo/src"],
+				sourcePaths: [],
 				routes: {},
-				exclude: [],
-				outFile: "/repo/default.project.json",
+				ignored: [],
+				projectFile: "/repo/default.project.json",
 			});
 		});
 
-		it("should resolve several named configs in one service", async () => {
-			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
-			await write("/repo/source.rogen.json", { rootDirs: ["b"] });
+		it("should resolve several configs in one service", async () => {
+			await write("/repo/a/rogen.json", {
+				routes: ROUTED,
+				sourcePaths: ["x"],
+			});
+			await write("/repo/b/rogen.json", {
+				routes: ROUTED,
+				sourcePaths: ["y"],
+			});
 
-			await start({ names: ["default", "source"] });
+			await start({ names: ["a", "b"] });
 
 			expect(
-				selection.entries.map((c) => buildableConfig(c)?.rootDirs)
-			).toEqual([["/repo/a"], ["/repo/b"]]);
+				selection.entries.map((c) => buildableConfig(c)?.sourcePaths)
+			).toEqual([["/repo/a/x"], ["/repo/b/y"]]);
 		});
 
 		it("should fail when discovery fails", async () => {
 			const result = await start({ names: ["nope"] });
 
 			expect((result as ResultError<Error>).error.message).toContain(
-				'Config "nope" not found'
+				'"nope" not found'
 			);
 		});
 
 		it("should put a broken config's errors on its own entry only", async () => {
-			await write("/repo/default.rogen.json", { rootDirs: ["a"] });
-			await write("/repo/prod.rogen.json", { bogus: true });
+			await write("/repo/a/rogen.json", {});
+			await write("/repo/b/rogen.json", { modes: {} });
 
-			await start({ names: ["default", "prod"] });
+			await start({ names: ["a", "b"] });
 
 			expect(selection.entries.map(({ status }) => status)).toEqual([
 				"valid",
@@ -199,66 +95,57 @@ describe("CoreConfigService", () => {
 			]);
 			expect(errors(1)).toMatchObject([
 				{
-					code: "config.unknownField",
-					resource: "/repo/prod.rogen.json",
+					code: "config.removedField",
+					resource: "/repo/b/rogen.json",
 					position: { line: 1, column: 2 },
 				},
 			]);
 		});
 
 		it("should leave resolved undefined for a config that was never valid", async () => {
-			await write("/repo/default.rogen.json", "{ nope");
+			await write("/repo/rogen.json", "{ nope");
 
 			await start();
 
 			expect(resolved(0)).toBeUndefined();
 		});
 
-		it("should select two configs writing the same outFile", async () => {
-			await write("/repo/a.rogen.json", { outFile: "same.project.json" });
-			await write("/repo/b.rogen.json", { outFile: "same.project.json" });
+		it("should list the file of every config", async () => {
+			await write("/repo/a/rogen.json", {});
+			await write("/repo/b/rogen.json", {});
 
-			const result = await start({ names: ["a", "b"] });
-
-			expect(result.isOk()).toBe(true);
-			expect(selection.entries.map((_, index) => errors(index))).toEqual([
-				[],
-				[],
-			]);
-		});
-
-		it("should list every file of every chain", async () => {
-			await write("/repo/base.rogen.json", {});
-			await write("/repo/default.rogen.json", {
-				extends: "./base.rogen.json",
-			});
-
-			await start();
+			await start({ names: ["a", "b"] });
 
 			expect(selection.files).toEqual(
-				new Set(["/repo/default.rogen.json", "/repo/base.rogen.json"])
+				new Set(["/repo/a/rogen.json", "/repo/b/rogen.json"])
 			);
 		});
 	});
 
 	describe("selection", () => {
 		it("should return every config when all are valid", async () => {
-			await write("/repo/a.rogen.json", { rootDirs: ["a"] });
-			await write("/repo/b.rogen.json", { rootDirs: ["b"] });
+			await write("/repo/a/rogen.json", {
+				routes: ROUTED,
+				sourcePaths: ["x"],
+			});
+			await write("/repo/b/rogen.json", {
+				routes: ROUTED,
+				sourcePaths: ["y"],
+			});
 			await start({ names: ["a", "b"] });
 
 			expect(
 				selection
 					.requireValid()
 					.unwrap()
-					.map(({ rootDirs }) => rootDirs)
-			).toEqual([["/repo/a"], ["/repo/b"]]);
+					.map(({ sourcePaths }) => sourcePaths)
+			).toEqual([["/repo/a/x"], ["/repo/b/y"]]);
 		});
 
 		it("should fail with the errors of every broken config", async () => {
-			await write("/repo/a.rogen.json", {});
-			await write("/repo/b.rogen.json", { bogus: 1 });
-			await write("/repo/c.rogen.json", "{ nope");
+			await write("/repo/a/rogen.json", {});
+			await write("/repo/b/rogen.json", { modes: {} });
+			await write("/repo/c/rogen.json", "{ nope");
 			await start({ names: ["a", "b", "c"] });
 
 			const result = selection.requireValid();
@@ -269,10 +156,10 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should fail for a config that is broken now but has a last valid version", async () => {
-			await write("/repo/default.rogen.json", {});
+			await write("/repo/rogen.json", {});
 			await start();
-			await write("/repo/default.rogen.json", { bogus: 1 });
-			await selection.reload(["/repo/default.rogen.json"]);
+			await write("/repo/rogen.json", { modes: {} });
+			await selection.reload(["/repo/rogen.json"]);
 
 			expect(selection.requireValid().isErr()).toBe(true);
 		});
@@ -280,30 +167,23 @@ describe("CoreConfigService", () => {
 
 	describe("read", () => {
 		it("should resolve a config file without adding it to the configs", async () => {
-			await write("/repo/other.rogen.json", { rootDirs: ["lib"] });
+			await write("/repo/other/rogen.json", {
+				routes: ROUTED,
+				sourcePaths: ["lib"],
+			});
 
-			const entry = await service.read("/repo/other.rogen.json");
+			const entry = await service.read("/repo/other/rogen.json");
 
-			expect(buildableConfig(entry)?.rootDirs).toEqual(["/repo/lib"]);
+			expect(buildableConfig(entry)?.sourcePaths).toEqual([
+				"/repo/other/lib",
+			]);
 			expect(entry.status).toBe("valid");
 		});
 
-		it("should follow the extends chain", async () => {
-			await write("/repo/base.rogen.json", { syncDir: "out" });
-			await write("/repo/other.rogen.json", {
-				extends: "./base.rogen.json",
-			});
-
-			const entry = await service.read("/repo/other.rogen.json");
-
-			expect(entry.parents).toEqual(["/repo/base.rogen.json"]);
-			expect(buildableConfig(entry)?.syncDir).toBe("/repo/out");
-		});
-
 		it("should put the problems of a broken config on the entry", async () => {
-			await write("/repo/other.rogen.json", "{ nope");
+			await write("/repo/other/rogen.json", "{ nope");
 
-			const entry = await service.read("/repo/other.rogen.json");
+			const entry = await service.read("/repo/other/rogen.json");
 
 			expect(entry).toMatchObject({
 				status: "broken",
@@ -312,92 +192,69 @@ describe("CoreConfigService", () => {
 		});
 	});
 
-	describe("unnamed config", () => {
-		it("should fail a config file with no name before .rogen.json", async () => {
-			await write("/repo/.rogen.json", { rootDirs: ["src"] });
-
-			const entry = await service.read("/repo/.rogen.json");
-
-			expect(entry).toMatchObject({
-				status: "broken",
-				errors: [
-					{
-						code: "config.unnamed",
-						resource: "/repo/.rogen.json",
-						message: expect.stringContaining(
-							"Rename it to <name>.rogen.json"
-						),
-					},
-				],
-			});
-		});
-	});
-
 	describe("registerFileCheck", () => {
 		const hint = (file: string) => ({
-			severity: DiagnosticSeverity.Warning,
+			severity: DiagnosticSeverity.Error,
 			code: "test.hint",
 			resource: file,
 			message: "a hint",
 		});
 
 		it("should add a check's hints to the errors of a file that fails to load", async () => {
-			await write("/repo/a.rogen.json", { nope: true });
+			await write("/repo/a/rogen.json", { routes: { "a-b": "Nowhere" } });
 			service.registerFileCheck(({ file }) => [hint(file)]);
 
-			const entry = await service.read("/repo/a.rogen.json");
+			const entry = await service.read("/repo/a/rogen.json");
 
 			expect(
 				entry.status === "broken" &&
 					entry.errors.map(({ code }) => code)
-			).toEqual(["config.unknownField", "test.hint"]);
+			).toEqual(expect.arrayContaining(["test.hint"]));
+		});
+
+		it("should fail a file that loads when a check has something to say about it", async () => {
+			await write("/repo/a/rogen.json", { source: ["src"] });
+			service.registerFileCheck(({ file }) => [hint(file)]);
+
+			const entry = await service.read("/repo/a/rogen.json");
+
+			expect(entry).toMatchObject({
+				status: "broken",
+				errors: [{ code: "test.hint" }],
+			});
 		});
 
 		it("should hand the check what the file holds, or nothing when it doesn't parse", async () => {
-			await write("/repo/a.rogen.json", { nope: true });
-			await write("/repo/b.rogen.json", "{ nope");
+			await write("/repo/a/rogen.json", { nope: true });
+			await write("/repo/b/rogen.json", "{ nope");
 			const seen: unknown[] = [];
 			service.registerFileCheck(({ value }) => {
 				seen.push(value);
 				return [];
 			});
 
-			await service.read("/repo/a.rogen.json");
-			await service.read("/repo/b.rogen.json");
+			await service.read("/repo/a/rogen.json");
+			await service.read("/repo/b/rogen.json");
 
 			expect(seen).toEqual([{ nope: true }, undefined]);
 		});
 
-		it("should never run on a config that loads", async () => {
-			await write("/repo/a.rogen.json", { rootDirs: ["src"] });
-			const check = jest.fn(() => []);
-			service.registerFileCheck(check);
+		it("should leave a config alone that the check has nothing to say about", async () => {
+			await write("/repo/a/rogen.json", { routes: ROUTED });
+			service.registerFileCheck(() => []);
 
-			const entry = await service.read("/repo/a.rogen.json");
+			const entry = await service.read("/repo/a/rogen.json");
 
 			expect(entry.status).toBe("valid");
-			expect(check).not.toHaveBeenCalled();
-		});
-
-		it("should run on an unnamed config", async () => {
-			await write("/repo/.rogen.json", { source: ["src"] });
-			service.registerFileCheck(({ file }) => [hint(file)]);
-
-			const entry = await service.read("/repo/.rogen.json");
-
-			expect(
-				entry.status === "broken" &&
-					entry.errors.map(({ code }) => code)
-			).toEqual(["config.unnamed", "test.hint"]);
 		});
 
 		it("should stop running once the registration is disposed", async () => {
-			await write("/repo/a.rogen.json", { nope: true });
+			await write("/repo/a/rogen.json", { routes: ROUTED });
 			const check = jest.fn(() => []);
 			const registration = service.registerFileCheck(check);
 
 			registration[Symbol.dispose]();
-			await service.read("/repo/a.rogen.json");
+			await service.read("/repo/a/rogen.json");
 
 			expect(check).not.toHaveBeenCalled();
 		});

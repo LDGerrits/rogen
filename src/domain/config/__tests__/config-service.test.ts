@@ -14,10 +14,10 @@ describe("domain/config/config-service", () => {
 
 		it("should be the last valid version of a broken entry", () => {
 			const entry = brokenEntry([error], undefined, {
-				rootDirs: ["/repo/a"],
+				sourcePaths: ["/repo/a"],
 			});
 
-			expect(buildableConfig(entry)?.rootDirs).toEqual(["/repo/a"]);
+			expect(buildableConfig(entry)?.sourcePaths).toEqual(["/repo/a"]);
 		});
 
 		it("should be undefined for a config that was never valid", () => {

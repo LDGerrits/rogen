@@ -7,12 +7,12 @@ import { ResolvedConfig } from "../config/config.js";
 /** `file` names the config in `configsFor`. */
 export type WatchPlanConfig = Pick<
 	ResolvedConfig,
-	"file" | "rootDirs" | "outFile" | "syncDir"
+	"file" | "indexedPaths" | "projectFile" | "syncPath"
 >;
 
 /** What a watch watches and what it skips, for a set of configs. */
 export class WatchPlan {
-	/** The dirs to watch and index: every config's root dirs, minus any inside another. */
+	/** The dirs to watch and index: every config's source paths, minus any inside another. */
 	readonly roots: readonly string[];
 	/** Paths the watcher skips: the files Rogen writes and the dirs Rojo syncs from. */
 	readonly ignored: readonly IgnoredPath[];
@@ -24,18 +24,20 @@ export class WatchPlan {
 	constructor(configs: readonly WatchPlanConfig[]) {
 		this.claims = configs.map((config) => ({
 			file: config.file,
-			roots: config.rootDirs.map((dir) => path.resolve(dir)),
+			roots: config.indexedPaths.map((dir) => path.resolve(dir)),
 		}));
 		this.roots = outermostDirs(this.claims.flatMap(({ roots }) => roots));
 
 		const outputs = [
-			...new Set(configs.map((config) => path.resolve(config.outFile))),
-		].map((outFile) => new OutputFile(outFile));
+			...new Set(
+				configs.map((config) => path.resolve(config.projectFile))
+			),
+		].map((projectFile) => new OutputFile(projectFile));
 		const ignoredPaths = [
 			...new Set([
 				...outputs.map(({ path }) => path),
 				...configs.flatMap((config) =>
-					config.syncDir ? [path.resolve(config.syncDir)] : []
+					config.syncPath ? [path.resolve(config.syncPath)] : []
 				),
 			]),
 		].filter(
@@ -47,7 +49,7 @@ export class WatchPlan {
 		];
 	}
 
-	/** Every config with a root dir that contains `changePath`, each once. */
+	/** Every config with a source path that contains `changePath`, each once. */
 	configsFor(changePath: string): readonly string[] {
 		const target = path.resolve(changePath);
 		return this.claims

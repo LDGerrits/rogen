@@ -7,7 +7,6 @@ import {
 	abs,
 	assembleFilesOf,
 	optional,
-	templateOf,
 	writeFiles,
 } from "./fixtures.js";
 
@@ -58,10 +57,10 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should collapse into the sync dir", async () => {
+			it("should collapse into the sync path", async () => {
 				await write("src/Inventory/Save.ts");
 
-				const storage = await storageOf({ syncDir: abs("dist") });
+				const storage = await storageOf({ syncPath: abs("dist") });
 
 				expect(storage.Inventory).toEqual({
 					$path: optional("dist/Inventory"),
@@ -157,13 +156,13 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should collapse a directory with an empty folder when a sync dir holds what Rojo reads", async () => {
+			it("should collapse a directory with an empty folder when a sync path holds what Rojo reads", async () => {
 				await write(
 					"src/Inventory/Save.ts",
 					"src/Inventory/Assets/.gitkeep"
 				);
 
-				const storage = await storageOf({ syncDir: abs("dist") });
+				const storage = await storageOf({ syncPath: abs("dist") });
 
 				expect(storage.Inventory).toEqual({
 					$path: optional("dist/Inventory"),
@@ -192,14 +191,14 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should not collapse a directory with an excluded file", async () => {
+			it("should not collapse a directory with an ignored file", async () => {
 				await write(
 					"src/Inventory/Save.luau",
 					"src/Inventory/Save.spec.luau"
 				);
 
 				const storage = await storageOf({
-					exclude: [abs("**/*.spec.luau")],
+					ignored: [abs("**/*.spec.luau")],
 				});
 
 				expect(storage.Inventory).toEqual({
@@ -242,7 +241,7 @@ describe("TreeAssembler", () => {
 				await write("mods/Inventory/Save.luau");
 
 				const storage = await storageOf({
-					rootDirs: [abs("core"), abs("mods")],
+					sourcePaths: [abs("core"), abs("mods")],
 				});
 
 				expect(storage.Inventory).toEqual({
@@ -348,7 +347,7 @@ describe("TreeAssembler", () => {
 				await write("src/Inventory/Save.ts", "src/Inventory/Save.d.ts");
 
 				const { projectFile: value } = await assemble({
-					exclude: [abs("**/*.d.ts")],
+					ignored: [abs("**/*.d.ts")],
 				});
 
 				expect(
@@ -362,7 +361,7 @@ describe("TreeAssembler", () => {
 			await write("src/Inventory/Save.luau", "src/Inventory/Save.proto");
 
 			const { projectFile: value } = await assemble(
-				{ exclude: [abs("**/*.proto")] },
+				{ ignored: [abs("**/*.proto")] },
 				[
 					{
 						id: "protobuf",
@@ -375,7 +374,7 @@ describe("TreeAssembler", () => {
 		});
 
 		describe("globIgnorePaths", () => {
-			it("should never list a path the template mounts, which Rojo has to read", async () => {
+			it("should never list a path the tree mounts, which Rojo has to read", async () => {
 				await write(
 					"src/Vendor/Lib.luau",
 					"src/Save.luau",
@@ -383,16 +382,13 @@ describe("TreeAssembler", () => {
 				);
 
 				const { projectFile: value } = await assemble({
-					exclude: [abs("**/*.spec.luau")],
-					template: {
-						file: abs("template.project.json"),
-						project: {
-							name: "game",
-							tree: {
-								$className: "DataModel",
-								ReplicatedStorage: {
-									Vendor: { $path: "src/Vendor" },
-								},
+					ignored: [abs("**/*.spec.luau")],
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								Vendor: { $path: "src/Vendor" },
 							},
 						},
 					},
@@ -401,7 +397,7 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual(["src/Save.spec.luau"]);
 			});
 
-			it("should list excluded files in path order, translated to sync paths", async () => {
+			it("should list ignored files in path order, translated to sync paths", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
 					"src/Inventory/Save.spec.ts",
@@ -409,8 +405,8 @@ describe("TreeAssembler", () => {
 				);
 
 				const { projectFile: value } = await assemble({
-					syncDir: abs("dist"),
-					exclude: [abs("**/*.spec.ts")],
+					syncPath: abs("dist"),
+					ignored: [abs("**/*.spec.ts")],
 				});
 
 				expect(value.globIgnorePaths).toEqual([
@@ -419,7 +415,7 @@ describe("TreeAssembler", () => {
 				]);
 			});
 
-			it("should list a file excluded anywhere inside an init folder, and what Rojo would read beside its script", async () => {
+			it("should list a file ignored anywhere inside an init folder, and what Rojo would read beside its script", async () => {
 				await write(
 					"src/Moves/init.ts",
 					"src/Moves/Punch.spec.ts",
@@ -427,8 +423,8 @@ describe("TreeAssembler", () => {
 				);
 
 				const { projectFile: value } = await assemble({
-					syncDir: abs("dist"),
-					exclude: [abs("**/*.spec.ts")],
+					syncPath: abs("dist"),
+					ignored: [abs("**/*.spec.ts")],
 				});
 
 				expect(value.globIgnorePaths).toEqual([
@@ -442,7 +438,7 @@ describe("TreeAssembler", () => {
 				await write("src/Hud.ts", "src/Combat.server.ts");
 
 				const { projectFile: value } = await assemble({
-					syncDir: abs("dist"),
+					syncPath: abs("dist"),
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -453,24 +449,24 @@ describe("TreeAssembler", () => {
 				await write("src/Analytics.luau", "src/Analytics.ts");
 
 				const { projectFile: value } = await assemble({
-					syncDir: abs("dist"),
+					syncPath: abs("dist"),
 				});
 
 				expect(value.globIgnorePaths).toBeUndefined();
 			});
 
-			it("should not list a file the template displaced, which its $path may mount", async () => {
+			it("should not list a file the tree displaced, which its $path may mount", async () => {
 				await write("src/Packages/A.luau", "src/Other/B.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: {
 							Packages: { $path: "src/Packages" },
 						},
 					},
-				});
+				};
 
-				const { projectFile: value } = await assemble({ template });
+				const { projectFile: value } = await assemble({ project });
 
 				expect(value.globIgnorePaths).toBeUndefined();
 				expect(
@@ -480,26 +476,20 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should union the template's rebased globs without duplicates", async () => {
+			it("should union the tree's globs with the ignored files without duplicates", async () => {
 				await write("src/Foo.luau", "src/Foo.spec.luau");
-				const template = templateOf(
-					{
-						tree: { $className: "DataModel" },
-						globIgnorePaths: [
-							"**/*.spec.luau",
-							"../src/Foo.spec.luau",
-						],
-					},
-					abs("templates/base.project.json")
-				);
+				const project = {
+					tree: { $className: "DataModel" },
+					globIgnorePaths: ["**/*.spec.luau", "src/Foo.spec.luau"],
+				};
 
 				const { projectFile: value } = await assemble({
-					template,
-					exclude: [abs("src/Foo.spec.luau")],
+					project,
+					ignored: [abs("src/Foo.spec.luau")],
 				});
 
 				expect(value.globIgnorePaths).toEqual([
-					"templates/**/*.spec.luau",
+					"**/*.spec.luau",
 					"src/Foo.spec.luau",
 				]);
 			});

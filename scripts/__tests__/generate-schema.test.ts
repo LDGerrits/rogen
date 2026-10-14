@@ -26,7 +26,22 @@ describe("scripts/generate-schema", () => {
 						"utf8"
 					)
 				) as { properties: Record<string, unknown> };
-				expect(Object.keys(schema.properties)).toContain("rootDirs");
+				expect(Object.keys(schema.properties)).toContain("sourcePaths");
+			}
+		});
+
+		it("should write the schema of the project files Rogen writes to every channel", () => {
+			for (const channel of generateSchema(outDir, "2.1.0", [])) {
+				const schema = JSON.parse(
+					fs.readFileSync(
+						path.join(outDir, channel, "project.json"),
+						"utf8"
+					)
+				) as { properties: Record<string, unknown> };
+				expect(Object.keys(schema.properties)).toContain("tree");
+				expect(Object.keys(schema.properties)).not.toContain(
+					"sourcePaths"
+				);
 			}
 		});
 	});

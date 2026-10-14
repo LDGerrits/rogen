@@ -1,22 +1,22 @@
 import { groupBy } from "../../base/collections.js";
-import { BuildTemplate } from "./build-template.js";
+import { BuildTree } from "./build-tree.js";
 import { InitToCopy, RoutedFile } from "./router.js";
 import { InstanceMap } from "../roblox/roblox.js";
 
 /** The init scripts that stand for their whole folder: copied to every node the folder becomes, and dropped when nothing is left at a node to parent. */
 export class InitScripts {
-	constructor(private readonly template: BuildTemplate) {}
+	constructor(private readonly tree: BuildTree) {}
 
-	/** Each root dir's routed files, then the copies of its init scripts. */
+	/** Each source path's routed files, then the copies of its init scripts. */
 	withCopies(
 		routed: readonly RoutedFile[],
 		toCopy: readonly InitToCopy[]
 	): RoutedFile[] {
-		const toCopyByRoot = groupBy(toCopy, ({ entry }) => entry.rootDir);
-		return [...groupBy(routed, ({ entry }) => entry.rootDir)].flatMap(
-			([rootDir, fromRoot]) => [
+		const toCopyByRoot = groupBy(toCopy, ({ entry }) => entry.sourcePath);
+		return [...groupBy(routed, ({ entry }) => entry.sourcePath)].flatMap(
+			([sourcePath, fromRoot]) => [
 				...fromRoot,
-				...this.copies(toCopyByRoot.get(rootDir) ?? [], fromRoot),
+				...this.copies(toCopyByRoot.get(sourcePath) ?? [], fromRoot),
 			]
 		);
 	}
@@ -62,7 +62,7 @@ export class InitScripts {
 		});
 	}
 
-	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the template keeps carries it. Repeats, since a dropped init script empties the folders above it. */
+	/** An init script parents what its folder holds, so it goes where nothing placed is left at its node; the fallback's own placement goes too once a copy that the tree keeps carries it. Repeats, since a dropped init script empties the folders above it. */
 	withoutLoneInits(nodes: readonly RoutedFile[]): readonly RoutedFile[] {
 		let kept = nodes;
 		for (;;) {
@@ -88,7 +88,7 @@ export class InitScripts {
 					(copy) =>
 						copy.routeMatch === "copy" &&
 						named.get(copy.instancePath) &&
-						!this.template.displacing(copy)
+						!this.tree.displacing(copy)
 				)
 				.map(({ entry }) => entry.source)
 		);

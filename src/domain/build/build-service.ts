@@ -46,8 +46,8 @@ export interface PlacedLocation extends Located {
 }
 
 export interface UnplacedLocation extends Located {
-	/** `ignored` exists but isn't an instance. */
-	readonly status: "outside" | "ignored" | "missing" | "empty";
+	/** `notInstance` exists but isn't an instance. */
+	readonly status: "outside" | "notInstance" | "missing" | "empty";
 	/** A `missing` path that is named as a folder, by ending in a separator. */
 	readonly folder?: true;
 }
@@ -122,7 +122,7 @@ export interface ConfigLocations {
 	readonly instances: readonly InstanceLocation[];
 	/** The path arguments, resolved; a diagnostic about one is about a file that places nothing too. */
 	readonly queried: readonly string[];
-	/** What a build of the config raises, without the sync dir's: the errors that stopped the later phases, else the warnings. */
+	/** What a build of the config raises, without the sync path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -158,10 +158,10 @@ export interface Diagnosis {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** The run, one build per selected config in order: builds each one that loads, checking its sync dir, then writes them in order. A config that doesn't load, one the set blocks or a build failure writes nothing, and a failed write leaves the rest unwritten. */
+	/** The run, one build per selected config in order: builds each one that loads, checking its sync path, then writes them in order. A config that doesn't load, one the set blocks or a build failure writes nothing, and a failed write leaves the rest unwritten. */
 	build(selection: ConfigSelection): Promise<BuildRun>;
 
-	/** Builds the config `file` of a watch's `set` from the listing the watch holds, and writes it; one the set blocks fails without building. The sync dir is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
+	/** Builds the config `file` of a watch's `set` from the listing the watch holds, and writes it; one the set blocks fails without building. The sync path is checked only when `previous` holds no answer for this version of the config, since it changes only with the config or its compiler. */
 	rebuild(
 		set: BuildSet,
 		file: string,

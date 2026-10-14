@@ -27,10 +27,10 @@ describe("BuildValidator", () => {
 		it("should report rules in a fixed order, whatever order the problems arose in", async () => {
 			await writeFiles(fs, "src/Orphan.meta.json", "src/Stray.luau");
 			const config = baseConfigOf({
-				rootDirs: [abs("src"), abs("missing")],
+				sourcePaths: [abs("src"), abs("missing")],
 				routes: { server: "ServerScriptService" },
 			});
-			const index = await indexOf(fs, config.rootDirs);
+			const index = await indexOf(fs, config.sourcePaths);
 			const placement = placeFiles(index, config, syncTools).unwrap();
 			const meta = (await new MetaReader(fs).read(placement)).unwrap();
 			const assembled = new TreeAssembler(placement, meta)
@@ -40,7 +40,7 @@ describe("BuildValidator", () => {
 			const warnings = new BuildValidator(assembled).validate();
 
 			expect(warnings.map(({ code }) => code)).toEqual([
-				"scan.missingRootDir",
+				"scan.missingSourcePath",
 				"meta.unclaimed",
 				"route.unrouted",
 			]);
@@ -49,7 +49,7 @@ describe("BuildValidator", () => {
 		it("should report nothing for a build that raises no problems", async () => {
 			await writeFiles(fs, "src/Fine.luau");
 			const config = baseConfigOf();
-			const index = await indexOf(fs, config.rootDirs);
+			const index = await indexOf(fs, config.sourcePaths);
 			const placement = placeFiles(index, config, syncTools).unwrap();
 			const meta = (await new MetaReader(fs).read(placement)).unwrap();
 			const assembled = new TreeAssembler(placement, meta)
@@ -77,14 +77,14 @@ describe("BuildValidator rules", () => {
 
 		const route = async (
 			overrides: ResolvedConfigSpec = {},
-			rootDirs: readonly string[] = [abs("src")]
+			sourcePaths: readonly string[] = [abs("src")]
 		) =>
 			(
 				await buildAndPlace(
 					fs,
 					configOf({
 						routes: ROUTES,
-						rootDirs: [...rootDirs],
+						sourcePaths: [...sourcePaths],
 						...overrides,
 					})
 				)
@@ -102,7 +102,7 @@ describe("BuildValidator rules", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		describe("a project file in a root dir", () => {
+		describe("a project file in a source path", () => {
 			const nested = async (...files: string[]) => {
 				await write(...files);
 				return (await route())
@@ -129,27 +129,27 @@ describe("BuildValidator rules", () => {
 				]);
 			});
 
-			it("should not warn for a project file that is outside the root dirs", async () => {
+			it("should not warn for a project file that is outside the source paths", async () => {
 				expect(
 					await nested("src/A.luau", "default.project.json")
 				).toEqual([]);
 			});
 		});
 
-		describe("a root dir named after a key", () => {
+		describe("a source path named after a key", () => {
 			const named = async (
-				rootDirs: string[],
+				sourcePaths: string[],
 				overrides: ResolvedConfigSpec = {}
 			) =>
 				(
 					await route(
 						overrides,
-						rootDirs.map((dir) => abs(dir))
+						sourcePaths.map((dir) => abs(dir))
 					)
 				)
 					.unwrap()
 					.warnings.filter(
-						({ code }) => code === "scan.rootDirNamedAfterKey"
+						({ code }) => code === "scan.sourcePathNamedAfterKey"
 					);
 
 			beforeEach(async () => {
@@ -160,12 +160,12 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
-			it("should warn once for every root dir at the project root, with the move-them fix", async () => {
+			it("should warn once for every source path at the project root, with the move-them fix", async () => {
 				const [warning] = await named(["server", "client"]);
 
 				expect(warning).toMatchObject({
 					severity: DiagnosticSeverity.Warning,
-					resource: abs("default.rogen.json"),
+					resource: abs("rogen.json"),
 					related: [
 						{
 							resource: abs("server"),
@@ -178,34 +178,34 @@ describe("BuildValidator rules", () => {
 					],
 				});
 				expect(warning.message.split("\n")).toEqual([
-					"2 root dirs are named after a route key, but routing starts below a root dir, so their names route nothing:",
+					"2 source paths are named after a route key, but routing starts below a source path, so their names route nothing:",
 					'  server ("server" route)',
 					'  client ("client" route)',
-					'Move them into one folder, such as src/server and src/client, and use "rootDirs": ["src"].',
+					'Move them into one folder, such as src/server and src/client, and use "sourcePaths": ["src"].',
 				]);
 			});
 
-			it("should say to use the parent when the root dir sits inside the project", async () => {
+			it("should say to use the parent when the source path sits inside the project", async () => {
 				const [warning] = await named(["src/server"]);
 
 				expect(warning.message.split("\n")).toEqual([
-					"1 root dir is named after a route key, but routing starts below a root dir, so its name routes nothing:",
+					"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
 					'  src/server ("server" route)',
-					'Use "src" as the root dir instead, so "server" is read as a key.',
+					'Use "src" as the source path instead, so "server" is read as a key.',
 				]);
 			});
 
-			it("should fall back to moving the root dir into one folder when its parent is outside the project", async () => {
+			it("should fall back to moving the source path into one folder when its parent is outside the project", async () => {
 				const [warning] = await named(["../outside/server"]);
 
 				expect(warning.message.split("\n")).toEqual([
-					"1 root dir is named after a route key, but routing starts below a root dir, so its name routes nothing:",
+					"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
 					'  ../outside/server ("server" route)',
-					'Move it into one folder, such as src/../outside/server, and use "rootDirs": ["src"].',
+					'Move it into one folder, such as src/../outside/server, and use "sourcePaths": ["src"].',
 				]);
 			});
 
-			it("should not warn when the root dir holds a folder named after a key", async () => {
+			it("should not warn when the source path holds a folder named after a key", async () => {
 				expect(await named(["src"])).toEqual([]);
 			});
 
@@ -298,13 +298,10 @@ describe("BuildValidator rules", () => {
 			});
 
 			const legacyOff = {
-				template: {
-					file: abs("template.project.json"),
-					project: {
-						name: "game",
-						emitLegacyScripts: false,
-						tree: { $className: "DataModel" },
-					},
+				project: {
+					name: "game",
+					emitLegacyScripts: false,
+					tree: { $className: "DataModel" },
 				},
 			};
 
@@ -383,70 +380,6 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
-		describe("a template that overrides the one it merges over", () => {
-			it("should warn at the template that set each field it overrides", async () => {
-				await write("src/shared/Util.luau");
-
-				const warnings = (
-					await route({
-						template: {
-							file: abs("places/lobby/template.project.json"),
-							project: { name: "Lobby", tree: {} },
-							bases: [abs("places/shared/template.project.json")],
-							clashes: [
-								{
-									instancePath: [
-										"ReplicatedStorage",
-										"Packages",
-									],
-									field: "$path",
-									file: abs(
-										"places/lobby/template.project.json"
-									),
-									base: abs(
-										"places/shared/template.project.json"
-									),
-								},
-								{
-									instancePath: ["Lighting"],
-									field: "$properties.Brightness",
-									file: abs(
-										"places/arena/template.project.json"
-									),
-									base: abs(
-										"places/shared/template.project.json"
-									),
-								},
-							],
-						},
-					})
-				)
-					.unwrap()
-					.warnings.filter(
-						({ code }) => code === "template.overridesBase"
-					);
-
-				expect(
-					warnings.map(({ resource, severity, message }) => ({
-						resource,
-						severity,
-						message,
-					}))
-				).toEqual([
-					{
-						resource: abs("places/lobby/template.project.json"),
-						severity: DiagnosticSeverity.Warning,
-						message: `"ReplicatedStorage/Packages" sets $path here and in ${abs("places/shared/template.project.json")}, which this template merges over, so this one wins. Remove it from one of them.`,
-					},
-					{
-						resource: abs("places/arena/template.project.json"),
-						severity: DiagnosticSeverity.Warning,
-						message: `"Lighting" sets $properties.Brightness here and in ${abs("places/shared/template.project.json")}, which this template merges over, so this one wins. Remove it from one of them.`,
-					},
-				]);
-			});
-		});
-
 		describe("an instance named with a leading $", () => {
 			const reserved = async () =>
 				(await route())
@@ -516,7 +449,7 @@ describe("BuildValidator rules", () => {
 
 				expect(others).toEqual([]);
 				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-				expect(warning.resource).toBe(abs("default.rogen.json"));
+				expect(warning.resource).toBe(abs("rogen.json"));
 				expect(warning.message).toBe(
 					[
 						'2 files under a "server" route ship to clients, because "ReplicatedFirst" governs them:',

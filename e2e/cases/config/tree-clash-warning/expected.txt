@@ -1,0 +1,27 @@
+$ rogen build --verbose
+exit 0
+stdout: (not shown)
+stderr:
+  [debug] src: 2 files
+  [debug] route server -> ServerScriptService: 1 file
+  [debug] route client -> StarterPlayer/StarterPlayerScripts: 0 files
+  [debug] route shared -> ReplicatedStorage/shared: 0 files
+  [debug] route * -> ReplicatedStorage/shared: 0 files
+  [debug] left out: 1 displaced by the tree
+  src/Save.server.luau - warning: the tree defines "ServerScriptService/Save" too, so its node is kept and this file is left out. Rename one of them to keep both. (tree.nodeClash)
+
+$ rogen where
+exit 0
+stdout:
+  src/Load.server.luau -> ServerScriptService/Load · route server (suffix)
+  src/Save.server.luau -> displaced · the tree defines ServerScriptService/Save
+    warning: the tree defines "ServerScriptService/Save" too, so its node is kept and this file is left out. Rename one of them to keep both. (tree.nodeClash)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Load: Script  <- src/Load.server.luau
+    Save: Script  <- hand/Save.server.luau

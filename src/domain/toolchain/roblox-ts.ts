@@ -1,13 +1,10 @@
 import path from "path";
-import { formatJsonFile } from "../../base/json.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { normalizeDir } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
-	CompiledPlace,
 	Compiler,
-	CompilerPlaceRequest,
 	Language,
 	LanguageCopy,
 	LanguageDetector,
@@ -26,18 +23,13 @@ const ALWAYS_MOUNTED_SCOPES: readonly string[] = ["@rbxts"];
 const scopePath = (scope: string) => `node_modules/${scope}`;
 const scopeLanding = (scope: string) =>
 	`${INCLUDE_LANDING}/${scopePath(scope)}`;
-const tsconfigOf = (name: string) => `tsconfig.${name}.json`;
 
 /** What `RobloxTsDetector` read from the workspace, which only roblox-ts asks for. */
 export interface RobloxTsFacts {
 	/** `compilerOptions.outDir`, when tsconfig.json exists. */
 	readonly outDir?: string;
-	/** `compilerOptions.rootDir`. */
-	readonly rootDir?: string;
-	/** Whether tsconfig.json sets `include`. */
-	readonly tsconfigHasInclude?: boolean;
-	/** `compilerOptions.tsBuildInfoFile`. */
-	readonly tsBuildInfoFile?: string;
+	/** `compilerOptions.sourcePath`. */
+	readonly sourcePath?: string;
 	/** The installed package scopes under `node_modules`. */
 	readonly rbxtsScopes?: readonly string[];
 	/** Whether the runtime's `include` folder exists. */
@@ -46,9 +38,7 @@ export interface RobloxTsFacts {
 
 interface TsconfigFacts {
 	readonly outDir: string;
-	readonly rootDir?: string;
-	readonly setsInclude: boolean;
-	readonly tsBuildInfoFile?: string;
+	readonly sourcePath?: string;
 }
 
 function compilerOption(tsconfig: unknown, key: string): string | undefined {
@@ -99,47 +89,8 @@ export class RobloxTsCompiler implements Compiler {
 		return this.facts.outDir ?? DEFAULT_OUT_DIR;
 	}
 
-	rootDirStep(rootDir: string): string {
-		return `Set "rootDir" to "${rootDir}" and "include" to ["${rootDir}"] in ${TSCONFIG}, so roblox-ts compiles the shared code from there.`;
-	}
-
-	placeFileNames(name: string): readonly string[] {
-		return [tsconfigOf(name)];
-	}
-
-	planPlace({
-		name,
-		rootDirs,
-		sharedRootDirs,
-		outDir,
-		projectFile,
-	}: CompilerPlaceRequest): CompiledPlace {
-		const tsconfig = tsconfigOf(name);
-		return {
-			files: [
-				{
-					fileName: tsconfig,
-					content: formatJsonFile({
-						extends: `./${TSCONFIG}`,
-						compilerOptions: {
-							rootDir: null,
-							rootDirs,
-							outDir,
-							...(this.facts.tsBuildInfoFile && {
-								tsBuildInfoFile: `${outDir}/tsconfig.tsbuildinfo`,
-							}),
-						},
-						include: rootDirs,
-					}),
-				},
-			],
-			setup: this.facts.tsconfigHasInclude
-				? []
-				: [
-						`Add "include": ${JSON.stringify(sharedRootDirs)} to ${TSCONFIG}, so its own build leaves out the place folders.`,
-					],
-			compileCommand: `rbxtsc -w -p ${tsconfig} --rojo ${projectFile}`,
-		};
+	sourcePathStep(sourcePath: string): string {
+		return `Set "sourcePath" to "${sourcePath}" and "include" to ["${sourcePath}"] in ${TSCONFIG}, so roblox-ts compiles the shared code from there.`;
 	}
 }
 
@@ -150,11 +101,10 @@ export class RobloxTs implements Language {
 		label: "roblox-ts",
 		detectedHint: "found tsconfig.json",
 		packagesNote: "include and @rbxts are always mounted.",
-		rootDir: {
+		sourcePath: {
 			description:
-				"The folder roblox-ts compiles (rootDir in tsconfig.json).",
-			severalProblem:
-				"roblox-ts compiles one folder. For code per place, set up several places.",
+				"The folder roblox-ts compiles (sourcePath in tsconfig.json).",
+			severalProblem: "roblox-ts compiles one folder.",
 		},
 	};
 	readonly extension = "ts";
@@ -176,9 +126,9 @@ export class RobloxTs implements Language {
 		return id;
 	}
 
-	configuredRootDir(): string | undefined {
-		const { rootDir } = this.facts;
-		return rootDir === undefined ? undefined : normalizeDir(rootDir);
+	configuredSourcePath(): string | undefined {
+		const { sourcePath } = this.facts;
+		return sourcePath === undefined ? undefined : normalizeDir(sourcePath);
 	}
 
 	alwaysMounted(): MountCandidate[] {
@@ -243,10 +193,8 @@ export class RobloxTsDetector implements LanguageDetector {
 				includeInstalled: hasInclude,
 				...(tsconfig && {
 					outDir: tsconfig.outDir,
-					...(tsconfig.rootDir && { rootDir: tsconfig.rootDir }),
-					tsconfigHasInclude: tsconfig.setsInclude,
-					...(tsconfig.tsBuildInfoFile && {
-						tsBuildInfoFile: tsconfig.tsBuildInfoFile,
+					...(tsconfig.sourcePath && {
+						sourcePath: tsconfig.sourcePath,
 					}),
 				}),
 			},
@@ -275,15 +223,10 @@ export class RobloxTsDetector implements LanguageDetector {
 			}
 			return undefined;
 		};
-		const rootDir = option("rootDir");
-		const tsBuildInfoFile = option("tsBuildInfoFile");
+		const sourcePath = option("sourcePath");
 		return {
 			outDir: option("outDir") ?? DEFAULT_OUT_DIR,
-			...(rootDir && { rootDir }),
-			setsInclude: chain.some(
-				({ value }) => isObject(value) && "include" in value
-			),
-			...(tsBuildInfoFile && { tsBuildInfoFile }),
+			...(sourcePath && { sourcePath }),
 		};
 	}
 

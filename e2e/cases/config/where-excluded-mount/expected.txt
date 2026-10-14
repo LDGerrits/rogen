@@ -1,5 +1,0 @@
-$ rogen where DevPackages Packages
-exit 0
-stdout:
-  DevPackages -> excluded · matches DevPackages
-  Packages -> mounted · the template mounts it at ReplicatedStorage/Packages

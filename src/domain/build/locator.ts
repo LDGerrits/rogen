@@ -211,7 +211,7 @@ class ConfigLocator {
 	> {
 		const index = new PlannedFilesIndex(
 			this.listing,
-			this.config.rootDirs,
+			this.config.sourcePaths,
 			paths
 		);
 		const planned = await this.locatorOf(
@@ -277,7 +277,7 @@ class ConfigLocator {
 		return found;
 	}
 
-	/** The folders a first file for `reference` goes in: for each route whose target leads its path, the deepest folder in a root dir that holds the path's leading names, then the route's folder. Only those where a file placed there lands at `reference`. */
+	/** The folders a first file for `reference` goes in: for each route whose target leads its path, the deepest folder in a source path that holds the path's leading names, then the route's folder. Only those where a file placed there lands at `reference`. */
 	private async foldersForNewFile(
 		reference: InstanceReference
 	): Promise<string[]> {
@@ -317,8 +317,8 @@ class ConfigLocator {
 		const leaf = rest[rest.length - 1];
 		const below = rest.slice(0, -1);
 		const folders = new Set<string>();
-		for (const rootDir of this.config.rootDirs) {
-			const { dir, matched } = this.deepestExisting(rootDir, below);
+		for (const sourcePath of this.config.sourcePaths) {
+			const { dir, matched } = this.deepestExisting(sourcePath, below);
 			const folder = path.posix.join(
 				dir,
 				...below.slice(matched),
@@ -340,12 +340,12 @@ class ConfigLocator {
 		return [...folders];
 	}
 
-	/** The deepest folder of `rootDir` that holds the leading `names`, and how many of them it holds. */
+	/** The deepest folder of `sourcePath` that holds the leading `names`, and how many of them it holds. */
 	private deepestExisting(
-		rootDir: string,
+		sourcePath: string,
 		names: readonly string[]
 	): { dir: string; matched: number } {
-		let dir = toPosix(rootDir);
+		let dir = toPosix(sourcePath);
 		let matched = 0;
 		while (
 			matched < names.length &&
@@ -362,7 +362,7 @@ class ConfigLocator {
 	private async placeNew(file: string): Promise<FileLocation[]> {
 		const index = new PlannedFilesIndex(
 			this.listing,
-			this.config.rootDirs,
+			this.config.sourcePaths,
 			[file]
 		);
 		const placement = this.builderOf(index).place(this.config);

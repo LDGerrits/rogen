@@ -1,4 +1,0 @@
-{
-	"rootDirs": ["places/match"],
-	"routes": { "*": "ReplicatedStorage/shared" }
-}

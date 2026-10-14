@@ -1,1 +1,10 @@
-{ "steps": [["init"], ["build"]] }
+{
+	"steps": [
+		[
+			"init"
+		],
+		[
+			"build"
+		]
+	]
+}

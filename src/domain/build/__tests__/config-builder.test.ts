@@ -2,18 +2,24 @@ import { toPosix } from "../../../base/path.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
+	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/config.js";
-import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
-import { abs, builderOf, configOf, indexOf } from "./fixtures.js";
+import {
+	abs,
+	builderOf,
+	configOf,
+	expectBuiltProject,
+	indexOf,
+} from "./fixtures.js";
 
 describe("ConfigBuilder", () => {
 	let fs: MemoryFileSystemService;
 
 	const buildOf = async (config: ResolvedConfig) => {
-		const index = await indexOf(fs, config.rootDirs);
+		const index = await indexOf(fs, config.indexedPaths);
 		return builderOf(fs, index).build(config);
 	};
 
@@ -49,14 +55,14 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should return a tree with no warnings when every root dir exists", async () => {
+		it("should return a tree with no warnings when every source path exists", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
 
 			const result = await buildOf(config);
 
 			expect(result.unwrap().findings.warnings).toEqual([]);
-			expectRojoProject(result.unwrap().projectFile);
+			expectBuiltProject(result.unwrap().projectFile);
 			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
@@ -66,16 +72,18 @@ describe("ConfigBuilder", () => {
 			});
 		});
 
-		it("should warn about a missing root dir and still succeed", async () => {
+		it("should warn about a missing source path and still succeed", async () => {
 			await fs.writeFile(abs("core/A.luau"), "");
-			const config = configOf({ rootDirs: [abs("core"), abs("lobby")] });
+			const config = configOf({
+				sourcePaths: [abs("core"), abs("lobby")],
+			});
 
 			const result = await buildOf(config);
 
 			expect(result.unwrap().findings.warnings).toMatchObject([
 				{
 					severity: DiagnosticSeverity.Warning,
-					code: "scan.missingRootDir",
+					code: "scan.missingSourcePath",
 					resource: abs("lobby"),
 				},
 			]);
@@ -84,7 +92,7 @@ describe("ConfigBuilder", () => {
 		it("should report unrouted files as one warning after the scan's", async () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({
-				rootDirs: [abs("core"), abs("lobby")],
+				sourcePaths: [abs("core"), abs("lobby")],
 				routes: { server: "ServerScriptService" },
 			});
 
@@ -92,7 +100,7 @@ describe("ConfigBuilder", () => {
 
 			expect(
 				result.unwrap().findings.warnings.map((warning) => warning.code)
-			).toEqual(["scan.missingRootDir", "route.unrouted"]);
+			).toEqual(["scan.missingSourcePath", "route.unrouted"]);
 		});
 
 		it("should emit a linked directory under its link path", async () => {
@@ -102,7 +110,7 @@ describe("ConfigBuilder", () => {
 
 			const result = await buildOf(config);
 
-			expectRojoProject(result.unwrap().projectFile);
+			expectBuiltProject(result.unwrap().projectFile);
 			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
@@ -130,14 +138,91 @@ describe("ConfigBuilder", () => {
 			});
 		});
 
-		it("should name the project after the config's resolved name", async () => {
+		it("should write the name the config sets, and none otherwise", async () => {
 			await fs.createDirectory(abs("src"));
-			const config = configOf({ name: "lobby" });
 
-			const result = await buildOf(config);
+			const named = await buildOf(
+				configOf({ project: { name: "lobby" } })
+			);
+			const unnamed = await buildOf(configOf({ name: "lobby" }));
 
-			expectRojoProject(result.unwrap().projectFile);
-			expect(result.unwrap().projectFile.name).toBe("lobby");
+			expect(named.unwrap().projectFile.name).toBe("lobby");
+			expect(unnamed.unwrap().projectFile).not.toHaveProperty("name");
+		});
+
+		it("should put the warnings of the config before the ones the build raises", async () => {
+			await fs.writeFile(abs("core/A.luau"), "");
+			const unknownKey = warningDiagnostic(
+				"config.unknownField",
+				{ resource: abs("rogen.json") },
+				'"colour" is no key of a project file.'
+			);
+
+			const result = await buildOf(
+				configOf({
+					sourcePaths: [abs("core"), abs("lobby")],
+					warnings: [unknownKey],
+				})
+			);
+
+			expect(result.unwrap().findings.warnings).toMatchObject([
+				unknownKey,
+				{ code: "scan.missingSourcePath" },
+			]);
+		});
+
+		describe("a config without routes", () => {
+			const tree = {
+				$className: "DataModel",
+				Workspace: { $className: "Workspace" },
+				ReplicatedStorage: { Vendor: { $path: "vendor" } },
+			};
+			const withoutRoutes = (overrides: ResolvedConfigSpec = {}) =>
+				configOf({
+					routes: {},
+					sourcePaths: [],
+					project: { tree },
+					...overrides,
+				});
+
+			it("should build its tree as written and scan nothing", async () => {
+				await fs.writeFile(abs("vendor/Lib.luau"), "");
+
+				const built = (await buildOf(withoutRoutes())).unwrap();
+
+				expectBuiltProject(built.projectFile);
+				expect(built.projectFile.tree).toEqual(tree);
+				expect(built.summary).toMatchObject({
+					roots: [],
+					routes: [],
+					unrouted: 0,
+				});
+				expect(built.findings.warnings).toEqual([]);
+			});
+
+			it("should warn once when the default source path holds files the tree does not mount", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+				await fs.writeFile(abs("src/deep/B.luau"), "");
+
+				const built = (await buildOf(withoutRoutes())).unwrap();
+
+				expect(built.findings.warnings).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						code: "scan.unmountedSource",
+						resource: abs("src"),
+					},
+				]);
+				expect(built.projectFile.tree).toEqual(tree);
+			});
+
+			it("should not warn about a config with routes", async () => {
+				await fs.writeFile(abs("src/A.luau"), "");
+
+				const built = (await buildOf(configOf())).unwrap();
+
+				expect(built.findings.warnings).toEqual([]);
+			});
 		});
 
 		describe("unclaimed meta", () => {
@@ -202,10 +287,10 @@ describe("ConfigBuilder", () => {
 				expect(warnings).toEqual([]);
 			});
 
-			it("should count a claim from an excluded sibling", async () => {
+			it("should count a claim from an ignored sibling", async () => {
 				const warnings = await warningsFor(
 					["src/Legacy.luau", "src/Legacy.meta.json"],
-					{ exclude: [toPosix(abs("src/Legacy.luau"))] }
+					{ ignored: [toPosix(abs("src/Legacy.luau"))] }
 				);
 
 				expect(warnings).toEqual([]);
@@ -255,7 +340,7 @@ describe("ConfigBuilder", () => {
 						"src/Legacy.meta.json",
 						"src/Empty.meta.json",
 					],
-					{ exclude: [toPosix(abs("src/Legacy"))] }
+					{ ignored: [toPosix(abs("src/Legacy"))] }
 				);
 
 				for (const name of ["Empty", "Legacy", "Notes"])
@@ -288,7 +373,7 @@ describe("ConfigBuilder", () => {
 		});
 
 		describe("summary", () => {
-			it("should count each root dir's files, exclusions and skipped links", async () => {
+			it("should count each source path's files, exclusions and skipped links", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/B.luau"), "");
 				await fs.writeFile(abs("src/Old.luau"), "");
@@ -296,45 +381,42 @@ describe("ConfigBuilder", () => {
 
 				const result = await buildOf(
 					configOf({
-						rootDirs: [abs("src"), abs("lib")],
-						exclude: [toPosix(abs("src/Old.luau"))],
+						sourcePaths: [abs("src"), abs("lib")],
+						ignored: [toPosix(abs("src/Old.luau"))],
 					})
 				);
 
 				expect(result.unwrap().summary.roots).toEqual([
 					{
-						rootDir: abs("src"),
+						sourcePath: abs("src"),
 						files: 2,
-						excluded: 1,
+						ignored: 1,
 						mounted: 0,
 						skippedLinks: 0,
 					},
 					{
-						rootDir: abs("lib"),
+						sourcePath: abs("lib"),
 						files: 1,
-						excluded: 0,
+						ignored: 0,
 						mounted: 0,
 						skippedLinks: 0,
 					},
 				]);
 			});
 
-			it("should count each path the template mounts that exists, once", async () => {
+			it("should count each path the tree mounts that exists, once", async () => {
 				await fs.writeFile(abs("src/Vendor/Lib.luau"), "");
 				await fs.writeFile(abs("src/Save.luau"), "");
 
 				const result = await buildOf(
 					configOf({
-						template: {
-							file: abs("template.project.json"),
-							project: {
-								name: "game",
-								tree: {
-									$className: "DataModel",
-									ReplicatedStorage: {
-										Vendor: { $path: "src/Vendor" },
-										Gone: { $path: "src/Gone" },
-									},
+						project: {
+							name: "game",
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									Vendor: { $path: "src/Vendor" },
+									Gone: { $path: "src/Gone" },
 								},
 							},
 						},
@@ -343,9 +425,9 @@ describe("ConfigBuilder", () => {
 
 				expect(result.unwrap().summary.roots).toEqual([
 					{
-						rootDir: abs("src"),
+						sourcePath: abs("src"),
 						files: 1,
-						excluded: 0,
+						ignored: 0,
 						mounted: 1,
 						skippedLinks: 0,
 					},
@@ -419,21 +501,18 @@ describe("ConfigBuilder", () => {
 				expect(result.unwrap().summary.replaced).toBe(1);
 			});
 
-			it("should count a file the template displaced, and not under its route", async () => {
+			it("should count a file the tree displaced, and not under its route", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/B.luau"), "");
 
 				const result = await buildOf(
 					configOf({
-						template: {
-							file: abs("default.project.json"),
-							project: {
-								name: "repo",
-								tree: {
-									$className: "DataModel",
-									ReplicatedStorage: {
-										A: { $path: "A.luau" },
-									},
+						project: {
+							name: "repo",
+							tree: {
+								$className: "DataModel",
+								ReplicatedStorage: {
+									A: { $path: "A.luau" },
 								},
 							},
 						},
@@ -445,12 +524,12 @@ describe("ConfigBuilder", () => {
 				expect(summary.routes).toMatchObject([{ key: "*", files: 1 }]);
 			});
 
-			it("should count a file the last root dir replaced", async () => {
+			it("should count a file the last source path replaced", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("lib/A.luau"), "");
 
 				const result = await buildOf(
-					configOf({ rootDirs: [abs("src"), abs("lib")] })
+					configOf({ sourcePaths: [abs("src"), abs("lib")] })
 				);
 
 				expect(result.unwrap().summary.replaced).toBe(1);
@@ -471,10 +550,13 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should check the sync dir only when nothing is known of it", async () => {
+		it("should check the sync path only when nothing is known of it", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
-			const config = configOf({ syncDir: abs("dist") });
-			const builder = builderOf(fs, await indexOf(fs, config.rootDirs));
+			const config = configOf({ syncPath: abs("dist") });
+			const builder = builderOf(
+				fs,
+				await indexOf(fs, config.sourcePaths)
+			);
 
 			const checked = await builder.build(config);
 			const known = await builder.build(config, []);

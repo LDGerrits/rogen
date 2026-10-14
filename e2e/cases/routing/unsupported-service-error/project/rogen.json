@@ -1,0 +1,10 @@
+{
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptServices",
+		"client": "StarterPlayerScripts",
+		"*": "CoreGui"
+	}
+}

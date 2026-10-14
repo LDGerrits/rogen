@@ -1,9 +1,0 @@
-{
-	"rootDirs": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"exclude": ["src/Vendor"],
-	"template": "template.project.json"
-}

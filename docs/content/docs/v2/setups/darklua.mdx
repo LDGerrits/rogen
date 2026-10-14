@@ -4,15 +4,14 @@ description: Set up Rogen with Darklua.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
-import { Callout } from "fumadocs-ui/components/callout";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, the **sync directory**, and Rojo syncs from there. Rogen still reads your source to decide where files go; it just points Rojo's paths at the sync directory.
+[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, the **sync path**, and Rojo syncs from there. Rogen still reads your source to decide where files go; it just points Rojo's paths at the sync path.
 
 <Steps>
 
 <Step>
-### Define the Sync Directory
+### Define the Sync Path
 
 This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it reads the compiled `out` folder instead.
 
@@ -21,67 +20,58 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 <Step>
 ### Create the Config
 
-Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. Commit the project files with the rest, so a fresh clone works before anyone has run `rogen build`: see [Commit the project file](/docs/v2/core-concepts/output#commit-the-project-file).
+Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. Commit `default.project.json` with the rest, so a fresh clone works before anyone has run `rogen build`: see [Commit the project file](/docs/v2/core-concepts/output#commit-the-project-file).
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    `init` writes **two** configs. `default.rogen.json` holds the tree, with paths into `src`, and `sync.rogen.json` extends it with the sync directory:
+    `init` writes one `rogen.json`, with `"syncPath": "dist"`:
 
-    ```json title="default.rogen.json"
+    ```json title="rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"rootDirs": ["src"],
+    	"sourcePaths": ["src"],
     	"routes": {
     		"Server": "ServerScriptService",
     		"Client": "StarterPlayer/StarterPlayerScripts",
     		"Shared": "ReplicatedStorage/Shared",
     		"*": "ReplicatedStorage/Shared"
-    	}
+    	},
+    	"syncPath": "dist"
     }
     ```
-
-    ```json title="sync.rogen.json"
-    {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"extends": "./default.rogen.json",
-    	"syncDir": "dist"
-    }
-    ```
-
-    That's one tree rendered twice: `default.project.json` points into `src`, and `sync.project.json` into `dist`, which is the one you serve.
-
-    The source-facing config is the default because luau-lsp builds `sourcemap.json` from `default.project.json`, and Darklua's `convert_require` reads that same sourcemap. Your editor and Darklua both see your real source, with nothing to configure.
-
   </Tab>
   <Tab value="roblox-ts">
-    `init` writes the same **two** configs. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync directory:
+    `init` writes one `rogen.json`, with `"syncPath": "dist"`. `rbxtsc` compiles `src` into `out`, and Darklua processes `out` into the sync path:
 
-    ```json title="default.rogen.json"
+    ```json title="rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"rootDirs": ["src"],
+    	"tree": {
+    		"$className": "DataModel",
+    		"ReplicatedStorage": {
+    			"rbxts_include": {
+    				"$path": { "optional": "include" },
+    				"node_modules": {
+    					"$className": "Folder",
+    					"@rbxts": { "$path": { "optional": "node_modules/@rbxts" } }
+    				}
+    			}
+    		}
+    	},
+    	"sourcePaths": ["src"],
     	"routes": {
     		"server": "ServerScriptService",
     		"client": "StarterPlayer/StarterPlayerScripts",
     		"shared": "ReplicatedStorage/shared",
     		"*": "ReplicatedStorage/shared"
     	},
-    	"template": "template.project.json",
-    	"syncDir": "out"
+    	"syncPath": "dist"
     }
     ```
-
-    ```json title="sync.rogen.json"
-    {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"extends": "./default.rogen.json",
-    	"syncDir": "dist"
-    }
-    ```
-
-    `rbxtsc` reads `default.project.json` to learn where each compiled file lands, so that one points into `out`. `sync.project.json` points into `dist`, which is the one you serve.
   </Tab>
 </Tabs>
+
+Rojo syncs from the sync path, so `default.project.json` points into `dist`. There is one project file: the one you serve is the one luau-lsp builds `sourcemap.json` from, and Darklua's `convert_require` reads that same sourcemap. With roblox-ts, `rbxtsc` reads the same file too.
 
 </Step>
 
@@ -95,35 +85,29 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     ```
     Run:
       rogen serve
-    Have Darklua process your code into the sync dir:
+    Have Darklua process your code into the sync path:
       darklua process src dist
     ```
 
-    With several root directories, `init` prints one Darklua command each (`darklua process lib dist/lib`). Run them with `--watch`, each in its own terminal:
+    With several source paths, `init` prints one Darklua command each (`darklua process lib dist/lib`). Run them with `--watch`, each in its own terminal:
 
     ```bash
     darklua process src dist --watch
     rogen serve
     ```
 
-    `rogen serve` builds both configs, so Darklua's project file stays current too, and serves `sync.project.json`, since no other config extends `sync`.
-
     luau-lsp keeps `sourcemap.json` current while your editor is open. Without it, run:
 
     ```bash
     rojo sourcemap default.project.json --output sourcemap.json --watch
     ```
-
-    <Callout type="warn">
-    	If you run Rojo yourself, pass `sync.project.json`: a bare `rojo serve` picks up `default.project.json` and syncs unprocessed source.
-    </Callout>
   </Tab>
   <Tab value="roblox-ts">
     ```
     Run each in its own terminal:
       rbxtsc -w
       rogen serve
-    Have Darklua process your code into the sync dir:
+    Have Darklua process your code into the sync path:
       darklua process out dist
     ```
 
@@ -132,8 +116,6 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     darklua process out dist --watch
     rogen serve
     ```
-
-    `rogen serve` builds both configs and serves `sync.project.json`, since no other config extends `sync`. `rbxtsc` keeps reading `default.project.json`.
   </Tab>
 </Tabs>
 
@@ -141,16 +123,12 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 
 </Steps>
 
-<Callout type="info">
-	A config's name brings the configs that extend it: `rogen build default` and `rogen watch default` build `sync` too, and `rogen serve default` serves `sync`. `default.project.json` and `sync.project.json` have the same project name, so a `rojo serve` you started yourself can't be told apart from the one `rogen serve` would start; `rogen serve` asks you to stop it instead of taking it over.
-</Callout>
-
 ## Data Files
 
 Darklua turns `.txt`, `.json`, `.toml`, `.yaml` and `.yml` files into Lua modules (`src/Note.txt` becomes `dist/Note.lua`) and drops `.csv` files. Rogen still points at `dist/Note.txt`, so the instance goes missing, and Rogen warns:
 
 ```
-default.rogen.json - warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua"). (output.dataFileConverted)
+rogen.json - warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua"). (output.dataFileConverted)
 ```
 
 Either require the module (`require(script.Parent.Note)` returns the string), or copy the data files into `dist` after Darklua runs.

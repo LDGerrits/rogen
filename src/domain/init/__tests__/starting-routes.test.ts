@@ -1,5 +1,6 @@
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { DerivedRoutes } from "../derived-routes.js";
+import { StarterProject } from "../starter-project.js";
 import { StartingRoutes } from "../starting-routes.js";
 
 const luau = new StartingRoutes(workspaceOf().languageFor("luau"));
@@ -39,15 +40,19 @@ describe("domain/init/starting-routes", () => {
 		describe("with routes derived from a project file", () => {
 			const derived = DerivedRoutes.of(
 				"default.project.json",
-				JSON.stringify({
-					name: "x",
-					tree: {
-						ServerScriptService: {
-							Server: { $path: "src/server" },
+				StarterProject.parse(
+					JSON.stringify({
+						name: "x",
+						tree: {
+							ServerScriptService: {
+								Server: { $path: "src/server" },
+							},
+							ReplicatedStorage: {
+								Shared: { $path: "src/shared" },
+							},
 						},
-						ReplicatedStorage: { Shared: { $path: "src/shared" } },
-					},
-				}),
+					})
+				).unwrap(),
 				["src"]
 			);
 			const routes = new StartingRoutes(

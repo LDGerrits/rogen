@@ -19,7 +19,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Inventory/Save@sever.luau",
         "status": "placed",
         "exists": true,
@@ -51,7 +51,7 @@ stdout:
         ]
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Shared/Server/Secret.server.luau",
         "status": "placed",
         "exists": true,
@@ -74,7 +74,7 @@ stdout:
         ]
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Inventory/New@sever.luau",
         "status": "placed",
         "exists": false,
@@ -106,7 +106,7 @@ stdout:
         ]
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Inventory/Clean.luau",
         "status": "placed",
         "exists": true,

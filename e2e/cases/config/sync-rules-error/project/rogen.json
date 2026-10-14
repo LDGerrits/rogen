@@ -1,0 +1,14 @@
+{
+	"syncRules": [
+		{
+			"pattern": "*.data.json",
+			"use": "json"
+		}
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	}
+}

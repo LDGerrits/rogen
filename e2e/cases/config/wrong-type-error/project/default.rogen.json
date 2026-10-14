@@ -1,5 +1,0 @@
-{
-	"rootDirs": ["src", 5],
-	"routes": {"*": 5},
-	"exclude": [1]
-}

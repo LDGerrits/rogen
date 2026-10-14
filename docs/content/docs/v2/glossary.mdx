@@ -5,31 +5,27 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## The Pipeline
 
-- **Root directory**: A directory Rogen scans and watches for code, listed in `rootDirs`. With several, their feature folders merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-root-directories).
+- **Source path**: A folder Rogen scans and watches for code, listed in `sourcePaths`. With several, their feature folders merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-source-paths).
 
-- **Common root**: The deepest folder that contains every root directory. Rogen works it out; you never write it in the config. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory).
+- **Common root**: The deepest folder that contains every source path. Rogen works it out; you never write it in the config. See [Sync Path](/docs/v2/core-concepts/output#sync-path).
 
-- **Linked directory**: A symlink or Windows junction inside a root directory, read as the directory it points to. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
+- **Linked directory**: A symlink or Windows junction inside a source path, read as the directory it points to. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
 
-- **Feature folder**: A folder inside a root directory that holds everything for one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
+- **Feature folder**: A folder inside a source path that holds everything for one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Sync directory**: The folder Rojo syncs from, set as `syncDir`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#sync-directory).
+- **Sync path**: The folder Rojo syncs from, set as `syncPath`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#sync-path).
 
-- **Template**: The Rojo project file that Rogen merges its generated tree into, set as `template`. See [Output and Sync](/docs/v2/core-concepts/output#template).
+- **Tree**: The instance tree in `rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
-- **Output**: The Rojo project file a config writes, set as `outFile`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
+- **Project**: The Rojo project file Rogen writes, `default.project.json`, beside the `rogen.json` it comes from. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
 
-- **Build**: One complete run that turns the root directories into an output for one config. See [CLI](/docs/v2/cli#build-name).
+- **Build**: One complete run that turns the source paths into a project. See [CLI](/docs/v2/cli#build-project).
 
-- **Rendering**: The tree written out as a project file, with its `$path`s rooted at one folder. See [Output and Sync](/docs/v2/core-concepts/output#one-tree-two-renderings).
+- **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#watch-project).
 
-- **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#watch-name).
-
-- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager a project uses. `init` detects it once. See [CLI](/docs/v2/cli#init-name).
+- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager a project uses. `init` detects it once. See [CLI](/docs/v2/cli#init).
 
 - **Processor**: A tool such as Darklua that rewrites your code into a folder of its own before Rojo syncs it. See the [Darklua guide](/docs/v2/setups/darklua).
-
-- **Place**: One Roblox place in a repo that builds several, written as a config that extends a shared one. See the [multi-place guide](/docs/v2/setups/multi-place).
 
 ## Routing
 
@@ -37,7 +33,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Route**: An entry in `routes` that sends files to a target. Its name is the **route key**. See [Routing](/docs/v2/core-concepts/routing).
 
-- **Governing route**: The one route that decides where a file goes: the first one Rogen meets, walking down from the root directory. Every route after it is ignored. See [Routing](/docs/v2/core-concepts/routing#the-governing-route).
+- **Governing route**: The one route that decides where a file goes: the first one Rogen meets, walking down from the source path. Every route after it is ignored. See [Routing](/docs/v2/core-concepts/routing#the-governing-route).
 
 - **Target**: The path a route places files at. Its first segment is a service. See [Routing](/docs/v2/core-concepts/routing#targets).
 
@@ -60,16 +56,14 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Filtering
 
-- **Excluded**: Left out of the output because the file, or the template `$path` that mounts it, matches an `exclude` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#excluding-files).
+- **Ignored**: Left out of the project because the file matches a `globIgnorePaths` glob. See [Project Layout](/docs/v2/core-concepts/project-layout#leaving-out-files).
 
-- **Mounted**: Left out of the scan because a template `$path` points at it, inside a root directory. Rojo reads it as it is, and Rogen neither routes it nor warns about it. See [Output and Sync](/docs/v2/core-concepts/output#template).
+- **Mounted**: Left out of the scan because a `tree` `$path` points at it, inside a source path. Rojo reads it as it is, and Rogen neither routes it nor warns about it. See [Configuration](/docs/v2/configuration#tree).
 
-- **Displaced**: Left out of the output because the template defines the file's node, or gives one of its folders a `$path`. See [Output and Sync](/docs/v2/core-concepts/output#template).
+- **Displaced**: Left out of the project because the `tree` defines the file's node, or gives one of its folders a `$path`. See [Configuration](/docs/v2/configuration#tree).
 
 ## Configuration
 
-- **Config**: A `<name>.rogen.json` file. One config is one tree and one output. See [Configuration](/docs/v2/configuration).
+- **Config**: A folder's `rogen.json`: a Rojo project file plus `sourcePaths`, `routes` and `syncPath`. See [Configuration](/docs/v2/configuration).
 
-- **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `.rogen.json` that fails to load and has v1's keys gets a hint that links to the [migration page](/docs/v2/migrating-from-v1).
-
-- **Override**: A CLI flag that replaces a config value for a single run. See [CLI](/docs/v2/cli#options).
+- **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `rogen.json` with v1's keys is an error that links to the [migration page](/docs/v2/migrating-from-v1).

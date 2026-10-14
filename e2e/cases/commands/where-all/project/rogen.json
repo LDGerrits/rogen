@@ -1,0 +1,10 @@
+{
+	"sourcePaths": [
+		"src",
+		"places/lobby"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

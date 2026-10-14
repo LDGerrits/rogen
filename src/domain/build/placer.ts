@@ -10,7 +10,7 @@ import {
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { LeftOut, SyncTool } from "./build.js";
-import { BuildTemplate } from "./build-template.js";
+import { BuildTree } from "./build-tree.js";
 import { InitScripts } from "./init-scripts.js";
 import { NameReadings } from "./name-readings.js";
 import { RootScanner, ScannedRoot } from "./root-scanner.js";
@@ -26,10 +26,10 @@ import { SyncLayout } from "./sync-layout.js";
 import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
-/** Finds where every file of a config lands: scans the root dirs, routes each file, then decides across files: copies init scripts, lets the last file with an instance path win and lets the template win. */
+/** Finds where every file of a config lands: scans the source paths, routes each file, then decides across files: copies init scripts, lets the last file with an instance path win and lets the tree win. */
 export class Placer {
 	private readonly layout: SyncLayout;
-	private readonly template: BuildTemplate;
+	private readonly tree: BuildTree;
 	private readonly initScripts: InitScripts;
 
 	constructor(
@@ -38,15 +38,17 @@ export class Placer {
 		tools: readonly SyncTool[]
 	) {
 		this.layout = new SyncLayout(config, tools);
-		this.template = new BuildTemplate(config, this.layout);
-		this.initScripts = new InitScripts(this.template);
+		this.tree = new BuildTree(config, this.layout);
+		this.initScripts = new InitScripts(this.tree);
 	}
 
 	place(): Result<Placement, Diagnostic[]> {
 		const { keys } = this.config;
-		const { mounts } = this.template;
-		const rootDirMounts = mounts.rootDirErrors(this.config.rootDirs);
-		if (rootDirMounts.length > 0) return err(rootDirMounts);
+		const { mounts } = this.tree;
+		const sourcePathMounts = mounts.sourcePathErrors(
+			this.config.sourcePaths
+		);
+		if (sourcePathMounts.length > 0) return err(sourcePathMounts);
 		const roots = this.scan();
 		const readings = new NameReadings(keys, this.layout.initNames, roots);
 		const claims = new RootClaims(roots, readings);
@@ -56,7 +58,7 @@ export class Placer {
 		const routeErrors = [
 			...markerClashes.diagnostics(),
 			...this.ignoredAtErrors(
-				routed.filter((file) => !this.template.displacing(file)),
+				routed.filter((file) => !this.tree.displacing(file)),
 				markerClashes
 			),
 			...this.withoutFolderErrors(withoutFolder),
@@ -66,7 +68,7 @@ export class Placer {
 		const routedNodes = this.initScripts.withCopies(routed, toCopy);
 		const resolved = new InstanceResolver().resolve(routedNodes);
 		const nodes = this.initScripts.withoutLoneInits(resolved.nodes);
-		const templating = this.yieldToTemplate(nodes);
+		const templating = this.yieldToTree(nodes);
 		const placed = new Set(nodes.map(({ entry }) => entry.source));
 		const leftOut = new LeftOutPaths(
 			roots.flatMap((root) => [...root.leftOut]),
@@ -84,7 +86,7 @@ export class Placer {
 			new Placement({
 				config: this.config,
 				layout: this.layout,
-				template: this.template,
+				tree: this.tree,
 				roots,
 				readings,
 				routedNodes,
@@ -96,18 +98,20 @@ export class Placer {
 		);
 	}
 
-	/** Reads the root dirs from the index, in `rootDirs` order, which decides clashes between them. */
+	/** Reads the source paths from the index, in `sourcePaths` order, which decides clashes between them. */
 	private scan(): ScannedRoot[] {
 		const scanner = new RootScanner(
 			this.index,
-			this.config.exclude,
-			this.template.mounts,
-			this.config.outFile
+			this.config.ignored,
+			this.tree.mounts,
+			this.config.projectFile
 		);
-		return this.config.rootDirs.map((rootDir) => scanner.scan(rootDir));
+		return this.config.sourcePaths.map((sourcePath) =>
+			scanner.scan(sourcePath)
+		);
 	}
 
-	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, unless the template displaces the file. A marker in a clash is that error's. */
+	/** An `@` an outer route outranks does nothing, so the name lies about where the file is; once per file or folder that spells it, unless the tree displaces the file. A marker in a clash is that error's. */
 	private ignoredAtErrors(
 		nodes: readonly RoutedFile[],
 		markerClashes: MarkerClashes
@@ -122,7 +126,7 @@ export class Placer {
 				const resource =
 					dir === undefined
 						? entry.source
-						: joinPosix(entry.rootDir, dir, marker ?? "");
+						: joinPosix(entry.sourcePath, dir, marker ?? "");
 				if (clashing.has(resource)) continue;
 				const kind = dir === undefined ? "file" : "folder";
 				const found = ignored.get(resource) ?? {
@@ -175,8 +179,8 @@ export class Placer {
 		});
 	}
 
-	/** Leaves out the files whose node the template already defines; the template wins. */
-	private yieldToTemplate(placed: readonly RoutedFile[]): {
+	/** Leaves out the files whose node the tree already defines; the tree wins. */
+	private yieldToTree(placed: readonly RoutedFile[]): {
 		readonly nodes: readonly RoutedFile[];
 		readonly leftOut: [string, LeftOut][];
 		readonly displaced: readonly DisplacedFile[];
@@ -185,7 +189,7 @@ export class Placer {
 		const leftOut: [string, LeftOut][] = [];
 		const displaced: DisplacedFile[] = [];
 		for (const file of placed) {
-			const displacing = this.template.displacing(file);
+			const displacing = this.tree.displacing(file);
 			if (!displacing) {
 				nodes.push(file);
 				continue;

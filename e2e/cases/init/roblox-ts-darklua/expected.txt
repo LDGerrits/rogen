@@ -9,15 +9,30 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
-  sync.project.json
-  sync.rogen.json
-  template.project.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"rbxts_include": {
+				"$path": {
+					"optional": "include"
+				},
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": {
+						"$path": {
+							"optional": "node_modules/@rbxts"
+						}
+					}
+				}
+			}
+		}
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {
@@ -26,29 +41,11 @@ default.rogen.json:
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"template": "template.project.json",
-	"syncDir": "out"
-}
-
-sync.rogen.json:
-{
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
-	"syncDir": "dist"
+	"syncPath": "dist"
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
-    main: Script  <- out/server/main.server.luau
-
-$ rojo sourcemap sync.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-  ServerScriptService: ServerScriptService
     main: Script  <- dist/server/main.server.luau
-
-$ rojo sourcemap template.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage

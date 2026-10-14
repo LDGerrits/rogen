@@ -8,7 +8,7 @@ export interface NextSteps {
 	readonly setup: readonly string[];
 	/** Long-running commands, one terminal each. */
 	readonly run: readonly string[];
-	/** Commands that have Darklua process the code into the sync dir. */
+	/** Commands that have Darklua process the code into the sync path. */
 	readonly darklua: readonly string[];
 	/** Pointers to what to change in the written files. */
 	readonly edits: readonly string[];
@@ -20,9 +20,9 @@ export interface InitPlan {
 	readonly directory: string;
 	/** In the order they are written. */
 	readonly files: readonly PlannedFile[];
-	/** Root dirs the configs name that `init` creates when they don't exist yet, relative to `directory`. Never one a config only inherits. */
+	/** Source paths the config names that `init` creates when they don't exist yet, relative to `directory`. */
 	readonly directories: readonly string[];
-	/** The file names of the configs it writes, which are built once written. */
+	/** The file names of the configs it writes, which are built once written; none when it only adds agent files. */
 	readonly configs: readonly string[];
 	/** Lines printed before the files are written. */
 	readonly notes: readonly string[];
@@ -41,15 +41,12 @@ export interface InitOptions {
 	readonly ask?: boolean;
 }
 
-/** Writes a starter config into the working directory in two steps, so a caller can print between them. */
+/** Writes a starter `rogen.json` into the working directory in two steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
 	/** Asks what to write and writes nothing; `ok(undefined)` means the user cancelled. With `ask` false it takes every default, as a run without a terminal does. */
-	plan(
-		names: readonly string[],
-		options?: InitOptions
-	): Promise<Result<InitPlan | undefined, Error>>;
+	plan(options?: InitOptions): Promise<Result<InitPlan | undefined, Error>>;
 
 	/** Writes the plan's files, then creates the directories that don't exist yet, calling `onWritten` after each and stopping at the first that fails. A directory that exists is left alone and not reported. */
 	write(

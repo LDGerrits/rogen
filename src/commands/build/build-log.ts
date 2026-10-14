@@ -5,7 +5,6 @@ import {
 	BuildSummary,
 	ConfigBuild,
 } from "../../domain/build/build.js";
-import { ResolvedConfig } from "../../domain/config/config.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -61,19 +60,13 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	});
 }
 
-/** The `extends` chain of a config. */
-function describeConfig(config: ResolvedConfig, cwd: string): string[] {
-	const parents = config.parents.map((file) => relativeTo(cwd, file));
-	return parents.length > 0 ? [`extends: ${parents.join(" -> ")}`] : [];
-}
-
-/** One line per root dir and route. */
+/** One line per source path and route. */
 function describeBuild(summary: BuildSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
-		({ rootDir, files, excluded, mounted, skippedLinks }) =>
+		({ sourcePath, files, ignored, mounted, skippedLinks }) =>
 			[
-				`${relativeTo(cwd, rootDir)}: ${plural(files, "file")}`,
-				...(excluded > 0 ? [`${excluded} excluded`] : []),
+				`${relativeTo(cwd, sourcePath)}: ${plural(files, "file")}`,
+				...(ignored > 0 ? [`${ignored} ignored`] : []),
 				...(mounted > 0 ? [`${mounted} mounted`] : []),
 				...(skippedLinks > 0
 					? [plural(skippedLinks, "skipped link")]
@@ -90,7 +83,7 @@ function describeBuild(summary: BuildSummary, cwd: string): string[] {
 			? [`${summary.replaced} replaced by a file with the same name`]
 			: []),
 		...(summary.displaced > 0
-			? [`${summary.displaced} displaced by the template`]
+			? [`${summary.displaced} displaced by the tree`]
 			: []),
 	];
 	return [
@@ -186,7 +179,7 @@ export class BuildLog {
 					this.cwd,
 					build.outcome === "notLoaded"
 						? build.file
-						: build.config.outFile
+						: build.config.projectFile
 				),
 				outcome,
 				note,
@@ -197,15 +190,15 @@ export class BuildLog {
 			case "wrote":
 			case "unchanged":
 				this.logService.success(line(build.outcome));
-				this.details(build.config, build.summary);
+				this.details(build.summary);
 				break;
 			case "notWritten":
 				this.logService.error(line("not written"));
-				this.details(build.config, build.summary);
+				this.details(build.summary);
 				break;
 			case "failed":
 				this.logService.error(line("not written"));
-				this.details(build.config);
+				this.details();
 				break;
 			case "notLoaded":
 				this.logService.error(line("not loaded"));
@@ -237,12 +230,9 @@ export class BuildLog {
 		);
 	}
 
-	/** The `--verbose` lines for one config: how it was loaded and, once built, what the build placed. */
-	private details(config: ResolvedConfig, summary?: BuildSummary): void {
-		for (const line of [
-			...describeConfig(config, this.cwd),
-			...(summary ? describeBuild(summary, this.cwd) : []),
-		])
+	/** The `--verbose` lines for one config: what the build placed, once built. */
+	private details(summary?: BuildSummary): void {
+		for (const line of summary ? describeBuild(summary, this.cwd) : [])
 			this.logService.debug(line);
 	}
 }

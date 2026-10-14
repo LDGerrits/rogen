@@ -1,16 +1,12 @@
 import { Disposable } from "../../base/disposable.js";
 import { Event } from "../../base/event.js";
-import { PathSet } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
 import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigOptionValues,
-	ReloadableSelection,
-} from "../config/config-service.js";
+import { ReloadableSelection } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
 import { ServerExecutable } from "../runner/rojo-runner.js";
 import {
@@ -21,9 +17,8 @@ import {
 import { ServeAddress } from "./serve.js";
 
 export interface ServeRequest {
-	/** The configs to serve, by name or path; every config here that no other extends when none. */
+	/** The configs to serve, by folder or project file path; the one here when none. */
 	readonly refs: readonly string[];
-	readonly options: ConfigOptionValues;
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
 	/** Ends the checks that run other programs, when the run is stopped before it has started. */
@@ -54,11 +49,7 @@ export class ServePlan {
 		readonly selection: ReloadableSelection,
 		readonly executable: ServerExecutable,
 		readonly targets: readonly ServeTarget[],
-		readonly serverArgs: readonly string[],
-		/** The config files named on the command line, the only ones served; `undefined` when the serve follows its folder's configs. */
-		readonly named?: PathSet,
-		/** The configs in the working folder that the selection leaves out. */
-		readonly neighbours: readonly ResolvedConfig[] = []
+		readonly serverArgs: readonly string[]
 	) {}
 
 	/** The targets a server already serves. */
@@ -131,11 +122,11 @@ export type ServerExitEvent = {
 
 /** How the servers changed with the configs, after the session started them. A config that comes to be served starts its server as at the start, and says so through `onDidServe`. */
 export type ServeChangeEvent =
-	/** A server stopped on purpose: its config is gone, another config now extends it, or its template moved it to another address, where a new server starts. */
+	/** A server stopped on purpose: its config is gone, or its rogen.json moved it to another address, where a new server starts. */
 	| {
 			readonly kind: "retired";
 			readonly target: ServeTarget;
-			readonly reason: "removed" | "extended" | "moved";
+			readonly reason: "removed" | "moved";
 	  }
 	/** A config to serve now couldn't be served, as its port is taken or it names another server than this serve runs; the others go on, and so does its own server if it has one. */
 	| {

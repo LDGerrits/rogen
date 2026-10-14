@@ -21,32 +21,42 @@ rogen init
 
 ```
 Syncing from out, where roblox-ts compiles to.
-Created template.project.json.
-Created default.rogen.json.
+Created rogen.json.
 default.project.json · wrote
 Next steps
   Run each in its own terminal:
     rbxtsc -w
     rogen serve
-  Add your own routes under "routes" in default.rogen.json.
+  Add your own routes under "routes" in rogen.json.
 ```
 
-```json title="default.rogen.json"
+```json title="rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": ["src"],
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"rbxts_include": {
+				"$path": { "optional": "include" },
+				"node_modules": {
+					"$className": "Folder",
+					"@rbxts": { "$path": { "optional": "node_modules/@rbxts" } }
+				}
+			}
+		}
+	},
+	"sourcePaths": ["src"],
 	"routes": {
 		"server": "ServerScriptService",
 		"client": "StarterPlayer/StarterPlayerScripts",
 		"shared": "ReplicatedStorage/shared",
 		"*": "ReplicatedStorage/shared"
 	},
-	"template": "template.project.json",
-	"syncDir": "out"
+	"syncPath": "out"
 }
 ```
 
-The `syncDir` comes from the `outDir` in `tsconfig.json` (or `out` if that isn't set), and the template mounts `include` and `node_modules/@rbxts` the way roblox-ts projects expect. Commit the project files with the rest, so a fresh clone works before anyone has run `rogen build`: see [Commit the project file](/docs/v2/core-concepts/output#commit-the-project-file).
+The `syncPath` comes from the `outDir` in `tsconfig.json` (or `out` if that isn't set), and the `tree` mounts `include` and `node_modules/@rbxts` the way roblox-ts projects expect. Rojo syncs from the sync path, so it serves your compiled code, while Rogen routes by the folders in `src`. Commit `default.project.json` with the rest, so a fresh clone works before anyone has run `rogen build`: see [Commit the project file](/docs/v2/core-concepts/output#commit-the-project-file).
 
 </Step>
 

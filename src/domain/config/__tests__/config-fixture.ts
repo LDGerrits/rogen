@@ -5,9 +5,8 @@ import { ReloadableSelection, buildableConfig } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 export interface Refs {
-	/** Names or paths; the default config when absent. */
+	/** Folders or project file paths; the config here when absent. */
 	readonly names?: string[];
-	readonly overrides?: { readonly outFile?: string };
 }
 
 export let fs: MemoryFileSystemService;
@@ -39,28 +38,20 @@ export const plain = (config: ResolvedConfig | undefined) =>
 	config && {
 		file: config.file,
 		name: config.projectName,
-		rootDirs: config.rootDirs,
+		sourcePaths: config.sourcePaths,
 		routes: Object.fromEntries(
 			[...config.routes].map(([key, target]) => [key, String(target)])
 		),
-		exclude: config.exclude,
-		syncDir: config.syncDir,
-		outFile: config.outFile,
-		template: config.template && {
-			file: config.template.file,
-			project: config.template.project.getFile(),
-		},
+		ignored: config.ignored,
+		syncPath: config.syncPath,
+		projectFile: config.projectFile,
+		project: config.project.getFile(),
 	};
 
 /** Selects the configs `refs` names, as the matching command line would. */
-export const start = async (
-	{ names = ["default"], overrides }: Refs = {},
-	cwd = "/repo"
-) => {
+export const start = async ({ names = [] }: Refs = {}, cwd = "/repo") => {
 	service = new CoreConfigService(fs, new MockEnvironmentService(cwd));
-	const result = await service.select(names, {
-		"out-file": overrides?.outFile,
-	});
+	const result = await service.select(names);
 	if (result.isOk()) selection = result.value;
 	return result;
 };

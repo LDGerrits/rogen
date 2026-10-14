@@ -1,88 +1,52 @@
-$ rogen list --json
+$ rogen list game lobby --json
 exit 0
 stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
+        "config": "Game",
+        "file": "<dir>/game/rogen.json",
         "status": "valid",
-        "extends": [
-          "<dir>/source.rogen.json"
-        ],
-        "extendedBy": [],
         "served": true,
-        "projectName": "project",
-        "rootDirs": [
-          "<dir>/src"
+        "projectName": "Game",
+        "sourcePaths": [
+          "<dir>/game/src"
         ],
-        "commonRoot": "<dir>/src",
+        "commonRoot": "<dir>/game/src",
         "routes": {
           "server": "ServerScriptService",
           "client": "StarterPlayer/StarterPlayerScripts",
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "exclude": [],
-        "template": null,
-        "templates": [],
-        "syncDir": "<dir>/dist",
-        "outFile": "<dir>/default.project.json",
+        "globIgnorePaths": [
+          "<dir>/game/**/*.spec.luau"
+        ],
+        "syncPath": "<dir>/game/dist",
+        "projectFile": "<dir>/game/default.project.json",
         "serving": null,
         "diagnostics": []
       },
       {
         "config": "lobby",
-        "file": "<dir>/lobby.rogen.json",
+        "file": "<dir>/lobby/rogen.json",
         "status": "valid",
-        "extends": [],
-        "extendedBy": [],
         "served": true,
-        "projectName": "project",
-        "rootDirs": [
-          "<dir>/core",
-          "<dir>/places/lobby"
+        "projectName": "lobby",
+        "sourcePaths": [
+          "<dir>/lobby/core",
+          "<dir>/lobby/places/lobby"
         ],
-        "commonRoot": "<dir>",
+        "commonRoot": "<dir>/lobby",
         "routes": {
           "server": "ServerScriptService",
           "client": "StarterPlayer/StarterPlayerScripts",
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "exclude": [],
-        "template": null,
-        "templates": [],
-        "syncDir": null,
-        "outFile": "<dir>/out/lobby.project.json",
-        "serving": null,
-        "diagnostics": []
-      },
-      {
-        "config": "source",
-        "file": "<dir>/source.rogen.json",
-        "status": "valid",
-        "extends": [],
-        "extendedBy": [
-          "<dir>/default.rogen.json"
-        ],
-        "served": false,
-        "projectName": "project",
-        "rootDirs": [
-          "<dir>/src"
-        ],
-        "commonRoot": "<dir>/src",
-        "routes": {
-          "server": "ServerScriptService",
-          "client": "StarterPlayer/StarterPlayerScripts",
-          "shared": "ReplicatedStorage/shared",
-          "*": "ReplicatedStorage/shared"
-        },
-        "exclude": [],
-        "template": null,
-        "templates": [],
-        "syncDir": null,
-        "outFile": "<dir>/source.project.json",
+        "globIgnorePaths": [],
+        "syncPath": null,
+        "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
         "diagnostics": []
       }
@@ -96,28 +60,24 @@ stdout:
     "configs": [
       {
         "config": "lobby",
-        "file": "<dir>/lobby.rogen.json",
+        "file": "<dir>/lobby/rogen.json",
         "status": "valid",
-        "extends": [],
-        "extendedBy": [],
         "served": true,
-        "projectName": "project",
-        "rootDirs": [
-          "<dir>/core",
-          "<dir>/places/lobby"
+        "projectName": "lobby",
+        "sourcePaths": [
+          "<dir>/lobby/core",
+          "<dir>/lobby/places/lobby"
         ],
-        "commonRoot": "<dir>",
+        "commonRoot": "<dir>/lobby",
         "routes": {
           "server": "ServerScriptService",
           "client": "StarterPlayer/StarterPlayerScripts",
           "shared": "ReplicatedStorage/shared",
           "*": "ReplicatedStorage/shared"
         },
-        "exclude": [],
-        "template": null,
-        "templates": [],
-        "syncDir": null,
-        "outFile": "<dir>/out/lobby.project.json",
+        "globIgnorePaths": [],
+        "syncPath": null,
+        "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
         "diagnostics": []
       }

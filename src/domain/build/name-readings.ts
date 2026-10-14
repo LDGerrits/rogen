@@ -20,12 +20,12 @@ import { ScannedFile, ScannedRoot } from "./root-scanner.js";
 
 /** A folder that never becomes an instance, as a warning names it. */
 export type InstancelessFolder =
-	"a root dir" | "a routing folder" | "an invisible folder";
+	"a source path" | "a routing folder" | "an invisible folder";
 
 /** A folder read once: what its name means, and the declared key it only differs from in case. */
 export type FolderReading = FolderNameReading & {
 	readonly segment: string;
-	/** The folder relative to the root dir. */
+	/** The folder relative to the source path. */
 	readonly dir: string;
 	readonly nearMissKey?: string;
 };
@@ -68,7 +68,7 @@ export class NameReadings {
 		for (const root of roots) {
 			this.readMarkers(root);
 			for (const metaFile of root.metaFiles)
-				this.readFoldersAbove(root.rootDir, metaFile);
+				this.readFoldersAbove(root.sourcePath, metaFile);
 			for (const entry of root.entries) this.readEntry(root, entry);
 		}
 	}
@@ -95,8 +95,8 @@ export class NameReadings {
 
 	private readMarkers(root: ScannedRoot): void {
 		for (const marker of root.markers) {
-			this.readFoldersAbove(root.rootDir, marker);
-			const resource = joinPosix(root.rootDir, marker);
+			this.readFoldersAbove(root.sourcePath, marker);
+			const resource = joinPosix(root.sourcePath, marker);
 			const read = this.reader.marker(path.posix.basename(marker));
 			this._markers.set(resource, read);
 			this.noteNearMiss(resource, read.nearMissKey);
@@ -106,7 +106,10 @@ export class NameReadings {
 
 	private readEntry(root: ScannedRoot, entry: ScannedFile): void {
 		const { fileName, kind, stem } = NameReadings.suffixedNameOf(entry);
-		const folders = this.readFoldersAbove(root.rootDir, entry.relativePath);
+		const folders = this.readFoldersAbove(
+			root.sourcePath,
+			entry.relativePath
+		);
 		const match = this.reader.suffixes(stem, kind === "script");
 		const scriptSuffix =
 			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
@@ -127,7 +130,7 @@ export class NameReadings {
 				),
 		});
 		for (const folder of folders) {
-			const resource = joinPosix(root.rootDir, folder.dir);
+			const resource = joinPosix(root.sourcePath, folder.dir);
 			this.noteNearMiss(resource, folder.nearMissKey);
 			this.noteMisspellings(resource, folder.misspellings);
 		}
@@ -141,10 +144,13 @@ export class NameReadings {
 		return read;
 	}
 
-	/** Why the folder `dir` of a root dir can never become an instance by its name; `undefined` for one that can, if a route places something through it. */
-	instanceless(rootDir: string, dir: string): InstancelessFolder | undefined {
-		if (dir === "") return "a root dir";
-		const folder = this._folders.get(joinPosix(rootDir, dir));
+	/** Why the folder `dir` of a source path can never become an instance by its name; `undefined` for one that can, if a route places something through it. */
+	instanceless(
+		sourcePath: string,
+		dir: string
+	): InstancelessFolder | undefined {
+		if (dir === "") return "a source path";
+		const folder = this._folders.get(joinPosix(sourcePath, dir));
 		if (folder?.keptName !== undefined)
 			return folder.invisible ? "an invisible folder" : undefined;
 		return folder?.route !== undefined ? "a routing folder" : undefined;
@@ -206,8 +212,8 @@ export class NameReadings {
 		);
 	}
 
-	private folderAt(rootDir: string, dir: string): FolderReading {
-		const key = joinPosix(rootDir, dir);
+	private folderAt(sourcePath: string, dir: string): FolderReading {
+		const key = joinPosix(sourcePath, dir);
 		let read = this._folders.get(key);
 		if (!read) {
 			const segment = path.posix.basename(dir);
@@ -228,14 +234,14 @@ export class NameReadings {
 	}
 
 	private readFoldersAbove(
-		rootDir: string,
+		sourcePath: string,
 		relativePath: string
 	): FolderReading[] {
 		const above: FolderReading[] = [];
 		let dir = "";
 		for (const segment of relativePath.split("/").slice(0, -1)) {
 			dir = dir ? `${dir}/${segment}` : segment;
-			above.push(this.folderAt(rootDir, dir));
+			above.push(this.folderAt(sourcePath, dir));
 		}
 		return above;
 	}

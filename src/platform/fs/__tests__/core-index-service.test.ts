@@ -251,7 +251,7 @@ describe("CoreIndexService", () => {
 			listing = await indexService.list(["src"]);
 		});
 
-		it("should drop a listed root dir that is deleted, although no parent lists it", async () => {
+		it("should drop a listed source path that is deleted, although no parent lists it", async () => {
 			await memoryFs.delete("src", true);
 
 			listing = await indexService.update(listing, [

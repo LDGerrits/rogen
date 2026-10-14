@@ -1,0 +1,43 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src/A.luau src/A.spec.luau
+exit 0
+stdout:
+  src/A.luau -> ReplicatedStorage/shared/A · route * (fallback)
+    require(game:GetService("ReplicatedStorage").shared.A)
+  src/A.spec.luau -> ignored · matches **/*.spec.luau
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "A": {
+          "$path": {
+            "optional": "src/A.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "**/*.spec.luau",
+    "src/A.spec.luau"
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

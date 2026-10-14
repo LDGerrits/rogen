@@ -1,0 +1,65 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
+  Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
+  Created rogen.json.
+  Created AGENTS.md.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Add your own routes under "routes" in rogen.json.
+  Wrote 2 files.
+
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {},
+		"ServerScriptService": {},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {}
+		},
+		"Workspace": {
+			"$properties": {
+				"FilteringEnabled": true
+			}
+		}
+	},
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"shared": "ReplicatedStorage/Shared",
+		"server": "ServerScriptService/Server",
+		"client": "StarterPlayer/StarterPlayerScripts/Client",
+		"*": "ReplicatedStorage/Shared"
+	}
+}
+
+$ rojo sourcemap default.project.json
+my-game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Util: ModuleScript  <- src/shared/Util.luau
+  ServerScriptService: ServerScriptService
+    Server: Folder
+      Main: Script  <- src/server/Main.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Client: Folder
+        Main: LocalScript  <- src/client/Main.client.luau
+  Workspace: Workspace

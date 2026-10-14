@@ -1,6 +1,0 @@
-{
-	"extends": "./a.rogen.json",
-	"rootDirs": [
-		"one"
-	]
-}

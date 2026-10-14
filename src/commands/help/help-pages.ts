@@ -21,7 +21,7 @@ const TOPICS: readonly HelpTopic[] = [
 	},
 	{
 		name: "config",
-		description: "Config fields, extends, places, templates and sync dirs.",
+		description: "Config fields, the tree, source paths and the sync path.",
 	},
 	{
 		name: "layout",

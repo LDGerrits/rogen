@@ -1,0 +1,26 @@
+{
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/Shared"
+	},
+	"mode": "dev",
+	"modes": {
+		"dev": {
+			"exclude": [
+				"**/*.spec.luau"
+			]
+		}
+	},
+	"variants": [
+		"mock"
+	],
+	"conflicts": [
+		[
+			"mock",
+			"dev"
+		]
+	],
+	"server": "argon"
+}

@@ -3,43 +3,43 @@ exit 0
 stdout:
   rogen build · lobby, match
   lobby
-    lobby.project.json · wrote
+    lobby/default.project.json · wrote
   match
-    match.project.json · wrote
+    match/default.project.json · wrote
   Built 2 configs with 4 warnings.
 stderr:
-    [debug] extends: shared/base.rogen.json
-    [debug] src: 4 files, 1 excluded
+    [debug] src: 5 files
     [debug] route server -> ServerScriptService: 2 files
     [debug] route client -> StarterPlayer/StarterPlayerScripts: 1 file
-    [debug] route * -> ReplicatedStorage/shared: 1 file
+    [debug] route * -> ReplicatedStorage/shared: 2 files
     [debug] src: 5 files
-    [debug] lib: 1 file
+    [debug] match/lib: 1 file
     [debug] route server -> ServerScriptService: 2 files
     [debug] left out: 4 unrouted
   src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
   src/Util.spec.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
   src/client/Hud.client.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
-  lib/Signal.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+  match/lib/Signal.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
 
 written:
-  lobby.project.json
-  match.project.json
+  lobby/default.project.json
+  match/default.project.json
 
-$ rojo sourcemap lobby.project.json
-project: DataModel
+$ rojo sourcemap lobby/default.project.json
+lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      Util: ModuleScript  <- src/Util.luau
+      Util: ModuleScript  <- ../src/Util.luau
+      Util.spec: ModuleScript  <- ../src/Util.spec.luau
   ServerScriptService: ServerScriptService
-    Save: Script  <- src/server/Save.server.luau
-    Save.mock: Script  <- src/server/Save.mock.server.luau
+    Save: Script  <- ../src/server/Save.server.luau
+    Save.mock: Script  <- ../src/server/Save.mock.server.luau
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
-      Hud: LocalScript  <- src/client/Hud.client.luau
+      Hud: LocalScript  <- ../src/client/Hud.client.luau
 
-$ rojo sourcemap match.project.json
-project: DataModel
+$ rojo sourcemap match/default.project.json
+match: DataModel
   ServerScriptService: ServerScriptService
-    Save: Script  <- src/server/Save.server.luau
-    Save.mock: Script  <- src/server/Save.mock.server.luau
+    Save: Script  <- ../src/server/Save.server.luau
+    Save.mock: Script  <- ../src/server/Save.mock.server.luau

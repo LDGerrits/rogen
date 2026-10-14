@@ -3,16 +3,16 @@ import { containsPosix, normalizeDir } from "../../base/path.js";
 import { DeclaredKeys } from "../config/config.js";
 import { isSupportedService } from "../roblox/supported-services.js";
 import { MountedPath, rojoPathTarget } from "../rojo/rojo-project.js";
-import { StarterTemplate } from "./starter-template.js";
+import { StarterProject } from "./starter-project.js";
 import { instanceKey } from "../roblox/roblox.js";
 
-/** The routes that reproduce the mounts of a hand-written project file, which a copy leaves out because Rogen generates that code now. */
+/** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out because Rogen generates that code now. */
 export class DerivedRoutes {
-	/** Route key to target, one for each mount of a folder directly in a root dir. */
+	/** Route key to target, one for each mount of a folder directly in a source path. */
 	readonly routes = new Map<string, string>();
-	/** Where files that match no route go: the target a root dir was mounted at, else the one of the shared route. */
+	/** Where files that match no route go: the target a source path was mounted at, else the one of the shared route. */
 	readonly fallback: string | undefined;
-	/** The mounts inside a root dir that no route can reproduce, as their `$path` and the node they were at. */
+	/** The mounts inside a source path that no route can reproduce, as their `$path` and the node they were at. */
 	readonly unrouted: { readonly target: string; readonly node: string }[] =
 		[];
 
@@ -20,9 +20,9 @@ export class DerivedRoutes {
 		/** The project file the mounts were in. */
 		readonly from: string,
 		removed: readonly MountedPath[],
-		rootDirs: readonly string[]
+		sourcePaths: readonly string[]
 	) {
-		const roots = rootDirs.map(normalizeDir);
+		const roots = sourcePaths.map(normalizeDir);
 		let rootTarget: string | undefined;
 		for (const { path: rojoPath, instancePath } of removed) {
 			const target = normalizeDir(rojoPathTarget(rojoPath));
@@ -58,16 +58,15 @@ export class DerivedRoutes {
 			)?.[1];
 	}
 
-	/** The routes for the mounts in `content` that point into `rootDirs`; `undefined` when it isn't a project file or holds none. */
+	/** The routes for the mounts in `project` that point into `sourcePaths`; `undefined` when it holds none. */
 	static of(
 		from: string,
-		content: string,
-		rootDirs: readonly string[]
+		project: StarterProject,
+		sourcePaths: readonly string[]
 	): DerivedRoutes | undefined {
-		const removed =
-			StarterTemplate.parse(content)?.withoutNodesIn(rootDirs)?.removed;
+		const removed = project.withoutNodesIn(sourcePaths)?.removed;
 		if (!removed) return undefined;
-		const derived = new DerivedRoutes(from, removed, rootDirs);
+		const derived = new DerivedRoutes(from, removed, sourcePaths);
 		return derived.routes.size > 0 ||
 			derived.fallback !== undefined ||
 			derived.unrouted.length > 0

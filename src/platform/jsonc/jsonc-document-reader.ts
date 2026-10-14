@@ -15,12 +15,6 @@ export interface JsoncDocumentKind {
 	readonly noun: string;
 }
 
-/** A better thing to say than "unknown field" about a field a caller knows the history of. */
-export type UnknownFieldAdvisor = (
-	path: string,
-	location: DiagnosticLocation
-) => Diagnostic | undefined;
-
 export interface JsoncObject {
 	readonly root: Extract<JsoncNode, { kind: "object" }>;
 	readonly value: Record<string, unknown>;
@@ -37,10 +31,7 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 
 /** Parses JSONC text into a JSON object and checks it against a schema, saying every problem it finds as a diagnostic. */
 export class JsoncDocumentReader {
-	constructor(
-		private readonly kind: JsoncDocumentKind,
-		private readonly adviseUnknown?: UnknownFieldAdvisor
-	) {}
+	constructor(private readonly kind: JsoncDocumentKind) {}
 
 	read(
 		text: string,
@@ -131,11 +122,6 @@ export class JsoncDocumentReader {
 				return this.validate(property.value, known, file, propertyPath);
 			}
 			if (schema.additionalProperties === false) {
-				const advice = this.adviseUnknown?.(
-					propertyPath,
-					location(property)
-				);
-				if (advice) return [advice];
 				const present = new Set(
 					node.properties.map(({ name }) => name)
 				);

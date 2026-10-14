@@ -5,7 +5,6 @@ import {
 	commonAncestor,
 	contains,
 	containsPath,
-	pathKey,
 	containsPosix,
 	dirnamePosix,
 	isInside,
@@ -203,23 +202,6 @@ describe("normalizeDir", () => {
 			expect(containsPath("C:/Repo/Src", "c:/repo/src", true)).toBe(true);
 			expect(containsPath("C:/Repo/Src", "c:/repo/src-extra", true)).toBe(
 				false
-			);
-		});
-	});
-
-	describe("pathKey", () => {
-		it("should be one string for the paths that name one file", () => {
-			expect(pathKey("/repo/src/../Out.json", false)).toBe(
-				path.resolve("/repo/Out.json")
-			);
-			expect(pathKey("/repo/Out.json", true)).toBe(
-				pathKey("/repo/out.JSON", true)
-			);
-		});
-
-		it("should tell letter cases apart unless asked not to", () => {
-			expect(pathKey("/repo/Out.json", false)).not.toBe(
-				pathKey("/repo/out.json", false)
 			);
 		});
 	});

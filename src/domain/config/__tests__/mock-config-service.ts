@@ -4,7 +4,7 @@ import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { Target } from "../../roblox/roblox.js";
 import { RojoProject } from "../../rojo/rojo-project.js";
-import { ResolvedConfig, ResolvedTemplate, TemplateClash } from "../config.js";
+import { ResolvedConfig } from "../config.js";
 import {
 	BrokenConfigEntry,
 	ConfigEntry,
@@ -19,68 +19,57 @@ import {
 
 export interface ResolvedConfigSpec {
 	readonly file?: string;
-	readonly parents?: readonly string[];
 	readonly name?: string;
-	readonly rootDirs?: readonly string[];
+	readonly sourcePaths?: readonly string[];
 	readonly routes?: Readonly<Record<string, string>>;
-	readonly exclude?: readonly string[];
-	readonly template?: {
-		readonly file: string;
-		readonly project: Readonly<Record<string, unknown>>;
-		readonly bases?: readonly string[];
-		readonly clashes?: readonly TemplateClash[];
-	};
-	readonly syncDir?: string;
-	readonly outFile?: string;
+	/** Globs on absolute POSIX paths. */
+	readonly ignored?: readonly string[];
+	/** The Rojo project file the config describes; a bare DataModel without one. */
+	readonly project?: Readonly<Record<string, unknown>>;
+	readonly syncPath?: string;
+	readonly warnings?: readonly Diagnostic[];
 }
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
-	const file = spec.file ?? "/repo/default.rogen.json";
+	const file = spec.file ?? "/repo/rogen.json";
 	return new ResolvedConfig({
 		file,
-		parents: spec.parents ?? [],
 		projectName: spec.name ?? "repo",
-		rootDirs: spec.rootDirs ?? [],
+		project: RojoProject.parse(
+			JSON.stringify(
+				spec.project ?? { tree: { $className: "DataModel" } }
+			)
+		).unwrap(),
+		sourcePaths: spec.sourcePaths ?? [],
 		routes: new Map(
 			Object.entries(spec.routes ?? {}).map(([key, text]) => [
 				key,
 				Target.parse(text, { resource: file }).unwrap(),
 			])
 		),
-		exclude: spec.exclude ?? [],
-		template:
-			spec.template &&
-			new ResolvedTemplate(
-				spec.template.file,
-				RojoProject.parse(
-					JSON.stringify(spec.template.project)
-				).unwrap(),
-				spec.template.bases,
-				spec.template.clashes
-			),
-		syncDir: spec.syncDir,
-		outFile: spec.outFile ?? "/repo/default.project.json",
+		ignored: spec.ignored ?? [],
+		syncPath: spec.syncPath,
+		warnings: spec.warnings ?? [],
 	});
 }
 
 export function mockEntry(
 	resolved: ResolvedConfigSpec = {},
-	file = "/repo/default.rogen.json"
+	file = "/repo/rogen.json"
 ): ValidConfigEntry {
 	const config = mockConfig({ file, ...resolved });
-	return { status: "valid", file, parents: config.parents, config };
+	return { status: "valid", file, config };
 }
 
 /** A config whose latest load failed with `errors`; `lastValid` is what a watch keeps building. */
 export function brokenEntry(
 	errors: readonly Diagnostic[],
-	file = "/repo/default.rogen.json",
+	file = "/repo/rogen.json",
 	lastValid?: ResolvedConfigSpec
 ): BrokenConfigEntry {
 	return {
 		status: "broken",
 		file,
-		parents: lastValid?.parents ?? [],
 		errors,
 		lastValid: lastValid && mockConfig({ file, ...lastValid }),
 	};
@@ -94,7 +83,6 @@ export function selectionOf(
 		configs.map((config) => ({
 			status: "valid",
 			file: config.file,
-			parents: config.parents,
 			config,
 		}))
 	);

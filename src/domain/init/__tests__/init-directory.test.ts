@@ -11,9 +11,7 @@ describe("domain/init/init-directory", () => {
 					directory,
 					new Set(["agents.md"]),
 					workspaceOf(),
-					{ codeFolders: [], places: [] },
-					undefined,
-					undefined,
+					{ codeFolders: [] },
 					caseInsensitive
 				);
 
@@ -28,70 +26,109 @@ describe("domain/init/init-directory", () => {
 		});
 
 		describe("checkFree", () => {
-			const target = directoryOf({ existing: ["a.rogen.json"] });
+			const target = directoryOf({
+				existing: ["rogen.json", "tsconfig.json"],
+			});
 
-			it("should name each file that already exists here", () => {
-				expect(
-					target.checkFree(["a.rogen.json", "b.rogen.json"])
-				).toMatchObject([
+			it("should say a config that already exists can be deleted", () => {
+				expect(target.checkFree(["rogen.json"])).toMatchObject([
 					{
 						code: "init.configExists",
-						resource: path.join(directory, "a.rogen.json"),
+						resource: path.join(directory, "rogen.json"),
 					},
 				]);
 			});
 
+			it("should say any other file that already exists is never overwritten", () => {
+				expect(target.checkFree(["tsconfig.json"])).toMatchObject([
+					{
+						code: "init.fileExists",
+						resource: path.join(directory, "tsconfig.json"),
+					},
+				]);
+			});
+
+			it("should name each file that already exists here", () => {
+				expect(
+					target
+						.checkFree([
+							"rogen.json",
+							"rogen.jsonc",
+							"tsconfig.json",
+						])
+						.map(({ resource }) => resource)
+				).toEqual([
+					path.join(directory, "rogen.json"),
+					path.join(directory, "tsconfig.json"),
+				]);
+			});
+
 			it("should say nothing when every file is free", () => {
-				expect(target.checkFree(["b.rogen.json"])).toEqual([]);
+				expect(target.checkFree(["rogen.jsonc"])).toEqual([]);
 			});
 		});
 
-		describe("handWrittenProjectFiles", () => {
-			it("should list project files no config beside them writes, but for the template", () => {
+		describe("configFiles", () => {
+			it("should list the config files here, sorted", () => {
 				const target = directoryOf({
 					existing: [
-						"game.project.json",
-						"other.project.json",
-						"other.rogen.json",
-						"notes.json",
-						"template.project.json",
-						"lobby.template.project.json",
+						"rogen.jsonc",
+						"rogen.json",
+						"default.project.json",
 					],
 				});
 
-				expect(target.handWrittenProjectFiles).toEqual([
-					"game.project.json",
+				expect(target.configFiles).toEqual([
+					"rogen.json",
+					"rogen.jsonc",
 				]);
+				expect(target.hasConfigs).toBe(true);
+			});
+
+			it("should find none beside a project file alone", () => {
+				const target = directoryOf({
+					existing: ["default.project.json"],
+				});
+
+				expect(target.configFiles).toEqual([]);
+				expect(target.hasConfigs).toBe(false);
 			});
 		});
 
-		it("should name the game after the folder", () => {
-			expect(directoryOf().projectName).toBe("my-game");
-		});
+		describe("hasHandWrittenProject", () => {
+			it("should know whether default.project.json is here", () => {
+				expect(directoryOf().hasHandWrittenProject).toBe(false);
+				expect(
+					directoryOf({ existing: ["default.project.json"] })
+						.hasHandWrittenProject
+				).toBe(true);
+			});
 
-		it("should know whether default.rogen.json is here", () => {
-			expect(directoryOf().hasDefaultConfig).toBe(false);
-			expect(
-				directoryOf({ existing: ["default.rogen.json"] })
-					.hasDefaultConfig
-			).toBe(true);
+			it("should not take another project file for it", () => {
+				expect(
+					directoryOf({ existing: ["lobby.project.json"] })
+						.hasHandWrittenProject
+				).toBe(false);
+			});
 		});
 	});
 
-	describe("rootDirsProblem", () => {
+	describe("sourcePathsProblem", () => {
 		const HERE = path.resolve("/repo");
 		const here = directoryOf({ path: HERE });
 
 		it("should accept separate folders", () => {
-			expect(here.rootDirsProblem(["src", "lib/shared"])).toBeUndefined();
+			expect(
+				here.sourcePathsProblem(["src", "lib/shared"])
+			).toBeUndefined();
 		});
 
 		it("should accept folders that share a prefix but not a parent", () => {
-			expect(here.rootDirsProblem(["src", "src2"])).toBeUndefined();
+			expect(here.sourcePathsProblem(["src", "src2"])).toBeUndefined();
 		});
 
 		it.each([
-			[[], "Enter at least one root dir."],
+			[[], "Enter at least one source path."],
 			[["/abs"], "Use a path relative to here, not /abs."],
 			[["C:\\game"], "Use a path relative to here, not C:\\game."],
 			[["../lib"], "../lib is outside this folder."],
@@ -102,49 +139,18 @@ describe("domain/init/init-directory", () => {
 			],
 			[[".", "src"], "src is inside .. List only one of them."],
 		])("should reject %j", (entries, message) => {
-			expect(here.rootDirsProblem(entries)).toBe(message);
+			expect(here.sourcePathsProblem(entries)).toBe(message);
 		});
 	});
 
-	describe("placeFolderProblem", () => {
-		const here = directoryOf({ path: path.resolve("/repo") });
-
-		it("should accept a folder beside the root dirs", () => {
-			expect(
-				here.placeFolderProblem(["src"], "places/lobby")
-			).toBeUndefined();
-		});
-
-		it.each([["src/lobby"], ["src"], ["./src/"]])(
-			"should reject %j, which overlaps src",
-			(folder) => {
-				expect(here.placeFolderProblem(["src"], folder)).toMatch(
-					/overlaps src, one of default's root dirs/
-				);
-			}
-		);
-
-		it("should reject a folder that holds a root dir", () => {
-			expect(here.placeFolderProblem(["game/src"], "game")).toMatch(
-				/game overlaps game\/src/
-			);
-		});
-
-		it("should reject a folder outside this one", () => {
-			expect(here.placeFolderProblem(["src"], "../lobby")).toBe(
-				"../lobby is outside this folder."
-			);
-		});
-	});
-
-	describe("defaultRootDir", () => {
+	describe("defaultSourcePath", () => {
 		const luau = workspaceOf().language;
 
 		it("should be src when there is one", () => {
 			expect(
 				directoryOf({
 					workspace: { hasSrc: true, codeFolders: ["lib"] },
-				}).defaultRootDir(luau)
+				}).defaultSourcePath(luau)
 			).toBe("src");
 		});
 
@@ -152,32 +158,32 @@ describe("domain/init/init-directory", () => {
 			expect(
 				directoryOf({
 					workspace: { codeFolders: ["lib"] },
-				}).defaultRootDir(luau)
+				}).defaultSourcePath(luau)
 			).toBe("lib");
 		});
 
 		it("should fall back to src", () => {
-			expect(directoryOf().defaultRootDir(luau)).toBe("src");
+			expect(directoryOf().defaultSourcePath(luau)).toBe("src");
 			expect(
 				directoryOf({
 					workspace: { codeFolders: ["a", "b"] },
-				}).defaultRootDir(luau)
+				}).defaultSourcePath(luau)
 			).toBe("src");
 		});
 	});
 
 	describe("otherCodeFoldersHint", () => {
-		it("should name the code folders the root dir doesn't cover", () => {
+		it("should name the code folders the source path doesn't cover", () => {
 			const target = directoryOf({
-				workspace: { codeFolders: ["places", "shared", "src"] },
+				workspace: { codeFolders: ["lib", "shared", "src"] },
 			});
 
 			expect(target.otherCodeFoldersHint("src")).toBe(
-				"Also found code in: places, shared"
+				"Also found code in: lib, shared"
 			);
 		});
 
-		it("should say nothing when the root dir covers them all", () => {
+		it("should say nothing when the source path covers them all", () => {
 			expect(
 				directoryOf({
 					workspace: { codeFolders: ["src"] },

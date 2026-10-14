@@ -1,0 +1,9 @@
+{
+	"sourcePaths": [
+		"src",
+		"later"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	}
+}

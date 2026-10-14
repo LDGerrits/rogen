@@ -37,7 +37,7 @@ describe("CoreWatchSession", () => {
 		fs.writeFile(
 			file,
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: { "*": "ReplicatedStorage" },
 				...body,
 			})
@@ -50,14 +50,21 @@ describe("CoreWatchSession", () => {
 		);
 
 	const config = (extra: Record<string, unknown> = {}) => ({
-		rootDirs: ["src"],
+		sourcePaths: ["src"],
 		routes: { "*": "ReplicatedStorage" },
 		...extra,
 	});
 
+	const sharing = (extra: Record<string, unknown> = {}) =>
+		config({ sourcePaths: ["../src"], ...extra });
+
 	const built = async (name: string): Promise<string[]> => {
 		const project = JSON.parse(
-			await fs.readFile(`/repo/${name}.project.json`)
+			await fs.readFile(
+				name === "default"
+					? "/repo/default.project.json"
+					: `/repo/${name}/default.project.json`
+			)
 		);
 		return Object.keys(project.tree.ReplicatedStorage ?? {}).filter(
 			(key) => !key.startsWith("$")
@@ -67,8 +74,8 @@ describe("CoreWatchSession", () => {
 	const changeUpdates = () =>
 		updates.filter(({ cause }) => cause.kind === "change");
 
-	const start = async (names: string[] = ["default"]) => {
-		selection = (await configService.select(names, {})).unwrap();
+	const start = async (names: string[] = ["."]) => {
+		selection = (await configService.select(names)).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(
 			new CoreWatchSession(
@@ -98,7 +105,7 @@ describe("CoreWatchSession", () => {
 		store = new DisposableStore();
 		updates = [];
 		errors = [];
-		await writeConfig("/repo/default.rogen.json", {});
+		await writeConfig("/repo/rogen.json", {});
 	});
 
 	afterEach(async () => {
@@ -120,7 +127,7 @@ describe("CoreWatchSession", () => {
 			{
 				build: {
 					outcome: "wrote",
-					config: { file: "/repo/default.rogen.json" },
+					config: { file: "/repo/rogen.json" },
 				},
 			},
 		]);
@@ -136,12 +143,12 @@ describe("CoreWatchSession", () => {
 		await expect(session.start()).rejects.toThrow("A watch starts once.");
 	});
 
-	it("should rebuild only the configs whose root dirs hold a change", async () => {
-		await fs.createDirectory("/repo/lobby");
-		await writeConfig("/repo/lobby.rogen.json", { rootDirs: ["lobby"] });
-		await start(["default", "lobby"]);
+	it("should rebuild only the configs whose source paths hold a change", async () => {
+		await fs.createDirectory("/repo/lobby/src");
+		await writeConfig("/repo/lobby/rogen.json", {});
+		await start([".", "lobby"]);
 
-		await fs.writeFile("/repo/lobby/B.luau", "");
+		await fs.writeFile("/repo/lobby/src/B.luau", "");
 		await settle();
 
 		expect(updates).toHaveLength(2);
@@ -152,27 +159,27 @@ describe("CoreWatchSession", () => {
 			reloaded: false,
 		});
 		expect(updates[1].changes.map(({ path }) => path)).toEqual([
-			"/repo/lobby/B.luau",
+			"/repo/lobby/src/B.luau",
 		]);
 		expect(
 			updates[1].reports.map(({ build }) => build.config.file)
-		).toEqual(["/repo/lobby.rogen.json"]);
+		).toEqual(["/repo/lobby/rogen.json"]);
 	});
 
 	it("should report a broken config and keep the last valid one, with nothing to rebuild", async () => {
 		await start();
 
-		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await fs.writeFile("/repo/rogen.json", "{ broken");
 		await settle();
 
 		expect(updates[1].cause).toMatchObject({
 			kind: "change",
-			configFiles: ["/repo/default.rogen.json"],
+			configFiles: ["/repo/rogen.json"],
 		});
 		const [notice] = updates[1].notices;
 		expect(notice).toMatchObject({
 			kind: "broken",
-			file: "/repo/default.rogen.json",
+			file: "/repo/rogen.json",
 		});
 		expect(
 			notice.kind === "broken" &&
@@ -265,80 +272,91 @@ describe("CoreWatchSession", () => {
 		expect(codes(updates.at(-1)?.reports[0].fixed)).toEqual([]);
 	});
 
-	describe("watching every config here", () => {
-		it("should build a config added while watching, and say so", async () => {
+	describe("watching the config of the folder", () => {
+		it("should build a config that takes the place of the deleted one, and say so", async () => {
 			await fs.writeFile("/repo/src/A.luau", "");
 			await start([]);
 
-			await writeConfig("/repo/lobby.rogen.json", {});
+			await fs.delete("/repo/rogen.json");
+			await writeConfig("/repo/rogen.jsonc", {});
 			await settle();
 
-			const update = changeUpdates().at(-1);
-			expect(update?.notices).toEqual([
-				{ kind: "added", file: "/repo/lobby.rogen.json" },
+			const notices = changeUpdates().flatMap((update) => update.notices);
+			expect(notices).toEqual([
+				{ kind: "removed", file: "/repo/rogen.json" },
+				{ kind: "added", file: "/repo/rogen.jsonc" },
 			]);
 			expect(
-				update?.reports.map(({ build }) => build.config.file)
-			).toContain("/repo/lobby.rogen.json");
-			expect(await built("lobby")).toEqual(["A"]);
+				changeUpdates()
+					.flatMap(({ reports }) => reports)
+					.map(({ build }) => build.config.file)
+			).toContain("/repo/rogen.jsonc");
+			expect(await built("default")).toEqual(["A"]);
 		});
 
-		it("should rebuild an added config when its sources change", async () => {
+		it("should rebuild a config that took the place of another when its sources change", async () => {
 			await start([]);
-			await writeConfig("/repo/lobby.rogen.json", { rootDirs: ["more"] });
+			await fs.delete("/repo/rogen.json");
+			await writeConfig("/repo/rogen.jsonc", { sourcePaths: ["more"] });
 			await fs.createDirectory("/repo/more");
 			await settle();
 
 			await fs.writeFile("/repo/more/B.luau", "");
 			await settle();
 
-			expect(await built("lobby")).toEqual(["B"]);
+			expect(await built("default")).toEqual(["B"]);
 		});
 
 		it("should stop building a config deleted while watching, and say so", async () => {
-			await writeConfig("/repo/lobby.rogen.json", {});
 			await start([]);
 
-			await fs.delete("/repo/lobby.rogen.json");
+			await fs.delete("/repo/rogen.json");
 			await settle();
 			const before = updates.length;
 			await fs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
 			expect(changeUpdates()[0].notices).toEqual([
-				{ kind: "removed", file: "/repo/lobby.rogen.json" },
+				{ kind: "removed", file: "/repo/rogen.json" },
 			]);
 			expect(
-				updates
-					.slice(before)
-					.flatMap(({ reports }) =>
-						reports.map(({ build }) => build.config.file)
-					)
-			).toEqual(["/repo/default.rogen.json"]);
+				updates.slice(before).flatMap(({ reports }) => reports)
+			).toEqual([]);
 		});
 
-		it("should report a config added broken without building it", async () => {
+		it("should report a config that took the place of another broken without building it", async () => {
 			await start([]);
 
-			await write("/repo/lobby.rogen.json", "{ broken");
+			await fs.delete("/repo/rogen.json");
+			await write("/repo/rogen.jsonc", "{ broken");
 			await settle();
 
 			const update = changeUpdates().at(-1);
 			expect(update?.notices).toMatchObject([
+				{ kind: "removed" },
 				{ kind: "broken", keptLastValid: false },
 			]);
 			expect(
 				update?.reports.map(({ build }) => build.config.file)
-			).not.toContain("/repo/lobby.rogen.json");
+			).not.toContain("/repo/rogen.jsonc");
 		});
 
 		it("should not look for configs when the run named them", async () => {
-			await start(["default"]);
+			await start(["."]);
 
-			await writeConfig("/repo/lobby.rogen.json", {});
+			await fs.delete("/repo/rogen.json");
+			await writeConfig("/repo/rogen.jsonc", {});
 			await settle();
 
-			expect(changeUpdates()).toEqual([]);
+			const notices = changeUpdates().flatMap(({ notices }) => notices);
+			expect(notices).toMatchObject([
+				{ kind: "broken", file: "/repo/rogen.json" },
+			]);
+			expect(
+				changeUpdates()
+					.flatMap(({ reports }) => reports)
+					.map(({ build }) => build.config.file)
+			).not.toContain("/repo/rogen.jsonc");
 		});
 
 		it("should ignore other files added to the folder", async () => {
@@ -362,8 +380,8 @@ describe("CoreWatchSession", () => {
 		expect(updates.at(-1)?.reports[0].fixed).toEqual([]);
 	});
 
-	it("should check the sync dir when the config loads, and not again until it changes", async () => {
-		await writeConfig("/repo/default.rogen.json", { syncDir: "dist" });
+	it("should check the sync path when the config loads, and not again until it changes", async () => {
+		await writeConfig("/repo/rogen.json", { syncPath: "dist" });
 		await fs.writeFile("/repo/src/A.luau", "");
 		await start();
 
@@ -437,11 +455,11 @@ describe("CoreWatchSession", () => {
 
 	it("should report a config's errors again once it breaks again after a fix", async () => {
 		await start();
-		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await fs.writeFile("/repo/rogen.json", "{ broken");
 		await settle();
-		await writeConfig("/repo/default.rogen.json", {});
+		await writeConfig("/repo/rogen.json", {});
 		await settle();
-		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await fs.writeFile("/repo/rogen.json", "{ broken");
 		await settle();
 
 		const notices = updates.flatMap((update) => update.notices);
@@ -455,132 +473,25 @@ describe("CoreWatchSession", () => {
 
 	it("should say a broken config loads again when the fix restores what last built", async () => {
 		await start();
-		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await fs.writeFile("/repo/rogen.json", "{ broken");
 		await settle();
 
-		await writeConfig("/repo/default.rogen.json", {});
+		await writeConfig("/repo/rogen.json", {});
 		await settle();
 
 		expect(updates.at(-1)?.notices).toEqual([
-			{ kind: "recovered", file: "/repo/default.rogen.json" },
+			{ kind: "recovered", file: "/repo/rogen.json" },
 		]);
 	});
 
 	it("should not report a config's errors again while it stays broken the same way", async () => {
 		await start();
-		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await fs.writeFile("/repo/rogen.json", "{ broken");
 		await settle();
-		await fs.writeFile("/repo/default.rogen.json", "{ broken");
+		await fs.writeFile("/repo/rogen.json", "{ broken");
 		await settle();
 
 		expect(updates.flatMap((update) => update.notices)).toHaveLength(1);
-	});
-
-	describe("a reload that makes two configs write one file", () => {
-		const clash = async () => {
-			await fs.createDirectory("/repo/lobby");
-			await fs.writeFile("/repo/src/A.luau", "");
-			await fs.writeFile("/repo/lobby/B.luau", "");
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-			});
-			await start(["default", "lobby"]);
-		};
-		const lastReports = () =>
-			Object.fromEntries(
-				updates[updates.length - 1].reports.map(({ build }) => [
-					build.config.file,
-					build,
-				])
-			);
-
-		it("should fail both configs with the error and write neither", async () => {
-			await clash();
-			const before = await fs.readFile("/repo/default.project.json");
-
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-				outFile: "default.project.json",
-			});
-			await settle();
-
-			const reports = lastReports();
-			for (const file of [
-				"/repo/default.rogen.json",
-				"/repo/lobby.rogen.json",
-			]) {
-				expect(reports[file]).toMatchObject({
-					outcome: "failed",
-					errors: [{ code: "output.sameOutFile" }],
-				});
-			}
-			expect(await fs.readFile("/repo/default.project.json")).toBe(
-				before
-			);
-			expect(errors).toEqual([]);
-		});
-
-		it("should keep both failed on a source change while the clash stands", async () => {
-			await clash();
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-				outFile: "default.project.json",
-			});
-			await settle();
-			const before = await fs.readFile("/repo/default.project.json");
-
-			await fs.writeFile("/repo/lobby/C.luau", "");
-			await settle();
-
-			expect(lastReports()["/repo/lobby.rogen.json"].outcome).toBe(
-				"failed"
-			);
-			expect(await fs.readFile("/repo/default.project.json")).toBe(
-				before
-			);
-		});
-
-		it("should check the sync dir of a config again once its clash is fixed", async () => {
-			await writeConfig("/repo/default.rogen.json", { syncDir: "dist" });
-			await clash();
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-				outFile: "default.project.json",
-			});
-			await settle();
-
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-			});
-			await settle();
-
-			expect(
-				lastReports()["/repo/default.rogen.json"].syncWarnings
-			).toMatchObject([{ code: "output.nothingEmitted" }]);
-		});
-
-		it("should build both again once the clash is fixed", async () => {
-			await clash();
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-				outFile: "default.project.json",
-			});
-			await settle();
-
-			await writeConfig("/repo/lobby.rogen.json", {
-				rootDirs: ["lobby"],
-			});
-			await settle();
-
-			const reports = lastReports();
-			expect(
-				Object.values(reports).map(({ outcome }) => outcome)
-			).toEqual(["unchanged", "unchanged"]);
-			expect(Object.keys(reports).sort()).toEqual([
-				"/repo/default.rogen.json",
-				"/repo/lobby.rogen.json",
-			]);
-		});
 	});
 
 	it("should run nothing new once it stops, and stop the watcher", async () => {
@@ -597,13 +508,13 @@ describe("CoreWatchSession", () => {
 	});
 	describe("watching", () => {
 		const rootsOf = (paths: readonly string[]) =>
-			paths.filter((watched) => !watched.endsWith(".rogen.json"));
+			paths.filter((watched) => !/\/rogen\.jsonc?$/.test(watched));
 
 		it("should watch two configs that share a root through one watcher call and one directory", async () => {
-			await write("/repo/source.rogen.json", config());
+			await write("/repo/source/rogen.json", sharing());
 			const watch = jest.spyOn(watcher, "watch");
 
-			await start(["default", "source"]);
+			await start([".", "source"]);
 
 			expect(watch).toHaveBeenCalledTimes(1);
 			const [paths] = watch.mock.calls[0];
@@ -612,7 +523,7 @@ describe("CoreWatchSession", () => {
 
 		it("should answer with the failure when the watcher can't start", async () => {
 			jest.spyOn(watcher, "watch").mockRejectedValue(new Error("boom"));
-			selection = (await configService.select(["default"], {})).unwrap();
+			selection = (await configService.select(["."])).unwrap();
 			const indexService = new CoreIndexService(fs);
 			const session = store.add(
 				new CoreWatchSession(
@@ -631,12 +542,12 @@ describe("CoreWatchSession", () => {
 
 		it("should drop a root that lies inside another", async () => {
 			await write(
-				"/repo/lobby.rogen.json",
-				config({ rootDirs: ["src/shared"] })
+				"/repo/lobby/rogen.json",
+				config({ sourcePaths: ["../src/shared"] })
 			);
 			const watch = jest.spyOn(watcher, "watch");
 
-			await start(["default", "lobby"]);
+			await start([".", "lobby"]);
 
 			const [paths] = watch.mock.calls[0];
 			expect(rootsOf(paths)).toEqual(["/repo/src"]);
@@ -644,8 +555,8 @@ describe("CoreWatchSession", () => {
 
 		it("should not watch the parent that two roots share", async () => {
 			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["places/a", "places/b"] })
+				"/repo/rogen.json",
+				config({ sourcePaths: ["places/a", "places/b"] })
 			);
 			const watch = jest.spyOn(watcher, "watch");
 
@@ -658,8 +569,8 @@ describe("CoreWatchSession", () => {
 			]);
 		});
 
-		it("should tell the watcher to skip each output file and sync directory", async () => {
-			await write("/repo/default.rogen.json", config({ syncDir: "out" }));
+		it("should tell the watcher to skip each output file and sync path", async () => {
+			await write("/repo/rogen.json", config({ syncPath: "out" }));
 			const watch = jest.spyOn(watcher, "watch");
 
 			await start();
@@ -673,8 +584,8 @@ describe("CoreWatchSession", () => {
 		});
 
 		it("should emit one batch for one change to a root shared by two configs", async () => {
-			await write("/repo/source.rogen.json", config());
-			await start(["default", "source"]);
+			await write("/repo/source/rogen.json", sharing());
+			await start([".", "source"]);
 
 			await fs.writeFile("/repo/src/A.luau", "");
 			await settle();
@@ -683,11 +594,8 @@ describe("CoreWatchSession", () => {
 		});
 
 		it("should not rebuild off its own write to a watched root", async () => {
-			await write(
-				"/repo/default.rogen.json",
-				config({ outFile: "src/out.project.json" })
-			);
-			await start();
+			await write("/repo/src/rogen.json", config({ sourcePaths: ["."] }));
+			await start(["src"]);
 
 			await fs.writeFile("/repo/src/A.luau", "");
 			await settle();
@@ -719,6 +627,19 @@ describe("CoreWatchSession", () => {
 			expect(await built("default")).toEqual([]);
 		});
 
+		it("should watch the src folder of a config without routes, and warn about the files nothing mounts", async () => {
+			await write("/repo/rogen.json", {});
+			await start();
+			expect(updates[0].reports[0].build.warnings).toEqual([]);
+
+			await fs.writeFile("/repo/src/A.luau", "");
+			await settle();
+
+			expect(updates.at(-1)?.reports[0].build.warnings).toMatchObject([
+				{ code: "scan.unmountedSource", resource: "/repo/src" },
+			]);
+		});
+
 		it("should not queue an update to a source file", async () => {
 			await fs.writeFile("/repo/src/A.luau", "");
 			await start();
@@ -731,7 +652,7 @@ describe("CoreWatchSession", () => {
 
 		it("should rebuild when a folder's meta changes, and keep the last output while it is invalid", async () => {
 			await write(
-				"/repo/default.rogen.json",
+				"/repo/rogen.json",
 				config({ routes: { server: "ServerScriptService" } })
 			);
 			await fs.writeFile("/repo/src/Combat/server/Hit.luau", "");
@@ -757,8 +678,8 @@ describe("CoreWatchSession", () => {
 		});
 
 		it("should reach every config that claims the path, each once", async () => {
-			await write("/repo/source.rogen.json", config());
-			await start(["default", "source"]);
+			await write("/repo/source/rogen.json", sharing());
+			await start([".", "source"]);
 			const rename = jest.spyOn(fs, "rename");
 
 			await fs.writeFile("/repo/src/A.luau", "");
@@ -768,24 +689,21 @@ describe("CoreWatchSession", () => {
 			expect(await built("source")).toEqual(["A"]);
 			expect(rename.mock.calls.map(([, to]) => to).sort()).toEqual([
 				"/repo/default.project.json",
-				"/repo/source.project.json",
+				"/repo/source/default.project.json",
 			]);
 		});
 
 		it("should reach only the configs whose roots contain the path", async () => {
-			await fs.createDirectory("/repo/lib");
-			await write(
-				"/repo/lobby.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
-			await start(["default", "lobby"]);
+			await fs.createDirectory("/repo/lobby/src");
+			await write("/repo/lobby/rogen.json", config());
+			await start([".", "lobby"]);
 			const rename = jest.spyOn(fs, "rename");
 
-			await fs.writeFile("/repo/lib/B.luau", "");
+			await fs.writeFile("/repo/lobby/src/B.luau", "");
 			await settle();
 
 			expect(rename.mock.calls.map(([, to]) => to)).toEqual([
-				"/repo/lobby.project.json",
+				"/repo/lobby/default.project.json",
 			]);
 		});
 
@@ -795,8 +713,13 @@ describe("CoreWatchSession", () => {
 			const readFile = jest.spyOn(fs, "readFile");
 
 			await write(
-				"/repo/default.rogen.json",
-				config({ exclude: ["nothing/**"] })
+				"/repo/rogen.json",
+				config({
+					routes: {
+						"*": "ReplicatedStorage",
+						server: "ServerScriptService",
+					},
+				})
 			);
 			await settle();
 
@@ -805,8 +728,8 @@ describe("CoreWatchSession", () => {
 		});
 
 		it("should rebuild one config while another is still writing", async () => {
-			await write("/repo/source.rogen.json", config());
-			await start(["default", "source"]);
+			await write("/repo/source/rogen.json", sharing());
+			await start([".", "source"]);
 			const gate = new DeferredPromise<void>();
 			const writeFile = fs.writeFile.bind(fs);
 			jest.spyOn(fs, "writeFile").mockImplementation(
@@ -859,7 +782,7 @@ describe("CoreWatchSession", () => {
 	});
 
 	describe("linked directories", () => {
-		const outFile = () => fs.readFile("/repo/default.project.json");
+		const projectFile = () => fs.readFile("/repo/default.project.json");
 
 		it("should add a linked directory to the project file", async () => {
 			await fs.writeFile("/shared/Util.luau", "");
@@ -884,9 +807,9 @@ describe("CoreWatchSession", () => {
 			expect(await fs.exists("/shared/Util.luau")).toBe(true);
 		});
 
-		it("should rebuild when a file is added inside a target outside every root dir", async () => {
+		it("should rebuild when a file is added inside a target outside every source path", async () => {
 			await write(
-				"/repo/default.rogen.json",
+				"/repo/rogen.json",
 				config({
 					routes: {
 						server: "ServerScriptService",
@@ -897,17 +820,17 @@ describe("CoreWatchSession", () => {
 			await fs.writeFile("/shared/Util.luau", "");
 			await fs.createSymbolicLink("/shared", "/repo/src/Shared");
 			await start();
-			expect(await outFile()).not.toContain("ServerScriptService");
+			expect(await projectFile()).not.toContain("ServerScriptService");
 
 			await fs.writeFile("/shared/Save.server.luau", "");
 			await settle();
 
-			expect(await outFile()).toContain("ServerScriptService");
+			expect(await projectFile()).toContain("ServerScriptService");
 		});
 
-		it("should rebuild when a file is removed inside a target outside every root dir", async () => {
+		it("should rebuild when a file is removed inside a target outside every source path", async () => {
 			await write(
-				"/repo/default.rogen.json",
+				"/repo/rogen.json",
 				config({
 					routes: {
 						server: "ServerScriptService",
@@ -918,12 +841,12 @@ describe("CoreWatchSession", () => {
 			await fs.writeFile("/shared/Save.server.luau", "");
 			await fs.createSymbolicLink("/shared", "/repo/src/Shared");
 			await start();
-			expect(await outFile()).toContain("ServerScriptService");
+			expect(await projectFile()).toContain("ServerScriptService");
 
 			await fs.delete("/shared/Save.server.luau");
 			await settle();
 
-			expect(await outFile()).not.toContain("ServerScriptService");
+			expect(await projectFile()).not.toContain("ServerScriptService");
 		});
 	});
 
@@ -933,69 +856,26 @@ describe("CoreWatchSession", () => {
 			const reload = jest.spyOn(selection, "reload");
 
 			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["src"], exclude: [] })
+				"/repo/rogen.json",
+				config({ globIgnorePaths: ["nothing/**"] })
 			);
 			await settle();
 
-			expect(reload).toHaveBeenCalledWith(["/repo/default.rogen.json"]);
-		});
-
-		it("should reload when a template changes", async () => {
-			await write("/repo/template.project.json", {
-				name: "one",
-				tree: {},
-			});
-			await write(
-				"/repo/default.rogen.json",
-				config({ template: "template.project.json" })
-			);
-			await start();
-			const reload = jest.spyOn(selection, "reload");
-
-			await write("/repo/template.project.json", {
-				name: "two",
-				tree: {},
-			});
-			await settle();
-
-			expect(reload).toHaveBeenCalledWith([
-				"/repo/template.project.json",
-			]);
-			expect(
-				JSON.parse(await fs.readFile("/repo/default.project.json")).name
-			).toBe("two");
+			expect(reload).toHaveBeenCalledWith(["/repo/rogen.json"]);
 		});
 
 		it("should not reload when an unrelated config changes", async () => {
-			await write("/repo/other.rogen.json", config());
+			await write("/repo/other/rogen.json", config());
 			await start();
 			const reload = jest.spyOn(selection, "reload");
 
-			await write("/repo/other.rogen.json", config({ exclude: ["x"] }));
+			await write(
+				"/repo/other/rogen.json",
+				config({ globIgnorePaths: ["x"] })
+			);
 			await settle();
 
 			expect(reload).not.toHaveBeenCalled();
-		});
-
-		it("should reload every config that extends an edited parent", async () => {
-			await write("/repo/base.rogen.json", config());
-			await write("/repo/default.rogen.json", {
-				extends: "base.rogen.json",
-			});
-			await write("/repo/source.rogen.json", {
-				extends: "base.rogen.json",
-				outFile: "source.project.json",
-			});
-			await fs.createDirectory("/repo/lib");
-			await fs.writeFile("/repo/lib/L.luau", "");
-			await start(["default", "source"]);
-
-			await write("/repo/base.rogen.json", config({ rootDirs: ["lib"] }));
-			await settle();
-
-			expect(await built("default")).toEqual(["L"]);
-			expect(await built("source")).toEqual(["L"]);
 		});
 
 		it("should watch again when a reload adds a root", async () => {
@@ -1003,10 +883,7 @@ describe("CoreWatchSession", () => {
 			await start();
 			const watch = jest.spyOn(watcher, "watch");
 
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
+			await write("/repo/rogen.json", config({ sourcePaths: ["lib"] }));
 			await settle();
 			await fs.writeFile("/repo/lib/L.luau", "");
 			await settle();
@@ -1024,27 +901,24 @@ describe("CoreWatchSession", () => {
 			jest.spyOn(watcher, "watch").mockImplementationOnce(
 				async (requests, options) => {
 					await write(
-						"/repo/default.rogen.json",
-						config({ rootDirs: ["lib2"] })
+						"/repo/rogen.json",
+						config({ sourcePaths: ["lib2"] })
 					);
 					return watch(requests, options);
 				}
 			);
 
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
+			await write("/repo/rogen.json", config({ sourcePaths: ["lib"] }));
 			await settle();
 
 			expect(await built("default")).toEqual(["L2"]);
 		});
 
 		it("should keep building from the last valid config when one goes invalid", async () => {
-			await write("/repo/prod.rogen.json", config());
-			await start(["default", "prod"]);
+			await write("/repo/prod/rogen.json", sharing());
+			await start([".", "prod"]);
 
-			await write("/repo/prod.rogen.json", "{ broken");
+			await write("/repo/prod/rogen.json", "{ broken");
 			await settle();
 			await fs.writeFile("/repo/src/A.luau", "");
 			await settle();
@@ -1055,13 +929,10 @@ describe("CoreWatchSession", () => {
 
 		it("should build from a config again once it is valid", async () => {
 			await start();
-			await write("/repo/default.rogen.json", "{ broken");
+			await write("/repo/rogen.json", "{ broken");
 			await settle();
 
-			await write(
-				"/repo/default.rogen.json",
-				config({ rootDirs: ["lib"] })
-			);
+			await write("/repo/rogen.json", config({ sourcePaths: ["lib"] }));
 			await fs.createDirectory("/repo/lib");
 			await fs.writeFile("/repo/lib/L.luau", "");
 			await settle();

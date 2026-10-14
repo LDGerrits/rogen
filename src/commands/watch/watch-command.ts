@@ -3,7 +3,6 @@ import { Result, ok } from "../../base/result.js";
 
 import {
 	ConfigArguments,
-	ConfigOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { WatchService } from "../../domain/watch/watch-service.js";
@@ -18,7 +17,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
 
 const WatchOptions = [
-	...ConfigOptions,
 	{
 		...JsonOption,
 		description:
@@ -65,10 +63,7 @@ registerCommand(
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
 			try {
-				const selection = await configService.select(
-					line.positionals,
-					line.options
-				);
+				const selection = await configService.select(line.positionals);
 				if (selection.isErr()) return selection;
 				const watched = watchService.watch(selection.value);
 				if (watched.isErr()) return watched;

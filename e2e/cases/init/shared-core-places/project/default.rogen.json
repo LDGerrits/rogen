@@ -1,9 +1,0 @@
-{
-	"rootDirs": ["places/shared/src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"template": "places/shared/template.project.json"
-}

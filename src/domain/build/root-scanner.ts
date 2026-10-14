@@ -14,14 +14,14 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { CONFIG_SUFFIX, isConfigFileName } from "../config/config.js";
+import { isConfigFileName } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
-import { TemplateMounts } from "./build-template.js";
+import { TreeMounts } from "./build-tree.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
-	readonly rootDir: string;
+	readonly sourcePath: string;
 	readonly relativePath: string;
 	/** The absolute POSIX source path. */
 	readonly source: string;
@@ -33,10 +33,10 @@ export interface UnclaimedMeta {
 	readonly hint?: string;
 }
 
-/** What a scan found under one root dir. */
+/** What a scan found under one source path. */
 export interface ScannedRootParts {
-	readonly rootDir: string;
-	/** False for a root dir the index doesn't hold, which contributes nothing. */
+	readonly sourcePath: string;
+	/** False for a source path the index doesn't hold, which contributes nothing. */
 	readonly exists: boolean;
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
@@ -46,9 +46,9 @@ export interface ScannedRootParts {
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
 }
 
-/** What a scan found under one root dir, and the questions it answers about it. */
+/** What a scan found under one source path, and the questions it answers about it. */
 export class ScannedRoot implements ScannedRootParts {
-	readonly rootDir: string;
+	readonly sourcePath: string;
 	readonly exists: boolean;
 	readonly entries: readonly ScannedFile[];
 	readonly markers: readonly string[];
@@ -60,7 +60,7 @@ export class ScannedRoot implements ScannedRootParts {
 		private readonly index: IndexReader
 	) {
 		({
-			rootDir: this.rootDir,
+			sourcePath: this.sourcePath,
 			exists: this.exists,
 			entries: this.entries,
 			markers: this.markers,
@@ -69,10 +69,10 @@ export class ScannedRoot implements ScannedRootParts {
 		} = parts);
 	}
 
-	static missing(rootDir: string, index: IndexReader): ScannedRoot {
+	static missing(sourcePath: string, index: IndexReader): ScannedRoot {
 		return new ScannedRoot(
 			{
-				rootDir,
+				sourcePath,
 				exists: false,
 				entries: [],
 				markers: [],
@@ -83,11 +83,11 @@ export class ScannedRoot implements ScannedRootParts {
 		);
 	}
 
-	get excludedCount(): number {
-		return this.countLeftOut("excluded");
+	get ignoredCount(): number {
+		return this.countLeftOut("ignored");
 	}
 
-	/** The template nodes that mount a path that exists under this root dir; a node counts once, whatever case its path is spelt in. */
+	/** The tree nodes that mount a path that exists under this source path; a node counts once, whatever case its path is spelt in. */
 	get mountedCount(): number {
 		const nodes = new Set<string>();
 		for (const [mounted, why] of this.leftOut)
@@ -111,7 +111,7 @@ export class ScannedRoot implements ScannedRootParts {
 		return this.index.getEntries(dir) ?? new Map<string, FileType>();
 	}
 
-	/** Marker file names per directory, both relative to the root dir; the root itself is "". */
+	/** Marker file names per directory, both relative to the source path; the root itself is "". */
 	markersByDir(): ReadonlyMap<string, string[]> {
 		return groupBy(
 			this.markers,
@@ -120,14 +120,14 @@ export class ScannedRoot implements ScannedRootParts {
 		);
 	}
 
-	/** Meta no sibling on disk claims under Rojo's naming rule; excluded siblings still claim theirs. */
+	/** Meta no sibling on disk claims under Rojo's naming rule; ignored siblings still claim theirs. */
 	unclaimedMeta(): UnclaimedMeta[] {
 		return this.metaFiles.flatMap((metaFile) => {
 			const fileName = path.posix.basename(metaFile);
 			if (RojoFile.isInitMeta(fileName)) return [];
 			const listing =
 				this.index.getEntries(
-					path.join(this.rootDir, path.posix.dirname(metaFile))
+					path.join(this.sourcePath, path.posix.dirname(metaFile))
 				) ?? new Map<string, FileType>();
 			const siblings = [...listing]
 				.filter(([, type]) => isFileType(type))
@@ -139,7 +139,7 @@ export class ScannedRoot implements ScannedRootParts {
 			const folder = listing.get(name);
 			return [
 				{
-					path: joinPosix(this.rootDir, metaFile),
+					path: joinPosix(this.sourcePath, metaFile),
 					hint: ScannedRoot.hintFor(
 						name,
 						siblings,
@@ -179,46 +179,46 @@ export class ScannedRoot implements ScannedRootParts {
 	}
 }
 
-/** What one walk of a root dir collects. */
+/** What one walk of a source path collects. */
 interface Walk {
-	readonly rootDir: string;
+	readonly sourcePath: string;
 	readonly entries: ScannedFile[];
 	readonly markers: string[];
 	readonly metaFiles: string[];
 	readonly leftOut: Map<string, ScanLeftOut>;
 }
 
-/** Walks root dirs in the index, leaving out what `exclude` matches and what the template mounts. */
+/** Walks source paths in the index, leaving out what `globIgnorePaths` matches and what the tree mounts. */
 export class RootScanner {
 	constructor(
 		private readonly index: IndexReader,
-		private readonly exclude: readonly string[],
-		private readonly mounts: TemplateMounts,
-		/** The project file the build writes, which a root dir that holds it must not scan. */
-		private readonly outFile: string
+		private readonly ignored: readonly string[],
+		private readonly mounts: TreeMounts,
+		/** The project file the build writes, which a source path that holds it must not scan. */
+		private readonly projectFile: string
 	) {}
 
-	scan(rootDir: string): ScannedRoot {
+	scan(sourcePath: string): ScannedRoot {
 		const walk: Walk = {
-			rootDir,
+			sourcePath,
 			entries: [],
 			markers: [],
 			metaFiles: [],
 			leftOut: new Map(
 				this.mounts
-					.inside(rootDir)
+					.inside(sourcePath)
 					.map(({ path: mounted, node }): [string, ScanLeftOut] => [
 						toPosix(mounted),
 						{ status: "mounted", node },
 					])
 			),
 		};
-		if (!this.visit(walk, rootDir)) {
-			return ScannedRoot.missing(rootDir, this.index);
+		if (!this.visit(walk, sourcePath)) {
+			return ScannedRoot.missing(sourcePath, this.index);
 		}
 		return new ScannedRoot(
 			{
-				rootDir,
+				sourcePath,
 				exists: true,
 				entries: walk.entries.sort((a, b) =>
 					compareStrings(a.relativePath, b.relativePath)
@@ -231,12 +231,12 @@ export class RootScanner {
 		);
 	}
 
-	private excludingGlob(absolutePath: string): string | undefined {
+	private ignoringGlob(absolutePath: string): string | undefined {
 		const posixPath = toPosix(absolutePath);
-		return this.exclude.find((glob) => isMatch(posixPath, glob));
+		return this.ignored.find((glob) => isMatch(posixPath, glob));
 	}
 
-	/** The entries of `dir` that the template doesn't mount, `exclude` doesn't match and aren't a Rogen config; the rest are recorded as left out. */
+	/** The entries of `dir` that the tree doesn't mount, `globIgnorePaths` doesn't match and aren't a Rogen config; the rest are recorded as left out. */
 	private keptEntries(
 		walk: Walk,
 		dir: string,
@@ -247,11 +247,11 @@ export class RootScanner {
 			const mount = this.mounts.at(path.join(dir, name));
 			const glob =
 				isFileType(type) && isConfigFileName(name)
-					? `*${CONFIG_SUFFIX}`
+					? name
 					: isFileType(type) &&
-						  samePath(path.join(dir, name), this.outFile)
-						? path.basename(this.outFile)
-						: this.excludingGlob(path.join(dir, name));
+						  samePath(path.join(dir, name), this.projectFile)
+						? path.basename(this.projectFile)
+						: this.ignoringGlob(path.join(dir, name));
 			if (mount)
 				walk.leftOut.set(joinPosix(dir, name), {
 					status: "mounted",
@@ -259,16 +259,19 @@ export class RootScanner {
 				});
 			else if (glob)
 				walk.leftOut.set(joinPosix(dir, name), {
-					status: "excluded",
+					status: "ignored",
 					pattern: glob,
 				});
 			else kept.push([name, type]);
 		}
 		// Left out before it exists too, or the first build and the one after it would write different files.
-		const outName = path.basename(this.outFile);
-		if (samePath(path.dirname(this.outFile), dir) && !listing.has(outName))
+		const outName = path.basename(this.projectFile);
+		if (
+			samePath(path.dirname(this.projectFile), dir) &&
+			!listing.has(outName)
+		)
 			walk.leftOut.set(joinPosix(dir, outName), {
-				status: "excluded",
+				status: "ignored",
 				pattern: outName,
 			});
 		return kept;
@@ -278,7 +281,7 @@ export class RootScanner {
 		const listing = this.index.getEntries(dir);
 		if (!listing) return false;
 
-		const relativeDir = toPosix(path.relative(walk.rootDir, dir));
+		const relativeDir = toPosix(path.relative(walk.sourcePath, dir));
 		const relativeTo = (name: string) =>
 			relativeDir ? `${relativeDir}/${name}` : name;
 
@@ -304,7 +307,7 @@ export class RootScanner {
 				} else if (file.kind) {
 					walk.entries.push({
 						kind: file.kind,
-						rootDir: walk.rootDir,
+						sourcePath: walk.sourcePath,
 						relativePath: relativeTo(name),
 						source: joinPosix(dir, name),
 					});

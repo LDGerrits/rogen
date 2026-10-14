@@ -5,7 +5,6 @@ import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
-import { SCHEMA_URL } from "../../../domain/config/config.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { configSchema } from "../../../domain/config/config-schema.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
@@ -24,23 +23,17 @@ import {
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
-const WHAT_TO_ADD = "default.rogen.json exists. What do you want to add?";
-const LUAU_ROUTES = {
-	Server: "ServerScriptService",
-	Client: "StarterPlayer/StarterPlayerScripts",
-	Shared: "ReplicatedStorage/Shared",
-	"*": "ReplicatedStorage/Shared",
-};
+const WHAT_TO_ADD = "rogen.json exists. What do you want to add?";
 
 describe("init command", () => {
 	const cwd = path.resolve("/mock/my-game");
 	let memFs: MemoryFileSystemService;
 
 	const runInit = async (
-		names: string[] = [],
 		prompt: PromptService = new MockPromptService([], false),
 		log: MockLogService = new MockLogService(),
-		options: CommandLine["options"] = {}
+		options: CommandLine["options"] = {},
+		positionals: string[] = []
 	) => {
 		const harness = commandHarness({
 			cwd,
@@ -49,7 +42,7 @@ describe("init command", () => {
 			prompt,
 			environment: new NativeEnvironmentService(options, cwd),
 		});
-		return harness.run("init", { positionals: names, options });
+		return harness.run("init", { positionals, options });
 	};
 
 	const write = (file: string, content = "") =>
@@ -68,10 +61,9 @@ describe("init command", () => {
 	});
 
 	describe("--json", () => {
-		const runJson = async (names: string[] = []) => {
+		const runJson = async () => {
 			const logService = new MockLogService();
 			const result = await runInit(
-				names,
 				new MockPromptService([], false),
 				logService,
 				{ json: true }
@@ -81,9 +73,8 @@ describe("init command", () => {
 
 		it("should print only the files written, the builds and the next steps as one document", async () => {
 			await write("tsconfig.json", "{}");
-			await runInit();
 
-			const { result, logService } = await runJson(["lobby"]);
+			const { result, logService } = await runJson();
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.entries.map(({ kind }) => kind)).toEqual([
@@ -92,38 +83,34 @@ describe("init command", () => {
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
 				appended: [],
 				files: [
-					path.join(cwd, "lobby.rogen.json"),
-					path.join(cwd, "places/lobby/template.project.json"),
-					path.join(cwd, "tsconfig.lobby.json"),
+					path.join(cwd, "rogen.json"),
+					path.join(cwd, "AGENTS.md"),
 				],
-				directories: [path.join(cwd, "places/lobby/src")],
+				directories: [path.join(cwd, "src")],
 				built: [
 					{
-						config: "lobby",
-						file: path.join(cwd, "lobby.rogen.json"),
-						outFile: path.join(cwd, "lobby.project.json"),
+						config: "my-game",
+						file: path.join(cwd, "rogen.json"),
+						projectFile: path.join(cwd, "default.project.json"),
 						outcome: "wrote",
 						diagnostics: [],
 					},
 				],
-				notes: [],
+				notes: ["Syncing from out, where roblox-ts compiles to."],
 				nextSteps: {
-					setup: [
-						'Add "include": ["src"] to tsconfig.json, so its own build leaves out the place folders.',
-					],
-					run: [
-						"rbxtsc -w -p tsconfig.lobby.json --rojo lobby.project.json",
-						"rogen serve",
-					],
+					setup: [],
+					run: ["rbxtsc -w", "rogen serve"],
 					darklua: [],
-					edits: [],
+					edits: [
+						'Add your own routes under "routes" in rogen.json.',
+					],
 				},
 			});
-			expect(await exists("tsconfig.lobby.json")).toBe(true);
 		});
 
 		it("should print nothing and return the failure", async () => {
-			await write("default.rogen.json", "{}");
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
 
 			const { result, logService } = await runJson();
 
@@ -135,27 +122,23 @@ describe("init command", () => {
 
 		it("should name the files it wrote before a write failed", async () => {
 			await write("tsconfig.json", "{}");
-			await runInit();
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(
 				async (file, content) => {
-					if (file.endsWith("tsconfig.lobby.json"))
+					if (file.endsWith("AGENTS.md"))
 						throw new Error("disk full");
 					return writeFile(file, content);
 				}
 			);
 
-			const { result, logService } = await runJson(["lobby"]);
+			const { result, logService } = await runJson();
 
 			expect(result.isErr()).toBe(true);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
 				appended: [],
-				files: [
-					path.join(cwd, "lobby.rogen.json"),
-					path.join(cwd, "places/lobby/template.project.json"),
-				],
+				files: [path.join(cwd, "rogen.json")],
 				directories: [],
-				error: "Failed to write tsconfig.lobby.json: disk full",
+				error: "Failed to write AGENTS.md: disk full",
 			});
 		});
 
@@ -176,7 +159,7 @@ describe("init command", () => {
 			await write("AGENTS.md", "# Rules\n");
 			const logService = new MockLogService();
 
-			await runInit([], new MockPromptService([], false), logService);
+			await runInit(new MockPromptService([], false), logService);
 
 			expect(logService.lines).toContain(
 				"success: Added Rogen's rules to AGENTS.md."
@@ -190,7 +173,7 @@ describe("init command", () => {
 			await write("CLAUDE.md", "Use tabs.\n");
 			const logService = new MockLogService();
 
-			await runInit([], new MockPromptService([], false), logService, {
+			await runInit(new MockPromptService([], false), logService, {
 				json: true,
 			});
 
@@ -204,28 +187,28 @@ describe("init command", () => {
 		it("should open with a header, list each file written and close with a result", async () => {
 			const logService = new MockLogService();
 
-			await runInit([], new MockPromptService([], false), logService);
+			await runInit(new MockPromptService([], false), logService);
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"success: Created default.rogen.json.",
+				"success: Created rogen.json.",
 				"success: Created AGENTS.md.",
 				"success: Created src/.",
 				"success: default.project.json · wrote",
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve",
-				'info: Add your own routes under "routes" in default.rogen.json.',
+				'info: Add your own routes under "routes" in rogen.json.',
 				"outro: Wrote 2 files.",
 			]);
 		});
 
 		it("should print nothing after the header when the config already exists", async () => {
-			await write("default.rogen.json", "{}");
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				[],
 				new MockPromptService([], false),
 				logService
 			);
@@ -248,11 +231,10 @@ describe("init command", () => {
 		});
 
 		it("should build nothing when it wrote no config", async () => {
-			await write("default.rogen.json", "{}");
+			await write("rogen.json", "{}");
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				[],
 				new MockPromptService(["agent"]),
 				logService
 			);
@@ -264,21 +246,11 @@ describe("init command", () => {
 			);
 		});
 
-		it("should build the place it added, not the configs beside it", async () => {
-			await runInit();
-			await memFs.delete(path.join(cwd, "default.project.json"));
-
-			await runInit(["lobby"]);
-
-			expect(await exists("lobby.project.json")).toBe(true);
-			expect(await exists("default.project.json")).toBe(false);
-		});
-
 		it("should leave out the warning that the compiler has not run yet", async () => {
 			await write("tsconfig.json", "{}");
 			const logService = new MockLogService();
 
-			await runInit([], new MockPromptService([], false), logService);
+			await runInit(new MockPromptService([], false), logService);
 
 			expect(
 				logService.lines.filter((line) => line.includes("output."))
@@ -289,7 +261,7 @@ describe("init command", () => {
 			await write("src/Save@sever.luau");
 			const logService = new MockLogService();
 
-			await runInit([], new MockPromptService([], false), logService);
+			await runInit(new MockPromptService([], false), logService);
 
 			expect(logService.lines).toContainEqual(
 				expect.stringContaining("(route.strayAt)")
@@ -308,28 +280,27 @@ describe("init command", () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				[],
 				new MockPromptService([], false),
 				logService
 			);
 
 			expect(result.isErr()).toBe(true);
-			expect(await exists("default.rogen.json")).toBe(true);
+			expect(await exists("rogen.json")).toBe(true);
 			expect(logService.lines).not.toContain("step: Next steps");
 		});
 
-		it("should list the build of each config in the JSON document", async () => {
+		it("should list the build of the config in the JSON document", async () => {
 			const logService = new MockLogService();
 
-			await runInit([], new MockPromptService([], false), logService, {
+			await runInit(new MockPromptService([], false), logService, {
 				json: true,
 			});
 
 			expect(JSON.parse(logService.entries[0].text).built).toEqual([
 				{
-					config: "default",
-					file: path.join(cwd, "default.rogen.json"),
-					outFile: path.join(cwd, "default.project.json"),
+					config: "my-game",
+					file: path.join(cwd, "rogen.json"),
+					projectFile: path.join(cwd, "default.project.json"),
 					outcome: "wrote",
 					diagnostics: [],
 				},
@@ -344,7 +315,7 @@ describe("init command", () => {
 			await write(".claude/keep");
 			const logService = new MockLogService();
 
-			await runInit([], accepting(), logService);
+			await runInit(accepting(), logService);
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
@@ -359,7 +330,7 @@ describe("init command", () => {
 			await write(".codex/hooks.json", "{}\n");
 			const logService = new MockLogService();
 
-			await runInit([], accepting(), logService);
+			await runInit(accepting(), logService);
 
 			expect(logService.lines).toContain(
 				"success: Added the Rogen hook to .codex/hooks.json."
@@ -379,30 +350,25 @@ describe("init command", () => {
 	});
 
 	describe("package mounts", () => {
-		it("should let a later place merge its own template over default's", async () => {
+		it("should mount the packages in the tree of rogen.json and in the project file it writes", async () => {
 			await write("wally.toml");
 			await memFs.createDirectory(path.join(cwd, "Packages"));
 
 			await runInit();
-			const template = await read("template.project.json");
-			await runInit(["lobby"]);
 
-			expect(await read("template.project.json")).toBe(template);
 			const entry = await new CoreConfigService(
 				memFs,
 				new NativeEnvironmentService({}, cwd)
-			).read(path.join(cwd, "lobby.rogen.json"));
+			).read(path.join(cwd, "rogen.json"));
 			expect(entry.status).toBe("valid");
-			if (entry.status !== "valid") return;
-			expect(entry.config.template?.project.getFile()).toMatchObject({
-				name: "Lobby",
-				servePort: 34873,
-				tree: {
-					ReplicatedStorage: {
-						Packages: { $path: "../../Packages" },
-					},
-				},
+			expect((await readJson("rogen.json")).tree).toMatchObject({
+				ReplicatedStorage: { Packages: { $path: "Packages" } },
 			});
+			expect((await readJson("default.project.json")).tree).toMatchObject(
+				{
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				}
+			);
 		});
 	});
 
@@ -414,17 +380,15 @@ describe("init command", () => {
 
 			await runInit();
 
-			for (const file of ["default.rogen.json", "sync.rogen.json"]) {
-				const text = await read(file);
-				expect(() => JSON.parse(text)).not.toThrow();
-				expect(
-					(
-						await new ConfigFileReader(memFs, configSchema).read(
-							path.join(cwd, file)
-						)
-					).isOk()
-				).toBe(true);
-			}
+			const text = await read("rogen.json");
+			expect(() => JSON.parse(text)).not.toThrow();
+			expect(
+				(
+					await new ConfigFileReader(memFs, configSchema).read(
+						path.join(cwd, "rogen.json")
+					)
+				).isOk()
+			).toBe(true);
 		});
 
 		it("should never write into .vscode", async () => {
@@ -435,24 +399,22 @@ describe("init command", () => {
 
 			expect(await exists(".vscode")).toBe(false);
 		});
-	});
 
-	describe("names", () => {
-		it("should write the detected root dir without a terminal", async () => {
+		it("should write the detected source path without a terminal", async () => {
 			await write("lib/Main.luau");
 
 			await runInit();
 
-			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
-				"lib",
-			]);
+			expect((await readJson("rogen.json")).sourcePaths).toEqual(["lib"]);
 		});
 
-		it("should reject more than one name", async () => {
-			const result = await runInit(["a", "b"]);
+		it("should write one config synced from Darklua's output", async () => {
+			await write(".darklua.json");
 
-			expect(result.isErr()).toBe(true);
-			expect(await exists("a.rogen.json")).toBe(false);
+			await runInit();
+
+			expect((await readJson("rogen.json")).syncPath).toBe("dist");
+			expect(await exists("sync.rogen.json")).toBe(false);
 		});
 	});
 
@@ -463,47 +425,36 @@ describe("init command", () => {
 			await write("wally.toml");
 			const prompts = new MockPromptService({});
 
-			const result = await runInit([], prompts);
-			const interactive = await readJson("default.rogen.json");
-			const interactiveTemplate = await readJson("template.project.json");
-			await memFs.delete(path.join(cwd, "default.rogen.json"));
-			await memFs.delete(path.join(cwd, "template.project.json"));
+			const result = await runInit(prompts);
+			const interactive = await readJson("rogen.json");
+			await memFs.delete(path.join(cwd, "rogen.json"));
 			await runInit();
 
 			expect(result.isOk()).toBe(true);
-			expect(interactive).toEqual(await readJson("default.rogen.json"));
-			expect(interactiveTemplate).toEqual(
-				await readJson("template.project.json")
-			);
+			expect(interactive).toEqual(await readJson("rogen.json"));
 		});
 
 		it("should write the answers", async () => {
-			await write("default.rogen.json", "{}");
 			const prompts = new MockPromptService({
-				[WHAT_TO_ADD]: "separate",
-				"Config name": "game",
 				Language: "luau",
 				"Does Darklua process your code before Rojo syncs it?": true,
-				"Root dirs": "src, lib",
-				"Sync dir": "out",
+				"Source paths": "src, lib",
+				"Sync path": "out",
 				Routes: [],
 			});
 
-			await runInit([], prompts);
+			await runInit(prompts);
 
-			const source = await readJson("game.rogen.json");
-			expect(source.rootDirs).toEqual(["src", "lib"]);
-			expect((await readJson("game-sync.rogen.json")).syncDir).toBe(
-				"out"
-			);
+			const config = await readJson("rogen.json");
+			expect(config.sourcePaths).toEqual(["src", "lib"]);
+			expect(config.syncPath).toBe("out");
 		});
 
 		it("should not head next steps when adding the agent rules leaves none", async () => {
-			await write("default.rogen.json", "{}");
+			await write("rogen.json", "{}");
 			const log = new MockLogService();
 
 			await runInit(
-				[],
 				new MockPromptService({ [WHAT_TO_ADD]: "agent" }),
 				log
 			);
@@ -518,21 +469,21 @@ describe("init command", () => {
 				"Files that match no route": "leave",
 			});
 
-			await runInit([], prompts);
+			await runInit(prompts);
 
-			expect((await readJson("default.rogen.json")).routes).toEqual({
+			expect((await readJson("rogen.json")).routes).toEqual({
 				Server: "ServerScriptService",
 				StarterGui: "StarterGui",
 			});
 		});
 
-		it("should take the root dir placeholder from the code it finds", async () => {
+		it("should take the source path placeholder from the code it finds", async () => {
 			await write("game/Main.server.luau");
 			const prompts = new MockPromptService({});
 
-			await runInit([], prompts);
+			await runInit(prompts);
 
-			expect((await readJson("default.rogen.json")).rootDirs).toEqual([
+			expect((await readJson("rogen.json")).sourcePaths).toEqual([
 				"game",
 			]);
 		});
@@ -541,210 +492,81 @@ describe("init command", () => {
 			await write("wally.toml");
 			const prompts = new MockPromptService({ Packages: ["Packages"] });
 
-			await runInit([], prompts);
+			await runInit(prompts);
 
 			expect(
-				(await readJson("template.project.json")).tree.ReplicatedStorage
+				(await readJson("rogen.json")).tree.ReplicatedStorage
 			).toEqual({ Packages: { $path: { optional: "Packages" } } });
 		});
 
-		it("should ask seven questions on a bare Luau folder, none of them about packages", async () => {
+		it("should ask six questions on a bare Luau folder, none of them about packages", async () => {
 			const prompts = new MockPromptService({});
 
-			await runInit([], prompts);
+			await runInit(prompts);
 
 			expect(prompts.asked).toEqual([
-				"What are you setting up?",
 				"Language",
 				"Does Darklua process your code before Rojo syncs it?",
-				"Root dirs",
+				"Source paths",
 				"Routes",
 				"Files that match no route",
 				expect.stringContaining("Rogen's rules for coding agents"),
 			]);
-			expect(await exists("template.project.json")).toBe(false);
 		});
 
 		it("should still ask about packages when a manifest is there", async () => {
 			await write("wally.toml");
 			const prompts = new MockPromptService({});
 
-			await runInit([], prompts);
+			await runInit(prompts);
 
 			expect(prompts.asked).toContain("Packages");
 		});
 
-		it("should not ask for a name when default.rogen.json does not exist", async () => {
-			const prompts = new MockPromptService({});
-
-			await runInit([], prompts);
-
-			expect(prompts.asked).not.toContain("Config name");
-			expect(await exists("default.rogen.json")).toBe(true);
-		});
-
-		it("should ask for a name when default.rogen.json exists", async () => {
-			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService({
-				[WHAT_TO_ADD]: "separate",
-				"Config name": "test",
-			});
-
-			await runInit([], prompts);
-
-			expect(prompts.asked[1]).toBe("Config name");
-			expect(await exists("test.rogen.json")).toBe(true);
-			expect(await read("default.rogen.json")).toBe("{}");
-		});
-
-		it("should ask for a name and not the layout beside configs but no default", async () => {
-			await write("lobby.rogen.json", "{}");
-			const prompts = new MockPromptService({
-				"A config exists. What do you want to add?": "separate",
-			});
-
-			await runInit([], prompts);
-
-			expect(prompts.asked).toContain("Config name");
-			expect(prompts.asked).not.toContain("What are you setting up?");
-			expect(
-				prompts.prompts.find(({ message }) => message === "Config name")
-					?.placeholder
-			).toBe("default");
-			expect(await exists("default.rogen.json")).toBe(true);
-		});
-
-		it("should fail before any question when the given name is taken", async () => {
-			await write("lobby.rogen.json", "{}");
-			const prompts = new MockPromptService([]);
-
-			const result = await runInit(["lobby"], prompts);
-
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "init.configExists" },
-			]);
-			expect(prompts.asked).toEqual([]);
-		});
-
-		it("should fail after the Darklua question when a file it would write exists", async () => {
-			await write("sync.rogen.json", "{}");
-			const prompts = new MockPromptService({
-				"Does Darklua process your code before Rojo syncs it?": true,
-			});
-
-			const result = await runInit(["default"], prompts);
-
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "init.configExists",
-					resource: path.join(cwd, "sync.rogen.json"),
-				},
-			]);
-			expect(prompts.asked).toHaveLength(3);
-			expect(await exists("default.rogen.json")).toBe(false);
-		});
-
-		it("should not ask for a name that was given", async () => {
-			const prompts = new MockPromptService({});
-
-			await runInit(["lobby"], prompts);
-
-			expect(prompts.asked).not.toContain("Config name");
-			expect(await exists("lobby.rogen.json")).toBe(true);
-		});
-
 		it("should write nothing when cancelled", async () => {
-			const result = await runInit([], new MockPromptService([CANCEL]));
+			const result = await runInit(new MockPromptService([CANCEL]));
 
 			expect((result as ResultError<Error>).error).toBeInstanceOf(
 				CancelledError
 			);
-			expect(await exists("default.rogen.json")).toBe(false);
+			expect(await exists("rogen.json")).toBe(false);
 		});
 
 		it("should not ask when there is no terminal", async () => {
 			const prompts = new MockPromptService([], false);
 
-			const result = await runInit([], prompts);
+			const result = await runInit(prompts);
 
 			expect(result.isOk()).toBe(true);
 			expect(prompts.asked).toEqual([]);
 		});
 	});
 
-	describe("extending configs", () => {
-		beforeEach(async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ rootDirs: ["src"], routes: LUAU_ROUTES })
-			);
-			await write("src/A.luau");
+	describe("project file", () => {
+		it("should ask whether to lift a hand-written default.project.json", async () => {
+			await write("default.project.json", '{"name":"hand-written"}');
+			const prompts = new MockPromptService({});
+
+			await runInit(prompts);
+
+			expect(prompts.asked).toContain("Project file");
+			expect((await readJson("rogen.json")).name).toBe("hand-written");
 		});
 
-		it("should write a config that extends default", async () => {
-			const result = await runInit(
-				[],
-				new MockPromptService(["extending", "prod"])
-			);
+		it("should start a new tree when that is the answer", async () => {
+			await write("default.project.json", '{"name":"hand-written"}');
+			const prompts = new MockPromptService({ "Project file": "new" });
 
-			expect(result.isOk()).toBe(true);
-			expect(await readJson("prod.rogen.json")).toEqual({
-				$schema: SCHEMA_URL,
-				extends: "./default.rogen.json",
-			});
-		});
+			await runInit(prompts);
 
-		it("should not ask for a config name that was given", async () => {
-			const prompts = new MockPromptService(["extending"]);
-
-			const result = await runInit(["prod"], prompts);
-
-			expect(result.isOk()).toBe(true);
-			expect(prompts.asked).toEqual([WHAT_TO_ADD]);
-			expect(await exists("prod.rogen.json")).toBe(true);
-		});
-
-		it("should say how to run the extending config and what it leaves out", async () => {
-			const logService = new MockLogService();
-
-			await runInit(
-				[],
-				new MockPromptService(["extending", "prod"]),
-				logService
-			);
-
-			expect(logService.lines).toEqual([
-				"intro: rogen init",
-				"info: ",
-				"success: Created prod.rogen.json.",
-				"success: prod.project.json · wrote",
-				"step: Next steps",
-				"info: Run:",
-				"info:   rogen serve prod",
-				'info: Add "exclude" in prod.rogen.json for what this config leaves out.',
-				"outro: Wrote 1 file.",
-			]);
-		});
-
-		it("should fail before asking more when a given config name would replace a project file", async () => {
-			await write("prod.project.json", "{}");
-			const prompts = new MockPromptService(["extending"]);
-
-			const result = await runInit(["prod"], prompts);
-
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "init.fileExists",
-					resource: path.join(cwd, "prod.project.json"),
-				},
-			]);
-			expect(prompts.asked).toHaveLength(1);
+			expect((await readJson("rogen.json")).name).toBeUndefined();
 		});
 	});
 
 	describe("existing files", () => {
-		it("should fail when default.rogen.json exists, and leave it alone", async () => {
-			await write("default.rogen.json", "{}");
+		it("should fail when the config exists and nothing is left to add, and leave it alone", async () => {
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
 
 			const result = await runInit();
 
@@ -752,82 +574,62 @@ describe("init command", () => {
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
 					code: "init.configExists",
-					resource: path.join(cwd, "default.rogen.json"),
+					resource: path.join(cwd, "rogen.json"),
 				},
 			]);
-			expect(await read("default.rogen.json")).toBe("{}");
+			expect(await read("rogen.json")).toBe("{}");
 		});
 
-		it("should fail when the named config exists", async () => {
-			await write("lobby.rogen.json", "{}");
+		it("should print nothing after the header when nothing is left to add", async () => {
+			await write("rogen.jsonc", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
+			const logService = new MockLogService();
 
-			const result = await runInit(["lobby"]);
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService
+			);
 
 			expect(result.isErr()).toBe(true);
-			expect(diagnosticsOf(result)).toMatchObject([
-				{
-					code: "init.configExists",
-					resource: path.join(cwd, "lobby.rogen.json"),
-				},
-			]);
+			expect(logService.lines).toEqual(["intro: rogen init"]);
 		});
 
-		it("should allow a named init beside an existing default config", async () => {
-			const config = JSON.stringify({ routes: LUAU_ROUTES });
-			await write("default.rogen.json", config);
+		it("should add the agent rules beside a config when it can't ask, and leave the config alone", async () => {
+			await write("rogen.json", "{}");
 
-			const result = await runInit(["lobby"]);
+			const result = await runInit();
 
 			expect(result.isOk()).toBe(true);
-			expect(await read("default.rogen.json")).toBe(config);
-			expect(await exists("lobby.rogen.json")).toBe(true);
+			expect(await read("rogen.json")).toBe("{}");
+			expect(await exists("AGENTS.md")).toBe(true);
 		});
 
-		it("should write nothing when one darklua file already exists", async () => {
-			await write(".darklua.json");
-			await write("wally.toml");
-			await memFs.createDirectory(path.join(cwd, "Packages"));
-			await write("sync.rogen.json", "{}");
-
-			const result = await runInit();
-
-			expect(result.isErr()).toBe(true);
-			expect(await exists("default.rogen.json")).toBe(false);
-			expect(await exists("template.project.json")).toBe(false);
-		});
-
-		it("should keep a hand-written default.project.json as the template", async () => {
+		it("should lift a hand-written default.project.json into rogen.json", async () => {
 			await write("default.project.json", '{"name":"hand-written"}');
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				[],
 				new MockPromptService([], false),
 				logService
 			);
 
 			expect(result.isOk()).toBe(true);
+			expect((await readJson("rogen.json")).name).toBe("hand-written");
 			expect((await readJson("default.project.json")).name).toBe(
 				"hand-written"
 			);
-			expect(await read("template.project.json")).toBe(
-				'{"name":"hand-written"}'
-			);
-			expect((await readJson("default.rogen.json")).template).toBe(
-				"template.project.json"
-			);
 			expect(logService.lines).toContain(
-				"info: Copying default.project.json to template.project.json, since Rogen replaces default.project.json on every build."
+				"info: Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build."
 			);
 		});
 
-		it("should leave a project file that another config writes alone", async () => {
-			await write("lobby.rogen.json", "{}");
+		it("should leave another project file alone", async () => {
 			await write("lobby.project.json", "{}");
 
 			await runInit();
 
-			expect(await exists("template.project.json")).toBe(false);
+			expect(await read("lobby.project.json")).toBe("{}");
+			expect((await readJson("rogen.json")).name).toBeUndefined();
 		});
 	});
 
@@ -839,10 +641,20 @@ describe("init command", () => {
 		const result = await runInit();
 
 		expect(result.isErr()).toBe(true);
-		expect(errorMessage(result)).toContain(
-			"Failed to write default.rogen.json"
-		);
+		expect(errorMessage(result)).toContain("Failed to write rogen.json");
 		expect(errorMessage(result)).toContain("Permission denied");
+	});
+
+	it("should reject an argument", async () => {
+		const result = await runInit(
+			new MockPromptService([], false),
+			undefined,
+			{},
+			["lobby"]
+		);
+
+		expect(errorMessage(result)).toBe("init takes no arguments.");
+		expect(await exists("rogen.json")).toBe(false);
 	});
 
 	describe("flags", () => {

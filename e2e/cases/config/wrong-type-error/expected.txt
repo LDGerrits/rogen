@@ -2,7 +2,7 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: default.rogen.json · not loaded
-  default.rogen.json:2:22 - error: "rootDirs[1]": expected a string, found a number. (config.wrongType)
-  default.rogen.json:3:18 - error: "routes.*": expected a string, found a number. (config.wrongType)
-  default.rogen.json:4:14 - error: "exclude[0]": expected a string, found a number. (config.wrongType)
+  error: rogen.json · not loaded
+  rogen.json:3:3 - error: "globIgnorePaths[0]": expected a string, found a number. (config.wrongType)
+  rogen.json:7:3 - error: "sourcePaths[1]": expected a string, found a number. (config.wrongType)
+  rogen.json:10:8 - error: "routes.*": expected a string, found a number. (config.wrongType)

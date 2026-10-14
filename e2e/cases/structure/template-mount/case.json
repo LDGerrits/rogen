@@ -1,3 +1,0 @@
-{
-	"steps": [["build", "--verbose"], ["where", "src/Vendor/Lib/Server/Thing.luau"]]
-}

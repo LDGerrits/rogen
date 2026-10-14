@@ -1,0 +1,12 @@
+{
+	"globIgnorePaths": [
+		1
+	],
+	"sourcePaths": [
+		"src",
+		5
+	],
+	"routes": {
+		"*": 5
+	}
+}

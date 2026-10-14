@@ -8,10 +8,7 @@ import {
 	ServerExitEvent,
 	ServerReadyEvent,
 } from "../../domain/serve/serve-service.js";
-import {
-	ServerInfo,
-	SyncServer,
-} from "../../domain/runner/sync-server.js";
+import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
@@ -52,8 +49,7 @@ const serverFor = (target: ServeTarget, plan: ServePlan): SyncServer =>
 /** Why a server was stopped on purpose, as the end of a sentence. */
 const RETIRED_BECAUSE = {
 	removed: "its config is gone",
-	extended: "a config extends it now, and is served instead",
-	moved: "its template moved it",
+	moved: "its address changed",
 } as const;
 
 /** Reports a serve in lines for a person. */

@@ -1,3 +1,8 @@
+$ rogen build --out-file game.project.json
+exit 2
+stderr:
+  error: Unknown option '--out-file'. Run 'rogen help build' to see what build accepts.
+
 $ rogen build --sync-dir out
 exit 2
 stderr:
@@ -38,7 +43,7 @@ exit 2
 stderr:
   error: Unknown option '--all'. Run 'rogen help build' to see what build accepts.
 
-$ rogen build -c default.rogen.json
+$ rogen build -c rogen.json
 exit 2
 stderr:
   error: Unknown option '-c'. Run 'rogen help build' to see what build accepts.

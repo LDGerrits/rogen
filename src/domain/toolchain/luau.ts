@@ -7,7 +7,7 @@ import {
 	PackageManager,
 } from "./toolchain.js";
 
-/** Plain Luau: Rojo syncs the root dirs as they are. It's what `init` assumes when no other language is found. */
+/** Plain Luau: Rojo syncs the source paths as they are. It's what `init` assumes when no other language is found. */
 export class Luau implements Language, LanguageDetector {
 	readonly id = "luau";
 	readonly copy: LanguageCopy = { label: "Luau" };
@@ -25,7 +25,7 @@ export class Luau implements Language, LanguageDetector {
 		return capitalized(id);
 	}
 
-	configuredRootDir(): undefined {
+	configuredSourcePath(): undefined {
 		return undefined;
 	}
 

@@ -1,6 +1,6 @@
 ---
 title: Studio
-description: Connect Studio to the server Rogen starts without clicking Connect each session, and keep every place on the right port.
+description: Connect Studio to the server Rogen starts without clicking Connect each session, and say which places may connect.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
@@ -19,7 +19,7 @@ Rojo's plugin can connect on its own, with **Auto Reconnect**. It is off by defa
 	them. Publish the place, or save it to Roblox, then connect once by hand.
 </Callout>
 
-Rojo also checks the **name of the project** against the one it synced last: a place reconnects only to a server that serves a project of the same name. That name is `name` in the project file, which Rogen takes from your [template](/docs/v2/core-concepts/output#template). Give each place its own name, and keep it.
+Rojo also checks the **name of the project** against the one it synced last: a place reconnects only to a server that serves a project of the same name. That name is `name` in `rogen.json`, which Rogen writes to the project file. Without one, Rojo names the project after its folder. Give the project a name, and keep it.
 
 ### The Confirmation Dialog
 
@@ -31,39 +31,17 @@ Rojo's plugin asks to confirm the first changes of each project in a session. It
 
 ## Place IDs
 
-A template can say which places the server is for, with `servePlaceIds`:
+`rogen.json` can say which places the server is for, with `servePlaceIds`, as a Rojo project file does:
 
-```json title="template.project.json"
+```json title="rogen.json"
 {
 	"name": "Game",
-	"servePlaceIds": [1818]
+	"servePlaceIds": [1818],
+	"routes": { "*": "ReplicatedStorage" }
 }
 ```
 
-A project with no template needs only a file with the field in it, and `template` in the config to point at it. The template needs no `tree`; Rogen adds the tree:
-
-```json title="template.project.json"
-{ "name": "Game", "servePlaceIds": [1818] }
-```
-
-```json title="default.rogen.json"
-{
-	"routes": { "*": "ReplicatedStorage" },
-	"template": "template.project.json"
-}
-```
-
-Rojo refuses to connect from any other place, and says which IDs it expects. `blockedPlaceIds` does the opposite, and names places that may never connect. In a repo with [several places](/docs/v2/setups/multi-place), the list is what keeps Lobby's window from syncing Arena's code, so give each place's template its own:
-
-```json title="places/lobby/template.project.json"
-{
-	"name": "Lobby",
-	"servePort": 34873,
-	"servePlaceIds": [1818]
-}
-```
-
-A place's template merges over the shared one, and a top-level field such as `servePlaceIds` replaces the parent's.
+Rojo refuses to connect from any other place, and says which IDs it expects. `blockedPlaceIds` does the opposite, and names places that may never connect. Rogen writes both to the project file as they are.
 
 <Callout type="warn">
 	A place that was never saved to Roblox has the place ID `0`, which no list
@@ -72,10 +50,10 @@ A place's template merges over the shared one, and a top-level field such as `se
 	yet.
 </Callout>
 
-## One Port For Each Place
+## The Port
 
-`rogen serve` starts a server for each place, on the `servePort` of its template (`rogen init` gives each place the first free port above 34872). In Studio, connect each place to its own port. Rojo remembers the port for a place after the first connect, so Auto Reconnect takes it back to the same one. See [`serve`](/docs/v2/cli#serve) for how Rogen picks the Rojo and the port.
+`rogen serve` starts the server on the `servePort` of `rogen.json`, else on 34872. In Studio, connect to that port. Rojo remembers the port for a place after the first connect, so Auto Reconnect takes it back to the same one. See [`serve`](/docs/v2/cli#serve) for how Rogen picks the Rojo and the port.
 
 ## Serve With Argon
 
-`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen watch` to keep `*.project.json` current, and serve them with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own.
+`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen watch` to keep `default.project.json` current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own.

@@ -1,7 +1,7 @@
 $ rogen where
 exit 0
 stdout:
-  No files in the root dirs (src).
+  No files in the source paths (src).
 
 $ rogen where --json
 exit 0

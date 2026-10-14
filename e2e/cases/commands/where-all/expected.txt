@@ -1,31 +1,24 @@
 $ rogen where
 exit 0
 stdout:
-  lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+  places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
 
 $ rogen where places/lobby/Lobby/Server/Queue.luau src/Inventory README.md
 exit 0
 stdout:
-  lobby: places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
-    lobby: require(game:GetService("ServerScriptService").Lobby.Queue)
+  places/lobby/Lobby/Server/Queue.luau -> ServerScriptService/Lobby/Queue · route Server (folder)
+    require(game:GetService("ServerScriptService").Lobby.Queue)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
-  README.md -> outside the root dirs
+  README.md -> outside the source paths
 
-$ rogen where places/lobby/Lobby/Server/Queue.luau --json
+$ rogen where places/lobby/Lobby/Server/Queue.luau README.md --json
 exit 0
 stdout:
   {
     "locations": [
       {
-        "config": "default",
-        "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
-        "status": "outside",
-        "exists": true,
-        "diagnostics": []
-      },
-      {
-        "config": "lobby",
+        "config": "project",
         "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
         "status": "placed",
         "exists": true,
@@ -37,6 +30,13 @@ stdout:
         "require": "game:GetService(\"ServerScriptService\").Lobby.Queue",
         "route": "Server",
         "routeMatch": "folder",
+        "diagnostics": []
+      },
+      {
+        "config": "project",
+        "source": "<dir>/README.md",
+        "status": "outside",
+        "exists": false,
         "diagnostics": []
       }
     ],

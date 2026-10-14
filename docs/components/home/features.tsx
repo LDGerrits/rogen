@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
 	FaFolder,
 	FaMapSigns,
-	FaFolderPlus,
+	FaFileCode,
 	FaClone,
 	FaSyncAlt,
 	FaLayerGroup,
@@ -38,13 +38,13 @@ export function Features() {
 						},
 						{
 							title: "Replace a File",
-							desc: "List a later root directory and its files replace the ones in an earlier one, without touching a single require.",
+							desc: "List a later source path and its files replace the ones in an earlier one, without touching a single require.",
 							icon: <FaClone className="text-white" />,
 						},
 						{
-							title: "Several Places",
-							desc: "Share code between places. Each place is a small config that extends a common one.",
-							icon: <FaFolderPlus className="text-white" />,
+							title: "A Rojo Project File",
+							desc: "rogen.json is a Rojo project file with three more keys, so Rojo's own settings keep working.",
+							icon: <FaFileCode className="text-white" />,
 						},
 						{
 							title: "Luau, roblox-ts and Darklua",

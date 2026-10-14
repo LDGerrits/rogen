@@ -7,18 +7,10 @@ import {
 import { RojoFile } from "../rojo/rojo.js";
 import { DetectedWorkspace } from "../toolchain/toolchain.js";
 
-/** Where a repo that builds several places keeps each place's own code. */
-export const PLACES_DIR = "places";
-
-/** The folder a project keeps its code in unless it says otherwise. */
-export const DEFAULT_ROOT_DIR = "src";
-
 /** The folders of a directory that hold code. */
 export interface DirectoryLayout {
 	/** Top-level folders holding Luau or TypeScript code, sorted. */
 	readonly codeFolders: readonly string[];
-	/** The folders directly inside `places/`, sorted. */
-	readonly places: readonly string[];
 }
 
 const isHiddenOrVendored = (name: string): boolean =>
@@ -28,20 +20,18 @@ const isHiddenOrVendored = (name: string): boolean =>
 export class CodeFinder {
 	constructor(private readonly fileReader: FileReader) {}
 
-	/** The code folders and places of `cwd`; the folders the toolchain finds `workspace` uses for packages and compiled code are not code. */
+	/** The code folders of `cwd`; the folders the toolchain finds `workspace` uses for packages and compiled code are not code. */
 	async layoutOf(
 		cwd: string,
 		workspace: DetectedWorkspace
 	): Promise<DirectoryLayout> {
-		const places = await this.placesIn(path.join(cwd, PLACES_DIR));
 		const codeFolders = await this.codeFoldersIn(cwd, [
 			...workspace.packageDirs,
 			...workspace.languages.flatMap(
 				({ reservedFolders }) => reservedFolders
 			),
-			...(places.length > 0 ? [PLACES_DIR] : []),
 		]);
-		return { codeFolders, places };
+		return { codeFolders };
 	}
 
 	/** Whether `dir` holds a script anywhere below it, outside hidden and vendored folders. */
@@ -91,19 +81,5 @@ export class CodeFinder {
 			candidates.map((name) => this.holdsCode(path.join(cwd, name)))
 		);
 		return candidates.filter((_, index) => holding[index]).sort();
-	}
-
-	private async placesIn(dir: string): Promise<string[]> {
-		try {
-			return (await this.fileReader.readDirectory(dir))
-				.filter(
-					([name, type]) =>
-						isDirectoryType(type) && !isHiddenOrVendored(name)
-				)
-				.map(([name]) => name)
-				.sort();
-		} catch {
-			return [];
-		}
 	}
 }

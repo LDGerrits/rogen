@@ -1,0 +1,10 @@
+{
+	"steps": [
+		["build", "."],
+		["build", "default.project.json"],
+		["build", "lobby"],
+		["build", "lobby/default.project.json"],
+		["build", "lobby/rogen.json"]
+	],
+	"output": ["build"]
+}

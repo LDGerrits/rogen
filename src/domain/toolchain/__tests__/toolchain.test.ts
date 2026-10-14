@@ -9,13 +9,13 @@ const darklua = new Darklua();
 
 describe("Darklua", () => {
 	describe("processCommands", () => {
-		it("should process one root dir into the sync dir itself", () => {
+		it("should process one source path into the sync path itself", () => {
 			expect(darklua.processCommands(directory, ["src"], "dist")).toEqual(
 				["darklua process src dist"]
 			);
 		});
 
-		it("should process each of several root dirs to its path under the common root", () => {
+		it("should process each of several source paths to its path under the common root", () => {
 			expect(
 				darklua.processCommands(
 					directory,

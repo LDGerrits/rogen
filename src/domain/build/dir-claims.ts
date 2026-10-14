@@ -15,7 +15,7 @@ export interface FolderMarker {
 	readonly key: string;
 }
 
-/** What the markers and init scripts of one root dir's folders offer to claim, by folder relative to the root dir. */
+/** What the markers and init scripts of one source path's folders offer to claim, by folder relative to the source path. */
 export class DirClaims {
 	private readonly markers: ReadonlyMap<string, string[]>;
 	private readonly initRoutes: ReadonlyMap<string, readonly InitRoute[]>;
@@ -37,7 +37,7 @@ export class DirClaims {
 	markersAt(dir: string): FolderMarker[] {
 		return (this.markers.get(dir) ?? []).flatMap((fileName) => {
 			const key = this.readings.markers.get(
-				joinPosix(this.root.rootDir, dir, fileName)
+				joinPosix(this.root.sourcePath, dir, fileName)
 			)?.key;
 			return key === undefined ? [] : [{ fileName, key }];
 		});
@@ -72,7 +72,7 @@ export class DirClaims {
 	}
 }
 
-/** The claims of every root dir, built once for the routing and the checks that read them. */
+/** The claims of every source path, built once for the routing and the checks that read them. */
 export class RootClaims {
 	private readonly byRoot = new Map<ScannedRoot, DirClaims>();
 
@@ -86,7 +86,7 @@ export class RootClaims {
 
 	of(root: ScannedRoot): DirClaims {
 		const claims = this.byRoot.get(root);
-		if (!claims) throw new Error(`${root.rootDir} was not scanned.`);
+		if (!claims) throw new Error(`${root.sourcePath} was not scanned.`);
 		return claims;
 	}
 }

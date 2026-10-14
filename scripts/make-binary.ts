@@ -28,7 +28,7 @@ const flag = (name: string): string | undefined => {
 };
 const nodeBinary = flag("node") ?? process.execPath;
 const platform = flag("platform") ?? process.platform;
-const outFile =
+const projectFile =
 	platform === "win32" && !requestedFile.endsWith(".exe")
 		? `${requestedFile}.exe`
 		: requestedFile;
@@ -52,12 +52,12 @@ try {
 		stdio: "inherit",
 	});
 
-	fs.mkdirSync(path.dirname(path.resolve(outFile)), { recursive: true });
-	fs.copyFileSync(nodeBinary, outFile);
-	fs.chmodSync(outFile, 0o755);
+	fs.mkdirSync(path.dirname(path.resolve(projectFile)), { recursive: true });
+	fs.copyFileSync(nodeBinary, projectFile);
+	fs.chmodSync(projectFile, 0o755);
 	// A macOS binary must lose its signature to take the blob, and gets an ad-hoc one back to run.
 	if (platform === "darwin")
-		execFileSync("codesign", ["--remove-signature", outFile], {
+		execFileSync("codesign", ["--remove-signature", projectFile], {
 			stdio: "inherit",
 		});
 	execFileSync(
@@ -65,7 +65,7 @@ try {
 		[
 			"--yes",
 			POSTJECT,
-			outFile,
+			projectFile,
 			"NODE_SEA_BLOB",
 			blob,
 			"--sentinel-fuse",
@@ -77,7 +77,7 @@ try {
 		{ stdio: "inherit", shell: process.platform === "win32" }
 	);
 	if (platform === "darwin")
-		execFileSync("codesign", ["--sign", "-", outFile], {
+		execFileSync("codesign", ["--sign", "-", projectFile], {
 			stdio: "inherit",
 		});
 } finally {

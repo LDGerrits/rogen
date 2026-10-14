@@ -1,7 +1,0 @@
-$ rogen build
-exit 1
-stdout: (not shown)
-stderr:
-  error: default.rogen.json · not loaded
-  default.rogen.json:3:2 - error: unknown field "outDir". (config.unknownField)
-  default.rogen.json:4:2 - error: unknown field "exlude". Did you mean "exclude"? (config.unknownField)

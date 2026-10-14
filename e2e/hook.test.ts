@@ -95,9 +95,9 @@ const available = has("bash") && has("git") && has("jq");
 			cwd: path.join(dir, "project"),
 		});
 		write(
-			"default.rogen.json",
+			"rogen.json",
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: {
 					Server: "ServerScriptService",
 					Shared: "ReplicatedStorage/Shared",
@@ -105,7 +105,6 @@ const available = has("bash") && has("git") && has("jq");
 				},
 			})
 		);
-		write("lobby.rogen.json", '{ "extends": "default.rogen.json" }');
 		write("src/Old@sevre.luau");
 		write("src/Save.luau");
 		git("add", "-A");
@@ -236,8 +235,7 @@ const available = has("bash") && has("git") && has("jq");
 	});
 
 	it("should do nothing without a config in the project dir", () => {
-		fs.rmSync(path.join(dir, "project/default.rogen.json"));
-		fs.rmSync(path.join(dir, "project/lobby.rogen.json"));
+		fs.rmSync(path.join(dir, "project/rogen.json"));
 		write("src/Buy@sever.luau");
 
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });

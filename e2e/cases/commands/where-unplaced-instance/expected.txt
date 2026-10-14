@@ -11,7 +11,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "instance": "ServerScriptService.Shop.Buy",
         "status": "noFile",
         "folders": [
@@ -20,7 +20,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "instance": "ServerScriptService.Stray.Buy",
         "status": "noFile",
         "fixes": [

@@ -30,19 +30,6 @@ export function getOwn<T>(
 	return Object.hasOwn(source, key) ? source[key] : undefined;
 }
 
-export function sortObject<T>(obj: T): T {
-	if (!isObject(obj)) {
-		return obj;
-	}
-
-	return Object.keys(obj)
-		.sort()
-		.reduce((acc: Record<string, unknown>, key: string) => {
-			setOwn(acc, key, sortObject(getOwn(obj, key)));
-			return acc;
-		}, {}) as T;
-}
-
 /** Deeply merges objects into a new one, leaving the originals alone. */
 export function mergeDeep<T = Record<string, unknown>>(
 	...objects: unknown[]

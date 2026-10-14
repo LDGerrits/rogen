@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 12 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
+  rogen.json - warning: 12 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
     src/Save01@sever.luau (did you mean "@server"?)
     src/Save02@sever.luau (did you mean "@server"?)
     src/Save03@sever.luau (did you mean "@server"?)
@@ -21,13 +21,13 @@ stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
-        "outFile": "<dir>/default.project.json",
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/rogen.json",
             "severity": "warning",
             "code": "route.strayAt",
             "message": "12 names have an \"@\" that routes nowhere, so they are read as ordinary names:\n  <dir>/src/Save01@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save02@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save03@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save04@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save05@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save06@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save07@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save08@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save09@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save10@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save11@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save12@sever.luau (did you mean \"@server\"?)",

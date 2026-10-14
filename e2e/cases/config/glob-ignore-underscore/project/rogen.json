@@ -1,0 +1,11 @@
+{
+	"globIgnorePaths": [
+		"**/_*"
+	],
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	}
+}

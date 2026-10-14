@@ -71,7 +71,7 @@ describe("WhereLog", () => {
 			);
 		});
 
-		it("should name the template node that mounts a path", () => {
+		it("should name the tree node that mounts a path", () => {
 			expect(
 				lineOf({
 					status: "mounted",
@@ -80,23 +80,23 @@ describe("WhereLog", () => {
 					node: ["ReplicatedStorage", "Vendor"],
 				})
 			).toBe(
-				"src/Vendor/Lib.luau -> mounted · the template mounts it at ReplicatedStorage/Vendor"
+				"src/Vendor/Lib.luau -> mounted · the tree mounts it at ReplicatedStorage/Vendor"
 			);
 		});
 
-		it("should name the glob that excluded a path, relative to the working directory", () => {
+		it("should name the glob that ignored a path, relative to the working directory", () => {
 			expect(
 				lineOf({
-					status: "excluded",
+					status: "ignored",
 					source: "/repo/src/A.spec.luau",
 					exists: true,
 					pattern: "/repo/**/*.spec.luau",
 				})
-			).toBe("src/A.spec.luau -> excluded · matches **/*.spec.luau");
+			).toBe("src/A.spec.luau -> ignored · matches **/*.spec.luau");
 		});
 
 		it.each([
-			["*.rogen.json", "*.rogen.json"],
+			["**/*.tmp", "**/*.tmp"],
 			["C:/repo/**/*.spec.luau", "**/*.spec.luau"],
 		])(
 			"should keep a glob of Rogen's own as it is and make a drive glob relative to the working directory: %s",
@@ -112,7 +112,7 @@ describe("WhereLog", () => {
 								config: mockConfig({}),
 								files: [
 									{
-										status: "excluded",
+										status: "ignored",
 										source: "C:/repo/src/A.luau",
 										exists: true,
 										pattern,
@@ -147,7 +147,7 @@ describe("WhereLog", () => {
 					exists: true,
 					node: ["ServerScriptService", "Save"],
 				},
-				"src/Save.luau -> displaced · the template defines ServerScriptService/Save",
+				"src/Save.luau -> displaced · the tree defines ServerScriptService/Save",
 			],
 			[
 				{
@@ -159,10 +159,14 @@ describe("WhereLog", () => {
 			],
 			[
 				{ status: "outside", source: "/repo/README.md", exists: true },
-				"README.md -> outside the root dirs",
+				"README.md -> outside the source paths",
 			],
 			[
-				{ status: "ignored", source: "/repo/src/N.md", exists: true },
+				{
+					status: "notInstance",
+					source: "/repo/src/N.md",
+					exists: true,
+				},
 				"src/N.md -> not an instance",
 			],
 			[
@@ -197,7 +201,7 @@ describe("WhereLog", () => {
 
 		it("should print one config's lines as they are", () => {
 			expect(report([["default", [outside("a")]]]).lines()).toEqual([
-				"a -> outside the root dirs",
+				"a -> outside the source paths",
 			]);
 		});
 
@@ -207,7 +211,7 @@ describe("WhereLog", () => {
 					["default", [outside("a")]],
 					["lobby", [outside("a")]],
 				]).lines()
-			).toEqual(["a -> outside the root dirs"]);
+			).toEqual(["a -> outside the source paths"]);
 		});
 
 		const placed = (name: string, at: string): FileLocation => ({
@@ -269,7 +273,7 @@ describe("WhereLog", () => {
 					["lobby", [outside("a"), missing("b")]],
 				]).lines()
 			).toEqual([
-				"a -> outside the root dirs",
+				"a -> outside the source paths",
 				"lobby: b -> does not exist",
 			]);
 		});
@@ -290,7 +294,7 @@ describe("WhereLog", () => {
 					true
 				).lines()
 			).toEqual([
-				"lobby: a -> outside the root dirs",
+				"lobby: a -> outside the source paths",
 				"default: b -> does not exist",
 			]);
 		});
@@ -583,7 +587,7 @@ describe("WhereLog", () => {
 	});
 
 	describe("emptyLine", () => {
-		it("should name the root dirs of every config once, relative to the working directory", () => {
+		it("should name the source paths of every config once, relative to the working directory", () => {
 			const report = new WhereLog(
 				"/repo",
 				new WhereAnswers({
@@ -593,7 +597,10 @@ describe("WhereLog", () => {
 					configs: [
 						{
 							config: mockConfig({
-								rootDirs: ["/repo/src", "/repo/places/lobby"],
+								sourcePaths: [
+									"/repo/src",
+									"/repo/places/lobby",
+								],
 							}),
 							files: [],
 							instances: [],
@@ -601,7 +608,7 @@ describe("WhereLog", () => {
 							diagnostics: [],
 						},
 						{
-							config: mockConfig({ rootDirs: ["/repo/src"] }),
+							config: mockConfig({ sourcePaths: ["/repo/src"] }),
 							files: [],
 							instances: [],
 							queried: [],
@@ -613,7 +620,7 @@ describe("WhereLog", () => {
 
 			expect(report.lines()).toEqual([]);
 			expect(report.emptyLine()).toBe(
-				"No files in the root dirs (src, places/lobby)."
+				"No files in the source paths (src, places/lobby)."
 			);
 		});
 
@@ -634,7 +641,7 @@ describe("WhereLog", () => {
 		});
 		const strayAt = warningDiagnostic(
 			"route.strayAt",
-			{ resource: "/repo/default.rogen.json" },
+			{ resource: "/repo/rogen.json" },
 			'2 names have an "@" that routes nowhere:',
 			[
 				{

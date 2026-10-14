@@ -4,10 +4,10 @@
 			"init"
 		],
 		[
-			"build",
-			"default",
-			"sync"
+			"build"
 		]
 	],
-	"output": ["init"]
+	"output": [
+		"init"
+	]
 }

@@ -11,7 +11,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/F/Shared/Good.luau",
         "status": "blocked",
         "exists": true,

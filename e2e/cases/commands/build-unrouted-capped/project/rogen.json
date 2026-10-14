@@ -1,0 +1,8 @@
+{
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService"
+	}
+}

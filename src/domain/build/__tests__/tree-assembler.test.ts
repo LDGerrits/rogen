@@ -8,7 +8,6 @@ import {
 	abs,
 	assembleFilesOf,
 	optional,
-	templateOf,
 	writeFiles,
 } from "./fixtures.js";
 
@@ -31,30 +30,26 @@ describe("TreeAssembler", () => {
 			fs = new MemoryFileSystemService();
 		});
 
-		describe("template", () => {
-			it("should start from a bare DataModel with the resolved name when there is no template", async () => {
-				const { projectFile: value } = await assemble({ name: "game" });
-
-				expect(value).toEqual({
-					name: "game",
-					tree: { $className: "DataModel" },
-				});
-			});
-
-			it("should keep the template's other fields and nodes", async () => {
-				const template = templateOf({
-					name: "template-name",
-					servePort: 34872,
-					tree: {
-						$className: "DataModel",
-						Workspace: { $className: "Workspace" },
-					},
-				});
-
+		describe("tree", () => {
+			it("should start from a bare DataModel without a name when the config sets none", async () => {
 				const { projectFile: value } = await assemble({
 					name: "game",
-					template,
 				});
+
+				expect(value).toEqual({ tree: { $className: "DataModel" } });
+			});
+
+			it("should keep the config's other fields and nodes", async () => {
+				const project = {
+					name: "game",
+					servePort: 34872,
+					tree: {
+						$className: "DataModel",
+						Workspace: { $className: "Workspace" },
+					},
+				};
+
+				const { projectFile: value } = await assemble({ project });
 
 				expect(value).toEqual({
 					name: "game",
@@ -66,16 +61,16 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should merge generated children under a template service that has its own $path", async () => {
+			it("should merge generated children under a tree service that has its own $path", async () => {
 				await write("src/Foo.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: { $path: "shared" },
 					},
-				});
+				};
 
-				const storage = await storageOf({ template });
+				const storage = await storageOf({ project });
 
 				expect(storage).toEqual({
 					$path: "shared",
@@ -83,61 +78,54 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should rebase a template $path but never move it under the sync dir", async () => {
+			it("should keep a tree $path as written and never move it under the sync path", async () => {
 				await write("src/Foo.ts");
-				const template = templateOf(
-					{
-						tree: {
-							$className: "DataModel",
-							ReplicatedStorage: {
-								Packages: { $path: "Packages" },
-								Vendor: { $path: optional("vendor") },
-							},
+				const project = {
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							Packages: { $path: "Packages" },
+							Vendor: { $path: optional("vendor") },
 						},
 					},
-					abs("templates/base.project.json")
-				);
+				};
 
 				const storage = await storageOf({
-					template,
-					syncDir: abs("dist"),
+					project,
+					syncPath: abs("dist"),
 				});
 
-				expect(storage.Packages).toEqual({
-					$path: "templates/Packages",
-				});
-				expect(storage.Vendor).toEqual({
-					$path: optional("templates/vendor"),
-				});
+				expect(storage.Packages).toEqual({ $path: "Packages" });
+				expect(storage.Vendor).toEqual({ $path: optional("vendor") });
 			});
 
-			it("should leave a template $path as written when the template sits beside the output", async () => {
-				const template = templateOf({
+			it("should keep a tree $path written with a leading dot as written", async () => {
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: {
 							Packages: { $path: "./Packages" },
 						},
 					},
-				});
+				};
 
-				const storage = await storageOf({ template });
+				const storage = await storageOf({ project });
 
 				expect(storage.Packages).toEqual({ $path: "./Packages" });
 			});
 
-			it("should merge files under a template $path that a route targets", async () => {
+			it("should merge files under a tree $path that a route targets", async () => {
 				await write("src/A.luau", "src/B.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: { Vendor: { $path: "vendor" } },
 					},
-				});
+				};
 
 				const { projectFile: value, warnings } = await assemble({
 					routes: { "*": "ReplicatedStorage/Vendor" },
-					template,
+					project,
 				});
 
 				expect(
@@ -150,17 +138,17 @@ describe("TreeAssembler", () => {
 				expect(warnings).toEqual([]);
 			});
 
-			it("should keep the template's node and warn when a generated instance clashes", async () => {
+			it("should keep the tree's node and warn when a generated instance clashes", async () => {
 				await write("src/Packages/A.luau", "src/Packages/B.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: { Packages: { $path: "Packages" } },
 					},
-				});
+				};
 
 				const { projectFile: value, warnings } = await assemble({
-					template,
+					project,
 				});
 
 				expect(
@@ -169,32 +157,43 @@ describe("TreeAssembler", () => {
 				expect(warnings).toEqual([
 					{
 						severity: DiagnosticSeverity.Warning,
-						code: "tree.templateClash",
+						code: "tree.nodeClash",
 						resource: abs("src/Packages"),
 						message:
-							'the template defines "ReplicatedStorage/Packages" too, so its node is kept and this folder is left out. Rename one of them to keep both.',
+							'the tree defines "ReplicatedStorage/Packages" too, so its node is kept and this folder is left out. Rename one of them to keep both.',
 					},
 				]);
 			});
 		});
 
 		describe("paths", () => {
-			it("should emit generated $paths in the optional form, relative to the output", async () => {
+			it("should emit generated $paths in the optional form, relative to the config's folder", async () => {
 				await write("src/Foo.luau");
 
-				const storage = await storageOf({
-					outFile: abs("build/out.project.json"),
-				});
+				const storage = await storageOf();
 
 				expect(storage.Foo).toEqual({
-					$path: optional("../src/Foo.luau"),
+					$path: optional("src/Foo.luau"),
 				});
 			});
 
-			it("should apply the sync-path rule when a sync dir is set", async () => {
+			it("should emit generated $paths relative to the folder of a config that sits above its sources", async () => {
+				await writeFiles(fs, "place/src/Foo.luau");
+
+				const storage = await storageOf({
+					file: abs("place/rogen.json"),
+					sourcePaths: [abs("place/src")],
+				});
+
+				expect(storage.Foo).toEqual({
+					$path: optional("src/Foo.luau"),
+				});
+			});
+
+			it("should apply the sync-path rule when a sync path is set", async () => {
 				await write("src/Foo.ts", "src/Bar.luau");
 
-				const storage = await storageOf({ syncDir: abs("dist") });
+				const storage = await storageOf({ syncPath: abs("dist") });
 
 				expect(storage).toMatchObject({
 					Foo: { $path: optional("dist/Foo.luau") },
@@ -241,13 +240,13 @@ describe("TreeAssembler", () => {
 				emitLegacyScripts?: boolean
 			) => {
 				await write("src/Hud.client.luau");
-				const template = templateOf({
+				const project = {
 					tree: { $className: "DataModel" },
 					...(emitLegacyScripts !== undefined && {
 						emitLegacyScripts,
 					}),
-				});
-				const { warnings } = await assemble({ routes, template });
+				};
+				const { warnings } = await assemble({ routes, project });
 				return warnings.filter(
 					({ code }) => code === "tree.runContextTarget"
 				);
@@ -314,7 +313,7 @@ describe("TreeAssembler", () => {
 				expect(warnings).toEqual([]);
 			});
 
-			it("should not warn without a template", async () => {
+			it("should not warn when the config says nothing about legacy scripts", async () => {
 				await write("src/Hud.client.luau");
 
 				const { warnings } = await assemble({
@@ -326,14 +325,14 @@ describe("TreeAssembler", () => {
 
 			it("should still write the tree", async () => {
 				await write("src/Hud.client.luau");
-				const template = templateOf({
+				const project = {
 					tree: { $className: "DataModel" },
 					emitLegacyScripts: false,
-				});
+				};
 
 				const { projectFile: value } = await assemble({
 					routes: { "*": "StarterPlayer/StarterPlayerScripts" },
-					template,
+					project,
 				});
 
 				expect(value.emitLegacyScripts).toBe(false);
@@ -341,10 +340,10 @@ describe("TreeAssembler", () => {
 			});
 		});
 
-		describe("template nodes", () => {
-			it("should not collapse a directory onto a template container, so its children merge", async () => {
+		describe("tree nodes", () => {
+			it("should not collapse a directory onto a tree container, so its children merge", async () => {
 				await write("src/Inventory/Save.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: {
@@ -354,10 +353,10 @@ describe("TreeAssembler", () => {
 							},
 						},
 					},
-				});
+				};
 
 				const { projectFile: value, warnings } = await assemble({
-					template,
+					project,
 				});
 
 				expect(warnings).toEqual([]);
@@ -370,18 +369,18 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should never collapse over a template $path, whatever the directory holds", async () => {
+			it("should never collapse over a tree $path, whatever the directory holds", async () => {
 				await write("src/Packages/A.luau", "src/Packages/B.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: {
 							Packages: { $path: optional("Packages") },
 						},
 					},
-				});
+				};
 
-				const storage = await storageOf({ template });
+				const storage = await storageOf({ project });
 
 				expect(storage.Packages).toEqual({
 					$path: optional("Packages"),
@@ -402,17 +401,17 @@ describe("TreeAssembler", () => {
 				expect(shared.A).toMatchObject(FOLDER);
 			});
 
-			it("should leave template nodes as written", async () => {
+			it("should leave tree nodes as written", async () => {
 				await write("src/Foo.luau");
-				const template = templateOf({
+				const project = {
 					tree: {
 						$className: "DataModel",
 						ReplicatedStorage: { shared: { $className: "Folder" } },
 					},
-				});
+				};
 
 				const storage = await storageOf({
-					template,
+					project,
 					routes: { "*": "ReplicatedStorage/shared" },
 				});
 
@@ -517,7 +516,7 @@ describe("TreeAssembler", () => {
 
 				const { projectFile: value } = await assemble({
 					routes: SPLIT,
-					syncDir: abs("out"),
+					syncPath: abs("out"),
 				});
 
 				expect(

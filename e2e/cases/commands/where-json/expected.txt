@@ -4,7 +4,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
         "status": "placed",
         "exists": true,
@@ -20,7 +20,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
         "exists": true,
@@ -35,7 +35,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Inventory/Server/Save.luau",
         "status": "placed",
         "exists": true,
@@ -50,7 +50,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Net/Http.mock@client.luau",
         "status": "placed",
         "exists": true,
@@ -65,7 +65,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Net/Http@client.luau",
         "status": "placed",
         "exists": true,
@@ -80,7 +80,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Net/Types.lua",
         "status": "replaced",
         "exists": true,
@@ -96,7 +96,7 @@ stdout:
         ]
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Net/Types.luau",
         "status": "placed",
         "exists": true,
@@ -112,9 +112,9 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Specs",
-        "status": "excluded",
+        "status": "ignored",
         "exists": true,
         "pattern": "<dir>/src/Specs",
         "diagnostics": []
@@ -129,7 +129,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Net/Http.mock@client.luau",
         "status": "placed",
         "exists": true,
@@ -153,7 +153,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
         "exists": true,
@@ -168,7 +168,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "default",
+        "config": "project",
         "instance": "ReplicatedStorage/Shared/Nope",
         "status": "noFile",
         "folders": [

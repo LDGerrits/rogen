@@ -5,19 +5,19 @@ import { RojoFile } from "../rojo/rojo.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
 import { DataReplacement, MetaReplacement, SyncTool } from "./build.js";
 
-/** Where a build's files are synced from: the root dirs themselves, or the `syncDir` that tools write them into. */
+/** Where a build's files are synced from: the source paths themselves, or the `syncPath` that tools write them into. */
 export class SyncLayout {
 	readonly commonRoot: string;
-	readonly syncDir: string | undefined;
+	readonly syncPath: string | undefined;
 	readonly projectDir: string;
 
-	/** `tools` are what rewrites code on its way to `syncDir`. */
+	/** `tools` are what rewrites code on its way to `syncPath`. */
 	constructor(
-		config: Pick<ResolvedConfig, "commonRoot" | "syncDir" | "projectDir">,
+		config: Pick<ResolvedConfig, "commonRoot" | "syncPath" | "projectDir">,
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.commonRoot = config.commonRoot ?? config.projectDir;
-		this.syncDir = config.syncDir;
+		this.syncPath = config.syncPath;
 		this.projectDir = config.projectDir;
 	}
 
@@ -47,12 +47,12 @@ export class SyncLayout {
 		return toPosix(path.relative(this.projectDir, absolutePath));
 	}
 
-	/** The absolute path the tools write for `filePath` under `syncDir`, or `filePath` itself when nothing syncs elsewhere. */
+	/** The absolute path the tools write for `filePath` under `syncPath`, or `filePath` itself when nothing syncs elsewhere. */
 	emittedPath(filePath: string): string {
-		if (this.syncDir === undefined) return filePath;
+		if (this.syncPath === undefined) return filePath;
 		return this.tools.reduce(
 			(emitted, tool) => tool.emittedPath?.(emitted) ?? emitted,
-			path.join(this.syncDir, path.relative(this.commonRoot, filePath))
+			path.join(this.syncPath, path.relative(this.commonRoot, filePath))
 		);
 	}
 
@@ -62,7 +62,7 @@ export class SyncLayout {
 	}
 
 	/** The `$path` Rojo mounts for `filePath`. Optional, since a compiler may not have written it yet. */
-	syncPath(filePath: string): OptionalRojoPath {
+	rojoPath(filePath: string): OptionalRojoPath {
 		return { optional: this.relativeToProject(this.emittedPath(filePath)) };
 	}
 }

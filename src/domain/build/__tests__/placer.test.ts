@@ -30,20 +30,30 @@ describe("Placer", () => {
 			index: IndexReader = emptyIndex
 		) => placeFiles(index, configOf(overrides), syncTools);
 
-		it("should root the layout at the output's directory", () => {
+		it("should root the layout at the config's folder", () => {
 			const { layout } = prepare({
-				outFile: abs("out/game.project.json"),
+				file: abs("out/rogen.json"),
 			}).unwrap();
 
 			expect(layout.projectDir).toBe(abs("out"));
 		});
 
-		it("should hold the template rebased to the output's directory", () => {
-			const { template } = prepare({ name: "game" }).unwrap();
+		it("should hold the config's tree, and nothing else of its project", () => {
+			const { tree } = prepare({
+				project: {
+					name: "game",
+					tree: {
+						$className: "DataModel",
+						Workspace: { $className: "Workspace" },
+					},
+				},
+			}).unwrap();
 
-			expect(template.edit().getFile()).toEqual({
-				name: "game",
-				tree: { $className: "DataModel" },
+			expect(tree.edit().getFile()).toEqual({
+				tree: {
+					$className: "DataModel",
+					Workspace: { $className: "Workspace" },
+				},
 			});
 		});
 	});
@@ -64,13 +74,13 @@ describe("Placer", () => {
 
 		const write = (...paths: string[]) => writeFiles(fs, ...paths);
 
-		const apply = async (rootDirs: readonly string[] = [abs("src")]) =>
+		const apply = async (sourcePaths: readonly string[] = [abs("src")]) =>
 			(
 				await buildAndPlace(
 					fs,
 					configOf({
 						routes: SHARED_ROUTES,
-						rootDirs: [...rootDirs],
+						sourcePaths: [...sourcePaths],
 					})
 				)
 			).map(
@@ -89,7 +99,7 @@ describe("Placer", () => {
 			store[Symbol.dispose]();
 		});
 
-		it("should name the file from the last root dir that replaced another", async () => {
+		it("should name the file from the last source path that replaced another", async () => {
 			await write("core/Types.luau", "lobby/Types.luau");
 
 			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
@@ -122,7 +132,7 @@ describe("Placer", () => {
 			]);
 		});
 
-		it("should name the clash's winner in its own root dir when a later root dir wins", async () => {
+		it("should name the clash's winner in its own source path when a later source path wins", async () => {
 			await write(
 				"core/Types.luau",
 				"core/Types.lua",
@@ -152,12 +162,12 @@ describe("Placer", () => {
 			]);
 		});
 
-		it("should let the last root dir win a clash without a warning", async () => {
+		it("should let the last source path win a clash without a warning", async () => {
 			await write("core/Save.luau", "lobby/Save.luau");
 
 			const result = (await apply([abs("core"), abs("lobby")])).unwrap();
 
-			expect(result.files.map((file) => file.entry.rootDir)).toEqual([
+			expect(result.files.map((file) => file.entry.sourcePath)).toEqual([
 				abs("lobby"),
 			]);
 			expect(result.warnings).toEqual([]);
@@ -283,20 +293,17 @@ describe("Placer", () => {
 			]);
 		});
 
-		it("should keep the fallback's own placement of an init script whose copies the template displaces", async () => {
+		it("should keep the fallback's own placement of an init script whose copies the tree displaces", async () => {
 			await write("src/Net/init.luau", "src/Net/server/Remote.luau");
 
 			expect(
 				await placed({
-					template: {
-						file: abs("template.project.json"),
-						project: {
-							name: "game",
-							tree: {
-								$className: "DataModel",
-								ServerScriptService: {
-									Net: { $className: "Folder" },
-								},
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ServerScriptService: {
+								Net: { $className: "Folder" },
 							},
 						},
 					},
@@ -401,7 +408,7 @@ describe("Placer", () => {
 			await write("src/Net/init.luau", "src/Net/client/Debug.luau");
 
 			expect(
-				await placed({ exclude: [abs("src/Net/client/Debug.luau")] })
+				await placed({ ignored: [abs("src/Net/client/Debug.luau")] })
 			).toEqual(["Net/init.luau -> ReplicatedStorage/shared/Net"]);
 		});
 	});

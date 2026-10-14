@@ -16,7 +16,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "default",
+        "config": "project",
         "source": "<dir>/src/Player/^Animate.client.luau",
         "status": "placed",
         "exists": true,

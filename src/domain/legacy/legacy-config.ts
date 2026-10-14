@@ -1,6 +1,6 @@
 import {
 	Diagnostic,
-	warningDiagnostic,
+	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DOCS_URL } from "../../platform/product/product-service.js";
 import { FailedConfigFile } from "../config/config-service.js";
@@ -9,10 +9,16 @@ import { FailedConfigFile } from "../config/config-service.js";
 export class LegacyConfig {
 	static readonly MIGRATION_URL = `${DOCS_URL}/migrating-from-v1`;
 
-	private static readonly KEYS = ["source", "aliases", "globIgnorePaths"];
+	private static readonly KEYS = ["source", "aliases"];
 	private static readonly MODE_KEYS = ["output", "build"];
-	/** Fields of a Rogen 2 config whose keys are names the user picks, so a route called `build`, or a mode or variant map of the Rogen 2 beta, would look like a Rogen 1 mode. */
-	private static readonly NAME_MAPS = ["routes", "variants", "modes"];
+	/** Fields of a Rogen 2 config whose keys are names the user picks, so a route called `build`, an instance called `output`, or a mode or variant map of the Rogen 2 beta, would look like a Rogen 1 mode. */
+	private static readonly NAME_MAPS = [
+		"routes",
+		"variants",
+		"modes",
+		"tree",
+		"projects",
+	];
 
 	/** Whether `value`, the JSON of a config file, has the keys of a Rogen 1 config. */
 	static detects(value: unknown): boolean {
@@ -26,11 +32,11 @@ export class LegacyConfig {
 		);
 	}
 
-	/** The hint for a config file that failed to load, or none when it isn't a Rogen 1 config. */
+	/** The error for a config file that is a Rogen 1 config, which Rogen 2 refuses to read as its own; none for any other. */
 	static check({ file, value }: FailedConfigFile): readonly Diagnostic[] {
 		return LegacyConfig.detects(value)
 			? [
-					warningDiagnostic(
+					errorDiagnostic(
 						"legacy.config",
 						{ resource: file },
 						`this looks like a config for Rogen 1, which v2 doesn't read. See ${LegacyConfig.MIGRATION_URL} to migrate it.`

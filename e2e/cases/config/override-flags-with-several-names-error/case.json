@@ -1,8 +1,0 @@
-{
-	"steps": [
-		["build", "a", "b", "-o", "x.project.json"],
-		["build", "-o", "x.project.json"],
-		["build", "-o", "x.project.json", "--json"],
-		["build", "a", "-o", "x.project.json"]
-	]
-}

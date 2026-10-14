@@ -37,12 +37,12 @@ describe("PlainLogService", () => {
 
 		logService.section(
 			"default.rogen.json",
-			"root dirs: src\nsync dir: out"
+			"source paths: src\nsync path: out"
 		);
 
 		expect(out).toEqual([
 			"default.rogen.json",
-			"  root dirs: src\n  sync dir: out",
+			"  source paths: src\n  sync path: out",
 		]);
 	});
 
@@ -95,7 +95,7 @@ describe("PlainLogService", () => {
 		logService.info("Not building: a.rogen.json.");
 		logService.step("default.rogen.json");
 		logService.success("Wrote default.project.json.");
-		logService.info("root dirs: src\nsync dir: (none)");
+		logService.info("source paths: src\nsync path: (none)");
 		logService.diagnostic(
 			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
 		);
@@ -106,7 +106,7 @@ describe("PlainLogService", () => {
 			"Not building: a.rogen.json.",
 			"default.rogen.json",
 			"  Wrote default.project.json.",
-			"  root dirs: src\n  sync dir: (none)",
+			"  source paths: src\n  sync path: (none)",
 			"1 config.",
 		]);
 		expect(errors).toEqual(["/repo/a - warning: w (x.y)"]);
@@ -286,7 +286,7 @@ describe("PlainLogService", () => {
 
 		it("should start the line at its first column, inside a step too, or GitHub would not read it", () => {
 			const logService = new PlainLogService("/work/repo", "/work/repo");
-			logService.section("default.rogen.json", "root dirs: src");
+			logService.section("default.rogen.json", "source paths: src");
 			logService.step("lobby");
 
 			logService.annotate(diagnostic);

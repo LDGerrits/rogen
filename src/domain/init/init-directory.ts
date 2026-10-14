@@ -1,34 +1,18 @@
 import path from "path";
-import { PathSet, contains, normalizeDir } from "../../base/path.js";
+import { PathSet, normalizeDir } from "../../base/path.js";
 import { ignoresPathCase } from "../../base/platform.js";
-import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	DEFAULT_CONFIG_FILE,
-	DEFAULT_CONFIG_STEM,
-	configFileName,
+	DEFAULT_PROJECT_FILE,
+	DEFAULT_SOURCE_PATH,
 	isConfigFileName,
-	rootDirOverlap,
+	sourcePathOverlap,
 } from "../config/config.js";
-import { stemOfProjectFile } from "../rojo/rojo-project.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
-import { DirectoryLayout, DEFAULT_ROOT_DIR } from "./code-finder.js";
-import { TEMPLATE_FILE } from "./starter-template.js";
-
-const DEFAULT_PROJECT_NAME = "roblox-game";
-
-/** What a place inherits from `default.rogen.json`, with paths relative to the directory. */
-export interface BaseConfig {
-	readonly rootDirs: readonly string[];
-	readonly syncDir?: string;
-	/** The serve ports the templates of the configs here set, which a new place's port must differ from. */
-	readonly ports?: readonly number[];
-	/** Whether two configs a bare `rogen serve` would serve share a port, so a new place has to be served by name. */
-	readonly sharedPort?: boolean;
-}
+import { DirectoryLayout } from "./code-finder.js";
 
 /** The directory `init` writes into: what is in it, what the toolchain found there, and which paths could be written. */
 export class InitDirectory {
@@ -42,52 +26,29 @@ export class InitDirectory {
 		readonly workspace: DetectedWorkspace,
 		/** Which of its folders hold code. */
 		readonly layout: DirectoryLayout,
-		/** The config name given on the command line, if one was. */
-		readonly givenName: string | undefined,
-		/** What a place inherits from `default.rogen.json`; `undefined` when there is none. */
-		readonly base: Result<BaseConfig, Diagnostic[]> | undefined,
 		/** Whether the file system takes `Src` and `src` for one name, as Windows' and macOS' do. */
 		caseInsensitive = ignoresPathCase
 	) {
 		this.names = new PathSet(entries, caseInsensitive);
 	}
 
-	/** The name written when none is asked for: the given one, else `default`. */
-	get name(): string {
-		return this.givenName ?? DEFAULT_CONFIG_STEM;
-	}
-
-	/** The name of the game the project files carry. */
-	get projectName(): string {
-		return path.basename(this.path) || DEFAULT_PROJECT_NAME;
-	}
-
 	has(fileName: string): boolean {
 		return this.names.has(fileName);
 	}
 
-	get hasDefaultConfig(): boolean {
-		return this.has(DEFAULT_CONFIG_FILE);
-	}
-
-	/** Whether any config is here; a first `init` finds none. */
+	/** Whether a config is here; a first `init` finds none. */
 	get hasConfigs(): boolean {
-		return [...this.entries].some(isConfigFileName);
+		return this.configFiles.length > 0;
 	}
 
-	/** Project files here that no config beside them writes, other than the template. */
-	get handWrittenProjectFiles(): string[] {
-		return [...this.entries]
-			.filter((file) => {
-				const label = stemOfProjectFile(file);
-				return (
-					label !== undefined &&
-					!this.has(configFileName(label)) &&
-					file !== TEMPLATE_FILE &&
-					!file.endsWith(`.${TEMPLATE_FILE}`)
-				);
-			})
-			.sort();
+	/** The config files here, sorted. */
+	get configFiles(): string[] {
+		return [...this.entries].filter(isConfigFileName).sort();
+	}
+
+	/** Whether a project file is here that no config wrote, since a first `init` finds no config. */
+	get hasHandWrittenProject(): boolean {
+		return this.has(DEFAULT_PROJECT_FILE);
 	}
 
 	/** One diagnostic per file in `fileNames` that already exists here; only a config is safe to tell the user to delete. */
@@ -109,32 +70,18 @@ export class InitDirectory {
 			);
 	}
 
-	/** Beside `default.rogen.json`, a run that can't ask adds a place, which has no default name. */
-	checkPlaceNamed(): Diagnostic[] {
-		if (this.givenName || !this.hasDefaultConfig) return [];
-		return [
-			errorDiagnostic(
-				"init.configExists",
-				{
-					resource: path.join(this.path, DEFAULT_CONFIG_FILE),
-				},
-				"this config already exists. To add a place beside it, run 'rogen init <name>'."
-			),
-		];
-	}
-
 	/** The first that applies: the language's own config, `src`, the only code folder, else `src`. */
-	defaultRootDir(language: Language): string {
-		const configured = language.configuredRootDir();
+	defaultSourcePath(language: Language): string {
+		const configured = language.configuredSourcePath();
 		if (configured !== undefined) return configured;
-		if (this.has(DEFAULT_ROOT_DIR)) return DEFAULT_ROOT_DIR;
+		if (this.has(DEFAULT_SOURCE_PATH)) return DEFAULT_SOURCE_PATH;
 		const { codeFolders } = this.layout;
-		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_ROOT_DIR;
+		return codeFolders.length === 1 ? codeFolders[0] : DEFAULT_SOURCE_PATH;
 	}
 
-	/** The hint line naming the code folders `rootDir` doesn't cover, or `undefined` when there are none. */
-	otherCodeFoldersHint(rootDir: string): string | undefined {
-		const [topLevel] = rootDir.split("/");
+	/** The hint line naming the code folders `sourcePath` doesn't cover, or `undefined` when there are none. */
+	otherCodeFoldersHint(sourcePath: string): string | undefined {
+		const [topLevel] = sourcePath.split("/");
 		const others = this.layout.codeFolders.filter(
 			(folder) => folder !== topLevel
 		);
@@ -143,9 +90,9 @@ export class InitDirectory {
 			: undefined;
 	}
 
-	/** The first reason `entries` can't be a config's root dirs, decided by the config's own overlap rule. */
-	rootDirsProblem(entries: readonly string[]): string | undefined {
-		if (entries.length === 0) return "Enter at least one root dir.";
+	/** The first reason `entries` can't be a config's source paths, decided by the config's own overlap rule. */
+	sourcePathsProblem(entries: readonly string[]): string | undefined {
+		if (entries.length === 0) return "Enter at least one source path.";
 		for (const entry of entries) {
 			if (path.posix.isAbsolute(entry) || path.win32.isAbsolute(entry)) {
 				return `Use a path relative to here, not ${entry}.`;
@@ -160,7 +107,7 @@ export class InitDirectory {
 			path.resolve(this.path, entry)
 		);
 		for (const [index, entry] of normalized.entries()) {
-			const overlap = rootDirOverlap(absolute, index);
+			const overlap = sourcePathOverlap(absolute, index);
 			if (overlap?.kind === "duplicate")
 				return `${entry} is listed twice.`;
 			if (overlap?.kind === "nested") {
@@ -169,21 +116,5 @@ export class InitDirectory {
 			}
 		}
 		return undefined;
-	}
-
-	/** The first reason `folder` can't join `rootDirs` as a place's own code, or `undefined`. */
-	placeFolderProblem(
-		rootDirs: readonly string[],
-		folder: string
-	): string | undefined {
-		const normalized = normalizeDir(folder);
-		const resolved = path.resolve(this.path, normalized);
-		const overlapping = rootDirs.find((dir) => {
-			const other = path.resolve(this.path, dir);
-			return contains(other, resolved) || contains(resolved, other);
-		});
-		return overlapping === undefined
-			? this.rootDirsProblem([...rootDirs, folder])
-			: `${normalized} overlaps ${overlapping}, one of default's root dirs. Pick a folder outside it.`;
 	}
 }

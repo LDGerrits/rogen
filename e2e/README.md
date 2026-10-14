@@ -14,11 +14,13 @@ code, the written files and the tree Rojo sees.
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "--variant", "mock"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [] }
+  case.json      optional: { "steps": [["build", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {} }
   expected.txt   the transcript
 ```
 
-- `steps` defaults to `[["build"]]`. Each step is the argument list of one `rogen` run.
+- `steps` defaults to `[["build"]]`. Each step is the argument list of one `rogen` run. A
+  project is a folder with its own `rogen.json`, so a case with several holds a
+  folder for each, and a step names the folders (`["build", "lobby", "match"]`).
 - `cwd` is a folder inside `project/` that every step runs from; the project root when omitted.
 - `links` maps a path inside `project/` to a symlink target, created at run time so
   the fixtures work on any checkout.
@@ -27,8 +29,9 @@ e2e/cases/<area>/<case>/
 - `output` lists the commands (`build`, `init`) whose printed output this case
   checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
-- Files that a run created or changed are listed under `written:`. `*.rogen.json`
-  files are printed, and every `*.project.json` is passed to Rojo.
+- `env` sets variables for the commands, on top of an environment that is not GitHub Actions'.
+- Files that a run created or changed are listed under `written:`. `rogen.json` and
+  `rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
 and fails in CI.
@@ -43,15 +46,28 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `src/commands/init/__tests__/init-command.test.ts` and the tests of
   `src/domain/init`. The other `cases/init/` cases check what `init` writes and
   that Rojo accepts it.
-- What `build` prints (header, per-config lines, closing line) is checked by
+- What `build` prints (header, per-project lines, closing line) is checked by
   `build-log.test.ts` and `build-command.test.ts` in
   `src/commands/build/__tests__/`. A case lists `build` under `output` only when
-  a line of it is the point, such as the variants a build ran with.
+  a line of it is the point, such as the `same warnings as` note of several
+  projects, the `-v` debug lines or the path forms `[PROJECT]` takes.
 - The wording of a warning or an error is checked by the domain test of its code,
   such as `build-validator.test.ts`. A case shows it on stderr to prove that it
   reaches the user.
-- The project file and the tree Rojo sees are checked by the case of the feature,
-  in `cases/routing`, `variants`, `structure` and the like.
+- The project file and the tree Rojo sees are checked by the case of the feature:
+  `cases/routing` for how folders and names place a file, `cases/structure` for
+  init folders, the tree, `globIgnorePaths` and a config without routes,
+  `cases/data-files` for `.meta.json` and `.model.json`, `cases/links` for
+  symlinks, `cases/sync-path` for `syncPath` (roblox-ts and Darklua output),
+  and `cases/config` for `rogen.json` itself: its keys, the removed and unknown
+  ones, `name`, the source paths and JSONC.
+- What a command does with its project argument, and what it prints, is
+  checked by `cases/commands`: `build`, `check`, `list` and `where`, with
+  several projects as folders (`build-several-projects`, `build-same-errors-error`),
+  the forms `[PROJECT]` takes (`build-project-path`, `build-project-argument-error`,
+  `from-subfolder`), a stale `default.project.json` (`check-stale-project-file-warning`),
+  `--json`, `--quiet`, `--verbose`, `--deny-warnings`, help, and the unknown
+  and removed commands and options.
 
 A new case needs no `output`. Add it only when the printed output of `build` or
 `init` is what the case is about.
@@ -67,9 +83,9 @@ npm run test:e2e:update
 It prints the edits to the transcripts, grouped, with the number of transcripts each is in:
 
 ```
-28×  Declare variants [-under-]{+in+} "variants" in
+28×  Run 'rogen build' [-to-]{+to bring+} it up to date
  1×  + Wrote 2 files.
-     in init/add-place-no-input
+     in init/lifted-project
 ```
 
 Read that list first, and open the diff of a transcript only for an edit you did not expect. `npm run test:e2e:diff` prints the list again for what is not yet committed.

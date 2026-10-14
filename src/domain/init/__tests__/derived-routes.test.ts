@@ -1,6 +1,8 @@
 import { DerivedRoutes } from "../derived-routes.js";
+import { StarterProject } from "../starter-project.js";
 
-const project = (tree: object) => JSON.stringify({ name: "x", tree });
+const project = (tree: object) =>
+	StarterProject.parse(JSON.stringify({ name: "x", tree })).unwrap();
 
 const RBX_TREE = {
 	$className: "DataModel",
@@ -11,12 +13,12 @@ const RBX_TREE = {
 	},
 };
 
-const derive = (tree: object, rootDirs = ["src"]) =>
-	DerivedRoutes.of("default.project.json", project(tree), rootDirs);
+const derive = (tree: object, sourcePaths = ["src"]) =>
+	DerivedRoutes.of("default.project.json", project(tree), sourcePaths);
 
 describe("domain/init/derived-routes", () => {
 	describe("DerivedRoutes", () => {
-		it("should route each folder directly in a root dir to where the project file mounted it", () => {
+		it("should route each folder directly in a source path to where the project file mounted it", () => {
 			const derived = derive(RBX_TREE);
 
 			expect([...derived!.routes]).toEqual([
@@ -39,7 +41,7 @@ describe("domain/init/derived-routes", () => {
 			expect(derived?.fallback).toBe("ReplicatedStorage/Common");
 		});
 
-		it("should have no fallback without a shared folder or a mounted root dir", () => {
+		it("should have no fallback without a shared folder or a mounted source path", () => {
 			const derived = derive({
 				ServerScriptService: { Server: { $path: "src/server" } },
 			});
@@ -47,7 +49,7 @@ describe("domain/init/derived-routes", () => {
 			expect(derived?.fallback).toBeUndefined();
 		});
 
-		it("should send files that match no route where the root dir itself was mounted", () => {
+		it("should send files that match no route where the source path itself was mounted", () => {
 			const derived = derive({
 				ReplicatedStorage: {
 					Common: { $path: "src" },
@@ -73,7 +75,7 @@ describe("domain/init/derived-routes", () => {
 			]);
 		});
 
-		it("should find the folders of every root dir", () => {
+		it("should find the folders of every source path", () => {
 			const derived = derive(
 				{
 					ServerScriptService: {
@@ -88,7 +90,7 @@ describe("domain/init/derived-routes", () => {
 		});
 
 		describe("a mount it can't route", () => {
-			it("should list a folder below one directly in a root dir", () => {
+			it("should list a folder below one directly in a source path", () => {
 				const derived = derive({
 					ServerScriptService: {
 						Admin: { $path: "src/server/Admin" },
@@ -125,7 +127,7 @@ describe("domain/init/derived-routes", () => {
 				expect(derived?.unrouted).toHaveLength(1);
 			});
 
-			it("should list a root dir mounted somewhere no route can reach", () => {
+			it("should list a source path mounted somewhere no route can reach", () => {
 				const derived = derive({
 					Custom: { Common: { $path: "src" } },
 				});
@@ -144,7 +146,7 @@ describe("domain/init/derived-routes", () => {
 			});
 		});
 
-		it("should ignore a mount outside the root dirs", () => {
+		it("should ignore a mount outside the source paths", () => {
 			expect(
 				derive({
 					ReplicatedStorage: { Packages: { $path: "Packages" } },
@@ -153,10 +155,7 @@ describe("domain/init/derived-routes", () => {
 			).toBeUndefined();
 		});
 
-		it("should give up when there is no project file, nothing to route, or a root dir is the whole folder", () => {
-			expect(
-				DerivedRoutes.of("default.project.json", "{ nope", ["src"])
-			).toBeUndefined();
+		it("should give up when there is nothing to route, or a source path is the whole folder", () => {
 			expect(derive({ ReplicatedStorage: {} })).toBeUndefined();
 			expect(derive(RBX_TREE, ["."])).toBeUndefined();
 		});

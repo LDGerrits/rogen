@@ -1,8 +1,8 @@
 # Routing
 
-Rogen reads the folder and file names under each config's `rootDirs` and writes the Rojo project file. Folders decide where code runs, so the disk path is not the instance path.
+Rogen reads the folder and file names under each config's `sourcePaths` and writes the Rojo project file. Folders decide where code runs, so the disk path is not the instance path.
 
-`routes` maps a route key to a target, `Service` or `Service/Folder/...`. Only declared keys route, and nothing is built in. `rogen list` prints each config's resolved routes, in order, as `key -> target`, and `routes: same as <config>` for one that repeats an earlier config's; it follows an `extends` chain.
+`routes` maps a route key to a target, `Service` or `Service/Folder/...`. Only declared keys route, and nothing is built in. `rogen list` prints each config's resolved routes, in order, as `key -> target`, and `routes: same as <config>` for one that repeats an earlier config's.
 
 Route with folders. Give each feature one folder per side, named after the config's route keys, and put every file inside one of them:
 
@@ -21,7 +21,7 @@ A key routes a file in four ways:
 
 Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns. An `@` that nearly spells a route (`Save@sever.luau`) warns with the closest key; other `@` names, such as packages, stay silent.
 
-The governing route is the first one found walking down from the root directory. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name. A nested `@key` naming another route is an error (`server/Util@client.luau`), and one restating the governing route is fine. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients (a `Shared/Server/@shared` marker says the folder is meant to), and when a Script or LocalScript lands where it never runs.
+The governing route is the first one found walking down from the source path. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name. A nested `@key` naming another route is an error (`server/Util@client.luau`), and one restating the governing route is fine. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients (a `Shared/Server/@shared` marker says the folder is meant to), and when a Script or LocalScript lands where it never runs.
 
 `*` is the fallback for files no route matched. Without it those files are left out, with a warning.
 

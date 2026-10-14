@@ -230,20 +230,17 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
-	it("should say the template mounts a file inside a folder it mounts", async () => {
+	it("should say the tree mounts a file inside a folder it mounts", async () => {
 		await write("src/Vendor/Lib/Init.luau", "src/Save.luau");
 
 		expect(
 			await locate(["src/Vendor/Lib/Init.luau"], {
-				template: {
-					file: abs("template.project.json"),
-					project: {
-						name: "game",
-						tree: {
-							$className: "DataModel",
-							ReplicatedStorage: {
-								Vendor: { $path: "src/Vendor" },
-							},
+				project: {
+					name: "game",
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: {
+							Vendor: { $path: "src/Vendor" },
 						},
 					},
 				},
@@ -258,17 +255,14 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
-	describe("a folder the template mounts outside the root dirs", () => {
-		const template = {
-			file: abs("template.project.json"),
-			project: {
-				name: "game",
-				tree: {
-					$className: "DataModel",
-					ReplicatedStorage: {
-						Packages: { $path: "Packages" },
-						DevPackages: { $path: "DevPackages" },
-					},
+	describe("a folder the tree mounts outside the source paths", () => {
+		const project = {
+			name: "game",
+			tree: {
+				$className: "DataModel",
+				ReplicatedStorage: {
+					Packages: { $path: "Packages" },
+					DevPackages: { $path: "DevPackages" },
 				},
 			},
 		};
@@ -277,7 +271,7 @@ describe("CoreBuildService.locate", () => {
 
 		it("should be said to be mounted, with the files in it", async () => {
 			expect(
-				await locate(["Packages", "Packages/A.luau"], { template })
+				await locate(["Packages", "Packages/A.luau"], { project })
 			).toMatchObject([
 				{
 					status: "mounted",
@@ -292,22 +286,44 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should be said to be excluded when exclude drops its mount, as it does in a mode", async () => {
+		it("should be said to be mounted even when a glob in ignored matches the mount itself", async () => {
 			expect(
 				await locate(["DevPackages", "DevPackages/B.luau"], {
-					template,
-					exclude: [toPosix(abs("DevPackages"))],
+					project,
+					ignored: [toPosix(abs("DevPackages"))],
 				})
 			).toMatchObject([
 				{
-					status: "excluded",
+					status: "mounted",
 					source: abs("DevPackages"),
-					pattern: toPosix(abs("DevPackages")),
+					node: ["ReplicatedStorage", "DevPackages"],
 				},
 				{
-					status: "excluded",
+					status: "mounted",
 					source: abs("DevPackages/B.luau"),
-					pattern: toPosix(abs("DevPackages")),
+					node: ["ReplicatedStorage", "DevPackages"],
+				},
+			]);
+		});
+
+		it("should be said to be ignored for a file in the mount that a glob matches", async () => {
+			const pattern = `${toPosix(abs("DevPackages"))}/**`;
+
+			expect(
+				await locate(["DevPackages", "DevPackages/B.luau"], {
+					project,
+					ignored: [pattern],
+				})
+			).toMatchObject([
+				{
+					status: "mounted",
+					source: abs("DevPackages"),
+					node: ["ReplicatedStorage", "DevPackages"],
+				},
+				{
+					status: "ignored",
+					source: abs("DevPackages/B.luau"),
+					pattern,
 				},
 			]);
 		});
@@ -326,25 +342,22 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
-	it("should say the template displaced a file whose node it defines, or a folder under its $path", async () => {
+	it("should say the tree displaced a file whose node it defines, or a folder under its $path", async () => {
 		await write("src/Save.luau", "src/Packages/A.luau", "src/Kept.luau");
-		const template = {
-			file: abs("default.project.json"),
-			project: {
-				name: "repo",
-				tree: {
-					$className: "DataModel",
-					ReplicatedStorage: {
-						Shared: {
-							Save: { $path: "hand/Save.luau" },
-							Packages: { $path: "Packages" },
-						},
+		const project = {
+			name: "repo",
+			tree: {
+				$className: "DataModel",
+				ReplicatedStorage: {
+					Shared: {
+						Save: { $path: "hand/Save.luau" },
+						Packages: { $path: "Packages" },
 					},
 				},
 			},
 		};
 
-		expect(await locate(undefined, { template })).toEqual([
+		expect(await locate(undefined, { project })).toEqual([
 			{
 				status: "placed",
 				source: abs("src/Kept.luau"),
@@ -368,7 +381,7 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
-	it("should report an unrouted file, and an excluded file or folder with the glob that excluded it", async () => {
+	it("should report an unrouted file, and an ignored file or folder with the glob that ignored it", async () => {
 		await write(
 			"src/Util.luau",
 			"src/Specs/A.spec.luau",
@@ -380,20 +393,20 @@ describe("CoreBuildService.locate", () => {
 			["src/Util.luau", "src/Specs", "src/Specs/deep/B.luau"],
 			{
 				routes: { Server: "ServerScriptService" },
-				exclude: [glob],
+				ignored: [glob],
 			}
 		);
 
 		expect(located).toEqual([
 			{ status: "unrouted", source: abs("src/Util.luau"), exists: true },
 			{
-				status: "excluded",
+				status: "ignored",
 				source: abs("src/Specs"),
 				pattern: glob,
 				exists: true,
 			},
 			{
-				status: "excluded",
+				status: "ignored",
 				source: abs("src/Specs/deep/B.luau"),
 				exists: true,
 				pattern: glob,
@@ -416,7 +429,7 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
-	it("should list everything below a directory that holds the root dirs", async () => {
+	it("should list everything below a directory that holds the source paths", async () => {
 		await write("src/A.luau");
 
 		const located = await locate(["."]);
@@ -572,7 +585,7 @@ describe("CoreBuildService.locate", () => {
 		});
 	});
 
-	it("should report a path outside the root dirs, one that isn't an instance, and one that doesn't exist", async () => {
+	it("should report a path outside the source paths, one that isn't an instance, and one that doesn't exist", async () => {
 		await write("src/Save.meta.json", "src/Save.luau", "README.md");
 
 		const located = await locate([
@@ -584,7 +597,7 @@ describe("CoreBuildService.locate", () => {
 		expect(located).toEqual([
 			{ status: "outside", source: abs("README.md"), exists: true },
 			{
-				status: "ignored",
+				status: "notInstance",
 				source: abs("src/Save.meta.json"),
 				exists: true,
 			},
@@ -622,7 +635,11 @@ describe("CoreBuildService.locate", () => {
 					})
 				).unwrap().files
 			).toEqual([
-				{ status: "ignored", source: abs("src/Pipe.md"), exists: true },
+				{
+					status: "notInstance",
+					source: abs("src/Pipe.md"),
+					exists: true,
+				},
 			]);
 		});
 
@@ -694,35 +711,35 @@ describe("CoreBuildService.locate", () => {
 
 			expect(await locate(["src/Combat/Server/Moves/Notes.md"])).toEqual([
 				{
-					status: "ignored",
+					status: "notInstance",
 					source: abs("src/Combat/Server/Moves/Notes.md"),
 					exists: true,
 				},
 			]);
 		});
 
-		it("should report a file excluded inside it as excluded, as the build leaves it out", async () => {
+		it("should report a file ignored inside it as ignored, as the build leaves it out", async () => {
 			await write(...files);
-			const exclude = [abs("**/Punch.luau"), abs("**/Heavy")];
+			const ignored = [abs("**/Punch.luau"), abs("**/Heavy")];
 
 			const asked = await locate(
 				[
 					"src/Combat/Server/Moves/Punch.luau",
 					"src/Combat/Server/Moves/Heavy/Slam.luau",
 				],
-				{ exclude }
+				{ ignored }
 			);
-			const everything = await locate(undefined, { exclude });
+			const everything = await locate(undefined, { ignored });
 
 			expect(asked).toEqual([
 				{
-					status: "excluded",
+					status: "ignored",
 					pattern: abs("**/Punch.luau"),
 					source: abs("src/Combat/Server/Moves/Punch.luau"),
 					exists: true,
 				},
 				{
-					status: "excluded",
+					status: "ignored",
 					pattern: abs("**/Heavy"),
 					source: abs("src/Combat/Server/Moves/Heavy/Slam.luau"),
 					exists: true,
@@ -840,7 +857,7 @@ describe("CoreBuildService.locate", () => {
 
 			expect(
 				await foldersIn(
-					configOf({ rootDirs: [abs("src"), abs("extra")] }),
+					configOf({ sourcePaths: [abs("src"), abs("extra")] }),
 					"ServerScriptService.Inventory.NewThing"
 				)
 			).toEqual([
@@ -896,7 +913,7 @@ describe("CoreBuildService.locate", () => {
 			]);
 		});
 
-		it("should name the root dir's routing folder for a feature that doesn't exist yet", async () => {
+		it("should name the source path's routing folder for a feature that doesn't exist yet", async () => {
 			await write("src/Other/Types.luau");
 
 			expect(
@@ -978,7 +995,7 @@ describe("CoreBuildService.locate", () => {
 		});
 	});
 
-	it("should index the root dirs it reads itself", async () => {
+	it("should index the source paths it reads itself", async () => {
 		await write("src/A.luau");
 
 		const located = await locateIn(

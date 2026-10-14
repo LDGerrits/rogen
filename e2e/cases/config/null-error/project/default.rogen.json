@@ -1,5 +1,0 @@
-{
-	"rootDirs": ["src"],
-	"syncDir": null,
-	"routes": {"*": "ReplicatedStorage"}
-}

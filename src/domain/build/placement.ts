@@ -5,7 +5,7 @@ import { FileType } from "../../platform/fs/file-system-service.js";
 import { ResolvedConfig } from "../config/config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { BuildSummary, LeftOut } from "./build.js";
-import { BuildTemplate } from "./build-template.js";
+import { BuildTree } from "./build-tree.js";
 import { EntryReading, NameReadings } from "./name-readings.js";
 import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
@@ -45,7 +45,7 @@ export class LeftOutPaths implements Iterable<[string, LeftOut]> {
 	}
 }
 
-/** A routed file the template displaced: the node the template defines, and the file or folder that names it. */
+/** A routed file the tree displaced: the node the tree defines, and the file or folder that names it. */
 export interface DisplacedFile {
 	readonly file: RoutedFile;
 	readonly node: readonly string[];
@@ -56,24 +56,24 @@ export interface DisplacedFile {
 export interface PlacementParts {
 	readonly config: ResolvedConfig;
 	readonly layout: SyncLayout;
-	readonly template: BuildTemplate;
+	readonly tree: BuildTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
 	/** Every node a route sends a file to, in scan order, then the copies of init scripts. */
 	readonly routedNodes: readonly RoutedFile[];
-	/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last root dir wins across roots. */
+	/** Every node a placed file is: one per file, and one more per other node a copied init script is. Every instance path appears once; the last source path wins across roots. */
 	readonly nodes: readonly RoutedFile[];
 	/** Every path the build leaves out of the tree. */
 	readonly leftOut: LeftOutPaths;
 	readonly clashes: readonly InstanceClash[];
-	/** The routed files the template displaced, in scan order. */
+	/** The routed files the tree displaced, in scan order. */
 	readonly displaced: readonly DisplacedFile[];
 }
 
 /** A meta file the scan found. */
 export interface ScannedMetaFile {
-	readonly rootDir: string;
-	/** Its path in the root dir. */
+	readonly sourcePath: string;
+	/** Its path in the source path. */
 	readonly relativePath: string;
 	readonly file: string;
 }
@@ -82,7 +82,7 @@ export interface ScannedMetaFile {
 export class Placement {
 	readonly config: ResolvedConfig;
 	readonly layout: SyncLayout;
-	readonly template: BuildTemplate;
+	readonly tree: BuildTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
 	readonly nodes: readonly RoutedFile[];
@@ -99,7 +99,7 @@ export class Placement {
 	constructor(parts: PlacementParts) {
 		this.config = parts.config;
 		this.layout = parts.layout;
-		this.template = parts.template;
+		this.tree = parts.tree;
 		this.roots = parts.roots;
 		this.readings = parts.readings;
 		this.nodes = parts.nodes;
@@ -128,13 +128,13 @@ export class Placement {
 		return this.readings.entryReading(file.entry.source);
 	}
 
-	/** Every meta file of every root dir, in root dir order. */
+	/** Every meta file of every source path, in source path order. */
 	get metaFiles(): ScannedMetaFile[] {
-		return this.roots.flatMap(({ rootDir, metaFiles }) =>
+		return this.roots.flatMap(({ sourcePath, metaFiles }) =>
 			metaFiles.map((relativePath) => ({
-				rootDir,
+				sourcePath,
 				relativePath,
-				file: path.join(rootDir, relativePath),
+				file: path.join(sourcePath, relativePath),
 			}))
 		);
 	}
@@ -156,15 +156,15 @@ export class Placement {
 			: undefined;
 	}
 
-	/** What the index holds in `dir`, which lies in one of the root dirs. */
+	/** What the index holds in `dir`, which lies in one of the source paths. */
 	listing(dir: string): ReadonlyMap<string, FileType> {
 		const root = this.roots.find((candidate) =>
-			isInside(dir, toPosix(candidate.rootDir))
+			isInside(dir, toPosix(candidate.sourcePath))
 		);
 		return root?.listing(path.normalize(dir)) ?? new Map();
 	}
 
-	/** Meta no file claims, across every root dir; computed once. */
+	/** Meta no file claims, across every source path; computed once. */
 	unclaimedMeta(): UnclaimedMeta[] {
 		this.unclaimed ??= this.roots.flatMap((root) => root.unclaimedMeta());
 		return this.unclaimed;
@@ -174,9 +174,9 @@ export class Placement {
 	summary(): BuildSummary {
 		return {
 			roots: this.roots.map((root) => ({
-				rootDir: root.rootDir,
+				sourcePath: root.sourcePath,
 				files: root.entries.length,
-				excluded: root.excludedCount,
+				ignored: root.ignoredCount,
 				mounted: root.mountedCount,
 				skippedLinks: root.skippedCount,
 			})),

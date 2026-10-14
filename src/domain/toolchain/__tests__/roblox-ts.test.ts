@@ -54,9 +54,9 @@ describe("RobloxTs", () => {
 		expect(new RobloxTs({}, false).reservedFolders).toEqual(["include"]);
 	});
 
-	it("should offer the root dir tsconfig.json names, without a leading ./", () => {
+	it("should offer the source path tsconfig.json names, without a leading ./", () => {
 		expect(
-			new RobloxTs({ rootDir: "./game/" }, true).configuredRootDir()
+			new RobloxTs({ sourcePath: "./game/" }, true).configuredSourcePath()
 		).toBe("game");
 	});
 });

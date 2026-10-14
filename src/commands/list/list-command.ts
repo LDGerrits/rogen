@@ -23,7 +23,7 @@ registerCommand(
 				id: "list",
 				metadata: {
 					description:
-						"Lists every config here with its root dirs, routes, sync dir and project file; with --json, each fully resolved.",
+						"Lists every config here with its source paths, routes, sync path and project file; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
 					examples: ["rogen list", "rogen list --json"],
@@ -47,14 +47,14 @@ registerCommand(
 			const serveService = accessor.get(ServeService);
 			const served = await serveService.servedBy(
 				entries.flatMap((entry) =>
-					entry.status === "valid" ? [entry.config.outFile] : []
+					entry.status === "valid" ? [entry.config.projectFile] : []
 				)
 			);
 			const serving: ServingByConfig = new Map(
 				entries.map((entry) => [
 					entry.file,
 					entry.status === "valid"
-						? served.get(entry.config.outFile)
+						? served.get(entry.config.projectFile)
 						: undefined,
 				])
 			);

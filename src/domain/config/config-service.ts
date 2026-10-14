@@ -2,44 +2,22 @@ import { Disposable } from "../../base/disposable.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import {
-	OptionDescriptor,
-	OptionValues,
-} from "../../platform/environment/args.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "./config.js";
 
 /** The positional words that name the configs a command reads. */
 export const ConfigArguments = [
 	{
-		name: "config",
+		name: "project",
 		description:
-			"A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.",
+			"A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
 		isOptional: true,
 		isVariadic: true,
 	},
 ] as const;
 
-export const OutFileOption = {
-	name: "out-file",
-	short: "o",
-	type: "string",
-	placeholder: "path",
-	description: "Overrides outFile, for one config.",
-} as const satisfies OptionDescriptor;
-
-/** The flags that override the configs a command builds. */
-export const ConfigOptions = [
-	OutFileOption,
-] as const satisfies readonly OptionDescriptor[];
-
-/** What a command line says about the configs to read. */
-export type ConfigOptionValues = OptionValues<typeof ConfigOptions>;
-
 interface ConfigEntryFields {
 	readonly file: string;
-	/** The configs it extends, the nearest first, as far as the chain could be read. */
-	readonly parents: readonly string[];
 }
 
 export interface ValidConfigEntry extends ConfigEntryFields {
@@ -92,7 +70,7 @@ export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** The configs that build now: a broken entry's last valid version, or none. */
 	readonly configs: readonly ResolvedConfig[];
-	/** The folder configs were looked for in: the working directory, or the nearest folder above it with configs when it has none. */
+	/** The folder configs were looked for in: the working directory, or the nearest folder above it with a config when it has none. */
 	readonly home: string;
 
 	/** The configs, or every error when any entry is broken now. */
@@ -101,7 +79,7 @@ export interface ConfigSelection {
 
 /** A selection that follows its files: the caller owns it, and only `reload` changes it. */
 export interface ReloadableSelection extends ConfigSelection {
-	/** Every file the selected configs read: their chains and templates. */
+	/** Every file the selected configs read. */
 	readonly files: ReadonlySet<string>;
 	/** The folder the selection was picked from, when no config was named; a `reload` follows its added and deleted configs. */
 	readonly followedFolder: string | undefined;
@@ -116,21 +94,21 @@ export interface ReloadableSelection extends ConfigSelection {
 	reload(files: readonly string[]): Promise<ConfigReload>;
 }
 
-/** The configs of a folder above the working directory. */
+/** The config of a folder above the working directory. */
 export interface EnclosingConfigs {
 	readonly directory: string;
 	/** File names, sorted. */
 	readonly fileNames: readonly string[];
 }
 
-/** A config file that failed to load, as a file check sees it. */
+/** A config file as a file check sees it. */
 export interface FailedConfigFile {
 	readonly file: string;
 	/** What the file holds when it parses as JSON; `undefined` when it doesn't. */
 	readonly value: unknown;
 }
 
-/** Adds hints to the errors of a config file that failed to load. */
+/** Says what is wrong with a config file, such as that it was written for another Rogen. */
 export type ConfigFileCheck = (
 	failed: FailedConfigFile
 ) => readonly Diagnostic[];
@@ -139,16 +117,15 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, with those beside them that extend them, else every config here (or in the nearest folder above that has any), with `options` applied. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, else the one here (or in the nearest folder above that has one). Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
-		refs: readonly string[],
-		options?: ConfigOptionValues
+		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above the working directory that has configs. */
 	findEnclosing(): Promise<EnclosingConfigs | undefined>;
-	/** Loads one config file as `select` would, without overrides and outside any selection. */
+	/** Loads one config file as `select` would, outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
-	/** Runs `check` on every config file that can't be read as a config (unnamed, not JSON, or against the schema), never on one that can; what it returns is added to that file's errors. Dispose the result to remove it. */
+	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;
 }
 

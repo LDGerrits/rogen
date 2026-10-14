@@ -4,11 +4,9 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { DEFAULT_CONFIG_FILE, configFileName } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { CodeFinder } from "./code-finder.js";
-import { ConfigSet } from "./config-set.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
@@ -21,10 +19,8 @@ import {
 	InitService,
 	InitWritten,
 } from "./init-service.js";
-import { BaseConfigReader } from "./base-config-reader.js";
 import { InitAdditions } from "./init-additions.js";
 import { Setup } from "./setup.js";
-import { PlaceFolderReader } from "./place-folder.js";
 import { ProjectSetup } from "./project-setup.js";
 
 export class CoreInitService implements InitService {
@@ -44,11 +40,10 @@ export class CoreInitService implements InitService {
 		this.writer = new InitWriter(fileSystemService);
 	}
 
-	async plan(
-		names: readonly string[],
-		{ ask = true }: InitOptions = {}
-	): Promise<Result<InitPlan | undefined, Error>> {
-		const directory = await this.prepare(names);
+	async plan({ ask = true }: InitOptions = {}): Promise<
+		Result<InitPlan | undefined, Error>
+	> {
+		const directory = await this.prepare();
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
 		const questions = new InitQuestions(this.promptService, interactive);
@@ -73,18 +68,13 @@ export class CoreInitService implements InitService {
 		return err(
 			new Error(
 				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project. ` +
-					`To add to it, run rogen from there: cd ${enclosing.directory} && rogen init <name>. ` +
+					`To use that project, run rogen from there: cd ${enclosing.directory}. ` +
 					`To start a separate project here anyway, run rogen init without -y in a terminal.`
 			)
 		);
 	}
 
-	private async prepare(
-		names: readonly string[]
-	): Promise<Result<InitDirectory, Error>> {
-		const name = ConfigSet.parseName(names);
-		if (name.isErr()) return name;
-
+	private async prepare(): Promise<Result<InitDirectory, Error>> {
 		const directory = this.environmentService.cwd;
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(directory)
@@ -95,12 +85,6 @@ export class CoreInitService implements InitService {
 			);
 		}
 		const entries = new Set(listing.value.map(([entry]) => entry));
-		const base = entries.has(DEFAULT_CONFIG_FILE)
-			? await new BaseConfigReader(this.configService, directory).read(
-					entries
-				)
-			: undefined;
-
 		const workspace = await this.toolchainService.detect(directory);
 		return ok(
 			new InitDirectory(
@@ -110,9 +94,7 @@ export class CoreInitService implements InitService {
 				await new CodeFinder(this.fileSystemService).layoutOf(
 					directory,
 					workspace
-				),
-				names.length > 0 ? name.value : undefined,
-				base
+				)
 			)
 		);
 	}
@@ -121,48 +103,30 @@ export class CoreInitService implements InitService {
 		directory: InitDirectory,
 		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		// A run that can't ask never gets to pick another name, so the one it has must be free.
-		const knownName =
-			directory.givenName ??
-			(questions.interactive ? undefined : directory.name);
-		const unnamed = questions.interactive
-			? []
-			: directory.checkPlaceNamed();
-		if (unnamed.length > 0) return err(new DiagnosticsError(unnamed));
-		const taken = directory.checkFree(
-			knownName ? [configFileName(knownName)] : []
-		);
-		if (taken.length > 0) return err(new DiagnosticsError(taken));
-
-		const placeFolders = new PlaceFolderReader(this.fileSystemService);
-		const projectSetup = new ProjectSetup(
-			directory,
-			questions,
-			this.fileSystemService,
-			placeFolders
-		);
 		const agentFile = await this.agentReader.fileIn(directory);
 		if (agentFile.isErr()) return agentFile;
 		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
-		// A first init starts a project; beside configs, the user says what to add.
+		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
+		// A first init starts a project; beside a config, the user says what to add.
 		if (!directory.hasConfigs)
 			return this.planWith(
 				directory,
 				questions,
-				projectSetup,
-				new AgentSetup(agentFile.value, hooks.value, questions)
+				new ProjectSetup(directory, questions, this.fileSystemService),
+				agents
 			);
 		const options = new InitAdditions(
-			directory,
 			questions,
-			placeFolders,
-			projectSetup,
 			agentFile.value,
 			hooks.value
 		).options();
+		if (options.length === 0)
+			return err(
+				new DiagnosticsError(directory.checkFree(directory.configFiles))
+			);
 		const addition = await questions.whatToAdd(
-			directory.base !== undefined,
+			directory.configFiles[0],
 			options
 		);
 		if (addition === undefined) return ok(undefined);

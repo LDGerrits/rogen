@@ -1,23 +1,28 @@
 import path from "path";
-import { contains, isInside, samePath } from "../../base/path.js";
+import { escapedGlobPrefix } from "../../base/glob.js";
+import { contains, isInside, toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
+import { ConfigFile } from "../../platform/config/config-file.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
+	isError,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
 import {
+	ParsedProjectFile,
+	RojoNode,
+	RojoProject,
+} from "../rojo/rojo-project.js";
+import { rogenKeys } from "./config-schema.js";
+import {
+	DEFAULT_SOURCE_PATH,
 	DeclaredKeys,
 	ResolvedConfig,
-	ResolvedTemplate,
-	configLabel,
 	fieldOf,
-	isConfigFileName,
-	rootDirOverlap,
+	sourcePathOverlap,
 } from "./config.js";
-import { projectFileName } from "../rojo/rojo-project.js";
-import { LayeredConfig } from "./layered-config.js";
 
 const FALLBACK_NAME = "project";
 
@@ -28,58 +33,93 @@ export class ConfigValidator {
 	private readonly problems = new DiagnosticCollector();
 	/** The declared keys by their identity, so a second that differs only in case is reported. */
 	private readonly claimed = new Map<string, string>();
-	private readonly rootDirs: readonly string[];
+	private readonly dir: string;
 	private readonly routes: Readonly<Record<string, string>>;
-	private readonly outFile: string;
+	private readonly sourcePaths: readonly string[];
 
 	constructor(
-		private readonly layered: LayeredConfig,
-		private readonly parents: readonly string[]
+		private readonly config: ConfigFile,
+		warnings: readonly Diagnostic[]
 	) {
-		const { config } = layered;
-		this.rootDirs = fieldOf(config, "rootDirs") ?? [];
-		this.routes = fieldOf(config, "routes") ?? {};
-		this.outFile =
-			fieldOf(config, "outFile") ??
-			path.join(
-				path.dirname(layered.leaf.file),
-				projectFileName(configLabel(layered.leaf.file))
-			);
+		this.problems.add(warnings);
+		this.dir = path.dirname(config.file);
+		this.routes = fieldOf(config.model, "routes") ?? {};
+		const written = fieldOf(config.model, "sourcePaths");
+		this.sourcePaths = (
+			written ??
+			(Object.keys(this.routes).length > 0 ? [DEFAULT_SOURCE_PATH] : [])
+		).map((sourcePath) => path.resolve(this.dir, sourcePath));
 	}
 
-	validate(
-		template: ResolvedTemplate | undefined
-	): Result<ResolvedConfig, Diagnostic[]> {
-		const { config } = this.layered;
-		const dir = path.dirname(this.layered.leaf.file);
-
+	validate(): Result<ResolvedConfig, Diagnostic[]> {
 		const routes = this.checkRoutes();
-		this.checkOutFile();
-		this.checkRootDirs();
-		this.checkSyncDir();
+		const routed = Object.keys(this.routes).length > 0;
+		const project = this.readProject();
+		this.checkSyncRules();
+		this.checkRoot(project, routed);
+		this.checkSourcePaths(routed);
+		const syncPath = this.checkSyncPath();
 
+		const name = project.name;
 		return this.problems.toResult(
 			new ResolvedConfig({
-				file: this.layered.leaf.file,
-				parents: this.parents,
-				projectName:
-					template?.project.name ||
-					path.basename(dir) ||
-					FALLBACK_NAME,
-				rootDirs: this.rootDirs,
+				file: this.config.file,
+				projectName: name ?? (path.basename(this.dir) || FALLBACK_NAME),
+				project:
+					project ?? new RojoProject<ParsedProjectFile>({ tree: {} }),
+				sourcePaths: this.sourcePaths,
 				routes,
-				exclude: fieldOf(config, "exclude") ?? [],
-				template,
-				syncDir: fieldOf(config, "syncDir"),
-				outFile: this.outFile,
+				ignored: project.globIgnorePaths.map((glob) =>
+					path.posix.join(escapedGlobPrefix(toPosix(this.dir)), glob)
+				),
+				syncPath,
+				warnings: this.problems.diagnostics.filter(
+					(diagnostic) => !isError(diagnostic)
+				),
 			})
 		);
+	}
+
+	private locateKey(key: string): DiagnosticLocation {
+		return {
+			resource: this.config.file,
+			position: this.config.positionOfKey(key),
+		};
+	}
+
+	private locate(...section: string[]): DiagnosticLocation {
+		return {
+			resource: this.config.file,
+			position: this.config.positionOf(section),
+		};
+	}
+
+	/** The Rojo project file the config describes: its keys but Rogen's and the schema's, with a bare DataModel for a tree the config doesn't give. */
+	private readProject(): RojoProject<ParsedProjectFile> {
+		const rojo = Object.fromEntries(
+			Object.entries(this.config.model.contents).filter(
+				([key]) => key !== "$schema" && !rogenKeys.includes(key)
+			)
+		);
+		return new RojoProject<ParsedProjectFile>({
+			...rojo,
+			tree: (rojo.tree ?? { $className: "DataModel" }) as RojoNode,
+		});
+	}
+
+	private checkSyncRules(): void {
+		if (this.config.model.keys.includes("syncRules"))
+			this.problems.error(
+				"config.unsupportedField",
+				this.locateKey("syncRules"),
+				'"syncRules" is not supported yet: Rogen would route files by rules it can\'t read. Remove it.'
+			);
 	}
 
 	private checkRoutes(): Map<string, Target> {
 		const targets = new Map<string, Target>();
 		for (const [key, text] of Object.entries(this.routes)) {
-			const location = this.layered.locate("routes", key);
+			const location = this.locate("routes", key);
 			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
 				if (DeclaredKeys.isName(key)) this.claim(key, location);
 				else {
@@ -97,67 +137,70 @@ export class ConfigValidator {
 		return targets;
 	}
 
-	/** The output file may be no template of the chain's and no config, since a build would overwrite it. */
-	private checkOutFile(): void {
-		const explicit =
-			this.layered.config.inspect("outFile").source?.tier === "layer";
-		const here = explicit
-			? this.layered.locate("outFile")
-			: { resource: this.layered.leaf.file };
-		const template = this.layered
-			.templates()
-			.find(({ file }) => samePath(file, this.outFile));
-		if (template) {
-			this.problems.error(
-				"config.outFileIsTemplate",
-				explicit ? here : template.location,
-				`the output file ${this.outFile} is also the template, and a build would overwrite it. Set "outFile" to another path.`
-			);
-		} else if (isConfigFileName(path.basename(this.outFile))) {
-			this.problems.error(
-				"config.outFileIsConfig",
-				here,
-				`the output file ${this.outFile} is named like a config, and a build would overwrite it. Set "outFile" to a .project.json path.`
-			);
-		}
+	/** A route target names a service, which only a DataModel holds. */
+	private checkRoot(
+		project: RojoProject<ParsedProjectFile>,
+		routed: boolean
+	): void {
+		if (!routed) return;
+		const root = project.getNode([]);
+		if (root?.$className === "DataModel") return;
+		const described =
+			root?.$className !== undefined
+				? `a ${root.$className}`
+				: root?.$path !== undefined
+					? "a $path"
+					: "a node without a class";
+		this.problems.error(
+			"tree.rootNotDataModel",
+			this.locate("tree"),
+			`routes name services, but the root of the tree is ${described}, not a DataModel. Give it "$className": "DataModel", or remove the routes.`
+		);
 	}
 
-	private checkRootDirs(): void {
-		this.rootDirs.forEach((rootDir, index) => {
-			const overlap = rootDirOverlap(this.rootDirs, index);
+	private checkSourcePaths(routed: boolean): void {
+		if (!routed && fieldOf(this.config.model, "sourcePaths") !== undefined)
+			this.problems.error(
+				"config.sourcePathsWithoutRoutes",
+				this.locate("sourcePaths"),
+				'"sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths".'
+			);
+		this.sourcePaths.forEach((sourcePath, index) => {
+			const overlap = sourcePathOverlap(this.sourcePaths, index);
 			if (!overlap) return;
-			const location = this.layered.locateEntry("rootDirs", index);
+			const location = this.locate("sourcePaths", String(index));
 			if (overlap.kind === "duplicate") {
 				this.problems.error(
-					"config.duplicateRootDir",
+					"config.duplicateSourcePath",
 					location,
-					`root dir "${rootDir}" is listed twice; a file under it would belong to both. Remove one.`
+					`source path "${sourcePath}" is listed twice; a file under it would belong to both. Remove one.`
 				);
 			} else {
 				this.problems.error(
-					"config.nestedRootDir",
+					"config.nestedSourcePath",
 					location,
-					`root dir "${rootDir}" is inside root dir "${overlap.outer}"; a file under it would belong to both. Remove one.`
+					`source path "${sourcePath}" is inside source path "${overlap.outer}"; a file under it would belong to both. Remove one.`
 				);
 			}
 		});
 	}
 
-	/** The sync dir is where tools write the code Rogen's root dirs hold, so neither may lie in the other: Rogen would read the tools' output as source. */
-	private checkSyncDir(): void {
-		const syncDir = fieldOf(this.layered.config, "syncDir");
-		if (syncDir === undefined) return;
-		const location = this.layered.locate("syncDir");
-		for (const rootDir of this.rootDirs) {
-			const inside = contains(rootDir, syncDir);
-			if (!inside && !isInside(rootDir, syncDir)) continue;
+	/** The sync path is where tools write the code Rogen's source paths hold, so neither may lie in the other: Rogen would read the tools' output as source. */
+	private checkSyncPath(): string | undefined {
+		const written = fieldOf(this.config.model, "syncPath");
+		if (written === undefined) return undefined;
+		const syncPath = path.resolve(this.dir, written);
+		for (const sourcePath of this.sourcePaths) {
+			const inside = contains(sourcePath, syncPath);
+			if (!inside && !isInside(sourcePath, syncPath)) continue;
 			this.problems.error(
-				"config.syncDirOverlapsRootDir",
-				location,
-				`the sync dir "${syncDir}" ${inside ? "is inside" : "contains"} root dir "${rootDir}", so Rogen would read what the tools write as source. Set "syncDir" to a folder outside the root dirs.`
+				"config.syncPathOverlapsSourcePath",
+				this.locate("syncPath"),
+				`the sync path "${syncPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "syncPath" to a folder outside the source paths.`
 			);
-			return;
+			break;
 		}
+		return syncPath;
 	}
 
 	/** Two keys that differ only in the case of their first letter would match the same names. */

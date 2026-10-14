@@ -82,40 +82,16 @@ export interface MountCandidate {
 	readonly ticked: boolean;
 }
 
-/** What a compiler adds for a place, so it builds that place on its own. */
-export interface CompiledPlace {
-	readonly files: readonly PlannedFile[];
-	/** One-time edits before anything runs. */
-	readonly setup: readonly string[];
-	/** Replaces the project-wide compile command for this place. */
-	readonly compileCommand: string;
-}
-
-export interface CompilerPlaceRequest {
-	readonly name: string;
-	/** The place's root dirs: the shared ones plus its own folder. */
-	readonly rootDirs: readonly string[];
-	/** The root dirs the place shares with every other. */
-	readonly sharedRootDirs: readonly string[];
-	/** Where the compiler writes this place's code. */
-	readonly outDir: string;
-	/** The project file Rojo serves for this place. */
-	readonly projectFile: string;
-}
-
-/** A compile step between the root dirs and what Rojo syncs, as roblox-ts has, as this workspace configures it. */
+/** A compile step between the source paths and what Rojo syncs, as roblox-ts has, as this workspace configures it. */
 export interface Compiler {
 	/** Names the compiler in notes, such as "Syncing from out, where roblox-ts compiles to." */
 	readonly name: string;
-	/** Where it writes here, and so what Rojo or a processor reads instead of the root dirs. */
+	/** Where it writes here, and so what Rojo or a processor reads instead of the source paths. */
 	readonly outDir: string;
 	/** The long-running compile, which keeps its own terminal busy. */
 	readonly compileCommand: string;
-	/** The edit that makes it compile the shared code from `rootDir`, when its config compiles another folder. */
-	rootDirStep(rootDir: string): string;
-	/** The files a place named `name` adds, beside its config and project file. */
-	placeFileNames(name: string): readonly string[];
-	planPlace(request: CompilerPlaceRequest): CompiledPlace;
+	/** The edit that makes it compile the shared code from `sourcePath`, when its config compiles another folder. */
+	sourcePathStep(sourcePath: string): string;
 }
 
 /** How `init`'s questions word one language. */
@@ -126,8 +102,8 @@ export interface LanguageCopy {
 	readonly detectedHint?: string;
 	/** Added to the packages question's description. */
 	readonly packagesNote?: string;
-	/** Only for a language whose compiler reads a single root dir. */
-	readonly rootDir?: {
+	/** Only for a language whose compiler reads a single source path. */
+	readonly sourcePath?: {
 		readonly description: string;
 		readonly severalProblem: string;
 	};
@@ -150,8 +126,8 @@ export interface Language {
 
 	/** How a route key is spelled, such as Luau's `Server` or roblox-ts's `server`. */
 	routeKey(id: string): string;
-	/** The root dir the language's own config names, if any; `init` prefers it. */
-	configuredRootDir(): string | undefined;
+	/** The source path the language's own config names, if any; `init` prefers it. */
+	configuredSourcePath(): string | undefined;
 	/** Folders mounted without asking. */
 	alwaysMounted(): readonly MountCandidate[];
 	/** Folders the packages question offers beside the package manager's. */
@@ -198,11 +174,6 @@ export class DetectedWorkspace {
 		this.testRunner = fields.testRunner;
 	}
 
-	/** Darklua, when the workspace has a config for it. */
-	get detectedDarklua(): Darklua | undefined {
-		return this.darkluaConfig === undefined ? undefined : this.darklua;
-	}
-
 	/** The language the workspace uses, or the first one when it uses none. */
 	get language(): Language {
 		return (
@@ -231,7 +202,7 @@ export class DetectedWorkspace {
 	}
 }
 
-/** Darklua, the one processor `init` sets up: it writes processed code into the sync dir, which Rojo syncs instead. */
+/** Darklua, the one processor `init` sets up: it writes processed code into the sync path, which Rojo syncs instead. */
 export class Darklua {
 	/** What a build needs to know of Darklua: it writes a `.meta.lua` for each `.meta.json`, and a `.lua` for each data file. */
 	static readonly SYNC_TOOL: SyncTool = {
@@ -247,7 +218,7 @@ export class Darklua {
 	};
 
 	/** Where Darklua writes unless told otherwise. */
-	readonly defaultSyncDir = "dist";
+	readonly defaultSyncPath = "dist";
 	readonly configFiles: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
@@ -262,13 +233,13 @@ export class Darklua {
 	processCommands(
 		directory: string,
 		sourceDirs: readonly string[],
-		syncDir: string
+		syncPath: string
 	): string[] {
 		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
 		const common = commonAncestor(absolute);
 		return sourceDirs.map((dir, index) => {
 			const relative = toPosix(path.relative(common, absolute[index]));
-			return `darklua process ${dir} ${relative ? `${syncDir}/${relative}` : syncDir}`;
+			return `darklua process ${dir} ${relative ? `${syncPath}/${relative}` : syncPath}`;
 		});
 	}
 }

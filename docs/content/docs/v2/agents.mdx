@@ -18,7 +18,7 @@ Left to itself, an agent assumes the path on disk is the instance path. It edits
 
 ## Set it up
 
-Run [`rogen init`](/docs/v2/cli#init-name). A first `init` adds the block below to your `AGENTS.md`, or to `CLAUDE.md` when that's the only one, and creates `AGENTS.md` when there's neither. In a terminal it asks first. Every agent that reads the file gets the rules, with nothing to install.
+Run [`rogen init`](/docs/v2/cli#init). A first `init` adds the block below to your `AGENTS.md`, or to `CLAUDE.md` when that's the only one, and creates `AGENTS.md` when there's neither. In a terminal it asks first. Every agent that reads the file gets the rules, with nothing to install.
 
 ## Add it to an existing repo
 
@@ -27,9 +27,9 @@ Paste the block into `AGENTS.md`, or run `rogen init` again and pick **Agent ins
 ````md title="AGENTS.md"
 ## Rogen
 
-Rogen writes the Rojo project file from the folders and names under each `*.rogen.json`'s `rootDirs`. Folders decide where code runs, so the disk path is not the instance path.
+Rogen writes the Rojo project file from the folders and names under each `rogen.json`'s `sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
 
-- Never edit a `*.project.json` that Rogen writes: change the config or its `template`.
+- Never edit a `default.project.json` that Rogen writes: change `rogen.json`, whose `tree` holds what names can't express.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
@@ -107,7 +107,7 @@ To do it by hand, put the script at `.agents/hooks/rogen-check.sh` and add the e
 
 Codex runs a project hook only once you trust it: open `/hooks` in Codex to review it.
 
-Tried on a project with two configs and one warning already there (`Old@sevre.luau`):
+Tried on a project with one warning already there (`Old@sevre.luau`):
 
 | Turn | The agent sees |
 |---|---|
@@ -116,7 +116,7 @@ Tried on a project with two configs and one warning already there (`Old@sevre.lu
 | Stops again, same state | nothing, it was already reported |
 | Fixes the typo, adds `Tax.shared.luau` | only `route.dotRoute` |
 
-The warning that was there before never shows up, and the two configs' copies of each diagnostic collapse to one line.
+The warning that was there before never shows up.
 
 With the hook in place, the "run `rogen check` …" rule in the block is optional, so a repo that uses the hook may drop it.
 

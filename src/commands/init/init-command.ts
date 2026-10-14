@@ -1,4 +1,4 @@
-import { CancelledError } from "../../base/errors.js";
+import { CancelledError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildRun } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
@@ -32,21 +32,9 @@ registerCommand(
 				id: "init",
 				metadata: {
 					description:
-						"Writes a starting config, detecting the workspace and asking in a terminal.",
-					args: [
-						{
-							name: "name",
-							description:
-								"The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place: its code in places/<name>/src, beside a template with its name and its own servePort.",
-							isOptional: true,
-						},
-					],
+						"Writes a starting rogen.json, detecting the workspace and asking in a terminal.",
 					options: InitOptions,
-					examples: [
-						"rogen init",
-						"rogen init lobby",
-						"rogen init -y",
-					],
+					examples: ["rogen init", "rogen init -y"],
 				},
 			});
 		}
@@ -55,6 +43,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
+			if (line.positionals.length > 0)
+				return err(new UsageError("init takes no arguments."));
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const log = new InitLog(
@@ -65,7 +55,7 @@ registerCommand(
 			const ask = !line.options.yes && !line.options.json;
 
 			if (!line.options.json) log.intro();
-			const planned = await initService.plan(line.positionals, { ask });
+			const planned = await initService.plan({ ask });
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
@@ -83,7 +73,7 @@ registerCommand(
 			return reporter.done(plan, built.value);
 		}
 
-		/** The project file of every config the plan wrote, so `rojo serve` and the compiler have one to read. */
+		/** The project file of the config the plan wrote, so `rojo serve` and the compiler have one to read. */
 		private async buildConfigs(
 			accessor: ServicesAccessor,
 			plan: InitPlan
@@ -92,7 +82,7 @@ registerCommand(
 			if (plan.configs.length === 0) return ok(new BuildRun([]));
 			const selection = await accessor
 				.get(ConfigService)
-				.select(plan.configs, {});
+				.select(plan.configs);
 			if (selection.isErr()) return selection;
 			return ok(await accessor.get(BuildService).build(selection.value));
 		}

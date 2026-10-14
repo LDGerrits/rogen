@@ -1,4 +1,3 @@
-import { PathSet } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -6,17 +5,12 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 
-import { ResolvedConfig } from "../config/config.js";
-import {
-	ConfigOptionValues,
-	ReloadableSelection,
-	ConfigService,
-} from "../config/config-service.js";
+import { ConfigService } from "../config/config-service.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { SyncServer } from "../runner/sync-server.js";
-import { ServePorts } from "./serve-ports.js";
+import { ServePorts, namesakesOf } from "./serve-ports.js";
 import {
 	ServePlan,
 	ServeRequest,
@@ -28,7 +22,6 @@ import {
 import { ServedProjectFiles } from "./served-project-files.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
-import { ServedConfigs } from "./served-configs.js";
 
 export class CoreServeService implements ServeService {
 	declare readonly _serviceBrand: undefined;
@@ -43,7 +36,7 @@ export class CoreServeService implements ServeService {
 		private readonly rojoRunner: RojoRunner,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
-		environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
@@ -58,21 +51,22 @@ export class CoreServeService implements ServeService {
 		server: SyncServer,
 		serverArgs: readonly string[]
 	): ServePorts {
-		return new ServePorts(this.probe, this.records, server, serverArgs);
+		return new ServePorts(
+			this.probe,
+			this.records,
+			server,
+			serverArgs,
+			this.environmentService.cwd
+		);
 	}
 
 	async prepare(request: ServeRequest): Promise<Result<ServePlan, Error>> {
-		const selected = await this.select(request.refs, request.options);
+		const selected = await this.configService.select(request.refs);
 		if (selected.isErr()) return selected;
-		const { selection, named, neighbours } = selected.value;
+		const selection = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const servedConfigs = new ServedConfigs(
-			configs.value,
-			named,
-			neighbours
-		);
-		const served = servedConfigs.configs;
+		const served = configs.value;
 		const executable = await this.rojoRunner.find(
 			selection.home,
 			served[0]?.file ?? selection.home,
@@ -97,7 +91,7 @@ export class CoreServeService implements ServeService {
 			const result = await ports.check(
 				target,
 				targets,
-				servedConfigs.namesakesOf(target.config)
+				namesakesOf(target.config, served)
 			);
 			if (result.isOk()) checked.push(result.value);
 			else taken.push(result.error);
@@ -108,65 +102,9 @@ export class CoreServeService implements ServeService {
 				selection,
 				executable.value,
 				checked,
-				request.serverArgs,
-				named,
-				neighbours
+				request.serverArgs
 			)
 		);
-	}
-
-	/** Every config here is watched, so no project file goes stale, and `refs` pick what is served. A named config from elsewhere, or a broken one here, leaves the named configs watched on their own. */
-	private async select(
-		refs: readonly string[],
-		options: ConfigOptionValues
-	): Promise<
-		Result<
-			{
-				readonly selection: ReloadableSelection;
-				readonly named?: PathSet;
-				readonly neighbours: readonly ResolvedConfig[];
-			},
-			Error
-		>
-	> {
-		const named = await this.configService.select(refs, options);
-		if (named.isErr() || refs.length === 0)
-			return named.map((selection) => ({ selection, neighbours: [] }));
-		const files = named.value.entries.map(({ file }) => file);
-		const filesNamed = new PathSet(files);
-		const here = await this.configService.select([], options);
-		const held = new PathSet(
-			here.isOk() ? here.value.entries.map(({ file }) => file) : []
-		);
-		const holdsNamed =
-			here.isOk() &&
-			here.value.requireValid().isOk() &&
-			files.every((file) => held.has(file));
-		if (holdsNamed)
-			return ok({
-				selection: here.value,
-				named: filesNamed,
-				neighbours: [],
-			});
-		return ok({
-			selection: named.value,
-			named: filesNamed,
-			neighbours: await this.neighboursOf(named.value, options),
-		});
-	}
-
-	/** The configs in the working folder that `selection` leaves out, read without the `-o` that names one config. */
-	private async neighboursOf(
-		selection: ReloadableSelection,
-		options: ConfigOptionValues
-	): Promise<ResolvedConfig[]> {
-		const everyone = await this.configService.select([], {
-			...options,
-			"out-file": undefined,
-		});
-		if (everyone.isErr()) return [];
-		const chosen = new PathSet(selection.entries.map(({ file }) => file));
-		return everyone.value.configs.filter(({ file }) => !chosen.has(file));
 	}
 
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError> {

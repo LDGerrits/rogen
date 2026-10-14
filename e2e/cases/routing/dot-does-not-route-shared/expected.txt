@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 1 name writes a route key after a dot, where only "@" routes, so it routes nothing: (route.dotRoute)
+  rogen.json - warning: 1 name writes a route key after a dot, where only "@" routes, so it routes nothing: (route.dotRoute)
     src/Inventory/Types.shared.luau (write "Types@shared.luau")
 
 written:

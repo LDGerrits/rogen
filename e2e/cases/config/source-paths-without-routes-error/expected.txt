@@ -1,0 +1,6 @@
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: rogen.json · not loaded
+  rogen.json:2:17 - error: "sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths". (config.sourcePathsWithoutRoutes)

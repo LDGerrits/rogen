@@ -1,13 +1,11 @@
 import { JSONSchema } from "../../base/json-schema.js";
-import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { UnknownFieldAdvisor } from "../../platform/jsonc/jsonc-document-reader.js";
 import {
-	ConfigModel,
-	MergePolicies,
-	MergePolicy,
-} from "../../platform/config/config-models.js";
+	Diagnostic,
+	DiagnosticLocation,
+	errorDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
-import { DeclaredKeys, RogenConfig } from "./config.js";
+import { DeclaredKeys } from "./config.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
 
@@ -18,8 +16,9 @@ const routesSchema: JSONSchema = {
 		'Route key -> "Service" or "Service/Folder/...", where Service is ' +
 		"any service Rojo can write to, such as ServerScriptService or " +
 		"ReplicatedStorage. Only declared " +
-		"keys route: there is no built-in set, so an absent or empty " +
-		"routes leaves every file unrouted (rogen init writes a starting set).",
+		"keys route: there is no built-in set, so a config without " +
+		"routes routes nothing and scans no source path (rogen init writes " +
+		"a starting set).",
 	propertyNames: {
 		pattern: `^(${NAME_PATTERN.slice(1, -1)}|\\${DeclaredKeys.FALLBACK_ROUTE})$`,
 	},
@@ -37,160 +36,165 @@ const routesSchema: JSONSchema = {
 	},
 };
 
-/** How a relative path in a field resolves against the directory of the file that wrote it: a path or a list of them with `path.resolve`, globs joined in POSIX form. */
-export type PathForm = "path" | "paths" | "globs";
+const node: JSONSchema = {
+	type: "object",
+	properties: {
+		$className: { type: "string" },
+		$path: {
+			type: ["string", "object"],
+			properties: { optional: { type: "string" } },
+		},
+		$properties: { type: "object" },
+		$attributes: { type: "object" },
+		$ignoreUnknownInstances: { type: "boolean" },
+		$id: { type: "string" },
+	},
+	additionalProperties: { type: "object" },
+};
 
-interface ConfigField {
-	readonly schema: JSONSchema;
-	/** How a child's value combines with its parent's across `extends`. */
-	readonly merge: MergePolicy;
-	/** What paths it holds. */
-	readonly paths?: PathForm;
-	/** Only the config itself sets it; a parent's value is dropped. */
-	readonly leafOnly?: true;
-}
+const numbers: JSONSchema = { type: "array", items: { type: "number" } };
+const strings: JSONSchema = { type: "array", items: { type: "string" } };
 
-/** One entry per field of a config file, so a field can't be added without saying how it merges and what paths it holds. */
-const fields: Record<keyof RogenConfig, ConfigField> = {
+/** The keys of Rojo's project file, in the order Rojo writes them. */
+const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	$schema: {
-		merge: "replace",
-		leafOnly: true,
-		schema: {
-			type: "string",
-			description: "The published JSON Schema URI for editor validation.",
-		},
+		type: "string",
+		description: "The published JSON Schema URI for editor validation.",
 	},
-	extends: {
-		merge: "replace",
-		leafOnly: true,
-		schema: {
-			type: "string",
-			description:
-				"Another *.rogen.json to inherit from, relative to this file.",
-		},
+	name: {
+		type: "string",
+		description:
+			"The name of the game. default.project.json carries it only " +
+			"when it is set here; Rojo names the project after its folder " +
+			"otherwise.",
 	},
-	rootDirs: {
-		merge: "append",
-		paths: "paths",
-		schema: {
-			type: "array",
-			items: { type: "string" },
-			default: ["src"],
-			description:
-				"Directories Rogen scans and watches, merged into one tree; " +
-				"the last wins on a clash. A config adds its entries to those " +
-				'of the config it extends; "src" applies only when no config ' +
-				"in the chain sets any.",
-		},
+	tree: {
+		...node,
+		description:
+			"The instance tree Rojo syncs, as in any Rojo project file. " +
+			"Rogen merges the nodes it generates into it; the tree wins a " +
+			"clash. Defaults to a bare DataModel; with routes its root " +
+			"must be a DataModel.",
 	},
-	routes: { merge: "merge", schema: routesSchema },
-	exclude: {
-		merge: "append",
-		paths: "globs",
-		schema: {
-			type: "array",
-			items: { type: "string" },
-			default: [],
-			description:
-				"Globs never built, relative to this file's directory: " +
-				"scanned files, and the template's mounts whose $path they " +
-				"match. A config adds its globs to those of the config it " +
-				"extends.",
-		},
+	servePort: {
+		type: "number",
+		description: "The port rojo serve listens on.",
 	},
-	template: {
-		merge: "replace",
-		paths: "path",
-		schema: {
-			type: "string",
-			description:
-				"A Rojo project file whose tree Rogen merges its generated " +
-				"nodes into.",
-		},
+	servePlaceIds: {
+		...numbers,
+		description: "The place IDs the project may sync into.",
 	},
-	syncDir: {
-		merge: "replace",
-		paths: "path",
-		schema: {
-			type: "string",
-			description:
-				"The directory Rojo syncs from, when that isn't your root " +
-				"dirs. Set it to your compiler's output directory - " +
-				'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
-				"plain Luau.",
-		},
+	blockedPlaceIds: {
+		...numbers,
+		description: "The place IDs the project may not sync into.",
 	},
-	outFile: {
-		merge: "replace",
-		paths: "path",
-		leafOnly: true,
-		schema: {
-			type: "string",
-			description:
-				"The Rojo project file Rogen writes. Defaults to this " +
-				"config's own file name, with .rogen.json replaced by " +
-				".project.json.",
-		},
+	placeId: { type: "number", description: "The place's ID." },
+	gameId: { type: "number", description: "The place's game ID." },
+	serveAddress: {
+		type: "string",
+		description: "The address rojo serve listens on.",
+	},
+	serveAllowedHosts: {
+		...strings,
+		description: "Host names rojo serve accepts beyond the bind address.",
+	},
+	emitLegacyScripts: {
+		type: "boolean",
+		description:
+			"Whether Rojo makes Script and LocalScript instances for " +
+			".server and .client files, rather than a run context.",
+	},
+	globIgnorePaths: {
+		...strings,
+		description:
+			"Globs, relative to this file's folder, of files Rojo " +
+			"ignores. Rogen keeps them out of routing too, and writes " +
+			"them for Rojo.",
+	},
+	syncRules: {
+		type: "array",
+		items: { type: "object" },
+		description:
+			"Rojo's sync rules. Rogen doesn't support them yet, and " +
+			"refuses a config that sets them.",
+	},
+	syncbackRules: {
+		type: "object",
+		description: "Rojo's syncback rules, passed through.",
 	},
 };
 
-/** How each top-level field combines across a config's chain. */
-export const configMergePolicies: MergePolicies = Object.fromEntries(
-	Object.entries(fields).map(([key, field]) => [key, field.merge])
-);
+const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
+	sourcePaths: {
+		type: "array",
+		items: { type: "string" },
+		default: ["src"],
+		description:
+			"Folders Rogen scans and watches, merged into one tree; the " +
+			'last wins on a clash. Defaults to ["src"] when the config ' +
+			"declares routes; without routes nothing is scanned.",
+	},
+	routes: routesSchema,
+	syncPath: {
+		type: "string",
+		description:
+			"The folder Rojo syncs from, when that isn't your source " +
+			"paths. Set it to your compiler's output folder - " +
+			'"out" for roblox-ts, "dist" for Darklua. Leave it out for ' +
+			"plain Luau.",
+	},
+};
+/** The keys a `rogen.json` may hold. */
+export const rojoKeys: readonly string[] = Object.keys(rojoFields);
+export const rogenKeys: readonly string[] = Object.keys(rogenSchemas);
 
-/** What paths each field holds, for the fields that hold any. */
-export const configPathForms: Readonly<Record<string, PathForm>> =
-	Object.fromEntries(
-		Object.entries(fields).flatMap(([key, field]) =>
-			field.paths === undefined ? [] : [[key, field.paths] as const]
-		)
-	);
-
-/** The fields a parent in an `extends` chain never passes on. */
-export const configLeafOnlyKeys: readonly string[] = Object.entries(fields)
-	.filter(([, field]) => field.leafOnly)
-	.map(([key]) => key);
-
-/** What a `*.rogen.json` may hold; a key outside it is an error. */
+/** What a `rogen.json` may hold: Rojo's keys and Rogen's. A key outside both passes through with a warning. */
 export const configSchema: JSONSchema = {
 	type: "object",
-	additionalProperties: false,
-	properties: Object.fromEntries(
-		Object.entries(fields).map(([key, field]) => [key, field.schema])
-	),
+	properties: { ...rojoFields, ...rogenSchemas },
 };
 
-/** The values a config has before any file or flag sets them. */
-export const configDefaults = new ConfigModel(
-	Object.fromEntries(
-		Object.entries(configSchema.properties ?? {}).flatMap(
-			([key, schema]) =>
-				schema.default === undefined ? [] : [[key, schema.default]]
-		)
-	)
-);
+/** What a project file Rogen wrote may hold: Rojo's keys. */
+export const projectFileSchema: JSONSchema = {
+	type: "object",
+	description:
+		"A Rojo project file that Rogen wrote from a rogen.json. Edit the " +
+		"rogen.json, not this file: the next build overwrites it.",
+	additionalProperties: false,
+	properties: rojoFields,
+};
 
 /** What replaces each field a config no longer has. */
 const removedFields: Readonly<Record<string, string>> = {
-	modes: 'Put what a mode set in a second config that extends this one, which can add "exclude".',
-	mode: "Modes are gone with \"modes\". Build the config that holds the settings by name, as 'rogen build <name>'.",
-	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it.",
+	modes: 'Put what a mode set in a project ("projects"), which can set "globIgnorePaths".',
+	mode: "Modes are gone with \"modes\". Build the project that holds the settings by name, as 'rogen build <project>'.",
+	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
-		"A file that replaces another goes in a later root dir, which wins a clash, and a second config that extends this one lists that root dir.",
+		'A file that replaces another goes in a later source path, which wins a clash, and a project ("projects") lists that source path.',
 	conflicts:
-		"Variants are gone, and so are their conflict groups. Sets that exclude each other are one config each, listing their own root dir.",
+		'Variants are gone, and so are their conflict groups. Sets that exclude each other are one project ("projects") each, listing their own source path.',
+	extends:
+		'A rogen.json describes one folder. A second output is a project ("projects"), and a game with several places has a folder for each ("placePaths").',
+	template:
+		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
+	outFile:
+		'Rogen writes default.project.json beside rogen.json, and a project ("projects") writes <name>.project.json beside it.',
+	exclude:
+		'"globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project ("projects").',
+	rootDirs: 'It is called "sourcePaths" now.',
+	syncDir: 'It is called "syncPath" now.',
 };
 
-/** The words for a field that Rogen once read and doesn't now, in place of "unknown field". */
-export const configRemovedFieldAdvice: UnknownFieldAdvisor = (
-	path,
-	location
-) =>
-	Object.hasOwn(removedFields, path)
+/** The words for a field that Rogen once read and doesn't now, in place of "not a Rojo key". */
+export function configRemovedFieldAdvice(
+	path: string,
+	location: DiagnosticLocation
+): Diagnostic | undefined {
+	return Object.hasOwn(removedFields, path)
 		? errorDiagnostic(
 				"config.removedField",
 				location,
 				`"${path}" was removed. ${removedFields[path]}`
 			)
 		: undefined;
+}

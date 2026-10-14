@@ -3,7 +3,6 @@ import { BuildService } from "../../domain/build/build-service.js";
 
 import {
 	ConfigArguments,
-	ConfigOptions,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import {
@@ -27,11 +26,7 @@ const DenyWarningsOption = {
 	description: "Exit 1 when any config has a warning.",
 } as const satisfies OptionDescriptor;
 
-const BuildOptions = [
-	...ConfigOptions,
-	JsonOption,
-	DenyWarningsOption,
-] as const;
+const BuildOptions = [JsonOption, DenyWarningsOption] as const;
 
 registerCommand(
 	class BuildCommand extends AbstractCommand<typeof BuildOptions> {
@@ -40,13 +35,13 @@ registerCommand(
 				id: "build",
 				metadata: {
 					description:
-						"Writes the project file of each config here, or of the named ones.",
+						"Writes default.project.json beside the rogen.json here, or beside each named one.",
 					args: ConfigArguments,
 					options: BuildOptions,
-					unknownWordOffer: "To build a config",
+					unknownWordOffer: "To build a project",
 					examples: [
 						"rogen build",
-						"rogen build places/lobby.rogen.json",
+						"rogen build places/lobby",
 						"rogen build --json",
 						"rogen build --deny-warnings",
 					],
@@ -63,10 +58,7 @@ registerCommand(
 			const logService = accessor.get(LogService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.select(
-				line.positionals,
-				line.options
-			);
+			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 
 			const run = await buildService.build(selection.value);

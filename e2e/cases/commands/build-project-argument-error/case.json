@@ -1,0 +1,10 @@
+{
+	"steps": [
+		["build", "ghost.project.json"],
+		["build", "lobby/other.project.json"],
+		["build", "README.md"],
+		["build", "lobby", "lobby"],
+		["build", "lobby", "--json"]
+	],
+	"rojo": false
+}

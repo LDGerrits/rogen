@@ -42,7 +42,7 @@ export class WhereAnswers {
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
 	readonly configCount: number;
-	readonly rootDirs: readonly string[];
+	readonly sourcePaths: readonly string[];
 	private readonly answers: Answer[];
 	/** Every file was asked about, so paths are sorted rather than kept in the order given. */
 	private readonly sorted: boolean;
@@ -51,7 +51,7 @@ export class WhereAnswers {
 	constructor({ everyFile, asked, configs, errors }: Locations) {
 		this.errors = errors;
 		this.asked = asked;
-		this.rootDirs = configs.flatMap(({ config }) => config.rootDirs);
+		this.sourcePaths = configs.flatMap(({ config }) => config.sourcePaths);
 		this.configCount = configs.length;
 		this.sorted = everyFile;
 		this.answers = configs.flatMap((located) => answersOf(located));
@@ -90,7 +90,7 @@ export class WhereAnswers {
 		return at === -1 ? this.asked.length : at;
 	};
 
-	/** `answers` without the ones that say a path is outside a config's root dirs, which is no news when another config places it; all of them when every config says so. */
+	/** `answers` without the ones that say a path is outside a config's source paths, which is no news when another config places it; all of them when every config says so. */
 	static withoutOutside(answers: readonly Answer[]): readonly Answer[] {
 		const inside = answers.filter(
 			(answer) =>

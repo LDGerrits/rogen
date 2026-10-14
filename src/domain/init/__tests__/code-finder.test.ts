@@ -34,15 +34,6 @@ describe("CodeFinder.layoutOf", () => {
 			expect(found.codeFolders).toEqual(["lib", "shared", "src", "web"]);
 		});
 
-		it("should leave out places, whose folders are places rather than code", async () => {
-			await write("src/Util.luau");
-			await write("places/lobby/Game.server.lua");
-
-			const found = await layout();
-
-			expect(found.codeFolders).toEqual(["src"]);
-		});
-
 		it("should skip folders without code, dot-folders and node_modules", async () => {
 			await write("docs/readme.md");
 			await write(".git/hooks/pre-commit.lua");
@@ -77,20 +68,20 @@ describe("CodeFinder.layoutOf", () => {
 		});
 	});
 
-	describe("places", () => {
-		it("should list the folders in places, sorted", async () => {
-			await write("places/match/Game.luau");
-			await write("places/lobby/.gitkeep");
-			await write("places/.hidden/x.luau");
-			await write("places/notes.md");
+	describe("a folder that can't be read", () => {
+		it("should have no code folders when the working directory is missing", async () => {
+			const found = await new CodeFinder(fs).layoutOf(
+				path.resolve("/nowhere"),
+				await new CoreToolchainService(fs).detect(cwd)
+			);
 
-			const found = await layout();
-
-			expect(found.places).toEqual(["lobby", "match"]);
+			expect(found.codeFolders).toEqual([]);
 		});
 
-		it("should find none without a places folder", async () => {
-			expect((await layout()).places).toEqual([]);
+		it("should hold no code when it is missing", async () => {
+			expect(
+				await new CodeFinder(fs).holdsCode(path.join(cwd, "gone"))
+			).toBe(false);
 		});
 	});
 });

@@ -1,22 +1,21 @@
 $ rogen help build
 exit 0
 stdout:
-  Writes the project file of each config here, or of the named ones.
+  Writes default.project.json beside the rogen.json here, or beside each named one.
   
   Usage:
-    rogen build [config...] [options]
+    rogen build [project...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
+    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
-    -o, --out-file <path>  Overrides outFile, for one config.
-        --json             Print one JSON document instead of text.
-        --deny-warnings    Exit 1 when any config has a warning.
+        --json           Print one JSON document instead of text.
+        --deny-warnings  Exit 1 when any config has a warning.
   
   Examples:
     rogen build
-    rogen build places/lobby.rogen.json
+    rogen build places/lobby
     rogen build --json
     rogen build --deny-warnings
   
@@ -32,14 +31,13 @@ stdout:
   Builds, then rebuilds whenever sources or configs change.
   
   Usage:
-    rogen watch [config...] [options]
+    rogen watch [project...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
+    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
-    -o, --out-file <path>  Overrides outFile, for one config.
-        --json             Print one JSON object per line: each config change and each build.
+        --json  Print one JSON object per line: each config change and each build.
   
   Examples:
     rogen watch
@@ -55,13 +53,10 @@ stdout:
 $ rogen help init
 exit 0
 stdout:
-  Writes a starting config, detecting the workspace and asking in a terminal.
+  Writes a starting rogen.json, detecting the workspace and asking in a terminal.
   
   Usage:
-    rogen init [name] [options]
-  
-  Arguments:
-    name  The config to write. Defaults to default. Beside an existing default.rogen.json, a run that doesn't ask adds it as a place: its code in places/<name>/src, beside a template with its name and its own servePort.
+    rogen init [options]
   
   Options:
     -y, --yes   Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it.
@@ -69,7 +64,6 @@ stdout:
   
   Examples:
     rogen init
-    rogen init lobby
     rogen init -y
   
   Global options:
@@ -81,13 +75,13 @@ stdout:
 $ rogen help list
 exit 0
 stdout:
-  Lists every config here with its root dirs, routes, sync dir and project file; with --json, each fully resolved.
+  Lists every config here with its source paths, routes, sync path and project file; with --json, each fully resolved.
   
   Usage:
-    rogen list [config...] [options]
+    rogen list [project...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
+    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
         --json  Print one JSON document instead of text.
@@ -105,22 +99,21 @@ stdout:
 $ rogen build --help
 exit 0
 stdout:
-  Writes the project file of each config here, or of the named ones.
+  Writes default.project.json beside the rogen.json here, or beside each named one.
   
   Usage:
-    rogen build [config...] [options]
+    rogen build [project...] [options]
   
   Arguments:
-    config  A config's name (lobby for lobby.rogen.json) or path, with the configs beside it that extend it. Every config here, or in the nearest folder above that has any, when none is given.
+    project  A folder with a rogen.json, or a path to its default.project.json. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.
   
   Options:
-    -o, --out-file <path>  Overrides outFile, for one config.
-        --json             Print one JSON document instead of text.
-        --deny-warnings    Exit 1 when any config has a warning.
+        --json           Print one JSON document instead of text.
+        --deny-warnings  Exit 1 when any config has a warning.
   
   Examples:
     rogen build
-    rogen build places/lobby.rogen.json
+    rogen build places/lobby
     rogen build --json
     rogen build --deny-warnings
   

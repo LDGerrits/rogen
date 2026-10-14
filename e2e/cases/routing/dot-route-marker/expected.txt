@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 7 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+  rogen.json - warning: 7 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
     src/Inventory/.server (write "@server")
     src/Tools/.SERVER (write "@server")
     src/.server (write "@server")
@@ -17,13 +17,13 @@ stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
-        "outFile": "<dir>/default.project.json",
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/rogen.json",
             "severity": "warning",
             "code": "route.dotRoute",
             "message": "7 names write a route key after a dot, where only \"@\" routes, so they route nothing:\n  <dir>/src/Inventory/.server (write \"@server\")\n  <dir>/src/Tools/.SERVER (write \"@server\")\n  <dir>/src/.server (write \"@server\")\n  <dir>/src/Config.server.json (write \"Config@server.json\")\n  <dir>/src/Inventory/Types.shared.luau (write \"Types@shared.luau\")\n  <dir>/src/Net.shared (write \"Net@shared\")\n  <dir>/src/Start.Server.luau (write \"Start.server.luau\")",

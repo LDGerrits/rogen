@@ -13,7 +13,10 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { ExitCodeError, ReportedError } from "../../../platform/commands/commands.js";
+import {
+	ExitCodeError,
+	ReportedError,
+} from "../../../platform/commands/commands.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -71,9 +74,9 @@ describe("serve command", () => {
 			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 		);
 		await memFs.writeFile(
-			"/repo/default.rogen.json",
+			"/repo/rogen.json",
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: { "*": "ReplicatedStorage" },
 			})
 		);
@@ -109,10 +112,10 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.lines).toEqual([
-			"intro: rogen serve · default",
+			"intro: rogen serve · repo",
 			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial build$/),
 			"success: default.project.json · wrote",
-			"success: Serving default with Rojo 7.7.1 at 127.0.0.1:34872.",
+			"success: Serving repo with Rojo 7.7.1 at 127.0.0.1:34872.",
 		]);
 	});
 
@@ -174,7 +177,7 @@ describe("serve command", () => {
 		expect((error as ReportedError).cause).toBeInstanceOf(ExitCodeError);
 		expect(exitCodeOf(error)).toBe(3);
 		expect(logService.lines.slice(-2)).toEqual([
-			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving default with exit code 3, without saying why. (serve.serverExited)",
+			"diagnosticError: /repo/rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)",
 			"outro: serve failed.",
 		]);
 	});
@@ -195,8 +198,8 @@ describe("serve command", () => {
 		expect(processes.spawned).toEqual([]);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 		expect(logService.lines).toEqual([
-			"intro: rogen serve · default",
-			"info: default is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
+			"intro: rogen serve · repo",
+			"info: repo is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
 			"outro: Nothing to start: another rogen serve already serves every config, so nothing is built or watched here.",
 		]);
 	});
@@ -214,7 +217,7 @@ describe("serve command", () => {
 		expect(processes.spawned).toEqual([]);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(true);
 		expect(logService.lines[1]).toBe(
-			"info: default is already served: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1). Rogen builds for it, and stops when it does."
+			"info: repo is already served: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1). Rogen builds for it, and stops when it does."
 		);
 
 		requests.responses.delete(ROJO_URL);
@@ -223,7 +226,7 @@ describe("serve command", () => {
 
 		expect((await result).isOk()).toBe(true);
 		expect(logService.lines.slice(-2)).toEqual([
-			"info: Rojo stopped serving default.",
+			"info: Rojo stopped serving repo.",
 			"outro: Stopped serving.",
 		]);
 	});
@@ -245,7 +248,7 @@ describe("serve command", () => {
 		expect(printed()).toEqual([
 			{
 				serving: {
-					config: "default",
+					config: "repo",
 					server: "rojo",
 					version: "7.7.1",
 					project: "repo",
@@ -257,10 +260,10 @@ describe("serve command", () => {
 					adopted: true,
 				},
 			},
-			{ build: expect.objectContaining({ config: "default" }) },
+			{ build: expect.objectContaining({ config: "repo" }) },
 			{
 				stopped: {
-					config: "default",
+					config: "repo",
 					server: "rojo",
 					reason: "exited",
 					adopted: true,
@@ -282,16 +285,16 @@ describe("serve command", () => {
 		expect(printed()).toEqual([
 			{
 				build: {
-					config: "default",
-					file: "/repo/default.rogen.json",
-					outFile: "/repo/default.project.json",
+					config: "repo",
+					file: "/repo/rogen.json",
+					projectFile: "/repo/default.project.json",
 					outcome: "wrote",
 					diagnostics: [],
 				},
 			},
 			{
 				serving: {
-					config: "default",
+					config: "repo",
 					server: "rojo",
 					version: "7.7.1",
 					project: "repo",
@@ -336,10 +339,10 @@ describe("serve command", () => {
 			expect(
 				logService.lines.filter((line) => line.includes("Studio"))
 			).toEqual([
-				"info: Studio connected to default.",
-				"info: Studio connected to default (2 connected).",
-				"info: Studio disconnected from default, 1 still connected.",
-				"info: Studio disconnected from default.",
+				"info: Studio connected to repo.",
+				"info: Studio connected to repo (2 connected).",
+				"info: Studio disconnected from repo, 1 still connected.",
+				"info: Studio disconnected from repo.",
 			]);
 		});
 
@@ -354,14 +357,14 @@ describe("serve command", () => {
 			expect(printed().slice(2)).toEqual([
 				{
 					connected: {
-						config: "default",
+						config: "repo",
 						server: "rojo",
 						clients: 1,
 					},
 				},
 				{
 					disconnected: {
-						config: "default",
+						config: "repo",
 						server: "rojo",
 						clients: 0,
 					},
@@ -390,7 +393,7 @@ describe("serve command", () => {
 		expect(printed().filter((line) => "output" in line)).toHaveLength(1);
 		expect(printed().at(-1)).toEqual({
 			output: {
-				config: "default",
+				config: "repo",
 				server: "rojo",
 				severity: "error",
 				message: "It broke",
@@ -412,7 +415,7 @@ describe("serve command", () => {
 
 		expect(printed().at(-1)).toEqual({
 			stopped: {
-				config: "default",
+				config: "repo",
 				server: "rojo",
 				reason: "shutdown",
 				adopted: true,
@@ -421,23 +424,6 @@ describe("serve command", () => {
 	});
 
 	it("should mark the stop of an adopted server whose config is gone as adopted, as JSON", async () => {
-		await memFs.writeFile(
-			"/repo/lobby.project.json",
-			JSON.stringify({
-				name: "Lobby",
-				servePort: 34900,
-				tree: { $className: "DataModel" },
-			})
-		);
-		await memFs.writeFile(
-			"/repo/lobby.rogen.json",
-			JSON.stringify({
-				rootDirs: ["src"],
-				routes: { "*": "Workspace" },
-				template: "lobby.project.json",
-				outFile: "lobby-out.project.json",
-			})
-		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
 			serverVersion: "7.7.1",
@@ -446,12 +432,12 @@ describe("serve command", () => {
 		void serve([], { json: true });
 		await settle();
 
-		await memFs.delete("/repo/default.rogen.json");
+		await memFs.delete("/repo/rogen.json");
 		await settle();
 
 		expect(printed().filter((line) => "stopped" in line)).toContainEqual({
 			stopped: {
-				config: "default",
+				config: "repo",
 				server: "rojo",
 				reason: "removed",
 				adopted: true,
@@ -460,23 +446,6 @@ describe("serve command", () => {
 	});
 
 	it("should say it stopped building for an adopted server whose config is gone, not that the server stopped", async () => {
-		await memFs.writeFile(
-			"/repo/lobby.project.json",
-			JSON.stringify({
-				name: "Lobby",
-				servePort: 34900,
-				tree: { $className: "DataModel" },
-			})
-		);
-		await memFs.writeFile(
-			"/repo/lobby.rogen.json",
-			JSON.stringify({
-				rootDirs: ["src"],
-				routes: { "*": "Workspace" },
-				template: "lobby.project.json",
-				outFile: "lobby-out.project.json",
-			})
-		);
 		requests.answer(ROJO_URL, {
 			projectName: "repo",
 			serverVersion: "7.7.1",
@@ -485,11 +454,11 @@ describe("serve command", () => {
 		void serve();
 		await settle();
 
-		await memFs.delete("/repo/default.rogen.json");
+		await memFs.delete("/repo/rogen.json");
 		await settle();
 
 		expect(logService.lines).toContain(
-			"info: Stopped building for default: its config is gone."
+			"info: Stopped building for repo: its config is gone."
 		);
 	});
 
@@ -501,82 +470,98 @@ describe("serve command", () => {
 		await result;
 
 		expect(printed().at(-1)).toEqual({
-			stopped: { config: "default", server: "rojo", reason: "shutdown" },
+			stopped: { config: "repo", server: "rojo", reason: "shutdown" },
 		});
 	});
 
 	describe("as the configs change", () => {
-		const addLobby = async (servePort: number) => {
+		const writeLobby = async (servePort: number) => {
 			await memFs.writeFile(
-				"/repo/templates/lobby.project.json",
-				JSON.stringify({ tree: { $className: "DataModel" }, servePort })
-			);
-			await memFs.writeFile(
-				"/repo/lobby.rogen.json",
+				"/repo/lobby/rogen.json",
 				JSON.stringify({
-					rootDirs: ["src"],
+					sourcePaths: ["../src"],
 					routes: { "*": "ReplicatedStorage" },
-					template: "templates/lobby.project.json",
+					servePort,
 				})
 			);
 			await settle();
 		};
 
-		it("should report a config it can't serve and go on serving the others", async () => {
-			void serve();
+		const serveBoth = async (options: CommandLine["options"] = {}) => {
+			await writeLobby(34900);
+			void serve([".", "lobby"], options);
 			await settle();
+		};
 
-			await addLobby(34872);
+		it("should report a config it can't serve and go on serving the others", async () => {
+			await serveBoth();
+
+			await writeLobby(34872);
 
 			expect(logService.lines).toContainEqual(
-				"diagnosticError: /repo/templates/lobby.project.json - error: Port 34872 is taken by the server of default, so lobby can't be served there. Give lobby its own servePort in lobby.project.json, or serve it on its own, as 'rogen serve lobby'. (serve.portTaken)"
+				"diagnosticError: /repo/lobby/rogen.json - error: Port 34872 is taken by the server of repo, so lobby can't be served there. Give lobby its own servePort in rogen.json, or serve it on its own, as 'rogen serve lobby'. (serve.portTaken)"
 			);
-			expect(processes.spawned[0].terminated).toBe(false);
+			expect(
+				processes.spawned.map(({ terminated }) => terminated)
+			).toEqual([false, false]);
 			expect(
 				logService.lines.some((line) => line.startsWith("outro:"))
 			).toBe(false);
 		});
 
-		it("should say a server stopped because its config is gone, and stop only that one at shutdown", async () => {
+		it("should say a server stopped because its config is gone", async () => {
 			const result = serve([], { json: true });
 			await settle();
-			await addLobby(34900);
 
-			await memFs.delete("/repo/lobby.rogen.json");
+			await memFs.delete("/repo/rogen.json");
 			await settle();
-			lifecycle.shutdown();
-			await result;
-
-			expect(
-				printed()
-					.filter((line) => "stopped" in line || "refused" in line)
-					.map(({ stopped }) => stopped)
-			).toEqual([
-				{ config: "lobby", server: "rojo", reason: "removed" },
-				{ config: "default", server: "rojo", reason: "shutdown" },
-			]);
-		});
-
-		it("should end the JSON lines with every server running at shutdown, one started while serving included", async () => {
-			const result = serve([], { json: true });
-			await settle();
-			await addLobby(34900);
-
 			lifecycle.shutdown();
 			await result;
 
 			expect(
 				printed()
 					.filter((line) => "stopped" in line)
-					.map(({ stopped }) => stopped.config)
-			).toEqual(["default", "lobby"]);
+					.map(({ stopped }) => stopped)
+			).toEqual([{ config: "repo", server: "rojo", reason: "removed" }]);
+		});
+
+		it("should say a server moved when its config gives it another port", async () => {
+			await serveBoth();
+
+			await writeLobby(34901);
+
+			expect(logService.lines).toContainEqual(
+				"info: Stopped serving lobby at 127.0.0.1:34900: its address changed."
+			);
+			expect(processes.spawned.map(({ args }) => args)).toEqual([
+				["serve", "default.project.json"],
+				["serve", "lobby/default.project.json"],
+				["serve", "lobby/default.project.json"],
+			]);
+		});
+
+		it("should end the JSON lines with every server running at shutdown, one moved while serving included", async () => {
+			await serveBoth({ json: true });
+			await writeLobby(34901);
+
+			lifecycle.shutdown();
+			await running;
+
+			expect(
+				printed()
+					.filter((line) => "stopped" in line)
+					.map(({ stopped }) => [stopped.config, stopped.reason])
+			).toEqual([
+				["lobby", "moved"],
+				["repo", "shutdown"],
+				["lobby", "shutdown"],
+			]);
 		});
 
 		it("should print a refusal as a JSON line of its own", async () => {
-			void serve([], { json: true });
-			await settle();
+			await serveBoth({ json: true });
 
-			await addLobby(34872);
+			await writeLobby(34872);
 
 			expect(printed().at(-1)).toEqual({
 				refused: {
@@ -588,42 +573,19 @@ describe("serve command", () => {
 				},
 			});
 		});
-
-		it("should say a server stopped because another config extends its config now", async () => {
-			void serve();
-			await settle();
-
-			await memFs.writeFile(
-				"/repo/sync.rogen.json",
-				JSON.stringify({
-					extends: "./default.rogen.json",
-					syncDir: "dist",
-				})
-			);
-			await memFs.writeFile("/repo/dist/A.luau", "");
-			await settle();
-
-			expect(logService.lines).toContainEqual(
-				"info: Stopped serving default: a config extends it now, and is served instead."
-			);
-			expect(processes.spawned.map(({ args }) => args[1])).toEqual([
-				"default.project.json",
-				"sync.project.json",
-			]);
-		});
 	});
 
 	it("should print a config that broke while serving as a notice line", async () => {
 		void serve([], { json: true });
 		await settle();
 
-		await memFs.writeFile("/repo/default.rogen.json", '{"nope": 1}');
+		await memFs.writeFile("/repo/rogen.json", '{"extends": "base"}');
 		await settle();
 
 		expect(printed()).toContainEqual({
 			notice: expect.objectContaining({
 				kind: "broken",
-				file: "/repo/default.rogen.json",
+				file: "/repo/rogen.json",
 				keptLastValid: true,
 				diagnostics: [expect.objectContaining({ severity: "error" })],
 			}),
@@ -695,7 +657,7 @@ describe("serve command", () => {
 		expect(printed().slice(1)).toEqual([
 			{
 				stopped: {
-					config: "default",
+					config: "repo",
 					server: "rojo",
 					reason: "exited",
 					code: 1,
@@ -722,10 +684,13 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should serve a named config and still build every config here", async () => {
+	it("should serve the named project, and build only that one", async () => {
 		await memFs.writeFile(
-			"/repo/lobby.rogen.json",
-			JSON.stringify({ rootDirs: ["src"], routes: { "*": "Workspace" } })
+			"/repo/lobby/rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
+			})
 		);
 
 		void serve(["lobby"]);
@@ -733,17 +698,37 @@ describe("serve command", () => {
 
 		expect(processes.spawned[0].args).toEqual([
 			"serve",
-			"lobby.project.json",
+			"lobby/default.project.json",
 		]);
-		expect(await memFs.exists("/repo/default.project.json")).toBe(true);
-		expect(logService.lines[0]).toBe("intro: rogen serve · default, lobby");
+		expect(await memFs.exists("/repo/lobby/default.project.json")).toBe(
+			true
+		);
+		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
+		expect(logService.lines[0]).toBe("intro: rogen serve · lobby");
+	});
+
+	it("should fail naming the port when two projects share it", async () => {
+		await memFs.writeFile(
+			"/repo/lobby/rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
+			})
+		);
+
+		const error = await failureOf(serve([".", "lobby"]));
+
+		expect(error.message).toContain(
+			"repo and lobby both serve on port 34872"
+		);
+		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should fail with the build's errors and start nothing when the first build fails", async () => {
 		await memFs.writeFile(
-			"/repo/default.rogen.json",
+			"/repo/rogen.json",
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: {
 					server: "ServerScriptService",
 					client: "StarterPlayer/StarterPlayerScripts",
@@ -767,9 +752,9 @@ describe("serve command", () => {
 
 	it("should end the JSON lines with the build's errors when the first build fails", async () => {
 		await memFs.writeFile(
-			"/repo/default.rogen.json",
+			"/repo/rogen.json",
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: {
 					server: "ServerScriptService",
 					client: "StarterPlayer/StarterPlayerScripts",

@@ -1,4 +1,4 @@
-import { Result, ResultError } from "../../../base/result.js";
+import { Result } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { Diagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
@@ -18,40 +18,35 @@ import {
 	WorkspaceSpec,
 	directory,
 	directoryOf,
-	placeFoldersOf,
 } from "./init-fixtures.js";
 
-type Context = Omit<DirectorySpec, "givenName">;
+type Context = DirectorySpec;
 
 const askInitChoices = async (
 	prompts: MockPromptService,
-	context: Context,
-	name?: string
+	context: Context
 ): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> => {
 	const fileSystem = new MemoryFileSystemService();
 	await fileSystem.createDirectory(directory);
 	for (const file of context.existing ?? [])
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
-		directoryOf({ ...context, givenName: name }),
+		directoryOf(context),
 		new InitQuestions(prompts, prompts.isInteractive),
-		fileSystem,
-		placeFoldersOf(fileSystem)
+		fileSystem
 	);
 	return setup.ask();
 };
 
 const defaultInitChoices = async (
 	workspace: WorkspaceSpec,
-	name = "default",
 	existing: readonly string[] = []
 ) =>
 	(
-		await askInitChoices(
-			new MockPromptService([], false),
-			{ workspace, existing },
-			name === "default" ? undefined : name
-		)
+		await askInitChoices(new MockPromptService([], false), {
+			workspace,
+			existing,
+		})
 	).unwrap();
 
 const luau: WorkspaceSpec = {};
@@ -74,13 +69,11 @@ const contextOf = (
 const ask = (
 	workspace: WorkspaceSpec,
 	answers: PromptScript,
-	name?: string,
 	existing: readonly string[] = []
 ) =>
 	askInitChoices(
 		new MockPromptService(answers),
-		contextOf(workspace, existing),
-		name
+		contextOf(workspace, existing)
 	);
 
 const asked = async (...args: Parameters<typeof ask>) => {
@@ -88,9 +81,6 @@ const asked = async (...args: Parameters<typeof ask>) => {
 	if (!choices) throw new Error("The questions were cancelled.");
 	return choices;
 };
-
-const conflictsOf = (result: Awaited<ReturnType<typeof ask>>) =>
-	(result as ResultError<Diagnostic[]>).error;
 
 const acceptAll = (count: number) => Array(count).fill(ACCEPT_DEFAULT);
 
@@ -102,7 +92,6 @@ describe("InitQuestions askProject", () => {
 			luau,
 			darklua,
 			{ ...luau, packageManager: "pesde" as const },
-			{ ...luau, places: ["lobby", "match"] },
 		]) {
 			expect(await asked(workspace, {})).toEqual(
 				await defaultInitChoices(workspace)
@@ -110,95 +99,19 @@ describe("InitQuestions askProject", () => {
 		}
 	});
 
-	it("should ask in order: language, Darklua, root dir, packages, routes, fallback", async () => {
+	it("should ask in order: language, Darklua, source path, packages, routes, fallback", async () => {
 		const prompts = new MockPromptService({});
 
-		await askInitChoices(prompts, contextOf(rbxts), "lobby");
+		await askInitChoices(prompts, contextOf(rbxts));
 
 		expect(prompts.asked).toEqual([
 			"Language",
 			"Does Darklua process your code before Rojo syncs it?",
-			"Root dir",
+			"Source path",
 			"Packages",
 			"Routes",
 			"Files that match no route",
 		]);
-	});
-
-	describe("config name", () => {
-		it("should not ask for a name when default.rogen.json does not exist", async () => {
-			const prompts = new MockPromptService({});
-
-			const result = await askInitChoices(prompts, contextOf(luau));
-
-			expect(result.unwrap()?.name).toBe("default");
-			expect(prompts.asked).not.toContain("Config name");
-		});
-
-		it("should not ask for a name that was given", async () => {
-			const prompts = new MockPromptService({});
-
-			const result = await askInitChoices(
-				prompts,
-				contextOf(luau, ["default.rogen.json"]),
-				"lobby"
-			);
-
-			expect(result.unwrap()?.name).toBe("lobby");
-			expect(prompts.asked).not.toContain("Config name");
-		});
-
-		it("should ask for a name, without a placeholder, when default.rogen.json exists", async () => {
-			const prompts = new MockPromptService({ "Config name": "test" });
-
-			const result = await askInitChoices(
-				prompts,
-				contextOf(luau, ["default.rogen.json"])
-			);
-
-			expect(result.unwrap()?.name).toBe("test");
-			expect(prompts.prompts[0]).toMatchObject({
-				message: "Config name",
-				placeholder: undefined,
-			});
-			expect(prompts.prompts[0].description).toBe(
-				"Writes <name>.rogen.json."
-			);
-		});
-
-		it.each([
-			["", "Enter a name."],
-			["a/b", "path separators"],
-			["default", "default.rogen.json already exists."],
-			["lobby", "lobby.rogen.json already exists."],
-		])("should reject the name %j at the prompt", async (name, message) => {
-			await expect(
-				ask(luau, [name], undefined, [
-					"default.rogen.json",
-					"lobby.rogen.json",
-				])
-			).rejects.toThrow(message);
-		});
-
-		it("should trim the name that was typed", async () => {
-			const prompts = new MockPromptService({ "Config name": "  test " });
-
-			const result = await askInitChoices(
-				prompts,
-				contextOf(luau, ["default.rogen.json"])
-			);
-
-			expect(result.unwrap()?.name).toBe("test");
-		});
-
-		it("should reject a name whose synced config exists", async () => {
-			await expect(
-				ask(luau, ["lobby"], undefined, [
-					"default.rogen.json",
-					"lobby-sync.rogen.json",
-				])
-			).rejects.toThrow("lobby-sync.rogen.json already exists.");
-		});
 	});
 
 	describe("language", () => {
@@ -211,7 +124,7 @@ describe("InitQuestions askProject", () => {
 			const choices = await asked(luau, { Language: "roblox-ts" });
 
 			expect(choices.language.id).toBe("roblox-ts");
-			expect(choices.syncDir).toBe("out");
+			expect(choices.syncPath).toBe("out");
 		});
 	});
 
@@ -223,7 +136,7 @@ describe("InitQuestions askProject", () => {
 			);
 
 			expect(choices.darklua).toBeInstanceOf(Darklua);
-			expect(choices.syncDir).toBe("dist");
+			expect(choices.syncPath).toBe("dist");
 		});
 
 		it("should hint at the Darklua config that was found", async () => {
@@ -247,40 +160,20 @@ describe("InitQuestions askProject", () => {
 			});
 
 			expect(choices.darklua).toBeInstanceOf(Darklua);
-			expect(choices.syncDir).toBe("dist");
-		});
-
-		it("should fail before the remaining questions when a file it would write exists", async () => {
-			const prompts = new MockPromptService({
-				"Does Darklua process your code before Rojo syncs it?": true,
-			});
-
-			const result = await askInitChoices(
-				prompts,
-				contextOf(luau, ["sync.rogen.json"]),
-				"default"
-			);
-
-			expect(conflictsOf(result)).toMatchObject([
-				{
-					code: "init.configExists",
-					resource: path.join(directory, "sync.rogen.json"),
-				},
-			]);
-			expect(prompts.asked).toHaveLength(2);
+			expect(choices.syncPath).toBe("dist");
 		});
 	});
 
-	describe("sync dir", () => {
-		const syncDirPrompt = (prompts: MockPromptService) =>
-			prompts.prompts.find(({ message }) => message === "Sync dir");
+	describe("sync path", () => {
+		const syncPathPrompt = (prompts: MockPromptService) =>
+			prompts.prompts.find(({ message }) => message === "Sync path");
 
 		it("should be skipped for plain luau", async () => {
 			const prompts = new MockPromptService({});
 
 			await askInitChoices(prompts, contextOf(luau));
 
-			expect(syncDirPrompt(prompts)).toBeUndefined();
+			expect(syncPathPrompt(prompts)).toBeUndefined();
 		});
 
 		it("should not be asked for roblox-ts, which syncs from its outDir", async () => {
@@ -288,8 +181,8 @@ describe("InitQuestions askProject", () => {
 
 			const result = await askInitChoices(prompts, contextOf(rbxts));
 
-			expect(syncDirPrompt(prompts)).toBeUndefined();
-			expect(result.unwrap()?.syncDir).toBe("build");
+			expect(syncPathPrompt(prompts)).toBeUndefined();
+			expect(result.unwrap()?.syncPath).toBe("build");
 		});
 
 		it("should default to dist for Darklua and say what Darklua does", async () => {
@@ -300,21 +193,21 @@ describe("InitQuestions askProject", () => {
 				contextOf({ ...luau, darkluaConfig: ".darklua.json" })
 			);
 
-			expect(syncDirPrompt(prompts)?.placeholder).toBe("dist");
-			expect(syncDirPrompt(prompts)?.description).toContain(
+			expect(syncPathPrompt(prompts)?.placeholder).toBe("dist");
+			expect(syncPathPrompt(prompts)?.description).toContain(
 				"Darklua writes into"
 			);
 		});
 
 		it.each(["src", "src/out", "./src/"])(
-			"should refuse %j, which holds or lies in a root dir",
+			"should refuse %j, which holds or lies in a source path",
 			async (answer) => {
 				await expect(
 					ask(
 						{ ...luau, darkluaConfig: ".darklua.json" },
 						{
 							"Does Darklua process your code before Rojo syncs it?": true,
-							"Sync dir": answer,
+							"Sync path": answer,
 						}
 					)
 				).rejects.toThrow("overlaps src");
@@ -322,35 +215,35 @@ describe("InitQuestions askProject", () => {
 		);
 	});
 
-	it("should split root dirs on commas", async () => {
+	it("should split source paths on commas", async () => {
 		const choices = await asked(luau, {
-			"Root dirs": "src, ./shared/ ,,server",
+			"Source paths": "src, ./shared/ ,,server",
 		});
 
-		expect(choices.rootDirs).toEqual(["src", "shared", "server"]);
+		expect(choices.sourcePaths).toEqual(["src", "shared", "server"]);
 	});
 
-	describe("root dirs", () => {
-		const rootDirsPrompt = async (workspace: WorkspaceSpec) => {
+	describe("source paths", () => {
+		const sourcePathsPrompt = async (workspace: WorkspaceSpec) => {
 			const prompts = new MockPromptService({});
 			await askInitChoices(prompts, contextOf(workspace));
 			return prompts.prompts.find(({ message }) =>
-				message.startsWith("Root dir")
+				message.startsWith("Source path")
 			);
 		};
 
-		it("should take the placeholder from the tsconfig rootDir for roblox-ts", async () => {
-			const prompt = await rootDirsPrompt({
-				...withRobloxTs(rbxts, { rootDir: "./game" }),
+		it("should take the placeholder from the tsconfig sourcePath for roblox-ts", async () => {
+			const prompt = await sourcePathsPrompt({
+				...withRobloxTs(rbxts, { sourcePath: "./game" }),
 				hasSrc: true,
 			});
 
 			expect(prompt?.placeholder).toBe("game");
 		});
 
-		it("should ignore the tsconfig rootDir for luau", async () => {
-			const prompt = await rootDirsPrompt({
-				...withRobloxTs(luau, { rootDir: "game" }),
+		it("should ignore the tsconfig sourcePath for luau", async () => {
+			const prompt = await sourcePathsPrompt({
+				...withRobloxTs(luau, { sourcePath: "game" }),
 				hasSrc: true,
 			});
 
@@ -358,7 +251,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should take src when it exists", async () => {
-			const prompt = await rootDirsPrompt({
+			const prompt = await sourcePathsPrompt({
 				...luau,
 				hasSrc: true,
 				codeFolders: ["lib"],
@@ -368,7 +261,7 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should take the only code folder when src does not exist", async () => {
-			const prompt = await rootDirsPrompt({
+			const prompt = await sourcePathsPrompt({
 				...luau,
 				codeFolders: ["lib"],
 			});
@@ -377,10 +270,10 @@ describe("InitQuestions askProject", () => {
 		});
 
 		it("should fall back to src", async () => {
-			expect((await rootDirsPrompt(luau))?.placeholder).toBe("src");
+			expect((await sourcePathsPrompt(luau))?.placeholder).toBe("src");
 			expect(
 				(
-					await rootDirsPrompt({
+					await sourcePathsPrompt({
 						...luau,
 						codeFolders: ["a", "b"],
 					})
@@ -388,28 +281,28 @@ describe("InitQuestions askProject", () => {
 			).toBe("src");
 		});
 
-		it("should not list the top folder of a nested root dir as another", async () => {
-			const prompt = await rootDirsPrompt({
-				...withRobloxTs(rbxts, { rootDir: "src/main" }),
-				codeFolders: ["places", "src"],
+		it("should not list the top folder of a nested source path as another", async () => {
+			const prompt = await sourcePathsPrompt({
+				...withRobloxTs(rbxts, { sourcePath: "src/main" }),
+				codeFolders: ["lib", "src"],
 			});
 
 			expect(prompt?.placeholder).toBe("src/main");
-			expect(prompt?.hint).toBe("Also found code in: places");
+			expect(prompt?.hint).toBe("Also found code in: lib");
 		});
 
 		it("should hint at the other code folders, never as a choice", async () => {
-			const prompt = await rootDirsPrompt({
+			const prompt = await sourcePathsPrompt({
 				...luau,
 				hasSrc: true,
-				codeFolders: ["places", "shared", "src"],
+				codeFolders: ["lib", "shared", "src"],
 			});
 
-			expect(prompt?.hint).toBe("Also found code in: places, shared");
+			expect(prompt?.hint).toBe("Also found code in: lib, shared");
 		});
 
 		it("should not hint when there are no other code folders", async () => {
-			const prompt = await rootDirsPrompt({
+			const prompt = await sourcePathsPrompt({
 				...luau,
 				hasSrc: true,
 				codeFolders: ["src"],
@@ -418,14 +311,14 @@ describe("InitQuestions askProject", () => {
 			expect(prompt?.hint).toBeUndefined();
 		});
 
-		it("should say what a root dir is, per language", async () => {
-			expect((await rootDirsPrompt(luau))?.description).toBe(
+		it("should say what a source path is, per language", async () => {
+			expect((await sourcePathsPrompt(luau))?.description).toBe(
 				"Folders with your scripts, relative to here. Separate several with commas."
 			);
-			expect(await rootDirsPrompt(rbxts)).toMatchObject({
-				message: "Root dir",
+			expect(await sourcePathsPrompt(rbxts)).toMatchObject({
+				message: "Source path",
 				description:
-					"The folder roblox-ts compiles (rootDir in tsconfig.json).",
+					"The folder roblox-ts compiles (sourcePath in tsconfig.json).",
 			});
 		});
 
@@ -438,17 +331,15 @@ describe("InitQuestions askProject", () => {
 			["/abs/src", "Use a path relative to here, not /abs/src."],
 			["../lib", "../lib is outside this folder."],
 		])("should reject %j at the prompt", async (answer, message) => {
-			await expect(ask(luau, { "Root dirs": answer })).rejects.toThrow(
+			await expect(ask(luau, { "Source paths": answer })).rejects.toThrow(
 				message
 			);
 		});
 
-		it("should take one root dir for roblox-ts", async () => {
+		it("should take one source path for roblox-ts", async () => {
 			await expect(
-				ask(rbxts, { "Root dir": "src, lib" })
-			).rejects.toThrow(
-				"roblox-ts compiles one folder. For code per place, set up several places."
-			);
+				ask(rbxts, { "Source path": "src, lib" })
+			).rejects.toThrow("roblox-ts compiles one folder.");
 		});
 	});
 
@@ -590,17 +481,6 @@ describe("InitQuestions askProject", () => {
 			]);
 		});
 
-		it("should be skipped when template.project.json exists", async () => {
-			const prompts = new MockPromptService({});
-
-			await askInitChoices(
-				prompts,
-				contextOf(luau, ["template.project.json"])
-			);
-
-			expect(prompts.asked).not.toContain("Packages");
-		});
-
 		it("should always mount include and @rbxts for roblox-ts", async () => {
 			const choices = await asked(rbxts, { Packages: [] });
 
@@ -721,7 +601,7 @@ describe("InitQuestions askProject", () => {
 			);
 		});
 
-		describe("from a copied project file", () => {
+		describe("from a lifted project file", () => {
 			const projectFile = JSON.stringify({
 				name: "my-game",
 				tree: {
@@ -731,7 +611,7 @@ describe("InitQuestions askProject", () => {
 				},
 			});
 
-			const askCopying = async (prompts: MockPromptService) => {
+			const askLifting = async (prompts: MockPromptService) => {
 				const fileSystem = new MemoryFileSystemService();
 				await fileSystem.createDirectory(directory);
 				await fileSystem.writeFile(
@@ -744,8 +624,7 @@ describe("InitQuestions askProject", () => {
 						existing: ["default.project.json"],
 					}),
 					new InitQuestions(prompts, prompts.isInteractive),
-					fileSystem,
-					placeFoldersOf(fileSystem)
+					fileSystem
 				).ask();
 			};
 
@@ -763,7 +642,7 @@ describe("InitQuestions askProject", () => {
 					return original(options);
 				};
 
-				await askCopying(prompts);
+				await askLifting(prompts);
 
 				expect(choices.map(({ value }) => value)).toEqual([
 					"mount:server",
@@ -787,7 +666,7 @@ describe("InitQuestions askProject", () => {
 
 			it("should take them without asking", async () => {
 				const result = (
-					await askCopying(new MockPromptService([], false))
+					await askLifting(new MockPromptService([], false))
 				).unwrap();
 
 				expect(result?.routes).toEqual([
@@ -798,7 +677,7 @@ describe("InitQuestions askProject", () => {
 				expect(result?.fallback).toBe(true);
 			});
 
-			it("should offer the standard routes when the file is not copied", async () => {
+			it("should offer the standard routes when the file is not lifted", async () => {
 				const result = await defaultInitChoices(luau);
 
 				expect(result?.routes).toEqual(["server", "client", "shared"]);
@@ -864,8 +743,8 @@ describe("InitQuestions askProject", () => {
 
 		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
 		expect(text.map(({ message }) => message)).toEqual([
-			"Root dir",
-			"Sync dir",
+			"Source path",
+			"Sync path",
 		]);
 		expect(text.map(({ placeholder }) => placeholder)).toEqual([
 			"src",
@@ -875,12 +754,12 @@ describe("InitQuestions askProject", () => {
 	});
 
 	it("should take the placeholder when a text answer is empty", async () => {
-		const choices = await asked(luau, { "Root dirs": "" });
+		const choices = await asked(luau, { "Source paths": "" });
 
 		expect(choices).toEqual(await defaultInitChoices(luau));
 	});
 
-	it.each([0, 1, 2, 3, 4, 5, 6])(
+	it.each([0, 1, 2, 3, 4, 5])(
 		"should resolve undefined when cancelled at question %i",
 		async (index) => {
 			const answers: ScriptedAnswer[] = acceptAll(index);
@@ -891,158 +770,14 @@ describe("InitQuestions askProject", () => {
 	);
 });
 
-describe("InitQuestions askProject layout", () => {
-	const withPlaces: WorkspaceSpec = {
-		...luau,
-		hasSrc: true,
-		places: ["lobby", "match"],
-	};
-
-	it("should ask first on a first run without a name", async () => {
-		const prompts = new MockPromptService({});
-
-		await askInitChoices(prompts, contextOf(luau));
-
-		expect(prompts.asked[0]).toBe("What are you setting up?");
-	});
-
-	it("should not ask when a name was given", async () => {
-		const prompts = new MockPromptService({});
-
-		await askInitChoices(prompts, contextOf(luau), "lobby");
-
-		expect(prompts.asked).not.toContain("What are you setting up?");
-	});
-
-	it("should start with one place when no places were found", async () => {
-		const choices = await asked(luau, {});
-
-		expect(choices.places).toEqual([]);
-	});
-
-	it("should start with several places, and name them, when places were found", async () => {
-		const prompts = new MockPromptService({});
-
-		const choices = (
-			await askInitChoices(prompts, contextOf(withPlaces))
-		).unwrap();
-
-		expect(choices?.places.map(({ name }) => name)).toEqual([
-			"lobby",
-			"match",
-		]);
-		expect(prompts.asked.at(-1)).toBe("Places");
-		expect(prompts.prompts.at(-1)).toMatchObject({
-			placeholder: "lobby, match",
-		});
-		expect(prompts.prompts[0].hint).toBeUndefined();
-	});
-
-	it("should offer lobby when several places are chosen and none were found", async () => {
-		const choices = await asked(luau, {
-			"What are you setting up?": "several",
-		});
-
-		expect(choices.places.map(({ name }) => name)).toEqual(["lobby"]);
-	});
-
-	it("should ask where the shared code goes instead of the root dirs", async () => {
-		const prompts = new MockPromptService({});
-
-		await askInitChoices(prompts, contextOf(withPlaces));
-
-		expect(prompts.asked).not.toContain("Root dirs");
-		expect(
-			prompts.prompts.find(({ message }) => message === "Shared code")
-				?.description
-		).toContain("every place shares");
-	});
-
-	it.each([
-		["lobby, lobby", "lobby is listed twice."],
-		["default", "default.rogen.json is written for default"],
-		["arena", "arena-sync.project.json already exists."],
-	])("should reject the places %j at the prompt", async (answer, message) => {
-		await expect(
-			ask(
-				{ ...luau, darkluaConfig: ".darklua.json" },
-				{ "What are you setting up?": "several", Places: answer },
-				undefined,
-				["arena-sync.project.json"]
-			)
-		).rejects.toThrow(message);
-	});
-
-	it("should reject a place whose folder holds the shared code", async () => {
-		await expect(
-			ask(luau, {
-				"What are you setting up?": "several",
-				Places: "shared",
-			})
-		).rejects.toThrow("places/shared overlaps places/shared/src");
-	});
-
-	describe("shared code", () => {
-		const sharedOf = async (
-			workspace: WorkspaceSpec,
-			answer: ScriptedAnswer = ACCEPT_DEFAULT
-		) => {
-			const { rootDirs, templateDir } = await asked(workspace, {
-				"What are you setting up?": "several",
-				"Shared code": answer,
-			});
-			return { rootDirs, templateDir };
-		};
-
-		it("should put it beside the places, with its template, when there is no code yet", async () => {
-			expect(await sharedOf(luau)).toEqual({
-				rootDirs: ["places/shared/src"],
-				templateDir: "places/shared",
-			});
-		});
-
-		it("should keep it in src when src already holds code", async () => {
-			expect(await sharedOf({ ...luau, hasSrc: true })).toEqual({
-				rootDirs: ["src"],
-				templateDir: undefined,
-			});
-		});
-
-		it("should keep it in the only folder that holds code", async () => {
-			expect(await sharedOf({ ...luau, codeFolders: ["lib"] })).toEqual({
-				rootDirs: ["lib"],
-				templateDir: undefined,
-			});
-		});
-
-		it("should keep it in the folder roblox-ts compiles", async () => {
-			expect(
-				(
-					await sharedOf({
-						...rbxts,
-						robloxTs: { ...rbxts.robloxTs, rootDir: "game" },
-					})
-				).rootDirs
-			).toEqual(["game"]);
-		});
-
-		it("should put it in a root folder when that is the answer", async () => {
-			expect(await sharedOf(luau, "src")).toEqual({
-				rootDirs: ["src"],
-				templateDir: undefined,
-			});
-		});
-	});
-});
-
-describe("InitQuestions askProject template", () => {
-	const templatePrompt = async (existing: readonly string[]) => {
+describe("InitQuestions askProject project file", () => {
+	const projectFilePrompt = async (existing: readonly string[]) => {
 		const prompts = new MockPromptService({});
 		let choices: { value: string; label: string }[] = [];
 		let initial: string | undefined;
 		const original = prompts.select.bind(prompts);
 		prompts.select = ((options: Parameters<typeof original>[0]) => {
-			if (options.message === "Template") {
+			if (options.message === "Project file") {
 				choices = [...options.choices];
 				initial = options.initialValue;
 			}
@@ -1056,44 +791,34 @@ describe("InitQuestions askProject template", () => {
 	};
 
 	it("should not be asked without a hand-written project file", async () => {
-		const { prompts } = await templatePrompt(["other.rogen.json"]);
-
-		expect(prompts.asked).not.toContain("Template");
-	});
-
-	it("should not be asked when template.project.json exists", async () => {
-		const { prompts } = await templatePrompt([
-			"template.project.json",
-			"default.project.json",
+		const { prompts, result } = await projectFilePrompt([
+			"lobby.project.json",
 		]);
 
-		expect(prompts.asked).not.toContain("Template");
+		expect(prompts.asked).not.toContain("Project file");
+		expect(result?.tree).toEqual({ kind: "new" });
 	});
 
-	it("should offer to copy the project file a build would replace, and preselect it", async () => {
-		const { choices, initial, prompts, result } = await templatePrompt([
+	it("should offer to lift the project file a build would replace, and preselect it", async () => {
+		const { choices, initial, prompts, result } = await projectFilePrompt([
 			"default.project.json",
-			"base.project.json",
 			"lobby.project.json",
-			"lobby.rogen.json",
 		]);
 
 		expect(choices.map(({ label }) => label)).toEqual([
-			"Copy default.project.json to template.project.json",
-			"Use base.project.json",
-			"Start a new template.project.json",
+			"Lift default.project.json into rogen.json",
+			"Start a new tree",
 		]);
-		expect(initial).toBe("copy:default.project.json");
+		expect(initial).toBe("lift");
 		expect(
-			prompts.prompts.find(({ message }) => message === "Template")
+			prompts.prompts.find(({ message }) => message === "Project file")
 				?.description
 		).toBe(
 			"default.project.json exists, and Rogen replaces it on every build."
 		);
-		expect(result?.template).toEqual({
-			kind: "copy",
+		expect(result?.tree).toMatchObject({
+			kind: "lift",
 			from: "default.project.json",
-			content: "{}",
 		});
 		expect(result?.mounts).toEqual([
 			{
@@ -1110,34 +835,27 @@ describe("InitQuestions askProject template", () => {
 		expect(prompts.asked).toContain("Packages");
 	});
 
-	it("should not ask for packages when using a project file as it is", async () => {
-		const prompts = new MockPromptService({
-			Template: "use:base.project.json",
-		});
+	it("should start a new tree when that is the answer", async () => {
+		const prompts = new MockPromptService({ "Project file": "new" });
+
 		const result = (
 			await askInitChoices(
 				prompts,
-				contextOf({ ...luau, packageManager: "wally" }, [
-					"base.project.json",
-				])
+				contextOf(luau, ["default.project.json"])
 			)
 		).unwrap();
 
-		expect(result?.template).toEqual({
-			kind: "use",
-			file: "base.project.json",
-		});
-		expect(result?.mounts).toEqual([]);
-		expect(prompts.asked).not.toContain("Packages");
+		expect(result?.tree).toEqual({ kind: "new" });
 	});
 
-	it("should preselect a new template when no output would be replaced", async () => {
-		const { initial, prompts } = await templatePrompt([
-			"base.project.json",
-		]);
+	it("should answer nothing when the user cancels", async () => {
+		const result = await ask(
+			luau,
+			[CANCEL, CANCEL, CANCEL],
+			["default.project.json"]
+		);
 
-		expect(initial).toBe("new");
-		expect(prompts.asked).toContain("Packages");
+		expect(result.unwrap()).toBeUndefined();
 	});
 });
 
@@ -1179,7 +897,20 @@ describe("InitQuestions whatToAdd", () => {
 			true
 		);
 
-		expect(await questions.whatToAdd(true, options)).toBe(2);
+		expect(await questions.whatToAdd("rogen.json", options)).toBe(2);
+	});
+
+	it("should name the config that exists", async () => {
+		const prompts = new MockPromptService([ACCEPT_DEFAULT]);
+
+		await new InitQuestions(prompts, true).whatToAdd(
+			"rogen.jsonc",
+			options
+		);
+
+		expect(prompts.asked).toEqual([
+			"rogen.jsonc exists. What do you want to add?",
+		]);
 	});
 
 	it("should preselect the first", async () => {
@@ -1188,13 +919,13 @@ describe("InitQuestions whatToAdd", () => {
 			true
 		);
 
-		expect(await questions.whatToAdd(true, options)).toBe(1);
+		expect(await questions.whatToAdd("rogen.json", options)).toBe(1);
 	});
 
 	it("should take the first when it can't ask", async () => {
 		const questions = new InitQuestions(new MockPromptService([]), false);
 
-		expect(await questions.whatToAdd(false, options)).toBe(1);
+		expect(await questions.whatToAdd("rogen.json", options)).toBe(1);
 	});
 
 	it("should answer nothing when the user cancels", async () => {
@@ -1203,6 +934,8 @@ describe("InitQuestions whatToAdd", () => {
 			true
 		);
 
-		expect(await questions.whatToAdd(true, options)).toBeUndefined();
+		expect(
+			await questions.whatToAdd("rogen.json", options)
+		).toBeUndefined();
 	});
 });

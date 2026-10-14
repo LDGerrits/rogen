@@ -1,26 +1,27 @@
 import net from "net";
 import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
-/** The config and template every serve test starts from. */
-export const config = (extra: Record<string, unknown> = {}) =>
+/** The rogen.json every serve test starts from, serving on `port`. */
+export const config = (port: number, extra: Record<string, unknown> = {}) =>
 	JSON.stringify({
-		rootDirs: ["src"],
+		name: "Game",
+		servePort: port,
+		tree: { $className: "DataModel" },
 		routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
-		template: "template.project.json",
 		...extra,
 	});
 
-export const template = (port: number, name = "Game") =>
+/** A Rojo project file that serves on `port`. */
+export const rojoProjectFile = (port: number, name: string) =>
 	JSON.stringify({
 		name,
 		servePort: port,
 		tree: { $className: "DataModel" },
 	});
 
-/** The files of a project that serves default on `port`. */
+/** The files of a project that serves on `port`. */
 export const projectFiles = (port: number) => ({
-	"default.rogen.json": config(),
-	"template.project.json": template(port),
+	"rogen.json": config(port),
 	"src/A.server.luau": "",
 });
 

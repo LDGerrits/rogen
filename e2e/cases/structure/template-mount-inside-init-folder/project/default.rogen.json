@@ -1,7 +1,0 @@
-{
-	"rootDirs": ["src"],
-	"routes": {
-		"*": "ReplicatedStorage/Shared"
-	},
-	"template": "template.project.json"
-}

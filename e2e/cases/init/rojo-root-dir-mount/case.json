@@ -1,3 +1,15 @@
 {
-	"steps": [["init", "-y"], ["build"], ["where", "src/Inventory/Types.luau"]]
+	"steps": [
+		[
+			"init",
+			"-y"
+		],
+		[
+			"build"
+		],
+		[
+			"where",
+			"src/Inventory/Types.luau"
+		]
+	]
 }

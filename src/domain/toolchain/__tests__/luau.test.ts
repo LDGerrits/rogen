@@ -17,7 +17,7 @@ describe("Luau", () => {
 		expect(luau.alwaysMounted()).toEqual([]);
 		expect(luau.offeredMounts()).toEqual([]);
 		expect(luau.reservedFolders).toEqual([]);
-		expect(luau.configuredRootDir()).toBeUndefined();
+		expect(luau.configuredSourcePath()).toBeUndefined();
 	});
 
 	it("should never claim the workspace, since it leaves nothing of its own", async () => {

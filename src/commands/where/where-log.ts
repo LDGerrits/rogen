@@ -40,13 +40,13 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
 		case "displaced":
-			return `displaced · the template defines ${instanceKey(location.node)}`;
+			return `displaced · the tree defines ${instanceKey(location.node)}`;
 		case "unrouted":
 			return "unrouted · no route matches it";
 		case "mounted":
-			return `mounted · the template mounts it at ${instanceKey(location.node)}`;
-		case "excluded":
-			return `excluded · matches ${patternRelativeTo(cwd, location.pattern)}`;
+			return `mounted · the tree mounts it at ${instanceKey(location.node)}`;
+		case "ignored":
+			return `ignored · matches ${patternRelativeTo(cwd, location.pattern)}`;
 		case "skipped":
 			return "skipped · the link loops or points at nothing";
 		case "extensionCase":
@@ -56,8 +56,8 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				? `not placed · it has an error (${location.by.code})`
 				: `not placed · the build stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
 		case "outside":
-			return "outside the root dirs";
-		case "ignored":
+			return "outside the source paths";
+		case "notInstance":
 			return "not an instance";
 		case "missing":
 			return location.folder
@@ -150,17 +150,17 @@ export class WhereLog {
 		}
 	}
 
-	/** What to say when there is nothing to list because no root dir holds a file; `undefined` when no config answered at all. */
+	/** What to say when there is nothing to list because no source path holds a file; `undefined` when no config answered at all. */
 	emptyLine(): string | undefined {
-		const rootDirs = [
+		const sourcePaths = [
 			...new Set(
-				this.answers.rootDirs.map((rootDir) =>
-					relativeTo(this.cwd, rootDir)
+				this.answers.sourcePaths.map((sourcePath) =>
+					relativeTo(this.cwd, sourcePath)
 				)
 			),
 		];
-		return rootDirs.length > 0
-			? `No files in the root dirs (${rootDirs.join(", ")}).`
+		return sourcePaths.length > 0
+			? `No files in the source paths (${sourcePaths.join(", ")}).`
 			: undefined;
 	}
 

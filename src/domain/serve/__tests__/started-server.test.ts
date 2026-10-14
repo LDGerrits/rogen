@@ -36,10 +36,7 @@ describe("StartedServer", () => {
 	let connections: string[];
 	let server: StartedServer;
 
-	const config = mockConfig({
-		file: "/repo/default.rogen.json",
-		outFile: "/repo/default.project.json",
-	});
+	const config = mockConfig({ file: "/repo/rogen.json" });
 	const target: ServeTarget = {
 		config,
 		project: "repo",
@@ -338,7 +335,7 @@ describe("StartedServer", () => {
 			failure: {
 				code: "serve.serverExited",
 				message:
-					"Rojo stopped serving default with exit code 3; see what it said above.",
+					"Rojo stopped serving repo with exit code 3; see what it said above.",
 			},
 		});
 	});
@@ -365,7 +362,7 @@ describe("StartedServer", () => {
 			exitCode: 1,
 			failure: {
 				message: expect.stringContaining(
-					"stopped serving default with signal SIGKILL"
+					"stopped serving repo with signal SIGKILL"
 				),
 			},
 		});
@@ -407,8 +404,7 @@ describe("StartedServer", () => {
 		expect(stops[0]).toMatchObject({
 			exitCode: 1,
 			failure: {
-				message:
-					"Rojo couldn't start to serve default: spawn rojo ENOENT",
+				message: "Rojo couldn't start to serve repo: spawn rojo ENOENT",
 			},
 		});
 	});

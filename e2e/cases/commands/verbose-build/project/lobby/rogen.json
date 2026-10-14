@@ -1,0 +1,13 @@
+{
+	"globIgnorePaths": [
+		"**/*.spec.luau"
+	],
+	"sourcePaths": [
+		"../src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/shared"
+	}
+}

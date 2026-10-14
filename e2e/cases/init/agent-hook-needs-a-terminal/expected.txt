@@ -5,12 +5,15 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {

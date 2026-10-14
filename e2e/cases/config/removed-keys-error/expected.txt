@@ -1,0 +1,11 @@
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: rogen.json · not loaded
+  rogen.json:2:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a project ("projects"), and a game with several places has a folder for each ("placePaths"). (config.removedField)
+  rogen.json:3:2 - error: "template" was removed. Write the tree inline: move the template's "tree" and its other keys into rogen.json. (config.removedField)
+  rogen.json:4:2 - error: "outFile" was removed. Rogen writes default.project.json beside rogen.json, and a project ("projects") writes <name>.project.json beside it. (config.removedField)
+  rogen.json:5:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project ("projects"). (config.removedField)
+  rogen.json:8:2 - error: "rootDirs" was removed. It is called "sourcePaths" now. (config.removedField)
+  rogen.json:11:2 - error: "syncDir" was removed. It is called "syncPath" now. (config.removedField)

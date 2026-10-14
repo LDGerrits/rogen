@@ -1,0 +1,18 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  rogen.json - warning: 2 source paths are named after a route key, but routing starts below a source path, so their names route nothing: (scan.sourcePathNamedAfterKey)
+    server ("server" route)
+    client ("client" route)
+  Move them into one folder, such as src/server and src/client, and use "sourcePaths": ["src"].
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Hud: ModuleScript  <- client/Hud.luau
+      Save: ModuleScript  <- server/Save.luau

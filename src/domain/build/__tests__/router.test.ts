@@ -16,14 +16,14 @@ describe("Router", () => {
 
 		const route = (
 			overrides: ResolvedConfigSpec = {},
-			rootDirs: readonly string[] = [abs("src")]
-		) => routeFiles(fs, overrides, rootDirs);
+			sourcePaths: readonly string[] = [abs("src")]
+		) => routeFiles(fs, overrides, sourcePaths);
 
 		const paths = async (
 			overrides: ResolvedConfigSpec = {},
-			rootDirs?: readonly string[]
+			sourcePaths?: readonly string[]
 		) =>
-			(await route(overrides, rootDirs))
+			(await route(overrides, sourcePaths))
 				.unwrap()
 				.routed.map((file) => file.instancePath.join("/"));
 
@@ -359,7 +359,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should only walk from each file's own root dir", async () => {
+			it("should only walk from each file's own source path", async () => {
 				await write("places/server/lobby/Hud.luau");
 
 				expect(await paths({}, [abs("places/server/lobby")])).toEqual([
@@ -367,7 +367,7 @@ describe("Router", () => {
 				]);
 			});
 
-			it("should not treat the root dir's own name as a routing folder", async () => {
+			it("should not treat the source path's own name as a routing folder", async () => {
 				await write("server/Save.luau");
 
 				expect(await paths({}, [abs("server")])).toEqual([
@@ -394,21 +394,18 @@ describe("Router", () => {
 			});
 		});
 
-		describe("paths the template mounts", () => {
+		describe("paths the tree mounts", () => {
 			const mounting = (...mounts: [string, string][]) => ({
-				template: {
-					file: abs("template.project.json"),
-					project: {
-						name: "game",
-						tree: {
-							$className: "DataModel",
-							ReplicatedStorage: Object.fromEntries(
-								mounts.map(([name, target]) => [
-									name,
-									{ $path: target },
-								])
-							),
-						},
+				project: {
+					name: "game",
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: Object.fromEntries(
+							mounts.map(([name, target]) => [
+								name,
+								{ $path: target },
+							])
+						),
 					},
 				},
 			});
@@ -446,25 +443,25 @@ describe("Router", () => {
 				).toEqual(["ReplicatedStorage/shared/Save"]);
 			});
 
-			it("should take a mounted path relative to the template's directory", async () => {
-				await write("src/Vendor/Lib.luau", "src/Save.luau");
-				const config = mounting(["Vendor", "../src/Vendor"]);
+			it("should take a mounted path relative to the config's folder", async () => {
+				await write("place/src/Vendor/Lib.luau", "place/src/Save.luau");
 
 				const result = (
-					await route({
-						template: {
-							...config.template,
-							file: abs("templates/template.project.json"),
+					await route(
+						{
+							file: abs("place/rogen.json"),
+							...mounting(["Vendor", "src/Vendor"]),
 						},
-					})
+						[abs("place/src")]
+					)
 				).unwrap();
 
-				expect(result.leftOut.get(abs("src/Vendor"))).toMatchObject({
-					status: "mounted",
-				});
+				expect(
+					result.leftOut.get(abs("place/src/Vendor"))
+				).toMatchObject({ status: "mounted" });
 			});
 
-			it("should leave a mount outside every root dir alone", async () => {
+			it("should leave a mount outside every source path alone", async () => {
 				await write("src/Save.luau");
 
 				const result = (
@@ -487,13 +484,13 @@ describe("Router", () => {
 				expect(result.globIgnorePaths).toEqual(["src/Net/Vendor"]);
 			});
 
-			it("should report a mount inside an excluded folder as mounted, and keep the folder out of globIgnorePaths", async () => {
+			it("should report a mount inside an ignored folder as mounted, and keep the folder out of globIgnorePaths", async () => {
 				await write("src/Third/Vendor/Lib.luau", "src/Save.luau");
 
 				const result = (
 					await route({
 						...mounting(["Vendor", "src/Third/Vendor"]),
-						exclude: [abs("src/Third")],
+						ignored: [abs("src/Third")],
 					})
 				).unwrap();
 
@@ -505,7 +502,7 @@ describe("Router", () => {
 				expect(result.globIgnorePaths ?? []).toEqual([]);
 			});
 
-			it("should fail when the template mounts a root dir or a folder above one", async () => {
+			it("should fail when the tree mounts a source path or a folder above one", async () => {
 				await write("src/Save.luau");
 
 				for (const target of ["src", "."]) {
@@ -515,7 +512,7 @@ describe("Router", () => {
 					expect(
 						result.isErr() &&
 							result.error.diagnostics.map(({ code }) => code)
-					).toEqual(["template.mountsRootDir"]);
+					).toEqual(["tree.mountsSourcePath"]);
 				}
 			});
 		});
@@ -707,7 +704,7 @@ describe("Router", () => {
 
 				expect(file.entry).toEqual({
 					kind: "script",
-					rootDir: abs("src"),
+					sourcePath: abs("src"),
 					relativePath: "server/A.luau",
 					source: abs("src/server/A.luau"),
 				});

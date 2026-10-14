@@ -69,8 +69,8 @@ describe("closestMatches", () => {
 
 describe("closestMatch", () => {
 	it("should find a word with one letter wrong, missing or extra", () => {
-		expect(closestMatch("rootDir", ["rootDirs", "routes"])).toBe(
-			"rootDirs"
+		expect(closestMatch("sourcePath", ["sourcePaths", "routes"])).toBe(
+			"sourcePaths"
 		);
 		expect(closestMatch("tamplate", ["tags", "template"])).toBe("template");
 	});

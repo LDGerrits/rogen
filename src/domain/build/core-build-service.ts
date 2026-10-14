@@ -1,7 +1,8 @@
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	diagnosticsPerFile,
+	warningDiagnostic,
 	diagnosticsReaching,
 	isError,
 	uniqueDiagnostics,
@@ -44,7 +45,7 @@ export class CoreBuildService implements BuildService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		/** What each tool that writes the sync dir tells a build; the build names none of them. */
+		/** What each tool that writes the sync path tells a build; the build names none of them. */
 		private readonly syncTools: readonly SyncTool[]
 	) {
 		this.writer = new OutputWriter(fileSystemService);
@@ -64,9 +65,8 @@ export class CoreBuildService implements BuildService {
 		write: boolean
 	): Promise<BuildRun> {
 		const { set, unloaded } = BuildSet.partition(selection);
-		const listing = await this.indexService.list(set.rootDirs);
+		const listing = await this.indexService.list(set.indexedPaths);
 		const attempts = await this.attempt(
-			set,
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing
 		);
@@ -92,11 +92,10 @@ export class CoreBuildService implements BuildService {
 	): Promise<LoadedBuild> {
 		const config = set.configOf(file);
 		if (!config) throw new Error(`${file} is not in the set.`);
-		// The sync dir changes only with the config or its compiler, so an answer for this version still holds.
+		// The sync path changes only with the config or its compiler, so an answer for this version still holds.
 		const syncWarnings =
 			previous?.config === config ? previous.syncWarnings : undefined;
 		const attempts = await this.attempt(
-			set,
 			[{ config, syncWarnings }],
 			listing
 		);
@@ -112,18 +111,16 @@ export class CoreBuildService implements BuildService {
 		const { set } = BuildSet.partition(selection);
 		const errors = uniqueDiagnostics(
 			selection.entries.flatMap((entry) =>
-				entry.status === "broken"
-					? entry.errors
-					: set.blocking(entry.config.file)
+				entry.status === "broken" ? entry.errors : []
 			)
 		);
 
-		const listing = await this.indexService.list(set.rootDirs);
+		const listing = await this.indexService.list(set.indexedPaths);
 		const located = await new Locator(
 			this.fileSystemService,
 			listing,
 			this.syncTools
-		).locate(set.buildable, targets);
+		).locate(set.configs, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
@@ -176,9 +173,8 @@ export class CoreBuildService implements BuildService {
 		});
 	}
 
-	/** Builds each config from `listing` in memory, in order; one `set` blocks fails without building. */
+	/** Builds each config from `listing` in memory, in order. */
 	private async attempt(
-		set: BuildSet,
 		configs: readonly {
 			readonly config: ResolvedConfig;
 			readonly syncWarnings: readonly Diagnostic[] | undefined;
@@ -192,13 +188,6 @@ export class CoreBuildService implements BuildService {
 		);
 		const attempts: Attempt[] = [];
 		for (const { config, syncWarnings } of configs) {
-			const blocked = set.blocking(config.file);
-			if (blocked.length > 0) {
-				attempts.push(
-					FailedBuild.before(config, blocked, syncWarnings)
-				);
-				continue;
-			}
 			const result = await builder.build(config, syncWarnings);
 			attempts.push(
 				result.isOk()
@@ -230,11 +219,46 @@ export class CoreBuildService implements BuildService {
 			),
 		];
 		if (failed.length === 0 && write) return this.writeInOrder(built);
-		return attempts.map((attempt) =>
-			attempt instanceof FailedBuild
-				? attempt
-				: CoreBuildService.unwritten(attempt, failed)
+		return Promise.all(
+			attempts.map(async (attempt) =>
+				attempt instanceof FailedBuild
+					? attempt
+					: CoreBuildService.unwritten(
+							write ? attempt : await this.withStaleness(attempt),
+							failed
+						)
+			)
 		);
+	}
+
+	/** The built config with a warning when the project file on disk isn't what a build would write. */
+	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
+		const { projectFile } = attempt.config;
+		const onDisk = await tryWithAsync(async () =>
+			(await this.fileSystemService.isFile(projectFile))
+				? await this.fileSystemService.readFile(projectFile)
+				: undefined
+		);
+		if (
+			onDisk.isErr() ||
+			onDisk.value === undefined ||
+			onDisk.value === OutputWriter.textOf(attempt.projectFile)
+		)
+			return attempt;
+		return {
+			...attempt,
+			findings: {
+				...attempt.findings,
+				warnings: [
+					...attempt.findings.warnings,
+					warningDiagnostic(
+						"output.differs",
+						{ resource: projectFile },
+						`this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date.`
+					),
+				],
+			},
+		};
 	}
 
 	/** Writes each config in turn; one that fails to write leaves the rest unwritten. */
@@ -251,7 +275,7 @@ export class CoreBuildService implements BuildService {
 				continue;
 			}
 			const written = await this.writer.write(
-				new OutputFile(config.outFile),
+				new OutputFile(config.projectFile),
 				projectFile
 			);
 			if (written.isErr()) failed = config.label;

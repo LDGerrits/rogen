@@ -77,8 +77,8 @@ export class BuildValidator {
 	/** One warning list, in the order the rules run. */
 	validate(): Diagnostic[] {
 		return [
-			...this.missingRootDir(),
-			...this.rootDirNamedAfterKey(),
+			...this.missingSourcePath(),
+			...this.sourcePathNamedAfterKey(),
 			...this.unresolvedLink(),
 			...this.extensionCase(),
 			...this.nestedProject(),
@@ -93,40 +93,39 @@ export class BuildValidator {
 			...this.reservedName(),
 			...this.instanceClash(),
 			...this.runContextTarget(),
-			...this.templateClash(),
-			...this.overridesBase(),
+			...this.nodeClash(),
 			...this.metaNotCopied(),
-			...this.templateClass(),
+			...this.treeClass(),
 			...this.metaAppliesToNothing(),
 		];
 	}
 
-	private missingRootDir(): Diagnostic[] {
+	private missingSourcePath(): Diagnostic[] {
 		return this.placement.roots
 			.filter((root) => !root.exists)
 			.map((root) =>
 				warningDiagnostic(
-					"scan.missingRootDir",
-					{ resource: root.rootDir },
-					"this root dir does not exist or is not a folder, so it contributes nothing."
+					"scan.missingSourcePath",
+					{ resource: root.sourcePath },
+					"this source path does not exist or is not a folder, so it contributes nothing."
 				)
 			);
 	}
 
-	/** Routing starts below a root dir, so a root dir named like a route key routes nothing by that name. */
-	private rootDirNamedAfterKey(): Diagnostic[] {
+	/** Routing starts below a source path, so a source path named like a route key routes nothing by that name. */
+	private sourcePathNamedAfterKey(): Diagnostic[] {
 		const configDir = path.dirname(this.config.file);
-		const named = this.config.rootDirs.flatMap((rootDir) => {
-			const key = this.config.keys.resolve(path.basename(rootDir));
+		const named = this.config.sourcePaths.flatMap((sourcePath) => {
+			const key = this.config.keys.resolve(path.basename(sourcePath));
 			if (key === undefined) return [];
-			const parent = path.dirname(rootDir);
+			const parent = path.dirname(sourcePath);
 			const relativeParent = toPosix(path.relative(configDir, parent));
 			return [
 				{
-					rootDir,
-					shown: toPosix(path.relative(configDir, rootDir)),
+					sourcePath,
+					shown: toPosix(path.relative(configDir, sourcePath)),
 					key,
-					// A parent inside the project can be the root dir itself; the config's own folder or one above it would scan far too much.
+					// A parent inside the project can be the source path itself; the config's own folder or one above it would scan far too much.
 					parent: isInside(parent, configDir)
 						? relativeParent
 						: undefined,
@@ -141,24 +140,24 @@ export class BuildValidator {
 		const fixes = [
 			...(inside.length > 0
 				? [
-						`Use ${joinedWithAnd([...new Set(inside.map(({ parent }) => `"${parent}"`))])} as the root dir instead, so ${joinedWithAnd(inside.map(({ rootDir }) => `"${path.basename(rootDir)}"`))} ${inside.length > 1 ? "are" : "is"} read as ${inside.length > 1 ? "keys" : "a key"}.`,
+						`Use ${joinedWithAnd([...new Set(inside.map(({ parent }) => `"${parent}"`))])} as the source path instead, so ${joinedWithAnd(inside.map(({ sourcePath }) => `"${path.basename(sourcePath)}"`))} ${inside.length > 1 ? "are" : "is"} read as ${inside.length > 1 ? "keys" : "a key"}.`,
 					]
 				: []),
 			...(atTop.length > 0
 				? [
-						`Move ${atTop.length > 1 ? "them" : "it"} into one folder, such as ${joinedWithAnd(atTop.map(({ shown }) => `src/${shown}`))}, and use "rootDirs": ["src"].`,
+						`Move ${atTop.length > 1 ? "them" : "it"} into one folder, such as ${joinedWithAnd(atTop.map(({ shown }) => `src/${shown}`))}, and use "sourcePaths": ["src"].`,
 					]
 				: []),
 		];
-		const items = named.map(({ rootDir, shown, key }) => ({
-			resource: rootDir,
+		const items = named.map(({ sourcePath, shown, key }) => ({
+			resource: sourcePath,
 			message: `named after the "${key}" route`,
 			line: `  ${shown} ("${key}" route)`,
 		}));
 		return [
 			this.grouped(
-				"scan.rootDirNamedAfterKey",
-				`${named.length} root ${many ? "dirs are" : "dir is"} named after a route key, but routing starts below a root dir, so ${many ? "their names" : "its name"} route${many ? "" : "s"} nothing:`,
+				"scan.sourcePathNamedAfterKey",
+				`${named.length} source ${many ? "paths are" : "path is"} named after a route key, but routing starts below a source path, so ${many ? "their names" : "its name"} route${many ? "" : "s"} nothing:`,
 				items.map(({ line }) => line),
 				items.map(({ resource, message }) => ({ resource, message })),
 				fixes
@@ -191,7 +190,7 @@ export class BuildValidator {
 				warningDiagnostic(
 					"scan.nestedProject",
 					{ resource: entry.source },
-					`Rojo reads this project file as a nested project, so it becomes ${instanceKey(instancePath)}, holding that project's tree. A project file for the folder it lies in belongs outside the root dirs.`
+					`Rojo reads this project file as a nested project, so it becomes ${instanceKey(instancePath)}, holding that project's tree. A project file for the folder it lies in belongs outside the source paths.`
 				)
 			);
 	}
@@ -433,7 +432,7 @@ export class BuildValidator {
 	private scriptRunOf(file: RoutedFile): ScriptRun | undefined {
 		return scriptRunOf(
 			this.placement.readingOf(file).scriptSuffix,
-			!this.placement.template.disablesLegacyScripts,
+			!this.placement.tree.disablesLegacyScripts,
 			this.assembly.meta.runContextOf(file.entry.source)
 		);
 	}
@@ -504,7 +503,7 @@ export class BuildValidator {
 
 	/** Rojo can't give scripts a run context there, so they'd never run. */
 	private runContextTarget(): Diagnostic[] {
-		if (!this.placement.template.disablesLegacyScripts) return [];
+		if (!this.placement.tree.disablesLegacyScripts) return [];
 		const routes = [...this.config.routes]
 			.filter(([, target]) => target.isPlayerScripts)
 			.map(([key, target]) => `"${key}" → ${target}`);
@@ -512,15 +511,15 @@ export class BuildValidator {
 			? [
 					warningDiagnostic(
 						"tree.runContextTarget",
-						{ resource: this.config.outFile },
-						`emitLegacyScripts: false in the template isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts (${routes.join(", ")}). Route ${routes.length === 1 ? "it" : "them"} to another service, or remove emitLegacyScripts from the template.`
+						{ resource: this.config.projectFile },
+						`emitLegacyScripts: false in the tree isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts (${routes.join(", ")}). Route ${routes.length === 1 ? "it" : "them"} to another service, or remove emitLegacyScripts from the tree.`
 					),
 				]
 			: [];
 	}
 
-	/** One warning per file or folder the template displaced. */
-	private templateClash(): Diagnostic[] {
+	/** One warning per file or folder the tree displaced. */
+	private nodeClash(): Diagnostic[] {
 		const clashes = new Map<
 			string,
 			{ instance: string; kind: "file" | "folder" }
@@ -533,38 +532,26 @@ export class BuildValidator {
 		}
 		return [...clashes].map(([resource, { instance, kind }]) =>
 			warningDiagnostic(
-				"tree.templateClash",
+				"tree.nodeClash",
 				{ resource },
-				`the template defines "${instance}" too, so its node is kept and this ${kind} is left out. Rename one of them to keep both.`
+				`the tree defines "${instance}" too, so its node is kept and this ${kind} is left out. Rename one of them to keep both.`
 			)
 		);
 	}
 
-	/** A merged template that sets a field its base sets too, which only one of them should. */
-	private overridesBase(): Diagnostic[] {
-		return (this.config.template?.clashes ?? []).map(
-			({ instancePath, field, file, base }) =>
-				warningDiagnostic(
-					"template.overridesBase",
-					{ resource: file },
-					`${instancePath.length > 0 ? `"${instanceKey(instancePath)}"` : "The root node"} sets ${field} here and in ${base}, which this template merges over, so this one wins. Remove it from one of them.`
-				)
-		);
-	}
-
-	/** Folder meta the build couldn't copy: a file is what Rojo reads at the node, or the template's `$path` is. */
+	/** Folder meta the build couldn't copy: a file is what Rojo reads at the node, or the tree's `$path` is. */
 	private metaNotCopied(): Diagnostic[] {
 		return this.assembly.metaOutcomes.flatMap((outcome) => {
 			if (outcome.kind === "shared")
 				return outcome.metas.map((meta) =>
 					this.sharedWithFile(meta, outcome.file, outcome.instance)
 				);
-			if (outcome.kind === "templatePath")
+			if (outcome.kind === "treePath")
 				return [
 					warningDiagnostic(
-						"meta.templatePath",
+						"meta.treePath",
 						{ resource: outcome.meta.file },
-						`the template gives "${outcome.instance}" its own $path, so this meta isn't copied there. Set the fields on the template's node instead.`
+						`the tree gives "${outcome.instance}" its own $path, so this meta isn't copied there. Set the fields on the tree's node instead.`
 					),
 				];
 			return [];
@@ -595,21 +582,21 @@ export class BuildValidator {
 		);
 	}
 
-	private templateClass(): Diagnostic[] {
+	private treeClass(): Diagnostic[] {
 		return this.assembly.metaOutcomes.flatMap((outcome) => {
 			if (outcome.kind !== "copied") return [];
-			const { instancePath, meta, templateNode } = outcome;
+			const { instancePath, meta, treeNode } = outcome;
 			if (
-				templateNode.$className === undefined ||
+				treeNode.$className === undefined ||
 				meta.fields.className === undefined ||
-				templateNode.$className === meta.fields.className
+				treeNode.$className === meta.fields.className
 			)
 				return [];
 			return [
 				warningDiagnostic(
-					"meta.templateClass",
+					"meta.treeClass",
 					{ resource: meta.file },
-					`the template makes "${instanceKey(instancePath)}" a ${templateNode.$className}, so its class is kept over this meta's ${meta.fields.className}.`
+					`the tree makes "${instanceKey(instancePath)}" a ${treeNode.$className}, so its class is kept over this meta's ${meta.fields.className}.`
 				),
 			];
 		});

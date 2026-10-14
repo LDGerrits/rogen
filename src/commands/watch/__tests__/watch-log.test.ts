@@ -111,20 +111,20 @@ describe("WatchLog.update", () => {
 		});
 
 		it("should name a config that changed and was reloaded", () => {
-			expect(titleOf(0, ["default.rogen.json"], true)).toBe(
-				"03:04:05 · default.rogen.json changed · reloaded"
+			expect(titleOf(0, ["rogen.json"], true)).toBe(
+				"03:04:05 · rogen.json changed · reloaded"
 			);
 		});
 
 		it("should not claim a reload for a config that was not reloaded", () => {
-			expect(titleOf(0, ["default.rogen.json"], false)).toBe(
-				"03:04:05 · default.rogen.json changed"
+			expect(titleOf(0, ["rogen.json"], false)).toBe(
+				"03:04:05 · rogen.json changed"
 			);
 		});
 
 		it("should combine source and config changes", () => {
-			expect(titleOf(3, ["a.rogen.json", "b.rogen.json"], true)).toBe(
-				"03:04:05 · 3 files changed · a.rogen.json, b.rogen.json changed · reloaded"
+			expect(titleOf(3, ["a/rogen.json", "b/rogen.json"], true)).toBe(
+				"03:04:05 · 3 files changed · a/rogen.json, b/rogen.json changed · reloaded"
 			);
 		});
 	});
@@ -165,7 +165,7 @@ describe("WatchLog.update", () => {
 	describe("a rebuild", () => {
 		const warning = (message: string) =>
 			warningDiagnostic("x.warn", { resource: "/repo/src" }, message);
-		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
+		const entry = mockEntry({}, path.join(cwd, "rogen.json"));
 
 		const reportOf = (
 			build: LoadedBuild,
@@ -351,8 +351,8 @@ describe("WatchLog.update", () => {
 		it("should print a warning two configs of one round share once, and say so on the second", () => {
 			const shared = warning("shared");
 			const lobby = mockEntry(
-				{ outFile: path.join(cwd, "lobby.project.json") },
-				path.join(cwd, "lobby.rogen.json")
+				{ name: "lobby" },
+				path.join(cwd, "lobby/rogen.json")
 			);
 			const { log, logService } = session();
 
@@ -385,7 +385,7 @@ describe("WatchLog.update", () => {
 				["diagnosticWarning", expect.stringContaining(": shared")],
 				[
 					"success",
-					"lobby.project.json · wrote · same warnings as default",
+					"lobby/default.project.json · wrote · same warnings as repo",
 				],
 			]);
 		});
@@ -417,10 +417,7 @@ describe("WatchLog.update", () => {
 					.map(({ kind, text }) => [kind, text])
 			).toEqual([
 				["diagnosticError", expect.stringContaining("bad.")],
-				[
-					"error",
-					"Still building from the last valid default.rogen.json.",
-				],
+				["error", "Still building from the last valid rogen.json."],
 			]);
 		});
 
@@ -428,18 +425,18 @@ describe("WatchLog.update", () => {
 			const { log, logService } = session();
 			const error = errorDiagnostic(
 				"x.err",
-				{ resource: "/repo/lobby.rogen.json" },
+				{ resource: "/repo/lobby/rogen.json" },
 				"bad."
 			);
 
 			log.update(
 				updateOf({
 					notices: [
-						{ kind: "added", file: "/repo/match.rogen.json" },
-						{ kind: "removed", file: "/repo/arena.rogen.json" },
+						{ kind: "added", file: "/repo/match/rogen.json" },
+						{ kind: "removed", file: "/repo/arena/rogen.json" },
 						{
 							kind: "broken",
-							file: "/repo/lobby.rogen.json",
+							file: "/repo/lobby/rogen.json",
 							errors: [error],
 							keptLastValid: false,
 						},
@@ -452,10 +449,10 @@ describe("WatchLog.update", () => {
 					.filter(({ kind }) => kind !== "step")
 					.map(({ kind, text }) => [kind, text])
 			).toEqual([
-				["info", "match.rogen.json added. Building it too."],
-				["info", "arena.rogen.json removed. No longer building it."],
+				["info", "match/rogen.json added. Building it too."],
+				["info", "arena/rogen.json removed. No longer building it."],
 				["diagnosticError", expect.stringContaining("bad.")],
-				["error", "Not building lobby.rogen.json until it loads."],
+				["error", "Not building lobby/rogen.json until it loads."],
 			]);
 		});
 
@@ -470,7 +467,7 @@ describe("WatchLog.update", () => {
 				logService.entries
 					.filter(({ kind }) => kind !== "step")
 					.map(({ kind, text }) => [kind, text])
-			).toEqual([["info", "default.rogen.json loads again."]]);
+			).toEqual([["info", "rogen.json loads again."]]);
 		});
 	});
 });

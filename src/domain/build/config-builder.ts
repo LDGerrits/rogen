@@ -10,8 +10,9 @@ import { BuildValidator } from "./build-validator.js";
 import { MetaReader } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
-import { SyncDirCheck } from "./sync-dir-check.js";
+import { SyncPathCheck } from "./sync-path-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
+import { UnmountedSources } from "./unmounted-sources.js";
 
 /** One config built in memory, which the run goes on to write. */
 export interface BuiltConfig {
@@ -23,7 +24,7 @@ export interface BuiltConfig {
 	readonly readFiles: readonly string[];
 }
 
-/** What `examine` found for one config: it assembled, with the warnings the build raises (without the sync dir's), or a meta or assembly error stopped it. */
+/** What `examine` found for one config: it assembled, with the warnings the build raises (without the sync path's), or a meta or assembly error stopped it. */
 export type ExaminedConfig =
 	| {
 			readonly kind: "assembled";
@@ -42,7 +43,7 @@ export type ExaminedConfig =
 /** Builds one config from an index, phase by phase, so `build` and `locate` place files the same way. */
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
-	private readonly syncDirCheck: SyncDirCheck;
+	private readonly syncPathCheck: SyncPathCheck;
 
 	constructor(
 		fileSystemService: FileReader,
@@ -50,7 +51,7 @@ export class ConfigBuilder {
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.metaReader = new MetaReader(fileSystemService);
-		this.syncDirCheck = new SyncDirCheck(fileSystemService);
+		this.syncPathCheck = new SyncPathCheck(fileSystemService);
 	}
 
 	/** Places `config`'s files; its caller checked that it declares routes. */
@@ -58,7 +59,7 @@ export class ConfigBuilder {
 		return new Placer(this.index, config, this.tools).place();
 	}
 
-	/** Builds `config`: `examine`, then the sync dir check, unless `syncWarnings` already says what is known of it. Fails when any phase does. */
+	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does. */
 	async build(
 		config: ResolvedConfig,
 		syncWarnings?: readonly Diagnostic[]
@@ -76,13 +77,13 @@ export class ConfigBuilder {
 			findings: {
 				warnings,
 				syncWarnings:
-					syncWarnings ?? (await this.syncDirCheck.check(placement)),
+					syncWarnings ?? (await this.syncPathCheck.check(placement)),
 			},
 			readFiles,
 		});
 	}
 
-	/** Runs every phase of `build` but the sync dir check, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the sync path check, which `locate` has no use for. A meta or assembly error doesn't fail it: the placement stands, and the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -103,8 +104,10 @@ export class ConfigBuilder {
 			projectFile: assembly.projectFile,
 			readFiles: meta.files,
 			warnings: [
+				...config.warnings,
 				...meta.warnings,
 				...new BuildValidator(assembly).validate(),
+				...new UnmountedSources(config, this.index).diagnostics(),
 			],
 		});
 	}

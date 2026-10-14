@@ -1,45 +1,35 @@
 $ rogen build
 exit 0
 stdout:
-  rogen build · default, lobby · in ../..
-  default
-    ../../default.project.json · wrote
-  lobby
-    ../../out/lobby.project.json · wrote
-  Built 2 configs.
+  rogen build · project · in ../..
+  ../../default.project.json · wrote
+  Built 1 config.
 
-$ rogen build lobby
+$ rogen build ../..
 exit 0
 stdout:
-  rogen build · lobby · in ../..
-  ../../out/lobby.project.json · unchanged
+  rogen build · project · in ../..
+  ../../default.project.json · unchanged
   Built 1 config.
 
 $ rogen build ghost
 exit 2
 stderr:
-  error: Config "ghost" not found: looked for <dir>/ghost.rogen.json. Configs here: default, lobby.
+  error: "ghost" not found: name a folder with a rogen.json, or a *.project.json path.
 
 $ rogen list
 exit 0
 stdout:
   rogen list · in ../..
-  ../../default.rogen.json
-    extended by: ../../lobby.rogen.json
-    root dirs: ..
+  ../../rogen.json
+    source paths: ..
     routes:
       Server -> ServerScriptService
       Shared -> ReplicatedStorage/Shared
       * -> ReplicatedStorage/Shared
-    sync dir: (none)
+    sync path: (none)
     project file: ../../default.project.json
-  ../../lobby.rogen.json
-    extends: ../../default.rogen.json
-    root dirs: ..
-    routes: same as default
-    sync dir: (none)
-    project file: ../../out/lobby.project.json
-  2 configs.
+  1 config.
 
 $ rogen where Server/Save.luau
 exit 0
@@ -47,15 +37,15 @@ stdout:
   Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
     require(game:GetService("ServerScriptService").Inventory.Save)
 
-$ rogen build ../../lobby.rogen.json --json
+$ rogen build ../../default.project.json --json
 exit 0
 stdout:
   {
     "configs": [
       {
-        "config": "lobby",
-        "file": "<dir>/lobby.rogen.json",
-        "outFile": "<dir>/out/lobby.project.json",
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []
       }
@@ -64,4 +54,3 @@ stdout:
 
 written:
   default.project.json
-  out/lobby.project.json

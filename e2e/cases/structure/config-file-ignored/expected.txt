@@ -1,0 +1,19 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src/Inventory
+exit 0
+stdout:
+  src/Inventory/A.luau -> ReplicatedStorage/shared/Inventory/A · route * (fallback)
+  src/Inventory/rogen.json -> ignored · matches rogen.json
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        A: ModuleScript  <- src/Inventory/A.luau

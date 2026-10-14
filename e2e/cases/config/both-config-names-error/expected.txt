@@ -1,0 +1,9 @@
+$ rogen build
+exit 2
+stderr:
+  error: <dir> holds both rogen.json and rogen.jsonc; keep one.
+
+$ rogen list
+exit 2
+stderr:
+  error: <dir> holds both rogen.json and rogen.jsonc; keep one.

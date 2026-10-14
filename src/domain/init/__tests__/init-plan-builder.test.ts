@@ -1,4 +1,5 @@
 import { SCHEMA_URL } from "../../config/config.js";
+import { AgentFile } from "../agent-file.js";
 import { InitPlanBuilder } from "../init-plan-builder.js";
 import { directory, directoryOf } from "./init-fixtures.js";
 
@@ -7,38 +8,33 @@ describe("domain/init/init-plan-builder", () => {
 		const builderFor = (existing: readonly string[] = []) =>
 			new InitPlanBuilder(directoryOf({ existing }), false);
 
-		it("should write the template, then the configs, then the compiler's files, whatever order they were added in", () => {
+		it("should write the config before the agent files", () => {
 			const builder = builderFor();
-			builder.addCompilerFile({
-				fileName: "tsconfig.lobby.json",
-				content: "{}",
-			});
-			builder.addConfig("default", {});
-			builder.setTemplate({
-				fileName: "template.project.json",
-				content: "{}",
-			});
-			builder.addConfig("lobby", {});
+			builder.addAgentFile(AgentFile.choose(() => undefined));
+			builder.setConfig({});
 
 			const plan = builder.build().unwrap();
 
 			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				"template.project.json",
-				"default.rogen.json",
-				"lobby.rogen.json",
-				"tsconfig.lobby.json",
+				"rogen.json",
+				"AGENTS.md",
 			]);
+			expect(plan.configs).toEqual(["rogen.json"]);
 		});
 
-		it("should point every config at the schema, before the fields it was given", () => {
+		it("should write no config for a run that only adds agent files", () => {
+			expect(builderFor().build().unwrap().configs).toEqual([]);
+		});
+
+		it("should point the config at the schema, before the fields it was given", () => {
 			const builder = builderFor();
-			builder.addConfig("default", { rootDirs: ["src"] });
+			builder.setConfig({ sourcePaths: ["src"] });
 
 			const [file] = builder.build().unwrap().files;
 
 			expect(Object.keys(JSON.parse(file.content))).toEqual([
 				"$schema",
-				"rootDirs",
+				"sourcePaths",
 			]);
 			expect(JSON.parse(file.content).$schema).toBe(SCHEMA_URL);
 		});
@@ -81,35 +77,21 @@ describe("domain/init/init-plan-builder", () => {
 			expect(builderFor().build().unwrap().directory).toBe(directory);
 		});
 
-		it("should fail naming every config or compiler file that already exists", () => {
-			const builder = builderFor([
-				"default.rogen.json",
-				"tsconfig.lobby.json",
-			]);
-			builder.addConfig("default", {});
-			builder.addConfig("lobby", {});
-			builder.addCompilerFile({
-				fileName: "tsconfig.lobby.json",
-				content: "{}",
-			});
+		it("should fail naming the config when it already exists", () => {
+			const builder = builderFor(["rogen.json"]);
+			builder.setConfig({});
 
 			const result = builder.build();
 
 			expect(
 				result.isErr() &&
 					result.error.map(({ code, resource }) => [code, resource])
-			).toEqual([
-				["init.configExists", `${directory}/default.rogen.json`],
-				["init.fileExists", `${directory}/tsconfig.lobby.json`],
-			]);
+			).toEqual([["init.configExists", `${directory}/rogen.json`]]);
 		});
 
-		it("should not mind a template that already exists, which the setups use as it is", () => {
-			const builder = builderFor(["template.project.json"]);
-			builder.setTemplate({
-				fileName: "template.project.json",
-				content: "{}",
-			});
+		it("should not mind a project file that already exists, which the build replaces", () => {
+			const builder = builderFor(["default.project.json"]);
+			builder.setConfig({});
 
 			expect(builder.build().isOk()).toBe(true);
 		});

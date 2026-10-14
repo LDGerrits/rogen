@@ -21,12 +21,11 @@ import {
 	ServedTarget,
 	isServed,
 } from "./serve-service.js";
-import { ServePorts } from "./serve-ports.js";
+import { ServePorts, namesakesOf } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { RunningServer, StartedServer } from "./started-server.js";
 import { AdoptedServer } from "./adopted-server.js";
-import { ServedConfigs } from "./served-configs.js";
 
 /** A watch of the plan's configs, and a server for each config to serve: one it starts where nothing serves, or one it adopts where a server no serve started already does, kept in step with the configs as they change. */
 export class CoreServeSession
@@ -180,33 +179,24 @@ export class CoreServeSession
 
 	/** Starts a server for each config to serve now that has none, and stops those whose config is gone or extended. */
 	private async reconcile(): Promise<void> {
-		const served = new ServedConfigs(
-			this.plan.selection.configs,
-			this.plan.named,
-			this.plan.neighbours
-		);
-		const wanted = new Set(served.configs.map(({ file }) => file));
-		const present = new Set(served.all.map(({ file }) => file));
+		const { configs } = this.plan.selection;
+		const wanted = new Set(configs.map(({ file }) => file));
 		for (const [file, server] of this.servers) {
 			if (this.stopping) return;
-			if (!wanted.has(file))
-				await this.retire(
-					server,
-					present.has(file) ? "extended" : "removed"
-				);
+			if (!wanted.has(file)) await this.retire(server, "removed");
 		}
 		for (const file of [...this.declined.keys()])
 			if (!wanted.has(file)) this.declined.delete(file);
-		for (const config of served.configs) {
+		for (const config of configs) {
 			if (this.stopping) return;
-			await this.follow(config, served);
+			await this.follow(config, configs);
 		}
 	}
 
-	/** Serves `config` where its template puts it now, unless it is served there already or can't be. A server moving to a port it can't have stays where it is. */
+	/** Serves `config` where its rogen.json puts it now, unless it is served there already or can't be. A server moving to a port it can't have stays where it is. */
 	private async follow(
 		config: ResolvedConfig,
-		served: ServedConfigs
+		configs: readonly ResolvedConfig[]
 	): Promise<void> {
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
@@ -238,7 +228,7 @@ export class CoreServeSession
 				: await this.ports.check(
 						target,
 						others,
-						served.namesakesOf(target.config)
+						namesakesOf(target.config, configs)
 					);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
@@ -298,7 +288,7 @@ export class CoreServeSession
 
 	private async retire(
 		server: RunningServer,
-		reason: "removed" | "extended" | "moved"
+		reason: "removed" | "moved"
 	): Promise<void> {
 		const { target } = server;
 		this.servers.delete(target.config.file);

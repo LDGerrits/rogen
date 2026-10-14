@@ -67,18 +67,18 @@ describe("ConsolePromptService", () => {
 			hint: "Found code in: src",
 		};
 		const prompts = {
-			text: () => service.text({ message: "Root dirs", ...details }),
+			text: () => service.text({ message: "Source paths", ...details }),
 			confirm: () =>
-				service.confirm({ message: "Root dirs", ...details }),
+				service.confirm({ message: "Source paths", ...details }),
 			select: () =>
 				service.select({
-					message: "Root dirs",
+					message: "Source paths",
 					choices: [{ value: "a", label: "A" }],
 					...details,
 				}),
 			multiSelect: () =>
 				service.multiSelect({
-					message: "Root dirs",
+					message: "Source paths",
 					choices: [{ value: "a", label: "A" }],
 					...details,
 				}),
@@ -95,7 +95,7 @@ describe("ConsolePromptService", () => {
 
 				expect(open).toContain("Folders to scan.");
 				expect(open).toContain("Found code in: src");
-				expect(answered).toContain("Root dirs");
+				expect(answered).toContain("Source paths");
 				expect(answered).not.toContain("Folders to scan.");
 				expect(answered).not.toContain("Found code in: src");
 			});
@@ -111,7 +111,7 @@ describe("ConsolePromptService", () => {
 		it("should wrap a long description under the gutter", async () => {
 			const words = Array(30).fill("scan").join(" ");
 			const answer = service.text({
-				message: "Root dirs",
+				message: "Source paths",
 				description: words,
 			});
 			await terminal.press(KEY.ctrlC);
@@ -201,7 +201,7 @@ describe("ConsolePromptService", () => {
 
 		it("should show the description and hint under the message", async () => {
 			const answer = service.text({
-				message: "Root dirs",
+				message: "Source paths",
 				description: "Folders to scan.",
 				hint: "Found code in: src",
 			});
@@ -209,7 +209,7 @@ describe("ConsolePromptService", () => {
 			await answer;
 			const lines = terminal.screen.split("\n");
 			const message = lines.findIndex((line) =>
-				line.includes("Root dirs")
+				line.includes("Source paths")
 			);
 			const description = lines.findIndex((line) =>
 				line.includes("Folders to scan.")

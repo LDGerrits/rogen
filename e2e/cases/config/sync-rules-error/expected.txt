@@ -1,0 +1,6 @@
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: rogen.json · not loaded
+  rogen.json:2:2 - error: "syncRules" is not supported yet: Rogen would route files by rules it can't read. Remove it. (config.unsupportedField)

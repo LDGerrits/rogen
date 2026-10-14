@@ -1,4 +1,4 @@
-import { getOwn, isObject, mergeDeep, setOwn, sortObject } from "../objects.js";
+import { getOwn, isObject, mergeDeep, setOwn } from "../objects.js";
 
 describe("isObject", () => {
 	it("identifies plain objects", () => {
@@ -22,10 +22,6 @@ describe("keys named like a prototype", () => {
 
 		expect(Object.keys(merged)).toEqual(["__proto__", "b"]);
 		expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
-	});
-
-	it("should survive a sort as data", () => {
-		expect(Object.keys(sortObject(parsed))).toEqual(["__proto__", "b"]);
 	});
 
 	it("should set and read back an own property under the name", () => {

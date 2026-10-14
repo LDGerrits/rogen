@@ -29,7 +29,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given. Every config here, or in the nearest folder above that has any, is read.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. Every file when none is given. The config here, or in the nearest folder above that has one, is read.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -53,7 +53,7 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
 
-			// The positionals are paths, so every config here is read.
+			// The positionals are paths, so the config here is read.
 			const selection = await configService.select([]);
 			if (selection.isErr()) return selection;
 			const located = await buildService.locate(selection.value, {

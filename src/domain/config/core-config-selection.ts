@@ -1,6 +1,6 @@
+import path from "path";
 import { Sequencer } from "../../base/async.js";
 import { PathSet, dirnamePosix, toPosix } from "../../base/path.js";
-import { compareStrings } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -9,7 +9,6 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig, isConfigFileName } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
-import { ConfigOverrides } from "./layered-config.js";
 import { ManagedConfig } from "./managed-config.js";
 import {
 	ConfigEntry,
@@ -38,7 +37,6 @@ export class CoreConfigSelection implements ReloadableSelection {
 	constructor(
 		private managed: readonly ManagedConfig[],
 		private readonly loader: ConfigLoader,
-		private readonly overrides: ConfigOverrides,
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined
 	) {
@@ -67,7 +65,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		const posixFile = toPosix(file);
 		return (
 			this.folder !== undefined &&
-			isConfigFileName(posixFile) &&
+			isConfigFileName(path.posix.basename(posixFile)) &&
 			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
 		);
 	}
@@ -139,15 +137,13 @@ export class CoreConfigSelection implements ReloadableSelection {
 		const added = await Promise.all(
 			[...now]
 				.filter((file) => !known.has(file))
-				.map((file) =>
-					ManagedConfig.open(file, this.loader, this.overrides)
-				)
+				.map((file) => ManagedConfig.open(file, this.loader))
 		);
 		const removed = [...known].filter((file) => !now.has(file));
 		this.managed = [
 			...this.managed.filter(({ file }) => now.has(file)),
 			...added,
-		].sort((a, b) => compareStrings(a.file, b.file));
+		];
 		return { added, removed };
 	}
 

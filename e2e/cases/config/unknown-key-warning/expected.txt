@@ -1,0 +1,27 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  rogen.json:5:2 - warning: "outDir" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name. (config.unknownField)
+  rogen.json:6:2 - warning: "exlude" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name. (config.unknownField)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "A": {
+        "$path": {
+          "optional": "src/A.luau"
+        }
+      }
+    }
+  },
+  "outDir": "dist",
+  "exlude": []
+}

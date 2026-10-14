@@ -76,7 +76,7 @@ export class StartingRoutes {
 		return `ReplicatedStorage/${this.language.routeKey("shared")}`;
 	}
 
-	/** Where files that match no route go: where the project file mounted the root dir, or its shared code, else the standard place. */
+	/** Where files that match no route go: where the project file mounted the source path, or its shared code, else the standard place. */
 	get fallbackTarget(): string {
 		return this.derived?.fallback ?? this.sharedTarget;
 	}

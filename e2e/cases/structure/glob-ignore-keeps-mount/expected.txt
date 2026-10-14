@@ -1,0 +1,51 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where DevPackages/D.luau Packages/P.luau
+exit 0
+stdout:
+  DevPackages/D.luau -> ignored · matches DevPackages/**
+  Packages/P.luau -> mounted · the tree mounts it at ReplicatedStorage/Packages
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "DevPackages": {
+        "$path": "DevPackages"
+      },
+      "Packages": {
+        "$path": "Packages"
+      },
+      "shared": {
+        "$className": "Folder",
+        "A": {
+          "$path": {
+            "optional": "src/A.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "DevPackages/**"
+  ]
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    DevPackages: Folder
+    Packages: Folder
+      P: ModuleScript  <- Packages/P.luau
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

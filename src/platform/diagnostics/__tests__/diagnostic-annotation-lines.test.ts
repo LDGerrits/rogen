@@ -61,13 +61,13 @@ describe("diagnosticAnnotationLines", () => {
 
 	it("should write the paths in the message relative to the workspace", () => {
 		const diagnostic = errorDiagnostic(
-			"output.sameOutFile",
+			"output.sameProjectFile",
 			{ resource: "/work/repo/a.rogen.json" },
 			"both write /work/repo/out/a.project.json."
 		);
 
 		expect(diagnosticAnnotationLines(diagnostic, workspace)[0]).toBe(
-			"::error file=a.rogen.json,title=output.sameOutFile::both write out/a.project.json."
+			"::error file=a.rogen.json,title=output.sameProjectFile::both write out/a.project.json."
 		);
 	});
 

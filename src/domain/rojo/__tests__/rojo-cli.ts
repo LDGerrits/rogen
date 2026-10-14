@@ -12,7 +12,7 @@ export interface SourcemapNode {
 
 const MANIFEST = path.resolve("rokit.toml");
 
-function runRojo(cwd: string, args: string[]) {
+export function runRojo(cwd: string, args: string[]) {
 	return spawnSync("rojo", args, {
 		cwd,
 		encoding: "utf8",

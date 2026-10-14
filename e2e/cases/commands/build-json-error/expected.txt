@@ -4,19 +4,19 @@ stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
-        "outFile": null,
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": null,
         "outcome": "notWritten",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
-            "line": 3,
-            "column": 2,
+            "file": "<dir>/rogen.json",
+            "line": 2,
+            "column": 17,
             "severity": "error",
-            "code": "config.unknownField",
-            "message": "unknown field \"outDir\".",
-            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
+            "code": "config.wrongType",
+            "message": "\"sourcePaths\": expected an array, found a string.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-wrongtype"
           }
         ]
       }

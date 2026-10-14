@@ -1,5 +1,16 @@
 {
-	"steps": [["init", "-y"], ["init", "-y", "lobby"]],
-	"show": ["AGENTS.md"],
+	"steps": [
+		[
+			"init",
+			"-y"
+		],
+		[
+			"init",
+			"-y"
+		]
+	],
+	"show": [
+		"AGENTS.md"
+	],
 	"rojo": false
 }

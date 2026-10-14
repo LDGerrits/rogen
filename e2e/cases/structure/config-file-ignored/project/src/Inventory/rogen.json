@@ -1,0 +1,8 @@
+{
+	"sourcePaths": [
+		"."
+	],
+	"routes": {
+		"*": "ReplicatedStorage"
+	}
+}

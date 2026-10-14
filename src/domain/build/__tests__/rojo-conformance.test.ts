@@ -108,12 +108,11 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
 		const config = mockConfig({
-			file: path.join(dir, "ours.rogen.json"),
+			file: path.join(dir, "rogen.json"),
 			name: "t",
-			rootDirs: [path.join(dir, "src")],
+			sourcePaths: [path.join(dir, "src")],
 			routes: { "*": "ReplicatedStorage" },
-			exclude: [],
-			outFile: path.join(dir, "ours.project.json"),
+			ignored: [],
 			...overrides,
 		});
 		const build = (
@@ -131,7 +130,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		await rogenTree();
 
 		const rojo = placed(sourcemap(dir, "rojo.project.json"));
-		const storage = sourcemap(dir, "ours.project.json").children?.find(
+		const storage = sourcemap(dir, "default.project.json").children?.find(
 			(child) => child.name === "ReplicatedStorage"
 		);
 
@@ -160,7 +159,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		const rojo = placed(sourcemap(dir, "rojo.project.json")).filter(
 			(line) => !line.startsWith("Boot")
 		);
-		const storage = sourcemap(dir, "ours.project.json").children?.find(
+		const storage = sourcemap(dir, "default.project.json").children?.find(
 			(child) => child.name === "ReplicatedStorage"
 		);
 
@@ -181,7 +180,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 
 		const classOf = (node: SourcemapNode | undefined, name: string) =>
 			node?.children?.find((child) => child.name === name)?.className;
-		const storage = sourcemap(dir, "ours.project.json").children?.find(
+		const storage = sourcemap(dir, "default.project.json").children?.find(
 			(child) => child.name === "ReplicatedStorage"
 		);
 
@@ -221,7 +220,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
 		});
 
-		expect(metaApplied(sourcemap(dir, "ours.project.json"))).toEqual([
+		expect(metaApplied(sourcemap(dir, "default.project.json"))).toEqual([
 			"ReplicatedStorage/Inv/Analytics.mock <- src/Inv/Analytics.mock.meta.json",
 			"ReplicatedStorage/Inv/Items <- src/Inv/Items.meta.json",
 			"ReplicatedStorage/Inv/Notes <- src/Inv/Notes.meta.json",
@@ -254,7 +253,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		await rogenTree();
 
 		const rojo = placed(sourcemap(dir, "rojo.project.json"));
-		const storage = sourcemap(dir, "ours.project.json").children?.find(
+		const storage = sourcemap(dir, "default.project.json").children?.find(
 			(child) => child.name === "ReplicatedStorage"
 		);
 		expect(
@@ -288,7 +287,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			},
 		});
 
-		const tree = sourcemap(dir, "ours.project.json");
+		const tree = sourcemap(dir, "default.project.json");
 		expect(placed(tree)).toEqual(
 			[
 				"ReplicatedStorage: ReplicatedStorage",

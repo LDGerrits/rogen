@@ -84,7 +84,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 			rojoRunner.start(
 				executable,
 				"serve",
-				path.relative(selection.home, target.config.outFile),
+				path.relative(selection.home, target.config.projectFile),
 				serverArgs,
 				selection.home
 			)
@@ -154,7 +154,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		const { target } = this;
 		return this.records
 			.write(target.address, info, {
-				projectFile: target.config.outFile,
+				projectFile: target.config.projectFile,
 				clients: info.server.reportsConnections(info.version)
 					? this.connected
 					: undefined,

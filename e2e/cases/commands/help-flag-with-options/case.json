@@ -1,6 +1,6 @@
 {
 	"steps": [
-		["build", "-o", "x.project.json", "--help"],
+		["build", "--deny-warnings", "--help"],
 		["build", "--json", "--help"],
 		["help", "--help"]
 	],

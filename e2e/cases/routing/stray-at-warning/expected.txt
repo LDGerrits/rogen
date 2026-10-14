@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 4 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
+  rogen.json - warning: 4 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
     src/@sever (did you mean "@server"?)
     src/Inventory/Report@server.bak.luau ("@server" must end the name)
     src/Inventory/Save@sever.luau (did you mean "@server"?)
@@ -14,13 +14,13 @@ stdout:
   {
     "configs": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
-        "outFile": "<dir>/default.project.json",
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/rogen.json",
             "severity": "warning",
             "code": "route.strayAt",
             "message": "4 names have an \"@\" that routes nowhere, so they are read as ordinary names:\n  <dir>/src/@sever (did you mean \"@server\"?)\n  <dir>/src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n  <dir>/src/Inventory/Save@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Queue@clent (did you mean \"@client\"?)",

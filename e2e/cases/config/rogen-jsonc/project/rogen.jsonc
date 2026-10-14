@@ -1,0 +1,5 @@
+// the config
+{
+	"sourcePaths": ["src"],
+	"routes": { "*": "ReplicatedStorage/shared" },
+}

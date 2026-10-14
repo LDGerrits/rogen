@@ -1,5 +1,0 @@
-{
-	"rootDirs": ["src"],
-	"routes": { "*": "ReplicatedStorage/shared" },
-	"exclude": ["**/_*"]
-}

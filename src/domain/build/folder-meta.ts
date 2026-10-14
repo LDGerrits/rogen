@@ -14,8 +14,8 @@ import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 export class FolderMeta {
 	constructor(
 		readonly file: string,
-		readonly rootDir: string,
-		/** The folder, relative to the root dir; the root dir itself is "". */
+		readonly sourcePath: string,
+		/** The folder, relative to the source path; the source path itself is "". */
 		readonly dir: string,
 		readonly fields: RojoMetaFields,
 		/** The other files merged into it, when the folder holds both an `init.meta.json` and an `init.meta.jsonc`. */
@@ -29,7 +29,7 @@ export class FolderMeta {
 
 	/** The folder as an absolute POSIX path. */
 	get folder(): string {
-		return joinPosix(this.rootDir, this.dir);
+		return joinPosix(this.sourcePath, this.dir);
 	}
 }
 
@@ -47,7 +47,7 @@ export type FolderMetaOutcome =
 			readonly kind: "copied";
 			readonly instancePath: readonly string[];
 			readonly meta: FolderMeta;
-			readonly templateNode: RojoNode;
+			readonly treeNode: RojoNode;
 	  }
 	/** A file other than the folder's init script is what Rojo reads at the node, so every meta reaching it applies to nothing. */
 	| {
@@ -57,7 +57,7 @@ export type FolderMetaOutcome =
 			readonly file: RoutedFile;
 	  }
 	| {
-			readonly kind: "templatePath";
+			readonly kind: "treePath";
 			readonly instance: string;
 			readonly meta: FolderMeta;
 	  }
@@ -74,7 +74,7 @@ interface ReachedNode {
 	readonly dirs: Set<string>;
 }
 
-/** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last root dir wins, and the template beats both. */
+/** Copies each folder's meta onto the nodes it names that Rojo wouldn't apply it to; the last source path wins, and the tree beats both. */
 export class FolderMetaApplier {
 	private readonly metaByDir: ReadonlyMap<string, FolderMeta>;
 
@@ -86,7 +86,7 @@ export class FolderMetaApplier {
 		this.metaByDir = new Map(folderMeta.map((meta) => [meta.folder, meta]));
 	}
 
-	/** Edits `project`, and reports what each meta came to. Fails when two metas from one root dir reach one node, or a ref would repeat. */
+	/** Edits `project`, and reports what each meta came to. Fails when two metas from one source path reach one node, or a ref would repeat. */
 	apply(project: RojoProject): Result<FolderMetaOutcome[], Diagnostic[]> {
 		const problems = new DiagnosticCollector();
 		const outcomes = [
@@ -96,12 +96,10 @@ export class FolderMetaApplier {
 		this.checkIds(outcomes, problems);
 		if (problems.hasErrors) return err([...problems.diagnostics]);
 
-		for (const { instancePath, meta, templateNode } of this.copies(
-			outcomes
-		))
+		for (const { instancePath, meta, treeNode } of this.copies(outcomes))
 			project.insertNode(
 				instancePath,
-				RojoMeta.fieldsUnder(meta.fields, templateNode)
+				RojoMeta.fieldsUnder(meta.fields, treeNode)
 			);
 		return ok(outcomes);
 	}
@@ -111,7 +109,7 @@ export class FolderMetaApplier {
 		project: RojoProject,
 		problems: DiagnosticCollector
 	): FolderMetaOutcome[] {
-		const { template, nodes, displaced } = this.placement;
+		const { tree, nodes, displaced } = this.placement;
 		const sharedWithFile = new InstanceMap<RoutedFile>();
 		for (const file of nodes) sharedWithFile.set(file.instancePath, file);
 
@@ -154,33 +152,34 @@ export class FolderMetaApplier {
 			if (metas.length === 0) continue;
 
 			const meta = metas[metas.length - 1];
-			const templateNode = template.getNode(node.instancePath);
-			if (templateNode?.$path !== undefined)
-				outcomes.push({ kind: "templatePath", instance, meta });
+			const treeNode = tree.getNode(node.instancePath);
+			if (treeNode?.$path !== undefined)
+				outcomes.push({ kind: "treePath", instance, meta });
 			else if (project.getNode(node.instancePath))
 				outcomes.push({
 					kind: "copied",
 					instancePath: node.instancePath,
 					meta,
-					templateNode: templateNode ?? {},
+					treeNode: treeNode ?? {},
 				});
 		}
 		return outcomes;
 	}
 
-	/** The metas of the folders that reach `node` and aren't collapsed into a `$path`, those of earlier root dirs first. */
+	/** The metas of the folders that reach `node` and aren't collapsed into a `$path`, those of earlier source paths first. */
 	private metasReaching(node: ReachedNode): FolderMeta[] {
-		const { rootDirs } = this.placement.config;
+		const { sourcePaths } = this.placement.config;
 		return [...node.dirs]
 			.filter((dir) => !this.collapsed.covers(dir))
 			.flatMap((dir) => this.metaByDir.get(dir) ?? [])
 			.sort(
 				(a, b) =>
-					rootDirs.indexOf(a.rootDir) - rootDirs.indexOf(b.rootDir)
+					sourcePaths.indexOf(a.sourcePath) -
+					sourcePaths.indexOf(b.sourcePath)
 			);
 	}
 
-	/** Reports each pair of metas of one root dir that apply to `instance`, once, since neither ranks above the other. */
+	/** Reports each pair of metas of one source path that apply to `instance`, once, since neither ranks above the other. */
 	private reportSameRootClashes(
 		reached: readonly FolderMeta[],
 		instance: string,
@@ -194,7 +193,7 @@ export class FolderMetaApplier {
 			problems.error(
 				"meta.sameNode",
 				{ resource: clash[0].file },
-				`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one root dir, and neither ranks above the other. Keep one of them.`
+				`${clash.map(({ file }) => file).join(" and ")} both apply to "${instance}" from one source path, and neither ranks above the other. Keep one of them.`
 			);
 		}
 	}
@@ -208,12 +207,12 @@ export class FolderMetaApplier {
 			)
 		);
 		const folderOf = ({
-			rootDir,
+			sourcePath,
 			dir,
 		}: FolderMeta): InstancelessFolder | undefined =>
-			dir !== "" && named.has(joinPosix(rootDir, dir))
+			dir !== "" && named.has(joinPosix(sourcePath, dir))
 				? undefined
-				: readings.instanceless(rootDir, dir);
+				: readings.instanceless(sourcePath, dir);
 		return [...this.metaByDir.values()].flatMap((meta) => {
 			const folder = folderOf(meta);
 			return folder ? [{ kind: "appliesToNothing", meta, folder }] : [];
@@ -233,9 +232,8 @@ export class FolderMetaApplier {
 	): void {
 		const withId = groupBy(
 			this.copies(outcomes).filter(
-				({ meta, templateNode }) =>
-					meta.fields.id !== undefined &&
-					templateNode.$id === undefined
+				({ meta, treeNode }) =>
+					meta.fields.id !== undefined && treeNode.$id === undefined
 			),
 			({ meta }) => meta,
 			({ instancePath }) => instanceKey(instancePath)
@@ -266,9 +264,9 @@ export class FolderMetaApplier {
 		return reached;
 	}
 
-	/** Each group of metas from one root dir that reach the same node. */
+	/** Each group of metas from one source path that reach the same node. */
 	private sameRootClashes(metas: readonly FolderMeta[]): FolderMeta[][] {
-		return [...groupBy(metas, ({ rootDir }) => rootDir).values()]
+		return [...groupBy(metas, ({ sourcePath }) => sourcePath).values()]
 			.filter((group) => group.length > 1)
 			.map((group) =>
 				group.sort((a, b) => compareStrings(a.file, b.file))

@@ -12,9 +12,15 @@ import {
 	UnloadedBuild,
 	WrittenBuild,
 } from "../build.js";
+import {
+	brokenEntry,
+	MockConfigSelection,
+	mockEntry,
+	selectionOf,
+} from "../../config/__tests__/mock-config-service.js";
 import { abs, configOf } from "./fixtures.js";
 
-const outFile = path.resolve("/repo", "default.project.json");
+const projectFile = path.resolve("/repo", "default.project.json");
 const staged = (file: string, id: string) => `${file}.${id}.tmp`;
 
 const summary: BuildSummary = {
@@ -27,8 +33,14 @@ const summary: BuildSummary = {
 
 describe("domain/build/build", () => {
 	describe("BuildRun", () => {
-		const lobby = configOf({ file: abs("lobby.rogen.json") });
-		const arena = configOf({ file: abs("arena.rogen.json") });
+		const lobby = configOf({
+			file: abs("lobby/rogen.json"),
+			name: "lobby",
+		});
+		const arena = configOf({
+			file: abs("arena/rogen.json"),
+			name: "arena",
+		});
 		const shared = warningDiagnostic(
 			"x.shared",
 			{ resource: abs("src/A.luau") },
@@ -72,7 +84,7 @@ describe("domain/build/build", () => {
 			expect(run.warningCount).toBe(1);
 		});
 
-		it("should count sync dir warnings with the rest", () => {
+		it("should count sync path warnings with the rest", () => {
 			const run = new BuildRun([written(lobby, [], [shared])]);
 
 			expect(run.warningCount).toBe(1);
@@ -86,7 +98,7 @@ describe("domain/build/build", () => {
 			);
 			const run = new BuildRun([
 				new FailedBuild(lobby, [error]),
-				new UnloadedBuild(abs("arena.rogen.json"), [error]),
+				new UnloadedBuild(abs("arena/rogen.json"), [error]),
 			]);
 
 			expect(run.failed).toBe(true);
@@ -121,17 +133,17 @@ describe("domain/build/build", () => {
 
 	describe("OutputFile", () => {
 		it("should match the staging files of any writer", () => {
-			const { stagingPattern } = new OutputFile(outFile);
+			const { stagingPattern } = new OutputFile(projectFile);
 
-			expect(stagingPattern.test(staged(outFile, "a1b2"))).toBe(true);
-			expect(stagingPattern.test(staged(outFile, "c3d4"))).toBe(true);
+			expect(stagingPattern.test(staged(projectFile, "a1b2"))).toBe(true);
+			expect(stagingPattern.test(staged(projectFile, "c3d4"))).toBe(true);
 		});
 
-		it("should not match the out file itself or another file", () => {
-			const { stagingPattern } = new OutputFile(outFile);
+		it("should not match the project file itself or another file", () => {
+			const { stagingPattern } = new OutputFile(projectFile);
 
-			expect(stagingPattern.test(`${outFile}.tmp`)).toBe(false);
-			expect(stagingPattern.test(outFile)).toBe(false);
+			expect(stagingPattern.test(`${projectFile}.tmp`)).toBe(false);
+			expect(stagingPattern.test(projectFile)).toBe(false);
 			expect(
 				stagingPattern.test(
 					staged(path.resolve("/repo", "other.project.json"), "a1b2")
@@ -141,53 +153,70 @@ describe("domain/build/build", () => {
 	});
 
 	describe("BuildSet", () => {
-		it("should block every config that shares an out file, each with the same error", () => {
-			const blockers = new BuildSet([
-				configOf(),
-				configOf({ file: abs("other.rogen.json") }),
-				configOf({
-					file: abs("lobby.rogen.json"),
-					outFile: abs("lobby.project.json"),
-				}),
-			]);
+		const lobby = configOf({
+			file: abs("lobby/rogen.json"),
+			name: "lobby",
+		});
+		const arena = configOf({
+			file: abs("arena/rogen.json"),
+			name: "arena",
+		});
+		const failure = errorDiagnostic(
+			"config.invalid",
+			{ resource: abs("arena/rogen.json") },
+			"broken"
+		);
 
-			expect([...blockers.blockedFiles]).toEqual([
-				abs("default.rogen.json"),
-				abs("other.rogen.json"),
-			]);
-			expect(blockers.diagnostics).toMatchObject([
-				{ code: "output.sameOutFile" },
-			]);
-			expect(blockers.blocking(abs("other.rogen.json"))).toEqual(
-				blockers.diagnostics
-			);
+		it("should hold the configs of a selection when every one is valid", () => {
+			const set = BuildSet.of(selectionOf(lobby, arena)).unwrap();
+
+			expect(set.configs).toEqual([lobby, arena]);
+			expect(set.configOf(abs("arena/rogen.json"))).toBe(arena);
+			expect(set.configOf(abs("other/rogen.json"))).toBeUndefined();
 		});
 
-		it("should block a config that declares no routes", () => {
-			const blockers = new BuildSet([configOf({ routes: {} })]);
-
-			expect(blockers.blocking(abs("default.rogen.json"))).toMatchObject([
-				{ code: "route.noRoutes" },
+		it("should fail with every error when a config of the selection is broken", () => {
+			const selection = new MockConfigSelection([
+				mockEntry({}, abs("lobby/rogen.json")),
+				brokenEntry([failure], abs("arena/rogen.json")),
 			]);
+
+			const set = BuildSet.of(selection);
+
+			expect(set.isErr() && set.error.diagnostics).toEqual([failure]);
 		});
 
-		it("should list each problem once, the configs without routes first", () => {
-			const blockers = new BuildSet([
-				configOf({ routes: {} }),
-				configOf({ file: abs("other.rogen.json") }),
+		it("should split a selection into the configs that load and the builds that did not", () => {
+			const selection = new MockConfigSelection([
+				{ status: "valid", file: lobby.file, config: lobby },
+				brokenEntry([failure], abs("arena/rogen.json")),
 			]);
 
-			expect(blockers.diagnostics.map(({ code }) => code)).toEqual([
-				"route.noRoutes",
-				"output.sameOutFile",
+			const { set, unloaded } = BuildSet.partition(selection);
+
+			expect(set.configs).toEqual([lobby]);
+			expect(unloaded).toEqual([
+				new UnloadedBuild(abs("arena/rogen.json"), [failure]),
 			]);
+			expect(unloaded[0].label).toBe("arena");
 		});
 
-		it("should block nothing when every config can be built", () => {
-			const blockers = new BuildSet([configOf()]);
+		it("should list the source paths of configs with routes, and the default source path of one without", () => {
+			const routed = configOf({
+				file: abs("lobby/rogen.json"),
+				sourcePaths: [abs("lobby/server"), abs("lobby/shared")],
+			});
+			const unrouted = configOf({
+				file: abs("arena/rogen.json"),
+				sourcePaths: [],
+				routes: {},
+			});
 
-			expect(blockers.blockedFiles.size).toBe(0);
-			expect(blockers.blocking(abs("default.rogen.json"))).toEqual([]);
+			expect(new BuildSet([routed, unrouted]).indexedPaths).toEqual([
+				abs("lobby/server"),
+				abs("lobby/shared"),
+				abs("arena/src"),
+			]);
 		});
 	});
 });

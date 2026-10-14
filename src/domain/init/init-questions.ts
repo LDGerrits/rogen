@@ -1,76 +1,21 @@
 import { containsPath, normalizeDir } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { joinedWithAnd } from "../../base/strings.js";
-import {
-	PromptChoice,
-	PromptService,
-} from "../../platform/prompt/prompt-service.js";
-import {
-	DEFAULT_CONFIG_FILE,
-	DEFAULT_CONFIG_STEM,
-	configFileName,
-} from "../config/config.js";
+import { PromptService } from "../../platform/prompt/prompt-service.js";
+import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
-import { PLACES_DIR, DEFAULT_ROOT_DIR } from "./code-finder.js";
-import { ConfigSet } from "./config-set.js";
-import { PlaceFolder } from "./place-folder.js";
 import { HOOK_SCRIPT_FILE } from "./coding-agent.js";
-import { InitDirectory, BaseConfig } from "./init-directory.js";
+import { InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { TEMPLATE_FILE } from "./starter-template.js";
-import { TemplateChoice } from "./template-plan.js";
+import { TreeChoice } from "./tree-plan.js";
 
-export type PlaceCount = "one" | "several";
-/** One thing `init` can add beside the configs here, and what adding it does. */
+/** One thing `init` can add beside the config here, and what adding it does. */
 export interface AdditionOption<T> {
 	readonly id: string;
 	readonly label: string;
 	readonly hint: string;
 	readonly addition: T;
-}
-
-export interface NameQuestion {
-	readonly message: string;
-	readonly description: string;
-	/** The name Enter gives. */
-	readonly placeholder?: string;
-	/** The files a config of this name would write. */
-	readonly filesFor: (name: string) => readonly string[];
-}
-
-export interface PlacesQuestion {
-	/** Default's root dirs, which every place folder joins. */
-	readonly rootDirs: readonly string[];
-	readonly filesFor: (name: string) => readonly string[];
-	/** Files the project itself writes, which no place may. */
-	readonly reserved: ReadonlySet<string>;
-}
-
-/** A place folder the workspace has that can't be set up as a place, and why. */
-export interface UnusablePlace {
-	readonly place: string;
-	readonly problem: string;
-}
-
-/** The places to set up, and the ones found that can't be. */
-export interface ChosenPlaces {
-	readonly places: readonly string[];
-	readonly unusable: readonly UnusablePlace[];
-}
-
-/** Where a new multi-place project keeps the code every place shares, unless it already has code at the root. */
-const SHARED_FOLDER = `${PLACES_DIR}/shared`;
-
-/** The shared code question's answer that asks for the folders instead. */
-const OTHER_FOLDERS = "other";
-
-/** Where the shared code goes: its root dirs, and the folder its template starts in, at the root when there is none. */
-export interface SharedCode {
-	readonly rootDirs: readonly string[];
-	readonly templateDir?: string;
 }
 
 const required = (what: string) => (value: string) =>
@@ -104,15 +49,15 @@ export class InitQuestions {
 		});
 	}
 
-	/** What to add beside the configs here, among `options`, which are never empty; a run that can't ask takes the first, as Enter does. */
+	/** What to add beside the config in `configFile`, among `options`, which are never empty; a run that can't ask takes the first, as Enter does. */
 	async whatToAdd<T>(
-		hasDefault: boolean,
+		configFile: string,
 		options: readonly AdditionOption<T>[]
 	): Promise<T | undefined> {
 		const [first] = options;
 		if (!this.interactive) return first.addition;
 		const id = await this.promptService.select<string>({
-			message: `${hasDefault ? DEFAULT_CONFIG_FILE : "A config"} exists. What do you want to add?`,
+			message: `${configFile} exists. What do you want to add?`,
 			choices: options.map(({ id, label, hint }) => ({
 				value: id,
 				label,
@@ -143,82 +88,6 @@ export class InitQuestions {
 			message: `Add a hook that reports Rogen warnings to ${joinedWithAnd(agents)}?`,
 			description: `Writes ${HOOK_SCRIPT_FILE} and registers it with ${agents.length === 1 ? "the agent" : "each agent"}. It runs when the agent is about to stop, on the files it changed.`,
 			initialValue: true,
-		});
-	}
-
-	/** Several places when the workspace already has a `places` folder. */
-	async placeCount({
-		layout,
-	}: InitDirectory): Promise<PlaceCount | undefined> {
-		const initial: PlaceCount =
-			layout.places.length > 0 ? "several" : "one";
-		if (!this.interactive) return initial;
-
-		const found = layout.places
-			.map((name) => PlaceFolder.pathOf(name))
-			.join(", ");
-		return this.promptService.select<PlaceCount>({
-			message: "What are you setting up?",
-			choices: [
-				{ value: "one", label: "One place" },
-				{
-					value: "several",
-					label: "Several places that share code",
-					hint: found ? `found ${found}` : undefined,
-				},
-			],
-			initialValue: initial,
-		});
-	}
-
-	/** A name has no default, so a run that can't ask stops here. */
-	async name(
-		directory: InitDirectory,
-		{ message, description, placeholder, filesFor }: NameQuestion
-	): Promise<string | undefined> {
-		if (!this.interactive) return undefined;
-		const answer = await this.promptService.text({
-			message,
-			description,
-			placeholder,
-			validate: (value) => {
-				const trimmed = value.trim();
-				if (trimmed === "") return "Enter a name.";
-				const parsed = ConfigSet.checkName(trimmed);
-				if (parsed.isErr()) return parsed.error.message;
-				const taken = filesFor(trimmed).find((file) =>
-					directory.has(file)
-				);
-				return taken && `${taken} already exists.`;
-			},
-		});
-		return answer?.trim();
-	}
-
-	/** The name given on the command line, which must be free to write, else the name asked for. */
-	async givenOrAskedName(
-		directory: InitDirectory,
-		question: NameQuestion
-	): Promise<Result<string | undefined, Diagnostic[]>> {
-		const given = directory.givenName;
-		if (given === undefined)
-			return ok(await this.name(directory, question));
-		const conflicts = directory.checkFree(question.filesFor(given));
-		return conflicts.length > 0 ? err(conflicts) : ok(given);
-	}
-
-	/** The name of a config added beside `default`. */
-	configName(directory: InitDirectory): Promise<string | undefined> {
-		return this.name(directory, {
-			message: "Config name",
-			description: "Writes <name>.rogen.json.",
-			placeholder: directory.hasDefaultConfig
-				? undefined
-				: DEFAULT_CONFIG_STEM,
-			filesFor: (name) => [
-				configFileName(name),
-				configFileName(ConfigSet.syncStemOf(name)),
-			],
 		});
 	}
 
@@ -255,29 +124,26 @@ export class InitQuestions {
 		});
 	}
 
-	/** The folders of the project's code, or with `shared`, of the code every place shares. */
-	async rootDirs(
+	/** The folders of the project's code. */
+	async sourcePaths(
 		directory: InitDirectory,
-		language: Language,
-		shared = false
+		language: Language
 	): Promise<string[] | undefined> {
-		const placeholder = directory.defaultRootDir(language);
+		const placeholder = directory.defaultSourcePath(language);
 		if (!this.interactive) return [placeholder];
 
 		const { compiler } = language;
-		const copy = language.copy.rootDir;
+		const copy = language.copy.sourcePath;
 		const answer = await this.promptService.text({
-			message: compiler ? "Root dir" : "Root dirs",
+			message: compiler ? "Source path" : "Source paths",
 			description: compiler
 				? copy?.description
-				: shared
-					? "Folders with the code every place shares, relative to here. Separate several with commas."
-					: "Folders with your scripts, relative to here. Separate several with commas.",
+				: "Folders with your scripts, relative to here. Separate several with commas.",
 			hint: directory.otherCodeFoldersHint(placeholder),
 			placeholder,
 			validate: (value) => {
 				const entries = splitList(value);
-				const problem = directory.rootDirsProblem(entries);
+				const problem = directory.sourcePathsProblem(entries);
 				if (problem) return problem;
 				return compiler && entries.length > 1
 					? copy?.severalProblem
@@ -289,119 +155,47 @@ export class InitQuestions {
 			: splitList(answer).map(normalizeDir);
 	}
 
-	/** Where the code every place shares lives: beside the places with its own template, or in a root folder. The root folder is the default when it already holds code, so that code stays where it is, or when a compiler's config names it. */
-	async sharedCode(
-		directory: InitDirectory,
-		language: Language
-	): Promise<SharedCode | undefined> {
-		const rootDir = directory.defaultRootDir(language);
-		const existing =
-			language.compiler !== undefined ||
-			directory.has(DEFAULT_ROOT_DIR) ||
-			directory.layout.codeFolders.includes(rootDir);
-		const initial = existing ? rootDir : SHARED_FOLDER;
-		const answer = this.interactive
-			? await this.promptService.select({
-					message: "Shared code",
-					description:
-						"Where the code every place shares goes. Each place's own code goes in a folder of its own.",
-					choices: [
-						{
-							value: SHARED_FOLDER,
-							label: SHARED_FOLDER,
-							hint: "beside the places, in src with its template",
-						},
-						{
-							value: rootDir,
-							label: rootDir,
-							hint: existing ? "found code here" : "at the root",
-						},
-						{ value: OTHER_FOLDERS, label: "Other folders" },
-					],
-					initialValue: initial,
-				})
-			: initial;
-		if (answer === undefined) return undefined;
-		if (answer === OTHER_FOLDERS) {
-			const rootDirs = await this.rootDirs(directory, language, true);
-			return rootDirs && { rootDirs };
-		}
-		return answer === SHARED_FOLDER
-			? {
-					rootDirs: [`${SHARED_FOLDER}/src`],
-					templateDir: SHARED_FOLDER,
-				}
-			: { rootDirs: [answer] };
-	}
+	/** Lifts the hand-written project file the config would replace, else starts a new tree. */
+	async tree(directory: InitDirectory): Promise<TreeChoice | undefined> {
+		if (!directory.hasHandWrittenProject) return { kind: "new" };
+		const lift: TreeChoice = { kind: "lift", from: DEFAULT_PROJECT_FILE };
+		if (!this.interactive) return lift;
 
-	/** Copies the hand-written project file a new config would replace, else starts a new template. */
-	async template(
-		directory: InitDirectory,
-		outputs: readonly string[]
-	): Promise<TemplateChoice | undefined> {
-		const candidates = directory.handWrittenProjectFiles;
-		if (directory.has(TEMPLATE_FILE) || candidates.length === 0) {
-			return { kind: "new" };
-		}
-
-		const replaced = candidates.filter((file) => outputs.includes(file));
-		const others = candidates.filter((file) => !outputs.includes(file));
-		const initial: TemplateChoice =
-			replaced.length > 0
-				? { kind: "copy", from: replaced[0] }
-				: { kind: "new" };
-		if (!this.interactive) return initial;
-
-		const choices: PromptChoice<string>[] = [
-			...replaced.map((file) => ({
-				value: `copy:${file}`,
-				label: `Copy ${file} to ${TEMPLATE_FILE}`,
-				hint: "keeps its name, properties and packages",
-			})),
-			...others.map((file) => ({
-				value: `use:${file}`,
-				label: `Use ${file}`,
-			})),
-			{
-				value: "new",
-				label: `Start a new ${TEMPLATE_FILE}`,
-				hint: "packages are asked next",
-			},
-		];
-		const answer = await this.promptService.select({
-			message: "Template",
-			description:
-				replaced.length > 0
-					? `${replaced[0]} exists, and Rogen replaces it on every build.`
-					: "The Rojo project file Rogen builds on top of.",
-			choices,
-			initialValue:
-				initial.kind === "copy" ? `copy:${initial.from}` : "new",
+		const answer = await this.promptService.select<TreeChoice["kind"]>({
+			message: "Project file",
+			description: `${DEFAULT_PROJECT_FILE} exists, and Rogen replaces it on every build.`,
+			choices: [
+				{
+					value: "lift",
+					label: `Lift ${DEFAULT_PROJECT_FILE} into ${DEFAULT_CONFIG_FILE}`,
+					hint: "keeps its name, properties and packages",
+				},
+				{
+					value: "new",
+					label: "Start a new tree",
+					hint: "packages are asked next",
+				},
+			],
+			initialValue: "lift",
 		});
 		if (answer === undefined) return undefined;
-		if (answer.startsWith("copy:")) {
-			return { kind: "copy", from: answer.slice("copy:".length) };
-		}
-		if (answer.startsWith("use:")) {
-			return { kind: "use", file: answer.slice("use:".length) };
-		}
-		return { kind: "new" };
+		return answer === "lift" ? lift : { kind: "new" };
 	}
 
-	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in one of the `read` folders, the root dirs and a compiler's output, or Darklua would write over what is read. */
-	async syncDir(
+	/** The folder Darklua writes into, which Rojo syncs from; it can't hold or lie in one of the `read` folders, the source paths and a compiler's output, or Darklua would write over what is read. */
+	async syncPath(
 		{ workspace }: InitDirectory,
 		read: readonly string[]
 	): Promise<string | undefined> {
-		const placeholder = workspace.darklua.defaultSyncDir;
+		const placeholder = workspace.darklua.defaultSyncPath;
 		if (!this.interactive) return placeholder;
 		const answer = await this.promptService.text({
-			message: "Sync dir",
+			message: "Sync path",
 			description:
 				"The folder Darklua writes into. Rojo syncs from here.",
 			placeholder,
 			validate: (value) => {
-				const missing = required("a sync dir")(value);
+				const missing = required("a sync path")(value);
 				if (missing) return missing;
 				const dir = normalizeDir(value);
 				const overlapped = read.find(
@@ -449,7 +243,7 @@ export class InitQuestions {
 		];
 	}
 
-	/** The folders placed in the game as they are; the ones that start ticked unless a template is already there. */
+	/** The folders placed in the game as they are; a run that can't ask takes the ones that start ticked. */
 	async mounts(
 		directory: InitDirectory,
 		language: Language
@@ -462,12 +256,7 @@ export class InitQuestions {
 		const nothingToMount =
 			directory.workspace.packageManager === undefined &&
 			!offered.some(({ installed }) => installed);
-		if (
-			offered.length === 0 ||
-			nothingToMount ||
-			directory.has(TEMPLATE_FILE) ||
-			!this.interactive
-		) {
+		if (offered.length === 0 || nothingToMount || !this.interactive) {
 			return this.selectMounts(directory, language, startsTicked);
 		}
 
@@ -530,87 +319,5 @@ export class InitQuestions {
 			initialValue: "shared",
 		});
 		return fallback && { routes, fallback: fallback === "shared" };
-	}
-
-	/** The places set up alongside, the ones the workspace already has unless told otherwise; unattended, the ones it has that can't be set up are told apart. */
-	async places(
-		directory: InitDirectory,
-		question: PlacesQuestion
-	): Promise<ChosenPlaces | undefined> {
-		const { rootDirs } = question;
-		const found: string[] = [];
-		const unusable: UnusablePlace[] = [];
-		for (const place of directory.layout.places) {
-			const problem = this.placeProblem(directory, place, question);
-			if (problem) unusable.push({ place, problem });
-			else found.push(place);
-		}
-		if (!this.interactive) return { places: found, unusable };
-
-		const answer = await this.promptService.text({
-			message: "Places",
-			description: `Each place gets <name>.rogen.json, and its own folder, ${PlaceFolder.pathOf("<name>", rootDirs)}, with its code in src beside its template. Separate several with commas.`,
-			placeholder: found.length > 0 ? found.join(", ") : "lobby",
-			validate: (value) => {
-				const names = splitList(value);
-				if (names.length === 0) return "Enter at least one place.";
-				for (const [index, place] of names.entries()) {
-					if (names.indexOf(place) !== index)
-						return `${place} is listed twice.`;
-					const problem = this.placeProblem(
-						directory,
-						place,
-						question
-					);
-					if (problem) return problem;
-				}
-				return undefined;
-			},
-		});
-		return answer === undefined
-			? undefined
-			: { places: splitList(answer), unusable: [] };
-	}
-
-	/** The first reason a place can't be called `place`: its name, the files it would write, or its folder. */
-	private placeProblem(
-		directory: InitDirectory,
-		place: string,
-		{ rootDirs, filesFor, reserved }: PlacesQuestion
-	): string | undefined {
-		const parsed = ConfigSet.checkName(place);
-		if (parsed.isErr()) return parsed.error.message;
-		const clash = filesFor(place).find(
-			(file) => directory.has(file) || reserved.has(file)
-		);
-		if (clash) {
-			return directory.has(clash)
-				? `${clash} already exists.`
-				: `${clash} is written for ${DEFAULT_CONFIG_STEM}; pick another name.`;
-		}
-		return directory.placeFolderProblem(
-			rootDirs,
-			PlaceFolder.pathIn(directory, place, rootDirs)
-		);
-	}
-
-	/** Where a place keeps its own files: beside default's shared folder unless told otherwise. */
-	async placeFolder(
-		directory: InitDirectory,
-		base: BaseConfig,
-		placeName: string
-	): Promise<string | undefined> {
-		const placeholder = PlaceFolder.pathOf(placeName, base.rootDirs);
-		if (!this.interactive) return placeholder;
-		const folder = await this.promptService.text({
-			message: "Place folder",
-			description:
-				"Holds this place's own code, in src, beside its template. A folder that already holds code is used as it is.",
-			placeholder,
-			validate: (value) =>
-				required("a folder")(value) ??
-				directory.placeFolderProblem(base.rootDirs, value),
-		});
-		return folder === undefined ? undefined : normalizeDir(folder);
 	}
 }

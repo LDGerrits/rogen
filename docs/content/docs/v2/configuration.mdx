@@ -1,104 +1,142 @@
 ---
 title: Configuration
-description: Every field of a *.rogen.json config file.
+description: Every field of rogen.json, the Rojo project file that also says where your code goes.
 ---
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A **config** is a `<name>.rogen.json` file that describes one tree and the project file it builds. When you don't name one, a command reads every `*.rogen.json` in the folder. Comments and trailing commas are fine.
+A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file with three more keys: `sourcePaths` says where your code is, `routes` where it goes, and `syncPath` where Rojo reads it from. Rojo's own keys keep their meaning, and Rogen writes them to `default.project.json` beside the config. Comments and trailing commas are fine.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    ```json title="default.rogen.json"
+    ```json title="rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"rootDirs": ["src"],
+    	"sourcePaths": ["src"],
     	"routes": {
     		"Server": "ServerScriptService",
     		"Client": "StarterPlayer/StarterPlayerScripts",
     		"Shared": "ReplicatedStorage/Shared",
     		"*": "ReplicatedStorage/Shared"
     	},
-    	"exclude": ["**/*.spec.luau"]
+    	"globIgnorePaths": ["**/*.spec.luau"]
     }
     ```
   </Tab>
   <Tab value="roblox-ts">
-    ```json title="default.rogen.json"
+    ```json title="rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"rootDirs": ["src"],
+    	"tree": {
+    		"$className": "DataModel",
+    		"ReplicatedStorage": {
+    			"rbxts_include": {
+    				"$path": { "optional": "include" },
+    				"node_modules": {
+    					"$className": "Folder",
+    					"@rbxts": { "$path": { "optional": "node_modules/@rbxts" } }
+    				}
+    			}
+    		}
+    	},
+    	"sourcePaths": ["src"],
     	"routes": {
     		"server": "ServerScriptService",
     		"client": "StarterPlayer/StarterPlayerScripts",
     		"shared": "ReplicatedStorage/shared",
     		"*": "ReplicatedStorage/shared"
     	},
-    	"exclude": ["**/*.spec.ts"],
-    	"template": "template.project.json",
-    	"syncDir": "out"
+    	"globIgnorePaths": ["**/*.spec.ts"],
+    	"syncPath": "out"
     }
     ```
   </Tab>
 </Tabs>
 
-There are nine fields, none nested more than two levels. Unknown keys and wrong types are errors.
+A command given no folder reads the `rogen.json` of the working directory, or of the nearest folder above it that has one. Give it a folder with a `rogen.json`, or the path to that folder's `default.project.json`, to read another: `rogen build game`. All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
 
 ---
 
 ## Fields
 
+Rogen's three keys:
+
 | Field | Default | What it does |
 |---|---|---|
-| `$schema` | none | The published JSON schema, for editor validation and completion. It underlines a route key that isn't letters and digits, and a route target that doesn't start with a service, and offers the common targets as completions. Not inherited. |
-| `extends` | none | Another `*.rogen.json` to inherit from. See [Extending Configs](#extending-configs). |
-| `rootDirs` | `["src"]` | The directories to scan and watch. They merge into one tree, and the later one wins a clash. A config adds its entries to those of the config it extends. |
-| `routes` | none | Route keys and their targets, like `"Service/Folder"`. Required. See [Routing](/docs/v2/core-concepts/routing). |
-| `exclude` | `[]` | Globs for files that are never built, scanned or mounted by the template. A config adds its globs to those of the config it extends. See [Excluding Files](/docs/v2/core-concepts/project-layout#excluding-files). |
-| `template` | none | A Rojo project file to merge the tree into. See [Template](/docs/v2/core-concepts/output#template). |
-| `syncDir` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Directory](/docs/v2/core-concepts/output#sync-directory). |
-| `outFile` | `<name>.project.json` | The project file to write. Not inherited. See [Output](/docs/v2/core-concepts/output#output). |
+| `sourcePaths` | `["src"]` when `routes` exist | The folders to scan and watch. They merge into one tree, and the later one wins a clash. See [Several Source Paths](/docs/v2/core-concepts/project-layout#several-source-paths). Without `routes` it is an error. |
+| `routes` | none | Route keys and their targets, like `"Service/Folder"`. Only declared keys route. Without it, nothing is routed and no source path is scanned. See [Routing](/docs/v2/core-concepts/routing). |
+| `syncPath` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Path](/docs/v2/core-concepts/output#sync-path). |
 
-All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
+Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths`, which it also reads:
+
+| Field | What it does |
+|---|---|
+| `$schema` | The published JSON schema, for editor validation and completion. It covers Rojo's keys and Rogen's, underlines a route key that isn't letters and digits and a route target that doesn't start with a service, and offers the common targets as completions. The project file gets a schema of its own. |
+| `name` | The project's name. The project file carries it only when you set one here; Rojo names the project after its folder otherwise. |
+| `tree` | The instance tree Rogen merges its generated nodes into. See [Tree](#tree). |
+| `globIgnorePaths` | Globs, relative to the config, of files Rojo ignores. Rogen keeps them out of routing too. See [Ignoring Files](#ignoring-files). |
+| `servePort`, `serveAddress`, `serveAllowedHosts` | Where `rojo serve` listens. See [`serve`](/docs/v2/cli#serve). |
+| `servePlaceIds`, `blockedPlaceIds`, `placeId`, `gameId` | Which places may connect, and the ones a place file is published to. See [Studio](/docs/v2/studio#place-ids). |
+| `emitLegacyScripts` | Whether Rojo makes `Script` and `LocalScript` instances for `.server` and `.client` files, rather than a run context. |
+| `syncbackRules` | Rojo's syncback rules. |
+
+A key that is on neither list passes through with a warning, since Rojo will reject the written file by that name ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error. `syncRules` is not supported yet, and a config that sets it is an error.
 
 ---
 
-## Extending Configs
+## Tree
 
-Use `extends` when a config is a small variation on another: a second place, a release build that excludes more files, or the same tree rendered from another folder. Rogen has no profiles; each file is one tree and one output.
+`tree` is the same node tree as in any Rojo project file. Rogen merges the nodes it generates into it, so it holds what names can't express: the DataModel name, package mounts and `$properties`.
 
-```json title="lobby.rogen.json"
+```json title="rogen.json"
 {
-	"extends": "./default.rogen.json",
-	"rootDirs": ["places/lobby/src"],
-	"template": "places/lobby/template.project.json"
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": { "$path": { "optional": "Packages" } }
+		}
+	},
+	"routes": { "*": "ReplicatedStorage/Shared" }
 }
 ```
 
-| Kind | Fields | Behavior |
-|---|---|---|
-| Map | `routes` | merged key by key; the child wins a key |
-| List | `rootDirs`, `exclude` | the child's entries are added after the parent's; a repeated entry keeps its last position |
-| String | `syncDir`, `server` | the child replaces |
-| Template | `template` | the child's template merges over the parent's; see [Merging Templates](/docs/v2/core-concepts/output#merging-templates) |
-| Not inherited | `outFile`, `$schema` | always the config's own value, or its default |
+- If `tree` and the generated nodes define the same instance, `tree` wins and Rogen warns ([`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash)). A `$path` below a service, like a package mount, owns that whole folder.
+- A `$path` that points inside a source path hands that path to Rojo. Rogen skips it, and `rogen where` reports it as `mounted`, which is how you sync a vendored library as it is. Mounting a source path itself or a folder above one is an error.
+- With `routes`, the tree's root must be a `DataModel`, since a route target names a service. A root that isn't one, a bare `$path` included, is an error. Leave `tree` out and Rogen starts from an empty `DataModel`.
+- Without `routes`, nothing is routed and no source path is scanned. Any root is valid and the project file is `tree` as you wrote it. Rogen warns when `src` holds files the tree doesn't mount.
 
-A child adds to its parent and never removes. A child that lists one more root dir therefore gets a later root dir than the parent's, where a file can [replace](/docs/v2/core-concepts/project-layout#replacing-a-file) one of the parent's. To drop something, flip the chain so the config without it is the parent. A default applies only when no config in the chain sets the field, so a parent that leaves out `rootDirs` contributes no `src` once a child sets its own. Relative paths resolve against the file that wrote them. A cycle is an error that shows the loop.
+## Ignoring Files
 
-`rogen list --json` prints a config fully resolved, with defaults filled in and paths made absolute.
+`globIgnorePaths` lists globs, relative to the config, for files that should stay out of the game. Rojo ignores them, and Rogen doesn't route them or warn about them. Rogen writes the list to the project file for Rojo.
 
-## Finding Configs
+```json
+{ "globIgnorePaths": ["**/*.spec.luau", "**/*.story.luau"] }
+```
 
-`rogen build lobby` reads `lobby.rogen.json`, and `rogen build places/lobby.rogen.json` reads that file: a name with a `/` or ending in `.json` is a path. With no name, Rogen reads every `*.rogen.json` in the folder.
+An ignored file that a `tree` `$path` mounts is still mounted: the glob never drops a node, and a mount it matches stays in the project file as an empty `Folder`. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
 
-A file called just `.rogen.json` is an error, since every config needs a name. That was v1's file name, so Rogen also links to [Migrating from v1](/docs/v2/migrating-from-v1).
+## Removed Keys
+
+A config is one folder's project file, so these keys are gone. Each is an error that names its replacement.
+
+| Key | Replacement |
+|---|---|
+| `extends` | None: a `rogen.json` describes one folder. Repeat the keys in the other folder's `rogen.json`. |
+| `template` | Write the tree inline: move the template's `tree` and its other keys into `rogen.json`. |
+| `outFile` | Rogen writes `default.project.json` beside `rogen.json`. |
+| `exclude` | `globIgnorePaths`. |
+| `rootDirs` | `sourcePaths`. |
+| `syncDir` | `syncPath`. |
+| `modes`, `mode`, `variants`, `conflicts`, `server` | None. A file that replaces another goes in a later source path. |
+
+There are no config names either: no `<name>.rogen.json`, no `default.rogen.json`, and a command's argument is a folder or a project file, not a config name. The `-o` flag is gone with `outFile`. A `rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ## Diagnostics
 
 Every diagnostic points at the problem:
 
 ```
-lobby.rogen.json:7:3 - error: unknown field "outDir". (config.unknownField)
+rogen.json:7:3 - warning: "outDir" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name. (config.unknownField)
 ```
 
 Errors stop the build. Warnings don't, and the build still exits with 0. You'll get warnings for:
@@ -107,7 +145,8 @@ Errors stop the build. Warnings don't, and the build still exits with 0. You'll 
 - names that look like a route key but aren't,
 - server code that ships to clients,
 - scripts placed where they'll never run,
-- an empty sync directory or a missing root directory,
-- instances that clash with the template.
+- an empty sync path or a missing source path,
+- instances that clash with the tree,
+- a `default.project.json` that differs from what `build` would write, in `rogen check`.
 
 [Diagnostics](/docs/v2/diagnostics) explains every code, with an example and the fix.

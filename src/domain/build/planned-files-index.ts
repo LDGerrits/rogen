@@ -10,19 +10,20 @@ export class PlannedFilesIndex implements IndexReader {
 
 	constructor(
 		private readonly index: IndexReader,
-		rootDirs: readonly string[],
+		sourcePaths: readonly string[],
 		paths: readonly string[]
 	) {
 		for (const target of paths) {
-			const rootDir = rootDirs.find((dir) => isInside(target, dir));
-			if (!rootDir || !new RojoFile(path.basename(target)).kind) continue;
+			const sourcePath = sourcePaths.find((dir) => isInside(target, dir));
+			if (!sourcePath || !new RojoFile(path.basename(target)).kind)
+				continue;
 			if (this.hasEntry(path.dirname(target), path.basename(target)))
 				continue;
 
 			this.add(target, FileType.File);
 			for (const dir of ancestors(target)) {
 				if (
-					dir === rootDir ||
+					dir === sourcePath ||
 					this.hasEntry(path.dirname(dir), path.basename(dir))
 				)
 					break;

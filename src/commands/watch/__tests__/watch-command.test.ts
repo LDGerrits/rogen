@@ -18,8 +18,10 @@ import {
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
-const isDefaultStaging = (file: string): boolean =>
-	new OutputFile("/repo/default.project.json").stagingPattern.test(file);
+const isStagingOf = (folder: string, file: string): boolean =>
+	new OutputFile(`/repo/${folder}/default.project.json`).stagingPattern.test(
+		file
+	);
 
 describe("watch command", () => {
 	let memFs: MemoryFileSystemService;
@@ -40,7 +42,7 @@ describe("watch command", () => {
 		);
 
 	const config = (extra: Record<string, unknown> = {}) => ({
-		rootDirs: ["src"],
+		sourcePaths: ["src"],
 		routes: { "*": "ReplicatedStorage" },
 		...extra,
 	});
@@ -67,9 +69,19 @@ describe("watch command", () => {
 		await settle();
 	};
 
-	const built = async (name: string): Promise<string[]> => {
+	const writeProjects = async (
+		...projects: [folder: string, extra?: Record<string, unknown>][]
+	) => {
+		for (const [folder, extra] of projects)
+			await write(
+				`/repo/${folder}/rogen.json`,
+				config({ sourcePaths: ["../src"], ...extra })
+			);
+	};
+
+	const built = async (folder = ""): Promise<string[]> => {
 		const project = JSON.parse(
-			await memFs.readFile(`/repo/${name}.project.json`)
+			await memFs.readFile(`/repo/${folder}/default.project.json`)
 		);
 		return Object.keys(project.tree.ReplicatedStorage ?? {}).filter(
 			(key) => !key.startsWith("$")
@@ -88,7 +100,7 @@ describe("watch command", () => {
 			memFs,
 			new MockEnvironmentService("/repo")
 		);
-		await write("/repo/default.rogen.json", config());
+		await write("/repo/rogen.json", config());
 	});
 
 	afterEach(async () => {
@@ -111,13 +123,13 @@ describe("watch command", () => {
 			).toEqual([
 				{
 					build: expect.objectContaining({
-						config: "default",
+						config: "repo",
 						outcome: "wrote",
 					}),
 				},
 				{
 					build: expect.objectContaining({
-						config: "default",
+						config: "repo",
 						outcome: "wrote",
 					}),
 				},
@@ -127,18 +139,27 @@ describe("watch command", () => {
 			).toEqual([]);
 		});
 
-		it("should print a config that comes to the folder as a notice", async () => {
+		it("should print a config that breaks as a notice", async () => {
 			void startWatch([], { json: true });
 			await settle();
 			logService.clear();
 
-			await write("/repo/source.rogen.json", config());
+			await write("/repo/rogen.json", { extends: "base" });
 			await settle();
 
 			expect(
 				logService.texts("print").map((line) => JSON.parse(line))
 			).toContainEqual({
-				notice: { kind: "added", file: "/repo/source.rogen.json" },
+				notice: {
+					kind: "broken",
+					file: "/repo/rogen.json",
+					keptLastValid: true,
+					diagnostics: [
+						expect.objectContaining({
+							code: "config.removedField",
+						}),
+					],
+				},
 			});
 		});
 	});
@@ -158,17 +179,7 @@ describe("watch command", () => {
 			ready.complete();
 			await settle();
 
-			expect(await built("default")).toEqual(["A"]);
-		});
-
-		it("should watch every config here when none is named", async () => {
-			await write("/repo/source.rogen.json", config());
-			void startWatch([]);
-			await settle();
-
-			expect(logService.lines[0]).toBe(
-				"intro: rogen watch · default, source"
-			);
+			expect(await built()).toEqual(["A"]);
 		});
 
 		it("should start nothing when asked to shut down while the configs load", async () => {
@@ -184,7 +195,7 @@ describe("watch command", () => {
 		});
 
 		it("should refuse to start when a config is invalid", async () => {
-			await write("/repo/default.rogen.json", '{"nope": 1}');
+			await write("/repo/rogen.json", { extends: "base" });
 			const watch = jest.spyOn(watcher, "watch");
 
 			const result = await startWatch();
@@ -193,26 +204,42 @@ describe("watch command", () => {
 			expect(watch).not.toHaveBeenCalled();
 		});
 
-		it("should refuse to start when two configs write the same file", async () => {
-			await write(
-				"/repo/source.rogen.json",
-				config({ outFile: "default.project.json" })
-			);
+		it("should refuse to start when a project is named twice", async () => {
+			await writeProjects(["lobby"]);
 			const watch = jest.spyOn(watcher, "watch");
 
-			const result = await startWatch(["default", "source"]);
+			const result = await startWatch(["lobby", "lobby"]);
 
 			expect(result.isErr()).toBe(true);
 			expect(watch).not.toHaveBeenCalled();
 		});
 
-		it("should refuse to start when a config declares no routes", async () => {
-			await write("/repo/default.rogen.json", { rootDirs: ["src"] });
+		it("should watch a config that declares no routes and write its tree", async () => {
+			await write("/repo/rogen.json", {
+				tree: {
+					$className: "DataModel",
+					Workspace: { $className: "Workspace" },
+				},
+			});
+			const watch = jest.spyOn(watcher, "watch");
+
+			await run();
+
+			expect(watch).toHaveBeenCalled();
+			expect(
+				JSON.parse(await memFs.readFile("/repo/default.project.json"))
+			).toMatchObject({
+				tree: { Workspace: { $className: "Workspace" } },
+			});
+		});
+
+		it("should refuse to start when no project is found", async () => {
+			await memFs.delete("/repo/rogen.json");
 
 			const result = await startWatch();
 
 			expect((result as ResultError<Error>).error.message).toContain(
-				"no routes declared"
+				"No rogen.json found"
 			);
 		});
 
@@ -241,11 +268,11 @@ describe("watch command", () => {
 
 	describe("warnings", () => {
 		it("should print an invalid config once", async () => {
-			await write("/repo/prod.rogen.json", config());
-			await run(["default", "prod"]);
+			await writeProjects(["lobby"], ["arena"]);
+			await run(["lobby", "arena"]);
 			logService.clear();
 
-			await write("/repo/prod.rogen.json", "{ broken");
+			await write("/repo/arena/rogen.json", "{ broken");
 			await settle();
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
@@ -253,13 +280,13 @@ describe("watch command", () => {
 			await settle();
 
 			expect(logService.texts("error")).toEqual([
-				"Still building from the last valid prod.rogen.json.",
+				"Still building from the last valid arena/rogen.json.",
 			]);
 		});
 
 		it("should print a warning once, not on every rebuild", async () => {
 			await write(
-				"/repo/default.rogen.json",
+				"/repo/rogen.json",
 				config({ routes: { server: "ServerScriptService" } })
 			);
 			await memFs.writeFile("/repo/src/A.luau", "");
@@ -292,35 +319,35 @@ describe("watch command", () => {
 		};
 
 		it("should open with a header naming the configs it watches", async () => {
-			await write("/repo/source.rogen.json", config());
+			await writeProjects(["lobby"], ["arena"]);
 
-			await run(["default", "source"]);
+			await run(["lobby", "arena"]);
 
 			expect(logService.entries[0]).toEqual({
 				kind: "intro",
-				text: "rogen watch · default, source",
+				text: "rogen watch · lobby, arena",
 			});
 		});
 
 		it("should print the initial build as one block with a result per config", async () => {
-			await write("/repo/source.rogen.json", config());
+			await writeProjects(["lobby"], ["arena"]);
 
-			await run(["default", "source"]);
+			await run(["lobby", "arena"]);
 
 			expect(blocks()).toEqual([
 				{
 					title: "initial build",
 					lines: [
-						"default.project.json · wrote",
-						"source.project.json · wrote",
+						"lobby/default.project.json · wrote",
+						"arena/default.project.json · wrote",
 					],
 				},
 			]);
 		});
 
 		it("should print one block for a change that rebuilds several configs", async () => {
-			await write("/repo/source.rogen.json", config());
-			await run(["default", "source"]);
+			await writeProjects(["lobby"], ["arena"]);
+			await run(["lobby", "arena"]);
 			logService.clear();
 
 			await memFs.writeFile("/repo/src/A.luau", "");
@@ -331,8 +358,8 @@ describe("watch command", () => {
 				{
 					title: "2 files changed",
 					lines: [
-						"default.project.json · wrote",
-						"source.project.json · wrote",
+						"lobby/default.project.json · wrote",
+						"arena/default.project.json · wrote",
 					],
 				},
 			]);
@@ -359,14 +386,14 @@ describe("watch command", () => {
 			logService.clear();
 
 			await write(
-				"/repo/default.rogen.json",
+				"/repo/rogen.json",
 				config({ routes: { "*": "Workspace" } })
 			);
 			await settle();
 
 			expect(blocks()).toEqual([
 				{
-					title: "default.rogen.json changed · reloaded",
+					title: "rogen.json changed · reloaded",
 					lines: ["default.project.json · wrote"],
 				},
 			]);
@@ -374,7 +401,7 @@ describe("watch command", () => {
 
 		it("should nest a warning under the output that raised it", async () => {
 			await write(
-				"/repo/default.rogen.json",
+				"/repo/rogen.json",
 				config({ routes: { server: "ServerScriptService" } })
 			);
 			await memFs.writeFile("/repo/src/A.luau", "");
@@ -395,7 +422,7 @@ describe("watch command", () => {
 			await run();
 			logService.clear();
 
-			await write("/repo/default.rogen.json", config());
+			await write("/repo/rogen.json", config());
 			await settle();
 
 			expect(blocks()).toEqual([]);
@@ -403,17 +430,17 @@ describe("watch command", () => {
 
 		it("should print a finished rebuild that was waiting behind a slower block when shutdown is requested", async () => {
 			await memFs.createDirectory("/repo/lib");
-			await write(
-				"/repo/source.rogen.json",
-				config({ rootDirs: ["lib"] })
+			await writeProjects(
+				["lobby"],
+				["arena", { sourcePaths: ["../lib"] }]
 			);
-			await run(["default", "source"]);
+			await run(["lobby", "arena"]);
 			logService.clear();
 			const gate = new DeferredPromise<void>();
 			const writeFile = memFs.writeFile.bind(memFs);
 			jest.spyOn(memFs, "writeFile").mockImplementation(
 				async (file, content) => {
-					if (isDefaultStaging(file)) await gate.p;
+					if (isStagingOf("lobby", file)) await gate.p;
 					return writeFile(file, content);
 				}
 			);
@@ -429,11 +456,11 @@ describe("watch command", () => {
 			expect(blocks()).toEqual([
 				{
 					title: "1 file changed",
-					lines: ["default.project.json · wrote"],
+					lines: ["lobby/default.project.json · wrote"],
 				},
 				{
 					title: "1 file changed",
-					lines: ["source.project.json · wrote"],
+					lines: ["arena/default.project.json · wrote"],
 				},
 			]);
 			expect(logService.entries.at(-1)).toEqual({
@@ -445,7 +472,7 @@ describe("watch command", () => {
 		describe("a failing build", () => {
 			beforeEach(async () => {
 				await write(
-					"/repo/default.rogen.json",
+					"/repo/rogen.json",
 					config({
 						routes: {
 							server: "ServerScriptService",
@@ -546,7 +573,7 @@ describe("watch command", () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
-			expect(await built("default")).toEqual([]);
+			expect(await built()).toEqual([]);
 		});
 
 		it("should return an error and stop the watcher when watching fails", async () => {
@@ -585,10 +612,15 @@ describe("watch command", () => {
 				...registry.getCommands().keys(),
 			]);
 
-		it("should accept the override flags and --json", () => {
+		it("should accept projects and --json", () => {
 			expect(
-				parse("watch", "a.rogen.json", "-o", "x", "--json").isOk()
+				parse("watch", "lobby", "places/arena", "--json").isOk()
 			).toBe(true);
+		});
+
+		it("should reject the output overrides", () => {
+			expect(parse("watch", "-o", "x").isErr()).toBe(true);
+			expect(parse("watch", "--out-file", "x").isErr()).toBe(true);
 		});
 
 		it("should reject --all", () => {

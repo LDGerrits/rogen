@@ -67,10 +67,9 @@ export const abs = (...segments: string[]): string =>
 
 export const configOf = (overrides: ResolvedConfigSpec = {}): ResolvedConfig =>
 	mockConfig({
-		file: abs("default.rogen.json"),
-		rootDirs: [abs("src")],
+		file: abs("rogen.json"),
+		sourcePaths: [abs("src")],
 		routes: { "*": "ReplicatedStorage" },
-		outFile: abs("default.project.json"),
 		...overrides,
 	});
 
@@ -81,20 +80,20 @@ export async function writeFiles(
 	for (const file of paths) await fs.writeFile(abs(file), "");
 }
 
-/** What `rootDirs` hold in `fs`, listed. */
+/** What `sourcePaths` hold in `fs`, listed. */
 export function indexOf(
 	fs: MemoryFileSystemService,
-	rootDirs: readonly string[]
+	sourcePaths: readonly string[]
 ): Promise<Listing> {
-	return new CoreIndexService(fs).list(rootDirs);
+	return new CoreIndexService(fs).list(sourcePaths);
 }
 
-/** Builds `config` from what `fs` holds in its root dirs, and places it again to show where each file landed. */
+/** Builds `config` from what `fs` holds in its source paths, and places it again to show where each file landed. */
 export async function buildAndPlace(
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig
 ): Promise<Result<BuiltConfig & { placement: Placement }, DiagnosticsError>> {
-	const index = await indexOf(fs, config.rootDirs);
+	const index = await indexOf(fs, config.sourcePaths);
 	const builder = builderOf(fs, index);
 	const built = await builder.build(config);
 	return built.map((value) => ({
@@ -118,18 +117,18 @@ export const ROUTER_ROUTES = {
 	"*": "ReplicatedStorage/shared",
 };
 
-/** Builds and places the files `fs` holds under `rootDirs`, and sums up where each landed. */
+/** Builds and places the files `fs` holds under `sourcePaths`, and sums up where each landed. */
 export async function routeFiles(
 	fs: MemoryFileSystemService,
 	overrides: ResolvedConfigSpec = {},
-	rootDirs: readonly string[] = [abs("src")]
+	sourcePaths: readonly string[] = [abs("src")]
 ) {
 	return (
 		await buildAndPlace(
 			fs,
 			configOf({
 				routes: ROUTER_ROUTES,
-				rootDirs: [...rootDirs],
+				sourcePaths: [...sourcePaths],
 				...overrides,
 			})
 		)
@@ -150,16 +149,20 @@ export const FOLDER = { $className: "Folder", $ignoreUnknownInstances: false };
 
 export const optional = (target: string) => ({ optional: target });
 
-/** Builds the files `fs` holds under the config's root dirs, with the sync tools of `extraTools` beside the standard ones. */
+/** Builds the files `fs` holds under the config's source paths, with the sync tools of `extraTools` beside the standard ones. */
 export async function assembleResultOf(
 	fs: MemoryFileSystemService,
 	overrides: ResolvedConfigSpec = {},
 	extraTools: readonly SyncTool[] = []
 ) {
 	const config = configOf(overrides);
-	const index = await indexOf(fs, config.rootDirs);
+	const index = await indexOf(fs, config.sourcePaths);
 	return builderOf(fs, index, extraTools).build(config);
 }
+
+/** Checks a built project file against Rojo's schema, which wants the name that Rojo itself derives for a default.project.json. */
+export const expectBuiltProject = (file: RojoProjectFile): void =>
+	expectRojoProject({ name: "project", ...file });
 
 /** The project file `assembleResult` builds, checked against Rojo's schema, with the build's warnings. */
 export async function assembleFilesOf(
@@ -168,14 +171,9 @@ export async function assembleFilesOf(
 	extraTools: readonly SyncTool[] = []
 ) {
 	const output = (await assembleResultOf(fs, overrides, extraTools)).unwrap();
-	expectRojoProject(output.projectFile);
+	expectBuiltProject(output.projectFile);
 	return {
 		projectFile: output.projectFile,
 		warnings: output.findings.warnings,
 	};
 }
-
-export const templateOf = (
-	project: Partial<RojoProjectFile>,
-	file = abs("default.project.json")
-) => ({ file, project });

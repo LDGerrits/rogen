@@ -61,7 +61,7 @@ class ListingDraft {
 	/** Drops the entry `name` of `dir`, and what is listed under it. */
 	delete(dir: string, name: string): void {
 		const type = this.get(dir)?.get(name);
-		// A root dir has no listed parent, but is listed itself.
+		// A source path has no listed parent, but is listed itself.
 		if (type === undefined) {
 			this.remove(joinPosix(dir, name));
 			return;
@@ -104,7 +104,7 @@ export class CoreIndexService implements IndexService {
 		await Promise.all(subdirs.map((subdir) => this.traverse(subdir, into)));
 	}
 
-	/** `undefined` when the directory doesn't exist or is not a directory: a root dir that is a file, or a folder replaced by one. */
+	/** `undefined` when the directory doesn't exist or is not a directory: a source path that is a file, or a folder replaced by one. */
 	private async readDirectory(
 		dir: string
 	): Promise<[string, FileType][] | undefined> {

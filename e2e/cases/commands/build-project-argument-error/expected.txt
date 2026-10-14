@@ -1,0 +1,37 @@
+$ rogen build ghost.project.json
+exit 2
+stderr:
+  error: No project "ghost" in <dir>: a rogen.json writes default.project.json.
+
+$ rogen build lobby/other.project.json
+exit 2
+stderr:
+  error: No project "other" in <dir>/lobby: a rogen.json writes default.project.json.
+
+$ rogen build README.md
+exit 2
+stderr:
+  error: "README.md" is not a folder with a rogen.json, nor a *.project.json path.
+
+$ rogen build lobby lobby
+exit 2
+stderr:
+  error: "lobby" was named more than once; each project can only be built once per invocation.
+
+$ rogen build lobby --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "lobby",
+        "file": "<dir>/lobby/rogen.json",
+        "projectFile": "<dir>/lobby/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ]
+  }
+
+written:
+  lobby/default.project.json

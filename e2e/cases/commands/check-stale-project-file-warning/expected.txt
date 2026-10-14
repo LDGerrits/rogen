@@ -1,0 +1,20 @@
+$ rogen check
+exit 1
+stdout:
+  default.project.json - warning: this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date. (output.differs)
+
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen check
+exit 0
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      A: ModuleScript  <- src/A.luau

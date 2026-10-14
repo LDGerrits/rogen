@@ -3,16 +3,16 @@ exit 0
 stdout:
   {
     "files": [
-      "<dir>/default.rogen.json",
+      "<dir>/rogen.json",
       "<dir>/AGENTS.md"
     ],
     "appended": [],
     "directories": [],
     "built": [
       {
-        "config": "default",
-        "file": "<dir>/default.rogen.json",
-        "outFile": "<dir>/default.project.json",
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
       }
@@ -25,7 +25,7 @@ stdout:
       ],
       "darklua": [],
       "edits": [
-        "Add your own routes under \"routes\" in default.rogen.json."
+        "Add your own routes under \"routes\" in rogen.json."
       ]
     }
   }
@@ -33,17 +33,20 @@ stdout:
 $ rogen init --json
 exit 1
 stdout:
-  {"diagnostics":[{"file":"<dir>/default.rogen.json","severity":"error","code":"init.configExists","message":"this config already exists. To add a place beside it, run 'rogen init <name>'.","url":"https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-configexists"}]}
+  {"diagnostics":[{"file":"<dir>/rogen.json","severity":"error","code":"init.configExists","message":"this config already exists. Delete it to write a new one.","url":"https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-configexists"}]}
 
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {

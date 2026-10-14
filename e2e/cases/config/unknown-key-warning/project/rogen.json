@@ -1,0 +1,10 @@
+{
+	"sourcePaths": [
+		"src"
+	],
+	"outDir": "dist",
+	"exlude": [],
+	"routes": {
+		"*": "ReplicatedStorage"
+	}
+}

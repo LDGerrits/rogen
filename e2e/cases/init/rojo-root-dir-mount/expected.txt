@@ -15,13 +15,17 @@ stdout:
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
-  template.project.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {}
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {
@@ -29,8 +33,7 @@ default.rogen.json:
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Common"
-	},
-	"template": "template.project.json"
+	}
 }
 
 $ rojo sourcemap default.project.json
@@ -39,7 +42,3 @@ my-game: DataModel
     Common: Folder
       Inventory: Folder
         Types: ModuleScript  <- src/Inventory/Types.luau
-
-$ rojo sourcemap template.project.json
-my-game: DataModel
-  ReplicatedStorage: ReplicatedStorage

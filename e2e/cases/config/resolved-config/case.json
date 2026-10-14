@@ -1,6 +1,4 @@
 {
-	"steps": [
-		["list", "default", "--json"]
-	],
+	"steps": [["list", "--json"]],
 	"rojo": false
 }

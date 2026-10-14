@@ -80,12 +80,12 @@ describe("TerminalLogService", () => {
 		const logService = new TerminalLogService();
 		logService.setLevel(LogLevel.Error);
 
-		logService.section("default.rogen.json", "root dirs: src");
+		logService.section("default.rogen.json", "source paths: src");
 
 		expect(drawn().split("\n").filter(Boolean)).toEqual([
 			"│",
 			"◇  default.rogen.json",
-			"│  root dirs: src",
+			"│  source paths: src",
 		]);
 	});
 

@@ -2,17 +2,16 @@ $ rogen init -y
 exit 0
 stdout: (not shown)
 
-$ rogen init -y lobby
-exit 0
+$ rogen init -y
+exit 1
 stdout: (not shown)
+stderr:
+  rogen.json - error: this config already exists. Delete it to write a new one. (init.configExists)
 
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
-  lobby.project.json
-  lobby.rogen.json
-  places/lobby/template.project.json
+  rogen.json
 
 AGENTS.md:
 # Team rules
@@ -22,9 +21,9 @@ Run the linter before committing.
 <!-- rogen -->
 ## Rogen
 
-Rogen writes the Rojo project file from the folders and names under each `*.rogen.json`'s `rootDirs`. Folders decide where code runs, so the disk path is not the instance path.
+Rogen writes the Rojo project file from the folders and names under each `rogen.json`'s `sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
 
-- Never edit a `*.project.json` that Rogen writes: change the config or its `template`.
+- Never edit a `default.project.json` that Rogen writes: change `rogen.json`, whose `tree` holds what names can't express.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
@@ -33,10 +32,13 @@ Rogen writes the Rojo project file from the folders and names under each `*.roge
 - Before placing files or writing requires, read `rogen help routing`. `rogen help` lists every command and topic; read a command's help before guessing a flag.
 <!-- /rogen -->
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {
@@ -45,14 +47,4 @@ default.rogen.json:
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
 	}
-}
-
-lobby.rogen.json:
-{
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"extends": "./default.rogen.json",
-	"rootDirs": [
-		"places/lobby/src"
-	],
-	"template": "places/lobby/template.project.json"
 }

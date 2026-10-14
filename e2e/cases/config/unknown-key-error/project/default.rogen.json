@@ -1,6 +1,0 @@
-{
-	"rootDirs": ["src"],
-	"outDir": "dist",
-	"exlude": [],
-	"routes": {"*": "ReplicatedStorage"}
-}

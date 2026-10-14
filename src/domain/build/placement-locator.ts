@@ -1,5 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
+import { isMatch } from "../../base/glob.js";
 import { ancestors, contains, toPosix } from "../../base/path.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { InstanceReference } from "../roblox/roblox.js";
@@ -160,7 +161,7 @@ export class PlacementLocator {
 			];
 		if (below.length > 0) return below;
 
-		if (!roots.some((root) => contains(toPosix(root.rootDir), target)))
+		if (!roots.some((root) => contains(toPosix(root.sourcePath), target)))
 			return [this.outsideRoots(target)];
 
 		for (const dir of ancestors(target)) {
@@ -191,7 +192,7 @@ export class PlacementLocator {
 		const folder = !exists && folders.has(target);
 		return [
 			{
-				status: exists ? "ignored" : "missing",
+				status: exists ? "notInstance" : "missing",
 				source: target,
 				exists: this.exists(target),
 				...(folder && { folder: true as const }),
@@ -199,27 +200,20 @@ export class PlacementLocator {
 		];
 	}
 
-	/** A path in no root dir: Rojo reads it when the template mounts it, and nobody does when `exclude` dropped the mount. */
+	/** A path in no source path: Rojo reads it when the tree mounts it, except a file inside the mount that `globIgnorePaths` ignores, and nobody does otherwise. */
 	private outsideRoots(target: string): FileLocation {
-		const { mounts } = this.placement.template;
+		const { mounts } = this.placement.tree;
 		const exists = this.exists(target);
 		const mount = mounts.covering(target);
-		if (mount)
-			return {
-				status: "mounted",
-				source: target,
-				exists,
-				node: mount.node,
-			};
-		const dropped = mounts.excludedCovering(target);
-		if (dropped)
-			return {
-				status: "excluded",
-				source: target,
-				exists,
-				pattern: dropped.pattern,
-			};
-		return { status: "outside", source: target, exists };
+		if (!mount) return { status: "outside", source: target, exists };
+		const pattern = mounts.at(target)
+			? undefined
+			: this.placement.config.ignored.find((glob) =>
+					isMatch(toPosix(target), glob)
+				);
+		return pattern === undefined
+			? { status: "mounted", source: target, exists, node: mount.node }
+			: { status: "ignored", source: target, exists, pattern };
 	}
 
 	private bySource(a: FileLocation, b: FileLocation): number {

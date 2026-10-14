@@ -1,0 +1,4 @@
+$ rogen init lobby
+exit 2
+stderr:
+  error: init takes no arguments.

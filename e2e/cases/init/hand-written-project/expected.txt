@@ -9,11 +9,11 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
-  template.project.json
+  rogen.json
 
 default.project.json:
 {
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "my-game",
   "tree": {
     "$className": "DataModel",
@@ -33,10 +33,19 @@ default.project.json:
   }
 }
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$properties": {
+				"Gravity": 50
+			}
+		}
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {
@@ -44,8 +53,7 @@ default.rogen.json:
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
-	},
-	"template": "template.project.json"
+	}
 }
 
 $ rojo sourcemap default.project.json
@@ -53,8 +61,4 @@ my-game: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
       Damage: Script  <- src/Combat/Damage.server.luau
-  Workspace: Workspace
-
-$ rojo sourcemap template.project.json
-my-game: DataModel
   Workspace: Workspace

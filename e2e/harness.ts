@@ -163,7 +163,7 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			);
 		}
 		for (const file of written.filter(
-			(f) => f.endsWith(".rogen.json") || spec.show?.includes(f)
+			(f) => /(^|\/)rogen\.jsonc?$/.test(f) || spec.show?.includes(f)
 		)) {
 			sections.push(
 				`${file}:\n${fs.readFileSync(path.join(dir, file), "utf8").trimEnd()}`

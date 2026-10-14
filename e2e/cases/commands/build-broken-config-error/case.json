@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["build", "--json"]], "rojo": false }
+{ "steps": [["build", "broken", "ok"], ["build", "broken", "ok", "--json"]], "rojo": false }

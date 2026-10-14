@@ -3,7 +3,7 @@ import { LeftOut } from "./build.js";
 import { RoutedFile } from "./router.js";
 import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 
-/** Files from one root dir that claim one instance path; the last one wins and the others are replaced. */
+/** Files from one source path that claim one instance path; the last one wins and the others are replaced. */
 export interface InstanceClash {
 	readonly instance: string;
 	readonly winner: RoutedFile;
@@ -11,7 +11,7 @@ export interface InstanceClash {
 }
 
 export interface InstanceResolution {
-	/** Every instance path appears once per build; the last root dir wins across roots. */
+	/** Every instance path appears once per build; the last source path wins across roots. */
 	readonly nodes: readonly RoutedFile[];
 	/** The files another file replaced. */
 	readonly leftOut: [string, LeftOut][];
@@ -25,7 +25,7 @@ export class InstanceResolver {
 		const winners = new InstanceMap<RoutedFile>();
 		for (const root of groupBy(
 			routed,
-			(file) => file.entry.rootDir
+			(file) => file.entry.sourcePath
 		).values()) {
 			for (const [instance, claimants] of groupBy(root, (file) =>
 				instanceKey(file.instancePath)

@@ -62,7 +62,7 @@ export class MarkerClashes {
 			];
 			if (new Set(claims.map(({ key }) => key)).size > 1)
 				clashes.push({
-					dir: joinPosix(root.rootDir, dir),
+					dir: joinPosix(root.sourcePath, dir),
 					names: claims.map(({ name }) => name).sort(compareStrings),
 				});
 		}

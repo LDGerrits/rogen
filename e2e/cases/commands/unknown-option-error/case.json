@@ -3,7 +3,7 @@
 		["build", "--nope"],
 		["build", "--root-dir", "src"],
 		["watch", "-w"],
-		["build", "-o"],
+		["build", "--out-file", "x.project.json"],
 		["build", "--json=yes"],
 		["build", "--jsno"],
 		["init", "--nope", "x"],

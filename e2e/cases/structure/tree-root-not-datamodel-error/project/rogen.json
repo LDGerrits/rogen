@@ -1,0 +1,11 @@
+{
+	"tree": {
+		"$className": "Folder"
+	},
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"*": "ReplicatedStorage/shared"
+	}
+}

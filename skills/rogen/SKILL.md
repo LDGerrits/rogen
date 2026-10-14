@@ -1,14 +1,14 @@
 ---
 name: rogen
-description: Rogen places Roblox code by folder and file name, and writes the Rojo project file from them. Use when a *.rogen.json is present and you add, move or rename source files, write a require or import, or edit a *.rogen.json.
+description: Rogen places Roblox code by folder and file name, and writes the Rojo project file from them. Use when a rogen.json is present and you add, move or rename source files, write a require or import, or edit a rogen.json.
 ---
 
 <!-- rogen -->
 ## Rogen
 
-Rogen writes the Rojo project file from the folders and names under each `*.rogen.json`'s `rootDirs`. Folders decide where code runs, so the disk path is not the instance path.
+Rogen writes the Rojo project file from the folders and names under each `rogen.json`'s `sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
 
-- Never edit a `*.project.json` that Rogen writes: change the config or its `template`.
+- Never edit a `default.project.json` that Rogen writes: change `rogen.json`, whose `tree` holds what names can't express.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.

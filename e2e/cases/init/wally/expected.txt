@@ -9,13 +9,27 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
-  default.rogen.json
-  template.project.json
+  rogen.json
 
-default.rogen.json:
+rogen.json:
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"rootDirs": [
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			}
+		},
+		"ServerScriptService": {
+			"ServerPackages": {
+				"$path": {
+					"optional": "ServerPackages"
+				}
+			}
+		}
+	},
+	"sourcePaths": [
 		"src"
 	],
 	"routes": {
@@ -23,8 +37,7 @@ default.rogen.json:
 		"Client": "StarterPlayer/StarterPlayerScripts",
 		"Shared": "ReplicatedStorage/Shared",
 		"*": "ReplicatedStorage/Shared"
-	},
-	"template": "template.project.json"
+	}
 }
 
 $ rojo sourcemap default.project.json
@@ -34,11 +47,4 @@ project: DataModel
       Roact: ModuleScript  <- Packages/Roact.luau
     Shared: Folder
       A: ModuleScript  <- src/A.luau
-  ServerScriptService: ServerScriptService
-
-$ rojo sourcemap template.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Packages: Folder
-      Roact: ModuleScript  <- Packages/Roact.luau
   ServerScriptService: ServerScriptService

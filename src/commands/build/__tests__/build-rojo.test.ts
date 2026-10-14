@@ -70,9 +70,9 @@ describeWithRojo("build command against Rojo", () => {
 		write("src/shared/Util.luau", "return 1");
 		write("src/client/Hud.client.luau", "print('hud')");
 		write(
-			"default.rogen.json",
+			"rogen.json",
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: {
 					server: "ServerScriptService",
 					client: "StarterPlayer/StarterPlayerScripts",
@@ -99,25 +99,23 @@ describeWithRojo("build command against Rojo", () => {
 	it("should write two project files that Rojo accepts from one build", async () => {
 		write("src/Main.server.luau", "print('main')");
 		const routes = { server: "ServerScriptService", "*": "Workspace" };
-		write(
-			"default.rogen.json",
-			JSON.stringify({ rootDirs: ["src"], routes })
-		);
-		write(
-			"source.rogen.json",
-			JSON.stringify({
-				rootDirs: ["src"],
-				routes,
-				outFile: "source.project.json",
-			})
-		);
+		for (const folder of ["lobby", "arena"])
+			write(
+				`${folder}/rogen.json`,
+				JSON.stringify({ sourcePaths: ["../src"], routes })
+			);
 
-		const result = await build(["default", "source"]);
+		const result = await build(["lobby", "arena"]);
 
 		expect(result.isOk()).toBe(true);
-		expect(classes(sourcemap(dir, "default.project.json"))).toEqual(
-			classes(sourcemap(dir, "source.project.json"))
-		);
+		for (const folder of ["lobby", "arena"])
+			expect(
+				classes(sourcemap(dir, `${folder}/default.project.json`))
+			).toEqual(
+				expect.arrayContaining([
+					`${folder}/ServerScriptService/Main: Script`,
+				])
+			);
 	});
 
 	it("should write copied folder meta that Rojo accepts", async () => {
@@ -134,11 +132,11 @@ describeWithRojo("build command against Rojo", () => {
 			})
 		);
 		write(
-			"default.rogen.json",
+			"rogen.json",
 			JSON.stringify({
-				rootDirs: ["src"],
+				sourcePaths: ["src"],
 				routes: { server: "ServerScriptService", "*": "Workspace" },
-				exclude: ["src/Combat/Other.luau"],
+				globIgnorePaths: ["src/Combat/Other.luau"],
 			})
 		);
 
