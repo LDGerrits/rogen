@@ -234,8 +234,7 @@ export class ServeJsonLog implements ServeReporter {
 		}
 		this.line({
 			output: {
-				config: target.config.label,
-				server: plan.executable.server.id,
+				...this.serverFields(target),
 				severity: message.severity,
 				message: message.text,
 			},
@@ -245,8 +244,7 @@ export class ServeJsonLog implements ServeReporter {
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
 		this.line({
 			[opened ? "connected" : "disconnected"]: {
-				config: target.config.label,
-				server: serverFor(target, this.plan).id,
+				...this.serverFields(target),
 				project: target.project,
 				port: target.address.port,
 				clients,
@@ -265,8 +263,6 @@ export class ServeJsonLog implements ServeReporter {
 
 	changed(change: ServeChangeEvent): void {
 		const { target } = change;
-		const { label } = target.config;
-		const server = serverFor(target, this.plan).id;
 		switch (change.kind) {
 			case "servedElsewhere":
 				this.running(change.target);
@@ -274,8 +270,7 @@ export class ServeJsonLog implements ServeReporter {
 			case "refused":
 				this.line({
 					refused: {
-						config: label,
-						server,
+						...this.serverFields(target),
 						diagnostics: [diagnosticToJson(change.diagnostic)],
 					},
 				});
@@ -313,11 +308,20 @@ export class ServeJsonLog implements ServeReporter {
 		extra: Record<string, unknown> = {}
 	): Record<string, unknown> {
 		return {
-			config: target.config.label,
-			server: serverFor(target, this.plan).id,
+			...this.serverFields(target),
 			reason,
 			...extra,
 			...(target.adopted && { adopted: true }),
+		};
+	}
+
+	private serverFields(target: ServeTarget): {
+		config: string;
+		server: string;
+	} {
+		return {
+			config: target.config.label,
+			server: serverFor(target, this.plan).id,
 		};
 	}
 
