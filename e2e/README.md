@@ -101,3 +101,10 @@ Read that list first, and open the diff of a transcript only for an edit you did
 `watch.test.ts` and `serve-rojo.test.ts` cover the long-running `watch` and
 `serve` commands, which a transcript can't describe. The serve tests start the
 pinned Rojo on a random port.
+
+## On Windows
+
+The suite runs on Linux. To check a transcript on Windows, run the harness's `runCase` over every case with Windows' Node and compare with `expected.txt` after turning `\` into `/` and CRLF into LF. Four cases differ there, and are meant to:
+
+- `commands/build-output-failed-error`, `commands/build-output-json` and `commands/sourcemap-output` quote Rojo's own message for a missing folder, which names the operating system's error: `No such file or directory (os error 2)` on Linux, `The system cannot find the path specified. (os error 3)` on Windows.
+- `commands/color-always` draws the frame with the ASCII characters (`T`, `|`) that the terminal layout falls back to where it does not detect Unicode support.
