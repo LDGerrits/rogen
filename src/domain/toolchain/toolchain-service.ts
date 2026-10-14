@@ -1,6 +1,5 @@
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { SyncTool } from "../build/build.js";
-import { DetectedWorkspace } from "./toolchain.js";
+import { DetectedWorkspace, SyncTool } from "./toolchain.js";
 import { ToolManifest } from "./tool-manifest.js";
 
 /** The languages and tools Rogen knows and what a workspace uses of them. */

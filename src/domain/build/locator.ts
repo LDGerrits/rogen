@@ -14,7 +14,7 @@ import { DeclaredKeys } from "../config/declared-keys.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { InstanceReference } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
-import { SyncTool } from "./build.js";
+import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	Asked,
 	ConfigLocations,

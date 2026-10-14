@@ -1,7 +1,7 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
 import { RojoNode } from "../../rojo/rojo-project.js";
-import { SyncTool } from "../build.js";
+import { SyncTool } from "../../toolchain/toolchain.js";
 import {
 	FOLDER,
 	abs,

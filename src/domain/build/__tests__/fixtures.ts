@@ -18,7 +18,7 @@ import {
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { expectRojoProject } from "../../rojo/__tests__/rojo-schema.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
-import { SyncTool } from "../build.js";
+import { SyncTool } from "../../toolchain/toolchain.js";
 import {
 	BuildService,
 	ConfigLocations,

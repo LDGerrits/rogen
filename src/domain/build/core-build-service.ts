@@ -14,13 +14,13 @@ import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
+import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	BuildRun,
 	BuildSet,
 	FailedBuild,
 	LoadedBuild,
 	OutputFile,
-	SyncTool,
 	UnwrittenBuild,
 	WrittenBuild,
 } from "./build.js";

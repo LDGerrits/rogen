@@ -9,8 +9,8 @@ import {
 	LanguageCopy,
 	LanguageDetector,
 	MountCandidate,
+	SyncTool,
 } from "./toolchain.js";
-import { SyncTool } from "../build/build.js";
 
 const TSCONFIG = "tsconfig.json";
 const DEFAULT_OUT_DIR = "out";
