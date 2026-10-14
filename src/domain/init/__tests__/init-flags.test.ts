@@ -205,6 +205,46 @@ describe("init choices given as flags", () => {
 			expect(none.asked.unwrap()?.mounts).toEqual([]);
 		});
 
+		it("should take a folder written with a trailing slash", async () => {
+			const { asked } = await run(withPackages, {
+				packages: ["./Packages/"],
+			});
+
+			expect(asked.unwrap()?.mounts.map(({ path }) => path)).toEqual([
+				"Packages",
+			]);
+		});
+
+		it("should refuse none beside a folder", async () => {
+			const error = await refused(
+				run(withPackages, { packages: ["none", "Packages"] })
+			);
+
+			expect(error.reason).toBe(
+				"'none' can't be combined with other values of --package."
+			);
+		});
+
+		it("should say there is nothing to take when nothing is offered", async () => {
+			const error = await refused(
+				run(
+					{
+						language: "roblox-ts",
+						robloxTs: {
+							outDir: "build",
+							rbxtsScopes: [],
+							includeInstalled: true,
+						},
+					},
+					{ packages: ["Packages"] }
+				)
+			);
+
+			expect(error.hint).toBe(
+				"There is nothing here for --package to take."
+			);
+		});
+
 		it("should refuse a folder that isn't offered", async () => {
 			const error = await refused(
 				run(withPackages, { packages: ["Pakcages"] })
@@ -228,6 +268,14 @@ describe("init choices given as flags", () => {
 
 			expect(asked.unwrap()?.routes).toEqual([]);
 			expect(decidedFlags(questions)).not.toContain("--unmatched");
+		});
+
+		it("should refuse --unmatched when there is no route for it to apply to", async () => {
+			const error = await refused(
+				run(luau, { routes: ["none"], unmatched: "leave" })
+			);
+
+			expect(error.reason).toBe("--unmatched has no route to apply to.");
 		});
 
 		it("should refuse a route that isn't offered, closest first", async () => {
@@ -306,7 +354,7 @@ describe("the yes or no questions", () => {
 		expect(asked.decided).toEqual([
 			{
 				question: "placeListing",
-				value: "places/*",
+				value: "glob",
 				flag: "--place-listing",
 			},
 		]);

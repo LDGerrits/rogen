@@ -213,6 +213,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
+				"info: Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
 				"success: Created rogen.json.",
 				"success: Created AGENTS.md.",
 				"success: Created src/.",
@@ -388,6 +389,7 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
+				"info: Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
 				"success: Would create rogen.json.",
 				"success: Would create AGENTS.md.",
 				"success: Would create src/.",
@@ -566,6 +568,57 @@ describe("init command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
 			expect(await exists("AGENTS.md")).toBe(false);
+		});
+
+		it("should not add what a flag refuses to a folder that has a config", async () => {
+			await write("rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-rules": false }
+			);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "init.configExists" },
+			]);
+			expect(await exists("AGENTS.md")).toBe(false);
+		});
+
+		it("should do nothing, and succeed, when what a flag asks for is already there", async () => {
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
+			await write(
+				"rokit.toml",
+				'[tools]\nrojo = "rojo-rbx/rojo@7.5.0"\n'
+			);
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ json: true, "agent-rules": true, "rojo-pin": true }
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(JSON.parse(logService.entries[0].text)).toMatchObject({
+				changed: false,
+				files: [],
+			});
+		});
+
+		it("should refuse the choices of a new config beside one that exists", async () => {
+			await write("rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ language: "luau", route: ["server"] }
+			);
+
+			expect(errorMessage(result)).toContain(
+				"rogen.json already exists, so --language and --route would change nothing."
+			);
 		});
 
 		it("should start a project below another one only with --nested", async () => {

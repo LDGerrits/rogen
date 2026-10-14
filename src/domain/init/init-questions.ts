@@ -25,8 +25,20 @@ function oneOf(
 	if (known.includes(value)) return value;
 	throw new UsageError(
 		`'${value}' is not ${what}.`,
-		`The values of ${flag} are ${joinedClosestFirst(value, known)}.`
+		known.length === 0
+			? `There is nothing here for ${flag} to take.`
+			: `The values of ${flag} are ${joinedClosestFirst(value, known)}.`
 	);
+}
+
+/** The values of a list flag that takes `none`, which stands for no value at all. */
+function listOf(given: readonly string[], flag: string): readonly string[] {
+	if (!given.includes(NONE)) return given;
+	if (given.length > 1)
+		throw new UsageError(
+			`'${NONE}' can't be combined with other values of ${flag}.`
+		);
+	return [];
 }
 
 export interface AdditionOption<T> {
@@ -86,8 +98,10 @@ export class InitQuestions {
 	): Promise<string | undefined> {
 		const given = this.choices.placeListing;
 		if (given) return given === "glob" ? glob : folder;
-		if (!this.interactive)
-			return this.decide("placeListing", glob, "--place-listing");
+		if (!this.interactive) {
+			this.decide("placeListing", "glob", "--place-listing");
+			return glob;
+		}
 		const answer = await this.promptService.select<"glob" | "folder">({
 			message: "How do you want to list this place?",
 			choices: [
@@ -368,11 +382,14 @@ export class InitQuestions {
 		const given = this.choices.packages;
 		if (given !== undefined) {
 			const paths = offered.map(({ path }) => path);
-			const chosen = given.includes(NONE)
-				? []
-				: given.map((path) =>
-						oneOf(path, paths, "a folder to mount", "--package")
-					);
+			const chosen = listOf(given, "--package").map((path) =>
+				oneOf(
+					normalizeDir(path),
+					paths,
+					"a folder to mount",
+					"--package"
+				)
+			);
 			return this.selectMounts(directory, language, chosen);
 		}
 		if (offered.length === 0 || nothingToMount || !this.interactive) {
@@ -410,12 +427,9 @@ export class InitQuestions {
 		const { extension } = language;
 		const routes: readonly RouteId[] | undefined =
 			given !== undefined
-				? given.includes(NONE)
-					? []
-					: given.map(
-							(id) =>
-								oneOf(id, ids, "a route", "--route") as RouteId
-						)
+				? listOf(given, "--route").map(
+						(id) => oneOf(id, ids, "a route", "--route") as RouteId
+					)
 				: !this.interactive
 					? this.decide(
 							"routes",
@@ -435,9 +449,15 @@ export class InitQuestions {
 							initialValues: starting.tickedByDefault,
 						});
 		if (routes === undefined) return undefined;
-		if (routes.length === 0) return { routes, fallback: true };
-
 		const unmatched = this.choices.unmatched;
+		if (routes.length === 0) {
+			if (unmatched !== undefined)
+				throw new UsageError(
+					"--unmatched has no route to apply to.",
+					"Give a --route, or leave --unmatched out."
+				);
+			return { routes, fallback: true };
+		}
 		if (unmatched !== undefined)
 			return { routes, fallback: unmatched === "shared" };
 		if (!this.interactive) {

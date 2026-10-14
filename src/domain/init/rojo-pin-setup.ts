@@ -17,17 +17,19 @@ export class RojoPinSetup implements Setup<boolean> {
 		private readonly questions: InitQuestions
 	) {}
 
+	/** Whether a toolchain file in `manifests` already pins Rojo. */
+	static isPinned(manifests: readonly ToolManifest[]): boolean {
+		return manifests.some((manifest) =>
+			manifest.nameOf(SyncServer.ROJO.repository)
+		);
+	}
+
 	/** The Rokit file in `directory` to pin Rojo in, unless a toolchain file there or above already pins it, or the file uses the name `rojo` for another tool. */
 	static manifestFor(
 		directory: string,
 		manifests: readonly ToolManifest[]
 	): ToolManifest | undefined {
-		if (
-			manifests.some((manifest) =>
-				manifest.nameOf(SyncServer.ROJO.repository)
-			)
-		)
-			return undefined;
+		if (RojoPinSetup.isPinned(manifests)) return undefined;
 		return manifests.find(
 			(manifest) =>
 				manifest.managerId === "rokit" &&

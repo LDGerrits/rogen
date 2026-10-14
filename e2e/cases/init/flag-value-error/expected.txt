@@ -38,6 +38,6 @@ stdout:
     "error": {
       "kind": "usage",
       "message": "There is no hook to add.",
-      "hint": "No coding agent folder here (.claude, .codex, .cursor, ...) is missing it."
+      "hint": "No coding agent folder here (.claude, .codex, .cursor, ...) was found."
     }
   }

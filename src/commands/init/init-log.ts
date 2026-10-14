@@ -62,6 +62,17 @@ export const initDocumentShape = S.object({
 	),
 });
 
+/** A choice as the flags that make it, so the line can be copied: `--no-darklua`, `--route server --route client`. */
+function flagsOf({ question, value, flag }: InitDecision): string[] {
+	if (question === "add") return [flag];
+	if (typeof value === "boolean")
+		return [value ? flag : flag.replace("--", "--no-")];
+	if (typeof value === "string") return [`${flag} ${value}`];
+	return value.length === 0
+		? [`${flag} none`]
+		: value.map((item) => `${flag} ${item}`);
+}
+
 const indent = (line: string) => `  ${line}`;
 
 const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
@@ -113,6 +124,10 @@ export class InitLog implements InitReporter {
 	begin(plan: InitPlan): void {
 		if (plan.asked) this.logService.info("");
 		for (const note of plan.notes) this.logService.info(note);
+		if (plan.decided.length > 0)
+			this.logService.info(
+				`Took the defaults: ${plan.decided.flatMap(flagsOf).join(", ")}.`
+			);
 	}
 
 	written(item: InitWritten): void {

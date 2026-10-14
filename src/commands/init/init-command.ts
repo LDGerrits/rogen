@@ -192,10 +192,11 @@ registerCommand(
 				);
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
+			const dryRun = Boolean(line.options["dry-run"]);
 			const log = new InitLog(
 				logService,
 				accessor.get(EnvironmentService).cwd,
-				Boolean(line.options["dry-run"])
+				dryRun
 			);
 			const ask = !line.options["non-interactive"] && !line.options.json;
 
@@ -209,7 +210,6 @@ registerCommand(
 			const plan = planned.value;
 			if (!plan) return err(new CancelledError("init cancelled."));
 
-			const dryRun = Boolean(line.options["dry-run"]);
 			const reporter: InitReporter = line.options.json
 				? new InitJsonLog(logService, plan.directory, dryRun)
 				: log;

@@ -209,7 +209,7 @@ Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot
 
 #### Choices as flags
 
-Every question has a flag, so a program that can't answer prompts can still choose. A flag given skips its question in a terminal too. Without one, a run that can't ask takes the default, and `--json` lists each default it took under `decided`, with the flag that changes it.
+Every question has a flag, so a program that can't answer prompts can still choose. A flag given skips its question in a terminal too. Without one, a run that can't ask takes the default, says so (`Took the defaults: --language luau, --no-darklua, …`), and `--json` lists each default it took under `decided`, with the flag that changes it.
 
 | Flag | Answers |
 |---|---|
@@ -227,7 +227,7 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--nested` | Start a project below another `rogen.json`. |
 | `--place-listing glob\|folder` | With a place folder: list its parent as a glob (the default) or the folder. |
 
-Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values; `--agent-hook` without an agent that lacks the hook, or `--rojo-pin` with nothing to pin, is one too.
+Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values, as is `--agent-hook` with no coding agent here, `--rojo-pin` with no `rokit.toml`, and a flag that shapes a new config (`--language`, `--route`, …) beside one that exists. An addition that is already there is not an error: the run adds nothing and succeeds, so a script can repeat it.
 
 `--dry-run` (`-n`) plans without writing or building: it prints the files it would write, and with `--json` the document of a real run with `dryRun: true`, `changed: false`, no `built`, and `wouldWrite` for the `outcome` of each file. Run `rogen init --dry-run --json` to see what `init` would do and decide, then pass flags for what to change.
 

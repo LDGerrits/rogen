@@ -3,7 +3,6 @@ import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { AgentSetup } from "./agent-setup.js";
 import { AdditionOption, InitQuestions } from "./init-questions.js";
-import { InitChoices } from "./init-service.js";
 import { RojoPinSetup } from "./rojo-pin-setup.js";
 import { AnsweredSetup, Setup } from "./setup.js";
 
@@ -15,13 +14,15 @@ export class InitAdditions {
 		private readonly rojoPin?: RojoPinSetup
 	) {}
 
-	/** What the flags ask to add, or `undefined` when they ask for nothing. */
-	requested(choices: InitChoices): Setup<unknown>[] | undefined {
+	/** What the flags ask to add, or `undefined` when they ask for nothing. What is already there is not added again. */
+	requested(): Setup<unknown>[] | undefined {
 		const { questions, agentFile, hooks, rojoPin } = this;
+		const { choices } = questions;
 		const rules = choices.agentRules === true && !agentFile.hasBlock;
-		const hook = choices.agentHook === true;
+		const hook = choices.agentHook === true && hooks.offered;
 		const pin = choices.rojoPin === true;
-		if (choices.agentRules !== true && !hook && !pin) return undefined;
+		if (choices.agentRules !== true && choices.agentHook !== true && !pin)
+			return undefined;
 		return [
 			...(rules || hook
 				? [
@@ -38,8 +39,9 @@ export class InitAdditions {
 	/** The hook and the pin are not offered to a run that can't ask, since they edit the repo's tooling. */
 	options(): AdditionOption<Setup<unknown>>[] {
 		const { questions, agentFile, hooks, rojoPin } = this;
+		const { choices } = questions;
 		const agents = new AgentSetup(agentFile, hooks, questions);
-		return [
+		const options: AdditionOption<Setup<unknown>>[] = [
 			...(agentFile.hasBlock
 				? []
 				: [
@@ -80,5 +82,11 @@ export class InitAdditions {
 					]
 				: []),
 		];
+		const refused = new Set([
+			...(choices.agentRules === false ? ["agent"] : []),
+			...(choices.agentHook === false ? ["hook"] : []),
+			...(choices.rojoPin === false ? ["rojo"] : []),
+		]);
+		return options.filter(({ id }) => !refused.has(id));
 	}
 }

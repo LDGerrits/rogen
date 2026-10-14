@@ -1,4 +1,5 @@
 import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -14,6 +15,7 @@ import { AgentReader } from "./agent-reader.js";
 import { InitWriter } from "./init-writer.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
+	InitChoices,
 	InitOptions,
 	InitPlan,
 	InitService,
@@ -24,6 +26,18 @@ import { Setup } from "./setup.js";
 import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
 import { RojoPinSetup } from "./rojo-pin-setup.js";
+
+/** The choices that shape a new config, which a folder that has one doesn't take. */
+const PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
+	["language", "--language"],
+	["darklua", "--darklua"],
+	["sourcePaths", "--source-path"],
+	["syncPath", "--sync-path"],
+	["projectFile", "--project-file"],
+	["packages", "--package"],
+	["routes", "--route"],
+	["unmatched", "--unmatched"],
+];
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -139,22 +153,36 @@ export class CoreInitService implements InitService {
 		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
-		const manifest = RojoPinSetup.manifestFor(
-			directory.path,
-			await this.toolchainService.readManifests(directory.path)
+		const manifests = await this.toolchainService.readManifests(
+			directory.path
 		);
+		const manifest = RojoPinSetup.manifestFor(directory.path, manifests);
 		const pin = manifest && new RojoPinSetup(manifest, questions);
 		const { choices } = questions;
-		if (choices.agentHook === true && !hooks.value.offered)
+		if (choices.agentHook === true && !hooks.value.inUse)
 			throw new UsageError(
 				"There is no hook to add.",
-				"No coding agent folder here (.claude, .codex, .cursor, ...) is missing it."
+				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
 			);
-		if (choices.rojoPin === true && !pin)
+		if (
+			choices.rojoPin === true &&
+			!pin &&
+			!RojoPinSetup.isPinned(manifests)
+		)
 			throw new UsageError(
 				"There is no Rojo pin to add.",
-				"Rojo is already pinned, or there is no rokit.toml here to pin it in."
+				"There is no rokit.toml here to pin Rojo in."
 			);
+		if (directory.hasConfigs) {
+			const ignored = PROJECT_FLAGS.filter(
+				([key]) => choices[key] !== undefined
+			).map(([, flag]) => flag);
+			if (ignored.length > 0)
+				throw new UsageError(
+					`${directory.configFiles[0]} already exists, so ${joinedWithAnd(ignored)} would change nothing.`,
+					"Delete it to write a new one, or add to it with --agent-rules, --agent-hook or --rojo-pin."
+				);
+		}
 		if (!directory.hasConfigs)
 			return this.planWith(
 				directory,
@@ -169,7 +197,7 @@ export class CoreInitService implements InitService {
 			hooks.value,
 			pin
 		);
-		const requested = additions.requested(choices);
+		const requested = additions.requested();
 		if (requested) return this.planWith(directory, questions, ...requested);
 		const options = additions.options();
 		if (options.length === 0)
