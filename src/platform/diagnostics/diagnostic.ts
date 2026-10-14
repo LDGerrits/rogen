@@ -193,8 +193,19 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
+type Ungrouped = Omit<Diagnostic, "related">;
+
+/** The entries a grouped diagnostic lists, and the diagnostic without them; a diagnostic that groups nothing has no entries and stands for itself. */
+function groupOf(diagnostic: Diagnostic): {
+	readonly rest: Ungrouped;
+	readonly entries: readonly DiagnosticRelated[];
+} {
+	const { related = [], ...rest } = diagnostic;
+	return { rest, entries: related };
+}
+
 function narrowedTo(
-	diagnostic: Omit<Diagnostic, "related">,
+	diagnostic: Ungrouped,
 	{ resource, message }: DiagnosticRelated
 ): Diagnostic {
 	return {
@@ -217,17 +228,12 @@ export function diagnosticsAbout(
 ): Diagnostic[] {
 	const target = toPosix(source);
 	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		const entries = (related ?? []).filter(
-			({ resource }) => toPosix(resource) === target
-		);
-		if (entries.length > 0)
-			return entries.map((entry) =>
-				narrowedTo(rest, { ...entry, resource: source })
-			);
-		return !related?.length && toPosix(diagnostic.resource) === target
-			? [rest]
-			: [];
+		const { rest, entries } = groupOf(diagnostic);
+		if (entries.length === 0)
+			return toPosix(rest.resource) === target ? [rest] : [];
+		return entries
+			.filter(({ resource }) => toPosix(resource) === target)
+			.map((entry) => narrowedTo(rest, { ...entry, resource: source }));
 	});
 }
 
@@ -244,12 +250,11 @@ export function diagnosticsReaching(
 		);
 	};
 	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		if (related?.length)
-			return related
-				.filter(({ resource }) => reaches(resource))
-				.map((entry) => narrowedTo(rest, entry));
-		return reaches(diagnostic.resource) ? [rest] : [];
+		const { rest, entries } = groupOf(diagnostic);
+		if (entries.length === 0) return reaches(rest.resource) ? [rest] : [];
+		return entries
+			.filter(({ resource }) => reaches(resource))
+			.map((entry) => narrowedTo(rest, entry));
 	});
 }
 
@@ -257,9 +262,9 @@ export function diagnosticsPerFile(
 	diagnostics: readonly Diagnostic[]
 ): Diagnostic[] {
 	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { related, ...rest } = diagnostic;
-		return related?.length
-			? related.map((entry) => narrowedTo(rest, entry))
+		const { rest, entries } = groupOf(diagnostic);
+		return entries.length > 0
+			? entries.map((entry) => narrowedTo(rest, entry))
 			: [rest];
 	});
 }
