@@ -189,6 +189,7 @@ describe("CoreBuildService.locate", () => {
 				route: "Server",
 				routeMatch: "folder",
 				named: true,
+				luau: "module",
 			},
 			{
 				status: "placed",
@@ -203,6 +204,7 @@ describe("CoreBuildService.locate", () => {
 				route: "Client",
 				routeMatch: "suffix",
 				named: true,
+				luau: "module",
 			},
 			expect.objectContaining({
 				source: abs("src/Net/Socket.client.luau"),
@@ -217,6 +219,7 @@ describe("CoreBuildService.locate", () => {
 				route: "Server",
 				routeMatch: "marker",
 				named: true,
+				luau: "module",
 			},
 			{
 				status: "placed",
@@ -226,6 +229,7 @@ describe("CoreBuildService.locate", () => {
 				route: "*",
 				routeMatch: "fallback",
 				named: true,
+				luau: "module",
 			},
 		]);
 	});
@@ -365,6 +369,7 @@ describe("CoreBuildService.locate", () => {
 				instancePath: ["ReplicatedStorage", "Shared", "Kept"],
 				route: "*",
 				routeMatch: "fallback",
+				luau: "module",
 			},
 			{
 				status: "displaced",
@@ -810,6 +815,7 @@ describe("CoreBuildService.locate", () => {
 					route: "*",
 					routeMatch: "fallback",
 					named: true,
+					luau: "module",
 				},
 			]);
 			expect(

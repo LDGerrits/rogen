@@ -14,6 +14,15 @@ import { WhereFileEntry } from "../where-document.js";
 import { WhereLog } from "../where-log.js";
 import { documentOf, lineOf, reportOf } from "./where-fixtures.js";
 
+const luauOf = (source: string): { luau?: "module" | "script" } =>
+	/\.luau?$/.test(source)
+		? {
+				luau: /\.(server|client|plugin)\.luau?$/.test(source)
+					? "script"
+					: "module",
+			}
+		: {};
+
 describe("WhereLog", () => {
 	describe("a location", () => {
 		it("should give the instance path, the route and how it matched", () => {
@@ -311,6 +320,7 @@ describe("WhereLog", () => {
 			instancePath,
 			route: "*",
 			routeMatch: "fallback",
+			...luauOf(source),
 		});
 		const entry = (location: FileLocation) =>
 			documentOf([["default", [location]]])
@@ -413,6 +423,7 @@ describe("WhereLog", () => {
 			instancePath,
 			route: "*",
 			routeMatch: "fallback",
+			...luauOf("/repo/src/Util.luau"),
 			...(named && { named: true as const }),
 		});
 		const requireLines = (...configs: [string, FileLocation][]) =>
@@ -427,6 +438,7 @@ describe("WhereLog", () => {
 					{
 						...placed(["ReplicatedStorage", "Boot"]),
 						source: "/repo/src/Boot.client.luau",
+						...luauOf("/repo/src/Boot.client.luau"),
 					},
 				])
 			).toEqual([
@@ -457,7 +469,11 @@ describe("WhereLog", () => {
 				expect(
 					requireLines([
 						"default",
-						{ ...placed(["ReplicatedStorage", "X"]), source },
+						{
+							...placed(["ReplicatedStorage", "X"]),
+							source,
+							...{ luau: luauOf(source).luau },
+						},
 					])
 				).toEqual([]);
 			}

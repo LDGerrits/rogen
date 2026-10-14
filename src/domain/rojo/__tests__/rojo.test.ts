@@ -175,8 +175,27 @@ describe("domain/rojo/rojo", () => {
 				);
 
 				expect(file.kind).toBe("script");
-				expect(RojoFile.scriptSuffixOf(file.stem)).toBe("client");
+				expect(file.scriptSuffix).toBe("client");
 				expect(file.instanceName).toBe("Menu");
+			});
+
+			it("should keep a name that ends like a script suffix when the rule cut it", () => {
+				const file = new RojoFile(
+					"Foo.server.module",
+					rules({
+						pattern: "*.module",
+						use: "moduleScript",
+						suffix: ".module",
+					})
+				);
+
+				expect(file.scriptSuffix).toBeUndefined();
+				expect(file.isLuauModule).toBe(true);
+				expect(file.instanceName).toBe("Foo.server");
+				expect(file.metaFiles).toEqual([
+					"Foo.server.meta.jsonc",
+					"Foo.server.meta.json",
+				]);
 			});
 
 			it("should name a data file by the cut name even when it ends like a model", () => {
@@ -581,6 +600,26 @@ describe("domain/rojo/rojo", () => {
 				"Moves",
 				"Linked",
 			]);
+		});
+
+		it("should count a file that only a sync rule of the project reads", () => {
+			const rules = SyncRules.following(
+				[{ pattern: "*.note", use: "text" }],
+				"/repo"
+			);
+			const listing = new Map([
+				["init.luau", FileType.File],
+				["Greeting.note", FileType.File],
+				["README.md", FileType.File],
+			]);
+
+			expect(
+				childrenBesideInit(
+					listing,
+					"init.luau",
+					(name) => new RojoFile(name, rules)
+				)
+			).toEqual(["Greeting.note"]);
 		});
 	});
 });

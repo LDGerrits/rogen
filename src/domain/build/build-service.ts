@@ -1,4 +1,3 @@
-import path from "path";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -16,7 +15,6 @@ import {
 	requireExpression,
 	whyNotRequirable,
 } from "../roblox/roblox.js";
-import { RojoFile } from "../rojo/rojo.js";
 import {
 	BuildRun,
 	BuildSet,
@@ -43,6 +41,8 @@ export interface PlacedLocation extends Located {
 	readonly hoisted?: boolean;
 	/** The path was named as a file, and not found in a folder or behind an instance. */
 	readonly named?: true;
+	/** For a Luau file: a module, or a script that runs on its own. */
+	readonly luau?: "module" | "script";
 }
 
 interface UnplacedLocation extends Located {
@@ -78,8 +78,7 @@ export function diagnosticsOf(
 export function requireExpressionOf(
 	location: FileLocation
 ): string | undefined {
-	return location.status === "placed" &&
-		new RojoFile(path.posix.basename(location.source)).isLuauModule
+	return location.status === "placed" && location.luau === "module"
 		? requireExpression(location.instancePath)
 		: undefined;
 }
@@ -87,9 +86,8 @@ export function requireExpressionOf(
 /** For a file the user named: the call that requires it, or why none can. */
 export function requireNoteOf(location: FileLocation): string | undefined {
 	if (location.status !== "placed" || !location.named) return undefined;
-	const file = new RojoFile(path.posix.basename(location.source));
-	if (!file.isLuau) return undefined;
-	if (!file.isLuauModule)
+	if (location.luau === undefined) return undefined;
+	if (location.luau === "script")
 		return "no require by this path: a script runs on its own and is not a module";
 	const expression = requireExpression(location.instancePath);
 	if (expression) return `require(${expression})`;

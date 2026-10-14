@@ -30,10 +30,13 @@ function unhoisted(name: string): {
 
 function leafName(
 	kind: RojoFileKind,
-	stripped: string
+	stripped: string,
+	nameCutByRule = false
 ): { readonly name: string; readonly hoisted: boolean } {
 	return unhoisted(
-		kind === "script" ? RojoFile.scriptNameOf(stripped) : stripped
+		kind === "script" && !nameCutByRule
+			? RojoFile.scriptNameOf(stripped)
+			: stripped
 	);
 }
 

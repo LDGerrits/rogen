@@ -165,7 +165,9 @@ export class TreeAssembler {
 	private besideInit(dir: string, init: string): string[] {
 		const { placement } = this;
 		const { layout } = placement;
-		return childrenBesideInit(placement.listing(dir), init)
+		return childrenBesideInit(placement.listing(dir), init, (name) =>
+			placement.config.fileAt(path.posix.join(dir, name))
+		)
 			.map((name) => path.posix.join(dir, name))
 			.filter((sibling) => !layout.isReadOnly(sibling))
 			.map((sibling) => literalGlob(layout.rojoPath(sibling).optional));

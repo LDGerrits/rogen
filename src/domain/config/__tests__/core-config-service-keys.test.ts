@@ -115,6 +115,24 @@ describe("CoreConfigService", () => {
 			]);
 		});
 
+		it("should refuse a field a sync rule does not have", async () => {
+			await write(
+				"/repo/rogen.json",
+				`{
+	"syncRules": [{ "pattern": "*.md", "use": "text", "origin": "/x" }]
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.unknownField",
+					message: expect.stringContaining("syncRules[0].origin"),
+				},
+			]);
+		});
+
 		it("should refuse sourcePaths without routes", async () => {
 			await write("/repo/rogen.json", { sourcePaths: ["src"] });
 

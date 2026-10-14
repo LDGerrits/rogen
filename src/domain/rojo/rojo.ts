@@ -94,15 +94,7 @@ export class RojoFile {
 		this.match = INIT_FILE.test(name)
 			? SyncRules.DEFAULT.match(name)
 			: rules.match(joinPosix(dir, name));
-		this.stem = this.ownMatch
-			? RojoFile.stemOfRule(this.ownMatch)
-			: stemOf(name);
-	}
-
-	/** The name a rule gives a file, with the script class its `use` gives it as a suffix, so it reads as the stem of a file Rojo's own rules take. */
-	private static stemOfRule({ rule, name }: SyncRuleMatch): string {
-		const suffix = SCRIPT_SUFFIX_OF_USE[rule.use];
-		return suffix ? `${name}.${suffix}` : name;
+		this.stem = this.ownMatch ? this.ownMatch.name : stemOf(name);
 	}
 
 	/** The match of a rule the project wrote. */
@@ -165,9 +157,9 @@ export class RojoFile {
 			/(\.(?:meta|model|project))?\.[^.]+$/i,
 			(suffix) => suffix.toLowerCase()
 		);
-		return fixed !== this.name &&
-			(new RojoFile(fixed, this.rules, this.dir).kind !== undefined ||
-				new RojoFile(fixed, this.rules, this.dir).isMeta)
+		if (fixed === this.name) return undefined;
+		const lowercased = new RojoFile(fixed, this.rules, this.dir);
+		return lowercased.kind !== undefined || lowercased.isMeta
 			? fixed
 			: undefined;
 	}
@@ -185,13 +177,28 @@ export class RojoFile {
 		return this.match?.rule.use === "project";
 	}
 
+	/** Whether the file is Luau source: a script by a rule of the project, else by its extension. */
 	get isLuau(): boolean {
+		if (this.ownMatch) return this.kind === "script";
 		const extension = path.extname(this.name);
 		return extension === ".luau" || extension === ".lua";
 	}
 
 	get isLuauModule(): boolean {
-		return this.isLuau && RojoFile.scriptSuffixOf(this.stem) === undefined;
+		return this.isLuau && this.scriptSuffix === undefined;
+	}
+
+	/** The script class Rojo reads from the file name, or from the rule of the project that takes it; none for a module and any other file. */
+	get scriptSuffix(): RojoScriptSuffix | undefined {
+		if (this.kind !== "script") return undefined;
+		return this.ownMatch
+			? SCRIPT_SUFFIX_OF_USE[this.ownMatch.rule.use]
+			: RojoFile.scriptSuffixOf(this.stem);
+	}
+
+	/** Whether a rule of the project cut the name, so no script suffix is left on it to strip. */
+	get nameCutByRule(): boolean {
+		return this.ownMatch !== undefined;
 	}
 
 	get isInit(): boolean {
@@ -199,8 +206,9 @@ export class RojoFile {
 	}
 
 	get instanceName(): string {
+		if (this.ownMatch) return this.stem;
 		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
-		if (this.kind !== "data" || this.ownMatch) return this.stem;
+		if (this.kind !== "data") return this.stem;
 		return this.isJson && this.stem.endsWith(".model")
 			? this.stem.slice(0, -".model".length)
 			: this.stem;
@@ -218,7 +226,7 @@ export class RojoFile {
 	}
 
 	get metaName(): string | undefined {
-		if (this.kind === "script") return RojoFile.scriptNameOf(this.stem);
+		if (this.kind === "script") return this.instanceName;
 		if (this.kind === "data" && this.dataName === this.stem) {
 			return this.stem;
 		}
@@ -373,11 +381,12 @@ export function scriptRunOf(
 /** What Rojo reads as children of an init script's directory: every directory and every other instance file. */
 export function childrenBesideInit(
 	listing: ReadonlyMap<string, FileType>,
-	init: string
+	init: string,
+	fileNamed: (name: string) => RojoFile = (name) => new RojoFile(name)
 ): string[] {
 	return [...listing].flatMap(([name, type]) =>
 		isDirectoryType(type) ||
-		(name !== init && new RojoFile(name).kind !== undefined)
+		(name !== init && fileNamed(name).kind !== undefined)
 			? [name]
 			: []
 	);

@@ -347,7 +347,7 @@ export class Router {
 	}
 
 	private claimLeaf(read: EntryReading, claims: Claims): LeafName {
-		const { kind, stem, match, scriptSuffix, isInit } = read;
+		const { kind, stem, match, scriptSuffix, isInit, nameCutByRule } = read;
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
 			const { key, start } = span;
@@ -362,7 +362,11 @@ export class Router {
 			stem,
 			match.spans.filter((span) => span.key === routeSpan?.key)
 		);
-		const { name, hoisted } = InstanceName.leafName(kind, stripped);
+		const { name, hoisted } = InstanceName.leafName(
+			kind,
+			stripped,
+			nameCutByRule
+		);
 		return {
 			name,
 			hoisted,

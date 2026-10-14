@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src"]], "show": ["default.project.json"] }
+{ "steps": [["build"], ["where", "src"], ["where", "src/Combat.module", "src/Menu@client.hud"]], "show": ["default.project.json"] }

@@ -11,6 +11,14 @@ stdout:
   src/Menu@client.hud -> StarterPlayer/StarterPlayerScripts/Menu · route client (suffix)
   src/Plain.luau -> ReplicatedStorage/shared/Plain · route * (fallback)
 
+$ rogen where src/Combat.module src/Menu@client.hud
+exit 0
+stdout:
+  src/Combat.module -> ReplicatedStorage/shared/Combat · route * (fallback)
+    require(game:GetService("ReplicatedStorage").shared.Combat)
+  src/Menu@client.hud -> StarterPlayer/StarterPlayerScripts/Menu · route client (suffix)
+    no require by this path: a script runs on its own and is not a module
+
 written:
   default.project.json
 

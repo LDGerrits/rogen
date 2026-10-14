@@ -159,7 +159,7 @@ export class BuildTree {
 	toFile(
 		tree: RojoNode,
 		globIgnorePaths: readonly string[],
-		syncRules: readonly SyncRule[] = []
+		syncRules: readonly SyncRule[]
 	): RojoProjectFile {
 		const file = this.config.project.toFile({
 			tree,

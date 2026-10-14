@@ -36,8 +36,10 @@ export interface EntryReading {
 	readonly fileName: string;
 	readonly kind: RojoFileKind;
 	readonly stem: string;
-	/** The script class Rojo reads from the stem; none for any other file. */
+	/** The script class Rojo reads from the file name or its sync rule; none for any other file. */
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
+	/** Whether a sync rule of the project cut the stem, so no script suffix is left on it. */
+	readonly nameCutByRule: boolean;
 	readonly match: SuffixMatch;
 	/** Whether it is an init script once its route keys are off its name. */
 	readonly isInit: boolean;
@@ -103,27 +105,28 @@ export class NameReadings {
 	}
 
 	private readEntry(root: ScannedRoot, entry: ScannedFile): void {
-		const { fileName, kind, stem } = this.suffixedNameOf(entry);
+		const { fileName, kind, stem, file } = this.suffixedNameOf(entry);
 		const folders = this.readFoldersAbove(
 			root.sourcePath,
 			entry.relativePath
 		);
 		const match = this.reader.suffixes(stem, kind === "script");
-		const scriptSuffix =
-			kind === "script" ? RojoFile.scriptSuffixOf(stem) : undefined;
+		const { scriptSuffix, nameCutByRule } = file;
 		this._entries.set(entry.source, {
 			folders,
 			fileName,
 			kind,
 			stem,
 			scriptSuffix,
+			nameCutByRule,
 			match,
 			isInit:
 				kind === "script" &&
 				this.initNames.has(
 					InstanceName.leafName(
 						kind,
-						InstanceName.withoutSpans(stem, match.spans)
+						InstanceName.withoutSpans(stem, match.spans),
+						nameCutByRule
 					).name
 				),
 		});
@@ -247,6 +250,7 @@ export class NameReadings {
 		readonly fileName: string;
 		readonly kind: RojoFileKind;
 		readonly stem: string;
+		readonly file: RojoFile;
 	} {
 		const { kind } = entry;
 		const fileName = path.posix.basename(entry.relativePath);
@@ -255,6 +259,7 @@ export class NameReadings {
 			fileName,
 			kind,
 			stem: kind === "data" ? file.dataName : file.stem,
+			file,
 		};
 	}
 }

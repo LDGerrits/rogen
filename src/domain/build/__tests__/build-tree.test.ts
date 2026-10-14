@@ -203,7 +203,7 @@ describe("BuildTree", () => {
 				project: { tree: {}, servePort: 34872, name: "game" },
 			});
 
-			expect(tree.toFile({ Lighting: {} }, ["a"])).toEqual({
+			expect(tree.toFile({ Lighting: {} }, ["a"], [])).toEqual({
 				name: "game",
 				servePort: 34872,
 				tree: { Lighting: {} },
@@ -211,12 +211,28 @@ describe("BuildTree", () => {
 			});
 		});
 
+		it("should write the sync rules it is given, not the config's own", () => {
+			const rule = { pattern: "out/*.md", use: "text" } as const;
+			const tree = treeOf({
+				project: {
+					tree: {},
+					syncRules: [{ pattern: "*.md", use: "text" }],
+				},
+			});
+
+			expect(tree.toFile({}, [], [rule])).toEqual({
+				tree: {},
+				syncRules: [rule],
+			});
+			expect(tree.toFile({}, [], [])).toEqual({ tree: {} });
+		});
+
 		it("should leave globIgnorePaths out when there are none", () => {
-			expect(treeOf().toFile({}, [])).toEqual({ tree: {} });
+			expect(treeOf().toFile({}, [], [])).toEqual({ tree: {} });
 		});
 
 		it("should leave the name out when the config sets none", () => {
-			expect(treeOf({ name: "game" }).toFile({}, [])).toEqual({
+			expect(treeOf({ name: "game" }).toFile({}, [], [])).toEqual({
 				tree: {},
 			});
 		});

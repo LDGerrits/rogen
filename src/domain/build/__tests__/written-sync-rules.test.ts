@@ -29,6 +29,17 @@ describe("WrittenSyncRules", () => {
 		expect(writtenBy([module])).toEqual([module]);
 	});
 
+	it("should write literal rules when a wildcard pattern would miss the moved files", () => {
+		const rule: SyncRule = {
+			pattern: "**/src/*.module",
+			use: "moduleScript",
+		};
+
+		expect(
+			writtenBy([rule], ["src/A.module"], { syncPath: abs("out") })
+		).toEqual([{ pattern: "out/A.module", use: "moduleScript" }]);
+	});
+
 	it("should write a pattern it need not move as it is", () => {
 		const rule: SyncRule = { pattern: "{src,lib}/*.md", use: "text" };
 
