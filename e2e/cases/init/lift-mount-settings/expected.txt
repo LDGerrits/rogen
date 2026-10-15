@@ -73,6 +73,15 @@ stdout:
       "Kept what Workspace/Map and Workspace/Level/Props set in the tree, on the node the route lands on.",
       "Kept ReplicatedStorage/Deep in the tree as a $path mount, since a route can't carry its settings."
     ],
+    "warnings": [
+      {
+        "file": "default.project.json",
+        "severity": "warning",
+        "code": "init.mountNarrowed",
+        "message": "Workspace/Map mounted all of src, so Rojo also put src/props inside it. Rogen routes that folder only to Workspace/Level/Props, so a require that reaches it through Workspace/Map breaks. Check with 'rogen where src/props'.",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-mountnarrowed"
+      }
+    ],
     "nextSteps": {
       "setup": [],
       "run": [

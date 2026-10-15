@@ -363,6 +363,22 @@ describe("TreePlan", () => {
 				);
 			});
 
+			it("should warn with a code when routes take folders out of a node that mounted the whole source path", async () => {
+				const files = await planDerived({
+					$className: "DataModel",
+					ReplicatedStorage: { Common: { $path: "src" } },
+					ServerScriptService: { Server: { $path: "src/server" } },
+				});
+
+				expect(files.warnings).toMatchObject([
+					{
+						code: "init.mountNarrowed",
+						message:
+							"ReplicatedStorage/Common mounted all of src, so Rojo also put src/server inside it. Rogen routes that folder only to ServerScriptService/Server, so a require that reaches it through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'.",
+					},
+				]);
+			});
+
 			it("should lift a root that is no DataModel as it is, with no routes or source paths", async () => {
 				const files = await planDerived({ $path: "src" });
 

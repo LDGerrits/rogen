@@ -806,6 +806,16 @@ default.project.json - error: this file does not exist, so it can't be lifted. (
 
 Fix the file's permissions or its contents, or move it out of the way. See [Configuration](/docs/v2/configuration#tree).
 
+### `init.mountNarrowed` [#init-mountnarrowed]
+
+Warning. `init` lifted a `default.project.json` with a node that mounts a whole source path, beside nodes that mount folders in it. Rojo puts those folders in both places: `src/server` is at `ServerScriptService/Server` and also inside the node that mounts `src`. Rogen turns the folders into routes and the node into the `*` route, so each folder is only where its route puts it.
+
+```
+default.project.json - warning: ReplicatedStorage/Common mounted all of src, so Rojo also put src/server inside it. Rogen routes that folder only to ServerScriptService/Server, so a require that reaches it through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'. (init.mountNarrowed)
+```
+
+Change a require that goes through the mounted node to the folder's own node. See [Coming From Rojo](/docs/v2/coming-from-rojo#where-rogen-reads-a-layout-differently).
+
 ### `init.settingsDropped` [#init-settingsdropped]
 
 Warning. `init` lifted a node of `default.project.json` that mounts a folder of your source, and that node carried settings (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` or child nodes) that `rogen.json` has no place for, since no route lands on it.

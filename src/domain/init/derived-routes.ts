@@ -17,11 +17,20 @@ export interface UnroutedMount {
 	readonly reason: string;
 }
 
+/** A node that mounted a whole source path, and the folders in it that routes take elsewhere. */
+export interface NarrowedMount {
+	/** The node, as an instance path written with `/`. */
+	readonly node: string;
+	readonly target: string;
+	readonly folders: readonly { folder: string; landing: string }[];
+}
+
 /** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out. */
 export class DerivedRoutes {
 	readonly routes = new Map<string, string>();
 	readonly fallback: string | undefined;
 	readonly unrouted: UnroutedMount[] = [];
+	readonly narrowed: NarrowedMount | undefined;
 
 	constructor(
 		readonly from: string,
@@ -30,6 +39,8 @@ export class DerivedRoutes {
 	) {
 		const roots = sourcePaths.map(normalizeDir);
 		let rootTarget: string | undefined;
+		let rootMount: string | undefined;
+		const routed: { folder: string; landing: string }[] = [];
 		const mountsOf = new Map<string, number>();
 		for (const { path: rojoPath } of removed) {
 			const target = normalizeDir(rojoPathTarget(rojoPath));
@@ -44,8 +55,10 @@ export class DerivedRoutes {
 				isSupportedService(instancePath[0]) &&
 				instancePath.every((name) => !name.includes("/"));
 			if (roots.includes(target)) {
-				if (reachable) rootTarget ??= landing;
-				else
+				if (reachable && rootTarget === undefined) {
+					rootTarget = landing;
+					rootMount = target;
+				} else if (!reachable)
 					this.unrouted.push({
 						target,
 						node,
@@ -73,8 +86,10 @@ export class DerivedRoutes {
 							: taken
 								? `another folder already took the route name ${key}`
 								: undefined;
-			if (reason === undefined) this.routes.set(key, landing);
-			else
+			if (reason === undefined) {
+				this.routes.set(key, landing);
+				routed.push({ folder: target, landing });
+			} else
 				this.unrouted.push({
 					target,
 					node,
@@ -83,6 +98,15 @@ export class DerivedRoutes {
 					reason,
 				});
 		}
+		const folders = routed.filter(
+			({ folder }) => path.posix.dirname(folder) === rootMount
+		);
+		this.narrowed =
+			rootTarget !== undefined &&
+			rootMount !== undefined &&
+			folders.length > 0
+				? { node: rootTarget, target: rootMount, folders }
+				: undefined;
 		this.fallback =
 			rootTarget ??
 			[...this.routes].find(

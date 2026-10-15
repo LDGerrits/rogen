@@ -49,6 +49,28 @@ describe("domain/init/derived-routes", () => {
 			expect(derived?.fallback).toBeUndefined();
 		});
 
+		it("should name the folders routes take out of a node that mounted the whole source path", () => {
+			const derived = derive({
+				ReplicatedStorage: { Common: { $path: "src" } },
+				ServerScriptService: { Server: { $path: "src/server" } },
+			});
+
+			expect(derived?.narrowed).toEqual({
+				node: "ReplicatedStorage/Common",
+				target: "src",
+				folders: [
+					{
+						folder: "src/server",
+						landing: "ServerScriptService/Server",
+					},
+				],
+			});
+		});
+
+		it("should narrow nothing when no node mounted a whole source path", () => {
+			expect(derive(RBX_TREE)?.narrowed).toBeUndefined();
+		});
+
 		it("should send files that match no route where the source path itself was mounted", () => {
 			const derived = derive({
 				ReplicatedStorage: {

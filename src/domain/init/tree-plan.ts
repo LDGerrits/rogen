@@ -158,13 +158,38 @@ export class TreePlan {
 				: [
 						`Remove the nodes in the tree of ${DEFAULT_CONFIG_FILE} that point into ${joinedWithOr(dirs)}; Rogen generates those now.`,
 					],
-			dropped.map(({ node, mount }) =>
-				warningDiagnostic(
-					"init.settingsDropped",
-					{ resource: from },
-					`${node} set ${joinedWithAnd(Object.keys(mount.settings))}, which ${DEFAULT_CONFIG_FILE} doesn't carry, since no route lands on that node. Add them to the tree by hand.`
-				)
-			)
+			[
+				...dropped.map(({ node, mount }) =>
+					warningDiagnostic(
+						"init.settingsDropped",
+						{ resource: from },
+						`${node} set ${joinedWithAnd(Object.keys(mount.settings))}, which ${DEFAULT_CONFIG_FILE} doesn't carry, since no route lands on that node. Add them to the tree by hand.`
+					)
+				),
+				...TreePlan.narrowedWarnings(from, derived, landings),
+			]
 		);
+	}
+
+	/** Rojo put the folders of a whole mounted source path inside its node as well, and routes take them out of it. */
+	private static narrowedWarnings(
+		from: string,
+		derived: DerivedRoutes | undefined,
+		landings: readonly string[]
+	): Diagnostic[] {
+		const narrowed = derived?.narrowed;
+		if (!narrowed || !landings.includes(narrowed.node)) return [];
+		const folders = narrowed.folders.filter(({ landing }) =>
+			landings.includes(landing)
+		);
+		if (folders.length === 0) return [];
+		const one = folders.length === 1;
+		return [
+			warningDiagnostic(
+				"init.mountNarrowed",
+				{ resource: from },
+				`${narrowed.node} mounted all of ${narrowed.target}, so Rojo also put ${joinedWithAnd(folders.map(({ folder }) => folder))} inside it. Rogen routes ${one ? "that folder" : "those folders"} only to ${joinedWithAnd(folders.map(({ landing }) => landing))}, so a require that reaches ${one ? "it" : "them"} through ${narrowed.node} breaks. Check with 'rogen where ${one ? folders[0].folder : narrowed.target}'.`
+			),
+		];
 	}
 }
