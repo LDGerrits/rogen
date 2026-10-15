@@ -137,6 +137,32 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 			);
 		});
 
+		it("should keep the time a file was last written when it copies it", async () => {
+			await fixture.fileSystem.writeFile(at("a.luau"), "1");
+			const written = await fixture.fileSystem.lastModified(at("a.luau"));
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			await fixture.fileSystem.copyFile(at("a.luau"), at("b.luau"));
+
+			expect(
+				Math.abs(
+					(await fixture.fileSystem.lastModified(at("b.luau"))) -
+						written
+				)
+			).toBeLessThan(1);
+		});
+
+		it("should give a later time to a file written after another", async () => {
+			await fixture.fileSystem.writeFile(at("a.luau"), "1");
+			const first = await fixture.fileSystem.lastModified(at("a.luau"));
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			await fixture.fileSystem.writeFile(at("a.luau"), "2");
+
+			expect(
+				await fixture.fileSystem.lastModified(at("a.luau"))
+			).toBeGreaterThan(first);
+		});
+
 		it("should reject with ENOENT for a file that isn't there", async () => {
 			await expect(
 				fixture.fileSystem.copyFile(at("none.luau"), at("b.luau"))

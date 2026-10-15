@@ -13,6 +13,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import {
 	FileSystemService,
 	isDirectoryType,
+	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import {
 	BuildService,
@@ -49,8 +50,11 @@ const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
 
+/** How far apart two writes must be for every file system to give them different times; a copy younger than this when Rojo starts is compared byte for byte. */
+const COARSEST_CLOCK_MS = 2000;
+
 /** How many files are copied into the mirror at once. */
-const COPY_BATCH = 64;
+const COPY_BATCH = 256;
 
 const CR = 13;
 const LF = 10;
@@ -118,14 +122,20 @@ interface Prepared {
 interface Copied {
 	readonly mirror: string;
 	readonly target: string;
+	/** When the mirror's copy was written, so a copy Rojo left alone is not read again. */
+	readonly modified: number;
 }
 
-const sameBytes = (a: Uint8Array | undefined, b: Uint8Array | undefined) =>
-	a === b ||
-	(a !== undefined &&
-		b !== undefined &&
-		a.length === b.length &&
-		a.every((byte, at) => byte === b[at]));
+function sameBytes(
+	a: Uint8Array | undefined,
+	b: Uint8Array | undefined
+): boolean {
+	if (a === b) return true;
+	if (a === undefined || b === undefined || a.length !== b.length)
+		return false;
+	for (let at = 0; at < a.length; at++) if (a[at] !== b[at]) return false;
+	return true;
+}
 
 /** `next` with the line endings of `before`: Rojo writes `\n`, and a file written with `\r\n` keeps them. */
 function withLineEndings(before: Uint8Array, next: Uint8Array): Uint8Array {
@@ -156,6 +166,7 @@ export class CoreSyncbackService implements SyncbackService {
 		if (prepared.isErr()) return prepared;
 		try {
 			const copied = await this.copy(prepared.value);
+			const started = Date.now();
 			const ran = await this.run(
 				request,
 				prepared.value,
@@ -163,7 +174,9 @@ export class CoreSyncbackService implements SyncbackService {
 				[]
 			);
 			if (ran.isErr()) return ran;
-			return ok(await this.settle(request, prepared.value, copied));
+			return ok(
+				await this.settle(request, prepared.value, copied, started)
+			);
 		} finally {
 			await this.clean(prepared.value);
 		}
@@ -366,13 +379,21 @@ export class CoreSyncbackService implements SyncbackService {
 		for (let at = 0; at < files.length; at += COPY_BATCH)
 			await Promise.all(
 				files.slice(at, at + COPY_BATCH).map(async (entry) => {
-					const target = toNative(entry.target);
-					if (!(await this.fileSystemService.isFile(target))) return;
-					await this.fileSystemService.copyFile(
-						target,
-						path.join(root, entry.mirror)
-					);
-					copied.push({ mirror: entry.mirror, target: entry.target });
+					const to = path.join(root, entry.mirror);
+					try {
+						await this.fileSystemService.copyFile(
+							toNative(entry.target),
+							to
+						);
+					} catch (error) {
+						if (isMissingPath(error as Error)) return;
+						throw error;
+					}
+					copied.push({
+						mirror: entry.mirror,
+						target: entry.target,
+						modified: await this.fileSystemService.lastModified(to),
+					});
 				})
 			);
 		copied.sort((a, b) => compareStrings(a.mirror, b.mirror));
@@ -401,7 +422,7 @@ export class CoreSyncbackService implements SyncbackService {
 			this.fileSystemService.readDirectory(toNative(target))
 		);
 		if (entries.isErr()) return;
-		const files: Copied[] = [];
+		const files: Omit<Copied, "modified">[] = [];
 		for (const [name, type] of entries.value) {
 			const from = path.posix.join(target, name);
 			const to = `${mirror}/${name}`;
@@ -416,17 +437,27 @@ export class CoreSyncbackService implements SyncbackService {
 			else files.push({ mirror: to, target: from });
 		}
 		for (let at = 0; at < files.length; at += COPY_BATCH)
-			await Promise.all(
-				files
-					.slice(at, at + COPY_BATCH)
-					.map(({ mirror: to, target: from }) =>
-						this.fileSystemService.copyFile(
-							toNative(from),
-							path.join(prepared.root, to)
-						)
-					)
+			copied.push(
+				...(await Promise.all(
+					files
+						.slice(at, at + COPY_BATCH)
+						.map(async ({ mirror: to, target: from }) => {
+							const copy = path.join(prepared.root, to);
+							await this.fileSystemService.copyFile(
+								toNative(from),
+								copy
+							);
+							return {
+								mirror: to,
+								target: from,
+								modified:
+									await this.fileSystemService.lastModified(
+										copy
+									),
+							};
+						})
+				))
 			);
-		copied.push(...files);
 	}
 
 	private isIgnored({ dir, ignored }: Prepared, target: string): boolean {
@@ -438,7 +469,9 @@ export class CoreSyncbackService implements SyncbackService {
 	private async settle(
 		request: SyncbackRequest,
 		prepared: Prepared,
-		copied: readonly Copied[]
+		copied: readonly Copied[],
+		/** When Rojo started, in milliseconds since the epoch. */
+		started: number
 	): Promise<CoreSyncbackPlan> {
 		const { mirror, root } = prepared;
 		const after = await this.walk(root);
@@ -457,30 +490,58 @@ export class CoreSyncbackService implements SyncbackService {
 		};
 
 		const copiedPaths = new Set(copied.map(({ mirror: at }) => at));
-		for (const { mirror: at, target } of copied) {
-			if (this.isIgnored(prepared, target)) continue;
-			const file = toNative(target);
-			const instance = CoreSyncbackService.instanceAt(at);
-			if (!present.has(at)) {
-				await touch(file);
-				operations.push({ kind: "remove", file, instance });
-				continue;
-			}
-			const original = await this.fileSystemService.readFileBytes(file);
-			const next = withLineEndings(
-				original,
-				await this.fileSystemService.readFileBytes(path.join(root, at))
+		const kept = copied.filter(
+			({ target }) => !this.isIgnored(prepared, target)
+		);
+		for (let from = 0; from < kept.length; from += COPY_BATCH) {
+			const compared = await Promise.all(
+				kept
+					.slice(from, from + COPY_BATCH)
+					.map(async ({ mirror: at, target, modified }) => {
+						const file = toNative(target);
+						const instance = CoreSyncbackService.instanceAt(at);
+						if (!present.has(at))
+							return { kind: "remove" as const, file, instance };
+						const copy = path.join(root, at);
+						if (
+							modified < started - COARSEST_CLOCK_MS &&
+							(await this.fileSystemService.lastModified(
+								copy
+							)) === modified
+						)
+							return undefined;
+						const original =
+							await this.fileSystemService.readFileBytes(file);
+						const next = withLineEndings(
+							original,
+							await this.fileSystemService.readFileBytes(
+								path.join(root, at)
+							)
+						);
+						return sameBytes(next, original)
+							? undefined
+							: {
+									kind: "write" as const,
+									file,
+									bytes: next,
+									instance,
+								};
+					})
 			);
-			if (sameBytes(next, original)) continue;
-			await touch(file);
-			operations.push({ kind: "write", file, bytes: next, instance });
+			for (const operation of compared) {
+				if (!operation) continue;
+				await touch(operation.file);
+				operations.push(operation);
+			}
+		}
+		const holding = new Set<string>();
+		for (const { path: at } of after) {
+			const names = at.split("/");
+			for (let depth = 1; depth <= names.length; depth++)
+				holding.add(names.slice(0, depth).join("/"));
 		}
 		for (const { kind, mirror: at, target } of mirror.entries)
-			if (
-				kind === "folder" &&
-				!present.has(at) &&
-				!after.some(({ path: other }) => other.startsWith(`${at}/`))
-			)
+			if (kind === "folder" && !holding.has(at))
 				operations.push({
 					kind: "prune",
 					file: toNative(target),

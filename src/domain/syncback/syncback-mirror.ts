@@ -148,7 +148,21 @@ class MirrorWalk {
 	readonly folders: string[] = [];
 	private kept = 0;
 
-	constructor(private readonly inputs: SyncbackMirrorInputs) {}
+	/** Every instance path a placed file is at or below, joined with `\0`. */
+	private readonly made = new Set<string>();
+	private readonly folderSet = new Set<string>();
+
+	constructor(private readonly inputs: SyncbackMirrorInputs) {
+		for (const { instancePath } of inputs.placed)
+			for (let depth = 1; depth <= instancePath.length; depth++)
+				this.made.add(instancePath.slice(0, depth).join("\0"));
+	}
+
+	private addFolder(folder: string): void {
+		if (this.folderSet.has(folder)) return;
+		this.folderSet.add(folder);
+		this.folders.push(folder);
+	}
 
 	/** Moves the children of `node` that the build made into the mirror folder `folder`, and points every other child at a copy in the mirror, so Rojo writes nothing outside it; whether any moved. With no `folder`, every child stays a node. */
 	async children(
@@ -175,7 +189,7 @@ class MirrorWalk {
 				}
 				if (isPlainFolder(child) && instancePath.length > 0) {
 					await this.children(child, here, at);
-					this.folders.push(at);
+					this.addFolder(at);
 					if (childrenOf(child).length === 0) delete node[name];
 					else this.mount(child, at);
 					moved = true;
@@ -224,7 +238,7 @@ class MirrorWalk {
 				kind: "file",
 			}
 		);
-		this.folders.push(own);
+		this.addFolder(own);
 		this.repoint(node, `${own}/${base}`, optional);
 		await this.children(node, instancePath, undefined);
 	}
@@ -240,7 +254,7 @@ class MirrorWalk {
 
 	private mount(node: RojoNode, folder: string): void {
 		node.$path = path.posix.join(this.inputs.root, folder);
-		if (!this.folders.includes(folder)) this.folders.push(folder);
+		this.addFolder(folder);
 	}
 
 	/** The file or folder a node of the build points at, when the build made the node from it; none for a node of the user's own tree. */
@@ -261,12 +275,7 @@ class MirrorWalk {
 		);
 		if (!this.inputs.reads.some((read) => containsPosix(read, target)))
 			return undefined;
-		const made = this.inputs.placed.some(
-			(file) =>
-				file.instancePath.length >= instancePath.length &&
-				instancePath.every((name, at) => file.instancePath[at] === name)
-		);
-		return made ? target : undefined;
+		return this.made.has(instancePath.join("\0")) ? target : undefined;
 	}
 
 	private async add(
