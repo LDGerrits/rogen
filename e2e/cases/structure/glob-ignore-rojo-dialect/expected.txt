@@ -1,0 +1,24 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src/a/b/X.tmp.luau src/Deep/n/Y.skip.luau src/Named/N.luau
+exit 0
+stdout:
+  src/a/b/X.tmp.luau -> ignored · matches *.tmp.luau
+  src/Deep/n/Y.skip.luau -> ignored · matches src/Deep/*.skip.luau
+  src/Named/N.luau -> ReplicatedStorage/shared/Named/N · route * (fallback)
+    require(game:GetService("ReplicatedStorage").shared.Named.N)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Deep: Folder
+        Z: ModuleScript  <- src/Deep/Z.luau
+      Keep: ModuleScript  <- src/Keep.luau
+      Named: Folder
+        N: ModuleScript  <- src/Named/N.luau

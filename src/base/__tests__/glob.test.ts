@@ -38,16 +38,20 @@ describe("isMatch", () => {
 
 describe("ignoresAllOf", () => {
 	it.each([
-		["/repo/vendor", "/repo/vendor"],
 		["/repo/vendor", "/repo/vendor/**"],
 		["/repo/vendor", "/repo/v*/**"],
-		["/repo/vendor", "/repo/**/vendor"],
-		["/repo/vendor/A.luau", "/repo/**/*.luau"],
+		["/repo/vendor", "/repo/**/vendor/**"],
 	])("should say %s is all ignored by %s", (target, glob) => {
 		expect(ignoresAllOf(glob, target)).toBe(true);
 	});
 
 	it.each([
+		["/repo/vendor", "/repo/vendor"],
+		["/repo/vendor", "/repo/vendor/"],
+		["/repo/vendor", "/repo/**/vendor"],
+		["/repo/vendor/A.luau", "/repo/**/*.luau"],
+		["/repo/vendor/A.luau", "/repo/vendor/A.luau"],
+		["/repo/vendor", "/repo/vendor/*"],
 		["/repo/vendor", "/repo/vendor/*.luau"],
 		["/repo/vendor", "/repo/**/*.luau"],
 		["/repo/vendor", "/repo/vendor/**/*.luau"],
@@ -89,6 +93,14 @@ describe("isGlobsetMatch", () => {
 		["x.tsx", "*.{js,{ts,tsx}}", true],
 		["a(b).luau", "a(b).luau", true],
 		[".hidden.luau", "*.luau", true],
+		["/p/src/deep/x.tmp.luau", "/p/*.tmp.luau", true],
+		["/p/src/deep/x.tmp.luau", "/p/src/*.tmp.luau", true],
+		["/p/src/deep", "/p/src/deep", true],
+		["/p/src/deep", "/p/src/deep/", false],
+		["/p/src/deep/x.luau", "/p/src/deep", false],
+		["/p/src/deep/x.luau", "/p/src/deep/**", true],
+		["a!b.luau", "a[!]b.luau", true],
+		["axb.luau", "a[!]b.luau", false],
 	])("should test %s against %s as %s", (name, glob, matches) => {
 		expect(isGlobsetMatch(name, glob)).toBe(matches);
 	});

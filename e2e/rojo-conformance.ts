@@ -6,6 +6,9 @@ import { invocation } from "./harness.js";
 
 export const PROJECTS_DIR = path.resolve("e2e/rojo-build-tests");
 
+/** Projects of ours that Rojo reads one way and a port might read another, each a `globIgnorePaths` shape. */
+export const GLOB_PROJECTS_DIR = path.resolve("e2e/rojo-glob-tests");
+
 const readJson = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
 
 export interface RoundTrip {
@@ -19,12 +22,16 @@ export interface RoundTrip {
 	readonly placeOfWritten?: string;
 }
 
-/** Saves Rojo's build-test project `name` as a `rogen.json`, builds it with Rogen, and builds the original and the written file with Rojo. */
-export function roundTrip(cli: string, name: string): RoundTrip {
+/** Saves the project `name` of `projectsDir` (Rojo's build tests unless told otherwise) as a `rogen.json`, builds it with Rogen, and builds the original and the written file with Rojo. */
+export function roundTrip(
+	cli: string,
+	name: string,
+	projectsDir = PROJECTS_DIR
+): RoundTrip {
 	const dir = makeRojoDir("rogen-conformance-");
 	try {
 		const project = path.join(dir, "project");
-		fs.cpSync(path.join(PROJECTS_DIR, name), project, { recursive: true });
+		fs.cpSync(path.join(projectsDir, name), project, { recursive: true });
 		const file = path.join(project, "default.project.json");
 		const original = readJson(file);
 		const placeOf = (output: string) => {

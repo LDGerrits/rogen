@@ -27,12 +27,9 @@ export function isMatch(path: string, glob: GlobPattern): boolean {
 	});
 }
 
-/** Whether `glob` ignores `path` and everything in it: it matches `path`, or ends in `/**` and matches the folder before that. */
+/** Whether `glob` ignores everything in the folder `path`: it ends in `/**` and matches the folder before that. Rojo ignores nothing of a mounted folder for a glob that only names it, so naming it is not enough. */
 export function ignoresAllOf(glob: GlobPattern, path: string): boolean {
-	return (
-		isMatch(path, glob) ||
-		(glob.endsWith("/**") && isMatch(path, glob.slice(0, -3)))
-	);
+	return glob.endsWith("/**") && isGlobsetMatch(path, glob.slice(0, -3));
 }
 
 const regExpCache = new Map<string, RegExp>();
@@ -76,7 +73,9 @@ function globsetSource(glob: string): string {
 			if (close === -1) source += "\\[";
 			else {
 				const body = glob.slice(index + 1, close);
-				const negated = body.startsWith("!") || body.startsWith("^");
+				const negated =
+					body.length > 1 &&
+					(body.startsWith("!") || body.startsWith("^"));
 				const set = (negated ? body.slice(1) : body).replace(
 					/[\\^\]]/g,
 					"\\$&"

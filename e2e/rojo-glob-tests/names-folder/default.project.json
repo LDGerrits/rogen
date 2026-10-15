@@ -1,0 +1,24 @@
+{
+	"name": "glob",
+	"globIgnorePaths": [
+		"src/client"
+	],
+	"tree": {
+		"$className": "DataModel",
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"Client": {
+					"$path": "src/client"
+				}
+			}
+		},
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Lib": {
+				"$path": "src/lib.luau"
+			}
+		}
+	}
+}

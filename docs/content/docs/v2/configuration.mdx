@@ -188,7 +188,9 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 { "globIgnorePaths": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
-A glob that names a folder or file a `tree` `$path` mounts, or covers all of it with `/**` (`"DevPackages"`, `"DevPackages/**"`), leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. A glob that ignores only some of the files in a mount (`**/*.spec.luau`) leaves the mount and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+A glob that covers all of a folder a `tree` `$path` mounts with `/**` (`"DevPackages/**"`) leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. That is the one place Rogen reads `globIgnorePaths` differently from Rojo. A glob that only names the folder or file (`"DevPackages"`, `"**/DevPackages"`) ignores nothing of the mount, in Rojo too, and so does a glob that ignores only some of its files (`**/*.spec.luau`): the mount stays, and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+
+Rogen matches a glob the way Rojo does, so the two agree on what is ignored: `*` crosses folders (`*.tmp.luau` matches at any depth, and so does `src/*.luau`), and a glob that ends in `/` matches nothing. Rojo reads a glob that begins with `/` or `./` as matching nothing, so write the folder name first.
 
 ## Sync Rules
 

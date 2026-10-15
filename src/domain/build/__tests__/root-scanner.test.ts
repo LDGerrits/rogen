@@ -426,6 +426,35 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 			});
 
+			it("should read a slashless glob as Rojo does, at any depth", async () => {
+				await write("src/Keep.luau", "src/a/Drop.tmp.luau");
+
+				const { roots } = await scan({ ignored: [glob("*.tmp.luau")] });
+
+				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
+			});
+
+			it("should let a star cross folders as Rojo does", async () => {
+				await write("src/Keep.luau", "src/a/b/Drop.luau");
+
+				const { roots } = await scan({ ignored: [glob("src/*.luau")] });
+
+				expect(files(roots[0])).toEqual([]);
+			});
+
+			it("should keep what a glob ending in a slash names, as Rojo does", async () => {
+				await write("src/Keep.luau", "src/tests/A.luau");
+
+				const { roots } = await scan({
+					ignored: [`${glob("src/tests")}/`],
+				});
+
+				expect(files(roots[0])).toEqual([
+					"script:Keep.luau",
+					"script:tests/A.luau",
+				]);
+			});
+
 			it("should remove matching directories without visiting them", async () => {
 				await write(
 					"src/Keep.luau",

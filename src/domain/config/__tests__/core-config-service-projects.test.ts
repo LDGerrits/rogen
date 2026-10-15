@@ -149,7 +149,7 @@ describe("CoreConfigService", () => {
 				const treeOf = async (globIgnorePaths: string[]) =>
 					(await projectOf({ globIgnorePaths }))?.project.tree;
 
-				it.each(["vendor", "vendor/**", "**/vendor", "v*/**"])(
+				it.each(["vendor/**", "v*/**", "**/vendor/**"])(
 					"should be left out of the tree for %s",
 					async (glob) => {
 						expect(await treeOf([glob])).toEqual({
@@ -159,8 +159,16 @@ describe("CoreConfigService", () => {
 					}
 				);
 
-				it.each(["vendor/*.luau", "**/*.luau", "vendor/**/*.luau"])(
-					"should stay in the tree for %s, which ignores only some of it",
+				it.each([
+					"vendor",
+					"vendor/",
+					"**/vendor",
+					"vendor/*",
+					"vendor/*.luau",
+					"**/*.luau",
+					"vendor/**/*.luau",
+				])(
+					"should stay in the tree for %s, which Rojo does not read as ignoring the folder",
 					async (glob) => {
 						expect(await treeOf([glob])).toMatchObject({
 							ReplicatedStorage: { Vendor: { $path: "vendor" } },
