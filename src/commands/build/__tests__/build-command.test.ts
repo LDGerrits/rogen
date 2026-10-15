@@ -689,7 +689,7 @@ describe("build command", () => {
 		});
 
 		it("should name the configs that blocked a config that was not written", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("lobby/src/A.luau"), "");
 			const broken = brokenEntry([], "/repo/broken/rogen.json");
 
 			const { document } = await buildJson(

@@ -584,13 +584,17 @@ Remove `className`, or name the init script for the class you want. See [Metadat
 
 ### `scan.missingSourcePath` [#scan-missingsourcepath]
 
-Warning. A folder in `sourcePaths` doesn't exist, or is a file, so it contributes nothing.
+Warning, or error. A folder in `sourcePaths` doesn't exist, or is a file. It is a warning while another source path is a folder, and the missing one contributes nothing. It is an error when none is, since the build would write an empty tree over your project file: `rogen build` and `rogen check` fail, and the project file stays as it was.
 
 ```
 later - warning: this source path does not exist or is not a folder, so it contributes nothing. (scan.missingSourcePath)
 ```
 
-Create it, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. See [Configuration](/docs/v2/configuration#fields).
+```
+srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
+```
+
+Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. `rogen list` shows it too. A running `rogen watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
 
 ### `scan.unmountedSource` [#scan-unmountedsource]
 

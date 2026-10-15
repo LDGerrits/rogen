@@ -27,6 +27,7 @@ import {
 	NotedName,
 } from "../misspelling-finder.js";
 import { Placement } from "../placement.js";
+import { MissingSourcePaths } from "./missing-source-paths.js";
 import { RoutedFile } from "../router.js";
 import { Assembly } from "../tree-assembler.js";
 
@@ -100,15 +101,10 @@ export class BuildValidator {
 	}
 
 	private missingSourcePath(): Diagnostic[] {
-		return this.placement.roots
-			.filter((root) => !root.exists)
-			.map((root) =>
-				warningDiagnostic(
-					"scan.missingSourcePath",
-					{ resource: root.sourcePath },
-					"this source path does not exist or is not a folder, so it contributes nothing."
-				)
-			);
+		return new MissingSourcePaths(
+			this.placement.roots,
+			this.config.projectFile
+		).warnings();
 	}
 
 	private sourcePathNamedAfterKey(): Diagnostic[] {

@@ -241,9 +241,10 @@ describe("check command", () => {
 		});
 
 		it("should keep a warning that is not about a file as it is", async () => {
+			await write("src/Clean.luau");
 			await writeConfig("rogen.json", {
 				routes: ROUTES,
-				sourcePaths: ["missing"],
+				sourcePaths: ["src", "missing"],
 			});
 
 			await run({});

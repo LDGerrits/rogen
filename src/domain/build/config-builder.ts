@@ -8,6 +8,7 @@ import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { BuildFindings, BuildSummary } from "./build.js";
 import { BuildValidator } from "./check/build-validator.js";
+import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { MetaReader } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
@@ -58,7 +59,7 @@ export class ConfigBuilder {
 		return new Placer(this.index, config, this.tools).place();
 	}
 
-	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does. */
+	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
 	async build(
 		config: ResolvedConfig,
 		syncWarnings?: readonly Diagnostic[]
@@ -69,6 +70,12 @@ export class ConfigBuilder {
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
+		const missing = new MissingSourcePaths(
+			placement.roots,
+			config.projectFile
+		);
+		if (missing.stopsBuild)
+			return err(new DiagnosticsError(missing.diagnostics()));
 		return ok({
 			config,
 			projectFile,

@@ -33,6 +33,7 @@ import {
 	Locations,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
+import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
@@ -127,6 +128,19 @@ export class CoreBuildService implements BuildService {
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
 		return ok({ ...located.value, errors });
+	}
+
+	async missingSourcePaths(config: ResolvedConfig): Promise<Diagnostic[]> {
+		const checked = await Promise.all(
+			config.sourcePaths.map(async (sourcePath) => ({
+				sourcePath,
+				exists: await this.fileSystemService.isDirectory(sourcePath),
+			}))
+		);
+		return new MissingSourcePaths(
+			checked,
+			config.projectFile
+		).diagnostics();
 	}
 
 	async diagnose(

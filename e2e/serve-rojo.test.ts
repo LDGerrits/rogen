@@ -202,6 +202,7 @@ describeWithRojo("end to end serve", () => {
 			"lobby/rogen.json",
 			config(serve.port + 1, { name: "Lobby" })
 		);
+		writeProjectFile(serve.dir, "lobby/src/A.luau");
 
 		const serving = serve.start(["lobby"]);
 
@@ -324,6 +325,7 @@ describeWithRojo("end to end serve", () => {
 			"lobby/rogen.json",
 			config(serve.port + 1, { name: "Lobby" })
 		);
+		writeProjectFile(serve.dir, "lobby/src/A.luau");
 
 		const refused = serve.start([
 			".",
