@@ -91,7 +91,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 			"should build %s into each format as Rojo does, or fail as it does",
 			(name) => {
 				const { dir, byRojo, byRogen } = copies(name);
-				for (const format of FORMATS) {
+				const differing = FORMATS.filter((format) => {
 					const expected = rojo(byRojo, [
 						"build",
 						"default.project.json",
@@ -103,22 +103,20 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 						"-o",
 						path.join(dir, `rogen.${format}`),
 					]);
-
-					expect({ format, ok: actual.status === 0 }).toEqual({
-						format,
-						ok: expected.status === 0,
-					});
-					if (expected.status === 0)
-						expect(
-							fs
-								.readFileSync(path.join(dir, `rogen.${format}`))
-								.equals(
-									fs.readFileSync(
-										path.join(dir, `rojo.${format}`)
-									)
+					if (expected.status !== 0) return actual.status === 0;
+					return (
+						actual.status !== 0 ||
+						!fs
+							.readFileSync(path.join(dir, `rogen.${format}`))
+							.equals(
+								fs.readFileSync(
+									path.join(dir, `rojo.${format}`)
 								)
-						).toBe(true);
-				}
+							)
+					);
+				});
+
+				expect(differing).toEqual([]);
 			},
 			60_000
 		);
@@ -127,23 +125,22 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 			"should write the sourcemap of %s as Rojo does, with each flag",
 			(name) => {
 				const { byRojo, byRogen } = copies(name);
-				for (const flags of SOURCEMAP_FLAGS) {
+				const differing = SOURCEMAP_FLAGS.filter((flags) => {
 					const expected = rojo(byRojo, [
 						"sourcemap",
 						...flags,
 						"default.project.json",
 					]);
 					const actual = rogen(byRogen, ["sourcemap", ...flags]);
-
-					expect({ flags, ok: actual.status === 0 }).toEqual({
-						flags,
-						ok: expected.status === 0,
-					});
-					if (expected.status === 0)
-						expect(actual.stdout.split(byRogen).join("")).toBe(
+					if (expected.status !== 0) return actual.status === 0;
+					return (
+						actual.status !== 0 ||
+						actual.stdout.split(byRogen).join("") !==
 							expected.stdout.split(byRojo).join("")
-						);
-				}
+					);
+				});
+
+				expect(differing).toEqual([]);
 			},
 			60_000
 		);
@@ -299,8 +296,10 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 
 				expect(actual.status).toBe(expected.status);
 				expect(snapshot(byRogen)).toEqual(snapshot(byRojo));
-				if (name !== LEFT_ALONE)
-					expect(snapshot(byRojo)).not.toEqual(snapshot(untouched));
+				expect(
+					JSON.stringify(snapshot(byRojo)) !==
+						JSON.stringify(snapshot(untouched))
+				).toBe(name !== LEFT_ALONE);
 			},
 			60_000
 		);
