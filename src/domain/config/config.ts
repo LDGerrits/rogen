@@ -74,6 +74,12 @@ export const DEFAULT_PROJECT = "default";
 
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
+/** The names Rojo looks for in a folder, in its order. */
+export const DEFAULT_PROJECT_FILES = [
+	DEFAULT_PROJECT_FILE,
+	`${DEFAULT_PROJECT_FILE}c`,
+];
+
 export const ROOT_ONLY_KEYS: readonly string[] = [
 	"projects",
 	"serveProject",

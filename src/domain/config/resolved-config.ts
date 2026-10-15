@@ -6,7 +6,7 @@ import {
 	ParsedProjectFile,
 	RojoProject,
 	projectFileName,
-	stemOfProjectFile,
+	isProjectFileName,
 } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { DEFAULT_PROJECT, DEFAULT_SOURCE_PATH } from "./config.js";
@@ -131,7 +131,7 @@ export class ResolvedConfig {
 	/** The file of a project; the description of a config that is a Rojo project file is that file, whatever its name. */
 	private fileOf(stem: string): string {
 		return stem === DEFAULT_PROJECT &&
-			stemOfProjectFile(path.basename(this.file)) !== undefined
+			isProjectFileName(path.basename(this.file))
 			? this.file
 			: path.join(this.projectDir, projectFileName(stem));
 	}
