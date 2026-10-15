@@ -141,18 +141,74 @@ describe("SyncbackMirror", () => {
 		});
 	});
 
-	it("should leave the user's own nodes as they are", async () => {
-		const tree = {
-			ReplicatedStorage: {
-				Packages: { $path: "Packages" },
-				Kept: { $path: "src/kept" },
+	it("should point the user's own nodes at a copy in the mirror, so Rojo writes nothing else", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ReplicatedStorage: {
+						Packages: { $path: "Packages" },
+						Lib: {
+							$className: "Folder",
+							$path: { optional: "lib/Lib.luau" },
+						},
+					},
+				},
 			},
-		};
+			[],
+			["/repo/Packages"]
+		);
 
-		const mirror = await mirrorOf({ tree }, [], ["/repo/src/kept"]);
+		expect(mirror.file.tree).toEqual({
+			ReplicatedStorage: {
+				Packages: { $path: `${ROOT}/ReplicatedStorage/Packages` },
+				Lib: {
+					$className: "Folder",
+					$path: { optional: `${ROOT}/~kept/0/Lib.luau` },
+				},
+			},
+		});
+		expect(mirror.entries).toEqual([
+			{
+				mirror: "ReplicatedStorage/Packages",
+				target: "/repo/Packages",
+				kind: "folder",
+			},
+			{
+				mirror: "~kept/0/Lib.luau",
+				target: "/repo/lib/Lib.luau",
+				kind: "file",
+			},
+			{
+				mirror: "~kept/0/Lib.meta.json",
+				target: "/repo/lib/Lib.meta.json",
+				kind: "file",
+			},
+		]);
+	});
 
-		expect(mirror.file.tree).toEqual(tree);
-		expect(mirror.entries).toEqual([]);
+	it("should name the project paths that would share a mirror path on a case-blind system", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ServerScriptService: {
+						bag: { $path: optional("src/Server/bag.luau") },
+						Bag: { $path: optional("src/Bag@server.luau") },
+					},
+				},
+			},
+			[
+				placed("src/Server/bag.luau", "ServerScriptService", "bag"),
+				placed("src/Bag@server.luau", "ServerScriptService", "Bag"),
+			]
+		);
+
+		expect(mirror.clashes).toEqual([
+			["/repo/src/Server/bag.luau", "/repo/src/Bag@server.luau"],
+			[
+				"/repo/src/Server/bag.meta.json",
+				"/repo/src/Bag@server.meta.json",
+			],
+		]);
 	});
 
 	it("should move a folder the build mounted whole as one entry", async () => {
@@ -217,7 +273,7 @@ describe("SyncbackMirror", () => {
 				Inventory: {
 					$className: "Folder",
 					$path: `${ROOT}/ServerScriptService/Inventory`,
-					Lib: { $path: "vendor/lib" },
+					Lib: { $path: `${ROOT}/~kept/0/lib` },
 				},
 			},
 		});

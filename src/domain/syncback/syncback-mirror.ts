@@ -108,59 +108,134 @@ export class SyncbackMirror {
 		return rules;
 	}
 
-	/** The project file or folder a path of the mirror stands for; none for a path no entry holds, which is a new instance. */
+	/** The project file or folder a path of the mirror stands for: the entry that is it, else the deepest folder entry it is in; none for a path no entry holds, which is a new instance. */
 	targetOf(mirror: string): string | undefined {
-		for (const entry of this.entries) {
-			if (entry.mirror === mirror) return entry.target;
-			if (
-				entry.kind === "folder" &&
-				mirror.startsWith(`${entry.mirror}/`)
+		const exact = this.entries.find((entry) => entry.mirror === mirror);
+		if (exact) return exact.target;
+		const folder = this.entries
+			.filter(
+				(entry) =>
+					entry.kind === "folder" &&
+					mirror.startsWith(`${entry.mirror}/`)
 			)
-				return path.posix.join(
-					entry.target,
-					mirror.slice(entry.mirror.length + 1)
-				);
+			.sort((a, b) => b.mirror.length - a.mirror.length)[0];
+		return folder
+			? path.posix.join(
+					folder.target,
+					mirror.slice(folder.mirror.length + 1)
+				)
+			: undefined;
+	}
+
+	/** Mirror paths that two entries share, or that differ only in letter case, which a case-blind file system would make one file; each with the project paths behind it. */
+	get clashes(): string[][] {
+		const byPath = new Map<string, MirrorEntry[]>();
+		for (const entry of this.entries) {
+			const key = entry.mirror.toLowerCase();
+			byPath.set(key, [...(byPath.get(key) ?? []), entry]);
 		}
-		return undefined;
+		return [...byPath.values()]
+			.filter((entries) => entries.length > 1)
+			.map((entries) => entries.map(({ target }) => target));
 	}
 }
+
+/** Where a node the project keeps reads its own file or folder from in the mirror; no instance is named so, as `~` is no safe name. */
+const KEPT = "~kept";
 
 class MirrorWalk {
 	readonly entries: MirrorEntry[] = [];
 	readonly folders: string[] = [];
+	private kept = 0;
 
 	constructor(private readonly inputs: SyncbackMirrorInputs) {}
 
-	/** Moves the children of `node` that the build made into the mirror folder `folder`; whether any moved. */
+	/** Moves the children of `node` that the build made into the mirror folder `folder`, and points every other child at a copy in the mirror, so Rojo writes nothing outside it; whether any moved. With no `folder`, every child stays a node. */
 	async children(
 		node: RojoNode,
 		instancePath: readonly string[],
-		folder: string
+		folder: string | undefined
 	): Promise<boolean> {
 		let moved = false;
 		for (const [name, child] of childrenOf(node)) {
 			const here = [...instancePath, name];
-			const at = folder === "" ? name : `${folder}/${name}`;
-			if (!SAFE_NAME.test(name)) continue;
-			const target = this.madeFrom(child, here);
-			if (target !== undefined) {
-				await this.add(target, at, name, folder);
-				delete node[name];
-				moved = true;
-				continue;
+			const at =
+				folder !== undefined && SAFE_NAME.test(name)
+					? folder === ""
+						? name
+						: `${folder}/${name}`
+					: undefined;
+			if (at !== undefined && folder !== undefined) {
+				const target = this.madeFrom(child, here);
+				if (target !== undefined) {
+					await this.add(target, at, name, folder);
+					delete node[name];
+					moved = true;
+					continue;
+				}
+				if (isPlainFolder(child) && instancePath.length > 0) {
+					await this.children(child, here, at);
+					this.folders.push(at);
+					if (childrenOf(child).length === 0) delete node[name];
+					else this.mount(child, at);
+					moved = true;
+					continue;
+				}
 			}
-			if (isPlainFolder(child) && instancePath.length > 0) {
-				await this.children(child, here, at);
-				this.folders.push(at);
-				if (childrenOf(child).length === 0) delete node[name];
-				else this.mount(child, at);
-				moved = true;
-				continue;
-			}
-			if (child.$path !== undefined) continue;
-			if (await this.children(child, here, at)) this.mount(child, at);
+			await this.keep(child, here, at);
 		}
 		return moved;
+	}
+
+	/** A node the project file keeps: what it reads from disk is copied into the mirror and its `$path` points there. */
+	private async keep(
+		node: RojoNode,
+		instancePath: readonly string[],
+		at: string | undefined
+	): Promise<void> {
+		if (node.$path === undefined) {
+			const own = at ?? this.spare();
+			if (await this.children(node, instancePath, own))
+				this.mount(node, own);
+			return;
+		}
+		const target = toPosix(
+			path.resolve(this.inputs.dir, rojoPathTarget(node.$path))
+		);
+		const optional = typeof node.$path !== "string";
+		if (await this.inputs.isFolder(target)) {
+			const own = at ?? this.spare();
+			this.entries.push({ mirror: own, target, kind: "folder" });
+			this.repoint(node, own, optional);
+			await this.children(node, instancePath, own);
+			return;
+		}
+		const own = this.spare();
+		const base = path.posix.basename(target);
+		const rojoName = this.inputs.fileAt(target).instanceName;
+		this.entries.push(
+			{ mirror: `${own}/${base}`, target, kind: "file" },
+			{
+				mirror: `${own}/${rojoName}${RojoFile.META_SUFFIX}`,
+				target: path.posix.join(
+					path.posix.dirname(target),
+					`${rojoName}${RojoFile.META_SUFFIX}`
+				),
+				kind: "file",
+			}
+		);
+		this.folders.push(own);
+		this.repoint(node, `${own}/${base}`, optional);
+		await this.children(node, instancePath, undefined);
+	}
+
+	private spare(): string {
+		return `${KEPT}/${this.kept++}`;
+	}
+
+	private repoint(node: RojoNode, mirror: string, optional: boolean): void {
+		const at = path.posix.join(this.inputs.root, mirror);
+		node.$path = optional ? { optional: at } : at;
 	}
 
 	private mount(node: RojoNode, folder: string): void {

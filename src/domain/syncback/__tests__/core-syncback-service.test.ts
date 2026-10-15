@@ -318,6 +318,103 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	it("should mirror a folder the tree mounts too, so a plan writes nothing outside the mirror", async () => {
+		await writeFiles(fs, "Packages/Lib.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ReplicatedStorage", "Packages", "Lib.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(JSON.parse(rojo.projectTexts[0]).tree.ReplicatedStorage).toEqual(
+			{
+				Packages: {
+					$path: ".rogen-syncback/mirror/ReplicatedStorage/Packages",
+				},
+			}
+		);
+		expect(plan.changes).toEqual([
+			{ kind: "write", file: abs("Packages/Lib.luau") },
+		]);
+		expect(await fs.readFile(abs("Packages/Lib.luau"))).toBe("");
+	});
+
+	it("should keep the files an ignore glob left out when it removes a folder", async () => {
+		await writeFiles(fs, "vendor/kit/A.luau", "vendor/kit/A.spec.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Kit: { $path: "vendor/kit" } },
+				},
+				globIgnorePaths: ["**/*.spec.luau"],
+			},
+		});
+		rojo.say = async () => {
+			await fs.delete(mirror("ReplicatedStorage", "Kit"), true);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("vendor/kit/A.luau"))).toBe(false);
+		expect(await fs.exists(abs("vendor/kit/A.spec.luau"))).toBe(true);
+	});
+
+	it("should list a property Rojo wrote for a folder no one folder of the project is", async () => {
+		await prepare([
+			"src/Inventory/Bag@server.luau",
+			"src/Inventory/Save@server.luau",
+		]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "init.meta.json"),
+				"{}"
+			);
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.changes).toEqual([]);
+		expect(plan.unplaced).toMatchObject([
+			{
+				instance: "ServerScriptService/Inventory",
+				reason: expect.stringContaining("init.meta.json"),
+			},
+		]);
+	});
+
+	it("should not write a file whose only difference is its line endings", async () => {
+		await prepare([]);
+		await fs.writeFile(
+			abs("src/Inventory/Bag@server.luau"),
+			"return 1\r\n"
+		);
+		await prepare([]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 1\n"
+			);
+			return [];
+		};
+
+		expect((await service.plan(request)).unwrap().changes).toEqual([]);
+	});
+
 	it("should write the plan it was shown without running Rojo again", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		rojo.say = async () => {
