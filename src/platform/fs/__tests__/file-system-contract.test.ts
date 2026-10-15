@@ -102,6 +102,48 @@ describe.each(fixtures)("%s: contract", (_name, create) => {
 		});
 	});
 
+	describe("readFileBytes and copyFile", () => {
+		it("should read what was written, byte for byte", async () => {
+			await fixture.fileSystem.writeFile(at("a.luau"), "return 1\r\n");
+
+			expect(
+				Buffer.from(
+					await fixture.fileSystem.readFileBytes(at("a.luau"))
+				).toString("utf8")
+			).toBe("return 1\r\n");
+		});
+
+		it("should copy a file into a folder it creates, leaving the original", async () => {
+			await fixture.fileSystem.writeFile(at("a.luau"), "return 1");
+
+			await fixture.fileSystem.copyFile(at("a.luau"), at("m/x/b.luau"));
+
+			expect(await fixture.fileSystem.readFile(at("m/x/b.luau"))).toBe(
+				"return 1"
+			);
+			expect(await fixture.fileSystem.readFile(at("a.luau"))).toBe(
+				"return 1"
+			);
+		});
+
+		it("should write bytes into a folder it creates", async () => {
+			await fixture.fileSystem.writeFileBytes(
+				at("m/a.luau"),
+				new TextEncoder().encode("return 2")
+			);
+
+			expect(await fixture.fileSystem.readFile(at("m/a.luau"))).toBe(
+				"return 2"
+			);
+		});
+
+		it("should reject with ENOENT for a file that isn't there", async () => {
+			await expect(
+				fixture.fileSystem.copyFile(at("none.luau"), at("b.luau"))
+			).rejects.toMatchObject({ code: "ENOENT" });
+		});
+	});
+
 	describe("delete", () => {
 		it("should remove a file, and do nothing for one that isn't there", async () => {
 			await fixture.fileSystem.writeFile(at("temp.txt"), "data");

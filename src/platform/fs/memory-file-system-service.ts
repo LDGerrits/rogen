@@ -269,6 +269,18 @@ export class MemoryFileSystemService
 		return (node as FileNode).content;
 	}
 
+	async readFileBytes(filePath: string): Promise<Uint8Array> {
+		return new TextEncoder().encode(await this.readFile(filePath));
+	}
+
+	async writeFileBytes(filePath: string, bytes: Uint8Array): Promise<void> {
+		await this.writeFile(filePath, new TextDecoder().decode(bytes));
+	}
+
+	async copyFile(from: string, to: string): Promise<void> {
+		await this.writeFile(to, await this.readFile(from));
+	}
+
 	async writeFile(filePath: string, content: string): Promise<void> {
 		const parts = splitPath(filePath);
 		const name = parts.pop()!;

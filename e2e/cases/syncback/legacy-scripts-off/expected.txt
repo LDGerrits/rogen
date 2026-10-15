@@ -1,0 +1,36 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · wrote
+  Built 1 config.
+  write  src/Hud.client.luau
+  write  src/Fresh.client.luau
+  Syncback wrote 2 changes.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Fresh.client.luau -> StarterPlayer/StarterPlayerScripts/Fresh · route client (suffix)
+  src/Hud.client.luau -> StarterPlayer/StarterPlayerScripts/Hud · route client (suffix)
+  src/Save.server.luau -> ServerScriptService/Save · route server (suffix)
+
+written:
+  default.project.json
+  src/Fresh.client.luau
+  src/Hud.client.luau
+
+src/Fresh.client.luau:
+print("fresh")
+
+src/Hud.client.luau:
+print("hud2")
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- src/Save.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Fresh: LocalScript  <- src/Fresh.client.luau
+      Hud: LocalScript  <- src/Hud.client.luau

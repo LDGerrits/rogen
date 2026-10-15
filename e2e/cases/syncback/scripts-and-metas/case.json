@@ -1,0 +1,1 @@
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"], ["where", "src"]], "show": ["src/Inventory/Bag@server.luau", "src/Inventory/Bag@server.meta.json", "src/Inventory/Save@server.meta.json", "src/Shop/Server/Kiosk/New.luau", "src/Hud/Client/Bar.client.luau"]}

@@ -6,8 +6,8 @@ stdout:
   Built 1 config.
   write  src/Inventory/Save@server.luau
   write  src/Inventory/ItemTypes@shared.luau
-  write  src/Inventory/Mail@server.luau
   write  src/Boot.server.luau
+  write  src/Inventory/Mail@server.luau
   write  src/Quest/Main@server.luau
   Syncback wrote 5 changes.
 

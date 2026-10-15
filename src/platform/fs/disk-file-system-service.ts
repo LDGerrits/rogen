@@ -122,6 +122,20 @@ export class DiskFileSystemService implements FileSystemService {
 		return fs.promises.readFile(filePath, "utf-8");
 	}
 
+	async readFileBytes(filePath: string): Promise<Uint8Array> {
+		return new Uint8Array(await fs.promises.readFile(filePath));
+	}
+
+	async writeFileBytes(filePath: string, bytes: Uint8Array): Promise<void> {
+		await this.createDirectory(path.dirname(filePath));
+		await fs.promises.writeFile(filePath, bytes);
+	}
+
+	async copyFile(from: string, to: string): Promise<void> {
+		await this.createDirectory(path.dirname(to));
+		await fs.promises.copyFile(from, to);
+	}
+
 	async writeFile(filePath: string, content: string): Promise<void> {
 		const dir = path.dirname(filePath);
 		if (!(await this.exists(dir))) await this.createDirectory(dir);

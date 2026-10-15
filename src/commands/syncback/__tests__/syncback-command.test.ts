@@ -87,14 +87,24 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
+	/** What the test's Rojo does to the mirror it runs on: Loot added, Combat removed. */
+	const editMirror = async () => {
+		await fs.writeFile(
+			abs(".rogen-syncback/mirror/ServerScriptService/Combat/Loot.luau"),
+			"return 1"
+		);
+		await fs.delete(
+			abs(".rogen-syncback/mirror/ServerScriptService/Combat/Combat.luau")
+		);
+	};
+
 	it("should list what a dry run would do, and write none of it", async () => {
 		const { running, log } = start({
 			input: "game.rbxl",
 			"dry-run": true,
 		});
 		const [rojo] = await rojoRuns(1);
-		rojo.print("Writing src/Combat/Server/Loot.luau\n");
-		rojo.print("Removing src/Combat/Server/Hit.luau\n");
+		await editMirror();
 		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
@@ -105,17 +115,18 @@ describe("syncback command", () => {
 			"--input",
 			"game.rbxl",
 			"--non-interactive",
-			"--dry-run",
-			"--list",
 		]);
 		expect(said(log)).toEqual(
 			expect.arrayContaining([
 				"write  src/Combat/Server/Loot.luau",
-				"remove src/Combat/Server/Hit.luau",
+				"remove src/Combat/Server/Combat.luau",
 				"Syncback would change 2 files (1 to write, 1 to remove).",
 			])
 		);
-		expect(processes.spawned).toHaveLength(1);
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
+		expect(await fs.exists(abs("src/Combat/Server/Loot.luau"))).toBe(false);
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 	});
 
@@ -125,38 +136,39 @@ describe("syncback command", () => {
 			"non-interactive": true,
 		});
 		const [rojo] = await rojoRuns(1);
-		rojo.print("Writing src/Combat/Server/Loot.luau\n");
+		await editMirror();
 		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
 
-		expect(rojo.args).not.toContain("--dry-run");
 		expect(processes.spawned).toHaveLength(1);
-		expect(said(log)).toContain("Syncback wrote 1 change.");
+		expect(await fs.readFile(abs("src/Combat/Server/Loot.luau"))).toBe(
+			"return 1"
+		);
+		expect(said(log)).toContain("Syncback wrote 2 changes.");
 	});
 
-	it("should plan, ask, and plan again before it writes, in a terminal", async () => {
+	it("should run Rojo once, ask, and write what it listed, in a terminal", async () => {
 		const { running, log } = start(
 			{ input: "game.rbxl" },
 			new MockPromptService([true], true)
 		);
-		for (const at of [1, 2, 3]) {
-			const rojo = (await rojoRuns(at))[at - 1];
-			rojo.print("Writing src/Combat/Server/Loot.luau\n");
-			rojo.exit({ code: 0, signal: null });
-		}
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
 
-		expect(
-			processes.spawned.map(({ args }) => args.includes("--dry-run"))
-		).toEqual([true, true, false]);
+		expect(processes.spawned).toHaveLength(1);
 		expect(
 			said(log).filter(
 				(line) => line === "write  src/Combat/Server/Loot.luau"
 			)
 		).toHaveLength(1);
-		expect(said(log)).toContain("Syncback wrote 1 change.");
+		expect(said(log)).toContain("Syncback wrote 2 changes.");
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			false
+		);
 	});
 
 	it("should ask first in a terminal, and write nothing on a no", async () => {
@@ -164,15 +176,18 @@ describe("syncback command", () => {
 			{ input: "game.rbxl" },
 			new MockPromptService([false], true)
 		);
-		const [dry] = await rojoRuns(1);
-		dry.print("Removing src/Combat/Server/Hit.luau\n");
-		dry.exit({ code: 0, signal: null });
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
 
 		expect(processes.spawned).toHaveLength(1);
-		expect(said(log)).toContain("remove src/Combat/Server/Hit.luau");
+		expect(said(log)).toContain("remove src/Combat/Server/Combat.luau");
 		expect(said(log)).toContain("Nothing was written.");
+		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
+			true
+		);
 	});
 
 	it("should say when a Rojo is too old", async () => {
