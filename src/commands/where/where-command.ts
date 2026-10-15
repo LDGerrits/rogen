@@ -78,13 +78,15 @@ registerCommand(
 
 			const answers = new WhereAnswers(located.value);
 			const failure = DiagnosticsError.of(answers.errors);
+			const stale = await buildService.staleProjectFiles(selection.value);
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					whereDocument(answers),
+					whereDocument(answers, stale),
 					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
+			for (const diagnostic of stale) logService.diagnostic(diagnostic);
 			return failure ? err(failure) : ok(undefined);
 		}
 

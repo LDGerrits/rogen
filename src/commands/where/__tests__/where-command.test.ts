@@ -73,6 +73,47 @@ describe("where command", () => {
 		]);
 	});
 
+	describe("a project file that is out of date", () => {
+		beforeEach(async () => {
+			await writeConfig("rogen.json", { routes: ROUTES });
+			await write("src/Util.luau");
+			await fs.writeFile("/repo/default.project.json", "{}");
+		});
+
+		it("should be said after the answers", async () => {
+			const result = await run({ _: ["src/Util.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+			]);
+			expect(logService.texts("diagnosticWarning")).toEqual([
+				expect.stringContaining("output.differs"),
+			]);
+		});
+
+		it("should be a warning in the JSON document", async () => {
+			await run({ _: ["src/Util.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n")).diagnostics).toMatchObject([
+				{
+					severity: "warning",
+					code: "output.differs",
+					file: "/repo/default.project.json",
+					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
+				},
+			]);
+		});
+
+		it("should not be said once the file is written", async () => {
+			await fs.delete("/repo/default.project.json");
+
+			await run({ _: ["src/Util.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);
+		});
+	});
+
 	it("should say a file that is no instance is not one", async () => {
 		await writeConfig("rogen.json", { routes: ROUTES });
 		await write("src/Notes.md");

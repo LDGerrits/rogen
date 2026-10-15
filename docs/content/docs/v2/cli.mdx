@@ -121,7 +121,7 @@ Two served projects on one port exit 2, with the fix: give each its own `servePo
 
 ### `where [path…]`
 
-Shows where each file lands in the game and why, without writing anything:
+Shows where each file lands in the game and why, without writing anything. When a project file on disk differs from what `rogen build` would write, it adds an [`output.differs`](/docs/v2/diagnostics#output-differs) warning after the answers, since Rojo and Studio would show a game other than the one it describes:
 
 ```
 $ rogen where src/Net src/Combat/Server/Hit.luau
@@ -570,7 +570,7 @@ An object with a `diagnostics` array: the entries described above, one per diagn
 
 ### `where --json`
 
-An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of a config that didn't load (the exit code is then 1), and is empty otherwise. `locations` has one entry per path, each with `config`, `status` and `source`, plus:
+An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of a config that didn't load (the exit code is then 1), then the `output.differs` warnings of project files that are out of date, and is empty otherwise. `locations` has one entry per path, each with `config`, `status` and `source`, plus:
 
 | `status` | Fields |
 |---|---|
@@ -641,7 +641,7 @@ Offline, in two steps, so a program reads only what it asks for. Every document 
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config. Every entry has `config`, `file`, `status` (`valid` or `broken`), `served` (whether `rogen serve` starts a server for it, which it does when it loads) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows), `sourcePaths`, `commonRoot`, `routes`, `globIgnorePaths`, `syncPath`, `projectFile` and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. It also has `projects`, one entry for the description and each [project](/docs/v2/configuration#projects), `default` first: `name`, `file`, `served` (whether `rogen serve` serves it unless you name another), `port` and `placeIds` when it has them, `rojo` (the command that serves it, with its `--port`, as a list of arguments and the project file's absolute path; left out for a config that lists places, which is never served) and `serving`, as above. A broken config has only the five. If the config has errors, the exit code is 1. `diagnostics` of a valid config holds [`scan.missingSourcePath`](/docs/v2/diagnostics#scan-missingsourcepath) for each source path that is no folder now: an error each when none is, since `build` would fail, else a warning each. `list` only reports it and exits 0.
+An object with a `configs` array, one entry per config. Every entry has `config`, `file`, `status` (`valid` or `broken`), `served` (whether `rogen serve` starts a server for it, which it does when it loads) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows), `sourcePaths`, `commonRoot`, `routes`, `globIgnorePaths`, `syncPath`, `projectFile` and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. It also has `projects`, one entry for the description and each [project](/docs/v2/configuration#projects), `default` first: `name`, `file`, `served` (whether `rogen serve` serves it unless you name another), `port` and `placeIds` when it has them, `rojo` (the command that serves it, with its `--port`, as a list of arguments and the project file's absolute path; left out for a config that lists places, which is never served) and `serving`, as above. A broken config has only the five. If the config has errors, the exit code is 1. `diagnostics` of a valid config holds [`scan.missingSourcePath`](/docs/v2/diagnostics#scan-missingsourcepath) for each source path that is no folder now: an error each when none is, since `build` would fail, else a warning each, and [`output.differs`](/docs/v2/diagnostics#output-differs) for each project file on disk that differs from what `build` would write. `list` only reports them and exits 0.
 
 ## Output
 

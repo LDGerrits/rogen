@@ -101,6 +101,17 @@ describe("list command", () => {
 		expect(under("rogen.json").at(-1)).toContain("scan.missingSourcePath");
 	});
 
+	it("should say when a project file on disk differs from what a build would write", async () => {
+		await fs.createDirectory("/repo/src");
+		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
+		await write("default.project.json", "{}");
+
+		await run();
+
+		expect(under("rogen.json").at(-1)).toContain("output.differs");
+		expect(under("rogen.json").at(-1)).toContain("warning");
+	});
+
 	it("should list the projects with their files in place of the one project file, and mark the one that is served", async () => {
 		await write("rogen.json", {
 			routes: { "*": "ReplicatedStorage" },
@@ -430,6 +441,34 @@ describe("list command", () => {
 					},
 				],
 			});
+		});
+
+		it("should carry a stale project file as a warning with its fix", async () => {
+			await fs.createDirectory("/repo/src");
+			await write("rogen.json", {
+				routes: { "*": "ReplicatedStorage" },
+				projects: { dist: {} },
+			});
+			await write("default.project.json", "{}");
+			await write("dist.project.json", "{}");
+
+			await run({ json: true });
+
+			expect(entry("repo").diagnostics).toMatchObject([
+				{
+					severity: "warning",
+					code: "output.differs",
+					file: "/repo/default.project.json",
+					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
+				},
+				{
+					code: "output.differs",
+					file: "/repo/dist.project.json",
+					fixes: [
+						{ run: { command: "rogen build dist", cwd: "/repo" } },
+					],
+				},
+			]);
 		});
 
 		it("should list each project with its file and say which one serve serves", async () => {

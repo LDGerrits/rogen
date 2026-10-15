@@ -673,13 +673,13 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
-default.project.json - warning: this file differs from what 'rogen build' would write. It is written from rogen.json, so edit that and run 'rogen build'. (output.differs)
+default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written, or it was edited by hand. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
 ```
 
-Run `rogen build`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
+Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. `build` overwrites the file whatever the cause, so a hand edit is lost; put it in `rogen.json`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 

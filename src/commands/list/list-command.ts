@@ -67,24 +67,30 @@ registerCommand(
 				projectFiles.map((file) => [file, served.get(file)])
 			);
 			const buildService = accessor.get(BuildService);
+			const stale = await buildService.staleProjectFiles(selection.value);
 			const problems = new Map<string, Diagnostic[]>();
 			for (const entry of entries)
-				if (entry.status === "valid")
+				if (entry.status === "valid") {
+					const projects = projectsOf(entry, entry.scope);
+					const files = new Set(
+						projects.map(({ projectFile }) => projectFile)
+					);
 					problems.set(
 						entry.file,
-						uniqueDiagnostics(
-							(
+						uniqueDiagnostics([
+							...(
 								await Promise.all(
-									projectsOf(entry, entry.scope).map(
-										(project) =>
-											buildService.missingSourcePaths(
-												project
-											)
+									projects.map((project) =>
+										buildService.missingSourcePaths(project)
 									)
 								)
-							).flat()
-						)
+							).flat(),
+							...stale.filter(({ resource }) =>
+								files.has(resource)
+							),
+						])
 					);
+				}
 			for (const note of selection.value.notes) logService.warn(note);
 
 			if (line.options.json)

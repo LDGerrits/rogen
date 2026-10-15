@@ -12,6 +12,7 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
+import { DEFAULT_PROJECT } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
@@ -130,6 +131,11 @@ export class CoreBuildService implements BuildService {
 		return ok({ ...located.value, errors });
 	}
 
+	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {
+		const { diagnostics } = await this.check(selection);
+		return diagnostics.filter(({ code }) => code === "output.differs");
+	}
+
 	async missingSourcePaths(config: ResolvedConfig): Promise<Diagnostic[]> {
 		const checked = await Promise.all(
 			config.sourcePaths.map(async (sourcePath) => ({
@@ -245,7 +251,9 @@ export class CoreBuildService implements BuildService {
 	}
 
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
-		const { projectFile } = attempt.config;
+		const { projectFile, stem } = attempt.config;
+		const command =
+			stem === DEFAULT_PROJECT ? "rogen build" : `rogen build ${stem}`;
 		const onDisk = await tryWithAsync(async () =>
 			(await this.fileSystemService.isFile(projectFile))
 				? await this.fileSystemService.readFile(projectFile)
@@ -266,7 +274,15 @@ export class CoreBuildService implements BuildService {
 					warningDiagnostic(
 						"output.differs",
 						{ resource: projectFile },
-						`this file differs from what 'rogen build' would write. It is written from ${path.basename(attempt.config.file)}, so edit that and run 'rogen build'.`
+						`this file differs from what 'rogen build' would write: its sources changed since it was written, or it was edited by hand. Run '${command}' to write it again; what it holds comes from ${path.basename(attempt.config.file)}, so change that to change it.`,
+						[
+							{
+								run: {
+									command,
+									cwd: path.dirname(attempt.config.file),
+								},
+							},
+						]
 					),
 				],
 			},

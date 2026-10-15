@@ -349,6 +349,28 @@ describe("CoreBuildService", () => {
 				);
 			});
 
+			it("should say what to run, and offer it as a fix", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const [checked] = await checkOf(configOf());
+
+				expect(checked.warnings).toMatchObject([
+					{
+						message: expect.stringContaining(
+							"its sources changed since it was written, or it was edited by hand. Run 'rogen build'"
+						),
+						fixes: [
+							{
+								run: {
+									command: "rogen build",
+									cwd: abs("."),
+								},
+							},
+						],
+					},
+				]);
+			});
+
 			it("should not warn when it holds the bytes a build would write", async () => {
 				const config = configOf();
 				await buildServiceOfFs().build(selectionOf(config));
