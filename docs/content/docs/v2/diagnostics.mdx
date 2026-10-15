@@ -911,6 +911,48 @@ default.project.json - error: 'rojo build' failed (exit code 1): Failed to write
 
 Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the build again.
 
+### `rojo.commandUnsupported` [#rojo-commandunsupported]
+
+Error. The Rojo that would run has no such command: it is older than the release that added it. Today only `rogen syncback` can meet it, since `rojo syncback` came with Rojo 7.5.0.
+
+```
+default.project.json - error: Rojo 7.4.4 has no 'syncback' command; Rojo 7.5.0 added it. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH. (rojo.commandUnsupported)
+```
+
+Pin a newer Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`), or update the one on the PATH.
+
+## Syncback
+
+### `syncback.removedFromProjectFile` [#syncback-removedfromprojectfile]
+
+Error. The place no longer holds an instance whose file a project file defines one file at a time, which Rojo's syncback refuses to remove. Rogen mounts the folder of a routing folder as one node, and Rojo removes the files of that node when the instance is gone; but the files of a layout with `@` names or markers are nodes of their own, so syncback can change them and not remove them.
+
+```
+src/Inventory/Bag@server.luau - error: the place no longer holds Inventory/Bag, and the project file defines it file by file, which syncback cannot remove. Delete src/Inventory/Bag@server.luau, then run syncback again. (syncback.removedFromProjectFile)
+```
+
+Delete the file named and run `rogen syncback` again. Nothing was written. See [CLI](/docs/v2/cli#syncback).
+
+### `syncback.unplaced` [#syncback-unplaced]
+
+Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, beside the files already at its parent: that needs one answer, and this is the case where it has none. The message says why.
+
+```
+rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place: src/Inventory, src/Inventory/Server. (syncback.unplaced)
+```
+
+Create the file where you want it, by hand, and run `rogen syncback` again. Other changes of the same run were written. See [CLI](/docs/v2/cli#syncback).
+
+### `syncback.misplaced` [#syncback-misplaced]
+
+Warning. After syncback, Rogen asked where the files it placed land, and one lands at another instance than the place had. A route is missing or ambiguous for it, or the name of the file means something to routing.
+
+```
+src/Quest/Mail@sever.luau - warning: this file was written for ServerScriptService/Quest/Mail, and lands at ReplicatedStorage/Shared/Quest/Mail. Move it to where routing puts it at ServerScriptService/Quest/Mail. (syncback.misplaced)
+```
+
+Move or rename the file, and run `rogen where` on it to see the route. See [Routing](/docs/v2/core-concepts/routing).
+
 ## Migration
 
 ### `legacy.config` [#legacy-config]

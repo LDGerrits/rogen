@@ -1,0 +1,38 @@
+$ rogen syncback -i place.rbxlx -y --list
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · wrote
+  Built 1 config.
+  write  src/Inventory/Save@server.luau
+  write  src/Inventory/ItemTypes@shared.luau
+  write  src/Inventory/Mail@server.luau
+  Syncback wrote 3 changes.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Inventory/Bag@server.luau -> ServerScriptService/Inventory/Bag · route server (suffix)
+  src/Inventory/ItemTypes@shared.luau -> ReplicatedStorage/Shared/Inventory/ItemTypes · route shared (suffix)
+  src/Inventory/Mail@server.luau -> ServerScriptService/Inventory/Mail · route server (suffix)
+  src/Inventory/Save@server.luau -> ServerScriptService/Inventory/Save · route server (suffix)
+  src/Inventory/Types@shared.luau -> ReplicatedStorage/Shared/Inventory/Types · route shared (suffix)
+
+written:
+  default.project.json
+  src/Inventory/ItemTypes@shared.luau
+  src/Inventory/Mail@server.luau
+  src/Inventory/Save@server.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        ItemTypes: ModuleScript  <- src/Inventory/ItemTypes@shared.luau
+        Types: ModuleScript  <- src/Inventory/Types@shared.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Bag@server.luau
+      Mail: ModuleScript  <- src/Inventory/Mail@server.luau
+      Save: ModuleScript  <- src/Inventory/Save@server.luau

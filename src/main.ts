@@ -63,6 +63,8 @@ import { RojoCommandService } from "./domain/runner/rojo-command-service.js";
 import { RojoCompatibility } from "./domain/runner/rojo-compatibility.js";
 import { CoreServeService } from "./domain/serve/core-serve-service.js";
 import { ServeService } from "./domain/serve/serve-service.js";
+import { CoreSyncbackService } from "./domain/syncback/core-syncback-service.js";
+import { SyncbackService } from "./domain/syncback/syncback-service.js";
 import "./commands/build/build-command.js";
 import "./commands/check/check-command.js";
 import "./commands/fmt-project/fmt-project-command.js";
@@ -73,6 +75,7 @@ import "./commands/list/list-command.js";
 import "./commands/plugin/plugin-command.js";
 import "./commands/serve/serve-command.js";
 import "./commands/sourcemap/sourcemap-command.js";
+import "./commands/syncback/syncback-command.js";
 import "./commands/upload/upload-command.js";
 import "./commands/where/where-command.js";
 
@@ -300,11 +303,17 @@ class RogenMain {
 		services.set(WatchService, watchService);
 		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
 		services.set(RojoRunner, rojoRunner);
+		const rojoCommandService = new CoreRojoCommandService(
+			rojoRunner,
+			new RojoCompatibility(fileSystemService)
+		);
+		services.set(RojoCommandService, rojoCommandService);
 		services.set(
-			RojoCommandService,
-			new CoreRojoCommandService(
-				rojoRunner,
-				new RojoCompatibility(fileSystemService)
+			SyncbackService,
+			new CoreSyncbackService(
+				fileSystemService,
+				buildService,
+				rojoCommandService
 			)
 		);
 		services.set(

@@ -24,6 +24,7 @@ import "../src/commands/list/list-command.js";
 import "../src/commands/plugin/plugin-command.js";
 import "../src/commands/serve/serve-command.js";
 import "../src/commands/sourcemap/sourcemap-command.js";
+import "../src/commands/syncback/syncback-command.js";
 import "../src/commands/upload/upload-command.js";
 import "../src/commands/where/where-command.js";
 

@@ -1,0 +1,27 @@
+<roblox version="4">
+  <Item class="ServerScriptService" referent="0">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="1">
+      <Properties>
+        <string name="Name">Inventory</string>
+      </Properties>
+      <Item class="ModuleScript" referent="2">
+        <Properties>
+          <string name="Name">Bag</string>
+          <string name="Source"><![CDATA[return 1
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">Save</string>
+          <string name="Source"><![CDATA[return "save3"
+]]></string>
+        </Properties>
+      </Item><Item class="ModuleScript" referent="100"><Properties><string name="Name">Mail</string><string name="Source"><![CDATA[return "mail"
+]]></string></Properties></Item>
+    </Item>
+  </Item>
+</roblox>

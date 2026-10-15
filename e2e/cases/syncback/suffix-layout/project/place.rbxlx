@@ -1,0 +1,50 @@
+<roblox version="4">
+  <Item class="ReplicatedStorage" referent="0">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="1">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="Folder" referent="2">
+        <Properties>
+          <string name="Name">Inventory</string>
+        </Properties>
+        <Item class="ModuleScript" referent="3">
+          <Properties>
+            <string name="Name">Types</string>
+            <string name="Source"><![CDATA[return "types"
+]]></string>
+          </Properties>
+        </Item><Item class="ModuleScript" referent="101"><Properties><string name="Name">ItemTypes</string><string name="Source"><![CDATA[return "items"
+]]></string></Properties></Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="4">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="5">
+      <Properties>
+        <string name="Name">Inventory</string>
+      </Properties>
+      <Item class="ModuleScript" referent="6">
+        <Properties>
+          <string name="Name">Bag</string>
+          <string name="Source"><![CDATA[return "bag"
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="7">
+        <Properties>
+          <string name="Name">Save</string>
+          <string name="Source"><![CDATA[return "save2"
+]]></string>
+        </Properties>
+      </Item><Item class="ModuleScript" referent="100"><Properties><string name="Name">Mail</string><string name="Source"><![CDATA[return "mail"
+]]></string></Properties></Item>
+    </Item>
+  </Item>
+</roblox>

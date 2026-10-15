@@ -1,0 +1,22 @@
+$ rogen syncback -i place.rbxlx -y
+exit 1
+stdout:
+  rogen syncback · Game
+  default.project.json · wrote
+  Built 1 config.
+stderr:
+  src/Inventory/Bag@server.luau - error: the place no longer holds Inventory/Bag, and the project file defines it file by file, which syncback cannot remove. Delete src/Inventory/Bag@server.luau, then run syncback again. (syncback.removedFromProjectFile)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types@shared.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Bag@server.luau
+      Save: ModuleScript  <- src/Inventory/Save@server.luau

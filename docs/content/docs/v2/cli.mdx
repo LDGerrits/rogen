@@ -68,6 +68,17 @@ Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the 
 
 It uploads one project, so a root with [places](/docs/v2/configuration#places) and no place named is an error that says to name one (`rogen upload places/lobby --asset_id 123`), and nothing is written. Nothing is written or uploaded either when the project files have errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)). `--json` prints [one document](#upload---json).
 
+### `syncback [project] --input <file>` [#syncback]
+
+Writes the project files, then brings the changes of a place or model file back into your source folders, as `rojo syncback` does for a project file: scripts edited in Studio, scripts added there, and scripts deleted. It is Rojo's own syncback, run by Rogen on a project file made for it, since the file Rogen writes for `serve` holds one node per file and Rojo's syncback can't add to those.
+
+- **A routing folder is read as it is.** `src/Inventory/Server` is one node, `ServerScriptService/Inventory`, so Rojo writes an edit, an addition and a deletion straight into it. This holds for a folder with no `@` names, `^` names, `(Group)` folders or markers inside, whose node no other file adds to. Anything else keeps its files as separate nodes: an edit reaches the right file, a deletion is refused ([`syncback.removedFromProjectFile`](/docs/v2/diagnostics#syncback-removedfromprojectfile)), and an addition is placed as below.
+- **A new instance goes where routing would place a file for it.** Rogen takes the files already at its parent and writes the new one beside them, in their style: into the same routing folder, as `Mail@server.luau` beside `Save@server.luau`, or into the folder a marker routes. An instance whose parent holds no file gets a feature folder in the source path, `src/Quest/Server/Main.luau`, with the routing folder named as the config's routes name it. When the files beside it are in more than one place, or several source paths could hold it, it is left out and listed ([`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced)); Rogen never guesses. After the run it asks where the files it placed land, and warns about one that lands elsewhere ([`syncback.misplaced`](/docs/v2/diagnostics#syncback-misplaced)).
+- **It deletes.** The files of instances the place no longer holds are removed. A run in a terminal lists what it would do and asks first; without a terminal it needs `-y/--non-interactive`, or `--dry-run`. `--dry-run` plans and lists without writing; `--list` lists what a run writes.
+- **Rojo's rules apply.** `syncbackRules` of the config pass through to the file Rojo reads, with `globIgnorePaths` and `syncRules`. Rojo's syncback writes the place's own properties and sources, so a project that syncs from a folder a tool writes into (a `syncPath`, as with Darklua) writes the processed code into your sources: look at the diff. A project file Rogen does not write, in a folder with no `rogen.json`, is given to Rojo as it is.
+
+It runs on one project, as `upload` does. Rojo older than 7.5.0 has no syncback ([`rojo.commandUnsupported`](/docs/v2/diagnostics#rojo-commandunsupported)). Nothing is written when the project files have errors or Rojo fails, and a failed Rojo exits 1 with what it said. Instances of services the project does not mention stay in the place: syncback skips them. `--json` prints [one document](#syncback---json).
+
 ### `plugin install` and `plugin uninstall`
 
 Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with the Rojo your toolchain file pins in this folder or above, else the one on the PATH, so the plugin matches the server `rogen serve` starts. Installing again overwrites the plugin. It reads no project, so it runs in any folder. On a platform Rojo can't install a plugin on, Rojo's error is shown and the exit code is 1.
@@ -524,6 +535,35 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 ```
 
 `configs` is as in [`build --json`](#build---json), and `rojo` is shaped as `rojo` in it, with `command` `upload`. `outcome` is `built` when Rojo exited without an error, `failed` when it did not, and `notRun` when the project files had errors. The flags you gave are not in it.
+
+### `syncback --json`
+
+```json
+{
+	"changed": true,
+	"configs": [
+		{
+			"config": "my-game",
+			"file": "/repo/rogen.json",
+			"projectFile": "/repo/default.project.json",
+			"outcome": "unchanged",
+			"diagnostics": []
+		}
+	],
+	"syncback": {
+		"outcome": "written",
+		"project": "my-game",
+		"input": "game.rbxl",
+		"changes": [
+			{ "kind": "write", "file": "/repo/src/Quest/Server/Main.luau" },
+			{ "kind": "remove", "file": "/repo/src/Combat/Server/Hit.luau" }
+		],
+		"unplaced": []
+	}
+}
+```
+
+`configs` is as in [`build --json`](#build---json). `syncback.outcome` is `written` when the run wrote, `planned` for `--dry-run`, `failed` when it did not, with `diagnostics` or `error` as a failed run prints, and `notRun` when the project files had errors. `changes` are the files written and removed, at the places the new ones were put; `unplaced` has the `instance` and the `reason` of each instance left out. A file placed where the build puts it elsewhere is a diagnostic in `syncback.diagnostics`.
 
 ### `fmt-project --json`
 

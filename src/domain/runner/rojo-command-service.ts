@@ -15,6 +15,10 @@ export interface RojoCommandRequest {
 	readonly cwd: string;
 	/** The one of the selection's projects to run on, when it holds several and the caller runs on each. */
 	readonly project?: ResolvedConfig;
+	/** The project file Rojo reads, when it is not the project's own: an absolute path. */
+	readonly projectFile?: string;
+	/** The first Rojo release that has the command, so an older one is refused with a message that says so. */
+	readonly since?: string;
 	/** Ends the checks and the run. */
 	readonly signal?: AbortSignal;
 }

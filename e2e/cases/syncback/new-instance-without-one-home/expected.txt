@@ -1,0 +1,21 @@
+$ rogen syncback -i place.rbxlx -y --list
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · unchanged
+  Built 1 config.
+  write  src/Inventory/Save@server.luau
+  Syncback wrote 1 change.
+stderr:
+  rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place: src/Inventory, src/Inventory/Server. (syncback.unplaced)
+
+written:
+  default.project.json
+  src/Inventory/Save@server.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Server/Bag.luau
+      Save: ModuleScript  <- src/Inventory/Save@server.luau

@@ -26,6 +26,7 @@ import {
 const InitOptions = [
 	{
 		name: "non-interactive",
+		short: "y",
 		type: "boolean",
 		description:
 			"Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it. A flag below answers its question either way.",
@@ -186,7 +187,6 @@ registerCommand(
 					effects: ["writesFiles"],
 					formerOptions: {
 						"--yes": "Use --non-interactive.",
-						"-y": "Use --non-interactive.",
 					},
 					examples: [
 						"rogen init",

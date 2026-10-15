@@ -26,6 +26,8 @@ import { InputService } from "../../platform/input/input-service.js";
 import { MockInputService } from "../../platform/input/__tests__/mock-input-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { MockPromptService } from "../../platform/prompt/__tests__/mock-prompt-service.js";
+import { CoreSyncbackService } from "../../domain/syncback/core-syncback-service.js";
+import { SyncbackService } from "../../domain/syncback/syncback-service.js";
 import { CoreServeService } from "../../domain/serve/core-serve-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
 import { CoreWatchService } from "../../domain/watch/core-watch-service.js";
@@ -127,9 +129,14 @@ export function commandHarness(
 	services.set(BrowserService, options.browser ?? new MockBrowserService());
 	services.set(ProductService, options.product ?? new MockProductService());
 	const rojoRunner = new CoreRojoRunner(toolchain, processes);
+	const rojoCommands = new CoreRojoCommandService(
+		rojoRunner,
+		new RojoCompatibility(fs, false)
+	);
+	services.set(RojoCommandService, rojoCommands);
 	services.set(
-		RojoCommandService,
-		new CoreRojoCommandService(rojoRunner, new RojoCompatibility(fs, false))
+		SyncbackService,
+		new CoreSyncbackService(fs, build, rojoCommands)
 	);
 	services.set(
 		ServeService,

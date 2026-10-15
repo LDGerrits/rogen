@@ -77,7 +77,7 @@ stdout:
                                              when not given.
           --nested                           Start a project in a folder below another rogen.json,
                                              which a run that can't ask refuses otherwise.
-          --non-interactive                  Write the defaults without asking, as a run without a
+      -y, --non-interactive                  Write the defaults without asking, as a run without a
                                              terminal, or under a coding agent or CI, does. --json
                                              implies it. A flag below answers its question either way.
           --package <PATH>                   A package folder to mount as it is; repeat for several,

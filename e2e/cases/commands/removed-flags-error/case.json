@@ -13,7 +13,6 @@
 		["list", "--all"],
 		["where", "--all"],
 		["init", "--no-input"],
-		["init", "-y"],
 		["init", "--yes"],
 		["build", "--deny-warnings"],
 		["check", "--deny-warnings", "--json"],

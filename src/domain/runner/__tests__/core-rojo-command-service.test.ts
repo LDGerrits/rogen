@@ -71,6 +71,51 @@ describe("CoreRojoCommandService", () => {
 		expect(child.options.cwd).toBe("/repo");
 	});
 
+	it("should run on the project file the request names, when it is not the project's own", async () => {
+		const running = service.run(selection(), {
+			command: "syncback",
+			flags: ["--input", "a.rbxl"],
+			cwd: "/repo",
+			projectFile: "/repo/temporary.project.json",
+		});
+		await finish([], 0);
+
+		await running;
+
+		expect(processes.spawned[0].args).toEqual([
+			"syncback",
+			"temporary.project.json",
+			"--input",
+			"a.rbxl",
+		]);
+	});
+
+	it("should refuse a Rojo older than the release that has the command, and say which", async () => {
+		processes.outputs.set("/bin/rojo", {
+			code: 0,
+			stdout: "Rojo 7.4.4\n",
+			stderr: "",
+		});
+
+		const refused = await service.run(selection(), {
+			command: "syncback",
+			flags: [],
+			cwd: "/repo",
+			since: "7.5.0",
+		});
+
+		expect(
+			(refused as ResultError<DiagnosticsError>).error.diagnostics
+		).toMatchObject([
+			{
+				code: "rojo.commandUnsupported",
+				message:
+					"Rojo 7.4.4 has no 'syncback' command; Rojo 7.5.0 added it. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH.",
+			},
+		]);
+		expect(processes.spawned).toEqual([]);
+	});
+
 	it("should run on the project the selection names", async () => {
 		const chosen = new MockConfigSelection(
 			[mockEntry({}, "/repo/rogen.json", { release: {} })],

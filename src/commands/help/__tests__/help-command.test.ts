@@ -16,6 +16,7 @@ import "../../list/list-command.js";
 import "../../plugin/plugin-command.js";
 import "../../serve/serve-command.js";
 import "../../sourcemap/sourcemap-command.js";
+import "../../syncback/syncback-command.js";
 import "../../upload/upload-command.js";
 import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
