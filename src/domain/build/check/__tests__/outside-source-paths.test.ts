@@ -25,6 +25,16 @@ describe("OutsideSourcePaths", () => {
 			}
 		);
 
+		it("should say a folder that differs only in letter case does, and is not an edit", () => {
+			expect(outside.about("/repo/Src/A.luau")).toEqual([
+				expect.objectContaining({
+					message: expect.stringContaining(
+						'"Src" differs from the source path "src" only in letter case'
+					),
+				}),
+			]);
+		});
+
 		it.each([
 			"/repo/README.md",
 			"/repo/docs/A.luau",

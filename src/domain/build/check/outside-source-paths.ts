@@ -19,8 +19,16 @@ export class OutsideSourcePaths {
 			const name = path.posix.basename(sourcePath);
 			if (!containsPosix(parent, posix) || posix === parent) continue;
 			const [folder] = path.posix.relative(parent, posix).split("/");
-			if (folder === name || closestMatch(folder, [name]) !== name)
-				continue;
+			if (folder === name) continue;
+			if (folder.toLowerCase() === name.toLowerCase())
+				return [
+					warningDiagnostic(
+						"scan.outsideSourcePaths",
+						{ resource: file },
+						`this path is in no source path, so no build reads it, and "${folder}" differs from the source path "${name}" only in letter case. Check the spelling.`
+					),
+				];
+			if (closestMatch(folder, [name]) !== name) continue;
 			return [
 				warningDiagnostic(
 					"scan.outsideSourcePaths",

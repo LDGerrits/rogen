@@ -526,6 +526,20 @@ describe("BuildValidator rules", () => {
 				).toEqual([abs("src/Foo.luau"), abs("src/foo.luau")]);
 			});
 
+			it("should warn of a meta file and a marker whose names Windows cannot hold", async () => {
+				await write(
+					"src/Foo?.meta.json",
+					"src/@ser:ver",
+					"src/Foo.luau"
+				);
+
+				expect(
+					(await named("scan.portableName")).map(
+						({ resource }) => resource
+					)
+				).toEqual([abs("src/@ser:ver"), abs("src/Foo?.meta.json")]);
+			});
+
 			it("should leave a name that is fine alone", async () => {
 				await write("src/Save.server.luau", "src/My-Lib/Util.luau");
 

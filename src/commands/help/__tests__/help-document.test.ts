@@ -222,8 +222,14 @@ describe("rogen help --json", () => {
 					severity: "error",
 				})
 			);
-			for (const { summary } of codes)
+			for (const { summary } of codes) {
 				expect(summary).toMatch(/^[A-Z`"].*[.!?]$/);
+				expect(summary).not.toMatch(/\b(e\.g|i\.e)\.$/);
+			}
+			for (const text of Object.values(helpTexts.diagnostics))
+				expect(text.split("\n\n")[1]).toMatch(
+					/^(Error|Warning)(, or error)?[.,] /
+				);
 		});
 	});
 

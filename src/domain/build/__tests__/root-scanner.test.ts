@@ -90,6 +90,25 @@ describe("RootScanner", () => {
 			});
 		});
 
+		describe("a name with a backslash that is no instance", () => {
+			it("should be neither left out nor reported", () => {
+				const index = new Listing(
+					new Map([
+						[
+							toPosix(abs("src")),
+							new Map([["notes\\x.md", FileType.File]]),
+						],
+					])
+				);
+
+				const [root] = builderOf(fs, index)
+					.place(configOf({ sourcePaths: [abs("src")], ignored: [] }))
+					.unwrap().roots;
+
+				expect(root.oddNames).toEqual([]);
+			});
+		});
+
 		describe("the project file it writes", () => {
 			it("should be left out when a source path holds it", async () => {
 				await write("src/A.luau", "src/default.project.json");

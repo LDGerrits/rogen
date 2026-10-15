@@ -326,7 +326,11 @@ export class RootScanner {
 		const subdirs: string[] = [];
 		for (const [name, type] of kept) {
 			if (name.includes("\\")) {
-				odd(name, PortableName.problemWith(name, name) ?? "", true);
+				if (
+					isDirectoryType(type) ||
+					this.fileAt(joinPosix(dir, name)).kind
+				)
+					odd(name, PortableName.problemWith(name, name) ?? "", true);
 			} else if (type === FileType.SymbolicLink) {
 				walk.leftOut.set(joinPosix(dir, name), { status: "skipped" });
 			} else if (isDirectoryType(type)) {
@@ -349,6 +353,8 @@ export class RootScanner {
 					});
 				} else if (file.isMeta) {
 					walk.metaFiles.push(relativeTo(name));
+					const problem = PortableName.problemWith(name, name);
+					if (problem) odd(name, problem);
 				} else if (file.kind) {
 					const problem = PortableName.problemWith(
 						name,
@@ -365,6 +371,8 @@ export class RootScanner {
 					});
 				} else if (name.startsWith(".") || name.startsWith("@")) {
 					walk.markers.push(relativeTo(name));
+					const problem = PortableName.problemWith(name, name);
+					if (problem) odd(name, problem);
 				}
 			}
 		}

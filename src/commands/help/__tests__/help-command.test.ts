@@ -200,16 +200,25 @@ describe("help command", () => {
 			);
 		});
 
-		it("should list every code on one line with its severity", async () => {
+		it("should list every code with its severity and meaning, wrapped under the code", async () => {
 			await help("codes");
 
 			const lines = printed().split("\n");
-			expect(lines).toHaveLength(
-				Object.keys(helpTexts.diagnostics).length
+			const starts = lines.filter((line) => !line.startsWith(" "));
+			expect(starts.map((line) => line.split(/\s/)[0])).toEqual(
+				Object.keys(helpTexts.diagnostics)
 			);
-			expect(lines).toContain(
-				"config.unknownField  warning  The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1."
+			expect(lines.every((line) => line.length <= 100)).toBe(true);
+			expect(
+				starts.find((line) => line.startsWith("config.unknownField"))
+			).toMatch(
+				/^config\.unknownField +warning The config has a key that is neither one of Rojo's/
 			);
+			expect(
+				starts.find((line) =>
+					line.startsWith("roblox.unsupportedService")
+				)
+			).toMatch(/^roblox\.unsupportedService +error /);
 		});
 
 		it("should merge the global options into a command's, sorted by name", async () => {

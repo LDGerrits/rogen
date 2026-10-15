@@ -330,6 +330,32 @@ describe("CoreBuildService", () => {
 			expect(checked.outcome).toBe("failed");
 		});
 
+		describe("staleProjectFiles", () => {
+			it("should list the project files that differ, and only those", async () => {
+				const config = configOf();
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const stale = await buildServiceOfFs().staleProjectFiles(
+					selectionOf(config)
+				);
+
+				expect(stale).toMatchObject([
+					{
+						code: "output.differs",
+						resource: abs("default.project.json"),
+					},
+				]);
+			});
+
+			it("should find nothing when no project file is on disk", async () => {
+				expect(
+					await buildServiceOfFs().staleProjectFiles(
+						selectionOf(configOf())
+					)
+				).toEqual([]);
+			});
+		});
+
 		describe("a project file on disk", () => {
 			it("should warn when it differs from what a build would write", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");

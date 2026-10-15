@@ -17,7 +17,9 @@ export class ConfigKeys {
 	/** A removed key is an error; a key neither Rojo's nor Rogen's passes through with a warning. */
 	static check(
 		keys: readonly string[],
-		locationOf: (key: string) => DiagnosticLocation
+		locationOf: (key: string) => DiagnosticLocation,
+		/** Whether `locationOf` points at the key, which a replacement needs, and not at its value. */
+		atKey = true
 	): { readonly errors: Diagnostic[]; readonly warnings: Diagnostic[] } {
 		const errors: Diagnostic[] = [];
 		const warnings: Diagnostic[] = [];
@@ -38,7 +40,7 @@ export class ConfigKeys {
 					"config.unknownField",
 					location,
 					`"${key}" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
-					suggestion
+					suggestion && atKey
 						? replaceFixes(
 								location,
 								JSON.stringify(key),

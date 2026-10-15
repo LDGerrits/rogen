@@ -150,6 +150,13 @@ export class CoreBuildService implements BuildService {
 	}
 
 	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {
+		const { set } = BuildSet.partition(selection);
+		const written = await Promise.all(
+			set.configs.map(({ projectFile }) =>
+				this.fileSystemService.isFile(projectFile)
+			)
+		);
+		if (!written.includes(true)) return [];
 		const { diagnostics } = await this.check(selection);
 		return diagnostics.filter(({ code }) => code === "output.differs");
 	}

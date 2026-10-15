@@ -172,7 +172,8 @@ export class ProjectSourceReader {
 			);
 		const found = ConfigKeys.check(
 			keys.filter((key) => !ROOT_ONLY_KEYS.includes(key)),
-			(key) => location(key)
+			(key) => location(key),
+			false
 		);
 		errors.push(...found.errors);
 		return {

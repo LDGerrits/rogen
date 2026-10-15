@@ -380,6 +380,17 @@ describe("CoreConfigService", () => {
 				]);
 			});
 
+			it("should offer no replacement for such a key, since its position is its value's", async () => {
+				await write("/repo/rogen.json", {
+					...BASE,
+					projects: { dist: { servePrt: 1 } },
+				});
+				await start();
+
+				const dist = buildableProjects(selection.entries[0])[1];
+				expect(dist.warnings[0].fixes).toBeUndefined();
+			});
+
 			it("should tell a key Rogen read once is gone, inside a project", async () => {
 				expect(
 					await failure({ projects: { dist: { extends: "x" } } })

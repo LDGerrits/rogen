@@ -242,13 +242,25 @@ export class HelpPages {
 	textOf(target: HelpTarget): string {
 		if (target.kind === "command")
 			return formatCommandHelp(target.command, GlobalOptions);
-		if (target.kind === "codes")
-			return HelpDocument.codes()
-				.codes.map(
-					({ code, severity, summary }) =>
-						`${code}  ${severity}  ${summary}`
+		if (target.kind === "codes") {
+			const { codes } = HelpDocument.codes();
+			const codeWidth = Math.max(...codes.map(({ code }) => code.length));
+			const indent = " ".repeat(codeWidth + 2);
+			return codes
+				.map(({ code, severity, summary }) =>
+					wrapped(
+						`${severity === "error" ? "error  " : "warning"} ${summary}`,
+						WIDTH - codeWidth - 2
+					)
+						.map((line, index) =>
+							index === 0
+								? `${code.padEnd(codeWidth)}  ${line}`
+								: `${indent}${line}`
+						)
+						.join("\n")
 				)
 				.join("\n");
+		}
 		return helpTexts.diagnostics[target.code]
 			.split("\n")
 			.flatMap((line) =>

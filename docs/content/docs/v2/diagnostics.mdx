@@ -672,7 +672,7 @@ Rename the file with a name before the suffix.
 
 ### `scan.outsideSourcePaths` [#scan-outsidesourcepaths]
 
-Warning. `rogen check <path>` was given a path that is in no source path, and its first folder is one edit from a source path, so a typo is likely. Any other path outside the source paths passes, since hooks hand `check` every changed file.
+Warning. `rogen check <path>` was given a path that is in no source path, and its first folder is one edit from a source path (or differs from it only in letter case), so a typo is likely. Any other path outside the source paths passes, since hooks hand `check` every changed file.
 
 ```
 scr/Inventory/Server/Save.luau - warning: this path is in no source path, so no build reads it, and "scr" is one edit from the source path "src". Check the spelling. (scan.outsideSourcePaths)
@@ -688,7 +688,7 @@ Warning. A file or folder name that holds on this machine but fails on Windows o
 src/Bad:Name.luau - warning: its name has ":", which Windows file names cannot hold. Rename it so a checkout works on every system. (scan.portableName)
 ```
 
-Rename the file or folder, and update what requires it. The check runs for each file and folder that becomes an instance, not for files Rogen ignores.
+Rename the file or folder, and update what requires it. The check runs for each file and folder that becomes an instance, and for meta and marker files, not for files Rogen ignores.
 
 ## Output
 
