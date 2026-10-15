@@ -50,6 +50,11 @@ the `default.project.json` Rogen writes must equal the original apart from
 can't write back yet is listed in the test with what it needs; its test is
 `it.failing`, so it fails the day that works and the mark has to go.
 
+`rojo-parity.test.ts` runs Rojo and Rogen on the same project and compares what they make. Each of Rojo's
+build-test projects is built into `.rbxl`, `.rbxm` and `.rbxlx` and mapped with each `sourcemap` flag, and the
+files must be the same bytes, with the same exit code when Rojo refuses. A plain Rojo project is edited in
+Studio in twelve ways, and `rogen syncback -y` must leave the same files as `rojo syncback`.
+
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
 and fails in CI.
 
