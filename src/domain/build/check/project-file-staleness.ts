@@ -14,10 +14,10 @@ import { OutputWriter } from "../output-writer.js";
 export class ProjectFileStaleness {
 	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** The warning for `config`'s project file when it is on disk and differs from `built`; none for a file that isn't there or one Rogen never writes. */
+	/** The warning for `config`'s project file when it is on disk and differs from what `built` gives; none for a file that isn't there, one Rogen never writes, or a build that fails. `built` runs only for a file that is there. */
 	async diagnostic(
 		config: ResolvedConfig,
-		built: RojoProjectFile
+		built: () => Promise<RojoProjectFile | undefined>
 	): Promise<Diagnostic | undefined> {
 		const { projectFile, stem } = config;
 		if (config.isAdopted) return undefined;
@@ -28,11 +28,9 @@ export class ProjectFileStaleness {
 				? await this.fileSystemService.readFile(projectFile)
 				: undefined
 		);
-		if (
-			onDisk.isErr() ||
-			onDisk.value === undefined ||
-			onDisk.value === OutputWriter.textOf(built)
-		)
+		if (onDisk.isErr() || onDisk.value === undefined) return undefined;
+		const file = await built();
+		if (!file || onDisk.value === OutputWriter.textOf(file))
 			return undefined;
 		return warningDiagnostic(
 			"output.differs",

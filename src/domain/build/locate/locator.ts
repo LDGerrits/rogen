@@ -40,9 +40,14 @@ interface Targets {
 	readonly asked: readonly Asked[];
 }
 
-/** What `locate` found, and the project file a build of each config would write when the listing was examined as it is. */
+/** The project file a build of a config would write, or none when it fails; examined over the listing as it is on disk. */
+export interface AssembledFile {
+	readonly file: RojoProjectFile | undefined;
+}
+
+/** What `locate` found, and for each config the examination over the listing as it is, which a project file's staleness is judged by. */
 export type Located = Omit<Locations, "errors" | "stale"> & {
-	readonly built: ReadonlyMap<ResolvedConfig, RojoProjectFile>;
+	readonly built: ReadonlyMap<ResolvedConfig, AssembledFile>;
 };
 
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
@@ -60,7 +65,7 @@ export class Locator {
 	): Promise<Result<Located, DiagnosticsError>> {
 		const targets = await this.classify(query ?? { args: [], cwd: "" });
 		const located: ConfigLocations[] = [];
-		const built = new Map<ResolvedConfig, RojoProjectFile>();
+		const built = new Map<ResolvedConfig, AssembledFile>();
 		for (const config of configs) {
 			const locations = await new ConfigLocator(
 				config,
@@ -130,7 +135,7 @@ class ConfigLocator {
 		Result<
 			{
 				readonly locations: ConfigLocations;
-				readonly built: RojoProjectFile | undefined;
+				readonly built: AssembledFile | undefined;
 			},
 			DiagnosticsError
 		>
@@ -223,7 +228,7 @@ class ConfigLocator {
 			{
 				readonly files: FileLocation[];
 				readonly diagnostics: readonly Diagnostic[];
-				readonly built: RojoProjectFile | undefined;
+				readonly built: AssembledFile | undefined;
 			},
 			DiagnosticsError
 		>
@@ -238,11 +243,10 @@ class ConfigLocator {
 			index,
 			await this.existsOnDisk(index, paths)
 		);
-		const asOnDisk = !paths.some((target) => index.isPlanned(target));
 		return planned.map(({ locator, diagnostics, built }) => ({
 			files: locator.locate(paths, folders),
 			diagnostics,
-			built: asOnDisk ? built : undefined,
+			built: index.addsNothing ? built : undefined,
 		}));
 	}
 
@@ -417,7 +421,7 @@ class ConfigLocator {
 				readonly locator: PlacementLocator;
 				readonly diagnostics: readonly Diagnostic[];
 				/** What a build of the config would write from `index`. */
-				readonly built: RojoProjectFile | undefined;
+				readonly built: AssembledFile;
 			},
 			DiagnosticsError
 		>
@@ -428,7 +432,7 @@ class ConfigLocator {
 			locator: new PlacementLocator(result.placement, index, exists),
 			diagnostics:
 				result.kind === "assembled" ? result.warnings : result.errors,
-			built: builder.assembledFile(this.config, result),
+			built: { file: builder.assembledFile(this.config, result) },
 		}));
 	}
 

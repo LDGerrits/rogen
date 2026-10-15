@@ -13,7 +13,6 @@ import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
-import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	BuildRun,
@@ -35,7 +34,7 @@ import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
-import { Locator } from "./locate/locator.js";
+import { AssembledFile, Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 type Attempt = BuiltConfig | FailedBuild;
@@ -162,7 +161,7 @@ export class CoreBuildService implements BuildService {
 	private async staleOf(
 		configs: readonly ResolvedConfig[],
 		listing: IndexReader,
-		built: ReadonlyMap<ResolvedConfig, RojoProjectFile>
+		built: ReadonlyMap<ResolvedConfig, AssembledFile>
 	): Promise<Diagnostic[]> {
 		const staleness = new ProjectFileStaleness(this.fileSystemService);
 		const builder = new ConfigBuilder(
@@ -172,11 +171,12 @@ export class CoreBuildService implements BuildService {
 		);
 		const stale: Diagnostic[] = [];
 		for (const config of configs) {
-			if (config.isAdopted) continue;
-			const file =
-				built.get(config) ?? (await builder.projectFileOf(config));
-			const diagnostic =
-				file && (await staleness.diagnostic(config, file));
+			const known = built.get(config);
+			const diagnostic = await staleness.diagnostic(config, () =>
+				known
+					? Promise.resolve(known.file)
+					: builder.projectFileOf(config)
+			);
 			if (diagnostic) stale.push(diagnostic);
 		}
 		return stale;
@@ -317,7 +317,7 @@ export class CoreBuildService implements BuildService {
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
 		const stale = await new ProjectFileStaleness(
 			this.fileSystemService
-		).diagnostic(attempt.config, attempt.projectFile);
+		).diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
 			...attempt,

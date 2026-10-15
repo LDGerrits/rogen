@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
+import { ConfigBuilder } from "../config-builder.js";
 import { PlannedFilesIndex } from "../locate/planned-files-index.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -571,6 +572,23 @@ describe("CoreBuildService.locate", () => {
 			expect(listing.getEntries(abs("src/Combat"))).toBeUndefined();
 		});
 
+		it("should add nothing for files that exist, or that are no source file", async () => {
+			await write("src/Other.luau");
+			const listing = await indexOf(fs, [abs("src")]);
+			const planned = (...paths: string[]) =>
+				new PlannedFilesIndex(
+					listing,
+					[abs("src")],
+					paths.map((p) => abs(p)),
+					(source) => RojoFile.at(source, configOf().syncRules)
+				);
+
+			expect(planned("src/Other.luau").addsNothing).toBe(true);
+			expect(planned("src/Notes.md").addsNothing).toBe(true);
+			expect(planned("elsewhere/A.luau").addsNothing).toBe(true);
+			expect(planned("src/New.luau").addsNothing).toBe(false);
+		});
+
 		it("should sit beside the files that exist", async () => {
 			await write("src/Other.luau");
 
@@ -1108,6 +1126,51 @@ describe("CoreBuildService.locate", () => {
 			await staleOf(["src/A.luau"], [configOf()], index);
 
 			expect(list).toHaveBeenCalledTimes(1);
+		});
+
+		it("should build no more than the locate did when a read config's file is stale", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+			const rebuilt = jest.spyOn(
+				ConfigBuilder.prototype,
+				"projectFileOf"
+			);
+
+			await staleOf(["src/A.luau"]);
+
+			expect(rebuilt).not.toHaveBeenCalled();
+			rebuilt.mockRestore();
+		});
+
+		it("should not build a project it doesn't read when its file isn't on disk", async () => {
+			await write("src/A.luau");
+			const rebuilt = jest.spyOn(
+				ConfigBuilder.prototype,
+				"projectFileOf"
+			);
+
+			expect(
+				await staleOf([], [configOf(), configOf({ stem: "release" })])
+			).toEqual([]);
+
+			expect(rebuilt).not.toHaveBeenCalled();
+			rebuilt.mockRestore();
+		});
+
+		it("should build a project it doesn't read once its file is on disk", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("release.project.json"), "{}");
+			const rebuilt = jest.spyOn(
+				ConfigBuilder.prototype,
+				"projectFileOf"
+			);
+
+			expect(
+				await staleOf([], [configOf(), configOf({ stem: "release" })])
+			).toHaveLength(1);
+
+			expect(rebuilt).toHaveBeenCalledTimes(1);
+			rebuilt.mockRestore();
 		});
 
 		it("should examine each config once when no path is planned", async () => {

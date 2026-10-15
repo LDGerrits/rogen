@@ -70,10 +70,7 @@ export class ConfigBuilder {
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
-		const missing = new MissingSourcePaths(
-			placement.roots,
-			config.projectFile
-		);
+		const missing = ConfigBuilder.missingOf(config, placement);
 		if (missing.stopsBuild)
 			return err(new DiagnosticsError(missing.diagnostics()));
 		return ok({
@@ -124,11 +121,16 @@ export class ConfigBuilder {
 		examined: ExaminedConfig
 	): RojoProjectFile | undefined {
 		if (examined.kind !== "assembled") return undefined;
-		const missing = new MissingSourcePaths(
-			examined.placement.roots,
-			config.projectFile
-		);
-		return missing.stopsBuild ? undefined : examined.projectFile;
+		return ConfigBuilder.missingOf(config, examined.placement).stopsBuild
+			? undefined
+			: examined.projectFile;
+	}
+
+	private static missingOf(
+		config: ResolvedConfig,
+		placement: Placement
+	): MissingSourcePaths {
+		return new MissingSourcePaths(placement.roots, config.projectFile);
 	}
 
 	/** The project file a build of `config` would write, or none when it fails. */
