@@ -88,7 +88,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 
 	describe("a build test of Rojo's", () => {
 		it.each(projects)(
-			"should build %s into each format as Rojo does, or fail as it does",
+			"should build %s into each format as Rojo does",
 			(name) => {
 				const { dir, byRojo, byRogen } = copies(name);
 				const differing = FORMATS.filter((format) => {
@@ -103,8 +103,8 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 						"-o",
 						path.join(dir, `rogen.${format}`),
 					]);
-					if (expected.status !== 0) return actual.status === 0;
 					return (
+						expected.status !== 0 ||
 						actual.status !== 0 ||
 						!fs
 							.readFileSync(path.join(dir, `rogen.${format}`))
@@ -132,8 +132,8 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 						"default.project.json",
 					]);
 					const actual = rogen(byRogen, ["sourcemap", ...flags]);
-					if (expected.status !== 0) return actual.status === 0;
 					return (
+						expected.status !== 0 ||
 						actual.status !== 0 ||
 						actual.stdout.split(byRogen).join("") !==
 							expected.stdout.split(byRojo).join("")

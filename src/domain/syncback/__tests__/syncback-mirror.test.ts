@@ -332,6 +332,40 @@ describe("SyncbackMirror", () => {
 		});
 	});
 
+	it("should read a folder a node mounts whole from the folder of its entry, and keep what lies below it out of that folder", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ReplicatedStorage: {
+						Net: {
+							$path: "src/Net",
+							Sub: {
+								$className: "Folder",
+								A: { $path: optional("src/A.luau") },
+								B: { $path: "vendor/B" },
+							},
+						},
+					},
+				},
+			},
+			[placed("src/A.luau", "ReplicatedStorage", "Net", "Sub", "A")],
+			["/repo/src/Net"]
+		);
+
+		expect(mirror.file.tree).toEqual({
+			ReplicatedStorage: {
+				Net: {
+					$path: `${ROOT}/ReplicatedStorage/Net`,
+					Sub: {
+						$className: "Folder",
+						$path: `${ROOT}/~kept/0`,
+						B: { $path: `${ROOT}/~kept/1/B` },
+					},
+				},
+			},
+		});
+	});
+
 	it("should give the path in the project of a mirror path, and none for a new one", async () => {
 		const mirror = await mirrorOf(
 			{

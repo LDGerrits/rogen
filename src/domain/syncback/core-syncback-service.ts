@@ -500,8 +500,8 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 		};
 
-		/** The files written so far, since a file a project places at more than one instance is copied once for each. */
-		const written = new Map<string, Operation & { kind: "write" }>();
+		/** Where in `operations` each file changed so far is, since a file a project places at more than one instance is copied once for each. */
+		const claimed = new Map<string, number>();
 		const copiedPaths = new Set(copied.map(({ mirror: at }) => at));
 		const kept = copied.filter(
 			({ target }) => !this.isIgnored(prepared, target)
@@ -543,22 +543,31 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 			for (const operation of compared) {
 				if (!operation) continue;
-				const same =
-					operation.kind === "write"
-						? written.get(operation.file)
-						: undefined;
-				if (same) {
-					if (!sameBytes(same.bytes, operation.bytes))
-						unplaced.push({
-							instance: operation.instance,
-							reason: `its file ${operation.file} is also ${same.instance}, which was edited differently, and that change was kept`,
-						});
+				const at = claimed.get(operation.file);
+				if (at === undefined) {
+					await touch(operation.file);
+					claimed.set(operation.file, operations.length);
+					operations.push(operation);
 					continue;
 				}
-				await touch(operation.file);
-				operations.push(operation);
-				if (operation.kind === "write")
-					written.set(operation.file, operation);
+				const first = operations[at];
+				if (first.kind === "write" && operation.kind === "write") {
+					if (!sameBytes(first.bytes, operation.bytes))
+						unplaced.push({
+							instance: operation.instance,
+							reason: `its file ${operation.file} is also ${first.instance}, which was edited differently, and that change was kept`,
+						});
+				} else if (first.kind !== operation.kind) {
+					const [edit, removal] =
+						first.kind === "write"
+							? [first, operation]
+							: [operation, first];
+					operations[at] = edit;
+					unplaced.push({
+						instance: removal.instance,
+						reason: `its file ${removal.file} is also ${edit.instance}, which was edited, so the file was kept`,
+					});
+				}
 			}
 		}
 		const holding = new Set<string>();
