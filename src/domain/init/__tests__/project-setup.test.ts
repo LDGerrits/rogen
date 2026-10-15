@@ -24,6 +24,51 @@ import {
 	lifted,
 } from "./project-setup-fixtures.js";
 
+describe("ProjectSetup plan, unmounted files", () => {
+	const lift = (unmounted: readonly string[]) =>
+		defaultProjectChoices(luau).then((choices) =>
+			planProject({
+				choices: {
+					...choices,
+					tree: lifted({
+						name: "g",
+						tree: { $className: "DataModel" },
+					}),
+					unmounted,
+				},
+				existingFiles: new Set(["default.project.json"]),
+			}).unwrap()
+		);
+
+	it("should warn, by code, of files Rojo ignored and routes will place", async () => {
+		const planned = await lift(["src/Loose.luau", "src/x/Y.luau"]);
+
+		expect(planned.warnings).toMatchObject([
+			{
+				code: "init.unmountedFiles",
+				message: expect.stringContaining(
+					"2 files in the source paths are mounted by no node"
+				),
+			},
+		]);
+		expect(planned.warnings[0].message).toContain(
+			"src/Loose.luau, src/x/Y.luau"
+		);
+	});
+
+	it("should name five files and count the rest", async () => {
+		const planned = await lift(
+			Array.from({ length: 8 }, (_, at) => `src/F${at}.luau`)
+		);
+
+		expect(planned.warnings[0].message).toContain("src/F4.luau and 3 more");
+	});
+
+	it("should say nothing when every file is mounted", async () => {
+		expect((await lift([])).warnings).toEqual([]);
+	});
+});
+
 describe("ProjectSetup plan", () => {
 	it("should plan every source path it writes", async () => {
 		const choices = {

@@ -816,6 +816,16 @@ default.project.json - warning: Workspace/Map set $properties, which rogen.json 
 
 Add the settings to the node in the `tree` of `rogen.json`. Settings of a node that a route does land on are kept. See [Coming From Rojo](/docs/v2/coming-from-rojo).
 
+### `init.unmountedFiles` [#init-unmountedfiles]
+
+Warning. `init` lifted a `default.project.json` and found files in the source paths that no node of it mounts. Rojo ignored them. Rogen places every file below a source path by its routes, so they now join the game.
+
+```
+default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+```
+
+Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).
+
 ## Serve
 
 ### `serve.noServer` [#serve-noserver]

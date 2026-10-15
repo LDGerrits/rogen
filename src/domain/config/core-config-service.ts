@@ -7,6 +7,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
+import { DEFAULT_PROJECT_FILE } from "./config.js";
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "./config-discovery.js";
@@ -22,6 +23,10 @@ import {
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
+
+/** A Rojo project file read as a config, which no `rogen.json` came to replace. */
+const isAdoptedFile = (file: string): boolean =>
+	path.basename(file) === DEFAULT_PROJECT_FILE;
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
@@ -72,7 +77,7 @@ export class CoreConfigService implements ConfigService {
 				opened,
 				this.loader,
 				directory,
-				noneNamed
+				noneNamed && !files.some(isAdoptedFile)
 					? { directory, list: () => this.firstConfigIn(directory) }
 					: undefined,
 				projects,
@@ -139,10 +144,7 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	private async firstConfigIn(directory: string): Promise<string[]> {
-		const configs = await this.discovery.list(directory);
-		if (configs.length > 0) return configs.slice(0, 1);
-		const adopted = await this.discovery.adoptable(directory);
-		return adopted ? [adopted] : [];
+		return (await this.discovery.list(directory)).slice(0, 1);
 	}
 
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {

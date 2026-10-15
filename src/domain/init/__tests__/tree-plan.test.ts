@@ -181,24 +181,63 @@ describe("TreePlan", () => {
 				});
 			});
 
-			it("should say it can't route a mount below a folder, and what to do instead", async () => {
+			it("should keep a mount below a folder in the tree, and say why no route makes it", async () => {
 				const files = await planDerived(tree);
 
+				expect(configOf(files).tree).toMatchObject({
+					ServerScriptService: {
+						Admin: { $path: "src/server/Admin" },
+					},
+				});
 				expect(files.notes).toContain(
-					"Couldn't route ServerScriptService/Admin: only a folder directly in a source path becomes a route. Give its folder a marker such as Admin@server, or move it up into a source path."
+					"Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route."
 				);
 			});
 
-			it("should name the folder of a mounted file for the marker, not the file", async () => {
+			it("should name the cause for a folder whose name is no route name", async () => {
+				const files = await planDerived({
+					ReplicatedStorage: { MyLib: { $path: "src/my-lib" } },
+				});
+
+				expect(configOf(files).tree).toMatchObject({
+					ReplicatedStorage: { MyLib: { $path: "src/my-lib" } },
+				});
+				expect(files.notes).toContain(
+					"Kept ReplicatedStorage/MyLib in the tree as a $path mount, since no route can make it: my-lib is not a valid route name."
+				);
+			});
+
+			it("should keep a folder mounted twice in the tree at both nodes", async () => {
+				const files = await planDerived({
+					ReplicatedStorage: {
+						One: { $path: "src/Lib" },
+						Two: { $path: "src/Lib" },
+					},
+				});
+
+				expect(configOf(files).tree).toMatchObject({
+					ReplicatedStorage: {
+						One: { $path: "src/Lib" },
+						Two: { $path: "src/Lib" },
+					},
+				});
+				expect(Object.keys(configOf(files).routes!)).not.toContain(
+					"Lib"
+				);
+			});
+
+			it("should keep a mounted file in the tree", async () => {
 				const files = await planDerived({
 					ServerScriptService: {
 						Main: { $path: "src/deep/Server/Main.server.luau" },
 					},
 				});
 
-				expect(files.notes.join("\n")).toContain(
-					"a marker such as Server@server"
-				);
+				expect(configOf(files).tree).toMatchObject({
+					ServerScriptService: {
+						Main: { $path: "src/deep/Server/Main.server.luau" },
+					},
+				});
 			});
 
 			it("should keep a mount in the tree whose folder holds an init file, and say why", async () => {

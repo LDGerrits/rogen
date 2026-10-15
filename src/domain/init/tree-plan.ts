@@ -72,9 +72,7 @@ export class TreePlan {
 		const carried = (mount: RemovedMount) =>
 			Object.keys(mount.settings).length > 0;
 		const unrouted = derived?.unrouted ?? [];
-		const restored = unrouted.filter(
-			({ mount, atRoot }) => carried(mount) && !atRoot
-		);
+		const restored = unrouted.filter(({ atRoot }) => !atRoot);
 		const dropped = unrouted.filter(
 			({ mount, atRoot }) => carried(mount) && atRoot
 		);
@@ -128,11 +126,10 @@ export class TreePlan {
 							`Kept what ${joinedWithAnd(routedMounts.map(({ instancePath }) => instanceKey(instancePath)))} set in the tree, on the node the route lands on.`,
 						]
 					: []),
-				...(restored.length > 0
-					? [
-							`Kept ${joinedWithAnd(restored.map(({ node }) => node))} in the tree as ${restored.length === 1 ? "a $path mount" : "$path mounts"}, since a route can't carry ${restored.length === 1 ? "its" : "their"} settings.`,
-						]
-					: []),
+				...restored.map(
+					({ node, mount, reason }) =>
+						`Kept ${node} in the tree as a $path mount, since ${carried(mount) ? "a route can't carry its settings" : `no route can make it: ${reason}`}.`
+				),
 				...(kept.length > 0
 					? [
 							`Kept ${joinedWithAnd(kept)} in the tree as ${kept.length === 1 ? "a $path mount" : "$path mounts"}, since ${kept.length === 1 ? "its folder holds an init file, which Rojo reads" : "their folders hold an init file, which Rojo reads"} as the instance of the folder itself and a route can't.`,
@@ -142,7 +139,7 @@ export class TreePlan {
 					? [
 							`Couldn't route ${joinedWithOr(
 								unroutable.map(({ node }) => node)
-							)}: only a folder directly in a source path becomes a route. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(unroutable[0].target)}@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
+							)}, and a mount of a whole source path can't stay in the tree: ${unroutable[0].reason}. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(unroutable[0].target)}@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
 						]
 					: []),
 				...(added.length > 0

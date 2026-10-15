@@ -53,10 +53,12 @@ rogen init
 
 - A mount of a folder directly in a source path (`src/server`) becomes a route named after the folder, to the node's path. The key matches with its first letter in either case, so `server/` and `Server/` both route.
 - A mount of a source path itself (`"ReplicatedStorage/Common": { "$path": "src" }`) becomes the `*` route, which takes files that match no route. Otherwise `*` goes where the `shared` folder went.
-- A mount deeper down (`src/server/Admin`) can't be a route. `init` says so, and it needs a marker such as `Admin@server`, or a move. If the node carried settings, `init` keeps it as a `$path` mount in the tree instead.
+- A mount no route can make stays a `$path` mount in the tree, which builds exactly as Rojo built it, and `init` says why: a mount deeper down (`src/server/Admin`), a folder name that is no route name (`my-lib`, `2fast`, `Game Code`), a folder mounted twice, or a name another mount took. A folder with its own `default.project.json` mounts as the nested project it is. Rogen skips what the tree mounts, so the folder is only there. Move such a folder up into a source path, or give it a marker such as `Admin@server`, when you want routing to place it.
 - A mount whose folder holds an `init` file (`init.server.luau`, as `rojo init` writes for `src/server`, or `init.meta.json`) stays a `$path` mount in the tree. Rojo reads such a folder as one instance, a Script or whatever its init file makes, and a route can't make that. Rogen leaves the folder to Rojo, as it does for any `$path` into a source path.
 - What a mount carried besides its `$path` (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` and child nodes) stays on its node in the `tree`, where the route lands, and the file builds the instances it did. A node no route can land on gets the warning [`init.settingsDropped`](/docs/v2/diagnostics#init-settingsdropped) and is left out.
 - A project file whose root is not a DataModel, such as the `$path: "src"` that `rojo init --kind model` and `--kind plugin` write, is lifted as it is, with no `routes` and no `sourcePaths`: there is no service to route to, so Rojo keeps reading the folder.
+
+- Files in a source folder that no node mounted (`src/Loose.luau`) were ignored by Rojo, and routes place them. `init` lists them with [`init.unmountedFiles`](/docs/v2/diagnostics#init-unmountedfiles); list them under `globIgnorePaths` to leave them out as Rojo did, or `--unmatched leave` to stop the `*` route taking them.
 
 - Any other `*.project.json` in the folder (`test.project.json`, `place.project.json`) is not lifted and stays as you wrote it. `init` lists them as left alone. A [project](/docs/v2/configuration#projects) inherits the whole tree, so move such a file under `projects` only when it is the description with a few keys changed; see [a test or subset project](/docs/v2/configuration#projects).
 
@@ -93,6 +95,22 @@ rogen where src/Inventory
 </Steps>
 
 Already-written requires keep working while you move, because a file's instance path only changes when its route does. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.
+
+## Where Rogen Reads a Layout Differently
+
+In a folder Rogen routes, these differ from what Rojo does with the same files. Everything outside `routes` and `sourcePaths` is Rojo's, and the repository's conformance tests compare the project files Rogen writes with Rojo's own build.
+
+| Rojo | Rogen | What to do |
+| --- | --- | --- |
+| Files in a source folder that no node mounts are ignored. | Routes place every file below a source path. | `init` lists them ([`init.unmountedFiles`](/docs/v2/diagnostics#init-unmountedfiles)); list them under `globIgnorePaths`. |
+| A node that mounts the source path itself holds all of it, `src/server` included. | The mount becomes the `*` route, and the other routes place their folders. | Run `rogen where src` after `init`. |
+| A folder holding `init.server.luau` or `init.meta.json` is one instance. | The mount stays in the tree and is Rojo's own. | Nothing; `init` says so. |
+| A mount in a folder a route covers is also a child of that folder's instance. | The mount is only in the tree: Rogen skips what the tree mounts. | Nothing. |
+| `.client` files are Scripts with a RunContext under `emitLegacyScripts: false`. | A route to `StarterPlayerScripts` keeps them LocalScripts with a sync rule. | See [Configuration](/docs/v2/configuration#fields). |
+| `(Group)/`, `^Hoist.luau` and `Foo@server.luau` are names. | They are routing sigils. | Rename the file, or put it where the tree mounts it. |
+| A glob in `globIgnorePaths` that ends in `/**` and names a mounted folder empties the Folder. | The mount is left out of the written file. | None needed; documented in [Configuration](/docs/v2/configuration#fields). |
+| A glob starting with `/` or `./` matches nothing. | It is read from the config's folder. | Write globs as Rojo reads them. |
+| The project file you wrote. | One node per file, `$path` marked `optional`. | `git diff` of the file shows nothing useful; use `rogen where`. |
 
 ## By Hand
 

@@ -1,0 +1,85 @@
+$ rogen init --non-interactive
+exit 0
+stdout:
+  rogen init
+  Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
+  Left out ReplicatedStorage/Shared and ServerScriptService/Server, since they point into src and Rogen generates that code now.
+  Kept ReplicatedStorage/MyLib in the tree as a $path mount, since no route can make it: my-lib is not a valid route name.
+  Kept ReplicatedStorage/Pkg in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
+  Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
+  Took the defaults: --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
+  Created rogen.json.
+  Created AGENTS.md.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Add your own routes under "routes" in rogen.json.
+  Wrote 2 files.
+stderr:
+  default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Loose.luau -> ReplicatedStorage/Shared/Loose · route * (fallback)
+  src/lib/pkg -> mounted · the tree mounts it at ReplicatedStorage/Pkg
+  src/my-lib -> mounted · the tree mounts it at ReplicatedStorage/MyLib
+  src/scratch/x.server.luau -> ServerScriptService/Server/scratch/x · route Server (suffix)
+  src/server/Admin -> mounted · the tree mounts it at ServerScriptService/Admin
+  src/server/Main.server.luau -> ServerScriptService/Server/Main · route Server (folder)
+  src/shared/S.luau -> ReplicatedStorage/Shared/S · route Shared (folder)
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "lift",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "MyLib": {
+        "$path": "src/my-lib"
+      },
+      "Pkg": {
+        "$path": "src/lib/pkg"
+      }
+    },
+    "ServerScriptService": {
+      "Admin": {
+        "$path": "src/server/Admin"
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService/Server",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "*": "ReplicatedStorage/Shared"
+  }
+}
+
+$ rojo sourcemap default.project.json
+lift: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    MyLib: Folder
+      L: ModuleScript  <- src/my-lib/L.luau
+    Pkg: Folder  <- src/lib/pkg/default.project.json
+      P: ModuleScript  <- src/lib/pkg/P.luau
+    Shared: Folder
+      Loose: ModuleScript  <- src/Loose.luau
+      S: ModuleScript  <- src/shared/S.luau
+  ServerScriptService: ServerScriptService
+    Admin: Folder
+      A: Script  <- src/server/Admin/A.server.luau
+    Server: Folder
+      Main: Script  <- src/server/Main.server.luau
+      scratch: Folder
+        x: Script  <- src/scratch/x.server.luau

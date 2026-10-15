@@ -1,0 +1,15 @@
+{
+	"name": "lift",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Shared": { "$path": "src/shared" },
+			"MyLib": { "$path": "src/my-lib" },
+			"Pkg": { "$path": "src/lib/pkg" }
+		},
+		"ServerScriptService": {
+			"Server": { "$path": "src/server" },
+			"Admin": { "$path": "src/server/Admin" }
+		}
+	}
+}
