@@ -53,6 +53,15 @@ export const DEFAULT_CONFIG_FILE = "rogen.json";
 export const isConfigFileName = (fileName: string): boolean =>
 	CONFIG_FILE_NAMES.includes(fileName);
 
+/** What `rogen syncback` writes beside a config while it runs: the project file Rojo reads, and the folder it writes new instances into. */
+export const SYNCBACK_FILES = {
+	project: "rogen-syncback.project.json",
+	staging: ".rogen-syncback",
+} as const;
+
+export const isSyncbackFileName = (name: string): boolean =>
+	name === SYNCBACK_FILES.project || name === SYNCBACK_FILES.staging;
+
 /** The name a config is asked for by: its folder's. */
 export const configLabel = (file: string): string =>
 	path.basename(path.dirname(file));

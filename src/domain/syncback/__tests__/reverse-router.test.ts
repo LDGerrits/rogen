@@ -29,6 +29,20 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should write into the sync path when a tool writes the files there", async () => {
+			const router = await routerOf(["src/Inventory/Server/Bag.luau"], {
+				syncPath: abs("dist"),
+			});
+
+			expect(
+				router.place({
+					parent: ["ServerScriptService", "Inventory"],
+					name: "Mail",
+					folder: false,
+				})
+			).toMatchObject({ home: { dir: posix("dist/Inventory/Server") } });
+		});
+
 		it("should name the route the way siblings do when they are named for it", async () => {
 			const router = await routerOf([
 				"src/Inventory/Bag@server.luau",

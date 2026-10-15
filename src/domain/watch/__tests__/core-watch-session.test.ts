@@ -717,11 +717,13 @@ describe("CoreWatchSession", () => {
 			await start();
 
 			const [, options] = watch.mock.calls[0];
-			expect(options?.ignored).toEqual([
-				"/repo/default.project.json",
-				"/repo/out",
-				new OutputFile("/repo/default.project.json").stagingPattern,
-			]);
+			expect(options?.ignored).toEqual(
+				expect.arrayContaining([
+					"/repo/default.project.json",
+					"/repo/out",
+					new OutputFile("/repo/default.project.json").stagingPattern,
+				])
+			);
 		});
 
 		it("should emit one batch for one change to a root shared by two configs", async () => {

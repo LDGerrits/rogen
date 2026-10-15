@@ -172,8 +172,21 @@ describe("domain/watch/watch-plan", () => {
 			expect(plan.ignored).toEqual([
 				"/repo/default.project.json",
 				"/repo/out",
+				"/repo/rogen-syncback.project.json",
+				"/repo/.rogen-syncback",
 				expect.any(RegExp),
 			]);
+		});
+
+		it("should ignore what syncback writes beside the config while it runs", () => {
+			const plan = new WatchPlan([config("/repo/rogen.json", ["/repo"])]);
+
+			expect(
+				isIgnored("/repo/rogen-syncback.project.json", plan.ignored)
+			).toBe(true);
+			expect(
+				isIgnored("/repo/.rogen-syncback/new/0/A.luau", plan.ignored)
+			).toBe(true);
 		});
 
 		it("should not ignore a Rojo project file that is the config itself", () => {
@@ -181,7 +194,6 @@ describe("domain/watch/watch-plan", () => {
 				config("/repo/default.project.json", ["/repo/src"]),
 			]);
 
-			expect(plan.ignored).toEqual([]);
 			expect(isIgnored("/repo/default.project.json", plan.ignored)).toBe(
 				false
 			);

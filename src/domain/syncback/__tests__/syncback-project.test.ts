@@ -106,28 +106,6 @@ describe("SyncbackProject", () => {
 		expect(file.globIgnorePaths).toEqual(["**/*.spec.luau"]);
 	});
 
-	it("should point the node of a file at its source when a tool wrote what it was", () => {
-		const { file } = SyncbackProject.of({
-			...inputs,
-			written: written(),
-			homes: [],
-			sources: [
-				{
-					status: "placed",
-					source: "/repo/src/Combat/Server/Hit.luau",
-					exists: true,
-					instancePath: ["ServerScriptService", "Combat", "Hit"],
-					route: "Server",
-					routeMatch: "folder",
-				},
-			],
-		});
-
-		expect(file.tree.ServerScriptService).toMatchObject({
-			Combat: { Hit: { $path: "src/Combat/Server/Hit.luau" } },
-		});
-	});
-
 	it("should not change the project it was given", () => {
 		const given = written();
 		SyncbackProject.of({ ...inputs, written: given, homes: [] });

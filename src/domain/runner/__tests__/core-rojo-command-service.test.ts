@@ -93,7 +93,7 @@ describe("CoreRojoCommandService", () => {
 	it("should refuse a Rojo older than the release that has the command, and say which", async () => {
 		processes.outputs.set("/bin/rojo", {
 			code: 0,
-			stdout: "Rojo 7.4.4\n",
+			stdout: "Rojo 7.6.1\n",
 			stderr: "",
 		});
 
@@ -101,7 +101,7 @@ describe("CoreRojoCommandService", () => {
 			command: "syncback",
 			flags: [],
 			cwd: "/repo",
-			since: "7.5.0",
+			since: "7.7.0",
 		});
 
 		expect(
@@ -110,7 +110,7 @@ describe("CoreRojoCommandService", () => {
 			{
 				code: "rojo.commandUnsupported",
 				message:
-					"Rojo 7.4.4 has no 'syncback' command; Rojo 7.5.0 added it. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH.",
+					"Rojo 7.6.1 has no 'syncback' command; Rojo 7.7.0 added it. Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH.",
 			},
 		]);
 		expect(processes.spawned).toEqual([]);

@@ -1,7 +1,6 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { toPosix } from "../../base/path.js";
-import { PlacedLocation } from "../build/build-service.js";
 import { RojoNode, RojoProjectFile } from "../rojo/rojo-project.js";
 import { Home } from "./syncback-layout.js";
 
@@ -22,8 +21,6 @@ export interface SyncbackProjectInputs {
 	/** Where Rojo writes what no folder of the project holds, relative to `dir` and written with `/`. */
 	readonly staging: string;
 	readonly homes: readonly Home[];
-	/** When the project syncs from a folder a tool writes, the file that each node of it comes from. */
-	readonly sources?: readonly PlacedLocation[];
 }
 
 /** The project file Rojo's syncback runs on: the written one, with a folder for every node that one folder holds, and a staging folder for every container. */
@@ -41,7 +38,6 @@ export class SyncbackProject {
 		dir,
 		staging,
 		homes,
-		sources,
 	}: SyncbackProjectInputs): SyncbackProject {
 		const file = structuredClone(written);
 		const tree = file.tree;
@@ -55,7 +51,6 @@ export class SyncbackProject {
 			node.$path = SyncbackProject.relative(dir, home.dir);
 			mounted.push([...home.node]);
 		}
-		if (sources) SyncbackProject.pointAtSources(tree, [], dir, sources);
 		const staged: string[][] = [];
 		SyncbackProject.stage(tree, [], staging, staged);
 		return new SyncbackProject(file, mounted, staged);
@@ -75,26 +70,6 @@ export class SyncbackProject {
 			at = isObject(child) ? (child as RojoNode) : undefined;
 		}
 		return at;
-	}
-
-	/** Writes the source file of each node a tool's output replaced in the written project. */
-	private static pointAtSources(
-		node: RojoNode,
-		instancePath: readonly string[],
-		dir: string,
-		sources: readonly PlacedLocation[]
-	): void {
-		for (const [name, child] of childrenOf(node)) {
-			const here = [...instancePath, name];
-			const source = sources.find(
-				(file) =>
-					file.instancePath.length === here.length &&
-					file.instancePath.every((part, at) => part === here[at])
-			);
-			if (source && child.$path !== undefined)
-				child.$path = SyncbackProject.relative(dir, source.source);
-			SyncbackProject.pointAtSources(child, here, dir, sources);
-		}
 	}
 
 	private static stage(

@@ -1,0 +1,49 @@
+$ rogen syncback dist -i place.rbxlx -y --list
+exit 0
+stdout:
+  rogen syncback · Game, Game (dist)
+  Game
+    default.project.json · unchanged
+  Game (dist)
+    dist.project.json · unchanged
+  Built 2 configs.
+  write  dist/Combat/Server/Combat.luau
+  write  dist/Combat/Server/Loot.luau
+  Syncback wrote 2 changes.
+
+$ rogen syncback -i place.rbxlx --dry-run
+exit 0
+stdout:
+  rogen syncback · Game, Game (dist)
+  Game
+    default.project.json · unchanged
+  Game (dist)
+    dist.project.json · unchanged
+  Built 2 configs.
+  write  src/Combat/Server/Combat.luau
+  write  src/Combat/Server/Loot.luau
+  Syncback would change 2 files (2 to write).
+
+written:
+  default.project.json
+  dist.project.json
+  dist/Combat/Server/Combat.luau
+  dist/Combat/Server/Loot.luau
+
+dist/Combat/Server/Combat.luau:
+return "combat2"
+
+dist/Combat/Server/Loot.luau:
+return "loot"
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Combat: ModuleScript  <- src/Combat/Server/Combat.luau
+
+$ rojo sourcemap dist.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Combat: ModuleScript  <- dist/Combat/Server/Combat.luau

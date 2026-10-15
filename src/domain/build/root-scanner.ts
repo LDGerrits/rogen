@@ -14,7 +14,7 @@ import {
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
-import { isConfigFileName } from "../config/config.js";
+import { isConfigFileName, isSyncbackFileName } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
 import { TreeMounts } from "./build-tree.js";
@@ -271,7 +271,8 @@ export class RootScanner {
 		for (const [name, type] of listing) {
 			const mount = this.mounts.at(path.join(dir, name));
 			const glob =
-				isFileType(type) && isConfigFileName(name)
+				(isFileType(type) && isConfigFileName(name)) ||
+				isSyncbackFileName(name)
 					? name
 					: isFileType(type) &&
 						  this.projectFiles.some((file) =>

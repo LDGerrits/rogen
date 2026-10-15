@@ -65,6 +65,18 @@ describe("SyncbackLayout", () => {
 				["ServerScriptService", "A"],
 			]);
 		});
+		it("should put the homes in the sync path when a tool writes the files there", async () => {
+			const layout = await layoutOf(["src/Combat/Server/Combat.luau"], {
+				syncPath: abs("dist"),
+			});
+
+			expect(layout.homes).toEqual([
+				{
+					dir: abs("dist/Combat/Server").replaceAll("\\", "/"),
+					node: ["ServerScriptService", "Combat"],
+				},
+			]);
+		});
 	});
 
 	describe("donorsAt", () => {

@@ -468,6 +468,18 @@ describe("RootScanner", () => {
 				).toEqual({ status: "ignored", pattern: "rogen.jsonc" });
 			});
 
+			it("should leave out what syncback writes while it runs", async () => {
+				await write(
+					"src/Keep.luau",
+					"src/rogen-syncback.project.json",
+					"src/.rogen-syncback/new/0/A.luau"
+				);
+
+				const { roots } = await scan();
+
+				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
+			});
+
 			it("should remove matching files", async () => {
 				await write("src/Keep.luau", "src/Drop.spec.luau");
 

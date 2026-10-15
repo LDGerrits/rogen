@@ -118,7 +118,7 @@ describe("CoreSyncbackService", () => {
 				"--list",
 			],
 			projectFile: abs("rogen-syncback.project.json"),
-			since: "7.5.0",
+			since: "7.7.0",
 		});
 		expect(
 			JSON.parse(rojo.projectTexts[0]).tree.ServerScriptService

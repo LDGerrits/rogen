@@ -45,7 +45,20 @@ export class SyncbackLayout {
 		this.placed = locations.filter(isPlaced);
 		this.roots = config.sourcePaths.map(toPosix);
 		this.keys = config.keys;
-		this.homes = this.findHomes();
+		this.homes = this.findHomes().map((home) => ({
+			...home,
+			dir: this.synced(home.dir),
+		}));
+	}
+
+	/** Where Rojo reads the source folder `dir` from: under the sync path when a tool writes the files there. */
+	synced(dir: string): string {
+		const { syncPath, commonRoot } = this.config;
+		if (syncPath === undefined || commonRoot === undefined) return dir;
+		return path.posix.join(
+			toPosix(syncPath),
+			path.posix.relative(toPosix(commonRoot), dir)
+		);
 	}
 
 	get sourcePaths(): readonly string[] {

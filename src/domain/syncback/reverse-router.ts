@@ -34,6 +34,19 @@ export class ReverseRouter {
 	constructor(private readonly layout: SyncbackLayout) {}
 
 	place(instance: NewInstance): NewPlacement {
+		const placement = this.placeInSources(instance);
+		return placement.kind === "placed"
+			? {
+					...placement,
+					home: {
+						...placement.home,
+						dir: this.layout.synced(placement.home.dir),
+					},
+				}
+			: placement;
+	}
+
+	private placeInSources(instance: NewInstance): NewPlacement {
 		const { parent } = instance;
 		for (let depth = parent.length; depth >= 1; depth--) {
 			const donors = this.layout.donorsAt(parent.slice(0, depth));

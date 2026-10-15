@@ -17,6 +17,7 @@ import {
 	ConfigLocations,
 	PlacedLocation,
 } from "../build/build-service.js";
+import { SYNCBACK_FILES } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
@@ -37,10 +38,10 @@ import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackProject } from "./syncback-project.js";
 
 /** The first Rojo release with `syncback`. */
-const SYNCBACK_SINCE = "7.5.0";
+const SYNCBACK_SINCE = "7.7.0";
 
-const TEMPORARY_PROJECT = "rogen-syncback.project.json";
-const STAGING = ".rogen-syncback";
+const TEMPORARY_PROJECT = SYNCBACK_FILES.project;
+const STAGING = SYNCBACK_FILES.staging;
 const NEW_FOLDER = "new";
 
 const LISTED = /^(Writing|Removing) (.+)$/;
@@ -248,7 +249,6 @@ export class CoreSyncbackService implements SyncbackService {
 				dir,
 				staging: `${STAGING}/${NEW_FOLDER}`,
 				homes: layout.homes,
-				...(project.syncPath !== undefined && { sources: placed }),
 			}),
 		});
 	}
@@ -462,12 +462,13 @@ export class CoreSyncbackService implements SyncbackService {
 		return found;
 	}
 
-	/** Builds again and compares: a file syncback placed that lands elsewhere than the place had it is a warning. */
+	/** Builds again and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A sync path holds what a tool wrote, which the build does not place. */
 	private async verify(
 		request: SyncbackRequest,
 		expected: readonly { file: string; instance: readonly string[] }[]
 	): Promise<Diagnostic[]> {
-		if (expected.length === 0) return [];
+		if (expected.length === 0 || request.project.syncPath !== undefined)
+			return [];
 		const located = await this.buildService.locate(request.selection, {
 			args: expected.map(({ file }) => file),
 			cwd: request.cwd,
