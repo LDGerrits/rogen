@@ -3,7 +3,7 @@ import { compareStrings } from "../../base/collections.js";
 import { UsageError } from "../../base/errors.js";
 import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { joinedWithAnd, shellWord } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -30,6 +30,8 @@ export function namesakesOf(
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
+	/** The server flags a command offered for another port passes on. */
+	private readonly otherArgs: readonly string[];
 
 	constructor(
 		private readonly probe: ServerProbe,
@@ -40,6 +42,7 @@ export class ServePorts {
 	) {
 		this.host = server.hostIn(serverArgs);
 		this.port = server.portIn(serverArgs);
+		this.otherArgs = server.withoutPort(serverArgs);
 	}
 
 	get portError(): UsageError | undefined {
@@ -63,8 +66,17 @@ export class ServePorts {
 		};
 	}
 
+	/** The error for a port given to several servers, which can't all listen on it. */
+	portForSeveral(targets: readonly ServeTarget[]): UsageError | undefined {
+		if (this.port.unwrapOr(undefined) === undefined || targets.length < 2)
+			return undefined;
+		return new UsageError(
+			`--port names one server's port, and this serves ${joinedWithAnd(targets.map(({ config }) => config.label))}.`,
+			"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its rogen.json."
+		);
+	}
+
 	clashOf(targets: readonly ServeTarget[]): UsageError | undefined {
-		const portGiven = this.port.unwrapOr(undefined) !== undefined;
 		const byPort = new Map<number, ServeTarget[]>();
 		for (const target of targets) {
 			const sharing = byPort.get(target.address.port) ?? [];
@@ -77,10 +89,10 @@ export class ServePorts {
 				`${joinedWithAnd(sharing.map(({ config }) => config.label))} ${sharing.length === 2 ? "both" : "all"} serve on port ${port}.`
 		);
 		const first = this.refOf(clashes[0][1][0].config);
-		const fix = portGiven
-			? `The --port after '--' applies to every config: serve one at a time, as 'rogen serve ${first} -- --port <port>'.`
-			: `Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve ${first}'.`;
-		return new UsageError([...lines, fix].join("\n"));
+		return new UsageError(
+			lines.join("\n"),
+			`Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve ${first}'.`
+		);
 	}
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
@@ -137,7 +149,11 @@ export class ServePorts {
 		const free = address.isLocal
 			? await this.freePortAfter(address, targets)
 			: undefined;
-		const command = `rogen serve ${this.refOf(config)} -- --port ${free ?? "<port>"}`;
+		const rest =
+			this.otherArgs.length === 0
+				? ""
+				: ` -- ${this.otherArgs.map(shellWord).join(" ")}`;
+		const command = `rogen serve ${this.refOf(config)} --port ${free ?? "<port>"}${rest}`;
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },

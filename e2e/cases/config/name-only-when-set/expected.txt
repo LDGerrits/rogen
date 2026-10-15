@@ -8,7 +8,6 @@ written:
 
 named/default.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "Lobby",
   "tree": {
     "$className": "DataModel",
@@ -29,7 +28,6 @@ named/default.project.json:
 
 unnamed/default.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {

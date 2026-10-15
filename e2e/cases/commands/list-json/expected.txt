@@ -30,6 +30,11 @@ stdout:
             "name": "default",
             "file": "<dir>/game/default.project.json",
             "served": true,
+            "rojo": [
+              "rojo",
+              "serve",
+              "<dir>/game/default.project.json"
+            ],
             "serving": null
           }
         ],
@@ -61,6 +66,11 @@ stdout:
             "name": "default",
             "file": "<dir>/lobby/default.project.json",
             "served": true,
+            "rojo": [
+              "rojo",
+              "serve",
+              "<dir>/lobby/default.project.json"
+            ],
             "serving": null
           }
         ],
@@ -100,6 +110,11 @@ stdout:
             "name": "default",
             "file": "<dir>/lobby/default.project.json",
             "served": true,
+            "rojo": [
+              "rojo",
+              "serve",
+              "<dir>/lobby/default.project.json"
+            ],
             "serving": null
           }
         ],

@@ -6,7 +6,7 @@ import { directory, directoryOf } from "./init-fixtures.js";
 describe("domain/init/init-plan-builder", () => {
 	describe("InitPlanBuilder", () => {
 		const builderFor = (existing: readonly string[] = []) =>
-			new InitPlanBuilder(directoryOf({ existing }), false);
+			new InitPlanBuilder(directoryOf({ existing }), false, []);
 
 		it("should write the config before the agent files", () => {
 			const builder = builderFor();

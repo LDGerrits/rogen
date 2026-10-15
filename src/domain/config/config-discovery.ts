@@ -1,5 +1,5 @@
 import path from "path";
-import { UsageError } from "../../base/errors.js";
+import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import {
@@ -14,7 +14,7 @@ import {
 	PROJECT_NAME,
 	isConfigFileName,
 } from "./config.js";
-import { EnclosingConfigs } from "./config-service.js";
+import { EnclosingConfigs, NamedProjects } from "./config-service.js";
 import { PlaceFinder } from "./place-finder.js";
 
 const PROJECT_SUFFIXES = [".project.json", ".project.jsonc"];
@@ -24,8 +24,8 @@ interface DiscoveredConfigs {
 	readonly home: string;
 	readonly files: readonly string[];
 	readonly noneNamed: boolean;
-	/** The project each config was named for, by config file. */
-	readonly projects: ReadonlyMap<string, string>;
+	/** The projects each config was named for, by config file. */
+	readonly projects: ReadonlyMap<string, NamedProjects>;
 	/** The bare names that are also a folder with a config. */
 	readonly folders: readonly string[];
 	/** The config of `home`, which a bare project name belongs to. */
@@ -152,34 +152,35 @@ export class ConfigDiscovery {
 	): Result<
 		{
 			files: string[];
-			projects: Map<string, string>;
+			projects: Map<string, NamedProjects>;
 			scopes: Map<string, string[]>;
 		},
 		Error
 	> {
 		const files: string[] = [];
-		const projects = new Map<string, string>();
 		const scopes = new Map<string, string[]>();
-		const firstRef = new Map<string, number>();
 		for (const [index, named] of resolved.entries()) {
-			const first = firstRef.get(named.file);
-			if (first === undefined) {
-				firstRef.set(named.file, index);
-				files.push(named.file);
-			} else {
-				const before = resolved[first];
-				if (before.project !== named.project)
+			const earlier = resolved
+				.slice(0, index)
+				.map((before, at) => ({ before, at }))
+				.filter(({ before }) => before.file === named.file);
+			if (earlier.length === 0) files.push(named.file);
+			for (const { before, at } of earlier) {
+				const samePlace = before.place === named.place;
+				const sameProject = before.project === named.project;
+				if (!samePlace && !sameProject)
 					return err(
 						new UsageError(
-							`"${refs[first]}" and "${refs[index]}" are projects of one ` +
-								`config, and a command takes one project of a config: name one.`
+							`"${refs[at]}" and "${refs[index]}" name different projects of one config, and a project named applies to every place named.`,
+							"Name the same project for each place, or run the command once per place."
 						)
 					);
-				const otherPlace =
-					before.place !== undefined &&
-					named.place !== undefined &&
-					!scopes.get(named.file)?.includes(named.place);
-				if (!otherPlace)
+				if (
+					sameProject &&
+					(samePlace ||
+						before.place === undefined ||
+						named.place === undefined)
+				)
 					return err(
 						new UsageError(
 							`"${refs[index]}" was named more than once; each config can ` +
@@ -187,13 +188,30 @@ export class ConfigDiscovery {
 						)
 					);
 			}
-			if (named.place !== undefined)
+			if (
+				named.place !== undefined &&
+				!scopes.get(named.file)?.includes(named.place)
+			)
 				scopes.set(named.file, [
 					...(scopes.get(named.file) ?? []),
 					named.place,
 				]);
-			if (named.project !== undefined)
-				projects.set(named.file, named.project);
+		}
+		const projects = new Map<string, NamedProjects>();
+		for (const file of files) {
+			const forFile = resolved.filter((named) => named.file === file);
+			const names = [
+				...new Set(
+					forFile.flatMap(({ project }) =>
+						project === undefined ? [] : [project]
+					)
+				),
+			];
+			if (names.length > 0)
+				projects.set(file, {
+					names,
+					usual: forFile.some(({ project }) => project === undefined),
+				});
 		}
 		return ok({ files, projects, scopes });
 	}
@@ -230,7 +248,8 @@ export class ConfigDiscovery {
 			if (isBareName(ref) && homeConfig) return ok(inHome(ref));
 			return err(
 				new UsageError(
-					`"${ref}" not found: name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
+					`"${ref}" not found.`,
+					"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
 				)
 			);
 		}
@@ -298,11 +317,14 @@ export class ConfigDiscovery {
 		const names = await this.list(directory);
 		if (names.length === 1) return ok(names[0]);
 		return err(
-			new UsageError(
-				names.length === 0
-					? `${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}). Run 'rogen init' to create one.`
-					: `${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
-			)
+			names.length === 0
+				? new UsageError(
+						`${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}).`,
+						"Run 'rogen init' to create one."
+					)
+				: new UsageError(
+						`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+					)
 		);
 	}
 
@@ -325,8 +347,9 @@ export class ConfigDiscovery {
 		);
 		if (listing.isErr()) {
 			return err(
-				new Error(
+				new IoError(
 					`Could not look for a config file in ${cwd}: ${listing.error.message}`,
+					undefined,
 					{ cause: listing.error }
 				)
 			);
@@ -339,8 +362,9 @@ export class ConfigDiscovery {
 		return enclosing
 			? ok(enclosing)
 			: err(
-					new Error(
-						`No ${CONFIG_FILE_NAMES[0]} found in ${cwd}. Run 'rogen init' to create one.`
+					new ProjectError(
+						`No ${CONFIG_FILE_NAMES[0]} found in ${cwd}.`,
+						"Run 'rogen init' to create one."
 					)
 				);
 	}

@@ -1,4 +1,10 @@
-import { CancelledError, UsageError } from "../../../base/errors.js";
+import {
+	CancelledError,
+	IoError,
+	ProjectError,
+	ToolError,
+	UsageError,
+} from "../../../base/errors.js";
 import { errorDiagnostic } from "../../diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../diagnostics/diagnostics-error.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
@@ -102,7 +108,26 @@ describe("CommandFailure", () => {
 				"build"
 			);
 
-			expect(printed()).toEqual([{ error: "no config" }]);
+			expect(printed()).toEqual([
+				{
+					error: {
+						kind: "internal",
+						message:
+							"no config. This is a bug in Rogen: report it at https://github.com/LDGerrits/rogen/issues.",
+					},
+				},
+			]);
+		});
+
+		it("should print the failure inside an exit code as the document it is", () => {
+			new CommandFailure(logService, true).finish(
+				new ExitCodeError(3, new DiagnosticsError([problem])),
+				"serve"
+			);
+
+			expect(printed()).toMatchObject([
+				{ diagnostics: [{ code: "x.err" }] },
+			]);
 		});
 
 		it("should print only the error for a failure before any command ran", () => {
@@ -124,13 +149,29 @@ describe("CommandFailure", () => {
 				new TypeError("x is undefined")
 			);
 
-			expect(printed()).toEqual([{ error: "x is undefined" }]);
+			expect(printed()).toEqual([
+				{
+					error: {
+						kind: "internal",
+						message:
+							"x is undefined. This is a bug in Rogen: report it at https://github.com/LDGerrits/rogen/issues.",
+					},
+				},
+			]);
 		});
 
 		it("should print a JSON document for a thrown value that isn't an error", () => {
 			new CommandFailure(logService, true).reportCrash("boom");
 
-			expect(printed()).toEqual([{ error: "boom" }]);
+			expect(printed()).toEqual([
+				{
+					error: {
+						kind: "internal",
+						message:
+							"boom. This is a bug in Rogen: report it at https://github.com/LDGerrits/rogen/issues.",
+					},
+				},
+			]);
 		});
 
 		it("should print nothing without --json", () => {
@@ -154,6 +195,17 @@ describe("exitCodeOf", () => {
 
 		expect(exitCodeOf(stopped)).toBe(3);
 		expect(exitCodeOf(new ReportedError(stopped))).toBe(3);
+	});
+
+	it("should follow the kind of a failure", () => {
+		for (const [error, code] of [
+			[new UsageError("x"), 2],
+			[new ProjectError("x"), 1],
+			[new ToolError("x"), 1],
+			[new IoError("x"), 1],
+			[new CancelledError("x"), 1],
+		] as const)
+			expect(exitCodeOf(error)).toBe(code);
 	});
 
 	it("should be 1 for any other failure", () => {

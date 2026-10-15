@@ -3,7 +3,7 @@ import { formatJsonFile } from "../../base/json.js";
 import { isInside, samePath } from "../../base/path.js";
 import { RojoNode, projectFileName } from "../rojo/rojo-project.js";
 
-/** What a project of a `rogen.json` may change: any key of the description. `null` removes a key. */
+/** What a project of a `rogen.json` may change: any key of the description. */
 export type ProjectChanges = Partial<
 	Omit<RogenConfig, "$schema" | "projects" | "serveProject">
 >;
@@ -71,6 +71,22 @@ export const ROOT_ONLY_KEYS: readonly string[] = [
 	"placePaths",
 ];
 
+/** What one place sets for itself: a config that lists places can't, so no place inherits it. */
+export const PER_PLACE_KEYS: readonly string[] = [
+	"servePort",
+	"servePlaceIds",
+	"blockedPlaceIds",
+	"placeId",
+	"gameId",
+];
+
+/** Keys a place never inherits from the config that lists it. */
+export const PLACE_OWN_KEYS: readonly string[] = [
+	"name",
+	"sourcePaths",
+	...PER_PLACE_KEYS,
+];
+
 /** Rojo's default port, given to the first place without a `servePort`. */
 export const FIRST_PLACE_PORT = 34872;
 
@@ -89,8 +105,6 @@ export function schemaChannel(version: string): string {
 export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
-
-export const PROJECT_SCHEMA_URL = SCHEMA_URL.replace(/[^/]+$/, "project.json");
 
 export function configFileContent(config: RogenConfig): string {
 	return formatJsonFile({ $schema: SCHEMA_URL, ...config });

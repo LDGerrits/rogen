@@ -18,11 +18,18 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
+	diagnosticShape,
 	diagnosticToJson,
 	diagnosticsJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 
 const CheckOptions = [JsonOption] as const;
+
+const CheckOutput = OutputShape.object({
+	diagnostics: OutputShape.array(diagnosticShape),
+	stoppedBy: OutputShape.optional(OutputShape.array(diagnosticShape)),
+});
 
 registerCommand(
 	class CheckCommand extends AbstractCommand<typeof CheckOptions> {
@@ -30,6 +37,8 @@ registerCommand(
 			super({
 				id: "check",
 				metadata: {
+					summary:
+						"Prints the diagnostics, and exits 1 when there are any",
 					description:
 						"Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.",
 					args: [
@@ -42,6 +51,8 @@ registerCommand(
 						},
 					],
 					options: CheckOptions,
+					output: { document: CheckOutput },
+					effects: [],
 					examples: [
 						"rogen check src/Inventory/Server/Save.luau",
 						"rogen check src --json",

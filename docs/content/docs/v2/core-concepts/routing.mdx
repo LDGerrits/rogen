@@ -152,7 +152,7 @@ src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 ```
 
 <Callout type="info" title="RunContext scripts">
-	With `emitLegacyScripts: false` in your `rogen.json`, every script is a `Script` with a `RunContext`, which runs in more places. Rogen then only warns about `Client` scripts in `ServerScriptService`, or under `StarterPlayerScripts` and `StarterCharacterScripts`, where they'd run twice. It also reads a `RunContext` from the script's `.meta.json`.
+	With `emitLegacyScripts: false` in your `rogen.json`, every script is a `Script` with a `RunContext`, which runs in more places. Rogen keeps the `.client` scripts it routes to `StarterPlayerScripts` and `StarterCharacterScripts` as LocalScripts, with one [sync rule](/docs/v2/configuration#sync-rules) per file in the project file. Rogen then only warns about `Client` scripts in `ServerScriptService`, where they'd never run. It also reads a `RunContext` from the script's `.meta.json`.
 </Callout>
 
 `rogen where` shows which route governs any file and how it matched.

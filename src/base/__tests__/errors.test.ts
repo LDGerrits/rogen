@@ -1,6 +1,12 @@
 import { jest } from "@jest/globals";
 import {
+	CancelledError,
 	ErrorUtils,
+	IoError,
+	ProjectError,
+	ToolError,
+	UsageError,
+	errorKind,
 	failureReason,
 	onUnexpectedError,
 	setUnexpectedErrorHandler,
@@ -158,5 +164,35 @@ describe("ErrorUtils.wrap", () => {
 			"Failed to write a.json: permission denied"
 		);
 		expect(wrapped.cause).toBe(cause);
+	});
+});
+
+describe("errorKind", () => {
+	it("should be the kind a failure carries", () => {
+		expect(errorKind(new UsageError("x"))).toBe("usage");
+		expect(errorKind(new ProjectError("x"))).toBe("project");
+		expect(errorKind(new ToolError("x"))).toBe("tool");
+		expect(errorKind(new IoError("x"))).toBe("io");
+		expect(errorKind(new CancelledError("x"))).toBe("cancelled");
+	});
+
+	it("should be io for a failed system call and internal for any other error", () => {
+		const denied = Object.assign(new Error("denied"), { code: "EACCES" });
+
+		expect(errorKind(denied)).toBe("io");
+		expect(errorKind(new TypeError("x is undefined"))).toBe("internal");
+	});
+});
+
+describe("KindedError", () => {
+	it("should read as its reason then its hint", () => {
+		const error = new UsageError(
+			"Unknown option '--x'.",
+			"Run 'rogen help'."
+		);
+
+		expect(error.message).toBe("Unknown option '--x'. Run 'rogen help'.");
+		expect(error.reason).toBe("Unknown option '--x'.");
+		expect(new UsageError("Bad.").message).toBe("Bad.");
 	});
 });

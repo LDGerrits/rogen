@@ -1,9 +1,0 @@
-{
-	"steps": [
-		["help", "layout"],
-		["help", "route.dotRoute"],
-		["help", "layuot"],
-		["help", "route.dotRoot"]
-	],
-	"rojo": false
-}

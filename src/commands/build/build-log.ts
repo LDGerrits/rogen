@@ -121,9 +121,9 @@ export class BuildLog {
 		);
 	}
 
-	report(run: BuildRun, home?: string, denyWarnings = false): void {
+	report(run: BuildRun, home?: string, command = "build"): void {
 		this.begin(
-			"build",
+			command,
 			run.builds.map(({ label }) => label),
 			home
 		);
@@ -137,11 +137,10 @@ export class BuildLog {
 					BuildLog.sameAs("errors", errors.sameAs),
 					BuildLog.sameAs("warnings", warnings.sameAs),
 				],
-				failing: denyWarnings,
 			});
 		}
 		if (run.failed) this.logService.closeFrame("build failed.");
-		else this.end(run.builds.length, run.warningCount, denyWarnings);
+		else this.end(run.builds.length, run.warningCount);
 	}
 
 	private heading(label: string): void {
@@ -153,10 +152,8 @@ export class BuildLog {
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
-			failing = false,
 		}: {
 			readonly notes?: readonly (string | undefined)[];
-			readonly failing?: boolean;
 		} = {}
 	): void {
 		const note =
@@ -192,26 +189,22 @@ export class BuildLog {
 				this.logService.error(line("not loaded"));
 				break;
 		}
-		this.diagnostics(diagnostics, failing);
+		this.diagnostics(diagnostics);
 	}
 
-	diagnostics(diagnostics: readonly Diagnostic[], failing = false): void {
+	diagnostics(diagnostics: readonly Diagnostic[]): void {
 		for (const diagnostic of diagnostics)
 			this.logService.annotate(diagnostic);
 		for (const diagnostic of capped(diagnostics))
-			this.logService.diagnostic(diagnostic, failing);
+			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(
-		configs: number,
-		warnings: number,
-		denyWarnings: boolean
-	): void {
+	private end(configs: number, warnings: number): void {
 		const built = `Built ${plural(configs, "config")}`;
 		this.logService.outro(
 			warnings === 0
 				? `${built}.`
-				: `${built} with ${plural(warnings, "warning")}${denyWarnings ? "; --deny-warnings fails the run" : ""}.`
+				: `${built} with ${plural(warnings, "warning")}.`
 		);
 	}
 

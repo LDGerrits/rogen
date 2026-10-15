@@ -1,33 +1,58 @@
 import { parseArgs as nodeParseArgs } from "util";
 import { Result, err, ok } from "../../base/result.js";
 import { ErrorUtils, UsageError } from "../../base/errors.js";
-import { closestMatch, joinedWithAnd } from "../../base/strings.js";
+import {
+	closestMatch,
+	joinedClosestFirst,
+	joinedWithAnd,
+} from "../../base/strings.js";
 
 export interface OptionDescriptor {
 	readonly name: string;
 	readonly short?: string;
 	readonly type: "string" | "boolean";
 	readonly multiple?: boolean;
-	/** What help writes for a string option's value: `--out-file <path>`. Defaults to `value`. */
+	/** For a flag: whether `--no-<name>` is accepted and means false, as against not given. */
+	readonly negatable?: boolean;
+	/** For a string option: the only values it takes. */
+	readonly values?: readonly string[];
+	/** What help writes for a string option's value: `--output <path>`. Defaults to `value`. */
 	readonly placeholder?: string;
+	/** For a string option: what it is when not given, which help shows. */
+	readonly default?: string;
 	readonly description: string;
 }
 
 type OptionValue<D extends OptionDescriptor> = D extends {
 	readonly type: "boolean";
+	readonly multiple: true;
 }
-	? boolean
-	: D extends { readonly multiple: true }
-		? readonly string[]
-		: D extends { readonly type: "string" }
-			? string
-			: boolean | string | readonly string[];
+	? readonly boolean[]
+	: D extends { readonly type: "boolean" }
+		? boolean
+		: D extends { readonly multiple: true }
+			? readonly string[]
+			: D extends { readonly type: "string" }
+				? string
+				: boolean | string | readonly string[] | readonly boolean[];
 
 type OptionValues<O extends readonly OptionDescriptor[]> = {
 	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
 };
 
+export const COLOR_CHOICES = ["auto", "always", "never"] as const;
+
+export const ColorOption = {
+	name: "color",
+	type: "string",
+	values: COLOR_CHOICES,
+	placeholder: "color",
+	default: "auto",
+	description: "Whether to colour the output.",
+} as const satisfies OptionDescriptor;
+
 export const GlobalOptions = [
+	ColorOption,
 	{ name: "help", short: "h", type: "boolean", description: "Print help." },
 	{
 		name: "version",
@@ -39,7 +64,8 @@ export const GlobalOptions = [
 		name: "verbose",
 		short: "v",
 		type: "boolean",
-		description: "Print debug output.",
+		multiple: true,
+		description: "Print debug output; -vv, trace output.",
 	},
 	{
 		name: "quiet",
@@ -70,6 +96,8 @@ export interface CommandLine<
 interface ParsedCli {
 	readonly command: string;
 	readonly line: CommandLine;
+	/** Whether the line names no command and asks for neither help nor the version. */
+	readonly bare: boolean;
 }
 
 function toOptionTable(options: readonly OptionDescriptor[]) {
@@ -89,6 +117,7 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 		args,
 		options: toOptionTable(options),
 		allowPositionals: true,
+		allowNegative: true,
 		strict: false,
 		tokens: true,
 	});
@@ -114,21 +143,34 @@ function commandOf(
 	};
 }
 
+/** Whether the token is `--no-<flag>` for a flag called `<flag>`. */
+const isNegated = (token: OptionToken): boolean =>
+	token.rawName.startsWith("--no-") && token.rawName !== `--${token.name}`;
+
 /** `command` is `undefined` when the line names none. */
 function unknownOption(
 	{ name, rawName }: OptionToken,
 	options: readonly OptionDescriptor[],
 	owners: readonly string[],
-	command: string | undefined
-): string {
+	command: string | undefined,
+	formerOptions: Readonly<Record<string, string>>
+): UsageError {
+	const former = formerOptions[rawName];
+	if (former) return new UsageError(`'${rawName}' is gone.`, former);
 	const help = command
 		? `Run 'rogen ${HELP_COMMAND} ${command}' to see what ${command} accepts.`
 		: `Run 'rogen ${HELP_COMMAND}' to see the commands.`;
 	if (owners.length > 0) {
 		const many = owners.length > 1;
 		return command
-			? `${command} doesn't take '${rawName}'. ${joinedWithAnd(owners)} ${many ? "do" : "does"}.`
-			: `'${rawName}' goes after a command: ${joinedWithAnd(owners)} ${many ? "take" : "takes"} it.`;
+			? new UsageError(
+					`${command} doesn't take '${rawName}'.`,
+					`${joinedWithAnd(owners)} ${many ? "do" : "does"}.`
+				)
+			: new UsageError(
+					`'${rawName}' goes after a command.`,
+					`${joinedWithAnd(owners)} ${many ? "take" : "takes"} it.`
+				);
 	}
 	const suggestion = rawName.startsWith("--")
 		? closestMatch(
@@ -136,40 +178,63 @@ function unknownOption(
 				options.map((option) => option.name)
 			)
 		: undefined;
-	return suggestion
-		? `Unknown option '${rawName}'. Did you mean '--${suggestion}'?`
-		: `Unknown option '${rawName}'. ${help}`;
+	return new UsageError(
+		`Unknown option '${rawName}'.`,
+		suggestion ? `Did you mean '--${suggestion}'?` : help
+	);
 }
 
 /** Node's wording varies by version and talks about positionals, so options are checked here. */
 function findOptionProblem(
 	tokens: NonNullable<Token>,
 	options: readonly OptionDescriptor[],
-	ownersOf: (name: string) => string[],
-	command: string | undefined
-): string | undefined {
+	ownersOf: (name: string, negated: boolean) => string[],
+	command: string | undefined,
+	formerOptions: Readonly<Record<string, string>>
+): UsageError | undefined {
 	for (const token of tokens) {
 		if (token.kind !== "option") continue;
 		const option = options.find(({ name }) => name === token.name);
-		if (!option) {
-			return unknownOption(token, options, ownersOf(token.name), command);
+		if (!option || (isNegated(token) && !option.negatable)) {
+			return unknownOption(
+				token,
+				options,
+				ownersOf(token.name, isNegated(token)),
+				command,
+				formerOptions
+			);
+		}
+		if (
+			option.type === "string" &&
+			option.values &&
+			token.value !== undefined &&
+			!option.values.includes(token.value)
+		) {
+			return new UsageError(
+				`'${token.value}' is not a value of '${token.rawName}'.`,
+				`The values are ${joinedClosestFirst(token.value, option.values)}.`
+			);
 		}
 		if (option.type === "boolean" && token.value !== undefined) {
-			return `Option '${token.rawName}' is a flag and takes no value.`;
+			return new UsageError(
+				`Option '${token.rawName}' is a flag and takes no value.`
+			);
 		}
 		const missing =
 			token.value === undefined ||
 			token.value === "" ||
 			(!token.inlineValue && token.value.startsWith("-"));
 		if (option.type === "string" && missing) {
-			return `Option '${token.rawName}' needs a value.`;
+			return new UsageError(`Option '${token.rawName}' needs a value.`);
 		}
 		if (
 			option.type === "string" &&
 			/^-[^-]/.test(token.rawName) &&
 			token.value?.startsWith("=")
 		) {
-			return `Option '${token.rawName}' takes its value after a space, not after '='.`;
+			return new UsageError(
+				`Option '${token.rawName}' takes its value after a space, not after '='.`
+			);
 		}
 	}
 	return undefined;
@@ -179,14 +244,22 @@ function findOptionProblem(
 export function parseArgs(
 	args: string[],
 	optionsFor: (command?: string) => readonly OptionDescriptor[],
-	commands: readonly string[]
+	commands: readonly string[],
+	/** What a command says of an option it no longer takes, by the name as typed: `--yes`. */
+	formerOptionsFor: (
+		command: string
+	) => Readonly<Record<string, string>> = () => ({})
 ): Result<ParsedCli, Error> {
 	try {
 		const allOptions = optionsFor();
-		const ownersOf = (name: string) =>
+		const ownersOf = (name: string, negated: boolean) =>
 			commands
 				.filter((owner) =>
-					optionsFor(owner).some((option) => option.name === name)
+					optionsFor(owner).some(
+						(option) =>
+							option.name === name &&
+							(!negated || option.negatable)
+					)
 				)
 				.sort();
 		const { values, tokens = [] } = tokenize(args, allOptions);
@@ -206,9 +279,10 @@ export function parseArgs(
 				tokens,
 				optionsFor(names),
 				ownersOf,
-				positionals.length > 0 ? names : undefined
+				positionals.length > 0 ? names : undefined,
+				formerOptionsFor(names)
 			);
-			if (problem) return err(new UsageError(problem));
+			if (problem) return err(problem);
 		}
 		if (values.verbose && values.quiet) {
 			return err(
@@ -217,6 +291,7 @@ export function parseArgs(
 		}
 		return ok({
 			command: runs,
+			bare: positionals.length === 0 && !values.version && !values.help,
 			line: {
 				positionals: consumesWord ? positionals.slice(1) : positionals,
 				...(terminator && {
@@ -230,12 +305,35 @@ export function parseArgs(
 	}
 }
 
+/** `argv` up to the first `--`, which ends the options. */
+const ownArgs = (argv: readonly string[]): readonly string[] => {
+	const end = argv.indexOf("--");
+	return end === -1 ? argv : argv.slice(0, end);
+};
+
 export function hasFlag(
 	argv: readonly string[],
 	option: OptionDescriptor
 ): boolean {
-	const end = argv.indexOf("--");
-	return (end === -1 ? argv : argv.slice(0, end)).includes(
-		`--${option.name}`
-	);
+	return ownArgs(argv).includes(`--${option.name}`);
+}
+
+/** The last valid value of a string option with choices in `argv`, read without parsing, so a line the parser rejects still has it. */
+export function choiceIn<V extends string>(
+	argv: readonly string[],
+	option: { readonly name: string; readonly values: readonly V[] }
+): V | undefined {
+	const own = ownArgs(argv);
+	const flag = `--${option.name}`;
+	for (let index = own.length - 1; index >= 0; index--) {
+		const value =
+			own[index] === flag
+				? own[index + 1]
+				: own[index].startsWith(`${flag}=`)
+					? own[index].slice(flag.length + 1)
+					: undefined;
+		const choice = option.values.find((one) => one === value);
+		if (choice) return choice;
+	}
+	return undefined;
 }

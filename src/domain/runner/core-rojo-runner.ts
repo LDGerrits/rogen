@@ -29,14 +29,18 @@ export class CoreRojoRunner implements RojoRunner {
 	start(
 		executable: ServerExecutable,
 		command: string,
-		projectFile: string,
+		projectFile: string | undefined,
 		flags: readonly string[],
 		cwd: string
 	): RojoProcess {
 		return new StartedRojo(
 			this.processService.spawn(
 				executable.file,
-				[command, projectFile, ...flags],
+				[
+					command,
+					...(projectFile === undefined ? [] : [projectFile]),
+					...flags,
+				],
 				{ cwd, env: executable.server.env }
 			),
 			executable.server

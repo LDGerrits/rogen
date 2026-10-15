@@ -13,7 +13,7 @@ import { projectsOf } from "../../domain/config/resolved-config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
-import { ListLog, ServingByConfig } from "./list-log.js";
+import { ListLog, ServingByConfig, listDocumentShape } from "./list-log.js";
 
 const ListOptions = [JsonOption] as const;
 
@@ -23,10 +23,14 @@ registerCommand(
 			super({
 				id: "list",
 				metadata: {
+					summary:
+						"Lists the configs, their projects and their ports",
 					description:
 						"Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
+					output: { document: listDocumentShape },
+					effects: [],
 					examples: ["rogen list", "rogen list --json"],
 				},
 			});

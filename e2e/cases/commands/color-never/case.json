@@ -1,0 +1,4 @@
+{
+	"steps": [["build", "--color", "never"], ["build", "--color=never", "-v"]],
+	"rojo": false
+}

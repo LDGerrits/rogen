@@ -68,6 +68,7 @@ export interface ProjectFile {
 	readonly syncRules?: unknown;
 	readonly emitLegacyScripts?: unknown;
 	readonly servePort?: unknown;
+	readonly servePlaceIds?: unknown;
 	readonly serveAddress?: unknown;
 }
 
@@ -121,7 +122,8 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		);
 	}
 
-	private static findNonNode(
+	/** The path to the first child below `node` that isn't an object; `at` is where `node` is. */
+	static findNonNode(
 		node: RojoNode,
 		at: readonly string[]
 	): readonly string[] | undefined {
@@ -148,6 +150,15 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			servePort < 65536
 			? servePort
 			: undefined;
+	}
+
+	get servePlaceIds(): number[] {
+		const { servePlaceIds } = this.project;
+		return Array.isArray(servePlaceIds)
+			? servePlaceIds.filter(
+					(id): id is number => Number.isSafeInteger(id) && id > 0
+				)
+			: [];
 	}
 
 	get serveAddress(): string | undefined {

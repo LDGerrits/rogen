@@ -70,11 +70,11 @@ Rogen's keys:
 | `serveProject` | `default` | The project `rogen serve` serves. See [Projects](#projects). |
 | `placePaths` | none | Folder globs that make each matching folder a place. See [Places](#places). |
 
-Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths` and `syncRules`, which it also reads:
+Rojo's keys. Rogen passes each to the project file as it is, except `globIgnorePaths` and `syncRules`, which it also reads. [Rojo's project format](https://rojo.space/docs/v7/project-format/) documents all of them; this table says only what Rogen does with each:
 
 | Field | What it does |
 |---|---|
-| `$schema` | The published JSON schema, for editor validation and completion. It covers Rojo's keys and Rogen's, underlines a route key that isn't letters and digits and a route target that doesn't start with a service, and offers the common targets as completions. The project file gets a schema of its own. |
+| `$schema` | The published JSON schema, for editor validation and completion. It covers Rojo's keys and Rogen's, underlines a route key that isn't letters and digits and a route target that doesn't start with a service, and offers the common targets as completions. |
 | `name` | The project's name. The project file carries it only when you set one here; Rojo names the project after its folder otherwise. |
 | `tree` | The instance tree Rogen merges its generated nodes into. See [Tree](#tree). |
 | `globIgnorePaths` | Globs, relative to the config, of files Rojo ignores. Rogen keeps them out of routing too. See [Ignoring Files](#ignoring-files). |
@@ -106,8 +106,7 @@ A **project** is the description with some keys changed, written beside `default
 		"dist": { "syncPath": "dist" },
 		"release": {
 			"sourcePaths": ["src"],
-			"tree": { "ReplicatedStorage": { "DevPackages": null } },
-			"globIgnorePaths": ["**/*.spec.luau"]
+			"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"]
 		}
 	}
 }
@@ -117,7 +116,7 @@ This writes `default.project.json`, `dist.project.json` and `release.project.jso
 
 - A value replaces the inherited one, and a list replaces the list: `"sourcePaths": ["src"]` in `release` leaves the `dev` overlay out.
 - `routes`, `tree` and the nodes below it merge by key, so a project restates only what changes.
-- `null` removes a key, as in JSON merge patch: `"DevPackages": null` drops the mount from `release.project.json`. A `null` in the description itself is an error, since there is nothing to remove.
+- A project leaves a mount out with `globIgnorePaths`, which replaces the list: `"DevPackages/**"` in `release` drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files). A key can't be removed, and `null` is an error anywhere in a `rogen.json`.
 - `projects` and `serveProject` belong to the whole config, and a project can't set them. `default` is the description itself and can't be a project name.
 - A project inherits `name`. Every project file carries a `name`, yours or the folder's, because Rojo can't open a project file without one. Only `default.project.json` may go without, as Rojo names it after its folder.
 
@@ -141,7 +140,7 @@ A repository with several places puts what they share in a root `rogen.json` and
 }
 ```
 
-Each folder that matches is a **place**. It inherits the root's keys and projects, adds its own code, and gets its own project files in its own folder, so an editor that starts one language server per folder gets one sourcemap per place. A place needs no config: a folder with no `rogen.json` is a place named after the folder. A place's `rogen.json` holds what differs, and is applied over the root's:
+Each folder that matches is a **place**. It inherits the root's keys and projects, adds its own code, and gets its own project files in its own folder, so an editor that starts one language server per folder gets one sourcemap per place. The [Several Places guide](/docs/v2/setups/places) walks through it. A place needs no config: a folder with no `rogen.json` is a place named after the folder. A place's `rogen.json` holds what differs, and is applied over the root's:
 
 ```json title="places/lobby/rogen.json"
 { "name": "Lobby", "servePort": 34880 }
@@ -152,8 +151,10 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 - `name` is not inherited by a place: a place is named after its folder unless it sets one. A project inherits the name of the place it is in.
 - A place may declare `projects` and `serveProject` of its own, and may not list places.
 - The root writes its own `default.project.json`, for the shared code, and is never served: `rogen serve` serves the places.
+- A place sets `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` for itself. The root never serves, so no place inherits them, and setting one in the root or in one of its projects is an error ([`config.placeSetting`](/docs/v2/diagnostics#config-placesetting)).
 - A place without a `servePort` is served on 34872 plus its index among the places without one, the places sorted by path, skipping ports other places pin. Studio remembers a place's port, so `rogen init <folder>` pins the port into the place it adds. A port in use is an error that names `servePort`.
-- `rogen watch` and `rogen serve` follow a place's `rogen.json` and the `placePaths` of the config. A folder that starts matching one while they run, because it was created or because it was given a `rogen.json`, is found when they restart.
+- With several places served, a place's `servePlaceIds` are what makes a Studio connected to the wrong place's port refuse to sync. See [Studio](/docs/v2/studio#place-ids).
+- `rogen build --watch` and `rogen serve` follow a place's `rogen.json` and the `placePaths` of the config. A folder that starts matching one while they run, because it was created or because it was given a `rogen.json`, is found when they restart.
 - A command run inside a place answers for that place. A command run at the root covers the root and every place, and a project named on the command line (`rogen build release`) is the project of that name in each place.
 
 ---
@@ -187,7 +188,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 { "globIgnorePaths": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
-An ignored file that a `tree` `$path` mounts is still mounted: the glob never drops a node, and a mount it matches stays in the project file as an empty `Folder`. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+A glob that names a folder or file a `tree` `$path` mounts, or covers all of it with `/**` (`"DevPackages"`, `"DevPackages/**"`), leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. A glob that ignores only some of the files in a mount (`**/*.spec.luau`) leaves the mount and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
 
 ## Sync Rules
 
@@ -210,7 +211,9 @@ An ignored file that a `tree` `$path` mounts is still mounted: the glob never dr
 
 Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `syncPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. Where the `tree` mounts a folder under the old place of a moved pattern, Rogen also keeps the pattern as you wrote it, so Rojo reads that folder by it too (the same goes for `globIgnorePaths`). See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
 
-A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too.
+With `emitLegacyScripts: false`, Rogen also writes a `legacyClientScript` rule for each `.client` script a route puts in `StarterPlayerScripts` or `StarterCharacterScripts`, after yours, so they stay LocalScripts. It can't for an `init.client` script, which Rojo reads without rules ([`tree.runContextTarget`](/docs/v2/diagnostics#tree-runcontexttarget)).
+
+A project file with `syncRules` is for Rojo alone: Argon rejects it. Without `syncRules`, the files Rogen writes load in Argon too. That includes the file of a project that sets `emitLegacyScripts: false` with routes into those containers.
 
 ## Removed Keys
 
@@ -221,14 +224,14 @@ A config is one folder's project file, so these keys are gone. Each is an error 
 | `extends` | None: a `rogen.json` describes one folder. A second output with changed keys is a [project](#projects); a different folder has its own `rogen.json`. |
 | `template` | Write the tree inline: move the template's `tree` and its other keys into `rogen.json`. |
 | `outFile` | Rogen writes `default.project.json` beside `rogen.json`. |
-| `exclude` | `globIgnorePaths`, and `null` for a mounted node in a [project](#projects). |
+| `exclude` | `globIgnorePaths`, which also leaves out a mount it ignores. |
 | `rootDirs` | `sourcePaths`. |
 | `syncDir` | `syncPath`. |
 | `modes`, `mode` | A [project](#projects) with the keys the mode set. |
 | `variants`, `conflicts` | None. A file that replaces another goes in a later source path; sets that exclude each other are a project each. |
 | `server` | None: `rogen serve` starts Rojo. |
 
-There are no config names either: no `<name>.rogen.json`, no `default.rogen.json`, and a command's argument is a folder or a project file, not a config name. The `-o` flag is gone with `outFile`. A `rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
+There are no config names either: no `<name>.rogen.json`, no `default.rogen.json`, and a command's argument is a folder or a project file, not a config name. `-o` no longer names the project file, as it did with `outFile`: on `build` it names the place file Rojo builds. A `rogen.json` with the keys of a Rogen 1 config, such as `source` or `aliases`, is an error that links to [Migrating from v1](/docs/v2/migrating-from-v1).
 
 ## Diagnostics
 

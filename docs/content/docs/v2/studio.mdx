@@ -5,7 +5,7 @@ description: Connect Studio to the server Rogen starts without clicking Connect 
 
 import { Callout } from "fumadocs-ui/components/callout";
 
-Rogen writes the project file, and `rogen serve` starts [Rojo](https://rojo.space) on it. The syncing, and every setting on this page, belongs to Rojo's Studio plugin: Rogen doesn't touch the plugin, and never installs one. What follows is how Rojo 7.7 behaves; the plugin is Rojo's to change, so look in its settings page when a name differs. Install the plugin that matches your Rojo with `rojo plugin install`.
+Rogen writes the project file, and `rogen serve` starts [Rojo](https://rojo.space) on it. The syncing, and every setting on this page, belongs to Rojo's Studio plugin: Rogen doesn't change the plugin. What follows is how Rojo 7.7 behaves; the plugin is Rojo's to change, so look in its settings page when a name differs. Install the plugin that matches your Rojo with `rogen plugin install`, which has the Rojo your project pins do it.
 
 ## Connect Without Clicking
 
@@ -46,9 +46,22 @@ Rojo refuses to connect from any other place, and says which IDs it expects. `bl
 <Callout type="warn">
 	A place that was never saved to Roblox has the place ID `0`, which no list
 	holds, so a listed project refuses it. Add the IDs once the places are
-	published. `rogen init` doesn't ask for them, since they usually don't exist
-	yet.
+	published. `rogen init` asks for the ID of a place it adds, and an empty answer
+	writes none.
 </Callout>
+
+### Several places
+
+Each [place](/docs/v2/configuration#places) is served on its own port, and Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port and sync that place's code. Give each place its own `servePlaceIds` in its `rogen.json`, and Rojo refuses the connection from any other place, with an error that names `servePlaceIds`:
+
+```json title="places/lobby/rogen.json"
+{
+	"servePort": 34872,
+	"servePlaceIds": [1818]
+}
+```
+
+`rogen init places/lobby` asks for the ID once, when it adds the place, and `--place-id 1818` answers it. Without a terminal it writes none. `rogen list` shows each place's port beside its place IDs.
 
 ## The Port
 
@@ -56,4 +69,4 @@ Rojo refuses to connect from any other place, and says which IDs it expects. `bl
 
 ## Serve With Argon
 
-`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen watch` to keep `default.project.json` current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own. A project file with [`syncRules`](/docs/v2/configuration#sync-rules) is Rojo's alone, since Argon rejects it.
+`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen build --watch` to keep `default.project.json` current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own. A project file with [`syncRules`](/docs/v2/configuration#sync-rules) is Rojo's alone, since Argon rejects it.

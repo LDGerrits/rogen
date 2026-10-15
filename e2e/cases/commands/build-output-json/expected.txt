@@ -1,0 +1,76 @@
+$ rogen build -o game.rbxlx --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "rojo": {
+      "command": "build",
+      "output": "<dir>/game.rbxlx",
+      "outcome": "built",
+      "project": "<dir>/default.project.json",
+      "messages": [
+        {
+          "severity": "info",
+          "text": "Building project 'Game'"
+        },
+        {
+          "severity": "info",
+          "text": "Built project to game.rbxlx"
+        }
+      ]
+    }
+  }
+
+$ rogen build -o missing/game.rbxlx --json
+exit 1
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": []
+      }
+    ],
+    "rojo": {
+      "command": "build",
+      "output": "<dir>/missing/game.rbxlx",
+      "outcome": "failed",
+      "project": "<dir>/default.project.json",
+      "messages": [
+        {
+          "severity": "info",
+          "text": "Building project 'Game'"
+        },
+        {
+          "severity": "error",
+          "text": "failed to create file `missing/game.rbxlx`: No such file or directory (os error 2)"
+        }
+      ],
+      "diagnostics": [
+        {
+          "file": "<dir>/default.project.json",
+          "severity": "error",
+          "code": "rojo.commandFailed",
+          "message": "'rojo build' failed (exit code 1): failed to create file `missing/game.rbxlx`: No such file or directory (os error 2)",
+          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#rojo-commandfailed"
+        }
+      ]
+    }
+  }
+
+written:
+  default.project.json
+  game.rbxlx

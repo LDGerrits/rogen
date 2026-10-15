@@ -77,12 +77,18 @@ export interface ConfigReload {
 	readonly notices: readonly ConfigNotice[];
 }
 
+/** The projects a config was named for: these, and the one a command takes by default too when the config itself was named. */
+export interface NamedProjects {
+	readonly names: readonly string[];
+	readonly usual: boolean;
+}
+
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** Every project that builds now, each config's description first; a broken entry gives its last valid version or none. */
 	readonly configs: readonly ResolvedConfig[];
-	/** The project each config was asked for by name or project-file path, by config file. */
-	readonly named: ReadonlyMap<string, string>;
+	/** The projects each config was asked for by name or project-file path, by config file. */
+	readonly named: ReadonlyMap<string, NamedProjects>;
 	/** What picking had to say, such as a name matching both a folder and a project. */
 	readonly notes: readonly string[];
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with a config when it has none. */
@@ -136,6 +142,8 @@ export interface ConfigService {
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** Loads one config file as `select` would, outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
+	/** Rewrites one config file in Rojo's formatting, Rogen's keys after Rojo's; whether the file changed. A file with comments is left as it is, and so is a file that doesn't load as JSON. */
+	format(file: string): Promise<Result<boolean, Diagnostic[]>>;
 	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;
 }

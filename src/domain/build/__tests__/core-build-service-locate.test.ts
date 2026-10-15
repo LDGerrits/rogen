@@ -334,6 +334,20 @@ describe("CoreBuildService.locate", () => {
 		});
 	});
 
+	it("should say a path outside the source paths is ignored when a glob matches it and no mount is there", async () => {
+		await write("DevPackages/B.luau");
+		const pattern = `${toPosix(abs("DevPackages"))}/**`;
+
+		expect(
+			await locate(["DevPackages", "DevPackages/B.luau"], {
+				ignored: [pattern],
+			})
+		).toMatchObject([
+			{ status: "ignored", source: abs("DevPackages"), pattern },
+			{ status: "ignored", source: abs("DevPackages/B.luau"), pattern },
+		]);
+	});
+
 	it("should name the file that replaced another at the same instance", async () => {
 		await write("src/Types.lua", "src/Types.luau");
 

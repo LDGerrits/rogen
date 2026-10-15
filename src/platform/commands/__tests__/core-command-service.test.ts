@@ -32,7 +32,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async (accessor, args) => {
 						calls.push([accessor.get(LogService), args]);
 						return ok(undefined);
@@ -56,7 +56,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => err(error),
 				})
 			);
@@ -77,7 +77,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => {
 						throw error;
 					},
@@ -96,7 +96,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => {
 						throw new TypeError("oops");
 					},
@@ -115,7 +115,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "foo",
-					metadata: { description: "foo" },
+					metadata: { summary: "Does a thing", description: "foo" },
 					handler: async () => ok(undefined),
 				})
 			);
@@ -139,6 +139,7 @@ describe("CoreCommandService", () => {
 				registry.registerCommand({
 					id: "foo",
 					metadata: {
+						summary: "Does a thing",
 						description: "foo",
 						passthrough: { name: "args", description: "" },
 					},
@@ -189,6 +190,7 @@ describe("CoreCommandService", () => {
 				registry.registerCommand({
 					id: "build",
 					metadata: {
+						summary: "Does a thing",
 						description: "build",
 						unknownWordOffer: "To build a config",
 					},
@@ -203,6 +205,31 @@ describe("CoreCommandService", () => {
 
 			expect((result as ResultError<Error>).error.message).toBe(
 				"Unknown command \"prod\". To build a config, run 'rogen build prod'; run 'rogen help' to see the commands."
+			);
+		});
+
+		it("should say what replaced a command that is now a flag of another", async () => {
+			store.add(
+				registry.registerCommand({
+					id: "build",
+					metadata: {
+						summary: "Does a thing",
+						description: "build",
+						formerCommands: {
+							watch: "'rogen watch' is now 'rogen build --watch'.",
+						},
+					},
+					handler: async () => ok(undefined),
+				})
+			);
+
+			const result = await commandService.executeCommand("watch", {
+				positionals: ["watch"],
+				options: {},
+			});
+
+			expect((result as ResultError<Error>).error.message).toBe(
+				"Unknown command \"watch\". 'rogen watch' is now 'rogen build --watch'."
 			);
 		});
 
@@ -221,7 +248,7 @@ describe("CoreCommandService", () => {
 			store.add(
 				registry.registerCommand({
 					id: "build",
-					metadata: { description: "build" },
+					metadata: { summary: "Does a thing", description: "build" },
 					handler: async () => ok(undefined),
 				})
 			);

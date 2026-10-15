@@ -2,6 +2,7 @@ import {
 	escapedGlobPrefix,
 	isGlobsetMatch,
 	isMatch,
+	ignoresAllOf,
 	unescapedGlob,
 } from "../glob.js";
 
@@ -32,6 +33,27 @@ describe("a folder prefix of a glob", () => {
 describe("isMatch", () => {
 	it("should match dot files", () => {
 		expect(isMatch("/repo/.hidden/A.luau", "/repo/**/A.luau")).toBe(true);
+	});
+});
+
+describe("ignoresAllOf", () => {
+	it.each([
+		["/repo/vendor", "/repo/vendor"],
+		["/repo/vendor", "/repo/vendor/**"],
+		["/repo/vendor", "/repo/v*/**"],
+		["/repo/vendor", "/repo/**/vendor"],
+		["/repo/vendor/A.luau", "/repo/**/*.luau"],
+	])("should say %s is all ignored by %s", (target, glob) => {
+		expect(ignoresAllOf(glob, target)).toBe(true);
+	});
+
+	it.each([
+		["/repo/vendor", "/repo/vendor/*.luau"],
+		["/repo/vendor", "/repo/**/*.luau"],
+		["/repo/vendor", "/repo/vendor/**/*.luau"],
+		["/repo/vendor", "/repo/other/**"],
+	])("should say %s is not all ignored by %s", (target, glob) => {
+		expect(ignoresAllOf(glob, target)).toBe(false);
 	});
 });
 

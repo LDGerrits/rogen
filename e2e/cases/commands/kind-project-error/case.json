@@ -1,0 +1,3 @@
+{
+	"steps": [["list"], ["list", "--json"], ["build", "--json", "nowhere"]]
+}

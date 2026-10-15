@@ -39,7 +39,7 @@ The description is what you work on and test, so it keeps the specs. A `release`
 <Step>
 ### Keep Test-only Settings Out of Release
 
-A game you ship should not have `LoadStringEnabled`, which Jest needs. Put it in the description's `tree` and remove it from `release` with `null`:
+A game you ship should not have `LoadStringEnabled`, which Jest needs. Put it in the description's `tree` and turn it off in `release`:
 
 ```json title="rogen.json"
 {
@@ -50,13 +50,13 @@ A game you ship should not have `LoadStringEnabled`, which Jest needs. Put it in
 	"projects": {
 		"release": {
 			"globIgnorePaths": ["**/*.spec.luau"],
-			"tree": { "ServerScriptService": { "$properties": { "LoadStringEnabled": null } } }
+			"tree": { "ServerScriptService": { "$properties": { "LoadStringEnabled": false } } }
 		}
 	}
 }
 ```
 
-The same goes for anything else that is only for development, such as a `DevPackages` mount: `"DevPackages": null` in the `release` tree.
+To leave out anything else that is only for development, such as a `DevPackages` mount, ignore its folder in `release`: `"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"]` drops the mount from `release.project.json`.
 
 </Step>
 
@@ -73,8 +73,7 @@ jest-roblox
 Build the release place from the other file:
 
 ```bash
-rogen build release
-rojo build release.project.json -o game.rbxl
+rogen build release -o game.rbxl
 ```
 
 </Step>
@@ -82,7 +81,7 @@ rojo build release.project.json -o game.rbxl
 </Steps>
 
 <Callout type="info">
-	Add `--deny-warnings` to `rogen build` in CI, so a spec that lands nowhere is
+	Run `rogen check` in CI, so a spec that lands nowhere is
 	found before the run. jest-roblox's own exit code then says whether the tests
 	passed.
 </Callout>

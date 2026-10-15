@@ -63,13 +63,12 @@ export class PlaceInit {
 		const listed = await this.listing(rootFile, root, folder);
 		if (listed.isErr()) return listed;
 		if (listed.value === "cancelled") return ok(undefined);
-		const known = await this.knownPlaces(
-			root,
-			listed.value.placePaths,
-			listed.value.raw
-		);
+		const known = await this.knownPlaces(root, listed.value.placePaths);
 		const sourcePaths = await this.sourcePaths(folder, root);
 		if (sourcePaths === undefined) return ok(undefined);
+
+		const placeIds = await this.questions.placeIds(path.basename(folder));
+		if (placeIds === undefined) return ok(undefined);
 
 		const port = this.portOf(folder, known);
 		const place = toPosix(path.relative(root, folder));
@@ -82,6 +81,7 @@ export class PlaceInit {
 		);
 		const config: RogenConfig = {
 			servePort: port,
+			...(placeIds.length > 0 && { servePlaceIds: [...placeIds] }),
 			...(sourcePaths.sourcePaths && {
 				sourcePaths: sourcePaths.sourcePaths,
 			}),
@@ -112,6 +112,7 @@ export class PlaceInit {
 				],
 			},
 			asked: this.questions.interactive,
+			decided: this.questions.decided,
 		});
 	}
 
@@ -122,7 +123,8 @@ export class PlaceInit {
 		if (!enclosing)
 			return err(
 				new UsageError(
-					`No ${CONFIG_FILE_NAMES[0]} found above ${folder}. Run 'rogen init' in the folder that holds the code the places share first.`
+					`No ${CONFIG_FILE_NAMES[0]} found above ${folder}.`,
+					"Run 'rogen init' in the folder that holds the code the places share first."
 				)
 			);
 		if (enclosing.fileNames.length > 1)
@@ -218,8 +220,7 @@ export class PlaceInit {
 
 	private async knownPlaces(
 		root: string,
-		placePaths: readonly string[],
-		raw: Record<string, unknown>
+		placePaths: readonly string[]
 	): Promise<KnownPlace[]> {
 		const folders = await this.finder.folders(root, placePaths);
 		return Promise.all(
@@ -230,7 +231,7 @@ export class PlaceInit {
 					: ({} as Record<string, unknown>);
 				return {
 					directory,
-					pinned: PlacePorts.pinnedBy(own.servePort ?? raw.servePort),
+					pinned: PlacePorts.pinnedBy(own.servePort),
 				};
 			})
 		);

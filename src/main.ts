@@ -9,8 +9,10 @@ import {
 import { CommandFailure } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import {
+	ColorOption,
 	HELP_COMMAND,
 	JsonOption,
+	choiceIn,
 	hasFlag,
 	parseArgs,
 } from "./platform/environment/args.js";
@@ -27,6 +29,8 @@ import { ServiceCollection } from "./platform/instantiation/service-collection.j
 import { LogService } from "./platform/log/log-service.js";
 import { PlainLogService } from "./platform/log/plain-log-service.js";
 import { TerminalLogService } from "./platform/log/terminal-log-service.js";
+import { InputService } from "./platform/input/input-service.js";
+import { NativeInputService } from "./platform/input/native-input-service.js";
 import { ConsolePromptService } from "./platform/prompt/console-prompt-service.js";
 import { PromptService } from "./platform/prompt/prompt-service.js";
 import { CoreProductService } from "./platform/product/core-product-service.js";
@@ -35,6 +39,8 @@ import { NativeProcessService } from "./platform/process/native-process-service.
 import { ProcessService } from "./platform/process/process-service.js";
 import { NativeRequestService } from "./platform/request/native-request-service.js";
 import { RequestService } from "./platform/request/request-service.js";
+import { BrowserService } from "./platform/browser/browser-service.js";
+import { CoreBrowserService } from "./platform/browser/core-browser-service.js";
 import { CoreReleaseService } from "./platform/release/core-release-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
@@ -52,15 +58,22 @@ import { WatchService } from "./domain/watch/watch-service.js";
 import { CoreConfigService } from "./domain/config/core-config-service.js";
 import { CoreRojoRunner } from "./domain/runner/core-rojo-runner.js";
 import { RojoRunner } from "./domain/runner/rojo-runner.js";
+import { CoreRojoCommandService } from "./domain/runner/core-rojo-command-service.js";
+import { RojoCommandService } from "./domain/runner/rojo-command-service.js";
+import { RojoCompatibility } from "./domain/runner/rojo-compatibility.js";
 import { CoreServeService } from "./domain/serve/core-serve-service.js";
 import { ServeService } from "./domain/serve/serve-service.js";
 import "./commands/build/build-command.js";
 import "./commands/check/check-command.js";
+import "./commands/fmt-project/fmt-project-command.js";
+import "./commands/help/doc-command.js";
 import "./commands/help/help-command.js";
 import "./commands/init/init-command.js";
 import "./commands/list/list-command.js";
+import "./commands/plugin/plugin-command.js";
 import "./commands/serve/serve-command.js";
-import "./commands/watch/watch-command.js";
+import "./commands/sourcemap/sourcemap-command.js";
+import "./commands/upload/upload-command.js";
 import "./commands/where/where-command.js";
 
 /** Baked in by `scripts/bundle.ts`; undefined in a run from source. */
@@ -73,6 +86,18 @@ function currentFolder(): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+/** Whether the command runs until it is stopped, so the update notice comes before it starts. */
+function isLongRunning(
+	metadata: { longRunning?: boolean; longRunningWith?: string } | undefined,
+	options: Readonly<Record<string, unknown>>
+): boolean {
+	return (
+		metadata?.longRunning === true ||
+		(metadata?.longRunningWith !== undefined &&
+			options[metadata.longRunningWith] === true)
+	);
 }
 
 /** The update notice of a run, looked up while the command runs. */
@@ -120,11 +145,14 @@ class RogenMain {
 		const argsResult = parseArgs(
 			rawArgs,
 			(command) => commandRegistry.getOptions(command),
-			[...commandRegistry.getCommands().keys()]
+			[...commandRegistry.getCommands().keys()],
+			(command) => commandRegistry.getFormerOptions(command)
 		);
 
 		const json = hasFlag(rawArgs, JsonOption);
-		const options = argsResult.isOk() ? argsResult.value.line.options : {};
+		const options = argsResult.isOk()
+			? argsResult.value.line.options
+			: { color: choiceIn(rawArgs, ColorOption) };
 		const cwd = currentFolder();
 		const environmentService = new NativeEnvironmentService(
 			{ ...options, json },
@@ -137,11 +165,12 @@ class RogenMain {
 			process.exitCode = failure.finish(argsResult.error);
 			return;
 		}
-		const { command, line } = argsResult.value;
+		const { command, line, bare } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
 			process.exitCode = failure.finish(
 				new UsageError(
-					"The current folder no longer exists. cd to one that does, then run rogen again."
+					"The current folder no longer exists.",
+					"cd to one that does, then run rogen again."
 				),
 				command
 			);
@@ -164,7 +193,10 @@ class RogenMain {
 		const notice = new UpdateNotice(
 			logService,
 			command === HELP_COMMAND ? undefined : updateService.check(),
-			commandRegistry.getCommand(command)?.metadata.longRunning === true
+			isLongRunning(
+				commandRegistry.getCommand(command)?.metadata,
+				line.options
+			)
 		);
 		if (notice.printedFirst) await notice.print();
 
@@ -177,7 +209,9 @@ class RogenMain {
 
 		process.exitCode = result.isErr()
 			? failure.finish(result.error, command)
-			: 0;
+			: bare
+				? 2
+				: 0;
 		if (!notice.printedFirst) await notice.print();
 	}
 
@@ -210,6 +244,7 @@ class RogenMain {
 			color: !environmentService.isPlain,
 		});
 		services.set(PromptService, promptService);
+		services.set(InputService, new NativeInputService());
 
 		const fileSystemService = new DiskFileSystemService();
 		services.set(FileSystemService, fileSystemService);
@@ -219,6 +254,7 @@ class RogenMain {
 		services.set(RequestService, requestService);
 		const processService = new NativeProcessService();
 		services.set(ProcessService, processService);
+		services.set(BrowserService, new CoreBrowserService(processService));
 		services.set(
 			LifecycleService,
 			disposables.add(new NativeLifecycleService())
@@ -264,6 +300,13 @@ class RogenMain {
 		services.set(WatchService, watchService);
 		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
 		services.set(RojoRunner, rojoRunner);
+		services.set(
+			RojoCommandService,
+			new CoreRojoCommandService(
+				rojoRunner,
+				new RojoCompatibility(fileSystemService)
+			)
+		);
 		services.set(
 			ServeService,
 			new CoreServeService(

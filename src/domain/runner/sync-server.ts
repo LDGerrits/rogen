@@ -1,6 +1,7 @@
 import { UsageError } from "../../base/errors.js";
 import { isObject } from "../../base/objects.js";
 import { Result, err, ok } from "../../base/result.js";
+import { RojoVersion } from "./rojo-version.js";
 
 export interface ServerInfo {
 	readonly server: SyncServer;
@@ -20,11 +21,17 @@ interface SyncServerFields {
 	readonly name: string;
 	/** Where toolchain managers install it from, as `owner/repo`. */
 	readonly repository: string;
+	/** The first release that reads `syncRules`. */
+	readonly syncRulesSince: string;
+	/** The release Rogen pins for a project that has none. */
+	readonly pinned: string;
 	readonly defaultHost: string;
 	readonly defaultPort: number;
 	readonly infoPath: string;
 	readonly hostFlags: readonly string[];
 	readonly portFlags: readonly string[];
+	/** Its flags that older releases reject, with the release that added each. */
+	readonly flagsSince: Readonly<Record<string, string>>;
 	/** A line that starts one of its log records, with the groups `level` and `text`. */
 	readonly logRecord: RegExp;
 	readonly noise: readonly RegExp[];
@@ -52,11 +59,14 @@ export class SyncServer {
 		id: "rojo",
 		name: "Rojo",
 		repository: "rojo-rbx/rojo",
+		syncRulesSince: "7.5.0",
+		pinned: "7.7.1",
 		defaultHost: "127.0.0.1",
 		defaultPort: 34872,
 		infoPath: "/api/rojo",
 		hostFlags: ["--address"],
 		portFlags: ["--port"],
+		flagsSince: { "--allowed-hosts": "7.7.0" },
 		logRecord: /^\[(?<level>[A-Z]+)\s*[^\]]*\]\s?(?<text>.*)$/,
 		noise: [/^Rojo server listening:$/, /^(Address|Port):/, /^Visit http/],
 		// Its plugin holds one websocket to the server, which logs it at debug level.
@@ -87,6 +97,8 @@ export class SyncServer {
 	readonly id: string;
 	readonly name: string;
 	readonly repository: string;
+	readonly syncRulesSince: RojoVersion;
+	readonly pinned: RojoVersion;
 	readonly defaultHost: string;
 	readonly defaultPort: number;
 	readonly infoPath: string;
@@ -95,6 +107,8 @@ export class SyncServer {
 		this.id = fields.id;
 		this.name = fields.name;
 		this.repository = fields.repository;
+		this.syncRulesSince = RojoVersion.of(fields.syncRulesSince);
+		this.pinned = RojoVersion.of(fields.pinned);
 		this.defaultHost = fields.defaultHost;
 		this.defaultPort = fields.defaultPort;
 		this.infoPath = fields.infoPath;
@@ -106,10 +120,12 @@ export class SyncServer {
 
 	reportsConnections(version: string): boolean {
 		const since = this.fields.connections?.since;
-		const found = /^(\d+)\.(\d+)/.exec(version);
-		if (!since || !found) return false;
-		const [major, minor] = [Number(found[1]), Number(found[2])];
-		return major > since[0] || (major === since[0] && minor >= since[1]);
+		const found = RojoVersion.parse(version);
+		return (
+			since !== undefined &&
+			found !== undefined &&
+			!found.isBefore(RojoVersion.of(`${since[0]}.${since[1]}.0`))
+		);
 	}
 
 	connectionIn(text: string): "opened" | "closed" | undefined {
@@ -125,8 +141,9 @@ export class SyncServer {
 		return this.fields.connections?.logEnv ?? {};
 	}
 
+	/** What installs its Studio plugin: Rogen runs the pinned Rojo's. */
 	get pluginCommand(): string {
-		return `${this.id} plugin install`;
+		return "rogen plugin install";
 	}
 
 	logRecordOf(
@@ -147,6 +164,42 @@ export class SyncServer {
 		return isObject(value) ? this.fields.readInfo(this, value) : undefined;
 	}
 
+	/** The first of `serverArgs` that `version` rejects, with the release that added it. */
+	flagTooNewIn(
+		serverArgs: readonly string[],
+		version: string
+	): { readonly flag: string; readonly since: RojoVersion } | undefined {
+		const found = RojoVersion.parse(version);
+		if (!found) return undefined;
+		for (const [flag, since] of Object.entries(this.fields.flagsSince)) {
+			const release = RojoVersion.of(since);
+			if (
+				found.isBefore(release) &&
+				serverArgs.some(
+					(arg) => arg === flag || arg.startsWith(`${flag}=`)
+				)
+			)
+				return { flag, since: release };
+		}
+		return undefined;
+	}
+
+	/** `serverArgs` without its port flags and their values. */
+	withoutPort(serverArgs: readonly string[]): string[] {
+		const kept: string[] = [];
+		for (let index = 0; index < serverArgs.length; index++) {
+			const arg = serverArgs[index];
+			if (this.fields.portFlags.includes(arg)) index++;
+			else if (
+				!this.fields.portFlags.some((flag) =>
+					arg.startsWith(`${flag}=`)
+				)
+			)
+				kept.push(arg);
+		}
+		return kept;
+	}
+
 	hostIn(serverArgs: readonly string[]): string | undefined {
 		return flagValue(serverArgs, this.fields.hostFlags);
 	}
@@ -159,11 +212,7 @@ export class SyncServer {
 		const port = /^\d+$/.test(value) ? Number(value) : NaN;
 		return port > 0 && port < 65536
 			? ok(port)
-			: err(
-					new UsageError(
-						"The --port after '--' takes a number from 1 to 65535."
-					)
-				);
+			: err(new UsageError("--port takes a number from 1 to 65535."));
 	}
 }
 

@@ -43,6 +43,12 @@ describe("CoreRojoRunner", () => {
 			expect(processes.spawned[0].options.cwd).toBe("/repo");
 		});
 
+		it("should run the command with the flags alone when it has no project file", () => {
+			runner.start(executable, "plugin", undefined, ["install"], "/repo");
+
+			expect(processes.spawned[0].args).toEqual(["plugin", "install"]);
+		});
+
 		it("should read what it prints into messages", () => {
 			const said: ServerMessage[] = [];
 			const rojo = runner.start(

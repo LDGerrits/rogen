@@ -1,0 +1,4 @@
+$ rogen upload
+exit 2
+stderr:
+  error: --asset_id names the place or model to upload to, and Rojo needs it.

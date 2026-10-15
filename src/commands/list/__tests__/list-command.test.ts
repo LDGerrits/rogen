@@ -69,6 +69,7 @@ describe("list command", () => {
 				"  * -> ReplicatedStorage",
 				"sync path: out",
 				"project file: default.project.json",
+				"rojo: rojo serve default.project.json",
 			].join("\n"),
 		]);
 	});
@@ -90,9 +91,71 @@ describe("list command", () => {
 				"sync path: (none)",
 				"projects:",
 				"  default: default.project.json",
+				"    rojo serve default.project.json",
 				"  dist: dist.project.json (served)",
+				"    rojo serve dist.project.json",
 			].join("\n")
 		);
+	});
+
+	it("should show the port a project pins, though it is no place", async () => {
+		await write("rogen.json", {
+			servePort: 34900,
+			projects: { dist: { servePort: 34901 } },
+		});
+
+		await run();
+
+		const [text] = under("rogen.json");
+		expect(text).toContain(
+			"default: default.project.json (served, port 34900)"
+		);
+		expect(text).toContain("dist: dist.project.json (port 34901)");
+	});
+
+	it("should quote a project file with a space in the Rojo command, and carry the pinned port", async () => {
+		await write("my game/rogen.json", { servePort: 34900 });
+
+		await run({ _: ["my game"] });
+
+		expect(under("my game/rogen.json")[0]).toContain(
+			"rojo: rojo serve 'my game/default.project.json' --port 34900"
+		);
+	});
+
+	it("should give each project the Rojo command that serves it with --json, and none to a config that lists places", async () => {
+		await write("rogen.json", {
+			placePaths: ["places/*"],
+			projects: { dist: {} },
+		});
+		await fs.createDirectory("/repo/places/lobby");
+
+		await run({ json: true });
+
+		const [config] = JSON.parse(logService.texts("print")[0]).configs as {
+			projects: { name: string; rojo?: string[] }[];
+			places: { projects: { name: string; rojo?: string[] }[] }[];
+		}[];
+		expect(config.projects.map(({ rojo }) => rojo)).toEqual([
+			undefined,
+			undefined,
+		]);
+		expect(config.places[0].projects.map(({ rojo }) => rojo)).toEqual([
+			[
+				"rojo",
+				"serve",
+				"/repo/places/lobby/default.project.json",
+				"--port",
+				"34872",
+			],
+			[
+				"rojo",
+				"serve",
+				"/repo/places/lobby/dist.project.json",
+				"--port",
+				"34872",
+			],
+		]);
 	});
 
 	it("should say a name that is both a folder and a project is the folder", async () => {
@@ -303,6 +366,11 @@ describe("list command", () => {
 								name: "default",
 								file: "/repo/default.project.json",
 								served: true,
+								rojo: [
+									"rojo",
+									"serve",
+									"/repo/default.project.json",
+								],
 								serving: null,
 							},
 						],
@@ -562,9 +630,54 @@ describe("list command", () => {
 					"routes: same as Game",
 					"sync path: (none)",
 					"project file: places/arena/default.project.json (port 34872)",
+					"rojo: rojo serve places/arena/default.project.json --port 34872",
 				].join("\n"),
 			]);
 			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");
+		});
+
+		it("should say which place IDs belong to which port", async () => {
+			await write("places/lobby/rogen.json", {
+				name: "Lobby",
+				servePlaceIds: [1818, 2020],
+			});
+
+			await run();
+
+			expect(under("places/lobby (place)")[0]).toContain(
+				"places/lobby/default.project.json (port 34873, place IDs 1818, 2020)"
+			);
+			expect(under("places/arena (place)")[0]).toContain(
+				"default.project.json (port 34872)"
+			);
+		});
+
+		it("should give each project its place IDs with --json, and none to a project without", async () => {
+			await write("places/lobby/rogen.json", {
+				name: "Lobby",
+				servePlaceIds: [1818, 2020],
+			});
+
+			await run({ json: true });
+
+			const { configs } = JSON.parse(logService.texts("print")[0]) as {
+				configs: {
+					places: {
+						place: string;
+						projects: { port: number; placeIds?: number[] }[];
+					}[];
+				}[];
+			};
+			expect(
+				configs[0].places.map(({ place, projects }) => [
+					place,
+					projects[0].port,
+					projects[0].placeIds,
+				])
+			).toEqual([
+				["arena", 34872, undefined],
+				["Lobby", 34873, [1818, 2020]],
+			]);
 		});
 
 		it("should say the config is not served when it has projects", async () => {

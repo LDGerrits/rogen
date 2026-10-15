@@ -1,3 +1,4 @@
+import Ajv, { ValidateFunction } from "ajv";
 import { ChildProcess, execFile, spawn } from "child_process";
 import { createHash } from "crypto";
 import { buildSync } from "esbuild";
@@ -5,6 +6,26 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { promisify, stripVTControlCharacters } from "util";
+import {
+	CommandRegistry,
+	Extensions,
+} from "../src/platform/commands/commands.js";
+import { outputJsonSchema } from "../src/platform/output/__tests__/output-json-schema.js";
+import { OutputShape } from "../src/platform/output/output-shape.js";
+import { failureShape } from "../src/platform/diagnostics/diagnostic-json.js";
+import { Registry } from "../src/platform/registry/registry.js";
+import "../src/commands/build/build-command.js";
+import "../src/commands/check/check-command.js";
+import "../src/commands/fmt-project/fmt-project-command.js";
+import "../src/commands/help/doc-command.js";
+import "../src/commands/help/help-command.js";
+import "../src/commands/init/init-command.js";
+import "../src/commands/list/list-command.js";
+import "../src/commands/plugin/plugin-command.js";
+import "../src/commands/serve/serve-command.js";
+import "../src/commands/sourcemap/sourcemap-command.js";
+import "../src/commands/upload/upload-command.js";
+import "../src/commands/where/where-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -22,6 +43,8 @@ export interface CaseSpec {
 	readonly output?: readonly FramedCommand[];
 	/** Variables the commands run with, on top of an environment that is not GitHub Actions'. */
 	readonly env?: Readonly<Record<string, string>>;
+	/** The text each step reads on its standard input. */
+	readonly stdin?: string;
 }
 
 /** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
@@ -33,6 +56,7 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	show: true,
 	output: true,
 	env: true,
+	stdin: true,
 };
 
 /** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
@@ -153,10 +177,18 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			const result = await run(
 				...invocation(cli, args),
 				path.join(dir, spec.cwd ?? ""),
-				spec.env
+				spec.env,
+				spec.stdin
 			);
+			const problem = outputProblem(args, result.stdout);
+			if (problem) throw new Error(`rogen ${args.join(" ")} ${problem}`);
 			sections.push(
-				formatStep(["rogen", ...args], result, showsStdout(args, spec))
+				formatStep(
+					["rogen", ...args],
+					result,
+					showsStdout(args, spec),
+					spec.stdin
+				)
 			);
 		}
 
@@ -211,15 +243,19 @@ async function run(
 	command: string,
 	args: readonly string[],
 	cwd: string,
-	env?: Readonly<Record<string, string>>
+	env?: Readonly<Record<string, string>>,
+	stdin = ""
 ): Promise<RunResult> {
 	try {
-		const { stdout, stderr } = await execFileAsync(command, [...args], {
+		const running = execFileAsync(command, [...args], {
 			cwd,
 			encoding: "utf8",
 			timeout: RUN_TIMEOUT_MS,
 			env: childEnv(env),
 		});
+		running.child.stdin?.on("error", () => undefined);
+		running.child.stdin?.end(stdin);
+		const { stdout, stderr } = await running;
 		return { exitCode: 0, stdout, stderr };
 	} catch (error) {
 		const failure = error as {
@@ -239,17 +275,96 @@ async function run(
 	}
 }
 
+const ajv = new Ajv.default({ strict: true });
+const checks = new Map<string, ValidateFunction>();
+
+/** What a command prints, or a failure instead; a command that declares nothing is held to the failure alone. */
+function checkFor(command: string, lines: boolean): ValidateFunction {
+	const key = `${command} ${lines}`;
+	const known = checks.get(key);
+	if (known) return known;
+	const output = Registry.as<CommandRegistry>(Extensions.Commands).getCommand(
+		command
+	)?.metadata.output;
+	const declared = lines ? output?.lines : output?.document;
+	const shapes: OutputShape[] = [
+		...(declared ? [declared] : []),
+		failureShape,
+	];
+	const check = ajv.compile(outputJsonSchema(shapes));
+	checks.set(key, check);
+	return check;
+}
+
+/** What is wrong with the stdout of a `--json` step against the output its command declares, if anything. */
+export function outputProblem(
+	args: readonly string[],
+	stdout: string
+): string | undefined {
+	const end = args.indexOf("--");
+	const own = end === -1 ? args : args.slice(0, end);
+	const prints = !own.some((arg) =>
+		["--help", "-h", "--version", "-V"].includes(arg)
+	);
+	if (!prints || !own.includes("--json") || stdout.trim() === "")
+		return undefined;
+	const [command = ""] = own;
+	const output = Registry.as<CommandRegistry>(Extensions.Commands).getCommand(
+		command
+	)?.metadata.output;
+	const lines =
+		output?.lines !== undefined &&
+		(own.includes("--watch") || output.document === undefined);
+	const check = checkFor(command, lines);
+	for (const text of lines ? stdout.trim().split("\n") : [stdout]) {
+		let document: unknown;
+		try {
+			document = JSON.parse(text);
+		} catch {
+			return `printed ${text.slice(0, 80)}, which is not JSON`;
+		}
+		if (!check(document))
+			return `printed a document that its declared output does not allow: ${ajv.errorsText(check.errors)}\n${text.slice(0, 400)}`;
+	}
+	return undefined;
+}
+
+/** The one JSON document of a `rogen --json` step, indented so a transcript stays readable. */
+function readable(body: string, command: readonly string[]): string {
+	if (command[0] !== "rogen" || !command.includes("--json")) return body;
+	try {
+		return JSON.stringify(JSON.parse(body), null, 2);
+	} catch {
+		return body;
+	}
+}
+
 export function formatStep(
 	command: readonly string[],
 	result: RunResult,
-	showStdout = true
+	showStdout = true,
+	stdin?: string
 ): string {
-	const lines = [`$ ${command.join(" ")}`, `exit ${result.exitCode}`];
+	const lines = [
+		`$ ${command.join(" ")}`,
+		...(stdin === undefined
+			? []
+			: [
+					"stdin:",
+					...stdin
+						.trimEnd()
+						.split("\n")
+						.map((l) => `  ${l}`),
+				]),
+		`exit ${result.exitCode}`,
+	];
 	for (const [label, text] of [
 		["stdout", result.stdout],
 		["stderr", result.stderr],
 	] as const) {
-		const body = stripVTControlCharacters(text).trimEnd();
+		const stripped = stripVTControlCharacters(text).trimEnd();
+		const body =
+			label === "stdout" ? readable(stripped, command) : stripped;
 		if (!body) continue;
 		if (label === "stdout" && !showStdout)
 			lines.push("stdout: (not shown)");
@@ -335,7 +450,9 @@ function normalize(text: string, dir: string): string {
 	const roots = new Set([dir, fs.realpathSync(dir)]);
 	let result = text;
 	for (const root of roots) result = result.split(root).join("<dir>");
-	return result.replace(/\r\n/g, "\n");
+	return result
+		.replace(/\r\n/g, "\n")
+		.replace(/^(\s*"version": )"[^"]*"/gm, '$1"<version>"');
 }
 
 export function createProject(files: Readonly<Record<string, string>>): {
@@ -380,7 +497,7 @@ export async function eventually(
 	}
 }
 
-/** A `rogen` command that keeps running, `watch` unless `command` says otherwise. */
+/** A `rogen` command that keeps running, `build --watch` unless `command` says otherwise. */
 export class RunningRogen {
 	private readonly child: ChildProcess;
 	readonly exited: Promise<number | null>;
@@ -392,9 +509,12 @@ export class RunningRogen {
 		dir: string,
 		args: readonly string[] = [],
 		cwd: string = dir,
-		command = "watch"
+		command = "build --watch"
 	) {
-		const [file, commandArgs] = invocation(cli, [command, ...args]);
+		const [file, commandArgs] = invocation(cli, [
+			...command.split(" "),
+			...args,
+		]);
 		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],

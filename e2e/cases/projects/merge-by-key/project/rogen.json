@@ -27,7 +27,7 @@
 				"tests"
 			],
 			"routes": {
-				"server": null,
+				"server": "ServerStorage",
 				"spec": "ServerScriptService/Specs"
 			},
 			"globIgnorePaths": [],

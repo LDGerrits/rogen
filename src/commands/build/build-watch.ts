@@ -1,0 +1,115 @@
+import { DeferredPromise, Sequencer } from "../../base/async.js";
+import { DisposableStore } from "../../base/disposable.js";
+import { ErrorUtils } from "../../base/errors.js";
+import { Result, ok } from "../../base/result.js";
+import { isWritten } from "../../domain/build/build.js";
+import { ConfigService } from "../../domain/config/config-service.js";
+import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
+import { WatchService } from "../../domain/watch/watch-service.js";
+import { EnvironmentService } from "../../platform/environment/environment-service.js";
+import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import { LogService } from "../../platform/log/log-service.js";
+import { RojoStep } from "./rojo-step.js";
+import { WatchJsonLog, WatchLog, WatchReporter } from "./watch-log.js";
+
+/** `rogen build --watch` and `rogen sourcemap --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo after each write when asked to. */
+export class BuildWatch {
+	constructor(
+		private readonly accessor: ServicesAccessor,
+		private readonly refs: readonly string[],
+		private readonly json: boolean,
+		/** What to run Rojo for after each write, when the files are not all that is wanted. */
+		private readonly step: RojoStep | undefined
+	) {}
+
+	/** Runs until `shutdown` settles; `store` is the caller's, and holds what the run subscribes to. */
+	async run(
+		store: DisposableStore,
+		shutdown: DeferredPromise<void>
+	): Promise<Result<void, Error>> {
+		const { accessor } = this;
+		const logService = accessor.get(LogService);
+		const configService = accessor.get(ConfigService);
+		const watchService = accessor.get(WatchService);
+		const cwd = accessor.get(EnvironmentService).cwd;
+		const log: WatchReporter = this.json
+			? new WatchJsonLog(logService)
+			: new WatchLog(
+					logService,
+					cwd,
+					`${this.step?.command ?? "build"} --watch`
+				);
+
+		const stopped = new AbortController();
+		store.add({ [Symbol.dispose]: () => stopped.abort() });
+		const selection = await configService.select(this.refs);
+		if (selection.isErr()) return selection;
+		for (const note of selection.value.notes) logService.warn(note);
+		if (this.step !== undefined) {
+			const planned = this.step.plans(selection.value);
+			if (planned.isErr()) return planned;
+		}
+		const watched = watchService.watch(selection.value);
+		if (watched.isErr()) return watched;
+		const session = store.add(watched.value);
+		if (shutdown.isSettled) return ok(undefined);
+		log.begin(session.configs, selection.value.home);
+
+		const rojoRuns = new Sequencer();
+		const waiting = new Set<string>();
+		store.add(
+			session.onDidUpdate((update) => {
+				log.update(update);
+				const { step } = this;
+				if (step === undefined) return;
+				const plans = step.plans(selection.value);
+				if (plans.isErr()) {
+					log.error(plans.error);
+					return;
+				}
+				for (const plan of plans.value) {
+					const id = plan.project.id;
+					if (
+						!update.reports.some(
+							({ build }) =>
+								isWritten(build) && build.config.id === id
+						) ||
+						waiting.has(id)
+					)
+						continue;
+					waiting.add(id);
+					rojoRuns
+						.queue(async () => {
+							waiting.delete(id);
+							const ran = await accessor
+								.get(RojoCommandService)
+								.run(selection.value, {
+									command: step.command,
+									flags: plan.flags,
+									cwd: plan.cwd,
+									project: plan.project,
+									signal: stopped.signal,
+								});
+							if (stopped.signal.aborted) return;
+							log.rojo(ran, plan.target);
+						})
+						.catch((error) =>
+							log.error(ErrorUtils.fromUnknown(error))
+						);
+				}
+			})
+		);
+		store.add(session.onDidError((error) => log.error(error)));
+		try {
+			const started = await session.start();
+			if (started.isErr()) return started;
+			await shutdown.p;
+		} finally {
+			stopped.abort();
+			await session.stop();
+			await rojoRuns.queue(async () => {});
+		}
+		log.end();
+		return ok(undefined);
+	}
+}

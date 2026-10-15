@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -9,6 +10,7 @@ import { ConfigService } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
 import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
+import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { SyncServer } from "../runner/sync-server.js";
 import { ServePorts, namesakesOf } from "./serve-ports.js";
@@ -37,7 +39,10 @@ export class CoreServeService implements ServeService {
 		private readonly rojoRunner: RojoRunner,
 		requestService: RequestService,
 		private readonly watchService: WatchService,
-		private readonly environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService,
+		private readonly compatibility = new RojoCompatibility(
+			fileSystemService
+		)
 	) {
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
@@ -73,6 +78,15 @@ export class CoreServeService implements ServeService {
 			request.signal
 		);
 		if (executable.isErr()) return executable;
+		const { server, version } = executable.value;
+		const tooNew = server.flagTooNewIn(request.serverArgs, version);
+		if (tooNew)
+			return err(
+				new UsageError(
+					`${tooNew.flag} needs ${server.name} ${tooNew.since} or later, and the ${server.name} that runs here is ${version}.`,
+					`Change your ${server.name} pin to ${tooNew.since} or later, or update the ${server.name} on the PATH, or leave the flag out.`
+				)
+			);
 
 		const ports = this.portsFor(
 			executable.value.server,
@@ -82,6 +96,8 @@ export class CoreServeService implements ServeService {
 		const targets: ServeTarget[] = [];
 		for (const config of served) targets.push(ports.targetOf(config));
 
+		const portForSeveral = ports.portForSeveral(targets);
+		if (portForSeveral) return err(portForSeveral);
 		const clash = ports.clashOf(targets);
 		if (clash) return err(clash);
 
@@ -117,7 +133,8 @@ export class CoreServeService implements ServeService {
 				this.rojoRunner,
 				this.probe,
 				this.records,
-				this.portsFor(plan.executable.server, plan.serverArgs)
+				this.portsFor(plan.executable.server, plan.serverArgs),
+				this.compatibility
 			)
 		);
 	}

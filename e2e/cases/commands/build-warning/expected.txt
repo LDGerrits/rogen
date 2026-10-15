@@ -1,0 +1,50 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · project
+  default.project.json · wrote
+  Built 1 config with 1 warning.
+stderr:
+  rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+    src/Save@sever.luau (did you mean "@Server"?)
+
+$ rogen build --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": [
+          {
+            "file": "<dir>/rogen.json",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "1 name has an \"@\" that routes nowhere, so it is read as an ordinary name:\n  <dir>/src/Save@sever.luau (did you mean \"@Server\"?)",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "related": [
+              {
+                "file": "<dir>/src/Save@sever.luau",
+                "message": "did you mean \"@Server\"?"
+              }
+            ],
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Save@sever.luau",
+                  "to": "<dir>/src/Save@Server.luau"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+written:
+  default.project.json

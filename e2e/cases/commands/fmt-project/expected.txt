@@ -1,0 +1,46 @@
+$ rogen fmt-project
+exit 0
+stdout:
+  formatted rogen.json
+
+$ rogen fmt-project
+exit 0
+
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  release.project.json
+  rogen.json
+
+rogen.json:
+{
+  "name": "Game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage"
+    }
+  },
+  "servePort": 34873,
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "*": "ReplicatedStorage"
+  },
+  "projects": {
+    "release": {
+      "name": "Release",
+      "globIgnorePaths": [
+        "**/*.spec.luau"
+      ],
+      "routes": {
+        "*": "ReplicatedStorage/Game"
+      }
+    }
+  }
+}

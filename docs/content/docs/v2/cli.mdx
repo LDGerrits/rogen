@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [project…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` prints usage. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). A [place](/docs/v2/configuration#places) is a folder too: run inside one, a command answers for that place, and `rogen serve places/lobby` serves only it. At the root of a config that lists places, a command covers the config and every place, and a project name (`rogen build release`) means the project of that name in each. Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command, and a bare `rogen` prints the root help and exits 2. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). A [place](/docs/v2/configuration#places) is a folder too: run inside one, a command answers for that place, and `rogen serve places/lobby` serves only it. At the root of a config that lists places, a command covers the config and every place, and a project name (`rogen build release`) means the project of that name in each. Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
@@ -19,14 +19,18 @@ Writes `default.project.json`, and a file for each of its [projects](/docs/v2/co
 
 Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 config with 4 warnings.`
 
-### `watch [project…]`
+#### `build -o` and `-p`
 
-Builds, then rebuilds whenever files or the config change. Only names matter, so editing inside a script never triggers a rebuild.
+`rogen build -o game.rbxl` writes the project files, then runs Rojo's own `build` on the project and passes it `--output game.rbxl`: a place or model file, as `rojo build` makes. `-p Tool.rbxm` passes `--plugin`, which builds into Roblox's plugins folder. The Rojo that runs is the one your toolchain file pins, as for [`serve`](#serve). Rojo builds one project, `default` unless you name one (`rogen build release -o game.rbxl`), so a root with several places needs you to name one. Nothing is built when the project files have errors, and a failed Rojo build exits 1 with what Rojo said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)).
 
-A config reloads when `rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `watch` prints the error and keeps using the last valid version.
+#### `build --watch`
+
+Builds, then rebuilds whenever files or the config change. Only names matter, so editing inside a script never triggers a rebuild. With `-o` or `-p`, Rojo's build runs again after each write, and Rogen never passes `--watch` to Rojo. A script edited in place changes no name, so the file Rojo built keeps its old contents until a name changes; run the build again, or use `rogen serve`.
+
+A config reloads when `rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `build --watch` prints the error and keeps using the last valid version.
 
 ```
-┌  rogen watch · my-game
+┌  rogen build --watch · my-game
 │
 ◇  12:04:31 · 2 files changed
 │  ✔ default.project.json · wrote
@@ -40,13 +44,35 @@ A config reloads when `rogen.json` changes, and CLI overrides carry over. If you
 
 A block prints only the diagnostics the last one didn't have, so a standing warning isn't repeated. The result line counts what it left out (`3 warnings as before`), which tells you they are still there, and what went away since the last block (`1 warning fixed`).
 
-With no project named, `watch` follows the folder: a `rogen.json` that appears is built from then on, and one you delete is dropped, each with a line saying so. With names, it watches the projects you named.
+With no project named, it follows the folder: a `rogen.json` that appears is built from then on, and one you delete is dropped, each with a line saying so. With names, it watches the projects you named.
 
-With `--json`, `watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, and a `notice` line when a config is added, removed, broken or recovered.
+With `--json`, `build --watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, a `notice` line when a config is added, removed, broken or recovered, and, with `-o` or `-p`, a `rojo` line after each Rojo build, shaped as [`rojo` in `build --json`](#build---json).
 
-It's safe to run `build` while `watch` is running. Press Ctrl+C to stop.
+It's safe to run `build` while `build --watch` is running. Press Ctrl+C to stop.
 
-### `serve [project…] [-- server args…]` [#serve]
+### `sourcemap [project…]`
+
+Writes the project files, then runs Rojo's own `sourcemap` on the project and prints what it makes, as `rojo sourcemap` does, so `rogen sourcemap | jq` pipes. Like `build -o`, it runs the Rojo your toolchain file pins, on the `default` project unless you name one, and never on the project `rogen serve` serves: a [Darklua](/docs/v2/core-concepts/output#sync-path) repo's `serveProject` maps `dist`, and a sourcemap for luau-lsp or Darklua has to come from the source tree.
+
+`-o <file>` writes the sourcemap there instead, and `--include-non-scripts` and `--absolute` are Rojo's flags, passed on. Nothing is written when the project files have errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)).
+
+In a root with [places](/docs/v2/configuration#places) and no project named, it writes a `sourcemap.json` beside each place's project file, which is where luau-lsp and Darklua look for it, and prints `places/lobby/sourcemap.json · wrote` for each. The root's own project is left out; name it to map it. `-o` names one file, so it is an error with several projects. Name one place (`rogen sourcemap places/lobby`) to print that place's sourcemap. Two projects of one config, as in `rogen sourcemap . test`, have their project files in one folder, where both sourcemaps would be `sourcemap.json`, so that is an error too: name one, with `-o` for the file.
+
+`--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. It needs `-o`, or several projects, since a sourcemap that is printed has no room beside the watch output. `--json` needs the same, and prints [one document](#sourcemap---json) instead of the sourcemap.
+
+### `upload [project…]`
+
+Writes the project files, then runs Rojo's own `upload` on the project, as `rojo upload` does: Rojo builds it and uploads it to Roblox. Like `build -o`, it runs the Rojo your toolchain file pins, on the `default` project unless you name one, and never on the project `rogen serve` serves.
+
+Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the place or model to upload to, and Rogen refuses to run without it. `--api_key` and `--universe_id` upload with Open Cloud, to a place only, and `--cookie` gives the cookie to upload with. Without a key or a cookie Rojo looks for a cookie on this machine. Rogen stores none of them and leaves them out of its own output, but a flag is visible to other programs on the machine while Rojo runs.
+
+It uploads one project, so a root with [places](/docs/v2/configuration#places) and no place named is an error that says to name one (`rogen upload places/lobby --asset_id 123`), and nothing is written. Nothing is written or uploaded either when the project files have errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)). `--json` prints [one document](#upload---json).
+
+### `plugin install` and `plugin uninstall`
+
+Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with the Rojo your toolchain file pins in this folder or above, else the one on the PATH, so the plugin matches the server `rogen serve` starts. Installing again overwrites the plugin. It reads no project, so it runs in any folder. On a platform Rojo can't install a plugin on, Rojo's error is shown and the exit code is 1.
+
+### `serve [project…] [--port <port>] [--address <address>] [--allowed-hosts <host>…] [-- server args…]` [#serve]
 
 Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
 
@@ -60,21 +86,21 @@ rogen serve · my-game
 error: Rojo: Snapshot error: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon after the string or word in object property on line 2 column 1
 ```
 
-With no project named, `serve` builds, watches and serves the `rogen.json` it finds. A config that lists [places](/docs/v2/configuration#places) is never served, but each of its places is, on its own port: its `servePort`, else 34872 plus its index among the places without one, sorted by path. Name projects to serve those instead: `rogen serve game` serves that folder's `serveProject`, `rogen serve release` or `rogen serve game/release.project.json` serves that project of the config, and a project from another folder is watched on its own.
+With no project named, `serve` builds, watches and serves the `rogen.json` it finds. A config that lists [places](/docs/v2/configuration#places) is never served, but each of its places is, on its own port: its `servePort`, else 34872 plus its index among the places without one, sorted by path. Name projects to serve those instead: `rogen serve game` serves that folder's `serveProject`, `rogen serve release` or `rogen serve game/release.project.json` serves that project of the config, and a project from another folder is watched on its own. `rogen serve . test` serves the config's `serveProject` and its `test` project together, on two ports for two Studio windows, when `test` gives its own `servePort`.
 
 Servers start only after the first build succeeds. If it fails, nothing starts, the errors print and `serve` exits 1. A server that has not answered for its project after ten seconds is reported once, saying what else answers on its port if something does, and `serve` goes on waiting. Press Ctrl+C to stop: it reaches the server, and Rogen ends every process it started.
 
 **As configs change.** The servers follow the configs while `serve` runs, as the build does. A config added that is to be served gets its own server once it builds, after the same port checks as at the start; one that can't be served, as its port is taken, is reported and the rest go on. A served config that is deleted has its server stopped. A `servePort` or `serveAddress` change in `rogen.json` restarts its server there. With project names, only those projects are served, whatever is added.
 
-**Which Rojo.** Rogen runs the Rojo the project pins in `rokit.toml`, `aftman.toml` or `foreman.toml`, in the folder of the config or any folder above, so the pinned version runs. With none pinned, it uses the one on the PATH. With no Rojo at all, `serve` exits 1 with [`serve.noServer`](/docs/v2/diagnostics#serve-noserver). `serve` only starts Rojo: to serve with Argon, see [Studio](/docs/v2/studio#serve-with-argon). Rogen never installs or bundles Rojo, since it has to match the Studio plugin you installed. It runs `rojo --version` first, so a broken install fails before the build.
+**Which Rojo.** Rogen runs the Rojo the project pins in `rokit.toml`, `aftman.toml` or `foreman.toml`, in the folder of the config or any folder above, so the pinned version runs. With none pinned, it uses the one on the PATH. With no Rojo at all, `serve` exits 1 with [`serve.noServer`](/docs/v2/diagnostics#serve-noserver). `serve` only starts Rojo: to serve with Argon, see [Studio](/docs/v2/studio#serve-with-argon). Rogen never installs or bundles Rojo, since it has to match the Studio plugin you installed. It runs `rojo --version` first, so a broken install fails before the build. A Rojo before 7.5.0 does not read `syncRules`, so `serve` stops with [`rojo.syncRulesUnsupported`](/docs/v2/diagnostics#rojo-syncrulesunsupported) when a file it wrote has any. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, so `serve` stops with [`rojo.windowsRules`](/docs/v2/diagnostics#rojo-windowsrules) when a file it wrote has one.
 
-**Port.** There is no Rogen flag. The port is the server's own:
+**Port.** `--port` and `--address` are Rojo's own flags:
 
 | Port | Host |
 |---|---|
-| `--port` after `--`, else `servePort` in `rogen.json`, else 34872 | `--address` after `--`, else `serveAddress`, else `127.0.0.1` |
+| `--port`, else `servePort` in `rogen.json`, else 34872 | `--address`, else `serveAddress`, else `127.0.0.1` |
 
-Two served projects on one port exit 2, with the fix: give each its own `servePort` in its `rogen.json`, or serve one at a time. A `servePort` in `rogen.json` is committed, so every teammate's plugin matches.
+Two served projects on one port exit 2, with the fix: give each its own `servePort` in its `rogen.json`, or serve one at a time. So `--port` with several projects exits 2, since two servers can't share it; `--address` goes to every server, each on its own port. `--allowed-hosts`, which Rojo takes from 7.7.0, also goes to every server; repeat it for several hosts. With an older Rojo it exits 2 before anything is built. A `servePort` in `rogen.json` is committed, so every teammate's plugin matches.
 
 **Already running.** Before building, Rogen asks each port what serves there. A Rojo server only says the name of its project, and a server another `rogen serve` started is also known by its project file:
 
@@ -83,7 +109,7 @@ Two served projects on one port exit 2, with the fix: give each its own `servePo
 - **Another project named here has the same project name,** and no `rogen serve` started the server. Rogen can't tell which one it serves, so it refuses with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken): stop that server and run `rogen serve` again.
 - **Anything else holds the port,** including an Argon server and a second checkout of the same project, such as a git worktree. `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), which names what holds it (and the other checkout's folder) and a free port to use instead.
 
-**After `--`.** Everything after `--` goes to the server untouched, such as `rogen serve -- --port 34873`. Rogen reads the port and host flags from it, so the running check asks the port the server will use. Other commands take nothing after `--`: `rogen build -- x` exits 2.
+**After `--`.** Everything after `--` goes to the server untouched, after the flags above, and a `--port` or `--address` there counts as the flag. Rogen reads both, so the running check asks the port the server will use. A flag given both ways exits 2. Other commands take nothing after `--`: `rogen build -- x` exits 2.
 
 **Studio.** When the Rojo is 7.7 or later, Rogen starts it with `RUST_LOG=info,librojo::web=debug`, which makes it log each plugin that connects and leaves (the `info` is your own `RUST_LOG`, if you set one), and says so: `Studio connected to my-game.`, `Studio connected to my-game (2 connected).`, `Studio disconnected from my-game, 1 still connected.`. A connection that drops without a goodbye, such as Studio crashing, counts as leaving. More than one connection is normal: a playtest server holds its own. A `RUST_LOG` you set stays: Rogen adds its directive after yours. An older Rojo logs differently, and a server Rogen didn't start can't be read, so for those no such line is printed; the `serving` line of `--json` says which case it is with `reportsConnections`. The count is also kept in the serve's record, so `rogen list` shows it from another terminal.
 
@@ -156,6 +182,18 @@ $ rogen where "ServerScriptService.Shop.Buy:4: attempt to index nil"
 ServerScriptService.Shop.Buy -> no file places it · src/Shop/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt)
 ```
 
+`rogen where -` turns a whole pasted log into links. It reads text on stdin and prints it back with every instance path that has a line number written as `file:line`, in both forms Studio prints: `ServerScriptService.Combat.Hit:12:` and `Script 'ServerScriptService.Combat.Hit', Line 12`. Other text passes through as it is, and an instance no file places stays as it was.
+
+```
+$ pbpaste | rogen where -
+src/Combat/Server/Hit.luau:12: attempt to index nil
+Stack Begin
+src/Combat/Server/Hit.luau:12 - function strike
+Stack End
+```
+
+At the root of several places the same instance exists in each of them. An instance that one file places, which includes a file the places share, is rewritten. One that several files place is left as it is and listed once on stderr with the files and their places, and the exit code stays 0. Run it from inside a place to get that place's answer. `-` takes no other path and no `--json`, and it needs a pipe, not a terminal. Text with nothing to rewrite needs no config. When a config can't answer, the text is printed as it is and `where` exits 1 with the errors.
+
 Unlike other commands, `where` takes paths, not projects, so it reads the `rogen.json` of the working directory, or of the nearest folder above that has one.
 
 A config that doesn't load answers nothing: `where` prints its errors and exits 1.
@@ -164,7 +202,7 @@ A config that doesn't load answers nothing: `where` prints its errors and exits 
 
 ### `check [path…]`
 
-Prints the diagnostics about the paths you give it, and nothing else, and exits 1 when there are any. It builds as `build` does and writes nothing, so it fits a hook, `lint-staged` or `pre-commit`, which pass changed paths to a command and expect a non-zero exit. `where` answers a question and always exits 0; `check` is the judging counterpart, as `--deny-warnings` is for `build`.
+Prints the diagnostics about the paths you give it, and nothing else, and exits 1 when there are any. It builds as `build` does and writes nothing, so it fits a hook, `lint-staged` or `pre-commit`, which pass changed paths to a command and expect a non-zero exit. `where` answers a question and always exits 0; `check` is the judging counterpart.
 
 ```
 $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
@@ -175,7 +213,7 @@ Each line is `file:line:col - severity: message (code)`, printed on stdout, so `
 
 An error that stops the build because of another file does not fail the check of a path it isn't about. The check passes, and says how far it got: `Checked as far as the build gets: it stops on src/F/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.` On stderr, so a hook stays green for the files it was given; with `--json` the document gains `"stoppedBy"`, the same diagnostics as `"diagnostics"` has.
 
-With no path, `check` reports every diagnostic of the project, the sync path's included, and a warning when `default.project.json` on disk differs from what `build` would write ([`output.differs`](/docs/v2/diagnostics#output-differs)): `build --deny-warnings` without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing source path, an empty sync path) names the config or folder it is about.
+With no path, `check` reports every diagnostic of the project, the sync path's included, and a warning when `default.project.json` on disk differs from what `build` would write ([`output.differs`](/docs/v2/diagnostics#output-differs)): what `build` would do, without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing source path, an empty sync path) names the config or folder it is about.
 
 `check --json` prints `{ "diagnostics": [...] }` with the entries described under [JSON output](#json-output). `check` accepts `--json`. It has no `--changed`: git stays outside Rogen, so whoever calls `check` passes the paths.
 
@@ -187,11 +225,11 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
 
-In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults.
+In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, and a flag from [Choices as flags](#choices-as-flags) answers its question in either case.
 
 When it finds a test runner, it also writes a `release` project that ignores the specs (see [Testing](/docs/v2/testing)), and with Darklua it writes a `dist` project that Studio syncs from (see [Darklua](/docs/v2/setups/darklua)).
 
-Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from.
+Below a folder that has a config, `init` stops: that config builds the folder as part of its game, so a project in it would be built twice. In a terminal it asks first, with **No** as the answer Enter gives; without one it fails and names the folder to run `rogen init` from, or `--nested` to start the project there anyway.
 
 `init` never overwrites a file it writes. If a hand-written `default.project.json` is in the way, it's lifted into `rogen.json` first: its `tree` and other keys move across, without the nodes that point into the source paths, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)). A `default.project.json` inside a source path is not a tree, and the build warns about it ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)).
 
@@ -199,23 +237,64 @@ Then `init` builds the config it wrote, so `default.project.json` exists before 
 
 A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `AGENTS.md`, or to `CLAUDE.md` when that's the only one, or writes a new `AGENTS.md`. In a terminal it asks first. It appends after what's already there and never touches a file that already holds the rules. A later `init` offers them under **Agent instructions**.
 
-Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask never adds it, and `jq` is the one tool it needs besides `bash` and `git`.
+In a folder with a `rokit.toml` where no toolchain file, there or above, pins Rojo, a terminal run also offers to add the pin to it, and then names `rokit install` and `rogen plugin install` as next steps. A later `init` lists it under **Rojo pin** until Rojo is pinned. A run that can't ask adds it only with `--rojo-pin`.
+
+Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A later `init` lists it under **Agent hook**. A run that can't ask adds it only with `--agent-hook`, and `jq` is the one tool it needs besides `bash` and `git`.
+
+#### Choices as flags
+
+Every question has a flag, so a program that can't answer prompts can still choose. A flag given skips its question in a terminal too. Without one, a run that can't ask takes the default, says so (`Took the defaults: --language luau, --no-darklua, …`), and `--json` lists each default it took under `decided`, with the flag that changes it.
+
+| Flag | Answers |
+|---|---|
+| `--language <id>` | `luau` or `roblox-ts`; detected from the folder otherwise. |
+| `--[no-]darklua` | Whether Darklua processes your code. Found from its config otherwise. |
+| `--source-path <path>` | A folder with your scripts. Repeat for several; one for roblox-ts. |
+| `--sync-path <path>` | With Darklua: the folder it writes into. |
+| `--project-file lift\|new` | With a hand-written `default.project.json`: lift its tree (the default) or start a new one. |
+| `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. |
+| `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. |
+| `--unmatched shared\|leave` | Where files that match no route go. |
+| `--[no-]agent-rules` | Rogen's rules for coding agents. Added by default. |
+| `--[no-]agent-hook` | The hook that reports warnings to the coding agents found. Not added by default. |
+| `--[no-]rojo-pin` | Rojo's pin in `rokit.toml`. Not added by default. |
+| `--nested` | Start a project below another `rogen.json`. |
+| `--place-listing glob\|folder` | With a place folder: list its parent as a glob (the default) or the folder. |
+| `--place-id <id>` | With a place folder: the place ID the place's server is for, written as its `servePlaceIds`. Repeat for several, or `none`. |
+
+Beside a config, `--agent-rules`, `--agent-hook` and `--rojo-pin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values, as is `--agent-hook` with no coding agent here, `--rojo-pin` with no `rokit.toml`, and a flag that shapes a new config (`--language`, `--route`, …) beside one that exists. An addition that is already there is not an error: the run adds nothing and succeeds, so a script can repeat it.
+
+`--dry-run` (`-n`) plans without writing or building: it prints the files it would write, and with `--json` the document of a real run with `dryRun: true`, `changed: false`, no `built`, and `wouldWrite` for the `outcome` of each file. Run `rogen init --dry-run --json` to see what `init` would do and decide, then pass flags for what to change.
 
 #### Adding a place
 
-`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
+`rogen init places/lobby`, run below a config, adds the folder as a [place](/docs/v2/configuration#places) of it, whether or not the folder exists. It writes the place's `rogen.json` with the `servePort` the port rule gives it, so adding another place later never moves it, asks which source paths the place has (its own folders, `src` by default) and creates them, asks for the place's place ID and writes it as the place's `servePlaceIds` (an empty answer, `--place-id none`, or a run without a terminal writes none, since an unpublished place has no ID yet), builds the place's project file, and writes a `.code-workspace` beside the config that lists its folder and every place, so an editor runs a language server, and keeps a sourcemap, for each. A `.code-workspace` already there is left alone, and `init` says which folder to add to it.
 
 When no `placePaths` of the config lists the folder, `init` adds an entry to it. In a terminal it asks whether to list the folder's parent as a glob (`places/*`, the default) or the folder itself; without a terminal it takes the glob. A folder right in the config's folder is listed itself. `init` rewrites a `rogen.json`, and refuses a `rogen.jsonc` rather than lose its comments, saying which line to add.
 
 ### `list [project…]`
 
-Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). A config that lists places is followed by a block for each place, with its folder and, for each project, the port it is served on. It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
+Lists the config of the working directory, or of the projects you name, with its source paths, its resolved routes (`Server -> ServerScriptService`, one per line) and sync path. A config with [projects](/docs/v2/configuration#projects) lists each one's project file and marks the one `rogen serve` serves; any other prints its project file. A project that a running `rogen serve` serves has a `serving:` line after its project file, such as `serving: Rojo at 127.0.0.1:34872, 1 Studio connected` (or `no Studio connected`, or nothing after the address when the server doesn't say). A config that lists places is followed by a block for each place, with its folder and, for each project, the port it is served on and the place IDs its `servePlaceIds` lists (`port 34873, place IDs 1818, 2020`), so you can see which place ID belongs to which port; `--json` has them as `placeIds`. Each project is followed by the Rojo command that serves it (`rojo serve default.project.json --port 34872`), to run yourself when you need Rojo directly. Its `port` is the one `serve` would listen on: its `servePort`, else its place's port. It's the quickest answer to "what does this repo build?". With `--json`, the config is printed fully resolved, with every default filled in and every path made absolute.
+
+### `fmt-project [project…]`
+
+Formats the `rogen.json` of the working directory, or of the projects you name, the way `rojo fmt-project` formats a project file: two-space indentation, no trailing newline, Rojo's keys first in Rojo's order, then Rogen's (`sourcePaths`, `routes`, `syncPath`, `projects`, `serveProject`, `placePaths`), then any other key. The children of the `tree` are sorted, and so are the keys of each [project](/docs/v2/configuration#projects). A root with places formats each place's `rogen.json` too. It prints `formatted <file>` for each file it changed.
+
+A file with comments or trailing commas is left as it is, since the formatted text has none, and a `rogen.jsonc` always is: [`format.commentsLost`](/docs/v2/diagnostics#format-commentslost). The project files Rogen writes are already in this format.
+
+### `doc [topic]`
+
+Opens the documentation in your browser, and prints its address. Without a terminal (an agent, CI, a pipe) it only prints the address.
+
+`rogen doc <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `config`, `layout` or `output`.
 
 ### `help [name]`
 
-Prints usage, or a command's arguments, options and examples. `rogen --version` prints the installed version.
+Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and descriptions and prose are wrapped at 100 columns, as Rojo wraps its help. `rogen help build`, `rogen build --help` and `rogen build -h` print the same. `rogen --version` prints the installed version.
 
-`rogen help <topic>` prints one section of the reference from the version you have installed, offline: `routing`, `config`, `layout` or `output`. `rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
+`rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
+
+With `--json`, `help` answers a program: see [`help --json`](#help---json).
 
 ## Options
 
@@ -223,41 +302,46 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 
 | Flag | Effect |
 |---|---|
-| `--deny-warnings` | `build` only: exits 1 when any config has a warning. Files are written and diagnostics keep their severity, so only the exit code changes. |
-| `--json` | Prints one JSON document for `build`, `where`, `check`, `list` and `init`, and one JSON object per line for `serve` and `watch`. On `init` it implies `--non-interactive`. |
+| `--color <auto\|always\|never>` | Whether to colour the output: `auto` (the default) draws in a terminal; `never` prints plain lines, as `NO_COLOR` does; `always` draws even when output is piped. `--json` is always plain. |
+| `--json` | Prints one JSON document for `build`, `sourcemap`, `upload`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
+| `-o, --output <file>` | `build`: also builds the project into this place or model file with Rojo. `sourcemap`: writes the sourcemap there instead of printing it. |
+| `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
+| `--watch` | `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write when `-o` or `-p` (`build`), or `-o` or several projects (`sourcemap`), asks for it. |
+| `--include-non-scripts`, `--absolute` | `sourcemap` only: Rojo's flags of the same name. |
+| `--asset_id`, `--api_key`, `--universe_id`, `--cookie` | `upload` only: Rojo's flags of the same name, with its underscores. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
+| `-n, --dry-run` | `init` only: prints what it would write and decide, and writes nothing. |
+| `--language`, `--[no-]darklua`, `--source-path`, `--sync-path`, `--project-file`, `--package`, `--route`, `--unmatched`, `--[no-]agent-rules`, `--[no-]agent-hook`, `--[no-]rojo-pin`, `--nested`, `--place-listing`, `--place-id` | `init` only: answer a question. See [Choices as flags](#choices-as-flags). |
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
-| `-v, --verbose` | Prints debug output. |
-| `-q, --quiet` | Prints errors only, plus anything you explicitly asked for and anything that makes the run fail, such as the warnings `--deny-warnings` turns into errors. |
+| `-v, --verbose` | Prints debug output; `-vv` also prints trace output. |
+| `-q, --quiet` | Prints errors only, plus anything you explicitly asked for and anything that makes the run fail. |
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
-| `0` | The command did its job, warnings included (unless `build --deny-warnings` is given). `serve` exits 0 after Ctrl+C, when another `rogen serve` already serves every project, or when a server it adopted stops. |
-| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, any warning under `build --deny-warnings`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
+| `0` | The command did its job, warnings included. `serve` exits 0 after Ctrl+C, when another `rogen serve` already serves every project, or when a server it adopted stops. |
+| `1` | The project is wrong: an invalid config, build errors, a failed write, a cancelled `init`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
 | `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`--verbose` with `--quiet`, words after `--` on a command other than `serve`, two served projects on one port), or a name that doesn't exist (a project or a help topic). |
 
 When a server stops on its own, `serve` exits with the server's code. `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
 
 ## Continuous integration
 
-Warnings exit 0 on a developer's machine, but some should stop a merge, such as `route.serverCodeShipped` (server code replicating to clients) or `tree.deadScript`. `build --deny-warnings` exits 1 when the build has a warning, with the summary line `Built 1 config with 3 warnings; --deny-warnings fails the run.`. It changes the verdict only: files are written as without the flag, and with `--json` the document is the same. Every warning has a fix that removes it (a rename, a marker such as `@Shared`, or a config edit; see [Diagnostics](/docs/v2/diagnostics)).
+Warnings exit 0 on a developer's machine, but some should stop a merge, such as `route.serverCodeShipped` (server code replicating to clients) or `tree.deadScript`. `rogen check` exits 1 on any diagnostic, warnings included, and writes nothing. Every warning has a fix that removes it (a rename, a marker such as `@Shared`, or a config edit; see [Diagnostics](/docs/v2/diagnostics)).
 
 ```bash
 # compile first when rogen.json has a syncPath, or output.nothingEmitted warns
-rogen build --deny-warnings
-# only if you commit project files: fail when they're out of date
-git diff --exit-code -- '*.project.json'
+rogen check
 ```
 
-- Run the compiler or processor before `rogen build` when `syncPath` is set.
+- Run the compiler or processor before `rogen check` when `syncPath` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the sync path.
-- `watch` is interactive and has no such flag, and `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
+- `check` also fails when you commit project files and one is out of date ([`output.differs`](/docs/v2/diagnostics#output-differs)), so no `git diff` step is needed.
+- `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
 - A place file comes from `rojo build` on the project file; see [Place Files](/docs/v2/core-concepts/output#place-files).
-- Whether to [commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files) is yours to decide, and committing them is what the last line of the snippet needs.
-- No `--check` flag is needed: `git diff --exit-code` covers committed project files, because `build` leaves a file untouched when its bytes wouldn't change.
+- Whether to [commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files) is yours to decide.
 
 ### Annotations on GitHub
 
@@ -270,13 +354,13 @@ When GitHub Actions runs `build` or `check` (`GITHUB_ACTIONS` is `true`), each d
 `title` is the diagnostic's [code](/docs/v2/diagnostics), and `file`, `line` and `col` are there when the diagnostic has them, with the path relative to `GITHUB_WORKSPACE`. A warning about several files, such as `route.strayAt`, makes one annotation for each file it names, all of them, where the text lists ten. The text output is unchanged, `--json` never carries workflow commands, and a run that is not on GitHub Actions writes none. GitHub shows only a limited number of annotations per step, so the log still holds the full list. Nothing needs to be turned on:
 
 ```yaml
-- run: rogen build --deny-warnings
+- run: rogen check
 - run: git diff --name-only --diff-filter=d origin/main... | xargs -r rogen check
 ```
 
 ## JSON output
 
-`--json` prints exactly one JSON document on stdout (`serve` and `watch` print one per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints `{ "error": "<message>" }`, exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
+`--json` prints exactly one JSON document on stdout, on one line without indentation (`serve` and `build --watch` print one object per line, see [`serve --json`](#serve---json)), even when the command fails or crashes, or the command line itself is wrong. A crash prints an `internal` error (see [Errors](#errors)), exits 1 and writes its stack trace to stderr. The [exit code](#exit-codes) is the same as without it. File paths are absolute and use the OS separator; instance paths and globs always use `/`.
 
 Diagnostics look like this. Match on `code`, since the wording of `message` can change. `line` and `column` are omitted when the problem is a whole file. `url` points at the code's section on the [Diagnostics](/docs/v2/diagnostics) page.
 
@@ -304,9 +388,11 @@ A `serve` error whose fix is a command has a `run` fix instead: the command, and
 
 ```json
 "fixes": [
-	{ "run": { "command": "rogen serve -- --port 34873", "cwd": "/repo" } }
+	{ "run": { "command": "rogen serve --port 34873", "cwd": "/repo" } }
 ]
 ```
+
+The commands that write files, `build`, `fmt-project` and `init`, say so the same way: a top-level `changed` comes first, `true` when the run wrote anything, and each file has an `outcome` of `wrote`, `unchanged`, `failed` or `notWritten`. A program asks the same question of all three.
 
 Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (its project name) and `file` (the absolute path of its `rogen.json`). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
 
@@ -320,12 +406,30 @@ A warning about several files, such as `route.strayAt` or `tree.deadScript`, is 
 
 A diagnostic is about a file when its `file` is that file or `related[].file` includes it. A program that wants every warning about the files it just changed filters on that, instead of reading `message`.
 
-If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": "..." }` for anything that isn't a diagnostic.
+If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": {...} }` for anything that isn't a diagnostic, never both.
+
+### Errors
+
+A failure that isn't a list of diagnostics prints `{ "error": { "kind", "message", "hint"? } }`. Branch on `kind`; `message` says what happened, and `hint` is there only when one next step can be named: the closest valid name, the command to run, the flag that bypasses a refusal.
+
+```json
+{"error":{"kind":"usage","message":"Unknown command \"biuld\".","hint":"Did you mean 'rogen build'?"}}
+```
+
+| `kind` | Exit code | Meaning |
+|---|---|---|
+| `usage` | 2 | The command line is wrong: an unknown command, option, option value or name. |
+| `project` | 1 | The project isn't in a state the command can run on: no `rogen.json` where one is needed, an `init` inside another project. |
+| `tool` | 1 | A program Rogen needs is missing or failed, with no diagnostic to say more. A missing or failing Rojo is a diagnostic with the command that fixes it. |
+| `io` | 1 | A file or directory couldn't be read or written. |
+| `cancelled` | 1 | The run was cancelled, such as an `init` the user declined. |
+| `internal` | 1 | A bug in Rogen; `message` says where to report it. |
 
 ### `build --json`
 
 ```json
 {
+	"changed": true,
 	"configs": [
 		{
 			"config": "my-game",
@@ -342,7 +446,93 @@ A config with [projects](/docs/v2/configuration#projects) has an entry for each 
 
 `outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
 
+With `-o` or `-p`, the document also has `rojo`, the Rojo build that ran after the files were written:
+
+```json
+{
+	"command": "build",
+	"outcome": "built",
+	"project": "/repo/default.project.json",
+	"output": "/repo/game.rbxl",
+	"messages": [{ "severity": "info", "text": "Built project to game.rbxl" }]
+}
+```
+
+`outcome` is `built`, `failed` or `notRun`: Rojo isn't run when the project files have errors, and then `project` is `null`. `output` is the absolute path `-o` names, and `plugin` is the name `-p` gives (one of the two). `messages` is what Rojo said, with `severity` `error`, `warning` or `info`. A failed run has `diagnostics` with `rojo.commandFailed` (or what kept Rojo from starting), and the exit code is 1.
+
 A config that doesn't load is an entry like the others: `projectFile` is `null`, `outcome` is `notWritten`, and its `diagnostics` say why. Every config that wasn't written because others failed or didn't load has `blockedBy`, the names of those configs, so a program can tell "this config is wrong" from "this config is fine, fix the other one". In text, the broken config's line says `not loaded` and the others say `not written · broken failed`.
+
+### `sourcemap --json`
+
+```json
+{
+	"changed": true,
+	"configs": [
+		{
+			"config": "my-game",
+			"file": "/repo/rogen.json",
+			"projectFile": "/repo/default.project.json",
+			"outcome": "unchanged",
+			"diagnostics": []
+		}
+	],
+	"sourcemaps": [
+		{
+			"command": "sourcemap",
+			"outcome": "built",
+			"project": "/repo/default.project.json",
+			"output": "/repo/sourcemap.json",
+			"messages": [
+				{ "severity": "info", "text": "Created sourcemap at sourcemap.json" }
+			]
+		}
+	]
+}
+```
+
+`configs` is as in [`build --json`](#build---json). `sourcemaps` has an entry for each Rojo run, shaped as [`rojo` in `build --json`](#build---json) with `command` `sourcemap`, and `outcome` `built` when Rojo wrote the file: one for `-o`, and one for each place without it, whose `output` is the `sourcemap.json` beside the project file. `changed` is true when a project file was written or a sourcemap was. With `--watch`, it prints one JSON object per line as [`build --watch --json`](#build---watch) does.
+
+### `upload --json`
+
+```json
+{
+	"changed": false,
+	"configs": [
+		{
+			"config": "my-game",
+			"file": "/repo/rogen.json",
+			"projectFile": "/repo/default.project.json",
+			"outcome": "unchanged",
+			"diagnostics": []
+		}
+	],
+	"rojo": {
+		"command": "upload",
+		"outcome": "built",
+		"project": "/repo/default.project.json",
+		"messages": []
+	}
+}
+```
+
+`configs` is as in [`build --json`](#build---json), and `rojo` is shaped as `rojo` in it, with `command` `upload`. `outcome` is `built` when Rojo exited without an error, `failed` when it did not, and `notRun` when the project files had errors. The flags you gave are not in it.
+
+### `fmt-project --json`
+
+```json
+{
+	"changed": true,
+	"files": [
+		{ "file": "/repo/rogen.json", "outcome": "wrote", "diagnostics": [] }
+	]
+}
+```
+
+One entry per `rogen.json` it looked at, a root's places included. `outcome` is `wrote`, `unchanged` or `failed`, and a failed file's `diagnostics` say why ([`format.commentsLost`](/docs/v2/diagnostics#format-commentslost) for a file with comments). The exit code is 1 when any file failed; the others are still formatted.
+
+### `doc --json`
+
+`rogen doc --json` prints `{ "url": "...", "topics": ["routing", "config", "layout", "output"] }` and opens nothing. `rogen doc <topic> --json` prints `{ "topic": "routing", "text": "..." }`, the text as `rogen doc routing` prints it. An unknown topic is a `usage` [error](#errors) and exit 2.
 
 ### `serve --json`
 
@@ -358,13 +548,13 @@ One JSON object per line on stdout, each keyed by what it reports, and nothing e
 | `build` | each config, on every build | the entry [`build --json`](#build---json) lists |
 | `notice` | a config is added, removed, broken or recovered | `kind` (`added`, `removed`, `broken` or `recovered`), `file`; a broken config adds `keptLastValid` and `diagnostics` |
 | `serving` | a server answers, so Studio can connect | `config`, `server`, `version`, `project`, `host`, `port`, `session` (Rojo only), `reportsConnections` (whether `connected` and `disconnected` lines follow for it); `alreadyRunning: true` when it was already serving before `serve` started, and `adopted: true` as well when no `rogen serve` started it, so this one builds for it |
-| `connected`, `disconnected` | a Studio plugin connected to a server this serve started, or left it | `config`, `server`, `clients`, how many are connected now. Only a server that reports them, which the `serving` line says with `reportsConnections` |
+| `connected`, `disconnected` | a Studio plugin connected to a server this serve started, or left it | `config`, `server`, `project`, `port`, `clients`, how many are connected now. Only a server that reports them, which the `serving` line says with `reportsConnections` |
 | `output` | a server prints a warning, an error or a line Rogen doesn't recognise | `config`, `server`, `severity` (`error`, `warning` or `info` for an unrecognised line), `message` |
 | `refused` | a config to serve, added or edited while serving, can't be served because its port is taken. The others go on, and so does the server it already has, if any | `config`, `server`, `diagnostics` |
 | `stopped` | a server stops | `config`, `server`, `reason`: `exited` when it stopped on its own, with its `code` and `signal` (an adopted server has neither: it stopped answering); `removed` or `moved` when its config was deleted, or moved to another address (a `serving` line follows for the new server); `shutdown` when `serve` was asked to stop, as the last lines of a clean run. A line about an adopted server has `adopted: true`: apart from `exited`, it means `serve` stopped building for it, and the server runs on |
 | `error` | an unexpected failure that `serve` survives | the message |
 
-`project` is the name in the project file, not the config's. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": "..." }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
+`project` is the name in the project file, not the config's. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": {...} }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
 
 ### `check --json`
 
@@ -396,9 +586,16 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 
 ```json
 {
-	"files": ["/repo/rogen.json", "/repo/AGENTS.md"],
-	"appended": [],
+	"changed": true,
+	"files": [
+		{ "file": "/repo/rogen.json", "outcome": "wrote" },
+		{ "file": "/repo/AGENTS.md", "outcome": "wrote", "appended": true }
+	],
 	"directories": [],
+	"decided": [
+		{ "question": "language", "value": "roblox-ts", "flag": "--language" },
+		{ "question": "agentRules", "value": true, "flag": "--agent-rules" }
+	],
 	"built": [
 		{
 			"config": "my-game",
@@ -418,17 +615,31 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`files` lists what was written, in order, and `appended` the ones among them that existed and had something added: Rogen's agent rules at the end, or the hook in an agent's hook file. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": "..." }`.
+`decided` lists each choice a run that couldn't ask took for itself, with the flag that changes it; it leaves out what a flag answered. `files` lists what was written, in order, and marks with `appended` the ones that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
+
+### `help --json`
+
+Offline, in two steps, so a program reads only what it asks for. Every document is generated from the table the text help comes from, and the text help is unchanged.
+
+`rogen help --json` is the tree: `version`, `commands`, `globalOptions`, `exitCodes` and `errorKinds`. Each command has its `name`, `summary` (the line the root help lists), `description`, `args` (`name`, and `optional` or `variadic` when true), `options` (`name`, `short`, `type`, and `multiple` when true) and `effects`: what a run can do beyond printing, from `writesFiles`, `runsProcesses`, `opensBrowser` and `longRunning`. A command with none of them only reads.
+
+`rogen help <command> --json` adds the descriptions of the arguments and options, the `examples`, and the shape of what the command prints with `--json` as `output` (`document` for one document, `lines` for a command that prints one line per event). `rogen <command> --help --json` prints the same, and `rogen --help --json` the tree. The shapes are written compactly: `{a:string,b?:int}` is an object whose `b` may be left out, `[T]` an array, `A|B` either shape, `{*:T}` an object of any keys, and a capitalised name such as `Diagnostic` a shape that `shapes` writes out once.
+
+```json
+{"name":"check","summary":"…","description":"…","args":[…],"options":[…],"effects":[],"examples":["rogen check src --json"],"output":{"document":"{diagnostics:[Diagnostic],stoppedBy?:[Diagnostic]}"},"shapes":{"Diagnostic":"{file:string,line?:int,…}"}}
+```
+
+`rogen help <code> --json` prints `{ "code", "text", "url" }`: the text `rogen help <code>` prints, and the link to its section of the [Diagnostics](/docs/v2/diagnostics) page. A name that is neither a command nor a code is a `usage` [error](#errors) whose `hint` names the closest one.
 
 ### `list --json`
 
-An object with a `configs` array, one entry per config. Every entry has `config`, `file`, `status` (`valid` or `broken`), `served` (whether `rogen serve` starts a server for it, which it does when it loads) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows), `sourcePaths`, `commonRoot`, `routes`, `globIgnorePaths`, `syncPath`, `projectFile` and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. It also has `projects`, one entry for the description and each [project](/docs/v2/configuration#projects), `default` first: `name`, `file`, `served` (whether `rogen serve` serves it unless you name another) and `serving`, as above. A broken config has only the five. If the config has errors, the exit code is 1.
+An object with a `configs` array, one entry per config. Every entry has `config`, `file`, `status` (`valid` or `broken`), `served` (whether `rogen serve` starts a server for it, which it does when it loads) and `diagnostics`. A config that resolved also has `projectName` (the name Rojo shows), `sourcePaths`, `commonRoot`, `routes`, `globIgnorePaths`, `syncPath`, `projectFile` and `serving` (the `server`, `host` and `port` of the server a running `rogen serve` serves its project file with, and `clients`, how many Studio plugins are connected, `null` when the server doesn't say), with `null` for anything unset. It also has `projects`, one entry for the description and each [project](/docs/v2/configuration#projects), `default` first: `name`, `file`, `served` (whether `rogen serve` serves it unless you name another), `port` and `placeIds` when it has them, `rojo` (the command that serves it, with its `--port`, as a list of arguments and the project file's absolute path; left out for a config that lists places, which is never served) and `serving`, as above. A broken config has only the five. If the config has errors, the exit code is 1.
 
 ## Output
 
 In a terminal, Rogen draws a framed layout. It prints plain lines instead in pipes and redirects, with `NO_COLOR` or `TERM=dumb`, and when CI or a coding agent runs it.
 
-Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `--non-interactive` does. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
+Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `--non-interactive` does, unless a flag answers the question. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
 
 Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A warning about several files is one block in `build`, `watch` and `serve`, and its first line names the config. For one line per file, which is what an editor task or a CI annotation should read, use [`rogen check`](#check-path) or `--json`.
 
@@ -440,6 +651,6 @@ When a newer stable release is out, Rogen prints one line on stderr after a comm
 Rogen 2.0.3 is out (you have 2.0.0). Update the pin in rokit.toml: rogen = "ldgerrits/rogen@2.0.3". Then run rokit install.
 ```
 
-`watch` and `serve` print it once, before the first build. A prerelease hears about later prereleases as well. It says nothing under CI or an agent (the run [described above](#output) as automated), in a pipe, with `--json`, with `--quiet`, or for `--version` and `help`, and it names each version once a day.
+`build --watch` and `serve` print it once, before the first build. A prerelease hears about later prereleases as well. It says nothing under CI or an agent (the run [described above](#output) as automated), in a pipe, with `--json`, with `--quiet`, or for `--version` and `help`, and it names each version once a day.
 
 This is the one time Rogen goes on the network unasked. It reads GitHub's list of Rogen releases, in the background and at most once a day, and keeps the answer in a file in your cache folder (`$XDG_CACHE_HOME`, else `~/Library/Caches` on macOS, `%LOCALAPPDATA%` on Windows or `~/.cache`). The line comes from what the last check found, so no command waits for the network to print; a command that ends before a check does stays open for it, two seconds at most. An offline machine, a rate limit or a bad reply print nothing. Set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1` to stop both the request and the line.

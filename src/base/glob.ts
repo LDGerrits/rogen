@@ -27,6 +27,14 @@ export function isMatch(path: string, glob: GlobPattern): boolean {
 	});
 }
 
+/** Whether `glob` ignores `path` and everything in it: it matches `path`, or ends in `/**` and matches the folder before that. */
+export function ignoresAllOf(glob: GlobPattern, path: string): boolean {
+	return (
+		isMatch(path, glob) ||
+		(glob.endsWith("/**") && isMatch(path, glob.slice(0, -3)))
+	);
+}
+
 const regExpCache = new Map<string, RegExp>();
 
 /** Whether `path`, written with `/`, matches `glob` as Rust's globset, and so Rojo, reads it. */

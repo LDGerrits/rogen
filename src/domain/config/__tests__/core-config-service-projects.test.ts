@@ -131,12 +131,6 @@ describe("CoreConfigService", () => {
 				expect(dist?.routes.server).toBe("ServerStorage");
 			});
 
-			it("should remove a route with null", async () => {
-				const dist = await projectOf({ routes: { server: null } });
-
-				expect(dist?.routes).toEqual({ "*": "ReplicatedStorage" });
-			});
-
 			it("should merge the tree by node", async () => {
 				const dist = await projectOf({
 					tree: { ReplicatedStorage: { Extra: { $path: "extra" } } },
@@ -151,28 +145,76 @@ describe("CoreConfigService", () => {
 				});
 			});
 
-			it("should remove a mounted node with null", async () => {
-				const dist = await projectOf({
-					tree: { ReplicatedStorage: { Vendor: null } },
+			describe("a mount globIgnorePaths ignores", () => {
+				const treeOf = async (globIgnorePaths: string[]) =>
+					(await projectOf({ globIgnorePaths }))?.project.tree;
+
+				it.each(["vendor", "vendor/**", "**/vendor", "v*/**"])(
+					"should be left out of the tree for %s",
+					async (glob) => {
+						expect(await treeOf([glob])).toEqual({
+							$className: "DataModel",
+							ReplicatedStorage: {},
+						});
+					}
+				);
+
+				it.each(["vendor/*.luau", "**/*.luau", "vendor/**/*.luau"])(
+					"should stay in the tree for %s, which ignores only some of it",
+					async (glob) => {
+						expect(await treeOf([glob])).toMatchObject({
+							ReplicatedStorage: { Vendor: { $path: "vendor" } },
+						});
+					}
+				);
+
+				it("should be left out of the description too", async () => {
+					const [description] = await projects({
+						...BASE,
+						globIgnorePaths: ["vendor/**"],
+					});
+
+					expect(description.project.getFile().tree).toEqual({
+						$className: "DataModel",
+						ReplicatedStorage: {},
+					});
 				});
 
-				expect(dist?.project.tree).toEqual({
-					$className: "DataModel",
-					ReplicatedStorage: {},
+				it("should be left out when the $path is optional", async () => {
+					const found = await projectOf({
+						tree: {
+							ReplicatedStorage: {
+								Vendor: { $path: { optional: "vendor" } },
+							},
+						},
+						globIgnorePaths: ["vendor/**"],
+					});
+
+					expect(found?.project.tree).toMatchObject({
+						ReplicatedStorage: {},
+					});
 				});
-			});
 
-			it("should remove a Rojo key with null", async () => {
-				const dist = await projectOf({ servePort: null });
+				it("should leave the description's mount in the description", async () => {
+					const found = await projects({
+						...BASE,
+						projects: { dist: { globIgnorePaths: ["vendor/**"] } },
+					});
 
-				expect(dist?.project).not.toHaveProperty("servePort");
+					expect(found[0].project.getFile().tree).toMatchObject({
+						ReplicatedStorage: { Vendor: { $path: "vendor" } },
+					});
+				});
 			});
 
 			it("should leave the description alone", async () => {
 				const found = await projects({
 					...BASE,
 					projects: {
-						dist: { routes: { server: null }, name: "Other" },
+						dist: {
+							routes: { server: "ServerStorage" },
+							name: "Other",
+						},
 					},
 				});
 
@@ -379,10 +421,15 @@ describe("CoreConfigService", () => {
 				expect(errors(0)).toHaveLength(1);
 			});
 
-			it("should refuse a project that leaves source paths with no routes", async () => {
+			it.each([
+				["a route", { routes: { server: null } }],
+				["a node of the tree", { tree: { ReplicatedStorage: null } }],
+				["a Rojo key", { servePort: null }],
+				["all routes", { routes: null }],
+			])("should refuse null for %s in a project", async (_, changes) => {
 				expect(
-					await failure({ projects: { dist: { routes: null } } })
-				).toMatchObject([{ code: "config.sourcePathsWithoutRoutes" }]);
+					await failure({ projects: { dist: changes } })
+				).toMatchObject([{ code: "config.wrongType" }]);
 			});
 
 			it("should refuse null in the description itself", async () => {
@@ -445,7 +492,9 @@ describe("CoreConfigService", () => {
 				await start({ names: ["dist.project.json"] });
 
 				expect(selection.named).toEqual(
-					new Map([["/repo/rogen.json", "dist"]])
+					new Map([
+						["/repo/rogen.json", { names: ["dist"], usual: false }],
+					])
 				);
 			});
 
@@ -455,7 +504,9 @@ describe("CoreConfigService", () => {
 				await start({ names: ["dist"] });
 
 				expect(selection.named).toEqual(
-					new Map([["/repo/rogen.json", "dist"]])
+					new Map([
+						["/repo/rogen.json", { names: ["dist"], usual: false }],
+					])
 				);
 			});
 

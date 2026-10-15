@@ -6,6 +6,7 @@ import {
 	bundleCli,
 	createProject,
 	eventually,
+	outputProblem,
 	sourcemapTree,
 	writeProjectFile,
 } from "./harness.js";
@@ -71,6 +72,39 @@ describeWithRojo("end to end watch", () => {
 		fs.rmSync(path.join(project.dir, "src/A.server.luau"));
 		await eventually(async () => {
 			expect(await tree()).not.toContain("<- src/A.server.luau");
+		});
+	}, 30_000);
+
+	it("should build the place with Rojo after each write when given -o", async () => {
+		const place = path.join(project.dir, "game.rbxlx");
+		start(["-o", "game.rbxlx"]);
+		await eventually(() => {
+			expect(fs.existsSync(place)).toBe(true);
+			expect(fs.readFileSync(place, "utf8")).toContain("A");
+		});
+
+		writeProjectFile(project.dir, "src/Added.luau");
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("Added");
+		});
+	}, 30_000);
+
+	it("should write the sourcemap after each write when it is sourcemap --watch", async () => {
+		const map = path.join(project.dir, "sourcemap.json");
+		session = new RunningRogen(
+			bundle.cli,
+			project.dir,
+			["-o", "sourcemap.json"],
+			undefined,
+			"sourcemap --watch"
+		);
+		await eventually(() => {
+			expect(fs.readFileSync(map, "utf8")).toContain("A");
+		});
+
+		writeProjectFile(project.dir, "src/Added.luau");
+		await eventually(() => {
+			expect(fs.readFileSync(map, "utf8")).toContain("Added");
 		});
 	}, 30_000);
 
@@ -266,7 +300,9 @@ describeWithRojo("end to end watch", () => {
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
-		expect(running.output).toContain("rogen watch · project · in ..");
+		expect(running.output).toContain(
+			"rogen build --watch · project · in .."
+		);
 
 		writeProjectFile(
 			project.dir,
@@ -316,6 +352,9 @@ describeWithRojo("end to end watch", () => {
 				"wrote",
 				"wrote",
 			]);
+			expect(
+				outputProblem(["build", "--watch", "--json"], watching.stdout)
+			).toBeUndefined();
 		});
 	}, 30_000);
 

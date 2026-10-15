@@ -1,0 +1,1 @@
+{"steps":[["sourcemap","-o","sourcemap.json"],["sourcemap","-o","sourcemap.json","--json"],["sourcemap","-o","missing/sourcemap.json","--json"]],"show":["sourcemap.json"],"rojo":false}

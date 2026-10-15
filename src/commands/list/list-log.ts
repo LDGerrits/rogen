@@ -1,5 +1,6 @@
+import { ProjectError } from "../../base/errors.js";
 import { relativeTo, toNative } from "../../base/path.js";
-import { joinedWithAnd, plural } from "../../base/strings.js";
+import { joinedWithAnd, plural, shellWord } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import {
 	ResolvedConfig,
@@ -11,10 +12,76 @@ import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,
+	diagnosticShape,
 	diagnosticToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+
+const S = OutputShape;
+
+const servingShape = S.named(
+	"Serving",
+	S.object({
+		server: S.string,
+		host: S.string,
+		port: S.integer,
+		clients: S.nullable(S.integer),
+	})
+);
+
+const projectShape = S.named(
+	"Project",
+	S.object({
+		name: S.string,
+		file: S.string,
+		served: S.boolean,
+		port: S.optional(S.integer),
+		placeIds: S.optional(S.array(S.integer)),
+		rojo: S.optional(S.array(S.string)),
+		serving: S.nullable(servingShape),
+	})
+);
+
+const detailsShape = {
+	projectName: S.string,
+	sourcePaths: S.array(S.string),
+	commonRoot: S.nullable(S.string),
+	routes: S.record(S.string),
+	globIgnorePaths: S.array(S.string),
+	syncPath: S.nullable(S.string),
+	projectFile: S.string,
+	serving: S.nullable(servingShape),
+	projects: S.array(projectShape),
+};
+
+const optionalDetails = Object.fromEntries(
+	Object.entries(detailsShape).map(([key, shape]) => [key, S.optional(shape)])
+);
+
+/** The document of `list --json`; a config that doesn't load has no details. */
+export const listDocumentShape = S.object({
+	configs: S.array(
+		S.object({
+			config: S.string,
+			file: S.string,
+			status: S.enum("valid", "broken"),
+			served: S.boolean,
+			...optionalDetails,
+			places: S.optional(
+				S.array(
+					S.object({
+						place: S.string,
+						folder: S.string,
+						...detailsShape,
+					})
+				)
+			),
+			diagnostics: S.array(diagnosticShape),
+		})
+	),
+});
 
 export type ServingByConfig = ReadonlyMap<string, ServingNow | undefined>;
 
@@ -28,6 +95,25 @@ const servingLine = ({ server, host, port, clients }: ServingNow): string =>
 				: `, ${clients} Studio connected`
 	}`;
 
+const portOf = (project: ResolvedConfig): number | undefined =>
+	project.placeServePort ?? project.project.servePort;
+
+/** The Rojo command that serves the project, unless its config lists places and is never served. */
+const rojoServe = (
+	project: ResolvedConfig,
+	file: string
+): string[] | undefined => {
+	const port = portOf(project);
+	return project.hasPlaces
+		? undefined
+		: [
+				"rojo",
+				"serve",
+				file,
+				...(port === undefined ? [] : ["--port", String(port)]),
+			];
+};
+
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
 
@@ -39,6 +125,8 @@ interface ListedProject {
 	readonly file: string;
 	readonly served: boolean;
 	readonly port?: number;
+	readonly placeIds?: readonly number[];
+	readonly rojo?: readonly string[];
 	readonly serving: ListedServing | null;
 }
 
@@ -91,7 +179,7 @@ export class ListLog {
 		).length;
 		if (broken === 0) return undefined;
 		const verb = broken === 1 ? "has" : "have";
-		return new Error(
+		return new ProjectError(
 			broken === entries.length
 				? `${plural(broken, "config")} ${verb} errors.`
 				: `${broken} of ${entries.length} configs ${verb} errors.`
@@ -166,18 +254,26 @@ export class ListLog {
 		);
 		printed.push({ label: config.label, routes });
 		const notes = (project: ResolvedConfig, among: boolean): string => {
+			const { servePlaceIds: placeIds } = project.project;
 			const parts = [
 				...(among &&
 				project.stem === project.serveProject &&
 				!project.hasPlaces
 					? ["served"]
 					: []),
-				...(project.placeServePort !== undefined
-					? [`port ${project.placeServePort}`]
+				...(portOf(project) !== undefined
+					? [`port ${portOf(project)}`]
+					: []),
+				...(placeIds.length > 0
+					? [`place IDs ${placeIds.join(", ")}`]
 					: []),
 			];
 			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 		};
+		const rojo = (project: ResolvedConfig): string | undefined =>
+			rojoServe(project, relative(project.projectFile))
+				?.map(shellWord)
+				.join(" ");
 		const running = (project: ResolvedConfig): string => {
 			const now = serving.get(project.projectFile);
 			return now ? `serving: ${servingLine(now)}` : "";
@@ -196,6 +292,7 @@ export class ListLog {
 				...(resolved.projects.length === 0
 					? [
 							`project file: ${relative(config.projectFile)}${notes(config, false)}`,
+							...(rojo(config) ? [`rojo: ${rojo(config)}`] : []),
 							...(running(config) ? [running(config)] : []),
 						]
 					: [
@@ -206,7 +303,7 @@ export class ListLog {
 											running(project)
 												? `, ${running(project)}`
 												: ""
-										}`
+										}${rojo(project) ? `\n    ${rojo(project)}` : ""}`
 								)
 								.join("")}`,
 						]),
@@ -282,14 +379,21 @@ function configDetails(
 		syncPath: config.syncPath ? toNative(config.syncPath) : null,
 		projectFile: toNative(config.projectFile),
 		serving: servingJson(serving.get(config.projectFile)),
-		projects: projects.map((project) => ({
-			name: project.stem,
-			file: toNative(project.projectFile),
-			served: project.stem === project.serveProject && !project.hasPlaces,
-			...(project.placeServePort !== undefined
-				? { port: project.placeServePort }
-				: {}),
-			serving: servingJson(serving.get(project.projectFile)),
-		})),
+		projects: projects.map((project) => {
+			const { servePlaceIds: placeIds } = project.project;
+			const rojo = rojoServe(project, toNative(project.projectFile));
+			return {
+				name: project.stem,
+				file: toNative(project.projectFile),
+				served:
+					project.stem === project.serveProject && !project.hasPlaces,
+				...(portOf(project) !== undefined
+					? { port: portOf(project) }
+					: {}),
+				...(placeIds.length > 0 ? { placeIds } : {}),
+				...(rojo ? { rojo } : {}),
+				serving: servingJson(serving.get(project.projectFile)),
+			};
+		}),
 	};
 }

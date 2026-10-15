@@ -1,101 +1,125 @@
 $ rogen help
 exit 0
 stdout:
-  Rogen - Feature-based architecture for Roblox
+  rogen
+  Feature-based architecture for Roblox
   
-  Usage:
-    rogen [command] [name...] [options]
+  USAGE:
+      rogen [OPTIONS] <SUBCOMMAND>
   
-  Commands:
-    build [project...]  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
-    check [path...]     Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    help [name]         Prints usage, a command's details, a topic, or what a diagnostic code means.
-    init [path]         Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]   Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    serve [project...]  Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    watch [project...]  Builds, then rebuilds whenever sources or configs change.
-    where [path...]     Prints where each file lands in the game, and why, with its warnings.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
+                             always, never]
+      -h, --help             Print help.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output. (repeatable)
+      -V, --version          Print the version.
   
-  Topics:
-    routing  How folders and names place a file, and what that means for requires.
-    config   Config fields, the tree, source paths and the sync path.
-    layout   Invisible folders, init scripts and .meta.json files.
-    output   Diagnostics, exit codes, --json, fixes and docs links.
+  SUBCOMMANDS:
+      build          Writes the project files; with -o or -p, builds with Rojo
+      check          Prints the diagnostics, and exits 1 when there are any
+      doc            Opens the documentation, or prints one topic offline
+      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
+      help           Prints usage, a command's details, or what a code means
+      init           Writes a starting rogen.json, or adds a place to one
+      list           Lists the configs, their projects and their ports
+      plugin         Installs or removes Rojo's Studio plugin
+      serve          Builds, serves with Rojo, and rebuilds on changes
+      sourcemap      Writes the project files, then a sourcemap with Rojo
+      upload         Writes the project files, then uploads them with Rojo
+      where          Prints where each file lands in the game, and why
   
-  Options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  EXAMPLES:
+      rogen build
+      rogen serve
+      rogen help build
+      rogen help route.strayAt
   
-  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
+  Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
+  help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
 
 $ rogen --help
 exit 0
 stdout:
-  Rogen - Feature-based architecture for Roblox
+  rogen
+  Feature-based architecture for Roblox
   
-  Usage:
-    rogen [command] [name...] [options]
+  USAGE:
+      rogen [OPTIONS] <SUBCOMMAND>
   
-  Commands:
-    build [project...]  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
-    check [path...]     Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    help [name]         Prints usage, a command's details, a topic, or what a diagnostic code means.
-    init [path]         Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]   Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    serve [project...]  Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    watch [project...]  Builds, then rebuilds whenever sources or configs change.
-    where [path...]     Prints where each file lands in the game, and why, with its warnings.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
+                             always, never]
+      -h, --help             Print help.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output. (repeatable)
+      -V, --version          Print the version.
   
-  Topics:
-    routing  How folders and names place a file, and what that means for requires.
-    config   Config fields, the tree, source paths and the sync path.
-    layout   Invisible folders, init scripts and .meta.json files.
-    output   Diagnostics, exit codes, --json, fixes and docs links.
+  SUBCOMMANDS:
+      build          Writes the project files; with -o or -p, builds with Rojo
+      check          Prints the diagnostics, and exits 1 when there are any
+      doc            Opens the documentation, or prints one topic offline
+      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
+      help           Prints usage, a command's details, or what a code means
+      init           Writes a starting rogen.json, or adds a place to one
+      list           Lists the configs, their projects and their ports
+      plugin         Installs or removes Rojo's Studio plugin
+      serve          Builds, serves with Rojo, and rebuilds on changes
+      sourcemap      Writes the project files, then a sourcemap with Rojo
+      upload         Writes the project files, then uploads them with Rojo
+      where          Prints where each file lands in the game, and why
   
-  Options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  EXAMPLES:
+      rogen build
+      rogen serve
+      rogen help build
+      rogen help route.strayAt
   
-  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
+  Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
+  help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
 
 $ rogen
-exit 0
+exit 2
 stdout:
-  Rogen - Feature-based architecture for Roblox
+  rogen
+  Feature-based architecture for Roblox
   
-  Usage:
-    rogen [command] [name...] [options]
+  USAGE:
+      rogen [OPTIONS] <SUBCOMMAND>
   
-  Commands:
-    build [project...]  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one.
-    check [path...]     Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.
-    help [name]         Prints usage, a command's details, a topic, or what a diagnostic code means.
-    init [path]         Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.
-    list [project...]   Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.
-    serve [project...]  Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.
-    watch [project...]  Builds, then rebuilds whenever sources or configs change.
-    where [path...]     Prints where each file lands in the game, and why, with its warnings.
+  OPTIONS:
+          --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
+                             always, never]
+      -h, --help             Print help.
+      -q, --quiet            Only print errors.
+      -v, --verbose          Print debug output; -vv, trace output. (repeatable)
+      -V, --version          Print the version.
   
-  Topics:
-    routing  How folders and names place a file, and what that means for requires.
-    config   Config fields, the tree, source paths and the sync path.
-    layout   Invisible folders, init scripts and .meta.json files.
-    output   Diagnostics, exit codes, --json, fixes and docs links.
+  SUBCOMMANDS:
+      build          Writes the project files; with -o or -p, builds with Rojo
+      check          Prints the diagnostics, and exits 1 when there are any
+      doc            Opens the documentation, or prints one topic offline
+      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
+      help           Prints usage, a command's details, or what a code means
+      init           Writes a starting rogen.json, or adds a place to one
+      list           Lists the configs, their projects and their ports
+      plugin         Installs or removes Rojo's Studio plugin
+      serve          Builds, serves with Rojo, and rebuilds on changes
+      sourcemap      Writes the project files, then a sourcemap with Rojo
+      upload         Writes the project files, then uploads them with Rojo
+      where          Prints where each file lands in the game, and why
   
-  Options:
-    -h, --help     Print help.
-    -V, --version  Print the version.
-    -v, --verbose  Print debug output.
-    -q, --quiet    Only print errors.
+  EXAMPLES:
+      rogen build
+      rogen serve
+      rogen help build
+      rogen help route.strayAt
   
-  Run 'rogen help <command>' for details on a command, 'rogen help <topic>' to read a topic, and 'rogen help <code>' to explain a diagnostic code.
+  Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
+  help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.

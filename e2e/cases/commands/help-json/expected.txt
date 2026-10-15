@@ -1,0 +1,563 @@
+$ rogen help --json
+exit 0
+stdout:
+  {
+    "version": "<version>",
+    "commands": [
+      {
+        "name": "build",
+        "summary": "Writes the project files; with -o or -p, builds with Rojo",
+        "description": "Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "output",
+            "short": "o",
+            "type": "string"
+          },
+          {
+            "name": "plugin",
+            "short": "p",
+            "type": "string"
+          },
+          {
+            "name": "watch",
+            "type": "boolean"
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "runsProcesses",
+          "longRunning"
+        ]
+      },
+      {
+        "name": "check",
+        "summary": "Prints the diagnostics, and exits 1 when there are any",
+        "description": "Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.",
+        "args": [
+          {
+            "name": "path",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
+        "effects": []
+      },
+      {
+        "name": "fmt-project",
+        "summary": "Formats rogen.json the way 'rojo fmt-project' does",
+        "description": "Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
+        "effects": [
+          "writesFiles"
+        ]
+      },
+      {
+        "name": "doc",
+        "summary": "Opens the documentation, or prints one topic offline",
+        "description": "Opens the documentation in a browser, or prints one topic of it offline.",
+        "args": [
+          {
+            "name": "topic",
+            "optional": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
+        "effects": [
+          "opensBrowser"
+        ]
+      },
+      {
+        "name": "help",
+        "summary": "Prints usage, a command's details, or what a code means",
+        "description": "Prints usage, a command's details, or what a diagnostic code means.",
+        "args": [
+          {
+            "name": "name",
+            "optional": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
+        "effects": []
+      },
+      {
+        "name": "init",
+        "summary": "Writes a starting rogen.json, or adds a place to one",
+        "description": "Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.",
+        "args": [
+          {
+            "name": "path",
+            "optional": true
+          }
+        ],
+        "options": [
+          {
+            "name": "non-interactive",
+            "type": "boolean"
+          },
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "dry-run",
+            "short": "n",
+            "type": "boolean"
+          },
+          {
+            "name": "language",
+            "type": "string"
+          },
+          {
+            "name": "darklua",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "source-path",
+            "type": "string",
+            "multiple": true
+          },
+          {
+            "name": "sync-path",
+            "type": "string"
+          },
+          {
+            "name": "project-file",
+            "type": "string",
+            "enum": [
+              "lift",
+              "new"
+            ]
+          },
+          {
+            "name": "package",
+            "type": "string",
+            "multiple": true
+          },
+          {
+            "name": "route",
+            "type": "string",
+            "multiple": true
+          },
+          {
+            "name": "unmatched",
+            "type": "string",
+            "enum": [
+              "shared",
+              "leave"
+            ]
+          },
+          {
+            "name": "agent-rules",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "agent-hook",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "rojo-pin",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "nested",
+            "type": "boolean"
+          },
+          {
+            "name": "place-listing",
+            "type": "string",
+            "enum": [
+              "glob",
+              "folder"
+            ]
+          },
+          {
+            "name": "place-id",
+            "type": "string",
+            "multiple": true
+          }
+        ],
+        "effects": [
+          "writesFiles"
+        ]
+      },
+      {
+        "name": "list",
+        "summary": "Lists the configs, their projects and their ports",
+        "description": "Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
+        "effects": []
+      },
+      {
+        "name": "plugin",
+        "summary": "Installs or removes Rojo's Studio plugin",
+        "description": "Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.",
+        "args": [
+          {
+            "name": "action",
+            "enum": [
+              "install",
+              "uninstall"
+            ]
+          }
+        ],
+        "options": [],
+        "effects": [
+          "writesFiles",
+          "runsProcesses"
+        ]
+      },
+      {
+        "name": "serve",
+        "summary": "Builds, serves with Rojo, and rebuilds on changes",
+        "description": "Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "address",
+            "type": "string"
+          },
+          {
+            "name": "port",
+            "type": "string"
+          },
+          {
+            "name": "allowed-hosts",
+            "type": "string",
+            "multiple": true
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "runsProcesses",
+          "longRunning"
+        ]
+      },
+      {
+        "name": "sourcemap",
+        "summary": "Writes the project files, then a sourcemap with Rojo",
+        "description": "Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "output",
+            "short": "o",
+            "type": "string"
+          },
+          {
+            "name": "include-non-scripts",
+            "type": "boolean"
+          },
+          {
+            "name": "absolute",
+            "type": "boolean"
+          },
+          {
+            "name": "watch",
+            "type": "boolean"
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "runsProcesses",
+          "longRunning"
+        ]
+      },
+      {
+        "name": "upload",
+        "summary": "Writes the project files, then uploads them with Rojo",
+        "description": "Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "asset_id",
+            "type": "string"
+          },
+          {
+            "name": "api_key",
+            "type": "string"
+          },
+          {
+            "name": "universe_id",
+            "type": "string"
+          },
+          {
+            "name": "cookie",
+            "type": "string"
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "runsProcesses"
+        ]
+      },
+      {
+        "name": "where",
+        "summary": "Prints where each file lands in the game, and why",
+        "description": "Prints where each file lands in the game, and why, with its warnings.",
+        "args": [
+          {
+            "name": "path",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
+        "effects": []
+      }
+    ],
+    "globalOptions": [
+      {
+        "name": "color",
+        "type": "string",
+        "enum": [
+          "auto",
+          "always",
+          "never"
+        ],
+        "default": "auto"
+      },
+      {
+        "name": "help",
+        "short": "h",
+        "type": "boolean"
+      },
+      {
+        "name": "version",
+        "short": "V",
+        "type": "boolean"
+      },
+      {
+        "name": "verbose",
+        "short": "v",
+        "type": "boolean",
+        "multiple": true
+      },
+      {
+        "name": "quiet",
+        "short": "q",
+        "type": "boolean"
+      }
+    ],
+    "exitCodes": {
+      "0": "done (warnings included)",
+      "1": "the project has errors",
+      "2": "the command line is wrong"
+    },
+    "errorKinds": {
+      "usage": {
+        "exitCode": 2,
+        "meaning": "the command line is wrong"
+      },
+      "project": {
+        "exitCode": 1,
+        "meaning": "the project is not in a state the command can run on"
+      },
+      "tool": {
+        "exitCode": 1,
+        "meaning": "a program Rogen needs is missing or failed"
+      },
+      "io": {
+        "exitCode": 1,
+        "meaning": "a file or directory could not be read or written"
+      },
+      "cancelled": {
+        "exitCode": 1,
+        "meaning": "the run was cancelled"
+      },
+      "internal": {
+        "exitCode": 1,
+        "meaning": "a bug in Rogen"
+      }
+    }
+  }
+
+$ rogen where --help --json
+exit 0
+stdout:
+  {
+    "name": "where",
+    "summary": "Prints where each file lands in the game, and why",
+    "description": "Prints where each file lands in the game, and why, with its warnings.",
+    "args": [
+      {
+        "name": "path",
+        "optional": true,
+        "variadic": true,
+        "description": "A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. Every file when none is given. The config here, or in the nearest folder above that has one, is read."
+      }
+    ],
+    "options": [
+      {
+        "name": "json",
+        "type": "boolean",
+        "description": "Print one JSON document instead of text."
+      }
+    ],
+    "effects": [],
+    "examples": [
+      "rogen where src/Inventory/Server/Save.luau",
+      "rogen where ServerScriptService.Inventory.Save:12",
+      "rogen where src --json",
+      "pbpaste | rogen where -"
+    ],
+    "output": {
+      "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\"|\"mounted\",node:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
+    },
+    "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
+    "shapes": {
+      "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
+      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}",
+      "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
+    }
+  }
+
+$ rogen help where --json
+exit 0
+stdout:
+  {
+    "name": "where",
+    "summary": "Prints where each file lands in the game, and why",
+    "description": "Prints where each file lands in the game, and why, with its warnings.",
+    "args": [
+      {
+        "name": "path",
+        "optional": true,
+        "variadic": true,
+        "description": "A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. Every file when none is given. The config here, or in the nearest folder above that has one, is read."
+      }
+    ],
+    "options": [
+      {
+        "name": "json",
+        "type": "boolean",
+        "description": "Print one JSON document instead of text."
+      }
+    ],
+    "effects": [],
+    "examples": [
+      "rogen where src/Inventory/Server/Save.luau",
+      "rogen where ServerScriptService.Inventory.Save:12",
+      "rogen where src --json",
+      "pbpaste | rogen where -"
+    ],
+    "output": {
+      "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\"|\"mounted\",node:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
+    },
+    "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
+    "shapes": {
+      "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
+      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}",
+      "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
+    }
+  }
+
+$ rogen help route.strayAt --json
+exit 0
+stdout:
+  {
+    "code": "route.strayAt",
+    "text": "route.strayAt\n\nWarning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.\n\n  rogen.json - warning: 2 names have an \"@\" that routes nowhere, so they are read as ordinary names: (route.strayAt)\n    src/Inventory/Load@SERVER.luau (did you mean \"@server\"?)\n    src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n\nRename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See The `@` Sign (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing#the--sign).",
+    "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat"
+  }
+
+$ rogen help nope --json
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "Unknown command \"nope\".",
+      "hint": "Run 'rogen help' to see the commands."
+    }
+  }

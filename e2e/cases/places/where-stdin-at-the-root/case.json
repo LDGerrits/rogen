@@ -1,0 +1,10 @@
+{
+	"steps": [
+		[
+			"where",
+			"-"
+		]
+	],
+	"stdin": "ReplicatedStorage.Shared.Common.Util:4: attempt to call nil\nServerScriptService.Main:9: attempt to index nil\nScript 'ServerScriptService.Main', Line 9\n",
+	"rojo": false
+}

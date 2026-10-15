@@ -1,0 +1,71 @@
+$ rogen init --dry-run
+exit 0
+stdout: (not shown)
+
+$ rogen init --dry-run --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "dryRun": true,
+    "files": [
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "wouldWrite"
+      },
+      {
+        "file": "<dir>/AGENTS.md",
+        "outcome": "wouldWrite"
+      }
+    ],
+    "directories": [],
+    "decided": [
+      {
+        "question": "language",
+        "value": "luau",
+        "flag": "--language"
+      },
+      {
+        "question": "darklua",
+        "value": false,
+        "flag": "--darklua"
+      },
+      {
+        "question": "sourcePaths",
+        "value": [
+          "src"
+        ],
+        "flag": "--source-path"
+      },
+      {
+        "question": "routes",
+        "value": [
+          "server",
+          "client",
+          "shared"
+        ],
+        "flag": "--route"
+      },
+      {
+        "question": "unmatched",
+        "value": "shared",
+        "flag": "--unmatched"
+      },
+      {
+        "question": "agentRules",
+        "value": true,
+        "flag": "--agent-rules"
+      }
+    ],
+    "notes": [],
+    "nextSteps": {
+      "setup": [],
+      "run": [
+        "rogen serve"
+      ],
+      "darklua": [],
+      "edits": [
+        "Add your own routes under \"routes\" in rogen.json."
+      ]
+    }
+  }

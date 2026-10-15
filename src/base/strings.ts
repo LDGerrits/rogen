@@ -75,6 +75,19 @@ export function closestMatches(
 	return best;
 }
 
+/** `items` with the one `word` most likely misspells first, as a sentence: `folder and glob`. */
+export function joinedClosestFirst(
+	word: string,
+	items: readonly string[]
+): string {
+	const closest = closestMatch(word, items);
+	return joinedWithAnd(
+		closest === undefined
+			? items
+			: [closest, ...items.filter((item) => item !== closest)]
+	);
+}
+
 /** `a`, `a and b`, `a, b and c`. */
 export function joinedWithAnd(items: readonly string[]): string {
 	return joinedWith(items, "and");
@@ -97,3 +110,7 @@ export function firstLine(text: string): string | undefined {
 		.map((line) => line.trim())
 		.find((line) => line !== "");
 }
+
+/** `arg` as one word of a shell command line. */
+export const shellWord = (arg: string): string =>
+	/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;

@@ -8,7 +8,6 @@ written:
 
 default.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "Game",
   "tree": {
     "$className": "DataModel",
@@ -29,7 +28,6 @@ default.project.json:
 
 dist.project.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/project.json",
   "name": "Game",
   "tree": {
     "$className": "DataModel",

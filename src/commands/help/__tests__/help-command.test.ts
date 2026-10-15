@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import fs from "fs";
+import path from "path";
 import { MockProductService } from "../../../platform/product/__tests__/mock-product-service.js";
 import {
 	CommandHarness,
@@ -7,11 +8,15 @@ import {
 } from "../../__tests__/command-harness.js";
 import "../../build/build-command.js";
 import "../../check/check-command.js";
+import "../../fmt-project/fmt-project-command.js";
+import "../doc-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
 import "../../list/list-command.js";
+import "../../plugin/plugin-command.js";
 import "../../serve/serve-command.js";
-import "../../watch/watch-command.js";
+import "../../sourcemap/sourcemap-command.js";
+import "../../upload/upload-command.js";
 import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
@@ -30,6 +35,9 @@ import {
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 import { helpTexts } from "../help-texts.js";
+
+const flagText = (option: OptionDescriptor) =>
+	option.negatable ? `[no-]${option.name}` : option.name;
 
 describe("help command", () => {
 	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
@@ -58,29 +66,18 @@ describe("help command", () => {
 	});
 
 	it("should have imported every command module, so the tests below cover them all", () => {
-		const commandDirs = fs
-			.readdirSync("src/commands", { withFileTypes: true })
-			.filter(
-				(entry) => entry.isDirectory() && entry.name !== "__tests__"
-			)
-			.map((entry) => entry.name);
+		const commandFiles = fs
+			.readdirSync("src/commands", { recursive: true, encoding: "utf8" })
+			.map((file) => path.basename(file))
+			.filter((file) => file.endsWith("-command.ts"))
+			.map((file) => file.slice(0, -"-command.ts".length));
 
 		expect([...registry.getCommands().keys()].sort()).toEqual(
-			commandDirs.sort()
+			commandFiles.sort()
 		);
 	});
 
 	describe("rogen help", () => {
-		it("should list every registered command with its description", async () => {
-			const result = await help();
-
-			expect(result.isOk()).toBe(true);
-			for (const command of registry.getCommands().values()) {
-				expect(printed()).toContain(command.id);
-				expect(printed()).toContain(command.metadata.description);
-			}
-		});
-
 		it("should list every global option", async () => {
 			await help();
 
@@ -107,11 +104,191 @@ describe("help command", () => {
 		});
 	});
 
+	describe("the layout", () => {
+		const section = (text: string, title: string) => {
+			const lines = text.split("\n");
+			const start = lines.indexOf(`${title}:`);
+			const rest = lines.slice(start + 1);
+			const end = rest.indexOf("");
+			return rest.slice(0, end === -1 ? undefined : end);
+		};
+
+		it("should head the root help with its description, USAGE, OPTIONS, SUBCOMMANDS and EXAMPLES in order", async () => {
+			await help();
+
+			const titles = printed()
+				.split("\n")
+				.filter((line) => /^[A-Z]+:$/.test(line));
+			expect(titles).toEqual([
+				"USAGE:",
+				"OPTIONS:",
+				"SUBCOMMANDS:",
+				"EXAMPLES:",
+			]);
+			expect(printed().split("\n").slice(0, 2)).toEqual([
+				"rogen",
+				"Feature-based architecture for Roblox",
+			]);
+			expect(section(printed(), "USAGE")).toEqual([
+				"    rogen [OPTIONS] <SUBCOMMAND>",
+			]);
+		});
+
+		it("should list the subcommands by name", async () => {
+			await help();
+
+			const names = section(printed(), "SUBCOMMANDS").map(
+				(line) => line.trim().split(/\s+/)[0]
+			);
+			expect(names).toEqual([...registry.getCommands().keys()].sort());
+		});
+
+		it("should list each subcommand with its summary on one line", async () => {
+			await help();
+
+			expect(
+				section(printed(), "SUBCOMMANDS").map((line) =>
+					line.trim().split(/ {2,}/)
+				)
+			).toEqual(
+				[...registry.getCommands().values()]
+					.sort((a, b) => (a.id < b.id ? -1 : 1))
+					.map((command) => [command.id, command.metadata.summary])
+			);
+		});
+
+		it("should give every command a summary short enough for one line", () => {
+			for (const command of registry.getCommands().values())
+				expect(command.metadata.summary).toMatch(
+					/^[A-Z][^\n]{0,58}[^.\n]$/
+				);
+		});
+
+		it.each(["", "build", "serve", "init"])(
+			"should keep every line of %j within 100 columns, carrying a long text on under its column",
+			async (target) => {
+				await help(...(target ? [target] : []));
+
+				const examples = section(printed(), "EXAMPLES");
+				const tooLong = printed()
+					.split("\n")
+					.filter(
+						(line) => line.length > 100 && !examples.includes(line)
+					);
+				expect(tooLong).toEqual([]);
+				const options = section(printed(), "OPTIONS");
+				const column = /^ +\S.*? {4,}(?=\S)/.exec(options[0])![0]
+					.length;
+				for (const line of options.filter(
+					(line) => !/^ {4}(-| {4}-)/.test(line)
+				))
+					expect(line.search(/\S/)).toBe(column);
+			}
+		);
+
+		it("should wrap a code's prose at 100 columns and keep its quoted lines whole", async () => {
+			await help("route.strayAt");
+
+			const lines = printed().split("\n");
+			expect(
+				lines.filter(
+					(line) => line.length > 100 && !line.startsWith(" ")
+				)
+			).toEqual([]);
+			expect(lines).toContain(
+				'  rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
+			);
+		});
+
+		it("should merge the global options into a command's, sorted by name", async () => {
+			await help("build");
+
+			const names = section(printed(), "OPTIONS").flatMap((line) => {
+				const name = /^ {4}(?:-\w, | {4})--([a-z-]+)/.exec(line)?.[1];
+				return name === undefined ? [] : [name];
+			});
+			expect(names).toEqual([...names].sort());
+			expect(names).toEqual(
+				expect.arrayContaining(["color", "help", "output", "version"])
+			);
+		});
+
+		it("should show a value's capitalised name, its default and its possible values", async () => {
+			await help("build");
+
+			expect(printed().replace(/\n +/g, " ")).toMatch(
+				/--color <COLOR> +Whether to colour the output\. \[default: auto\] \[possible values: auto, always, never\]/
+			);
+			expect(printed()).toMatch(/-o, --output <OUTPUT> /);
+		});
+
+		it("should line up a long-only option under the short ones", async () => {
+			await help("build");
+
+			expect(section(printed(), "OPTIONS")).toEqual(
+				expect.arrayContaining([
+					expect.stringMatching(/^ {4}-h, --help /),
+					expect.stringMatching(/^ {8}--color /),
+				])
+			);
+		});
+
+		it("should list a command's subcommands in place of an argument", async () => {
+			await help("plugin");
+
+			expect(section(printed(), "USAGE")).toEqual([
+				"    rogen plugin [OPTIONS] <SUBCOMMAND>",
+			]);
+			expect(printed()).not.toContain("ARGS:");
+			expect(
+				section(printed(), "SUBCOMMANDS").map(
+					(line) => line.trim().split(/\s+/)[0]
+				)
+			).toEqual(["install", "uninstall"]);
+		});
+
+		it("should leave out a section that has nothing to list", async () => {
+			await help("list");
+
+			expect(printed()).not.toContain("SUBCOMMANDS:");
+		});
+
+		it("should print the same for 'help build', 'build --help' and 'build -h'", async () => {
+			const parsed = (argv: string[]) =>
+				parseArgs(argv, (id) => registry.getOptions(id), [
+					...registry.getCommands().keys(),
+				]).unwrap();
+			const texts: string[] = [];
+			for (const argv of [
+				["help", "build"],
+				["build", "--help"],
+				["build", "-h"],
+			]) {
+				info.mockClear();
+				const { command, line } = parsed(argv);
+				await harness.run(command, line);
+				texts.push(printed());
+			}
+
+			expect(texts[1]).toBe(texts[0]);
+			expect(texts[2]).toBe(texts[0]);
+		});
+	});
+
 	describe("rogen help <command>", () => {
 		it("should print the command's usage and arguments", async () => {
 			await help("build");
 
-			expect(printed()).toContain("rogen build [project...] [options]");
+			const [head, usage] = printed().split("\n\n");
+			const [title, ...description] = head.split("\n");
+			expect(title).toBe("rogen-build");
+			expect(description.join(" ")).toBe(
+				registry.getCommand("build")?.metadata.description
+			);
+			expect(usage).toBe(
+				"USAGE:\n    rogen build [OPTIONS] [PROJECT]..."
+			);
+			expect(printed()).toContain("<PROJECT>...");
 			expect(printed()).toContain("A folder with a rogen.json");
 		});
 
@@ -125,10 +302,10 @@ describe("help command", () => {
 					command.metadata.examples?.length
 				).toBeGreaterThanOrEqual(2);
 				expect(text).toContain(
-					`Examples:\n  ${command.metadata.examples?.[0]}`
+					`EXAMPLES:\n    ${command.metadata.examples?.[0]}`
 				);
-				expect(text.indexOf("Examples:")).toBeGreaterThan(
-					text.indexOf("Arguments:")
+				expect(text.indexOf("EXAMPLES:")).toBeGreaterThan(
+					text.indexOf("OPTIONS:")
 				);
 			}
 		});
@@ -149,15 +326,15 @@ describe("help command", () => {
 				UsageError
 			);
 			expect((result as ResultError<Error>).error.message).toContain(
-				'Unknown command or topic "prod"'
+				'Unknown command "prod"'
 			);
 		});
 
 		it("should suggest the command a misspelled one is closest to", async () => {
-			const result = await help("wacth");
+			const result = await help("bulid");
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command or topic \"wacth\". Did you mean 'rogen help watch'?"
+				"Unknown command \"bulid\". Did you mean 'rogen help build'?"
 			);
 		});
 	});
@@ -189,42 +366,30 @@ describe("help command", () => {
 			);
 			expect(info).not.toHaveBeenCalled();
 		});
-
-		it("should prefer a command or topic to the end of a code", async () => {
-			await help("Routing");
-
-			expect(printed()).toBe(helpTexts.topics.routing);
-		});
 	});
 
 	describe("rogen help <topic>", () => {
-		it.each(["routing", "config", "layout", "output"])(
-			"should print the %s topic as written",
+		it.each(["routing", "Config"])(
+			"should point %s to rogen doc rather than print it",
 			async (topic) => {
 				const result = await help(topic);
 
-				expect(result.isOk()).toBe(true);
-				expect(printed()).toBe(helpTexts.topics[topic]);
+				expect(result.isErr()).toBe(true);
+				expect((result as ResultError<Error>).error).toBeInstanceOf(
+					UsageError
+				);
+				expect((result as ResultError<Error>).error.message).toBe(
+					`"${topic}" is a topic, not a command. Run 'rogen doc ${topic.toLowerCase()}'.`
+				);
+				expect(info).not.toHaveBeenCalled();
 			}
 		);
 
-		it("should list every topic with its description", async () => {
+		it("should list no topic in the overview", async () => {
 			await help();
 
-			expect(printed()).toContain("Topics:");
-			for (const topic of Object.keys(helpTexts.topics))
-				expect(printed()).toMatch(new RegExp(`^  ${topic} `, "m"));
-		});
-
-		it("should list exactly the topics whose text it embeds", async () => {
-			await help();
-
-			const listed = printed()
-				.split("Topics:\n")[1]
-				.split("\n\n")[0]
-				.split("\n")
-				.map((line) => line.trim().split(" ")[0]);
-			expect(listed.sort()).toEqual(Object.keys(helpTexts.topics).sort());
+			expect(printed()).not.toContain("Topics:");
+			expect(printed()).toContain("'rogen doc <topic>'");
 		});
 
 		it("should name no topic after a command", () => {
@@ -235,17 +400,6 @@ describe("help command", () => {
 					commands.includes(topic)
 				)
 			).toEqual([]);
-		});
-
-		it("should suggest the topic a misspelled one is closest to, as a usage error", async () => {
-			const result = await help("rouing");
-
-			expect((result as ResultError<Error>).error).toBeInstanceOf(
-				UsageError
-			);
-			expect((result as ResultError<Error>).error.message).toBe(
-				"Unknown command or topic \"rouing\". Did you mean 'rogen help routing'?"
-			);
 		});
 	});
 
@@ -290,6 +444,7 @@ describe("help command", () => {
 							super({
 								id: "placeholder",
 								metadata: {
+									summary: "Does a thing",
 									description: "A test command.",
 									options,
 								},
@@ -305,10 +460,10 @@ describe("help command", () => {
 
 			await help("placeholder");
 
-			expect(printed()).toContain("-t, --thing <path>");
+			expect(printed()).toContain("-t, --thing <PATH>");
 		});
 
-		it("should write <value> for a string option without a placeholder", async () => {
+		it("should write the capitalised name for a string option without a placeholder", async () => {
 			const options = [
 				{
 					name: "thing",
@@ -323,6 +478,7 @@ describe("help command", () => {
 							super({
 								id: "placeholder-fallback",
 								metadata: {
+									summary: "Does a thing",
 									description: "A test command.",
 									options,
 								},
@@ -338,7 +494,7 @@ describe("help command", () => {
 
 			await help("placeholder-fallback");
 
-			expect(printed()).toContain("--thing <value>");
+			expect(printed()).toContain("--thing <THING>");
 		});
 
 		it("should mark an option that may repeat", async () => {
@@ -357,6 +513,7 @@ describe("help command", () => {
 							super({
 								id: "repeatable",
 								metadata: {
+									summary: "Does a thing",
 									description: "A test command.",
 									options,
 								},
@@ -385,12 +542,14 @@ describe("help command", () => {
 					...(command.metadata.options ?? []),
 				];
 				for (const option of options) {
-					expect(printed()).toContain(`--${option.name}`);
+					expect(printed()).toContain(`--${flagText(option)}`);
 
 					const argv = [
 						command.id,
 						`--${option.name}`,
-						...(option.type === "string" ? ["x"] : []),
+						...(option.type === "string"
+							? [option.values?.[0] ?? "x"]
+							: []),
 					];
 					expect(
 						parseArgs(argv, (id) => registry.getOptions(id), [
@@ -411,7 +570,7 @@ describe("help command", () => {
 			const everything = [...printedByAll].join("\n");
 
 			for (const option of registry.getOptions()) {
-				expect(everything).toContain(`--${option.name}`);
+				expect(everything).toContain(`--${flagText(option)}`);
 			}
 		});
 

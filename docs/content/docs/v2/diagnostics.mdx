@@ -48,7 +48,7 @@ Error. A field holds the wrong kind of value, such as a string where `sourcePath
 rogen.json:2:14 - error: "sourcePaths": expected an array, found a string. (config.wrongType)
 ```
 
-Give the field the type the message names. See [Configuration](/docs/v2/configuration#fields).
+Give the field the type the message names. `null` is never a value in a `rogen.json`, and it removes nothing: leave the key out, or in a project, ignore the folder a mount points at with `globIgnorePaths`. A node of the `tree` must be an object, so `"DevPackages": null` there gets the same error. See [Configuration](/docs/v2/configuration#fields).
 
 ### `config.unknownField` [#config-unknownfield]
 
@@ -67,10 +67,10 @@ Error. The config has a key that Rogen removed or renamed. The error is at the k
 ```
 rogen.json:4:2 - error: "modes" was removed. Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json. (config.removedField)
 rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder. A second output is a project under "projects", which changes the keys it needs, or a rogen.json in another folder. (config.removedField)
-rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project under "projects". (config.removedField)
+rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo. (config.removedField)
 ```
 
-Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, and a mounted node is dropped with `null` in a project. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -191,6 +191,16 @@ places/lobby/rogen.json:2:3 - error: a place can't list places: "placePaths" bel
 ```
 
 Remove the key from the place. See [Places](/docs/v2/configuration#places).
+
+### `config.placeSetting` [#config-placesetting]
+
+Error. A `rogen.json` whose `placePaths` match a folder sets `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`, in the config or in one of its projects. Each place is served on its own and is its own place in Studio, and the config that lists them is never served, so no place takes these from it.
+
+```
+rogen.json:3:3 - error: "servePort" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place. (config.placeSetting)
+```
+
+Move the key into the `rogen.json` of each place it belongs to. See [Places](/docs/v2/configuration#places).
 
 ### `config.placeInSourcePath` [#config-placeinsourcepath]
 
@@ -387,13 +397,15 @@ Move the script under a route whose target runs it, or drop `.server`/`.client` 
 
 ### `tree.runContextTarget` [#tree-runcontexttarget]
 
-Warning. The config sets `emitLegacyScripts: false`, but a route targets `StarterPlayerScripts` or `StarterCharacterScripts`, where RunContext scripts don't run as LocalScripts.
+Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there LocalScripts with a sync rule, but Rojo reads an init script without rules, so this one is a Script with RunContext Client.
 
 ```
-default.project.json - warning: emitLegacyScripts: false in rogen.json isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts ("client" → StarterPlayer/StarterPlayerScripts). Route it to another service, or remove emitLegacyScripts from rogen.json. (tree.runContextTarget)
+rogen.json - warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
+  src/Panel/init.client.luau -> StarterPlayer/StarterPlayerScripts/Panel
+Route the folder to another service, or remove emitLegacyScripts from the config.
 ```
 
-Remove `emitLegacyScripts` from `rogen.json`, or route client code elsewhere, such as `ReplicatedStorage` with RunContext Client. See [Configuration](/docs/v2/configuration#fields).
+Route the folder to a service such as `ReplicatedStorage` with RunContext Client, or remove `emitLegacyScripts` from `rogen.json`. See [Configuration](/docs/v2/configuration#fields).
 
 ### `tree.mountsSourcePath` [#tree-mountssourcepath]
 
@@ -660,7 +672,7 @@ Check that the folder is writable and that no other program locks the file. Roge
 Warning. `rogen check` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
-default.project.json - warning: this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date. (output.differs)
+default.project.json - warning: this file differs from what 'rogen build' would write. It is written from rogen.json, so edit that and run 'rogen build'. (output.differs)
 ```
 
 Run `rogen build`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
@@ -704,11 +716,33 @@ default.project.json - warning: 1 data file was turned into a Lua module under "
 
 Copy the data files unchanged into the sync path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
 
+## Format
+
+### `format.commentsLost` [#format-commentslost]
+
+Error. `rogen fmt-project` won't write a config that holds comments or trailing commas, since the formatted text has none. A `rogen.jsonc` is always refused, because it is meant to hold comments. Nothing is written.
+
+```
+rogen.json - error: rogen.json has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor. (format.commentsLost)
+```
+
+Remove the comments if you don't need them, or format the file in your editor. See [`rogen fmt-project`](/docs/v2/cli#fmt-project-project).
+
+### `format.writeFailed` [#format-writefailed]
+
+Error. `rogen fmt-project` couldn't write the formatted config to disk. The message gives the reason without the system's error code.
+
+```
+rogen.json - error: the config could not be written: permission denied. (format.writeFailed)
+```
+
+Check that the file is writable and that no other program locks it.
+
 ## Init
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `rogen.json` or `rogen.jsonc`, and `init` never overwrites one. A run that can't ask (no terminal, `--non-interactive`, `--json`, CI or an agent) stops here when there is nothing else to add; in a terminal, `init` offers the agent instructions and the agent hook beside an existing config.
+Error. The folder already has a `rogen.json` or `rogen.jsonc`, and `init` never overwrites one. A run that can't ask (no terminal, `--non-interactive`, `--json`, CI or an agent) stops here when there is nothing else to add; in a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook` or `--rojo-pin` ask for them without one.
 
 ```
 rogen.json - error: this config already exists. Delete it to write a new one. (init.configExists)
@@ -744,11 +778,11 @@ Fix the file's permissions or its contents, or move it out of the way. See [Conf
 Error. `rogen serve` found no Rojo: it is not pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and not on the PATH. `serve` only starts Rojo, so a pinned Argon doesn't count. When Argon is pinned, the message says so.
 
 ```
-rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. (serve.noServer)
-rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them. (serve.noServer)
+rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. (serve.noServer)
+rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them. (serve.noServer)
 ```
 
-Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rojo plugin install`. Rogen never installs anything. To serve with Argon, run `rogen watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
+Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. Rogen never installs anything. To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
 
 ### `serve.notInstalled` [#serve-notinstalled]
 
@@ -775,10 +809,10 @@ Pin the tool, or fix the install the quoted line points at. Running `rojo --vers
 Error. Another program holds the port a config would be served on. When it's a Rojo server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running, and builds for it when no `rogen serve` started it. It is one when another config here has the same project name and no `rogen serve` started the server, since Rogen can't tell which config it serves: stop that server and run `rogen serve` again.
 
 ```
-rogen.json - error: Port 34872 is taken by Rojo serving shop, so default can't be served there. Give default its own servePort in rogen.json, or run 'rogen serve default -- --port 34873'. (serve.portTaken)
+rogen.json - error: Port 34872 is taken by Rojo serving shop, so default can't be served there. Give default its own servePort in rogen.json, or run 'rogen serve default --port 34873'. (serve.portTaken)
 ```
 
-Stop what holds the port, give the config its own `servePort` in its `rogen.json`, or pass a free port after `--`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
+Stop what holds the port, give the config its own `servePort` in its `rogen.json`, or pass a free port with `--port`. With `--json`, `fixes` holds the command with a free port Rogen found. See [CLI](/docs/v2/cli#serve).
 
 ### `serve.serverExited` [#serve-serverexited]
 
@@ -789,6 +823,38 @@ rogen.json - error: Rojo stopped serving default with exit code 1; see what it s
 ```
 
 Read what the server said just above it, which usually says why. When it said nothing, as when it was killed, the message ends `without saying why`. See [CLI](/docs/v2/cli#serve).
+
+## Rojo
+
+### `rojo.syncRulesUnsupported` [#rojo-syncrulesunsupported]
+
+Error. The Rojo that would run is older than 7.5.0, which is the first to read `syncRules`, and a file Rogen wrote has some, so Rojo would refuse the file. A file with no sync rules runs on older Rojo. Rogen checks before it serves anything.
+
+```
+default.project.json - error: Rojo 7.4.4 does not read "syncRules" before 7.5.0, and this file has 2. Change your Rojo pin to 7.5.0 or later, or update the Rojo on the PATH. (rojo.syncRulesUnsupported)
+```
+
+Change the pin, run the manager's install command, and run the command again. See [Installation](/docs/v2/installation).
+
+### `rojo.windowsRules` [#rojo-windowsrules]
+
+Error. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, and a file Rogen wrote has one, so Rojo would serve a tree that differs from the one Rogen built. This happens for every place whose root has ignore globs, since a place's patterns are written relative to its folder. Rojo 7.7.1 fixed it, and 7.5.0 to 7.6.1 are not affected.
+
+```
+shop/default.project.json - error: Rojo 7.7.0 on Windows applies no sync rule or ignore glob that starts with "../", and this file has 1: "../../src/*.md". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH. (rojo.windowsRules)
+```
+
+Move to Rojo 7.7.1 or newer. See [CLI](/docs/v2/cli#serve).
+
+### `rojo.commandFailed` [#rojo-commandfailed]
+
+Error. Rojo exited with an error while Rogen ran it, such as `rojo build` for `rogen build -o`. The message gives how it exited and what Rojo said.
+
+```
+default.project.json - error: 'rojo build' failed (exit code 1): Failed to write to game.rbxl. (rojo.commandFailed)
+```
+
+Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the build again.
 
 ## Migration
 

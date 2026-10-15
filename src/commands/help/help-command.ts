@@ -5,33 +5,46 @@ import {
 	Extensions,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { CommandLine, HELP_COMMAND } from "../../platform/environment/args.js";
+import {
+	CommandLine,
+	HELP_COMMAND,
+	JsonOption,
+} from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ProductService } from "../../platform/product/product-service.js";
 import { Registry } from "../../platform/registry/registry.js";
+import { HelpDocument, helpDocumentShape } from "./help-document.js";
 import { HelpPages } from "./help-pages.js";
 
+const HelpOptions = [JsonOption] as const;
+
 registerCommand(
-	class HelpCommand extends AbstractCommand {
+	class HelpCommand extends AbstractCommand<typeof HelpOptions> {
 		constructor() {
 			super({
 				id: HELP_COMMAND,
 				metadata: {
+					summary:
+						"Prints usage, a command's details, or what a code means",
 					description:
-						"Prints usage, a command's details, a topic, or what a diagnostic code means.",
+						"Prints usage, a command's details, or what a diagnostic code means.",
 					args: [
 						{
 							name: "name",
 							description:
-								"A command, a topic, or a diagnostic code such as route.strayAt.",
+								"A command, or a diagnostic code such as route.strayAt.",
 							isOptional: true,
 						},
 					],
+					options: HelpOptions,
+					output: { document: helpDocumentShape },
+					effects: [],
 					examples: [
 						"rogen help where",
-						"rogen help routing",
 						"rogen help route.strayAt",
+						"rogen help --json",
+						"rogen help build --json",
 					],
 				},
 			});
@@ -39,31 +52,46 @@ registerCommand(
 
 		async run(
 			accessor: ServicesAccessor,
-			line: CommandLine<readonly []>
+			line: CommandLine<typeof HelpOptions>
 		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
+			const productService = accessor.get(ProductService);
 
 			if (line.options.version) {
-				const version = await accessor
-					.get(ProductService)
-					.readVersion();
+				const version = await productService.readVersion();
 				logService.print(`rogen ${version}`);
 				return ok(undefined);
 			}
 
 			const [target] = line.positionals;
+			const commands = Registry.as<CommandRegistry>(
+				Extensions.Commands
+			).getCommands();
+			const pages = new HelpPages(commands);
 
-			const pages = new HelpPages(
-				Registry.as<CommandRegistry>(Extensions.Commands).getCommands()
-			);
 			if (target === undefined) {
+				if (line.options.json)
+					return this.printJson(
+						logService,
+						HelpDocument.overview(
+							commands,
+							await productService.readVersion()
+						)
+					);
 				logService.print(pages.overview());
 				return ok(undefined);
 			}
 
-			const text = pages.find(target);
-			if (text === undefined) return err(pages.unknown(target));
-			logService.print(text);
+			const found = pages.resolve(target);
+			if (found === undefined) return err(pages.unknown(target));
+			if (line.options.json)
+				return this.printJson(
+					logService,
+					found.kind === "command"
+						? HelpDocument.command(found.command)
+						: HelpDocument.code(found.code)
+				);
+			logService.print(pages.textOf(found));
 			return ok(undefined);
 		}
 	}

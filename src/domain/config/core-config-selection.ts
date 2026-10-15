@@ -15,6 +15,7 @@ import {
 	ConfigEntry,
 	ConfigNotice,
 	ConfigReload,
+	NamedProjects,
 	ReloadableSelection,
 	buildableProjects,
 } from "./config-service.js";
@@ -39,7 +40,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		private readonly loader: ConfigLoader,
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
-		readonly named: ReadonlyMap<string, string> = new Map(),
+		readonly named: ReadonlyMap<string, NamedProjects> = new Map(),
 		readonly notes: readonly string[] = [],
 		private readonly scopes: ReadonlyMap<
 			string,

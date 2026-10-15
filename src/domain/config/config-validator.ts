@@ -1,5 +1,5 @@
 import path from "path";
-import { escapedGlobPrefix } from "../../base/glob.js";
+import { escapedGlobPrefix, ignoresAllOf } from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -19,7 +19,12 @@ import {
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
-import { DEFAULT_SOURCE_PATH, fieldOf, sourcePathOverlap } from "./config.js";
+import {
+	DEFAULT_SOURCE_PATH,
+	PER_PLACE_KEYS,
+	fieldOf,
+	sourcePathOverlap,
+} from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
@@ -99,7 +104,16 @@ export class ConfigValidator {
 		const routes = this.checkRoutes();
 		const routed = Object.keys(this.routes).length > 0;
 		const project = this.readProject();
+		const ignored = project.globIgnorePaths.map((glob) =>
+			path.posix.join(escapedGlobPrefix(toPosix(this.dir)), glob)
+		);
+		project.removeNodes((target) =>
+			ignored.some((glob) =>
+				ignoresAllOf(glob, toPosix(path.resolve(this.dir, target)))
+			)
+		);
 		this.checkSyncRules(project);
+		this.checkNodes(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
 		this.checkPlaces();
@@ -117,9 +131,7 @@ export class ConfigValidator {
 					project ?? new RojoProject<ParsedProjectFile>({ tree: {} }),
 				sourcePaths: this.sourcePaths,
 				routes,
-				ignored: project.globIgnorePaths.map((glob) =>
-					path.posix.join(escapedGlobPrefix(toPosix(this.dir)), glob)
-				),
+				ignored,
 				syncPath,
 				syncRulesDir: this.config.inherited?.syncRules
 					? toPosix(this.config.inherited.dir)
@@ -159,6 +171,19 @@ export class ConfigValidator {
 			...rojo,
 			tree: (rojo.tree ?? { $className: "DataModel" }) as RojoNode,
 		});
+	}
+
+	private checkNodes(project: RojoProject<ParsedProjectFile>): void {
+		const notNode = RojoProject.findNonNode(project.getNode([]) ?? {}, [
+			"tree",
+		]);
+		if (!notNode) return;
+		const value = this.config.model.getValue(notNode);
+		this.problems.error(
+			"config.wrongType",
+			this.locate(...notNode),
+			`"${notNode.join(".")}" must be an object.${value === null ? ' null removes nothing: to leave a mounted node out of a project, list its folder in "globIgnorePaths".' : ""}`
+		);
 	}
 
 	private checkSyncRules(project: RojoProject<ParsedProjectFile>): void {
@@ -256,6 +281,15 @@ export class ConfigValidator {
 	}
 
 	private checkPlaces(): void {
+		if ((this.context.placeDirs?.length ?? 0) > 0)
+			for (const key of this.config.model.keys.filter((key) =>
+				PER_PLACE_KEYS.includes(key)
+			))
+				this.problems.error(
+					"config.placeSetting",
+					this.locateKey(key),
+					`"${key}" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place.`
+				);
 		for (const placeDir of this.context.placeDirs ?? []) {
 			const around = this.sourcePaths.find((dir) =>
 				contains(dir, placeDir)

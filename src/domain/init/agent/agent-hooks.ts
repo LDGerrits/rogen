@@ -38,6 +38,11 @@ export class AgentHooks {
 		);
 	}
 
+	/** Whether a coding agent whose hook file Rogen knows is in use here, whether or not it has the hook. */
+	get inUse(): boolean {
+		return this.state.inUse.length > 0;
+	}
+
 	get offered(): boolean {
 		return this.registering.length > 0;
 	}

@@ -81,11 +81,23 @@ describe("init command", () => {
 				"print",
 			]);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
-				appended: [],
+				changed: true,
 				files: [
-					path.join(cwd, "rogen.json"),
-					path.join(cwd, "AGENTS.md"),
+					{ file: path.join(cwd, "rogen.json"), outcome: "wrote" },
+					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
 				],
+				decided: expect.arrayContaining([
+					{
+						question: "language",
+						value: "roblox-ts",
+						flag: "--language",
+					},
+					{
+						question: "agentRules",
+						value: true,
+						flag: "--agent-rules",
+					},
+				]),
 				directories: [path.join(cwd, "src")],
 				built: [
 					{
@@ -135,10 +147,16 @@ describe("init command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(JSON.parse(logService.entries[0].text)).toEqual({
-				appended: [],
-				files: [path.join(cwd, "rogen.json")],
+				changed: true,
+				files: [
+					{ file: path.join(cwd, "rogen.json"), outcome: "wrote" },
+				],
+				decided: expect.any(Array),
 				directories: [],
-				error: "Failed to write AGENTS.md: disk full",
+				error: {
+					kind: "io",
+					message: "Failed to write AGENTS.md: disk full",
+				},
 			});
 		});
 
@@ -169,7 +187,7 @@ describe("init command", () => {
 			);
 		});
 
-		it("should list an appended agent file under appended in JSON", async () => {
+		it("should mark an appended agent file in JSON", async () => {
 			await write("CLAUDE.md", "Use tabs.\n");
 			const logService = new MockLogService();
 
@@ -177,9 +195,13 @@ describe("init command", () => {
 				json: true,
 			});
 
-			expect(JSON.parse(logService.entries[0].text).appended).toEqual([
-				path.join(cwd, "CLAUDE.md"),
-			]);
+			expect(JSON.parse(logService.entries[0].text).files).toContainEqual(
+				{
+					file: path.join(cwd, "CLAUDE.md"),
+					outcome: "wrote",
+					appended: true,
+				}
+			);
 		});
 	});
 
@@ -191,6 +213,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
+				"info: Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
 				"success: Created rogen.json.",
 				"success: Created AGENTS.md.",
 				"success: Created src/.",
@@ -346,6 +369,281 @@ describe("init command", () => {
 			await runInit();
 
 			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(false);
+		});
+	});
+
+	describe("--dry-run", () => {
+		it("should write and build nothing, and say what it would", async () => {
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ "dry-run": true }
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("rogen.json")).toBe(false);
+			expect(await exists("AGENTS.md")).toBe(false);
+			expect(await exists("src")).toBe(false);
+			expect(await exists("default.project.json")).toBe(false);
+			expect(logService.lines).toEqual([
+				"intro: rogen init",
+				"info: Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"success: Would create rogen.json.",
+				"success: Would create AGENTS.md.",
+				"success: Would create src/.",
+				"outro: Would write 2 files. Nothing was written.",
+			]);
+		});
+
+		it("should print the same document with dryRun, wouldWrite and the choices it took", async () => {
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ json: true, "dry-run": true }
+			);
+
+			expect(result.isOk()).toBe(true);
+			const document = JSON.parse(logService.entries[0].text);
+			expect(document).toMatchObject({
+				changed: false,
+				dryRun: true,
+				files: [
+					{
+						file: path.join(cwd, "rogen.json"),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, "AGENTS.md"),
+						outcome: "wouldWrite",
+					},
+				],
+				directories: [path.join(cwd, "src")],
+			});
+			expect(document.decided).toContainEqual({
+				question: "language",
+				value: "luau",
+				flag: "--language",
+			});
+			expect(document.built).toBeUndefined();
+			expect(await exists("rogen.json")).toBe(false);
+		});
+
+		it("should leave out a directory that already exists", async () => {
+			await write("src/keep");
+			const logService = new MockLogService();
+
+			await runInit(new MockPromptService([], false), logService, {
+				json: true,
+				"dry-run": true,
+			});
+
+			expect(JSON.parse(logService.entries[0].text).directories).toEqual(
+				[]
+			);
+		});
+
+		it("should still refuse a folder that has a config", async () => {
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "dry-run": true }
+			);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "init.configExists" },
+			]);
+		});
+	});
+
+	describe("choices given as flags", () => {
+		const jsonOptions = (options: CommandLine["options"]) => ({
+			json: true,
+			...options,
+		});
+
+		it("should write what the flags say without a terminal, and list nothing they answered", async () => {
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				jsonOptions({
+					language: "luau",
+					"source-path": ["lib"],
+					"agent-rules": false,
+					route: ["server"],
+					unmatched: "leave",
+				})
+			);
+
+			expect(result.isOk()).toBe(true);
+			const config = await readJson("rogen.json");
+			expect(config.sourcePaths).toEqual(["lib"]);
+			expect(Object.keys(config.routes)).not.toContain("Client");
+			expect(await exists("AGENTS.md")).toBe(false);
+			const { decided } = JSON.parse(logService.entries[0].text);
+			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
+				"--darklua",
+			]);
+		});
+
+		it("should add the agent hook when asked to, though it can't ask", async () => {
+			await write(".claude/keep");
+
+			await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-hook": true }
+			);
+
+			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
+		});
+
+		it("should refuse a hook when no coding agent is missing it", async () => {
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-hook": true }
+			);
+
+			expect(result.isErr()).toBe(true);
+			expect(errorMessage(result)).toContain("There is no hook to add.");
+			expect(await exists("rogen.json")).toBe(false);
+		});
+
+		it("should refuse a Rojo pin when there is no rokit.toml to hold it", async () => {
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "rojo-pin": true }
+			);
+
+			expect(errorMessage(result)).toContain(
+				"There is no Rojo pin to add."
+			);
+		});
+
+		it("should pin Rojo when asked to, though it can't ask", async () => {
+			await write("rokit.toml", "[tools]\n");
+
+			await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "rojo-pin": true }
+			);
+
+			expect(await read("rokit.toml")).toContain("rojo");
+		});
+
+		it("should refuse a language it doesn't know, naming the ones it does", async () => {
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ language: "lua" }
+			);
+
+			expect(errorMessage(result)).toBe(
+				"'lua' is not a language. The values of --language are luau and roblox-ts."
+			);
+			expect(await exists("rogen.json")).toBe(false);
+		});
+
+		it("should add only what the flags ask to a folder that has a config", async () => {
+			await write("rogen.json", "{}");
+			await write(".claude/keep");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-hook": true }
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
+			expect(await exists("AGENTS.md")).toBe(false);
+		});
+
+		it("should not add what a flag refuses to a folder that has a config", async () => {
+			await write("rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-rules": false }
+			);
+
+			expect(diagnosticsOf(result)).toMatchObject([
+				{ code: "init.configExists" },
+			]);
+			expect(await exists("AGENTS.md")).toBe(false);
+		});
+
+		it("should do nothing, and succeed, when what a flag asks for is already there", async () => {
+			await write("rogen.json", "{}");
+			await write("AGENTS.md", "<!-- rogen -->\n");
+			await write(
+				"rokit.toml",
+				'[tools]\nrojo = "rojo-rbx/rojo@7.5.0"\n'
+			);
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ json: true, "agent-rules": true, "rojo-pin": true }
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(JSON.parse(logService.entries[0].text)).toMatchObject({
+				changed: false,
+				files: [],
+			});
+		});
+
+		it("should refuse the choices of a new config beside one that exists", async () => {
+			await write("rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ language: "luau", route: ["server"] }
+			);
+
+			expect(errorMessage(result)).toContain(
+				"rogen.json already exists, so --language and --route would change nothing."
+			);
+		});
+
+		it("should start a project below another one only with --nested", async () => {
+			await memFs.createDirectory(path.join(cwd, "game"));
+			await memFs.writeFile(path.join(cwd, "rogen.json"), "{}");
+			const inner = path.join(cwd, "game");
+			const innerRun = (options: CommandLine["options"]) => {
+				const harness = commandHarness({
+					cwd: inner,
+					fs: memFs,
+					log: new MockLogService(),
+					prompt: new MockPromptService([], false),
+					environment: new NativeEnvironmentService(options, inner),
+				});
+				return harness.run("init", { positionals: [], options });
+			};
+
+			const refused = await innerRun({});
+			const allowed = await innerRun({ nested: true });
+
+			expect(errorMessage(refused)).toContain("run rogen init --nested");
+			expect(allowed.isOk()).toBe(true);
+			expect(await memFs.exists(path.join(inner, "rogen.json"))).toBe(
+				true
+			);
 		});
 	});
 

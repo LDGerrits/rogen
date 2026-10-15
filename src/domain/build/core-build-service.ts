@@ -1,3 +1,4 @@
+import path from "path";
 import { groupBy } from "../../base/collections.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -251,7 +252,7 @@ export class CoreBuildService implements BuildService {
 					warningDiagnostic(
 						"output.differs",
 						{ resource: projectFile },
-						`this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date.`
+						`this file differs from what 'rogen build' would write. It is written from ${path.basename(attempt.config.file)}, so edit that and run 'rogen build'.`
 					),
 				],
 			},

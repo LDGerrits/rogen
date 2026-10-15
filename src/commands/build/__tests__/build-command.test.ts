@@ -22,6 +22,7 @@ import {
 	Extensions,
 	ReportedError,
 } from "../../../platform/commands/commands.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
@@ -314,8 +315,8 @@ describe("build command", () => {
 
 		expect(result.isErr()).toBe(true);
 		expect(diagnostic.mock.calls).toMatchObject([
-			[{ message: expect.stringContaining("doesn't exist yet") }, false],
-			[{ code: "meta.wrongType" }, false],
+			[{ message: expect.stringContaining("doesn't exist yet") }],
+			[{ code: "meta.wrongType" }],
 		]);
 	});
 
@@ -423,7 +424,7 @@ describe("build command", () => {
 		]);
 	});
 
-	describe("--deny-warnings", () => {
+	describe("a warning", () => {
 		const withWarning = async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			return new MockConfigService([
@@ -431,77 +432,25 @@ describe("build command", () => {
 			]);
 		};
 
-		it("should exit 1 on a warning, and still write the project file", async () => {
-			const logService = new MockLogService();
-
-			const result = await run(await withWarning(), logService, {
-				positionals: [],
-				options: { "deny-warnings": true },
-			});
-
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
-			expect(await fs.exists(abs("default.project.json"))).toBe(true);
-			expect(logService.lines.at(-1)).toMatch(
-				/1 warning.*--deny-warnings/
-			);
-		});
-
-		it("should exit 0 on a warning without the flag", async () => {
+		it("should exit 0, and write the project file", async () => {
 			const logService = new MockLogService();
 
 			const result = await run(await withWarning(), logService);
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.lines.at(-1)).toMatch(/1 warning/);
-			expect(logService.lines.at(-1)).not.toContain("--deny-warnings");
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+			expect(logService.lines.at(-1)).toMatch(/1 warning\.$/);
 		});
 
-		it("should exit 0 with the flag when there is no warning", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-
-			const logService = new MockLogService();
-
-			const result = await run(
-				new MockConfigService([buildable()]),
-				logService,
-				{ positionals: [], options: { "deny-warnings": true } }
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(logService.lines.at(-1)).not.toMatch(/warning/);
-		});
-
-		it("should still fail on errors", async () => {
-			const result = await run(
-				new MockConfigService([
-					brokenEntry([
-						errorDiagnostic(
-							"config.removedField",
-							{ resource: "/repo/rogen.json" },
-							"boom."
-						),
-					]),
-				]),
-				new MockLogService(),
-				{ positionals: [], options: { "deny-warnings": true } }
-			);
-
-			expect(result.isErr()).toBe(true);
-		});
-
-		it("should exit 1 with --json and keep the warning's severity and code", async () => {
+		it("should keep its severity and code under --json", async () => {
 			const logService = new MockLogService();
 
 			const result = await run(await withWarning(), logService, {
 				positionals: [],
-				options: { json: true, "deny-warnings": true },
+				options: { json: true },
 			});
 
-			expect(result.isErr() && result.error).toBeInstanceOf(
-				ReportedError
-			);
+			expect(result.isOk()).toBe(true);
 			const document = logService.json<{
 				configs: { diagnostics: unknown[] }[];
 			}>();
@@ -561,6 +510,7 @@ describe("build command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(document).toEqual({
+				changed: true,
 				configs: [
 					{
 						config: "repo",
@@ -586,6 +536,7 @@ describe("build command", () => {
 			);
 
 			expect(document.configs[0].outcome).toBe("unchanged");
+			expect(document.changed).toBe(false);
 		});
 
 		it("should list a config's warnings with their codes", async () => {
@@ -720,6 +671,7 @@ describe("build command", () => {
 				ReportedError
 			);
 			expect(document).toEqual({
+				changed: false,
 				configs: [
 					{
 						config: "repo",
@@ -771,16 +723,12 @@ describe("build command", () => {
 				"build",
 				"lobby",
 				"places/arena",
-				"--deny-warnings",
 				"--json"
 			).unwrap();
 
 			expect(command).toBe("build");
 			expect(line.positionals).toEqual(["lobby", "places/arena"]);
-			expect(line.options).toEqual({
-				"deny-warnings": true,
-				json: true,
-			});
+			expect(line.options).toEqual({ json: true });
 		});
 
 		it.each(["--variant", "--no-variant", "--mode"])(
@@ -791,7 +739,6 @@ describe("build command", () => {
 		);
 
 		it.each([
-			"-o",
 			"--out-file",
 			"--all",
 			"-c",
@@ -809,6 +756,260 @@ describe("build command", () => {
 			"--show-config",
 		])("should reject the old flag %s", (flag) => {
 			expect(parse("build", flag).isErr()).toBe(true);
+		});
+	});
+
+	describe("-o and -p", () => {
+		let processes: MockProcessService;
+
+		const withRojo = async (
+			options: CommandLine["options"],
+			config = new MockConfigService([buildable()])
+		) => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			const log = new MockLogService();
+			const running = commandHarness({
+				fs,
+				log,
+				config,
+				processes,
+			}).run("build", { positionals: [], options });
+			return { log, running };
+		};
+
+		const rojoStarted = async () => {
+			for (let i = 0; i < 50 && processes.spawned.length === 0; i++)
+				await new Promise((resolve) => setImmediate(resolve));
+			return processes.spawned[0];
+		};
+
+		beforeEach(() => {
+			processes = new MockProcessService();
+			processes.installed.set("rojo", "/bin/rojo");
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.7.1\n",
+				stderr: "",
+			});
+		});
+
+		it("should write the project file, then run Rojo's build on it with --output", async () => {
+			const { running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.exit({ code: 0, signal: null });
+
+			expect((await running).isOk()).toBe(true);
+			expect(rojo.file).toBe("/bin/rojo");
+			expect(rojo.args).toEqual([
+				"build",
+				"default.project.json",
+				"--output",
+				"game.rbxl",
+			]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		});
+
+		it("should pass --plugin for -p", async () => {
+			const { running } = await withRojo({ plugin: "Tool.rbxm" });
+			const rojo = await rojoStarted();
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(rojo.args.slice(2)).toEqual(["--plugin", "Tool.rbxm"]);
+		});
+
+		it("should show what Rojo said", async () => {
+			const { running, log } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("[WARN rojo] a warning\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "warn",
+				text: "Rojo: a warning",
+			});
+		});
+
+		it("should fail when Rojo fails", async () => {
+			const { running } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("ERROR: no such folder\n");
+			rojo.exit({ code: 1, signal: null });
+
+			const result = await running;
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"'rojo build' failed (exit code 1): no such folder"
+			);
+		});
+
+		it("should show the warnings Rojo printed before it failed, and its error once", async () => {
+			const { running, log } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("[WARN rojo] odd file\n");
+			rojo.print("ERROR: no such folder\n");
+			rojo.exit({ code: 1, signal: null });
+
+			await running;
+
+			expect(log.entries).toContainEqual({
+				kind: "warn",
+				text: "Rojo: odd file",
+			});
+			expect(
+				log.entries.filter(({ kind }) => kind === "error")
+			).toHaveLength(0);
+		});
+
+		it("should not run Rojo when the build has errors", async () => {
+			const { running } = await withRojo(
+				{ output: "g.rbxl" },
+				new MockConfigService([
+					brokenEntry([
+						errorDiagnostic(
+							"config.invalidSyntax",
+							{
+								resource: abs("rogen.json"),
+							},
+							"bad"
+						),
+					]),
+				])
+			);
+
+			expect((await running).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		describe("with --json", () => {
+			const document = (log: MockLogService) =>
+				JSON.parse(log.texts("print")[0]);
+
+			it("should tell Rojo's build beside the configs", async () => {
+				const { running, log } = await withRojo({
+					output: "game.rbxl",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.print("Built project to game.rbxl\n");
+				rojo.exit({ code: 0, signal: null });
+
+				expect((await running).isOk()).toBe(true);
+				expect(document(log).rojo).toEqual({
+					command: "build",
+					outcome: "built",
+					project: abs("default.project.json"),
+					output: abs("game.rbxl"),
+					messages: [
+						{
+							severity: "info",
+							text: "Built project to game.rbxl",
+						},
+					],
+				});
+				expect(document(log).configs).toHaveLength(1);
+			});
+
+			it("should tell a plugin by its name", async () => {
+				const { running, log } = await withRojo({
+					plugin: "Tool.rbxm",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.exit({ code: 0, signal: null });
+				await running;
+
+				expect(document(log).rojo).toMatchObject({
+					plugin: "Tool.rbxm",
+				});
+				expect(document(log).rojo.output).toBeUndefined();
+			});
+
+			it("should tell a failed Rojo with its diagnostic, and exit 1", async () => {
+				const { running, log } = await withRojo({
+					output: "g.rbxl",
+					json: true,
+				});
+				const rojo = await rojoStarted();
+				rojo.print("ERROR: no such folder\n");
+				rojo.exit({ code: 1, signal: null });
+
+				const result = await running;
+
+				expect(result.isErr()).toBe(true);
+				const { rojo: entry } = document(log);
+				expect(entry.outcome).toBe("failed");
+				expect(entry.messages).toEqual([
+					{ severity: "error", text: "no such folder" },
+				]);
+				expect(entry.diagnostics[0]).toMatchObject({
+					code: "rojo.commandFailed",
+					severity: "error",
+				});
+			});
+
+			it("should say Rojo did not run when the build had errors", async () => {
+				const { running, log } = await withRojo(
+					{ output: "g.rbxl", json: true },
+					new MockConfigService([
+						brokenEntry([
+							errorDiagnostic(
+								"config.invalidSyntax",
+								{ resource: abs("rogen.json") },
+								"bad"
+							),
+						]),
+					])
+				);
+
+				await running;
+
+				expect(document(log).rojo).toMatchObject({
+					outcome: "notRun",
+					project: null,
+					messages: [],
+				});
+			});
+
+			it("should leave rojo out when no output was asked for", async () => {
+				const { running, log } = await withRojo({ json: true });
+				await running;
+
+				expect(document(log).rojo).toBeUndefined();
+			});
+		});
+
+		it("should write nothing when several projects leave Rojo none to run on", async () => {
+			await fs.writeFile(abs("a/src/A.luau"), "");
+			await fs.writeFile(abs("b/src/A.luau"), "");
+			const { running } = await withRojo(
+				{ output: "g.rbxl" },
+				new MockConfigService([buildable({}, "a"), buildable({}, "b")])
+			);
+
+			const result = await running;
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"runs on one project, and this selects 2"
+			);
+			expect(await fs.exists(abs("a/default.project.json"))).toBe(false);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should refuse -o and -p together", async () => {
+			const { running } = await withRojo({ output: "a", plugin: "b" });
+
+			expect((await running).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should run no Rojo without -o or -p", async () => {
+			const { running } = await withRojo({});
+
+			expect((await running).isOk()).toBe(true);
+			expect(processes.spawned).toEqual([]);
 		});
 	});
 });

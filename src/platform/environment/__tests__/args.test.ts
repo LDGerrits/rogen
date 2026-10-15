@@ -3,12 +3,20 @@ import {
 	GlobalOptions,
 	OptionDescriptor,
 	JsonOption,
+	ColorOption,
 	hasFlag,
+	choiceIn,
 	parseArgs,
 } from "../args.js";
 
 const globals: OptionDescriptor[] = [
-	{ name: "verbose", short: "v", type: "boolean", description: "" },
+	{
+		name: "verbose",
+		short: "v",
+		type: "boolean",
+		multiple: true,
+		description: "",
+	},
 	{ name: "help", short: "h", type: "boolean", description: "" },
 	{ name: "version", short: "V", type: "boolean", description: "" },
 	{ name: "quiet", short: "q", type: "boolean", description: "" },
@@ -22,6 +30,14 @@ const buildOptions: OptionDescriptor[] = [
 		multiple: true,
 		description: "",
 	},
+	{ name: "hook", type: "boolean", negatable: true, description: "" },
+	{ name: "dry", type: "boolean", description: "" },
+	{
+		name: "listing",
+		type: "string",
+		values: ["glob", "folder", "file"],
+		description: "",
+	},
 ];
 
 const optionsFor = (command?: string) =>
@@ -31,7 +47,16 @@ const optionsFor = (command?: string) =>
 
 const commands = ["build", "watch", "help", "init"];
 
-const parse = (argv: string[]) => parseArgs(argv, optionsFor, commands);
+const formerOptionsFor = (command: string): Record<string, string> =>
+	command === "init"
+		? {
+				"--yes": "Use --non-interactive.",
+				"-y": "Use --non-interactive.",
+			}
+		: {};
+
+const parse = (argv: string[]) =>
+	parseArgs(argv, optionsFor, commands, formerOptionsFor);
 
 const values = (argv: string[]) => parse(argv).unwrap().line.options;
 
@@ -52,6 +77,46 @@ describe("parseArgs", () => {
 		expect(parsed.quiet).toBe(true);
 	});
 
+	describe("a negatable flag", () => {
+		it("should be true when given and false when negated", () => {
+			expect(values(["build", "--hook"]).hook).toBe(true);
+			expect(values(["build", "--no-hook"]).hook).toBe(false);
+			expect(values(["build"]).hook).toBeUndefined();
+		});
+
+		it("should not be negated when it isn't declared negatable", () => {
+			const result = parse(["build", "--no-dry"]);
+
+			expect(result.isErr() && result.error.message).toBe(
+				"Unknown option '--no-dry'. Did you mean '--dry'?"
+			);
+		});
+
+		it("should still be an unknown option when no flag has the name", () => {
+			const result = parse(["build", "--no-variant"]);
+
+			expect(result.isErr() && result.error.message).toContain(
+				"Unknown option '--no-variant'."
+			);
+		});
+	});
+
+	describe("an option with values", () => {
+		it("should take one of them", () => {
+			expect(values(["build", "--listing", "glob"]).listing).toBe("glob");
+		});
+
+		it("should refuse another as a usage error, naming the values with the closest first", () => {
+			const result = parse(["build", "--listing", "flder"]);
+
+			expect(result.isErr() && result.error).toBeInstanceOf(UsageError);
+			expect(result.isErr() && result.error).toMatchObject({
+				reason: "'flder' is not a value of '--listing'.",
+				hint: "The values are folder, glob and file.",
+			});
+		});
+	});
+
 	it("should take the command from the first positional, and leave the rest", () => {
 		const { command, line } = parse(["watch", "extra_arg"]).unwrap();
 
@@ -67,8 +132,46 @@ describe("parseArgs", () => {
 	});
 
 	it("should read -v as --verbose and -V as --version", () => {
-		expect(values(["build", "-v"]).verbose).toBe(true);
+		expect(values(["build", "-v"]).verbose).toEqual([true]);
 		expect(values(["build", "-V"]).version).toBe(true);
+	});
+
+	it("should count -v each time it is given", () => {
+		expect(values(["build", "-vv"]).verbose).toEqual([true, true]);
+		expect(values(["-v", "build", "--verbose"]).verbose).toEqual([
+			true,
+			true,
+		]);
+	});
+
+	it("should say a former option is gone, and what replaces it", () => {
+		const long = parse(["init", "--yes"]);
+		const short = parse(["init", "-y"]);
+
+		expect(long.isErr() && long.error).toMatchObject({
+			reason: "'--yes' is gone.",
+			hint: "Use --non-interactive.",
+		});
+		expect(short.isErr() && short.error).toMatchObject({
+			reason: "'-y' is gone.",
+		});
+	});
+
+	it("should call a former option unknown on another command", () => {
+		const result = parse(["build", "--yes"]);
+
+		expect(result.isErr() && result.error.message).toContain(
+			"Unknown option '--yes'."
+		);
+	});
+
+	it("should mark a line with no command, --help or --version as bare", () => {
+		expect(parse([]).unwrap().bare).toBe(true);
+		expect(parse(["-q"]).unwrap().bare).toBe(true);
+		expect(parse(["--help"]).unwrap().bare).toBe(false);
+		expect(parse(["-V"]).unwrap().bare).toBe(false);
+		expect(parse(["help"]).unwrap().bare).toBe(false);
+		expect(parse(["build"]).unwrap().bare).toBe(false);
 	});
 
 	it("should leave the positionals empty for a bare line", () => {
@@ -147,6 +250,7 @@ describe("parseArgs", () => {
 	it("should check a --help or --version line against the command it names", () => {
 		expect(parse(["build", "--variant", "a", "--help"]).unwrap()).toEqual({
 			command: "help",
+			bare: false,
 			line: {
 				positionals: ["build"],
 				options: { variant: ["a"], help: true },
@@ -174,7 +278,7 @@ describe("parseArgs", () => {
 		const result = parse(["--help", "--variant", "a"]);
 
 		expect(result.isErr() && result.error.message).toBe(
-			"'--variant' goes after a command: build takes it."
+			"'--variant' goes after a command. build takes it."
 		);
 	});
 
@@ -254,5 +358,25 @@ describe("hasFlag", () => {
 
 	it("should not see a flag that is absent", () => {
 		expect(hasFlag(["build", "lobby"], JsonOption)).toBe(false);
+	});
+});
+
+describe("choiceIn", () => {
+	it("should read a choice next to an option the parser rejects", () => {
+		expect(
+			choiceIn(["build", "--color", "never", "--bogus"], ColorOption)
+		).toBe("never");
+		expect(
+			choiceIn(["build", "--color=always", "--bogus"], ColorOption)
+		).toBe("always");
+	});
+
+	it("should read nothing for a value that isn't a choice, or after --", () => {
+		expect(
+			choiceIn(["build", "--color", "blue"], ColorOption)
+		).toBeUndefined();
+		expect(
+			choiceIn(["serve", "--", "--color", "never"], ColorOption)
+		).toBeUndefined();
 	});
 });

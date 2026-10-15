@@ -13,6 +13,7 @@ import {
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 
 const LISTING = "How do you want to list this place?";
+const PLACE_ID = "Place ID";
 
 describe("init for a place", () => {
 	const root = path.resolve("/mock/my-game");
@@ -23,7 +24,8 @@ describe("init for a place", () => {
 		positionals: string[],
 		answers: PromptScript = [],
 		interactive = false,
-		cwd = root
+		cwd = root,
+		options: Record<string, string | readonly string[]> = {}
 	) => {
 		log = new MockLogService();
 		const harness = commandHarness({
@@ -33,7 +35,7 @@ describe("init for a place", () => {
 			prompt: new MockPromptService(answers, interactive),
 			environment: new NativeEnvironmentService({}, cwd),
 		});
-		return harness.run("init", { positionals, options: {} });
+		return harness.run("init", { positionals, options });
 	};
 
 	const write = (file: string, content: unknown = "") =>
@@ -157,7 +159,11 @@ describe("init for a place", () => {
 	it("should ask whether to list the glob or the folder in a terminal", async () => {
 		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
 
-		await run(["places/lobby"], { [LISTING]: "folder" }, true);
+		await run(
+			["places/lobby"],
+			{ [LISTING]: "folder", [PLACE_ID]: "" },
+			true
+		);
 
 		expect((await readJson("rogen.json")).placePaths).toEqual([
 			"places/lobby",
@@ -167,13 +173,17 @@ describe("init for a place", () => {
 	it("should list the folder itself when it sits directly in the root", async () => {
 		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
 
-		await run(["lobby"], {}, true);
+		await run(["lobby"], { [PLACE_ID]: "" }, true);
 
 		expect((await readJson("rogen.json")).placePaths).toEqual(["lobby"]);
 	});
 
 	it("should write the place's own source paths when asked for others", async () => {
-		await run(["places/lobby"], { "Source paths": "code, dev" }, true);
+		await run(
+			["places/lobby"],
+			{ "Source paths": "code, dev", [PLACE_ID]: "" },
+			true
+		);
 
 		expect(await readJson("places/lobby/rogen.json")).toMatchObject({
 			sourcePaths: ["code", "dev"],
@@ -181,6 +191,73 @@ describe("init for a place", () => {
 		expect(
 			await memFs.isDirectory(path.join(root, "places/lobby/code"))
 		).toBe(true);
+	});
+
+	describe("the place ID", () => {
+		it("should ask for it once in a terminal, and pin it as servePlaceIds", async () => {
+			await run(["places/lobby"], { [PLACE_ID]: "1818" }, true);
+
+			expect(await readJson("places/lobby/rogen.json")).toMatchObject({
+				servePort: 34872,
+				servePlaceIds: [1818],
+			});
+			expect(log.texts("info").join("\n")).not.toContain("--place-id");
+		});
+
+		it("should take several, separated by commas", async () => {
+			await run(["places/lobby"], { [PLACE_ID]: "1818, 2020" }, true);
+
+			expect(
+				(await readJson("places/lobby/rogen.json")).servePlaceIds
+			).toEqual([1818, 2020]);
+		});
+
+		it("should write none when the answer is empty, for a place that isn't published", async () => {
+			await run(["places/lobby"], { [PLACE_ID]: "" }, true);
+
+			expect(
+				await readJson("places/lobby/rogen.json")
+			).not.toHaveProperty("servePlaceIds");
+		});
+
+		it("should refuse a place ID that is not a number", async () => {
+			await expect(
+				run(["places/lobby"], { [PLACE_ID]: "lobby" }, true)
+			).rejects.toThrow("rejected");
+		});
+
+		it("should skip it without a terminal, and say which flag gives one", async () => {
+			await run(["places/lobby"]);
+
+			expect(
+				await readJson("places/lobby/rogen.json")
+			).not.toHaveProperty("servePlaceIds");
+			expect(log.texts("info").join("\n")).toContain(
+				", --place-id none."
+			);
+		});
+
+		it("should take it from --place-id, and ask nothing", async () => {
+			await run(["places/lobby"], [], false, root, {
+				"place-id": ["1818"],
+			});
+
+			expect(
+				(await readJson("places/lobby/rogen.json")).servePlaceIds
+			).toEqual([1818]);
+			expect(log.texts("info").join("\n")).not.toContain("--place-id");
+		});
+
+		it("should write nothing when the user cancels it", async () => {
+			const result = await run(
+				["places/lobby"],
+				{ [PLACE_ID]: CANCEL },
+				true
+			);
+
+			expect(result.isErr()).toBe(true);
+			expect(await exists("places/lobby/rogen.json")).toBe(false);
+		});
 	});
 
 	it("should write nothing when the user cancels", async () => {
@@ -254,6 +331,24 @@ describe("init for a place", () => {
 		);
 		expect(log.texts("info").join("\n")).toContain(
 			"lobby is served on port 34872"
+		);
+	});
+
+	describe("a flag for a place", () => {
+		it.each([
+			["place-id", ["1818"], "--place-id"],
+			["place-listing", "folder", "--place-listing"],
+		])(
+			"should refuse --%s when no place folder is given",
+			async (name, value, flag) => {
+				const result = await run([], [], false, root, {
+					[name]: value,
+				});
+
+				expect(failure(result).message).toContain(
+					`${flag} is for a place folder`
+				);
+			}
 		);
 	});
 

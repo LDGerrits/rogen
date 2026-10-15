@@ -9,7 +9,7 @@ Each **build** turns your source paths into one **project**: the Rojo project fi
 
 ## Output
 
-The output is `default.project.json`, beside the `rogen.json` that describes it, and a `<name>.project.json` for each of its [projects](/docs/v2/configuration#projects). It is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. It carries a `$schema` that says it was written from `rogen.json`, and `name` only when `rogen.json` sets one. Rojo names the project after its folder otherwise. A project's file always carries a `name`, the config's or the folder's, since Rojo can't open a project file without one.
+The output is `default.project.json`, beside the `rogen.json` that describes it, and a `<name>.project.json` for each of its [projects](/docs/v2/configuration#projects). It is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. It carries `name` only when `rogen.json` sets one. Rojo names the project after its folder otherwise. A project's file always carries a `name`, the config's or the folder's, since Rojo can't open a project file without one.
 
 Every other Rojo key in `rogen.json` (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
 
@@ -60,19 +60,16 @@ A few things to keep in mind:
 
 ## Place Files
 
-Rogen writes the project file, not the place file. To get an `.rbxl` or `.rbxm` for publishing or a test run, build the project file with Rojo:
+Rogen writes the project files, and `-o` has Rojo make a place or model file from one of them, as `rojo build` does:
 
 ```bash
-rogen build
-rojo build default.project.json -o game.rbxl
+rogen build -o game.rbxl
 ```
 
-Rojo, and not Rogen, runs the second command, and `rogen build` needs no Rojo to run. Which Rojo version builds the file is yours to pin in `rokit.toml`.
+It writes every project file first and then runs the Rojo your toolchain file pins on `default.project.json`, so the place always matches the files. Name another project to build that one: a place that differs from your default build, such as one with the specs in it or without the dev packages, is a [project](/docs/v2/configuration#projects), built with `rogen build release -o game.rbxl`. See [Testing](/docs/v2/testing). `-p Tool.rbxm` builds a plugin into Roblox's plugins folder, and `rogen upload` uploads the place. Without `-o`, `rogen build` needs no Rojo, and running `rojo build default.project.json -o game.rbxl` yourself after it works the same.
 
 With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first, so the place holds the compiled code the `syncPath` points at.
 
-A place that differs from your default build, such as one with the specs in it or without the dev packages, is a [project](/docs/v2/configuration#projects): `rojo build release.project.json -o game.rbxl`. See [Testing](/docs/v2/testing).
-
 ## Building While Watching
 
-It's safe to run `rogen build` while `rogen watch` or `rogen serve` writes the same file, so you can always run a build after moving files and trust the result. What a build writes depends only on your files and config, so it matches what the running command writes.
+It's safe to run `rogen build` while `rogen build --watch` or `rogen serve` writes the same file, so you can always run a build after moving files and trust the result. What a build writes depends only on your files and config, so it matches what the running command writes.

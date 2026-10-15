@@ -1,0 +1,81 @@
+$ rogen init --json --source-path lib --route server --agent-hook --no-agent-rules
+exit 0
+stdout:
+  {
+    "changed": true,
+    "files": [
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/.agents/hooks/rogen-check.sh",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/.claude/settings.json",
+        "outcome": "wrote"
+      }
+    ],
+    "directories": [],
+    "decided": [
+      {
+        "question": "language",
+        "value": "luau",
+        "flag": "--language"
+      },
+      {
+        "question": "darklua",
+        "value": false,
+        "flag": "--darklua"
+      },
+      {
+        "question": "unmatched",
+        "value": "shared",
+        "flag": "--unmatched"
+      }
+    ],
+    "built": [
+      {
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "notes": [],
+    "nextSteps": {
+      "setup": [
+        "The hook needs bash, git and jq; on Windows, winget install jqlang.jq."
+      ],
+      "run": [
+        "rogen serve"
+      ],
+      "darklua": [],
+      "edits": [
+        "Add your own routes under \"routes\" in rogen.json."
+      ]
+    }
+  }
+
+written:
+  .agents/hooks/rogen-check.sh
+  .claude/settings.json
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"tree": {
+		"$className": "DataModel"
+	},
+	"sourcePaths": [
+		"lib"
+	],
+	"routes": {
+		"Server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

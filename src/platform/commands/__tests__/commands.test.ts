@@ -23,7 +23,10 @@ import { ServiceCollection } from "../../instantiation/service-collection.js";
 function command(id: string): Command {
 	return {
 		id,
-		metadata: { description: `Test command ${id}` },
+		metadata: {
+			summary: "Does a thing",
+			description: `Test command ${id}`,
+		},
 		handler: async () => ok(undefined),
 	};
 }
@@ -31,7 +34,7 @@ function command(id: string): Command {
 function withOptions(id: string, options: OptionDescriptor[]): Command {
 	return {
 		...command(id),
-		metadata: { description: id, options },
+		metadata: { summary: "Does a thing", description: id, options },
 	};
 }
 
@@ -163,6 +166,31 @@ describe("CommandRegistry", () => {
 		});
 	});
 
+	describe("getFormerOptions", () => {
+		const formerly = (
+			id: string,
+			formerOptions: Record<string, string>
+		) => ({
+			...command(id),
+			metadata: { summary: id, description: id, formerOptions },
+		});
+
+		it("should give what the command says of its former options, and nothing of another's", () => {
+			store.add(
+				registry.registerCommand(
+					formerly("a", { "--old": "Use --new." })
+				)
+			);
+			store.add(registry.registerCommand(command("b")));
+
+			expect(registry.getFormerOptions("a")).toEqual({
+				"--old": "Use --new.",
+			});
+			expect(registry.getFormerOptions("b")).toEqual({});
+			expect(registry.getFormerOptions("none")).toEqual({});
+		});
+	});
+
 	describe("registerCommand option validation", () => {
 		it("should throw when a short flag is already bound to another option", () => {
 			const clash: OptionDescriptor = {
@@ -221,7 +249,10 @@ describe("registerCommand", () => {
 
 	class EchoCommand extends AbstractCommand {
 		constructor() {
-			super({ id: "echo", metadata: { description: "Echoes." } });
+			super({
+				id: "echo",
+				metadata: { summary: "Does a thing", description: "Echoes." },
+			});
 		}
 
 		async run(accessor: ServicesAccessor, line: CommandLine<readonly []>) {
@@ -240,6 +271,7 @@ describe("registerCommand", () => {
 		store.add(registerCommand(EchoCommand));
 
 		expect(registry.getCommand("echo")?.metadata).toEqual({
+			summary: "Does a thing",
 			description: "Echoes.",
 		});
 	});
@@ -267,7 +299,13 @@ describe("registerCommand", () => {
 describe("AbstractCommand", () => {
 	class JsonCommand extends AbstractCommand {
 		constructor() {
-			super({ id: "json", metadata: { description: "Prints JSON." } });
+			super({
+				id: "json",
+				metadata: {
+					summary: "Does a thing",
+					description: "Prints JSON.",
+				},
+			});
 		}
 
 		async run() {
@@ -287,7 +325,7 @@ describe("AbstractCommand", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(logService.entries.map(({ text }) => text)).toEqual([
-				'{\n  "done": true\n}',
+				'{"done":true}',
 			]);
 		});
 

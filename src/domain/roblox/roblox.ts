@@ -53,7 +53,9 @@ export function scriptFate(
 	return instancePath[0] === SCRIPT_STORAGE_SERVICE ? "stored" : "neverRuns";
 }
 
-function isPlayerScriptContainer(instancePath: readonly string[]): boolean {
+export function isPlayerScriptContainer(
+	instancePath: readonly string[]
+): boolean {
 	const [service, child] = instancePath;
 	return (
 		service === "StarterPlayer" && PLAYER_SCRIPT_CONTAINERS.includes(child)

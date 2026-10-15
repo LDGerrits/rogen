@@ -6,7 +6,6 @@ import { SUPPORTED_SERVICES } from "../../roblox/supported-services.js";
 import {
 	configRemovedFieldAdvice,
 	configSchema,
-	projectFileSchema,
 	rogenKeys,
 	rojoKeys,
 } from "../config-schema.js";
@@ -49,10 +48,10 @@ describe("domain/config/config-schema", () => {
 				expect([...rogenKeys].sort()).toEqual([...ROGEN_FIELDS].sort());
 			});
 
-			it("lets a project change any key but the schema's, projects', serveProject's and placePaths', and remove each with null", () => {
+			it("lets a project change any key but the schema's, projects', serveProject's and placePaths'", () => {
 				const projects = schema.properties!.projects
 					.additionalProperties as {
-					properties: Record<string, { type?: string | string[] }>;
+					properties: Record<string, unknown>;
 				};
 
 				expect(Object.keys(projects.properties).sort()).toEqual(
@@ -67,25 +66,6 @@ describe("domain/config/config-schema", () => {
 								].includes(field)
 						)
 						.sort()
-				);
-				for (const field of Object.values(projects.properties))
-					expect([field.type].flat()).toContain("null");
-			});
-
-			it("lets a project remove a route and a node of the tree with null", () => {
-				const { properties } = schema.properties!.projects
-					.additionalProperties as {
-					properties: Record<
-						string,
-						{ additionalProperties: { type: string[] } }
-					>;
-				};
-
-				expect(properties.routes.additionalProperties.type).toContain(
-					"null"
-				);
-				expect(properties.tree.additionalProperties.type).toContain(
-					"null"
 				);
 			});
 
@@ -136,19 +116,6 @@ describe("domain/config/config-schema", () => {
 			for (const field of ROGEN_FIELDS) {
 				expect(schema.properties![field].description).toBeTruthy();
 			}
-		});
-	});
-
-	describe("projectFileSchema", () => {
-		it("declares only Rojo's keys", () => {
-			expect(Object.keys(projectFileSchema.properties!).sort()).toEqual(
-				[...rojoKeys].sort()
-			);
-			expect(projectFileSchema.additionalProperties).toBe(false);
-		});
-
-		it("says the file is written from a rogen.json", () => {
-			expect(projectFileSchema.description).toContain("rogen.json");
 		});
 	});
 
@@ -233,13 +200,13 @@ describe("domain/config/config-schema", () => {
 			});
 		});
 
-		it("names the replacement of exclude, and of a mounted node", () => {
+		it("names the replacement of exclude, and what it does to a mount", () => {
 			expect(
 				configRemovedFieldAdvice("exclude", location)?.message
 			).toContain('"globIgnorePaths"');
 			expect(
 				configRemovedFieldAdvice("exclude", location)?.message
-			).toContain("null in a project");
+			).toContain("leaves out a mount");
 		});
 
 		it("leaves any other field to the unknown field warning", () => {

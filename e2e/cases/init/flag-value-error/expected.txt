@@ -1,0 +1,43 @@
+$ rogen init --json --language lua
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "'lua' is not a language.",
+      "hint": "The values of --language are luau and roblox-ts."
+    }
+  }
+
+$ rogen init --json --place-listing flder
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "'flder' is not a value of '--place-listing'.",
+      "hint": "The values are folder and glob."
+    }
+  }
+
+$ rogen init --json --no-json
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "Unknown option '--no-json'.",
+      "hint": "Did you mean '--json'?"
+    }
+  }
+
+$ rogen init --json --agent-hook
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "There is no hook to add.",
+      "hint": "No coding agent folder here (.claude, .codex, .cursor, ...) was found."
+    }
+  }

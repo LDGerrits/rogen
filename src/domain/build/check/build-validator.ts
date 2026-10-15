@@ -513,19 +513,27 @@ export class BuildValidator {
 	}
 
 	private runContextTarget(): Diagnostic[] {
-		if (!this.placement.tree.disablesLegacyScripts) return [];
-		const routes = [...this.config.routes]
-			.filter(([, target]) => target.isPlayerScripts)
-			.map(([key, target]) => `"${key}" → ${target}`);
-		return routes.length > 0
-			? [
-					warningDiagnostic(
-						"tree.runContextTarget",
-						{ resource: this.config.projectFile },
-						`emitLegacyScripts: false in the tree isn't supported with routes that target StarterPlayerScripts or StarterCharacterScripts (${routes.join(", ")}). Route ${routes.length === 1 ? "it" : "them"} to another service, or remove emitLegacyScripts from the tree.`
-					),
+		const { inits } = this.placement.playerClientScripts;
+		if (inits.length === 0) return [];
+		const listed = inits.map(
+			({ entry, instancePath }) =>
+				`  ${entry.source} -> ${instanceKey(instancePath)}`
+		);
+		return [
+			this.grouped(
+				"tree.runContextTarget",
+				`emitLegacyScripts: false makes ${inits.length === 1 ? "an init script" : "init scripts"} in StarterPlayerScripts or StarterCharacterScripts ${inits.length === 1 ? "a Script" : "Scripts"} with RunContext Client, because Rojo reads init scripts without sync rules:`,
+				listed,
+				inits.map(({ entry }) => ({
+					resource: entry.source,
+					message:
+						"an init script that sync rules can't keep a LocalScript",
+				})),
+				[
+					"Route the folder to another service, or remove emitLegacyScripts from the config.",
 				]
-			: [];
+			),
+		];
 	}
 
 	private nodeClash(): Diagnostic[] {

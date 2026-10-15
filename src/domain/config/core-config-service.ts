@@ -7,6 +7,8 @@ import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
+import { ConfigFormatter } from "./config-formatter.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "./config-discovery.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
@@ -15,6 +17,7 @@ import {
 	ReloadableSelection,
 	ConfigService,
 	EnclosingConfigs,
+	NamedProjects,
 	buildableProjects,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
@@ -25,6 +28,7 @@ export class CoreConfigService implements ConfigService {
 
 	private readonly discovery: ConfigDiscovery;
 	private readonly loader: ConfigLoader;
+	private readonly formatter: ConfigFormatter;
 
 	constructor(
 		fileSystemService: FileSystemService,
@@ -35,6 +39,11 @@ export class CoreConfigService implements ConfigService {
 			environmentService
 		);
 		this.loader = new ConfigLoader(fileSystemService);
+		this.formatter = new ConfigFormatter(fileSystemService);
+	}
+
+	format(file: string): Promise<Result<boolean, Diagnostic[]>> {
+		return this.formatter.format(file);
 	}
 
 	async select(
@@ -81,11 +90,11 @@ export class CoreConfigService implements ConfigService {
 
 	private missingProject(
 		opened: readonly ManagedConfig[],
-		projects: ReadonlyMap<string, string>,
+		projects: ReadonlyMap<string, NamedProjects>,
 		scopes: ReadonlyMap<string, readonly string[]>
 	): UsageError | undefined {
 		for (const config of opened) {
-			const project = projects.get(config.file);
+			const names = projects.get(config.file)?.names ?? [];
 			const stems = [
 				...new Set(
 					buildableProjects({
@@ -94,10 +103,11 @@ export class CoreConfigService implements ConfigService {
 					}).map(({ stem }) => stem)
 				),
 			];
-			if (project === undefined || stems.length === 0) continue;
-			if (!stems.includes(project))
+			const project = names.find((name) => !stems.includes(name));
+			if (project !== undefined && stems.length > 0)
 				return new UsageError(
-					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}. Name a folder with a rogen.json, a *.project.json path, or one of them.`
+					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}.`,
+					"Name a folder with a rogen.json, a *.project.json path, or one of them."
 				);
 		}
 		return undefined;

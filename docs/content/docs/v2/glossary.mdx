@@ -18,15 +18,15 @@ description: The terms Rogen's docs use, and where each one is explained.
 - **Tree**: The instance tree in `rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
 - **Project file**: A Rojo project file Rogen writes beside the `rogen.json` it comes from: `default.project.json`, and one `<name>.project.json` for each project. Rogen owns them. See [Output and Sync](/docs/v2/core-concepts/output#output).
-- **Project**: A variation of the config with some keys changed, written as `<name>.project.json` and listed under `projects`. `default` is the config itself, `serveProject` names the one `rogen serve` serves, and `null` removes a key. See [Projects](/docs/v2/configuration#projects).
+- **Project**: A variation of the config with some keys changed, written as `<name>.project.json` and listed under `projects`. `default` is the config itself, and `serveProject` names the one `rogen serve` serves. See [Projects](/docs/v2/configuration#projects).
 
 - **Place**: A folder that a config lists in `placePaths`. It inherits the config, adds its own `sourcePaths`, and writes its project files in its own folder. A folder with no `rogen.json` is a place named after the folder. See [Places](/docs/v2/configuration#places).
 
 - **Build**: One complete run that turns the source paths into a project. See [CLI](/docs/v2/cli#build-project).
 
-- **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#watch-project).
+- **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#build---watch).
 
-- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager a project uses. `init` detects it once. See [CLI](/docs/v2/cli#init).
+- **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager a project uses. `init` detects it once. See [CLI](/docs/v2/cli#init-path).
 
 - **Processor**: A tool such as Darklua that rewrites your code into a folder of its own before Rojo syncs it. See the [Darklua guide](/docs/v2/setups/darklua).
 

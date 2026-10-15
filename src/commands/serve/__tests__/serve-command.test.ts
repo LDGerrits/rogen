@@ -359,6 +359,8 @@ describe("serve command", () => {
 					connected: {
 						config: "repo",
 						server: "rojo",
+						project: "repo",
+						port: 34872,
 						clients: 1,
 					},
 				},
@@ -366,6 +368,8 @@ describe("serve command", () => {
 					disconnected: {
 						config: "repo",
 						server: "rojo",
+						project: "repo",
+						port: 34872,
 						clients: 0,
 					},
 				},
@@ -534,9 +538,9 @@ describe("serve command", () => {
 				"info: Stopped serving lobby at 127.0.0.1:34900: its address changed."
 			);
 			expect(processes.spawned.map(({ args }) => args)).toEqual([
-				["serve", "default.project.json"],
-				["serve", "lobby/default.project.json"],
-				["serve", "lobby/default.project.json"],
+				["serve", "default.project.json", "--port", "34872"],
+				["serve", "lobby/default.project.json", "--port", "34900"],
+				["serve", "lobby/default.project.json", "--port", "34901"],
 			]);
 		});
 
@@ -606,7 +610,7 @@ describe("serve command", () => {
 				expect.objectContaining({
 					code: "serve.noServer",
 					message: expect.stringContaining(
-						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them."
+						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them."
 					),
 				}),
 			],
@@ -643,7 +647,11 @@ describe("serve command", () => {
 		await failureOf(serve([], { json: true }));
 
 		expect(
-			printed().filter((line) => line.error === "no access")
+			printed().filter((line) =>
+				(line.error as { message?: string })?.message?.startsWith(
+					"no access"
+				)
+			)
 		).toHaveLength(1);
 	});
 
@@ -684,6 +692,96 @@ describe("serve command", () => {
 		]);
 	});
 
+	it("should pass --address, --port and --allowed-hosts to the server before the words after --", async () => {
+		void serve(
+			[],
+			{
+				address: "0.0.0.0",
+				port: "40000",
+				"allowed-hosts": ["studio.local", "pc.lan"],
+			},
+			["--log-level", "x"]
+		);
+		await settle();
+
+		expect(processes.spawned[0].args).toEqual([
+			"serve",
+			"default.project.json",
+			"--address",
+			"0.0.0.0",
+			"--port",
+			"40000",
+			"--allowed-hosts",
+			"studio.local",
+			"--allowed-hosts",
+			"pc.lan",
+			"--log-level",
+			"x",
+		]);
+	});
+
+	it("should refuse a flag given both as an option and after --, starting nothing", async () => {
+		const error = await failureOf(
+			serve([], { port: "40000" }, ["--port=40001"])
+		);
+
+		expect(error.message).toBe(
+			"--port is given twice, as an option and after '--'. Give it once."
+		);
+		expect(processes.spawned).toEqual([]);
+	});
+
+	it("should start one server for each project named, each on its own port", async () => {
+		await memFs.writeFile(
+			"/repo/lobby/rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
+				servePort: 40001,
+			})
+		);
+
+		void serve([".", "lobby"], { json: true });
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+		});
+		requests.answer("http://127.0.0.1:40001/api/rojo", {
+			projectName: "lobby",
+			serverVersion: "7.7.1",
+		});
+		await settle();
+
+		expect(processes.spawned.map(({ args }) => args)).toEqual([
+			["serve", "default.project.json", "--port", "34872"],
+			["serve", "lobby/default.project.json", "--port", "40001"],
+		]);
+		expect(
+			printed().flatMap(({ serving }) =>
+				serving ? [[serving.config, serving.port]] : []
+			)
+		).toEqual([
+			["repo", 34872],
+			["lobby", 40001],
+		]);
+	});
+
+	it("should refuse --port for several projects, starting none", async () => {
+		await memFs.writeFile(
+			"/repo/lobby/rogen.json",
+			JSON.stringify({
+				sourcePaths: ["../src"],
+				routes: { "*": "Workspace" },
+			})
+		);
+
+		const error = await failureOf(serve([".", "lobby"], { port: "40000" }));
+
+		expect(error.message).toContain("--port names one server's port");
+		expect(processes.spawned).toEqual([]);
+	});
+
 	it("should serve the named project, and build only that one", async () => {
 		await memFs.writeFile(
 			"/repo/lobby/rogen.json",
@@ -699,6 +797,8 @@ describe("serve command", () => {
 		expect(processes.spawned[0].args).toEqual([
 			"serve",
 			"lobby/default.project.json",
+			"--port",
+			"34872",
 		]);
 		expect(await memFs.exists("/repo/lobby/default.project.json")).toBe(
 			true

@@ -1,4 +1,9 @@
-import { CancelledError, ErrorUtils, UsageError } from "../../base/errors.js";
+import {
+	CancelledError,
+	ErrorKinds,
+	ErrorUtils,
+	errorKind,
+} from "../../base/errors.js";
 import { DiagnosticsError } from "../diagnostics/diagnostics-error.js";
 import { LogService } from "../log/log-service.js";
 import { failureToJson } from "../diagnostics/diagnostic-json.js";
@@ -15,7 +20,11 @@ export class CommandFailure {
 	private report(error: Error, command?: string): void {
 		if (error instanceof ReportedError) return;
 		if (this.json) {
-			this.logService.print(JSON.stringify(failureToJson(error)));
+			const cause =
+				error instanceof ExitCodeError
+					? ErrorUtils.fromUnknown(error.cause)
+					: error;
+			this.logService.print(JSON.stringify(failureToJson(cause)));
 			return;
 		}
 		if (error instanceof CancelledError) {
@@ -47,9 +56,9 @@ export class CommandFailure {
 	}
 }
 
-/** The exit code of a run that failed with `error`: the one it carries, else 2 when the command line is wrong and 1 when the project is. */
+/** The exit code of a run that failed with `error`: the one it carries, else the one its kind ends with. */
 export function exitCodeOf(error: Error): number {
 	const cause = error instanceof ReportedError ? error.cause : error;
 	if (cause instanceof ExitCodeError) return cause.exitCode;
-	return cause instanceof UsageError ? 2 : 1;
+	return ErrorKinds[errorKind(ErrorUtils.fromUnknown(cause))].exitCode;
 }

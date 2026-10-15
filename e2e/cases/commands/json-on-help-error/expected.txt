@@ -1,4 +1,0 @@
-$ rogen help --json
-exit 2
-stdout:
-  {"error":"help doesn't take '--json'. build, check, init, list, serve, watch and where do."}

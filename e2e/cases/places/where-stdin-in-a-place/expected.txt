@@ -1,0 +1,8 @@
+$ rogen where -
+stdin:
+  ServerScriptService.Main:9: attempt to index nil
+  ReplicatedStorage.Shared.Common.Util:4: attempt to call nil
+exit 0
+stdout:
+  src/Main.server.luau:9: attempt to index nil
+  ../../src/Common/Util.luau:4: attempt to call nil

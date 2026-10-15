@@ -165,9 +165,9 @@ export abstract class AbstractLogService implements LogService {
 			this.write("annotation", line);
 	}
 
-	diagnostic(diagnostic: Diagnostic, failing = false): void {
+	diagnostic(diagnostic: Diagnostic): void {
 		const isError = diagnostic.severity === DiagnosticSeverity.Error;
-		if (this.canLog(isError || failing ? LogLevel.Error : LogLevel.Warn))
+		if (this.canLog(isError ? LogLevel.Error : LogLevel.Warn))
 			this.write(
 				isError ? "diagnosticError" : "diagnosticWarning",
 				renderDiagnostic(diagnostic, this.cwd)

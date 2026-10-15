@@ -18,6 +18,7 @@ import {
 import { LifecycleService } from "../lifecycle/lifecycle-service.js";
 import { LogService } from "../log/log-service.js";
 import { Registry } from "../registry/registry.js";
+import { OutputDeclaration } from "../output/output-shape.js";
 
 /** A failure already reported in full; only the exit code is left to set. */
 export class ReportedError extends Error {
@@ -61,15 +62,25 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
+/** What a run of a command can do beyond printing; a command that does none of them is read-only. `longRunning` is not declared here, since a command says it with `longRunning` and `longRunningWith`. */
+export type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
+
 interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
+	/** One line for the list of commands in the root help, without a full stop, as Rojo's are. */
+	readonly summary: string;
 	readonly description: string;
 	readonly args?: readonly {
 		readonly name: string;
 		readonly description: string;
 		readonly isOptional?: boolean;
 		readonly isVariadic?: boolean;
+		/** For a word that picks what to do, as `install` does for `plugin`: help lists them as subcommands. */
+		readonly subcommands?: readonly {
+			readonly name: string;
+			readonly description: string;
+		}[];
 	}[];
 	readonly options?: O;
 	/** What the words after `--` are for; a command without it takes none. */
@@ -78,10 +89,20 @@ interface CommandMetadata<
 		readonly description: string;
 	};
 	readonly examples?: readonly string[];
+	/** The JSON this command prints with `--json`; a command with a `--json` option declares it. */
+	readonly output?: OutputDeclaration;
+	/** What it can do beyond printing, declared by every command: `[]` for one that only reads. */
+	readonly effects?: readonly CommandEffect[];
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
 	readonly unknownWordOffer?: string;
 	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */
 	readonly longRunning?: boolean;
+	/** The boolean option that makes the command run until it is stopped, as `longRunning` says of every run. */
+	readonly longRunningWith?: string;
+	/** What to say of a first word that was a command and now is a flag or another command, by that word. */
+	readonly formerCommands?: Readonly<Record<string, string>>;
+	/** What to say of an option this command used to take, by the name as typed (`--yes`, `-y`): what replaces it. */
+	readonly formerOptions?: Readonly<Record<string, string>>;
 }
 
 export interface CommandRegistry {
@@ -90,6 +111,8 @@ export interface CommandRegistry {
 	getCommand(id: string): Command | undefined;
 	getCommands(): ReadonlyMap<string, Command>;
 	getOptions(commandId?: string): readonly OptionDescriptor[];
+	/** What a command says of the options it used to take, by the name as typed. */
+	getFormerOptions(commandId: string): Readonly<Record<string, string>>;
 }
 
 function sameOption(a: OptionDescriptor, b: OptionDescriptor): boolean {
@@ -148,6 +171,10 @@ class CoreCommandRegistry implements CommandRegistry {
 
 	getCommands(): ReadonlyMap<string, Command> {
 		return new Map(this.commands);
+	}
+
+	getFormerOptions(commandId: string): Readonly<Record<string, string>> {
+		return this.commands.get(commandId)?.metadata.formerOptions ?? {};
 	}
 
 	getOptions(commandId?: string): readonly OptionDescriptor[] {

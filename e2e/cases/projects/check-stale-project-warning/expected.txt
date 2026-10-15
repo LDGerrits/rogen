@@ -1,4 +1,4 @@
 $ rogen check
 exit 1
 stdout:
-  dist.project.json - warning: this file differs from what 'rogen build' would write. Run 'rogen build' to bring it up to date. (output.differs)
+  dist.project.json - warning: this file differs from what 'rogen build' would write. It is written from rogen.json, so edit that and run 'rogen build'. (output.differs)

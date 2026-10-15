@@ -56,28 +56,6 @@ const node: JSONSchema = {
 const numbers: JSONSchema = { type: "array", items: { type: "number" } };
 const strings: JSONSchema = { type: "array", items: { type: "string" } };
 
-function removable(schema: JSONSchema): JSONSchema {
-	const types = [schema.type ?? []].flat();
-	return {
-		...schema,
-		...(types.length > 0 && !types.includes("null")
-			? { type: [...types, "null"] }
-			: {}),
-		...(schema.properties
-			? {
-					properties: Object.fromEntries(
-						Object.entries(schema.properties).map(
-							([key, value]) => [key, removable(value)]
-						)
-					),
-				}
-			: {}),
-		...(typeof schema.additionalProperties === "object"
-			? { additionalProperties: removable(schema.additionalProperties) }
-			: {}),
-	};
-}
-
 const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	$schema: {
 		type: "string",
@@ -131,7 +109,8 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 		description:
 			"Globs, relative to this file's folder, of files Rojo " +
 			"ignores. Rogen keeps them out of routing too, and writes " +
-			"them for Rojo.",
+			"them for Rojo. A mount of the tree whose folder or file a " +
+			'glob names, or covers with "/**", is left out of the tree.',
 	},
 	syncRules: {
 		type: "array",
@@ -190,11 +169,12 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 			"plain Luau.",
 	},
 };
+
 const projectChangeSchemas: Readonly<Record<string, JSONSchema>> =
 	Object.fromEntries(
-		Object.entries({ ...rojoFields, ...rogenSchemas })
-			.filter(([key]) => key !== "$schema")
-			.map(([key, schema]) => [key, removable(schema)])
+		Object.entries({ ...rojoFields, ...rogenSchemas }).filter(
+			([key]) => key !== "$schema"
+		)
 	);
 
 const projectsSchema: JSONSchema = {
@@ -203,9 +183,8 @@ const projectsSchema: JSONSchema = {
 		"Other project files to write beside default.project.json, each " +
 		"named for its file: dist writes dist.project.json. A project is " +
 		"the description with the keys it sets changed: a list replaces " +
-		"the list, routes, tree and the nodes below them merge by key, " +
-		"and null removes a key. default is the description itself and " +
-		"can't be a project name.",
+		"the list, routes, tree and the nodes below them merge by key. " +
+		"default is the description itself and can't be a project name.",
 	additionalProperties: {
 		type: "object",
 		properties: projectChangeSchemas,
@@ -242,19 +221,10 @@ export const configSchema: JSONSchema = {
 	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
 };
 
-export const projectFileSchema: JSONSchema = {
-	type: "object",
-	description:
-		"A Rojo project file that Rogen wrote from a rogen.json. Edit the " +
-		"rogen.json, not this file: the next build overwrites it.",
-	additionalProperties: false,
-	properties: rojoFields,
-};
-
 const removedFields: Readonly<Record<string, string>> = {
 	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
 	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",
-	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen watch' to keep the project files current and 'argon serve' beside it.",
+	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later source path, which wins a clash.",
 	conflicts:
@@ -265,7 +235,7 @@ const removedFields: Readonly<Record<string, string>> = {
 		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
 	outFile: "Rogen writes default.project.json beside rogen.json.",
 	exclude:
-		'"globIgnorePaths" keeps files out of routing, and Rogen writes it for Rojo. To drop a mounted node, set it to null in a project under "projects".',
+		'"globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo.',
 	rootDirs: 'It is called "sourcePaths" now.',
 	syncDir: 'It is called "syncPath" now.',
 };

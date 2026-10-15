@@ -82,11 +82,11 @@ describe("ServerFinder", () => {
 		expect(diagnostic.code).toBe("serve.noServer");
 		expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rojo plugin install' to install its Studio plugin."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
-			{ run: { command: "rojo plugin install", cwd: "/repo/game" } },
+			{ run: { command: "rogen plugin install", cwd: "/repo/game" } },
 		]);
 	});
 
@@ -112,7 +112,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.code).toBe("serve.noServer");
 		expect(diagnostic.message).toContain(
-			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen watch' to keep the project files current, and 'argon serve' to serve them."
+			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them."
 		);
 	});
 
@@ -126,10 +126,10 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rojo plugin install' to install its Studio plugin."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin."
 		);
 		expect(diagnostic.fixes).toEqual([
-			{ run: { command: "rojo plugin install", cwd: "/repo/game" } },
+			{ run: { command: "rogen plugin install", cwd: "/repo/game" } },
 		]);
 	});
 

@@ -2,6 +2,7 @@ $ rogen build lobby match --json
 exit 0
 stdout:
   {
+    "changed": true,
     "configs": [
       {
         "config": "lobby",

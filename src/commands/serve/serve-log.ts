@@ -10,14 +10,75 @@ import {
 } from "../../domain/serve/serve-service.js";
 import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
-import { messageRelativeTo } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { WatchJsonLog, WatchLog } from "../watch/watch-log.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
+import { watchLineShapes } from "../build/build-document.js";
+import { reportServerMessage } from "../build/report-rojo.js";
+import { WatchJsonLog, WatchLog } from "../build/watch-log.js";
 import {
+	diagnosticShape,
 	diagnosticToJson,
 	diagnosticsJson,
 	failureToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+
+const S = OutputShape;
+
+const serverEventFields = { config: S.string, server: S.string };
+
+const connectionFields = {
+	...serverEventFields,
+	project: S.string,
+	port: S.integer,
+};
+
+/** One line of `serve --json`. */
+export const serveLineShape = S.union(
+	watchLineShapes.build,
+	watchLineShapes.notice,
+	watchLineShapes.error,
+	S.object({
+		serving: S.object({
+			...serverEventFields,
+			version: S.string,
+			project: S.string,
+			host: S.string,
+			port: S.integer,
+			session: S.optional(S.string),
+			reportsConnections: S.boolean,
+			alreadyRunning: S.optional(S.boolean),
+			adopted: S.optional(S.boolean),
+		}),
+	}),
+	S.object({
+		connected: S.object({ ...connectionFields, clients: S.integer }),
+	}),
+	S.object({
+		disconnected: S.object({ ...connectionFields, clients: S.integer }),
+	}),
+	S.object({
+		output: S.object({
+			...serverEventFields,
+			severity: S.enum("error", "warning", "info"),
+			message: S.string,
+		}),
+	}),
+	S.object({
+		refused: S.object({
+			...serverEventFields,
+			diagnostics: S.array(diagnosticShape),
+		}),
+	}),
+	S.object({
+		stopped: S.object({
+			...serverEventFields,
+			reason: S.enum("exited", "removed", "moved", "shutdown"),
+			code: S.optional(S.nullable(S.integer)),
+			signal: S.optional(S.nullable(S.string)),
+			adopted: S.optional(S.boolean),
+		}),
+	})
+);
 
 const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;
 
@@ -72,18 +133,12 @@ export class ServeLog implements ServeReporter {
 	}
 
 	said(said: ServerOutputEvent): void {
-		const { plan } = this;
-		const { message } = said;
-		if (message.severity === "debug") {
-			this.logService.debug(
-				`${plan.executable.server.name}: ${message.text}`
-			);
-			return;
-		}
-		const text = `${plan.executable.server.name}: ${messageRelativeTo(message.text, this.cwd)}`;
-		if (message.severity === "error") this.logService.error(text);
-		else if (message.severity === "warning") this.logService.warn(text);
-		else this.logService.info(text);
+		reportServerMessage(
+			this.logService,
+			this.plan.executable.server.name,
+			said.message,
+			this.cwd
+		);
 	}
 
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
@@ -179,8 +234,7 @@ export class ServeJsonLog implements ServeReporter {
 		}
 		this.line({
 			output: {
-				config: target.config.label,
-				server: plan.executable.server.id,
+				...this.serverFields(target),
 				severity: message.severity,
 				message: message.text,
 			},
@@ -190,8 +244,9 @@ export class ServeJsonLog implements ServeReporter {
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
 		this.line({
 			[opened ? "connected" : "disconnected"]: {
-				config: target.config.label,
-				server: serverFor(target, this.plan).id,
+				...this.serverFields(target),
+				project: target.project,
+				port: target.address.port,
 				clients,
 			},
 		});
@@ -208,8 +263,6 @@ export class ServeJsonLog implements ServeReporter {
 
 	changed(change: ServeChangeEvent): void {
 		const { target } = change;
-		const { label } = target.config;
-		const server = serverFor(target, this.plan).id;
 		switch (change.kind) {
 			case "servedElsewhere":
 				this.running(change.target);
@@ -217,8 +270,7 @@ export class ServeJsonLog implements ServeReporter {
 			case "refused":
 				this.line({
 					refused: {
-						config: label,
-						server,
+						...this.serverFields(target),
 						diagnostics: [diagnosticToJson(change.diagnostic)],
 					},
 				});
@@ -256,11 +308,20 @@ export class ServeJsonLog implements ServeReporter {
 		extra: Record<string, unknown> = {}
 	): Record<string, unknown> {
 		return {
-			config: target.config.label,
-			server: serverFor(target, this.plan).id,
+			...this.serverFields(target),
 			reason,
 			...extra,
 			...(target.adopted && { adopted: true }),
+		};
+	}
+
+	private serverFields(target: ServeTarget): {
+		config: string;
+		server: string;
+	} {
+		return {
+			config: target.config.label,
+			server: serverFor(target, this.plan).id,
 		};
 	}
 

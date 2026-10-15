@@ -70,7 +70,10 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 				executable,
 				"serve",
 				path.relative(selection.home, target.config.projectFile),
-				serverArgs,
+				executable.server.portIn(serverArgs).unwrapOr(undefined) ===
+					undefined
+					? [...serverArgs, "--port", String(target.address.port)]
+					: serverArgs,
 				selection.home
 			)
 		);

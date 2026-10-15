@@ -1,5 +1,5 @@
 import path from "path";
-import { mergePatch, isObject } from "../../base/objects.js";
+import { mergeByKey, isObject } from "../../base/objects.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
 import {
 	ConfigModel,
@@ -12,7 +12,12 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigKeys } from "./config-keys.js";
-import { DEFAULT_PROJECT, PROJECT_NAME, ROOT_ONLY_KEYS } from "./config.js";
+import {
+	DEFAULT_PROJECT,
+	PLACE_OWN_KEYS,
+	PROJECT_NAME,
+	ROOT_ONLY_KEYS,
+} from "./config.js";
 import { PathRebaser } from "./path-rebaser.js";
 
 interface InheritedSource {
@@ -174,7 +179,7 @@ export class ProjectSourceReader {
 			file: config.file,
 			stem: name,
 			model: new ConfigModel(
-				mergePatch(
+				mergeByKey(
 					this.startingValues(name),
 					Object.fromEntries(
 						Object.entries(changes).filter(
@@ -260,12 +265,11 @@ export class ProjectSourceReader {
 			).filter(
 				([key]) =>
 					key !== "$schema" &&
-					key !== "name" &&
-					key !== "sourcePaths" &&
+					!PLACE_OWN_KEYS.includes(key) &&
 					!ROOT_ONLY_KEYS.includes(key)
 			)
 		);
-		return mergePatch(inherited, this.description);
+		return mergeByKey(inherited, this.description);
 	}
 
 	private inheritedFrom(

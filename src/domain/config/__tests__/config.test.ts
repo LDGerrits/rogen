@@ -3,7 +3,6 @@ import path from "path";
 import { mockConfig } from "./mock-config-service.js";
 import { DeclaredKeys } from "../declared-keys.js";
 import {
-	PROJECT_SCHEMA_URL,
 	SCHEMA_URL,
 	configLabel,
 	fieldOf,
@@ -105,18 +104,6 @@ describe("domain/config/config", () => {
 				version: string;
 			};
 			expect(SCHEMA_URL).toBe(schemaUrlFor(pkg.version));
-		});
-
-		it("should give the project files Rogen writes a schema of their own", () => {
-			const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
-				version: string;
-			};
-			expect(PROJECT_SCHEMA_URL).toBe(
-				schemaUrlFor(pkg.version).replace("rogen.json", "project.json")
-			);
-			expect(PROJECT_SCHEMA_URL).toBe(
-				"https://ldgerrits.github.io/rogen/schema/2/project.json"
-			);
 		});
 	});
 

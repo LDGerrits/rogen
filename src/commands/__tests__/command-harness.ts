@@ -5,7 +5,10 @@ import { ConfigService } from "../../domain/config/config-service.js";
 import { CoreConfigService } from "../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../domain/init/core-init-service.js";
 import { InitService } from "../../domain/init/init-service.js";
+import { CoreRojoCommandService } from "../../domain/runner/core-rojo-command-service.js";
 import { CoreRojoRunner } from "../../domain/runner/core-rojo-runner.js";
+import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
+import { RojoCompatibility } from "../../domain/runner/rojo-compatibility.js";
 import { CoreToolchainService } from "../../domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "../../domain/toolchain/toolchain-service.js";
 import { CoreCommandService } from "../../platform/commands/core-command-service.js";
@@ -19,6 +22,8 @@ import { MemoryFileSystemService } from "../../platform/fs/memory-file-system-se
 import { ServiceCollection } from "../../platform/instantiation/service-collection.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { MockLogService } from "../../platform/log/__tests__/mock-log-service.js";
+import { InputService } from "../../platform/input/input-service.js";
+import { MockInputService } from "../../platform/input/__tests__/mock-input-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { MockPromptService } from "../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CoreServeService } from "../../domain/serve/core-serve-service.js";
@@ -29,6 +34,8 @@ import { LifecycleService } from "../../platform/lifecycle/lifecycle-service.js"
 import { MockLifecycleService } from "../../platform/lifecycle/__tests__/mock-lifecycle-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { MockProcessService } from "../../platform/process/__tests__/mock-process-service.js";
+import { BrowserService } from "../../platform/browser/browser-service.js";
+import { MockBrowserService } from "../../platform/browser/__tests__/mock-browser-service.js";
 import { RequestService } from "../../platform/request/request-service.js";
 import { MockRequestService } from "../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../platform/watcher/memory-watcher.js";
@@ -49,12 +56,14 @@ export interface CommandHarnessOptions<L extends LogService> {
 	readonly environment?: EnvironmentService;
 	readonly log?: L;
 	readonly prompt?: PromptService;
+	readonly input?: InputService;
 	readonly config?: ConfigService;
 	readonly index?: IndexService;
 	readonly lifecycle?: LifecycleService;
 	readonly watcher?: Watcher;
 	readonly processes?: ProcessService;
 	readonly requests?: RequestService;
+	readonly browser?: BrowserService;
 	readonly product?: ProductService;
 }
 
@@ -97,6 +106,7 @@ export function commandHarness(
 	services.set(EnvironmentService, environment);
 	services.set(LogService, log);
 	services.set(PromptService, prompt);
+	services.set(InputService, options.input ?? new MockInputService());
 	services.set(FileSystemService, fs);
 	services.set(ConfigService, config);
 	services.set(IndexService, index);
@@ -114,13 +124,19 @@ export function commandHarness(
 	services.set(WatchService, watch);
 	services.set(ProcessService, processes);
 	services.set(RequestService, requests);
+	services.set(BrowserService, options.browser ?? new MockBrowserService());
 	services.set(ProductService, options.product ?? new MockProductService());
+	const rojoRunner = new CoreRojoRunner(toolchain, processes);
+	services.set(
+		RojoCommandService,
+		new CoreRojoCommandService(rojoRunner, new RojoCompatibility(fs, false))
+	);
 	services.set(
 		ServeService,
 		new CoreServeService(
 			config,
 			fs,
-			new CoreRojoRunner(toolchain, processes),
+			rojoRunner,
 			requests,
 			watch,
 			environment

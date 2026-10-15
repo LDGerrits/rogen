@@ -1,0 +1,18 @@
+$ rogen build --color always
+exit 0
+stdout:
+  ┌  rogen build · project
+  │  ✔ default.project.json · wrote
+  │  ▲ rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+  │    src/Save@sever.luau (did you mean "@Server"?)
+  │
+  └  Built 1 config with 1 warning.
+
+$ rogen where --color always
+exit 0
+stdout:
+  src/Save@sever.luau -> ReplicatedStorage/Shared/Save@sever · route * (fallback)
+    warning: did you mean "@Server"? (route.strayAt)
+
+written:
+  default.project.json

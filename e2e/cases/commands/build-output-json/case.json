@@ -1,0 +1,1 @@
+{"steps":[["build","-o","game.rbxlx","--json"],["build","-o","missing/game.rbxlx","--json"]],"rojo":false}

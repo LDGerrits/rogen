@@ -1,0 +1,28 @@
+$ rogen fmt-project
+exit 0
+stdout:
+  formatted rogen.json
+  formatted places/lobby/rogen.json
+
+written:
+  places/lobby/rogen.json
+  rogen.json
+
+places/lobby/rogen.json:
+{
+  "name": "Lobby",
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "*": "ReplicatedStorage"
+  }
+}
+
+rogen.json:
+{
+  "name": "Game",
+  "placePaths": [
+    "places/*"
+  ]
+}

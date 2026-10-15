@@ -17,7 +17,8 @@ const writtenBy = (
 	rules: readonly object[],
 	sources: readonly string[] = [],
 	overrides: ResolvedConfigSpec = {},
-	mounts: readonly string[] = []
+	mounts: readonly string[] = [],
+	legacyClients: readonly string[] = []
 ) => {
 	const config = configOf({
 		project: { tree: {}, syncRules: rules },
@@ -38,7 +39,7 @@ const writtenBy = (
 			layout,
 			mounts.map((mount) => abs(mount))
 		)
-	).of(entries);
+	).of(entries, new Set(legacyClients.map((source) => abs(source))));
 };
 
 describe("WrittenSyncRules", () => {
@@ -65,6 +66,56 @@ describe("WrittenSyncRules", () => {
 
 	it("should write nothing for a project without rules", () => {
 		expect(writtenBy([])).toEqual([]);
+	});
+
+	describe("legacy client scripts", () => {
+		it("should write a literal rule that keeps each client script a LocalScript, after the project's own", () => {
+			expect(
+				writtenBy(
+					[module],
+					[],
+					{},
+					[],
+					["src/Hud.client.luau", "src/ui/Bar.client.lua"]
+				)
+			).toEqual([
+				module,
+				{
+					pattern: "src/Hud.client.luau",
+					use: "legacyClientScript",
+					suffix: ".client.luau",
+				},
+				{
+					pattern: "src/ui/Bar.client.lua",
+					use: "legacyClientScript",
+					suffix: ".client.lua",
+				},
+			]);
+		});
+
+		it("should write the rule for the file a tool emits under the sync path", () => {
+			expect(
+				writtenBy(
+					[],
+					[],
+					{ syncPath: abs("out") },
+					[],
+					["src/Hud.client.luau"]
+				)
+			).toEqual([
+				{
+					pattern: "out/Hud.client.luau",
+					use: "legacyClientScript",
+					suffix: ".client.luau",
+				},
+			]);
+		});
+
+		it("should escape the characters of a file name that a glob reads", () => {
+			const [rule] = writtenBy([], [], {}, [], ["src/[A].client.luau"]);
+
+			expect(rule.pattern).toBe("src/[[]A[]].client.luau");
+		});
 	});
 
 	it("should move a pattern that begins with a folder under the sync path", () => {

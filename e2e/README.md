@@ -30,6 +30,7 @@ e2e/cases/<area>/<case>/
   checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - `env` sets variables for the commands, on top of an environment that is not GitHub Actions'.
+- `stdin` is the text every step reads on its standard input; the transcript shows it under `stdin:`.
 - Files that a run created or changed are listed under `written:`. `rogen.json` and
   `rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 
@@ -74,7 +75,7 @@ Check a thing once, where it lives, and leave it out of the other cases.
   several projects as folders (`build-several-projects`, `build-same-errors-error`),
   the forms `[PROJECT]` takes (`build-project-path`, `build-project-argument-error`,
   `from-subfolder`), a stale `default.project.json` (`check-stale-project-file-warning`),
-  `--json`, `--quiet`, `--verbose`, `--deny-warnings`, help, and the unknown
+  `--json`, `--quiet`, `--verbose`, `--color`, help, and the unknown
   and removed commands and options.
 
 A new case needs no `output`. Add it only when the printed output of `build` or
@@ -101,3 +102,10 @@ Read that list first, and open the diff of a transcript only for an edit you did
 `watch.test.ts` and `serve-rojo.test.ts` cover the long-running `watch` and
 `serve` commands, which a transcript can't describe. The serve tests start the
 pinned Rojo on a random port.
+
+## On Windows
+
+The suite runs on Linux. To check a transcript on Windows, run the harness's `runCase` over every case with Windows' Node and compare with `expected.txt` after turning `\` into `/` and CRLF into LF. Four cases differ there, and are meant to:
+
+- `commands/build-output-failed-error`, `commands/build-output-json` and `commands/sourcemap-output` quote Rojo's own message for a missing folder, which names the operating system's error: `No such file or directory (os error 2)` on Linux, `The system cannot find the path specified. (os error 3)` on Windows.
+- `commands/color-always` draws the frame with the ASCII characters (`T`, `|`) that the terminal layout falls back to where it does not detect Unicode support.

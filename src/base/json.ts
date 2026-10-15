@@ -24,7 +24,7 @@ export function formatJsonFile(value: unknown): string {
 	return `${JSON.stringify(value, null, "\t")}\n`;
 }
 
-/** Two-space JSON without a trailing newline, for a program to read from stdout. */
+/** One line of JSON, for a program to read from stdout; whitespace there only costs tokens. */
 export function formatJsonDocument(value: unknown): string {
-	return JSON.stringify(value, null, 2);
+	return JSON.stringify(value);
 }

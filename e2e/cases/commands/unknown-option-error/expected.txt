@@ -11,7 +11,7 @@ stderr:
 $ rogen watch -w
 exit 2
 stderr:
-  error: Unknown option '-w'. Run 'rogen help watch' to see what watch accepts.
+  error: Unknown command "watch". 'rogen watch' is now 'rogen build --watch'.
 
 $ rogen build --out-file x.project.json
 exit 2
@@ -36,7 +36,13 @@ stderr:
 $ rogen build --nope --json
 exit 2
 stdout:
-  {"error":"Unknown option '--nope'. Run 'rogen help build' to see what build accepts."}
+  {
+    "error": {
+      "kind": "usage",
+      "message": "Unknown option '--nope'.",
+      "hint": "Run 'rogen help build' to see what build accepts."
+    }
+  }
 
 $ rogen --nope
 exit 2

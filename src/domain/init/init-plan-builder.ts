@@ -9,13 +9,14 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitPlan } from "./init-service.js";
+import { InitDecision, InitPlan } from "./init-service.js";
 
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private hookFiles: readonly PlannedFile[] = [];
+	private toolManifest: PlannedFile | undefined;
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
 	private readonly setup = new Set<string>();
@@ -25,7 +26,8 @@ export class InitPlanBuilder {
 
 	constructor(
 		private readonly directory: InitDirectory,
-		private readonly asked: boolean
+		private readonly asked: boolean,
+		private readonly decided: readonly InitDecision[]
 	) {}
 
 	setConfig(config: RogenConfig): void {
@@ -43,6 +45,10 @@ export class InitPlanBuilder {
 	addAgentHook(hooks: AgentHooks): void {
 		this.hookFiles = hooks.files;
 		this.addSetup(...hooks.setup);
+	}
+
+	addToolManifest(file: PlannedFile): void {
+		this.toolManifest = file;
 	}
 
 	addDirectory(directory: string): void {
@@ -80,10 +86,12 @@ export class InitPlanBuilder {
 		return ok({
 			directory: this.directory.path,
 			asked: this.asked,
+			decided: this.decided,
 			files: [
 				...written,
 				...(this.agentFile ? [this.agentFile] : []),
 				...this.hookFiles,
+				...(this.toolManifest ? [this.toolManifest] : []),
 			],
 			directories: [...this.directories],
 			configs: written.map(({ fileName }) => fileName),

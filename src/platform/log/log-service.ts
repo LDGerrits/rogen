@@ -33,8 +33,8 @@ export interface LogService {
 	success(message: string): void;
 	outro(message: string): void;
 	closeFrame(message: string): void;
-	/** Written as `file:line:col - severity: message` so editors and CI can parse it; a failing one goes where errors do. */
-	diagnostic(diagnostic: Diagnostic, failing?: boolean): void;
+	/** Written as `file:line:col - severity: message` so editors and CI can parse it; a warning is hidden by `--quiet`. */
+	diagnostic(diagnostic: Diagnostic): void;
 	/** Writes GitHub Actions workflow commands on stderr if the run asked for them; takes the diagnostic as the command found it. */
 	annotate(diagnostic: Diagnostic): void;
 }

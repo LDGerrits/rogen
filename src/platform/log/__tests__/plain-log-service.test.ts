@@ -46,21 +46,6 @@ describe("PlainLogService", () => {
 		]);
 	});
 
-	it("should print a warning that fails the run although only errors are asked for", () => {
-		const logService = new PlainLogService();
-		logService.setLevel(LogLevel.Error);
-		const warning = warningDiagnostic(
-			"x.y",
-			{ resource: "/repo/a" },
-			"odd."
-		);
-
-		logService.diagnostic(warning);
-		logService.diagnostic(warning, true);
-
-		expect(errors).toEqual(["/repo/a - warning: odd. (x.y)"]);
-	});
-
 	it("should print a diagnostic without a second severity prefix", () => {
 		const logService = new PlainLogService();
 

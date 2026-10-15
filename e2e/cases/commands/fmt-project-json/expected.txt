@@ -1,0 +1,60 @@
+$ rogen fmt-project --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "files": [
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ]
+  }
+
+$ rogen fmt-project --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "files": [
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "unchanged",
+        "diagnostics": []
+      }
+    ]
+  }
+
+written:
+  rogen.json
+
+rogen.json:
+{
+  "name": "Game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage"
+    }
+  },
+  "servePort": 34873,
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "*": "ReplicatedStorage"
+  },
+  "projects": {
+    "release": {
+      "name": "Release",
+      "globIgnorePaths": [
+        "**/*.spec.luau"
+      ],
+      "routes": {
+        "*": "ReplicatedStorage/Game"
+      }
+    }
+  }
+}

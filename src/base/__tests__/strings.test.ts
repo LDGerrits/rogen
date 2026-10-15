@@ -5,6 +5,7 @@ import {
 	joinedWithAnd,
 	listLimited,
 	plural,
+	shellWord,
 	unlistedNote,
 } from "../strings.js";
 
@@ -107,5 +108,15 @@ describe("joinedWithAnd", () => {
 		[[], ""],
 	])("should join %j as %j", (items, joined) => {
 		expect(joinedWithAnd(items)).toBe(joined);
+	});
+});
+
+describe("shellWord", () => {
+	it.each([
+		["places/lobby/a.json", "places/lobby/a.json"],
+		["my game", "'my game'"],
+		["it's", "'it'\\''s'"],
+	])("should write %s as %s", (arg, word) => {
+		expect(shellWord(arg)).toBe(word);
 	});
 });
