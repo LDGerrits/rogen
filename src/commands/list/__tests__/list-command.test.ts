@@ -113,6 +113,16 @@ describe("list command", () => {
 		expect(text).toContain("dist: dist.project.json (port 34901)");
 	});
 
+	it("should quote a project file with a space in the Rojo command, and carry the pinned port", async () => {
+		await write("my game/rogen.json", { servePort: 34900 });
+
+		await run({ _: ["my game"] });
+
+		expect(under("my game/rogen.json")[0]).toContain(
+			"rojo: rojo serve 'my game/default.project.json' --port 34900"
+		);
+	});
+
 	it("should give each project the Rojo command that serves it with --json, and none to a config that lists places", async () => {
 		await write("rogen.json", {
 			placePaths: ["places/*"],
@@ -131,8 +141,20 @@ describe("list command", () => {
 			undefined,
 		]);
 		expect(config.places[0].projects.map(({ rojo }) => rojo)).toEqual([
-			["rojo", "serve", "/repo/places/lobby/default.project.json"],
-			["rojo", "serve", "/repo/places/lobby/dist.project.json"],
+			[
+				"rojo",
+				"serve",
+				"/repo/places/lobby/default.project.json",
+				"--port",
+				"34872",
+			],
+			[
+				"rojo",
+				"serve",
+				"/repo/places/lobby/dist.project.json",
+				"--port",
+				"34872",
+			],
 		]);
 	});
 
@@ -608,7 +630,7 @@ describe("list command", () => {
 					"routes: same as Game",
 					"sync path: (none)",
 					"project file: places/arena/default.project.json (port 34872)",
-					"rojo: rojo serve places/arena/default.project.json",
+					"rojo: rojo serve places/arena/default.project.json --port 34872",
 				].join("\n"),
 			]);
 			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");

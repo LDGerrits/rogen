@@ -597,7 +597,7 @@ Create it, or remove it from `sourcePaths`. The path is relative to the folder o
 Warning. The config declares no `routes`, so no source path is scanned, but the default `src` folder holds files that nothing in the `tree` mounts. Rojo never syncs them.
 
 ```
-src - warning: 3 files here are mounted by nothing in the tree, and the config declares no routes, so Rojo never syncs them. Add "routes" to place them (rogen init writes a starting set), or mount the folder with "$path". (scan.unmountedSource)
+src - warning: 3 files here are mounted by nothing in the tree, and the config declares no routes, so Rojo never syncs them. Add "routes" to place them, or mount the folder with "$path". (scan.unmountedSource)
 ```
 
 Add `routes` so Rogen places the files, or mount the folder in the `tree` with a `$path`. Files that `globIgnorePaths` matches don't count. See [Configuration](/docs/v2/configuration#tree).

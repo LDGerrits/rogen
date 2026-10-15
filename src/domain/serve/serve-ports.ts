@@ -3,7 +3,7 @@ import { compareStrings } from "../../base/collections.js";
 import { UsageError } from "../../base/errors.js";
 import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { joinedWithAnd, shellWord } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -16,9 +16,6 @@ import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
 const FREE_PORT_SEARCH = 20;
-
-const shellWord = (arg: string): string =>
-	/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;
 
 export function namesakesOf(
 	config: ResolvedConfig,

@@ -1,6 +1,6 @@
 import { ProjectError } from "../../base/errors.js";
 import { relativeTo, toNative } from "../../base/path.js";
-import { joinedWithAnd, plural } from "../../base/strings.js";
+import { joinedWithAnd, plural, shellWord } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import {
 	ResolvedConfig,
@@ -101,9 +101,18 @@ const portOf = (project: ResolvedConfig): number | undefined =>
 /** The Rojo command that serves the project, unless its config lists places and is never served. */
 const rojoServe = (
 	project: ResolvedConfig,
-	file: (project: ResolvedConfig) => string
-): string[] | undefined =>
-	project.hasPlaces ? undefined : ["rojo", "serve", file(project)];
+	file: string
+): string[] | undefined => {
+	const port = portOf(project);
+	return project.hasPlaces
+		? undefined
+		: [
+				"rojo",
+				"serve",
+				file,
+				...(port === undefined ? [] : ["--port", String(port)]),
+			];
+};
 
 const listed = (values: readonly string[]): string =>
 	values.length > 0 ? values.join(", ") : "(none)";
@@ -261,9 +270,10 @@ export class ListLog {
 			];
 			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 		};
-		const rojo = (project: ResolvedConfig): string[] =>
-			rojoServe(project, ({ projectFile }) => relative(projectFile)) ??
-			[];
+		const rojo = (project: ResolvedConfig): string | undefined =>
+			rojoServe(project, relative(project.projectFile))
+				?.map(shellWord)
+				.join(" ");
 		const running = (project: ResolvedConfig): string => {
 			const now = serving.get(project.projectFile);
 			return now ? `serving: ${servingLine(now)}` : "";
@@ -282,9 +292,7 @@ export class ListLog {
 				...(resolved.projects.length === 0
 					? [
 							`project file: ${relative(config.projectFile)}${notes(config, false)}`,
-							...(rojo(config).length > 0
-								? [`rojo: ${rojo(config).join(" ")}`]
-								: []),
+							...(rojo(config) ? [`rojo: ${rojo(config)}`] : []),
 							...(running(config) ? [running(config)] : []),
 						]
 					: [
@@ -292,14 +300,10 @@ export class ListLog {
 								.map(
 									(project) =>
 										`\n  ${project.stem}: ${relative(project.projectFile)}${notes(project, true)}${
-											rojo(project).length > 0
-												? `\n    ${rojo(project).join(" ")}`
-												: ""
-										}${
 											running(project)
 												? `, ${running(project)}`
 												: ""
-										}`
+										}${rojo(project) ? `\n    ${rojo(project)}` : ""}`
 								)
 								.join("")}`,
 						]),
@@ -377,9 +381,7 @@ function configDetails(
 		serving: servingJson(serving.get(config.projectFile)),
 		projects: projects.map((project) => {
 			const { servePlaceIds: placeIds } = project.project;
-			const rojo = rojoServe(project, ({ projectFile }) =>
-				toNative(projectFile)
-			);
+			const rojo = rojoServe(project, toNative(project.projectFile));
 			return {
 				name: project.stem,
 				file: toNative(project.projectFile),

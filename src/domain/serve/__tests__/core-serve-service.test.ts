@@ -780,11 +780,37 @@ describe("CoreServeService", () => {
 			).toEqual([
 				[
 					"/bin/rojo",
-					["serve", "default.project.json"],
+					["serve", "default.project.json", "--port", "34872"],
 					{
 						cwd: "/repo",
 						env: { RUST_LOG: expect.any(Function) },
 					},
+				],
+			]);
+		});
+
+		it("should give each server the port it serves on, so a place without a servePort is not left on Rojo's default", async () => {
+			await memFs.writeFile(
+				"/repo/rogen.json",
+				config({ name: "Game", placePaths: ["places/*"] })
+			);
+			await memFs.createDirectory("/repo/places/lobby");
+			await memFs.createDirectory("/repo/places/arena");
+
+			expect((await start()).isOk()).toBe(true);
+
+			expect(processes.spawned.map(({ args }) => args)).toEqual([
+				[
+					"serve",
+					"places/arena/default.project.json",
+					"--port",
+					"34872",
+				],
+				[
+					"serve",
+					"places/lobby/default.project.json",
+					"--port",
+					"34873",
 				],
 			]);
 		});

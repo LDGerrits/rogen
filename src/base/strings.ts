@@ -110,3 +110,7 @@ export function firstLine(text: string): string | undefined {
 		.map((line) => line.trim())
 		.find((line) => line !== "");
 }
+
+/** `arg` as one word of a shell command line. */
+export const shellWord = (arg: string): string =>
+	/^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replace(/'/g, "'\\''")}'`;

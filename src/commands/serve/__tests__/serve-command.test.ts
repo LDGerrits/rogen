@@ -538,9 +538,9 @@ describe("serve command", () => {
 				"info: Stopped serving lobby at 127.0.0.1:34900: its address changed."
 			);
 			expect(processes.spawned.map(({ args }) => args)).toEqual([
-				["serve", "default.project.json"],
-				["serve", "lobby/default.project.json"],
-				["serve", "lobby/default.project.json"],
+				["serve", "default.project.json", "--port", "34872"],
+				["serve", "lobby/default.project.json", "--port", "34900"],
+				["serve", "lobby/default.project.json", "--port", "34901"],
 			]);
 		});
 
@@ -754,8 +754,8 @@ describe("serve command", () => {
 		await settle();
 
 		expect(processes.spawned.map(({ args }) => args)).toEqual([
-			["serve", "default.project.json"],
-			["serve", "lobby/default.project.json"],
+			["serve", "default.project.json", "--port", "34872"],
+			["serve", "lobby/default.project.json", "--port", "40001"],
 		]);
 		expect(
 			printed().flatMap(({ serving }) =>
@@ -797,6 +797,8 @@ describe("serve command", () => {
 		expect(processes.spawned[0].args).toEqual([
 			"serve",
 			"lobby/default.project.json",
+			"--port",
+			"34872",
 		]);
 		expect(await memFs.exists("/repo/lobby/default.project.json")).toBe(
 			true
