@@ -188,7 +188,7 @@ export class ConfigValidator {
 		this.problems.error(
 			"config.unnamedProjectFile",
 			{ resource: this.config.file, position: { line: 1, column: 1 } },
-			`${file} has no "name", and Rojo can't read a project file without one unless it is default.project.json. Add "name".`
+			`${file} has no "name", and Rojo can't read a project file without one unless it is default.project.json or default.project.jsonc. Add "name".`
 		);
 	}
 

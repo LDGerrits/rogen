@@ -3,7 +3,7 @@ exit 1
 stdout: (not shown)
 stderr:
   error: test.project.json · not loaded
-  test.project.json:1:1 - error: test.project.json has no "name", and Rojo can't read a project file without one unless it is default.project.json. Add "name". (config.unnamedProjectFile)
+  test.project.json:1:1 - error: test.project.json has no "name", and Rojo can't read a project file without one unless it is default.project.json or default.project.jsonc. Add "name". (config.unnamedProjectFile)
 
 $ rogen build tset.project.json
 exit 2

@@ -47,6 +47,12 @@ interface PlaceAround {
 
 const isBareName = (ref: string): boolean => PROJECT_NAME.test(ref);
 
+const notFound = (ref: string): UsageError =>
+	new UsageError(
+		`"${ref}" not found.`,
+		"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
+	);
+
 /** Finds which config files a command reads: in the working directory, else in the nearest folder above that has one. */
 export class ConfigDiscovery {
 	private readonly places: PlaceFinder;
@@ -245,12 +251,7 @@ export class ConfigDiscovery {
 			return this.projectFileRef(target, base, ref);
 		if (!(await this.fileSystemService.exists(target))) {
 			if (isBareName(ref) && homeConfig) return ok(inHome(ref));
-			return err(
-				new UsageError(
-					`"${ref}" not found.`,
-					"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
-				)
-			);
+			return err(notFound(ref));
 		}
 		return this.configFileRef(target, base, ref);
 	}
@@ -296,12 +297,7 @@ export class ConfigDiscovery {
 		if ((await this.list(folder)).length > 0) return err(config.error);
 		return (await this.fileSystemService.isFile(target))
 			? ok({ file: target })
-			: err(
-					new UsageError(
-						`"${ref}" not found.`,
-						"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
-					)
-				);
+			: err(notFound(ref));
 	}
 
 	private async configFileRef(
