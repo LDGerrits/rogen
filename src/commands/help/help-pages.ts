@@ -5,6 +5,7 @@ import {
 	GlobalOptions,
 	OptionDescriptor,
 } from "../../platform/environment/args.js";
+import { HelpDocument } from "./help-document.js";
 import { DocTopics } from "./doc-topics.js";
 import { helpTexts } from "./help-texts.js";
 
@@ -35,7 +36,11 @@ const ROOT_EXAMPLES = [
 
 export type HelpTarget =
 	| { readonly kind: "command"; readonly command: Command }
-	| { readonly kind: "code"; readonly code: string };
+	| { readonly kind: "code"; readonly code: string }
+	| { readonly kind: "codes" };
+
+/** The name of the page that lists every diagnostic code. */
+export const CODES_PAGE = "codes";
 
 const INDENT = "    ";
 const GAP = "    ";
@@ -223,6 +228,7 @@ export class HelpPages {
 
 	/** The command or diagnostic code `target` names. */
 	resolve(target: string): HelpTarget | undefined {
+		if (target.toLowerCase() === CODES_PAGE) return { kind: "codes" };
 		const code = codeNamed(target);
 		const named =
 			code === undefined ? undefined : { kind: "code" as const, code };
@@ -234,14 +240,21 @@ export class HelpPages {
 	}
 
 	textOf(target: HelpTarget): string {
-		return target.kind === "command"
-			? formatCommandHelp(target.command, GlobalOptions)
-			: helpTexts.diagnostics[target.code]
-					.split("\n")
-					.flatMap((line) =>
-						line.startsWith(" ") ? [line] : wrapped(line, WIDTH)
-					)
-					.join("\n");
+		if (target.kind === "command")
+			return formatCommandHelp(target.command, GlobalOptions);
+		if (target.kind === "codes")
+			return HelpDocument.codes()
+				.codes.map(
+					({ code, severity, summary }) =>
+						`${code}  ${severity}  ${summary}`
+				)
+				.join("\n");
+		return helpTexts.diagnostics[target.code]
+			.split("\n")
+			.flatMap((line) =>
+				line.startsWith(" ") ? [line] : wrapped(line, WIDTH)
+			)
+			.join("\n");
 	}
 
 	unknown(target: string): UsageError {

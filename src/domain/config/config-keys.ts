@@ -2,6 +2,7 @@ import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
+	replaceFixes,
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -36,7 +37,14 @@ export class ConfigKeys {
 				warningDiagnostic(
 					"config.unknownField",
 					location,
-					`"${key}" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
+					`"${key}" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
+					suggestion
+						? replaceFixes(
+								location,
+								JSON.stringify(key),
+								JSON.stringify(suggestion)
+							)
+						: []
 				)
 			);
 		}

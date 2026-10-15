@@ -80,6 +80,37 @@ describe("CoreConfigService", () => {
 			);
 		});
 
+		it("should offer the suggested key as a text replacement", async () => {
+			await write(
+				"/repo/rogen.json",
+				`{
+	"sourcePath": ["src"]
+}`
+			);
+
+			await start();
+
+			expect(warningsOf()[0].fixes).toEqual([
+				{
+					replace: {
+						file: "/repo/rogen.json",
+						line: 2,
+						column: 2,
+						from: '"sourcePath"',
+						to: '"sourcePaths"',
+					},
+				},
+			]);
+		});
+
+		it("should offer no replacement for a key nothing is close to", async () => {
+			await write("/repo/rogen.json", `{\n\t"zzzzzzzz": 1\n}`);
+
+			await start();
+
+			expect(warningsOf()[0].fixes).toBeUndefined();
+		});
+
 		it("should accept syncRules", async () => {
 			await write(
 				"/repo/rogen.json",

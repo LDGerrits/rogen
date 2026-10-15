@@ -292,7 +292,7 @@ Opens the documentation in your browser, and prints its address. Without a termi
 
 Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and descriptions and prose are wrapped at 100 columns, as Rojo wraps its help. `rogen help build`, `rogen build --help` and `rogen build -h` print the same. `rogen --version` prints the installed version.
 
-`rogen help <code>` explains a [diagnostic](/docs/v2/diagnostics) code, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
+`rogen help codes` lists every [diagnostic](/docs/v2/diagnostics) code on a line with its severity and meaning. `rogen help <code>` explains one, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
 With `--json`, `help` answers a program: see [`help --json`](#help---json).
 
@@ -381,6 +381,14 @@ A warning whose fix is one rename also has `fixes`, a rename for every name it c
 ```json
 "fixes": [
 	{ "rename": { "from": "/repo/src/Inventory/Save@sever.luau", "to": "/repo/src/Inventory/Save@server.luau" } }
+]
+```
+
+An unknown config key, and a route target that doesn't start with a service, have a `replace` fix when a name is close: the file, the `line` and `column` where the text starts, the JSON text found there (`from`, quotes included) and the text to put in its place (`to`). It is offered only for a close match. Rogen never applies it.
+
+```json
+"fixes": [
+	{ "replace": { "file": "/repo/rogen.json", "line": 2, "column": 2, "from": "\"sourcePath\"", "to": "\"sourcePaths\"" } }
 ]
 ```
 
@@ -629,7 +637,7 @@ Offline, in two steps, so a program reads only what it asks for. Every document 
 {"name":"check","summary":"…","description":"…","args":[…],"options":[…],"effects":[],"examples":["rogen check src --json"],"output":{"document":"{diagnostics:[Diagnostic],stoppedBy?:[Diagnostic]}"},"shapes":{"Diagnostic":"{file:string,line?:int,…}"}}
 ```
 
-`rogen help <code> --json` prints `{ "code", "text", "url" }`: the text `rogen help <code>` prints, and the link to its section of the [Diagnostics](/docs/v2/diagnostics) page. A name that is neither a command nor a code is a `usage` [error](#errors) whose `hint` names the closest one.
+`rogen help <code> --json` prints `{ "code", "text", "url" }`: the text `rogen help <code>` prints, and the link to its section of the [Diagnostics](/docs/v2/diagnostics) page. `rogen help codes --json` prints `{ "codes": [...] }`, every code at once with its `severity`, the first sentence of what it `summary` means and its `url`, so a program can look codes up without the network; the text form prints one code per line. A name that is neither a command nor a code is a `usage` [error](#errors) whose `hint` names the closest one.
 
 ### `list --json`
 

@@ -54,6 +54,16 @@ const commandShape = S.named(
 	})
 );
 
+const codeBriefShape = S.named(
+	"CodeBrief",
+	S.object({
+		code: S.string,
+		severity: S.enum("error", "warning"),
+		summary: S.string,
+		url: S.string,
+	})
+);
+
 const overviewShape = S.object({
 	version: S.string,
 	commands: S.array(commandShape),
@@ -89,8 +99,15 @@ const codeShape = S.object({
 	url: S.string,
 });
 
-/** The document of `help --json`: the commands, one command in full, or one diagnostic code. */
-export const helpDocumentShape = S.union(overviewShape, detailShape, codeShape);
+const codesShape = S.object({ codes: S.array(codeBriefShape) });
+
+/** The document of `help --json`: the commands, one command in full, one diagnostic code, or the list of codes. */
+export const helpDocumentShape = S.union(
+	overviewShape,
+	detailShape,
+	codeShape,
+	codesShape
+);
 
 const optionBrief = ({
 	name,
@@ -121,6 +138,22 @@ const argBrief = ({
 	...(isVariadic && { variadic: true }),
 	...(subcommands && { enum: subcommands.map(({ name }) => name) }),
 });
+
+const SECTION_OPENING =
+	/^(Error|Warning)(?:, or error)?[.,]\s+(.*?[.!?])(?:\s|$)/s;
+
+/** A diagnostic code with its severity and the first sentence of what it means, read from its help text. */
+export function codeBrief(code: string) {
+	const [, paragraph = ""] = helpTexts.diagnostics[code].split("\n\n");
+	const [, severity, summary] = SECTION_OPENING.exec(paragraph) ?? [];
+	return {
+		code,
+		severity:
+			severity === "Error" ? ("error" as const) : ("warning" as const),
+		summary: (summary ?? paragraph).replace(/\s+/g, " "),
+		url: diagnosticUrl(code),
+	};
+}
 
 const effectsOf = ({ metadata }: Command) => [
 	...(metadata.effects ?? []),
@@ -180,6 +213,11 @@ export const HelpDocument = {
 			}),
 			...(Object.keys(shapes).length > 0 && { shapes }),
 		};
+	},
+
+	/** Every diagnostic code with its severity and the first sentence of what it means. */
+	codes() {
+		return { codes: Object.keys(helpTexts.diagnostics).map(codeBrief) };
 	},
 
 	/** What a diagnostic code means, and where the docs explain it. */

@@ -33,7 +33,7 @@ registerCommand(
 						{
 							name: "name",
 							description:
-								"A command, or a diagnostic code such as route.strayAt.",
+								"A command, a diagnostic code such as route.strayAt, or 'codes' for the list of every code.",
 							isOptional: true,
 						},
 					],
@@ -43,6 +43,7 @@ registerCommand(
 					examples: [
 						"rogen help where",
 						"rogen help route.strayAt",
+						"rogen help codes --json",
 						"rogen help --json",
 						"rogen help build --json",
 					],
@@ -89,7 +90,9 @@ registerCommand(
 					logService,
 					found.kind === "command"
 						? HelpDocument.command(found.command)
-						: HelpDocument.code(found.code)
+						: found.kind === "codes"
+							? HelpDocument.codes()
+							: HelpDocument.code(found.code)
 				);
 			logService.print(pages.textOf(found));
 			return ok(undefined);

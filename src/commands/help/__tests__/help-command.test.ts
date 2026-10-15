@@ -200,6 +200,18 @@ describe("help command", () => {
 			);
 		});
 
+		it("should list every code on one line with its severity", async () => {
+			await help("codes");
+
+			const lines = printed().split("\n");
+			expect(lines).toHaveLength(
+				Object.keys(helpTexts.diagnostics).length
+			);
+			expect(lines).toContain(
+				"config.unknownField  warning  The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1."
+			);
+		});
+
 		it("should merge the global options into a command's, sorted by name", async () => {
 			await help("build");
 

@@ -64,7 +64,7 @@ describe("domain/roblox/roblox", () => {
 			(target) => {
 				const result = Target.parse(target, location);
 
-				expect(result.isErr() && result.error).toEqual([
+				expect(result.isErr() && result.error).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Error,
 						code: "roblox.unsupportedService",
@@ -74,6 +74,27 @@ describe("domain/roblox/roblox", () => {
 				]);
 			}
 		);
+
+		it("should offer the suggested service as a text replacement of the target", () => {
+			const result = Target.parse("StarterPlayerScripts/Ui", location);
+
+			expect(result.isErr() && result.error[0].fixes).toEqual([
+				{
+					replace: {
+						file: location.resource,
+						...location.position,
+						from: '"StarterPlayerScripts/Ui"',
+						to: '"StarterPlayer/StarterPlayerScripts/Ui"',
+					},
+				},
+			]);
+		});
+
+		it("should offer no replacement when nothing is close", () => {
+			const result = Target.parse("Zzzzzzzzzz", location);
+
+			expect(result.isErr() && result.error[0].fixes).toBeUndefined();
+		});
 	});
 
 	describe("a target with a folder that has no name", () => {

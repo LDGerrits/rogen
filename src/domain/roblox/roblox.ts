@@ -4,6 +4,7 @@ import {
 	Diagnostic,
 	DiagnosticLocation,
 	errorDiagnostic,
+	replaceFixes,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
 	SUPPORTED_SERVICES,
@@ -104,7 +105,16 @@ export class Target {
 					location,
 					suggestion
 						? `"${service}" is not a supported service. Did you mean "${[suggestion, ...folders].join("/")}"?`
-						: `"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`
+						: `"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`,
+					suggestion
+						? replaceFixes(
+								location,
+								JSON.stringify(text),
+								JSON.stringify(
+									[suggestion, ...folders].join("/")
+								)
+							)
+						: []
 				),
 			]);
 		}
