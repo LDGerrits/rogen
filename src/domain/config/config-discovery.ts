@@ -261,7 +261,11 @@ export class ConfigDiscovery {
 		ref: string,
 		projectHere: ((project: string) => NamedConfig) | undefined
 	): Promise<Result<NamedConfig, Error>> {
-		const config = await this.configIn(target, `"${ref}"`);
+		const config = await this.configIn(
+			target,
+			`"${ref}"`,
+			projectHere === undefined
+		);
 		const folder = isBareName(ref) ? { folderName: ref } : {};
 		const listing = await this.places.rootOf(target);
 		if (listing) return ok({ file: listing, place: target, ...folder });
@@ -310,12 +314,19 @@ export class ConfigDiscovery {
 		);
 	}
 
+	/** `adopt` lets a folder with only a Rojo project file stand in for a config. */
 	private async configIn(
 		directory: string,
-		named: string
+		named: string,
+		adopt = true
 	): Promise<Result<string, Error>> {
 		const names = await this.list(directory);
 		if (names.length === 1) return ok(names[0]);
+		const adopted =
+			adopt && names.length === 0
+				? await this.adoptable(directory)
+				: undefined;
+		if (adopted) return ok(adopted);
 		return err(
 			names.length === 0
 				? new UsageError(
@@ -358,7 +369,8 @@ export class ConfigDiscovery {
 		const fileNames = configFileNames(listing.value);
 		if (fileNames.length > 0) return ok({ directory: cwd, fileNames });
 
-		const enclosing = await this.findEnclosing();
+		const enclosing =
+			(await this.findEnclosing()) ?? (await this.findAdoptable());
 		return enclosing
 			? ok(enclosing)
 			: err(
@@ -367,6 +379,26 @@ export class ConfigDiscovery {
 						"Run 'rogen init' to create one."
 					)
 				);
+	}
+
+	/** The Rojo project file of a folder with no config: Rogen reads it as a config whose output is itself, and writes nothing. */
+	async adoptable(directory: string): Promise<string | undefined> {
+		const file = path.join(directory, DEFAULT_PROJECT_FILE);
+		return (await this.fileSystemService.isFile(file)) ? file : undefined;
+	}
+
+	/** The nearest folder, the working directory included, with a Rojo project file; looked for only when no folder above holds a config. */
+	async findAdoptable(
+		from = this.environmentService.cwd
+	): Promise<EnclosingConfigs | undefined> {
+		let directory = from;
+		for (;;) {
+			if (await this.adoptable(directory))
+				return { directory, fileNames: [DEFAULT_PROJECT_FILE] };
+			const parent = path.dirname(directory);
+			if (parent === directory) return undefined;
+			directory = parent;
+		}
 	}
 
 	async findEnclosing(

@@ -139,7 +139,10 @@ export class CoreConfigService implements ConfigService {
 	}
 
 	private async firstConfigIn(directory: string): Promise<string[]> {
-		return (await this.discovery.list(directory)).slice(0, 1);
+		const configs = await this.discovery.list(directory);
+		if (configs.length > 0) return configs.slice(0, 1);
+		const adopted = await this.discovery.adoptable(directory);
+		return adopted ? [adopted] : [];
 	}
 
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {

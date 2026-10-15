@@ -356,6 +356,34 @@ describe("CoreBuildService", () => {
 			});
 		});
 
+		describe("a Rojo project file adopted as the config", () => {
+			const adopted = () =>
+				configOf({ file: abs("default.project.json") });
+
+			it("should leave the file as it is and call it unchanged", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const [build] = (
+					await buildServiceOfFs().build(selectionOf(adopted()))
+				).builds;
+
+				expect(build.outcome).toBe("unchanged");
+				expect(await fs.readFile(abs("default.project.json"))).toBe(
+					"{}"
+				);
+			});
+
+			it("should not call it stale", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				expect(
+					await buildServiceOfFs().staleProjectFiles(
+						selectionOf(adopted())
+					)
+				).toEqual([]);
+			});
+		});
+
 		describe("a project file on disk", () => {
 			it("should warn when it differs from what a build would write", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");

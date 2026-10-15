@@ -283,6 +283,7 @@ export class CoreBuildService implements BuildService {
 
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
 		const { projectFile, stem } = attempt.config;
+		if (attempt.config.isAdopted) return attempt;
 		const command =
 			stem === DEFAULT_PROJECT ? "rogen build" : `rogen build ${stem}`;
 		const onDisk = await tryWithAsync(async () =>
@@ -332,10 +333,12 @@ export class CoreBuildService implements BuildService {
 				builds.push(CoreBuildService.unwritten(attempt, [failed]));
 				continue;
 			}
-			const written = await this.writer.write(
-				new OutputFile(config.projectFile),
-				projectFile
-			);
+			const written = config.isAdopted
+				? ok(false)
+				: await this.writer.write(
+						new OutputFile(config.projectFile),
+						projectFile
+					);
 			if (written.isErr()) failed = config.label;
 			builds.push(
 				written.isErr()

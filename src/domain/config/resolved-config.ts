@@ -118,6 +118,11 @@ export class ResolvedConfig {
 		return path.join(this.projectDir, projectFileName(this.stem));
 	}
 
+	/** Whether the config is a Rojo project file Rogen was not given a config for: it is its own output and is never written. */
+	get isAdopted(): boolean {
+		return samePath(this.file, this.projectFile);
+	}
+
 	get projectFiles(): readonly string[] {
 		return this.projectStems.map((stem) =>
 			path.join(this.projectDir, projectFileName(stem))

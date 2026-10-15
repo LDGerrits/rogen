@@ -121,6 +121,8 @@ A node you keep in the `tree` wins over a generated one on a clash, with a warni
 
 ## Rojo's Other Commands
 
+In a folder with a `default.project.json` and no `rogen.json`, Rogen's commands run on the project file as it is: `rogen sourcemap`, `rogen serve` and `rogen build -o game.rbxl` do what `rojo` does there, `check` and `where` read the tree, and `build` writes nothing. So `rogen` can stand in for `rojo` in a Rojo repo you have not moved, and `rogen init` moves it when you want routes.
+
 Rogen replaces the project file you wrote, and Rojo's commands that read it keep working on the one Rogen writes. Your `rogen.json` is that file with more keys (`sourcePaths`, `routes`, `syncPath`, `projects`, `serveProject` and `placePaths`), so Rojo's own keys (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) work in it as they did.
 
 - **`rojo serve`** still serves the project file. `rogen serve` builds it first, starts the server for you and rebuilds as files change; see [Studio](/docs/v2/studio) for the plugin settings.
