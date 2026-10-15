@@ -5,6 +5,8 @@ description: Move a hand-written Rojo project to Rogen without changing where an
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
+Rogen covers everything `rojo` does. A `rogen.json` is a project file, so Rojo's keys keep their meaning, and a folder with only a `default.project.json` runs under Rogen's commands as it is. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config. Not covered are `rojo init --kind` and `--skip-git`, since `rogen init` makes its own project. What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently), and a test builds Rojo's own projects, the templates `rojo init` writes and the layouts in the table with both and compares the places.
+
 If you use Rojo with `server`, `client` and `shared` folders, `rogen init` keeps your tree. It reads the `default.project.json` you wrote, lifts it into a `rogen.json`, and turns the folders it points at into routes that put each one where Rojo had it:
 
 ```json title="default.project.json"

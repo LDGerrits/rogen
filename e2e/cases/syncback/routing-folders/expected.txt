@@ -1,8 +1,52 @@
+$ rogen syncback -i place.rbxlx --dry-run --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "syncback": {
+      "outcome": "planned",
+      "project": "Game",
+      "input": "place.rbxlx",
+      "changes": [
+        {
+          "kind": "write",
+          "file": "<dir>/src/Combat/Server/Combat.luau"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Combat/Server/Loot.luau"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Inventory/Server/Mail.luau"
+        },
+        {
+          "kind": "remove",
+          "file": "<dir>/src/Combat/Server/Hit.luau"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Quest/Server/Main.luau"
+        }
+      ],
+      "unplaced": []
+    }
+  }
+
 $ rogen syncback -i place.rbxlx --dry-run
 exit 0
 stdout:
   rogen syncback · Game
-  default.project.json · wrote
+  default.project.json · unchanged
   Built 1 config.
   write  src/Combat/Server/Combat.luau
   write  src/Combat/Server/Loot.luau

@@ -57,7 +57,8 @@ const SyncbackOptions = [
 		name: "dry-run",
 		short: "n",
 		type: "boolean",
-		description: "Plan the run and list it without writing anything.",
+		description:
+			"Plan the run and list it without changing a source file. The project files are still written.",
 	},
 	{
 		name: "non-interactive",
