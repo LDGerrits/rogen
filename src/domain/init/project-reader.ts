@@ -45,23 +45,26 @@ export class ProjectReader {
 
 	/** `project` told which of the folders it mounts hold an init file, since Rojo reads such a folder as one instance. */
 	async withInitFolders(project: StarterProject): Promise<StarterProject> {
-		const holding: string[] = [];
-		for (const folder of project.mountedFolders()) {
-			const entries = await tryWithAsync(() =>
-				this.fileReader.readDirectory(path.join(this.directory, folder))
-			);
-			if (
-				entries.isOk() &&
-				entries.value.some(
-					([name, type]) =>
-						isFileType(type) &&
-						/^init\./.test(name) &&
-						!name.endsWith(".d.ts")
-				)
-			)
-				holding.push(folder);
-		}
-		return project.withInitIn(holding);
+		const folders = project.mountedFolders();
+		const holds = await Promise.all(
+			folders.map(async (folder) => {
+				const entries = await tryWithAsync(() =>
+					this.fileReader.readDirectory(
+						path.join(this.directory, folder)
+					)
+				);
+				return (
+					entries.isOk() &&
+					entries.value.some(
+						([name, type]) =>
+							isFileType(type) &&
+							/^init\./.test(name) &&
+							!name.endsWith(".d.ts")
+					)
+				);
+			})
+		);
+		return project.withInitIn(folders.filter((_, at) => holds[at]));
 	}
 
 	private unreadable(file: string, message: string): Diagnostic {

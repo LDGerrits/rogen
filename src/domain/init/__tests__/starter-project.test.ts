@@ -164,6 +164,7 @@ describe("StarterProject", () => {
 				},
 			]);
 			expect(held.keptMounts(["lib"])).toEqual([]);
+			expect(held.keptMounts(["."])).toEqual([]);
 			expect(held.mountedFolders()).toEqual([
 				"src",
 				"src/server",

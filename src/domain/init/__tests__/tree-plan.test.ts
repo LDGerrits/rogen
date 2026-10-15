@@ -1,7 +1,7 @@
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { DerivedRoutes } from "../derived-routes.js";
 import { ProjectChoices } from "../project-setup.js";
-import { StartingRoutes } from "../starting-routes.js";
+import { RouteId, StartingRoutes } from "../starting-routes.js";
 import { WorkspaceSpec } from "./init-fixtures.js";
 import {
 	LUAU_ROUTES,
@@ -136,7 +136,8 @@ describe("TreePlan", () => {
 
 			const planDerived = async (
 				content: object,
-				holdingInit: readonly string[] = []
+				holdingInit: readonly string[] = [],
+				ticked: (ids: RouteId[]) => RouteId[] = (ids) => ids
 			) => {
 				const choices = await defaultProjectChoices(luau);
 				const whole = lifted({ name: "my-game", tree: content });
@@ -163,7 +164,7 @@ describe("TreePlan", () => {
 					choices: {
 						...choices,
 						tree: project,
-						routes: starting.tickedByDefault,
+						routes: ticked(starting.tickedByDefault),
 					},
 					existingFiles: new Set(["default.project.json"]),
 				}).unwrap();
@@ -276,6 +277,27 @@ describe("TreePlan", () => {
 					"Kept ServerScriptService/Admin in the tree as a $path mount, since a route can't carry its settings."
 				);
 				expect(files.notes.join("\n")).not.toContain("Couldn't route");
+			});
+
+			it("should leave the settings out with the mount when its route is not kept", async () => {
+				const files = await planDerived(
+					{
+						$className: "DataModel",
+						ServerScriptService: {
+							Server: {
+								$path: "src/server",
+								$properties: { Archivable: false },
+							},
+						},
+					},
+					[],
+					(ids) => ids.filter((id) => id !== "mount:server")
+				);
+
+				expect(JSON.stringify(configOf(files).tree)).not.toContain(
+					"Archivable"
+				);
+				expect(files.notes.join("\n")).not.toContain("Kept what");
 			});
 
 			it("should warn with a code about settings no route can land on", async () => {

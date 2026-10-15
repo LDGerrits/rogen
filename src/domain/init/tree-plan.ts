@@ -27,6 +27,8 @@ interface TreeInputs {
 	readonly mounts: readonly Mount[];
 	readonly dirs: readonly string[];
 	readonly derived: DerivedRoutes | undefined;
+	/** Where the routes the config writes put code. */
+	readonly landings: readonly string[];
 }
 
 /** The name of the folder a mount at `target` lies in or is; a file's folder is where its marker goes. */
@@ -48,9 +50,9 @@ export class TreePlan {
 		readonly warnings: readonly Diagnostic[] = []
 	) {}
 
-	static of({ tree, mounts, dirs, derived }: TreeInputs): TreePlan {
+	static of({ tree, mounts, dirs, derived, landings }: TreeInputs): TreePlan {
 		return tree.kind === "lift"
-			? TreePlan.lifted(tree, mounts, dirs, derived)
+			? TreePlan.lifted(tree, mounts, dirs, derived, landings)
 			: new TreePlan(
 					StarterProject.fromMounts(mounts).toConfig(),
 					[],
@@ -62,7 +64,8 @@ export class TreePlan {
 		{ from, project }: { from: string; project: StarterProject },
 		mounts: readonly Mount[],
 		dirs: readonly string[],
-		derived: DerivedRoutes | undefined
+		derived: DerivedRoutes | undefined,
+		landings: readonly string[]
 	): TreePlan {
 		const stripped = project.withoutNodesIn(dirs);
 		const removed = stripped?.removed ?? [];
@@ -81,7 +84,10 @@ export class TreePlan {
 			unrouted.map(({ mount }) => placeOf(mount))
 		);
 		const routedMounts = removed.filter(
-			(mount) => carried(mount) && !unroutedPlaces.has(placeOf(mount))
+			(mount) =>
+				carried(mount) &&
+				!unroutedPlaces.has(placeOf(mount)) &&
+				landings.includes(placeOf(mount))
 		);
 		const settled = stripped
 			? stripped.project

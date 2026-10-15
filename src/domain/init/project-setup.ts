@@ -180,11 +180,18 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const { language, darklua, sourcePaths, syncPath } = choices;
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
+		const routes = takesRoutes(choices.tree)
+			? new StartingRoutes(language, derived).starting(
+					choices.routes,
+					choices.fallback
+				)
+			: undefined;
 		const tree = TreePlan.of({
 			tree: choices.tree,
 			mounts: choices.mounts,
 			dirs,
 			derived,
+			landings: Object.values(routes ?? {}),
 		});
 		const { compiler } = language;
 		const { testRunner } = this.directory.workspace;
@@ -198,13 +205,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig({
 			...tree.fields,
-			...(takesRoutes(choices.tree) && {
-				sourcePaths: [...sourcePaths],
-				routes: new StartingRoutes(language, derived).starting(
-					choices.routes,
-					choices.fallback
-				),
-			}),
+			...(routes && { sourcePaths: [...sourcePaths], routes }),
 			...(defaultSyncPath && { syncPath: defaultSyncPath }),
 			...projects,
 		});

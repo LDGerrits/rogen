@@ -6,7 +6,7 @@ import { RemovedMount, rojoPathTarget } from "../rojo/rojo-project.js";
 import { StarterProject } from "./starter-project.js";
 import { instanceKey } from "../roblox/roblox.js";
 
-/** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out. */
+/** A mount of a hand-written project file that no route can reproduce. */
 export interface UnroutedMount {
 	readonly target: string;
 	readonly node: string;
@@ -15,6 +15,7 @@ export interface UnroutedMount {
 	readonly atRoot: boolean;
 }
 
+/** The routes that reproduce the mounts of a hand-written project file, which a lift leaves out. */
 export class DerivedRoutes {
 	readonly routes = new Map<string, string>();
 	readonly fallback: string | undefined;

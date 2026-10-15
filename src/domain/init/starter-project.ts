@@ -73,6 +73,7 @@ export class StarterProject {
 	/** The mounts below `dirs` that stay in the tree because their folder holds an init file. */
 	keptMounts(dirs: readonly string[]): MountedPath[] {
 		const claimed = dirs.map(normalizeDir);
+		if (claimed.includes(".")) return [];
 		return this.project
 			.mountedPaths()
 			.filter(
