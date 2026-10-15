@@ -10,8 +10,14 @@ import { Emitter, Event } from "../../base/event.js";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { FileChange, FileChangeType } from "./file-changes.js";
 
+let lastWrite = 0;
+
+/** Now, in milliseconds since the epoch, and later than any write before it. */
+const writeTime = () => (lastWrite = Math.max(Date.now(), lastWrite + 1));
+
 class FileNode {
 	readonly type = FileType.File;
+	modified = writeTime();
 	constructor(public content: string = "") {}
 }
 
@@ -267,6 +273,26 @@ export class MemoryFileSystemService
 			);
 		}
 		return (node as FileNode).content;
+	}
+
+	async readFileBytes(filePath: string): Promise<Uint8Array> {
+		return new TextEncoder().encode(await this.readFile(filePath));
+	}
+
+	async writeFileBytes(filePath: string, bytes: Uint8Array): Promise<void> {
+		await this.writeFile(filePath, new TextDecoder().decode(bytes));
+	}
+
+	async lastModified(filePath: string): Promise<number> {
+		const node = this.lookupOrThrow(filePath);
+		return node.type === FileType.File ? (node as FileNode).modified : 0;
+	}
+
+	async copyFile(from: string, to: string): Promise<void> {
+		const source = this.lookupOrThrow(from) as FileNode;
+		await this.writeFile(to, await this.readFile(from));
+		const copy = this.lookupOrThrow(to) as FileNode;
+		copy.modified = source.modified;
 	}
 
 	async writeFile(filePath: string, content: string): Promise<void> {

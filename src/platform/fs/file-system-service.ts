@@ -31,6 +31,14 @@ export interface FileSystemService extends FileReader {
 	readonly _serviceBrand: undefined;
 
 	createDirectory(filePath: string): Promise<void>;
+	/** The file's bytes, for a file that may not be text. */
+	readFileBytes(filePath: string): Promise<Uint8Array>;
+	/** Writes `bytes` as they are, creating the folders above the file. */
+	writeFileBytes(filePath: string, bytes: Uint8Array): Promise<void>;
+	/** When the file was last written, in milliseconds since the epoch. */
+	lastModified(filePath: string): Promise<number>;
+	/** Copies the bytes of `from` to `to` with its last-modified time, as `cp -p` does, creating the folders above `to`. */
+	copyFile(from: string, to: string): Promise<void>;
 	writeFile(filePath: string, content: string): Promise<void>;
 
 	delete(filePath: string, recursive?: boolean): Promise<void>;

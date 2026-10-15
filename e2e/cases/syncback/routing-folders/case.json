@@ -1,1 +1,1 @@
-{ "steps": [["syncback", "-i", "place.rbxlx", "--dry-run", "--json"], ["syncback", "-i", "place.rbxlx", "--dry-run"], ["syncback", "-i", "place.rbxlx", "-y", "--list"], ["where", "src"]], "show": ["src/Combat/Server/Combat.luau", "src/Quest/Server/Main.luau"] }
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "--dry-run", "--json"], ["syncback", "-i", "place.rbxl", "--dry-run"], ["syncback", "-i", "place.rbxl", "-y", "--list"], ["where", "src"]], "show": ["src/Combat/Server/Combat.luau", "src/Quest/Server/Main.luau"]}

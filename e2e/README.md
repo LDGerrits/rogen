@@ -14,7 +14,8 @@ code, the written files and the tree Rojo sees.
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {} }
+  case.json      optional: { "steps": [["build", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {}, "place": "place.rbxl" }
+  place.luau     with "place": what changed in Studio, run on the place built from project/
   expected.txt   the transcript
 ```
 
@@ -31,6 +32,13 @@ e2e/cases/<area>/<case>/
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - `env` sets variables for the commands, on top of an environment that is not GitHub Actions'.
 - `stdin` is the text every step reads on its standard input; the transcript shows it under `stdin:`.
+- `place` makes a place file before the steps run, at that path inside the project:
+  the project is built and synced into a place by `rojo build`, then `place.luau`
+  changes it with [Lune](https://github.com/lune-org/lune) (pinned in `rokit.toml`),
+  with `game` and `Instance` as in Studio's command bar. A `.rbxlx` name saves XML.
+  This is how syncback cases say what an edit in Studio was, with no place file to
+  keep in step with `project/` by hand. It builds `default.project.json` from the
+  project root, so a case with `place` takes no `links` or `cwd`.
 - Files that a run created or changed are listed under `written:`. `rogen.json` and
   `rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 

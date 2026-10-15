@@ -6,6 +6,7 @@ import {
 	FileType,
 	FileSystemService,
 	fileSystemError,
+	isMissingPath,
 	renameRefusal,
 } from "./file-system-service.js";
 
@@ -120,6 +121,32 @@ export class DiskFileSystemService implements FileSystemService {
 
 	async readFile(filePath: string): Promise<string> {
 		return fs.promises.readFile(filePath, "utf-8");
+	}
+
+	async readFileBytes(filePath: string): Promise<Uint8Array> {
+		return new Uint8Array(await fs.promises.readFile(filePath));
+	}
+
+	async writeFileBytes(filePath: string, bytes: Uint8Array): Promise<void> {
+		await this.createDirectory(path.dirname(filePath));
+		await fs.promises.writeFile(filePath, bytes);
+	}
+
+	async copyFile(from: string, to: string): Promise<void> {
+		try {
+			await fs.promises.copyFile(from, to);
+		} catch (error) {
+			if (!isMissingPath(error as Error) || !(await this.exists(from)))
+				throw error;
+			await this.createDirectory(path.dirname(to));
+			await fs.promises.copyFile(from, to);
+		}
+		const { atime, mtime } = await fs.promises.stat(from);
+		await fs.promises.utimes(to, atime, mtime);
+	}
+
+	async lastModified(filePath: string): Promise<number> {
+		return (await fs.promises.stat(filePath)).mtimeMs;
 	}
 
 	async writeFile(filePath: string, content: string): Promise<void> {

@@ -935,20 +935,20 @@ Pin a newer Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`), or upd
 
 ### `syncback.removedFromProjectFile` [#syncback-removedfromprojectfile]
 
-Error. The place no longer holds an instance whose file a project file defines one file at a time, which Rojo's syncback refuses to remove. Rogen mounts the folder of a routing folder as one node, and Rojo removes the files of that node when the instance is gone; but the files of a layout with `@` names or markers are nodes of their own, so syncback can change them and not remove them.
+Error. The place no longer holds an instance that a node of the config's own `tree` defines, which Rojo's syncback refuses to remove: it doesn't edit project files. Files Rogen placed are synced through a mirror and can always be removed; this is about the nodes you wrote yourself.
 
 ```
-src/Inventory/Bag@server.luau - error: the place no longer holds Inventory/Bag, and the project file defines it file by file, which syncback cannot remove. Delete src/Inventory/Bag@server.luau, then run syncback again. (syncback.removedFromProjectFile)
+rogen.json - error: the place no longer holds Workspace/Map, and the tree of the config defines it, which syncback cannot remove. Remove its node from the tree, then run syncback again. (syncback.removedFromProjectFile)
 ```
 
-Delete the file named and run `rogen syncback` again. Nothing was written. See [CLI](/docs/v2/cli#syncback).
+Remove the node from the `tree` of `rogen.json`, or put the instance back in the place, and run `rogen syncback` again. Nothing was written. See [CLI](/docs/v2/cli#syncback).
 
 ### `syncback.unplaced` [#syncback-unplaced]
 
-Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, beside the files already at its parent: that needs one answer, and this is the case where it has none. The message says why.
+Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides: no route puts files where its parent is, two routes do, the project has several source paths and no file beside it says which, or as many files beside it lie in each of two folders of one style. It is also how syncback lists what it can't write: an instance where an ignore glob would put it, a property set on a folder that no one folder of the project is, and a change Rojo itself can't sync back (a `.json` or `.toml` module). The message says why.
 
 ```
-rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place: src/Inventory, src/Inventory/Server. (syncback.unplaced)
+rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
 ```
 
 Create the file where you want it, by hand, and run `rogen syncback` again. Other changes of the same run were written. See [CLI](/docs/v2/cli#syncback).

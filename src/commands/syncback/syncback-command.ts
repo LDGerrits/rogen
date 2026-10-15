@@ -186,8 +186,14 @@ registerCommand(
 							);
 					}
 				}
-				if (outcome.kind === "written")
-					build = await buildService.build(selection.value);
+				if (outcome.kind === "written") {
+					const rebuilt = await buildService.build(selection.value);
+					if (
+						rebuilt.failure() ||
+						rebuilt.builds.some(({ outcome }) => outcome === "wrote")
+					)
+						build = rebuilt;
+				}
 			}
 			let stopped: Error | undefined;
 			if (outcome.kind === "failed") stopped = outcome.error;
