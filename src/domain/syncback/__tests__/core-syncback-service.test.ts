@@ -415,6 +415,22 @@ describe("CoreSyncbackService", () => {
 		expect((await service.plan(request)).unwrap().changes).toEqual([]);
 	});
 
+	it("should list an instance Rojo says it can't sync back", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => [
+			"[WARN  librojo::syncback] Cannot syncback Json at ReplicatedStorage/Shared/Data, skipping",
+		];
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.unplaced).toEqual([
+			{
+				instance: "ReplicatedStorage/Shared/Data",
+				reason: "Rojo can't sync back a Json file, so its change stays in the place; copy it by hand",
+			},
+		]);
+	});
+
 	it("should write the plan it was shown without running Rojo again", async () => {
 		await prepare(["src/Inventory/Bag@server.luau"]);
 		rojo.say = async () => {

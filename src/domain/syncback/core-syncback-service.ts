@@ -50,6 +50,9 @@ const MIRROR = `${SYNCBACK_FILES.staging}/mirror`;
 
 const LISTED = /^(Writing|Removing) (.+)$/;
 
+/** Rojo's warning for an instance whose kind of file it can't write back. */
+const SKIPPED = /Cannot syncback (?<kind>\S+) at (?<instance>.+?), skipping/;
+
 /** How far apart two writes must be for every file system to give them different times; a copy younger than this when Rojo starts is compared byte for byte. */
 const COARSEST_CLOCK_MS = 2000;
 
@@ -175,7 +178,13 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 			if (ran.isErr()) return ran;
 			return ok(
-				await this.settle(request, prepared.value, copied, started)
+				await this.settle(
+					request,
+					prepared.value,
+					copied,
+					started,
+					CoreSyncbackService.skipped(ran.value)
+				)
 			);
 		} finally {
 			await this.clean(prepared.value);
@@ -471,13 +480,15 @@ export class CoreSyncbackService implements SyncbackService {
 		prepared: Prepared,
 		copied: readonly Copied[],
 		/** When Rojo started, in milliseconds since the epoch. */
-		started: number
+		started: number,
+		/** What Rojo said it skipped. */
+		skipped: readonly UnplacedInstance[]
 	): Promise<CoreSyncbackPlan> {
 		const { mirror, root } = prepared;
 		const after = await this.walk(root);
 		const present = new Set(after.map(({ path: at }) => at));
 		const operations: Operation[] = [];
-		const unplaced: UnplacedInstance[] = [];
+		const unplaced: UnplacedInstance[] = [...skipped];
 		const before = new Map<string, Uint8Array | undefined>();
 		const touch = async (file: string) => {
 			if (before.has(file)) return;
@@ -695,6 +706,23 @@ export class CoreSyncbackService implements SyncbackService {
 			if (made) expected.push({ file: to, instance: made });
 		}
 		return { kind: "placed", operations, expected };
+	}
+
+	/** The instances Rojo said it skipped, as it can't write back their kind of file. */
+	private static skipped(
+		messages: readonly ServerMessage[]
+	): UnplacedInstance[] {
+		return messages.flatMap(({ text }) => {
+			const found = SKIPPED.exec(text)?.groups;
+			return found
+				? [
+						{
+							instance: found.instance,
+							reason: `Rojo can't sync back a ${found.kind} file, so its change stays in the place; copy it by hand`,
+						},
+					]
+				: [];
+		});
 	}
 
 	/** The instance a path of the mirror is, as an instance key: its folders, then the instance its file makes. */
