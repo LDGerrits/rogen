@@ -1,5 +1,5 @@
 import path from "path";
-import { UsageError } from "../../base/errors.js";
+import { UsageError, failureReason } from "../../base/errors.js";
 import { toPosix, toNative } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -68,7 +68,7 @@ interface Settled {
 	readonly changes: SyncbackChange[];
 	readonly unplaced: UnplacedInstance[];
 	/** The moves to make, from the staging folder to where routing puts the file. */
-	readonly moves: { from: string; to: string }[];
+	readonly moves: { from: string; to: string; instance: string }[];
 	/** What each file moved is expected to be: for the check after. */
 	readonly expected: { file: string; instance: readonly string[] }[];
 }
@@ -113,9 +113,20 @@ export class CoreSyncbackService implements SyncbackService {
 	}
 
 	async apply(
-		plan: SyncbackPlan,
-		request: SyncbackRequest
+		request: SyncbackRequest,
+		confirmed?: SyncbackPlan
 	): Promise<Result<SyncbackResult, Error>> {
+		if (confirmed) {
+			const current = await this.plan(request);
+			if (current.isErr()) return current;
+			if (!CoreSyncbackService.sameRun(current.value, confirmed))
+				return err(
+					new UsageError(
+						"The place file or the sources changed since the list was made, so nothing was written.",
+						"Run syncback again."
+					)
+				);
+		}
 		const prepared = await this.prepare(request);
 		if (prepared.isErr()) return prepared;
 		try {
@@ -132,20 +143,50 @@ export class CoreSyncbackService implements SyncbackService {
 				direct,
 				true
 			);
-			for (const { from, to } of settled.moves) {
-				await this.fileSystemService.createDirectory(path.dirname(to));
-				await this.fileSystemService.rename(from, to);
-			}
-			const warnings = await this.verify(request, settled.expected);
+			const moved = await this.move(settled);
+			const warnings = await this.verify(request, moved.expected);
 			return ok({
-				project: plan.project,
-				changes: settled.changes,
-				unplaced: settled.unplaced,
+				project: request.project,
+				changes: moved.changes,
+				unplaced: moved.unplaced,
 				warnings,
 			});
 		} finally {
 			await this.clean(prepared.value);
 		}
+	}
+
+	private static sameRun(a: SyncbackPlan, b: SyncbackPlan): boolean {
+		const key = (plan: SyncbackPlan) =>
+			JSON.stringify([
+				plan.changes.map(({ kind, file }) => `${kind} ${file}`).sort(),
+				plan.unplaced.map(({ instance }) => instance).sort(),
+			]);
+		return key(a) === key(b);
+	}
+
+	/** Moves what Rojo wrote into staging to where routing puts it. A move that fails leaves that instance unplaced, and the rest are made. */
+	private async move(settled: Settled): Promise<Settled> {
+		const failed = new Set<string>();
+		const unplaced = [...settled.unplaced];
+		for (const { from, to, instance } of settled.moves) {
+			try {
+				await this.fileSystemService.createDirectory(path.dirname(to));
+				await this.fileSystemService.rename(from, to);
+			} catch (error) {
+				failed.add(to);
+				unplaced.push({
+					instance,
+					reason: `${to} could not be written: ${failureReason(error as Error)}`,
+				});
+			}
+		}
+		return {
+			...settled,
+			changes: settled.changes.filter(({ file }) => !failed.has(file)),
+			unplaced,
+			expected: settled.expected.filter(({ file }) => !failed.has(file)),
+		};
 	}
 
 	private async prepare(
@@ -184,6 +225,16 @@ export class CoreSyncbackService implements SyncbackService {
 					`${project.projectFile} could not be read; run 'rogen build' to write it.`
 				)
 			);
+		let written: RojoProjectFile;
+		try {
+			written = JSON.parse(text.value) as RojoProjectFile;
+		} catch {
+			return err(
+				new UsageError(
+					`${project.projectFile} is not valid JSON; run 'rogen build' to write it again.`
+				)
+			);
+		}
 		const layout = new SyncbackLayout(project, here.files);
 		const placed = here.files.filter(
 			(file): file is PlacedLocation => file.status === "placed"
@@ -193,7 +244,7 @@ export class CoreSyncbackService implements SyncbackService {
 			layout,
 			placed,
 			project: SyncbackProject.of({
-				written: JSON.parse(text.value) as RojoProjectFile,
+				written,
 				dir,
 				staging: `${STAGING}/${NEW_FOLDER}`,
 				homes: layout.homes,
@@ -264,7 +315,7 @@ export class CoreSyncbackService implements SyncbackService {
 			errorDiagnostic(
 				"syncback.removedFromProjectFile",
 				{ resource: files[0]?.source ?? prepared.dir },
-				`the place no longer holds ${refused.parent}/${refused.child}, and the project file defines it file by file, which syncback cannot remove. ${files.length > 0 ? `Delete ${files.map(({ source }) => toNative(source)).join(", ")}` : "Delete the file that makes it"}, then run syncback again.`
+				`the place no longer holds ${refused.parent}/${refused.child}, and the project file defines it file by file, which syncback cannot remove. ${files.length === 1 ? `Delete ${toNative(files[0].source)}` : files.length > 1 ? `Delete the one of ${files.map(({ source }) => toNative(source)).join(" and ")} that is gone from the place` : "Delete the file that makes it"}, then run syncback again.`
 			),
 		]);
 	}
@@ -312,7 +363,7 @@ export class CoreSyncbackService implements SyncbackService {
 			({ file }) => !this.isStaged(prepared, file)
 		);
 		const unplaced: UnplacedInstance[] = [];
-		const moves: { from: string; to: string }[] = [];
+		const moves: Settled["moves"] = [];
 		const expected: { file: string; instance: readonly string[] }[] = [];
 		const { layout, project } = prepared;
 		if (!layout || !project) return { changes, unplaced, moves, expected };
@@ -381,6 +432,7 @@ export class CoreSyncbackService implements SyncbackService {
 			out.moves.push({
 				from: path.join(base, String(unit.number), ...file),
 				to,
+				instance,
 			});
 		}
 		if (!unit.folder && targets.length > 0)
@@ -390,7 +442,8 @@ export class CoreSyncbackService implements SyncbackService {
 			});
 	}
 
-	private async walk(dir: string): Promise<string[]> {
+	/** The files below `dir`, and the folders with none in them; `depth` 0 is the staging folder and 1 a staged node's, which are not instances. */
+	private async walk(dir: string, depth = 0): Promise<string[]> {
 		const entries = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(dir)
 		);
@@ -398,8 +451,13 @@ export class CoreSyncbackService implements SyncbackService {
 		const found: string[] = [];
 		for (const [name, type] of entries.value) {
 			const entry = path.join(dir, name);
-			if (isDirectoryType(type)) found.push(...(await this.walk(entry)));
-			else found.push(entry);
+			if (!isDirectoryType(type)) found.push(entry);
+			else {
+				const inside = await this.walk(entry, depth + 1);
+				found.push(
+					...(inside.length > 0 || depth < 1 ? inside : [entry])
+				);
+			}
 		}
 		return found;
 	}

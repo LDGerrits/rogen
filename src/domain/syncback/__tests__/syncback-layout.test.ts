@@ -80,23 +80,11 @@ describe("SyncbackLayout", () => {
 			]);
 
 			expect(
-				donors.map(({ style, spelled, folderName }) => ({
-					style,
-					spelled,
-					folderName,
-				}))
+				donors.map(({ style, spelled }) => ({ style, spelled }))
 			).toEqual(
 				expect.arrayContaining([
-					{
-						style: "folder",
-						spelled: undefined,
-						folderName: "Server",
-					},
-					{
-						style: "suffix",
-						spelled: "server",
-						folderName: undefined,
-					},
+					{ style: "folder", spelled: undefined },
+					{ style: "suffix", spelled: "server" },
 				])
 			);
 		});

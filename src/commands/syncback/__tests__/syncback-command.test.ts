@@ -119,21 +119,43 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 	});
 
-	it("should write, in a second run of Rojo, when it is told to", async () => {
+	it("should write, in one run of Rojo, when it is told to", async () => {
 		const { running, log } = start({
 			input: "game.rbxl",
 			"non-interactive": true,
 		});
-		const [dry] = await rojoRuns(1);
-		dry.print("Writing src/Combat/Server/Loot.luau\n");
-		dry.exit({ code: 0, signal: null });
-		const [, real] = await rojoRuns(2);
-		real.print("Writing src/Combat/Server/Loot.luau\n");
-		real.exit({ code: 0, signal: null });
+		const [rojo] = await rojoRuns(1);
+		rojo.print("Writing src/Combat/Server/Loot.luau\n");
+		rojo.exit({ code: 0, signal: null });
 
 		expect((await running).isOk()).toBe(true);
 
-		expect(real.args).not.toContain("--dry-run");
+		expect(rojo.args).not.toContain("--dry-run");
+		expect(processes.spawned).toHaveLength(1);
+		expect(said(log)).toContain("Syncback wrote 1 change.");
+	});
+
+	it("should plan, ask, and plan again before it writes, in a terminal", async () => {
+		const { running, log } = start(
+			{ input: "game.rbxl" },
+			new MockPromptService([true], true)
+		);
+		for (const at of [1, 2, 3]) {
+			const rojo = (await rojoRuns(at))[at - 1];
+			rojo.print("Writing src/Combat/Server/Loot.luau\n");
+			rojo.exit({ code: 0, signal: null });
+		}
+
+		expect((await running).isOk()).toBe(true);
+
+		expect(
+			processes.spawned.map(({ args }) => args.includes("--dry-run"))
+		).toEqual([true, true, false]);
+		expect(
+			said(log).filter(
+				(line) => line === "write  src/Combat/Server/Loot.luau"
+			)
+		).toHaveLength(1);
 		expect(said(log)).toContain("Syncback wrote 1 change.");
 	});
 
@@ -150,6 +172,7 @@ describe("syncback command", () => {
 
 		expect(processes.spawned).toHaveLength(1);
 		expect(said(log)).toContain("remove src/Combat/Server/Hit.luau");
+		expect(said(log)).toContain("Nothing was written.");
 	});
 
 	it("should say when a Rojo is too old", async () => {

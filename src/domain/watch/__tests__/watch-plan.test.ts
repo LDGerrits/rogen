@@ -176,6 +176,17 @@ describe("domain/watch/watch-plan", () => {
 			]);
 		});
 
+		it("should not ignore a Rojo project file that is the config itself", () => {
+			const plan = new WatchPlan([
+				config("/repo/default.project.json", ["/repo/src"]),
+			]);
+
+			expect(plan.ignored).toEqual([]);
+			expect(isIgnored("/repo/default.project.json", plan.ignored)).toBe(
+				false
+			);
+		});
+
 		it("should ignore the staging file of any process writing an output", () => {
 			const plan = new WatchPlan([
 				config("/repo/rogen.json", ["/repo/src"]),

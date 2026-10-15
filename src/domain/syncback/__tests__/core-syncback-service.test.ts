@@ -131,10 +131,7 @@ describe("CoreSyncbackService", () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 
 		await service.plan(request);
-		await service.apply(
-			{ project: config, changes: [], unplaced: [] },
-			request
-		);
+		await service.apply(request);
 
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 		expect(await fs.exists(abs(".rogen-syncback"))).toBe(false);
@@ -217,12 +214,7 @@ describe("CoreSyncbackService", () => {
 			return ["Writing .rogen-syncback/new/0/Quest/Main.luau"];
 		};
 
-		const result = (
-			await service.apply(
-				{ project: config, changes: [], unplaced: [] },
-				request
-			)
-		).unwrap();
+		const result = (await service.apply(request)).unwrap();
 
 		expect(await fs.readFile(abs("src/Quest/Server/Main.luau"))).toBe(
 			"return 1"
@@ -297,6 +289,80 @@ describe("CoreSyncbackService", () => {
 
 		expect(rojo.requests[0].projectFile).toBe(abs("default.project.json"));
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
+	});
+
+	it("should write nothing when the run is not the one the user was shown", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async () => ["Writing src/Combat/Server/Loot.luau"];
+		const shown = (await service.plan(request)).unwrap();
+		rojo.say = async () => [
+			"Writing src/Combat/Server/Loot.luau",
+			"Removing src/Combat/Server/Hit.luau",
+		];
+
+		const applied = await service.apply(request, shown);
+
+		expect((applied as ResultError<Error>).error.message).toContain(
+			"changed since the list was made"
+		);
+		expect(
+			rojo.requests.filter(({ flags }) => !flags.includes("--dry-run"))
+		).toEqual([]);
+	});
+
+	it("should leave an instance unplaced when its file cannot be moved, and move the rest", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		rojo.say = async ({ flags }) => {
+			if (flags.includes("--dry-run")) return [];
+			await fs.writeFile(abs(".rogen-syncback/new/0/Quest/A.luau"), "a");
+			await fs.writeFile(abs(".rogen-syncback/new/0/Raid/B.luau"), "b");
+			return [];
+		};
+		const rename = fs.rename.bind(fs);
+		fs.rename = async (from, to, overwrite) => {
+			if (to.includes("Quest")) throw new Error("denied");
+			return rename(from, to, overwrite);
+		};
+
+		const result = (await service.apply(request)).unwrap();
+
+		expect(await fs.exists(abs("src/Raid/Server/B.luau"))).toBe(true);
+		expect(result.changes).toEqual([
+			{ kind: "write", file: abs("src/Raid/Server/B.luau") },
+		]);
+		expect(result.unplaced).toMatchObject([
+			{
+				instance: "ServerScriptService/Quest",
+				reason: expect.stringContaining("denied"),
+			},
+		]);
+	});
+
+	it("should place an empty folder the place added", async () => {
+		await prepare([
+			"src/Inventory/Bag@server.luau",
+			"src/Inventory/Save@server.luau",
+		]);
+		rojo.say = async ({ flags }) => {
+			if (!flags.includes("--dry-run"))
+				await fs.createDirectory(abs(".rogen-syncback/new/0/Empty"));
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("src/Inventory/Empty@server"))).toBe(true);
+	});
+
+	it("should fail, not throw, when the written project file is not JSON", async () => {
+		await prepare(["src/Combat/Server/Combat.luau"]);
+		await fs.writeFile(abs("default.project.json"), "{");
+
+		const planned = await service.plan(request);
+
+		expect((planned as ResultError<Error>).error.message).toContain(
+			"is not valid JSON"
+		);
 	});
 
 	it("should fail with Rojo's error when it fails for another reason", async () => {

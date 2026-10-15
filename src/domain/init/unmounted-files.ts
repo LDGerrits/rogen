@@ -44,6 +44,7 @@ export class UnmountedFiles {
 		for (const [name, type] of listing.value) {
 			const relative = joinPosix(folder, name);
 			if (
+				name === ".rogen-syncback" ||
 				mounted.some((target) => containsPosix(target, relative)) ||
 				ignored.some((glob) => isGlobsetMatch(relative, glob))
 			)

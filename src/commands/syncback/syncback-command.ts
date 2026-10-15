@@ -8,7 +8,10 @@ import {
 } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import { SyncbackService } from "../../domain/syncback/syncback-service.js";
-import { SyncbackPlan } from "../../domain/syncback/syncback.js";
+import {
+	SyncbackPlan,
+	SyncbackResult,
+} from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -148,44 +151,45 @@ registerCommand(
 			const request =
 				project &&
 				({ selection: selection.value, project, input, cwd } as const);
-			const planned =
-				failure || !request ? undefined : await syncbacks.plan(request);
-
-			let outcome: SyncbackOutcome =
-				planned === undefined
-					? { kind: "notRun" }
-					: planned.isErr()
+			let outcome: SyncbackOutcome = { kind: "notRun" };
+			let listed = false;
+			const written = (applied: Result<SyncbackResult, Error>) =>
+				applied.isErr()
+					? ({ kind: "failed", error: applied.error } as const)
+					: ({
+							kind: "written",
+							plan: applied.value,
+							warnings: applied.value.warnings,
+						} as const);
+			if (!failure && request) {
+				if (yes && !dryRun) {
+					outcome = written(await syncbacks.apply(request));
+				} else {
+					const planned = await syncbacks.plan(request);
+					outcome = planned.isErr()
 						? { kind: "failed", error: planned.error }
 						: {
 								kind: "planned",
 								plan: planned.value,
 								warnings: [],
 							};
-			let stopped: Error | undefined;
-			if (planned?.isOk() && request && !dryRun) {
-				const plan = planned.value;
-				const go =
-					plan.changes.length > 0 &&
-					(yes ||
-						(await this.asked(
-							promptService,
-							logService,
-							plan,
-							cwd
-						)));
-				if (go) {
-					const applied = await syncbacks.apply(plan, request);
-					outcome = applied.isErr()
-						? { kind: "failed", error: applied.error }
-						: {
-								kind: "written",
-								plan: applied.value,
-								warnings: applied.value.warnings,
-							};
-					if (applied.isOk())
-						build = await buildService.build(selection.value);
+					if (
+						planned.isOk() &&
+						!dryRun &&
+						planned.value.changes.length > 0
+					) {
+						this.listChanges(logService, planned.value, cwd);
+						listed = true;
+						if (await this.asked(promptService, planned.value))
+							outcome = written(
+								await syncbacks.apply(request, planned.value)
+							);
+					}
 				}
+				if (outcome.kind === "written")
+					build = await buildService.build(selection.value);
 			}
+			let stopped: Error | undefined;
 			if (outcome.kind === "failed") stopped = outcome.error;
 
 			if (json)
@@ -207,7 +211,8 @@ registerCommand(
 					logService,
 					outcome,
 					cwd,
-					dryRun || line.options.list === true || !yes
+					(dryRun || line.options.list === true) && !listed,
+					dryRun
 				);
 			if (stopped) return err(stopped);
 			return failure ? this.reported(failure) : ok(undefined);
@@ -215,11 +220,8 @@ registerCommand(
 
 		private async asked(
 			promptService: PromptService,
-			logService: LogService,
-			plan: SyncbackPlan,
-			cwd: string
+			plan: SyncbackPlan
 		): Promise<boolean> {
-			this.listChanges(logService, plan, cwd);
 			const answer = await promptService.confirm({
 				message: `Write and remove files (${counts(plan)})?`,
 				initialValue: false,
@@ -242,7 +244,8 @@ registerCommand(
 			logService: LogService,
 			outcome: Extract<SyncbackOutcome, { plan: SyncbackPlan }>,
 			cwd: string,
-			list: boolean
+			list: boolean,
+			dryRun: boolean
 		): void {
 			const { plan } = outcome;
 			if (list) this.listChanges(logService, plan, cwd);
@@ -256,13 +259,19 @@ registerCommand(
 				);
 			for (const warning of outcome.warnings)
 				logService.diagnostic(warning);
-			logService.info(
-				outcome.kind === "written"
-					? `Syncback ${plan.changes.length === 0 ? "changed nothing" : `wrote ${plan.changes.length} ${plan.changes.length === 1 ? "change" : "changes"}`}.`
-					: plan.changes.length === 0
+			if (outcome.kind === "written")
+				logService.info(
+					plan.changes.length === 0
+						? "Syncback changed nothing."
+						: `Syncback wrote ${plan.changes.length} ${plan.changes.length === 1 ? "change" : "changes"}.`
+				);
+			else if (!dryRun) logService.info("Nothing was written.");
+			else
+				logService.info(
+					plan.changes.length === 0
 						? "Syncback would change nothing."
 						: `Syncback would change ${plan.changes.length} ${plan.changes.length === 1 ? "file" : "files"} (${counts(plan)}).`
-			);
+				);
 		}
 	}
 );

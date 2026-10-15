@@ -9,10 +9,10 @@ export interface SyncbackService {
 	/** What a run would write and remove, found by a dry run of Rojo's syncback. Writes nothing that stays. Fails when the project's files are not built, when Rojo can't read the place, or when it holds a change syncback can't make. */
 	plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>>;
 
-	/** Runs the syncback `plan` described, and puts what Rojo had no folder for where routing puts it. */
+	/** Runs the syncback, and puts what Rojo had no folder for where routing puts it. Given the plan the user was shown, it plans again first and writes nothing if the run would differ. */
 	apply(
-		plan: SyncbackPlan,
-		request: SyncbackRequest
+		request: SyncbackRequest,
+		confirmed?: SyncbackPlan
 	): Promise<Result<SyncbackResult, Error>>;
 }
 

@@ -7,7 +7,8 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 type WatchPlanConfig = Pick<
 	ResolvedConfig,
 	"indexedPaths" | "projectFile" | "syncPath"
->;
+> &
+	Partial<Pick<ResolvedConfig, "isAdopted">>;
 
 export class WatchPlan {
 	readonly roots: readonly string[];
@@ -26,7 +27,9 @@ export class WatchPlan {
 
 		const outputs = [
 			...new Set(
-				configs.map((config) => path.resolve(config.projectFile))
+				configs
+					.filter((config) => !config.isAdopted)
+					.map((config) => path.resolve(config.projectFile))
 			),
 		].map((projectFile) => new OutputFile(projectFile));
 		const ignoredPaths = [

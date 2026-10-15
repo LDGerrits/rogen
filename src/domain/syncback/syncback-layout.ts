@@ -19,12 +19,8 @@ export type Style = "folder" | "suffix" | "marker" | "fallback";
 export interface Donor {
 	readonly dir: string;
 	readonly style: Style;
-	/** The route key, as the config spells it. */
-	readonly route: string;
 	/** What the file's name spells after `@`, when it does. */
 	readonly spelled?: string;
-	/** The routing folder's own name, for a `folder` style. */
-	readonly folderName?: string;
 	/** Absolute POSIX path of the source path it lies in. */
 	readonly sourcePath: string;
 }
@@ -66,18 +62,13 @@ export class SyncbackLayout {
 				continue;
 			const sourcePath = this.rootOf(file.source);
 			if (!sourcePath) continue;
-			const governing = this.governingDir(file);
 			donors.push({
 				dir: path.posix.dirname(file.source),
 				style: file.routeMatch,
-				route: file.route,
 				...(file.routeMatch === "suffix" && {
 					spelled:
 						AT_KEY.exec(path.posix.basename(file.source))?.[1] ??
 						file.route,
-				}),
-				...(governing && {
-					folderName: path.posix.basename(governing),
 				}),
 				sourcePath,
 			});
@@ -93,17 +84,6 @@ export class SyncbackLayout {
 			if (governing) return path.posix.basename(governing);
 		}
 		return route;
-	}
-
-	/** Whether any file is placed at `node` or inside it. */
-	holdsAnything(node: readonly string[]): boolean {
-		return this.placed.some((file) =>
-			[file.instancePath, ...(file.alsoAt ?? [])].some(
-				(path) =>
-					path.length >= node.length &&
-					SyncbackLayout.sameNode(path.slice(0, node.length), node)
-			)
-		);
 	}
 
 	private static sameNode(a: readonly string[], b: readonly string[]) {
@@ -207,9 +187,8 @@ export class SyncbackLayout {
 			.split("/")
 			.filter((segment) => segment !== "");
 		const isInit = path.posix.basename(file.source).startsWith("init.");
-		const folders = isInit ? below.length : below.length;
-		const taken = isInit ? folders : folders + 1;
 		if (isInit && below.length === 0) return undefined;
+		const taken = isInit ? below.length : below.length + 1;
 		const { instancePath } = file;
 		const node = instancePath.slice(0, instancePath.length - taken);
 		const named = instancePath.slice(

@@ -290,7 +290,11 @@ export class ConfigDiscovery {
 		const folder = path.dirname(target);
 		const listing = await this.places.rootOf(folder);
 		if (listing) return ok({ file: listing, place: folder, ...project });
-		const config = await this.configIn(folder, `"${ref}"`);
+		const config = await this.configIn(
+			folder,
+			`"${ref}"`,
+			stem === DEFAULT_PROJECT
+		);
 		return config.isErr()
 			? err(config.error)
 			: ok({ file: config.value, ...project });

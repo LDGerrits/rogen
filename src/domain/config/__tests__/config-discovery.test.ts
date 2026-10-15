@@ -74,6 +74,14 @@ describe("ConfigDiscovery", () => {
 			expect(found.files).toEqual(["/repo/default.project.json"]);
 		});
 
+		it("should not take the default project file for a project file of another name", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+
+			const result = await discovery.discover(["other.project.json"]);
+
+			expect(errorOf(result).message).toContain("holds no rogen.json");
+		});
+
 		it("should prefer a config above to a Rojo project file here", async () => {
 			await fs.writeFile("/repo/rogen.json", "{}");
 			await fs.createDirectory("/repo/lib");
