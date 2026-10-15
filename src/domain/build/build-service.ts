@@ -132,12 +132,16 @@ export interface Locations {
 	readonly configs: readonly ConfigLocations[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
+	/** The project files on disk that differ from what a build would write, as `check` raises them; empty unless `staleness` was asked for. */
+	readonly stale: readonly Diagnostic[];
 }
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
 export interface LocateQuery {
 	readonly args: readonly string[];
 	readonly cwd: string;
+	/** Also say which project files differ from what a build would write, from the same scan. */
+	readonly staleness?: boolean;
 }
 
 export interface Diagnosis {

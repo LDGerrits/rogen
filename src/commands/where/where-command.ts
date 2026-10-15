@@ -73,12 +73,13 @@ registerCommand(
 			const located = await buildService.locate(selection.value, {
 				args: line.positionals,
 				cwd,
+				staleness: true,
 			});
 			if (located.isErr()) return located;
 
 			const answers = new WhereAnswers(located.value);
 			const failure = DiagnosticsError.of(answers.errors);
-			const stale = await buildService.staleProjectFiles(selection.value);
+			const { stale } = located.value;
 			if (line.options.json)
 				return this.printJson(
 					logService,

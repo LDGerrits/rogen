@@ -118,6 +118,29 @@ export class ConfigBuilder {
 		});
 	}
 
+	/** The project file `examined` assembled, when a build of `config` would write it: not when a phase stopped, or no source path exists. */
+	assembledFile(
+		config: ResolvedConfig,
+		examined: ExaminedConfig
+	): RojoProjectFile | undefined {
+		if (examined.kind !== "assembled") return undefined;
+		const missing = new MissingSourcePaths(
+			examined.placement.roots,
+			config.projectFile
+		);
+		return missing.stopsBuild ? undefined : examined.projectFile;
+	}
+
+	/** The project file a build of `config` would write, or none when it fails. */
+	async projectFileOf(
+		config: ResolvedConfig
+	): Promise<RojoProjectFile | undefined> {
+		const examined = await this.examine(config);
+		return examined.isOk()
+			? this.assembledFile(config, examined.value)
+			: undefined;
+	}
+
 	private async assemble(placement: Placement) {
 		const meta = await this.metaReader.read(placement);
 		if (meta.isErr()) return err(meta.error);

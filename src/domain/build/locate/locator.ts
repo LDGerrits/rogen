@@ -17,6 +17,7 @@ import { DeclaredKeys } from "../../config/declared-keys.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import { RojoFile } from "../../rojo/rojo.js";
+import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import {
@@ -39,6 +40,11 @@ interface Targets {
 	readonly asked: readonly Asked[];
 }
 
+/** What `locate` found, and the project file a build of each config would write when the listing was examined as it is. */
+export type Located = Omit<Locations, "errors" | "stale"> & {
+	readonly built: ReadonlyMap<ResolvedConfig, RojoProjectFile>;
+};
+
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
 export class Locator {
 	constructor(
@@ -51,9 +57,10 @@ export class Locator {
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateQuery
-	): Promise<Result<Omit<Locations, "errors">, DiagnosticsError>> {
+	): Promise<Result<Located, DiagnosticsError>> {
 		const targets = await this.classify(query ?? { args: [], cwd: "" });
 		const located: ConfigLocations[] = [];
+		const built = new Map<ResolvedConfig, RojoProjectFile>();
 		for (const config of configs) {
 			const locations = await new ConfigLocator(
 				config,
@@ -62,12 +69,14 @@ export class Locator {
 				this.tools
 			).locate(targets);
 			if (locations.isErr()) return locations;
-			located.push(locations.value);
+			located.push(locations.value.locations);
+			if (locations.value.built) built.set(config, locations.value.built);
 		}
 		return ok({
 			everyFile: targets.asked.length === 0,
 			asked: targets.asked,
 			configs: located,
+			built,
 		});
 	}
 
@@ -117,11 +126,15 @@ class ConfigLocator {
 		private readonly tools: readonly SyncTool[]
 	) {}
 
-	async locate({
-		paths,
-		folders,
-		instances,
-	}: Targets): Promise<Result<ConfigLocations, DiagnosticsError>> {
+	async locate({ paths, folders, instances }: Targets): Promise<
+		Result<
+			{
+				readonly locations: ConfigLocations;
+				readonly built: RojoProjectFile | undefined;
+			},
+			DiagnosticsError
+		>
+	> {
 		let files: FileLocation[] = [];
 		let diagnostics: readonly Diagnostic[] = [];
 		if (paths.length > 0) {
@@ -130,21 +143,27 @@ class ConfigLocator {
 				if (instances.length > 0) return err(planned.error);
 				const { diagnostics: stopped } = planned.error;
 				return ok({
-					config: this.config,
-					files: await this.blocked(paths, stopped),
-					instances: [],
-					queried: paths.map(toPosix),
-					diagnostics: stopped,
+					locations: {
+						config: this.config,
+						files: await this.blocked(paths, stopped),
+						instances: [],
+						queried: paths.map(toPosix),
+						diagnostics: stopped,
+					},
+					built: undefined,
 				});
 			}
 			({ files, diagnostics } = planned.value);
 			if (instances.length === 0)
 				return ok({
-					config: this.config,
-					files,
-					instances: [],
-					queried: paths.map(toPosix),
-					diagnostics,
+					locations: {
+						config: this.config,
+						files,
+						instances: [],
+						queried: paths.map(toPosix),
+						diagnostics,
+					},
+					built: planned.value.built,
 				});
 		}
 
@@ -152,23 +171,26 @@ class ConfigLocator {
 		if (existing.isErr()) return err(existing.error);
 		const { locator } = existing.value;
 		return ok({
-			config: this.config,
-			files:
-				paths.length > 0 || instances.length > 0
-					? files
-					: locator.locate(),
-			instances: await Promise.all(
-				instances.map((reference) =>
-					this.locateInstance(
-						locator,
-						existing.value.diagnostics,
-						reference
+			locations: {
+				config: this.config,
+				files:
+					paths.length > 0 || instances.length > 0
+						? files
+						: locator.locate(),
+				instances: await Promise.all(
+					instances.map((reference) =>
+						this.locateInstance(
+							locator,
+							existing.value.diagnostics,
+							reference
+						)
 					)
-				)
-			),
-			queried: paths.map(toPosix),
-			diagnostics:
-				paths.length > 0 ? diagnostics : existing.value.diagnostics,
+				),
+				queried: paths.map(toPosix),
+				diagnostics:
+					paths.length > 0 ? diagnostics : existing.value.diagnostics,
+			},
+			built: existing.value.built,
 		});
 	}
 
@@ -201,6 +223,7 @@ class ConfigLocator {
 			{
 				readonly files: FileLocation[];
 				readonly diagnostics: readonly Diagnostic[];
+				readonly built: RojoProjectFile | undefined;
 			},
 			DiagnosticsError
 		>
@@ -215,9 +238,11 @@ class ConfigLocator {
 			index,
 			await this.existsOnDisk(index, paths)
 		);
-		return planned.map(({ locator, diagnostics }) => ({
+		const asOnDisk = !paths.some((target) => index.isPlanned(target));
+		return planned.map(({ locator, diagnostics, built }) => ({
 			files: locator.locate(paths, folders),
 			diagnostics,
+			built: asOnDisk ? built : undefined,
 		}));
 	}
 
@@ -391,15 +416,19 @@ class ConfigLocator {
 			{
 				readonly locator: PlacementLocator;
 				readonly diagnostics: readonly Diagnostic[];
+				/** What a build of the config would write from `index`. */
+				readonly built: RojoProjectFile | undefined;
 			},
 			DiagnosticsError
 		>
 	> {
-		const examined = await this.builderOf(index).examine(this.config);
+		const builder = this.builderOf(index);
+		const examined = await builder.examine(this.config);
 		return examined.map((result) => ({
 			locator: new PlacementLocator(result.placement, index, exists),
 			diagnostics:
 				result.kind === "assembled" ? result.warnings : result.errors,
+			built: builder.assembledFile(this.config, result),
 		}));
 	}
 

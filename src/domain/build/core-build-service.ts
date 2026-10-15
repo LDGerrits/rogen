@@ -1,10 +1,8 @@
-import path from "path";
 import { groupBy } from "../../base/collections.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
 	diagnosticsPerFile,
-	warningDiagnostic,
 	diagnosticsReaching,
 	isError,
 	uniqueDiagnostics,
@@ -12,10 +10,10 @@ import {
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
-import { DEFAULT_PROJECT } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ProjectChoice } from "../config/project-choice.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	BuildRun,
@@ -35,6 +33,7 @@ import {
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
+import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
@@ -136,7 +135,10 @@ export class CoreBuildService implements BuildService {
 		const read = new BuildSet(
 			ProjectChoice.read(set.configs, selection.named)
 		);
-		const listing = await this.indexService.list(read.indexedPaths);
+		const staleness = targets?.staleness === true;
+		const listing = await this.indexService.list(
+			(staleness ? set : read).indexedPaths
+		);
 		const located = await new Locator(
 			this.fileSystemService,
 			listing,
@@ -146,7 +148,38 @@ export class CoreBuildService implements BuildService {
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
-		return ok({ ...located.value, errors });
+		const { built, ...found } = located.value;
+		return ok({
+			...found,
+			errors,
+			stale: staleness
+				? await this.staleOf(set.configs, listing, built)
+				: [],
+		});
+	}
+
+	/** The warning for each config whose project file differs from what a build would write: from a project file the locate already assembled, else from one more build of the same listing. */
+	private async staleOf(
+		configs: readonly ResolvedConfig[],
+		listing: IndexReader,
+		built: ReadonlyMap<ResolvedConfig, RojoProjectFile>
+	): Promise<Diagnostic[]> {
+		const staleness = new ProjectFileStaleness(this.fileSystemService);
+		const builder = new ConfigBuilder(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		);
+		const stale: Diagnostic[] = [];
+		for (const config of configs) {
+			if (config.isAdopted) continue;
+			const file =
+				built.get(config) ?? (await builder.projectFileOf(config));
+			const diagnostic =
+				file && (await staleness.diagnostic(config, file));
+			if (diagnostic) stale.push(diagnostic);
+		}
+		return stale;
 	}
 
 	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {
@@ -282,41 +315,15 @@ export class CoreBuildService implements BuildService {
 	}
 
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
-		const { projectFile, stem } = attempt.config;
-		if (attempt.config.isAdopted) return attempt;
-		const command =
-			stem === DEFAULT_PROJECT ? "rogen build" : `rogen build ${stem}`;
-		const onDisk = await tryWithAsync(async () =>
-			(await this.fileSystemService.isFile(projectFile))
-				? await this.fileSystemService.readFile(projectFile)
-				: undefined
-		);
-		if (
-			onDisk.isErr() ||
-			onDisk.value === undefined ||
-			onDisk.value === OutputWriter.textOf(attempt.projectFile)
-		)
-			return attempt;
+		const stale = await new ProjectFileStaleness(
+			this.fileSystemService
+		).diagnostic(attempt.config, attempt.projectFile);
+		if (!stale) return attempt;
 		return {
 			...attempt,
 			findings: {
 				...attempt.findings,
-				warnings: [
-					...attempt.findings.warnings,
-					warningDiagnostic(
-						"output.differs",
-						{ resource: projectFile },
-						`this file differs from what 'rogen build' would write: its sources changed since it was written, or it was edited by hand. Run '${command}' to write it again; what it holds comes from ${path.basename(attempt.config.file)}, so change that to change it.`,
-						[
-							{
-								run: {
-									command,
-									cwd: path.dirname(attempt.config.file),
-								},
-							},
-						]
-					),
-				],
+				warnings: [...attempt.findings.warnings, stale],
 			},
 		};
 	}
