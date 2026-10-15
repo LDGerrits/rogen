@@ -2,7 +2,7 @@ $ rogen help --json
 exit 0
 stdout:
   {
-    "version": "unknown",
+    "version": "<version>",
     "commands": [
       {
         "name": "build",

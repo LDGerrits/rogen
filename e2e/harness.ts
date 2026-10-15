@@ -450,7 +450,9 @@ function normalize(text: string, dir: string): string {
 	const roots = new Set([dir, fs.realpathSync(dir)]);
 	let result = text;
 	for (const root of roots) result = result.split(root).join("<dir>");
-	return result.replace(/\r\n/g, "\n");
+	return result
+		.replace(/\r\n/g, "\n")
+		.replace(/^(\s*"version": )"[^"]*"/gm, '$1"<version>"');
 }
 
 export function createProject(files: Readonly<Record<string, string>>): {
