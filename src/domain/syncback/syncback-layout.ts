@@ -111,14 +111,25 @@ export class SyncbackLayout {
 				: undefined;
 	}
 
-	/** How the project's names spell `route` after an `@`, else the key itself. */
+	/** How the project's names spell `route` after an `@`; with none, the key in the letter case the names of other routes use. */
 	spellingOf(route: string): string {
+		let lowered = false;
 		for (const file of this.placed) {
-			if (file.route !== route || file.routeMatch !== "suffix") continue;
+			if (file.routeMatch !== "suffix") continue;
 			const spelled = AT_KEY.exec(path.posix.basename(file.source))?.[1];
-			if (spelled) return spelled;
+			if (!spelled) continue;
+			if (file.route === route) return spelled;
+			lowered ||=
+				spelled !== file.route && spelled === file.route.toLowerCase();
 		}
-		return route;
+		return lowered ? route.toLowerCase() : route;
+	}
+
+	/** The placed file that is the instance `node` itself, such as an init file making a folder. */
+	fileMaking(node: readonly string[]): PlacedLocation | undefined {
+		return this.placed.find((file) =>
+			SyncbackLayout.sameNode(file.instancePath, node)
+		);
 	}
 
 	/** The routing folder name used for `route` in this project, else the key itself. */

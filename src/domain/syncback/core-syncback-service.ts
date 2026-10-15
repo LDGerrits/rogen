@@ -20,11 +20,13 @@ import {
 import { SYNCBACK_FILES } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { RojoFile } from "../rojo/rojo.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
+import { SyncRules } from "../rojo/sync-rules.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
 import { ServerMessage } from "../runner/sync-server.js";
 import { ProjectText } from "../rojo/project-text.js";
-import { ReverseRouter } from "./reverse-router.js";
+import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
 import { StagedUnit, StagedUnits } from "./staged-units.js";
 import {
 	SyncbackChange,
@@ -435,11 +437,29 @@ export class CoreSyncbackService implements SyncbackService {
 				instance,
 			});
 		}
-		if (!unit.folder && targets.length > 0)
-			out.expected.push({
-				file: targets[0].to,
-				instance: [...unit.parent, unit.name],
-			});
+		for (const { file, to } of targets) {
+			const instancePath = CoreSyncbackService.instanceOf(unit, file);
+			if (instancePath)
+				out.expected.push({ file: to, instance: instancePath });
+		}
+	}
+
+	/** The instance a staged file of `unit` makes, for the check after the run; none for a meta file or a folder, which make no instance of their own. */
+	private static instanceOf(
+		unit: StagedUnit,
+		file: readonly string[]
+	): readonly string[] | undefined {
+		const name = file[file.length - 1];
+		if (
+			RojoFile.metaStemOf(name) !== undefined ||
+			new RojoFile(name, SyncRules.DEFAULT).kind === undefined
+		)
+			return undefined;
+		if (!unit.folder) return [...unit.parent, unit.name];
+		const folders = [...unit.parent, ...file.slice(0, -1)];
+		return name.startsWith("init.")
+			? folders
+			: [...folders, instanceNameOf(name)];
 	}
 
 	/** The files below `dir`, and the folders with none in them; `depth` 0 is the staging folder and 1 a staged node's, which are not instances. */

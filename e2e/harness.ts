@@ -176,7 +176,13 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		}
 
 		if (spec.place)
-			await makePlace(cli, caseDir, path.join(dir, spec.place), parent);
+			await makePlace(
+				cli,
+				caseDir,
+				spec,
+				path.join(dir, spec.place),
+				parent
+			);
 
 		const before = snapshot(dir);
 		const sections: string[] = [];
@@ -230,6 +236,7 @@ export async function runCase(cli: string, name: string): Promise<string> {
 async function makePlace(
 	cli: string,
 	caseDir: string,
+	spec: CaseSpec,
 	file: string,
 	parent: string
 ): Promise<void> {
@@ -238,8 +245,15 @@ async function makePlace(
 		throw new Error(
 			`${caseDir}: "place" needs a place.luau beside case.json.`
 		);
+	if (spec.links || spec.cwd)
+		throw new Error(
+			`${caseDir}: "place" builds the project's default.project.json from its root, so it takes no "links" or "cwd".`
+		);
 	const base = path.join(parent, "base");
-	fs.cpSync(path.join(caseDir, "project"), base, { recursive: true });
+	fs.cpSync(path.join(caseDir, "project"), base, {
+		recursive: true,
+		verbatimSymlinks: true,
+	});
 	fs.copyFileSync(path.resolve("rokit.toml"), path.join(base, "rokit.toml"));
 	const steps: [string, readonly string[], string][] = [
 		[...invocation(cli, ["build"]), base],
@@ -257,7 +271,7 @@ async function makePlace(
 		],
 	];
 	for (const [command, args, cwd] of steps) {
-		const result = await run(command, args, cwd);
+		const result = await run(command, args, cwd, spec.env);
 		if (result.exitCode !== 0)
 			throw new Error(
 				`${command} ${args.join(" ")} failed while making the place: ${result.stderr || result.stdout}`

@@ -64,7 +64,7 @@ describe("ReverseRouter", () => {
 				home: {
 					dir: posix("src/Inventory"),
 					contents: false,
-					mark: { text: "@server", route: "Server", onFiles: false },
+					mark: { text: "@server", route: "Server" },
 				},
 			});
 		});
@@ -140,6 +140,65 @@ describe("ReverseRouter", () => {
 			});
 		});
 
+		it("should place by a fixed order when no style decides a tie", async () => {
+			const router = await routerOf([
+				"src/Net/B.luau",
+				"src/Net/C@shared.luau",
+				"src/X/Shared/One.luau",
+				"src/X/Shared/Two.luau",
+			]);
+
+			expect(
+				router.place({
+					parent: ["ReplicatedStorage", "Shared", "Net"],
+					name: "D",
+					folder: false,
+				})
+			).toMatchObject({
+				kind: "placed",
+				home: { dir: posix("src/Net"), mark: { text: "@shared" } },
+			});
+		});
+
+		it("should write into the folder of an init file that makes the parent", async () => {
+			const router = await routerOf([
+				"src/Inventory/Server/Bag.luau",
+				"src/Inventory/Server/Shop/init.luau",
+			]);
+
+			expect(
+				router.place({
+					parent: ["ServerScriptService", "Inventory", "Shop"],
+					name: "Item",
+					folder: false,
+				})
+			).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("src/Inventory/Server/Shop"),
+					contents: false,
+				},
+			});
+		});
+
+		it("should refuse when a file that holds no other files makes the parent", async () => {
+			const router = await routerOf([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Sub@server.luau",
+			]);
+
+			expect(
+				router.place({
+					parent: ["ServerScriptService", "Inventory", "Sub"],
+					name: "Mail",
+					folder: false,
+				})
+			).toMatchObject({
+				kind: "conflict",
+				reason: expect.stringContaining("Sub@server.luau"),
+			});
+		});
+
 		it("should go below files named for their route, naming the new one so", async () => {
 			const router = await routerOf(["src/Inventory/Bag@server.luau"]);
 
@@ -171,7 +230,7 @@ describe("ReverseRouter", () => {
 				home: {
 					dir: posix("src"),
 					contents: false,
-					mark: { text: "@server", route: "Server", onFiles: true },
+					mark: { text: "@server", route: "Server" },
 				},
 			});
 		});
@@ -199,11 +258,11 @@ describe("ReverseRouter", () => {
 			});
 		});
 
-		it("should take the style of the whole project when its relatives have none", async () => {
+		it("should take the style of the whole project when its relatives have none, spelled as it spells routes", async () => {
 			const router = await routerOf(["src/Hud/Ui@client.luau"]);
 
 			expect(router.place(quest)).toMatchObject({
-				home: { dir: posix("src"), mark: { text: "@Server" } },
+				home: { dir: posix("src"), mark: { text: "@server" } },
 			});
 		});
 
@@ -232,6 +291,23 @@ describe("ReverseRouter", () => {
 			).toEqual({
 				kind: "placed",
 				home: { dir: posix("src/Quest/Server"), contents: true },
+			});
+		});
+
+		it("should keep a folder that is a script as a folder in the routing folder", async () => {
+			const router = await routerOf(["src/Inventory/Server/Bag.luau"]);
+
+			expect(
+				router.place({
+					...quest,
+					files: [
+						["Quest", "init.luau"],
+						["Quest", "A.luau"],
+					],
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Server"), contents: false },
 			});
 		});
 
@@ -339,7 +415,7 @@ describe("ReverseRouter", () => {
 			folder,
 			files,
 		});
-		const server = { text: "@server", route: "Server", onFiles: false };
+		const server = { text: "@server", route: "Server" };
 		const destination = async (
 			instance: ReturnType<typeof unit>,
 			file: string[],
@@ -359,7 +435,7 @@ describe("ReverseRouter", () => {
 			).toEqual(["Util", "A.luau"]);
 		});
 
-		it("should mark the name of a file, its meta file, or a folder", async () => {
+		it("should mark the name of a file and its meta file", async () => {
 			const boot = unit(false, [["Boot.luau"], ["Boot.meta.json"]]);
 			expect(
 				await destination(boot, ["Boot.meta.json"], {
@@ -367,37 +443,53 @@ describe("ReverseRouter", () => {
 					mark: server,
 				})
 			).toEqual(["Boot@server.meta.json"]);
-			expect(
-				await destination(unit(true), ["Quest", "A.luau"], {
-					contents: false,
-					mark: server,
-				})
-			).toEqual(["Quest@server", "A.luau"]);
 		});
 
-		it("should mark each file of a folder instead, unless the folder is a script", async () => {
+		it("should mark each file of a folder, or the folder when a script is in it", async () => {
 			const files = [
 				["Quest", "Main.luau"],
 				["Quest", "Util", "A.luau"],
 			];
-			const onFiles = {
-				contents: false,
-				mark: { ...server, onFiles: true },
-			};
+			const marked = { contents: false, mark: server };
 
 			expect(
-				await destination(unit(true, files), files[0], onFiles)
+				await destination(unit(true, files), files[0], marked)
 			).toEqual(["Quest", "Main@server.luau"]);
 			expect(
-				await destination(unit(true, files), files[1], onFiles)
+				await destination(unit(true, files), files[1], marked)
 			).toEqual(["Quest", "Util", "A@server.luau"]);
 			expect(
 				await destination(
 					unit(true, [["Quest", "init.luau"]]),
 					["Quest", "init.luau"],
-					onFiles
+					marked
 				)
 			).toEqual(["Quest@server", "init.luau"]);
+			const nested = [
+				["Quest", "Main.luau"],
+				["Quest", "Util", "init.meta.json"],
+			];
+			expect(
+				await destination(unit(true, nested), nested[1], marked)
+			).toEqual(["Quest@server", "Util", "init.meta.json"]);
+		});
+
+		it("should read only a script suffix as routing, not the kind of a file", async () => {
+			const router = await routerOf(["src/A/Server/X.luau"], {
+				routes: { ...ROUTES, model: "Workspace" },
+			});
+
+			expect(
+				router.destination(
+					unit(false, [["Boot.model.json"]]),
+					["Boot.model.json"],
+					{
+						dir: posix("src"),
+						contents: false,
+						mark: { text: "@model", route: "model" },
+					}
+				)
+			).toEqual(["Boot@model.model.json"]);
 		});
 
 		it("should not mark a script whose suffix already routes it there, nor its meta file", async () => {
