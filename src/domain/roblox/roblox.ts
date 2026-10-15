@@ -230,12 +230,19 @@ export function containerClassName(instancePath: readonly string[]): string {
 	return "Folder";
 }
 
-/** An instance named the way Studio prints it, `ServerScriptService.Inventory.Save`, or with slashes, the way Rogen does. */
+/** An instance named the way Studio prints it, `ServerScriptService.Inventory.Save`, or with slashes, the way Rogen does. A running game's copy of a player's `PlayerScripts`, `PlayerGui` or `Backpack` is read as the Starter container it comes from. */
 export class InstanceReference {
 	private static readonly GAME_PREFIX = /^game[./]/;
 	private static readonly QUOTED = /'([^']+)'/;
 	private static readonly COLON_LINE = /^[^:]*:\d+/;
 	private static readonly LINE_AFTER_QUOTE = /^[\s,(]*line\s+\d+/i;
+	private static readonly PLAYER_COPY =
+		/^Players([./])[^./]+[./](PlayerScripts|PlayerGui|Backpack)(?=[./]|$)/;
+	private static readonly STARTER_OF: Readonly<Record<string, string[]>> = {
+		PlayerScripts: ["StarterPlayer", "StarterPlayerScripts"],
+		PlayerGui: ["StarterGui"],
+		Backpack: ["StarterPack"],
+	};
 
 	private constructor(
 		/** The reference without `game.` or a line number. */
@@ -255,7 +262,10 @@ export class InstanceReference {
 			.trim()
 			.replace(InstanceReference.GAME_PREFIX, "")
 			.split(":")[0]
-			.replace(/[./]+$/, "");
+			.replace(/[./]+$/, "")
+			.replace(InstanceReference.PLAYER_COPY, (_, separator, container) =>
+				InstanceReference.STARTER_OF[container].join(separator)
+			);
 		const separator = text.includes("/") ? "/" : ".";
 		const [service] = text.split(separator);
 		return isSupportedService(service)

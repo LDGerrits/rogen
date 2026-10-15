@@ -34,17 +34,17 @@ Rogen writes the Rojo project file from the folders and names under each `rogen.
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"tree": {
-		"$className": "DataModel"
-	},
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	}
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  }
 }

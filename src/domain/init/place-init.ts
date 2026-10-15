@@ -15,6 +15,7 @@ import {
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
 	configFileContent,
+	configText,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { PlaceFinder } from "../config/place-finder.js";
@@ -213,7 +214,7 @@ export class PlaceInit {
 			raw,
 			edit: {
 				fileName: path.relative(root, rootFile),
-				content: formatJsonFile({ ...raw, placePaths }),
+				content: configText({ ...raw, placePaths }),
 				addition: `"${entry}" as a place path`,
 			},
 		});

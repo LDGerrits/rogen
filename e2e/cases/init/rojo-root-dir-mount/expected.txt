@@ -19,21 +19,21 @@ written:
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"name": "my-game",
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {}
-	},
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Common"
-	}
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "my-game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {}
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Common"
+  }
 }
 
 $ rojo sourcemap default.project.json

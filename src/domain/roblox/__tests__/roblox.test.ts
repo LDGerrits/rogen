@@ -201,6 +201,31 @@ describe("domain/roblox/roblox", () => {
 			);
 		});
 
+		it.each([
+			[
+				"Players.ldg.PlayerScripts.Chat.ChatController:4",
+				"StarterPlayer.StarterPlayerScripts.Chat.ChatController",
+			],
+			["game.Players.ldg_2.PlayerGui.Hud.Main", "StarterGui.Hud.Main"],
+			["Players/ldg/Backpack/Sword", "StarterPack/Sword"],
+			[
+				"Players/ldg/PlayerScripts/Net",
+				"StarterPlayer/StarterPlayerScripts/Net",
+			],
+		])(
+			"should read a player's copy %s as the Starter container it comes from",
+			(input, expected) => {
+				expect(parse(input)).toBe(expected);
+			}
+		);
+
+		it("should not read Players or a player's own instance as a Starter container", () => {
+			expect(parse("Players.ldg")).toBe("Players.ldg");
+			expect(parse("Players.ldg.Character.Animate")).toBe(
+				"Players.ldg.Character.Animate"
+			);
+		});
+
 		it("should read a slashed path", () => {
 			expect(
 				InstanceReference.parse("ServerScriptService/Inventory/Save")

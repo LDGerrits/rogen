@@ -670,6 +670,16 @@ src/.server.luau - warning: has no name once its suffix is taken off, so it beco
 
 Rename the file with a name before the suffix.
 
+### `scan.outsideSourcePaths` [#scan-outsidesourcepaths]
+
+Warning. `rogen check <path>` was given a path that is in no source path, and its first folder is one edit from a source path, so a typo is likely. Any other path outside the source paths passes, since hooks hand `check` every changed file.
+
+```
+scr/Inventory/Server/Save.luau - warning: this path is in no source path, so no build reads it, and "scr" is one edit from the source path "src". Check the spelling. (scan.outsideSourcePaths)
+```
+
+Fix the path, or the source path in `sourcePaths` if that is the typo.
+
 ### `scan.portableName` [#scan-portablename]
 
 Warning. A file or folder name that holds on this machine but fails on Windows or macOS, or that Rogen cannot read. A name fails when it has one of `<>:"|?*` or a control character, is a Windows device (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, with any extension), ends in a space or a dot, or differs from a sibling only in letter case. Nothing is dropped, except for a name with a backslash: Rogen reads `\` as a folder separator, so it leaves that file out.

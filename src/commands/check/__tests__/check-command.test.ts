@@ -65,6 +65,26 @@ describe("check command", () => {
 			await writeConfig("rogen.json", { routes: ROUTES });
 		});
 
+		it("should warn of a path whose first folder is a typo of the source path", async () => {
+			await write("src/Inventory/Server/Save.luau");
+			await write("scr/Inventory/Server/X.luau");
+
+			const result = await run({ _: ["scr/Inventory/Server/X.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["scan.outsideSourcePaths", "scr/Inventory/Server/X.luau"],
+			]);
+		});
+
+		it("should say nothing of a file in no source path that is no typo of one", async () => {
+			await write("src/Inventory/Server/Save.luau");
+			await write("README.md");
+
+			const result = await run({ _: ["README.md"] });
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
 			await writeConfig("rogen.json", {
 				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },

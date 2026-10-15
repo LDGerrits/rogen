@@ -19,9 +19,9 @@ written:
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"name": "project",
-	"tree": {
-		"$path": "src"
-	}
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$path": "src"
+  }
 }

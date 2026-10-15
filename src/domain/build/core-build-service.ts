@@ -35,10 +35,28 @@ import {
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
+import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 type Attempt = BuiltConfig | FailedBuild;
+
+/** The files asked about that no selected config reads: outside the source paths of every one. */
+function outsideEveryConfig(configs: readonly ConfigLocations[]): string[] {
+	const [first, ...others] = configs;
+	if (!first) return [];
+	return first.files
+		.filter(({ status }) => status === "outside")
+		.map(({ source }) => source)
+		.filter((source) =>
+			others.every(({ files }) =>
+				files.some(
+					(file) =>
+						file.source === source && file.status === "outside"
+				)
+			)
+		);
+}
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -166,9 +184,15 @@ export class CoreBuildService implements BuildService {
 				...config.files.map(({ source }) => source),
 				...config.queried,
 			];
+			const outside = new OutsideSourcePaths(
+				configs.flatMap(({ config }) => config.sourcePaths)
+			);
 			return {
 				diagnostics: uniqueDiagnostics([
 					...errors,
+					...outsideEveryConfig(configs).flatMap((source) =>
+						outside.about(source)
+					),
 					...configs.flatMap((config) =>
 						about(config).flatMap((target) =>
 							diagnosticsReaching(config.diagnostics, target)

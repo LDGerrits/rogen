@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import { mockConfig } from "./mock-config-service.js";
 import { DeclaredKeys } from "../declared-keys.js";
+import { rogenKeys } from "../config-schema.js";
 import {
+	ROGEN_KEYS,
 	SCHEMA_URL,
 	configLabel,
 	fieldOf,
@@ -23,6 +25,12 @@ describe("domain/config/config", () => {
 				expect(isConfigFileName(name)).toBe(false);
 			}
 		);
+	});
+
+	describe("ROGEN_KEYS", () => {
+		it("should be the keys the schema holds for Rogen, in its order", () => {
+			expect(ROGEN_KEYS).toEqual(rogenKeys);
+		});
 	});
 
 	describe("configLabel", () => {

@@ -25,25 +25,25 @@ written:
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"tree": {
-		"$className": "DataModel"
-	},
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"serveProject": "dist",
-	"projects": {
-		"dist": {
-			"syncPath": "dist"
-		}
-	}
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "projects": {
+    "dist": {
+      "syncPath": "dist"
+    }
+  },
+  "serveProject": "dist"
 }
 
 $ rojo sourcemap default.project.json

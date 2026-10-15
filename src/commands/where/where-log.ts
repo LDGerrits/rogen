@@ -34,7 +34,10 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				? ` · also ${location.alsoAt.map(instanceKey).join(", ")}`
 				: "";
 			const hoisted = location.hoisted ? " · hoisted by ^" : "";
-			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}`;
+			const absent = location.exists
+				? ""
+				: " · the file does not exist yet";
+			return `${instanceKey(location.instancePath)} · route ${location.route} (${location.routeMatch})${hoisted}${alsoAt}${absent}`;
 		}
 		case "replaced":
 			return `replaced by ${relative(location.by)}`;
@@ -52,7 +55,9 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 			return "not an instance · its extension is not in lowercase";
 		case "blocked":
 			return location.own
-				? `not placed · it has an error (${location.by.code})`
+				? location.by.resource === location.source
+					? `not placed · it has an error (${location.by.code})`
+					: `not placed · ${relative(location.by.resource)} has an error (${location.by.code})`
 				: `not placed · the build stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
 		case "outside":
 			return "outside the source paths";

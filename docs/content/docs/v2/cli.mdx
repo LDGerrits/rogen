@@ -135,7 +135,7 @@ src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (fo
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Answers come in the order you gave the arguments, and a file already answered by an earlier argument isn't repeated. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
 
-A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`). Otherwise the line says why it isn't placed: `replaced by` another file, `displaced` by a `tree` node, `mounted` by a `tree` `$path`, `unrouted`, `ignored` (with the glob), `outside the source paths`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line, or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. `where` still exits 0. That answer is per path. Without a path, or asked about an instance, `where` has nothing it can place, so it prints the errors and exits 1, as `check` does.
+A placed file shows its instance path, the governing route, how it matched (`folder`, `marker`, `suffix` or `fallback`). Otherwise the line says why it isn't placed: `replaced by` another file, `displaced` by a `tree` node, `mounted` by a `tree` `$path`, `unrouted`, `ignored` (with the glob), `outside the source paths`, or `not placed` when the build of the config stops on an error. The error is either the file's own, which `where` prints under the line (for a directory, the line names the file inside it: `not placed · src/F/Bad@server.luau has an error (route.ignoredAt)`), or another file's, which the line names: `not placed · the build stops on src/F/Bad@server.luau (route.ignoredAt); run 'rogen check'`. A placed file that isn't there yet ends its line with `· the file does not exist yet`; `--json` has `exists: false`. `where` still exits 0. That answer is per path. Without a path, or asked about an instance, `where` has nothing it can place, so it prints the errors and exits 1, as `check` does.
 
 With no path and nothing in the source paths, `where` says `No files in the source paths (src).` A path that doesn't exist and ends in a separator (`src/Combat/`) answers `does not exist · name a file in it to see where it would land`, since a file in it, such as `src/Combat/Hit.luau`, is placed as if it existed. Without the separator it answers `does not exist`, since `src/Module` may be a file missing its extension. A backslash is a separator on every platform, so `src\Combat\Hit.luau` answers as `src/Combat/Hit.luau` does.
 
@@ -166,7 +166,7 @@ $ rogen where "ServerScriptService.Combat.Hit:12: attempt to index nil"
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
 ```
 
-A line number names a script, so only the file that places that script is listed. An instance with none, such as `ServerScriptService.Combat`, lists every file inside it.
+A line number names a script, so only the file that places that script is listed. A running game's copy of a player's scripts is read as the container it comes from: `Players.ldg.PlayerScripts.Chat.ChatController:4` is `StarterPlayer.StarterPlayerScripts.Chat.ChatController`, `Players.ldg.PlayerGui.Hud` is `StarterGui.Hud` and `Players.ldg.Backpack.Sword` is `StarterPack.Sword`. An instance with none, such as `ServerScriptService.Combat`, lists every file inside it.
 
 When no file places the instance, `where` says where a new one goes, from the files placed beside it:
 
@@ -182,7 +182,7 @@ $ rogen where "ServerScriptService.Shop.Buy:4: attempt to index nil"
 ServerScriptService.Shop.Buy -> no file places it · src/Shop/Buy@sever.luau would, renamed to Buy@Server.luau (route.strayAt)
 ```
 
-`rogen where -` turns a whole pasted log into links. It reads text on stdin and prints it back with every instance path that has a line number written as `file:line`, in both forms Studio prints: `ServerScriptService.Combat.Hit:12:` and `Script 'ServerScriptService.Combat.Hit', Line 12`. Other text passes through as it is, and an instance no file places stays as it was.
+`rogen where -` turns a whole pasted log into links. It reads text on stdin and prints it back with every instance path that has a line number written as `file:line`, in both forms Studio prints: `ServerScriptService.Combat.Hit:12:` and `Script 'ServerScriptService.Combat.Hit', Line 12`. Other text passes through as it is, and an instance no file places stays as it was. It prints text, so `--json` with it is a usage error.
 
 ```
 $ pbpaste | rogen where -
@@ -202,7 +202,7 @@ A config that doesn't load answers nothing: `where` prints its errors and exits 
 
 ### `check [path…]`
 
-Prints the diagnostics about the paths you give it, and nothing else, and exits 1 when there are any. It builds as `build` does and writes nothing, so it fits a hook, `lint-staged` or `pre-commit`, which pass changed paths to a command and expect a non-zero exit. `where` answers a question and always exits 0; `check` is the judging counterpart.
+Prints the diagnostics about the paths you give it, and nothing else, and exits 1 when there are any. It builds as `build` does and writes nothing, so it fits a hook, `lint-staged` or `pre-commit`, which pass changed paths to a command and expect a non-zero exit. `where` answers a question and always exits 0; `check` is the judging counterpart. A path in no source path is not an error, since a hook passes every changed file, but when its first folder is one edit from a source path (`scr/Inventory/Save.luau` beside `src`), `check` warns [`scan.outsideSourcePaths`](/docs/v2/diagnostics#scan-outsidesourcepaths).
 
 ```
 $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
@@ -223,7 +223,7 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 ### `init [path]`
 
-Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says.
+Writes a starting `rogen.json`. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says. The file is written as [`fmt-project`](#fmt-project-project) writes it, so a first format changes nothing.
 
 In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, and a flag from [Choices as flags](#choices-as-flags) answers its question in either case.
 
@@ -555,7 +555,7 @@ One JSON object per line on stdout, each keyed by what it reports, and nothing e
 |---|---|---|
 | `build` | each config, on every build | the entry [`build --json`](#build---json) lists |
 | `notice` | a config is added, removed, broken or recovered | `kind` (`added`, `removed`, `broken` or `recovered`), `file`; a broken config adds `keptLastValid` and `diagnostics` |
-| `serving` | a server answers, so Studio can connect | `config`, `server`, `version`, `project`, `host`, `port`, `session` (Rojo only), `reportsConnections` (whether `connected` and `disconnected` lines follow for it); `alreadyRunning: true` when it was already serving before `serve` started, and `adopted: true` as well when no `rogen serve` started it, so this one builds for it |
+| `serving` | a server answers, so Studio can connect | `config`, `server`, `version`, `project`, `host`, `port`, `session` (Rojo only), `reportsConnections` (whether `connected` and `disconnected` lines follow from this process: false for `alreadyRunning`, which exits at once, and for a server Rogen did not start and cannot read); `alreadyRunning: true` when it was already serving before `serve` started, and `adopted: true` as well when no `rogen serve` started it, so this one builds for it |
 | `connected`, `disconnected` | a Studio plugin connected to a server this serve started, or left it | `config`, `server`, `project`, `port`, `clients`, how many are connected now. Only a server that reports them, which the `serving` line says with `reportsConnections` |
 | `output` | a server prints a warning, an error or a line Rogen doesn't recognise | `config`, `server`, `severity` (`error`, `warning` or `info` for an unrecognised line), `message` |
 | `refused` | a config to serve, added or edited while serving, can't be served because its port is taken. The others go on, and so does the server it already has, if any | `config`, `server`, `diagnostics` |

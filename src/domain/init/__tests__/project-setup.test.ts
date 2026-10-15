@@ -4,6 +4,7 @@ import {
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
+import { ConfigFormatter } from "../../config/config-formatter.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -65,11 +66,17 @@ describe("ProjectSetup plan", () => {
 		]);
 	});
 
-	it("should write strict JSON with a trailing newline", async () => {
+	it("should write strict JSON as fmt-project writes it, so a first format changes nothing", async () => {
 		const { files } = await plan(luau);
 
-		expect(files[0].content.endsWith("}\n")).toBe(true);
-		expect(() => JSON.parse(files[0].content)).not.toThrow();
+		const config = new MemoryFileSystemService();
+		await config.writeFile("/repo/rogen.json", files[0].content);
+
+		const formatted = await new ConfigFormatter(config).format(
+			"/repo/rogen.json"
+		);
+
+		expect(formatted.unwrap()).toBe(false);
 	});
 
 	it("should write a bare DataModel tree and no sync path or name for plain luau", async () => {

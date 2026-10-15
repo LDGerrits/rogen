@@ -69,7 +69,7 @@ describe("where command", () => {
 			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
 			"src/Net/Http.spec.luau -> ignored · matches **/*.spec.luau",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
+			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder) · the file does not exist yet",
 		]);
 	});
 
@@ -141,6 +141,14 @@ describe("where command", () => {
 			expect(printed()).toEqual([
 				"src/F/Shared/Good.luau -> not placed · the build stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
 			]);
+		});
+
+		it("should name the file with the error when the error is inside the directory asked about", async () => {
+			await run({ _: ["src/F"] });
+
+			expect(printed()).toContain(
+				"src/F -> not placed · src/F/Shared/Bad@server.luau has an error (route.ignoredAt)"
+			);
 		});
 
 		it("should name the error in the JSON document", async () => {
