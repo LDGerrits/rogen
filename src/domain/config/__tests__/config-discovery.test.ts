@@ -133,7 +133,9 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover(["other.project.json"]);
 
-			expect(errorOf(result).message).toContain("holds no rogen.json");
+			expect(errorOf(result).message).toContain(
+				'"other.project.json" not found'
+			);
 		});
 
 		it("should prefer a config above to a Rojo project file here", async () => {

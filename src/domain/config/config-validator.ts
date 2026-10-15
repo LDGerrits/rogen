@@ -15,11 +15,13 @@ import {
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
+	isProjectFileName,
 } from "../rojo/rojo-project.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import {
+	DEFAULT_PROJECT_FILES,
 	DEFAULT_SOURCE_PATH,
 	PER_PLACE_KEYS,
 	fieldOf,
@@ -113,6 +115,7 @@ export class ConfigValidator {
 			)
 		);
 		this.checkSyncRules(project);
+		this.checkName(project);
 		this.checkNodes(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
@@ -171,6 +174,22 @@ export class ConfigValidator {
 			...rojo,
 			tree: (rojo.tree ?? { $className: "DataModel" }) as RojoNode,
 		});
+	}
+
+	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't read one either. */
+	private checkName(project: RojoProject<ParsedProjectFile>): void {
+		const file = path.basename(this.config.file);
+		if (
+			project.name !== undefined ||
+			!isProjectFileName(file) ||
+			DEFAULT_PROJECT_FILES.includes(file)
+		)
+			return;
+		this.problems.error(
+			"config.unnamedProjectFile",
+			{ resource: this.config.file, position: { line: 1, column: 1 } },
+			`${file} has no "name", and Rojo can't read a project file without one unless it is default.project.json. Add "name".`
+		);
 	}
 
 	private checkNodes(project: RojoProject<ParsedProjectFile>): void {

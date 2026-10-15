@@ -292,21 +292,16 @@ export class ConfigDiscovery {
 			stem === DEFAULT_PROJECT
 		);
 		if (config.isOk()) return ok({ file: config.value, ...project });
-		return (await this.isAdoptableFile(target, folder))
+		// A Rojo project file of any name, in a folder with no config, is read as it is, as `rojo build test.project.json` reads it.
+		if ((await this.list(folder)).length > 0) return err(config.error);
+		return (await this.fileSystemService.isFile(target))
 			? ok({ file: target })
-			: err(config.error);
-	}
-
-	/** A Rojo project file of another name than `default`, in a folder with no config: `rojo build test.project.json` works on it, so Rogen reads it as it is. */
-	private async isAdoptableFile(
-		target: string,
-		folder: string
-	): Promise<boolean> {
-		return (
-			isProjectFileName(path.basename(target)) &&
-			(await this.fileSystemService.isFile(target)) &&
-			(await this.list(folder)).length === 0
-		);
+			: err(
+					new UsageError(
+						`"${ref}" not found.`,
+						"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
+					)
+				);
 	}
 
 	private async configFileRef(

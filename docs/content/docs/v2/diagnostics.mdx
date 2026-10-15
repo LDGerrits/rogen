@@ -152,6 +152,16 @@ rogen.json:5:5 - error: "default" is the description itself, written as default.
 
 Rename the project, or move its keys to the root of `rogen.json`. See [Projects](/docs/v2/configuration#projects).
 
+### `config.unnamedProjectFile` [#config-unnamedprojectfile]
+
+Error. A Rojo project file you named, such as `rogen build test.project.json`, has no `name`. Rojo names `default.project.json` after its folder, but crashes on a project file of any other name without one, so Rogen stops before Rojo does.
+
+```
+test.project.json:1:1 - error: test.project.json has no "name", and Rojo can't read a project file without one unless it is default.project.json. Add "name". (config.unnamedProjectFile)
+```
+
+Add a `"name"` to the file. See [Configuration](/docs/v2/configuration).
+
 ### `config.invalidProjectName` [#config-invalidprojectname]
 
 Error. A key of `projects` can't be the stem of a project file. The name becomes `<name>.project.json`, so it takes letters, digits, `-` and `_`, and starts with a letter or digit.

@@ -63,6 +63,21 @@ describe("CoreConfigService", () => {
 			expect(selection.configs).toHaveLength(1);
 		});
 
+		it("should refuse a named Rojo project file without a name, which Rojo can't read", async () => {
+			await write("/repo/test.project.json", {
+				tree: { $className: "DataModel" },
+			});
+
+			await start({ names: ["test.project.json"] });
+
+			const [entry] = selection.entries;
+			expect(entry.status).toBe("broken");
+			expect(
+				entry.status === "broken" &&
+					entry.errors.map(({ code }) => code)
+			).toEqual(["config.unnamedProjectFile"]);
+		});
+
 		it("should select the config of each folder named", async () => {
 			await write("/repo/places/lobby/rogen.json", {});
 			await write("/repo/places/arena/rogen.jsonc", {});
