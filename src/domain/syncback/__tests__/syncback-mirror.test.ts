@@ -240,7 +240,7 @@ describe("SyncbackMirror", () => {
 		]);
 	});
 
-	it("should keep a plain folder as a node when a child stays, reading the rest from the mirror", async () => {
+	it("should keep a plain folder as a node when a child stays, and read it from a folder no parent reads", async () => {
 		const mirror = await mirrorOf(
 			{
 				tree: {
@@ -269,13 +269,66 @@ describe("SyncbackMirror", () => {
 
 		expect(mirror.file.tree).toEqual({
 			ServerScriptService: {
-				$path: `${ROOT}/ServerScriptService`,
 				Inventory: {
 					$className: "Folder",
 					$path: `${ROOT}/ServerScriptService/Inventory`,
 					Lib: { $path: `${ROOT}/~kept/0/lib` },
 				},
 			},
+		});
+	});
+
+	it("should read a folder node that stays from a mirror folder outside the folders its parents read", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					ReplicatedStorage: {
+						$className: "ReplicatedStorage",
+						Shared: {
+							$className: "Folder",
+							Util: { $path: optional("src/Util.luau") },
+							Net: {
+								$path: optional("src/Net"),
+								Types: {
+									$path: optional("src/Net/Types.luau"),
+								},
+							},
+						},
+					},
+				},
+			},
+			[
+				placed("src/Util.luau", "ReplicatedStorage", "Shared", "Util"),
+				placed(
+					"src/Net/Types.luau",
+					"ReplicatedStorage",
+					"Shared",
+					"Net",
+					"Types"
+				),
+			],
+			["/repo/src/Net"]
+		);
+
+		expect(mirror.file.tree).toEqual({
+			ReplicatedStorage: {
+				$className: "ReplicatedStorage",
+				Shared: {
+					$className: "Folder",
+					$path: `${ROOT}/ReplicatedStorage/Shared`,
+					Net: { $path: optional(`${ROOT}/~kept/0`) },
+				},
+			},
+		});
+		expect(mirror.entries).toContainEqual({
+			mirror: "~kept/0",
+			target: "/repo/src/Net",
+			kind: "folder",
+		});
+		expect(mirror.entries).toContainEqual({
+			mirror: "~kept/0/Types.luau",
+			target: "/repo/src/Net/Types.luau",
+			kind: "file",
 		});
 	});
 

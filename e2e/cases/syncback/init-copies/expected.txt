@@ -1,0 +1,38 @@
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · wrote
+  Built 1 config.
+  write  src/Net/init.luau
+  Syncback would change 1 file (1 to write).
+
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · unchanged
+  Built 1 config.
+  write  src/Net/init.luau
+  Syncback wrote 1 change.
+
+written:
+  default.project.json
+  src/Net/init.luau
+
+src/Net/init.luau:
+return "init2"
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Net: ModuleScript  <- src/Net/init.luau
+        Types: ModuleScript  <- src/Net/Types.luau
+  ServerScriptService: ServerScriptService
+    Net: ModuleScript  <- src/Net/init.luau
+      Remote: ModuleScript  <- src/Net/Server/Remote.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Net: ModuleScript  <- src/Net/init.luau
+        Listener: ModuleScript  <- src/Net/Client/Listener.luau
