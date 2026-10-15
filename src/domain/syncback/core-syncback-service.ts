@@ -500,6 +500,8 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 		};
 
+		/** The files written so far, since a file a project places at more than one instance is copied once for each. */
+		const written = new Map<string, Operation & { kind: "write" }>();
 		const copiedPaths = new Set(copied.map(({ mirror: at }) => at));
 		const kept = copied.filter(
 			({ target }) => !this.isIgnored(prepared, target)
@@ -541,8 +543,22 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 			for (const operation of compared) {
 				if (!operation) continue;
+				const same =
+					operation.kind === "write"
+						? written.get(operation.file)
+						: undefined;
+				if (same) {
+					if (!sameBytes(same.bytes, operation.bytes))
+						unplaced.push({
+							instance: operation.instance,
+							reason: `its file ${operation.file} is also ${same.instance}, which was edited differently, and that change was kept`,
+						});
+					continue;
+				}
 				await touch(operation.file);
 				operations.push(operation);
+				if (operation.kind === "write")
+					written.set(operation.file, operation);
 			}
 		}
 		const holding = new Set<string>();

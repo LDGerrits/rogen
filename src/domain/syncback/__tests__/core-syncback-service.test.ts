@@ -168,6 +168,62 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
+	it("should keep one change and list the other when two copies of an init script were edited differently", async () => {
+		await prepare([
+			"src/Net/init.luau",
+			"src/Net/Types.luau",
+			"src/Net/Server/Remote.luau",
+		]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ReplicatedStorage", "Shared", "Net", "init.luau"),
+				"return 1"
+			);
+			await fs.writeFile(
+				mirror("ServerScriptService", "Net", "init.luau"),
+				"return 2"
+			);
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.changes).toEqual([
+			{ kind: "write", file: abs("src/Net/init.luau") },
+		]);
+		expect(plan.unplaced).toMatchObject([
+			{
+				instance: "ServerScriptService/Net",
+				reason: expect.stringContaining("edited differently"),
+			},
+		]);
+		await service.apply(request);
+		expect(await fs.readFile(abs("src/Net/init.luau"))).toBe("return 1");
+	});
+
+	it("should write a file once when its copies were edited the same way", async () => {
+		await prepare([
+			"src/Net/init.luau",
+			"src/Net/Types.luau",
+			"src/Net/Server/Remote.luau",
+		]);
+		rojo.say = async () => {
+			for (const folder of [
+				["ReplicatedStorage", "Shared", "Net"],
+				["ServerScriptService", "Net"],
+			])
+				await fs.writeFile(mirror(...folder, "init.luau"), "return 1");
+			return [];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.changes).toEqual([
+			{ kind: "write", file: abs("src/Net/init.luau") },
+		]);
+		expect(plan.unplaced).toEqual([]);
+	});
+
 	it("should delete the files of an instance the place no longer holds, in any layout", async () => {
 		await prepare([
 			"src/Inventory/Bag@server.luau",
