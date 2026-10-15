@@ -14,6 +14,7 @@ import {
 	PROJECT_NAME,
 	isConfigFileName,
 } from "./config.js";
+import { stemOfProjectFile } from "../rojo/rojo-project.js";
 import { EnclosingConfigs, NamedProjects } from "./config-service.js";
 import { PlaceFinder } from "./place-finder.js";
 
@@ -295,9 +296,22 @@ export class ConfigDiscovery {
 			`"${ref}"`,
 			stem === DEFAULT_PROJECT
 		);
-		return config.isErr()
-			? err(config.error)
-			: ok({ file: config.value, ...project });
+		if (config.isOk()) return ok({ file: config.value, ...project });
+		return (await this.isAdoptableFile(target, folder))
+			? ok({ file: target })
+			: err(config.error);
+	}
+
+	/** A Rojo project file of another name than `default`, in a folder with no config: `rojo build test.project.json` works on it, so Rogen reads it as it is. */
+	private async isAdoptableFile(
+		target: string,
+		folder: string
+	): Promise<boolean> {
+		return (
+			stemOfProjectFile(path.basename(target)) !== undefined &&
+			(await this.fileSystemService.isFile(target)) &&
+			(await this.list(folder)).length === 0
+		);
 	}
 
 	private async configFileRef(

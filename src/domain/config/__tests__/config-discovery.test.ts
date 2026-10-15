@@ -74,7 +74,32 @@ describe("ConfigDiscovery", () => {
 			expect(found.files).toEqual(["/repo/default.project.json"]);
 		});
 
-		it("should not take the default project file for a project file of another name", async () => {
+		it("should adopt a Rojo project file of another name that is named", async () => {
+			await fs.writeFile("/repo/test.project.json", "{}");
+
+			const found = (
+				await discovery.discover(["test.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/test.project.json"]);
+			expect(found.projects.size).toBe(0);
+		});
+
+		it("should read a project file of another name as a project of the config beside it", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+			await fs.writeFile("/repo/test.project.json", "{}");
+
+			const found = (
+				await discovery.discover(["test.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/rogen.json"]);
+			expect(found.projects.get("/repo/rogen.json")?.names).toEqual([
+				"test",
+			]);
+		});
+
+		it("should not adopt a project file of another name that is not there", async () => {
 			await fs.writeFile("/repo/default.project.json", "{}");
 
 			const result = await discovery.discover(["other.project.json"]);

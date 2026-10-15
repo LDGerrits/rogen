@@ -5,7 +5,7 @@ description: Move a hand-written Rojo project to Rogen without changing where an
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Rogen covers everything `rojo` does. A `rogen.json` is a project file, so Rojo's keys keep their meaning, and a folder with only a `default.project.json` runs under Rogen's commands as it is. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config. Not covered are `rojo init --kind` and `--skip-git`, since `rogen init` makes its own project. What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently), and a test builds Rojo's own projects, the templates `rojo init` writes and the mounts `rogen init` keeps as they are with both, and compares the places.
+Rogen covers everything `rojo` does. A `rogen.json` is a project file, so Rojo's keys keep their meaning, and a folder with only a `default.project.json`, or a project file you name (`rogen build test.project.json`), runs under Rogen's commands as it is. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config. Not covered are `rojo init --kind` and `--skip-git`, since `rogen init` makes its own project. What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently), and a test builds Rojo's own projects, the templates `rojo init` writes and the mounts `rogen init` keeps as they are with both, and compares the places.
 
 If you use Rojo with `server`, `client` and `shared` folders, `rogen init` keeps your tree. It reads the `default.project.json` you wrote, lifts it into a `rogen.json`, and turns the folders it points at into routes that put each one where Rojo had it:
 
@@ -137,7 +137,7 @@ Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and 
 }
 ```
 
-A node you keep in the `tree` wins over a generated one on a clash, with a warning, and a `$path` into a source path stays Rojo's own: Rogen skips that folder. Rojo's `fmt-project` can't read the file, so run `rogen fmt-project` to format it as Rojo formats a project file. Rogen reads `rogen.jsonc` too, since Rojo 7.7 allows comments in a project file.
+A node you keep in the `tree` wins over a generated one on a clash, with a warning, and a `$path` into a source path stays Rojo's own: Rogen skips that folder. Rojo's `fmt-project` can't read the file, so run `rogen fmt-project` to format it as Rojo formats a project file. Rojo writes the numbers of `$properties` and `$attributes` as floats (`0.0`), by the type of each; Rogen keeps them as you wrote them, and it won't format a file with comments, where Rojo drops them. Rogen reads `rogen.jsonc` too, since Rojo 7.7 allows comments in a project file.
 
 ## Rojo's Other Commands
 

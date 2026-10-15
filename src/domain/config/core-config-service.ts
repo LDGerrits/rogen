@@ -7,7 +7,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
-import { DEFAULT_PROJECT_FILE } from "./config.js";
+import { stemOfProjectFile } from "../rojo/rojo-project.js";
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "./config-discovery.js";
@@ -26,7 +26,7 @@ import { ManagedConfig } from "./managed-config.js";
 
 /** A Rojo project file read as a config, which no `rogen.json` came to replace. */
 const isAdoptedFile = (file: string): boolean =>
-	path.basename(file) === DEFAULT_PROJECT_FILE;
+	stemOfProjectFile(path.basename(file)) !== undefined;
 
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;

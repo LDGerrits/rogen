@@ -46,6 +46,23 @@ describe("CoreConfigService", () => {
 			expect(buildableConfig(selection.entries[0])?.isAdopted).toBe(true);
 		});
 
+		it("should read a named Rojo project file as a config that is its own output", async () => {
+			await write("/repo/test.project.json", {
+				name: "plain",
+				tree: { $className: "DataModel" },
+			});
+
+			expect((await start({ names: ["test.project.json"] })).isOk()).toBe(
+				true
+			);
+
+			const config = buildableConfig(selection.entries[0]);
+			expect(config?.isAdopted).toBe(true);
+			expect(config?.projectFile).toBe("/repo/test.project.json");
+			expect(config?.projectFiles).toEqual(["/repo/test.project.json"]);
+			expect(selection.configs).toHaveLength(1);
+		});
+
 		it("should select the config of each folder named", async () => {
 			await write("/repo/places/lobby/rogen.json", {});
 			await write("/repo/places/arena/rogen.jsonc", {});
