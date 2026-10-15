@@ -1,4 +1,4 @@
-$ rogen syncback -i place.rbxlx -y --list
+$ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   rogen syncback · Game

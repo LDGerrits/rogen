@@ -1,1 +1,1 @@
-{ "steps": [["syncback", "-i", "place.rbxlx", "-y", "--list"]] }
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"]]}

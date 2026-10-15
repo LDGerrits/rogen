@@ -1,4 +1,4 @@
-$ rogen syncback -i place.rbxlx --dry-run --json
+$ rogen syncback -i place.rbxl --dry-run --json
 exit 0
 stdout:
   {
@@ -15,7 +15,7 @@ stdout:
     "syncback": {
       "outcome": "planned",
       "project": "Game",
-      "input": "place.rbxlx",
+      "input": "place.rbxl",
       "changes": [
         {
           "kind": "write",
@@ -42,7 +42,7 @@ stdout:
     }
   }
 
-$ rogen syncback -i place.rbxlx --dry-run
+$ rogen syncback -i place.rbxl --dry-run
 exit 0
 stdout:
   rogen syncback · Game
@@ -55,7 +55,7 @@ stdout:
   write  src/Quest/Server/Main.luau
   Syncback would change 5 files (4 to write, 1 to remove).
 
-$ rogen syncback -i place.rbxlx -y --list
+$ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
   rogen syncback · Game

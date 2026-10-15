@@ -1,4 +1,4 @@
-$ rogen syncback dist -i place.rbxlx -y --list
+$ rogen syncback dist -i place.rbxl -y --list
 exit 0
 stdout:
   rogen syncback · Game, Game (dist)
@@ -11,7 +11,7 @@ stdout:
   write  dist/Combat/Server/Loot.luau
   Syncback wrote 2 changes.
 
-$ rogen syncback -i place.rbxlx --dry-run
+$ rogen syncback -i place.rbxl --dry-run
 exit 0
 stdout:
   rogen syncback · Game, Game (dist)
