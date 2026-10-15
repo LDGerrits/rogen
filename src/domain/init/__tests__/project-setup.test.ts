@@ -43,6 +43,33 @@ describe("ProjectSetup plan", () => {
 		expect(configs).toEqual(["rogen.json"]);
 	});
 
+	describe("other project files in the folder", () => {
+		it("should name them in a note, and say they are left alone", async () => {
+			const { notes } = await plan(luau, [
+				"test.project.json",
+				"place.project.json",
+			]);
+
+			expect(notes).toEqual([
+				expect.stringContaining(
+					'Left alone: place.project.json, test.project.json. Rogen writes only default.project.json and the files named under "projects"'
+				),
+			]);
+		});
+
+		it("should not name default.project.json, which init replaces or lifts", async () => {
+			const { notes } = await plan(luau, ["default.project.json"]);
+
+			expect(notes.join("\n")).not.toContain("Left alone");
+		});
+
+		it("should say nothing when there are none", async () => {
+			const { notes } = await plan(luau);
+
+			expect(notes.join("\n")).not.toContain("Left alone");
+		});
+	});
+
 	it("should write the starting routes explicitly", async () => {
 		const config = configOf(await plan(luau));
 

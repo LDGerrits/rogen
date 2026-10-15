@@ -58,6 +58,8 @@ rogen init
 - What a mount carried besides its `$path` (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` and child nodes) stays on its node in the `tree`, where the route lands, and the file builds the instances it did. A node no route can land on gets the warning [`init.settingsDropped`](/docs/v2/diagnostics#init-settingsdropped) and is left out.
 - A project file whose root is not a DataModel, such as the `$path: "src"` that `rojo init --kind model` and `--kind plugin` write, is lifted as it is, with no `routes` and no `sourcePaths`: there is no service to route to, so Rojo keeps reading the folder.
 
+- Any other `*.project.json` in the folder (`test.project.json`, `place.project.json`) is not lifted and stays as you wrote it. `init` lists them as left alone. A [project](/docs/v2/configuration#projects) inherits the whole tree, so move such a file under `projects` only when it is the description with a few keys changed; see [a test or subset project](/docs/v2/configuration#projects).
+
 In a terminal, the **Routes** question offers these routes ticked, with the hint `from default.project.json`, beside the standard ones. With `--non-interactive` or `--json`, `init` takes them.
 
 </Step>

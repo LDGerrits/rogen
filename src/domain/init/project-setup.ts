@@ -3,6 +3,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_FILE,
+	DEFAULT_PROJECT_FILE,
 	ProjectChanges,
 	RogenConfig,
 } from "../config/config.js";
@@ -213,6 +214,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.tree.kind === "lift")
 			builder.setLiftedFrom(choices.tree.from);
 		for (const note of tree.notes) builder.addNote(note);
+		const others = this.directory.otherProjectFiles(
+			DEFAULT_PROJECT_FILE,
+			...(choices.tree.kind === "lift" ? [choices.tree.from] : [])
+		);
+		if (others.length > 0)
+			builder.addNote(
+				`Left alone: ${others.join(", ")}. Rogen writes only default.project.json and the files named under "projects", and a project inherits the whole tree, so keep a file that holds a subset of it by hand, or add its name under "projects" in ${DEFAULT_CONFIG_FILE} to have Rogen write it.`
+			);
 		for (const warning of tree.warnings) builder.addWarning(warning);
 		if (compiler && !darklua && syncPath) {
 			builder.addNote(

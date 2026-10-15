@@ -525,7 +525,20 @@ describe("CoreConfigService", () => {
 
 				expect(result.isErr()).toBe(true);
 				expect(String((result as { error: Error }).error.message)).toBe(
-					'No project "release" in rogen.json, which has "default" and "dist". Name a folder with a rogen.json, a *.project.json path, or one of them.'
+					'No project "release" in rogen.json, which has "default" and "dist". Projects are the keys of "projects" in rogen.json: add "release": {} to have Rogen write release.project.json. Or name a folder with a rogen.json, or one of the projects above.'
+				);
+			});
+
+			it("should say a project file of that name is there but not written by Rogen", async () => {
+				await write("/repo/rogen.json", { projects: { dist: {} } });
+				await write("/repo/test.project.json", { name: "test" });
+
+				const result = await start({ names: ["test"] });
+
+				expect(
+					String((result as { error: Error }).error.message)
+				).toContain(
+					"test.project.json is there, but a project file Rogen does not write is not a project."
 				);
 			});
 

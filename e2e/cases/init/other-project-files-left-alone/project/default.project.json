@@ -1,0 +1,11 @@
+{
+	"name": "my-game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$properties": {
+				"Gravity": 50
+			}
+		}
+	}
+}

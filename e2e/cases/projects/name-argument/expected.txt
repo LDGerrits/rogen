@@ -67,12 +67,12 @@ stdout:
 $ rogen build nope
 exit 2
 stderr:
-  error: No project "nope" in rogen.json, which has "default", "dist" and "release". Name a folder with a rogen.json, a *.project.json path, or one of them.
+  error: No project "nope" in rogen.json, which has "default", "dist" and "release". Projects are the keys of "projects" in rogen.json: add "nope": {} to have Rogen write nope.project.json. Or name a folder with a rogen.json, or one of the projects above.
 
 $ rogen build nope.project.json
 exit 2
 stderr:
-  error: No project "nope" in rogen.json, which has "default", "dist" and "release". Name a folder with a rogen.json, a *.project.json path, or one of them.
+  error: No project "nope" in rogen.json, which has "default", "dist" and "release". Projects are the keys of "projects" in rogen.json: add "nope": {} to have Rogen write nope.project.json. Or name a folder with a rogen.json, or one of the projects above.
 
 written:
   default.project.json

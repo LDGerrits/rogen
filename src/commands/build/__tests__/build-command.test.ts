@@ -160,7 +160,7 @@ describe("build command", () => {
 			});
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				'No project "nope" in rogen.json, which has "default", "dist" and "release". Name a folder with a rogen.json, a *.project.json path, or one of them.'
+				'No project "nope" in rogen.json, which has "default", "dist" and "release". Projects are the keys of "projects" in rogen.json: add "nope": {} to have Rogen write nope.project.json. Or name a folder with a rogen.json, or one of the projects above.'
 			);
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});

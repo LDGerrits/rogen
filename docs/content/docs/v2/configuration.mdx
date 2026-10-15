@@ -120,6 +120,24 @@ This writes `default.project.json`, `dist.project.json` and `release.project.jso
 - `projects` and `serveProject` belong to the whole config, and a project can't set them. `default` is the description itself and can't be a project name.
 - A project inherits `name`. Every project file carries a `name`, yours or the folder's, because Rojo can't open a project file without one. Only `default.project.json` may go without, as Rojo names it after its folder.
 
+**A test or subset project.** A project adds and replaces; it can't take a service or a node out of the inherited `tree`. To write a smaller project, keep the top-level `tree` to what every project needs, and give each project the rest: its own `sourcePaths`, its mounts under `tree`, and `globIgnorePaths` for the mounts and specs it leaves out.
+
+```json title="rogen.json"
+{
+	"tree": { "$className": "DataModel" },
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"projects": {
+		"test": {
+			"sourcePaths": ["src", "tests"],
+			"tree": { "ReplicatedStorage": { "TestEZ": { "$path": "Packages/TestEZ" } } }
+		}
+	}
+}
+```
+
+Rogen writes only `default.project.json` and the files its `projects` name. A `test.project.json` you wrote by hand stays as it is: `rogen build test.project.json` fails with "No project" until `test` is a key of `projects`, and `rogen init` lists such files as left alone. The other way holds too: when you delete a key from `projects`, Rogen does not delete the file it wrote, and Rojo still builds it. Delete the file with the entry.
+
 `rogen serve` serves the project `serveProject` names, `default` when it is not set, so a Darklua setup that serves `dist` never serves unprocessed code by accident. Every other command reads `default`. To use another, give its name or its file: `rogen serve release`, `rogen serve dist.project.json`. A bare name means a project of the config here, unless a folder of that name holds a `rogen.json` or a `default.project.json`: the folder wins, and Rogen says which project file to name instead. `rogen build` writes every project whichever you name, and `rogen list` shows each one's file and which is served.
 
 ---
