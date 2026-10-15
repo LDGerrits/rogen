@@ -64,14 +64,14 @@ describe("domain/init/starting-routes", () => {
 				expect(routes.options.slice(0, 2)).toEqual([
 					{
 						id: "mount:server",
-						key: "server",
+						key: "Server",
 						target: "ServerScriptService/Server",
 						hint: "from default.project.json",
 						ticked: true,
 					},
 					{
 						id: "mount:shared",
-						key: "shared",
+						key: "Shared",
 						target: "ReplicatedStorage/Shared",
 						hint: "from default.project.json",
 						ticked: true,
@@ -98,11 +98,58 @@ describe("domain/init/starting-routes", () => {
 			it("should send files that match no route where the shared folder went", () => {
 				expect(routes.fallbackTarget).toBe("ReplicatedStorage/Shared");
 				expect(routes.starting(routes.tickedByDefault, true)).toEqual({
-					server: "ServerScriptService/Server",
-					shared: "ReplicatedStorage/Shared",
+					Server: "ServerScriptService/Server",
+					Shared: "ReplicatedStorage/Shared",
 					Client: "StarterPlayer/StarterPlayerScripts",
 					"*": "ReplicatedStorage/Shared",
 				});
+			});
+
+			describe("the keys of derived routes", () => {
+				const mounted = (language: "luau" | "roblox-ts") =>
+					new StartingRoutes(
+						workspaceOf().languageFor(language),
+						DerivedRoutes.of(
+							"default.project.json",
+							StarterProject.parse(
+								JSON.stringify({
+									tree: {
+										ServerScriptService: {
+											server: { $path: "src/server" },
+										},
+										Workspace: {
+											map: { $path: "src/map" },
+											Lobby: { $path: "src/Lobby" },
+										},
+									},
+								})
+							).unwrap(),
+							["src"]
+						)
+					);
+
+				it("should share the casing of the standard routes in luau", () => {
+					expect(
+						mounted("luau")
+							.options.slice(0, 3)
+							.map(({ key }) => key)
+					).toEqual(["Server", "Map", "Lobby"]);
+				});
+
+				it("should keep the folder's spelling in roblox-ts, but for a standard route", () => {
+					expect(
+						mounted("roblox-ts")
+							.options.slice(0, 3)
+							.map(({ key }) => key)
+					).toEqual(["server", "map", "Lobby"]);
+				});
+			});
+
+			it("should take a standard id for the derived route that replaced it", () => {
+				expect(routes.resolve("server")).toBe("mount:server");
+				expect(routes.resolve("client")).toBe("client");
+				expect(routes.resolve("mount:server")).toBe("mount:server");
+				expect(routes.resolve("nonsense")).toBe("nonsense");
 			});
 
 			it("should fall back to the standard place when it names none", () => {

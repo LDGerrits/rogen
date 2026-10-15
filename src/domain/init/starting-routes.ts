@@ -80,11 +80,38 @@ export class StartingRoutes {
 		return this.derived?.fallback ?? this.sharedTarget;
 	}
 
+	/** The key a derived route is written with: the language's casing, so one lift doesn't mix `shared` and `Server`. A language that keeps ids as they are (roblox-ts) keeps the folder's spelling, unless a standard route has the key. */
+	private keyOf(derivedKey: string): string {
+		const identity = DeclaredKeys.identityOf(derivedKey);
+		const standard = ROUTES.map(({ id }) =>
+			this.language.routeKey(id)
+		).find((key) => DeclaredKeys.identityOf(key) === identity);
+		if (standard) return standard;
+		const cased = this.language.routeKey(identity);
+		return cased === identity ? derivedKey : cased;
+	}
+
+	/** `id` as an option of these routes: a standard id, such as `server`, names the derived route that replaced it. */
+	resolve(id: string): string {
+		const standard = ROUTES.find((template) => template.id === id);
+		if (!standard) return id;
+		const identity = DeclaredKeys.identityOf(
+			this.language.routeKey(standard.id)
+		);
+		return (
+			this.options.find(
+				(option) =>
+					option.id.startsWith("mount:") &&
+					DeclaredKeys.identityOf(option.key) === identity
+			)?.id ?? id
+		);
+	}
+
 	get options(): RouteOption[] {
 		const derived = [...(this.derived?.routes ?? [])].map(
 			([key, target]): RouteOption => ({
 				id: `mount:${key}`,
-				key,
+				key: this.keyOf(key),
 				target,
 				hint: `from ${this.derived?.from}`,
 				ticked: true,

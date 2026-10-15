@@ -19,6 +19,8 @@ export class InitPlanBuilder {
 	private toolManifest: PlannedFile | undefined;
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
+	private readonly warnings: Diagnostic[] = [];
+	private liftedFrom: string | undefined;
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
 	private readonly darklua: string[] = [];
@@ -59,6 +61,15 @@ export class InitPlanBuilder {
 		this.notes.push(note);
 	}
 
+	/** The project file whose tree went into the config; init leaves it as it was. */
+	setLiftedFrom(fileName: string): void {
+		this.liftedFrom = fileName;
+	}
+
+	addWarning(warning: Diagnostic): void {
+		this.warnings.push(warning);
+	}
+
 	/** The same edit from two setups is said once. */
 	addSetup(...lines: readonly string[]): void {
 		for (const line of lines) this.setup.add(line);
@@ -96,6 +107,10 @@ export class InitPlanBuilder {
 			directories: [...this.directories],
 			configs: written.map(({ fileName }) => fileName),
 			notes: [...this.notes],
+			warnings: [...this.warnings],
+			...(this.liftedFrom !== undefined && {
+				liftedFrom: this.liftedFrom,
+			}),
 			nextSteps: {
 				setup: [...this.setup],
 				run: [...this.run],

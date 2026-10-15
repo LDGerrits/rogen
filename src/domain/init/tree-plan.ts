@@ -1,7 +1,12 @@
 import path from "path";
 import { joinedWithAnd, joinedWithOr } from "../../base/strings.js";
+import {
+	Diagnostic,
+	warningDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { DEFAULT_CONFIG_FILE, RogenConfig } from "../config/config.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { MountedPath, RemovedMount } from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { StarterProject } from "./starter-project.js";
@@ -32,11 +37,15 @@ function folderNameOf(target: string): string {
 		: path.posix.basename(path.posix.dirname(target));
 }
 
+const describeMount = ({ instancePath }: MountedPath): string =>
+	instanceKey(instancePath);
+
 export class TreePlan {
 	private constructor(
 		readonly fields: RogenConfig,
 		readonly notes: readonly string[],
-		readonly edits: readonly string[]
+		readonly edits: readonly string[],
+		readonly warnings: readonly Diagnostic[] = []
 	) {}
 
 	static of({ tree, mounts, dirs, derived }: TreeInputs): TreePlan {
@@ -56,25 +65,78 @@ export class TreePlan {
 		derived: DerivedRoutes | undefined
 	): TreePlan {
 		const stripped = project.withoutNodesIn(dirs);
-		const mounted = (stripped?.project ?? project).withMounts(mounts);
-		const removed = (stripped?.removed ?? []).map(({ instancePath }) =>
-			instanceKey(instancePath)
+		const removed = stripped?.removed ?? [];
+		const carried = (mount: RemovedMount) =>
+			Object.keys(mount.settings).length > 0;
+		const unrouted = derived?.unrouted ?? [];
+		const restored = unrouted.filter(
+			({ mount, atRoot }) => carried(mount) && !atRoot
+		);
+		const dropped = unrouted.filter(
+			({ mount, atRoot }) => carried(mount) && atRoot
+		);
+		const placeOf = ({ instancePath }: MountedPath) =>
+			instancePath.join("/");
+		const unroutedPlaces = new Set(
+			unrouted.map(({ mount }) => placeOf(mount))
+		);
+		const routedMounts = removed.filter(
+			(mount) => carried(mount) && !unroutedPlaces.has(placeOf(mount))
+		);
+		const settled = stripped
+			? stripped.project
+					.withMountsReturned(
+						restored.map(({ mount }) => mount),
+						true
+					)
+					.withMountsReturned(routedMounts, false)
+			: project;
+		const mounted = settled.withMounts(mounts);
+		const kept = project.keptMounts(dirs).map(describeMount);
+		const restoredPlaces = new Set(
+			restored.map(({ mount }) => placeOf(mount))
+		);
+		const leftOut = removed
+			.filter((mount) => !restoredPlaces.has(placeOf(mount)))
+			.map(({ instancePath }) => instanceKey(instancePath));
+		const unroutable = unrouted.filter(
+			({ mount }) => !restoredPlaces.has(placeOf(mount))
 		);
 		const { added, skipped } = mounted;
 		return new TreePlan(
 			mounted.project.toConfig(),
 			[
 				`Lifting ${from} into ${DEFAULT_CONFIG_FILE}, since Rogen replaces ${from} on every build.`,
-				...(removed.length > 0
+				...(project.takesRoutes
+					? []
+					: [
+							`The root of ${from} is not a DataModel, as in a model or a plugin, so ${DEFAULT_CONFIG_FILE} keeps the tree as Rojo reads it and adds no routes.`,
+						]),
+				...(leftOut.length > 0
 					? [
-							`Left out ${joinedWithAnd(removed)}, since ${removed.length === 1 ? "it points" : "they point"} into ${joinedWithOr(dirs)} and Rogen generates that code now.`,
+							`Left out ${joinedWithAnd(leftOut)}, since ${leftOut.length === 1 ? "it points" : "they point"} into ${joinedWithOr(dirs)} and Rogen generates that code now.`,
 						]
 					: []),
-				...(derived?.unrouted.length
+				...(routedMounts.length > 0
+					? [
+							`Kept what ${joinedWithAnd(routedMounts.map(({ instancePath }) => instanceKey(instancePath)))} set in the tree, on the node the route lands on.`,
+						]
+					: []),
+				...(restored.length > 0
+					? [
+							`Kept ${joinedWithAnd(restored.map(({ node }) => node))} in the tree as ${restored.length === 1 ? "a $path mount" : "$path mounts"}, since a route can't carry ${restored.length === 1 ? "its" : "their"} settings.`,
+						]
+					: []),
+				...(kept.length > 0
+					? [
+							`Kept ${joinedWithAnd(kept)} in the tree as ${kept.length === 1 ? "a $path mount" : "$path mounts"}, since ${kept.length === 1 ? "its folder holds an init file, which Rojo reads" : "their folders hold an init file, which Rojo reads"} as the instance of the folder itself and a route can't.`,
+						]
+					: []),
+				...(unroutable.length > 0
 					? [
 							`Couldn't route ${joinedWithOr(
-								derived.unrouted.map(({ node }) => node)
-							)}: only a folder directly in a source path becomes a route. Give ${derived.unrouted.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(derived.unrouted[0].target)}@server, or move ${derived.unrouted.length === 1 ? "it" : "them"} up into a source path.`,
+								unroutable.map(({ node }) => node)
+							)}: only a folder directly in a source path becomes a route. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(unroutable[0].target)}@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
 						]
 					: []),
 				...(added.length > 0
@@ -92,7 +154,14 @@ export class TreePlan {
 				? []
 				: [
 						`Remove the nodes in the tree of ${DEFAULT_CONFIG_FILE} that point into ${joinedWithOr(dirs)}; Rogen generates those now.`,
-					]
+					],
+			dropped.map(({ node, mount }) =>
+				warningDiagnostic(
+					"init.settingsDropped",
+					{ resource: from },
+					`${node} set ${joinedWithAnd(Object.keys(mount.settings))}, which ${DEFAULT_CONFIG_FILE} doesn't carry, since no route lands on that node. Add them to the tree by hand.`
+				)
+			)
 		);
 	}
 }

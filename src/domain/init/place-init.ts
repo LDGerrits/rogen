@@ -99,6 +99,7 @@ export class PlaceInit {
 				path.posix.join(place, directory)
 			),
 			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
+			warnings: [],
 			notes: [
 				`${path.basename(folder)} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
 				...workspace.notes,

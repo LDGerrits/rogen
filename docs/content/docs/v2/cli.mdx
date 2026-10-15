@@ -253,7 +253,7 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--sync-path <path>` | With Darklua: the folder it writes into. |
 | `--project-file lift\|new` | With a hand-written `default.project.json`: lift its tree (the default) or start a new one. |
 | `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. |
-| `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. |
+| `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. When a lifted project file already mounts a folder under one of these names, `server` means that route, which is also called `mount:server`. |
 | `--unmatched shared\|leave` | Where files that match no route go. |
 | `--[no-]agent-rules` | Rogen's rules for coding agents. Added by default. |
 | `--[no-]agent-hook` | The hook that reports warnings to the coding agents found. Not added by default. |
@@ -615,7 +615,7 @@ Every entry also has `diagnostics`, last: the diagnostics about its path (the on
 }
 ```
 
-`decided` lists each choice a run that couldn't ask took for itself, with the flag that changes it; it leaves out what a flag answered. `files` lists what was written, in order, and marks with `appended` the ones that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
+`decided` lists each choice a run that couldn't ask took for itself, with the flag that changes it; it leaves out what a flag answered. `files` lists what was written, in order, and marks with `appended` the ones that existed and had something added: Rogen's agent rules at the end, the hook in an agent's hook file, or Rojo's pin in `rokit.toml`. `directories` lists the source paths `init` created because they didn't exist; one that already existed is left alone and not listed. `built` has the entry of the config it wrote, as `build --json` does, without the sync path's warnings; if one has errors, the exit code is 1. `notes` is what `init` said along the way, and `warnings` lists what it could not do as asked, each a [diagnostic](#errors) with a code (such as `init.settingsDropped`, for settings of a lifted node that `rogen.json` has no place for); it is left out when there are none. In `nextSteps`, `setup` holds one-time edits, `run` the long-running commands (one terminal each), `darklua` the processing commands, and `edits` suggested changes to the new files. If a write fails, you get `{ "files": [...], "error": {...} }`.
 
 ### `help --json`
 

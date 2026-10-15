@@ -44,9 +44,9 @@ rogen.json:
 		"src"
 	],
 	"routes": {
-		"shared": "ReplicatedStorage/Shared",
-		"server": "ServerScriptService/Server",
-		"client": "StarterPlayer/StarterPlayerScripts/Client",
+		"Shared": "ReplicatedStorage/Shared",
+		"Server": "ServerScriptService/Server",
+		"Client": "StarterPlayer/StarterPlayerScripts/Client",
 		"*": "ReplicatedStorage/Shared"
 	}
 }

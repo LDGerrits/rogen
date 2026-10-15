@@ -477,7 +477,13 @@ export class InitQuestions {
 		const routes: readonly RouteId[] | undefined =
 			given !== undefined
 				? listOf(given, "--route").map(
-						(id) => oneOf(id, ids, "a route", "--route") as RouteId
+						(id) =>
+							oneOf(
+								starting.resolve(id),
+								ids,
+								"a route",
+								"--route"
+							) as RouteId
 					)
 				: !this.interactive
 					? this.decide(

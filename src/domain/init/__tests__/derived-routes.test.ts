@@ -98,10 +98,11 @@ describe("domain/init/derived-routes", () => {
 				});
 
 				expect(derived?.routes.size).toBe(0);
-				expect(derived?.unrouted).toEqual([
+				expect(derived?.unrouted).toMatchObject([
 					{
 						target: "src/server/Admin",
 						node: "ServerScriptService/Admin",
+						atRoot: false,
 					},
 				]);
 			});

@@ -1,0 +1,23 @@
+{
+	"name": "game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"Map": { "$path": "src", "$properties": { "Archivable": false } },
+			"Level": {
+				"$className": "Folder",
+				"Props": {
+					"$path": "src/props",
+					"$className": "Model",
+					"$attributes": { "Kind": "prop" }
+				}
+			}
+		},
+		"ReplicatedStorage": {
+			"Deep": {
+				"$path": "src/props/deep",
+				"$properties": { "Archivable": false }
+			}
+		}
+	}
+}

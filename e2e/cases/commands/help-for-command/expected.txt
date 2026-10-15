@@ -99,8 +99,9 @@ stdout:
                                              addition.
           --route <ID>                       A route to start with: server, client, shared,
                                              replicatedFirst, serverStorage or starterGui; repeat for
-                                             several, or none. The first three when not given.
-                                             (repeatable)
+                                             several, or none. The first three when not given. When a
+                                             lifted project file mounts a folder of that name, the
+                                             name stands for the route derived from it. (repeatable)
           --source-path <PATH>               A folder with your scripts, relative to here; repeat for
                                              several. src when not given, or where the code is.
                                              (repeatable)

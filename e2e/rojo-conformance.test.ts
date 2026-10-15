@@ -5,7 +5,10 @@ import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { bundleCli } from "./harness.js";
 import {
 	GLOB_PROJECTS_DIR,
+	INIT_PROJECTS_DIR,
 	PROJECTS_DIR,
+	RojoTemplate,
+	initRoundTrip,
 	roundTrip,
 } from "./rojo-conformance.js";
 
@@ -62,5 +65,30 @@ describeWithRojo("end to end Rojo conformance", () => {
 			expect(result.placeOfWritten).toBe(result.placeOfOriginal);
 		},
 		30_000
+	);
+
+	it.each<RojoTemplate>(["place", "model", "plugin"])(
+		"should lift the project rojo init makes for a %s and build the same place",
+		(kind) => {
+			const result = initRoundTrip(bundle.cli, kind);
+
+			expect(result.rojoInit.status).toBe(0);
+			expect(result.rogenInit).toMatchObject({ status: 0, stderr: "" });
+			expect(result.placeOfTemplate).toBeDefined();
+			expect(result.placeOfInit).toBe(result.placeOfTemplate);
+		},
+		60_000
+	);
+
+	it.each(fs.readdirSync(INIT_PROJECTS_DIR))(
+		"should lift %s with what its mounts carry and build the same place",
+		(project) => {
+			const result = initRoundTrip(bundle.cli, { project });
+
+			expect(result.rogenInit).toMatchObject({ status: 0, stderr: "" });
+			expect(result.placeOfTemplate).toBeDefined();
+			expect(result.placeOfInit).toBe(result.placeOfTemplate);
+		},
+		60_000
 	);
 });

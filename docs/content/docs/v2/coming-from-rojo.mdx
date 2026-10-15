@@ -43,9 +43,9 @@ rogen init
 	},
 	"sourcePaths": ["src"],
 	"routes": {
-		"shared": "ReplicatedStorage/Shared",
-		"server": "ServerScriptService/Server",
-		"client": "StarterPlayer/StarterPlayerScripts/Client",
+		"Shared": "ReplicatedStorage/Shared",
+		"Server": "ServerScriptService/Server",
+		"Client": "StarterPlayer/StarterPlayerScripts/Client",
 		"*": "ReplicatedStorage/Shared"
 	}
 }
@@ -53,7 +53,10 @@ rogen init
 
 - A mount of a folder directly in a source path (`src/server`) becomes a route named after the folder, to the node's path. The key matches with its first letter in either case, so `server/` and `Server/` both route.
 - A mount of a source path itself (`"ReplicatedStorage/Common": { "$path": "src" }`) becomes the `*` route, which takes files that match no route. Otherwise `*` goes where the `shared` folder went.
-- A mount deeper down (`src/server/Admin`) can't be a route. `init` says so, and it needs a marker such as `Admin@server`, or a move.
+- A mount deeper down (`src/server/Admin`) can't be a route. `init` says so, and it needs a marker such as `Admin@server`, or a move. If the node carried settings, `init` keeps it as a `$path` mount in the tree instead.
+- A mount whose folder holds an `init` file (`init.server.luau`, as `rojo init` writes for `src/server`, or `init.meta.json`) stays a `$path` mount in the tree. Rojo reads such a folder as one instance, a Script or whatever its init file makes, and a route can't make that. Rogen leaves the folder to Rojo, as it does for any `$path` into a source path.
+- What a mount carried besides its `$path` (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` and child nodes) stays on its node in the `tree`, where the route lands, and the file builds the instances it did. A node no route can land on gets the warning [`init.settingsDropped`](/docs/v2/diagnostics#init-settingsdropped) and is left out.
+- A project file whose root is not a DataModel, such as the `$path: "src"` that `rojo init --kind model` and `--kind plugin` write, is lifted as it is, with no `routes` and no `sourcePaths`: there is no service to route to, so Rojo keeps reading the folder.
 
 In a terminal, the **Routes** question offers these routes ticked, with the hint `from default.project.json`, beside the standard ones. With `--non-interactive` or `--json`, `init` takes them.
 

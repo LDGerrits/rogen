@@ -37,6 +37,11 @@ function derivedRoutesOf(
 		: undefined;
 }
 
+/** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
+function takesRoutes(tree: ProjectTree): boolean {
+	return tree.kind === "new" || tree.project.takesRoutes;
+}
+
 function generatedDirs({
 	language,
 	darklua,
@@ -120,16 +125,26 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			syncPath = answer;
 		}
 
-		const mounts = await questions.mounts(directory, language);
+		const routed = takesRoutes(tree.value);
+		const mounts = routed
+			? await questions.mounts(directory, language)
+			: [];
 		if (mounts === undefined) return ok(undefined);
 
-		const routes = await questions.routes(
-			language,
-			derivedRoutesOf(
-				tree.value,
-				generatedDirs({ language, darklua, sourcePaths, syncPath })
-			)
-		);
+		const routes = routed
+			? await questions.routes(
+					language,
+					derivedRoutesOf(
+						tree.value,
+						generatedDirs({
+							language,
+							darklua,
+							sourcePaths,
+							syncPath,
+						})
+					)
+				)
+			: { routes: [], fallback: false };
 		if (routes === undefined) return ok(undefined);
 
 		return ok({
@@ -148,13 +163,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		chosen: TreeChoice
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
 		if (chosen.kind === "new") return ok(chosen);
-		const project = await new ProjectReader(
+		const reader = new ProjectReader(
 			this.fileSystemService,
 			this.directory.path
-		).read(chosen.from);
+		);
+		const project = await reader.read(chosen.from);
 		return project.isErr()
 			? err(project.error)
-			: ok({ ...chosen, project: project.value });
+			: ok({
+					...chosen,
+					project: await reader.withInitFolders(project.value),
+				});
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
@@ -179,16 +198,21 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig({
 			...tree.fields,
-			sourcePaths: [...sourcePaths],
-			routes: new StartingRoutes(language, derived).starting(
-				choices.routes,
-				choices.fallback
-			),
+			...(takesRoutes(choices.tree) && {
+				sourcePaths: [...sourcePaths],
+				routes: new StartingRoutes(language, derived).starting(
+					choices.routes,
+					choices.fallback
+				),
+			}),
 			...(defaultSyncPath && { syncPath: defaultSyncPath }),
 			...projects,
 		});
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
+		if (choices.tree.kind === "lift")
+			builder.setLiftedFrom(choices.tree.from);
 		for (const note of tree.notes) builder.addNote(note);
+		for (const warning of tree.warnings) builder.addWarning(warning);
 		if (compiler && !darklua && syncPath) {
 			builder.addNote(
 				`Syncing from ${syncPath}, where ${compiler.name} compiles to.`
@@ -209,7 +233,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 	private planNextSteps(
 		builder: InitPlanBuilder,
-		{ language, darklua, sourcePaths, syncPath }: ProjectChoices,
+		{
+			language,
+			darklua,
+			sourcePaths,
+			syncPath,
+			tree: chosen,
+		}: ProjectChoices,
 		tree: TreePlan
 	): void {
 		const { compiler } = language;
@@ -218,9 +248,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
-		builder.addEdit(
-			`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`
-		);
+		if (takesRoutes(chosen))
+			builder.addEdit(
+				`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`
+			);
 		new SyncSteps(language, darklua).plan(builder, this.directory.path, {
 			processed: compiler ? [compiler.outDir] : sourcePaths,
 			syncPath,

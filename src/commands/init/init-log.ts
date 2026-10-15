@@ -13,7 +13,10 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ReportedError } from "../../platform/commands/commands.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import {
+	DiagnosticJson,
 	ErrorJson,
+	diagnosticShape,
+	diagnosticToJson,
 	errorShape,
 	errorToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
@@ -52,6 +55,7 @@ export const initDocumentShape = S.object({
 	error: S.optional(errorShape),
 	built: S.optional(S.array(buildEntryShape)),
 	notes: S.optional(S.array(S.string)),
+	warnings: S.optional(S.array(diagnosticShape)),
 	nextSteps: S.optional(
 		S.object({
 			setup: S.array(S.string),
@@ -97,6 +101,11 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.errors,
 ];
 
+const warningsOf = (plan: InitPlan) =>
+	plan.warnings.length > 0
+		? { warnings: plan.warnings.map(diagnosticToJson) }
+		: {};
+
 export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
@@ -124,6 +133,8 @@ export class InitLog implements InitReporter {
 	begin(plan: InitPlan): void {
 		if (plan.asked) this.logService.info("");
 		for (const note of plan.notes) this.logService.info(note);
+		for (const warning of plan.warnings)
+			this.logService.diagnostic(warning);
 		if (plan.decided.length > 0)
 			this.logService.info(
 				`Took the defaults: ${plan.decided.flatMap(flagsOf).join(", ")}.`
@@ -161,7 +172,11 @@ export class InitLog implements InitReporter {
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
-				`Wrote ${files}, but the build failed. Fix rogen.json and run rogen build.`
+				`Wrote ${files}, but the build failed.${
+					plan.liftedFrom
+						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
+						: ""
+				} Fix rogen.json and run rogen build.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}
@@ -189,6 +204,7 @@ interface InitDocument {
 	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
 	readonly notes?: readonly string[];
+	readonly warnings?: readonly DiagnosticJson[];
 	readonly nextSteps?: NextSteps;
 }
 
@@ -232,6 +248,7 @@ export class InitJsonLog implements InitReporter {
 		return this.print({
 			...this.writtenSoFar(),
 			notes: plan.notes,
+			...warningsOf(plan),
 			nextSteps: plan.nextSteps,
 		});
 	}
@@ -245,6 +262,7 @@ export class InitJsonLog implements InitReporter {
 				changed: written.changed || built.changed,
 				built: built.configs,
 				notes: plan.notes,
+				...warningsOf(plan),
 				nextSteps: plan.nextSteps,
 			},
 			DiagnosticsError.of(run.errors)

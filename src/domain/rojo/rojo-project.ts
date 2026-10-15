@@ -60,6 +60,12 @@ export interface MountedPath {
 	readonly instancePath: readonly string[];
 }
 
+/** A node that mounted a path, as `removeNodes` took it from a tree. */
+export interface RemovedMount extends MountedPath {
+	/** What the node carried besides its `$path`: its class, properties, attributes and children. */
+	readonly settings: Readonly<RojoNode>;
+}
+
 /** Any project file: Rogen's own output, or one read from disk with fields Rogen doesn't model. */
 export interface ProjectFile {
 	readonly tree: RojoNode;
@@ -256,9 +262,9 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 		return found;
 	}
 
-	/** Removes each node below the root whose `$path` target matches, with its children, and returns each one's `$path` and where it was. */
-	removeNodes(matches: (target: string) => boolean): MountedPath[] {
-		const removed: MountedPath[] = [];
+	/** Removes each node below the root whose `$path` target matches, with its children, and returns each one's `$path`, where it was and what else it carried. */
+	removeNodes(matches: (target: string) => boolean): RemovedMount[] {
+		const removed: RemovedMount[] = [];
 		const visit = (node: RojoNode, instancePath: readonly string[]) => {
 			for (const [name, child] of childNodes(node)) {
 				const childPath = [...instancePath, name];
@@ -266,9 +272,11 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 					isRojoPath(child.$path) &&
 					matches(rojoPathTarget(child.$path))
 				) {
+					const { $path, ...settings } = child;
 					removed.push({
-						path: child.$path,
+						path: $path,
 						instancePath: childPath,
+						settings,
 					});
 					delete node[name];
 				} else {

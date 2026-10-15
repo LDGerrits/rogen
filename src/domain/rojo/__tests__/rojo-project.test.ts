@@ -190,6 +190,7 @@ describe("RojoProject", () => {
 				{
 					path: "src/server",
 					instancePath: ["ServerScriptService", "Server"],
+					settings: { Child: { $path: "x" } },
 				},
 			]);
 			expect(project.getFile().tree).toEqual({

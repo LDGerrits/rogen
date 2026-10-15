@@ -104,11 +104,17 @@ describe("TreePlan", () => {
 					$className: "ServerScriptService",
 				},
 				StarterPlayer: { StarterPlayerScripts: {} },
-				Workspace: {},
+				Workspace: {
+					Map: {
+						$className: "Folder",
+						$properties: { Locked: true },
+					},
+				},
 			});
 			expect(files.notes).toEqual([
 				"Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
 				"Left out ReplicatedStorage/Shared, ServerScriptService/Server, StarterPlayer/StarterPlayerScripts/Client and Workspace/Map, since they point into src and Rogen generates that code now.",
+				"Kept what Workspace/Map set in the tree, on the node the route lands on.",
 			]);
 			expect(files.nextSteps.edits).not.toContainEqual(
 				expect.stringContaining("Remove the nodes")
@@ -128,9 +134,19 @@ describe("TreePlan", () => {
 				},
 			};
 
-			const planDerived = async (content: object) => {
+			const planDerived = async (
+				content: object,
+				holdingInit: readonly string[] = []
+			) => {
 				const choices = await defaultProjectChoices(luau);
-				const project = lifted({ name: "my-game", tree: content });
+				const whole = lifted({ name: "my-game", tree: content });
+				const project =
+					whole.kind === "lift"
+						? {
+								...whole,
+								project: whole.project.withInitIn(holdingInit),
+							}
+						: whole;
 				const derived =
 					project.kind === "lift"
 						? DerivedRoutes.of(
@@ -157,9 +173,9 @@ describe("TreePlan", () => {
 				const files = await planDerived(tree);
 
 				expect(configOf(files).routes).toEqual({
-					server: "ServerScriptService/Server",
-					shared: "ReplicatedStorage/Shared",
-					client: "StarterPlayer/StarterPlayerScripts/Client",
+					Server: "ServerScriptService/Server",
+					Shared: "ReplicatedStorage/Shared",
+					Client: "StarterPlayer/StarterPlayerScripts/Client",
 					"*": "ReplicatedStorage/Shared",
 				});
 			});
@@ -182,6 +198,125 @@ describe("TreePlan", () => {
 				expect(files.notes.join("\n")).toContain(
 					"a marker such as Server@server"
 				);
+			});
+
+			it("should keep a mount in the tree whose folder holds an init file, and say why", async () => {
+				const files = await planDerived(
+					{
+						$className: "DataModel",
+						ServerScriptService: {
+							Server: { $path: "src/server" },
+						},
+						ReplicatedStorage: { Shared: { $path: "src/shared" } },
+					},
+					["src/server"]
+				);
+
+				expect(configOf(files).tree).toEqual({
+					$className: "DataModel",
+					ServerScriptService: { Server: { $path: "src/server" } },
+					ReplicatedStorage: {},
+				});
+				expect(Object.keys(configOf(files).routes!)).not.toContain(
+					"mount:server"
+				);
+				expect(files.notes).toContain(
+					"Kept ServerScriptService/Server in the tree as a $path mount, since its folder holds an init file, which Rojo reads as the instance of the folder itself and a route can't."
+				);
+				expect(files.notes.join("\n")).not.toContain("Couldn't route");
+			});
+
+			it("should keep what a mount that becomes a route carried, on the node the route lands on", async () => {
+				const settings = {
+					$className: "Model",
+					$properties: { Archivable: false },
+					$attributes: { Tag: "x" },
+					$ignoreUnknownInstances: false,
+					$id: "shared",
+					Extra: { $className: "Folder" },
+				};
+				const files = await planDerived({
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Shared: { $path: "src/shared", ...settings },
+					},
+				});
+
+				expect(configOf(files).tree).toEqual({
+					$className: "DataModel",
+					ReplicatedStorage: { Shared: settings },
+				});
+				expect(files.notes).toContain(
+					"Kept what ReplicatedStorage/Shared set in the tree, on the node the route lands on."
+				);
+				expect(files.warnings).toEqual([]);
+			});
+
+			it("should keep a mount it can't route as a $path mount when it carried settings", async () => {
+				const files = await planDerived({
+					$className: "DataModel",
+					ServerScriptService: {
+						Admin: {
+							$path: "src/server/Admin",
+							$properties: { Archivable: false },
+						},
+					},
+				});
+
+				expect(configOf(files).tree).toEqual({
+					$className: "DataModel",
+					ServerScriptService: {
+						Admin: {
+							$path: "src/server/Admin",
+							$properties: { Archivable: false },
+						},
+					},
+				});
+				expect(files.notes).toContain(
+					"Kept ServerScriptService/Admin in the tree as a $path mount, since a route can't carry its settings."
+				);
+				expect(files.notes.join("\n")).not.toContain("Couldn't route");
+			});
+
+			it("should warn with a code about settings no route can land on", async () => {
+				const files = await planDerived({
+					$className: "DataModel",
+					Stray: {
+						Map: {
+							$path: "src",
+							$properties: { Archivable: false },
+						},
+					},
+				});
+
+				expect(files.warnings).toMatchObject([
+					{
+						code: "init.settingsDropped",
+						message: expect.stringContaining(
+							"Stray/Map set $properties"
+						),
+					},
+				]);
+				expect(JSON.stringify(configOf(files).tree)).not.toContain(
+					"Archivable"
+				);
+			});
+
+			it("should lift a root that is no DataModel as it is, with no routes or source paths", async () => {
+				const files = await planDerived({ $path: "src" });
+
+				expect(configOf(files)).toEqual({
+					$schema: expect.stringContaining("rogen.json"),
+					name: "my-game",
+					tree: { $path: "src" },
+				});
+				expect(files.notes).toContain(
+					"The root of default.project.json is not a DataModel, as in a model or a plugin, so rogen.json keeps the tree as Rojo reads it and adds no routes."
+				);
+				expect(files.nextSteps.edits).not.toContainEqual(
+					expect.stringContaining("Add your own routes")
+				);
+				expect(files.liftedFrom).toBe("default.project.json");
 			});
 
 			it("should say nothing about mounts it did route", async () => {

@@ -106,12 +106,113 @@ describe("StarterProject", () => {
 				{
 					path: "src/server",
 					instancePath: ["ServerScriptService", "Server"],
+					settings: {},
 				},
 			]);
 			expect(treeOf(result!.project)).toEqual({
 				$path: "src",
 				ServerScriptService: { Kept: { $path: "Packages" } },
 			});
+		});
+
+		it("should hand back what a removed node carried besides its $path", () => {
+			const result = parsed({
+				tree: {
+					$className: "DataModel",
+					Workspace: {
+						Map: {
+							$path: "src/map",
+							$className: "Model",
+							$properties: { Locked: true },
+							Spawn: { $className: "SpawnLocation" },
+						},
+					},
+				},
+			}).withoutNodesIn(["src"]);
+
+			expect(result?.removed).toEqual([
+				{
+					path: "src/map",
+					instancePath: ["Workspace", "Map"],
+					settings: {
+						$className: "Model",
+						$properties: { Locked: true },
+						Spawn: { $className: "SpawnLocation" },
+					},
+				},
+			]);
+		});
+
+		it("should leave a mount in the tree whose folder holds an init file", () => {
+			const result = parsed(project)
+				.withInitIn(["./src/server/"])
+				.withoutNodesIn(["src"]);
+
+			expect(result?.removed).toEqual([]);
+			expect(treeOf(result!.project)).toMatchObject({
+				ServerScriptService: { Server: { $path: "src/server" } },
+			});
+		});
+
+		it("should say which mounts it keeps, and the folders that are mounted", () => {
+			const held = parsed(project).withInitIn(["src/server"]);
+
+			expect(held.keptMounts(["src"])).toEqual([
+				{
+					path: "src/server",
+					instancePath: ["ServerScriptService", "Server"],
+				},
+			]);
+			expect(held.keptMounts(["lib"])).toEqual([]);
+			expect(held.mountedFolders()).toEqual([
+				"src",
+				"src/server",
+				"Packages",
+			]);
+		});
+
+		it("should put removed mounts back, with their $path or as the settings alone", () => {
+			const original = parsed({
+				tree: {
+					$className: "DataModel",
+					Workspace: {
+						Map: {
+							$path: "src/map",
+							$properties: { Locked: true },
+						},
+						Plain: { $path: "src/plain" },
+					},
+				},
+			});
+			const { project: stripped, removed } = original.withoutNodesIn([
+				"src",
+			])!;
+
+			expect(treeOf(stripped.withMountsReturned(removed, true))).toEqual({
+				$className: "DataModel",
+				Workspace: {
+					Map: { $path: "src/map", $properties: { Locked: true } },
+					Plain: { $path: "src/plain" },
+				},
+			});
+			expect(treeOf(stripped.withMountsReturned(removed, false))).toEqual(
+				{
+					$className: "DataModel",
+					Workspace: {
+						Map: {
+							$className: "Folder",
+							$properties: { Locked: true },
+						},
+					},
+				}
+			);
+		});
+
+		it("should say whether routes can place code in the tree", () => {
+			expect(
+				parsed({ tree: { $className: "DataModel" } }).takesRoutes
+			).toBe(true);
+			expect(parsed({ tree: { $path: "src" } }).takesRoutes).toBe(false);
 		});
 
 		it("should not touch what points elsewhere", () => {

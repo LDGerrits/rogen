@@ -775,6 +775,16 @@ default.project.json - error: this file does not exist, so it can't be lifted. (
 
 Fix the file's permissions or its contents, or move it out of the way. See [Configuration](/docs/v2/configuration#tree).
 
+### `init.settingsDropped` [#init-settingsdropped]
+
+Warning. `init` lifted a node of `default.project.json` that mounts a folder of your source, and that node carried settings (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` or child nodes) that `rogen.json` has no place for, since no route lands on it.
+
+```
+default.project.json - warning: Workspace/Map set $properties, which rogen.json doesn't carry, since no route lands on that node. Add them to the tree by hand. (init.settingsDropped)
+```
+
+Add the settings to the node in the `tree` of `rogen.json`. Settings of a node that a route does land on are kept. See [Coming From Rojo](/docs/v2/coming-from-rojo).
+
 ## Serve
 
 ### `serve.noServer` [#serve-noserver]

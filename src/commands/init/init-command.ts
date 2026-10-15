@@ -88,7 +88,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it.",
 	},
 	{
 		name: "unmatched",
