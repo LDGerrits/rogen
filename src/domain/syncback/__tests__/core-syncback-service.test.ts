@@ -186,10 +186,10 @@ describe("CoreSyncbackService", () => {
 	});
 
 	it("should say why an instance has no place, and not write it", async () => {
-		await prepare([
-			"src/Inventory/Server/Bag.luau",
-			"src/Inventory/Save@server.luau",
-		]);
+		await prepare(
+			["src/Inventory/Server/Bag.luau", "lib/Inventory/Server/Cart.luau"],
+			{ sourcePaths: [abs("src"), abs("lib")] }
+		);
 		rojo.say = async () => ["Writing .rogen-syncback/new/0/Mail.luau"];
 
 		const plan = (await service.plan(request)).unwrap();

@@ -1,6 +1,4 @@
-import { RojoFile } from "../rojo/rojo.js";
-import { SyncRules } from "../rojo/sync-rules.js";
-import { NewInstance } from "./reverse-router.js";
+import { NewInstance, instanceNameOf } from "./reverse-router.js";
 
 /** One instance Rojo wrote into staging, with every file it took. */
 export interface StagedUnit extends NewInstance {
@@ -9,10 +7,6 @@ export interface StagedUnit extends NewInstance {
 	/** The files, as the path below the parent's staging folder. */
 	readonly files: readonly (readonly string[])[];
 }
-
-const instanceNameOf = (fileName: string): string =>
-	RojoFile.metaStemOf(fileName) ??
-	new RojoFile(fileName, SyncRules.DEFAULT).instanceName;
 
 /** Groups what Rojo wrote into staging by the instance each file belongs to. */
 export class StagedUnits {
@@ -49,24 +43,5 @@ export class StagedUnits {
 			})),
 			strays,
 		};
-	}
-
-	/** Where a file of `unit` goes in `home`: a folder's files drop the folder when the routing folder stands for it, and a mark is added to the name of what is written. */
-	static destination(
-		unit: StagedUnit,
-		file: readonly string[],
-		contents: boolean,
-		mark: string
-	): string[] {
-		if (unit.folder)
-			return contents
-				? file.slice(1)
-				: [`${file[0]}${mark}`, ...file.slice(1)];
-		const [first] = file;
-		return [
-			mark !== "" && first.startsWith(unit.name)
-				? `${unit.name}${mark}${first.slice(unit.name.length)}`
-				: first,
-		];
 	}
 }

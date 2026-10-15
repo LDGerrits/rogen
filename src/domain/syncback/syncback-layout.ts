@@ -15,10 +15,15 @@ export interface Home {
 /** How a placed file was routed, which a new file beside it repeats. */
 export type Style = "folder" | "suffix" | "marker" | "fallback";
 
+/** The styles a new instance can be written in when no file beside it shows one. */
+export type NewStyle = "folder" | "suffix";
+
 /** A file placed directly under a node, and how: what a new instance there is written like. */
 export interface Donor {
 	readonly dir: string;
 	readonly style: Style;
+	/** The route key it was placed by. */
+	readonly route: string;
 	/** What the file's name spells after `@`, when it does. */
 	readonly spelled?: string;
 	/** Absolute POSIX path of the source path it lies in. */
@@ -78,6 +83,7 @@ export class SyncbackLayout {
 			donors.push({
 				dir: path.posix.dirname(file.source),
 				style: file.routeMatch,
+				route: file.route,
 				...(file.routeMatch === "suffix" && {
 					spelled:
 						AT_KEY.exec(path.posix.basename(file.source))?.[1] ??
@@ -87,6 +93,32 @@ export class SyncbackLayout {
 			});
 		}
 		return donors;
+	}
+
+	/** The style most files placed by `route` are written in, or most files of the project with no `route`; none when as many are in each, or none has one. */
+	styleOf(route?: string): NewStyle | undefined {
+		let folder = 0;
+		let suffix = 0;
+		for (const file of this.placed) {
+			if (route !== undefined && file.route !== route) continue;
+			if (file.routeMatch === "folder") folder++;
+			else if (file.routeMatch === "suffix") suffix++;
+		}
+		return folder > suffix
+			? "folder"
+			: suffix > folder
+				? "suffix"
+				: undefined;
+	}
+
+	/** How the project's names spell `route` after an `@`, else the key itself. */
+	spellingOf(route: string): string {
+		for (const file of this.placed) {
+			if (file.route !== route || file.routeMatch !== "suffix") continue;
+			const spelled = AT_KEY.exec(path.posix.basename(file.source))?.[1];
+			if (spelled) return spelled;
+		}
+		return route;
 	}
 
 	/** The routing folder name used for `route` in this project, else the key itself. */

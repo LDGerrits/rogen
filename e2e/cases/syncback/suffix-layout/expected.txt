@@ -7,22 +7,28 @@ stdout:
   write  src/Inventory/Save@server.luau
   write  src/Inventory/ItemTypes@shared.luau
   write  src/Inventory/Mail@server.luau
-  Syncback wrote 3 changes.
+  write  src/Boot.server.luau
+  write  src/Quest/Main@server.luau
+  Syncback wrote 5 changes.
 
 $ rogen where src
 exit 0
 stdout:
+  src/Boot.server.luau -> ServerScriptService/Boot · route server (suffix)
   src/Inventory/Bag@server.luau -> ServerScriptService/Inventory/Bag · route server (suffix)
   src/Inventory/ItemTypes@shared.luau -> ReplicatedStorage/Shared/Inventory/ItemTypes · route shared (suffix)
   src/Inventory/Mail@server.luau -> ServerScriptService/Inventory/Mail · route server (suffix)
   src/Inventory/Save@server.luau -> ServerScriptService/Inventory/Save · route server (suffix)
   src/Inventory/Types@shared.luau -> ReplicatedStorage/Shared/Inventory/Types · route shared (suffix)
+  src/Quest/Main@server.luau -> ServerScriptService/Quest/Main · route server (suffix)
 
 written:
   default.project.json
+  src/Boot.server.luau
   src/Inventory/ItemTypes@shared.luau
   src/Inventory/Mail@server.luau
   src/Inventory/Save@server.luau
+  src/Quest/Main@server.luau
 
 $ rojo sourcemap default.project.json
 Game: DataModel
@@ -32,7 +38,10 @@ Game: DataModel
         ItemTypes: ModuleScript  <- src/Inventory/ItemTypes@shared.luau
         Types: ModuleScript  <- src/Inventory/Types@shared.luau
   ServerScriptService: ServerScriptService
+    Boot: Script  <- src/Boot.server.luau
     Inventory: Folder
       Bag: ModuleScript  <- src/Inventory/Bag@server.luau
       Mail: ModuleScript  <- src/Inventory/Mail@server.luau
       Save: ModuleScript  <- src/Inventory/Save@server.luau
+    Quest: Folder
+      Main: ModuleScript  <- src/Quest/Main@server.luau

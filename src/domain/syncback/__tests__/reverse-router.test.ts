@@ -8,6 +8,14 @@ const routerOf = async (
 	spec: Parameters<typeof layoutOf>[1] = {}
 ) => new ReverseRouter(await layoutOf(files, spec));
 
+const mail = {
+	parent: ["ServerScriptService", "Inventory"],
+	name: "Mail",
+	folder: false,
+};
+
+const quest = { parent: ["ServerScriptService"], name: "Quest", folder: true };
+
 describe("ReverseRouter", () => {
 	describe("beside files already at the parent", () => {
 		it("should write into the routing folder the siblings are in", async () => {
@@ -21,11 +29,7 @@ describe("ReverseRouter", () => {
 				})
 			).toEqual({
 				kind: "placed",
-				home: {
-					dir: posix("src/Inventory/Server"),
-					contents: false,
-					mark: "",
-				},
+				home: { dir: posix("src/Inventory/Server"), contents: false },
 			});
 		});
 
@@ -60,7 +64,7 @@ describe("ReverseRouter", () => {
 				home: {
 					dir: posix("src/Inventory"),
 					contents: false,
-					mark: "@server",
+					mark: { text: "@server", route: "Server", onFiles: false },
 				},
 			});
 		});
@@ -80,21 +84,137 @@ describe("ReverseRouter", () => {
 			});
 		});
 
-		it("should refuse when the files beside it are in more than one place", async () => {
+		it("should follow the most files when the files beside it disagree", async () => {
+			const router = await routerOf([
+				"src/Inventory/Server/Bag.luau",
+				"src/Inventory/Server/Cart.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+
+			expect(router.place(mail)).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Inventory/Server"), contents: false },
+			});
+		});
+
+		it("should let its relatives decide a tie beside it", async () => {
+			const router = await routerOf([
+				"src/Inventory/Server/Bag.luau",
+				"src/Inventory/Save@server.luau",
+				"src/Combat/Hit@server.luau",
+			]);
+
+			expect(router.place(mail)).toMatchObject({
+				kind: "placed",
+				home: {
+					dir: posix("src/Inventory"),
+					mark: { text: "@server" },
+				},
+			});
+		});
+
+		it("should write folders when nothing decides the style", async () => {
 			const router = await routerOf([
 				"src/Inventory/Server/Bag.luau",
 				"src/Inventory/Save@server.luau",
 			]);
 
-			const placement = router.place({
-				parent: ["ServerScriptService", "Inventory"],
-				name: "Mail",
-				folder: false,
+			expect(router.place(mail)).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Inventory/Server"), contents: false },
 			});
+		});
 
-			expect(placement).toMatchObject({
+		it("should refuse when files beside it in one style lie in two folders as often", async () => {
+			const router = await routerOf(
+				[
+					"src/Inventory/Server/Bag.luau",
+					"lib/Inventory/Server/Cart.luau",
+				],
+				{ sourcePaths: [abs("src"), abs("lib")] }
+			);
+
+			expect(router.place(mail)).toMatchObject({
 				kind: "conflict",
 				reason: expect.stringContaining("more than one place"),
+			});
+		});
+
+		it("should go below files named for their route, naming the new one so", async () => {
+			const router = await routerOf(["src/Inventory/Bag@server.luau"]);
+
+			expect(
+				router.place({
+					parent: ["ServerScriptService", "Inventory", "Sub"],
+					name: "Mail",
+					folder: false,
+				})
+			).toMatchObject({
+				kind: "placed",
+				home: {
+					dir: posix("src/Inventory/Sub"),
+					mark: { text: "@server" },
+				},
+			});
+		});
+	});
+
+	describe("the style of a new feature", () => {
+		it("should name each file of a new folder for its route when its relatives are", async () => {
+			const router = await routerOf([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Save@server.luau",
+			]);
+
+			expect(router.place(quest)).toEqual({
+				kind: "placed",
+				home: {
+					dir: posix("src"),
+					contents: false,
+					mark: { text: "@server", route: "Server", onFiles: true },
+				},
+			});
+		});
+
+		it("should take the style of the features under the same route over the rest of the project", async () => {
+			const router = await routerOf([
+				"src/Inventory/Bag@server.luau",
+				"src/Inventory/Hud/Client/A.luau",
+				"src/Inventory/Hud/Client/B.luau",
+				"src/Combat/Client/C.luau",
+			]);
+
+			expect(router.place(quest)).toMatchObject({
+				home: { mark: { text: "@server" } },
+			});
+			expect(
+				router.place({
+					parent: ["StarterPlayer", "StarterPlayerScripts"],
+					name: "Menu",
+					folder: true,
+				})
+			).toEqual({
+				kind: "placed",
+				home: { dir: posix("src/Menu/Client"), contents: true },
+			});
+		});
+
+		it("should take the style of the whole project when its relatives have none", async () => {
+			const router = await routerOf(["src/Hud/Ui@client.luau"]);
+
+			expect(router.place(quest)).toMatchObject({
+				home: { dir: posix("src"), mark: { text: "@Server" } },
+			});
+		});
+
+		it("should spell the route as the project's names do", async () => {
+			const router = await routerOf([
+				"src/Inventory/Bag@server.luau",
+				"src/Hud/Ui@client.luau",
+			]);
+
+			expect(router.place(quest)).toMatchObject({
+				home: { mark: { text: "@server" } },
 			});
 		});
 	});
@@ -111,11 +231,7 @@ describe("ReverseRouter", () => {
 				})
 			).toEqual({
 				kind: "placed",
-				home: {
-					dir: posix("src/Quest/Server"),
-					contents: true,
-					mark: "",
-				},
+				home: { dir: posix("src/Quest/Server"), contents: true },
 			});
 		});
 
@@ -162,7 +278,7 @@ describe("ReverseRouter", () => {
 				})
 			).toMatchObject({
 				kind: "placed",
-				home: { dir: posix("src"), contents: false, mark: "" },
+				home: { dir: posix("src"), contents: false },
 			});
 		});
 
@@ -213,6 +329,105 @@ describe("ReverseRouter", () => {
 				kind: "conflict",
 				reason: expect.stringContaining("source path"),
 			});
+		});
+	});
+
+	describe("destination", () => {
+		const unit = (folder: boolean, files: string[][] = []) => ({
+			parent: ["ServerScriptService"],
+			name: folder ? "Quest" : "Boot",
+			folder,
+			files,
+		});
+		const server = { text: "@server", route: "Server", onFiles: false };
+		const destination = async (
+			instance: ReturnType<typeof unit>,
+			file: string[],
+			home: { contents: boolean; mark?: typeof server }
+		) =>
+			(await routerOf(["src/A/Server/X.luau"])).destination(
+				instance,
+				file,
+				{ dir: posix("src"), ...home }
+			);
+
+		it("should drop a folder when the routing folder stands for it", async () => {
+			expect(
+				await destination(unit(true), ["Quest", "Util", "A.luau"], {
+					contents: true,
+				})
+			).toEqual(["Util", "A.luau"]);
+		});
+
+		it("should mark the name of a file, its meta file, or a folder", async () => {
+			const boot = unit(false, [["Boot.luau"], ["Boot.meta.json"]]);
+			expect(
+				await destination(boot, ["Boot.meta.json"], {
+					contents: false,
+					mark: server,
+				})
+			).toEqual(["Boot@server.meta.json"]);
+			expect(
+				await destination(unit(true), ["Quest", "A.luau"], {
+					contents: false,
+					mark: server,
+				})
+			).toEqual(["Quest@server", "A.luau"]);
+		});
+
+		it("should mark each file of a folder instead, unless the folder is a script", async () => {
+			const files = [
+				["Quest", "Main.luau"],
+				["Quest", "Util", "A.luau"],
+			];
+			const onFiles = {
+				contents: false,
+				mark: { ...server, onFiles: true },
+			};
+
+			expect(
+				await destination(unit(true, files), files[0], onFiles)
+			).toEqual(["Quest", "Main@server.luau"]);
+			expect(
+				await destination(unit(true, files), files[1], onFiles)
+			).toEqual(["Quest", "Util", "A@server.luau"]);
+			expect(
+				await destination(
+					unit(true, [["Quest", "init.luau"]]),
+					["Quest", "init.luau"],
+					onFiles
+				)
+			).toEqual(["Quest@server", "init.luau"]);
+		});
+
+		it("should not mark a script whose suffix already routes it there, nor its meta file", async () => {
+			const boot = unit(false, [
+				["Boot.server.luau"],
+				["Boot.meta.json"],
+			]);
+			const home = { contents: false, mark: server };
+
+			expect(await destination(boot, ["Boot.server.luau"], home)).toEqual(
+				["Boot.server.luau"]
+			);
+			expect(await destination(boot, ["Boot.meta.json"], home)).toEqual([
+				"Boot.meta.json",
+			]);
+			expect(
+				await destination(
+					unit(false, [["Boot.client.luau"]]),
+					["Boot.client.luau"],
+					home
+				)
+			).toEqual(["Boot@server.client.luau"]);
+		});
+
+		it("should keep a name when there is no mark", async () => {
+			expect(
+				await destination(unit(false), ["Boot.luau"], {
+					contents: false,
+				})
+			).toEqual(["Boot.luau"]);
 		});
 	});
 });

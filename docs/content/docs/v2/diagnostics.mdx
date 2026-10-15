@@ -945,10 +945,10 @@ Delete the file named and run `rogen syncback` again. Nothing was written. See [
 
 ### `syncback.unplaced` [#syncback-unplaced]
 
-Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, beside the files already at its parent: that needs one answer, and this is the case where it has none. The message says why.
+Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides: no route puts files where its parent is, two routes do, the project has several source paths and no file beside it says which, or as many files beside it lie in each of two folders of one style. The message says why.
 
 ```
-rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place: src/Inventory, src/Inventory/Server. (syncback.unplaced)
+rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
 ```
 
 Create the file where you want it, by hand, and run `rogen syncback` again. Other changes of the same run were written. See [CLI](/docs/v2/cli#syncback).

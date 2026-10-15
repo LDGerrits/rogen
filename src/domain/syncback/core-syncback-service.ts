@@ -409,12 +409,12 @@ export class CoreSyncbackService implements SyncbackService {
 			out.unplaced.push({ instance, reason: placement.reason });
 			return;
 		}
-		const { dir, contents, mark } = placement.home;
+		const { home } = placement;
 		const targets = unit.files.map((file) => ({
 			file,
 			to: path.join(
-				toNative(dir),
-				...StagedUnits.destination(unit, file, contents, mark)
+				toNative(home.dir),
+				...router.destination(unit, file, home)
 			),
 		}));
 		for (const { to } of targets) {
