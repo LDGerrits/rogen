@@ -1,0 +1,1 @@
+{"name":"Game","tree":{"$className":"DataModel"},"emitLegacyScripts":false,"sourcePaths":["src"],"routes":{"server":"ServerScriptService","client":"StarterPlayer/StarterPlayerScripts","*":"ReplicatedStorage/shared"}}

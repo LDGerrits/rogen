@@ -1,0 +1,27 @@
+$ rogen init --non-interactive
+exit 0
+stdout:
+  rogen init
+  Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
+  The root of default.project.json is not a DataModel, as in a model or a plugin, so rogen.json keeps the tree as Rojo reads it and adds no routes.
+  Took the defaults: --language luau, --no-darklua, --source-path src, --project-file lift, --agent-rules.
+  Created rogen.json.
+  Created AGENTS.md.
+  default.project.json · unchanged
+  Next steps
+    Run:
+      rogen serve
+  Wrote 2 files.
+
+written:
+  AGENTS.md
+  rogen.json
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$path": "src"
+  }
+}

@@ -5,7 +5,7 @@ import { FileChangeType } from "../../../platform/fs/file-changes.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { IndexReader } from "../../../platform/fs/index-service.js";
+import { IndexReader, Listing } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { ScannedRoot } from "../root-scanner.js";
 import {
@@ -55,6 +55,58 @@ describe("RootScanner", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
+		});
+
+		describe("a name with a backslash", () => {
+			it("should be left out and reported, though only a Linux file system can hold it", () => {
+				const index = new Listing(
+					new Map([
+						[
+							toPosix(abs("src")),
+							new Map([
+								["Fine.luau", FileType.File],
+								["a\\b.luau", FileType.File],
+							]),
+						],
+					])
+				);
+				const config = configOf({
+					sourcePaths: [abs("src")],
+					ignored: [],
+				});
+
+				const [root] = builderOf(fs, index)
+					.place(config)
+					.unwrap().roots;
+
+				expect(files(root)).toEqual(["script:Fine.luau"]);
+				expect(root.oddNames).toEqual([
+					{
+						source: `${toPosix(abs("src"))}/a\\b.luau`,
+						reason: expect.stringContaining("folder separator"),
+						leftOut: true,
+					},
+				]);
+			});
+		});
+
+		describe("a name with a backslash that is no instance", () => {
+			it("should be neither left out nor reported", () => {
+				const index = new Listing(
+					new Map([
+						[
+							toPosix(abs("src")),
+							new Map([["notes\\x.md", FileType.File]]),
+						],
+					])
+				);
+
+				const [root] = builderOf(fs, index)
+					.place(configOf({ sourcePaths: [abs("src")], ignored: [] }))
+					.unwrap().roots;
+
+				expect(root.oddNames).toEqual([]);
+			});
 		});
 
 		describe("the project file it writes", () => {
@@ -416,6 +468,18 @@ describe("RootScanner", () => {
 				).toEqual({ status: "ignored", pattern: "rogen.jsonc" });
 			});
 
+			it("should leave out what syncback writes while it runs", async () => {
+				await write(
+					"src/Keep.luau",
+					"src/rogen-syncback.project.json",
+					"src/.rogen-syncback/new/0/A.luau"
+				);
+
+				const { roots } = await scan();
+
+				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
+			});
+
 			it("should remove matching files", async () => {
 				await write("src/Keep.luau", "src/Drop.spec.luau");
 
@@ -424,6 +488,35 @@ describe("RootScanner", () => {
 				});
 
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
+			});
+
+			it("should read a slashless glob as Rojo does, at any depth", async () => {
+				await write("src/Keep.luau", "src/a/Drop.tmp.luau");
+
+				const { roots } = await scan({ ignored: [glob("*.tmp.luau")] });
+
+				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
+			});
+
+			it("should let a star cross folders as Rojo does", async () => {
+				await write("src/Keep.luau", "src/a/b/Drop.luau");
+
+				const { roots } = await scan({ ignored: [glob("src/*.luau")] });
+
+				expect(files(roots[0])).toEqual([]);
+			});
+
+			it("should keep what a glob ending in a slash names, as Rojo does", async () => {
+				await write("src/Keep.luau", "src/tests/A.luau");
+
+				const { roots } = await scan({
+					ignored: [`${glob("src/tests")}/`],
+				});
+
+				expect(files(roots[0])).toEqual([
+					"script:Keep.luau",
+					"script:tests/A.luau",
+				]);
 			});
 
 			it("should remove matching directories without visiting them", async () => {

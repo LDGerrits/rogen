@@ -2,12 +2,14 @@ import path from "path";
 import { contains, outermostDirs } from "../../base/path.js";
 import { IgnoredPath } from "../../platform/watcher/watcher.js";
 import { OutputFile } from "../build/build.js";
+import { SYNCBACK_FILES } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 
 type WatchPlanConfig = Pick<
 	ResolvedConfig,
-	"indexedPaths" | "projectFile" | "syncPath"
->;
+	"indexedPaths" | "projectFile" | "syncPath" | "projectDir"
+> &
+	Partial<Pick<ResolvedConfig, "isAdopted">>;
 
 export class WatchPlan {
 	readonly roots: readonly string[];
@@ -26,7 +28,9 @@ export class WatchPlan {
 
 		const outputs = [
 			...new Set(
-				configs.map((config) => path.resolve(config.projectFile))
+				configs
+					.filter((config) => !config.isAdopted)
+					.map((config) => path.resolve(config.projectFile))
 			),
 		].map((projectFile) => new OutputFile(projectFile));
 		const ignoredPaths = [
@@ -34,6 +38,11 @@ export class WatchPlan {
 				...outputs.map(({ path }) => path),
 				...configs.flatMap((config) =>
 					config.syncPath ? [path.resolve(config.syncPath)] : []
+				),
+				...configs.flatMap(({ projectDir }) =>
+					Object.values(SYNCBACK_FILES).map((name) =>
+						path.resolve(projectDir, name)
+					)
 				),
 			]),
 		].filter(

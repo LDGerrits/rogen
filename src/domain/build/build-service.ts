@@ -132,12 +132,16 @@ export interface Locations {
 	readonly configs: readonly ConfigLocations[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
+	/** The project files on disk that differ from what a build would write, as `check` raises them; empty unless `staleness` was asked for. */
+	readonly stale: readonly Diagnostic[];
 }
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
 export interface LocateQuery {
 	readonly args: readonly string[];
 	readonly cwd: string;
+	/** Also say which project files differ from what a build would write, from the same scan. */
+	readonly staleness?: boolean;
 }
 
 export interface Diagnosis {
@@ -166,6 +170,12 @@ export interface BuildService {
 		selection: ConfigSelection,
 		targets?: LocateQuery
 	): Promise<Result<Diagnosis, DiagnosticsError>>;
+
+	/** The project files on disk that differ from what a build would write, as the diagnostics `check` raises for them. Writes nothing. */
+	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;
+
+	/** The source paths of `config` that are no folder now, as the diagnostics a build raises for them: an error each when none is a folder, else a warning each. */
+	missingSourcePaths(config: ResolvedConfig): Promise<Diagnostic[]>;
 
 	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. */
 	locate(

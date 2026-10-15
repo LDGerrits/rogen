@@ -1,0 +1,116 @@
+$ rogen syncback -i place.rbxl --dry-run --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "syncback": {
+      "outcome": "planned",
+      "project": "Game",
+      "input": "place.rbxl",
+      "changes": [
+        {
+          "kind": "write",
+          "file": "<dir>/src/Combat/Server/Combat.luau"
+        },
+        {
+          "kind": "remove",
+          "file": "<dir>/src/Combat/Server/Hit.luau"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Combat/Server/Loot.luau"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Inventory/Server/Mail.luau"
+        },
+        {
+          "kind": "write",
+          "file": "<dir>/src/Quest/Server/Main.luau"
+        }
+      ],
+      "unplaced": []
+    }
+  }
+
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · unchanged
+  Built 1 config.
+  write  src/Combat/Server/Combat.luau
+  remove src/Combat/Server/Hit.luau
+  write  src/Combat/Server/Loot.luau
+  write  src/Inventory/Server/Mail.luau
+  write  src/Quest/Server/Main.luau
+  Syncback would change 5 files (4 to write, 1 to remove).
+
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · wrote
+  Built 1 config.
+  write  src/Combat/Server/Combat.luau
+  remove src/Combat/Server/Hit.luau
+  write  src/Combat/Server/Loot.luau
+  write  src/Inventory/Server/Mail.luau
+  write  src/Quest/Server/Main.luau
+  Syncback wrote 5 changes.
+
+$ rogen where src
+exit 0
+stdout:
+  src/Combat/Client/Ui.luau -> StarterPlayer/StarterPlayerScripts/Combat/Ui · route Client (folder)
+  src/Combat/Server/Combat.luau -> ServerScriptService/Combat/Combat · route Server (folder)
+  src/Combat/Server/Loot.luau -> ServerScriptService/Combat/Loot · route Server (folder)
+  src/Combat/Shared/Types.luau -> ReplicatedStorage/Shared/Combat/Types · route Shared (folder)
+  src/Inventory/Server/Bag.luau -> ServerScriptService/Inventory/Bag · route Server (folder)
+  src/Inventory/Server/Mail.luau -> ServerScriptService/Inventory/Mail · route Server (folder)
+  src/Inventory/Shared/ItemTypes.luau -> ReplicatedStorage/Shared/Inventory/ItemTypes · route Shared (folder)
+  src/Quest/Server/Main.luau -> ServerScriptService/Quest/Main · route Server (folder)
+
+written:
+  default.project.json
+  src/Combat/Server/Combat.luau
+  src/Combat/Server/Loot.luau
+  src/Inventory/Server/Mail.luau
+  src/Quest/Server/Main.luau
+
+src/Combat/Server/Combat.luau:
+return "combat2"
+
+src/Quest/Server/Main.luau:
+return "quest"
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Combat: Folder
+        Types: ModuleScript  <- src/Combat/Shared/Types.luau
+      Inventory: Folder
+        ItemTypes: ModuleScript  <- src/Inventory/Shared/ItemTypes.luau
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Combat: ModuleScript  <- src/Combat/Server/Combat.luau
+      Loot: ModuleScript  <- src/Combat/Server/Loot.luau
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Server/Bag.luau
+      Mail: ModuleScript  <- src/Inventory/Server/Mail.luau
+    Quest: Folder
+      Main: ModuleScript  <- src/Quest/Server/Main.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Combat: Folder
+        Ui: ModuleScript  <- src/Combat/Client/Ui.luau

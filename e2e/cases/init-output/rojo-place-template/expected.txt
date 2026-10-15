@@ -1,0 +1,112 @@
+$ rogen init --non-interactive
+exit 0
+stdout:
+  rogen init
+  Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
+  Left out ReplicatedStorage/Shared, since it points into src and Rogen generates that code now.
+  Kept ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client in the tree as $path mounts, since their folders hold an init file, which Rojo reads as the instance of the folder itself and a route can't.
+  Took the defaults: --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route server, --route client, --unmatched shared, --agent-rules.
+  Created rogen.json.
+  Created AGENTS.md.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Add your own routes under "routes" in rogen.json.
+  Wrote 2 files.
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0,
+          0,
+          0
+        ],
+        "Brightness": 2,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "ReplicatedStorage": {},
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0,
+            -10,
+            0
+          ],
+          "Size": [
+            512,
+            20,
+            512
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Shared": "ReplicatedStorage/Shared",
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "*": "ReplicatedStorage/Shared"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Hello: ModuleScript  <- src/shared/Hello.luau
+  ServerScriptService: ServerScriptService
+    Server: Script  <- src/server/init.server.luau
+  SoundService: SoundService
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Client: LocalScript  <- src/client/init.client.luau
+  Workspace: Workspace
+    Baseplate: Part

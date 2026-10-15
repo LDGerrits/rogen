@@ -1,10 +1,8 @@
-import path from "path";
 import { groupBy } from "../../base/collections.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
 	diagnosticsPerFile,
-	warningDiagnostic,
 	diagnosticsReaching,
 	isError,
 	uniqueDiagnostics,
@@ -33,10 +31,30 @@ import {
 	Locations,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
-import { Locator } from "./locate/locator.js";
+import { MissingSourcePaths } from "./check/missing-source-paths.js";
+import { ProjectFileStaleness } from "./check/project-file-staleness.js";
+import { OutsideSourcePaths } from "./check/outside-source-paths.js";
+import { AssembledFile, Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 type Attempt = BuiltConfig | FailedBuild;
+
+/** The files asked about that no selected config reads: outside the source paths of every one. */
+function outsideEveryConfig(configs: readonly ConfigLocations[]): string[] {
+	const [first, ...others] = configs;
+	if (!first) return [];
+	return first.files
+		.filter(({ status }) => status === "outside")
+		.map(({ source }) => source)
+		.filter((source) =>
+			others.every(({ files }) =>
+				files.some(
+					(file) =>
+						file.source === source && file.status === "outside"
+				)
+			)
+		);
+}
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -116,7 +134,10 @@ export class CoreBuildService implements BuildService {
 		const read = new BuildSet(
 			ProjectChoice.read(set.configs, selection.named)
 		);
-		const listing = await this.indexService.list(read.indexedPaths);
+		const staleness = targets?.staleness === true;
+		const listing = await this.indexService.list(
+			(staleness ? set : read).indexedPaths
+		);
 		const located = await new Locator(
 			this.fileSystemService,
 			listing,
@@ -126,7 +147,64 @@ export class CoreBuildService implements BuildService {
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
-		return ok({ ...located.value, errors });
+		const { built, ...found } = located.value;
+		return ok({
+			...found,
+			errors,
+			stale: staleness
+				? await this.staleOf(set.configs, listing, built)
+				: [],
+		});
+	}
+
+	/** The warning for each config whose project file differs from what a build would write: from a project file the locate already assembled, else from one more build of the same listing. */
+	private async staleOf(
+		configs: readonly ResolvedConfig[],
+		listing: IndexReader,
+		built: ReadonlyMap<ResolvedConfig, AssembledFile>
+	): Promise<Diagnostic[]> {
+		const staleness = new ProjectFileStaleness(this.fileSystemService);
+		const builder = new ConfigBuilder(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		);
+		const stale: Diagnostic[] = [];
+		for (const config of configs) {
+			const known = built.get(config);
+			const diagnostic = await staleness.diagnostic(config, () =>
+				known
+					? Promise.resolve(known.file)
+					: builder.projectFileOf(config)
+			);
+			if (diagnostic) stale.push(diagnostic);
+		}
+		return stale;
+	}
+
+	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {
+		const { set } = BuildSet.partition(selection);
+		const written = await Promise.all(
+			set.configs.map(({ projectFile }) =>
+				this.fileSystemService.isFile(projectFile)
+			)
+		);
+		if (!written.includes(true)) return [];
+		const { diagnostics } = await this.check(selection);
+		return diagnostics.filter(({ code }) => code === "output.differs");
+	}
+
+	async missingSourcePaths(config: ResolvedConfig): Promise<Diagnostic[]> {
+		const checked = await Promise.all(
+			config.sourcePaths.map(async (sourcePath) => ({
+				sourcePath,
+				exists: await this.fileSystemService.isDirectory(sourcePath),
+			}))
+		);
+		return new MissingSourcePaths(
+			checked,
+			config.projectFile
+		).diagnostics();
 	}
 
 	async diagnose(
@@ -146,9 +224,15 @@ export class CoreBuildService implements BuildService {
 				...config.files.map(({ source }) => source),
 				...config.queried,
 			];
+			const outside = new OutsideSourcePaths(
+				configs.flatMap(({ config }) => config.sourcePaths)
+			);
 			return {
 				diagnostics: uniqueDiagnostics([
 					...errors,
+					...outsideEveryConfig(configs).flatMap((source) =>
+						outside.about(source)
+					),
 					...configs.flatMap((config) =>
 						about(config).flatMap((target) =>
 							diagnosticsReaching(config.diagnostics, target)
@@ -231,30 +315,15 @@ export class CoreBuildService implements BuildService {
 	}
 
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
-		const { projectFile } = attempt.config;
-		const onDisk = await tryWithAsync(async () =>
-			(await this.fileSystemService.isFile(projectFile))
-				? await this.fileSystemService.readFile(projectFile)
-				: undefined
-		);
-		if (
-			onDisk.isErr() ||
-			onDisk.value === undefined ||
-			onDisk.value === OutputWriter.textOf(attempt.projectFile)
-		)
-			return attempt;
+		const stale = await new ProjectFileStaleness(
+			this.fileSystemService
+		).diagnostic(attempt.config, async () => attempt.projectFile);
+		if (!stale) return attempt;
 		return {
 			...attempt,
 			findings: {
 				...attempt.findings,
-				warnings: [
-					...attempt.findings.warnings,
-					warningDiagnostic(
-						"output.differs",
-						{ resource: projectFile },
-						`this file differs from what 'rogen build' would write. It is written from ${path.basename(attempt.config.file)}, so edit that and run 'rogen build'.`
-					),
-				],
+				warnings: [...attempt.findings.warnings, stale],
 			},
 		};
 	}
@@ -271,10 +340,12 @@ export class CoreBuildService implements BuildService {
 				builds.push(CoreBuildService.unwritten(attempt, [failed]));
 				continue;
 			}
-			const written = await this.writer.write(
-				new OutputFile(config.projectFile),
-				projectFile
-			);
+			const written = config.isAdopted
+				? ok(false)
+				: await this.writer.write(
+						new OutputFile(config.projectFile),
+						projectFile
+					);
 			if (written.isErr()) failed = config.label;
 			builds.push(
 				written.isErr()

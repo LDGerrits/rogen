@@ -56,6 +56,51 @@ describe("ConfigDiscovery", () => {
 			expect(errorOf(result)).not.toBeInstanceOf(UsageError);
 		});
 
+		it("should adopt the Rojo project file here when no folder holds a config", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+
+			const found = (await discovery.discover([])).unwrap();
+
+			expect(found.files).toEqual(["/repo/default.project.json"]);
+			expect(found.homeConfig).toBe("/repo/default.project.json");
+		});
+
+		it("should adopt the Rojo project file of the nearest folder above", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+			await fs.createDirectory("/repo/src");
+
+			const found = (await from("/repo/src").discover([])).unwrap();
+
+			expect(found.files).toEqual(["/repo/default.project.json"]);
+		});
+
+		it("should not take the default project file for a project file of another name", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+
+			const result = await discovery.discover(["other.project.json"]);
+
+			expect(errorOf(result).message).toContain("holds no rogen.json");
+		});
+
+		it("should prefer a config above to a Rojo project file here", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+			await fs.createDirectory("/repo/lib");
+			await fs.writeFile("/repo/lib/default.project.json", "{}");
+
+			const found = (await from("/repo/lib").discover([])).unwrap();
+
+			expect(found.files).toEqual(["/repo/rogen.json"]);
+		});
+
+		it("should adopt the Rojo project file of a folder that is named", async () => {
+			await fs.createDirectory("/repo/pkg");
+			await fs.writeFile("/repo/pkg/default.project.json", "{}");
+
+			const found = (await discovery.discover(["pkg"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/pkg/default.project.json"]);
+		});
+
 		it("should use the config of the nearest folder above when this one has none", async () => {
 			await fs.createDirectory("/repo/src/Inventory");
 			await fs.writeFile("/repo/rogen.json", "{}");

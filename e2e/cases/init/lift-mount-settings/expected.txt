@@ -1,0 +1,199 @@
+$ rogen init --non-interactive --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "files": [
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/AGENTS.md",
+        "outcome": "wrote"
+      }
+    ],
+    "directories": [],
+    "decided": [
+      {
+        "question": "language",
+        "value": "luau",
+        "flag": "--language"
+      },
+      {
+        "question": "darklua",
+        "value": false,
+        "flag": "--darklua"
+      },
+      {
+        "question": "sourcePaths",
+        "value": [
+          "src"
+        ],
+        "flag": "--source-path"
+      },
+      {
+        "question": "projectFile",
+        "value": "lift",
+        "flag": "--project-file"
+      },
+      {
+        "question": "routes",
+        "value": [
+          "mount:props",
+          "server",
+          "client",
+          "shared"
+        ],
+        "flag": "--route"
+      },
+      {
+        "question": "unmatched",
+        "value": "shared",
+        "flag": "--unmatched"
+      },
+      {
+        "question": "agentRules",
+        "value": true,
+        "flag": "--agent-rules"
+      }
+    ],
+    "built": [
+      {
+        "config": "game",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "notes": [
+      "Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
+      "Left out Workspace/Map and Workspace/Level/Props, since they point into src and Rogen generates that code now.",
+      "Kept what Workspace/Map and Workspace/Level/Props set in the tree, on the node the route lands on.",
+      "Kept ReplicatedStorage/Deep in the tree as a $path mount, since a route can't carry its settings."
+    ],
+    "warnings": [
+      {
+        "file": "default.project.json",
+        "severity": "warning",
+        "code": "init.mountNarrowed",
+        "message": "Workspace/Map mounted all of src, so Rojo also put src/props inside it. Rogen routes that folder only to Workspace/Level/Props, so a require that reaches it through Workspace/Map breaks. Check with 'rogen where src/props'.",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-mountnarrowed"
+      }
+    ],
+    "nextSteps": {
+      "setup": [],
+      "run": [
+        "rogen serve"
+      ],
+      "darklua": [],
+      "edits": [
+        "Add your own routes under \"routes\" in rogen.json."
+      ]
+    }
+  }
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+
+default.project.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Deep": {
+        "$properties": {
+          "Archivable": false
+        },
+        "$path": "src/props/deep"
+      }
+    },
+    "Workspace": {
+      "Level": {
+        "$className": "Folder",
+        "Props": {
+          "$className": "Model",
+          "B": {
+            "$path": {
+              "optional": "src/props/B.luau"
+            }
+          },
+          "$attributes": {
+            "Kind": "prop"
+          }
+        }
+      },
+      "Map": {
+        "$className": "Folder",
+        "A": {
+          "$path": {
+            "optional": "src/A.luau"
+          }
+        },
+        "$properties": {
+          "Archivable": false
+        }
+      }
+    }
+  }
+}
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Deep": {
+        "$properties": {
+          "Archivable": false
+        },
+        "$path": "src/props/deep"
+      }
+    },
+    "Workspace": {
+      "Level": {
+        "$className": "Folder",
+        "Props": {
+          "$className": "Model",
+          "$attributes": {
+            "Kind": "prop"
+          }
+        }
+      },
+      "Map": {
+        "$className": "Folder",
+        "$properties": {
+          "Archivable": false
+        }
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Props": "Workspace/Level/Props",
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "Workspace/Map"
+  }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Deep: Folder
+      C: ModuleScript  <- src/props/deep/C.luau
+  Workspace: Workspace
+    Level: Folder
+      Props: Model
+        B: ModuleScript  <- src/props/B.luau
+    Map: Folder
+      A: ModuleScript  <- src/A.luau

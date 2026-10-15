@@ -330,6 +330,60 @@ describe("CoreBuildService", () => {
 			expect(checked.outcome).toBe("failed");
 		});
 
+		describe("staleProjectFiles", () => {
+			it("should list the project files that differ, and only those", async () => {
+				const config = configOf();
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const stale = await buildServiceOfFs().staleProjectFiles(
+					selectionOf(config)
+				);
+
+				expect(stale).toMatchObject([
+					{
+						code: "output.differs",
+						resource: abs("default.project.json"),
+					},
+				]);
+			});
+
+			it("should find nothing when no project file is on disk", async () => {
+				expect(
+					await buildServiceOfFs().staleProjectFiles(
+						selectionOf(configOf())
+					)
+				).toEqual([]);
+			});
+		});
+
+		describe("a Rojo project file adopted as the config", () => {
+			const adopted = () =>
+				configOf({ file: abs("default.project.json") });
+
+			it("should leave the file as it is and call it unchanged", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const [build] = (
+					await buildServiceOfFs().build(selectionOf(adopted()))
+				).builds;
+
+				expect(build.outcome).toBe("unchanged");
+				expect(await fs.readFile(abs("default.project.json"))).toBe(
+					"{}"
+				);
+			});
+
+			it("should not call it stale", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				expect(
+					await buildServiceOfFs().staleProjectFiles(
+						selectionOf(adopted())
+					)
+				).toEqual([]);
+			});
+		});
+
 		describe("a project file on disk", () => {
 			it("should warn when it differs from what a build would write", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
@@ -347,6 +401,28 @@ describe("CoreBuildService", () => {
 				expect(await fs.readFile(abs("default.project.json"))).toBe(
 					"{}"
 				);
+			});
+
+			it("should say what to run, and offer it as a fix", async () => {
+				await fs.writeFile(abs("default.project.json"), "{}");
+
+				const [checked] = await checkOf(configOf());
+
+				expect(checked.warnings).toMatchObject([
+					{
+						message: expect.stringContaining(
+							"its sources changed since it was written, or it was edited by hand. Run 'rogen build'"
+						),
+						fixes: [
+							{
+								run: {
+									command: "rogen build",
+									cwd: abs("."),
+								},
+							},
+						],
+					},
+				]);
 			});
 
 			it("should not warn when it holds the bytes a build would write", async () => {

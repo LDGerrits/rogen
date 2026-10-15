@@ -16,6 +16,7 @@ import "../../list/list-command.js";
 import "../../plugin/plugin-command.js";
 import "../../serve/serve-command.js";
 import "../../sourcemap/sourcemap-command.js";
+import "../../syncback/syncback-command.js";
 import "../../upload/upload-command.js";
 import "../../where/where-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
@@ -198,6 +199,27 @@ describe("help command", () => {
 			expect(lines).toContain(
 				'  rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
 			);
+		});
+
+		it("should list every code with its severity and meaning, wrapped under the code", async () => {
+			await help("codes");
+
+			const lines = printed().split("\n");
+			const starts = lines.filter((line) => !line.startsWith(" "));
+			expect(starts.map((line) => line.split(/\s/)[0])).toEqual(
+				Object.keys(helpTexts.diagnostics)
+			);
+			expect(lines.every((line) => line.length <= 100)).toBe(true);
+			expect(
+				starts.find((line) => line.startsWith("config.unknownField"))
+			).toMatch(
+				/^config\.unknownField +warning The config has a key that is neither one of Rojo's/
+			);
+			expect(
+				starts.find((line) =>
+					line.startsWith("roblox.unsupportedService")
+				)
+			).toMatch(/^roblox\.unsupportedService +error /);
 		});
 
 		it("should merge the global options into a command's, sorted by name", async () => {

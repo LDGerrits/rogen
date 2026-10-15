@@ -77,7 +77,7 @@ stdout:
                                              when not given.
           --nested                           Start a project in a folder below another rogen.json,
                                              which a run that can't ask refuses otherwise.
-          --non-interactive                  Write the defaults without asking, as a run without a
+      -y, --non-interactive                  Write the defaults without asking, as a run without a
                                              terminal, or under a coding agent or CI, does. --json
                                              implies it. A flag below answers its question either way.
           --package <PATH>                   A package folder to mount as it is; repeat for several,
@@ -99,8 +99,9 @@ stdout:
                                              addition.
           --route <ID>                       A route to start with: server, client, shared,
                                              replicatedFirst, serverStorage or starterGui; repeat for
-                                             several, or none. The first three when not given.
-                                             (repeatable)
+                                             several, or none. The first three when not given. When a
+                                             lifted project file mounts a folder of that name, the
+                                             name stands for the route derived from it. (repeatable)
           --source-path <PATH>               A folder with your scripts, relative to here; repeat for
                                              several. src when not given, or where the code is.
                                              (repeatable)

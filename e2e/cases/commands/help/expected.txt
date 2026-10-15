@@ -26,6 +26,7 @@ stdout:
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
       sourcemap      Writes the project files, then a sourcemap with Rojo
+      syncback       Brings a place file's changes back into the source files
       upload         Writes the project files, then uploads them with Rojo
       where          Prints where each file lands in the game, and why
   
@@ -68,6 +69,7 @@ stdout:
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
       sourcemap      Writes the project files, then a sourcemap with Rojo
+      syncback       Brings a place file's changes back into the source files
       upload         Writes the project files, then uploads them with Rojo
       where          Prints where each file lands in the game, and why
   
@@ -110,6 +112,7 @@ stdout:
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
       sourcemap      Writes the project files, then a sourcemap with Rojo
+      syncback       Brings a place file's changes back into the source files
       upload         Writes the project files, then uploads them with Rojo
       where          Prints where each file lands in the game, and why
   

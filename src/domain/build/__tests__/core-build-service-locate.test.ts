@@ -2,12 +2,16 @@ import { jest } from "@jest/globals";
 import path from "path";
 import { toPosix } from "../../../base/path.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
+import { ConfigBuilder } from "../config-builder.js";
 import { PlannedFilesIndex } from "../locate/planned-files-index.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoFile } from "../../rojo/rojo.js";
-import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
+import {
+	ResolvedConfigSpec,
+	selectionOf,
+} from "../../config/__tests__/mock-config-service.js";
 import {
 	abs,
 	buildServiceOf,
@@ -568,6 +572,23 @@ describe("CoreBuildService.locate", () => {
 			expect(listing.getEntries(abs("src/Combat"))).toBeUndefined();
 		});
 
+		it("should add nothing for files that exist, or that are no source file", async () => {
+			await write("src/Other.luau");
+			const listing = await indexOf(fs, [abs("src")]);
+			const planned = (...paths: string[]) =>
+				new PlannedFilesIndex(
+					listing,
+					[abs("src")],
+					paths.map((p) => abs(p)),
+					(source) => RojoFile.at(source, configOf().syncRules)
+				);
+
+			expect(planned("src/Other.luau").addsNothing).toBe(true);
+			expect(planned("src/Notes.md").addsNothing).toBe(true);
+			expect(planned("elsewhere/A.luau").addsNothing).toBe(true);
+			expect(planned("src/New.luau").addsNothing).toBe(false);
+		});
+
 		it("should sit beside the files that exist", async () => {
 			await write("src/Other.luau");
 
@@ -1014,6 +1035,158 @@ describe("CoreBuildService.locate", () => {
 			expect(
 				await foldersFor("ServerScriptService.Inventory.Save")
 			).toEqual([[]]);
+		});
+	});
+
+	describe("staleness", () => {
+		const staleOf = async (
+			paths: readonly string[] = [],
+			configs: readonly ResolvedConfig[] = [configOf()],
+			index = new CoreIndexService(fs)
+		) =>
+			(
+				await buildServiceOf(fs, index).locate(
+					selectionOf(...configs),
+					{
+						args: paths.map((p) => abs(p)),
+						cwd: abs(),
+						staleness: true,
+					}
+				)
+			).unwrap().stale;
+
+		it("should report a project file that differs from what a build would write", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+
+			expect(await staleOf()).toMatchObject([
+				{
+					code: "output.differs",
+					resource: abs("default.project.json"),
+				},
+			]);
+		});
+
+		it("should report it for a path that is asked about, as for none", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+
+			expect(await staleOf(["src/A.luau"])).toHaveLength(1);
+			expect(await staleOf(["src/New.luau"])).toHaveLength(1);
+		});
+
+		it("should not report a project file a build would write as it is", async () => {
+			await write("src/A.luau");
+			const index = new CoreIndexService(fs);
+			await buildServiceOf(fs, index).build(selectionOf(configOf()));
+
+			expect(await staleOf(["src/A.luau"])).toEqual([]);
+			expect(await staleOf(["src/New.luau"])).toEqual([]);
+		});
+
+		it("should report nothing for a project file that isn't on disk", async () => {
+			await write("src/A.luau");
+
+			expect(await staleOf()).toEqual([]);
+		});
+
+		it("should report nothing when it is not asked for", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+
+			const located = await buildService().locate(
+				selectionOf(configOf()),
+				{ args: [], cwd: abs() }
+			);
+
+			expect(located.unwrap().stale).toEqual([]);
+		});
+
+		it("should say the same as staleProjectFiles, for the projects it does not read too", async () => {
+			await write("src/A.luau");
+			const release = configOf({ stem: "release" });
+			await fs.writeFile(abs("default.project.json"), "{}");
+			await fs.writeFile(abs("release.project.json"), "{}");
+			const selection = selectionOf(configOf(), release);
+
+			const stale = await staleOf([], [configOf(), release]);
+
+			expect(stale).toEqual(
+				await buildService().staleProjectFiles(selection)
+			);
+			expect(stale).toHaveLength(2);
+		});
+
+		it("should list the folders once", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+			const index = new CoreIndexService(fs);
+			const list = jest.spyOn(index, "list");
+
+			await staleOf(["src/A.luau"], [configOf()], index);
+
+			expect(list).toHaveBeenCalledTimes(1);
+		});
+
+		it("should build no more than the locate did when a read config's file is stale", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+			const rebuilt = jest.spyOn(
+				ConfigBuilder.prototype,
+				"projectFileOf"
+			);
+
+			await staleOf(["src/A.luau"]);
+
+			expect(rebuilt).not.toHaveBeenCalled();
+			rebuilt.mockRestore();
+		});
+
+		it("should not build a project it doesn't read when its file isn't on disk", async () => {
+			await write("src/A.luau");
+			const rebuilt = jest.spyOn(
+				ConfigBuilder.prototype,
+				"projectFileOf"
+			);
+
+			expect(
+				await staleOf([], [configOf(), configOf({ stem: "release" })])
+			).toEqual([]);
+
+			expect(rebuilt).not.toHaveBeenCalled();
+			rebuilt.mockRestore();
+		});
+
+		it("should build a project it doesn't read once its file is on disk", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("release.project.json"), "{}");
+			const rebuilt = jest.spyOn(
+				ConfigBuilder.prototype,
+				"projectFileOf"
+			);
+
+			expect(
+				await staleOf([], [configOf(), configOf({ stem: "release" })])
+			).toHaveLength(1);
+
+			expect(rebuilt).toHaveBeenCalledTimes(1);
+			rebuilt.mockRestore();
+		});
+
+		it("should examine each config once when no path is planned", async () => {
+			await write("src/A.luau");
+			await fs.writeFile(abs("default.project.json"), "{}");
+			const read = jest.spyOn(fs, "readDirectory");
+
+			await staleOf(["src/A.luau"]);
+			const once = read.mock.calls.length;
+			read.mockClear();
+			await buildService().locate(selectionOf(configOf()), {
+				args: [abs("src/A.luau")],
+				cwd: abs(),
+			});
+
+			expect(once).toBe(read.mock.calls.length);
 		});
 	});
 

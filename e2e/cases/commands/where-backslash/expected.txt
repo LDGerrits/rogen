@@ -6,7 +6,7 @@ stdout:
 $ rogen where src\Combat\Hit.luau
 exit 0
 stdout:
-  src/Combat/Hit.luau -> ReplicatedStorage/shared/Combat/Hit · route * (fallback)
+  src/Combat/Hit.luau -> ReplicatedStorage/shared/Combat/Hit · route * (fallback) · the file does not exist yet
     require(game:GetService("ReplicatedStorage").shared.Combat.Hit)
 
 $ rogen where src\

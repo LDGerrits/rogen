@@ -24,6 +24,7 @@ import "../src/commands/list/list-command.js";
 import "../src/commands/plugin/plugin-command.js";
 import "../src/commands/serve/serve-command.js";
 import "../src/commands/sourcemap/sourcemap-command.js";
+import "../src/commands/syncback/syncback-command.js";
 import "../src/commands/upload/upload-command.js";
 import "../src/commands/where/where-command.js";
 
@@ -45,6 +46,8 @@ export interface CaseSpec {
 	readonly env?: Readonly<Record<string, string>>;
 	/** The text each step reads on its standard input. */
 	readonly stdin?: string;
+	/** A place file the steps read, made before they run: the project as built, synced into a place by Rojo, then changed by the case's `place.luau` as in Studio's command bar. */
+	readonly place?: string;
 }
 
 /** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
@@ -57,6 +60,7 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	output: true,
 	env: true,
 	stdin: true,
+	place: true,
 };
 
 /** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
@@ -171,6 +175,15 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			fs.symlinkSync(target, linkPath, isFile ? "file" : "dir");
 		}
 
+		if (spec.place)
+			await makePlace(
+				cli,
+				caseDir,
+				spec,
+				path.join(dir, spec.place),
+				parent
+			);
+
 		const before = snapshot(dir);
 		const sections: string[] = [];
 		for (const args of spec.steps ?? [["build"]]) {
@@ -216,6 +229,53 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		return normalize(sections.join("\n\n"), dir) + "\n";
 	} finally {
 		fs.rmSync(parent, { recursive: true, force: true });
+	}
+}
+
+/** The case's project built into a place in a folder of its own, then changed by its `place.luau` and saved at `file`. */
+async function makePlace(
+	cli: string,
+	caseDir: string,
+	spec: CaseSpec,
+	file: string,
+	parent: string
+): Promise<void> {
+	const edits = path.join(caseDir, "place.luau");
+	if (!fs.existsSync(edits))
+		throw new Error(
+			`${caseDir}: "place" needs a place.luau beside case.json.`
+		);
+	if (spec.links || spec.cwd)
+		throw new Error(
+			`${caseDir}: "place" builds the project's default.project.json from its root, so it takes no "links" or "cwd".`
+		);
+	const base = path.join(parent, "base");
+	fs.cpSync(path.join(caseDir, "project"), base, {
+		recursive: true,
+		verbatimSymlinks: true,
+	});
+	fs.copyFileSync(path.resolve("rokit.toml"), path.join(base, "rokit.toml"));
+	const steps: [string, readonly string[], string][] = [
+		[...invocation(cli, ["build"]), base],
+		["rojo", ["build", "default.project.json", "-o", "base.rbxl"], base],
+		[
+			"lune",
+			[
+				"run",
+				path.resolve("e2e/place-edit.luau"),
+				path.join(base, "base.rbxl"),
+				file,
+				edits,
+			],
+			path.resolve("."),
+		],
+	];
+	for (const [command, args, cwd] of steps) {
+		const result = await run(command, args, cwd, spec.env);
+		if (result.exitCode !== 0)
+			throw new Error(
+				`${command} ${args.join(" ")} failed while making the place: ${result.stderr || result.stdout}`
+			);
 	}
 }
 

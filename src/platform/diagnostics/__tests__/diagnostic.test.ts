@@ -6,6 +6,7 @@ import {
 	diagnosticsAbout,
 	diagnosticsReaching,
 	renderDiagnostic,
+	replaceFixes,
 	warningDiagnostic,
 } from "../diagnostic.js";
 import { diagnosticToJson } from "../diagnostic-json.js";
@@ -171,6 +172,40 @@ describe("platform/diagnostics/diagnostic", () => {
 					warningDiagnostic("test.example", { resource: "/repo" }, "")
 				)
 			).not.toHaveProperty("fixes");
+		});
+
+		it("should give a replace fix's file as a native path and keep its text", () => {
+			const fixed = warningDiagnostic(
+				"test.example",
+				{ resource: "/repo/rogen.json" },
+				"",
+				replaceFixes(
+					{
+						resource: "/repo/rogen.json",
+						position: { line: 2, column: 3 },
+					},
+					'"a"',
+					'"b"'
+				)
+			);
+
+			expect(diagnosticToJson(fixed).fixes).toEqual([
+				{
+					replace: {
+						file: path.normalize("/repo/rogen.json"),
+						line: 2,
+						column: 3,
+						from: '"a"',
+						to: '"b"',
+					},
+				},
+			]);
+		});
+
+		it("should offer no replace fix for a location with no position", () => {
+			expect(
+				replaceFixes({ resource: "/repo/rogen.json" }, '"a"', '"b"')
+			).toEqual([]);
 		});
 
 		it("should give each related file as a native path with its message, and leave related out when there is none", () => {

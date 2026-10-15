@@ -7,6 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import {
 	FileReader,
+	isFileType,
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import { StarterProject } from "./starter-project.js";
@@ -40,6 +41,30 @@ export class ProjectReader {
 						`this is not a valid project file, so it can't be lifted: ${failureReason(project.error)}`
 					),
 				]);
+	}
+
+	/** `project` told which of the folders it mounts hold an init file, since Rojo reads such a folder as one instance. */
+	async withInitFolders(project: StarterProject): Promise<StarterProject> {
+		const folders = project.mountedFolders();
+		const holds = await Promise.all(
+			folders.map(async (folder) => {
+				const entries = await tryWithAsync(() =>
+					this.fileReader.readDirectory(
+						path.join(this.directory, folder)
+					)
+				);
+				return (
+					entries.isOk() &&
+					entries.value.some(
+						([name, type]) =>
+							isFileType(type) &&
+							/^init\./.test(name) &&
+							!name.endsWith(".d.ts")
+					)
+				);
+			})
+		);
+		return project.withInitIn(folders.filter((_, at) => holds[at]));
 	}
 
 	private unreadable(file: string, message: string): Diagnostic {

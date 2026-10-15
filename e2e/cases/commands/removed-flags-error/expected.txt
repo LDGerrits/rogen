@@ -63,11 +63,6 @@ exit 2
 stderr:
   error: Unknown option '--no-input'. Run 'rogen help init' to see what init accepts.
 
-$ rogen init -y
-exit 2
-stderr:
-  error: '-y' is gone. Use --non-interactive.
-
 $ rogen init --yes
 exit 2
 stderr:

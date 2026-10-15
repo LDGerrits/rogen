@@ -18,6 +18,7 @@ import {
 	RojoCommandService,
 } from "./rojo-command-service.js";
 import { RojoCompatibility } from "./rojo-compatibility.js";
+import { RojoVersion } from "./rojo-version.js";
 import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
 import { ServerMessage } from "./sync-server.js";
 
@@ -47,15 +48,27 @@ export class CoreRojoCommandService implements RojoCommandService {
 			request.signal
 		);
 		if (executable.isErr()) return executable;
+		const projectFile = request.projectFile ?? project.projectFile;
+		const missing = this.missingCommand(executable.value, request);
+		if (missing)
+			return err(
+				new DiagnosticsError([
+					errorDiagnostic(
+						"rojo.commandUnsupported",
+						{ resource: projectFile },
+						missing
+					),
+				])
+			);
 		const problems = await this.compatibility.problemsIn(executable.value, [
-			project.projectFile,
+			projectFile,
 		]);
 		if (problems.length > 0) return err(new DiagnosticsError(problems));
 
 		const ran = await this.spawn(
 			executable.value,
 			request.command,
-			path.relative(request.cwd, project.projectFile),
+			path.relative(request.cwd, projectFile),
 			request.flags,
 			request.cwd,
 			request.signal
@@ -73,6 +86,19 @@ export class CoreRojoCommandService implements RojoCommandService {
 				]),
 			}),
 		});
+	}
+
+	/** Why the Rojo that will run has no `request.command`, when it is older than the release that added it. */
+	private missingCommand(
+		executable: ServerExecutable,
+		request: RojoCommandRequest
+	): string | undefined {
+		if (request.since === undefined) return undefined;
+		const version = RojoVersion.parse(executable.version);
+		const since = RojoVersion.parse(request.since);
+		if (!version || !since || !version.isBefore(since)) return undefined;
+		const { name } = executable.server;
+		return `${name} ${version} has no '${request.command}' command; ${name} ${since} added it. Change your ${name} pin to ${since} or later, or update the ${name} on the PATH.`;
 	}
 
 	async runBare(

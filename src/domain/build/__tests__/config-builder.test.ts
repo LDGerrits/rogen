@@ -89,6 +89,42 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
+		it("should fail when no source path exists, so the project file is not emptied", async () => {
+			const config = configOf({
+				sourcePaths: [abs("srcc"), abs("lobby")],
+			});
+
+			const result = await buildOf(config);
+
+			expect(result.isErr()).toBe(true);
+			expect(result.isErr() && result.error.diagnostics).toMatchObject([
+				{
+					severity: DiagnosticSeverity.Error,
+					code: "scan.missingSourcePath",
+					resource: abs("srcc"),
+				},
+				{
+					severity: DiagnosticSeverity.Error,
+					code: "scan.missingSourcePath",
+					resource: abs("lobby"),
+				},
+			]);
+		});
+
+		it("should fail when the only source path is a file", async () => {
+			await fs.writeFile(abs("src"), "");
+
+			const result = await buildOf(configOf());
+
+			expect(result.isErr()).toBe(true);
+		});
+
+		it("should build a config with no source paths at all", async () => {
+			const result = await buildOf(configOf({ sourcePaths: [] }));
+
+			expect(result.isOk()).toBe(true);
+		});
+
 		it("should report unrouted files as one warning after the scan's", async () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const config = configOf({

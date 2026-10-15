@@ -51,6 +51,8 @@ describe("list command", () => {
 	});
 
 	it("should show a config's source paths, routes, sync path and project file", async () => {
+		await fs.createDirectory("/repo/src");
+		await fs.createDirectory("/repo/lobby");
 		await write("rogen.json", {
 			sourcePaths: ["src", "lobby"],
 			syncPath: "out",
@@ -72,6 +74,42 @@ describe("list command", () => {
 				"rojo: rojo serve default.project.json",
 			].join("\n"),
 		]);
+	});
+
+	it("should say which source paths are no folder, as an error when none is", async () => {
+		await write("rogen.json", {
+			sourcePaths: ["srcc"],
+			routes: { "*": "ReplicatedStorage" },
+		});
+
+		await run();
+
+		expect(under("rogen.json").at(-1)).toContain("scan.missingSourcePath");
+		expect(under("rogen.json").at(-1)).toContain("error");
+	});
+
+	it("should say it as a warning when another source path is a folder", async () => {
+		await fs.createDirectory("/repo/src");
+		await write("rogen.json", {
+			sourcePaths: ["src", "later"],
+			routes: { "*": "ReplicatedStorage" },
+		});
+
+		await run();
+
+		expect(under("rogen.json").at(-1)).toContain("warning");
+		expect(under("rogen.json").at(-1)).toContain("scan.missingSourcePath");
+	});
+
+	it("should say when a project file on disk differs from what a build would write", async () => {
+		await fs.createDirectory("/repo/src");
+		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
+		await write("default.project.json", "{}");
+
+		await run();
+
+		expect(under("rogen.json").at(-1)).toContain("output.differs");
+		expect(under("rogen.json").at(-1)).toContain("warning");
 	});
 
 	it("should list the projects with their files in place of the one project file, and mark the one that is served", async () => {
@@ -186,6 +224,8 @@ describe("list command", () => {
 		const routes = { Server: "ServerScriptService", "*": "Workspace" };
 
 		it("should say 'same as' for a config whose routes equal those of an earlier one", async () => {
+			await fs.createDirectory("/repo/lobby/src");
+			await fs.createDirectory("/repo/arena/src");
 			await write("lobby/rogen.json", { routes });
 			await write("arena/rogen.json", { routes });
 
@@ -200,6 +240,8 @@ describe("list command", () => {
 		});
 
 		it("should print the routes of a config that differs in one", async () => {
+			await fs.createDirectory("/repo/lobby/src");
+			await fs.createDirectory("/repo/arena/src");
 			await write("lobby/rogen.json", { routes });
 			await write("arena/rogen.json", {
 				routes: { ...routes, Server: "Workspace" },
@@ -329,6 +371,8 @@ describe("list command", () => {
 			document().configs.find((candidate) => candidate.config === config);
 
 		it("should print each config's resolved fields, identity first", async () => {
+			await fs.createDirectory("/repo/src");
+			await fs.createDirectory("/repo/lobby");
 			await write("rogen.json", {
 				name: "Game",
 				sourcePaths: ["src", "lobby"],
@@ -378,6 +422,53 @@ describe("list command", () => {
 					},
 				],
 			});
+		});
+
+		it("should carry the missing source paths as diagnostics of a valid config", async () => {
+			await write("rogen.json", {
+				sourcePaths: ["srcc"],
+				routes: { "*": "ReplicatedStorage" },
+			});
+
+			await run({ json: true });
+
+			expect(entry("repo")).toMatchObject({
+				status: "valid",
+				diagnostics: [
+					{
+						severity: "error",
+						code: "scan.missingSourcePath",
+					},
+				],
+			});
+		});
+
+		it("should carry a stale project file as a warning with its fix", async () => {
+			await fs.createDirectory("/repo/src");
+			await write("rogen.json", {
+				routes: { "*": "ReplicatedStorage" },
+				projects: { dist: {} },
+			});
+			await write("default.project.json", "{}");
+			await write("dist.project.json", "{}");
+
+			await run({ json: true });
+
+			expect(entry("repo")?.diagnostics).toMatchObject([
+				{
+					severity: "warning",
+					code: "output.differs",
+					file: "/repo/default.project.json",
+					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
+				},
+				{
+					code: "output.differs",
+					file: "/repo/dist.project.json",
+					fixes: [
+						{ run: { command: "rogen build dist", cwd: "/repo" } },
+					],
+				},
+			]);
 		});
 
 		it("should list each project with its file and say which one serve serves", async () => {

@@ -8,6 +8,7 @@ import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import { BuildFindings, BuildSummary } from "./build.js";
 import { BuildValidator } from "./check/build-validator.js";
+import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { MetaReader } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
@@ -58,7 +59,7 @@ export class ConfigBuilder {
 		return new Placer(this.index, config, this.tools).place();
 	}
 
-	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does. */
+	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
 	async build(
 		config: ResolvedConfig,
 		syncWarnings?: readonly Diagnostic[]
@@ -69,6 +70,9 @@ export class ConfigBuilder {
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
+		const missing = ConfigBuilder.missingOf(config, placement);
+		if (missing.stopsBuild)
+			return err(new DiagnosticsError(missing.diagnostics()));
 		return ok({
 			config,
 			projectFile,
@@ -109,6 +113,34 @@ export class ConfigBuilder {
 				...new UnmountedSources(config, this.index).diagnostics(),
 			],
 		});
+	}
+
+	/** The project file `examined` assembled, when a build of `config` would write it: not when a phase stopped, or no source path exists. */
+	assembledFile(
+		config: ResolvedConfig,
+		examined: ExaminedConfig
+	): RojoProjectFile | undefined {
+		if (examined.kind !== "assembled") return undefined;
+		return ConfigBuilder.missingOf(config, examined.placement).stopsBuild
+			? undefined
+			: examined.projectFile;
+	}
+
+	private static missingOf(
+		config: ResolvedConfig,
+		placement: Placement
+	): MissingSourcePaths {
+		return new MissingSourcePaths(placement.roots, config.projectFile);
+	}
+
+	/** The project file a build of `config` would write, or none when it fails. */
+	async projectFileOf(
+		config: ResolvedConfig
+	): Promise<RojoProjectFile | undefined> {
+		const examined = await this.examine(config);
+		return examined.isOk()
+			? this.assembledFile(config, examined.value)
+			: undefined;
 	}
 
 	private async assemble(placement: Placement) {

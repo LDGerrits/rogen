@@ -1,6 +1,6 @@
 import path from "path";
-import { formatJsonFile } from "../../base/json.js";
 import { isInside, samePath } from "../../base/path.js";
+import { ProjectText } from "../rojo/project-text.js";
 import { RojoNode, projectFileName } from "../rojo/rojo-project.js";
 
 /** What a project of a `rogen.json` may change: any key of the description. */
@@ -52,6 +52,15 @@ export const DEFAULT_CONFIG_FILE = "rogen.json";
 
 export const isConfigFileName = (fileName: string): boolean =>
 	CONFIG_FILE_NAMES.includes(fileName);
+
+/** What `rogen syncback` writes beside a config while it runs: the project file Rojo reads, and the folder it writes new instances into. */
+export const SYNCBACK_FILES = {
+	project: "rogen-syncback.project.json",
+	staging: ".rogen-syncback",
+} as const;
+
+export const isSyncbackFileName = (name: string): boolean =>
+	name === SYNCBACK_FILES.project || name === SYNCBACK_FILES.staging;
 
 /** The name a config is asked for by: its folder's. */
 export const configLabel = (file: string): string =>
@@ -106,8 +115,23 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
+/** The keys Rogen adds to a Rojo project file, in the order `rogen fmt-project` writes them. */
+export const ROGEN_KEYS: readonly (keyof RogenConfig)[] = [
+	"sourcePaths",
+	"routes",
+	"syncPath",
+	"projects",
+	"serveProject",
+	"placePaths",
+];
+
+/** A config as `rogen fmt-project` writes it, so the first format changes nothing. */
+export function configText(config: Record<string, unknown>): string {
+	return ProjectText.ofConfig(config, ROGEN_KEYS);
+}
+
 export function configFileContent(config: RogenConfig): string {
-	return formatJsonFile({ $schema: SCHEMA_URL, ...config });
+	return configText({ $schema: SCHEMA_URL, ...config });
 }
 
 type SourcePathOverlap =

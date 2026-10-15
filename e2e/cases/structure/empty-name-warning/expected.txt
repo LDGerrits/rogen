@@ -1,0 +1,23 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  src/Server/.server.luau - warning: has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau. (scan.emptyName)
+
+$ rogen check --json
+exit 1
+stdout:
+  {
+    "diagnostics": [
+      {
+        "file": "<dir>/src/Server/.server.luau",
+        "severity": "warning",
+        "code": "scan.emptyName",
+        "message": "has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau.",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#scan-emptyname"
+      }
+    ]
+  }
+
+written:
+  default.project.json

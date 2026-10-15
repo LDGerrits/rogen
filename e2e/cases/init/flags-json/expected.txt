@@ -67,15 +67,15 @@ written:
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"tree": {
-		"$className": "DataModel"
-	},
-	"sourcePaths": [
-		"lib"
-	],
-	"routes": {
-		"Server": "ServerScriptService",
-		"*": "ReplicatedStorage/Shared"
-	}
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "lib"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "*": "ReplicatedStorage/Shared"
+  }
 }

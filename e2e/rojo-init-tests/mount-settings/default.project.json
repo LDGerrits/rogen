@@ -1,0 +1,27 @@
+{
+	"name": "mount-settings",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Shared": {
+				"$path": "src/shared",
+				"$className": "Model",
+				"$properties": { "Archivable": false },
+				"$attributes": { "Tag": "shared" },
+				"$ignoreUnknownInstances": false,
+				"$id": "shared"
+			}
+		},
+		"ServerScriptService": {
+			"$path": "src/server",
+			"$properties": { "LoadStringEnabled": true }
+		},
+		"Workspace": {
+			"Map": {
+				"$path": "src/map",
+				"$className": "Model",
+				"Spawn": { "$className": "SpawnLocation" }
+			}
+		}
+	}
+}

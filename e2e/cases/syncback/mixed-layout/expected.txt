@@ -1,0 +1,22 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  rogen syncback · Game
+  default.project.json · wrote
+  Built 1 config.
+  write  src/Inventory/Save@server.luau
+  write  src/Inventory/Server/Mail.luau
+  Syncback wrote 2 changes.
+
+written:
+  default.project.json
+  src/Inventory/Save@server.luau
+  src/Inventory/Server/Mail.luau
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Bag: ModuleScript  <- src/Inventory/Server/Bag.luau
+      Mail: ModuleScript  <- src/Inventory/Server/Mail.luau
+      Save: ModuleScript  <- src/Inventory/Save@server.luau

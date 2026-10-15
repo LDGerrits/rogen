@@ -13,7 +13,9 @@ The output is `default.project.json`, beside the `rogen.json` that describes it,
 
 Every other Rojo key in `rogen.json` (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
 
-**Rogen owns the output.** Every build replaces the file, hand-written or not, so anything Rogen can't know about goes in the [`tree`](/docs/v2/configuration#tree) of `rogen.json`. When nothing has changed, the file is left untouched, so Rojo doesn't re-sync for no reason.
+**Rogen owns the output.** Every build replaces the file, hand-written or not, so anything Rogen can't know about goes in the [`tree`](/docs/v2/configuration#tree) of `rogen.json`. When nothing has changed, the file is left untouched, so Rojo doesn't re-sync for no reason. `build` says `wrote` when it replaced a file with different content and does not tell a stale file from one edited by hand: both are overwritten, and [`output.differs`](/docs/v2/diagnostics#output-differs) in `check`, `where` and `list` is how you find out first.
+
+**A stale file loads without complaint.** Every `$path` Rogen writes is `optional`, since a compiler's or Darklua's output may not exist yet and a file can go while `serve` is running. So when a source file is renamed and `rogen build` has not run, Rojo builds a place without it and does not fail. Run `rogen build` before `rojo`, or let `rogen serve` and `rogen build --watch` do it.
 
 A bare `rojo serve`, `rbxtsc` and luau-lsp's sourcemap all use `default.project.json`, so they read the file Rogen writes with nothing to configure.
 

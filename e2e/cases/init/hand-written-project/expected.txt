@@ -1,6 +1,8 @@
 $ rogen init
 exit 0
 stdout: (not shown)
+stderr:
+  default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen's routes will place it: src/Combat/Damage.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
 
 $ rogen build
 exit 0
@@ -34,25 +36,25 @@ default.project.json:
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"name": "my-game",
-	"tree": {
-		"$className": "DataModel",
-		"Workspace": {
-			"$properties": {
-				"Gravity": 50
-			}
-		}
-	},
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	}
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "my-game",
+  "tree": {
+    "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "Gravity": 50
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  }
 }
 
 $ rojo sourcemap default.project.json

@@ -160,7 +160,7 @@ describe("build command", () => {
 			});
 
 			expect((result as ResultError<Error>).error.message).toBe(
-				'No project "nope" in rogen.json, which has "default", "dist" and "release". Name a folder with a rogen.json, a *.project.json path, or one of them.'
+				'No project "nope" in rogen.json, which has "default", "dist" and "release". Projects are the keys of "projects" in rogen.json: add "nope": {} to have Rogen write nope.project.json. Or name a folder with a rogen.json, or one of the projects above.'
 			);
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
@@ -689,7 +689,7 @@ describe("build command", () => {
 		});
 
 		it("should name the configs that blocked a config that was not written", async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("lobby/src/A.luau"), "");
 			const broken = brokenEntry([], "/repo/broken/rogen.json");
 
 			const { document } = await buildJson(

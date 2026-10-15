@@ -201,6 +201,38 @@ describe("rogen help --json", () => {
 		});
 	});
 
+	describe("with codes", () => {
+		it("should list every code with its severity, meaning and docs link", async () => {
+			await help("codes");
+
+			const { codes } = document();
+			expect(codes.map(({ code }: { code: string }) => code)).toEqual(
+				Object.keys(helpTexts.diagnostics)
+			);
+			expect(codes).toContainEqual({
+				code: "config.unknownField",
+				severity: "warning",
+				summary:
+					"The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1.",
+				url: `${DOCS_URL}/diagnostics#config-unknownfield`,
+			});
+			expect(codes).toContainEqual(
+				expect.objectContaining({
+					code: "roblox.unsupportedService",
+					severity: "error",
+				})
+			);
+			for (const { summary } of codes) {
+				expect(summary).toMatch(/^[A-Z`"].*[.!?]$/);
+				expect(summary).not.toMatch(/\b(e\.g|i\.e)\.$/);
+			}
+			for (const text of Object.values(helpTexts.diagnostics))
+				expect(text.split("\n\n")[1]).toMatch(
+					/^(Error|Warning)(, or error)?[.,] /
+				);
+		});
+	});
+
 	describe("with a name that is neither", () => {
 		it("should fail as a usage error that suggests the closest name", async () => {
 			const result = await help("bulid");

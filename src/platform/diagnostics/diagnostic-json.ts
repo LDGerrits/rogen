@@ -13,6 +13,7 @@ import {
 	SEVERITY_LABELS,
 	RunFix,
 	isRenameFix,
+	isReplaceFix,
 } from "./diagnostic.js";
 import { DiagnosticsError } from "./diagnostics-error.js";
 
@@ -36,6 +37,15 @@ export const fixShape = OutputShape.named(
 	OutputShape.union(
 		OutputShape.object({
 			rename: OutputShape.object({
+				from: OutputShape.string,
+				to: OutputShape.string,
+			}),
+		}),
+		OutputShape.object({
+			replace: OutputShape.object({
+				file: OutputShape.string,
+				line: OutputShape.integer,
+				column: OutputShape.integer,
 				from: OutputShape.string,
 				to: OutputShape.string,
 			}),
@@ -105,6 +115,11 @@ export function fixToJson(fix: DiagnosticFix): DiagnosticFix {
 				from: toNative(fix.rename.from),
 				to: toNative(fix.rename.to),
 			},
+		};
+	}
+	if (isReplaceFix(fix)) {
+		return {
+			replace: { ...fix.replace, file: toNative(fix.replace.file) },
 		};
 	}
 	fix satisfies RunFix;

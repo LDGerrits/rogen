@@ -15,6 +15,7 @@ import {
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
 	configFileContent,
+	configText,
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { PlaceFinder } from "../config/place-finder.js";
@@ -99,6 +100,7 @@ export class PlaceInit {
 				path.posix.join(place, directory)
 			),
 			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
+			warnings: [],
 			notes: [
 				`${path.basename(folder)} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
 				...workspace.notes,
@@ -212,7 +214,7 @@ export class PlaceInit {
 			raw,
 			edit: {
 				fileName: path.relative(root, rootFile),
-				content: formatJsonFile({ ...raw, placePaths }),
+				content: configText({ ...raw, placePaths }),
 				addition: `"${entry}" as a place path`,
 			},
 		});

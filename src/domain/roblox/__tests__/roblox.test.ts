@@ -64,7 +64,7 @@ describe("domain/roblox/roblox", () => {
 			(target) => {
 				const result = Target.parse(target, location);
 
-				expect(result.isErr() && result.error).toEqual([
+				expect(result.isErr() && result.error).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Error,
 						code: "roblox.unsupportedService",
@@ -74,6 +74,27 @@ describe("domain/roblox/roblox", () => {
 				]);
 			}
 		);
+
+		it("should offer the suggested service as a text replacement of the target", () => {
+			const result = Target.parse("StarterPlayerScripts/Ui", location);
+
+			expect(result.isErr() && result.error[0].fixes).toEqual([
+				{
+					replace: {
+						file: location.resource,
+						...location.position,
+						from: '"StarterPlayerScripts/Ui"',
+						to: '"StarterPlayer/StarterPlayerScripts/Ui"',
+					},
+				},
+			]);
+		});
+
+		it("should offer no replacement when nothing is close", () => {
+			const result = Target.parse("Zzzzzzzzzz", location);
+
+			expect(result.isErr() && result.error[0].fixes).toBeUndefined();
+		});
 	});
 
 	describe("a target with a folder that has no name", () => {
@@ -177,6 +198,31 @@ describe("domain/roblox/roblox", () => {
 		it("should read a dotted path as Studio prints it", () => {
 			expect(parse("ServerScriptService.Inventory.Save")).toBe(
 				"ServerScriptService.Inventory.Save"
+			);
+		});
+
+		it.each([
+			[
+				"Players.ldg.PlayerScripts.Chat.ChatController:4",
+				"StarterPlayer.StarterPlayerScripts.Chat.ChatController",
+			],
+			["game.Players.ldg_2.PlayerGui.Hud.Main", "StarterGui.Hud.Main"],
+			["Players/ldg/Backpack/Sword", "StarterPack/Sword"],
+			[
+				"Players/ldg/PlayerScripts/Net",
+				"StarterPlayer/StarterPlayerScripts/Net",
+			],
+		])(
+			"should read a player's copy %s as the Starter container it comes from",
+			(input, expected) => {
+				expect(parse(input)).toBe(expected);
+			}
+		);
+
+		it("should not read Players or a player's own instance as a Starter container", () => {
+			expect(parse("Players.ldg")).toBe("Players.ldg");
+			expect(parse("Players.ldg.Character.Animate")).toBe(
+				"Players.ldg.Character.Animate"
 			);
 		});
 

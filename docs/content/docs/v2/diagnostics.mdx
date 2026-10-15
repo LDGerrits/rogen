@@ -285,6 +285,7 @@ Warning. A folder is named one edit away from a declared route key, such as `Sev
 ```
 rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
   src/Inventory/Sever (did you mean "Server"?)
+Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
 ```
 
 Rename the folder to the key suggested, or, when the key in your config is the typo, fix it in `routes`. In `--json`, `fixes` holds the rename when exactly one key is closest. See [Routing Folders](/docs/v2/core-concepts/routing).
@@ -584,13 +585,17 @@ Remove `className`, or name the init script for the class you want. See [Metadat
 
 ### `scan.missingSourcePath` [#scan-missingsourcepath]
 
-Warning. A folder in `sourcePaths` doesn't exist, or is a file, so it contributes nothing.
+Warning, or error. A folder in `sourcePaths` doesn't exist, or is a file. It is a warning while another source path is a folder, and the missing one contributes nothing. It is an error when none is, since the build would write an empty tree over your project file: `rogen build` and `rogen check` fail, and the project file stays as it was.
 
 ```
 later - warning: this source path does not exist or is not a folder, so it contributes nothing. (scan.missingSourcePath)
 ```
 
-Create it, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. See [Configuration](/docs/v2/configuration#fields).
+```
+srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
+```
+
+Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. `rogen list` shows it too. A running `rogen watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
 
 ### `scan.unmountedSource` [#scan-unmountedsource]
 
@@ -655,6 +660,36 @@ src/Missing - warning: this link points at nothing, or back at a directory that 
 
 Fix the link's target, or remove the link. See [Linked Directories](/docs/v2/core-concepts/project-layout#linked-directories).
 
+### `scan.emptyName` [#scan-emptyname]
+
+Warning. A script file is named only by its suffix, such as `.server.luau`, so the instance it becomes has an empty name. Rojo builds it the same way, and Studio and `require` cannot use it well.
+
+```
+src/.server.luau - warning: has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau. (scan.emptyName)
+```
+
+Rename the file with a name before the suffix.
+
+### `scan.outsideSourcePaths` [#scan-outsidesourcepaths]
+
+Warning. `rogen check <path>` was given a path that is in no source path, and its first folder is one edit from a source path (or differs from it only in letter case), so a typo is likely. Any other path outside the source paths passes, since hooks hand `check` every changed file.
+
+```
+scr/Inventory/Server/Save.luau - warning: this path is in no source path, so no build reads it, and "scr" is one edit from the source path "src". Check the spelling. (scan.outsideSourcePaths)
+```
+
+Fix the path, or the source path in `sourcePaths` if that is the typo.
+
+### `scan.portableName` [#scan-portablename]
+
+Warning. A file or folder name that holds on this machine but fails on Windows or macOS, or that Rogen cannot read. A name fails when it has one of `<>:"|?*` or a control character, is a Windows device (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, with any extension), ends in a space or a dot, or differs from a sibling only in letter case. Nothing is dropped, except for a name with a backslash: Rogen reads `\` as a folder separator, so it leaves that file out.
+
+```
+src/Bad:Name.luau - warning: its name has ":", which Windows file names cannot hold. Rename it so a checkout works on every system. (scan.portableName)
+```
+
+Rename the file or folder, and update what requires it. The check runs for each file and folder that becomes an instance, and for meta and marker files, not for files Rogen ignores.
+
 ## Output
 
 ### `output.writeFailed` [#output-writefailed]
@@ -669,13 +704,13 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
-default.project.json - warning: this file differs from what 'rogen build' would write. It is written from rogen.json, so edit that and run 'rogen build'. (output.differs)
+default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written, or it was edited by hand. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
 ```
 
-Run `rogen build`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
+Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. `build` overwrites the file whatever the cause, so a hand edit is lost; put it in `rogen.json`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
@@ -771,6 +806,36 @@ default.project.json - error: this file does not exist, so it can't be lifted. (
 
 Fix the file's permissions or its contents, or move it out of the way. See [Configuration](/docs/v2/configuration#tree).
 
+### `init.mountNarrowed` [#init-mountnarrowed]
+
+Warning. `init` lifted a `default.project.json` with a node that mounts a whole source path, beside nodes that mount folders in it. Rojo puts those folders in both places: `src/server` is at `ServerScriptService/Server` and also inside the node that mounts `src`. Rogen turns the folders into routes and the node into the `*` route, so each folder is only where its route puts it.
+
+```
+default.project.json - warning: ReplicatedStorage/Common mounted all of src, so Rojo also put src/server inside it. Rogen routes that folder only to ServerScriptService/Server, so a require that reaches it through ReplicatedStorage/Common breaks. Check with 'rogen where src/server'. (init.mountNarrowed)
+```
+
+Change a require that goes through the mounted node to the folder's own node. See [Coming From Rojo](/docs/v2/coming-from-rojo#where-rogen-reads-a-layout-differently).
+
+### `init.settingsDropped` [#init-settingsdropped]
+
+Warning. `init` lifted a node of `default.project.json` that mounts a folder of your source, and that node carried settings (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` or child nodes) that `rogen.json` has no place for, since no route lands on it.
+
+```
+default.project.json - warning: Workspace/Map set $properties, which rogen.json doesn't carry, since no route lands on that node. Add them to the tree by hand. (init.settingsDropped)
+```
+
+Add the settings to the node in the `tree` of `rogen.json`. Settings of a node that a route does land on are kept. See [Coming From Rojo](/docs/v2/coming-from-rojo).
+
+### `init.unmountedFiles` [#init-unmountedfiles]
+
+Warning. `init` lifted a `default.project.json` and found files in the source paths that no node of it mounts. Rojo ignored them. Rogen places every file below a source path by its routes, so they now join the game.
+
+```
+default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+```
+
+Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).
+
 ## Serve
 
 ### `serve.noServer` [#serve-noserver]
@@ -855,6 +920,48 @@ default.project.json - error: 'rojo build' failed (exit code 1): Failed to write
 ```
 
 Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the build again.
+
+### `rojo.commandUnsupported` [#rojo-commandunsupported]
+
+Error. The Rojo that would run has no such command: it is older than the release that added it. Today only `rogen syncback` can meet it, since `rojo syncback` came with Rojo 7.7.0.
+
+```
+default.project.json - error: Rojo 7.6.1 has no 'syncback' command; Rojo 7.7.0 added it. Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH. (rojo.commandUnsupported)
+```
+
+Pin a newer Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`), or update the one on the PATH.
+
+## Syncback
+
+### `syncback.removedFromProjectFile` [#syncback-removedfromprojectfile]
+
+Error. The place no longer holds an instance that a node of the config's own `tree` defines, which Rojo's syncback refuses to remove: it doesn't edit project files. Files Rogen placed are synced through a mirror and can always be removed; this is about the nodes you wrote yourself.
+
+```
+rogen.json - error: the place no longer holds Workspace/Map, and the tree of the config defines it, which syncback cannot remove. Remove its node from the tree, then run syncback again. (syncback.removedFromProjectFile)
+```
+
+Remove the node from the `tree` of `rogen.json`, or put the instance back in the place, and run `rogen syncback` again. Nothing was written. See [CLI](/docs/v2/cli#syncback).
+
+### `syncback.unplaced` [#syncback-unplaced]
+
+Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides: no route puts files where its parent is, two routes do, the project has several source paths and no file beside it says which, or as many files beside it lie in each of two folders of one style. It is also how syncback lists what it can't write: an instance where an ignore glob would put it, a property set on a folder that no one folder of the project is, and a change Rojo itself can't sync back (a `.json` or `.toml` module). The message says why.
+
+```
+rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)
+```
+
+Create the file where you want it, by hand, and run `rogen syncback` again. Other changes of the same run were written. See [CLI](/docs/v2/cli#syncback).
+
+### `syncback.misplaced` [#syncback-misplaced]
+
+Warning. After syncback, Rogen asked where the files it placed land, and one lands at another instance than the place had. A route is missing or ambiguous for it, or the name of the file means something to routing.
+
+```
+src/Quest/Mail@sever.luau - warning: this file was written for ServerScriptService/Quest/Mail, and lands at ReplicatedStorage/Shared/Quest/Mail. Move it to where routing puts it at ServerScriptService/Quest/Mail. (syncback.misplaced)
+```
+
+Move or rename the file, and run `rogen where` on it to see the route. See [Routing](/docs/v2/core-concepts/routing).
 
 ## Migration
 

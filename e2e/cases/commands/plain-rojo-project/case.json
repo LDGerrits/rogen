@@ -1,0 +1,1 @@
+{ "steps": [["check"], ["build"], ["list"], ["where", "src"]], "output": ["build"] }

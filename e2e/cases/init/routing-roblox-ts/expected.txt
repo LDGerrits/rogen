@@ -13,35 +13,35 @@ written:
 
 rogen.json:
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"tree": {
-		"$className": "DataModel",
-		"ReplicatedStorage": {
-			"rbxts_include": {
-				"$path": {
-					"optional": "include"
-				},
-				"node_modules": {
-					"$className": "Folder",
-					"@rbxts": {
-						"$path": {
-							"optional": "node_modules/@rbxts"
-						}
-					}
-				}
-			}
-		}
-	},
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
-	},
-	"syncPath": "out"
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": {
+              "optional": "node_modules/@rbxts"
+            }
+          }
+        },
+        "$path": {
+          "optional": "include"
+        }
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "syncPath": "out"
 }
 
 $ rojo sourcemap default.project.json

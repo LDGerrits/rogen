@@ -26,6 +26,7 @@ import {
 const InitOptions = [
 	{
 		name: "non-interactive",
+		short: "y",
 		type: "boolean",
 		description:
 			"Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it. A flag below answers its question either way.",
@@ -88,7 +89,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it.",
 	},
 	{
 		name: "unmatched",
@@ -186,7 +187,6 @@ registerCommand(
 					effects: ["writesFiles"],
 					formerOptions: {
 						"--yes": "Use --non-interactive.",
-						"-y": "Use --non-interactive.",
 					},
 					examples: [
 						"rogen init",

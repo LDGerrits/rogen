@@ -1,0 +1,1 @@
+{"name":"Game","tree":{"$className":"DataModel"},"sourcePaths":["src"],"routes":{"Server":"ServerScriptService","*":"ReplicatedStorage/Shared"},"serveProject":"dist","projects":{"dist":{"syncPath":"dist"}}}

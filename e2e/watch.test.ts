@@ -75,6 +75,32 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should keep the last project file while no source path exists, and write again once one does", async () => {
+		const file = path.join(project.dir, "default.project.json");
+		const running = start();
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/A.server.luau");
+		});
+
+		fs.renameSync(
+			path.join(project.dir, "src"),
+			path.join(project.dir, "moved")
+		);
+		await eventually(() => {
+			expect(running.output).toContain("scan.missingSourcePath");
+		});
+		expect(fs.readFileSync(file, "utf8")).toContain("src/A.server.luau");
+
+		fs.renameSync(
+			path.join(project.dir, "moved"),
+			path.join(project.dir, "src")
+		);
+		writeProjectFile(project.dir, "src/B.luau");
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/B.luau");
+		});
+	}, 30_000);
+
 	it("should build the place with Rojo after each write when given -o", async () => {
 		const place = path.join(project.dir, "game.rbxlx");
 		start(["-o", "game.rbxlx"]);

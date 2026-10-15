@@ -1,0 +1,26 @@
+$ rogen check
+exit 0
+
+$ rogen build
+exit 0
+stdout:
+  rogen build · plain
+  default.project.json · unchanged
+  Built 1 config.
+
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  default.project.json
+    source paths: (none)
+    routes:
+    sync path: (none)
+    project file: default.project.json
+    rojo: rojo serve default.project.json
+  1 config.
+
+$ rogen where src
+exit 0
+stdout:
+  src -> mounted · the tree mounts it at ServerScriptService/Main

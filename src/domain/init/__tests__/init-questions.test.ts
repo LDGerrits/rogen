@@ -11,6 +11,7 @@ import {
 import { withRobloxTs } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
 import { InitQuestions } from "../init-questions.js";
+import { InitChoices } from "../init-service.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import path from "path";
 import {
@@ -611,19 +612,32 @@ describe("InitQuestions askProject", () => {
 				},
 			});
 
-			const askLifting = async (prompts: MockPromptService) => {
+			const askLifting = async (
+				prompts: MockPromptService,
+				{
+					project = projectFile,
+					files = [],
+					choices = {},
+				}: {
+					project?: string;
+					files?: readonly string[];
+					choices?: InitChoices;
+				} = {}
+			) => {
 				const fileSystem = new MemoryFileSystemService();
 				await fileSystem.createDirectory(directory);
 				await fileSystem.writeFile(
 					path.join(directory, "default.project.json"),
-					projectFile
+					project
 				);
+				for (const file of files)
+					await fileSystem.writeFile(path.join(directory, file), "");
 				return new ProjectSetup(
 					directoryOf({
 						workspace: luau,
 						existing: ["default.project.json"],
 					}),
-					new InitQuestions(prompts, prompts.isInteractive),
+					new InitQuestions(prompts, prompts.isInteractive, choices),
 					fileSystem
 				).ask();
 			};
@@ -654,7 +668,7 @@ describe("InitQuestions askProject", () => {
 				]);
 				expect(choices[0]).toEqual({
 					value: "mount:server",
-					label: "server",
+					label: "Server",
 					hint: "→ ServerScriptService/Server · from default.project.json",
 				});
 				expect(initial).toEqual([
@@ -675,6 +689,57 @@ describe("InitQuestions askProject", () => {
 					"client",
 				]);
 				expect(result?.fallback).toBe(true);
+			});
+
+			it("should accept a standard route id for the derived route that replaced it", async () => {
+				const result = (
+					await askLifting(new MockPromptService([], false), {
+						choices: { routes: ["server", "shared"] },
+					})
+				).unwrap();
+
+				expect(result?.routes).toEqual([
+					"mount:server",
+					"mount:shared",
+				]);
+			});
+
+			it("should not route a mount whose folder holds an init file", async () => {
+				const result = (
+					await askLifting(new MockPromptService([], false), {
+						files: ["src/server/init.server.luau"],
+					})
+				).unwrap();
+
+				expect(result?.routes).toEqual([
+					"mount:shared",
+					"server",
+					"client",
+				]);
+				expect(result?.tree).toMatchObject({
+					kind: "lift",
+					project: expect.objectContaining({}),
+				});
+			});
+
+			it("should ask about no routes and no mounts for a root that is no DataModel", async () => {
+				const prompts = new MockPromptService({});
+				let asked = 0;
+				const original = prompts.multiSelect.bind(prompts);
+				prompts.multiSelect = (options) => {
+					asked++;
+					return original(options);
+				};
+
+				const result = (
+					await askLifting(prompts, {
+						project: JSON.stringify({ tree: { $path: "src" } }),
+					})
+				).unwrap();
+
+				expect(asked).toBe(0);
+				expect(result?.routes).toEqual([]);
+				expect(result?.mounts).toEqual([]);
 			});
 
 			it("should offer the standard routes when the file is not lifted", async () => {

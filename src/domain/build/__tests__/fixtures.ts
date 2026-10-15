@@ -86,10 +86,21 @@ export function indexOf(
 	return new CoreIndexService(fs).list(sourcePaths);
 }
 
+/** Makes the source paths of a test config folders, since a build of a config none of them exists for fails. */
+async function withSourceFolders(
+	fs: MemoryFileSystemService,
+	config: ResolvedConfig
+): Promise<void> {
+	for (const sourcePath of config.sourcePaths)
+		if (!(await fs.exists(sourcePath)))
+			await fs.createDirectory(sourcePath);
+}
+
 export async function buildAndPlace(
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig
 ): Promise<Result<BuiltConfig & { placement: Placement }, DiagnosticsError>> {
+	await withSourceFolders(fs, config);
 	const index = await indexOf(fs, config.sourcePaths);
 	const builder = builderOf(fs, index);
 	const built = await builder.build(config);
@@ -149,6 +160,7 @@ export async function assembleResultOf(
 	extraTools: readonly SyncTool[] = []
 ) {
 	const config = configOf(overrides);
+	await withSourceFolders(fs, config);
 	const index = await indexOf(fs, config.sourcePaths);
 	return builderOf(fs, index, extraTools).build(config);
 }

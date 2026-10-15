@@ -1,8 +1,12 @@
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	Diagnostic,
+	warningDiagnostic,
+} from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	DEFAULT_CONFIG_FILE,
+	DEFAULT_PROJECT_FILE,
 	ProjectChanges,
 	RogenConfig,
 } from "../config/config.js";
@@ -15,6 +19,7 @@ import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { SyncSteps } from "./sync-steps.js";
+import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
 
 export interface ProjectChoices {
@@ -26,6 +31,8 @@ export interface ProjectChoices {
 	readonly mounts: readonly Mount[];
 	readonly routes: readonly RouteId[];
 	readonly fallback: boolean;
+	/** Files of the source paths that the lifted project file mounts nowhere, which Rojo ignored and routes will place. */
+	readonly unmounted?: readonly string[];
 }
 
 function derivedRoutesOf(
@@ -35,6 +42,11 @@ function derivedRoutesOf(
 	return tree.kind === "lift"
 		? DerivedRoutes.of(tree.from, tree.project, dirs)
 		: undefined;
+}
+
+/** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
+function takesRoutes(tree: ProjectTree): boolean {
+	return tree.kind === "new" || tree.project.takesRoutes;
 }
 
 function generatedDirs({
@@ -53,6 +65,8 @@ function generatedDirs({
 		...(darklua && compiler ? [compiler.outDir] : []),
 	];
 }
+
+const UNMOUNTED_SHOWN = 5;
 
 const PROCESSED_PROJECT = "dist";
 
@@ -120,17 +134,39 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			syncPath = answer;
 		}
 
-		const mounts = await questions.mounts(directory, language);
+		const routed = takesRoutes(tree.value);
+		const mounts = routed
+			? await questions.mounts(directory, language)
+			: [];
 		if (mounts === undefined) return ok(undefined);
 
-		const routes = await questions.routes(
-			language,
-			derivedRoutesOf(
-				tree.value,
-				generatedDirs({ language, darklua, sourcePaths, syncPath })
-			)
-		);
+		const routes = routed
+			? await questions.routes(
+					language,
+					derivedRoutesOf(
+						tree.value,
+						generatedDirs({
+							language,
+							darklua,
+							sourcePaths,
+							syncPath,
+						})
+					)
+				)
+			: { routes: [], fallback: false };
 		if (routes === undefined) return ok(undefined);
+
+		const unmounted =
+			routed && tree.value.kind === "lift"
+				? await new UnmountedFiles(
+						this.fileSystemService,
+						directory.path
+					).find(
+						sourcePaths,
+						tree.value.project.mountedFolders(),
+						tree.value.project.toConfig().globIgnorePaths ?? []
+					)
+				: [];
 
 		return ok({
 			language,
@@ -141,6 +177,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			mounts,
 			routes: routes.routes,
 			fallback: routes.fallback,
+			unmounted,
 		});
 	}
 
@@ -148,24 +185,35 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		chosen: TreeChoice
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
 		if (chosen.kind === "new") return ok(chosen);
-		const project = await new ProjectReader(
+		const reader = new ProjectReader(
 			this.fileSystemService,
 			this.directory.path
-		).read(chosen.from);
+		);
+		const project = await reader.read(chosen.from);
 		return project.isErr()
 			? err(project.error)
-			: ok({ ...chosen, project: project.value });
+			: ok({
+					...chosen,
+					project: await reader.withInitFolders(project.value),
+				});
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
 		const { language, darklua, sourcePaths, syncPath } = choices;
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
+		const routes = takesRoutes(choices.tree)
+			? new StartingRoutes(language, derived).starting(
+					choices.routes,
+					choices.fallback
+				)
+			: undefined;
 		const tree = TreePlan.of({
 			tree: choices.tree,
 			mounts: choices.mounts,
 			dirs,
 			derived,
+			landings: Object.values(routes ?? {}),
 		});
 		const { compiler } = language;
 		const { testRunner } = this.directory.workspace;
@@ -179,16 +227,30 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig({
 			...tree.fields,
-			sourcePaths: [...sourcePaths],
-			routes: new StartingRoutes(language, derived).starting(
-				choices.routes,
-				choices.fallback
-			),
+			...(routes && { sourcePaths: [...sourcePaths], routes }),
 			...(defaultSyncPath && { syncPath: defaultSyncPath }),
 			...projects,
 		});
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
+		if (choices.tree.kind === "lift")
+			builder.setLiftedFrom(choices.tree.from);
 		for (const note of tree.notes) builder.addNote(note);
+		const others = this.directory.otherProjectFiles(
+			DEFAULT_PROJECT_FILE,
+			...(choices.tree.kind === "lift" ? [choices.tree.from] : [])
+		);
+		if (others.length > 0)
+			builder.addNote(
+				`Left alone: ${others.join(", ")}. Rogen writes only default.project.json and the files named under "projects", and a project inherits the whole tree, so keep a file that holds a subset of it by hand, or add its name under "projects" in ${DEFAULT_CONFIG_FILE} to have Rogen write it.`
+			);
+		for (const warning of tree.warnings) builder.addWarning(warning);
+		if (choices.tree.kind === "lift" && choices.unmounted?.length)
+			builder.addWarning(
+				ProjectSetup.unmountedWarning(
+					choices.tree.from,
+					choices.unmounted
+				)
+			);
 		if (compiler && !darklua && syncPath) {
 			builder.addNote(
 				`Syncing from ${syncPath}, where ${compiler.name} compiles to.`
@@ -207,9 +269,28 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		this.planNextSteps(builder, choices, tree);
 	}
 
+	private static unmountedWarning(
+		from: string,
+		files: readonly string[]
+	): Diagnostic {
+		const shown = files.slice(0, UNMOUNTED_SHOWN).join(", ");
+		const more = files.length - UNMOUNTED_SHOWN;
+		return warningDiagnostic(
+			"init.unmountedFiles",
+			{ resource: from },
+			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen's routes will place ${files.length === 1 ? "it" : "them"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
+		);
+	}
+
 	private planNextSteps(
 		builder: InitPlanBuilder,
-		{ language, darklua, sourcePaths, syncPath }: ProjectChoices,
+		{
+			language,
+			darklua,
+			sourcePaths,
+			syncPath,
+			tree: chosen,
+		}: ProjectChoices,
 		tree: TreePlan
 	): void {
 		const { compiler } = language;
@@ -218,9 +299,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
-		builder.addEdit(
-			`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`
-		);
+		if (takesRoutes(chosen))
+			builder.addEdit(
+				`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`
+			);
 		new SyncSteps(language, darklua).plan(builder, this.directory.path, {
 			processed: compiler ? [compiler.outDir] : sourcePaths,
 			syncPath,

@@ -1,0 +1,17 @@
+{
+	"name": "unroutable-mounts",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"MyLib": { "$path": "src/my-lib" },
+			"Fast": { "$path": "src/2fast" },
+			"Twice": { "$path": "src/my-lib" },
+			"Pkg": { "$path": "src/lib/pkg" }
+		},
+		"ServerScriptService": {
+			"Server": { "$path": "src/server" },
+			"Admin": { "$path": "src/lib/Admin" },
+			"Meta": { "$path": "src/metaonly" }
+		}
+	}
+}

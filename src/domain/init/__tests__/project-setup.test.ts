@@ -4,6 +4,7 @@ import {
 	workspaceOf,
 } from "../../toolchain/__tests__/workspaces.js";
 import { Darklua } from "../../toolchain/toolchain.js";
+import { ConfigFormatter } from "../../config/config-formatter.js";
 import { InitQuestions } from "../init-questions.js";
 import { ProjectChoices, ProjectSetup } from "../project-setup.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -23,6 +24,51 @@ import {
 	lifted,
 } from "./project-setup-fixtures.js";
 
+describe("ProjectSetup plan, unmounted files", () => {
+	const lift = (unmounted: readonly string[]) =>
+		defaultProjectChoices(luau).then((choices) =>
+			planProject({
+				choices: {
+					...choices,
+					tree: lifted({
+						name: "g",
+						tree: { $className: "DataModel" },
+					}),
+					unmounted,
+				},
+				existingFiles: new Set(["default.project.json"]),
+			}).unwrap()
+		);
+
+	it("should warn, by code, of files Rojo ignored and routes will place", async () => {
+		const planned = await lift(["src/Loose.luau", "src/x/Y.luau"]);
+
+		expect(planned.warnings).toMatchObject([
+			{
+				code: "init.unmountedFiles",
+				message: expect.stringContaining(
+					"2 files in the source paths are mounted by no node"
+				),
+			},
+		]);
+		expect(planned.warnings[0].message).toContain(
+			"src/Loose.luau, src/x/Y.luau"
+		);
+	});
+
+	it("should name five files and count the rest", async () => {
+		const planned = await lift(
+			Array.from({ length: 8 }, (_, at) => `src/F${at}.luau`)
+		);
+
+		expect(planned.warnings[0].message).toContain("src/F4.luau and 3 more");
+	});
+
+	it("should say nothing when every file is mounted", async () => {
+		expect((await lift([])).warnings).toEqual([]);
+	});
+});
+
 describe("ProjectSetup plan", () => {
 	it("should plan every source path it writes", async () => {
 		const choices = {
@@ -40,6 +86,33 @@ describe("ProjectSetup plan", () => {
 		const { configs } = await plan(luau);
 
 		expect(configs).toEqual(["rogen.json"]);
+	});
+
+	describe("other project files in the folder", () => {
+		it("should name them in a note, and say they are left alone", async () => {
+			const { notes } = await plan(luau, [
+				"test.project.json",
+				"place.project.json",
+			]);
+
+			expect(notes).toEqual([
+				expect.stringContaining(
+					'Left alone: place.project.json, test.project.json. Rogen writes only default.project.json and the files named under "projects"'
+				),
+			]);
+		});
+
+		it("should not name default.project.json, which init replaces or lifts", async () => {
+			const { notes } = await plan(luau, ["default.project.json"]);
+
+			expect(notes.join("\n")).not.toContain("Left alone");
+		});
+
+		it("should say nothing when there are none", async () => {
+			const { notes } = await plan(luau);
+
+			expect(notes.join("\n")).not.toContain("Left alone");
+		});
 	});
 
 	it("should write the starting routes explicitly", async () => {
@@ -65,11 +138,17 @@ describe("ProjectSetup plan", () => {
 		]);
 	});
 
-	it("should write strict JSON with a trailing newline", async () => {
+	it("should write strict JSON as fmt-project writes it, so a first format changes nothing", async () => {
 		const { files } = await plan(luau);
 
-		expect(files[0].content.endsWith("}\n")).toBe(true);
-		expect(() => JSON.parse(files[0].content)).not.toThrow();
+		const config = new MemoryFileSystemService();
+		await config.writeFile("/repo/rogen.json", files[0].content);
+
+		const formatted = await new ConfigFormatter(config).format(
+			"/repo/rogen.json"
+		);
+
+		expect(formatted.unwrap()).toBe(false);
 	});
 
 	it("should write a bare DataModel tree and no sync path or name for plain luau", async () => {

@@ -7,6 +7,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
+import { DEFAULT_PROJECT_FILE } from "./config.js";
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "./config-discovery.js";
@@ -23,6 +24,10 @@ import {
 import { CoreConfigSelection } from "./core-config-selection.js";
 import { ManagedConfig } from "./managed-config.js";
 
+/** A Rojo project file read as a config, which no `rogen.json` came to replace. */
+const isAdoptedFile = (file: string): boolean =>
+	path.basename(file) === DEFAULT_PROJECT_FILE;
+
 export class CoreConfigService implements ConfigService {
 	declare readonly _serviceBrand: undefined;
 
@@ -31,7 +36,7 @@ export class CoreConfigService implements ConfigService {
 	private readonly formatter: ConfigFormatter;
 
 	constructor(
-		fileSystemService: FileSystemService,
+		private readonly fileSystemService: FileSystemService,
 		private readonly environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
@@ -64,7 +69,7 @@ export class CoreConfigService implements ConfigService {
 		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, this.loader))
 		);
-		const missing = this.missingProject(opened, projects, scopes);
+		const missing = await this.missingProject(opened, projects, scopes);
 		if (missing) return err(missing);
 		const home = opened.find(({ file }) => file === homeConfig);
 		return ok(
@@ -72,7 +77,7 @@ export class CoreConfigService implements ConfigService {
 				opened,
 				this.loader,
 				directory,
-				noneNamed
+				noneNamed && !files.some(isAdoptedFile)
 					? { directory, list: () => this.firstConfigIn(directory) }
 					: undefined,
 				projects,
@@ -88,11 +93,11 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
-	private missingProject(
+	private async missingProject(
 		opened: readonly ManagedConfig[],
 		projects: ReadonlyMap<string, NamedProjects>,
 		scopes: ReadonlyMap<string, readonly string[]>
-	): UsageError | undefined {
+	): Promise<UsageError | undefined> {
 		for (const config of opened) {
 			const names = projects.get(config.file)?.names ?? [];
 			const stems = [
@@ -104,11 +109,17 @@ export class CoreConfigService implements ConfigService {
 				),
 			];
 			const project = names.find((name) => !stems.includes(name));
-			if (project !== undefined && stems.length > 0)
-				return new UsageError(
-					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}.`,
-					"Name a folder with a rogen.json, a *.project.json path, or one of them."
+			if (project !== undefined && stems.length > 0) {
+				const file = path.join(
+					path.dirname(config.file),
+					`${project}.project.json`
 				);
+				const onDisk = await this.fileSystemService.isFile(file);
+				return new UsageError(
+					`No project "${project}" in ${this.relative(config.file)}, which has ${joinedWithAnd(stems.map((stem) => `"${stem}"`))}.${onDisk ? ` ${project}.project.json is there, but a project file Rogen does not write is not a project.` : ""}`,
+					`Projects are the keys of "projects" in rogen.json: add "${project}": {} to have Rogen write ${project}.project.json. Or name a folder with a rogen.json, or one of the projects above.`
+				);
+			}
 		}
 		return undefined;
 	}

@@ -1,4 +1,5 @@
 import { Result } from "../../base/result.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
@@ -44,6 +45,10 @@ export interface InitPlan {
 	readonly directories: readonly string[];
 	readonly configs: readonly string[];
 	readonly notes: readonly string[];
+	/** What `init` could not do as asked, such as settings of a lifted file it had to leave out. */
+	readonly warnings: readonly Diagnostic[];
+	/** The project file whose tree went into the config, which init leaves in place. */
+	readonly liftedFrom?: string;
 	readonly nextSteps: NextSteps;
 	readonly asked: boolean;
 	readonly decided: readonly InitDecision[];

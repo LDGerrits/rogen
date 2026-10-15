@@ -69,8 +69,49 @@ describe("where command", () => {
 			"src/Net/Http@client.luau -> StarterPlayer/StarterPlayerScripts/Net/Http · route Client (suffix)",
 			"src/Net/Http.spec.luau -> ignored · matches **/*.spec.luau",
 			"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)",
+			"src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder) · the file does not exist yet",
 		]);
+	});
+
+	describe("a project file that is out of date", () => {
+		beforeEach(async () => {
+			await writeConfig("rogen.json", { routes: ROUTES });
+			await write("src/Util.luau");
+			await fs.writeFile("/repo/default.project.json", "{}");
+		});
+
+		it("should be said after the answers", async () => {
+			const result = await run({ _: ["src/Util.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+			]);
+			expect(logService.texts("diagnosticWarning")).toEqual([
+				expect.stringContaining("output.differs"),
+			]);
+		});
+
+		it("should be a warning in the JSON document", async () => {
+			await run({ _: ["src/Util.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n")).diagnostics).toMatchObject([
+				{
+					severity: "warning",
+					code: "output.differs",
+					file: "/repo/default.project.json",
+					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
+				},
+			]);
+		});
+
+		it("should not be said once the file is written", async () => {
+			await fs.delete("/repo/default.project.json");
+
+			await run({ _: ["src/Util.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);
+		});
 	});
 
 	it("should say a file that is no instance is not one", async () => {
@@ -100,6 +141,14 @@ describe("where command", () => {
 			expect(printed()).toEqual([
 				"src/F/Shared/Good.luau -> not placed · the build stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
 			]);
+		});
+
+		it("should name the file with the error when the error is inside the directory asked about", async () => {
+			await run({ _: ["src/F"] });
+
+			expect(printed()).toContain(
+				"src/F -> not placed · src/F/Shared/Bad@server.luau has an error (route.ignoredAt)"
+			);
 		});
 
 		it("should name the error in the JSON document", async () => {

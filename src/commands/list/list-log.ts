@@ -10,6 +10,7 @@ import {
 import { configLabel } from "../../domain/config/config.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
@@ -82,6 +83,9 @@ export const listDocumentShape = S.object({
 		})
 	),
 });
+
+/** What a build would say about the folders of each valid config, by config file. */
+export type ProblemsByConfig = ReadonlyMap<string, readonly Diagnostic[]>;
 
 export type ServingByConfig = ReadonlyMap<string, ServingNow | undefined>;
 
@@ -189,7 +193,8 @@ export class ListLog {
 	print(
 		entries: readonly ConfigEntry[],
 		home?: string,
-		serving: ServingByConfig = new Map()
+		serving: ServingByConfig = new Map(),
+		problems: ProblemsByConfig = new Map()
 	): void {
 		const { logService } = this;
 		new BuildLog(logService, this.cwd).begin("list", [], home);
@@ -224,6 +229,8 @@ export class ListLog {
 					serving
 				);
 			}
+			for (const problem of problems.get(entry.file) ?? [])
+				logService.diagnostic(problem);
 		}
 		if (ListLog.failure(entries) === undefined)
 			logService.outro(
@@ -313,7 +320,8 @@ export class ListLog {
 
 	json(
 		entries: readonly ConfigEntry[],
-		serving: ServingByConfig = new Map()
+		serving: ServingByConfig = new Map(),
+		problems: ProblemsByConfig = new Map()
 	): ListDocument {
 		return {
 			configs: entries.map((entry) => ({
@@ -347,7 +355,9 @@ export class ListLog {
 				diagnostics:
 					entry.status === "broken"
 						? entry.errors.map(diagnosticToJson)
-						: [],
+						: (problems.get(entry.file) ?? []).map(
+								diagnosticToJson
+							),
 			})),
 		};
 	}

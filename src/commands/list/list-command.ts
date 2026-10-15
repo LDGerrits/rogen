@@ -13,6 +13,11 @@ import { projectsOf } from "../../domain/config/resolved-config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
+import { BuildService } from "../../domain/build/build-service.js";
+import {
+	Diagnostic,
+	uniqueDiagnostics,
+} from "../../platform/diagnostics/diagnostic.js";
 import { ListLog, ServingByConfig, listDocumentShape } from "./list-log.js";
 
 const ListOptions = [JsonOption] as const;
@@ -61,16 +66,41 @@ registerCommand(
 			const serving: ServingByConfig = new Map(
 				projectFiles.map((file) => [file, served.get(file)])
 			);
+			const buildService = accessor.get(BuildService);
+			const stale = await buildService.staleProjectFiles(selection.value);
+			const problems = new Map<string, Diagnostic[]>();
+			for (const entry of entries)
+				if (entry.status === "valid") {
+					const projects = projectsOf(entry, entry.scope);
+					const files = new Set(
+						projects.map(({ projectFile }) => projectFile)
+					);
+					problems.set(
+						entry.file,
+						uniqueDiagnostics([
+							...(
+								await Promise.all(
+									projects.map((project) =>
+										buildService.missingSourcePaths(project)
+									)
+								)
+							).flat(),
+							...stale.filter(({ resource }) =>
+								files.has(resource)
+							),
+						])
+					);
+				}
 			for (const note of selection.value.notes) logService.warn(note);
 
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					report.json(entries, serving),
+					report.json(entries, serving, problems),
 					broken
 				);
 
-			report.print(entries, home, serving);
+			report.print(entries, home, serving, problems);
 			return broken ? err(broken) : ok(undefined);
 		}
 	}

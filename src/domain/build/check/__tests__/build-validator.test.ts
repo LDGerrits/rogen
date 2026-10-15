@@ -475,6 +475,78 @@ describe("BuildValidator rules", () => {
 			});
 		});
 
+		describe("names that fail on some system", () => {
+			const named = async (code: string) =>
+				(await route())
+					.unwrap()
+					.warnings.filter((warning) => warning.code === code);
+
+			it("should warn of a file with no name before its suffix", async () => {
+				await write("src/.server.luau", "src/Fine.luau");
+
+				expect(await named("scan.emptyName")).toMatchObject([
+					{
+						resource: abs("src/.server.luau"),
+						message: expect.stringContaining("empty name"),
+					},
+				]);
+			});
+
+			it.each([
+				["src/Bad:Name.luau", '":"'],
+				["src/What?.luau", '"?"'],
+				["src/con.luau", "Windows device"],
+				["src/trail .luau", "space or a dot"],
+			])("should warn of %s", async (file, reason) => {
+				await write(file);
+
+				expect(await named("scan.portableName")).toMatchObject([
+					{
+						resource: abs(file),
+						message: expect.stringContaining(reason),
+					},
+				]);
+			});
+
+			it("should warn of a folder whose name Windows cannot create", async () => {
+				await write("src/aux/Fine.luau");
+
+				expect(await named("scan.portableName")).toMatchObject([
+					{ resource: abs("src/aux") },
+				]);
+			});
+
+			it("should warn of two names that differ only in letter case, naming both", async () => {
+				await write("src/Foo.luau", "src/foo.luau");
+
+				expect(
+					(await named("scan.portableName")).map(
+						({ resource }) => resource
+					)
+				).toEqual([abs("src/Foo.luau"), abs("src/foo.luau")]);
+			});
+
+			it("should warn of a meta file and a marker whose names Windows cannot hold", async () => {
+				await write(
+					"src/Foo?.meta.json",
+					"src/@ser:ver",
+					"src/Foo.luau"
+				);
+
+				expect(
+					(await named("scan.portableName")).map(
+						({ resource }) => resource
+					)
+				).toEqual([abs("src/@ser:ver"), abs("src/Foo?.meta.json")]);
+			});
+
+			it("should leave a name that is fine alone", async () => {
+				await write("src/Save.server.luau", "src/My-Lib/Util.luau");
+
+				expect(await named("scan.portableName")).toEqual([]);
+			});
+		});
+
 		describe("server code that ships to clients", () => {
 			const shipped = async () =>
 				(await route())
@@ -503,6 +575,22 @@ describe("BuildValidator rules", () => {
 						'Move them out of the "ReplicatedFirst" route\'s files if they\'re server code, or keep them there with a "@ReplicatedFirst" marker file in their folder.',
 					].join("\n")
 				);
+			});
+
+			it("should carry the way out in the message of each file it lists", async () => {
+				await write("src/ReplicatedFirst/server/Datastore.luau");
+
+				const [warning] = await shipped();
+
+				expect(warning.related).toEqual([
+					{
+						resource: abs(
+							"src/ReplicatedFirst/server/Datastore.luau"
+						),
+						message:
+							'ships to clients as ReplicatedFirst/server/Datastore: move it out of the "ReplicatedFirst" route\'s files if it\'s server code, or keep it there with a "@ReplicatedFirst" marker file in its folder',
+					},
+				]);
 			});
 
 			it("should warn for a data file and a model in the folder", async () => {

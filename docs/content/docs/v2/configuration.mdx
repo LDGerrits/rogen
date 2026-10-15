@@ -55,6 +55,8 @@ A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file wi
 
 A command given no folder reads the `rogen.json` of the working directory, or of the nearest folder above it that has one. Give it a folder with a `rogen.json`, the path to one of that folder's project files, or the name of one of its [projects](#projects), to read another: `rogen build game`. All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
 
+A folder with a `default.project.json` and no `rogen.json` anywhere above it is read as a config whose output is itself: `check`, `build`, `list`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` run on a plain Rojo project, and Rogen writes nothing to the file. A `rogen.json` above wins, so a package folder inside a Rogen project is still part of it.
+
 ---
 
 ## Fields
@@ -119,6 +121,24 @@ This writes `default.project.json`, `dist.project.json` and `release.project.jso
 - A project leaves a mount out with `globIgnorePaths`, which replaces the list: `"DevPackages/**"` in `release` drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files). A key can't be removed, and `null` is an error anywhere in a `rogen.json`.
 - `projects` and `serveProject` belong to the whole config, and a project can't set them. `default` is the description itself and can't be a project name.
 - A project inherits `name`. Every project file carries a `name`, yours or the folder's, because Rojo can't open a project file without one. Only `default.project.json` may go without, as Rojo names it after its folder.
+
+**A test or subset project.** A project adds and replaces; it can't take a service or a node out of the inherited `tree`. To write a smaller project, keep the top-level `tree` to what every project needs, and give each project the rest: its own `sourcePaths`, its mounts under `tree`, and `globIgnorePaths` for the mounts and specs it leaves out.
+
+```json title="rogen.json"
+{
+	"tree": { "$className": "DataModel" },
+	"sourcePaths": ["src"],
+	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"projects": {
+		"test": {
+			"sourcePaths": ["src", "tests"],
+			"tree": { "ReplicatedStorage": { "TestEZ": { "$path": "Packages/TestEZ" } } }
+		}
+	}
+}
+```
+
+Rogen writes only `default.project.json` and the files its `projects` name. A `test.project.json` you wrote by hand stays as it is: `rogen build test.project.json` fails with "No project" until `test` is a key of `projects`, and `rogen init` lists such files as left alone. The other way holds too: when you delete a key from `projects`, Rogen does not delete the file it wrote, and Rojo still builds it. Delete the file with the entry.
 
 `rogen serve` serves the project `serveProject` names, `default` when it is not set, so a Darklua setup that serves `dist` never serves unprocessed code by accident. Every other command reads `default`. To use another, give its name or its file: `rogen serve release`, `rogen serve dist.project.json`. A bare name means a project of the config here, unless a folder of that name holds a `rogen.json` or a `default.project.json`: the folder wins, and Rogen says which project file to name instead. `rogen build` writes every project whichever you name, and `rogen list` shows each one's file and which is served.
 
@@ -188,7 +208,9 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 { "globIgnorePaths": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
-A glob that names a folder or file a `tree` `$path` mounts, or covers all of it with `/**` (`"DevPackages"`, `"DevPackages/**"`), leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. A glob that ignores only some of the files in a mount (`**/*.spec.luau`) leaves the mount and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+A glob that covers all of a folder a `tree` `$path` mounts with `/**` (`"DevPackages/**"`) leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. That is the one place Rogen reads `globIgnorePaths` differently from Rojo. A glob that only names the folder or file (`"DevPackages"`, `"**/DevPackages"`) ignores nothing of the mount, in Rojo too, and so does a glob that ignores only some of its files (`**/*.spec.luau`): the mount stays, and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+
+Rogen matches a glob the way Rojo does, so the two agree on what is ignored: `*` crosses folders (`*.tmp.luau` matches at any depth, and so does `src/*.luau`), and a glob that ends in `/` matches nothing. Rojo reads a glob that begins with `/` or `./` as matching nothing, so write the folder name first.
 
 ## Sync Rules
 

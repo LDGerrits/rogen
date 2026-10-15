@@ -30,11 +30,36 @@ export interface RunFix {
 	readonly run: { readonly command: string; readonly cwd: string };
 }
 
-/** What resolves a diagnostic: renaming a file or folder, or running a command in a directory. Paths are absolute. */
-export type DiagnosticFix = RenameFix | RunFix;
+export interface ReplaceFix {
+	readonly replace: {
+		readonly file: string;
+		readonly line: number;
+		readonly column: number;
+		readonly from: string;
+		readonly to: string;
+	};
+}
+
+/** What resolves a diagnostic: renaming a file or folder, replacing text in a file, or running a command in a directory. Paths are absolute. */
+export type DiagnosticFix = RenameFix | ReplaceFix | RunFix;
 
 export const isRenameFix = (fix: DiagnosticFix): fix is RenameFix =>
 	"rename" in fix;
+
+export const isReplaceFix = (fix: DiagnosticFix): fix is ReplaceFix =>
+	"replace" in fix;
+
+/** Replaces the JSON text that starts at `location` with `to`; none when the location has no position. */
+export function replaceFixes(
+	location: DiagnosticLocation,
+	from: string,
+	to: string
+): ReplaceFix[] {
+	const { resource, position } = location;
+	return position
+		? [{ replace: { file: resource, ...position, from, to } }]
+		: [];
+}
 
 export interface DiagnosticRelated {
 	readonly resource: string;
