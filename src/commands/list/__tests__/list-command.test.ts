@@ -454,7 +454,7 @@ describe("list command", () => {
 
 			await run({ json: true });
 
-			expect(entry("repo").diagnostics).toMatchObject([
+			expect(entry("repo")?.diagnostics).toMatchObject([
 				{
 					severity: "warning",
 					code: "output.differs",

@@ -98,7 +98,7 @@ stdout:
     "shapes": {
       "BuildEntry": "{config:string,file:string,projectFile:string|null,outcome:\"wrote\"|\"unchanged\"|\"notWritten\",blockedBy?:[string],diagnostics:[Diagnostic]}",
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
-      "Fix": "{rename:{from:string,to:string}}|{run:{command:string,cwd:string}}",
+      "Fix": "{rename:{from:string,to:string}}|{replace:{file:string,line:int,column:int,from:string,to:string}}|{run:{command:string,cwd:string}}",
       "RojoEntry": "{command:\"build\",outcome:\"built\"|\"failed\"|\"notRun\",project:string|null,output?:string,plugin?:string,messages:[{severity:\"error\"|\"warning\"|\"info\",text:string}],diagnostics?:[Diagnostic],error?:Error}",
       "Error": "{kind:\"usage\"|\"project\"|\"tool\"|\"io\"|\"cancelled\"|\"internal\",message:string,hint?:string}"
     }
@@ -114,7 +114,8 @@ stdout:
       rogen help [OPTIONS] [NAME]
   
   ARGS:
-      <NAME>    A command, or a diagnostic code such as route.strayAt.
+      <NAME>    A command, a diagnostic code such as route.strayAt, or 'codes' for the list of every
+                code.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
@@ -128,5 +129,6 @@ stdout:
   EXAMPLES:
       rogen help where
       rogen help route.strayAt
+      rogen help codes --json
       rogen help --json
       rogen help build --json

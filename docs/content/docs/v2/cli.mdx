@@ -329,7 +329,7 @@ When a server stops on its own, `serve` exits with the server's code. `--json` k
 
 ## Continuous integration
 
-Warnings exit 0 on a developer's machine, but some should stop a merge, such as `route.serverCodeShipped` (server code replicating to clients) or `tree.deadScript`. `rogen check` exits 1 on any diagnostic, warnings included, and writes nothing. Every warning has a fix that removes it (a rename, a marker such as `@Shared`, or a config edit; see [Diagnostics](/docs/v2/diagnostics)).
+Warnings exit 0 on a developer's machine, but some should stop a merge, such as `route.serverCodeShipped` (server code replicating to clients), `tree.deadScript`, or the ones that drop or misplace a file (`tree.instanceClash`, `route.folderTypo`, `scan.portableName`). They stay warnings so that a build still produces a project file while you fix them, and `rogen check` is the gate that fails on them. `rogen check` exits 1 on any diagnostic, warnings included, and writes nothing. Every warning has a fix that removes it (a rename, a marker such as `@Shared`, or a config edit; see [Diagnostics](/docs/v2/diagnostics)).
 
 ```bash
 # compile first when rogen.json has a syncPath, or output.nothingEmitted warns

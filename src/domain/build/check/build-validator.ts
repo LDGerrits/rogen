@@ -92,6 +92,8 @@ export class BuildValidator {
 			...this.deadScript(),
 			...this.reservedName(),
 			...this.instanceClash(),
+			...this.emptyName(),
+			...this.portableName(),
 			...this.runContextTarget(),
 			...this.nodeClash(),
 			...this.metaNotCopied(),
@@ -283,7 +285,10 @@ export class BuildValidator {
 			"folderTypo",
 			(count) =>
 				`${count} ${count > 1 ? "folders are" : "folder is"} one edit from a declared route key, so ${count > 1 ? "they are read as ordinary folders" : "it is read as an ordinary folder"}:`,
-			(_, { key }) => `did you mean "${key}"?`
+			(_, { key }) => `did you mean "${key}"?`,
+			[
+				"Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.",
+			]
 		);
 	}
 
@@ -294,7 +299,8 @@ export class BuildValidator {
 		hint: (
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
-		) => string
+		) => string,
+		tail: readonly string[] = []
 	): Diagnostic[] {
 		const noted = this.placement.readings.misspelt(kind);
 		if (noted.size === 0) return [];
@@ -310,7 +316,7 @@ export class BuildValidator {
 					({ resource, message }) => `  ${resource} (${message})`
 				),
 				items,
-				[],
+				tail,
 				renames(noted)
 			),
 		];
@@ -360,7 +366,7 @@ export class BuildValidator {
 		const governing = quoted(routeKeys);
 		const related = shipped.map(({ file }) => ({
 			resource: file.entry.source,
-			message: `ships to clients as ${instanceKey(file.instancePath)}`,
+			message: `ships to clients as ${instanceKey(file.instancePath)}: move it out of the "${file.route}" route's files if it's server code, or keep it there with a "@${file.route}" marker file in its folder`,
 		}));
 		const listed = shipped.map(
 			({ file }) =>
@@ -506,6 +512,30 @@ export class BuildValidator {
 				)
 			)
 		);
+	}
+
+	private emptyName(): Diagnostic[] {
+		return this.placement.files
+			.filter(({ instancePath }) => instancePath.at(-1) === "")
+			.map(({ entry }) =>
+				warningDiagnostic(
+					"scan.emptyName",
+					{ resource: entry.source },
+					"has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau."
+				)
+			);
+	}
+
+	private portableName(): Diagnostic[] {
+		return this.placement.roots
+			.flatMap(({ oddNames }) => oddNames)
+			.map(({ source, reason, leftOut }) =>
+				warningDiagnostic(
+					"scan.portableName",
+					{ resource: source },
+					`its name ${reason}. Rename it${leftOut ? " to put it in the game" : " so a checkout works on every system"}.`
+				)
+			);
 	}
 
 	private runContextTarget(): Diagnostic[] {

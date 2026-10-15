@@ -285,6 +285,7 @@ Warning. A folder is named one edit away from a declared route key, such as `Sev
 ```
 rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
   src/Inventory/Sever (did you mean "Server"?)
+Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
 ```
 
 Rename the folder to the key suggested, or, when the key in your config is the typo, fix it in `routes`. In `--json`, `fixes` holds the rename when exactly one key is closest. See [Routing Folders](/docs/v2/core-concepts/routing).
@@ -658,6 +659,26 @@ src/Missing - warning: this link points at nothing, or back at a directory that 
 ```
 
 Fix the link's target, or remove the link. See [Linked Directories](/docs/v2/core-concepts/project-layout#linked-directories).
+
+### `scan.emptyName` [#scan-emptyname]
+
+Warning. A script file is named only by its suffix, such as `.server.luau`, so the instance it becomes has an empty name. Rojo builds it the same way, and Studio and `require` cannot use it well.
+
+```
+src/.server.luau - warning: has no name once its suffix is taken off, so it becomes an instance with an empty name. Put a name before the suffix, as in Name.server.luau. (scan.emptyName)
+```
+
+Rename the file with a name before the suffix.
+
+### `scan.portableName` [#scan-portablename]
+
+Warning. A file or folder name that holds on this machine but fails on Windows or macOS, or that Rogen cannot read. A name fails when it has one of `<>:"|?*` or a control character, is a Windows device (`con`, `prn`, `aux`, `nul`, `com1` to `com9`, `lpt1` to `lpt9`, with any extension), ends in a space or a dot, or differs from a sibling only in letter case. Nothing is dropped, except for a name with a backslash: Rogen reads `\` as a folder separator, so it leaves that file out.
+
+```
+src/Bad:Name.luau - warning: its name has ":", which Windows file names cannot hold. Rename it so a checkout works on every system. (scan.portableName)
+```
+
+Rename the file or folder, and update what requires it. The check runs for each file and folder that becomes an instance, not for files Rogen ignores.
 
 ## Output
 

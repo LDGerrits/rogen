@@ -5,7 +5,7 @@ import { FileChangeType } from "../../../platform/fs/file-changes.js";
 import { FileType } from "../../../platform/fs/file-system-service.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { IndexReader } from "../../../platform/fs/index-service.js";
+import { IndexReader, Listing } from "../../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { ScannedRoot } from "../root-scanner.js";
 import {
@@ -55,6 +55,39 @@ describe("RootScanner", () => {
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
+		});
+
+		describe("a name with a backslash", () => {
+			it("should be left out and reported, though only a Linux file system can hold it", () => {
+				const index = new Listing(
+					new Map([
+						[
+							toPosix(abs("src")),
+							new Map([
+								["Fine.luau", FileType.File],
+								["a\\b.luau", FileType.File],
+							]),
+						],
+					])
+				);
+				const config = configOf({
+					sourcePaths: [abs("src")],
+					ignored: [],
+				});
+
+				const [root] = builderOf(fs, index)
+					.place(config)
+					.unwrap().roots;
+
+				expect(files(root)).toEqual(["script:Fine.luau"]);
+				expect(root.oddNames).toEqual([
+					{
+						source: `${toPosix(abs("src"))}/a\\b.luau`,
+						reason: expect.stringContaining("folder separator"),
+						leftOut: true,
+					},
+				]);
+			});
 		});
 
 		describe("the project file it writes", () => {

@@ -18,6 +18,7 @@ import { isConfigFileName } from "../config/config.js";
 import { RojoFile, RojoFileKind } from "../rojo/rojo.js";
 import { ScanLeftOut } from "./build.js";
 import { TreeMounts } from "./build-tree.js";
+import { PortableName } from "./portable-name.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
@@ -38,6 +39,14 @@ export interface UnclaimedMeta {
 	readonly hint?: string;
 }
 
+/** A file or folder whose name does not hold on every system; a backslash makes Rogen leave it out. */
+export interface OddName {
+	/** The absolute POSIX path, with the name as it is on disk. */
+	readonly source: string;
+	readonly reason: string;
+	readonly leftOut: boolean;
+}
+
 interface ScannedRootParts {
 	readonly sourcePath: string;
 	/** False for a source path the index doesn't hold, which contributes nothing. */
@@ -48,6 +57,7 @@ interface ScannedRootParts {
 	readonly metaFiles: readonly string[];
 	/** The paths the scan left out, by absolute POSIX path. */
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
+	readonly oddNames: readonly OddName[];
 }
 
 /** What a scan found under one source path, and the questions it answers about it. */
@@ -58,6 +68,7 @@ export class ScannedRoot implements ScannedRootParts {
 	readonly markers: readonly string[];
 	readonly metaFiles: readonly string[];
 	readonly leftOut: ReadonlyMap<string, ScanLeftOut>;
+	readonly oddNames: readonly OddName[];
 
 	constructor(
 		parts: ScannedRootParts,
@@ -71,6 +82,7 @@ export class ScannedRoot implements ScannedRootParts {
 			markers: this.markers,
 			metaFiles: this.metaFiles,
 			leftOut: this.leftOut,
+			oddNames: this.oddNames,
 		} = parts);
 	}
 
@@ -87,6 +99,7 @@ export class ScannedRoot implements ScannedRootParts {
 				markers: [],
 				metaFiles: [],
 				leftOut: new Map(),
+				oddNames: [],
 			},
 			index,
 			fileAt
@@ -193,6 +206,7 @@ interface Walk {
 	readonly markers: string[];
 	readonly metaFiles: string[];
 	readonly leftOut: Map<string, ScanLeftOut>;
+	readonly oddNames: OddName[];
 }
 
 /** Walks source paths in the index, leaving out what `globIgnorePaths` matches and what the tree mounts. */
@@ -211,6 +225,7 @@ export class RootScanner {
 			entries: [],
 			markers: [],
 			metaFiles: [],
+			oddNames: [],
 			leftOut: new Map(
 				this.mounts
 					.inside(sourcePath)
@@ -233,6 +248,9 @@ export class RootScanner {
 				markers: walk.markers.sort(),
 				metaFiles: walk.metaFiles.sort(),
 				leftOut: walk.leftOut,
+				oddNames: walk.oddNames.sort((a, b) =>
+					compareStrings(a.source, b.source)
+				),
 			},
 			this.index,
 			this.fileAt
@@ -297,12 +315,25 @@ export class RootScanner {
 
 		const kept = this.keptEntries(walk, dir, listing);
 
+		const odd = (name: string, reason: string, leftOut = false) =>
+			walk.oddNames.push({
+				source: `${toPosix(dir)}/${name}`,
+				reason,
+				leftOut,
+			});
+		const instanceNames: string[] = [];
+
 		const subdirs: string[] = [];
 		for (const [name, type] of kept) {
-			if (type === FileType.SymbolicLink) {
+			if (name.includes("\\")) {
+				odd(name, PortableName.problemWith(name, name) ?? "", true);
+			} else if (type === FileType.SymbolicLink) {
 				walk.leftOut.set(joinPosix(dir, name), { status: "skipped" });
 			} else if (isDirectoryType(type)) {
 				subdirs.push(path.join(dir, name));
+				instanceNames.push(name);
+				const problem = PortableName.problemWith(name, name);
+				if (problem) odd(name, problem);
 			} else {
 				const file = this.fileAt(joinPosix(dir, name));
 				const lowercased = file.lowercasedExtension;
@@ -319,6 +350,12 @@ export class RootScanner {
 				} else if (file.isMeta) {
 					walk.metaFiles.push(relativeTo(name));
 				} else if (file.kind) {
+					const problem = PortableName.problemWith(
+						name,
+						stemOf(name)
+					);
+					if (problem) odd(name, problem);
+					instanceNames.push(name);
 					walk.entries.push({
 						kind: file.kind,
 						file,
@@ -331,6 +368,17 @@ export class RootScanner {
 				}
 			}
 		}
+
+		const byLowercase = groupBy(instanceNames, (name) =>
+			name.toLowerCase()
+		);
+		for (const names of byLowercase.values())
+			if (names.length > 1)
+				for (const name of names)
+					odd(
+						name,
+						`differs from ${names.filter((other) => other !== name).join(", ")} only in letter case, so they cannot sit in one folder on Windows or macOS`
+					);
 
 		for (const subdir of subdirs) this.visit(walk, subdir);
 		return true;
