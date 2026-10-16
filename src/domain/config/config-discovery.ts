@@ -11,10 +11,10 @@ import {
 	CONFIG_FILE_NAMES,
 	DEFAULT_PROJECT,
 	DEFAULT_PROJECT_FILES,
+	isProjectFileConfig,
 	PROJECT_NAME,
 	isConfigFileName,
 } from "./config.js";
-import { isProjectFileName } from "../rojo/rojo-project.js";
 import { EnclosingConfigs, NamedProjects } from "./config-service.js";
 import { PlaceFinder } from "./place-finder.js";
 
@@ -247,7 +247,7 @@ export class ConfigDiscovery {
 		const base = path.basename(target);
 		if (await this.fileSystemService.isDirectory(target))
 			return this.folderRef(target, ref, homeConfig ? inHome : undefined);
-		if (isProjectFileName(base))
+		if (isProjectFileConfig(target))
 			return this.projectFileRef(target, base, ref);
 		if (!(await this.fileSystemService.exists(target))) {
 			if (isBareName(ref) && homeConfig) return ok(inHome(ref));

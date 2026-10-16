@@ -15,16 +15,16 @@ import {
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
-	isProjectFileName,
 } from "../rojo/rojo-project.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import {
-	DEFAULT_PROJECT_FILES,
 	DEFAULT_SOURCE_PATH,
 	PER_PLACE_KEYS,
 	fieldOf,
+	isDefaultProjectFile,
+	isProjectFileConfig,
 	sourcePathOverlap,
 } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
@@ -181,8 +181,8 @@ export class ConfigValidator {
 		const file = path.basename(this.config.file);
 		if (
 			project.name !== undefined ||
-			!isProjectFileName(file) ||
-			DEFAULT_PROJECT_FILES.includes(file)
+			!isProjectFileConfig(this.config.file) ||
+			isDefaultProjectFile(this.config.file)
 		)
 			return;
 		this.problems.error(
