@@ -42,10 +42,12 @@ describe("domain/config/config", () => {
 			}
 		);
 
-		it("should not accept a file of another name", () => {
-			expect(isDefaultProjectFile("/repo/lobby.project.json")).toBe(
-				false
-			);
+		it.each([
+			"/repo/lobby.project.json",
+			"/repo/xdefault.project.json",
+			"/default.project.json/lobby.project.json",
+		])("should not accept %s", (file) => {
+			expect(isDefaultProjectFile(file)).toBe(false);
 		});
 	});
 
