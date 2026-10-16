@@ -164,14 +164,23 @@ class MirrorWalk {
 		this.folders.push(folder);
 	}
 
-	/** Moves the children of `node` that the build made into the mirror folder `folder`, and points every other child at a copy in the mirror, so Rojo writes nothing outside it; whether any moved. With no `folder`, every child stays a node. */
+	/** Moves the children of `node` that the build made into the mirror folder `folder`, and points every other child at a copy in the mirror, so Rojo writes nothing outside it; whether any moved. With no `folder`, every child stays a node. A `node` that already reads `folder` by its `$path` is `mounted`. */
 	async children(
 		node: RojoNode,
 		instancePath: readonly string[],
-		folder: string | undefined
+		folder: string | undefined,
+		mounted = false
 	): Promise<boolean> {
 		let moved = false;
-		for (const [name, child] of childrenOf(node)) {
+		const children = childrenOf(node);
+		/** A node kept inside the folder its parent reads would be read twice, so it gets a folder of its own. */
+		const mounts =
+			folder !== undefined &&
+			(mounted ||
+				children.some(([name, child]) =>
+					this.movable(name, child, instancePath)
+				));
+		for (const [name, child] of children) {
 			const here = [...instancePath, name];
 			const at =
 				folder !== undefined && SAFE_NAME.test(name)
@@ -187,18 +196,44 @@ class MirrorWalk {
 					moved = true;
 					continue;
 				}
-				if (isPlainFolder(child) && instancePath.length > 0) {
+				if (instancePath.length > 0 && this.madeWhole(child, here)) {
 					await this.children(child, here, at);
 					this.addFolder(at);
-					if (childrenOf(child).length === 0) delete node[name];
-					else this.mount(child, at);
+					delete node[name];
 					moved = true;
 					continue;
 				}
 			}
-			await this.keep(child, here, at);
+			await this.keep(child, here, mounts ? undefined : at);
 		}
 		return moved;
+	}
+
+	/** Whether `children` moves the child `name` of the node at `instancePath` into the folder it reads. */
+	private movable(
+		name: string,
+		child: RojoNode,
+		instancePath: readonly string[]
+	): boolean {
+		const here = [...instancePath, name];
+		return (
+			SAFE_NAME.test(name) &&
+			(this.madeFrom(child, here) !== undefined ||
+				(instancePath.length > 0 && this.madeWhole(child, here)))
+		);
+	}
+
+	/** Whether `node` is a plain folder whose every child the build made, so its folder can lie inside the one of its parent. */
+	private madeWhole(
+		node: RojoNode,
+		instancePath: readonly string[]
+	): boolean {
+		return (
+			isPlainFolder(node) &&
+			childrenOf(node).every(([name, child]) =>
+				this.movable(name, child, instancePath)
+			)
+		);
 	}
 
 	/** A node the project file keeps: what it reads from disk is copied into the mirror and its `$path` points there. */
@@ -221,7 +256,7 @@ class MirrorWalk {
 			const own = at ?? this.spare();
 			this.entries.push({ mirror: own, target, kind: "folder" });
 			this.repoint(node, own, optional);
-			await this.children(node, instancePath, own);
+			await this.children(node, instancePath, own, true);
 			return;
 		}
 		const own = this.spare();

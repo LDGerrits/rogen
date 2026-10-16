@@ -9,11 +9,48 @@ import {
 	configLabel,
 	fieldOf,
 	isConfigFileName,
+	isDefaultProjectFile,
+	isProjectFileConfig,
 	sourcePathOverlap,
 	schemaUrlFor,
 } from "../config.js";
 
 describe("domain/config/config", () => {
+	describe("isProjectFileConfig", () => {
+		it.each([
+			"/repo/default.project.json",
+			"/repo/default.project.jsonc",
+			"/repo/game/lobby.project.json",
+		])("should take %s for a Rojo project file", (file) => {
+			expect(isProjectFileConfig(file)).toBe(true);
+		});
+
+		it.each([
+			"/repo/rogen.json",
+			"/repo/rogen.jsonc",
+			"/repo/project.json",
+		])("should not take %s for one", (file) => {
+			expect(isProjectFileConfig(file)).toBe(false);
+		});
+	});
+
+	describe("isDefaultProjectFile", () => {
+		it.each(["/repo/default.project.json", "/repo/default.project.jsonc"])(
+			"should accept %s, which Rojo reads without a name",
+			(file) => {
+				expect(isDefaultProjectFile(file)).toBe(true);
+			}
+		);
+
+		it.each([
+			"/repo/lobby.project.json",
+			"/repo/xdefault.project.json",
+			"/default.project.json/lobby.project.json",
+		])("should not accept %s", (file) => {
+			expect(isDefaultProjectFile(file)).toBe(false);
+		});
+	});
+
 	describe("isConfigFileName", () => {
 		it.each(["rogen.json", "rogen.jsonc"])("should accept %s", (name) => {
 			expect(isConfigFileName(name)).toBe(true);

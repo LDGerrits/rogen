@@ -1,0 +1,37 @@
+$ rogen build test.project.json
+exit 0
+stdout:
+  rogen build · plain
+  test.project.json · unchanged
+  Built 1 config.
+
+$ rogen list test.project.json
+exit 0
+stdout:
+  rogen list
+  test.project.json
+    source paths: (none)
+    routes:
+    sync path: (none)
+    project file: test.project.json
+    rojo: rojo serve test.project.json
+  1 config.
+
+$ rogen sourcemap test.project.json
+exit 0
+stdout:
+  {"name":"plain","className":"DataModel","filePaths":["test.project.json"],"children":[{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Folder","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}]}
+
+$ rogen fmt-project test.project.json
+exit 0
+stdout:
+  formatted test.project.json
+
+written:
+  test.project.json
+
+$ rojo sourcemap test.project.json
+plain: DataModel
+  ServerScriptService: ServerScriptService
+    Main: Folder
+      Main: Script  <- src/Main.server.luau

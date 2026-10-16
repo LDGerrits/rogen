@@ -8,7 +8,11 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
-import { DEFAULT_PROJECT, DEFAULT_SOURCE_PATH } from "./config.js";
+import {
+	DEFAULT_PROJECT,
+	DEFAULT_SOURCE_PATH,
+	isProjectFileConfig,
+} from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 interface ResolvedConfigFields {
@@ -115,7 +119,7 @@ export class ResolvedConfig {
 	}
 
 	get projectFile(): string {
-		return path.join(this.projectDir, projectFileName(this.stem));
+		return this.fileOf(this.stem);
 	}
 
 	/** Whether the config is a Rojo project file Rogen was not given a config for: it is its own output and is never written. */
@@ -124,9 +128,14 @@ export class ResolvedConfig {
 	}
 
 	get projectFiles(): readonly string[] {
-		return this.projectStems.map((stem) =>
-			path.join(this.projectDir, projectFileName(stem))
-		);
+		return this.projectStems.map((stem) => this.fileOf(stem));
+	}
+
+	/** The file of a project; the description of a config that is a Rojo project file is that file, whatever its name. */
+	private fileOf(stem: string): string {
+		return stem === DEFAULT_PROJECT && isProjectFileConfig(this.file)
+			? this.file
+			: path.join(this.projectDir, projectFileName(stem));
 	}
 
 	/** The folders a build lists to find files nothing mounts: its source paths, else the default folder. */

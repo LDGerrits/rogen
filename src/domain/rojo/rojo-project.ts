@@ -91,6 +91,11 @@ const PROJECT_SUFFIX = ".project.json";
 export const projectFileName = (stem: string): string =>
 	`${stem}${PROJECT_SUFFIX}`;
 
+/** Whether Rojo reads the file as a project file: `.project.json`, or `.project.jsonc` since it allows comments. */
+export const isProjectFileName = (fileName: string): boolean =>
+	fileName.endsWith(PROJECT_SUFFIX) ||
+	fileName.endsWith(`${PROJECT_SUFFIX}c`);
+
 export const stemOfProjectFile = (fileName: string): string | undefined =>
 	fileName.endsWith(PROJECT_SUFFIX)
 		? fileName.slice(0, -PROJECT_SUFFIX.length)

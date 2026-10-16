@@ -10,14 +10,13 @@ import {
 import {
 	CONFIG_FILE_NAMES,
 	DEFAULT_PROJECT,
-	DEFAULT_PROJECT_FILE,
+	DEFAULT_PROJECT_FILES,
+	isProjectFileConfig,
 	PROJECT_NAME,
 	isConfigFileName,
 } from "./config.js";
 import { EnclosingConfigs, NamedProjects } from "./config-service.js";
 import { PlaceFinder } from "./place-finder.js";
-
-const PROJECT_SUFFIXES = [".project.json", ".project.jsonc"];
 
 interface DiscoveredConfigs {
 	/** The working directory, or the nearest folder above it with a config. */
@@ -47,6 +46,12 @@ interface PlaceAround {
 }
 
 const isBareName = (ref: string): boolean => PROJECT_NAME.test(ref);
+
+const notFound = (ref: string): UsageError =>
+	new UsageError(
+		`"${ref}" not found.`,
+		"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
+	);
 
 /** Finds which config files a command reads: in the working directory, else in the nearest folder above that has one. */
 export class ConfigDiscovery {
@@ -242,16 +247,11 @@ export class ConfigDiscovery {
 		const base = path.basename(target);
 		if (await this.fileSystemService.isDirectory(target))
 			return this.folderRef(target, ref, homeConfig ? inHome : undefined);
-		if (PROJECT_SUFFIXES.some((suffix) => base.endsWith(suffix)))
+		if (isProjectFileConfig(target))
 			return this.projectFileRef(target, base, ref);
 		if (!(await this.fileSystemService.exists(target))) {
 			if (isBareName(ref) && homeConfig) return ok(inHome(ref));
-			return err(
-				new UsageError(
-					`"${ref}" not found.`,
-					"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
-				)
-			);
+			return err(notFound(ref));
 		}
 		return this.configFileRef(target, base, ref);
 	}
@@ -271,10 +271,7 @@ export class ConfigDiscovery {
 		if (listing) return ok({ file: listing, place: target, ...folder });
 		if (config.isOk()) return ok({ file: config.value, ...folder });
 		const countsAsFolder =
-			!isBareName(ref) ||
-			(await this.fileSystemService.exists(
-				path.join(target, DEFAULT_PROJECT_FILE)
-			));
+			!isBareName(ref) || (await this.adoptable(target)) !== undefined;
 		return projectHere && !countsAsFolder
 			? ok(projectHere(ref))
 			: err(config.error);
@@ -295,9 +292,12 @@ export class ConfigDiscovery {
 			`"${ref}"`,
 			stem === DEFAULT_PROJECT
 		);
-		return config.isErr()
-			? err(config.error)
-			: ok({ file: config.value, ...project });
+		if (config.isOk()) return ok({ file: config.value, ...project });
+		// A Rojo project file of any name, in a folder with no config, is read as it is, as `rojo build test.project.json` reads it.
+		if ((await this.list(folder)).length > 0) return err(config.error);
+		return (await this.fileSystemService.isFile(target))
+			? ok({ file: target })
+			: err(notFound(ref));
 	}
 
 	private async configFileRef(
@@ -387,8 +387,11 @@ export class ConfigDiscovery {
 
 	/** The Rojo project file of a folder with no config: Rogen reads it as a config whose output is itself, and writes nothing. */
 	async adoptable(directory: string): Promise<string | undefined> {
-		const file = path.join(directory, DEFAULT_PROJECT_FILE);
-		return (await this.fileSystemService.isFile(file)) ? file : undefined;
+		for (const name of DEFAULT_PROJECT_FILES) {
+			const file = path.join(directory, name);
+			if (await this.fileSystemService.isFile(file)) return file;
+		}
+		return undefined;
 	}
 
 	/** The nearest folder, the working directory included, with a Rojo project file; looked for only when no folder above holds a config. */
@@ -397,8 +400,9 @@ export class ConfigDiscovery {
 	): Promise<EnclosingConfigs | undefined> {
 		let directory = from;
 		for (;;) {
-			if (await this.adoptable(directory))
-				return { directory, fileNames: [DEFAULT_PROJECT_FILE] };
+			const adopted = await this.adoptable(directory);
+			if (adopted)
+				return { directory, fileNames: [path.basename(adopted)] };
 			const parent = path.dirname(directory);
 			if (parent === directory) return undefined;
 			directory = parent;

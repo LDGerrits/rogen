@@ -55,7 +55,7 @@ A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file wi
 
 A command given no folder reads the `rogen.json` of the working directory, or of the nearest folder above it that has one. Give it a folder with a `rogen.json`, the path to one of that folder's project files, or the name of one of its [projects](#projects), to read another: `rogen build game`. All paths in a config are relative to the config's folder, while paths on the command line are relative to the working directory.
 
-A folder with a `default.project.json` and no `rogen.json` anywhere above it is read as a config whose output is itself: `check`, `build`, `list`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` run on a plain Rojo project, and Rogen writes nothing to the file. A `rogen.json` above wins, so a package folder inside a Rogen project is still part of it.
+A folder with a `default.project.json` and no `rogen.json` anywhere above it is read as a config whose output is itself: `check`, `build`, `list`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` run on a plain Rojo project, and Rogen writes nothing to the file. A project file of another name, such as `rogen build test.project.json`, is read the same way when its folder has no `rogen.json`, and so is a `.project.jsonc`, which Rojo reads too. A `rogen.json` above wins, so a package folder inside a Rogen project is still part of it.
 
 ---
 

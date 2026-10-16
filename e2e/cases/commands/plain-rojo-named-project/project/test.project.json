@@ -1,0 +1,7 @@
+{
+	"name": "plain",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": { "Main": { "$path": "src" } }
+	}
+}

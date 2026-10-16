@@ -74,12 +74,68 @@ describe("ConfigDiscovery", () => {
 			expect(found.files).toEqual(["/repo/default.project.json"]);
 		});
 
-		it("should not take the default project file for a project file of another name", async () => {
+		it("should adopt a Rojo project file of another name that is named", async () => {
+			await fs.writeFile("/repo/test.project.json", "{}");
+
+			const found = (
+				await discovery.discover(["test.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/test.project.json"]);
+			expect(found.projects.size).toBe(0);
+		});
+
+		it("should read a project file of another name as a project of the config beside it", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+			await fs.writeFile("/repo/test.project.json", "{}");
+
+			const found = (
+				await discovery.discover(["test.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/rogen.json"]);
+			expect(found.projects.get("/repo/rogen.json")?.names).toEqual([
+				"test",
+			]);
+		});
+
+		it("should adopt a Rojo project file with comments that is named", async () => {
+			await fs.writeFile("/repo/test.project.jsonc", "{}");
+
+			const found = (
+				await discovery.discover(["test.project.jsonc"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/test.project.jsonc"]);
+		});
+
+		it("should adopt default.project.jsonc when nothing else is there", async () => {
+			await fs.writeFile("/repo/default.project.jsonc", "{}");
+
+			const found = (await discovery.discover([])).unwrap();
+
+			expect(found.files).toEqual(["/repo/default.project.jsonc"]);
+			expect(found.homeConfig).toBe("/repo/default.project.jsonc");
+		});
+
+		it("should not adopt a named project file beside two configs", async () => {
+			await fs.writeFile("/repo/rogen.json", "{}");
+			await fs.writeFile("/repo/rogen.jsonc", "{}");
+			await fs.writeFile("/repo/test.project.json", "{}");
+
+			const result = await discovery.discover(["test.project.json"]);
+
+			expect(errorOf(result).message).toContain("holds both");
+		});
+
+		it("should not adopt a project file of another name that is not there", async () => {
 			await fs.writeFile("/repo/default.project.json", "{}");
 
 			const result = await discovery.discover(["other.project.json"]);
 
-			expect(errorOf(result).message).toContain("holds no rogen.json");
+			expect(errorOf(result).message).toContain(
+				'"other.project.json" not found'
+			);
 		});
 
 		it("should prefer a config above to a Rojo project file here", async () => {

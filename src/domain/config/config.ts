@@ -1,7 +1,11 @@
 import path from "path";
 import { isInside, samePath } from "../../base/path.js";
 import { ProjectText } from "../rojo/project-text.js";
-import { RojoNode, projectFileName } from "../rojo/rojo-project.js";
+import {
+	RojoNode,
+	isProjectFileName,
+	projectFileName,
+} from "../rojo/rojo-project.js";
 
 /** What a project of a `rogen.json` may change: any key of the description. */
 export type ProjectChanges = Partial<
@@ -73,6 +77,20 @@ export const DEFAULT_SOURCE_PATH = "src";
 export const DEFAULT_PROJECT = "default";
 
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
+
+/** The names Rojo looks for in a folder, in its order. */
+export const DEFAULT_PROJECT_FILES = [
+	DEFAULT_PROJECT_FILE,
+	`${DEFAULT_PROJECT_FILE}c`,
+];
+
+/** Whether a file is named as a Rojo project file is. A config that is one was given no `rogen.json`, and is its own output. */
+export const isProjectFileConfig = (file: string): boolean =>
+	isProjectFileName(path.basename(file));
+
+/** Whether Rojo reads this project file without a `name`, as it names the project after the folder. */
+export const isDefaultProjectFile = (file: string): boolean =>
+	DEFAULT_PROJECT_FILES.includes(path.basename(file));
 
 export const ROOT_ONLY_KEYS: readonly string[] = [
 	"projects",

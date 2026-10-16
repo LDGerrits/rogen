@@ -1,0 +1,1 @@
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "--dry-run"], ["syncback", "-i", "place.rbxl", "-y", "--list"]], "show": ["src/Net/init.luau"]}
