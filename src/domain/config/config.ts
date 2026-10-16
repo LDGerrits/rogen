@@ -84,7 +84,7 @@ export const DEFAULT_PROJECT_FILES = [
 	`${DEFAULT_PROJECT_FILE}c`,
 ];
 
-/** Whether a config file is a Rojo project file Rogen was given no `rogen.json` for, which is its own output. */
+/** Whether a file is named as a Rojo project file is. A config that is one was given no `rogen.json`, and is its own output. */
 export const isProjectFileConfig = (file: string): boolean =>
 	isProjectFileName(path.basename(file));
 
