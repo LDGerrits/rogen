@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError, failureReason } from "../../base/errors.js";
-import { isGlobsetMatch } from "../../base/glob.js";
+import { ignoringGlob } from "../../base/glob.js";
 import { toNative, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -117,10 +117,10 @@ interface Prepared {
 	readonly file: string;
 	readonly staging: string;
 	readonly root: string;
-	/** Globs relative to `dir` that nothing syncback writes may match: `globIgnorePaths` and syncback's `ignorePaths`. */
-	readonly ignored: readonly string[];
-	/** The `globIgnorePaths` alone: what Rojo never read, which the mirror leaves out. */
+	/** The `globIgnorePaths`, relative to `dir`: what Rojo never read, which the mirror leaves out and syncback never writes. */
 	readonly unread: readonly string[];
+	/** Syncback's `ignorePaths`, relative to `dir`, which nothing syncback writes may match. */
+	readonly unwritten: readonly string[];
 }
 
 /** A file copied into the mirror, and the path of the project it is. */
@@ -356,24 +356,28 @@ export class CoreSyncbackService implements SyncbackService {
 			file: path.join(dir, TEMPORARY_PROJECT),
 			staging: path.join(dir, SYNCBACK_FILES.staging),
 			root: path.join(dir, MIRROR),
-			ignored: [
-				...(written.globIgnorePaths ?? []),
-				...CoreSyncbackService.ignorePathsOf(written),
-			],
 			unread: written.globIgnorePaths ?? [],
+			unwritten: CoreSyncbackService.ignorePathsOf(written),
 		});
 	}
 
-	/** The `ignorePaths` of the written file's `syncbackRules`, which Rogen applies itself, as Rojo would match them against the mirror's paths. */
+	/** The `ignorePaths` of the written file's `syncbackRules`, which Rogen applies itself, as Rojo would match them against the mirror's paths: unless `createIgnoreDirPaths` is false, a glob ending in `/**` also names its folder. */
 	private static ignorePathsOf(written: RojoProjectFile): string[] {
 		const rules = (written as { syncbackRules?: unknown }).syncbackRules;
-		const paths =
+		const { ignorePaths, createIgnoreDirPaths } =
 			typeof rules === "object" && rules !== null
-				? (rules as { ignorePaths?: unknown }).ignorePaths
-				: undefined;
-		return Array.isArray(paths)
-			? paths.filter((glob): glob is string => typeof glob === "string")
-			: [];
+				? (rules as {
+						ignorePaths?: unknown;
+						createIgnoreDirPaths?: unknown;
+					})
+				: {};
+		return (Array.isArray(ignorePaths) ? ignorePaths : [])
+			.filter((glob): glob is string => typeof glob === "string")
+			.flatMap((glob) =>
+				createIgnoreDirPaths !== false && glob.endsWith("/**")
+					? [glob, glob.slice(0, -3)]
+					: [glob]
+			);
 	}
 
 	/** Copies the project's files into the mirror and writes the project file that mounts it; what was copied, as each file's mirror path and project path. */
@@ -445,7 +449,7 @@ export class CoreSyncbackService implements SyncbackService {
 			const from = path.posix.join(target, name);
 			const to = `${mirror}/${name}`;
 			if (
-				this.isIgnored(prepared, from, prepared.unread) ||
+				this.isUnread(prepared, from) ||
 				isSyncbackFileName(name) ||
 				name === ".git"
 			)
@@ -478,13 +482,18 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 	}
 
-	private isIgnored(
-		{ dir, ignored }: Prepared,
-		target: string,
-		globs = ignored
-	): boolean {
+	/** Whether syncback may not write `target`: Rojo never read it, or syncback's `ignorePaths` name it. */
+	private isIgnored(prepared: Prepared, target: string): boolean {
+		const relative = path.posix.relative(toPosix(prepared.dir), target);
+		return (
+			this.isUnread(prepared, target) ||
+			ignoringGlob(relative, prepared.unwritten) !== undefined
+		);
+	}
+
+	private isUnread({ dir, unread }: Prepared, target: string): boolean {
 		const relative = path.posix.relative(toPosix(dir), target);
-		return globs.some((glob) => isGlobsetMatch(relative, glob));
+		return ignoringGlob(relative, unread) !== undefined;
 	}
 
 	/** Compares the mirror with what was copied into it, and turns each difference into a change of the project: an edit or removal of the file it was copied from, and a new instance placed by routing. */

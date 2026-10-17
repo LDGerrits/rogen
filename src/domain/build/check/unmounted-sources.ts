@@ -1,5 +1,5 @@
 import path from "path";
-import { isGlobsetMatch } from "../../../base/glob.js";
+import { ignoringGlob } from "../../../base/glob.js";
 import { contains, joinPosix, toPosix } from "../../../base/path.js";
 import { plural } from "../../../base/strings.js";
 import {
@@ -37,7 +37,7 @@ export class UnmountedSources {
 				RojoFile.at(toPosix(file), this.config.syncRules).kind !==
 					undefined &&
 				!mounts.some((mount) => contains(mount, file)) &&
-				!this.config.ignored.some((glob) => isGlobsetMatch(file, glob))
+				ignoringGlob(file, this.config.ignored) === undefined
 		);
 		return loose.length === 0
 			? []

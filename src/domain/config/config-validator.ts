@@ -1,5 +1,9 @@
 import path from "path";
-import { escapedGlobPrefix, ignoresAllOf } from "../../base/glob.js";
+import {
+	escapedGlobPrefix,
+	ignoringAllOf,
+	withGlobBody,
+} from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -99,12 +103,16 @@ export class ConfigValidator {
 		const routed = Object.keys(this.routes).length > 0;
 		const project = this.readProject();
 		const ignored = project.globIgnorePaths.map((glob) =>
-			path.posix.join(escapedGlobPrefix(toPosix(this.dir)), glob)
-		);
-		project.removeNodes((target) =>
-			ignored.some((glob) =>
-				ignoresAllOf(glob, toPosix(path.resolve(this.dir, target)))
+			withGlobBody(glob, (body) =>
+				path.posix.join(escapedGlobPrefix(toPosix(this.dir)), body)
 			)
+		);
+		project.removeNodes(
+			(target) =>
+				ignoringAllOf(
+					toPosix(path.resolve(this.dir, target)),
+					ignored
+				) !== undefined
 		);
 		this.checkSyncRules(project);
 		this.checkName(project);

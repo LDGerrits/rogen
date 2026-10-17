@@ -77,6 +77,30 @@ describe("RojoCompatibility", () => {
 		);
 	});
 
+	it("should refuse a Rojo before 7.7.0 for a file with a ! glob", async () => {
+		await written({
+			name: "game",
+			globIgnorePaths: ["**/*.spec.luau", "!**/Keep.spec.luau"],
+		});
+
+		const [problem] = await problems("7.6.1", false);
+
+		expect(problem.code).toBe("rojo.negationUnsupported");
+		expect(problem.resource).toBe("/repo/default.project.json");
+		expect(problem.message).toBe(
+			'Rojo 7.6.1 reads no "!" glob before 7.7.0, so it ignores what this file\'s 1 re-includes: "!**/Keep.spec.luau". Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH.'
+		);
+	});
+
+	it.each(["7.7.0", "7.7.1"])(
+		"should accept a ! glob from Rojo %s",
+		async (version) => {
+			await written({ name: "game", globIgnorePaths: ["!a"] });
+
+			expect(await problems(version, false)).toEqual([]);
+		}
+	);
+
 	it("should leave a Rojo before 7.5.0 alone for a file without sync rules", async () => {
 		await written({ name: "game", globIgnorePaths: ["**/*.spec.luau"] });
 

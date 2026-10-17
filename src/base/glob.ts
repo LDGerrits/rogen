@@ -27,9 +27,59 @@ export function isMatch(path: string, glob: GlobPattern): boolean {
 	});
 }
 
+/** `glob` without the `!` that makes it re-include, and whether it had one; `\\!` is a literal `!`. */
+export function negationOf(glob: GlobPattern): {
+	readonly negated: boolean;
+	readonly body: GlobPattern;
+} {
+	if (glob.startsWith("!")) return { negated: true, body: glob.slice(1) };
+	return {
+		negated: false,
+		body: glob.startsWith("\\!") ? glob.slice(1) : glob,
+	};
+}
+
+/** `glob` with `change` applied to its pattern, keeping a leading `!`. */
+export function withGlobBody(
+	glob: GlobPattern,
+	change: (body: GlobPattern) => GlobPattern
+): GlobPattern {
+	const { negated, body } = negationOf(glob);
+	return negated ? `!${change(body)}` : change(glob);
+}
+
+/** The glob of `globs` that ignores `path`, as Rojo reads `globIgnorePaths`: the last one that matches decides, and a `!` one re-includes. */
+export function ignoringGlob(
+	path: string,
+	globs: readonly GlobPattern[]
+): GlobPattern | undefined {
+	let ignoring: GlobPattern | undefined;
+	for (const glob of globs) {
+		const { negated, body } = negationOf(glob);
+		if (isGlobsetMatch(path, body)) ignoring = negated ? undefined : glob;
+	}
+	return ignoring;
+}
+
 /** Whether `glob` ignores everything in the folder `path`: it ends in `/**` and matches the folder before that. Rojo ignores nothing of a mounted folder for a glob that only names it, so naming it is not enough. */
 export function ignoresAllOf(glob: GlobPattern, path: string): boolean {
-	return glob.endsWith("/**") && isGlobsetMatch(path, glob.slice(0, -3));
+	return (
+		!negationOf(glob).negated &&
+		glob.endsWith("/**") &&
+		isGlobsetMatch(path, glob.slice(0, -3))
+	);
+}
+
+/** The glob of `globs` that ignores everything in the folder `path`, when no `!` glob after it could re-include something. */
+export function ignoringAllOf(
+	path: string,
+	globs: readonly GlobPattern[]
+): GlobPattern | undefined {
+	let ignoring: GlobPattern | undefined;
+	for (const glob of globs)
+		if (ignoresAllOf(glob, path)) ignoring = glob;
+		else if (negationOf(glob).negated) ignoring = undefined;
+	return ignoring;
 }
 
 const regExpCache = new Map<string, RegExp>();
@@ -64,7 +114,7 @@ function globsetSource(glob: string): string {
 				glob[index - 1] === "/" &&
 				end === glob.length - 1
 			) {
-				source = `${source.slice(0, -1)}(?:/.*)?`;
+				source = `${source.slice(0, -1)}/.*`;
 			} else source += ".*";
 			index = end;
 		} else if (char === "?") source += ".";

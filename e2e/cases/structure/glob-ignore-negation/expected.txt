@@ -1,0 +1,70 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src
+exit 0
+stdout:
+  src/Combat/Shared/Hit.luau -> ReplicatedStorage/Combat/Shared/Hit · route * (fallback)
+  src/Combat/Shared/Hit.spec.luau -> ignored · matches **/*.spec.luau
+  src/Combat/Shared/Keep.spec.luau -> ReplicatedStorage/Combat/Shared/Keep.spec · route * (fallback)
+  src/Vendor/Drop.luau -> ignored · matches src/Vendor/**
+  src/Vendor/Keep.luau -> ReplicatedStorage/Vendor/Keep · route * (fallback)
+
+written:
+  default.project.json
+
+default.project.json:
+{
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Combat": {
+        "$className": "Folder",
+        "Shared": {
+          "$className": "Folder",
+          "Hit": {
+            "$path": {
+              "optional": "src/Combat/Shared/Hit.luau"
+            }
+          },
+          "Keep.spec": {
+            "$path": {
+              "optional": "src/Combat/Shared/Keep.spec.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        },
+        "$ignoreUnknownInstances": false
+      },
+      "Vendor": {
+        "$className": "Folder",
+        "Keep": {
+          "$path": {
+            "optional": "src/Vendor/Keep.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  },
+  "globIgnorePaths": [
+    "**/*.spec.luau",
+    "!**/Keep.spec.luau",
+    "src/Vendor/**",
+    "!src/Vendor/Keep.luau",
+    "src/Combat/Shared/Hit.spec.luau",
+    "src/Vendor/Drop.luau"
+  ]
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Combat: Folder
+      Shared: Folder
+        Hit: ModuleScript  <- src/Combat/Shared/Hit.luau
+        Keep.spec: ModuleScript  <- src/Combat/Shared/Keep.spec.luau
+    Vendor: Folder
+      Keep: ModuleScript  <- src/Vendor/Keep.luau

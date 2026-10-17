@@ -911,6 +911,16 @@ default.project.json - error: Rojo 7.4.4 does not read "syncRules" before 7.5.0,
 
 Change the pin, run the manager's install command, and run the command again. See [Installation](/docs/v2/installation).
 
+### `rojo.negationUnsupported` [#rojo-negationunsupported]
+
+Error. The Rojo that would run is older than 7.7.0, which is the first to read a `globIgnorePaths` glob that starts with `!`, and a file Rogen wrote has one. An older Rojo reads it as a name that starts with `!`, so it matches nothing, and the files it brings back stay ignored. Rogen checks before it serves anything.
+
+```
+default.project.json - error: Rojo 7.6.1 reads no "!" glob before 7.7.0, so it ignores what this file's 1 re-includes: "!**/Keep.spec.luau". Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH. (rojo.negationUnsupported)
+```
+
+Change the pin, run the manager's install command, and run the command again. See [Ignoring Files](/docs/v2/configuration#ignoring-files).
+
 ### `rojo.windowsRules` [#rojo-windowsrules]
 
 Error. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, and a file Rogen wrote has one, so Rojo would serve a tree that differs from the one Rogen built. This happens for every place whose root has ignore globs, since a place's patterns are written relative to its folder. Rojo 7.7.1 fixed it, and 7.5.0 to 7.6.1 are not affected.

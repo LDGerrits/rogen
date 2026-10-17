@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
-import { isGlobsetMatch } from "../../base/glob.js";
+import { ignoringGlob } from "../../base/glob.js";
 import {
 	dirnamePosix,
 	joinPosix,
@@ -258,8 +258,7 @@ export class RootScanner {
 	}
 
 	private ignoringGlob(absolutePath: string): string | undefined {
-		const posixPath = toPosix(absolutePath);
-		return this.ignored.find((glob) => isGlobsetMatch(posixPath, glob));
+		return ignoringGlob(toPosix(absolutePath), this.ignored);
 	}
 
 	private keptEntries(

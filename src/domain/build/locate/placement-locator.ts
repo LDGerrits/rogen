@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../../base/collections.js";
-import { isGlobsetMatch } from "../../../base/glob.js";
+import { ignoringAllOf, ignoringGlob } from "../../../base/glob.js";
 import { ancestors, contains, toPosix } from "../../../base/path.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { InstanceReference } from "../../roblox/roblox.js";
@@ -203,9 +203,8 @@ export class PlacementLocator {
 		const mount = mounts.covering(target);
 		const pattern = mounts.at(target)
 			? undefined
-			: this.placement.config.ignored.find((glob) =>
-					isGlobsetMatch(toPosix(target), glob)
-				);
+			: (ignoringGlob(toPosix(target), this.placement.config.ignored) ??
+				ignoringAllOf(toPosix(target), this.placement.config.ignored));
 		if (pattern !== undefined)
 			return { status: "ignored", source: target, exists, pattern };
 		return mount

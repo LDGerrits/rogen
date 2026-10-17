@@ -14,6 +14,7 @@ import {
 	sourcemap,
 	sourcemapError,
 } from "../../rojo/__tests__/rojo-cli.js";
+import { withGlobBody } from "../../../base/glob.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { buildServiceOf } from "./fixtures.js";
 
@@ -105,7 +106,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 	};
 
 	const rogenTree = async (
-		overrides: Pick<ResolvedConfigSpec, "routes"> = {}
+		overrides: Partial<Pick<ResolvedConfigSpec, "routes" | "ignored">> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
@@ -312,6 +313,43 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ServerScriptService/Net <- src/Net/init.meta.json",
 			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
 		]);
+	});
+
+	it("should re-include what a ! glob names after an ignore glob, as Rojo does", async () => {
+		writeFiles({
+			"Combat/X.spec.luau": "",
+			"Combat/Keep.spec.luau": "",
+			"Combat/Hit.luau": "",
+			"Vendor/Keep.luau": "",
+			"Vendor/Drop.luau": "",
+		});
+		const globIgnorePaths = [
+			"src/**/*.spec.luau",
+			"!src/**/Keep.spec.luau",
+			"src/Vendor/**",
+			"!src/Vendor/Keep.luau",
+		];
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({
+				name: "t",
+				tree: { $path: "src" },
+				globIgnorePaths,
+			})
+		);
+		await rogenTree({
+			ignored: globIgnorePaths.map((glob) =>
+				withGlobBody(glob, (body) => `${dir}/${body}`)
+			),
+		});
+
+		const storage = sourcemap(dir, "default.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+
+		expect(placed(storage!)).toEqual(
+			placed(sourcemap(dir, "rojo.project.json"))
+		);
 	});
 
 	it("should make an init.csv the LocalizationTable of every node its folder becomes", async () => {
