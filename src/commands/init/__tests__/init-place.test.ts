@@ -1,6 +1,7 @@
 import path from "path";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
+import { parseJsonc } from "../../../base/jsonc.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
@@ -295,6 +296,74 @@ describe("init for a place", () => {
 		expect(log.texts("info").join("\n")).toContain(
 			'add the folder "places/lobby" to game.code-workspace'
 		);
+	});
+
+	describe("a workspace file that is there", () => {
+		it("should gain the place, with its comments and settings kept", async () => {
+			const before = [
+				"{",
+				"\t// the editor",
+				'\t"folders": [{ "path": "." }, { "path": "places/arena" }],',
+				'\t"settings": { "luau-lsp.platform.type": "roblox" }',
+				"}",
+				"",
+			].join("\n");
+			await write("game.code-workspace", before);
+
+			await run(["places/lobby"]);
+
+			const after = await read("game.code-workspace");
+			expect(after).toContain("// the editor");
+			expect(after).toContain('"luau-lsp.platform.type": "roblox"');
+			expect(parseJsonc(after).value).toEqual({
+				folders: [
+					{ path: "." },
+					{ path: "places/arena" },
+					{ path: "places/lobby" },
+				],
+				settings: { "luau-lsp.platform.type": "roblox" },
+			});
+			expect(log.texts("success")).toContain(
+				"Added places/lobby to game.code-workspace."
+			);
+		});
+
+		it("should put the place among the others by path", async () => {
+			await write("game.code-workspace", {
+				folders: [{ path: "." }, { path: "places/zed" }],
+			});
+
+			await run(["places/lobby"]);
+
+			expect(
+				(await readJson("game.code-workspace")).folders.map(
+					(folder: { path: string }) => folder.path
+				)
+			).toEqual([".", "places/lobby", "places/zed"]);
+		});
+
+		it("should not list a place twice", async () => {
+			await write("game.code-workspace", {
+				folders: [{ path: "." }, { path: "./places/lobby/" }],
+			});
+			const before = await read("game.code-workspace");
+
+			await run(["places/lobby"]);
+
+			expect(await read("game.code-workspace")).toBe(before);
+		});
+
+		it("should edit every workspace file that lists the root", async () => {
+			await write("a.code-workspace", { folders: [{ path: "." }] });
+			await write("b.code-workspace", { folders: [{ path: root }] });
+
+			await run(["places/lobby"]);
+
+			for (const name of ["a", "b"])
+				expect(
+					(await readJson(`${name}.code-workspace`)).folders
+				).toContainEqual({ path: "places/lobby" });
+		});
 	});
 
 	it("should take the folder of a place the config lists that has no rogen.json yet", async () => {
