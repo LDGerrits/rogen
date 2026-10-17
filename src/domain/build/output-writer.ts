@@ -16,10 +16,11 @@ export class OutputWriter {
 		return ProjectText.of(projectFile);
 	}
 
-	/** Whether the file changed; unchanged bytes are left alone. */
+	/** Whether the file was written; unchanged bytes are left alone unless `rewrite`, which makes a watcher see the file again. */
 	async write(
 		output: OutputFile,
-		tree: RojoProjectFile
+		tree: RojoProjectFile,
+		rewrite = false
 	): Promise<Result<boolean, DiagnosticsError>> {
 		const projectFile = output.path;
 		const content = OutputWriter.textOf(tree);
@@ -27,6 +28,7 @@ export class OutputWriter {
 
 		const written = await tryWithAsync(async (): Promise<boolean> => {
 			if (
+				!rewrite &&
 				(await this.fileSystemService.isFile(projectFile)) &&
 				(await this.fileSystemService.readFile(projectFile)) === content
 			) {

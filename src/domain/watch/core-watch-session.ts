@@ -2,6 +2,7 @@ import { Sequencer } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
+import { samePath } from "../../base/path.js";
 import { Result, ok, tryWithAsync } from "../../base/result.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
@@ -16,6 +17,7 @@ import { WatchPlan } from "./watch-plan.js";
 import {
 	RebuildReport,
 	WatchCause,
+	WatchOptions,
 	WatchSession,
 	WatchUpdate,
 	ChangeBurst,
@@ -50,7 +52,8 @@ export class CoreWatchSession
 		private buildSet: BuildSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
-		private readonly buildService: BuildService
+		private readonly buildService: BuildService,
+		private readonly options: WatchOptions = {}
 	) {
 		super();
 		this.batcher = this._register(new ChangeBatcher());
@@ -109,6 +112,15 @@ export class CoreWatchSession
 	}
 
 	private dropSourceUpdates(changes: readonly FileChange[]): FileChange[] {
+		const { contentEdits } = this.options;
+		if (contentEdits)
+			return changes.filter(
+				(change) =>
+					this.isWatched(change.path) &&
+					!contentEdits.ignoring.some((file) =>
+						samePath(file, change.path)
+					)
+			);
 		const watched = [...this.watched.values()];
 		if (!this.started || watched.some((config) => !config.readsKnown)) {
 			return changes.filter((change) => this.isWatched(change.path));
@@ -133,7 +145,8 @@ export class CoreWatchSession
 
 	private async rebuild(
 		watched: WatchedConfig,
-		projectFile: string
+		projectFile: string,
+		rewrite: boolean
 	): Promise<RebuildReport | undefined> {
 		if (!this.buildSet.configOf(projectFile)) return undefined;
 		return watched.finished(
@@ -141,7 +154,8 @@ export class CoreWatchSession
 				this.buildSet,
 				projectFile,
 				this.listing,
-				watched.latest
+				watched.latest,
+				rewrite
 			)
 		);
 	}
@@ -168,7 +182,8 @@ export class CoreWatchSession
 	}
 
 	private queueRebuild(
-		projectFile: string
+		projectFile: string,
+		rewrite = false
 	): Promise<RebuildReport | undefined> {
 		let watched = this.watched.get(projectFile);
 		if (!watched) {
@@ -177,7 +192,7 @@ export class CoreWatchSession
 		}
 		const config = watched;
 		const queued = config.queue(
-			this.guarded(() => this.rebuild(config, projectFile))
+			this.guarded(() => this.rebuild(config, projectFile, rewrite))
 		);
 		this.track(queued);
 		return queued;
@@ -314,6 +329,15 @@ export class CoreWatchSession
 			);
 		}
 
+		const metaChanged = new Set(
+			sourceChanges
+				.filter(
+					({ type, path: file }) =>
+						type !== FileChangeType.UPDATED &&
+						file.endsWith(".meta.json")
+				)
+				.flatMap(({ path: file }) => this.plan.projectsFor(file))
+		);
 		const affected = new Set([
 			...this.selection.configs
 				.filter(
@@ -331,7 +355,9 @@ export class CoreWatchSession
 				configFiles,
 				reloaded: reloaded.length > 0,
 			},
-			[...affected].map((file) => this.queueRebuild(file)),
+			[...affected].map((file) =>
+				this.queueRebuild(file, metaChanged.has(file))
+			),
 			sourceChanges
 		);
 	}

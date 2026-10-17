@@ -157,12 +157,13 @@ export interface BuildService {
 	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
 	build(selection: ConfigSelection): Promise<BuildRun>;
 
-	/** Builds and writes the project at `projectFile` in a watch's `set`; the sync path is checked only when `previous` holds no answer for this version of the config. */
+	/** Builds and writes the project at `projectFile` in a watch's `set`; the sync path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(
 		set: BuildSet,
 		projectFile: string,
 		listing: IndexReader,
-		previous?: LoadedBuild
+		previous?: LoadedBuild,
+		rewrite?: boolean
 	): Promise<LoadedBuild>;
 
 	/** What a build raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config. Writes nothing; fails as `locate` does. */

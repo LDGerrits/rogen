@@ -53,7 +53,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. A script edited in place changes no name, so it isn't written. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const BuildOptions = [

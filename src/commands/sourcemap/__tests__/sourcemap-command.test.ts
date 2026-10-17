@@ -206,20 +206,16 @@ describe("sourcemap command", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it.each([{ json: true }, { watch: true }])(
-		"should ask for -o when %o would share the screen with the sourcemap",
-		async (options) => {
-			const { running } = start(
-				new MockConfigService([buildable()]),
-				options
-			);
+	it("should ask for -o when --json would share the screen with the sourcemap", async () => {
+		const { running } = start(new MockConfigService([buildable()]), {
+			json: true,
+		});
 
-			expect(
-				((await running) as ResultError<Error>).error.message
-			).toContain("leaves no room for --json or --watch");
-			expect(processes.spawned).toEqual([]);
-		}
-	);
+		expect(((await running) as ResultError<Error>).error.message).toContain(
+			"leaves no room for --json"
+		);
+		expect(processes.spawned).toEqual([]);
+	});
 
 	it("should report the failure when Rojo fails", async () => {
 		const { running } = start(new MockConfigService([buildable()]), {

@@ -12,7 +12,7 @@ import {
 } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { BuildSet, OutputFile } from "../../build/build.js";
-import { WatchUpdate } from "../watch-service.js";
+import { WatchOptions, WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
 import { buildServiceOf } from "../../build/__tests__/fixtures.js";
 
@@ -74,7 +74,7 @@ describe("CoreWatchSession", () => {
 	const changeUpdates = () =>
 		updates.filter(({ cause }) => cause.kind === "change");
 
-	const start = async (names: string[] = ["."]) => {
+	const start = async (names: string[] = ["."], options?: WatchOptions) => {
 		selection = (await configService.select(names)).unwrap();
 		const indexService = new CoreIndexService(fs);
 		const session = store.add(
@@ -83,7 +83,8 @@ describe("CoreWatchSession", () => {
 				BuildSet.of(selection).unwrap(),
 				watcher,
 				indexService,
-				buildServiceOf(fs, indexService)
+				buildServiceOf(fs, indexService),
+				options
 			)
 		);
 		store.add(session.onDidUpdate((update) => updates.push(update)));
@@ -550,6 +551,80 @@ describe("CoreWatchSession", () => {
 		await settle();
 
 		expect(updates).toHaveLength(1);
+	});
+
+	describe("with content edits", () => {
+		it("should rebuild for an update to a source file, which a step on the files reads", async () => {
+			await fs.writeFile("/repo/src/A.luau", "");
+			await start(["."], { contentEdits: { ignoring: [] } });
+
+			await fs.writeFile("/repo/src/A.luau", "return 1");
+			await settle();
+
+			expect(updates).toHaveLength(2);
+			expect(updates[1].reports[0].build.outcome).toBe("unchanged");
+		});
+
+		it("should rebuild for an update to a file the build never read", async () => {
+			await fs.writeFile("/repo/src/Notes.txt", "");
+			await fs.writeFile("/repo/src/Notes.meta.json", "{}");
+			await start(["."], { contentEdits: { ignoring: [] } });
+
+			await fs.writeFile(
+				"/repo/src/Notes.meta.json",
+				'{"attributes":{"a":1}}'
+			);
+			await settle();
+
+			expect(updates).toHaveLength(2);
+		});
+
+		it("should not rebuild for a change to a file the step writes", async () => {
+			await fs.writeFile("/repo/src/sourcemap.json", "{}");
+			await start(["."], {
+				contentEdits: { ignoring: ["/repo/src/sourcemap.json"] },
+			});
+
+			await fs.writeFile("/repo/src/sourcemap.json", "{ }");
+			await settle();
+
+			expect(updates).toHaveLength(1);
+		});
+	});
+
+	it("should rewrite the project file when a meta file is added, which Rojo does not watch beside a file it mounts", async () => {
+		await fs.writeFile("/repo/src/A.luau", "");
+		await start();
+
+		await fs.writeFile("/repo/src/A.meta.json", "{}");
+		await settle();
+
+		expect(updates).toHaveLength(2);
+		expect(updates[1].reports[0].build.outcome).toBe("wrote");
+	});
+
+	it("should rewrite the project file when a meta file is removed", async () => {
+		await fs.writeFile("/repo/src/A.luau", "");
+		await fs.writeFile("/repo/src/A.meta.json", "{}");
+		await start();
+
+		await fs.delete("/repo/src/A.meta.json");
+		await settle();
+
+		expect(updates).toHaveLength(2);
+		expect(updates[1].reports[0].build.outcome).toBe("wrote");
+	});
+
+	it("should leave an unchanged project file alone when a source file is added", async () => {
+		await fs.createDirectory("/repo/src/Combat");
+		await fs.writeFile("/repo/src/Combat/Hit.luau", "");
+		await start();
+
+		await fs.writeFile("/repo/src/Combat/Miss.luau", "");
+		await settle();
+
+		expect(updates).toHaveLength(2);
+		expect(updates[1].reports[0].build.outcome).toBe("unchanged");
 	});
 
 	it("should not rebuild for an update to a source file, only for a new one", async () => {

@@ -108,11 +108,11 @@ export interface WatchReporter {
 }
 
 export class WatchLog implements WatchReporter {
-	private readonly buildLog: BuildLog;
+	protected readonly buildLog: BuildLog;
 
 	constructor(
-		private readonly logService: LogService,
-		private readonly cwd: string,
+		protected readonly logService: LogService,
+		protected readonly cwd: string,
 		private readonly command = "watch"
 	) {
 		this.buildLog = new BuildLog(logService, cwd);
@@ -206,6 +206,33 @@ export class WatchLog implements WatchReporter {
 					counted(fixed, "fixed"),
 				],
 			}
+		);
+	}
+}
+
+/** For a watch whose standard output is what Rojo prints: only the problems, none of the frame around them. */
+export class PrintedWatchLog extends WatchLog {
+	override begin(): void {}
+
+	override end(): void {}
+
+	override rojo(ran: Result<RojoCommandRun, Error>): void {
+		if (ran.isErr() || ran.value.failure) return super.rojo(ran);
+		reportRojo(
+			this.logService,
+			ran.value.messages.filter(
+				({ severity }) => severity === "warning" || severity === "error"
+			),
+			this.cwd
+		);
+	}
+
+	override update({ notices, reports }: WatchUpdate): void {
+		for (const notice of notices)
+			if (notice.kind === "broken")
+				this.buildLog.diagnostics(notice.errors);
+		this.buildLog.diagnostics(
+			reports.flatMap(({ unreported }) => unreported)
 		);
 	}
 }

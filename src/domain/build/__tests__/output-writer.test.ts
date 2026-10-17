@@ -56,6 +56,24 @@ describe("OutputWriter", () => {
 			);
 		});
 
+		it("should write bytes that are already there when asked to rewrite", async () => {
+			await write(treeOf());
+
+			const result = await writer.write(
+				new OutputFile(projectFile),
+				treeOf(),
+				true
+			);
+
+			expect(result.unwrap()).toBe(true);
+		});
+
+		it("should leave bytes that are already there alone", async () => {
+			await write(treeOf());
+
+			expect((await write(treeOf())).unwrap()).toBe(false);
+		});
+
 		it("should write the name before the tree when the file has one", async () => {
 			await write(named("lobby"));
 

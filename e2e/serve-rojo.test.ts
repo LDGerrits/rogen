@@ -31,7 +31,7 @@ async function rojoProject(port: number): Promise<string | undefined> {
 	}
 }
 
-async function servedNames(port: number): Promise<string[]> {
+async function served(port: number): Promise<Record<string, unknown>> {
 	const base = `http://127.0.0.1:${port}/api`;
 	const info = decode(
 		new Uint8Array(await (await fetch(`${base}/rojo`)).arrayBuffer())
@@ -43,7 +43,13 @@ async function servedNames(port: number): Promise<string[]> {
 			).arrayBuffer()
 		)
 	) as { instances: Record<string, { Name: string }> };
-	return Object.values(read.instances).map(({ Name }) => Name);
+	return read.instances;
+}
+
+async function servedNames(port: number): Promise<string[]> {
+	return Object.values(await served(port)).map(
+		(instance) => (instance as { Name: string }).Name
+	);
 }
 
 describeWithRojo("end to end serve", () => {
@@ -97,6 +103,23 @@ describeWithRojo("end to end serve", () => {
 		expect(await second.stop()).toBe(0);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 60_000);
+
+	it("should serve a meta file created beside a script", async () => {
+		const serving = serve.start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving Game");
+		}, 20_000);
+
+		writeProjectFile(
+			serve.dir,
+			"src/A.meta.json",
+			JSON.stringify({ attributes: { Level: 7 } })
+		);
+
+		await eventually(async () => {
+			expect(JSON.stringify(await served(serve.port))).toContain("Level");
+		}, 20_000);
+	}, 40_000);
 
 	it("should keep building while it serves", async () => {
 		const serving = serve.start();

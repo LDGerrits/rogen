@@ -106,7 +106,8 @@ export class CoreBuildService implements BuildService {
 		set: BuildSet,
 		projectFile: string,
 		listing: IndexReader,
-		previous?: LoadedBuild
+		previous?: LoadedBuild,
+		rewrite = false
 	): Promise<LoadedBuild> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
@@ -116,7 +117,7 @@ export class CoreBuildService implements BuildService {
 			[{ config, syncWarnings }],
 			listing
 		);
-		const [build] = await this.settle(attempts, [], true);
+		const [build] = await this.settle(attempts, [], true, rewrite);
 		return build;
 	}
 
@@ -289,7 +290,8 @@ export class CoreBuildService implements BuildService {
 	private async settle(
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
-		write: boolean
+		write: boolean,
+		rewrite = false
 	): Promise<LoadedBuild[]> {
 		const built = attempts.filter(
 			(attempt): attempt is BuiltConfig =>
@@ -301,7 +303,8 @@ export class CoreBuildService implements BuildService {
 				attempt instanceof FailedBuild ? [attempt.config.label] : []
 			),
 		];
-		if (failed.length === 0 && write) return this.writeInOrder(built);
+		if (failed.length === 0 && write)
+			return this.writeInOrder(built, rewrite);
 		return Promise.all(
 			attempts.map(async (attempt) =>
 				attempt instanceof FailedBuild
@@ -329,7 +332,8 @@ export class CoreBuildService implements BuildService {
 	}
 
 	private async writeInOrder(
-		built: readonly BuiltConfig[]
+		built: readonly BuiltConfig[],
+		rewrite: boolean
 	): Promise<LoadedBuild[]> {
 		const builds: LoadedBuild[] = [];
 		let failed: string | undefined;
@@ -344,7 +348,8 @@ export class CoreBuildService implements BuildService {
 				? ok(false)
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
-						projectFile
+						projectFile,
+						rewrite
 					);
 			if (written.isErr()) failed = config.label;
 			builds.push(

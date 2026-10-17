@@ -25,7 +25,7 @@ Each warning and error ends with its [code](/docs/v2/diagnostics), and the closi
 
 #### `build --watch`
 
-Builds, then rebuilds whenever files or the config change. Only names matter, so editing inside a script never triggers a rebuild. With `-o` or `-p`, Rojo's build runs again after each write, and Rogen never passes `--watch` to Rojo. A script edited in place changes no name, so the file Rojo built keeps its old contents until a name changes; run the build again, or use `rogen serve`.
+Builds, then rebuilds whenever files or the config change. Without `-o` or `-p` only names matter, since the project file holds no contents, so editing inside a script triggers nothing. With `-o` or `-p`, Rojo's build runs again after each write and after each edit of a file under the source paths, so the file it built holds what you saved. Rogen runs Rojo's build itself each time and never passes `--watch` to it.
 
 A config reloads when `rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `build --watch` prints the error and keeps using the last valid version.
 
@@ -58,7 +58,7 @@ Writes the project files, then runs Rojo's own `sourcemap` on the project and pr
 
 In a root with [places](/docs/v2/configuration#places) and no project named, it writes a `sourcemap.json` beside each place's project file, which is where luau-lsp and Darklua look for it, and prints `places/lobby/sourcemap.json · wrote` for each. The root's own project is left out; name it to map it. `-o` names one file, so it is an error with several projects. Name one place (`rogen sourcemap places/lobby`) to print that place's sourcemap. Two projects of one config, as in `rogen sourcemap . test`, have their project files in one folder, where both sourcemaps would be `sourcemap.json`, so that is an error too: name one, with `-o` for the file.
 
-`--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. It needs `-o`, or several projects, since a sourcemap that is printed has no room beside the watch output. `--json` needs the same, and prints [one document](#sourcemap---json) instead of the sourcemap.
+`--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. Every edit of a file under the source paths writes it again, a model or a meta file included, as `rojo sourcemap --watch` does. Without `-o` it prints each sourcemap on standard output, one document per change, and nothing else there; Rogen's own lines go to standard error. `--json` needs `-o`, or several projects, since a sourcemap that is printed has no room beside the JSON lines.
 
 ### `upload [project…]`
 
@@ -317,7 +317,7 @@ Anything you want every time belongs in `rogen.json`. `where`, `check` and `list
 | `--json` | Prints one JSON document for `build`, `sourcemap`, `upload`, `where`, `check`, `list`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
 | `-o, --output <file>` | `build`: also builds the project into this place or model file with Rojo. `sourcemap`: writes the sourcemap there instead of printing it. |
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
-| `--watch` | `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write when `-o` or `-p` (`build`), or `-o` or several projects (`sourcemap`), asks for it. |
+| `--watch` | `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write and each edit of a file when `-o` or `-p` (`build`) asks for it, or always for `sourcemap`. |
 | `--include-non-scripts`, `--absolute` | `sourcemap` only: Rojo's flags of the same name. |
 | `--asset_id`, `--api_key`, `--universe_id`, `--cookie` | `upload` only: Rojo's flags of the same name, with its underscores. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |

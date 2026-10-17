@@ -65,7 +65,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. It needs -o, or several projects. A script edited in place changes no name, so nothing is written. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const SourcemapOptions = [
@@ -144,7 +144,7 @@ registerCommand(
 					absolute: Boolean(line.options.absolute),
 				},
 				cwd,
-				!json && !watch
+				!json
 			);
 			if (watch) {
 				const store = new DisposableStore();

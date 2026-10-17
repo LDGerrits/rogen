@@ -205,7 +205,7 @@ describe("build --watch", () => {
 				expect(rojo.args).not.toContain("--watch");
 		});
 
-		it("should not run Rojo for a round that wrote nothing", async () => {
+		it("should run Rojo for an edit inside a file, though the project file is as it was", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();
 			await finishRojo(0);
@@ -215,8 +215,9 @@ describe("build --watch", () => {
 			await finishRojo(1);
 			await memFs.writeFile("/repo/src/A.luau", "changed");
 			await settle();
+			await finishRojo(2);
 
-			expect(processes.spawned).toHaveLength(2);
+			expect(processes.spawned).toHaveLength(3);
 		});
 
 		it("should run Rojo once more, not once per update, after a burst while it runs", async () => {
