@@ -114,6 +114,10 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.errors,
 ];
 
+/** A run that wrote nothing because the project has what it would add. */
+const nothingToAdd = (plan: InitPlan) =>
+	plan.files.length === 0 && plan.present.length > 0;
+
 const presentOf = (plan: InitPlan) =>
 	plan.present.length > 0
 		? {
@@ -183,12 +187,6 @@ export class InitLog implements InitReporter {
 				: `Rojo is already pinned in ${shown}.`;
 	}
 
-	private tally(plan: InitPlan, verb: string): string {
-		return plan.files.length === 0 && plan.present.length > 0
-			? "Nothing to add."
-			: `${verb} ${plural(plan.files.length, "file")}.`;
-	}
-
 	written(item: InitWritten): void {
 		const would = this.dryRun ? "Would create" : "Created";
 		if (item.kind === "git" && item.failed !== undefined) {
@@ -221,7 +219,7 @@ export class InitLog implements InitReporter {
 
 	planned(plan: InitPlan): Result<void, Error> {
 		this.logService.outro(
-			plan.files.length === 0 && plan.present.length > 0
+			nothingToAdd(plan)
 				? "Nothing to add."
 				: `Would write ${plural(plan.files.length, "file")}. Nothing was written.`
 		);
@@ -245,7 +243,9 @@ export class InitLog implements InitReporter {
 		const steps = stepLines(plan.nextSteps);
 		if (steps.length > 0) this.logService.step("Next steps");
 		for (const line of steps) this.logService.info(line);
-		this.logService.outro(this.tally(plan, "Wrote"));
+		this.logService.outro(
+			nothingToAdd(plan) ? "Nothing to add." : `Wrote ${files}.`
+		);
 		return ok(undefined);
 	}
 }

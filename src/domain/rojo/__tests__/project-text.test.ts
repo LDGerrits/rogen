@@ -714,6 +714,32 @@ describe("domain/rojo/project-text", () => {
 			expect(text).toContain('"Brightness": 2 }');
 		});
 
+		it("should print a node afresh when the file repeats a key in it", () => {
+			const repeated =
+				'{"tree": {"$className": "DataModel", "A": {"x": 1}, "A": {"x": 2}}}';
+
+			const text = ProjectText.ofConfig(
+				{ tree: { $className: "DataModel", A: { x: 3 } } },
+				[],
+				WrittenTree.of(repeated)
+			);
+
+			expect(text.match(/"A"/g)).toHaveLength(1);
+		});
+
+		it("should leave no whitespace on an empty line, and read the indentation from a key, not a comment", () => {
+			const text = ProjectText.ofConfig(
+				{ tree: { A: { x: 1 } } },
+				[],
+				WrittenTree.of(
+					'{\n/*\n * note\n */\n    "tree": {\n        "A": {\n\n            "x": 1\n        }\n    }\n}\n'
+				)
+			);
+
+			expect(text).toContain('"A": {\n\n      "x": 1\n    }');
+			expect(text).not.toMatch(/[ \t]\n/);
+		});
+
 		it("should be undefined for a text that holds no tree", () => {
 			expect(WrittenTree.of("{}")).toBeUndefined();
 			expect(WrittenTree.of("{")).toBeUndefined();

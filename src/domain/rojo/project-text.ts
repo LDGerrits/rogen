@@ -81,6 +81,8 @@ export class WrittenTree {
 	private keep(value: unknown, span: JsoncSpan): unknown {
 		if (isSameJson(value, span.value)) return this.raw(span);
 		if (!isObject(value) || !span.properties) return value;
+		const names = span.properties.map(({ name }) => name);
+		if (new Set(names).size !== names.length) return value;
 		const written = new Map(
 			span.properties.map(({ name, value: child }) => [name, child])
 		);
@@ -118,14 +120,14 @@ export class WrittenTree {
 					body = body.slice(unit.length);
 					depth++;
 				}
-				return INDENT.repeat(depth) + body;
+				return body === "" ? "" : INDENT.repeat(depth) + body;
 			}),
 		]);
 	}
 
 	/** One level of the text's own indentation: the leading whitespace of its first indented line. */
 	private unit(): string {
-		return /^([ \t]+)\S/m.exec(this.text)?.[1] ?? "";
+		return /^([ \t]+)["}\]]/m.exec(this.text)?.[1] ?? "";
 	}
 }
 
@@ -283,7 +285,9 @@ export class ProjectText {
 		if (value instanceof FloatText) return value.toString();
 		if (value instanceof Raw)
 			return value.lines
-				.map((line, at) => (at === 0 ? line : indent + line))
+				.map((line, at) =>
+					at === 0 || line === "" ? line : indent + line
+				)
 				.join("\n");
 		if (value instanceof Ordered)
 			return value.entries.length === 0

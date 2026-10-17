@@ -14,10 +14,11 @@ export class InitAdditions {
 		private readonly questions: InitQuestions,
 		private readonly agentFile: AgentFile,
 		private readonly hooks: AgentHooks,
-		private readonly rojoPin?: RojoPinSetup,
+		private readonly rojoPin: RojoPinSetup | undefined,
 		/** The toolchain file that pins Rojo already, if one does. */
-		private readonly pinnedIn?: string,
-		private readonly directory = ""
+		private readonly pinnedIn: string | undefined,
+		/** The folder the files of the additions are named from. */
+		private readonly directory: string
 	) {}
 
 	/** What the project has of the additions, as `only` asks (all of them when it is not given). */

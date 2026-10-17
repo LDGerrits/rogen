@@ -270,14 +270,10 @@ export class CoreInitService implements InitService {
 			const present = additions.present();
 			return present.length > 0
 				? this.planWith(home, questions, [], { present, notes })
-				: err(
-						new DiagnosticsError(
-							directory.checkFree(directory.configFiles)
-						)
-					);
+				: err(new DiagnosticsError(home.checkFree(home.configFiles)));
 		}
 		const addition = await questions.whatToAdd(
-			directory.configFiles[0],
+			home.configFiles[0],
 			options
 		);
 		if (addition === undefined) return ok(undefined);

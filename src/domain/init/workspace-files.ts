@@ -3,14 +3,15 @@ import { compareStrings } from "../../base/collections.js";
 import { formatJsonFile } from "../../base/json.js";
 import { insertJsoncItem, parseJsonc } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
-import { normalizeDir, samePath } from "../../base/path.js";
+import { normalizeDir, samePath, toPosix } from "../../base/path.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
 const WORKSPACE_SUFFIX = ".code-workspace";
 
 interface Listed {
-	readonly paths: readonly string[];
+	/** One per folder entry, `undefined` for an entry with no path of its own, such as a `uri`. */
+	readonly paths: readonly (string | undefined)[];
 	readonly text: string;
 }
 
@@ -47,8 +48,8 @@ export class WorkspaceFiles {
 		const notes: string[] = [];
 		for (const name of names) {
 			const listed = await this.listed(path.join(root, name));
-			const rootAt = listed?.paths.findIndex((one) =>
-				samePath(path.resolve(root, one), root)
+			const rootAt = listed?.paths.findIndex(
+				(one) => one !== undefined && this.isAt(root, one, root)
 			);
 			if (!listed || rootAt === undefined || rootAt < 0) {
 				notes.push(
@@ -56,11 +57,17 @@ export class WorkspaceFiles {
 				);
 				continue;
 			}
-			if (listed.paths.some((one) => normalizeDir(one) === place))
+			const target = path.resolve(root, place);
+			if (
+				listed.paths.some(
+					(one) => one !== undefined && this.isAt(root, one, target)
+				)
+			)
 				continue;
 			const after = listed.paths.findIndex(
 				(one, index) =>
 					index > rootAt &&
+					one !== undefined &&
 					compareStrings(normalizeDir(one), place) > 0
 			);
 			files.push({
@@ -77,6 +84,11 @@ export class WorkspaceFiles {
 		return { files, notes };
 	}
 
+	/** Whether the folder entry `one` of a workspace file in `root` is `target`, however it is written. */
+	private isAt(root: string, one: string, target: string): boolean {
+		return samePath(path.resolve(root, toPosix(one)), target);
+	}
+
 	/** The paths the file lists, or `undefined` when it isn't a workspace file Rogen can edit. */
 	private async listed(file: string): Promise<Listed | undefined> {
 		const text = await this.fileSystemService.readFile(file);
@@ -87,7 +99,9 @@ export class WorkspaceFiles {
 		return {
 			text,
 			paths: folders.map((one) =>
-				isObject(one) && typeof one.path === "string" ? one.path : ""
+				isObject(one) && typeof one.path === "string"
+					? one.path
+					: undefined
 			),
 		};
 	}

@@ -342,6 +342,35 @@ describe("init for a place", () => {
 			).toEqual([".", "places/lobby", "places/zed"]);
 		});
 
+		it("should not take an entry with no path for the root, and say what to add", async () => {
+			await write("game.code-workspace", {
+				folders: [{ uri: "vscode-remote://host/game" }],
+			});
+			const before = await read("game.code-workspace");
+
+			await run(["places/lobby"]);
+
+			expect(await read("game.code-workspace")).toBe(before);
+			expect(log.texts("info").join("\n")).toContain(
+				'add the folder "places/lobby" to game.code-workspace'
+			);
+		});
+
+		it.each([
+			["a Windows path", "places\\lobby"],
+			["a path with a detour", "places/x/../lobby"],
+			["an absolute path", path.join(root, "places/lobby")],
+		])("should find the place listed as %s", async (_, listed) => {
+			await write("game.code-workspace", {
+				folders: [{ path: "." }, { path: listed }],
+			});
+			const before = await read("game.code-workspace");
+
+			await run(["places/lobby"]);
+
+			expect(await read("game.code-workspace")).toBe(before);
+		});
+
 		it("should not list a place twice", async () => {
 			await write("game.code-workspace", {
 				folders: [{ path: "." }, { path: "./places/lobby/" }],
