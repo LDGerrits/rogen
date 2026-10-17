@@ -25,8 +25,28 @@ const children = (node: RojoNode): [string, RojoNode][] =>
 			!entry[0].startsWith("$") && isObject(entry[1])
 	);
 
-const same = (a: unknown, b: unknown): boolean =>
-	JSON.stringify(a) === JSON.stringify(b);
+/** Whether two values hold the same data, whatever order their keys are in. */
+const same = (a: unknown, b: unknown): boolean => {
+	if (isObject(a) && isObject(b)) {
+		const keys = Object.keys(a);
+		return (
+			keys.length === Object.keys(b).length &&
+			keys.every((key) => Object.hasOwn(b, key) && same(a[key], b[key]))
+		);
+	}
+	if (Array.isArray(a) && Array.isArray(b))
+		return (
+			a.length === b.length && a.every((item, at) => same(item, b[at]))
+		);
+	return a === b;
+};
+
+/** The keys Rojo takes off a node when Studio clears them; any other key it leaves out is not an edit. */
+const CLEARABLE = ["$properties", "$attributes"];
+
+const holdsPath = (node: RojoNode): boolean =>
+	node.$path !== undefined ||
+	children(node).some(([, child]) => holdsPath(child));
 
 /** The changes that turn `before` into `after`, node by node. A node Rojo left out is not a change, as it can't remove one a project file defines; `$path` is not one either, as it points into the mirror. */
 export function treeChanges(
@@ -38,8 +58,8 @@ export function treeChanges(
 	const remove: string[] = [];
 	for (const key of Object.keys(after).filter(isKey))
 		if (!same(before[key], after[key])) set[key] = after[key];
-	for (const key of Object.keys(before).filter(isKey))
-		if (!(key in after)) remove.push(key);
+	for (const key of CLEARABLE)
+		if (key in before && !(key in after)) remove.push(key);
 	const known = new Map(children(before));
 	const added = children(after)
 		.filter(([name]) => !known.has(name))
@@ -81,8 +101,10 @@ export function applyTreeChanges(
 		for (const key of remove)
 			if (key in found)
 				edited = setJsoncValue(edited, [...at, key], undefined);
-		for (const { name, node: child } of added)
-			edited = setJsoncValue(edited, [...at, name], child);
+		for (const { name, node: child } of added) {
+			if (holdsPath(child)) unhomed.push([...node, name]);
+			else edited = setJsoncValue(edited, [...at, name], child);
+		}
 	}
 	return { text: edited, unhomed };
 }

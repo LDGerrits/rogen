@@ -187,7 +187,7 @@ export function parse(text: string): Result<unknown, Error> {
 
 /** The indentation and line ending a document is written with, to write an edit the same way. */
 function formattingOf(text: string) {
-	const indent = /^([ \t]+)\S/m.exec(text)?.[1] ?? "  ";
+	const indent = /^([ \t]+)["}\]]/m.exec(text)?.[1] ?? "  ";
 	return {
 		insertSpaces: !indent.startsWith("\t"),
 		tabSize: indent.startsWith("\t") ? 1 : indent.length,

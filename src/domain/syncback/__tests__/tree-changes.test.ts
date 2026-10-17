@@ -31,6 +31,26 @@ describe("treeChanges", () => {
 		]);
 	});
 
+	it("should not count the same data in another key order as a change", () => {
+		const before: RojoNode = {
+			$properties: { A: 1, B: { X: 1, Y: 2 } },
+		};
+		const after: RojoNode = {
+			$properties: { B: { Y: 2, X: 1 }, A: 1 },
+		};
+
+		expect(treeChanges(before, after)).toEqual([]);
+	});
+
+	it("should not count a key other than the properties and attributes that Rojo left out", () => {
+		const before: RojoNode = {
+			$className: "Folder",
+			$ignoreUnknownInstances: false,
+		};
+
+		expect(treeChanges(before, {})).toEqual([]);
+	});
+
 	it("should find a key Rojo took off a node", () => {
 		const before: RojoNode = {
 			$className: "Folder",
@@ -151,6 +171,51 @@ describe("applyTreeChanges", () => {
 		expect(JSON.parse(applied.text).tree.New).toEqual({
 			$className: "Folder",
 		});
+	});
+
+	it("should leave out a node added with a path, which points into the mirror", () => {
+		const applied = applyTreeChanges(
+			TEXT,
+			["tree"],
+			[
+				{
+					node: [],
+					set: {},
+					remove: [],
+					added: [
+						{
+							name: "Deep",
+							node: { Inner: { $path: "mirror/a.txt" } },
+						},
+					],
+				},
+			]
+		);
+
+		expect(applied.text).toBe(TEXT);
+		expect(applied.unhomed).toEqual([["Deep"]]);
+	});
+
+	it("should write with the indentation of the file, not of a comment", () => {
+		const text = [
+			"/*",
+			" * a config",
+			" */",
+			"{",
+			'    "tree": {',
+			'        "Value": { "$className": "StringValue" }',
+			"    }",
+			"}",
+		].join("\n");
+
+		const applied = applyTreeChanges(
+			text,
+			["tree"],
+			[set(["Value"], { $properties: { Value: "x" } })]
+		);
+
+		expect(applied.text).toContain('\n        "Value": {');
+		expect(applied.text).toContain('\n            "$properties": {');
 	});
 
 	it("should edit the tree of a project of the file", () => {

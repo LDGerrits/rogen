@@ -162,7 +162,7 @@ export class WatchLog implements WatchReporter {
 		reports.forEach((report) => this.report(report, sharedWarnings));
 	}
 
-	private notice(notice: ConfigNotice): void {
+	protected notice(notice: ConfigNotice): void {
 		const name = relativeTo(this.cwd, notice.file);
 		switch (notice.kind) {
 			case "recovered":
@@ -227,10 +227,12 @@ export class PrintedWatchLog extends WatchLog {
 		);
 	}
 
+	protected override notice(notice: ConfigNotice): void {
+		if (notice.kind === "broken") super.notice(notice);
+	}
+
 	override update({ notices, reports }: WatchUpdate): void {
-		for (const notice of notices)
-			if (notice.kind === "broken")
-				this.buildLog.diagnostics(notice.errors);
+		for (const notice of notices) this.notice(notice);
 		this.buildLog.diagnostics(
 			reports.flatMap(({ unreported }) => unreported)
 		);

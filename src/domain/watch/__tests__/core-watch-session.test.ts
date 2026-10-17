@@ -579,6 +579,20 @@ describe("CoreWatchSession", () => {
 			expect(updates).toHaveLength(2);
 		});
 
+		it("should not rebuild for an edit of a file the project leaves out", async () => {
+			await writeConfig("/repo/rogen.json", {
+				globIgnorePaths: ["**/*.tmp"],
+			});
+			await fs.writeFile("/repo/src/A.luau", "");
+			await fs.writeFile("/repo/src/A.tmp", "");
+			await start(["."], { contentEdits: { ignoring: [] } });
+
+			await fs.writeFile("/repo/src/A.tmp", "more");
+			await settle();
+
+			expect(updates).toHaveLength(1);
+		});
+
 		it("should not rebuild for a change to a file the step writes", async () => {
 			await fs.writeFile("/repo/src/sourcemap.json", "{}");
 			await start(["."], {

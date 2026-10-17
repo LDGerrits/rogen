@@ -738,7 +738,15 @@ export class CoreSyncbackService implements SyncbackService {
 			const text = await this.fileSystemService.readFile(prepared.file);
 			return (JSON.parse(text) as RojoProjectFile).tree;
 		});
-		if (ran.isErr() || ran.value === undefined) return { unplaced: [] };
+		if (ran.isErr() || ran.value === undefined)
+			return {
+				unplaced: [
+					{
+						instance: request.project.projectName,
+						reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+					},
+				],
+			};
 		const changes = treeChanges(prepared.mirror.file.tree, ran.value);
 		if (changes.length === 0) return { unplaced: [] };
 		const { project } = request;
