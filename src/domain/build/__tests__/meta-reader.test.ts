@@ -208,6 +208,69 @@ describe("MetaReader", () => {
 			);
 		});
 
+		it.each([
+			["null", "null"],
+			["an array of the wrong length", "[1, 2, 3, 4, 5]"],
+			["an array of mixed values", '[1, "a"]'],
+			["an object of several keys", '{"a": 1, "b": 2}'],
+		])(
+			"should fail at a property Rojo can't read as a value: %s",
+			async (_, value) => {
+				await fs.writeFile(
+					abs("src/Combat/init.meta.json"),
+					`{\n\t"properties": { "WorldPivotData": ${value} }\n}`
+				);
+
+				const result = await read();
+
+				const errors = result.isErr() ? result.error : [];
+				expect(errors).toMatchObject([
+					{
+						code: "meta.unreadableValue",
+						resource: abs("src/Combat/init.meta.json"),
+						position: { line: 2, column: 36 },
+					},
+				]);
+				expect(errors[0].message).toContain(
+					'"properties.WorldPivotData"'
+				);
+			}
+		);
+
+		it("should fail at an attribute Rojo can't read as a value", async () => {
+			await fs.writeFile(
+				abs("src/Combat/init.meta.json"),
+				'{"attributes": { "Level": null }}'
+			);
+
+			const result = await read();
+
+			expect(result.isErr() ? result.error : []).toMatchObject([
+				{ code: "meta.unreadableValue" },
+			]);
+		});
+
+		it("should accept the values Rojo reads", async () => {
+			await fs.writeFile(
+				abs("src/Combat/init.meta.json"),
+				JSON.stringify({
+					properties: {
+						A: true,
+						B: "x",
+						C: 1,
+						D: [1, 2],
+						E: [1, 2, 3],
+						F: [1, 2, 3, 4],
+						G: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+						H: ["a", "b"],
+						I: { Vector3: [1, 2, 3] },
+					},
+				})
+			);
+
+			expect((await read()).isOk()).toBe(true);
+		});
+
 		it("should fail when a ModuleScript's meta sets a RunContext, its own or its folder's", async () => {
 			await fs.writeFile(abs("src/Save.luau"), "");
 			await fs.writeFile(

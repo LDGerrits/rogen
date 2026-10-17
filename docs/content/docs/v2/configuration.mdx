@@ -195,7 +195,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 }
 ```
 
-- If `tree` and the generated nodes define the same instance, `tree` wins and Rogen warns ([`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash)). A `$path` below a service, like a package mount, owns that whole folder.
+- If `tree` and the generated nodes define the same instance, `tree` wins and Rogen warns ([`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash)). A `$path` below a service, like a package mount, owns that whole folder: a route into it puts files beside what the mount holds, and Rogen warns when a name is in both ([`tree.mountClash`](/docs/v2/diagnostics#tree-mountclash)).
 - A `$path` that points inside a source path hands that path to Rojo. Rogen skips it, and `rogen where` reports it as `mounted`, which is how you sync a vendored library as it is. Mounting a source path itself or a folder above one is an error.
 - With `routes`, the tree's root must be a `DataModel`, since a route target names a service. A root that isn't one, a bare `$path` included, is an error. Leave `tree` out and Rogen starts from an empty `DataModel`.
 - Without `routes`, nothing is routed and no source path is scanned. Any root is valid and the project file is `tree` as you wrote it. Rogen warns when `src` holds files the tree doesn't mount.

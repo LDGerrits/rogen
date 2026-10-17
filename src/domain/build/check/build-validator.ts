@@ -266,8 +266,35 @@ export class BuildValidator {
 			(count) =>
 				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
 			(resource, { renamedTo }) =>
-				`write "${path.posix.basename(renamedTo ?? resource)}"`
+				`write "${path.posix.basename(renamedTo ?? resource)}"`,
+			[],
+			(resource, { key, respelling }) => {
+				if (!respelling.spelling.startsWith("@")) return undefined;
+				const governing = this.governingRoute(resource, key);
+				return governing === undefined
+					? undefined
+					: `the "${governing}" route governs it, so "@${key}" would do nothing; move it out of that route's files to route it`;
+			}
 		);
+	}
+
+	/** The route other than `key` that governs `resource` through a folder above it, read from the files below it that no route folder or `@` name of its own sits between. */
+	private governingRoute(resource: string, key: string): string | undefined {
+		return this.placement.files.find(({ entry, route }) => {
+			if (route === key || route === DeclaredKeys.FALLBACK_ROUTE)
+				return false;
+			if (entry.source === resource) return true;
+			if (!entry.source.startsWith(`${resource}/`)) return false;
+			return entry.source
+				.slice(resource.length + 1)
+				.split("/")
+				.slice(0, -1)
+				.every(
+					(folder) =>
+						!folder.includes("@") &&
+						this.config.keys.resolve(folder) === undefined
+				);
+		})?.route;
 	}
 
 	private folderTypo(): Diagnostic[] {
@@ -291,13 +318,24 @@ export class BuildValidator {
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
 		) => string,
-		tail: readonly string[] = []
+		tail: readonly string[] = [],
+		/** Why the fix the hint names would not work, which replaces the hint and the rename. */
+		unusable: (
+			resource: string,
+			misspelt: NotedName<MisspellingOf<K>>
+		) => string | undefined = () => undefined
 	): Diagnostic[] {
 		const noted = this.placement.readings.misspelt(kind);
 		if (noted.size === 0) return [];
+		const unusableAt = new Map(
+			[...noted].map(([resource, misspelt]) => [
+				resource,
+				unusable(resource, misspelt),
+			])
+		);
 		const items = [...noted].map(([resource, misspelt]) => ({
 			resource,
-			message: hint(resource, misspelt),
+			message: unusableAt.get(resource) ?? hint(resource, misspelt),
 		}));
 		return [
 			this.grouped(
@@ -308,7 +346,14 @@ export class BuildValidator {
 				),
 				items,
 				tail,
-				renames(noted)
+				renames(
+					new Map(
+						[...noted].filter(
+							([resource]) =>
+								unusableAt.get(resource) === undefined
+						)
+					)
+				)
 			),
 		];
 	}
@@ -530,7 +575,10 @@ export class BuildValidator {
 	}
 
 	private runContextTarget(): Diagnostic[] {
-		const { inits } = this.placement.playerClientScripts;
+		const inits = this.placement.playerClientScripts.inits.filter(
+			({ entry }) =>
+				this.assembly.meta.runContextOf(entry.source) === undefined
+		);
 		if (inits.length === 0) return [];
 		const listed = inits.map(
 			({ entry, instancePath }) =>

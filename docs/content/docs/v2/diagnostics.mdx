@@ -286,7 +286,7 @@ rogen.json - warning: 2 names write a route key after a dot, where only "@" rout
   src/Inventory/Types.shared.luau (write "Types@shared.luau")
 ```
 
-Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. A name inside a folder that a route already governs gets no rename: `@server` there is [`route.ignoredAt`](/docs/v2/diagnostics#route-ignoredat), so the line says which route governs it and to move it out of that route's files. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.folderTypo` [#route-foldertypo]
 
@@ -374,6 +374,19 @@ src/Save.server.luau - warning: the tree defines "ServerScriptService/Save" too,
 
 Rename the file, or remove the node from the `tree`. See [Configuration](/docs/v2/configuration#tree).
 
+### `tree.mountClash` [#tree-mountclash]
+
+Warning. A route puts files at or below a node of the `tree` that has a `$path`, and the folder that `$path` mounts holds an instance of the same name. Rojo reads the mount itself and adds the files beside what it holds, so the game gets two instances with one name, and `require` finds either. One warning lists the files of a mount, and `rogen where` shows its line under each file. What the config ignores in the mounted folder isn't counted.
+
+```
+rogen.json - warning: 2 files sit next to an instance of the same name that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds, so Rojo builds two of it: (tree.mountClash)
+  src/Combat/Hit.luau -> ReplicatedStorage/Lib/Combat/Hit (next to "Combat")
+  src/Combat/Miss.luau -> ReplicatedStorage/Lib/Combat/Miss (next to "Combat")
+Rename one of each pair, or route outside the mounted folder.
+```
+
+Rename one of them, or route the files somewhere the mount doesn't cover. See [Configuration](/docs/v2/configuration#tree).
+
 ### `tree.initWithoutFolder` [#tree-initwithoutfolder]
 
 Error. An init script becomes the folder it sits in, but that folder never becomes an instance. That's a source path, a plain routing folder or an invisible folder.
@@ -408,7 +421,7 @@ Move the script under a route whose target runs it, or drop `.server`/`.client` 
 
 ### `tree.runContextTarget` [#tree-runcontexttarget]
 
-Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there LocalScripts with a sync rule, but Rojo reads an init script without rules, so this one is a Script with RunContext Client.
+Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there LocalScripts with a sync rule, but Rojo reads an init script without rules, so this one is a Script with RunContext Client. A script whose meta sets `RunContext` is left out, and so gets no rule: the meta decides how it runs.
 
 ```
 rogen.json - warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
@@ -490,6 +503,16 @@ src/Combat/init.meta.json:4:16 - error: "attributes": expected an object, found 
 ```
 
 Give the field the type the message names, as Rojo's meta format expects. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.unreadableValue` [#meta-unreadablevalue]
+
+Error. A value in a meta file's `properties` or `attributes` is one Rojo can't read, such as `null`, a list of numbers of the wrong length, or an object of several keys. Rojo refuses the meta, and without this check the build fails later in a message that doesn't name the file.
+
+```
+src/Combat/init.meta.json:2:36 - error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)
+```
+
+Write the value Rojo reads, or remove the property. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
 
 ### `meta.unknownField` [#meta-unknownfield]
 
@@ -605,7 +628,7 @@ later - warning: this source path does not exist or is not a folder, so it contr
 srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 ```
 
-Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. `rogen list` shows it too. A running `rogen watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
+Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. `rogen list` shows it too. A running `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
 
 ### `scan.unmountedSource` [#scan-unmountedsource]
 

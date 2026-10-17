@@ -98,6 +98,18 @@ rogen where src/Inventory
 
 Already-written requires keep working while you move, because a file's instance path only changes when its route does. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.
 
+After `init`, `rogen serve` replaces `rojo serve`: it builds `default.project.json`, starts the Rojo your project pins on it and rebuilds as files change, so you no longer start Rojo yourself. For luau-lsp, which wants a `sourcemap.json`, run `rogen sourcemap --watch -o sourcemap.json` beside it; it writes the project files first and keeps the sourcemap current as files come and go.
+
+## Going Back
+
+`init` changes three things, and each is undone on its own. Nothing outside them is touched.
+
+- **The project file.** Rogen replaced `default.project.json`, and the one you wrote is in git: `git checkout default.project.json` restores it. `init` moved its keys into `rogen.json`, so remove `rogen.json` too, and Rogen no longer writes anything.
+- **The files `init` added.** `AGENTS.md`, `.gitignore` when there was none, and `CLAUDE.md` when `.claude/` was there are new files; remove the ones you don't want. A hook it registered is an entry in the agent's own settings file, and `.agents/hooks/rogen-check.sh`.
+- **Your source.** Routing never renames or moves a file, so a source folder you haven't reorganised is as it was.
+
+Once you have moved to feature folders, the way back is the file Rogen wrote. `default.project.json` is a complete Rojo project, so commit it, delete `rogen.json`, and `rojo serve` and `rojo build` run on it as they are. It lists a `$path` for each folder routing placed whole and for each file it placed apart, so a file you add later reaches it only when its folder is mounted whole, or when you add its node; rerun `rogen build` before you commit it.
+
 ## Where Rogen Reads a Layout Differently
 
 In a folder Rogen routes, these differ from what Rojo does with the same files. Everything outside `routes` and `sourcePaths` is Rojo's, and the repository's conformance tests compare the project files Rogen writes with Rojo's own build.
@@ -109,6 +121,7 @@ In a folder Rogen routes, these differ from what Rojo does with the same files. 
 | A folder holding `init.server.luau` or `init.meta.json` is one instance. | The mount stays in the tree and is Rojo's own. | Nothing; `init` says so. |
 | A mount in a folder a route covers is also a child of that folder's instance. | The mount is only in the tree: Rogen skips what the tree mounts. | Nothing. |
 | `.client` files are Scripts with a RunContext under `emitLegacyScripts: false`. | A route to `StarterPlayerScripts` keeps them LocalScripts with a sync rule. | See [Configuration](/docs/v2/configuration#fields). |
+| `Dup.luau`, `Dup.lua` and `Dup.txt` in one folder are three instances. | They are one instance: the last file wins and the others are left out. | Rename the files; [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) names them. |
 | `(Group)/`, `^Hoist.luau` and `Foo@server.luau` are names. | They are routing sigils. | Rename the file, or put it where the tree mounts it. |
 | A glob in `globIgnorePaths` that ends in `/**` and names a mounted folder empties the Folder. | The mount is left out of the written file. | None needed; documented in [Configuration](/docs/v2/configuration#fields). |
 | A glob starting with `/` or `./` matches nothing. | It is read from the config's folder. | Write globs as Rojo reads them. |

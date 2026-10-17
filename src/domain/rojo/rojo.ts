@@ -21,6 +21,7 @@ import {
 	SyncRuleUse,
 	SyncRules,
 } from "./sync-rules.js";
+import { unreadableMetaValues } from "./unreadable-meta-values.js";
 
 export type RojoFileKind = "script" | "model" | "data";
 
@@ -329,6 +330,8 @@ export class RojoMeta {
 		if (document.isErr()) return err(document.error);
 
 		const { root, value } = document.value;
+		const unreadable = unreadableMetaValues(root, file);
+		if (unreadable.length > 0) return err(unreadable);
 		const known = Object.keys(META_SCHEMA.properties ?? {});
 		return ok({
 			fields: Object.fromEntries(

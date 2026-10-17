@@ -41,6 +41,7 @@ const modules = {
 			"rojo",
 			"rojo-project",
 			"sync-rules",
+			"unreadable-meta-values",
 		],
 		serve: ["serve", "serve-service"],
 		syncback: ["syncback", "syncback-service"],

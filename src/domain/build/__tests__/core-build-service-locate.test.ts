@@ -514,6 +514,33 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
+	it.each([
+		["init.luau", "init.server.luau"],
+		["init.luau", "init.client.luau"],
+		["init.client.luau", "init.csv"],
+	])(
+		"should say %s replaces %s as the folder's init file, as Rojo reads it",
+		async (winner, loser) => {
+			await write(`src/Net/${winner}`, `src/Net/${loser}`);
+
+			expect(await locate([`src/Net/${loser}`])).toMatchObject([
+				{ status: "replaced", by: abs(`src/Net/${winner}`) },
+			]);
+		}
+	);
+
+	it("should rank the init files among the files of one name, wherever a plain file sits", async () => {
+		await write(
+			"src/Net.luau",
+			"src/Net/init.luau",
+			"src/Net/init.server.luau"
+		);
+
+		expect(await locate(["src/Net/init.server.luau"])).toMatchObject([
+			{ status: "replaced", by: abs("src/Net/init.luau") },
+		]);
+	});
+
 	it("should say the tree displaced a file whose node it defines, or a folder under its $path", async () => {
 		await write("src/Save.luau", "src/Packages/A.luau", "src/Kept.luau");
 		const project = {

@@ -9,6 +9,7 @@ import { SyncTool } from "../toolchain/toolchain.js";
 import { BuildFindings, BuildSummary } from "./build.js";
 import { BuildValidator } from "./check/build-validator.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
+import { MountClashes } from "./check/mount-clashes.js";
 import { MetaReader } from "./meta-reader.js";
 import { NestedProjectNames } from "./nested-project-names.js";
 import { Placement } from "./placement.js";
@@ -46,6 +47,7 @@ export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
 	private readonly projectNames: NestedProjectNames;
 	private readonly syncPathCheck: SyncPathCheck;
+	private readonly mountClashes: MountClashes;
 
 	constructor(
 		fileSystemService: FileReader,
@@ -55,6 +57,7 @@ export class ConfigBuilder {
 		this.metaReader = new MetaReader(fileSystemService);
 		this.projectNames = new NestedProjectNames(fileSystemService, index);
 		this.syncPathCheck = new SyncPathCheck(fileSystemService);
+		this.mountClashes = new MountClashes(fileSystemService);
 	}
 
 	/** Places `config`'s files; its caller checked that it declares routes. */
@@ -120,6 +123,7 @@ export class ConfigBuilder {
 				...config.warnings,
 				...meta.warnings,
 				...new BuildValidator(assembly).validate(),
+				...(await this.mountClashes.diagnostics(placement.value)),
 				...new UnmountedSources(config, this.index).diagnostics(),
 			],
 		});

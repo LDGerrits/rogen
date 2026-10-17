@@ -88,7 +88,7 @@ Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with 
 
 ### `serve [project…] [--port <port>] [--address <address>] [--allowed-hosts <host>…] [-- server args…]` [#serve]
 
-Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `watch` does. Run it instead of `watch` when you sync to Studio.
+Builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds every project on changes as `build --watch` does. Run it instead of `build --watch` when you sync to Studio.
 
 ```
 rogen serve · my-game
@@ -144,7 +144,10 @@ src/Net/Http.mock.luau -> ReplicatedStorage/Shared/Net/Http.mock · route * (fal
 src/Net/Http.spec.luau -> ignored · matches **/*.spec.luau
 src/Net/Remotes@server.luau -> ServerScriptService/Net/Remotes · route Server (suffix)
 src/Net/Types.lua -> replaced by src/Net/Types.luau
+  warning: becomes "ReplicatedStorage/Shared/Net/Types", as src/Net/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
+src/Net/Types.luau -> ReplicatedStorage/Shared/Net/Types · route * (fallback)
 src/Combat/Server/Hit.luau -> ServerScriptService/Combat/Hit · route Server (folder)
+  require(game:GetService("ServerScriptService").Combat.Hit)
 ```
 
 A directory stands for the files inside it, and no path at all means every file in the tree. Answers come in the order you gave the arguments, and a file already answered by an earlier argument isn't repeated. Since Rogen only reads names, the path doesn't have to exist yet, so you can check a file before you create it.
@@ -168,7 +171,8 @@ Under a path's line, `where` prints each warning or error a build would raise ab
 ```
 $ rogen where src/Inventory/Save@sever.luau
 src/Inventory/Save@sever.luau -> ReplicatedStorage/shared/Inventory/Save@sever · route * (fallback)
-  warning: did you mean "@server"? (route.strayAt)
+  warning: did you mean "@Server"? (route.strayAt)
+  require(game:GetService("ReplicatedStorage").shared.Inventory["Save@sever"])
 ```
 
 A path can carry the `:line` or `:line:col` that linters and logs print after it, with or without a message (`src/Net/Http.luau:12:5: unexpected symbol`); Rogen reads it as the path, so you can paste such a line as it is.
@@ -402,7 +406,7 @@ A warning whose fix is one rename also has `fixes`, a rename for every name it c
 
 ```json
 "fixes": [
-	{ "rename": { "from": "/repo/src/Inventory/Save@sever.luau", "to": "/repo/src/Inventory/Save@server.luau" } }
+	{ "rename": { "from": "/repo/src/Inventory/Save@sever.luau", "to": "/repo/src/Inventory/Save@Server.luau" } }
 ]
 ```
 
@@ -430,7 +434,7 @@ A warning about several files, such as `route.strayAt` or `tree.deadScript`, is 
 
 ```json
 "related": [
-	{ "file": "/repo/src/Inventory/Save@sever.luau", "message": "did you mean \"@server\"?" }
+	{ "file": "/repo/src/Inventory/Save@sever.luau", "message": "did you mean \"@Server\"?" }
 ]
 ```
 
@@ -704,7 +708,7 @@ In the commands that run Rojo (`build -o`, `sourcemap`, `upload`, `syncback`, `p
 
 Short options take their value after a space or after `=`: `-o game.rbxl` and `-o=game.rbxl` are the same.
 
-Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A warning about several files is one block in `build`, `watch` and `serve`, and its first line names the config. For one line per file, which is what an editor task or a CI annotation should read, use [`rogen check`](#check-path) or `--json`.
+Diagnostics use the familiar `file:line:col - severity: message` shape, so editors and CI can parse them. A warning about several files is one block in `build`, `build --watch` and `serve`, and its first line names the config. For one line per file, which is what an editor task or a CI annotation should read, use [`rogen check`](#check-path) or `--json`.
 
 ## Update notice
 

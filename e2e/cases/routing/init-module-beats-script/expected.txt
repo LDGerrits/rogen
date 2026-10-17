@@ -1,0 +1,22 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  src/F/init.server.luau - warning: becomes "ReplicatedStorage/F", as src/F/init.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
+
+$ rogen where src/F/init.luau src/F/init.server.luau
+exit 0
+stdout:
+  src/F/init.luau -> ReplicatedStorage/F · route * (fallback)
+    require(game:GetService("ReplicatedStorage").F)
+  src/F/init.server.luau -> replaced by src/F/init.luau
+    warning: becomes "ReplicatedStorage/F", as src/F/init.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    F: ModuleScript  <- src/F/init.luau, src/F/init.server.luau
+      Child: ModuleScript  <- src/F/Child.luau

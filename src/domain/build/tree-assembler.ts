@@ -84,7 +84,11 @@ export class TreeAssembler {
 					placement.tree.globs
 				).of(
 					placement.roots.flatMap(({ entries }) => entries),
-					placement.playerClientScripts.rulable
+					new Set(
+						[...placement.playerClientScripts.rulable].filter(
+							(source) => meta.runContextOf(source) === undefined
+						)
+					)
 				)
 			),
 			meta,

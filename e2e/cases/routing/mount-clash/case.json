@@ -1,0 +1,1 @@
+{ "steps": [["build"], ["check"], ["where", "src/Combat/Hit.luau", "src/Other.luau"]] }

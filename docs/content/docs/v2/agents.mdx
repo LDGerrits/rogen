@@ -78,7 +78,7 @@ printf '%s\n' "$report" >>"$seen"
 printf '%s\n' "$reply"
 ```
 
-Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal never adds it, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
+Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal adds it only with `--agent-hook`, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
 
 | Agent | Found by | Hook file | Event | Entry |
 |---|---|---|---|---|

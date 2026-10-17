@@ -316,6 +316,24 @@ describe("TreeAssembler", () => {
 				}
 			);
 
+			it("should write no rule for a client script whose meta sets a RunContext", async () => {
+				await write("src/Hud.client.luau", "src/Bar.client.luau");
+				await fs.writeFile(
+					abs("src/Hud.meta.json"),
+					JSON.stringify({ properties: { RunContext: "Client" } })
+				);
+
+				const { projectFile } = await assembleWith(
+					[],
+					{ client: PLAYER },
+					false
+				);
+
+				expect(projectFile.syncRules).toEqual([
+					ruleOf("src/Bar.client.luau"),
+				]);
+			});
+
 			it("should leave a script a rule of the project takes to that rule", async () => {
 				await write("src/Hud.client.luau");
 				const rule = {
@@ -362,6 +380,24 @@ describe("TreeAssembler", () => {
 				expect(projectFile.syncRules).toEqual([
 					ruleOf("src/Hud/Child.client.luau"),
 				]);
+			});
+
+			it("should not warn of an init client script whose meta sets a RunContext", async () => {
+				await write("src/Hud/init.client.luau");
+				await fs.writeFile(
+					abs("src/Hud/init.meta.json"),
+					JSON.stringify({ properties: { RunContext: "Client" } })
+				);
+
+				const { warnings } = await assembleWith(
+					[],
+					{ client: PLAYER },
+					false
+				);
+
+				expect(warnings.map(({ code }) => code)).not.toContain(
+					"tree.runContextTarget"
+				);
 			});
 		});
 
