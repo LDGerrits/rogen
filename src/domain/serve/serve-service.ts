@@ -21,6 +21,8 @@ export interface ServeRequest {
 	readonly refs: readonly string[];
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
+	/** Serves the project file that a server no serve started serves under the project's name, instead of refusing the port. */
+	readonly adopt?: boolean;
 	/** Aborts the checks that run other programs. */
 	readonly signal?: AbortSignal;
 }
@@ -45,7 +47,8 @@ export class ServePlan {
 		readonly selection: ReloadableSelection,
 		readonly executable: ServerExecutable,
 		readonly targets: readonly ServeTarget[],
-		readonly serverArgs: readonly string[]
+		readonly serverArgs: readonly string[],
+		readonly adopt = false
 	) {}
 
 	get alreadyServed(): ServedTarget[] {

@@ -54,6 +54,13 @@ const AllowedHostsOption = {
 		"A host, besides the address, that may reach every server. Rojo's own flag, from Rojo 7.7.0.",
 } as const satisfies OptionDescriptor;
 
+const AdoptOption = {
+	name: "adopt",
+	type: "boolean",
+	description:
+		"Take over a server no rogen serve started that serves this project: build and watch for it, start none. Without it, that server holds the port.",
+} as const satisfies OptionDescriptor;
+
 const ServeOptions = [
 	{
 		...JsonOption,
@@ -63,6 +70,7 @@ const ServeOptions = [
 	AddressOption,
 	PortOption,
 	AllowedHostsOption,
+	AdoptOption,
 ] as const;
 
 type ServeLine = CommandLine<typeof ServeOptions>;
@@ -104,7 +112,7 @@ registerCommand(
 					summary:
 						"Builds, serves with Rojo, and rebuilds on changes",
 					description:
-						"Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
+						"Builds, serves the project files with Rojo, and rebuilds on every change.",
 					args: ConfigArguments,
 					passthrough: {
 						name: "server args",
@@ -140,6 +148,7 @@ registerCommand(
 					signal: stopChecks.signal,
 					refs: line.positionals,
 					serverArgs: serverArgs.value,
+					adopt: line.options.adopt === true,
 				});
 				if (shutdown.isSettled) return ok(undefined);
 				if (plan.isErr()) return plan;

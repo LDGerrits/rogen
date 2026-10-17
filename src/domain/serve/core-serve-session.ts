@@ -23,7 +23,7 @@ import {
 	ServedTarget,
 	isServed,
 } from "./serve-service.js";
-import { ServePorts, namesakesOf } from "./serve-ports.js";
+import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { RunningServer, StartedServer } from "./started-server.js";
@@ -214,14 +214,11 @@ export class CoreServeSession
 			if (!wanted.has(file)) this.declined.delete(file);
 		for (const config of configs) {
 			if (this.stopping) return;
-			await this.follow(config, configs);
+			await this.follow(config);
 		}
 	}
 
-	private async follow(
-		config: ResolvedConfig,
-		configs: readonly ResolvedConfig[]
-	): Promise<void> {
+	private async follow(config: ResolvedConfig): Promise<void> {
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
 		const started = this.servers.get(config.id);
@@ -248,11 +245,7 @@ export class CoreServeSession
 			? err(this.ports.sharedPort(target, holder))
 			: started instanceof StartedServer && samePort
 				? ok(target)
-				: await this.ports.check(
-						target,
-						others,
-						namesakesOf(target.config, configs)
-					);
+				: await this.ports.check(target, others);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
 	}

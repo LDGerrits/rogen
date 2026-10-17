@@ -1,5 +1,4 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
 import { UsageError } from "../../base/errors.js";
 import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
@@ -17,16 +16,6 @@ import { ServerRecords } from "./server-records.js";
 
 const FREE_PORT_SEARCH = 20;
 
-export function namesakesOf(
-	config: ResolvedConfig,
-	configs: readonly ResolvedConfig[]
-): ResolvedConfig[] {
-	return configs.filter(
-		(other) =>
-			other.id !== config.id && other.projectName === config.projectName
-	);
-}
-
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
@@ -38,7 +27,8 @@ export class ServePorts {
 		private readonly records: ServerRecords,
 		private readonly server: SyncServer,
 		serverArgs: readonly string[],
-		private readonly cwd: string
+		private readonly cwd: string,
+		private readonly adopt: boolean
 	) {
 		this.host = server.hostIn(serverArgs);
 		this.port = server.portIn(serverArgs);
@@ -98,8 +88,7 @@ export class ServePorts {
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
 	async check(
 		target: ServeTarget,
-		others: readonly ServeTarget[],
-		namesakes: readonly ResolvedConfig[]
+		others: readonly ServeTarget[]
 	): Promise<Result<ServeTarget, Diagnostic>> {
 		const state = await this.probe.probe(target.address, this.server);
 		if (state.kind === "free") return ok(target);
@@ -113,9 +102,9 @@ export class ServePorts {
 			)
 				return ok({ ...target, servedBy: holder });
 			if (!recorded)
-				return namesakes.length === 0
+				return this.adopt
 					? ok({ ...target, servedBy: holder, adopted: true })
-					: err(this.unknownServer(target, holder, namesakes));
+					: err(this.unknownServer(target, holder));
 		}
 		return err(
 			await this.portTaken(
@@ -168,19 +157,12 @@ export class ServePorts {
 		);
 	}
 
-	private unknownServer(
-		target: ServeTarget,
-		holder: ServerInfo,
-		namesakes: readonly ResolvedConfig[]
-	): Diagnostic {
+	private unknownServer(target: ServeTarget, holder: ServerInfo): Diagnostic {
 		const { config, address } = target;
-		const labels = [config, ...namesakes]
-			.map((named) => this.refOf(named))
-			.sort(compareStrings);
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },
-			`Port ${address.port} is taken by ${holder.server.name} serving ${holder.project}, the name of ${joinedWithAnd(labels)}, so Rogen can't tell whether it serves ${this.refOf(config)}. Stop it, and run 'rogen serve' again to start the server.`
+			`Port ${address.port} is taken by ${holder.server.name} serving ${holder.project}, which no rogen serve started, so Rogen can't tell whether it serves ${config.label}'s project file. Stop it and run 'rogen serve' to start the server, or if it serves ${config.projectFile}, run 'rogen serve ${this.refOf(config)} --adopt'.`
 		);
 	}
 

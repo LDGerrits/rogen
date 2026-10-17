@@ -211,7 +211,7 @@ describe("serve command", () => {
 			sessionId: "s1",
 		});
 
-		const result = serve();
+		const result = serve([], { adopt: true });
 		await settle();
 
 		expect(processes.spawned).toEqual([]);
@@ -238,7 +238,7 @@ describe("serve command", () => {
 			sessionId: "s1",
 		});
 
-		void serve([], { json: true });
+		void serve([], { json: true, adopt: true });
 		await settle();
 		requests.responses.delete(ROJO_URL);
 		await settle();
@@ -411,7 +411,7 @@ describe("serve command", () => {
 			serverVersion: "7.7.1",
 			sessionId: "s1",
 		});
-		const result = serve([], { json: true });
+		const result = serve([], { json: true, adopt: true });
 		await settle();
 
 		lifecycle.shutdown();
@@ -433,7 +433,7 @@ describe("serve command", () => {
 			serverVersion: "7.7.1",
 			sessionId: "s1",
 		});
-		void serve([], { json: true });
+		void serve([], { json: true, adopt: true });
 		await settle();
 
 		await memFs.delete("/repo/rogen.json");
@@ -455,7 +455,7 @@ describe("serve command", () => {
 			serverVersion: "7.7.1",
 			sessionId: "s1",
 		});
-		void serve();
+		void serve([], { adopt: true });
 		await settle();
 
 		await memFs.delete("/repo/rogen.json");

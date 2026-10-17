@@ -13,7 +13,7 @@ import { CoreServeSession } from "./core-serve-session.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { SyncServer } from "../runner/sync-server.js";
-import { ServePorts, namesakesOf } from "./serve-ports.js";
+import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
 	ServeRequest,
@@ -54,14 +54,16 @@ export class CoreServeService implements ServeService {
 
 	private portsFor(
 		server: SyncServer,
-		serverArgs: readonly string[]
+		serverArgs: readonly string[],
+		adopt: boolean
 	): ServePorts {
 		return new ServePorts(
 			this.probe,
 			this.records,
 			server,
 			serverArgs,
-			this.environmentService.cwd
+			this.environmentService.cwd,
+			adopt
 		);
 	}
 
@@ -90,7 +92,8 @@ export class CoreServeService implements ServeService {
 
 		const ports = this.portsFor(
 			executable.value.server,
-			request.serverArgs
+			request.serverArgs,
+			request.adopt === true
 		);
 		if (ports.portError) return err(ports.portError);
 		const targets: ServeTarget[] = [];
@@ -104,11 +107,7 @@ export class CoreServeService implements ServeService {
 		const checked: ServeTarget[] = [];
 		const taken: Diagnostic[] = [];
 		for (const target of targets) {
-			const result = await ports.check(
-				target,
-				targets,
-				namesakesOf(target.config, served)
-			);
+			const result = await ports.check(target, targets);
 			if (result.isOk()) checked.push(result.value);
 			else taken.push(result.error);
 		}
@@ -118,7 +117,8 @@ export class CoreServeService implements ServeService {
 				selection,
 				executable.value,
 				checked,
-				request.serverArgs
+				request.serverArgs,
+				request.adopt === true
 			)
 		);
 	}
@@ -133,7 +133,11 @@ export class CoreServeService implements ServeService {
 				this.rojoRunner,
 				this.probe,
 				this.records,
-				this.portsFor(plan.executable.server, plan.serverArgs),
+				this.portsFor(
+					plan.executable.server,
+					plan.serverArgs,
+					plan.adopt
+				),
 				this.compatibility
 			)
 		);

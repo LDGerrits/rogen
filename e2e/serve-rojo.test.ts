@@ -457,7 +457,7 @@ describeWithRojo("end to end serve", () => {
 				expect(await rojoProject(serve.port)).toBe("Game");
 			}, 20_000);
 
-			const serving = serve.start(["--json"]);
+			const serving = serve.start(["--json", "--adopt"]);
 			await eventually(() => {
 				expect(serving.stdout).toContain('"adopted":true');
 			}, 20_000);
@@ -481,6 +481,32 @@ describeWithRojo("end to end serve", () => {
 			).toBeUndefined();
 		} finally {
 			rojo.kill("SIGINT");
+		}
+	}, 40_000);
+
+	it("should refuse a Rojo it didn't start that serves another folder's project of the same name", async () => {
+		const other = createProject(projectFiles(serve.port));
+		const [build, buildArgs] = invocation(serve.cli, ["build"]);
+		expect(spawnSync(build, buildArgs, { cwd: other.dir }).status).toBe(0);
+		const rojo = spawn("rojo", ["serve", "default.project.json"], {
+			cwd: other.dir,
+			stdio: "ignore",
+		});
+		try {
+			await eventually(async () => {
+				expect(await rojoProject(serve.port)).toBe("Game");
+			}, 20_000);
+
+			const refused = serve.start();
+
+			expect(await refused.exited).toBe(1);
+			expect(refused.output).toContain(
+				`Port ${serve.port} is taken by Rojo serving Game, which no rogen serve started`
+			);
+			expect(refused.output).toContain("--adopt");
+		} finally {
+			rojo.kill("SIGINT");
+			other.dispose();
 		}
 	}, 40_000);
 
