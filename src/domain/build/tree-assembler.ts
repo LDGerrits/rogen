@@ -52,7 +52,8 @@ interface PlacedEntry {
 const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "replaced" &&
 	why.status !== "displaced" &&
-	why.status !== "mounted";
+	why.status !== "mounted" &&
+	why.status !== "inProject";
 
 /** Turns a placed build and the meta it read into its Rojo tree. */
 export class TreeAssembler {
@@ -166,6 +167,7 @@ export class TreeAssembler {
 	}
 
 	private besideInit(dir: string, init: string): string[] {
+		if (RojoFile.DEFAULT_PROJECTS.includes(init)) return [];
 		const { placement } = this;
 		const { layout } = placement;
 		return childrenBesideInit(placement.listing(dir), init, (name) =>

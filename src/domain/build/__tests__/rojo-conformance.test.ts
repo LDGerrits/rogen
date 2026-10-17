@@ -352,6 +352,43 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		);
 	});
 
+	it("should place a nested project under its name, its folder as one instance, as Rojo does", async () => {
+		writeFiles({
+			"Data/Nest/default.project.json": JSON.stringify({
+				name: "Nested",
+				tree: {
+					$className: "Folder",
+					Val: { $className: "StringValue" },
+					Code: { $path: "code.luau" },
+				},
+			}),
+			"Data/Nest/code.luau": "",
+			"Data/Nest/Loose.luau": "",
+			"Data/Unnamed/default.project.jsonc": JSON.stringify({
+				tree: { $path: "a.luau" },
+			}),
+			"Data/Unnamed/a.luau": "",
+			"Data/Lib.project.json": JSON.stringify({
+				name: "Other",
+				tree: { $className: "Folder" },
+			}),
+			"Data/Plain.luau": "",
+		});
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({ name: "t", tree: { $path: "src" } })
+		);
+		await rogenTree();
+
+		const storage = sourcemap(dir, "default.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+
+		expect(placed(storage!)).toEqual(
+			placed(sourcemap(dir, "rojo.project.json"))
+		);
+	});
+
 	it("should make an init.csv the LocalizationTable of every node its folder becomes", async () => {
 		writeFiles({
 			"Loc/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",

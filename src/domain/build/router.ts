@@ -129,6 +129,8 @@ interface LeafName {
 	readonly hoisted: boolean;
 	readonly scriptSuffix: RojoScriptSuffix | undefined;
 	readonly isInit: boolean;
+	/** The name of the folder an init file becomes, when not the folder's own: a nested project's `name`. */
+	readonly folderName?: string;
 }
 
 interface ClaimedPath {
@@ -230,9 +232,17 @@ export class Router {
 		const leaf = this.claimLeaf(read, claims);
 		const hoistsLeaf = leaf.hoisted && !leaf.isInit;
 		const dropped = hoistsLeaf ? folders.length : (hoistAt ?? 0);
+		const kept = folders.slice(dropped);
+		const last = kept.length - 1;
 		return {
 			claims,
-			folders: folders.slice(dropped),
+			folders:
+				leaf.folderName === undefined || last < 0
+					? kept
+					: [
+							...kept.slice(0, last),
+							{ ...kept[last], name: leaf.folderName },
+						],
 			leaf,
 			hoisted: hoistsLeaf || hoistAt !== undefined,
 			dropped,
@@ -347,7 +357,15 @@ export class Router {
 	}
 
 	private claimLeaf(read: EntryReading, claims: Claims): LeafName {
-		const { kind, stem, match, scriptSuffix, isInit, nameCutByRule } = read;
+		const {
+			kind,
+			stem,
+			match,
+			scriptSuffix,
+			isInit,
+			nameCutByRule,
+			projectName,
+		} = read;
 		let routeSpan: SuffixSpan | undefined;
 		for (const span of match.spans) {
 			const { key, start } = span;
@@ -368,10 +386,12 @@ export class Router {
 			nameCutByRule
 		);
 		return {
-			name,
+			name: isInit ? name : (projectName ?? name),
 			hoisted,
 			scriptSuffix,
 			isInit,
+			...(isInit &&
+				projectName !== undefined && { folderName: projectName }),
 		};
 	}
 }

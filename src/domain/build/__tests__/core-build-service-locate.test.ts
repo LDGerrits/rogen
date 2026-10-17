@@ -352,6 +352,18 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
+	it("should say a file beside a default.project.json is in that nested project", async () => {
+		await write("src/Nest/default.project.json", "src/Nest/code.luau");
+
+		expect(await locate(["src/Nest/code.luau"])).toMatchObject([
+			{
+				status: "inProject",
+				source: abs("src/Nest/code.luau"),
+				project: toPosix(abs("src/Nest/default.project.json")),
+			},
+		]);
+	});
+
 	it("should name the file that replaced another at the same instance", async () => {
 		await write("src/Types.lua", "src/Types.luau");
 

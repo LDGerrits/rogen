@@ -55,6 +55,7 @@ export const whereDocumentShape = S.object({
 				node: instancePathShape,
 			}),
 			fileEntryShape(S.enum("ignored"), { pattern: S.string }),
+			fileEntryShape(S.enum("inProject"), { project: S.string }),
 			fileEntryShape(
 				S.enum(
 					"unrouted",
@@ -109,6 +110,7 @@ type LocationFields =
 			readonly node: readonly string[];
 	  }
 	| { readonly status: "ignored"; readonly pattern: string }
+	| { readonly status: "inProject"; readonly project: string }
 	| {
 			readonly status:
 				| "unrouted"
@@ -166,6 +168,8 @@ function fieldsOf(location: FileLocation): LocationFields {
 		case "displaced":
 		case "mounted":
 			return { status: location.status, node: location.node };
+		case "inProject":
+			return { status: "inProject", project: toNative(location.project) };
 		case "ignored":
 			return {
 				status: "ignored",

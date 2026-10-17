@@ -402,7 +402,7 @@ class ConfigLocator {
 			[file],
 			(source) => RojoFile.at(source, this.config.syncRules)
 		);
-		const placement = this.builderOf(index).place(this.config);
+		const placement = await this.builderOf(index).place(this.config);
 		return placement.isOk()
 			? new PlacementLocator(
 					placement.value,

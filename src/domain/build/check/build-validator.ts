@@ -187,14 +187,14 @@ export class BuildValidator {
 		return this.placement.files
 			.filter(
 				({ entry }) =>
-					path.posix.basename(entry.relativePath) ===
-					"default.project.json"
+					entry.file.isDefaultProject &&
+					!entry.relativePath.includes("/")
 			)
 			.map(({ entry, instancePath }) =>
 				warningDiagnostic(
 					"scan.nestedProject",
 					{ resource: entry.source },
-					`Rojo reads this project file as a nested project, so it becomes ${instanceKey(instancePath)}, holding that project's tree. A project file for the folder it lies in belongs outside the source paths.`
+					`Rojo reads a ${entry.file.name} as the folder it lies in, but a source path never becomes an instance, so this project becomes ${instanceKey(instancePath)} on its own. Move it into a folder of its own.`
 				)
 			);
 	}

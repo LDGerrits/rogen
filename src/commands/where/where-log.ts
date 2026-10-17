@@ -47,6 +47,8 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 			return "unrouted · no route matches it";
 		case "mounted":
 			return `mounted · the tree mounts it at ${instanceKey(location.node)}`;
+		case "inProject":
+			return `in a nested project · ${relative(location.project)} decides what Rojo reads of its folder`;
 		case "ignored":
 			return `ignored · matches ${patternRelativeTo(cwd, location.pattern)}`;
 		case "skipped":

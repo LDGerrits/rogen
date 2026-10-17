@@ -639,13 +639,13 @@ Change the `suffix`, or the `pattern`, so the suffix ends every file the pattern
 
 ### `scan.nestedProject` [#scan-nestedproject]
 
-Warning. A `default.project.json` lies inside a source path. Rojo reads it as a nested project, so it becomes an instance named `default`, holding that project's tree. A project file for the folder it lies in belongs outside the source paths. Other project files are left alone, since a nested project with a name of its own is a thing Rojo supports.
+Warning. A `default.project.json` (or `.jsonc`) lies in a source path itself, not in a folder below it. Rojo reads such a file as the folder it lies in, but a source path never becomes an instance, so Rogen places the project on its own, named by its `name`, or `default` without one. In a folder below the source path, the file is that folder, as in Rojo: the folder becomes one instance named by the project's `name`, and Rojo reads only what the project mounts.
 
 ```
-places/arena/default.project.json - warning: Rojo reads this project file as a nested project, so it becomes ReplicatedStorage/Shared/default, holding that project's tree. A project file for the folder it lies in belongs outside the source paths. (scan.nestedProject)
+src/default.project.json - warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/Shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
 ```
 
-Move the file out of the source paths. If it is meant as a nested project, mount it in the `tree` with a `$path` instead, which Rogen leaves to Rojo.
+Move the file into a folder of its own, or out of the source paths. See [Nested Projects](/docs/v2/core-concepts/project-layout#nested-projects).
 
 ### `scan.sourcePathNamedAfterKey` [#scan-sourcepathnamedafterkey]
 

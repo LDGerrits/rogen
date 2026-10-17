@@ -89,6 +89,11 @@ export class RojoFile {
 		),
 		`${RojoFile.INIT_NAME}.csv`,
 	]);
+	/** The project files Rojo reads as their folder, in the order it looks for them. */
+	static readonly DEFAULT_PROJECTS: readonly string[] = [
+		"default.project.json",
+		"default.project.jsonc",
+	];
 
 	readonly stem: string;
 	private readonly match: SyncRuleMatch | undefined;
@@ -192,6 +197,11 @@ export class RojoFile {
 	/** Whether Rojo reads the file as a nested project. */
 	get isProject(): boolean {
 		return this.match?.rule.use === "project";
+	}
+
+	/** Whether Rojo reads the file as the folder it lies in. */
+	get isDefaultProject(): boolean {
+		return RojoFile.DEFAULT_PROJECTS.includes(this.name);
 	}
 
 	/** Whether Rojo reads the file as a LocalizationTable. */

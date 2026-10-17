@@ -11,5 +11,5 @@ project: DataModel
     shared: Folder
       Vendor: Folder
         Lib: Folder
+          Lib: Folder  <- src/Vendor/Lib/Widget.project.json
           Util: ModuleScript  <- src/Vendor/Lib/Util.luau
-          Widget: Folder  <- src/Vendor/Lib/Widget.project.json

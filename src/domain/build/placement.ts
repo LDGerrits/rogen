@@ -165,13 +165,14 @@ export class Placement {
 		return this.legacy;
 	}
 
-	/** The directory Rojo reads an init script through, if it does. */
+	/** The directory Rojo reads an init script or a default project file through, if it does. */
 	initDirOf(file: RoutedFile): string | undefined {
-		return file.init &&
-			new RojoFile(
-				path.basename(this.layout.emittedPath(file.entry.source)),
-				SyncRules.DEFAULT
-			).isInit
+		if (!file.init) return undefined;
+		const emitted = new RojoFile(
+			path.basename(this.layout.emittedPath(file.entry.source)),
+			SyncRules.DEFAULT
+		);
+		return emitted.isInit || emitted.isDefaultProject
 			? file.init.sitsIn
 			: undefined;
 	}
