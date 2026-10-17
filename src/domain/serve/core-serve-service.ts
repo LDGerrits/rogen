@@ -47,7 +47,8 @@ export class CoreServeService implements ServeService {
 		this.probe = new ServerProbe(requestService);
 		this.records = new ServerRecords(
 			fileSystemService,
-			environmentService.tmpDir
+			environmentService.tmpDir,
+			environmentService.pid
 		);
 		this.served = new ServedProjectFiles(this.records, this.probe);
 	}
@@ -63,7 +64,8 @@ export class CoreServeService implements ServeService {
 			server,
 			serverArgs,
 			this.environmentService.cwd,
-			adopt
+			adopt,
+			this.rojoRunner
 		);
 	}
 

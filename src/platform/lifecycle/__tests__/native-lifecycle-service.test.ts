@@ -23,6 +23,16 @@ describe("NativeLifecycleService", () => {
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
+	it("should fire onWillShutdown when the terminal closes", () => {
+		const service = store.add(new NativeLifecycleService());
+		const listener = jest.fn();
+		store.add(service.onWillShutdown(listener));
+
+		process.emit("SIGHUP");
+
+		expect(listener).toHaveBeenCalledTimes(1);
+	});
+
 	it("should fire onWillShutdown once when the reader of the output quits", () => {
 		const service = store.add(new NativeLifecycleService());
 		const listener = jest.fn();

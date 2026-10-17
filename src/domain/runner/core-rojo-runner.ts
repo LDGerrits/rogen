@@ -26,6 +26,14 @@ export class CoreRojoRunner implements RojoRunner {
 		return this.finder.find(directory, resource, signal);
 	}
 
+	isRunning(pid: number): boolean {
+		return this.processService.isRunning(pid);
+	}
+
+	terminateTree(pid: number): Promise<void> {
+		return this.processService.terminateTree(pid);
+	}
+
 	start(
 		executable: ServerExecutable,
 		command: string,

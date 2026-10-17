@@ -31,6 +31,21 @@ async function rojoProject(port: number): Promise<string | undefined> {
 	}
 }
 
+async function servedNames(port: number): Promise<string[]> {
+	const base = `http://127.0.0.1:${port}/api`;
+	const info = decode(
+		new Uint8Array(await (await fetch(`${base}/rojo`)).arrayBuffer())
+	) as { rootInstanceId: string };
+	const read = decode(
+		new Uint8Array(
+			await (
+				await fetch(`${base}/read/${info.rootInstanceId}`)
+			).arrayBuffer()
+		)
+	) as { instances: Record<string, { Name: string }> };
+	return Object.values(read.instances).map(({ Name }) => Name);
+}
+
 describeWithRojo("end to end serve", () => {
 	const serve = useServeProject(35000);
 
@@ -47,6 +62,41 @@ describeWithRojo("end to end serve", () => {
 		expect(await serving.stop()).toBe(0);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);
+
+	it("should end the Rojo with it when the terminal closes", async () => {
+		const serving = serve.start();
+		await eventually(() => {
+			expect(serving.output).toContain("Serving Game");
+		}, 20_000);
+
+		await serving.kill("SIGHUP");
+
+		await eventually(async () => {
+			expect(await rojoProject(serve.port)).toBeUndefined();
+		}, 10_000);
+	}, 40_000);
+
+	it("should end the Rojo a killed serve left, and serve again so a new file reaches it", async () => {
+		const first = serve.start();
+		await eventually(() => {
+			expect(first.output).toContain("Serving Game");
+		}, 20_000);
+		await first.kill("SIGKILL");
+		expect(await rojoProject(serve.port)).toBe("Game");
+
+		const second = serve.start();
+		await eventually(() => {
+			expect(second.output).toContain("that a rogen serve (process");
+			expect(second.output).toContain("Serving Game");
+		}, 30_000);
+		writeProjectFile(serve.dir, "src/Fresh.luau");
+
+		await eventually(async () => {
+			expect(await servedNames(serve.port)).toContain("Fresh");
+		}, 20_000);
+		expect(await second.stop()).toBe(0);
+		expect(await rojoProject(serve.port)).toBeUndefined();
+	}, 60_000);
 
 	it("should keep building while it serves", async () => {
 		const serving = serve.start();

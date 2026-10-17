@@ -18,7 +18,7 @@ describe("ServerRecords", () => {
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
-		records = new ServerRecords(fs, "/tmp");
+		records = new ServerRecords(fs, "/tmp", 4242);
 	});
 
 	describe("recordOf", () => {
@@ -31,8 +31,17 @@ describe("ServerRecords", () => {
 				server: "rojo",
 				project: "Game",
 				session: "s1",
+				owner: 4242,
 				...built,
 			});
+		});
+
+		it("should record which serve wrote it and the process that leads the server", async () => {
+			await records.write(address, info, { ...built, pid: 1001 });
+
+			expect(await records.recordOf(address, info)).toEqual(
+				expect.objectContaining({ owner: 4242, pid: 1001 })
+			);
 		});
 
 		it.each([

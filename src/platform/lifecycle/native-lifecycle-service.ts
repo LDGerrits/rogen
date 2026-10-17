@@ -2,7 +2,11 @@ import { AbstractDisposable, toDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
 import { LifecycleService } from "./lifecycle-service.js";
 
-const SHUTDOWN_SIGNALS: readonly NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
+const SHUTDOWN_SIGNALS: readonly NodeJS.Signals[] = [
+	"SIGINT",
+	"SIGTERM",
+	"SIGHUP",
+];
 
 export class NativeLifecycleService
 	extends AbstractDisposable

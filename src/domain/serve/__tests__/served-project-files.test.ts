@@ -26,7 +26,7 @@ describe("ServedProjectFiles", () => {
 		fs = new MemoryFileSystemService();
 		requests = new MockRequestService();
 		files = new ServedProjectFiles(
-			new ServerRecords(fs, "/mock/tmp"),
+			new ServerRecords(fs, "/mock/tmp", 4242),
 			new ServerProbe(requests)
 		);
 	});

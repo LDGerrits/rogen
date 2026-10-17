@@ -266,7 +266,7 @@ stdout:
       {
         "name": "serve",
         "summary": "Builds, serves with Rojo, and rebuilds on changes",
-        "description": "Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
+        "description": "Builds, serves the project files with Rojo, and rebuilds on every change.",
         "args": [
           {
             "name": "project",
@@ -291,6 +291,10 @@ stdout:
             "name": "allowed-hosts",
             "type": "string",
             "multiple": true
+          },
+          {
+            "name": "adopt",
+            "type": "boolean"
           }
         ],
         "effects": [

@@ -35,6 +35,12 @@ export interface ServeTarget {
 	readonly servedBy?: ServerInfo;
 	/** Whether `servedBy` is a server no serve started. */
 	readonly adopted?: boolean;
+	/** The record of a server whose `rogen serve` ended without ending it, which holds the port and must end before this target starts. */
+	readonly orphan?: {
+		readonly pid?: number;
+		readonly owner?: number;
+		readonly session?: string;
+	};
 }
 
 export type ServedTarget = ServeTarget & { readonly servedBy: ServerInfo };

@@ -46,6 +46,8 @@ export const exitCodeText = (code: number): string =>
 	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
 
 export interface ChildProcess extends Disposable {
+	/** Its process id; none when it couldn't start. */
+	readonly pid: number | undefined;
 	/** Each line it printed, on either stream, as the line completes; one the process left unfinished comes when it exits. */
 	readonly onDidOutputLine: Event<string>;
 	readonly onDidExit: Event<ProcessExit>;
@@ -63,6 +65,10 @@ export interface ProcessService {
 		args: readonly string[],
 		options: ExecOptions
 	): Promise<Result<ProcessOutput, Error>>;
+	/** Whether a process with this id exists, whoever started it. */
+	isRunning(pid: number): boolean;
+	/** Ends the process of this id, which leads a group of its own, and everything it started, and resolves once they are gone. */
+	terminateTree(pid: number): Promise<void>;
 	/** Starts `file`, with no input; what it prints comes through `onDidOutputLine`. */
 	spawn(
 		file: string,

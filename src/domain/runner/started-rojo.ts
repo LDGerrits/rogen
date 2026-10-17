@@ -25,6 +25,10 @@ export class StartedRojo extends AbstractDisposable implements RojoProcess {
 
 	private exited = false;
 
+	get pid(): number | undefined {
+		return this.child.pid;
+	}
+
 	constructor(
 		private readonly child: ChildProcess,
 		server: SyncServer

@@ -27,7 +27,8 @@ export class MockChildProcess
 	constructor(
 		readonly file: string,
 		readonly args: readonly string[],
-		readonly options: SpawnOptions
+		readonly options: SpawnOptions,
+		readonly pid: number | undefined = undefined
 	) {
 		super();
 	}
@@ -60,6 +61,10 @@ export class MockProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly spawned: MockChildProcess[] = [];
+	/** The ids of processes started outside this service, that `isRunning` reports. */
+	readonly running = new Set<number>();
+	readonly terminatedTrees: number[] = [];
+	private nextPid = 1000;
 	readonly execs: {
 		file: string;
 		args: readonly string[];
@@ -91,12 +96,21 @@ export class MockProcessService implements ProcessService {
 		return output ? ok(output) : err(new Error(`spawn ${file} ENOENT`));
 	}
 
+	isRunning(pid: number): boolean {
+		return this.running.has(pid);
+	}
+
+	async terminateTree(pid: number): Promise<void> {
+		this.terminatedTrees.push(pid);
+		this.running.delete(pid);
+	}
+
 	spawn(
 		file: string,
 		args: readonly string[],
 		options: SpawnOptions
 	): MockChildProcess {
-		const child = new MockChildProcess(file, args, options);
+		const child = new MockChildProcess(file, args, options, this.nextPid++);
 		this.spawned.push(child);
 		return child;
 	}

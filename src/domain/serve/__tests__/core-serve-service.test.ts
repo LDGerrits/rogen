@@ -547,6 +547,80 @@ describe("CoreServeService", () => {
 			expect(servePlan.alreadyServed).toHaveLength(1);
 		});
 
+		it("should leave a server alone whose serve still runs", async () => {
+			processes.running.add(5000);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.alreadyServed).toHaveLength(1);
+			expect(servePlan.toStart).toEqual([]);
+		});
+
+		it("should adopt a server whose serve ended when the process that leads it is gone too", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.adopted.map(({ config }) => config.label)).toEqual(
+				["repo"]
+			);
+		});
+
+		it("should adopt a server whose serve ended, and whose leading process the record doesn't name", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			expect((await plan()).adopted).toHaveLength(1);
+		});
+
+		it("should start over a server whose serve ended, and name what it leaves", async () => {
+			processes.running.add(5001);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const servePlan = await plan();
+
+			expect(servePlan.alreadyServed).toEqual([]);
+			expect(servePlan.toStart.map(({ orphan }) => orphan?.pid)).toEqual([
+				5001,
+			]);
+			expect(servePlan.isIdle).toBe(false);
+		});
+
 		it("should ignore a record left by a server that no longer runs", async () => {
 			await memFs.writeFile(
 				...recordFile(
@@ -970,6 +1044,8 @@ describe("CoreServeService", () => {
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",
+				owner: 4242,
+				pid: processes.spawned[0].pid,
 			});
 
 			await session.stop();
@@ -977,6 +1053,102 @@ describe("CoreServeService", () => {
 			expect(await memFs.exists("/mock/tmp/rogen-serve/34872.json")).toBe(
 				false
 			);
+		});
+
+		it("should end the server a dead serve left, then start its own, and say so", async () => {
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			processes.running.add(5001);
+
+			await start();
+
+			expect(processes.terminatedTrees).toEqual([5001]);
+			expect(processes.spawned).toHaveLength(1);
+			expect(said).toEqual([
+				"warning: Ended the Rojo (process 5001) that a rogen serve (process 5000) left running when it stopped without ending it.",
+			]);
+		});
+
+		it("should leave a server alone that went before the serve got to end it", async () => {
+			processes.running.add(5001);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+					session: "s1",
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			const planned = await plan();
+			requests.responses.delete("http://127.0.0.1:34872/api/rojo");
+			session = service.serve(planned).unwrap();
+			said = [];
+			session.onDidOutput(({ message }) => said.push(message.text));
+
+			await session.start();
+			await settle();
+
+			expect(processes.terminatedTrees).toEqual([]);
+			expect(said).toEqual([]);
+			expect(processes.spawned).toHaveLength(1);
+		});
+
+		it("should say it couldn't end the server a dead serve left, and still start its own", async () => {
+			processes.running.add(5001);
+			jest.spyOn(processes, "terminateTree").mockRejectedValue(
+				new Error("EINVAL")
+			);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			await start();
+
+			expect(said).toEqual([
+				"warning: Couldn't end the Rojo (process 5001) that a rogen serve (process 5000) left running: EINVAL",
+			]);
+			expect(processes.spawned).toHaveLength(1);
+		});
+
+		it("should take over a server whose serve ended after this serve found it served", async () => {
+			processes.running.add(5000);
+			processes.running.add(5001);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					owner: 5000,
+					pid: 5001,
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+			await start();
+			processes.running.delete(5000);
+
+			await memFs.writeFile("/repo/src/B.luau", "");
+			await settle();
+
+			expect(processes.terminatedTrees).toEqual([5001]);
+			expect(processes.spawned).toHaveLength(1);
 		});
 
 		it("should fail to start, starting nothing, when the first build throws", async () => {

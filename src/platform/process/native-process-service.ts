@@ -19,6 +19,9 @@ import {
 
 const KILL_GRACE_MS = 5_000;
 
+/** How long to wait for a group that SIGKILL ended to leave. */
+const KILL_WAIT_MS = 2_000;
+
 /** How long an exited process's output may take to drain; a process it started can hold the pipes open for good. */
 const DRAIN_MS = 250;
 
@@ -69,7 +72,42 @@ export function launch(
 	});
 }
 
+// A toolchain shim starts the real program as a child that outlives it unless the tree ends.
+function killWindowsTree(pid: number): Promise<void> {
+	return new Promise<void>((resolve) =>
+		childProcess.execFile(
+			"taskkill",
+			["/pid", String(pid), "/T", "/F"],
+			{ windowsHide: true },
+			() => resolve()
+		)
+	);
+}
+
+/** The child leads a process group of its own, so the signal reaches what a wrapper started without handing over to it. */
+function signalTree(
+	pid: number,
+	signal: NodeJS.Signals,
+	child?: childProcess.ChildProcess
+): void {
+	try {
+		process.kill(-pid, signal);
+	} catch {
+		child?.kill(signal);
+	}
+}
+
+function groupExists(pid: number): boolean {
+	try {
+		process.kill(-pid, 0);
+		return true;
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code === "EPERM";
+	}
+}
+
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
+	readonly pid = undefined;
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidOutputLine: Event<string> = NullEvent;
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
@@ -146,6 +184,10 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 		});
 	}
 
+	get pid(): number | undefined {
+		return this.child.pid;
+	}
+
 	terminate(): Promise<ProcessExit> {
 		this.terminating ??= this.end();
 		return this.terminating;
@@ -153,36 +195,16 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 	private async end(): Promise<ProcessExit> {
 		if (this.exit || this.child.pid === undefined) return this.exited;
-		if (isWindows) {
-			// A toolchain shim starts the real program as a child that outlives it unless the tree ends.
-			await new Promise<void>((resolve) =>
-				childProcess.execFile(
-					"taskkill",
-					["/pid", String(this.child.pid), "/T", "/F"],
-					{ windowsHide: true },
-					() => resolve()
-				)
-			);
-		} else {
-			this.signalTree("SIGTERM");
-		}
+		if (isWindows) await killWindowsTree(this.child.pid);
+		else signalTree(this.child.pid, "SIGTERM", this.child);
 		const timer = setTimeout(
-			() => this.signalTree("SIGKILL"),
+			() => signalTree(this.child.pid ?? 0, "SIGKILL", this.child),
 			KILL_GRACE_MS
 		);
 		try {
 			return await this.exited;
 		} finally {
 			clearTimeout(timer);
-		}
-	}
-
-	/** The child leads a process group of its own, so the signal reaches what a wrapper started without handing over to it. */
-	private signalTree(signal: NodeJS.Signals): void {
-		try {
-			process.kill(-(this.child.pid ?? 0), signal);
-		} catch {
-			this.child.kill(signal);
 		}
 	}
 
@@ -282,6 +304,28 @@ export class NativeProcessService implements ProcessService {
 				windowsHide: true,
 			})
 		);
+	}
+
+	isRunning(pid: number): boolean {
+		try {
+			process.kill(pid, 0);
+			return true;
+		} catch (error) {
+			return (error as NodeJS.ErrnoException).code === "EPERM";
+		}
+	}
+
+	async terminateTree(pid: number): Promise<void> {
+		if (isWindows) return killWindowsTree(pid);
+		signalTree(pid, "SIGTERM");
+		const deadline = Date.now() + KILL_GRACE_MS;
+		while (groupExists(pid) && Date.now() < deadline)
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		if (!groupExists(pid)) return;
+		signalTree(pid, "SIGKILL");
+		const killed = Date.now() + KILL_WAIT_MS;
+		while (groupExists(pid) && Date.now() < killed)
+			await new Promise((resolve) => setTimeout(resolve, 50));
 	}
 
 	private async isExecutable(file: string): Promise<boolean> {

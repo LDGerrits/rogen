@@ -195,6 +195,39 @@ describe("NativeProcessService", () => {
 			child[Symbol.dispose]();
 		});
 
+		it("should tell a running process from one that ended", async () => {
+			const child = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 60_000)"],
+				{ cwd: dir }
+			);
+			const exited = exitOf(child);
+
+			expect(service.isRunning(process.pid)).toBe(true);
+			expect(service.isRunning(child.pid!)).toBe(true);
+
+			await child.terminate();
+			await exited;
+
+			expect(service.isRunning(child.pid!)).toBe(false);
+			child[Symbol.dispose]();
+		});
+
+		it("should end the process of an id and what it started, without its handle", async () => {
+			const child = service.spawn(
+				node,
+				["-e", "setTimeout(() => {}, 60_000)"],
+				{ cwd: dir }
+			);
+			const exited = exitOf(child);
+
+			await service.terminateTree(child.pid!);
+
+			await exited;
+			expect(service.isRunning(child.pid!)).toBe(false);
+			child[Symbol.dispose]();
+		});
+
 		it("should report a file that can't start as an exit with an error", async () => {
 			const child = service.spawn(path.join(dir, "missing"), [], {
 				cwd: dir,

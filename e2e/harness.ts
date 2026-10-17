@@ -601,6 +601,12 @@ export class RunningRogen {
 		return this._stdout;
 	}
 
+	/** Ends it as a closed terminal or a crash does, with no chance to clean up. */
+	async kill(signal: "SIGHUP" | "SIGKILL"): Promise<number | null> {
+		this.child.kill(signal);
+		return this.exited;
+	}
+
 	async stop(): Promise<number | null> {
 		if (this.child.exitCode === null && this.child.signalCode === null) {
 			this.child.kill("SIGINT");

@@ -8,11 +8,12 @@ import {
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoRunner } from "../runner/rojo-runner.js";
 import { ServerInfo, SyncServer } from "../runner/sync-server.js";
 import { ServeAddress } from "./serve.js";
 import { ServeTarget } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
-import { ServerRecords } from "./server-records.js";
+import { ServerRecord, ServerRecords } from "./server-records.js";
 
 const FREE_PORT_SEARCH = 20;
 
@@ -28,7 +29,8 @@ export class ServePorts {
 		private readonly server: SyncServer,
 		serverArgs: readonly string[],
 		private readonly cwd: string,
-		private readonly adopt: boolean
+		private readonly adopt: boolean,
+		private readonly runner: RojoRunner
 	) {
 		this.host = server.hostIn(serverArgs);
 		this.port = server.portIn(serverArgs);
@@ -85,6 +87,19 @@ export class ServePorts {
 		);
 	}
 
+	/** Whether the server on `target`'s port was recorded for its project file by a `rogen serve` that has ended. */
+	async ownerEndedFor(
+		target: ServeTarget,
+		holder: ServerInfo
+	): Promise<boolean> {
+		const recorded = await this.records.recordOf(target.address, holder);
+		return (
+			recorded !== undefined &&
+			samePath(recorded.projectFile, target.config.projectFile) &&
+			this.ownerEnded(recorded)
+		);
+	}
+
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
 	async check(
 		target: ServeTarget,
@@ -100,7 +115,7 @@ export class ServePorts {
 				recorded &&
 				samePath(recorded.projectFile, target.config.projectFile)
 			)
-				return ok({ ...target, servedBy: holder });
+				return ok(this.targetServedBy(target, holder, recorded));
 			if (!recorded)
 				return this.adopt
 					? ok({ ...target, servedBy: holder, adopted: true })
@@ -114,6 +129,25 @@ export class ServePorts {
 				others
 			)
 		);
+	}
+
+	/** Whether the `rogen serve` that started the recorded server has ended; a record without an owner can't tell. */
+	ownerEnded(record: ServerRecord): boolean {
+		return (
+			record.owner !== undefined && !this.runner.isRunning(record.owner)
+		);
+	}
+
+	/** The target as its recorded server serves it: left alone while its `rogen serve` runs, to end when only a server is left, to watch when there is no process to end. */
+	private targetServedBy(
+		target: ServeTarget,
+		holder: ServerInfo,
+		recorded: ServerRecord
+	): ServeTarget {
+		if (!this.ownerEnded(recorded)) return { ...target, servedBy: holder };
+		return recorded.pid !== undefined && this.runner.isRunning(recorded.pid)
+			? { ...target, orphan: recorded }
+			: { ...target, servedBy: holder, adopted: true };
 	}
 
 	sharedPort(target: ServeTarget, holder: ServeTarget): Diagnostic {
