@@ -23,7 +23,7 @@ rogen.json:
     "$className": "DataModel",
     "Lighting": {
       "$properties": {
-        "ClockTime": 14.0
+        "ClockTime": 14
       }
     },
     "ReplicatedStorage": {

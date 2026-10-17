@@ -46,17 +46,11 @@ rogen.json:
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "MyLib": {
-        "$path": "src/my-lib"
-      },
-      "Pkg": {
-        "$path": "src/lib/pkg"
-      }
+      "MyLib": { "$path": "src/my-lib" },
+      "Pkg": { "$path": "src/lib/pkg" }
     },
     "ServerScriptService": {
-      "Admin": {
-        "$path": "src/server/Admin"
-      }
+      "Admin": { "$path": "src/server/Admin" }
     }
   },
   "sourcePaths": [

@@ -7,6 +7,7 @@ import {
 	RogenConfig,
 	configFileContent,
 } from "../config/config.js";
+import { WrittenTree } from "../rojo/project-text.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
@@ -40,10 +41,11 @@ export class InitPlanBuilder {
 		private readonly cwd: string = directory.path
 	) {}
 
-	setConfig(config: RogenConfig): void {
+	/** `written`: the tree of the project file the config was lifted from. */
+	setConfig(config: RogenConfig, written?: WrittenTree): void {
 		this.config = {
 			fileName: DEFAULT_CONFIG_FILE,
-			content: configFileContent(config),
+			content: configFileContent(config, written),
 		};
 	}
 

@@ -1,4 +1,9 @@
-import { parse, parseJsonc } from "../jsonc.js";
+import {
+	insertJsoncItem,
+	parse,
+	parseJsonc,
+	parseJsoncSpans,
+} from "../jsonc.js";
 
 describe("parse", () => {
 	it("should return the value of a plain JSON document", () => {
@@ -86,5 +91,46 @@ describe("parseJsonc", () => {
 				},
 			],
 		});
+	});
+});
+
+describe("insertJsoncItem", () => {
+	it("should insert before the index, keeping the comments", () => {
+		const text = '{\n\t// order\n\t"a": [1, 3]\n}\n';
+
+		const edited = insertJsoncItem(text, ["a"], 1, 2);
+
+		expect(edited).toContain("// order");
+		expect(parseJsonc(edited).value).toEqual({ a: [1, 2, 3] });
+	});
+
+	it("should add last when the array is shorter than the index", () => {
+		expect(
+			parseJsonc(insertJsoncItem('{"a": [1]}', ["a"], 5, 2)).value
+		).toEqual({ a: [1, 2] });
+	});
+});
+
+describe("parseJsoncSpans", () => {
+	it("should say where each value is, so it can be copied as written", () => {
+		const text = '{"a": { "b": 1, }, "c": 2}';
+
+		const parsed = parseJsoncSpans(text)!;
+		const [a] = parsed.root.properties!;
+
+		expect(parsed.text.slice(a.value.start, a.value.end)).toBe(
+			'{ "b": 1, }'
+		);
+		expect(a.value.value).toEqual({ b: 1 });
+	});
+
+	it("should leave out a byte order mark, which the offsets don't count", () => {
+		const parsed = parseJsoncSpans("\ufeff{}")!;
+
+		expect(parsed.text).toBe("{}");
+	});
+
+	it("should be undefined for a document with an error", () => {
+		expect(parseJsoncSpans("{")).toBeUndefined();
 	});
 });

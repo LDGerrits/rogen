@@ -22,9 +22,7 @@ rogen.json:
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "Admin": {
-        "$path": "src/server/Admin"
-      }
+      "Admin": { "$path": "src/server/Admin" }
     }
   },
   "sourcePaths": [

@@ -1,6 +1,6 @@
 import path from "path";
 import { isInside, samePath } from "../../base/path.js";
-import { ProjectText } from "../rojo/project-text.js";
+import { ProjectText, WrittenTree } from "../rojo/project-text.js";
 import {
 	RojoNode,
 	isProjectFileName,
@@ -144,12 +144,19 @@ export const ROGEN_KEYS: readonly (keyof RogenConfig)[] = [
 ];
 
 /** A config as `rogen fmt-project` writes it, so the first format changes nothing. */
-export function configText(config: Record<string, unknown>): string {
-	return ProjectText.ofConfig(config, ROGEN_KEYS);
+export function configText(
+	config: Record<string, unknown>,
+	written?: WrittenTree
+): string {
+	return ProjectText.ofConfig(config, ROGEN_KEYS, written);
 }
 
-export function configFileContent(config: RogenConfig): string {
-	return configText({ $schema: SCHEMA_URL, ...config });
+/** `written`: the tree of the project file the config was lifted from, which stays as the user wrote it where it is unchanged. */
+export function configFileContent(
+	config: RogenConfig,
+	written?: WrittenTree
+): string {
+	return configText({ $schema: SCHEMA_URL, ...config }, written);
 }
 
 type SourcePathOverlap =

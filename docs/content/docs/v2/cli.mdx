@@ -241,7 +241,7 @@ git diff --name-only --diff-filter=d HEAD | xargs -r rogen check
 
 ### `init [path]`
 
-Writes a starting `rogen.json`, in the folder or in `path`, which `init` makes when it isn't there. Every command line of `rojo init` works: `--kind` and `--skip-git`, and a folder to start in, as `rojo init newproj` does. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says. The file is written as [`fmt-project`](#fmt-project-project) writes it, so a first format changes nothing.
+Writes a starting `rogen.json`, in the folder or in `path`, which `init` makes when it isn't there. Every command line of `rojo init` works: `--kind` and `--skip-git`, and a folder to start in, as `rojo init newproj` does. It detects the language, Darklua and your package manager, and writes what it found into the config. This is the only time Rogen detects anything; builds just do what the config says. The file is written as [`fmt-project`](#fmt-project-project) writes it, except for a tree lifted from a project file: each node of it that stays as it was keeps your numbers (`0`, not `0.0`), the order of your keys, and your comments, and only what Rogen changed is written afresh. A later `rogen fmt-project` formats the tree as Rojo does.
 
 In a terminal it asks a few questions, and Enter gives you the default each time. It also offers Rogen's rules for coding agents and the agent hook, when they aren't there yet. With `--non-interactive`, `--json`, or when it can't ask (see [Output](#output)), it takes the defaults, and a flag from [Choices as flags](#choices-as-flags) answers its question in either case.
 

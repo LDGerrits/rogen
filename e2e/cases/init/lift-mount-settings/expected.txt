@@ -165,29 +165,23 @@ rogen.json:
   "name": "game",
   "tree": {
     "$className": "DataModel",
-    "ReplicatedStorage": {
-      "Deep": {
-        "$properties": {
-          "Archivable": false
-        },
-        "$path": "src/props/deep"
-      }
-    },
     "Workspace": {
+      "Map": {
+        "$className": "Folder",
+        "$properties": { "Archivable": false }
+      },
       "Level": {
         "$className": "Folder",
         "Props": {
           "$className": "Model",
-          "$attributes": {
-            "Kind": "prop"
-          }
+          "$attributes": { "Kind": "prop" }
         }
-      },
-      "Map": {
-        "$className": "Folder",
-        "$properties": {
-          "Archivable": false
-        }
+      }
+    },
+    "ReplicatedStorage": {
+      "Deep": {
+        "$path": "src/props/deep",
+        "$properties": { "Archivable": false }
       }
     }
   },

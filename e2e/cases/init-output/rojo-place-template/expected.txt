@@ -30,28 +30,10 @@ rogen.json:
   "name": "project",
   "tree": {
     "$className": "DataModel",
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
     "ReplicatedStorage": {},
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
       }
     },
     "StarterPlayer": {
@@ -62,6 +44,9 @@ rogen.json:
       }
     },
     "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      },
       "Baseplate": {
         "$className": "Part",
         "$properties": {
@@ -73,19 +58,34 @@ rogen.json:
           ],
           "Locked": true,
           "Position": [
-            0.0,
-            -10.0,
-            0.0
+            0,
+            -10,
+            0
           ],
           "Size": [
-            512.0,
-            20.0,
-            512.0
+            512,
+            20,
+            512
           ]
         }
-      },
+      }
+    },
+    "Lighting": {
       "$properties": {
-        "FilteringEnabled": true
+        "Ambient": [
+          0,
+          0,
+          0
+        ],
+        "Brightness": 2,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
       }
     }
   },
