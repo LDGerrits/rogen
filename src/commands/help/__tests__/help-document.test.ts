@@ -211,7 +211,7 @@ describe("rogen help --json", () => {
 			);
 			expect(codes).toContainEqual({
 				code: "config.unknownField",
-				severity: "warning",
+				severity: "error",
 				summary:
 					"The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1.",
 				url: `${DOCS_URL}/diagnostics#config-unknownfield`,

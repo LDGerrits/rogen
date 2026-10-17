@@ -19,7 +19,7 @@ import {
 	instanceKey,
 } from "../../roblox/roblox.js";
 import { RojoFile, scriptRunOf } from "../../rojo/rojo.js";
-import { RojoNode } from "../../rojo/rojo-project.js";
+import { NODE_FIELDS, RojoNode } from "../../rojo/rojo-project.js";
 import { FolderMeta } from "../folder-meta.js";
 import {
 	MisspellingKind,
@@ -31,21 +31,12 @@ import { MissingSourcePaths } from "./missing-source-paths.js";
 import { RoutedFile } from "../router.js";
 import { Assembly } from "../tree-assembler.js";
 
-const ROJO_NODE_FIELDS: ReadonlySet<string> = new Set([
-	"$className",
-	"$path",
-	"$properties",
-	"$attributes",
-	"$ignoreUnknownInstances",
-	"$id",
-]);
-
 function reservedKeys(
 	node: RojoNode,
 	at: readonly string[]
 ): (readonly string[])[] {
 	return Object.entries(node).flatMap(([key, value]) => {
-		if (!isObject(value) || ROJO_NODE_FIELDS.has(key)) return [];
+		if (!isObject(value) || NODE_FIELDS.has(key)) return [];
 		const here = [...at, key];
 		return [
 			...(key.startsWith("$") ? [here] : []),

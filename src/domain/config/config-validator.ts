@@ -12,6 +12,7 @@ import {
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
 import {
+	NODE_FIELDS,
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
@@ -54,10 +55,8 @@ export class ConfigValidator {
 		private readonly config: ProjectSource,
 		private readonly serveProject: string,
 		private readonly projectStems: readonly string[],
-		warnings: readonly Diagnostic[],
 		private readonly context: PlaceContext = {}
 	) {
-		this.problems.add(warnings);
 		this.dir = path.dirname(config.file);
 		this.routes = fieldOf(config.model, "routes") ?? {};
 		const routed = Object.keys(this.routes).length > 0;
@@ -77,22 +76,15 @@ export class ConfigValidator {
 		];
 	}
 
-	/** Validates every project of one config file, the description first; `warnings` are the description's. Any project's error fails the file. */
+	/** Validates every project of one config file, the description first. Any project's error fails the file. */
 	static validateFile(
 		sources: readonly ProjectSource[],
 		serveProject: string,
-		warnings: readonly Diagnostic[],
 		context: PlaceContext = {}
 	): Result<ResolvedConfigFile, Diagnostic[]> {
 		const stems = sources.map(({ stem }) => stem);
-		const results = sources.map((source, index) =>
-			new ConfigValidator(
-				source,
-				serveProject,
-				stems,
-				index === 0 ? warnings : source.warnings,
-				context
-			).validate()
+		const results = sources.map((source) =>
+			new ConfigValidator(source, serveProject, stems, context).validate()
 		);
 		const problems = results.flatMap((result) =>
 			result.isErr() ? result.error : []
@@ -117,6 +109,7 @@ export class ConfigValidator {
 		this.checkSyncRules(project);
 		this.checkName(project);
 		this.checkNodes(project);
+		this.checkNodeFields(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
 		this.checkPlaces();
@@ -202,6 +195,21 @@ export class ConfigValidator {
 			"config.wrongType",
 			this.locate(...notNode),
 			`"${notNode.join(".")}" must be an object.${value === null ? ' null removes nothing: to leave a mounted node out of a project, list its folder in "globIgnorePaths".' : ""}`
+		);
+	}
+
+	private checkNodeFields(project: RojoProject<ParsedProjectFile>): void {
+		const unknown = RojoProject.findUnknownField(
+			project.getNode([]) ?? {},
+			["tree"]
+		);
+		if (!unknown) return;
+		const key = unknown[unknown.length - 1];
+		const suggestion = closestMatch(key, [...NODE_FIELDS]);
+		this.problems.error(
+			"config.unknownField",
+			this.locate(...unknown),
+			`"${unknown.join(".")}" is not a field of a node, and Rojo rejects a project file with a field it doesn't know.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`
 		);
 	}
 

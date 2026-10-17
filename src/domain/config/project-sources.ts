@@ -34,7 +34,6 @@ export interface ProjectSource {
 	readonly stem: string;
 	readonly model: ConfigModel;
 	readonly inherited?: InheritedSource;
-	readonly warnings: readonly Diagnostic[];
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
 	positionOfKey(key: string): DiagnosticPosition | undefined;
 }
@@ -175,7 +174,7 @@ export class ProjectSourceReader {
 			(key) => location(key),
 			false
 		);
-		errors.push(...found.errors);
+		errors.push(...found);
 		return {
 			file: config.file,
 			stem: name,
@@ -190,7 +189,6 @@ export class ProjectSourceReader {
 				)
 			),
 			inherited: this.inheritedFrom(name, changes),
-			warnings: found.warnings,
 			positionOf: (section) =>
 				at(...sectionPath(section)) ?? config.positionOf(section),
 			positionOfKey: (key) => at(key) ?? config.positionOfKey(key),
@@ -205,7 +203,6 @@ export class ProjectSourceReader {
 			stem,
 			model: new ConfigModel(this.startingValues(stem)),
 			inherited: this.inheritedFrom(stem),
-			warnings: [],
 		});
 		const description: ProjectSource = {
 			...config,
@@ -214,7 +211,6 @@ export class ProjectSourceReader {
 				? new ConfigModel(this.startingValues(DEFAULT_PROJECT))
 				: config.model,
 			inherited: this.inheritedFrom(DEFAULT_PROJECT),
-			warnings: [],
 		};
 		const inherited = (base?.sources.slice(1) ?? []).map(
 			({ stem }) => declared.get(stem) ?? unchanged(stem)

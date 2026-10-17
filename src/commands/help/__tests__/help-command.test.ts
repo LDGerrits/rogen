@@ -213,7 +213,7 @@ describe("help command", () => {
 			expect(
 				starts.find((line) => line.startsWith("config.unknownField"))
 			).toMatch(
-				/^config\.unknownField +warning The config has a key that is neither one of Rojo's/
+				/^config\.unknownField +error +The config has a key that is neither one of Rojo's/
 			);
 			expect(
 				starts.find((line) =>

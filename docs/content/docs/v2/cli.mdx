@@ -380,9 +380,9 @@ Diagnostics look like this. Match on `code`, since the wording of `message` can 
 	"file": "/repo/rogen.json",
 	"line": 3,
 	"column": 2,
-	"severity": "warning",
+	"severity": "error",
 	"code": "config.unknownField",
-	"message": "\"outDir\" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name.",
+	"message": "\"outDir\" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know.",
 	"url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-unknownfield"
 }
 ```

@@ -82,7 +82,7 @@ export class ConfigLoader {
 			})
 		);
 		const declared = new ProjectSourceReader(config).read();
-		const failed = [...keys.errors, ...declared.errors];
+		const failed = [...keys, ...declared.errors];
 		if (failed.length > 0)
 			return { files: [file], value, resolved: err(failed) };
 
@@ -96,7 +96,6 @@ export class ConfigLoader {
 		const own = ConfigValidator.validateFile(
 			declared.sources,
 			declared.serveProject,
-			keys.warnings,
 			{ placeDirs }
 		);
 		if (own.isErr())
