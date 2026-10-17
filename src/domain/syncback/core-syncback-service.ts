@@ -119,6 +119,8 @@ interface Prepared {
 	readonly root: string;
 	/** Globs relative to `dir` that nothing syncback writes may match: `globIgnorePaths` and syncback's `ignorePaths`. */
 	readonly ignored: readonly string[];
+	/** The `globIgnorePaths` alone: what Rojo never read, which the mirror leaves out. */
+	readonly unread: readonly string[];
 }
 
 /** A file copied into the mirror, and the path of the project it is. */
@@ -330,6 +332,12 @@ export class CoreSyncbackService implements SyncbackService {
 			fileAt: (target) => RojoFile.at(target, project.syncRules),
 			isFolder: (target) =>
 				this.fileSystemService.isDirectory(toNative(target)),
+			readText: async (target) => {
+				const read = await tryWithAsync(() =>
+					this.fileSystemService.readFile(toNative(target))
+				);
+				return read.isOk() ? read.value : undefined;
+			},
 		});
 		const [clash] = mirror.clashes;
 		if (clash)
@@ -352,6 +360,7 @@ export class CoreSyncbackService implements SyncbackService {
 				...(written.globIgnorePaths ?? []),
 				...CoreSyncbackService.ignorePathsOf(written),
 			],
+			unread: written.globIgnorePaths ?? [],
 		});
 	}
 
@@ -436,7 +445,7 @@ export class CoreSyncbackService implements SyncbackService {
 			const from = path.posix.join(target, name);
 			const to = `${mirror}/${name}`;
 			if (
-				this.isIgnored(prepared, from) ||
+				this.isIgnored(prepared, from, prepared.unread) ||
 				isSyncbackFileName(name) ||
 				name === ".git"
 			)
@@ -469,9 +478,13 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 	}
 
-	private isIgnored({ dir, ignored }: Prepared, target: string): boolean {
+	private isIgnored(
+		{ dir, ignored }: Prepared,
+		target: string,
+		globs = ignored
+	): boolean {
 		const relative = path.posix.relative(toPosix(dir), target);
-		return ignored.some((glob) => isGlobsetMatch(relative, glob));
+		return globs.some((glob) => isGlobsetMatch(relative, glob));
 	}
 
 	/** Compares the mirror with what was copied into it, and turns each difference into a change of the project: an edit or removal of the file it was copied from, and a new instance placed by routing. */
@@ -576,13 +589,34 @@ export class CoreSyncbackService implements SyncbackService {
 			for (let depth = 1; depth <= names.length; depth++)
 				holding.add(names.slice(0, depth).join("/"));
 		}
-		for (const { kind, mirror: at, target } of mirror.entries)
-			if (kind === "folder" && !holding.has(at))
+		const copiedFolders = new Set(
+			mirror.entries
+				.filter(({ kind }) => kind === "folder")
+				.map(({ mirror: at }) => at)
+		);
+		for (const at of copiedPaths) {
+			const names = at.split("/");
+			for (let depth = 1; depth < names.length; depth++) {
+				const folder = names.slice(0, depth).join("/");
+				if (
+					[...copiedFolders].some((entry) =>
+						folder.startsWith(`${entry}/`)
+					)
+				)
+					copiedFolders.add(folder);
+			}
+		}
+		for (const at of [...copiedFolders].sort(
+			(a, b) => b.length - a.length
+		)) {
+			const target = mirror.targetOf(at);
+			if (target !== undefined && !holding.has(at))
 				operations.push({
 					kind: "prune",
 					file: toNative(target),
 					instance: CoreSyncbackService.instanceAt(at),
 				});
+		}
 
 		const known = new Set<string>(mirror.folders);
 		for (const at of copiedPaths) {

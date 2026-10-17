@@ -6,6 +6,9 @@ import { invocation } from "./harness.js";
 
 export const PROJECTS_DIR = path.resolve("e2e/rojo-build-tests");
 
+/** Rojo's syncback-test projects, each an `input-project` folder and the place it syncs back. */
+export const SYNCBACK_PROJECTS_DIR = path.resolve("e2e/rojo-syncback-tests");
+
 /** Projects of ours that Rojo reads one way and a port might read another, each a `globIgnorePaths` shape. */
 export const GLOB_PROJECTS_DIR = path.resolve("e2e/rojo-glob-tests");
 

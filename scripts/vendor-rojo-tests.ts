@@ -3,16 +3,19 @@ import path from "path";
 import { pathToFileURL } from "url";
 
 /**
- * Copies Rojo's build-test projects, at the Rojo version `rokit.toml` pins, into `e2e/rojo-build-tests`, with Rojo's licence (MPL-2.0).
+ * Copies Rojo's build-test and syncback-test projects, at the Rojo version `rokit.toml` pins, into `e2e/rojo-build-tests` and `e2e/rojo-syncback-tests`, each with Rojo's licence (MPL-2.0).
  *
- *   node scripts/vendor-rojo-build-tests.ts
+ *   node scripts/vendor-rojo-tests.ts
  *
  * Run it again after the pin moves; the conformance test fails until the copies are of the pinned version.
  */
 
 const REPOSITORY = "rojo-rbx/rojo";
-const SOURCE = "rojo-test/build-tests/";
-export const VENDORED_DIR = "e2e/rojo-build-tests";
+/** Each folder of Rojo's repository that is copied, and where it goes. */
+const VENDORED: readonly { readonly source: string; readonly dir: string }[] = [
+	{ source: "rojo-test/build-tests/", dir: "e2e/rojo-build-tests" },
+	{ source: "rojo-test/syncback-tests/", dir: "e2e/rojo-syncback-tests" },
+];
 export const VERSION_FILE = "VERSION";
 
 /** The Rojo version a `rokit.toml` pins. */
@@ -28,8 +31,9 @@ async function fetchText(url: string): Promise<Buffer> {
 	return Buffer.from(await response.arrayBuffer());
 }
 
-export async function vendorRojoBuildTests(
+export async function vendorRojoTests(
 	version: string,
+	source: string,
 	outDir: string
 ): Promise<number> {
 	const tree = JSON.parse(
@@ -40,11 +44,11 @@ export async function vendorRojoBuildTests(
 		).toString("utf8")
 	) as { tree: { path: string; type: string }[] };
 	const files = tree.tree.filter(
-		(entry) => entry.type === "blob" && entry.path.startsWith(SOURCE)
+		(entry) => entry.type === "blob" && entry.path.startsWith(source)
 	);
 	fs.rmSync(outDir, { recursive: true, force: true });
 	for (const file of files) {
-		const target = path.join(outDir, file.path.slice(SOURCE.length));
+		const target = path.join(outDir, file.path.slice(source.length));
 		fs.mkdirSync(path.dirname(target), { recursive: true });
 		fs.writeFileSync(
 			target,
@@ -65,9 +69,8 @@ export async function vendorRojoBuildTests(
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 	const version = pinnedRojoVersion(fs.readFileSync("rokit.toml", "utf8"));
-	const count = await vendorRojoBuildTests(
-		version,
-		path.resolve(VENDORED_DIR)
-	);
-	console.log(`Copied ${count} files of Rojo ${version} to ${VENDORED_DIR}.`);
+	for (const { source, dir } of VENDORED) {
+		const count = await vendorRojoTests(version, source, path.resolve(dir));
+		console.log(`Copied ${count} files of Rojo ${version} to ${dir}.`);
+	}
 }

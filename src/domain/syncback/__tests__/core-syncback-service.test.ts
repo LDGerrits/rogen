@@ -484,6 +484,58 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs("vendor/kit/A.spec.luau"))).toBe(true);
 	});
 
+	it("should remove a folder inside a mounted folder once Rojo emptied it", async () => {
+		await writeFiles(fs, "Packages/Kit/.gitkeep");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Packages: { $path: "Packages" } },
+				},
+			},
+		});
+		rojo.say = async () => {
+			await fs.delete(
+				mirror("ReplicatedStorage", "Packages", "Kit"),
+				true
+			);
+			await fs.writeFile(
+				mirror("ReplicatedStorage", "Packages", "Kit.rbxm"),
+				"model"
+			);
+			return [];
+		};
+
+		await service.apply(request);
+
+		expect(await fs.exists(abs("Packages/Kit"))).toBe(false);
+		expect(await fs.readFile(abs("Packages/Kit.rbxm"))).toBe("model");
+	});
+
+	it("should copy a file syncback's ignorePaths name, since Rojo still reads it", async () => {
+		await writeFiles(fs, "vendor/kit/init.luau");
+		await prepare(["src/Combat/Server/Combat.luau"], {
+			project: {
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: { Kit: { $path: "vendor/kit" } },
+				},
+				syncbackRules: { ignorePaths: ["**/kit/*.luau"] },
+			},
+		});
+		let copied = false;
+		rojo.say = async () => {
+			copied = await fs.exists(
+				mirror("ReplicatedStorage", "Kit", "init.luau")
+			);
+			return [];
+		};
+
+		await service.plan(request);
+
+		expect(copied).toBe(true);
+	});
+
 	it("should list a property Rojo wrote for a folder no one folder of the project is", async () => {
 		await prepare([
 			"src/Inventory/Bag@server.luau",

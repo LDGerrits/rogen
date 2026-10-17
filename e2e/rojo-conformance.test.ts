@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { pinnedRojoVersion } from "../scripts/vendor-rojo-build-tests.js";
+import { pinnedRojoVersion } from "../scripts/vendor-rojo-tests.js";
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { bundleCli } from "./harness.js";
 import {

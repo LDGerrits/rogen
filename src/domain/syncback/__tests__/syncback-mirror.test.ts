@@ -18,7 +18,8 @@ const placed = (source: string, ...instancePath: string[]): PlacedLocation => ({
 const mirrorOf = (
 	written: RojoProjectFile,
 	files: readonly PlacedLocation[],
-	folders: readonly string[] = []
+	folders: readonly string[] = [],
+	texts: Readonly<Record<string, string>> = {}
 ) =>
 	SyncbackMirror.of({
 		written,
@@ -28,6 +29,7 @@ const mirrorOf = (
 		reads: ["/repo/src"],
 		fileAt: (target) => RojoFile.at(target, SyncRules.DEFAULT),
 		isFolder: async (target) => folders.includes(target),
+		readText: async (target) => texts[target],
 	});
 
 const optional = (target: string) => ({ optional: target });
@@ -364,6 +366,94 @@ describe("SyncbackMirror", () => {
 				},
 			},
 		});
+	});
+
+	it("should read a root that mounts a folder from a copy in the mirror", async () => {
+		const mirror = await mirrorOf(
+			{ name: "csv", tree: { $path: "src" } },
+			[],
+			["/repo/src"]
+		);
+
+		expect(mirror.file.tree).toEqual({ $path: `${ROOT}/~kept/0` });
+		expect(mirror.entries).toEqual([
+			{ mirror: "~kept/0", target: "/repo/src", kind: "folder" },
+		]);
+	});
+
+	it("should read a root that mounts a file from a copy in the mirror", async () => {
+		const mirror = await mirrorOf(
+			{ name: "model", tree: { $path: "Model.rbxmx" } },
+			[]
+		);
+
+		expect(mirror.file.tree).toEqual({
+			$path: `${ROOT}/~kept/0/Model.rbxmx`,
+		});
+	});
+
+	it("should refuse to make a project with a $path outside the mirror", () => {
+		expect(() =>
+			SyncbackMirror.assertInside(
+				{ tree: { $className: "DataModel", A: { $path: "src" } } },
+				ROOT
+			)
+		).toThrow('"src"');
+	});
+
+	it("should copy a nested project with what it reads, laid out as on disk", async () => {
+		const mirror = await mirrorOf(
+			{
+				tree: {
+					$className: "DataModel",
+					ReplicatedStorage: {
+						Nested: { $path: "nested.project.json" },
+					},
+				},
+			},
+			[],
+			["/repo/lib"],
+			{
+				"/repo/nested.project.json": JSON.stringify({
+					name: "Nested",
+					tree: {
+						Value: { $path: "string_value.txt" },
+						Inner: { $path: "inner/inner.project.json" },
+					},
+				}),
+				"/repo/inner/inner.project.json": JSON.stringify({
+					name: "Inner",
+					tree: { $path: "../lib" },
+				}),
+			}
+		);
+
+		expect(mirror.file.tree).toEqual({
+			$className: "DataModel",
+			ReplicatedStorage: {
+				Nested: { $path: `${ROOT}/~kept/0/nested.project.json` },
+			},
+		});
+		expect(mirror.entries).toEqual(
+			expect.arrayContaining([
+				{
+					mirror: "~kept/0/nested.project.json",
+					target: "/repo/nested.project.json",
+					kind: "file",
+				},
+				{
+					mirror: "~kept/0/inner/inner.project.json",
+					target: "/repo/inner/inner.project.json",
+					kind: "file",
+				},
+				{
+					mirror: "~kept/0/string_value.txt",
+					target: "/repo/string_value.txt",
+					kind: "file",
+				},
+				{ mirror: "~kept/0/lib", target: "/repo/lib", kind: "folder" },
+			])
+		);
 	});
 
 	it("should give the path in the project of a mirror path, and none for a new one", async () => {
