@@ -17,7 +17,7 @@ import { SyncRule } from "../rojo/sync-rules.js";
 import { SyncLayout } from "./sync-layout.js";
 import { WrittenGlobs } from "./written-globs.js";
 
-interface TreeMount {
+export interface TreeMount {
 	readonly path: string;
 	readonly node: readonly string[];
 }
@@ -28,6 +28,10 @@ export class TreeMounts {
 		private readonly mounts: readonly TreeMount[],
 		private readonly file: string
 	) {}
+
+	get all(): readonly TreeMount[] {
+		return this.mounts;
+	}
 
 	/** The mount at `absolutePath` or above it, which makes Rojo read it. */
 	covering(absolutePath: string): TreeMount | undefined {

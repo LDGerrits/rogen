@@ -533,6 +533,53 @@ describe("BuildValidator rules", () => {
 				expect(mismatched).toEqual([abs("src/SERVER")]);
 			});
 
+			it("should not offer a rename that another route's folder would ignore", async () => {
+				await write(
+					"src/Odd/Shared/Ui.client/A.luau",
+					"src/Odd/Net.server/B.luau"
+				);
+
+				const [warning] = (
+					await route({
+						routes: {
+							...SHARED,
+							Shared: "ReplicatedStorage/shared",
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.dotRoute");
+
+				expect(warning.message).toContain(
+					`${at("src/Odd/Shared/Ui.client")} (the "Shared" route governs it, so "@client" would do nothing; move it out of that route's files to route it)`
+				);
+				expect(warning.message).toContain(`(write "Net@server")`);
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/Odd/Net.server"),
+							to: at("src/Odd/Net@server"),
+						},
+					},
+				]);
+			});
+
+			it("should still offer the rename when the route below the folder is one of its own", async () => {
+				await write("src/Ui.client/Sub@server/A.luau");
+
+				const [warning] = await warningsOf("route.dotRoute");
+
+				expect(warning.message).toContain(`(write "Ui@client")`);
+				expect(warning.fixes).toEqual([
+					{
+						rename: {
+							from: at("src/Ui.client"),
+							to: at("src/Ui@client"),
+						},
+					},
+				]);
+			});
+
 			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {
 				await write("src/.server/A.luau", "src/.Server/B.luau");
 

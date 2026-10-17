@@ -1,11 +1,12 @@
 $ rogen build -o game.rbxlx
 exit 0
 stdout:
+  Building project 'Game'
+  Built project to game.rbxlx
+stderr:
   rogen build · Game
   default.project.json · wrote
-  Built 1 config.
-  Rojo: Building project 'Game'
-  Rojo: Built project to game.rbxlx
+  Built 1 project.
 
 written:
   default.project.json

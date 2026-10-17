@@ -112,21 +112,26 @@ describe("BuildValidator rules", () => {
 					);
 			};
 
-			it("should warn for a default.project.json, naming the instance it becomes", async () => {
+			it("should warn for a default.project.json in a source path itself, naming the instance it becomes", async () => {
 				const warnings = await nested(
-					"src/sub/default.project.json",
+					"src/default.project.json",
 					"src/Other.project.json"
 				);
 
 				expect(warnings).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Warning,
-						resource: at("src", "sub", "default.project.json"),
-						message: expect.stringContaining(
-							"ReplicatedStorage/shared/sub/default"
-						),
+						resource: at("src", "default.project.json"),
+						message:
+							"Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/default on its own. Move it into a folder of its own.",
 					},
 				]);
+			});
+
+			it("should not warn for a default.project.json in a folder, which becomes that folder", async () => {
+				expect(await nested("src/sub/default.project.json")).toEqual(
+					[]
+				);
 			});
 
 			it("should not warn for a project file that is outside the source paths", async () => {

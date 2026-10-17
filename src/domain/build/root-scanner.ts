@@ -1,6 +1,6 @@
 import path from "path";
 import { compareStrings, groupBy } from "../../base/collections.js";
-import { isGlobsetMatch } from "../../base/glob.js";
+import { ignoringGlob } from "../../base/glob.js";
 import {
 	dirnamePosix,
 	joinPosix,
@@ -258,8 +258,7 @@ export class RootScanner {
 	}
 
 	private ignoringGlob(absolutePath: string): string | undefined {
-		const posixPath = toPosix(absolutePath);
-		return this.ignored.find((glob) => isGlobsetMatch(posixPath, glob));
+		return ignoringGlob(toPosix(absolutePath), this.ignored);
 	}
 
 	private keptEntries(
@@ -306,6 +305,37 @@ export class RootScanner {
 		return kept;
 	}
 
+	/** Takes a folder that holds a default project file as that project alone, as Rojo reads it; false when it holds none. */
+	private visitProject(
+		walk: Walk,
+		dir: string,
+		kept: readonly [string, FileType][]
+	): boolean {
+		const names = new Set(
+			kept.flatMap(([name, type]) => (isFileType(type) ? [name] : []))
+		);
+		const name = RojoFile.DEFAULT_PROJECTS.find((each) => names.has(each));
+		if (name === undefined) return false;
+		const project = joinPosix(dir, name);
+		const file = this.fileAt(project);
+		walk.entries.push({
+			kind: file.kind ?? "data",
+			file,
+			sourcePath: walk.sourcePath,
+			relativePath: toPosix(
+				path.relative(walk.sourcePath, path.join(dir, name))
+			),
+			source: project,
+		});
+		for (const [other] of kept)
+			if (other !== name)
+				walk.leftOut.set(joinPosix(dir, other), {
+					status: "inProject",
+					project,
+				});
+		return true;
+	}
+
 	private visit(walk: Walk, dir: string): boolean {
 		const listing = this.index.getEntries(dir);
 		if (!listing) return false;
@@ -315,6 +345,8 @@ export class RootScanner {
 			relativeDir ? `${relativeDir}/${name}` : name;
 
 		const kept = this.keptEntries(walk, dir, listing);
+		if (dir !== walk.sourcePath && this.visitProject(walk, dir, kept))
+			return true;
 
 		const odd = (name: string, reason: string, leftOut = false) =>
 			walk.oddNames.push({

@@ -1,4 +1,5 @@
 import path from "path";
+import { negationOf } from "../../base/glob.js";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { SyncLayout } from "./sync-layout.js";
 
@@ -14,6 +15,8 @@ export class WrittenGlobs {
 
 	/** The globs for `glob` ahead of the sync path's move; `from` is the absolute POSIX folder it is relative to, when that is not the project's own. */
 	of(glob: string, from?: string): string[] {
+		const { negated, body } = negationOf(glob);
+		if (negated) return this.of(body, from).map((each) => `!${each}`);
 		const written = [
 			this.moved(glob, from) ?? this.inProject(glob, from),
 			this.original(glob, from),

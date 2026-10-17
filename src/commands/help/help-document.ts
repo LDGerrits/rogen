@@ -47,7 +47,6 @@ const commandShape = S.named(
 	S.object({
 		name: S.string,
 		summary: S.string,
-		description: S.string,
 		args: S.array(argShape),
 		options: S.array(optionShape),
 		effects: S.array(S.enum(...EFFECTS)),
@@ -83,6 +82,7 @@ const detailShape = S.object({
 	),
 	effects: S.array(S.enum(...EFFECTS)),
 	examples: S.array(S.string),
+	exitCodes: S.record(S.string),
 	output: S.optional(
 		S.object({
 			document: S.optional(S.string),
@@ -170,13 +170,15 @@ export const HelpDocument = {
 			commands: [...commands.values()].map((command) => ({
 				name: command.id,
 				summary: command.metadata.summary,
-				description: command.metadata.description,
 				args: (command.metadata.args ?? []).map(argBrief),
 				options: (command.metadata.options ?? []).map(optionBrief),
 				effects: effectsOf(command),
 			})),
 			globalOptions: GlobalOptions.map(optionBrief),
-			exitCodes: ExitCodes,
+			exitCodes: {
+				...ExitCodes,
+				0: "done (warnings included; check exits 1 on any)",
+			},
 			errorKinds: ErrorKinds,
 		};
 	},
@@ -207,6 +209,7 @@ export const HelpDocument = {
 			...(passthrough && { passthrough }),
 			effects: effectsOf(command),
 			examples,
+			exitCodes: { ...ExitCodes, ...command.metadata.exitCodes },
 			...(output && {
 				output: OutputNotation.describe(output),
 				failure: OutputNotation.of(failureShape),
@@ -215,9 +218,14 @@ export const HelpDocument = {
 		};
 	},
 
-	/** Every diagnostic code with its severity and the first sentence of what it means. */
-	codes() {
-		return { codes: Object.keys(helpTexts.diagnostics).map(codeBrief) };
+	/** Every diagnostic code, or those that start with `prefix`, with the severity and the first sentence of what it means. */
+	codes(prefix = "") {
+		const start = prefix.toLowerCase();
+		return {
+			codes: Object.keys(helpTexts.diagnostics)
+				.filter((code) => code.toLowerCase().startsWith(start))
+				.map(codeBrief),
+		};
 	},
 
 	/** What a diagnostic code means, and where the docs explain it. */

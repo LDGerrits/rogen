@@ -23,7 +23,7 @@ import {
 	ServedTarget,
 	isServed,
 } from "./serve-service.js";
-import { ServePorts, namesakesOf } from "./serve-ports.js";
+import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 import { RunningServer, StartedServer } from "./started-server.js";
@@ -152,7 +152,11 @@ export class CoreServeSession
 			this._onDidError.fire(refusal);
 			return err(refusal);
 		}
-		for (const target of this.plan.toStart) this.launch(target);
+		for (const target of this.plan.toStart) {
+			await this.endOrphanOf(target);
+			if (this.stopping) return ok(undefined);
+			this.launch(target);
+		}
 		for (const target of this.plan.alreadyServed)
 			if (target.adopted) this.adopt(target);
 			else
@@ -214,14 +218,11 @@ export class CoreServeSession
 			if (!wanted.has(file)) this.declined.delete(file);
 		for (const config of configs) {
 			if (this.stopping) return;
-			await this.follow(config, configs);
+			await this.follow(config);
 		}
 	}
 
-	private async follow(
-		config: ResolvedConfig,
-		configs: readonly ResolvedConfig[]
-	): Promise<void> {
+	private async follow(config: ResolvedConfig): Promise<void> {
 		const target = this.ports.targetOf(config);
 		const address = target.address.toString();
 		const started = this.servers.get(config.id);
@@ -248,11 +249,7 @@ export class CoreServeSession
 			? err(this.ports.sharedPort(target, holder))
 			: started instanceof StartedServer && samePort
 				? ok(target)
-				: await this.ports.check(
-						target,
-						others,
-						namesakesOf(target.config, configs)
-					);
+				: await this.ports.check(target, others);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
 	}
@@ -289,6 +286,7 @@ export class CoreServeSession
 			return;
 		}
 		this.declined.delete(file);
+		await this.endOrphanOf(checked.value);
 		this.launch(checked.value);
 	}
 
@@ -302,9 +300,12 @@ export class CoreServeSession
 		);
 		const ownProject =
 			state.kind === "serving" && state.info.project === target.project;
-		return kind === "elsewhere"
-			? ownProject
-			: state.kind !== "free" && !ownProject;
+		if (kind === "refused") return state.kind !== "free" && !ownProject;
+		return (
+			state.kind === "serving" &&
+			ownProject &&
+			!(await this.ports.ownerEndedFor(target, state.info))
+		);
 	}
 
 	private async retire(
@@ -321,6 +322,27 @@ export class CoreServeSession
 			this.retirements.delete(retired);
 		}
 		this._onDidChange.fire({ kind: "retired", target, reason });
+	}
+
+	/** Ends the server a `rogen serve` that ended left holding the target's port, so its own can start; leaves it when it is gone by now. */
+	private async endOrphanOf(target: ServeTarget): Promise<void> {
+		const { orphan } = target;
+		if (!orphan?.pid) return;
+		const { server } = this.plan.executable;
+		const state = await this.probe.probe(target.address, server);
+		if (state.kind !== "serving" || state.info.session !== orphan.session)
+			return;
+		const left = `the ${server.name} (process ${orphan.pid}) that a rogen serve (process ${orphan.owner}) left running`;
+		let text = `Ended ${left} when it stopped without ending it.`;
+		try {
+			await this.rojoRunner.terminateTree(orphan.pid);
+		} catch (error) {
+			text = `Couldn't end ${left}: ${ErrorUtils.fromUnknown(error).message}`;
+		}
+		this._onDidOutput.fire({
+			target,
+			message: { severity: "warning", text },
+		});
 	}
 
 	private launch(target: ServeTarget): void {

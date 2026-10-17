@@ -47,8 +47,8 @@ interface PlaceAround {
 
 const isBareName = (ref: string): boolean => PROJECT_NAME.test(ref);
 
-const notFound = (ref: string): UsageError =>
-	new UsageError(
+const notFound = (ref: string): ProjectError =>
+	new ProjectError(
 		`"${ref}" not found.`,
 		"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
 	);
@@ -246,7 +246,12 @@ export class ConfigDiscovery {
 		});
 		const base = path.basename(target);
 		if (await this.fileSystemService.isDirectory(target))
-			return this.folderRef(target, ref, homeConfig ? inHome : undefined);
+			return this.folderRef(
+				target,
+				ref,
+				homeConfig ? inHome : undefined,
+				homeConfig === undefined || isProjectFileConfig(homeConfig)
+			);
 		if (isProjectFileConfig(target))
 			return this.projectFileRef(target, base, ref);
 		if (!(await this.fileSystemService.exists(target))) {
@@ -259,13 +264,10 @@ export class ConfigDiscovery {
 	private async folderRef(
 		target: string,
 		ref: string,
-		projectHere: ((project: string) => NamedConfig) | undefined
+		projectHere: ((project: string) => NamedConfig) | undefined,
+		adopt: boolean
 	): Promise<Result<NamedConfig, Error>> {
-		const config = await this.configIn(
-			target,
-			`"${ref}"`,
-			projectHere === undefined
-		);
+		const config = await this.configIn(target, `"${ref}"`, adopt);
 		const folder = isBareName(ref) ? { folderName: ref } : {};
 		const listing = await this.places.rootOf(target);
 		if (listing) return ok({ file: listing, place: target, ...folder });
@@ -333,7 +335,7 @@ export class ConfigDiscovery {
 		if (adopted) return ok(adopted);
 		return err(
 			names.length === 0
-				? new UsageError(
+				? new ProjectError(
 						`${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}).`,
 						"Run 'rogen init' to create one."
 					)

@@ -3,6 +3,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
 import {
 	AbstractCommand,
+	CommandService,
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { CommandLine } from "../../platform/environment/args.js";
@@ -17,6 +18,9 @@ const SUBCOMMANDS = [
 	{ name: "install", description: "Installs Rojo's Studio plugin." },
 	{ name: "uninstall", description: "Removes Rojo's Studio plugin." },
 ];
+
+const isSubcommand = (word: string) =>
+	SUBCOMMANDS.some(({ name }) => name === word);
 
 registerCommand(
 	class PluginCommand extends AbstractCommand<typeof PluginOptions> {
@@ -50,14 +54,19 @@ registerCommand(
 			line: CommandLine<typeof PluginOptions>
 		): Promise<Result<void, Error>> {
 			const [action, ...rest] = line.positionals;
-			if (
-				!SUBCOMMANDS.some(({ name }) => name === action) ||
-				rest.length > 0
-			)
+			if (action === "help" && rest.every(isSubcommand))
+				return accessor.get(CommandService).executeCommand("help", {
+					positionals: ["plugin"],
+					options: {},
+				});
+			if (!isSubcommand(action) || rest.length > 0)
 				return err(
-					new UsageError("'rogen plugin' takes install or uninstall.")
+					new UsageError(
+						"'rogen plugin' takes install, uninstall or help."
+					)
 				);
 			const logService = accessor.get(LogService);
+			logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const ran = await accessor

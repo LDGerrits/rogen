@@ -36,6 +36,13 @@ export class StarterProject {
 		return new StarterProject(project);
 	}
 
+	/** The project `rojo init` makes for a model or a plugin: the folder `src` is the instance itself. */
+	static ofScript(): StarterProject {
+		return new StarterProject(
+			new RojoProject<ParsedProjectFile>({ tree: { $path: "src" } })
+		);
+	}
+
 	static parse(text: string): Result<StarterProject, Error> {
 		return RojoProject.parse(text).map(
 			(project) => new StarterProject(project)

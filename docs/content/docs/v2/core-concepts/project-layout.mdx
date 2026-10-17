@@ -17,7 +17,7 @@ src/Inventory/(Internals)/Slots.luau  ->  Inventory/Slots
 
 ## Init Folders
 
-A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. Each of them is still routed like any other file. An init script with no folder of its own to become, in a source path or a plain routing folder, is an error.
+A folder with an `init` script (`init.luau`, `init.server.luau`, or roblox-ts's `index.ts`) is one instance, as in Rojo: the script is the folder, and the other files in it are its children. So is a folder with an `init.csv`, which becomes a LocalizationTable and is copied like an init ModuleScript. Each of them is still routed like any other file. An init script with no folder of its own to become, in a source path or a plain routing folder, is an error.
 
 An init script's route routes its whole folder, as a [marker file](/docs/v2/core-concepts/routing#marker-files) would: `Combat/init@server.luau`, or `Combat/init.server.luau` when your config has a `server` key, sends everything in `Combat/` to the server. A route on the init script and a marker file that names another route in the same folder clash: `init@client.luau` beside `init@server.luau` is an error.
 
@@ -35,6 +35,12 @@ An init ModuleScript with no route of its own goes wherever its folder does. Whe
 	})
 	```
 </Callout>
+
+## Nested Projects
+
+A folder that holds a `default.project.json` (or `default.project.jsonc`) is that project, as in Rojo: the folder becomes one instance, named by the project's `name`, or by the folder without one, and Rojo reads only what the project's `tree` mounts. Rogen doesn't route the other files in the folder; `rogen where` says `in a nested project` for them. Any other `.project.json` file becomes an instance named by its project's `name`, or by the file without one: `Lib.project.json` with `"name": "Other"` is `Other`.
+
+A `default.project.json` in a source path itself has no folder to become, so Rogen warns ([`scan.nestedProject`](/docs/v2/diagnostics#scan-nestedproject)).
 
 ## Data Files
 

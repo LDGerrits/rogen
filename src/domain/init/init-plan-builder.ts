@@ -1,3 +1,5 @@
+import path from "path";
+import { toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -15,8 +17,11 @@ export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
+	private claudeImport: PlannedFile | undefined;
 	private hookFiles: readonly PlannedFile[] = [];
 	private toolManifest: PlannedFile | undefined;
+	private readonly templateFiles: PlannedFile[] = [];
+	private gitInit = false;
 	private readonly directories = new Set<string>();
 	private readonly notes: string[] = [];
 	private readonly warnings: Diagnostic[] = [];
@@ -29,7 +34,9 @@ export class InitPlanBuilder {
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly asked: boolean,
-		private readonly decided: readonly InitDecision[]
+		private readonly decided: readonly InitDecision[],
+		/** The folder the user ran in, which `configs` are relative to. */
+		private readonly cwd: string = directory.path
 	) {}
 
 	setConfig(config: RogenConfig): void {
@@ -39,9 +46,11 @@ export class InitPlanBuilder {
 		};
 	}
 
-	addAgentFile(file: AgentFile): void {
+	/** `claudeImport`: also write the `CLAUDE.md` that points Claude Code at the agent file. */
+	addAgentFile(file: AgentFile, claudeImport = false): void {
 		this.agentFile = file.planned;
 		this.agentStep = file.nextStep;
+		this.claudeImport = claudeImport ? AgentFile.CLAUDE_IMPORT : undefined;
 	}
 
 	addAgentHook(hooks: AgentHooks): void {
@@ -51,6 +60,16 @@ export class InitPlanBuilder {
 
 	addToolManifest(file: PlannedFile): void {
 		this.toolManifest = file;
+	}
+
+	/** A file of the project's template, which is written after the config. */
+	addFile(file: PlannedFile): void {
+		this.templateFiles.push(file);
+	}
+
+	/** Asks for a `git init` in the folder, which the plan drops where a work tree holds it already. */
+	requestGitInit(): void {
+		this.gitInit = true;
 	}
 
 	addDirectory(directory: string): void {
@@ -98,14 +117,24 @@ export class InitPlanBuilder {
 			directory: this.directory.path,
 			asked: this.asked,
 			decided: this.decided,
+			gitInit: this.gitInit,
 			files: [
 				...written,
+				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
+				...(this.claudeImport ? [this.claudeImport] : []),
 				...this.hookFiles,
 				...(this.toolManifest ? [this.toolManifest] : []),
 			],
 			directories: [...this.directories],
-			configs: written.map(({ fileName }) => fileName),
+			configs: written.map(({ fileName }) =>
+				toPosix(
+					path.relative(
+						this.cwd,
+						path.join(this.directory.path, fileName)
+					)
+				)
+			),
 			notes: [...this.notes],
 			warnings: [...this.warnings],
 			...(this.liftedFrom !== undefined && {

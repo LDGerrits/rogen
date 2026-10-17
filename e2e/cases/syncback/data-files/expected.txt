@@ -1,13 +1,13 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing src/Shared/Greeting.txt
+stderr:
   rogen syncback · Game
   default.project.json · wrote
-  Built 1 config.
-  write  src/Shared/Greeting.txt
-  Syncback wrote 1 change.
-stderr:
+  Built 1 project.
   rogen.json - warning: ReplicatedStorage/Shared/Config is in the place and no folder of the project can take it, so it was left out: Rojo can't sync back a Json file, so its change stays in the place; copy it by hand. (syncback.unplaced)
+  Syncback wrote 1 change.
 
 written:
   default.project.json

@@ -1,6 +1,9 @@
 $ rogen sourcemap
 exit 0
 stdout:
+  Created sourcemap at sourcemap.json
+  Created sourcemap at sourcemap.json
+stderr:
   rogen sourcemap · Game, Arena, lobby
   Game
     default.project.json · wrote
@@ -8,7 +11,7 @@ stdout:
     places/arena/default.project.json · wrote
   lobby
     places/lobby/default.project.json · wrote
-  Built 3 configs.
+  Built 3 projects.
   places/arena/sourcemap.json · wrote
   places/lobby/sourcemap.json · wrote
 

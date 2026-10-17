@@ -1,0 +1,28 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src/Data
+exit 0
+stdout:
+  src/Data/Server/Store.luau -> ServerScriptService/Data/Store · route server (folder)
+  src/Data/Shared/Lib.project.json -> ReplicatedStorage/Data/Other · route shared (folder)
+  src/Data/Shared/Nest/code.luau -> in a nested project · src/Data/Shared/Nest/default.project.json decides what Rojo reads of its folder
+  src/Data/Shared/Nest/default.project.json -> ReplicatedStorage/Data/Nested · route shared (folder)
+  src/Data/Shared/lib.luau -> ReplicatedStorage/Data/lib · route shared (folder)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Data: Folder
+      Nested: Folder  <- src/Data/Shared/Nest/default.project.json
+        Code: ModuleScript  <- src/Data/Shared/Nest/code.luau
+        Val: StringValue
+      Other: ModuleScript  <- src/Data/Shared/Lib.project.json, src/Data/Shared/lib.luau
+      lib: ModuleScript  <- src/Data/Shared/lib.luau
+  ServerScriptService: ServerScriptService
+    Data: Folder
+      Store: ModuleScript  <- src/Data/Server/Store.luau

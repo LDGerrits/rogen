@@ -5,7 +5,7 @@ description: Move a hand-written Rojo project to Rogen without changing where an
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Rogen covers everything `rojo` does. A `rogen.json` is a project file, so Rojo's keys keep their meaning, and a folder with only a `default.project.json`, or a project file you name (`rogen build test.project.json`), runs under Rogen's commands as it is. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config. Not covered are `rojo init --kind` and `--skip-git`, since `rogen init` makes its own project. What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently), and a test builds Rojo's own projects, the templates `rojo init` writes and the mounts `rogen init` keeps as they are with both, and compares the places.
+Rogen covers everything `rojo` does. A `rogen.json` is a project file, so Rojo's keys keep their meaning, and a folder with only a `default.project.json`, or a project file you name (`rogen build test.project.json`), runs under Rogen's commands as it is. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config. `init` takes `--kind place|model|plugin`, `--skip-git` and a folder to start in, as `rojo init` does, and a model or a plugin starts with Rojo's template. What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently), and a test builds Rojo's own projects, the templates `rojo init` writes and the mounts `rogen init` keeps as they are with both, and compares the places.
 
 If you use Rojo with `server`, `client` and `shared` folders, `rogen init` keeps your tree. It reads the `default.project.json` you wrote, lifts it into a `rogen.json`, and turns the folders it points at into routes that put each one where Rojo had it:
 
@@ -77,7 +77,7 @@ In a terminal, the **Routes** question offers these routes ticked, with the hint
 rogen where src
 ```
 
-`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on. `git diff default.project.json` won't show it, because Rogen writes each file as its own node, so the file differs even when nothing moved.
+`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on. `git diff default.project.json` won't show it, because Rogen writes a node for each file a folder mount doesn't cover, so the file differs even when nothing moved.
 
 </Step>
 
@@ -98,6 +98,18 @@ rogen where src/Inventory
 
 Already-written requires keep working while you move, because a file's instance path only changes when its route does. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.
 
+After `init`, `rogen serve` replaces `rojo serve`: it builds `default.project.json`, starts the Rojo your project pins on it and rebuilds as files change, so you no longer start Rojo yourself. For luau-lsp, which wants a `sourcemap.json`, run `rogen sourcemap --watch -o sourcemap.json` beside it; it writes the project files first and keeps the sourcemap current as files come and go.
+
+## Going Back
+
+`init` changes three things, and each is undone on its own. Nothing outside them is touched.
+
+- **The project file.** Rogen replaced `default.project.json`, and the one you wrote is in git: `git checkout default.project.json` restores it. `init` moved its keys into `rogen.json`, so remove `rogen.json` too, and Rogen no longer writes anything.
+- **The files `init` added.** `AGENTS.md`, `.gitignore` when there was none, and `CLAUDE.md` when `.claude/` was there are new files; remove the ones you don't want. A hook it registered is an entry in the agent's own settings file, and `.agents/hooks/rogen-check.sh`.
+- **Your source.** Routing never renames or moves a file, so a source folder you haven't reorganised is as it was.
+
+Once you have moved to feature folders, the way back is the file Rogen wrote. `default.project.json` is a complete Rojo project, so commit it, delete `rogen.json`, and `rojo serve` and `rojo build` run on it as they are. It lists a `$path` for each folder routing placed whole and for each file it placed apart, so a file you add later reaches it only when its folder is mounted whole, or when you add its node; rerun `rogen build` before you commit it.
+
 ## Where Rogen Reads a Layout Differently
 
 In a folder Rogen routes, these differ from what Rojo does with the same files. Everything outside `routes` and `sourcePaths` is Rojo's, and the repository's conformance tests compare the project files Rogen writes with Rojo's own build.
@@ -109,10 +121,11 @@ In a folder Rogen routes, these differ from what Rojo does with the same files. 
 | A folder holding `init.server.luau` or `init.meta.json` is one instance. | The mount stays in the tree and is Rojo's own. | Nothing; `init` says so. |
 | A mount in a folder a route covers is also a child of that folder's instance. | The mount is only in the tree: Rogen skips what the tree mounts. | Nothing. |
 | `.client` files are Scripts with a RunContext under `emitLegacyScripts: false`. | A route to `StarterPlayerScripts` keeps them LocalScripts with a sync rule. | See [Configuration](/docs/v2/configuration#fields). |
+| `Dup.luau`, `Dup.lua` and `Dup.txt` in one folder are three instances. | They are one instance: the last file wins and the others are left out. | Rename the files; [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) names them. |
 | `(Group)/`, `^Hoist.luau` and `Foo@server.luau` are names. | They are routing sigils. | Rename the file, or put it where the tree mounts it. |
 | A glob in `globIgnorePaths` that ends in `/**` and names a mounted folder empties the Folder. | The mount is left out of the written file. | None needed; documented in [Configuration](/docs/v2/configuration#fields). |
 | A glob starting with `/` or `./` matches nothing. | It is read from the config's folder. | Write globs as Rojo reads them. |
-| The project file you wrote. | One node per file, `$path` marked `optional`. | `git diff` of the file shows nothing useful; use `rogen where`. |
+| The project file you wrote. | A folder every file of which routing places under one node is one `$path` mount; any other file is a node of its own. Each `$path` is marked `optional`. | `git diff` of the file shows nothing useful; use `rogen where`. A file added to a mounted folder reaches plain `rojo serve` and `rojo sourcemap` at once; any other waits for the next `rogen build`. |
 
 ## By Hand
 
@@ -150,4 +163,7 @@ Rogen replaces the project file you wrote, and Rojo's commands that read it keep
 - **`rojo sourcemap`** works on it as it does on any project file, for luau-lsp and other tools. `rogen sourcemap` writes the project files first and then runs it, and in a root with places writes a `sourcemap.json` for each: see [`sourcemap`](/docs/v2/cli#sourcemap-project).
 - **`rojo upload`** uploads it. `rogen upload` writes the project files first and then runs it, with Rojo's flags as Rojo spells them: see [`upload`](/docs/v2/cli#upload-project).
 - **`rojo plugin install`** installs Rojo's Studio plugin. `rogen plugin install` has the Rojo your project pins do it, so the plugin matches the server `rogen serve` starts: see [`plugin`](/docs/v2/cli#plugin-install-and-plugin-uninstall).
-- **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds one node per file, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next build. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.
+- **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds a node per file and per mounted folder, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next build. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from, the properties and attributes of your `tree`'s nodes into the `tree`: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.
+- **`rojo fmt-project`** formats a project file. `rogen fmt-project` formats `rogen.json` the same way, byte for byte on Rojo's own build tests: floats as `1.0`, a nameless file named for its folder, and the keys of a sync rule in Rojo's order. The project files `rogen build` writes are in that format, and keep no `$schema`: the `$schema` of a `rogen.json` is Rogen's, and a plain Rojo project that Rogen runs on is not rewritten.
+
+What a script sees of these commands matches `rojo`: stdout carries Rojo's own lines, Rogen's go to stderr, `-o=game.rbxl` works, `-v` reaches Rojo, a project that can't be found exits 1 and Rojo's argument errors exit 2, and `serve` exits 130 after Ctrl+C. Three differences remain on purpose: `syncback` without `-y` and without a terminal exits 2 (Rojo asks, reads nothing, exits 0 having written nothing), `syncback --list` leaves out the colour codes Rojo prints, and `serve` calls every client of the server's websocket Studio, since Rojo's log doesn't name the client.

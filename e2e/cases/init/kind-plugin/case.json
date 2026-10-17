@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "--kind", "plugin", "--non-interactive"]],
+	"output": ["init"],
+	"show": ["README.md", ".gitignore", "src/init.server.luau"]
+}

@@ -33,7 +33,11 @@ export class AgentSetup implements Setup<AgentChoices> {
 	}
 
 	plan({ rules, hook }: AgentChoices, builder: InitPlanBuilder): void {
-		if (rules) builder.addAgentFile(this.agentFile);
+		if (rules)
+			builder.addAgentFile(
+				this.agentFile,
+				this.hooks.usesClaudeCode && !this.agentFile.hasClaudeFile
+			);
 		if (hook) builder.addAgentHook(this.hooks);
 		for (const note of this.hooks.notes) builder.addNote(note);
 	}

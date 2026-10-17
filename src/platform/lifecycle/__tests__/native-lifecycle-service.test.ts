@@ -23,6 +23,40 @@ describe("NativeLifecycleService", () => {
 		expect(listener).toHaveBeenCalledTimes(1);
 	});
 
+	it.each(["SIGINT", "SIGTERM", "SIGHUP"] as const)(
+		"should remember that %s asked for the shutdown",
+		(signal) => {
+			const service = store.add(new NativeLifecycleService());
+			store.add(service.onWillShutdown(() => undefined));
+
+			process.emit(signal);
+
+			expect(service.signal).toBe(signal);
+		}
+	);
+
+	it("should name no signal when the reader of the output quit", () => {
+		const service = store.add(new NativeLifecycleService());
+		store.add(service.onWillShutdown(() => undefined));
+
+		process.stdout.emit(
+			"error",
+			Object.assign(new Error("write EPIPE"), { code: "EPIPE" })
+		);
+
+		expect(service.signal).toBeUndefined();
+	});
+
+	it("should fire onWillShutdown when the terminal closes", () => {
+		const service = store.add(new NativeLifecycleService());
+		const listener = jest.fn();
+		store.add(service.onWillShutdown(listener));
+
+		process.emit("SIGHUP");
+
+		expect(listener).toHaveBeenCalledTimes(1);
+	});
+
 	it("should fire onWillShutdown once when the reader of the output quits", () => {
 		const service = store.add(new NativeLifecycleService());
 		const listener = jest.fn();

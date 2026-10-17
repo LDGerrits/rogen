@@ -163,7 +163,9 @@ export function rojoEntry(
 		...named,
 		outcome: failure ? "failed" : "built",
 		project: toNative(project.projectFile),
-		messages: messages.filter(({ severity }) => severity !== "debug"),
+		messages: messages
+			.filter(({ severity }) => severity !== "debug")
+			.map(({ severity, text }) => ({ severity, text })),
 		...(failure && failureToJson(failure)),
 	};
 }

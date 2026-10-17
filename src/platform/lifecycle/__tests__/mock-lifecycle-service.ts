@@ -11,7 +11,10 @@ export class MockLifecycleService
 	private readonly _onWillShutdown = this._register(new Emitter<void>());
 	readonly onWillShutdown: Event<void> = this._onWillShutdown.event;
 
-	shutdown(): void {
+	signal: NodeJS.Signals | undefined;
+
+	shutdown(signal?: NodeJS.Signals): void {
+		this.signal ??= signal;
 		this._onWillShutdown.fire();
 	}
 }

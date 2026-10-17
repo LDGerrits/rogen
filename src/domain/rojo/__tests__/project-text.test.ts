@@ -26,6 +26,242 @@ describe("domain/rojo/project-text", () => {
 			]);
 		});
 
+		describe("numbers", () => {
+			const propertiesOf = (properties: Record<string, unknown>) =>
+				ProjectText.of({
+					tree: { $className: "Folder", $properties: properties },
+				} as RojoProjectFile)
+					.replace(/\s+/g, "")
+					.replace(/^.*"\$properties":/, "")
+					.replace(/\}\}$/, "");
+
+			it.each([
+				[{ P: 65 }, '{"P":65.0}'],
+				[{ P: [1, 0.5, 3] }, '{"P":[1.0,0.5,3.0]}'],
+				[
+					{ P: { Vector3: [1, 2, 3] } },
+					'{"P":{"Vector3":[1.0,2.0,3.0]}}',
+				],
+				[{ P: { Int32: 1 } }, '{"P":{"Int32":1}}'],
+				[{ P: { Enum: 3 } }, '{"P":{"Enum":3}}'],
+				[{ P: { BrickColor: 1 } }, '{"P":{"BrickColor":1}}'],
+				[
+					{ P: { Color3uint8: [255, 0, 0] } },
+					'{"P":{"Color3uint8":[255,0,0]}}',
+				],
+				[
+					{ P: { Vector3int16: [1, 2, 3] } },
+					'{"P":{"Vector3int16":[1,2,3]}}',
+				],
+				[{ P: { UDim: [1, 1] } }, '{"P":{"UDim":[1.0,1]}}'],
+				[
+					{
+						P: {
+							UDim2: [
+								[1, 1],
+								[0, 2],
+							],
+						},
+					},
+					'{"P":{"UDim2":[[1.0,1],[0.0,2]]}}',
+				],
+				[
+					{
+						P: {
+							Rect: [
+								[0, 0],
+								[1, 1],
+							],
+						},
+					},
+					'{"P":{"Rect":[[0.0,0.0],[1.0,1.0]]}}',
+				],
+				[
+					{ P: { Float32: 0.123456789 } },
+					'{"P":{"Float32":0.12345679}}',
+				],
+				[
+					{ P: { Float64: 0.123456789 } },
+					'{"P":{"Float64":0.123456789}}',
+				],
+				[{ P: { Float32: 0.1 } }, '{"P":{"Float32":0.1}}'],
+				[
+					{ P: { Vector3: [1e10, 0.1, 1] } },
+					'{"P":{"Vector3":[10000000000.0,0.1,1.0]}}',
+				],
+				[{ P: { Float64: 1e16 } }, '{"P":{"Float64":1e16}}'],
+				[
+					{ P: { Float64: 1e15 } },
+					'{"P":{"Float64":1000000000000000.0}}',
+				],
+				[{ P: { Float64: 0.00001 } }, '{"P":{"Float64":0.00001}}'],
+				[{ P: { Float64: 1e-6 } }, '{"P":{"Float64":1e-6}}'],
+				[{ P: { Float32: 1e13 } }, '{"P":{"Float32":1e13}}'],
+				[{ P: { Float32: 1e12 } }, '{"P":{"Float32":1000000000000.0}}'],
+				[{ P: { Float32: 1e-6 } }, '{"P":{"Float32":0.000001}}'],
+				[{ P: { Float32: 1e-7 } }, '{"P":{"Float32":1e-7}}'],
+				[{ P: { Float64: -0 } }, '{"P":{"Float64":-0.0}}'],
+				[{ P: "Voxel" }, '{"P":"Voxel"}'],
+				[{ P: true }, '{"P":true}'],
+			])("should write %j as %s", (properties, expected) => {
+				expect(propertiesOf(properties)).toBe(expected);
+			});
+
+			it("should write the parts of a CFrame, a sequence and a ray as floats, in Rojo's order", () => {
+				expect(
+					propertiesOf({
+						C: {
+							CFrame: {
+								orientation: [
+									[1, 0, 0],
+									[0, 1, 0],
+									[0, 0, 1],
+								],
+								position: [1, 2, 3],
+							},
+						},
+						N: {
+							NumberSequence: {
+								keypoints: [{ envelope: 0, value: 1, time: 0 }],
+							},
+						},
+						R: { Ray: { direction: [0, 0, 1], origin: [0, 0, 0] } },
+						S: {
+							ColorSequence: {
+								keypoints: [{ color: [1, 1, 1], time: 1 }],
+							},
+						},
+					})
+				).toBe(
+					'{"C":{"CFrame":{"position":[1.0,2.0,3.0],"orientation":[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]}},' +
+						'"N":{"NumberSequence":{"keypoints":[{"time":0.0,"value":1.0,"envelope":0.0}]}},' +
+						'"R":{"Ray":{"origin":[0.0,0.0,0.0],"direction":[0.0,0.0,1.0]}},' +
+						'"S":{"ColorSequence":{"keypoints":[{"time":1.0,"color":[1.0,1.0,1.0]}]}}}'
+				);
+			});
+
+			it("should give a Font the cachedFaceId Rojo adds, and keep one it has", () => {
+				expect(
+					propertiesOf({
+						A: {
+							Font: {
+								style: "Normal",
+								weight: "Regular",
+								family: "f",
+							},
+						},
+						B: {
+							Font: {
+								family: "f",
+								weight: "Bold",
+								style: "Italic",
+								cachedFaceId: "rbxassetid://5",
+							},
+						},
+					})
+				).toBe(
+					'{"A":{"Font":{"family":"f","weight":"Regular","style":"Normal","cachedFaceId":null}},' +
+						'"B":{"Font":{"family":"f","weight":"Bold","style":"Italic","cachedFaceId":"rbxassetid://5"}}}'
+				);
+			});
+
+			it("should type the values of an Attributes property, sorted by name", () => {
+				expect(
+					propertiesOf({
+						Attributes: {
+							Vector: { Vector3: [4, 5, 6] },
+							Hey: { String: "Grandma" },
+						},
+					})
+				).toBe(
+					'{"Attributes":{"Hey":{"String":"Grandma"},"Vector":{"Vector3":[4.0,5.0,6.0]}}}'
+				);
+			});
+
+			it("should write attributes the same way", () => {
+				const text = ProjectText.of({
+					tree: {
+						$className: "Folder",
+						$attributes: {
+							Count: 1,
+							Typed: { Float32: 0 },
+							Name: "x",
+						},
+					},
+				} as RojoProjectFile).replace(/\s+/g, "");
+
+				expect(text).toContain(
+					'"$attributes":{"Count":1.0,"Name":"x","Typed":{"Float32":0.0}}'
+				);
+			});
+
+			it("should not take the name of an Object method for a type", () => {
+				expect(propertiesOf({ P: { constructor: 1 } })).toBe(
+					'{"P":{"constructor":1}}'
+				);
+			});
+
+			it("should leave a value of a type it doesn't know as it is", () => {
+				expect(propertiesOf({ P: { Mystery: [1, 2] } })).toBe(
+					'{"P":{"Mystery":[1,2]}}'
+				);
+			});
+		});
+
+		describe("sync rules", () => {
+			it("should write a sync rule's keys in Rojo's order", () => {
+				const text = ProjectText.of({
+					tree: { $className: "Folder" },
+					syncRules: [
+						{
+							suffix: ".s.luau",
+							use: "text",
+							exclude: "*.x",
+							pattern: "*.t",
+						},
+					],
+				} as RojoProjectFile);
+
+				expect(
+					Object.keys(JSON.parse(text).syncRules[0] as object)
+				).toEqual(["pattern", "exclude", "use", "suffix"]);
+			});
+
+			it("should write syncbackRules in Rojo's order, and the classes of ignoreProperties sorted", () => {
+				const text = ProjectText.of({
+					tree: { $className: "Folder" },
+					syncbackRules: {
+						ignoreReferents: true,
+						syncUnscriptable: false,
+						syncCurrentCamera: true,
+						ignoreProperties: { Part: ["Z", "A"], Base: ["Q"] },
+						ignorePaths: ["b", "a"],
+						ignoreTrees: ["x"],
+					},
+				} as RojoProjectFile);
+
+				const rules = JSON.parse(text).syncbackRules as Record<
+					string,
+					unknown
+				>;
+				expect(Object.keys(rules)).toEqual([
+					"ignoreTrees",
+					"ignorePaths",
+					"ignoreProperties",
+					"syncCurrentCamera",
+					"syncUnscriptable",
+					"ignoreReferents",
+				]);
+				expect(Object.keys(rules.ignoreProperties as object)).toEqual([
+					"Base",
+					"Part",
+				]);
+				expect(
+					(rules.ignoreProperties as Record<string, string[]>).Part
+				).toEqual(["Z", "A"]);
+			});
+		});
+
 		describe("ofConfig", () => {
 			const ROGEN = ["sourcePaths", "routes", "projects"];
 
@@ -255,13 +491,145 @@ describe("domain/rojo/project-text", () => {
 						servePort: 34873,
 						emitLegacyScripts: false,
 						globIgnorePaths: ["**/*.spec.luau"],
-					})
+						syncRules: [
+							{
+								pattern: "*.t",
+								exclude: "*.x",
+								use: "text",
+								suffix: ".s",
+							},
+						],
+						syncbackRules: {
+							ignoreTrees: ["x"],
+							ignorePaths: ["p", "a"],
+							ignoreProperties: { Base: ["Q"], Part: ["Z", "A"] },
+							syncCurrentCamera: true,
+							syncUnscriptable: false,
+							ignoreReferents: true,
+						},
+					} as RojoProjectFile)
 				);
 				const before = fs.readFileSync(file, "utf8");
 
 				runRojo(dir, ["fmt-project"]);
 
 				expect(fs.readFileSync(file, "utf8")).toBe(before);
+			} finally {
+				fs.rmSync(dir, { recursive: true, force: true });
+			}
+		});
+
+		it("should write the numbers of properties and attributes as fmt-project does", () => {
+			const properties: Record<string, unknown> = {
+				Bare: 65,
+				BareFloat: 1.5,
+				BareList: [1, 2, 3],
+				BareHuge: 1e21,
+				BareSmall: 1e-7,
+				BareText: "Voxel",
+				Axes: { Axes: ["X", "Y"] },
+				Bool: { Bool: true },
+				BrickColor: { BrickColor: 1 },
+				CFrame: {
+					CFrame: {
+						position: [1, 2, 3],
+						orientation: [
+							[1, 0, 0],
+							[0, 1, 0],
+							[0, 0, 1],
+						],
+					},
+				},
+				Color3: { Color3: [1, 0.25, 0] },
+				Color3uint8: { Color3uint8: [255, 0, 0] },
+				ColorSequence: {
+					ColorSequence: {
+						keypoints: [{ time: 0, color: [1, 1, 1] }],
+					},
+				},
+				Enum: { Enum: 1 },
+				Float32: { Float32: 0.123456789 },
+				Float32Big: { Float32: 1e13 },
+				Float32Small: { Float32: 1e-7 },
+				Float64: { Float64: 0.1 },
+				Float64Big: { Float64: 123456789012345680 },
+				Float64Whole: { Float64: 1e15 },
+				Font: {
+					Font: {
+						family: "rbxasset://f.json",
+						weight: "Bold",
+						style: "Normal",
+					},
+				},
+				Int32: { Int32: 1 },
+				Int64: { Int64: 1 },
+				NumberRange: { NumberRange: [0, 1] },
+				NumberSequence: {
+					NumberSequence: {
+						keypoints: [{ time: 0, value: 1, envelope: 0 }],
+					},
+				},
+				Ray: { Ray: { origin: [0, 0, 0], direction: [0, 0, 1] } },
+				Rect: {
+					Rect: [
+						[0, 0],
+						[1, 1],
+					],
+				},
+				Region3: {
+					Region3: [
+						[0, 0, 0],
+						[1, 1, 1],
+					],
+				},
+				Region3int16: {
+					Region3int16: [
+						[0, 0, 0],
+						[1, 1, 1],
+					],
+				},
+				Tags: { Tags: ["a"] },
+				UDim: { UDim: [0.5, 3] },
+				UDim2: {
+					UDim2: [
+						[1, 1],
+						[0.5, 2],
+					],
+				},
+				Vector2: { Vector2: [1, 1] },
+				Vector2int16: { Vector2int16: [1, 1] },
+				Vector3: { Vector3: [1, 0.1, 1e10] },
+				Vector3int16: { Vector3int16: [1, 1, 1] },
+				Attributes: {
+					Vector: { Vector3: [4, 5, 6] },
+					Hey: { String: "Grandma" },
+				},
+			};
+			const dir = makeRojoDir("rogen-fmt-numbers-");
+			try {
+				const file = path.join(dir, "default.project.json");
+				const project = {
+					name: "Game",
+					tree: {
+						$className: "Folder",
+						$properties: properties,
+						$attributes: {
+							Count: 1,
+							Fraction: 0.5,
+							Name: "x",
+							Typed: { Float32: 0 },
+							Udim: { UDim: [0, 0] },
+						},
+					},
+				};
+				fs.writeFileSync(file, JSON.stringify(project));
+
+				const ran = runRojo(dir, ["fmt-project"]);
+				expect(ran.stderr).toBe("");
+
+				expect(ProjectText.of(project as RojoProjectFile)).toBe(
+					fs.readFileSync(file, "utf8")
+				);
 			} finally {
 				fs.rmSync(dir, { recursive: true, force: true });
 			}

@@ -115,6 +115,7 @@ export class PlaceInit {
 			},
 			asked: this.questions.interactive,
 			decided: this.questions.decided,
+			gitInit: false,
 		});
 	}
 
@@ -151,7 +152,7 @@ export class PlaceInit {
 					errorDiagnostic(
 						"init.configExists",
 						{ resource: taken },
-						"this config already exists. Delete it to write a new one."
+						"this config already exists, and init never overwrites one. Edit it to change the place."
 					),
 				])
 			);

@@ -1,3 +1,4 @@
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	AbstractCommand,
@@ -36,6 +37,12 @@ registerCommand(
 								"A command, a diagnostic code such as route.strayAt, or 'codes' for the list of every code.",
 							isOptional: true,
 						},
+						{
+							name: "prefix",
+							description:
+								"With 'codes': only the codes that start with it, such as route or route.stray.",
+							isOptional: true,
+						},
 					],
 					options: HelpOptions,
 					output: { document: helpDocumentShape },
@@ -44,6 +51,7 @@ registerCommand(
 						"rogen help where",
 						"rogen help route.strayAt",
 						"rogen help codes --json",
+						"rogen help codes route --json",
 						"rogen help --json",
 						"rogen help build --json",
 					],
@@ -64,7 +72,14 @@ registerCommand(
 				return ok(undefined);
 			}
 
-			const [target] = line.positionals;
+			const [target, prefix] = line.positionals;
+			if (prefix !== undefined && target?.toLowerCase() !== "codes")
+				return err(
+					new UsageError(
+						"help takes a second argument only after codes.",
+						"Run 'rogen help codes <prefix>' for the codes that start with it."
+					)
+				);
 			const commands = Registry.as<CommandRegistry>(
 				Extensions.Commands
 			).getCommands();
@@ -83,15 +98,25 @@ registerCommand(
 				return ok(undefined);
 			}
 
-			const found = pages.resolve(target);
+			const found = pages.resolve(target, prefix);
 			if (found === undefined) return err(pages.unknown(target));
+			if (
+				found.kind === "codes" &&
+				HelpDocument.codes(found.prefix).codes.length === 0
+			)
+				return err(
+					new UsageError(
+						`No diagnostic code starts with "${prefix}".`,
+						"Run 'rogen help codes' to see every code."
+					)
+				);
 			if (line.options.json)
 				return this.printJson(
 					logService,
 					found.kind === "command"
 						? HelpDocument.command(found.command)
 						: found.kind === "codes"
-							? HelpDocument.codes()
+							? HelpDocument.codes(found.prefix)
 							: HelpDocument.code(found.code)
 				);
 			logService.print(pages.textOf(found));

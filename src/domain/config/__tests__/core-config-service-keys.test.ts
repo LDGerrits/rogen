@@ -46,7 +46,7 @@ describe("CoreConfigService", () => {
 			});
 		});
 
-		it("should warn about a key on neither list, and pass it through", async () => {
+		it("should refuse a key on neither list, which Rojo would reject", async () => {
 			await write(
 				"/repo/rogen.json",
 				`{
@@ -56,18 +56,49 @@ describe("CoreConfigService", () => {
 
 			await start();
 
-			expect(errors(0)).toEqual([]);
-			expect(warningsOf()).toMatchObject([
+			expect(errors(0)).toMatchObject([
 				{
 					code: "config.unknownField",
 					resource: "/repo/rogen.json",
 					position: { line: 2, column: 2 },
 					message: expect.stringContaining(
-						'"bogus" is not a Rojo key and not Rogen\'s: it is passed through, and Rojo will reject the written file by this name.'
+						"\"bogus\" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know."
 					),
 				},
 			]);
-			expect(resolved(0)?.project.getFile()).toMatchObject({ bogus: 1 });
+		});
+
+		it("should refuse a $ key of a node that is no field and holds no object", async () => {
+			await write("/repo/rogen.json", {
+				tree: {
+					$className: "DataModel",
+					Workspace: { $clasName: "Folder" },
+				},
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.unknownField",
+					message: expect.stringContaining(
+						'"tree.Workspace.$clasName" is not a field of a node'
+					),
+				},
+			]);
+			expect(errors(0)[0].message).toContain(
+				'Did you mean "$className"?'
+			);
+		});
+
+		it("should leave a $ key holding an object to the build, since Rojo reads it as a child", async () => {
+			await write("/repo/rogen.json", {
+				tree: { $className: "DataModel", Workspace: { $Thing: {} } },
+			});
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
 		});
 
 		it("should suggest the key a misspelling is closest to", async () => {
@@ -75,7 +106,7 @@ describe("CoreConfigService", () => {
 
 			await start();
 
-			expect(warningsOf()[0].message).toContain(
+			expect(errors(0)[0].message).toContain(
 				'Did you mean "sourcePaths"?'
 			);
 		});
@@ -90,7 +121,7 @@ describe("CoreConfigService", () => {
 
 			await start();
 
-			expect(warningsOf()[0].fixes).toEqual([
+			expect(errors(0)[0].fixes).toEqual([
 				{
 					replace: {
 						file: "/repo/rogen.json",
@@ -108,7 +139,7 @@ describe("CoreConfigService", () => {
 
 			await start();
 
-			expect(warningsOf()[0].fixes).toBeUndefined();
+			expect(errors(0)[0].fixes).toBeUndefined();
 		});
 
 		it("should accept syncRules", async () => {

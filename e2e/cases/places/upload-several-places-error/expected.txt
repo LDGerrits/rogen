@@ -5,11 +5,10 @@ stderr:
 
 $ rogen upload places/lobby --asset_id 1 --api_key key
 exit 1
-stdout:
+stderr:
   rogen upload · lobby
   places/lobby/default.project.json · wrote
-  Built 1 config.
-stderr:
+  Built 1 project.
   places/lobby/default.project.json - error: 'rojo upload' failed (exit code 1): --universe_id must be provided to use the Open Cloud API (rojo.commandFailed)
 
 written:

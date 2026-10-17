@@ -51,8 +51,9 @@ export class ServerOutput extends AbstractDisposable {
 		);
 	}
 
-	readLine(line: string): void {
-		this.read(stripVTControlCharacters(line));
+	/** `stream` is the one `line` came on, when known. */
+	readLine(line: string, stream?: "stdout" | "stderr"): void {
+		this.read(stripVTControlCharacters(line), stream);
 		this.quiet.cancel();
 		if (this.pending) this.quiet.schedule();
 	}
@@ -61,8 +62,13 @@ export class ServerOutput extends AbstractDisposable {
 		this.flush();
 	}
 
-	private read(line: string): void {
+	private read(line: string, stream?: "stdout" | "stderr"): void {
 		const logged = this.server.logRecordOf(line);
+		if (stream === "stdout" && !logged) {
+			this.flush();
+			this.say("info", line.trim(), false, line);
+			return;
+		}
 		const record = logged ?? RUST_RECORD.exec(line)?.groups;
 		if (record) {
 			this.flush();
@@ -108,12 +114,21 @@ export class ServerOutput extends AbstractDisposable {
 	private say(
 		severity: ServerMessage["severity"],
 		said: string,
-		isLogRecord = true
+		isLogRecord = true,
+		stdout?: string
 	): void {
-		if (said === "") return;
 		const text = RUST_NOISE.test(said)
 			? undefined
 			: this.server.tidied(said);
+		if (stdout !== undefined) {
+			this._onDidMessage.fire({
+				severity: text && severity !== "debug" ? severity : "debug",
+				text: text ?? said,
+				stdout,
+			});
+			return;
+		}
+		if (said === "") return;
 		const change = isLogRecord ? this.server.connectionIn(said) : undefined;
 		if (change) this._onDidConnection.fire(change);
 		if (severity === "debug" || !text) {

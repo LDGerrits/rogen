@@ -10,8 +10,13 @@ export interface NextSteps {
 	readonly edits: readonly string[];
 }
 
+/** The template of a new project, as `rojo init --kind` names it. */
+export type InitKind = "place" | "model" | "plugin";
+
 /** What the user gave as flags, so that `init` asks nothing about it. */
 export interface InitChoices {
+	readonly kind?: InitKind;
+	readonly skipGit?: boolean;
 	readonly nested?: boolean;
 	readonly placeListing?: "glob" | "folder";
 	/** Place IDs, or `none`. */
@@ -52,11 +57,15 @@ export interface InitPlan {
 	readonly nextSteps: NextSteps;
 	readonly asked: boolean;
 	readonly decided: readonly InitDecision[];
+	/** Whether `init` runs `git init` in `directory`, which it does in a new project that no work tree holds. */
+	readonly gitInit: boolean;
 }
 
 export type InitWritten =
 	| { readonly kind: "file"; readonly file: PlannedFile }
-	| { readonly kind: "directory"; readonly directory: string };
+	| { readonly kind: "directory"; readonly directory: string }
+	/** `failed` is why `git init` did not make a repository, which leaves the project complete without one. */
+	| { readonly kind: "git"; readonly failed?: string };
 
 export interface InitOptions {
 	readonly ask?: boolean;

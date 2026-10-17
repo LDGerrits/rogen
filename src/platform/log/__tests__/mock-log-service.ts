@@ -10,6 +10,10 @@ export class MockLogService extends AbstractLogService {
 
 	readonly entries: LoggedEntry[] = [];
 
+	get reserved(): boolean {
+		return this.stdoutReserved;
+	}
+
 	get lines(): string[] {
 		return this.entries.map(({ kind, text }) => `${kind}: ${text}`);
 	}

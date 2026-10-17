@@ -29,6 +29,8 @@ export interface SyncbackPlan {
 	readonly project: ResolvedConfig;
 	/** What a run would write and remove, the new files at the place routing puts them. */
 	readonly changes: readonly SyncbackChange[];
+	/** What `--list` prints: the files and folders Rojo lists, in the order it lists them, with the files syncback placed after them. */
+	readonly listed: readonly SyncbackChange[];
 	readonly unplaced: readonly UnplacedInstance[];
 }
 

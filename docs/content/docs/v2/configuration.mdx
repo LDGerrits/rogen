@@ -86,7 +86,7 @@ Rojo's keys. Rogen passes each to the project file as it is, except `globIgnoreP
 | `emitLegacyScripts` | Whether Rojo makes `Script` and `LocalScript` instances for `.server` and `.client` files, rather than a run context. |
 | `syncbackRules` | Rojo's syncback rules. |
 
-A key that is on neither list passes through with a warning, since Rojo will reject the written file by that name ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error.
+A key that is on neither list is an error, since Rojo rejects a project file with a key it doesn't know ([`config.unknownField`](/docs/v2/diagnostics#config-unknownfield)). A wrong type is an error.
 
 ---
 
@@ -195,7 +195,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 }
 ```
 
-- If `tree` and the generated nodes define the same instance, `tree` wins and Rogen warns ([`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash)). A `$path` below a service, like a package mount, owns that whole folder.
+- If `tree` and the generated nodes define the same instance, `tree` wins and Rogen warns ([`tree.nodeClash`](/docs/v2/diagnostics#tree-nodeclash)). A `$path` below a service, like a package mount, owns that whole folder: a route into it puts files beside what the mount holds, and Rogen warns when a name is in both ([`tree.mountClash`](/docs/v2/diagnostics#tree-mountclash)).
 - A `$path` that points inside a source path hands that path to Rojo. Rogen skips it, and `rogen where` reports it as `mounted`, which is how you sync a vendored library as it is. Mounting a source path itself or a folder above one is an error.
 - With `routes`, the tree's root must be a `DataModel`, since a route target names a service. A root that isn't one, a bare `$path` included, is an error. Leave `tree` out and Rogen starts from an empty `DataModel`.
 - Without `routes`, nothing is routed and no source path is scanned. Any root is valid and the project file is `tree` as you wrote it. Rogen warns when `src` holds files the tree doesn't mount.
@@ -209,6 +209,8 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 ```
 
 A glob that covers all of a folder a `tree` `$path` mounts with `/**` (`"DevPackages/**"`) leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. That is the one place Rogen reads `globIgnorePaths` differently from Rojo. A glob that only names the folder or file (`"DevPackages"`, `"**/DevPackages"`) ignores nothing of the mount, in Rojo too, and so does a glob that ignores only some of its files (`**/*.spec.luau`): the mount stays, and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
+
+A glob that starts with `!` brings back what an earlier glob ignored, as in a `.gitignore`: the last glob that matches a path decides. `["**/*.spec.luau", "!**/Keep.spec.luau"]` ignores every spec but `Keep.spec.luau`. A folder an earlier glob names is skipped whole, so nothing inside it can be brought back; write `"Vendor/**"`, not `"Vendor"`, to bring back one of its files. Write `\\!` for a name that starts with `!`. Rojo reads `!` from 7.7.0, and Rogen stops `serve` with [`rojo.negationUnsupported`](/docs/v2/diagnostics#rojo-negationunsupported) for an older one.
 
 Rogen matches a glob the way Rojo does, so the two agree on what is ignored: `*` crosses folders (`*.tmp.luau` matches at any depth, and so does `src/*.luau`), and a glob that ends in `/` matches nothing. Rojo reads a glob that begins with `/` or `./` as matching nothing, so write the folder name first.
 
@@ -260,7 +262,7 @@ There are no config names either: no `<name>.rogen.json`, no `default.rogen.json
 Every diagnostic points at the problem:
 
 ```
-rogen.json:7:3 - warning: "outDir" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name. (config.unknownField)
+rogen.json:7:3 - error: "outDir" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
 ```
 
 Errors stop the build. Warnings don't, and the build still exits with 0. You'll get warnings for:

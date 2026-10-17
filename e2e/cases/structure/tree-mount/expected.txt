@@ -9,7 +9,7 @@ stderr:
 $ rogen where src/Vendor/Lib/Server/Thing.luau
 exit 0
 stdout:
-  src/Vendor/Lib/Server/Thing.luau -> mounted · the tree mounts it at ReplicatedStorage/Vendor
+  src/Vendor/Lib/Server/Thing.luau -> ReplicatedStorage/Vendor/Lib/Server/Thing · inside the mount at ReplicatedStorage/Vendor, which Rojo reads
 
 written:
   default.project.json

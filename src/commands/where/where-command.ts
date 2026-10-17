@@ -47,6 +47,10 @@ registerCommand(
 					options: WhereOptions,
 					output: { document: whereDocumentShape },
 					effects: [],
+					exitCodes: {
+						"0": "every path answered, one that no file places included",
+						"1": "no path was given, or the config has errors",
+					},
 					examples: [
 						"rogen where src/Inventory/Server/Save.luau",
 						"rogen where ServerScriptService.Inventory.Save:12",

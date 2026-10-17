@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen build · plain
   test.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 $ rogen list test.project.json
 exit 0

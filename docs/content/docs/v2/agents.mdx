@@ -37,7 +37,7 @@ Rogen writes the Rojo project file from the folders and names under each `rogen.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - Leave `rogen build --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions). `rogen list --json` shows the same later as `serving.clients`, without the process that printed it.
-- Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help codes --json` lists every diagnostic code and what it means, offline.
+- Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help <code> --json` explains one diagnostic code, and `rogen help codes <module> --json` lists the codes of one module, such as `route`, offline.
 ````
 
 ## Check changed files automatically
@@ -78,7 +78,7 @@ printf '%s\n' "$report" >>"$seen"
 printf '%s\n' "$reply"
 ```
 
-Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal never adds it, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
+Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal adds it only with `--agent-hook`, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
 
 | Agent | Found by | Hook file | Event | Entry |
 |---|---|---|---|---|
@@ -142,6 +142,10 @@ npx skills add LDGerrits/rogen
 
 The block is loaded in every session, so it holds only what an agent gets wrong without being told, and the commands that answer the rest:
 
-1. **The block**, about 150 tokens: the rules and the commands that check them.
-2. **`rogen doc <topic>`**, about 300 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
+1. **The block**, about 450 tokens: the rules and the commands that check them.
+2. **`rogen doc <topic>`**, between 400 and 2,400 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.
+
+## When a terminal counts as an agent's
+
+Rogen asks nothing when it thinks a program is on the other end: with `CI`, `AGENT` or `AI_AGENT` set, or a variable an agent's harness sets for its commands (`CLAUDECODE` for Claude Code, `CODEX_SANDBOX` for Codex, `CURSOR_AGENT`, `GEMINI_CLI`, …), a real terminal counts as non-interactive. `init` takes its defaults, and `syncback` writes nothing without `-y` (or lists what it would do with `--dry-run`) and exits 2, so an agent that runs it by hand in a terminal needs the flag too. The full list of variables is under [Output](/docs/v2/cli#output).

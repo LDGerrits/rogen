@@ -30,6 +30,7 @@ import {
 	Locations,
 } from "../build-service.js";
 import { ConfigBuilder } from "../config-builder.js";
+import { MountedInstances } from "./mounted-instances.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
 
@@ -181,7 +182,10 @@ class ConfigLocator {
 				files:
 					paths.length > 0 || instances.length > 0
 						? files
-						: locator.locate(),
+						: await this.withMountedInstances(
+								locator.locate(),
+								locator
+							),
 				instances: await Promise.all(
 					instances.map((reference) =>
 						this.locateInstance(
@@ -243,11 +247,40 @@ class ConfigLocator {
 			index,
 			await this.existsOnDisk(index, paths)
 		);
-		return planned.map(({ locator, diagnostics, built }) => ({
-			files: locator.locate(paths, folders),
+		if (planned.isErr()) return planned;
+		const { locator, diagnostics, built } = planned.value;
+		return ok({
+			files: await this.withMountedInstances(
+				locator.locate(paths, folders),
+				locator
+			),
 			diagnostics,
 			built: index.addsNothing ? built : undefined,
-		}));
+		});
+	}
+
+	/** Each mounted file with the instance Rojo makes of it. */
+	private async withMountedInstances(
+		files: readonly FileLocation[],
+		locator: PlacementLocator
+	): Promise<FileLocation[]> {
+		const mounted = this.mountedInstancesOf(locator);
+		return Promise.all(
+			files.map(async (location): Promise<FileLocation> => {
+				if (location.status !== "mounted" || location.instancePath)
+					return location;
+				const instancePath = await mounted.instanceOf(location.source);
+				return instancePath ? { ...location, instancePath } : location;
+			})
+		);
+	}
+
+	private mountedInstancesOf(locator: PlacementLocator): MountedInstances {
+		return new MountedInstances(
+			this.fileSystemService,
+			locator.mounts,
+			this.config.syncRules
+		);
 	}
 
 	private async locateInstance(
@@ -258,6 +291,10 @@ class ConfigLocator {
 		const files = locator.locateInstance(reference);
 		if (files.length > 0)
 			return { reference, files, folders: [], fixes: [] };
+		const mounted =
+			await this.mountedInstancesOf(locator).filesAt(reference);
+		if (mounted.length > 0)
+			return { reference, files: mounted, folders: [], fixes: [] };
 		const fixes = await this.renamesPlacing(diagnostics, reference);
 		const known = locator.foldersFor(reference);
 		return {
@@ -402,7 +439,7 @@ class ConfigLocator {
 			[file],
 			(source) => RojoFile.at(source, this.config.syncRules)
 		);
-		const placement = this.builderOf(index).place(this.config);
+		const placement = await this.builderOf(index).place(this.config);
 		return placement.isOk()
 			? new PlacementLocator(
 					placement.value,

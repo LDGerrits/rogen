@@ -40,6 +40,19 @@ const InitOptions = [
 			"Plan without writing or building: print the files it would write and the choices it took, then stop.",
 	},
 	{
+		name: "kind",
+		type: "string",
+		values: ["place", "model", "plugin"],
+		description:
+			"What a new project is, as Rojo's init names it: a place (the default), or a model or a plugin, which starts with Rojo's template of that kind and no routes.",
+	},
+	{
+		name: "skip-git",
+		type: "boolean",
+		description:
+			"Leave git out of a new project: write no .gitignore and run no git init. Otherwise a .gitignore is written where none is, and git init runs where no work tree holds the folder.",
+	},
+	{
 		name: "language",
 		type: "string",
 		placeholder: "id",
@@ -89,7 +102,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
 	},
 	{
 		name: "unmatched",
@@ -147,6 +160,8 @@ function choicesOf(
 	options: CommandLine<typeof InitOptions>["options"]
 ): InitChoices {
 	return {
+		kind: options.kind as InitChoices["kind"],
+		skipGit: options["skip-git"],
 		nested: options.nested,
 		placeListing: options["place-listing"] as InitChoices["placeListing"],
 		placeIds: options["place-id"],
@@ -173,12 +188,12 @@ registerCommand(
 					summary:
 						"Writes a starting rogen.json, or adds a place to one",
 					description:
-						"Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.",
+						"Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when a rogen.json lies above the folder.",
 					args: [
 						{
 							name: "path",
 							description:
-								"A folder below a rogen.json to add as a place of it: its own rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.",
+								"The folder to start in, made when it is not there. Below a rogen.json it is added as a place of it instead: its own rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.",
 							isOptional: true,
 						},
 					],

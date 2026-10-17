@@ -1,7 +1,7 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { UsageError, failureReason } from "../../base/errors.js";
-import { isGlobsetMatch } from "../../base/glob.js";
+import { ignoringGlob } from "../../base/glob.js";
 import { toNative, toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -20,7 +20,11 @@ import {
 	ConfigLocations,
 	PlacedLocation,
 } from "../build/build-service.js";
-import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
+import {
+	DEFAULT_PROJECT,
+	SYNCBACK_FILES,
+	isSyncbackFileName,
+} from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -41,6 +45,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
+import { applyTreeChanges, treeChanges } from "./tree-changes.js";
 
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
@@ -63,7 +68,12 @@ const CR = 13;
 const LF = 10;
 
 /** What applying a plan does to one path of the project, for one instance; paths are absolute, in the system's own form. */
-type Operation = { readonly file: string; readonly instance: string } & (
+type Operation = {
+	readonly file: string;
+	readonly instance: string;
+	/** The path of the mirror it comes from, when it comes from one. */
+	readonly from?: string;
+} & (
 	| { readonly kind: "write"; readonly bytes: Uint8Array }
 	| { readonly kind: "folder" }
 	| { readonly kind: "remove" }
@@ -80,6 +90,7 @@ interface Expected {
 /** The plan of a run on the mirror: what it writes, with the bytes, and the bytes each path it touches had, so a confirmed plan is written as it was shown. */
 class CoreSyncbackPlan implements SyncbackPlan {
 	readonly changes: readonly SyncbackChange[];
+	readonly listed: readonly SyncbackChange[];
 
 	constructor(
 		readonly project: ResolvedConfig,
@@ -87,8 +98,11 @@ class CoreSyncbackPlan implements SyncbackPlan {
 		readonly operations: readonly Operation[],
 		/** The bytes of each path the operations touch when the plan was made; `undefined` for a path that wasn't there. */
 		readonly before: ReadonlyMap<string, Uint8Array | undefined>,
-		readonly expected: readonly Expected[]
+		readonly expected: readonly Expected[],
+		/** What `--list` prints for the run: see `SyncbackPlan.listed`. */
+		listed: readonly SyncbackChange[]
 	) {
+		this.listed = listed;
 		this.changes = operations.map(({ kind, file }) => ({
 			kind: kind === "remove" || kind === "prune" ? "remove" : "write",
 			file,
@@ -102,7 +116,8 @@ class ListedPlan implements SyncbackPlan {
 
 	constructor(
 		readonly project: ResolvedConfig,
-		readonly changes: readonly SyncbackChange[]
+		readonly changes: readonly SyncbackChange[],
+		readonly listed: readonly SyncbackChange[]
 	) {}
 }
 
@@ -117,8 +132,10 @@ interface Prepared {
 	readonly file: string;
 	readonly staging: string;
 	readonly root: string;
-	/** Globs relative to `dir` that nothing syncback writes may match: `globIgnorePaths` and syncback's `ignorePaths`. */
-	readonly ignored: readonly string[];
+	/** The `globIgnorePaths`, relative to `dir`: what Rojo never read, which the mirror leaves out and syncback never writes. */
+	readonly unread: readonly string[];
+	/** Syncback's `ignorePaths`, relative to `dir`, which nothing syncback writes may match. */
+	readonly unwritten: readonly string[];
 }
 
 /** A file copied into the mirror, and the path of the project it is. */
@@ -174,7 +191,7 @@ export class CoreSyncbackService implements SyncbackService {
 				request,
 				prepared.value,
 				prepared.value.file,
-				[]
+				["--list"]
 			);
 			if (ran.isErr()) return ran;
 			return ok(
@@ -183,7 +200,8 @@ export class CoreSyncbackService implements SyncbackService {
 					prepared.value,
 					copied,
 					started,
-					CoreSyncbackService.skipped(ran.value)
+					CoreSyncbackService.skipped(ran.value),
+					ran.value
 				)
 			);
 		} finally {
@@ -219,6 +237,7 @@ export class CoreSyncbackService implements SyncbackService {
 		return ok({
 			project: request.project,
 			changes: plan.changes.filter(({ file }) => !done.failed.has(file)),
+			listed: plan.listed.filter(({ file }) => !done.failed.has(file)),
 			unplaced: [...plan.unplaced, ...done.unplaced],
 			warnings,
 		});
@@ -330,6 +349,12 @@ export class CoreSyncbackService implements SyncbackService {
 			fileAt: (target) => RojoFile.at(target, project.syncRules),
 			isFolder: (target) =>
 				this.fileSystemService.isDirectory(toNative(target)),
+			readText: async (target) => {
+				const read = await tryWithAsync(() =>
+					this.fileSystemService.readFile(toNative(target))
+				);
+				return read.isOk() ? read.value : undefined;
+			},
 		});
 		const [clash] = mirror.clashes;
 		if (clash)
@@ -348,23 +373,28 @@ export class CoreSyncbackService implements SyncbackService {
 			file: path.join(dir, TEMPORARY_PROJECT),
 			staging: path.join(dir, SYNCBACK_FILES.staging),
 			root: path.join(dir, MIRROR),
-			ignored: [
-				...(written.globIgnorePaths ?? []),
-				...CoreSyncbackService.ignorePathsOf(written),
-			],
+			unread: written.globIgnorePaths ?? [],
+			unwritten: CoreSyncbackService.ignorePathsOf(written),
 		});
 	}
 
-	/** The `ignorePaths` of the written file's `syncbackRules`, which Rogen applies itself, as Rojo would match them against the mirror's paths. */
+	/** The `ignorePaths` of the written file's `syncbackRules`, which Rogen applies itself, as Rojo would match them against the mirror's paths: unless `createIgnoreDirPaths` is false, a glob ending in `/**` also names its folder. */
 	private static ignorePathsOf(written: RojoProjectFile): string[] {
 		const rules = (written as { syncbackRules?: unknown }).syncbackRules;
-		const paths =
+		const { ignorePaths, createIgnoreDirPaths } =
 			typeof rules === "object" && rules !== null
-				? (rules as { ignorePaths?: unknown }).ignorePaths
-				: undefined;
-		return Array.isArray(paths)
-			? paths.filter((glob): glob is string => typeof glob === "string")
-			: [];
+				? (rules as {
+						ignorePaths?: unknown;
+						createIgnoreDirPaths?: unknown;
+					})
+				: {};
+		return (Array.isArray(ignorePaths) ? ignorePaths : [])
+			.filter((glob): glob is string => typeof glob === "string")
+			.flatMap((glob) =>
+				createIgnoreDirPaths !== false && glob.endsWith("/**")
+					? [glob, glob.slice(0, -3)]
+					: [glob]
+			);
 	}
 
 	/** Copies the project's files into the mirror and writes the project file that mounts it; what was copied, as each file's mirror path and project path. */
@@ -436,7 +466,7 @@ export class CoreSyncbackService implements SyncbackService {
 			const from = path.posix.join(target, name);
 			const to = `${mirror}/${name}`;
 			if (
-				this.isIgnored(prepared, from) ||
+				this.isUnread(prepared, from) ||
 				isSyncbackFileName(name) ||
 				name === ".git"
 			)
@@ -469,9 +499,18 @@ export class CoreSyncbackService implements SyncbackService {
 			);
 	}
 
-	private isIgnored({ dir, ignored }: Prepared, target: string): boolean {
+	/** Whether syncback may not write `target`: Rojo never read it, or syncback's `ignorePaths` name it. */
+	private isIgnored(prepared: Prepared, target: string): boolean {
+		const relative = path.posix.relative(toPosix(prepared.dir), target);
+		return (
+			this.isUnread(prepared, target) ||
+			ignoringGlob(relative, prepared.unwritten) !== undefined
+		);
+	}
+
+	private isUnread({ dir, unread }: Prepared, target: string): boolean {
 		const relative = path.posix.relative(toPosix(dir), target);
-		return ignored.some((glob) => isGlobsetMatch(relative, glob));
+		return ignoringGlob(relative, unread) !== undefined;
 	}
 
 	/** Compares the mirror with what was copied into it, and turns each difference into a change of the project: an edit or removal of the file it was copied from, and a new instance placed by routing. */
@@ -482,7 +521,9 @@ export class CoreSyncbackService implements SyncbackService {
 		/** When Rojo started, in milliseconds since the epoch. */
 		started: number,
 		/** What Rojo said it skipped. */
-		skipped: readonly UnplacedInstance[]
+		skipped: readonly UnplacedInstance[],
+		/** All Rojo said, which lists what it wrote and removed. */
+		said: readonly ServerMessage[]
 	): Promise<CoreSyncbackPlan> {
 		const { mirror, root } = prepared;
 		const after = await this.walk(root);
@@ -514,7 +555,12 @@ export class CoreSyncbackService implements SyncbackService {
 						const file = toNative(target);
 						const instance = CoreSyncbackService.instanceAt(at);
 						if (!present.has(at))
-							return { kind: "remove" as const, file, instance };
+							return {
+								kind: "remove" as const,
+								file,
+								instance,
+								from: at,
+							};
 						const copy = path.join(root, at);
 						if (
 							modified < started - COARSEST_CLOCK_MS &&
@@ -538,6 +584,7 @@ export class CoreSyncbackService implements SyncbackService {
 									file,
 									bytes: next,
 									instance,
+									from: at,
 								};
 					})
 			);
@@ -570,19 +617,47 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 			}
 		}
+		const edited = await this.editTree(request, prepared);
+		if (edited.operation) {
+			await touch(edited.operation.file);
+			operations.push(edited.operation);
+		}
+		unplaced.push(...edited.unplaced);
 		const holding = new Set<string>();
 		for (const { path: at } of after) {
 			const names = at.split("/");
 			for (let depth = 1; depth <= names.length; depth++)
 				holding.add(names.slice(0, depth).join("/"));
 		}
-		for (const { kind, mirror: at, target } of mirror.entries)
-			if (kind === "folder" && !holding.has(at))
+		const copiedFolders = new Set(
+			mirror.entries
+				.filter(({ kind }) => kind === "folder")
+				.map(({ mirror: at }) => at)
+		);
+		for (const at of copiedPaths) {
+			const names = at.split("/");
+			for (let depth = 1; depth < names.length; depth++) {
+				const folder = names.slice(0, depth).join("/");
+				if (
+					[...copiedFolders].some((entry) =>
+						folder.startsWith(`${entry}/`)
+					)
+				)
+					copiedFolders.add(folder);
+			}
+		}
+		for (const at of [...copiedFolders].sort(
+			(a, b) => b.length - a.length
+		)) {
+			const target = mirror.targetOf(at);
+			if (target !== undefined && !holding.has(at))
 				operations.push({
 					kind: "prune",
 					file: toNative(target),
 					instance: CoreSyncbackService.instanceAt(at),
+					from: at,
 				});
+		}
 
 		const known = new Set<string>(mirror.folders);
 		for (const at of copiedPaths) {
@@ -619,11 +694,12 @@ export class CoreSyncbackService implements SyncbackService {
 			await touch(file);
 			operations.push(
 				added.folder
-					? { kind: "folder", file, instance }
+					? { kind: "folder", file, instance, from: added.path }
 					: {
 							kind: "write",
 							file,
 							instance,
+							from: added.path,
 							bytes: await this.fileSystemService.readFileBytes(
 								path.join(root, added.path)
 							),
@@ -668,8 +744,68 @@ export class CoreSyncbackService implements SyncbackService {
 			unplaced,
 			operations,
 			before,
-			expected
+			expected,
+			this.listedAs(said, prepared, operations)
 		);
+	}
+
+	/** What Rojo changed in the nodes of the project file it ran on, as an edit of the config's own tree; a node the tree does not have, which routing made, has no place for it. */
+	private async editTree(
+		request: SyncbackRequest,
+		prepared: Prepared
+	): Promise<{
+		operation?: Operation;
+		unplaced: UnplacedInstance[];
+	}> {
+		const ran = await tryWithAsync(async () => {
+			const text = await this.fileSystemService.readFile(prepared.file);
+			return (JSON.parse(text) as RojoProjectFile).tree;
+		});
+		if (ran.isErr() || ran.value === undefined)
+			return {
+				unplaced: [
+					{
+						instance: request.project.projectName,
+						reason: "the project file Rojo rewrote could not be read, so its changes to the nodes of the tree are not written",
+					},
+				],
+			};
+		const changes = treeChanges(prepared.mirror.file.tree, ran.value);
+		if (changes.length === 0) return { unplaced: [] };
+		const { project } = request;
+		const current = await tryWithAsync(() =>
+			this.fileSystemService.readFile(prepared.configFile)
+		);
+		const label = (node: readonly string[]) =>
+			node.length === 0 ? project.projectName : instanceKey(node);
+		if (current.isErr())
+			return {
+				unplaced: changes.map(({ node }) => ({
+					instance: label(node),
+					reason: `${prepared.configFile} could not be read`,
+				})),
+			};
+		const applied = applyTreeChanges(
+			current.value,
+			project.stem === DEFAULT_PROJECT
+				? ["tree"]
+				: ["projects", project.stem, "tree"],
+			changes
+		);
+		const unplaced = applied.unhomed.map((node) => ({
+			instance: label(node),
+			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
+		}));
+		if (applied.text === current.value) return { unplaced };
+		return {
+			unplaced,
+			operation: {
+				kind: "write",
+				file: prepared.configFile,
+				instance: label(changes[0].node),
+				bytes: new TextEncoder().encode(applied.text),
+			},
+		};
 	}
 
 	/** Where routing puts a new instance, as the files to write; left out when routing can't place it, when a file is already there, or when an ignore glob matches where it goes. */
@@ -716,13 +852,19 @@ export class CoreSyncbackService implements SyncbackService {
 		for (const { file, at, to } of targets) {
 			taken.add(to);
 			if (folders.has(at)) {
-				operations.push({ kind: "folder", file: to, instance: name });
+				operations.push({
+					kind: "folder",
+					file: to,
+					instance: name,
+					from: at,
+				});
 				continue;
 			}
 			operations.push({
 				kind: "write",
 				file: to,
 				instance: name,
+				from: at,
 				bytes: await this.fileSystemService.readFileBytes(
 					path.join(prepared.root, at)
 				),
@@ -867,10 +1009,12 @@ export class CoreSyncbackService implements SyncbackService {
 			["--dry-run", "--list"]
 		);
 		if (ran.isErr()) return ran;
+		const dir = request.project.projectDir;
 		return ok(
 			new ListedPlan(
 				request.project,
-				this.listing(ran.value, request.project.projectDir)
+				this.listing(ran.value, dir),
+				this.rojoLines(ran.value, dir)
 			)
 		);
 	}
@@ -888,6 +1032,7 @@ export class CoreSyncbackService implements SyncbackService {
 		return ok({
 			project: request.project,
 			changes: this.listing(ran.value, request.project.projectDir),
+			listed: this.rojoLines(ran.value, request.project.projectDir),
 			unplaced: [],
 			warnings: [],
 		});
@@ -898,7 +1043,23 @@ export class CoreSyncbackService implements SyncbackService {
 		messages: readonly ServerMessage[],
 		dir: string
 	): SyncbackChange[] {
-		const listed = messages.flatMap(({ text }) => {
+		const listed = this.rojoLines(messages, dir);
+		return listed.filter(
+			({ file }) =>
+				!listed.some(
+					(other) =>
+						other.file !== file &&
+						other.file.startsWith(file + path.sep)
+				)
+		);
+	}
+
+	/** Every line Rojo listed, in its order, as an absolute path. */
+	private rojoLines(
+		messages: readonly ServerMessage[],
+		dir: string
+	): SyncbackChange[] {
+		return messages.flatMap(({ text }) => {
 			const found = LISTED.exec(text.trim());
 			if (!found || found[2].startsWith("to the file system")) return [];
 			return [
@@ -911,14 +1072,79 @@ export class CoreSyncbackService implements SyncbackService {
 				},
 			];
 		});
-		return listed.filter(
-			({ file }) =>
-				!listed.some(
-					(other) =>
-						other.file !== file &&
-						other.file.startsWith(file + path.sep)
-				)
+	}
+
+	/** What `--list` prints for a run on the mirror: the lines Rojo listed, in its order and as the project's own paths, with the project file first as in a plain Rojo project; then the rest of the plan, unless a folder Rojo listed already covers it. */
+	private listedAs(
+		messages: readonly ServerMessage[],
+		prepared: Prepared,
+		operations: readonly Operation[]
+	): SyncbackChange[] {
+		const files = new Set<string>();
+		const folders = new Set<string>();
+		const byMirror = new Map<string, string[]>();
+		for (const { from, file } of operations) {
+			files.add(file);
+			for (let dir = path.dirname(file); !folders.has(dir);) {
+				folders.add(dir);
+				const parent = path.dirname(dir);
+				if (parent === dir) break;
+				dir = parent;
+			}
+			if (from === undefined) continue;
+			const at = byMirror.get(from);
+			if (at) at.push(file);
+			else byMirror.set(from, [file]);
+		}
+		const touched = (file: string) => files.has(file) || folders.has(file);
+
+		const listed: SyncbackChange[] = [];
+		const seen = new Set<string>();
+		const add = (kind: SyncbackChange["kind"], file: string) => {
+			const key = `${kind} ${file}`;
+			if (seen.has(key)) return;
+			seen.add(key);
+			listed.push({ kind, file });
+		};
+
+		let projectFile: SyncbackChange | undefined;
+		for (const { kind, file } of this.rojoLines(messages, prepared.dir)) {
+			if (file === prepared.file) {
+				if (files.has(prepared.configFile))
+					projectFile = { kind, file: prepared.configFile };
+				continue;
+			}
+			const at = toPosix(path.relative(prepared.root, file));
+			const target = prepared.mirror.targetOf(at);
+			const mapped =
+				byMirror.get(at) ??
+				(target !== undefined && touched(toNative(target))
+					? [toNative(target)]
+					: []);
+			for (const one of mapped) add(kind, one);
+		}
+
+		const fromRojo = new Set(
+			listed.map(({ kind, file }) => `${kind} ${file}`)
 		);
+		for (const { kind, file } of operations) {
+			const asKind =
+				kind === "remove" || kind === "prune" ? "remove" : "write";
+			let covered = false;
+			for (
+				let dir = path.dirname(file);
+				!covered && path.dirname(dir) !== dir;
+				dir = path.dirname(dir)
+			)
+				covered = fromRojo.has(`${asKind} ${dir}`);
+			if (!covered) add(asKind, file);
+		}
+		return projectFile
+			? [
+					projectFile,
+					...listed.filter(({ file }) => file !== projectFile.file),
+				]
+			: listed;
 	}
 
 	/** Builds again and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A sync path holds what a tool wrote, which the build does not place. */

@@ -1,3 +1,4 @@
+import { errorKind } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -34,7 +35,9 @@ describe("CoreRojoCommandService", () => {
 	const finish = async (lines: string[], code: number) => {
 		await new Promise((resolve) => setImmediate(resolve));
 		const [child] = processes.spawned;
-		for (const line of lines) child.print(`${line}\n`);
+		for (const line of lines)
+			if (/^(\[?ERROR|error:)/.test(line)) child.printError(`${line}\n`);
+			else child.print(`${line}\n`);
 		child.exit({ code, signal: null });
 	};
 
@@ -58,7 +61,11 @@ describe("CoreRojoCommandService", () => {
 
 		expect(ran.project.stem).toBe("default");
 		expect(ran.messages).toEqual([
-			{ severity: "info", text: "Built project to a.rbxl" },
+			{
+				severity: "info",
+				text: "Built project to a.rbxl",
+				stdout: "Built project to a.rbxl",
+			},
 		]);
 		const [child] = processes.spawned;
 		expect(child.file).toBe("/bin/rojo");
@@ -147,6 +154,19 @@ describe("CoreRojoCommandService", () => {
 			{ severity: "error", text: "could not write a.rbxl" },
 		]);
 	});
+
+	it.each([
+		[1, "project"],
+		[2, "usage"],
+	])(
+		"should call a Rojo that exits %i a failure of kind %s",
+		async (code, kind) => {
+			const running = run();
+			await finish(["error: invalid value 'abc'"], code);
+
+			expect((await running).unwrap().failure?.kind).toBe(kind);
+		}
+	);
 
 	it("should fail when the selection holds several projects", async () => {
 		const result = await run(
@@ -299,7 +319,11 @@ describe("CoreRojoCommandService", () => {
 			const ran = (await running).unwrap();
 
 			expect(ran.messages).toEqual([
-				{ severity: "info", text: "Installed Rojo plugin" },
+				{
+					severity: "info",
+					text: "Installed Rojo plugin",
+					stdout: "Installed Rojo plugin",
+				},
 			]);
 			expect(ran.failure).toBeUndefined();
 			expect(processes.spawned[0].file).toBe("/bin/rojo");
@@ -317,6 +341,13 @@ describe("CoreRojoCommandService", () => {
 				"'rojo plugin install' failed (exit code 1): no plugins folder"
 			);
 			expect(ran.failure).not.toBeInstanceOf(DiagnosticsError);
+		});
+
+		it("should call a Rojo that exits 2 a usage failure", async () => {
+			const running = install();
+			await finish(["error: unrecognized subcommand"], 2);
+
+			expect(errorKind((await running).unwrap().failure!)).toBe("usage");
 		});
 
 		it("should fail without running Rojo when no Rojo is found", async () => {

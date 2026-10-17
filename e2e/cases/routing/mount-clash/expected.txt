@@ -1,0 +1,34 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  rogen.json - warning: 1 file sits next to an instance of the same name that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds, so Rojo builds two of it: (tree.mountClash)
+    src/Combat/Hit.luau -> ReplicatedStorage/Lib/Combat/Hit (next to "Combat")
+  Rename one of them, or route outside the mounted folder.
+
+$ rogen check
+exit 1
+stdout:
+  src/Combat/Hit.luau - warning: makes a "Combat" next to the "Combat" that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds (tree.mountClash)
+
+$ rogen where src/Combat/Hit.luau src/Other.luau
+exit 0
+stdout:
+  src/Combat/Hit.luau -> ReplicatedStorage/Lib/Combat/Hit · route * (fallback)
+    warning: makes a "Combat" next to the "Combat" that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds (tree.mountClash)
+    require(game:GetService("ReplicatedStorage").Lib.Combat.Hit)
+  src/Other.luau -> ReplicatedStorage/Lib/Other · route * (fallback)
+    require(game:GetService("ReplicatedStorage").Lib.Other)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Lib: Folder
+      Combat: ModuleScript  <- vendor/Lib/Combat/init.luau
+      Combat: Folder
+        Hit: ModuleScript  <- src/Combat/Hit.luau
+      Other: ModuleScript  <- src/Other.luau
+      Util: ModuleScript  <- vendor/Lib/Util.luau

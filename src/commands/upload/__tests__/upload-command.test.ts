@@ -143,8 +143,25 @@ describe("upload command", () => {
 		rojo.exit({ code: 0, signal: null });
 		await running;
 
-		expect(log.lines).toContain("info: Rojo: Uploaded to asset 123");
+		expect(log.lines).toContain("print: Uploaded to asset 123");
 		expect(log.texts("warn")).toContain("Rojo: odd file");
+	});
+
+	it("should leave stdout to Rojo's lines, unless it prints a document", async () => {
+		const printed = start(new MockConfigService([buildable()]));
+		const [rojo] = await spawnedCount(1);
+		rojo.exit({ code: 0, signal: null });
+		await printed.running;
+		expect(printed.log.reserved).toBe(true);
+
+		const json = start(new MockConfigService([buildable()]), {
+			asset_id: "123",
+			json: true,
+		});
+		const [, second] = await spawnedCount(2);
+		second.exit({ code: 0, signal: null });
+		await json.running;
+		expect(json.log.reserved).toBe(false);
 	});
 
 	it("should report the failure when Rojo fails", async () => {

@@ -69,9 +69,7 @@ describe("SyncSteps", () => {
 
 			expect(edits).toEqual([
 				expect.stringContaining(
-					target.workspace.darklua.sourcemapCommand(
-						"default.project.json"
-					)
+					target.workspace.darklua.sourcemapCommand()
 				),
 			]);
 		});

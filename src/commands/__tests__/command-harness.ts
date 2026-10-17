@@ -116,7 +116,14 @@ export function commandHarness(
 	services.set(BuildService, build);
 	services.set(
 		InitService,
-		new CoreInitService(fs, prompt, environment, toolchain, config)
+		new CoreInitService(
+			fs,
+			prompt,
+			environment,
+			toolchain,
+			config,
+			processes
+		)
 	);
 	services.set(
 		LifecycleService,

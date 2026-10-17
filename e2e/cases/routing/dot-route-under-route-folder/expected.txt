@@ -1,0 +1,21 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+    src/Odd/Net.client (write "Net@client")
+    src/Odd/Shared/Ui.client (the "Shared" route governs it, so "@client" would do nothing; move it out of that route's files to route it)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Odd: Folder
+      Net.client: Folder
+        B: ModuleScript  <- src/Odd/Net.client/B.luau
+    Shared: Folder
+      Odd: Folder
+        Ui.client: Folder
+          A: ModuleScript  <- src/Odd/Shared/Ui.client/A.luau

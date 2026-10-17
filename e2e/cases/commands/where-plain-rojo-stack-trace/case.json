@@ -1,0 +1,5 @@
+{
+	"steps": [["where", "-"]],
+	"stdin": "ServerScriptService.Server.Helper:3: boom\nReplicatedStorage.Packages.Roact:12 function a\nReplicatedStorage.Packages.Sub.Deep:1\n",
+	"rojo": false
+}

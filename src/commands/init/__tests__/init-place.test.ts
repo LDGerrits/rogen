@@ -353,16 +353,6 @@ describe("init for a place", () => {
 	});
 
 	describe("what it refuses", () => {
-		it("should refuse a folder with no config above it", async () => {
-			await memFs.delete(path.join(root, "rogen.json"));
-
-			const result = await run(["places/lobby"]);
-
-			expect(failure(result).message).toContain(
-				"No rogen.json found above"
-			);
-		});
-
 		it("should refuse a folder that has a config", async () => {
 			await write("places/lobby/rogen.json", "{}");
 

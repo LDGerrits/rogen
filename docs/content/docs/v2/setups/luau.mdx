@@ -19,15 +19,19 @@ In the project root, run:
 rogen init
 ```
 
-It writes `rogen.json`, builds `default.project.json` from it, and tells you what to do next:
+It writes `rogen.json`, builds `default.project.json` from it, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
 
 ```
 Created rogen.json.
+Created .gitignore.
+Created AGENTS.md.
+Initialised a git repository.
 default.project.json · wrote
 Next steps
   Run:
     rogen serve
   Add your own routes under "routes" in rogen.json.
+Wrote 3 files.
 ```
 
 ```json title="rogen.json"
@@ -72,7 +76,7 @@ Start Rogen:
 rogen serve
 ```
 
-It builds `default.project.json`, starts Rojo on it, and keeps it up to date as you add, move and rename files. Connect from the Studio plugin once it prints `Serving default`.
+It builds `default.project.json`, starts Rojo on it, and keeps it up to date as you add, move and rename files. Connect from the Studio plugin once it prints `Serving <folder> with Rojo`, where `<folder>` is the name of your project folder.
 
 </Step>
 

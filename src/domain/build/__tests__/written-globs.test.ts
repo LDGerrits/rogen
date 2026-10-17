@@ -17,6 +17,12 @@ describe("WrittenGlobs", () => {
 		]);
 	});
 
+	it("should move a ! glob under the sync path and keep it a negation", () => {
+		expect(
+			globsOf("out", ["src/Vendor"]).of("!src/**/Keep.spec.luau")
+		).toEqual(["!out/**/Keep.spec.luau", "!src/**/Keep.spec.luau"]);
+	});
+
 	it("should move a glob under the sync path", () => {
 		expect(globsOf("out").of("src/**/*.draft.luau")).toEqual([
 			"out/**/*.draft.luau",

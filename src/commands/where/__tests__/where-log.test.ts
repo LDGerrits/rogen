@@ -93,6 +93,31 @@ describe("WhereLog", () => {
 			);
 		});
 
+		it("should name the instance a mounted file becomes, and the mount", () => {
+			expect(
+				lineOf({
+					status: "mounted",
+					source: "/repo/src/Vendor/Lib.luau",
+					exists: true,
+					node: ["ReplicatedStorage", "Vendor"],
+					instancePath: ["ReplicatedStorage", "Vendor", "Lib"],
+				})
+			).toBe(
+				"src/Vendor/Lib.luau -> ReplicatedStorage/Vendor/Lib · inside the mount at ReplicatedStorage/Vendor, which Rojo reads"
+			);
+			expect(
+				lineOf({
+					status: "mounted",
+					source: "/repo/src/Vendor/init.luau",
+					exists: true,
+					node: ["ReplicatedStorage", "Vendor"],
+					instancePath: ["ReplicatedStorage", "Vendor"],
+				})
+			).toBe(
+				"src/Vendor/init.luau -> ReplicatedStorage/Vendor · mounted, which Rojo reads"
+			);
+		});
+
 		it("should name the glob that ignored a path, relative to the working directory", () => {
 			expect(
 				lineOf({

@@ -13,6 +13,8 @@ export interface ServerExecutable {
 }
 
 export interface RojoProcess extends Disposable {
+	/** Its process id, which leads a group of its own; none when it couldn't start. */
+	readonly pid: number | undefined;
 	/** Fired for each message it prints; its own info logs and noise come as `debug`. */
 	readonly onDidMessage: Event<ServerMessage>;
 	/** Fired for each log record that says a Studio plugin connected or left; none once it has exited. */
@@ -33,6 +35,12 @@ export interface RojoRunner {
 		resource: string,
 		signal?: AbortSignal
 	): Promise<Result<ServerExecutable, DiagnosticsError>>;
+
+	/** Whether a process with this id exists, such as the `rogen serve` that wrote a server record. */
+	isRunning(pid: number): boolean;
+
+	/** Ends a server an earlier run left, the process of this id and what it started, and resolves once they are gone. */
+	terminateTree(pid: number): Promise<void>;
 
 	/** Starts `executable` as `rojo <command> <projectFile> <flags>` in `cwd`; the flags go last, untouched. A command that reads no project, such as `plugin`, has none. */
 	start(

@@ -1,4 +1,5 @@
 import "../plugin-command.js";
+import "../../help/help-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
@@ -47,7 +48,7 @@ describe("plugin command", () => {
 			expect((await running).isOk()).toBe(true);
 			expect(rojo.args).toEqual(["plugin", action]);
 			expect(rojo.options.cwd).toBe("/repo");
-			expect(log.lines).toContain("info: Rojo: Done");
+			expect(log.lines).toContain("print: Done");
 		}
 	);
 
@@ -57,11 +58,33 @@ describe("plugin command", () => {
 			const { running } = start(...positionals);
 
 			expect(((await running) as ResultError<Error>).error.message).toBe(
-				"'rogen plugin' takes install or uninstall."
+				"'rogen plugin' takes install, uninstall or help."
 			);
 			expect(processes.spawned).toEqual([]);
 		}
 	);
+
+	it.each([[["help"]], [["help", "install"]], [["help", "uninstall"]]])(
+		"should print its own help for %j, without running Rojo",
+		async (positionals) => {
+			const { log, running } = start(...positionals);
+
+			expect((await running).isOk()).toBe(true);
+			expect(log.texts("print").join("\n")).toContain(
+				"Installs or removes Rojo's Studio plugin"
+			);
+			expect(processes.spawned).toEqual([]);
+		}
+	);
+
+	it("should leave stdout to Rojo's lines", async () => {
+		const { log, running } = start("install");
+		const [rojo] = await spawnedCount(1);
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.reserved).toBe(true);
+	});
 
 	it("should report the failure when Rojo fails", async () => {
 		const { running } = start("install");

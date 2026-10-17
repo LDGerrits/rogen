@@ -65,7 +65,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. It needs -o, or several projects. A script edited in place changes no name, so nothing is written. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const SourcemapOptions = [
@@ -116,6 +116,10 @@ registerCommand(
 					},
 					effects: ["writesFiles", "runsProcesses"],
 					longRunningWith: "watch",
+					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
+						"2": "the command line is wrong, or Rojo refused it",
+					},
 					examples: [
 						"rogen sourcemap",
 						"rogen sourcemap -o sourcemap.json",
@@ -144,7 +148,7 @@ registerCommand(
 					absolute: Boolean(line.options.absolute),
 				},
 				cwd,
-				!json && !watch
+				!json
 			);
 			if (watch) {
 				const store = new DisposableStore();
@@ -162,6 +166,7 @@ registerCommand(
 			}
 
 			const logService = accessor.get(LogService);
+			if (!json) logService.reserveStdout();
 			const fileSystemService = accessor.get(FileSystemService);
 			const selection = await accessor
 				.get(ConfigService)
@@ -240,8 +245,10 @@ registerCommand(
 				(runFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,
 					messages.filter(
-						({ severity }) =>
-							severity === "warning" || severity === "error"
+						({ severity, stdout }) =>
+							(stdout !== undefined && !plans[index].printed) ||
+							severity === "warning" ||
+							severity === "error"
 					),
 					cwd
 				);

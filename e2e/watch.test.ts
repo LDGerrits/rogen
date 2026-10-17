@@ -134,6 +134,70 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should build the place again when a script is edited in place", async () => {
+		const place = path.join(project.dir, "game.rbxlx");
+		start(["-o", "game.rbxlx"]);
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("A");
+		});
+
+		writeProjectFile(project.dir, "src/A.server.luau", "return 12345");
+		await eventually(() => {
+			expect(fs.readFileSync(place, "utf8")).toContain("12345");
+		});
+	}, 30_000);
+
+	it("should write the sourcemap again when a model file is edited in place", async () => {
+		const map = path.join(project.dir, "sourcemap.json");
+		writeProjectFile(
+			project.dir,
+			"src/Thing.model.json",
+			JSON.stringify({ ClassName: "Folder" })
+		);
+		session = new RunningRogen(
+			bundle.cli,
+			project.dir,
+			["-o", "sourcemap.json", "--include-non-scripts"],
+			undefined,
+			"sourcemap --watch"
+		);
+		await eventually(() => {
+			expect(fs.readFileSync(map, "utf8")).toContain('"Folder"');
+		});
+
+		writeProjectFile(
+			project.dir,
+			"src/Thing.model.json",
+			JSON.stringify({ ClassName: "Configuration" })
+		);
+		await eventually(() => {
+			expect(fs.readFileSync(map, "utf8")).toContain("Configuration");
+		});
+	}, 30_000);
+
+	it("should print each sourcemap on stdout when sourcemap --watch has no -o", async () => {
+		session = new RunningRogen(
+			bundle.cli,
+			project.dir,
+			[],
+			undefined,
+			"sourcemap --watch"
+		);
+		await eventually(() => {
+			expect(session?.stdout).toContain("A.server.luau");
+		});
+
+		writeProjectFile(project.dir, "src/Added.luau");
+		await eventually(() => {
+			expect(session?.stdout).toContain("Added.luau");
+		});
+		const documents = (session?.stdout ?? "")
+			.split("\n")
+			.filter((line) => line.trim() !== "");
+		for (const document of documents)
+			expect(() => JSON.parse(document)).not.toThrow();
+	}, 30_000);
+
 	it("should count the warnings a rebuild doesn't repeat", async () => {
 		writeProjectFile(project.dir, "src/Save@sever.luau");
 		const running = start();

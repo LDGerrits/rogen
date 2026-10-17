@@ -1,0 +1,14 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      F: Folder
+        Ctx: Script  <- src/F/Client/Ctx.client.luau, src/F/Client/Ctx.meta.json
+        Plain: LocalScript  <- src/F/Client/Plain.client.luau

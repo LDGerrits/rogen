@@ -1,5 +1,5 @@
 import path from "path";
-import { Result } from "../../../base/result.js";
+import { Result, err, ok } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -104,10 +104,9 @@ export async function buildAndPlace(
 	const index = await indexOf(fs, config.sourcePaths);
 	const builder = builderOf(fs, index);
 	const built = await builder.build(config);
-	return built.map((value) => ({
-		...value,
-		placement: builder.place(config).unwrap(),
-	}));
+	if (built.isErr()) return err(built.error);
+	const placement = (await builder.place(config)).unwrap();
+	return ok({ ...built.value, placement });
 }
 
 export const placedLines = (files: readonly RoutedFile[]): string[] =>

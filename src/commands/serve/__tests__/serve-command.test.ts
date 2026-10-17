@@ -119,7 +119,7 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should show what the server says as its own lines, without the server's banner", async () => {
+	it("should print the server's banner on stdout as the server printed it, and the rest on stderr", async () => {
 		void serve();
 		await settle();
 
@@ -130,6 +130,27 @@ describe("serve command", () => {
 				"  Port:    34872",
 				"",
 				"Visit http://localhost:34872/ in your browser for more information.",
+				"",
+			].join("\n")
+		);
+		await settle();
+
+		expect(logService.reserved).toBe(true);
+		expect(logService.texts("print")).toEqual([
+			"Rojo server listening:",
+			"  Address: localhost",
+			"  Port:    34872",
+			"",
+			"Visit http://localhost:34872/ in your browser for more information.",
+		]);
+	});
+
+	it("should show what the server says as its own lines, besides its banner", async () => {
+		void serve();
+		await settle();
+
+		processes.spawned[0].printError(
+			[
 				"[ERROR librojo::change_processor] File is not a valid JSON model: /repo/src/Bad.model.json: JSONC parse error",
 				"        ",
 				"        Caused by:",
@@ -155,6 +176,33 @@ describe("serve command", () => {
 		expect((await result).isOk()).toBe(true);
 		expect(processes.spawned[0].terminated).toBe(true);
 		expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
+	});
+
+	it.each([
+		["SIGINT", 130],
+		["SIGTERM", 143],
+		["SIGHUP", 129],
+	] as const)(
+		"should exit with 128 plus the number of %s, which is %i, as the shell reports a Rojo that it stopped",
+		async (signal, code) => {
+			const result = serve();
+			await settle();
+
+			lifecycle.shutdown(signal);
+
+			const ended = await result;
+			expect(ended.isErr() && exitCodeOf(ended.error)).toBe(code);
+			expect(logService.lines.at(-1)).toBe("outro: Stopped serving.");
+		}
+	);
+
+	it("should exit 130 for a SIGINT that comes while it prepares", async () => {
+		const result = serve();
+		lifecycle.shutdown("SIGINT");
+
+		const ended = await result;
+		expect(ended.isErr() && exitCodeOf(ended.error)).toBe(130);
+		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should start nothing when asked to shut down while it prepares", async () => {
@@ -211,7 +259,7 @@ describe("serve command", () => {
 			sessionId: "s1",
 		});
 
-		const result = serve();
+		const result = serve([], { adopt: true });
 		await settle();
 
 		expect(processes.spawned).toEqual([]);
@@ -238,7 +286,7 @@ describe("serve command", () => {
 			sessionId: "s1",
 		});
 
-		void serve([], { json: true });
+		void serve([], { json: true, adopt: true });
 		await settle();
 		requests.responses.delete(ROJO_URL);
 		await settle();
@@ -411,7 +459,7 @@ describe("serve command", () => {
 			serverVersion: "7.7.1",
 			sessionId: "s1",
 		});
-		const result = serve([], { json: true });
+		const result = serve([], { json: true, adopt: true });
 		await settle();
 
 		lifecycle.shutdown();
@@ -433,7 +481,7 @@ describe("serve command", () => {
 			serverVersion: "7.7.1",
 			sessionId: "s1",
 		});
-		void serve([], { json: true });
+		void serve([], { json: true, adopt: true });
 		await settle();
 
 		await memFs.delete("/repo/rogen.json");
@@ -455,7 +503,7 @@ describe("serve command", () => {
 			serverVersion: "7.7.1",
 			sessionId: "s1",
 		});
-		void serve();
+		void serve([], { adopt: true });
 		await settle();
 
 		await memFs.delete("/repo/rogen.json");

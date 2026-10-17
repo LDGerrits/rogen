@@ -36,6 +36,12 @@ import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { AssembledFile, Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
+import { WrittenRecords } from "./written-records.js";
+
+interface WriteOptions {
+	readonly rewrite?: boolean;
+	readonly force?: boolean;
+}
 
 type Attempt = BuiltConfig | FailedBuild;
 
@@ -64,13 +70,14 @@ export class CoreBuildService implements BuildService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		private readonly syncTools: readonly SyncTool[]
+		private readonly syncTools: readonly SyncTool[],
+		private readonly records: WrittenRecords = new WrittenRecords()
 	) {
-		this.writer = new OutputWriter(fileSystemService);
+		this.writer = new OutputWriter(fileSystemService, records);
 	}
 
-	build(selection: ConfigSelection): Promise<BuildRun> {
-		return this.buildAll(selection, true);
+	build(selection: ConfigSelection, force = false): Promise<BuildRun> {
+		return this.buildAll(selection, true, force);
 	}
 
 	/** Builds every selected config as `build` does, and writes nothing. */
@@ -80,7 +87,8 @@ export class CoreBuildService implements BuildService {
 
 	private async buildAll(
 		selection: ConfigSelection,
-		write: boolean
+		write: boolean,
+		force = false
 	): Promise<BuildRun> {
 		const { set, unloaded } = BuildSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths);
@@ -91,7 +99,8 @@ export class CoreBuildService implements BuildService {
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ label }) => label),
-			write
+			write,
+			{ force }
 		);
 		const builds = groupBy(
 			[...unloaded, ...settled],
@@ -106,7 +115,8 @@ export class CoreBuildService implements BuildService {
 		set: BuildSet,
 		projectFile: string,
 		listing: IndexReader,
-		previous?: LoadedBuild
+		previous?: LoadedBuild,
+		rewrite = false
 	): Promise<LoadedBuild> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
@@ -116,7 +126,7 @@ export class CoreBuildService implements BuildService {
 			[{ config, syncWarnings }],
 			listing
 		);
-		const [build] = await this.settle(attempts, [], true);
+		const [build] = await this.settle(attempts, [], true, { rewrite });
 		return build;
 	}
 
@@ -163,7 +173,10 @@ export class CoreBuildService implements BuildService {
 		listing: IndexReader,
 		built: ReadonlyMap<ResolvedConfig, AssembledFile>
 	): Promise<Diagnostic[]> {
-		const staleness = new ProjectFileStaleness(this.fileSystemService);
+		const staleness = new ProjectFileStaleness(
+			this.fileSystemService,
+			this.records
+		);
 		const builder = new ConfigBuilder(
 			this.fileSystemService,
 			listing,
@@ -289,7 +302,8 @@ export class CoreBuildService implements BuildService {
 	private async settle(
 		attempts: readonly Attempt[],
 		unloaded: readonly string[],
-		write: boolean
+		write: boolean,
+		options: WriteOptions = {}
 	): Promise<LoadedBuild[]> {
 		const built = attempts.filter(
 			(attempt): attempt is BuiltConfig =>
@@ -301,7 +315,8 @@ export class CoreBuildService implements BuildService {
 				attempt instanceof FailedBuild ? [attempt.config.label] : []
 			),
 		];
-		if (failed.length === 0 && write) return this.writeInOrder(built);
+		if (failed.length === 0 && write)
+			return this.writeInOrder(built, options);
 		return Promise.all(
 			attempts.map(async (attempt) =>
 				attempt instanceof FailedBuild
@@ -316,7 +331,8 @@ export class CoreBuildService implements BuildService {
 
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
 		const stale = await new ProjectFileStaleness(
-			this.fileSystemService
+			this.fileSystemService,
+			this.records
 		).diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
@@ -329,7 +345,8 @@ export class CoreBuildService implements BuildService {
 	}
 
 	private async writeInOrder(
-		built: readonly BuiltConfig[]
+		built: readonly BuiltConfig[],
+		options: WriteOptions
 	): Promise<LoadedBuild[]> {
 		const builds: LoadedBuild[] = [];
 		let failed: string | undefined;
@@ -344,7 +361,9 @@ export class CoreBuildService implements BuildService {
 				? ok(false)
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
-						projectFile
+						projectFile,
+						config.file,
+						options
 					);
 			if (written.isErr()) failed = config.label;
 			builds.push(

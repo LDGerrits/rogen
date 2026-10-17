@@ -9,6 +9,12 @@ const MARKER = "<!-- rogen -->";
 export class AgentFile {
 	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD] as const;
 
+	/** The `CLAUDE.md` that points Claude Code at `AGENTS.md`, for a project that has Claude Code's folder and no file of its own for it. */
+	static readonly CLAUDE_IMPORT: PlannedFile = {
+		fileName: CLAUDE_MD,
+		content: `@${AGENTS_MD}\n`,
+	};
+
 	private constructor(
 		readonly fileName: string,
 		private readonly text: string | undefined,
@@ -23,6 +29,11 @@ export class AgentFile {
 		return claudeText !== undefined
 			? new AgentFile(CLAUDE_MD, claudeText, undefined)
 			: new AgentFile(AGENTS_MD, undefined, undefined);
+	}
+
+	/** Whether a `CLAUDE.md` is there, which Claude Code reads in place of `AGENTS.md`. */
+	get hasClaudeFile(): boolean {
+		return this.claudeText !== undefined;
 	}
 
 	get hasBlock(): boolean {

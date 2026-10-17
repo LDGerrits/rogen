@@ -45,27 +45,29 @@ stdout:
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stdout:
+  Writing src/Combat/Server/Combat.luau
+  Writing src/Combat/Server/Loot.luau
+  Writing src/Inventory/Server/Mail.luau
+  Writing src/Quest/Server/Main.luau
+  Removing src/Combat/Server/Hit.luau
+stderr:
   rogen syncback · Game
   default.project.json · unchanged
-  Built 1 config.
-  write  src/Combat/Server/Combat.luau
-  remove src/Combat/Server/Hit.luau
-  write  src/Combat/Server/Loot.luau
-  write  src/Inventory/Server/Mail.luau
-  write  src/Quest/Server/Main.luau
+  Built 1 project.
   Syncback would change 5 files (4 to write, 1 to remove).
 
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing src/Combat/Server/Combat.luau
+  Writing src/Combat/Server/Loot.luau
+  Writing src/Inventory/Server/Mail.luau
+  Writing src/Quest/Server/Main.luau
+  Removing src/Combat/Server/Hit.luau
+stderr:
   rogen syncback · Game
   default.project.json · wrote
-  Built 1 config.
-  write  src/Combat/Server/Combat.luau
-  remove src/Combat/Server/Hit.luau
-  write  src/Combat/Server/Loot.luau
-  write  src/Inventory/Server/Mail.luau
-  write  src/Quest/Server/Main.luau
+  Built 1 project.
   Syncback wrote 5 changes.
 
 $ rogen where src

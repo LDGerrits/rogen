@@ -9,7 +9,9 @@ import { SyncTool } from "../toolchain/toolchain.js";
 import { BuildFindings, BuildSummary } from "./build.js";
 import { BuildValidator } from "./check/build-validator.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
+import { MountClashes } from "./check/mount-clashes.js";
 import { MetaReader } from "./meta-reader.js";
+import { NestedProjectNames } from "./nested-project-names.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
 import { SyncPathCheck } from "./check/sync-path-check.js";
@@ -43,7 +45,9 @@ type ExaminedConfig =
 /** Builds one config from an index, phase by phase, so `build` and `locate` place files the same way. */
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
+	private readonly projectNames: NestedProjectNames;
 	private readonly syncPathCheck: SyncPathCheck;
+	private readonly mountClashes: MountClashes;
 
 	constructor(
 		fileSystemService: FileReader,
@@ -51,12 +55,21 @@ export class ConfigBuilder {
 		private readonly tools: readonly SyncTool[]
 	) {
 		this.metaReader = new MetaReader(fileSystemService);
+		this.projectNames = new NestedProjectNames(fileSystemService, index);
 		this.syncPathCheck = new SyncPathCheck(fileSystemService);
+		this.mountClashes = new MountClashes(fileSystemService);
 	}
 
 	/** Places `config`'s files; its caller checked that it declares routes. */
-	place(config: ResolvedConfig): Result<Placement, Diagnostic[]> {
-		return new Placer(this.index, config, this.tools).place();
+	async place(
+		config: ResolvedConfig
+	): Promise<Result<Placement, Diagnostic[]>> {
+		return new Placer(
+			this.index,
+			config,
+			this.tools,
+			await this.projectNames.of(config)
+		).place();
 	}
 
 	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
@@ -90,7 +103,7 @@ export class ConfigBuilder {
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
-		const placement = this.place(config);
+		const placement = await this.place(config);
 		if (placement.isErr())
 			return err(new DiagnosticsError(placement.error));
 		const assembled = await this.assemble(placement.value);
@@ -110,6 +123,7 @@ export class ConfigBuilder {
 				...config.warnings,
 				...meta.warnings,
 				...new BuildValidator(assembly).validate(),
+				...(await this.mountClashes.diagnostics(placement.value)),
 				...new UnmountedSources(config, this.index).diagnostics(),
 			],
 		});

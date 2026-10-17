@@ -348,7 +348,7 @@ describe("BuildLog report, warnings", () => {
 			"diagnosticWarning: /repo/arena/rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
 			"step: match",
 			"success: match/default.project.json · wrote · same warnings as arena",
-			"outro: Built 2 configs with 1 warning.",
+			"outro: Built 2 projects with 1 warning.",
 		]);
 	});
 
@@ -368,7 +368,7 @@ describe("BuildLog report, warnings", () => {
 			"step: match",
 			"success: match/default.project.json · wrote",
 			"diagnosticWarning: /repo/match/rogen.json - warning: only here. (x.own)",
-			"outro: Built 2 configs with 2 warnings.",
+			"outro: Built 2 projects with 2 warnings.",
 		]);
 	});
 
@@ -438,12 +438,12 @@ describe("BuildLog report, closing line", () => {
 	};
 
 	it("should count the configs it built", () => {
-		expect(closing(0)).toBe("outro: Built 1 config.");
+		expect(closing(0)).toBe("outro: Built 1 project.");
 	});
 
 	it("should count the warnings", () => {
-		expect(closing(1)).toBe("outro: Built 1 config with 1 warning.");
-		expect(closing(2)).toBe("outro: Built 1 config with 2 warnings.");
+		expect(closing(1)).toBe("outro: Built 1 project with 1 warning.");
+		expect(closing(2)).toBe("outro: Built 1 project with 2 warnings.");
 	});
 });
 

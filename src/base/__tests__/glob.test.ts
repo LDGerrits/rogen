@@ -3,6 +3,9 @@ import {
 	isGlobsetMatch,
 	isMatch,
 	ignoresAllOf,
+	ignoringAllOf,
+	ignoringGlob,
+	withGlobBody,
 	unescapedGlob,
 } from "../glob.js";
 
@@ -61,6 +64,55 @@ describe("ignoresAllOf", () => {
 	});
 });
 
+describe("ignoringGlob", () => {
+	it.each([
+		["a/X.spec.luau", ["**/*.spec.luau"], "**/*.spec.luau"],
+		[
+			"a/Keep.spec.luau",
+			["**/*.spec.luau", "!**/Keep.spec.luau"],
+			undefined,
+		],
+		[
+			"a/Keep.spec.luau",
+			["!**/Keep.spec.luau", "**/*.spec.luau"],
+			"**/*.spec.luau",
+		],
+		[
+			"a/Keep.spec.luau",
+			["**/*.spec.luau", "!**/Keep.spec.luau", "a/**"],
+			"a/**",
+		],
+		["a/X.luau", ["!a/X.luau"], undefined],
+		["!a.luau", ["\\!a.luau"], "\\!a.luau"],
+	])("should say %s is ignored by %j as %s", (target, globs, glob) => {
+		expect(ignoringGlob(target, globs)).toBe(glob);
+	});
+});
+
+describe("ignoringAllOf", () => {
+	it("should name the glob that ignores all of a folder", () => {
+		expect(ignoringAllOf("/r/v", ["/r/v/**", "*.md"])).toBe("/r/v/**");
+	});
+
+	it("should name none when a negation after it may re-include a file", () => {
+		expect(ignoringAllOf("/r/v", ["/r/v/**", "!**/Keep.luau"])).toBe(
+			undefined
+		);
+	});
+});
+
+describe("withGlobBody", () => {
+	it("should change the pattern and keep its negation", () => {
+		const prefixed = (glob: string) =>
+			withGlobBody(glob, (body) => `src/${body}`);
+
+		expect([prefixed("*.luau"), prefixed("!Keep.luau")]).toEqual([
+			"src/*.luau",
+			"!src/Keep.luau",
+		]);
+	});
+});
+
 describe("isGlobsetMatch", () => {
 	it.each([
 		["a.luau", "*.luau", true],
@@ -78,7 +130,7 @@ describe("isGlobsetMatch", () => {
 		["a/b/c.luau", "**/c.luau", true],
 		["c.luau", "**/c.luau", true],
 		["a/b/c.luau", "a/**", true],
-		["a", "a/**", true],
+		["a", "a/**", false],
 		["foo", "foo**", true],
 		["foobar", "foo**", true],
 		["fo", "foo**", false],

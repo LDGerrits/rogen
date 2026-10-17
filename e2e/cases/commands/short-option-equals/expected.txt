@@ -1,0 +1,25 @@
+$ rogen sourcemap -o=sourcemap.json
+exit 0
+stdout:
+  Created sourcemap at sourcemap.json
+stderr:
+  rogen sourcemap · Game
+  default.project.json · wrote
+  Built 1 project.
+  sourcemap.json · wrote
+
+$ rogen build -o=game.rbxlx
+exit 0
+stdout: (not shown)
+stderr:
+  rogen build · Game
+  default.project.json · unchanged
+  Built 1 project.
+
+written:
+  default.project.json
+  game.rbxlx
+  sourcemap.json
+
+sourcemap.json:
+{"name":"Game","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"A","className":"Script","filePaths":["src/A.server.luau"]}]}]}

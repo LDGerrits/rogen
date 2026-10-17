@@ -1,0 +1,25 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen where src/Loc src/Strings
+exit 0
+stdout:
+  src/Loc/Format.luau -> ReplicatedStorage/shared/Loc/Format · route * (fallback)
+  src/Loc/init.csv -> ReplicatedStorage/shared/Loc · route * (fallback) · also ServerScriptService/Loc
+  src/Loc/server/Lookup.luau -> ServerScriptService/Loc/Lookup · route server (folder)
+  src/Strings/init.csv -> ReplicatedStorage/shared/Strings · route * (fallback)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Loc: LocalizationTable  <- src/Loc/init.csv
+        Format: ModuleScript  <- src/Loc/Format.luau
+      Strings: LocalizationTable  <- src/Strings/init.csv
+  ServerScriptService: ServerScriptService
+    Loc: LocalizationTable  <- src/Loc/init.csv
+      Lookup: ModuleScript  <- src/Loc/server/Lookup.luau

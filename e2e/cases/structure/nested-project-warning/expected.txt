@@ -2,13 +2,13 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  src/default.project.json - warning: Rojo reads this project file as a nested project, so it becomes ReplicatedStorage/shared/default, holding that project's tree. A project file for the folder it lies in belongs outside the source paths. (scan.nestedProject)
+  src/default.project.json - warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
 
 $ rogen where src/default.project.json
 exit 0
 stdout:
-  src/default.project.json -> ReplicatedStorage/shared/default · route * (fallback)
-    warning: Rojo reads this project file as a nested project, so it becomes ReplicatedStorage/shared/default, holding that project's tree. A project file for the folder it lies in belongs outside the source paths. (scan.nestedProject)
+  src/default.project.json -> ReplicatedStorage/shared/Arena · route * (fallback)
+    warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
 
 written:
   default.project.json
@@ -17,5 +17,5 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
+      Arena: DataModel  <- src/default.project.json
       Load: ModuleScript  <- src/Load.luau
-      default: DataModel  <- src/default.project.json

@@ -1,0 +1,4 @@
+{
+	"steps": [["init", "--kind", "model", "--skip-git", "--non-interactive"]],
+	"output": ["init"]
+}

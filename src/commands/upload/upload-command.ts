@@ -76,6 +76,10 @@ registerCommand(
 					options: UploadOptions,
 					output: { document: uploadDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
+					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
+						"2": "the command line is wrong, or Rojo refused it",
+					},
 					examples: [
 						"rogen upload --asset_id 123456",
 						"rogen upload places/lobby --asset_id 123456 --api_key $KEY --universe_id 7890",
@@ -107,6 +111,7 @@ registerCommand(
 			];
 			const rojoService = accessor.get(RojoCommandService);
 			const logService = accessor.get(LogService);
+			if (!line.options.json) logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const selection = await accessor

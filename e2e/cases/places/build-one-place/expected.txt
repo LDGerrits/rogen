@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen build · lobby
   places/lobby/default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build places/arena places/lobby
 exit 0
@@ -13,7 +13,7 @@ stdout:
     places/arena/default.project.json · wrote
   lobby
     places/lobby/default.project.json · unchanged
-  Built 2 configs.
+  Built 2 projects.
 
 written:
   places/arena/default.project.json

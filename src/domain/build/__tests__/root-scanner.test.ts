@@ -41,7 +41,7 @@ describe("RootScanner", () => {
 			const builder = builderOf(fs, index);
 			const built = await builder.build(config);
 			return {
-				roots: builder.place(config).unwrap().roots,
+				roots: (await builder.place(config)).unwrap().roots,
 				warnings: built.isOk()
 					? built.value.findings.warnings
 					: built.error,
@@ -58,7 +58,7 @@ describe("RootScanner", () => {
 		});
 
 		describe("a name with a backslash", () => {
-			it("should be left out and reported, though only a Linux file system can hold it", () => {
+			it("should be left out and reported, though only a Linux file system can hold it", async () => {
 				const index = new Listing(
 					new Map([
 						[
@@ -75,9 +75,9 @@ describe("RootScanner", () => {
 					ignored: [],
 				});
 
-				const [root] = builderOf(fs, index)
-					.place(config)
-					.unwrap().roots;
+				const [root] = (
+					await await builderOf(fs, index).place(config)
+				).unwrap().roots;
 
 				expect(files(root)).toEqual(["script:Fine.luau"]);
 				expect(root.oddNames).toEqual([
@@ -91,7 +91,7 @@ describe("RootScanner", () => {
 		});
 
 		describe("a name with a backslash that is no instance", () => {
-			it("should be neither left out nor reported", () => {
+			it("should be neither left out nor reported", async () => {
 				const index = new Listing(
 					new Map([
 						[
@@ -101,9 +101,11 @@ describe("RootScanner", () => {
 					])
 				);
 
-				const [root] = builderOf(fs, index)
-					.place(configOf({ sourcePaths: [abs("src")], ignored: [] }))
-					.unwrap().roots;
+				const [root] = (
+					await builderOf(fs, index).place(
+						configOf({ sourcePaths: [abs("src")], ignored: [] })
+					)
+				).unwrap().roots;
 
 				expect(root.oddNames).toEqual([]);
 			});
@@ -119,9 +121,9 @@ describe("RootScanner", () => {
 					file: abs("src/rogen.json"),
 				});
 
-				const [root] = builderOf(fs, index)
-					.place(config)
-					.unwrap().roots;
+				const [root] = (
+					await await builderOf(fs, index).place(config)
+				).unwrap().roots;
 
 				expect(files(root)).toEqual(["script:A.luau"]);
 				expect(
@@ -150,9 +152,9 @@ describe("RootScanner", () => {
 				);
 				const index = await newIndex().list([abs("src")]);
 
-				const [root] = builderOf(fs, index)
-					.place(config())
-					.unwrap().roots;
+				const [root] = (
+					await builderOf(fs, index).place(config())
+				).unwrap().roots;
 
 				expect(files(root)).toEqual(["script:A.luau"]);
 				expect(
@@ -164,9 +166,9 @@ describe("RootScanner", () => {
 				await write("src/A.luau");
 				const index = await newIndex().list([abs("src")]);
 
-				const [root] = builderOf(fs, index)
-					.place(config())
-					.unwrap().roots;
+				const [root] = (
+					await builderOf(fs, index).place(config())
+				).unwrap().roots;
 
 				expect([...root.leftOut.keys()].sort()).toEqual([
 					toPosix(abs("src/default.project.json")),
@@ -178,9 +180,9 @@ describe("RootScanner", () => {
 				await write("src/A.luau", "src/other.project.json");
 				const index = await newIndex().list([abs("src")]);
 
-				const [root] = builderOf(fs, index)
-					.place(config())
-					.unwrap().roots;
+				const [root] = (
+					await builderOf(fs, index).place(config())
+				).unwrap().roots;
 
 				expect(files(root)).toContain("data:other.project.json");
 			});
@@ -195,7 +197,9 @@ describe("RootScanner", () => {
 				file: abs("src/rogen.json"),
 			});
 
-			const [root] = builderOf(fs, index).place(config).unwrap().roots;
+			const [root] = (
+				await await builderOf(fs, index).place(config)
+			).unwrap().roots;
 
 			expect(
 				root.leftOut.get(toPosix(abs("src/default.project.json")))

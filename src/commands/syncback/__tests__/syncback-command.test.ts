@@ -115,11 +115,12 @@ describe("syncback command", () => {
 			"--input",
 			"game.rbxl",
 			"--non-interactive",
+			"--list",
 		]);
 		expect(said(log)).toEqual(
 			expect.arrayContaining([
-				"write  src/Combat/Server/Loot.luau",
-				"remove src/Combat/Server/Combat.luau",
+				"Writing src/Combat/Server/Loot.luau",
+				"Removing src/Combat/Server/Combat.luau",
 				"Syncback would change 2 files (1 to write, 1 to remove).",
 			])
 		);
@@ -148,6 +149,23 @@ describe("syncback command", () => {
 		expect(said(log)).toContain("Syncback wrote 2 changes.");
 	});
 
+	it("should print the list on stdout, where Rojo prints it, and the rest on stderr", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"dry-run": true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.reserved).toBe(true);
+		expect(log.texts("print")).toEqual([
+			"Removing src/Combat/Server/Combat.luau",
+			"Writing src/Combat/Server/Loot.luau",
+		]);
+	});
+
 	it("should run Rojo once, ask, and write what it listed, in a terminal", async () => {
 		const { running, log } = start(
 			{ input: "game.rbxl" },
@@ -162,7 +180,7 @@ describe("syncback command", () => {
 		expect(processes.spawned).toHaveLength(1);
 		expect(
 			said(log).filter(
-				(line) => line === "write  src/Combat/Server/Loot.luau"
+				(line) => line === "Writing src/Combat/Server/Loot.luau"
 			)
 		).toHaveLength(1);
 		expect(said(log)).toContain("Syncback wrote 2 changes.");
@@ -183,7 +201,7 @@ describe("syncback command", () => {
 		expect((await running).isOk()).toBe(true);
 
 		expect(processes.spawned).toHaveLength(1);
-		expect(said(log)).toContain("remove src/Combat/Server/Combat.luau");
+		expect(said(log)).toContain("Removing src/Combat/Server/Combat.luau");
 		expect(said(log)).toContain("Nothing was written.");
 		expect(await fs.exists(abs("src/Combat/Server/Combat.luau"))).toBe(
 			true

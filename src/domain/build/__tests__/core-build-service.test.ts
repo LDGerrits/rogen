@@ -384,6 +384,81 @@ describe("CoreBuildService", () => {
 			});
 		});
 
+		describe("a project file edited by hand", () => {
+			const edit = async () => {
+				const file = JSON.parse(
+					await fs.readFile(abs("default.project.json"))
+				);
+				file.tree.Extra = { $className: "Folder" };
+				await fs.writeFile(
+					abs("default.project.json"),
+					JSON.stringify(file)
+				);
+			};
+
+			it("should be refused by a build, which names what it would lose and leaves the file", async () => {
+				const service = buildServiceOfFs();
+				await service.build(selectionOf(configOf()));
+				await edit();
+
+				const [failed] = (await service.build(selectionOf(configOf())))
+					.builds;
+
+				expect(failed.outcome).toBe("failed");
+				expect(failed.errors).toMatchObject([
+					{
+						code: "output.editedByHand",
+						message: expect.stringContaining("would lose Extra"),
+					},
+				]);
+				expect(
+					await fs.readFile(abs("default.project.json"))
+				).toContain("Extra");
+			});
+
+			it("should be written over by a forced build", async () => {
+				const service = buildServiceOfFs();
+				await service.build(selectionOf(configOf()));
+				await edit();
+
+				const [built] = (
+					await service.build(selectionOf(configOf()), true)
+				).builds;
+
+				expect(built.outcome).toBe("wrote");
+				expect(
+					await fs.readFile(abs("default.project.json"))
+				).not.toContain("Extra");
+			});
+
+			it("should be a warning of check that offers no fix, where a stale file offers a build", async () => {
+				const service = buildServiceOfFs();
+				await service.build(selectionOf(configOf()));
+				await edit();
+
+				const [checked] = (await service.check(selectionOf(configOf())))
+					.builds;
+
+				expect(checked.warnings).toMatchObject([
+					{ code: "output.editedByHand" },
+				]);
+				expect(checked.warnings[0].fixes).toBeUndefined();
+			});
+
+			it("should not be told from a file written before any record", async () => {
+				await fs.writeFile(
+					abs("default.project.json"),
+					'{"tree":{"Extra":{}}}'
+				);
+
+				const [built] = (
+					await buildServiceOfFs().build(selectionOf(configOf()))
+				).builds;
+
+				expect(built.outcome).toBe("wrote");
+			});
+		});
+
 		describe("a project file on disk", () => {
 			it("should warn when it differs from what a build would write", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
@@ -411,7 +486,7 @@ describe("CoreBuildService", () => {
 				expect(checked.warnings).toMatchObject([
 					{
 						message: expect.stringContaining(
-							"its sources changed since it was written, or it was edited by hand. Run 'rogen build'"
+							"its sources changed since it was written. Run 'rogen build'"
 						),
 						fixes: [
 							{

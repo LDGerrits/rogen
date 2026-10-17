@@ -8,7 +8,7 @@ stdout:
     dist.project.json · wrote
   project (release)
     release.project.json · wrote
-  Built 3 configs.
+  Built 3 projects.
 
 $ rogen build release.project.json
 exit 0
@@ -20,7 +20,7 @@ stdout:
     dist.project.json · unchanged
   project (release)
     release.project.json · unchanged
-  Built 3 configs.
+  Built 3 projects.
 
 $ rogen build default.project.json
 exit 0
@@ -32,7 +32,7 @@ stdout:
     dist.project.json · unchanged
   project (release)
     release.project.json · unchanged
-  Built 3 configs.
+  Built 3 projects.
 
 $ rogen build dist --json
 exit 0

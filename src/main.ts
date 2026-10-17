@@ -46,6 +46,7 @@ import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
 import { CoreBuildService } from "./domain/build/core-build-service.js";
+import { WrittenRecords } from "./domain/build/written-records.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { InitService } from "./domain/init/init-service.js";
@@ -282,7 +283,11 @@ class RogenMain {
 		const buildService = new CoreBuildService(
 			fileSystemService,
 			indexService,
-			toolchainService.syncTools
+			toolchainService.syncTools,
+			new WrittenRecords(
+				fileSystemService,
+				path.join(environmentService.cacheDir, "rogen", "written")
+			)
 		);
 		services.set(BuildService, buildService);
 		services.set(
@@ -292,7 +297,8 @@ class RogenMain {
 				promptService,
 				environmentService,
 				toolchainService,
-				configService
+				configService,
+				processService
 			)
 		);
 		const watchService = new CoreWatchService(
@@ -301,7 +307,11 @@ class RogenMain {
 			buildService
 		);
 		services.set(WatchService, watchService);
-		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
+		const rojoRunner = new CoreRojoRunner(
+			toolchainService,
+			processService,
+			environmentService.logLevel
+		);
 		services.set(RojoRunner, rojoRunner);
 		const rojoCommandService = new CoreRojoCommandService(
 			rojoRunner,
