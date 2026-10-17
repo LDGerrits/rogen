@@ -73,6 +73,11 @@ export const configLabel = (file: string): string =>
 /** The folder Rogen scans when a config declares routes and no source paths. */
 export const DEFAULT_SOURCE_PATH = "src";
 
+/** The source paths a config without `sourcePaths` has: the default folder when it has routes to scan it, else none. */
+export function defaultSourcePaths(routed: boolean): string[] {
+	return routed ? [DEFAULT_SOURCE_PATH] : [];
+}
+
 /** The project that is the description itself, which no entry of `projects` may take the name of. */
 export const DEFAULT_PROJECT = "default";
 

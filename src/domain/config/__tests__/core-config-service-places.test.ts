@@ -560,9 +560,9 @@ describe("CoreConfigService places", () => {
 			]);
 		});
 
-		it("should refuse a source path inside a place", async () => {
+		it("should refuse a source path inside a place that is named", async () => {
 			await resolve(
-				{ ...ROOT, placePaths: ["*"], sourcePaths: ["app/src"] },
+				{ ...ROOT, placePaths: ["app"], sourcePaths: ["app/src"] },
 				{}
 			);
 			await fs.createDirectory("/repo/app/src");
@@ -571,6 +571,23 @@ describe("CoreConfigService places", () => {
 			expect(errors().map(({ code }) => code)).toEqual([
 				"config.placeInSourcePath",
 			]);
+		});
+
+		it("should take a folder a glob matches that holds a source path for shared code", async () => {
+			await fs.createDirectory("/repo/places/shared/src");
+			const found = await resolve(
+				{ ...ROOT, sourcePaths: ["places/shared/src"] },
+				{ game: null }
+			);
+
+			expect(errors()).toEqual([]);
+			expect(found.map(({ projectFile }) => projectFile)).toEqual([
+				"/repo/default.project.json",
+				"/repo/places/game/default.project.json",
+			]);
+			expect(selection.entries[0]).toMatchObject({
+				sharedFolders: ["/repo/places/shared"],
+			});
 		});
 
 		it("should plain-read the first place", async () => {

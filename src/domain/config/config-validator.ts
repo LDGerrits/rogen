@@ -25,8 +25,8 @@ import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ProjectSource } from "./project-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import {
-	DEFAULT_SOURCE_PATH,
 	PER_PLACE_KEYS,
+	defaultSourcePaths,
 	fieldOf,
 	isDefaultProjectFile,
 	isProjectFileConfig,
@@ -64,7 +64,7 @@ export class ConfigValidator {
 		this.dir = path.dirname(config.file);
 		this.routes = fieldOf(config.model, "routes") ?? {};
 		const routed = Object.keys(this.routes).length > 0;
-		const defaults = routed ? [DEFAULT_SOURCE_PATH] : [];
+		const defaults = defaultSourcePaths(routed);
 		const { inherited } = config;
 		const inheritedPaths = inherited
 			? (inherited.sourcePaths ?? defaults).map((sourcePath) =>

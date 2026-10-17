@@ -18,24 +18,19 @@ import {
 } from "../config/config.js";
 import { ConfigService } from "../config/config-service.js";
 import { PlaceFinder } from "../config/place-finder.js";
-import { PlacePorts } from "../config/place-ports.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 import { InitQuestions } from "./init-questions.js";
+import { KnownPlaces } from "./known-places.js";
 import { WorkspaceFiles } from "./workspace-files.js";
 
 interface Listing {
 	readonly placePaths: readonly string[];
 	readonly raw: Record<string, unknown>;
 	readonly edit?: PlannedFile;
-}
-
-interface KnownPlace {
-	readonly directory: string;
-	readonly pinned: number | undefined;
 }
 
 export class PlaceInit {
@@ -64,18 +59,24 @@ export class PlaceInit {
 		const listed = await this.listing(rootFile, root, folder);
 		if (listed.isErr()) return listed;
 		if (listed.value === "cancelled") return ok(undefined);
-		const known = await this.knownPlaces(root, listed.value.placePaths);
+		const known = await KnownPlaces.of(
+			this.fileSystemService,
+			this.finder,
+			root,
+			listed.value.placePaths,
+			(await this.finder.listingOf(rootFile)).sourcePaths
+		);
 		const sourcePaths = await this.sourcePaths(folder, root);
 		if (sourcePaths === undefined) return ok(undefined);
 
 		const placeIds = await this.questions.placeIds(path.basename(folder));
 		if (placeIds === undefined) return ok(undefined);
 
-		const port = this.portOf(folder, known);
+		const port = known.portFor(folder);
 		const place = toPosix(path.relative(root, folder));
 		const workspace = await this.workspaces.plan(
 			root,
-			[...new Set([...known.map((one) => one.directory), folder])]
+			[...new Set([...known.directories, folder])]
 				.map((directory) => toPosix(path.relative(root, directory)))
 				.sort(compareStrings),
 			place
@@ -146,7 +147,7 @@ export class PlaceInit {
 					`${this.named(rootFile)} is a place of ${this.named(above)}, and a place can't list places. Add the folder to ${this.named(above)} instead.`
 				)
 			);
-		const taken = await this.configIn(folder);
+		const taken = await this.finder.configIn(folder);
 		if (taken)
 			return err(
 				new DiagnosticsError([
@@ -161,14 +162,6 @@ export class PlaceInit {
 		return entry.status === "broken"
 			? err(new DiagnosticsError(entry.errors))
 			: ok({ root, rootFile });
-	}
-
-	private async configIn(folder: string): Promise<string | undefined> {
-		for (const name of CONFIG_FILE_NAMES) {
-			const file = path.join(folder, name);
-			if (await this.fileSystemService.isFile(file)) return file;
-		}
-		return undefined;
 	}
 
 	private named(file: string): string {
@@ -220,25 +213,6 @@ export class PlaceInit {
 				addition: `"${entry}" as a place path`,
 			},
 		});
-	}
-
-	private async knownPlaces(
-		root: string,
-		placePaths: readonly string[]
-	): Promise<KnownPlace[]> {
-		const folders = await this.finder.folders(root, placePaths);
-		return Promise.all(
-			folders.map(async (directory) => {
-				const file = await this.configIn(directory);
-				const own = file
-					? await this.rawConfig(file)
-					: ({} as Record<string, unknown>);
-				return {
-					directory,
-					pinned: PlacePorts.pinnedBy(own.servePort),
-				};
-			})
-		);
 	}
 
 	private static isStrictJson(text: string): boolean {
@@ -296,19 +270,5 @@ export class PlaceInit {
 			...(syncPath && { syncPath }),
 			directories: answered,
 		};
-	}
-
-	private portOf(folder: string, known: readonly KnownPlace[]): number {
-		const others = known
-			.filter(({ directory }) => toPosix(directory) !== toPosix(folder))
-			.sort((a, b) =>
-				compareStrings(toPosix(a.directory), toPosix(b.directory))
-			);
-		const pinned = others.map(({ pinned }) => pinned);
-		const taken = new Set([
-			...pinned.filter((port) => port !== undefined),
-			...PlacePorts.assign(pinned).filter((port) => port !== undefined),
-		]);
-		return PlacePorts.firstFree(taken);
 	}
 }
