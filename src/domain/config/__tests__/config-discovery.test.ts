@@ -157,6 +157,27 @@ describe("ConfigDiscovery", () => {
 			expect(found.files).toEqual(["/repo/pkg/default.project.json"]);
 		});
 
+		it.each([".", "./", "/repo"])(
+			"should adopt the Rojo project file here named as %s",
+			async (ref) => {
+				await fs.writeFile("/repo/default.project.json", "{}");
+
+				const found = (await discovery.discover([ref])).unwrap();
+
+				expect(found.files).toEqual(["/repo/default.project.json"]);
+			}
+		);
+
+		it("should adopt the Rojo project file of a subfolder from a plain project", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+			await fs.createDirectory("/repo/lib");
+			await fs.writeFile("/repo/lib/default.project.json", "{}");
+
+			const found = (await discovery.discover(["lib"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/lib/default.project.json"]);
+		});
+
 		it("should use the config of the nearest folder above when this one has none", async () => {
 			await fs.createDirectory("/repo/src/Inventory");
 			await fs.writeFile("/repo/rogen.json", "{}");

@@ -8,6 +8,16 @@ stdout:
   default.project.json · unchanged
   Built 1 config.
 
+$ rogen build .
+exit 0
+stdout:
+  rogen build · plain
+  default.project.json · unchanged
+  Built 1 config.
+
+$ rogen check ./
+exit 0
+
 $ rogen list
 exit 0
 stdout:
