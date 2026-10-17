@@ -11,7 +11,7 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitDecision, InitPlan } from "./init-service.js";
+import { InitDecision, InitPlan, PresentItem } from "./init-service.js";
 
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
@@ -30,6 +30,7 @@ export class InitPlanBuilder {
 	private readonly run: string[] = [];
 	private readonly darklua: string[] = [];
 	private readonly edits: string[] = [];
+	private readonly present: PresentItem[] = [];
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -70,6 +71,10 @@ export class InitPlanBuilder {
 	/** Asks for a `git init` in the folder, which the plan drops where a work tree holds it already. */
 	requestGitInit(): void {
 		this.gitInit = true;
+	}
+
+	addPresent(...items: readonly PresentItem[]): void {
+		this.present.push(...items);
 	}
 
 	addDirectory(directory: string): void {
@@ -117,6 +122,7 @@ export class InitPlanBuilder {
 			directory: this.directory.path,
 			asked: this.asked,
 			decided: this.decided,
+			present: [...this.present],
 			gitInit: this.gitInit,
 			files: [
 				...written,

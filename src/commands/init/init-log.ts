@@ -9,6 +9,7 @@ import {
 	InitPlan,
 	InitWritten,
 	NextSteps,
+	PresentItem,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ReportedError } from "../../platform/commands/commands.js";
@@ -44,6 +45,15 @@ export const initDocumentShape = S.object({
 		})
 	),
 	directories: S.array(S.string),
+	present: S.optional(
+		S.array(
+			S.object({
+				item: S.enum("agentRules", "agentHook", "rojoPin"),
+				file: S.string,
+				state: S.enum("present"),
+			})
+		)
+	),
 	git: S.optional(S.enum("initialised", "wouldInitialise", "failed")),
 	decided: S.optional(
 		S.array(
@@ -104,6 +114,17 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.errors,
 ];
 
+const presentOf = (plan: InitPlan) =>
+	plan.present.length > 0
+		? {
+				present: plan.present.map(({ item, file }) => ({
+					item,
+					file: path.join(plan.directory, file),
+					state: "present" as const,
+				})),
+			}
+		: {};
+
 const warningsOf = (plan: InitPlan) =>
 	plan.warnings.length > 0
 		? { warnings: plan.warnings.map(diagnosticToJson) }
@@ -145,10 +166,27 @@ export class InitLog implements InitReporter {
 		for (const note of plan.notes) this.logService.info(note);
 		for (const warning of plan.warnings)
 			this.logService.diagnostic(warning);
+		for (const item of plan.present)
+			this.logService.info(this.alreadyThere(item));
 		if (plan.decided.length > 0)
 			this.logService.info(
 				`Took the defaults: ${plan.decided.flatMap(flagsOf).join(", ")}.`
 			);
+	}
+
+	private alreadyThere({ item, file }: PresentItem): string {
+		const shown = this.shown(file);
+		return item === "agentRules"
+			? `${shown} already has Rogen's rules.`
+			: item === "agentHook"
+				? `The hook is already in ${shown}.`
+				: `Rojo is already pinned in ${shown}.`;
+	}
+
+	private tally(plan: InitPlan, verb: string): string {
+		return plan.files.length === 0 && plan.present.length > 0
+			? "Nothing to add."
+			: `${verb} ${plural(plan.files.length, "file")}.`;
 	}
 
 	written(item: InitWritten): void {
@@ -183,7 +221,9 @@ export class InitLog implements InitReporter {
 
 	planned(plan: InitPlan): Result<void, Error> {
 		this.logService.outro(
-			`Would write ${plural(plan.files.length, "file")}. Nothing was written.`
+			plan.files.length === 0 && plan.present.length > 0
+				? "Nothing to add."
+				: `Would write ${plural(plan.files.length, "file")}. Nothing was written.`
 		);
 		return ok(undefined);
 	}
@@ -205,7 +245,7 @@ export class InitLog implements InitReporter {
 		const steps = stepLines(plan.nextSteps);
 		if (steps.length > 0) this.logService.step("Next steps");
 		for (const line of steps) this.logService.info(line);
-		this.logService.outro(`Wrote ${files}.`);
+		this.logService.outro(this.tally(plan, "Wrote"));
 		return ok(undefined);
 	}
 }
@@ -222,6 +262,11 @@ interface InitDocument {
 	readonly dryRun?: true;
 	readonly files: readonly InitFile[];
 	readonly directories: readonly string[];
+	readonly present?: readonly {
+		readonly item: PresentItem["item"];
+		readonly file: string;
+		readonly state: "present";
+	}[];
 	readonly git?: "initialised" | "wouldInitialise" | "failed";
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
@@ -280,6 +325,7 @@ export class InitJsonLog implements InitReporter {
 	planned(plan: InitPlan): Result<void, Error> {
 		return this.print({
 			...this.writtenSoFar(),
+			...presentOf(plan),
 			notes: plan.notes,
 			...warningsOf(plan),
 			nextSteps: plan.nextSteps,
@@ -294,6 +340,7 @@ export class InitJsonLog implements InitReporter {
 				...written,
 				changed: written.changed || built.changed,
 				built: built.configs,
+				...presentOf(plan),
 				notes: plan.notes,
 				...warningsOf(plan),
 				nextSteps: plan.nextSteps,

@@ -115,6 +115,7 @@ export class PlaceInit {
 			},
 			asked: this.questions.interactive,
 			decided: this.questions.decided,
+			present: [],
 			gitInit: false,
 		});
 	}

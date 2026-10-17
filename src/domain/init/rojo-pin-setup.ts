@@ -24,6 +24,12 @@ export class RojoPinSetup implements Setup<boolean> {
 		);
 	}
 
+	/** The toolchain file in `manifests` that pins Rojo. */
+	static pinnedIn(manifests: readonly ToolManifest[]): string | undefined {
+		return manifests.find((one) => one.nameOf(SyncServer.ROJO.repository))
+			?.file;
+	}
+
 	/** The Rokit file in `directory` to pin Rojo in, unless a toolchain file there or above already pins it, or the file uses the name `rojo` for another tool. */
 	static manifestFor(
 		directory: string,

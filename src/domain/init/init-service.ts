@@ -43,6 +43,13 @@ export interface InitDecision {
 	readonly flag: string;
 }
 
+/** An addition the project has already, which init reports instead of adding again. */
+export interface PresentItem {
+	readonly item: "agentRules" | "agentHook" | "rojoPin";
+	/** Relative to the plan's directory. */
+	readonly file: string;
+}
+
 export interface InitPlan {
 	readonly directory: string;
 	readonly files: readonly PlannedFile[];
@@ -57,6 +64,7 @@ export interface InitPlan {
 	readonly nextSteps: NextSteps;
 	readonly asked: boolean;
 	readonly decided: readonly InitDecision[];
+	readonly present: readonly PresentItem[];
 	/** Whether `init` runs `git init` in `directory`, which it does in a new project that no work tree holds. */
 	readonly gitInit: boolean;
 }

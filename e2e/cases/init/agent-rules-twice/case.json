@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--agent-rules"],
+		["init", "--non-interactive", "--agent-rules"],
+		["init", "--non-interactive", "--agent-rules", "--json"]
+	],
+	"output": ["init"]
+}

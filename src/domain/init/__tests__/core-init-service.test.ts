@@ -238,13 +238,12 @@ describe("CoreInitService", () => {
 			await write("AGENTS.md", agentBlock);
 			await write(".claude/keep", "");
 
-			const result = await serviceFor().plan();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(
-				result.isErr() &&
-					result.error instanceof DiagnosticsError &&
-					result.error.diagnostics
-			).toMatchObject([{ code: "init.configExists" }]);
+			expect(plan?.files).toEqual([]);
+			expect(plan?.present).toEqual([
+				{ item: "agentRules", file: "AGENTS.md" },
+			]);
 		});
 
 		it("should add it beside a config when it can't ask, as Enter would", async () => {
@@ -255,6 +254,83 @@ describe("CoreInitService", () => {
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"AGENTS.md",
 			]);
+		});
+	});
+
+	describe("additions from a place", () => {
+		const place = path.join(directory, "places/lobby");
+
+		beforeEach(async () => {
+			await write(
+				"rogen.json",
+				JSON.stringify({ placePaths: ["places/*"] })
+			);
+			await write("places/lobby/rogen.json", "{}");
+		});
+
+		it("should add the agent rules to the project root, not to the place", async () => {
+			const plan = (await serviceFor(undefined, place).plan()).unwrap();
+
+			expect(plan?.directory).toBe(directory);
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"AGENTS.md",
+			]);
+			expect(plan?.notes.join("\n")).toContain(
+				"../../rogen.json lists this folder as a place"
+			);
+		});
+
+		it("should report the rules the root has, and write nothing", async () => {
+			await write("AGENTS.md", agentBlock);
+
+			const plan = (await serviceFor(undefined, place).plan()).unwrap();
+
+			expect(plan?.files).toEqual([]);
+			expect(plan?.present).toEqual([
+				{ item: "agentRules", file: "AGENTS.md" },
+			]);
+		});
+
+		it("should find the root's hook and Rojo pin", async () => {
+			await write("AGENTS.md", agentBlock);
+			await write(
+				"rokit.toml",
+				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+			await write(
+				".claude/settings.json",
+				JSON.stringify({
+					hooks: {
+						Stop: [
+							{
+								hooks: [
+									{
+										type: "command",
+										command:
+											'bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh',
+									},
+								],
+							},
+						],
+					},
+				})
+			);
+
+			const plan = (await serviceFor(undefined, place).plan()).unwrap();
+
+			expect(plan?.present).toEqual([
+				{ item: "agentRules", file: "AGENTS.md" },
+				{ item: "agentHook", file: ".claude/settings.json" },
+				{ item: "rojoPin", file: "rokit.toml" },
+			]);
+		});
+
+		it("should add the agent rules to the place's own folder when no root lists it", async () => {
+			await write("rogen.json", "{}");
+
+			const plan = (await serviceFor(undefined, place).plan()).unwrap();
+
+			expect(plan?.directory).toBe(place);
 		});
 	});
 
@@ -970,13 +1046,14 @@ describe("CoreInitService", () => {
 				expect(result.unwrap()).toBeUndefined();
 			});
 
-			it("should fail naming the config when there is nothing left to add", async () => {
-				await write("AGENTS.md", agentBlock);
+			it("should fail naming the config when there is nothing left to add or to report", async () => {
 				await write("rogen.json", "{}");
 
-				const result = await serviceFor(
-					new MockPromptService([])
-				).plan();
+				const result = await serviceFor(new MockPromptService([])).plan(
+					{
+						choices: { agentRules: false },
+					}
+				);
 
 				expect(
 					result.isErr() &&
