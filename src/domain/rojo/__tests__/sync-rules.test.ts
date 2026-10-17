@@ -1,4 +1,5 @@
 import { describeWithSource, rojoSource } from "./rojo-source.js";
+import { RojoFile } from "../rojo.js";
 import { DEFAULT_SYNC_RULES, SyncRule, SyncRules } from "../sync-rules.js";
 
 describe("domain/rojo/sync-rules", () => {
@@ -222,6 +223,14 @@ describe("domain/rojo/sync-rules", () => {
 			expect(DEFAULT_SYNC_RULES).toEqual(rulesIn(source ?? ""));
 		});
 	});
+
+	describeWithRojoSource("RojoFile.INIT_FILES", () => {
+		it("should list the init files of the pinned Rojo", () => {
+			expect([...RojoFile.INIT_FILES].sort()).toEqual(
+				initFilesIn(source ?? "").sort()
+			);
+		});
+	});
 });
 
 const SYNC_RULE_MACRO =
@@ -252,5 +261,13 @@ function rulesIn(source: string): SyncRule[] {
 			use: USES[middleware],
 			...(suffix && { suffix }),
 		})
+	);
+}
+
+function initFilesIn(source: string): string[] {
+	const body = source.slice(source.indexOf("INIT_PATHS"));
+	const list = body.slice(0, body.indexOf("]"));
+	return [...list.matchAll(/Middleware::\w+,\s*"([^"]+)"/g)].map(
+		([, file]) => file
 	);
 }

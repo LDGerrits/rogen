@@ -111,6 +111,11 @@ export class NameReadings {
 		);
 		const match = this.reader.suffixes(stem, kind === "script");
 		const { scriptSuffix, nameCutByRule } = file;
+		const { name: leaf } = InstanceName.leafName(
+			kind,
+			InstanceName.withoutSpans(stem, match.spans),
+			nameCutByRule
+		);
 		this._entries.set(entry.source, {
 			folders,
 			fileName,
@@ -120,14 +125,8 @@ export class NameReadings {
 			nameCutByRule,
 			match,
 			isInit:
-				kind === "script" &&
-				this.initNames.has(
-					InstanceName.leafName(
-						kind,
-						InstanceName.withoutSpans(stem, match.spans),
-						nameCutByRule
-					).name
-				),
+				(kind === "script" && this.initNames.has(leaf)) ||
+				(file.isCsv && leaf === RojoFile.INIT_NAME),
 		});
 		for (const folder of folders) {
 			const resource = joinPosix(root.sourcePath, folder.dir);

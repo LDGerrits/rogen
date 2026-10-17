@@ -59,6 +59,8 @@ const FILES: Record<string, string> = {
 	"Init2/init.server.luau": "",
 	"Init3/init.client.luau": "",
 	"Init4/init.lua": "",
+	"Init5/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",
+	"Init5/B.luau": "",
 };
 
 const placed = (node: SourcemapNode): string[] =>
@@ -310,6 +312,31 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ServerScriptService/Net <- src/Net/init.meta.json",
 			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
 		]);
+	});
+
+	it("should make an init.csv the LocalizationTable of every node its folder becomes", async () => {
+		writeFiles({
+			"Loc/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",
+			"Loc/server/B.luau": "",
+			"Loc/Shared.luau": "",
+		});
+		await rogenTree({
+			routes: {
+				server: "ServerScriptService",
+				"*": "ReplicatedStorage",
+			},
+		});
+
+		expect(placed(sourcemap(dir, "default.project.json"))).toEqual(
+			[
+				"ReplicatedStorage: ReplicatedStorage",
+				"ReplicatedStorage/Loc: LocalizationTable",
+				"ReplicatedStorage/Loc/Shared: ModuleScript",
+				"ServerScriptService: ServerScriptService",
+				"ServerScriptService/Loc: LocalizationTable",
+				"ServerScriptService/Loc/B: ModuleScript",
+			].sort()
+		);
 	});
 
 	it("should refuse a RunContext in the meta of an init.luau, so no meta makes a copied init script run", () => {
