@@ -138,17 +138,23 @@ describe("ProjectSetup plan", () => {
 		]);
 	});
 
-	it("should write strict JSON as fmt-project writes it, so a first format changes nothing", async () => {
+	it("should write strict JSON as fmt-project writes it, so a first format only adds the name Rojo gives", async () => {
 		const { files } = await plan(luau);
 
 		const config = new MemoryFileSystemService();
 		await config.writeFile("/repo/rogen.json", files[0].content);
+		const formatter = new ConfigFormatter(config);
 
-		const formatted = await new ConfigFormatter(config).format(
-			"/repo/rogen.json"
+		await formatter.format("/repo/rogen.json");
+		const named = await config.readFile("/repo/rogen.json");
+
+		expect(JSON.parse(named)).toEqual({
+			...JSON.parse(files[0].content),
+			name: "repo",
+		});
+		expect((await formatter.format("/repo/rogen.json")).unwrap()).toBe(
+			false
 		);
-
-		expect(formatted.unwrap()).toBe(false);
 	});
 
 	it("should write a bare DataModel tree and no sync path or name for plain luau", async () => {
@@ -265,7 +271,7 @@ describe("ProjectSetup plan", () => {
 
 		it("should leave the sourcemap to luau-lsp, and say how without it", async () => {
 			expect((await planFor("luau", true)).nextSteps.edits.at(-1)).toBe(
-				"Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rojo sourcemap default.project.json --output sourcemap.json --watch"
+				"Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rogen sourcemap --watch -o sourcemap.json"
 			);
 		});
 

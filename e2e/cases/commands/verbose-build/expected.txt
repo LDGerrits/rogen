@@ -6,7 +6,7 @@ stdout:
     lobby/default.project.json · wrote
   match
     match/default.project.json · wrote
-  Built 2 configs with 4 warnings.
+  Built 2 projects with 4 warnings.
 stderr:
     [debug] src: 5 files
     [debug] route server -> ServerScriptService: 2 files

@@ -52,6 +52,12 @@ export interface WatchUpdate {
 	readonly reports: readonly RebuildReport[];
 }
 
+/** What a watch is for, when the files are not all it serves. */
+export interface WatchOptions {
+	/** A step reads the files themselves after each round, so an edit inside a file counts: a change to one of `ignoring`, which the step writes, does not. */
+	readonly contentEdits?: { readonly ignoring: readonly string[] };
+}
+
 /** A running watch; the caller owns it and disposes it. */
 export interface WatchSession extends Disposable {
 	/** The configs it builds now. */
@@ -72,7 +78,8 @@ export interface WatchService {
 
 	/** Fails as a build would when a config is broken or the configs can't be built together. The caller starts, stops and disposes the session; one at a time, as sessions share the process's watcher. */
 	watch(
-		selection: ReloadableSelection
+		selection: ReloadableSelection,
+		options?: WatchOptions
 	): Result<WatchSession, DiagnosticsError>;
 }
 

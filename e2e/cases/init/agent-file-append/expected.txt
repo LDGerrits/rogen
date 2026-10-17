@@ -6,9 +6,11 @@ $ rogen init --non-interactive
 exit 1
 stdout: (not shown)
 stderr:
-  rogen.json - error: this config already exists. Delete it to write a new one. (init.configExists)
+  rogen.json - error: this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin. (init.configExists)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json
@@ -29,7 +31,7 @@ Rogen writes the Rojo project file from the folders and names under each `rogen.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - Leave `rogen build --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions). `rogen list --json` shows the same later as `serving.clients`, without the process that printed it.
-- Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help codes --json` lists every diagnostic code and what it means, offline.
+- Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help <code> --json` explains one diagnostic code, and `rogen help codes <module> --json` lists the codes of one module, such as `route`, offline.
 <!-- /rogen -->
 
 rogen.json:

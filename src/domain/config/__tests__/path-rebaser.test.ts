@@ -53,6 +53,16 @@ describe("PathRebaser", () => {
 			).toBe("../../**/*.spec.luau");
 		});
 
+		it("should rebase a ! glob behind its !", () => {
+			expect(
+				PathRebaser.glob(
+					"!src/Keep.luau",
+					"/repo",
+					"/repo/places/lobby"
+				)
+			).toBe("!../../src/Keep.luau");
+		});
+
 		it("should leave a glob alone for the same folder", () => {
 			expect(PathRebaser.glob("src/**", "/repo", "/repo")).toBe("src/**");
 		});

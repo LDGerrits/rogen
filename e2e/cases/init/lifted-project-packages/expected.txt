@@ -9,6 +9,8 @@ exit 0
 stdout: (not shown)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json
@@ -21,7 +23,7 @@ rogen.json:
     "$className": "DataModel",
     "Lighting": {
       "$properties": {
-        "ClockTime": 14
+        "ClockTime": 14.0
       }
     },
     "ReplicatedStorage": {

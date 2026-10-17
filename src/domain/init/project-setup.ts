@@ -1,3 +1,4 @@
+import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -10,11 +11,19 @@ import {
 	ProjectChanges,
 	RogenConfig,
 } from "../config/config.js";
-import { Darklua, Language, Mount } from "../toolchain/toolchain.js";
+import {
+	Darklua,
+	Language,
+	Mount,
+	PlannedFile,
+} from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
+import { InitKind } from "./init-service.js";
+import { ProjectTemplate } from "./project-template.js";
+import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
@@ -33,6 +42,11 @@ export interface ProjectChoices {
 	readonly fallback: boolean;
 	/** Files of the source paths that the lifted project file mounts nowhere, which Rojo ignored and routes will place. */
 	readonly unmounted?: readonly string[];
+	/** The template of a new project; its files and git step are left out when none is given. */
+	readonly kind?: InitKind;
+	readonly skipGit?: boolean;
+	/** The files of the template that are not there yet, which `init` writes. */
+	readonly templateFiles?: readonly PlannedFile[];
 }
 
 function derivedRoutesOf(
@@ -46,8 +60,17 @@ function derivedRoutesOf(
 
 /** Whether routes can place code in the tree: a lifted file whose root isn't a DataModel, such as a model or plugin, is Rojo's own and has no service to route to. */
 function takesRoutes(tree: ProjectTree): boolean {
-	return tree.kind === "new" || tree.project.takesRoutes;
+	return (
+		tree.kind === "new" ||
+		(tree.kind === "lift" && tree.project.takesRoutes)
+	);
 }
+
+const BUILD_COMMANDS: Readonly<Record<InitKind, (name: string) => string>> = {
+	place: (name) => `rogen build -o "${name}.rbxlx"`,
+	model: (name) => `rogen build -o "${name}.rbxmx"`,
+	plugin: (name) => `rogen build -p "${name}.rbxm"`,
+};
 
 function generatedDirs({
 	language,
@@ -110,18 +133,21 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
+		const kind = questions.kind();
 		const language = await questions.language(directory);
 		if (language === undefined) return ok(undefined);
 		const usesDarklua = await questions.darklua(directory);
 		if (usesDarklua === undefined) return ok(undefined);
 		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
 
-		const sourcePaths = await questions.sourcePaths(directory, language);
+		const sourcePaths = (await this.startsUnrouted(kind))
+			? []
+			: await questions.sourcePaths(directory, language);
 		if (sourcePaths === undefined) return ok(undefined);
 
 		const chosen = await questions.tree(directory);
 		if (chosen === undefined) return ok(undefined);
-		const tree = await this.resolveTree(chosen);
+		const tree = await this.resolveTree(chosen, kind);
 		if (tree.isErr()) return tree;
 
 		let syncPath = new SyncSteps(language, darklua).syncPath;
@@ -168,6 +194,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					)
 				: [];
 
+		const skipGit = questions.skipGit();
 		return ok({
 			language,
 			darklua,
@@ -178,13 +205,72 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			routes: routes.routes,
 			fallback: routes.fallback,
 			unmounted,
+			kind,
+			skipGit,
+			templateFiles: await this.absent(
+				ProjectSetup.templateFiles(
+					new ProjectTemplate(kind, path.basename(directory.path)),
+					tree.value,
+					skipGit
+				)
+			),
 		});
 	}
 
+	private static templateFiles(
+		template: ProjectTemplate,
+		tree: ProjectTree,
+		skipGit: boolean
+	): PlannedFile[] {
+		const script = tree.kind === "template" ? template.script : undefined;
+		return [
+			...(template.kind === "place" ? [] : [template.readme]),
+			...(skipGit ? [] : [template.gitignore]),
+			...(script ? [script] : []),
+		];
+	}
+
+	private async absent(
+		files: readonly PlannedFile[]
+	): Promise<PlannedFile[]> {
+		const there = await Promise.all(
+			files.map(({ fileName }) =>
+				this.fileSystemService.exists(
+					path.join(this.directory.path, fileName)
+				)
+			)
+		);
+		return files.filter((_, at) => !there[at]);
+	}
+
+	/** Whether the tree is settled before any question and takes no routes, so a source path would change nothing. */
+	private async startsUnrouted(kind: InitKind): Promise<boolean> {
+		const { directory, questions } = this;
+		const given = questions.choices.projectFile;
+		if (!directory.hasHandWrittenProject || given === "new")
+			return kind !== "place";
+		if (given !== "lift" && questions.interactive) return false;
+		const project = await new ProjectReader(
+			this.fileSystemService,
+			directory.path
+		).read(DEFAULT_PROJECT_FILE);
+		return project.isOk() && !project.value.takesRoutes;
+	}
+
 	private async resolveTree(
-		chosen: TreeChoice
+		chosen: TreeChoice,
+		kind: InitKind
 	): Promise<Result<ProjectTree, Diagnostic[]>> {
-		if (chosen.kind === "new") return ok(chosen);
+		if (chosen.kind === "new")
+			return ok(
+				kind === "place"
+					? chosen
+					: {
+							kind: "template",
+							template: kind,
+							project: StarterProject.ofScript(),
+						}
+			);
 		const reader = new ProjectReader(
 			this.fileSystemService,
 			this.directory.path
@@ -232,6 +318,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...projects,
 		});
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
+		for (const file of choices.templateFiles ?? []) builder.addFile(file);
+		if (choices.kind !== undefined && !choices.skipGit)
+			builder.requestGitInit();
 		if (choices.tree.kind === "lift")
 			builder.setLiftedFrom(choices.tree.from);
 		for (const note of tree.notes) builder.addNote(note);
@@ -294,8 +383,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		tree: TreePlan
 	): void {
 		const { compiler } = language;
+		if (chosen.kind === "template") {
+			builder.addRun(
+				BUILD_COMMANDS[chosen.template](
+					path.basename(this.directory.path)
+				)
+			);
+			return;
+		}
 		const compiled = this.directory.defaultSourcePath(language);
-		if (compiler && compiled !== sourcePaths[0]) {
+		if (compiler && sourcePaths.length > 0 && compiled !== sourcePaths[0]) {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);

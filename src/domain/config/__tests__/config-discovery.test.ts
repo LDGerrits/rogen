@@ -1,7 +1,7 @@
 import { ConfigDiscovery } from "../config-discovery.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { UsageError } from "../../../base/errors.js";
+import { ProjectError, UsageError } from "../../../base/errors.js";
 import { Result, ResultError } from "../../../base/result.js";
 
 function errorOf(result: Result<unknown, Error>): Error {
@@ -157,6 +157,27 @@ describe("ConfigDiscovery", () => {
 			expect(found.files).toEqual(["/repo/pkg/default.project.json"]);
 		});
 
+		it.each([".", "./", "/repo"])(
+			"should adopt the Rojo project file here named as %s",
+			async (ref) => {
+				await fs.writeFile("/repo/default.project.json", "{}");
+
+				const found = (await discovery.discover([ref])).unwrap();
+
+				expect(found.files).toEqual(["/repo/default.project.json"]);
+			}
+		);
+
+		it("should adopt the Rojo project file of a subfolder from a plain project", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+			await fs.createDirectory("/repo/lib");
+			await fs.writeFile("/repo/lib/default.project.json", "{}");
+
+			const found = (await discovery.discover(["lib"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/lib/default.project.json"]);
+		});
+
 		it("should use the config of the nearest folder above when this one has none", async () => {
 			await fs.createDirectory("/repo/src/Inventory");
 			await fs.writeFile("/repo/rogen.json", "{}");
@@ -275,12 +296,12 @@ describe("ConfigDiscovery", () => {
 			]);
 		});
 
-		it("should fail as a usage error, pointing at init, for a folder with no config", async () => {
+		it("should fail as a project error, pointing at init, for a folder with no config", async () => {
 			await fs.createDirectory("/repo/places/arena");
 
 			const result = await discovery.discover(["places/arena"]);
 
-			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
 				`"places/arena" holds no rogen.json (/repo/places/arena). Run 'rogen init' to create one.`
 			);
@@ -317,13 +338,13 @@ describe("ConfigDiscovery", () => {
 				"places/arena/default.project.json",
 			]);
 
-			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 		});
 
-		it("should fail as a usage error naming a path that is not there", async () => {
+		it("should fail as a project error naming a path that is not there", async () => {
 			const result = await discovery.discover(["places/nowhere"]);
 
-			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
 				`"places/nowhere" not found. Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
 			);
@@ -440,7 +461,7 @@ describe("ConfigDiscovery", () => {
 			it("should not be taken for a project when it has a path in it", async () => {
 				const result = await discovery.discover(["a/dist"]);
 
-				expect(errorOf(result)).toBeInstanceOf(UsageError);
+				expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			});
 
 			it("should fail as not found when there is no config to hold the project", async () => {

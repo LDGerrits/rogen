@@ -15,6 +15,9 @@ export interface LogService {
 
 	setLevel(level: LogLevel): void;
 
+	/** For a run whose stdout a program reads: from here on, Rogen's own lines (frame, steps, info, success) go to stderr where stdout is not a terminal, and only `print` and `note` write to stdout. */
+	reserveStdout(): void;
+
 	error(message: string | Error, ...args: unknown[]): void;
 	warn(message: string, ...args: unknown[]): void;
 	info(message: string, ...args: unknown[]): void;

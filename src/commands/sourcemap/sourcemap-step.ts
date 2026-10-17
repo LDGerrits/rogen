@@ -85,7 +85,7 @@ export class SourcemapStep implements RojoStep {
 		if (output === undefined && !this.mayPrint)
 			return err(
 				new UsageError(
-					"Without -o the sourcemap is printed, which leaves no room for --json or --watch: give -o <file>."
+					"Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
 				)
 			);
 		return ok([

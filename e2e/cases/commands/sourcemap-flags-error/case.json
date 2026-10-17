@@ -1,1 +1,1 @@
-{"steps":[["sourcemap","--json"],["sourcemap","--watch"]],"rojo":false}
+{"steps":[["sourcemap","--json"],["sourcemap","--json","--watch"]],"rojo":false}

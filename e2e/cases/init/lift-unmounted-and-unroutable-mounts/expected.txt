@@ -7,15 +7,17 @@ stdout:
   Kept ReplicatedStorage/MyLib in the tree as a $path mount, since no route can make it: my-lib is not a valid route name.
   Kept ReplicatedStorage/Pkg in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
   Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
-  Took the defaults: --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
   Created rogen.json.
+  Created .gitignore.
   Created AGENTS.md.
+  Initialised a git repository.
   default.project.json · wrote
   Next steps
     Run:
       rogen serve
     Add your own routes under "routes" in rogen.json.
-  Wrote 2 files.
+  Wrote 3 files.
 stderr:
   default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
 
@@ -23,14 +25,16 @@ $ rogen where src
 exit 0
 stdout:
   src/Loose.luau -> ReplicatedStorage/Shared/Loose · route * (fallback)
-  src/lib/pkg -> mounted · the tree mounts it at ReplicatedStorage/Pkg
-  src/my-lib -> mounted · the tree mounts it at ReplicatedStorage/MyLib
+  src/lib/pkg -> ReplicatedStorage/Pkg · mounted, which Rojo reads
+  src/my-lib -> ReplicatedStorage/MyLib · mounted, which Rojo reads
   src/scratch/x.server.luau -> ServerScriptService/Server/scratch/x · route Server (suffix)
-  src/server/Admin -> mounted · the tree mounts it at ServerScriptService/Admin
+  src/server/Admin -> ServerScriptService/Admin · mounted, which Rojo reads
   src/server/Main.server.luau -> ServerScriptService/Server/Main · route Server (folder)
   src/shared/S.luau -> ReplicatedStorage/Shared/S · route Shared (folder)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json

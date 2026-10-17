@@ -14,12 +14,22 @@ stdout:
         "outcome": "wouldWrite"
       },
       {
+        "file": "<dir>/.gitignore",
+        "outcome": "wouldWrite"
+      },
+      {
         "file": "<dir>/AGENTS.md",
         "outcome": "wouldWrite"
       }
     ],
     "directories": [],
+    "git": "wouldInitialise",
     "decided": [
+      {
+        "question": "kind",
+        "value": "place",
+        "flag": "--kind"
+      },
       {
         "question": "language",
         "value": "luau",
@@ -50,6 +60,11 @@ stdout:
         "question": "unmatched",
         "value": "shared",
         "flag": "--unmatched"
+      },
+      {
+        "question": "skipGit",
+        "value": false,
+        "flag": "--skip-git"
       },
       {
         "question": "agentRules",

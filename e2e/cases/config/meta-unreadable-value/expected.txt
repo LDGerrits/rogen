@@ -1,0 +1,11 @@
+$ rogen check
+exit 1
+stdout:
+  src/F/init.meta.json:1:37 - error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)
+
+$ rogen build
+exit 1
+stdout: (not shown)
+stderr:
+  error: default.project.json · not written
+  src/F/init.meta.json:1:37 - error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)

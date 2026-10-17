@@ -15,6 +15,7 @@ import {
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
@@ -24,9 +25,11 @@ const directory = path.resolve("/mock/my-game");
 
 describe("CoreInitService", () => {
 	let fileSystem: MemoryFileSystemService;
+	let processes: MockProcessService;
 
 	beforeEach(async () => {
 		fileSystem = new MemoryFileSystemService();
+		processes = new MockProcessService();
 		await fileSystem.createDirectory(directory);
 	});
 
@@ -40,7 +43,8 @@ describe("CoreInitService", () => {
 			promptService,
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			new CoreConfigService(fileSystem, environmentService)
+			new CoreConfigService(fileSystem, environmentService),
+			processes
 		);
 	};
 
@@ -301,7 +305,9 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"rogen.json",
+				".gitignore",
 				"AGENTS.md",
+				"CLAUDE.md",
 				SCRIPT,
 				CLAUDE,
 			]);
@@ -323,6 +329,29 @@ describe("CoreInitService", () => {
 			});
 		});
 
+		it("should write a CLAUDE.md that imports AGENTS.md where Claude Code is in use and has none", async () => {
+			await write(".claude/keep", "");
+
+			const plan = await planned();
+
+			expect(fileOf(plan, "CLAUDE.md")?.content).toBe("@AGENTS.md\n");
+		});
+
+		it("should leave CLAUDE.md out where there is one, or no Claude Code", async () => {
+			await write(".claude/keep", "");
+			await write("CLAUDE.md", "Use tabs.\n");
+			const withFile = await planned();
+			await fileSystem.delete(path.join(directory, "CLAUDE.md"));
+			await fileSystem.delete(path.join(directory, ".claude"), true);
+			await write(".codex/keep", "");
+			const withoutClaude = await planned();
+
+			expect(fileOf(withFile, "CLAUDE.md")?.content).toContain(
+				"Use tabs"
+			);
+			expect(fileOf(withoutClaude, "CLAUDE.md")).toBeUndefined();
+		});
+
 		it("should write one script and a file for each agent in use", async () => {
 			await write(".claude/keep", "");
 			await write(".codex/keep", "");
@@ -334,7 +363,9 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"rogen.json",
+				".gitignore",
 				"AGENTS.md",
+				"CLAUDE.md",
 				SCRIPT,
 				CLAUDE,
 				CODEX,
@@ -429,7 +460,9 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"rogen.json",
+				".gitignore",
 				"AGENTS.md",
+				"CLAUDE.md",
 				SCRIPT,
 				CODEX,
 			]);
@@ -454,7 +487,12 @@ describe("CoreInitService", () => {
 
 			const plan = await planned();
 
-			expect(names(plan)).toEqual(["rogen.json", "AGENTS.md", CODEX]);
+			expect(names(plan)).toEqual([
+				"rogen.json",
+				".gitignore",
+				"AGENTS.md",
+				CODEX,
+			]);
 		});
 
 		it("should leave a file that is not plain JSON alone, and say so", async () => {
@@ -465,7 +503,9 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).toEqual([
 				"rogen.json",
+				".gitignore",
 				"AGENTS.md",
+				"CLAUDE.md",
 				SCRIPT,
 				CODEX,
 			]);
@@ -627,12 +667,237 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("a project of a kind", () => {
+		const files = (plan: InitPlan | undefined) =>
+			Object.fromEntries(
+				(plan?.files ?? []).map(({ fileName, content }) => [
+					fileName,
+					content,
+				])
+			);
+
+		it("should start a model with Rojo's template and no routes", async () => {
+			const plan = (
+				await serviceFor().plan({ choices: { kind: "model" } })
+			).unwrap();
+
+			expect(Object.keys(files(plan))).toEqual([
+				"rogen.json",
+				"README.md",
+				".gitignore",
+				"src/init.luau",
+				"AGENTS.md",
+			]);
+			expect(JSON.parse(files(plan)["rogen.json"])).toEqual({
+				$schema: expect.any(String),
+				tree: { $path: "src" },
+			});
+			expect(plan?.nextSteps.run).toEqual([
+				'rogen build -o "my-game.rbxmx"',
+			]);
+			expect(plan?.decided.map(({ flag }) => flag)).not.toContain(
+				"--source-path"
+			);
+		});
+
+		it("should start a plugin with a script that runs", async () => {
+			const plan = (
+				await serviceFor().plan({ choices: { kind: "plugin" } })
+			).unwrap();
+
+			expect(Object.keys(files(plan))).toContain("src/init.server.luau");
+			expect(plan?.nextSteps.run).toEqual([
+				'rogen build -p "my-game.rbxm"',
+			]);
+		});
+
+		it("should leave a file of the template alone where one exists", async () => {
+			await write("README.md", "mine");
+			await write("src/init.luau", "return 1");
+
+			const plan = (
+				await serviceFor().plan({ choices: { kind: "model" } })
+			).unwrap();
+
+			expect(Object.keys(files(plan))).not.toContain("README.md");
+			expect(Object.keys(files(plan))).not.toContain("src/init.luau");
+		});
+
+		it("should write no .gitignore, and ask for no git, with skipGit", async () => {
+			const plan = (
+				await serviceFor().plan({ choices: { skipGit: true } })
+			).unwrap();
+
+			expect(Object.keys(files(plan))).not.toContain(".gitignore");
+			expect(plan?.gitInit).toBe(false);
+		});
+
+		it("should ask for git init where git is installed and no work tree holds the folder", async () => {
+			processes.installed.set("git", "/bin/git");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.gitInit).toBe(true);
+		});
+
+		it("should run git init when it writes, and only say so in a dry run", async () => {
+			processes.installed.set("git", "/bin/git");
+			processes.outputs.set("/bin/git", {
+				code: 0,
+				stdout: "",
+				stderr: "",
+			});
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap()!;
+			const written: InitWritten[] = [];
+
+			await service.write(plan, (item) => written.push(item), true);
+			expect(processes.execs).toEqual([]);
+			await service.write(plan, (item) => written.push(item));
+
+			expect(processes.execs.map(({ args }) => args)).toEqual([["init"]]);
+			expect(written.filter(({ kind }) => kind === "git")).toHaveLength(
+				2
+			);
+		});
+
+		it("should say a git init that fails, and write the project all the same", async () => {
+			processes.installed.set("git", "/bin/git");
+			processes.outputs.set("/bin/git", {
+				code: 128,
+				stdout: "",
+				stderr: "fatal: no\n",
+			});
+			const service = serviceFor();
+			const plan = (await service.plan()).unwrap()!;
+			const written: InitWritten[] = [];
+
+			const result = await service.write(plan, (item) =>
+				written.push(item)
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(written).toContainEqual({
+				kind: "git",
+				failed: "fatal: no",
+			});
+		});
+
+		it("should not ask for git init inside a work tree, here or above", async () => {
+			processes.installed.set("git", "/bin/git");
+			await fileSystem.createDirectory(path.resolve("/mock/.git"));
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.gitInit).toBe(false);
+			expect(plan?.files.map(({ fileName }) => fileName)).toContain(
+				".gitignore"
+			);
+		});
+
+		it("should not ask for git init without git", async () => {
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.gitInit).toBe(false);
+		});
+
+		it("should ask for no source path when a lifted project takes no routes, and name none in the steps", async () => {
+			await write("tsconfig.json", "{}");
+			await write(
+				"default.project.json",
+				JSON.stringify({ name: "lib", tree: { $path: "src" } })
+			);
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.decided.map(({ flag }) => flag)).not.toContain(
+				"--source-path"
+			);
+			expect(JSON.stringify(plan?.nextSteps)).not.toContain("undefined");
+			expect(plan?.directories).toEqual([]);
+		});
+
+		it("should write the kind and the git step it took down when it can't ask", async () => {
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.decided).toEqual(
+				expect.arrayContaining([
+					{ question: "kind", value: "place", flag: "--kind" },
+					{ question: "skipGit", value: false, flag: "--skip-git" },
+				])
+			);
+		});
+
+		it("should refuse the flags of a new project beside a config", async () => {
+			await write("rogen.json", "{}");
+
+			const result = await serviceFor().plan({
+				choices: { kind: "model" },
+			});
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"--kind"
+			);
+		});
+	});
+
+	describe("a folder named on the command line", () => {
+		it("should start a project there when no config is at or above it, and make the folder", async () => {
+			const plan = (
+				await serviceFor().plan({ place: "newproj" })
+			).unwrap();
+
+			expect(plan?.directory).toBe(path.join(directory, "newproj"));
+			expect(plan?.configs).toEqual(["newproj/rogen.json"]);
+			expect(plan?.notes[0]).toContain("starts a project there");
+			expect(
+				await fileSystem.exists(path.join(directory, "newproj"))
+			).toBe(false);
+		});
+
+		it("should name the folder after the project it starts", async () => {
+			const plan = (
+				await serviceFor().plan({
+					place: "newproj",
+					choices: { kind: "model" },
+				})
+			).unwrap();
+
+			expect(plan?.nextSteps.run).toEqual([
+				'rogen build -o "newproj.rbxmx"',
+			]);
+		});
+
+		it("should add a place when a config is above it", async () => {
+			await write("rogen.json", "{}");
+
+			const plan = (
+				await serviceFor().plan({ place: "places/lobby" })
+			).unwrap();
+
+			expect(plan?.directory).toBe(directory);
+			expect(plan?.files[0].fileName).toBe("rogen.json");
+		});
+
+		it("should refuse the flags of a place for a project it starts", async () => {
+			const result = await serviceFor().plan({
+				place: "newproj",
+				choices: { placeIds: ["1"] },
+			});
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"--place-id"
+			);
+		});
+	});
+
 	describe("plan", () => {
 		it("should take every default when it can't ask", async () => {
 			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"rogen.json",
+				".gitignore",
 				"AGENTS.md",
 			]);
 			expect(plan?.configs).toEqual(["rogen.json"]);
@@ -722,7 +987,7 @@ describe("CoreInitService", () => {
 						code: "init.configExists",
 						resource: path.join(directory, "rogen.json"),
 						message:
-							"this config already exists. Delete it to write a new one.",
+							"this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin.",
 					},
 				]);
 			});

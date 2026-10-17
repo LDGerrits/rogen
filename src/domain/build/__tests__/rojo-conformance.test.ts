@@ -14,6 +14,7 @@ import {
 	sourcemap,
 	sourcemapError,
 } from "../../rojo/__tests__/rojo-cli.js";
+import { withGlobBody } from "../../../base/glob.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { buildServiceOf } from "./fixtures.js";
 
@@ -59,6 +60,8 @@ const FILES: Record<string, string> = {
 	"Init2/init.server.luau": "",
 	"Init3/init.client.luau": "",
 	"Init4/init.lua": "",
+	"Init5/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",
+	"Init5/B.luau": "",
 };
 
 const placed = (node: SourcemapNode): string[] =>
@@ -103,7 +106,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 	};
 
 	const rogenTree = async (
-		overrides: Pick<ResolvedConfigSpec, "routes"> = {}
+		overrides: Partial<Pick<ResolvedConfigSpec, "routes" | "ignored">> = {}
 	) => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
@@ -310,6 +313,105 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			"ServerScriptService/Net <- src/Net/init.meta.json",
 			"StarterPlayer/StarterPlayerScripts/Net <- src/Net/init.meta.json",
 		]);
+	});
+
+	it("should re-include what a ! glob names after an ignore glob, as Rojo does", async () => {
+		writeFiles({
+			"Combat/X.spec.luau": "",
+			"Combat/Keep.spec.luau": "",
+			"Combat/Hit.luau": "",
+			"Vendor/Keep.luau": "",
+			"Vendor/Drop.luau": "",
+		});
+		const globIgnorePaths = [
+			"src/**/*.spec.luau",
+			"!src/**/Keep.spec.luau",
+			"src/Vendor/**",
+			"!src/Vendor/Keep.luau",
+		];
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({
+				name: "t",
+				tree: { $path: "src" },
+				globIgnorePaths,
+			})
+		);
+		await rogenTree({
+			ignored: globIgnorePaths.map((glob) =>
+				withGlobBody(glob, (body) => `${dir}/${body}`)
+			),
+		});
+
+		const storage = sourcemap(dir, "default.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+
+		expect(placed(storage!)).toEqual(
+			placed(sourcemap(dir, "rojo.project.json"))
+		);
+	});
+
+	it("should place a nested project under its name, its folder as one instance, as Rojo does", async () => {
+		writeFiles({
+			"Data/Nest/default.project.json": JSON.stringify({
+				name: "Nested",
+				tree: {
+					$className: "Folder",
+					Val: { $className: "StringValue" },
+					Code: { $path: "code.luau" },
+				},
+			}),
+			"Data/Nest/code.luau": "",
+			"Data/Nest/Loose.luau": "",
+			"Data/Unnamed/default.project.jsonc": JSON.stringify({
+				tree: { $path: "a.luau" },
+			}),
+			"Data/Unnamed/a.luau": "",
+			"Data/Lib.project.json": JSON.stringify({
+				name: "Other",
+				tree: { $className: "Folder" },
+			}),
+			"Data/Plain.luau": "",
+		});
+		fs.writeFileSync(
+			path.join(dir, "rojo.project.json"),
+			JSON.stringify({ name: "t", tree: { $path: "src" } })
+		);
+		await rogenTree();
+
+		const storage = sourcemap(dir, "default.project.json").children?.find(
+			(child) => child.name === "ReplicatedStorage"
+		);
+
+		expect(placed(storage!)).toEqual(
+			placed(sourcemap(dir, "rojo.project.json"))
+		);
+	});
+
+	it("should make an init.csv the LocalizationTable of every node its folder becomes", async () => {
+		writeFiles({
+			"Loc/init.csv": "Key,Source,Context,Example,de\nYes,Yes,,,Ja",
+			"Loc/server/B.luau": "",
+			"Loc/Shared.luau": "",
+		});
+		await rogenTree({
+			routes: {
+				server: "ServerScriptService",
+				"*": "ReplicatedStorage",
+			},
+		});
+
+		expect(placed(sourcemap(dir, "default.project.json"))).toEqual(
+			[
+				"ReplicatedStorage: ReplicatedStorage",
+				"ReplicatedStorage/Loc: LocalizationTable",
+				"ReplicatedStorage/Loc/Shared: ModuleScript",
+				"ServerScriptService: ServerScriptService",
+				"ServerScriptService/Loc: LocalizationTable",
+				"ServerScriptService/Loc/B: ModuleScript",
+			].sort()
+		);
 	});
 
 	it("should refuse a RunContext in the meta of an init.luau, so no meta makes a copied init script run", () => {

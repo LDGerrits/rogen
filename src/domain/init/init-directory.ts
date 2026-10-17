@@ -65,7 +65,7 @@ export class InitDirectory {
 					? errorDiagnostic(
 							"init.configExists",
 							{ resource: path.join(this.path, fileName) },
-							"this config already exists. Delete it to write a new one."
+							"this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin."
 						)
 					: errorDiagnostic(
 							"init.fileExists",

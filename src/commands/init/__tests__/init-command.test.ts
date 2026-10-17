@@ -84,6 +84,7 @@ describe("init command", () => {
 				changed: true,
 				files: [
 					{ file: path.join(cwd, "rogen.json"), outcome: "wrote" },
+					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
 					{ file: path.join(cwd, "AGENTS.md"), outcome: "wrote" },
 				],
 				decided: expect.arrayContaining([
@@ -150,6 +151,7 @@ describe("init command", () => {
 				changed: true,
 				files: [
 					{ file: path.join(cwd, "rogen.json"), outcome: "wrote" },
+					{ file: path.join(cwd, ".gitignore"), outcome: "wrote" },
 				],
 				decided: expect.any(Array),
 				directories: [],
@@ -213,8 +215,9 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
 				"success: Created rogen.json.",
+				"success: Created .gitignore.",
 				"success: Created AGENTS.md.",
 				"success: Created src/.",
 				"success: default.project.json · wrote",
@@ -222,7 +225,7 @@ describe("init command", () => {
 				"info: Run:",
 				"info:   rogen serve",
 				'info: Add your own routes under "routes" in rogen.json.',
-				"outro: Wrote 2 files.",
+				"outro: Wrote 3 files.",
 			]);
 		});
 
@@ -389,11 +392,12 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
 				"success: Would create rogen.json.",
+				"success: Would create .gitignore.",
 				"success: Would create AGENTS.md.",
 				"success: Would create src/.",
-				"outro: Would write 2 files. Nothing was written.",
+				"outro: Would write 3 files. Nothing was written.",
 			]);
 		});
 
@@ -414,6 +418,10 @@ describe("init command", () => {
 				files: [
 					{
 						file: path.join(cwd, "rogen.json"),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, ".gitignore"),
 						outcome: "wouldWrite",
 					},
 					{
@@ -475,6 +483,8 @@ describe("init command", () => {
 				new MockPromptService([], false),
 				logService,
 				jsonOptions({
+					kind: "place",
+					"skip-git": true,
 					language: "luau",
 					"source-path": ["lib"],
 					"agent-rules": false,
@@ -985,16 +995,26 @@ describe("init command", () => {
 		expect(await exists("rogen.json")).toBe(false);
 	});
 
-	it("should reject a folder to add as a place when no config is above it", async () => {
+	it("should start a project in a folder when no config is at or above it", async () => {
+		const logService = new MockLogService();
+
 		const result = await runInit(
 			new MockPromptService([], false),
-			undefined,
+			logService,
 			{},
 			["lobby"]
 		);
 
-		expect(errorMessage(result)).toContain("No rogen.json found above");
+		expect(result.isOk()).toBe(true);
+		expect(await exists("lobby/rogen.json")).toBe(true);
 		expect(await exists("rogen.json")).toBe(false);
+		expect(logService.lines).toContain(
+			"info: No rogen.json is at or above lobby, so init starts a project there."
+		);
+		expect(logService.lines).toContain(
+			"success: Created lobby/rogen.json."
+		);
+		expect(await exists("lobby/default.project.json")).toBe(true);
 	});
 
 	describe("flags", () => {

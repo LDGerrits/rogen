@@ -21,6 +21,7 @@ import {
 	SyncRuleUse,
 	SyncRules,
 } from "./sync-rules.js";
+import { unreadableMetaValues } from "./unreadable-meta-values.js";
 
 export type RojoFileKind = "script" | "model" | "data";
 
@@ -67,7 +68,6 @@ const SCRIPT_SUFFIX_OF_USE: Readonly<
 };
 
 const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
-const INIT_FILE = /^init(\.(server|client|plugin))?\.luau?$/;
 
 export class RojoFile {
 	static readonly SCRIPT_EXTENSIONS: readonly string[] = [
@@ -81,6 +81,20 @@ export class RojoFile {
 	static readonly INIT_NAME = "init";
 	static readonly INIT_META = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX}`;
 	static readonly INIT_META_JSONC = `${RojoFile.INIT_NAME}${RojoFile.META_SUFFIX_JSONC}`;
+	/** The files Rojo reads as their folder's instance. */
+	static readonly INIT_FILES: ReadonlySet<string> = new Set([
+		...["", ".server", ".client", ".plugin"].flatMap((suffix) =>
+			[".luau", ".lua"].map(
+				(extension) => `${RojoFile.INIT_NAME}${suffix}${extension}`
+			)
+		),
+		`${RojoFile.INIT_NAME}.csv`,
+	]);
+	/** The project files Rojo reads as their folder, in the order it looks for them. */
+	static readonly DEFAULT_PROJECTS: readonly string[] = [
+		"default.project.json",
+		"default.project.jsonc",
+	];
 
 	readonly stem: string;
 	private readonly match: SyncRuleMatch | undefined;
@@ -91,7 +105,7 @@ export class RojoFile {
 		private readonly rules: SyncRules,
 		private readonly dir = ""
 	) {
-		this.match = INIT_FILE.test(name)
+		this.match = RojoFile.INIT_FILES.has(name)
 			? SyncRules.DEFAULT.match(name)
 			: rules.match(joinPosix(dir, name));
 		this.stem = this.ownMatch ? this.ownMatch.name : stemOf(name);
@@ -186,6 +200,16 @@ export class RojoFile {
 		return this.match?.rule.use === "project";
 	}
 
+	/** Whether Rojo reads the file as the folder it lies in. */
+	get isDefaultProject(): boolean {
+		return RojoFile.DEFAULT_PROJECTS.includes(this.name);
+	}
+
+	/** Whether Rojo reads the file as a LocalizationTable. */
+	get isCsv(): boolean {
+		return this.match?.rule.use === "csv";
+	}
+
 	/** Whether the file is Luau source: a script by a rule of the project, else by its extension. */
 	get isLuau(): boolean {
 		if (this.ownMatch) return this.kind === "script";
@@ -211,7 +235,7 @@ export class RojoFile {
 	}
 
 	get isInit(): boolean {
-		return INIT_FILE.test(this.name);
+		return RojoFile.INIT_FILES.has(this.name);
 	}
 
 	get instanceName(): string {
@@ -306,6 +330,8 @@ export class RojoMeta {
 		if (document.isErr()) return err(document.error);
 
 		const { root, value } = document.value;
+		const unreadable = unreadableMetaValues(root, file);
+		if (unreadable.length > 0) return err(unreadable);
 		const known = Object.keys(META_SCHEMA.properties ?? {});
 		return ok({
 			fields: Object.fromEntries(

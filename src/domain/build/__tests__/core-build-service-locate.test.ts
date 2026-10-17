@@ -56,7 +56,7 @@ describe("CoreBuildService.locate", () => {
 	const instancePaths = (located: Awaited<ReturnType<typeof locate>>) =>
 		located.map(
 			(location) =>
-				"instancePath" in location && location.instancePath.join("/")
+				"instancePath" in location && location.instancePath?.join("/")
 		);
 
 	beforeEach(() => {
@@ -111,7 +111,7 @@ describe("CoreBuildService.locate", () => {
 			).unwrap();
 
 			expect(located.instances[0].files).toHaveLength(1);
-			expect(located.instances[0].files[0].named).toBeUndefined();
+			expect(located.instances[0].files[0]).not.toHaveProperty("named");
 		});
 	});
 
@@ -260,8 +260,145 @@ describe("CoreBuildService.locate", () => {
 				source: abs("src/Vendor/Lib/Init.luau"),
 				exists: true,
 				node: ["ReplicatedStorage", "Vendor"],
+				instancePath: ["ReplicatedStorage", "Vendor", "Lib", "Init"],
 			},
 		]);
+	});
+
+	describe("what a mount makes of the files in it", () => {
+		const project = {
+			name: "game",
+			tree: {
+				$className: "DataModel",
+				ReplicatedStorage: { Packages: { $path: "Packages" } },
+				ServerScriptService: { Server: { $path: "server" } },
+			},
+		};
+		const instanceOf = async (file: string) => {
+			const [location] = await locate([file], { project });
+			return location.status === "mounted"
+				? location.instancePath?.join("/")
+				: location.status;
+		};
+
+		beforeEach(() =>
+			write(
+				"Packages/A.luau",
+				"Packages/Sub/B.server.luau",
+				"Packages/A.meta.json",
+				"Packages/README.md",
+				"Packages/Group/init.luau",
+				"Packages/Group/C.luau",
+				"server/init.server.luau",
+				"server/Main.luau",
+				"server/Data.model.json",
+				"server/Info.txt"
+			)
+		);
+
+		it("should name the instance a file becomes, as Rojo reads it", async () => {
+			expect(await instanceOf("Packages/A.luau")).toBe(
+				"ReplicatedStorage/Packages/A"
+			);
+			expect(await instanceOf("Packages/Sub/B.server.luau")).toBe(
+				"ReplicatedStorage/Packages/Sub/B"
+			);
+			expect(await instanceOf("server/Data.model.json")).toBe(
+				"ServerScriptService/Server/Data"
+			);
+			expect(await instanceOf("server/Info.txt")).toBe(
+				"ServerScriptService/Server/Info"
+			);
+		});
+
+		it("should make an init file the instance of its folder", async () => {
+			expect(await instanceOf("server/init.server.luau")).toBe(
+				"ServerScriptService/Server"
+			);
+			expect(await instanceOf("Packages/Group/init.luau")).toBe(
+				"ReplicatedStorage/Packages/Group"
+			);
+			expect(await instanceOf("Packages/Group/C.luau")).toBe(
+				"ReplicatedStorage/Packages/Group/C"
+			);
+		});
+
+		it("should name the instance a meta file changes, and none for a file Rojo reads nothing from", async () => {
+			expect(await instanceOf("Packages/A.meta.json")).toBe(
+				"ReplicatedStorage/Packages/A"
+			);
+			expect(await instanceOf("Packages/README.md")).toBeUndefined();
+		});
+
+		it("should list the mounts inside a folder that holds some", async () => {
+			expect(
+				await locate(["."], {
+					project: {
+						name: "game",
+						tree: {
+							$className: "DataModel",
+							ReplicatedStorage: {
+								One: { $path: "a/one" },
+								Two: { $path: "a/two" },
+							},
+						},
+					},
+				})
+			).toMatchObject([
+				{
+					status: "mounted",
+					source: abs("a/one"),
+					instancePath: ["ReplicatedStorage", "One"],
+				},
+				{
+					status: "mounted",
+					source: abs("a/two"),
+					instancePath: ["ReplicatedStorage", "Two"],
+				},
+			]);
+		});
+
+		describe("asked by instance", () => {
+			const filesFor = async (instance: string) => {
+				const located = (
+					await locateIn(buildService(), configOf({ project }), {
+						args: [instance],
+						cwd: abs(),
+					})
+				).unwrap();
+				return located.instances[0].files.map(({ source }) => source);
+			};
+
+			it("should find the file of a mounted instance", async () => {
+				expect(await filesFor("ReplicatedStorage.Packages.A")).toEqual([
+					abs("Packages/A.luau"),
+				]);
+				expect(
+					await filesFor("ReplicatedStorage.Packages.Sub.B")
+				).toEqual([abs("Packages/Sub/B.server.luau")]);
+			});
+
+			it("should find the init file of a mounted folder", async () => {
+				expect(await filesFor("ServerScriptService.Server")).toEqual([
+					abs("server/init.server.luau"),
+				]);
+				expect(
+					await filesFor("ReplicatedStorage.Packages.Group")
+				).toEqual([abs("Packages/Group/init.luau")]);
+				expect(
+					await filesFor("ReplicatedStorage.Packages.Group.C")
+				).toEqual([abs("Packages/Group/C.luau")]);
+			});
+
+			it("should find nothing for an instance no mounted file makes", async () => {
+				expect(
+					await filesFor("ReplicatedStorage.Packages.Nope")
+				).toEqual([]);
+				expect(
+					await filesFor("ReplicatedStorage.Packages.A.Inside")
+				).toEqual([]);
+			});
+		});
 	});
 
 	describe("a folder the tree mounts outside the source paths", () => {
@@ -352,6 +489,18 @@ describe("CoreBuildService.locate", () => {
 		]);
 	});
 
+	it("should say a file beside a default.project.json is in that nested project", async () => {
+		await write("src/Nest/default.project.json", "src/Nest/code.luau");
+
+		expect(await locate(["src/Nest/code.luau"])).toMatchObject([
+			{
+				status: "inProject",
+				source: abs("src/Nest/code.luau"),
+				project: toPosix(abs("src/Nest/default.project.json")),
+			},
+		]);
+	});
+
 	it("should name the file that replaced another at the same instance", async () => {
 		await write("src/Types.lua", "src/Types.luau");
 
@@ -362,6 +511,33 @@ describe("CoreBuildService.locate", () => {
 				exists: true,
 				by: abs("src/Types.luau"),
 			},
+		]);
+	});
+
+	it.each([
+		["init.luau", "init.server.luau"],
+		["init.luau", "init.client.luau"],
+		["init.client.luau", "init.csv"],
+	])(
+		"should say %s replaces %s as the folder's init file, as Rojo reads it",
+		async (winner, loser) => {
+			await write(`src/Net/${winner}`, `src/Net/${loser}`);
+
+			expect(await locate([`src/Net/${loser}`])).toMatchObject([
+				{ status: "replaced", by: abs(`src/Net/${winner}`) },
+			]);
+		}
+	);
+
+	it("should rank the init files among the files of one name, wherever a plain file sits", async () => {
+		await write(
+			"src/Net.luau",
+			"src/Net/init.luau",
+			"src/Net/init.server.luau"
+		);
+
+		expect(await locate(["src/Net/init.server.luau"])).toMatchObject([
+			{ status: "replaced", by: abs("src/Net/init.luau") },
 		]);
 	});
 

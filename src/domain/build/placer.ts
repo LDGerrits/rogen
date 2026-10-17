@@ -37,7 +37,8 @@ export class Placer {
 	constructor(
 		private readonly index: IndexReader,
 		private readonly config: ResolvedConfig,
-		tools: readonly SyncTool[]
+		tools: readonly SyncTool[],
+		private readonly projectNames: ReadonlyMap<string, string> = new Map()
 	) {
 		this.layout = new SyncLayout(config, tools);
 		this.tree = new BuildTree(config, this.layout);
@@ -52,7 +53,12 @@ export class Placer {
 		);
 		if (sourcePathMounts.length > 0) return err(sourcePathMounts);
 		const roots = this.scan();
-		const readings = new NameReadings(keys, this.layout.initNames, roots);
+		const readings = new NameReadings(
+			keys,
+			this.layout.initNames,
+			roots,
+			this.projectNames
+		);
 		const claims = new RootClaims(roots, readings);
 		const { routed, toCopy, unrouted, withoutFolder, hoistedInits } =
 			new Router(this.config, readings).route(roots, claims);

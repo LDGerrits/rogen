@@ -41,8 +41,10 @@ export interface EntryReading {
 	/** Whether a sync rule of the project cut the stem, so no script suffix is left on it. */
 	readonly nameCutByRule: boolean;
 	readonly match: SuffixMatch;
-	/** Whether it is an init script once its route keys are off its name. */
+	/** Whether it is an init script once its route keys are off its name, or a project file Rojo reads as its folder. */
 	readonly isInit: boolean;
+	/** The `name` of the nested project it is, which names its instance, or its folder's for a default project file. */
+	readonly projectName?: string;
 }
 
 /** Every folder, marker and suffix the route keys can claim, read once. */
@@ -61,7 +63,8 @@ export class NameReadings {
 	constructor(
 		private readonly keys: DeclaredKeys,
 		private readonly initNames: ReadonlySet<string>,
-		roots: readonly ScannedRoot[]
+		roots: readonly ScannedRoot[],
+		private readonly projectNames: ReadonlyMap<string, string> = new Map()
 	) {
 		this.reader = new NameReader(keys);
 		for (const root of roots) {
@@ -111,6 +114,16 @@ export class NameReadings {
 		);
 		const match = this.reader.suffixes(stem, kind === "script");
 		const { scriptSuffix, nameCutByRule } = file;
+		const { name: leaf } = InstanceName.leafName(
+			kind,
+			InstanceName.withoutSpans(stem, match.spans),
+			nameCutByRule
+		);
+		const isProjectFolder =
+			file.isDefaultProject && entry.relativePath.includes("/");
+		const projectName = file.isProject
+			? this.projectNames.get(entry.source)
+			: undefined;
 		this._entries.set(entry.source, {
 			folders,
 			fileName,
@@ -120,14 +133,10 @@ export class NameReadings {
 			nameCutByRule,
 			match,
 			isInit:
-				kind === "script" &&
-				this.initNames.has(
-					InstanceName.leafName(
-						kind,
-						InstanceName.withoutSpans(stem, match.spans),
-						nameCutByRule
-					).name
-				),
+				(kind === "script" && this.initNames.has(leaf)) ||
+				(file.isCsv && leaf === RojoFile.INIT_NAME) ||
+				isProjectFolder,
+			...(projectName !== undefined && { projectName }),
 		});
 		for (const folder of folders) {
 			const resource = joinPosix(root.sourcePath, folder.dir);

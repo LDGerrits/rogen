@@ -221,8 +221,8 @@ export class Darklua {
 		".darklua.json5",
 	];
 
-	sourcemapCommand(projectFile: string): string {
-		return `rojo sourcemap ${projectFile} --output sourcemap.json --watch`;
+	sourcemapCommand(): string {
+		return "rogen sourcemap --watch -o sourcemap.json";
 	}
 
 	/** One `darklua process` per directory, each landing at its path relative to their common root. */

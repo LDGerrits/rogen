@@ -10,7 +10,8 @@ import { ServerExecutable } from "./rojo-runner.js";
 
 const BROKEN = RojoVersion.of("7.7.0");
 const FIXED = RojoVersion.of("7.7.1");
-const NOTHING = { syncRules: [], patterns: [] };
+const NEGATION_SINCE = RojoVersion.of("7.7.0");
+const NOTHING = { syncRules: [], patterns: [], ignored: [] };
 
 /** What the Rojo that will run can't do with the files Rogen wrote for it. */
 export class RojoCompatibility {
@@ -28,7 +29,8 @@ export class RojoCompatibility {
 		const { name } = executable.server;
 		const noRules = version.isBefore(executable.server.syncRulesSince);
 		const brokenOnWindows = this.windows && isBroken(version);
-		if (!noRules && !brokenOnWindows) return [];
+		const noNegation = version.isBefore(NEGATION_SINCE);
+		if (!noRules && !brokenOnWindows && !noNegation) return [];
 		const problems: Diagnostic[] = [];
 		for (const file of projectFiles) {
 			const project = await this.read(file);
@@ -38,6 +40,17 @@ export class RojoCompatibility {
 						"rojo.syncRulesUnsupported",
 						{ resource: file },
 						`${name} ${version} does not read "syncRules" before ${executable.server.syncRulesSince}, and this file has ${project.syncRules.length}. Change your ${name} pin to ${executable.server.syncRulesSince} or later, or update the ${name} on the PATH.`
+					)
+				);
+			const negated = noNegation
+				? project.ignored.filter((glob) => glob.startsWith("!"))
+				: [];
+			if (negated.length > 0)
+				problems.push(
+					errorDiagnostic(
+						"rojo.negationUnsupported",
+						{ resource: file },
+						`${name} ${version} reads no "!" glob before ${NEGATION_SINCE}, so it ignores what this file's ${negated.length} re-include${negated.length === 1 ? "s" : ""}: ${negated.map((glob) => `"${glob}"`).join(", ")}. Change your ${name} pin to ${NEGATION_SINCE} or later, or update the ${name} on the PATH.`
 					)
 				);
 			const outside = brokenOnWindows
@@ -57,9 +70,11 @@ export class RojoCompatibility {
 		return problems;
 	}
 
-	private async read(
-		file: string
-	): Promise<{ syncRules: unknown[]; patterns: string[] }> {
+	private async read(file: string): Promise<{
+		syncRules: unknown[];
+		patterns: string[];
+		ignored: string[];
+	}> {
 		let project: unknown;
 		try {
 			project = JSON.parse(await this.fileReader.readFile(file));
@@ -69,11 +84,18 @@ export class RojoCompatibility {
 		if (!isObject(project)) return NOTHING;
 		const { globIgnorePaths, syncRules } = project;
 		const rules = Array.isArray(syncRules) ? syncRules : [];
+		const ignored = (
+			Array.isArray(globIgnorePaths) ? globIgnorePaths : []
+		).filter((glob): glob is string => typeof glob === "string");
 		const patterns = [
-			...(Array.isArray(globIgnorePaths) ? globIgnorePaths : []),
-			...rules.map((rule) => (isObject(rule) ? rule.pattern : null)),
-		].filter((pattern): pattern is string => typeof pattern === "string");
-		return { syncRules: rules, patterns };
+			...ignored,
+			...rules
+				.map((rule) => (isObject(rule) ? rule.pattern : null))
+				.filter(
+					(pattern): pattern is string => typeof pattern === "string"
+				),
+		];
+		return { syncRules: rules, patterns, ignored };
 	}
 }
 

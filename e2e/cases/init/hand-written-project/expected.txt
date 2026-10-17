@@ -9,6 +9,8 @@ exit 0
 stdout: (not shown)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json
@@ -28,7 +30,7 @@ default.project.json:
     },
     "Workspace": {
       "$properties": {
-        "Gravity": 50
+        "Gravity": 50.0
       }
     }
   }
@@ -42,7 +44,7 @@ rogen.json:
     "$className": "DataModel",
     "Workspace": {
       "$properties": {
-        "Gravity": 50
+        "Gravity": 50.0
       }
     }
   },

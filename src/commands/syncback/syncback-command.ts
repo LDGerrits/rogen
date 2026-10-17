@@ -68,7 +68,7 @@ const SyncbackOptions = [
 		short: "y",
 		type: "boolean",
 		description:
-			"Write and remove without asking. A run without a terminal needs it, or --dry-run.",
+			"Write and remove without asking. A run without a terminal, or under a coding agent or CI, needs it, or --dry-run.",
 	},
 ] as const satisfies readonly OptionDescriptor[];
 
@@ -97,6 +97,9 @@ registerCommand(
 					options: SyncbackOptions,
 					output: { document: syncbackDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
+					exitCodes: {
+						"2": "also a run with no terminal that was not given -y, --non-interactive or --dry-run",
+					},
 					examples: [
 						"rogen syncback --input game.rbxl --dry-run",
 						"rogen syncback -i game.rbxl -y",
@@ -121,6 +124,7 @@ registerCommand(
 			const yes = line.options["non-interactive"] === true;
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
+			if (!json) logService.reserveStdout();
 			if (!dryRun && !yes && (!promptService.isInteractive || json))
 				return err(
 					new UsageError(
@@ -190,7 +194,9 @@ registerCommand(
 					const rebuilt = await buildService.build(selection.value);
 					if (
 						rebuilt.failure() ||
-						rebuilt.builds.some(({ outcome }) => outcome === "wrote")
+						rebuilt.builds.some(
+							({ outcome }) => outcome === "wrote"
+						)
 					)
 						build = rebuilt;
 				}
@@ -235,14 +241,15 @@ registerCommand(
 			return answer === true;
 		}
 
+		/** Prints what Rojo's `--list` prints: a line for each file and folder, `Writing` or `Removing`, on stdout. */
 		private listChanges(
 			logService: LogService,
 			plan: SyncbackPlan,
 			cwd: string
 		): void {
-			for (const { kind, file } of plan.changes)
-				logService.info(
-					`${kind === "write" ? "write " : "remove"} ${path.relative(cwd, file)}`
+			for (const { kind, file } of plan.listed)
+				logService.print(
+					`${kind === "write" ? "Writing" : "Removing"} ${path.relative(cwd, file)}`
 				);
 		}
 

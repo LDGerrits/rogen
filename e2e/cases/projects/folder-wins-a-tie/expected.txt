@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen build · lobby
   lobby/default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
 stderr:
   warning: "lobby" is a folder with a rogen.json and also a project of rogen.json: using the folder. To use the project, name its file, lobby.project.json.
 
@@ -15,7 +15,7 @@ stdout:
     default.project.json · wrote
   project (lobby)
     lobby.project.json · wrote
-  Built 2 configs.
+  Built 2 projects.
 
 written:
   default.project.json

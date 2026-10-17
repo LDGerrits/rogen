@@ -9,6 +9,7 @@ import { instanceKey } from "../roblox/roblox.js";
 import { MountedPath, RemovedMount } from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
+import { InitKind } from "./init-service.js";
 import { StarterProject } from "./starter-project.js";
 
 export type TreeChoice =
@@ -16,6 +17,11 @@ export type TreeChoice =
 
 export type ProjectTree =
 	| { readonly kind: "new" }
+	| {
+			readonly kind: "template";
+			readonly template: InitKind;
+			readonly project: StarterProject;
+	  }
 	| {
 			readonly kind: "lift";
 			readonly from: string;
@@ -51,13 +57,24 @@ export class TreePlan {
 	) {}
 
 	static of({ tree, mounts, dirs, derived, landings }: TreeInputs): TreePlan {
-		return tree.kind === "lift"
-			? TreePlan.lifted(tree, mounts, dirs, derived, landings)
-			: new TreePlan(
+		switch (tree.kind) {
+			case "lift":
+				return TreePlan.lifted(tree, mounts, dirs, derived, landings);
+			case "template":
+				return new TreePlan(
+					tree.project.toConfig(),
+					[
+						`Started a ${tree.template} project: its tree mounts src, and Rogen adds no routes to a ${tree.template}.`,
+					],
+					[]
+				);
+			case "new":
+				return new TreePlan(
 					StarterProject.fromMounts(mounts).toConfig(),
 					[],
 					[]
 				);
+		}
 	}
 
 	private static lifted(

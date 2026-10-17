@@ -7,7 +7,6 @@ stdout:
       {
         "name": "build",
         "summary": "Writes the project files; with -o or -p, builds with Rojo",
-        "description": "Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
         "args": [
           {
             "name": "project",
@@ -33,6 +32,10 @@ stdout:
           {
             "name": "watch",
             "type": "boolean"
+          },
+          {
+            "name": "force",
+            "type": "boolean"
           }
         ],
         "effects": [
@@ -44,7 +47,6 @@ stdout:
       {
         "name": "check",
         "summary": "Prints the diagnostics, and exits 1 when there are any",
-        "description": "Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.",
         "args": [
           {
             "name": "path",
@@ -63,7 +65,6 @@ stdout:
       {
         "name": "fmt-project",
         "summary": "Formats rogen.json the way 'rojo fmt-project' does",
-        "description": "Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
         "args": [
           {
             "name": "project",
@@ -84,7 +85,6 @@ stdout:
       {
         "name": "doc",
         "summary": "Opens the documentation, or prints one topic offline",
-        "description": "Opens the documentation in a browser, or prints one topic of it offline.",
         "args": [
           {
             "name": "topic",
@@ -104,10 +104,13 @@ stdout:
       {
         "name": "help",
         "summary": "Prints usage, a command's details, or what a code means",
-        "description": "Prints usage, a command's details, or what a diagnostic code means.",
         "args": [
           {
             "name": "name",
+            "optional": true
+          },
+          {
+            "name": "prefix",
             "optional": true
           }
         ],
@@ -122,7 +125,6 @@ stdout:
       {
         "name": "init",
         "summary": "Writes a starting rogen.json, or adds a place to one",
-        "description": "Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below a config, adds it as a place of that config.",
         "args": [
           {
             "name": "path",
@@ -142,6 +144,19 @@ stdout:
           {
             "name": "dry-run",
             "short": "n",
+            "type": "boolean"
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "enum": [
+              "place",
+              "model",
+              "plugin"
+            ]
+          },
+          {
+            "name": "skip-git",
             "type": "boolean"
           },
           {
@@ -228,7 +243,6 @@ stdout:
       {
         "name": "list",
         "summary": "Lists the configs, their projects and their ports",
-        "description": "Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
         "args": [
           {
             "name": "project",
@@ -247,7 +261,6 @@ stdout:
       {
         "name": "plugin",
         "summary": "Installs or removes Rojo's Studio plugin",
-        "description": "Installs or removes Rojo's Studio plugin, with the Rojo your toolchain file pins, so the plugin matches the server 'rogen serve' starts.",
         "args": [
           {
             "name": "action",
@@ -266,7 +279,6 @@ stdout:
       {
         "name": "serve",
         "summary": "Builds, serves with Rojo, and rebuilds on changes",
-        "description": "Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
         "args": [
           {
             "name": "project",
@@ -291,6 +303,10 @@ stdout:
             "name": "allowed-hosts",
             "type": "string",
             "multiple": true
+          },
+          {
+            "name": "adopt",
+            "type": "boolean"
           }
         ],
         "effects": [
@@ -302,7 +318,6 @@ stdout:
       {
         "name": "sourcemap",
         "summary": "Writes the project files, then a sourcemap with Rojo",
-        "description": "Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
         "args": [
           {
             "name": "project",
@@ -342,7 +357,6 @@ stdout:
       {
         "name": "syncback",
         "summary": "Brings a place file's changes back into the source files",
-        "description": "Writes the project files, then has Rojo's syncback read a place or model file and write what changed into your source folders, as 'rojo syncback' does for a project file. A folder that routing makes one instance, such as src/Inventory/Server, is read by Rojo as it is; an instance the place added where no folder holds it is put where routing places a file for it, beside the files already there. It removes the files of instances the place no longer holds, so look first with --dry-run.",
         "args": [
           {
             "name": "project",
@@ -384,7 +398,6 @@ stdout:
       {
         "name": "upload",
         "summary": "Writes the project files, then uploads them with Rojo",
-        "description": "Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
         "args": [
           {
             "name": "project",
@@ -422,7 +435,6 @@ stdout:
       {
         "name": "where",
         "summary": "Prints where each file lands in the game, and why",
-        "description": "Prints where each file lands in the game, and why, with its warnings.",
         "args": [
           {
             "name": "path",
@@ -473,7 +485,7 @@ stdout:
       }
     ],
     "exitCodes": {
-      "0": "done (warnings included)",
+      "0": "done (warnings included; check exits 1 on any)",
       "1": "the project has errors",
       "2": "the command line is wrong"
     },
@@ -534,8 +546,13 @@ stdout:
       "rogen where src --json",
       "pbpaste | rogen where -"
     ],
+    "exitCodes": {
+      "0": "every path answered, one that no file places included",
+      "1": "no path was given, or the config has errors",
+      "2": "the command line is wrong"
+    },
     "output": {
-      "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\"|\"mounted\",node:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
+      "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\",instancePath:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"mounted\",instancePath?:[string],mount:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"inProject\",project:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
     },
     "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {
@@ -574,8 +591,13 @@ stdout:
       "rogen where src --json",
       "pbpaste | rogen where -"
     ],
+    "exitCodes": {
+      "0": "every path answered, one that no file places included",
+      "1": "no path was given, or the config has errors",
+      "2": "the command line is wrong"
+    },
     "output": {
-      "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\"|\"mounted\",node:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
+      "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\",instancePath:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"mounted\",instancePath?:[string],mount:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"inProject\",project:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic]}"
     },
     "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {

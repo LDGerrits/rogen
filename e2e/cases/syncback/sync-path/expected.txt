@@ -1,29 +1,31 @@
 $ rogen syncback dist -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing dist/Combat/Server/Combat.luau
+  Writing dist/Combat/Server/Loot.luau
+  Removing dist/Combat/Server/Hit.luau
+stderr:
   rogen syncback · Game, Game (dist)
   Game
     default.project.json · wrote
   Game (dist)
     dist.project.json · wrote
-  Built 2 configs.
-  write  dist/Combat/Server/Combat.luau
-  remove dist/Combat/Server/Hit.luau
-  write  dist/Combat/Server/Loot.luau
+  Built 2 projects.
   Syncback wrote 3 changes.
 
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stdout:
+  Writing src/Combat/Server/Combat.luau
+  Writing src/Combat/Server/Loot.luau
+  Removing src/Combat/Server/Hit.luau
+stderr:
   rogen syncback · Game, Game (dist)
   Game
     default.project.json · unchanged
   Game (dist)
     dist.project.json · unchanged
-  Built 2 configs.
-  write  src/Combat/Server/Combat.luau
-  remove src/Combat/Server/Hit.luau
-  write  src/Combat/Server/Loot.luau
+  Built 2 projects.
   Syncback would change 3 files (2 to write, 1 to remove).
 
 written:
@@ -50,3 +52,4 @@ Game: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
       Combat: ModuleScript  <- dist/Combat/Server/Combat.luau
+      Loot: ModuleScript  <- dist/Combat/Server/Loot.luau

@@ -40,3 +40,4 @@ stdout:
   help <code>' to explain a diagnostic code.
   
   Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
+  'check' also exits 1 on a warning.

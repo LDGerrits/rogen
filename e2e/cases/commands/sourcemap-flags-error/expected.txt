@@ -4,11 +4,16 @@ stdout:
   {
     "error": {
       "kind": "usage",
-      "message": "Without -o the sourcemap is printed, which leaves no room for --json or --watch: give -o <file>."
+      "message": "Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
     }
   }
 
-$ rogen sourcemap --watch
+$ rogen sourcemap --json --watch
 exit 2
-stderr:
-  error: Without -o the sourcemap is printed, which leaves no room for --json or --watch: give -o <file>.
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
+    }
+  }

@@ -90,8 +90,10 @@ describe("help command", () => {
 		it("should end with the exit codes", async () => {
 			await help();
 
-			expect(printed().split("\n").at(-1)).toBe(
-				"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong."
+			expect(
+				printed().trimEnd().split("\n\n").at(-1)?.replace(/\n/g, " ")
+			).toBe(
+				"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong. 'check' also exits 1 on a warning."
 			);
 		});
 
@@ -213,7 +215,7 @@ describe("help command", () => {
 			expect(
 				starts.find((line) => line.startsWith("config.unknownField"))
 			).toMatch(
-				/^config\.unknownField +warning The config has a key that is neither one of Rojo's/
+				/^config\.unknownField +error +The config has a key that is neither one of Rojo's/
 			);
 			expect(
 				starts.find((line) =>

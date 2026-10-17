@@ -362,15 +362,10 @@ describe("CoreConfigService", () => {
 				}
 			);
 
-			it("should warn of a key neither Rojo's nor Rogen's, as the description does", async () => {
-				await write("/repo/rogen.json", {
-					...BASE,
-					projects: { dist: { servePrt: 1 } },
-				});
-				await start();
-
-				const dist = buildableProjects(selection.entries[0])[1];
-				expect(dist.warnings).toMatchObject([
+			it("should refuse a key neither Rojo's nor Rogen's, as the description does", async () => {
+				expect(
+					await failure({ projects: { dist: { servePrt: 1 } } })
+				).toMatchObject([
 					{
 						code: "config.unknownField",
 						message: expect.stringContaining(
@@ -381,14 +376,11 @@ describe("CoreConfigService", () => {
 			});
 
 			it("should offer no replacement for such a key, since its position is its value's", async () => {
-				await write("/repo/rogen.json", {
-					...BASE,
+				const [found] = await failure({
 					projects: { dist: { servePrt: 1 } },
 				});
-				await start();
 
-				const dist = buildableProjects(selection.entries[0])[1];
-				expect(dist.warnings[0].fixes).toBeUndefined();
+				expect(found.fixes).toBeUndefined();
 			});
 
 			it("should tell a key Rogen read once is gone, inside a project", async () => {

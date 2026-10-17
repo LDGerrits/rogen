@@ -199,8 +199,8 @@ export class BuildLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(configs: number, warnings: number): void {
-		const built = `Built ${plural(configs, "config")}`;
+	private end(projects: number, warnings: number): void {
+		const built = `Built ${plural(projects, "project")}`;
 		this.logService.outro(
 			warnings === 0
 				? `${built}.`

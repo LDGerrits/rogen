@@ -4,6 +4,7 @@ import { Result, err, ok } from "../../../base/result.js";
 import { LineBuffer } from "../line-buffer.js";
 import {
 	ChildProcess,
+	OutputLine,
 	ProcessExit,
 	ProcessOutput,
 	ProcessService,
@@ -14,9 +15,10 @@ export class MockChildProcess
 	extends AbstractDisposable
 	implements ChildProcess
 {
-	private readonly _onDidOutputLine = this._register(new Emitter<string>());
-	readonly onDidOutputLine: Event<string> = this._onDidOutputLine.event;
+	private readonly _onDidOutput = this._register(new Emitter<OutputLine>());
+	readonly onDidOutput: Event<OutputLine> = this._onDidOutput.event;
 	private readonly lines = new LineBuffer();
+	private readonly errorLines = new LineBuffer();
 
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
@@ -27,21 +29,31 @@ export class MockChildProcess
 	constructor(
 		readonly file: string,
 		readonly args: readonly string[],
-		readonly options: SpawnOptions
+		readonly options: SpawnOptions,
+		readonly pid: number | undefined = undefined
 	) {
 		super();
 	}
 
 	print(text: string): void {
-		for (const line of this.lines.push(text))
-			this._onDidOutputLine.fire(line);
+		for (const line of this.lines.push(text)) this.say(line, "stdout");
+	}
+
+	printError(text: string): void {
+		for (const line of this.errorLines.push(text)) this.say(line, "stderr");
+	}
+
+	private say(line: string, stream: OutputLine["stream"]): void {
+		this._onDidOutput.fire({ line, stream });
 	}
 
 	exit(exit: ProcessExit): void {
 		if (this.exitedWith) return;
 		this.exitedWith = exit;
 		const last = this.lines.flush();
-		if (last !== undefined) this._onDidOutputLine.fire(last);
+		if (last !== undefined) this.say(last, "stdout");
+		const lastError = this.errorLines.flush();
+		if (lastError !== undefined) this.say(lastError, "stderr");
 		this._onDidExit.fire(exit);
 	}
 
@@ -60,6 +72,10 @@ export class MockProcessService implements ProcessService {
 	declare readonly _serviceBrand: undefined;
 
 	readonly spawned: MockChildProcess[] = [];
+	/** The ids of processes started outside this service, that `isRunning` reports. */
+	readonly running = new Set<number>();
+	readonly terminatedTrees: number[] = [];
+	private nextPid = 1000;
 	readonly execs: {
 		file: string;
 		args: readonly string[];
@@ -91,12 +107,21 @@ export class MockProcessService implements ProcessService {
 		return output ? ok(output) : err(new Error(`spawn ${file} ENOENT`));
 	}
 
+	isRunning(pid: number): boolean {
+		return this.running.has(pid);
+	}
+
+	async terminateTree(pid: number): Promise<void> {
+		this.terminatedTrees.push(pid);
+		this.running.delete(pid);
+	}
+
 	spawn(
 		file: string,
 		args: readonly string[],
 		options: SpawnOptions
 	): MockChildProcess {
-		const child = new MockChildProcess(file, args, options);
+		const child = new MockChildProcess(file, args, options, this.nextPid++);
 		this.spawned.push(child);
 		return child;
 	}

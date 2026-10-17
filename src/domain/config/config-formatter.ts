@@ -54,7 +54,13 @@ export class ConfigFormatter {
 				),
 			]);
 
-		const formatted = ProjectText.ofConfig(document.value.value, rogenKeys);
+		const config = document.value.value;
+		const formatted = ProjectText.ofConfig(
+			"name" in config
+				? config
+				: { ...config, name: path.basename(path.dirname(file)) },
+			rogenKeys
+		);
 		if (formatted === text) return ok(false);
 		const written = await tryWithAsync(() =>
 			this.fileSystemService.writeFile(file, formatted)

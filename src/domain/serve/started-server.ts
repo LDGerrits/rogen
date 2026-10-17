@@ -147,6 +147,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		return this.records
 			.write(target.address, info, {
 				projectFile: target.config.projectFile,
+				pid: this.child.pid,
 				clients: info.server.reportsConnections(info.version)
 					? this.connected
 					: undefined,

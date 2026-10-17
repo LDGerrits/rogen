@@ -3,35 +3,35 @@ exit 0
 stdout:
   rogen build · project
   default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build default.project.json
 exit 0
 stdout:
   rogen build · project
   default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build lobby
 exit 0
 stdout:
   rogen build · lobby
   lobby/default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build lobby/default.project.json
 exit 0
 stdout:
   rogen build · lobby
   lobby/default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build lobby/rogen.json
 exit 0
 stdout:
   rogen build · lobby
   lobby/default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 written:
   default.project.json

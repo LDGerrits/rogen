@@ -37,7 +37,7 @@ export class SyncSteps {
 		}
 		if (darklua && !language.compiler) {
 			builder.addEdit(
-				`Darklua reads sourcemap.json, which luau-lsp keeps current from ${DEFAULT_PROJECT_FILE}. Without luau-lsp, run: ${darklua.sourcemapCommand(DEFAULT_PROJECT_FILE)}`
+				`Darklua reads sourcemap.json, which luau-lsp keeps current from ${DEFAULT_PROJECT_FILE}. Without luau-lsp, run: ${darklua.sourcemapCommand()}`
 			);
 		}
 	}

@@ -2,21 +2,25 @@ $ rogen init
 exit 0
 stdout:
   rogen init
-  Took the defaults: --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created rogen.json.
+  Created .gitignore.
   Created AGENTS.md.
+  Initialised a git repository.
   default.project.json · wrote
   Next steps
     Run:
       rogen serve
     Add your own routes under "routes" in rogen.json.
-  Wrote 2 files.
+  Wrote 3 files.
 
 $ rogen build
 exit 0
 stdout: (not shown)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json

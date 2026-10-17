@@ -123,6 +123,24 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
+/** `-o=value` for a short string option, as `--output=value`, which keeps a value that starts with `-`; past `--` the line is left alone. */
+function withShortValues(
+	args: readonly string[],
+	options: readonly OptionDescriptor[]
+): string[] {
+	const end = args.indexOf("--");
+	const own = end === -1 ? args : args.slice(0, end);
+	const rewritten = own.map((arg) => {
+		const short = /^-([^-=])=(.*)$/s.exec(arg);
+		const option = options.find(
+			({ short: letter, type }) =>
+				letter === short?.[1] && type === "string"
+		);
+		return short && option ? `--${option.name}=${short[2]}` : arg;
+	});
+	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
+}
+
 /** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. */
 function commandOf(
 	values: { version?: unknown; help?: unknown },
@@ -227,15 +245,6 @@ function findOptionProblem(
 		if (option.type === "string" && missing) {
 			return new UsageError(`Option '${token.rawName}' needs a value.`);
 		}
-		if (
-			option.type === "string" &&
-			/^-[^-]/.test(token.rawName) &&
-			token.value?.startsWith("=")
-		) {
-			return new UsageError(
-				`Option '${token.rawName}' takes its value after a space, not after '='.`
-			);
-		}
 	}
 	return undefined;
 }
@@ -262,7 +271,8 @@ export function parseArgs(
 					)
 				)
 				.sort();
-		const { values, tokens = [] } = tokenize(args, allOptions);
+		const typed = withShortValues(args, allOptions);
+		const { values, tokens = [] } = tokenize(typed, allOptions);
 		const terminator = tokens.find(
 			(token) => token.kind === "option-terminator"
 		);
@@ -295,7 +305,7 @@ export function parseArgs(
 			line: {
 				positionals: consumesWord ? positionals.slice(1) : positionals,
 				...(terminator && {
-					passthrough: args.slice(terminator.index + 1),
+					passthrough: typed.slice(terminator.index + 1),
 				}),
 				options: values as CommandLine["options"],
 			},

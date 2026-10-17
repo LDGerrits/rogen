@@ -1,0 +1,4 @@
+{
+	"steps": [["build"], ["where", "src"]],
+	"show": ["default.project.json"]
+}

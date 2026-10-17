@@ -809,6 +809,26 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
+		it("should leave stdout to Rojo's lines when it builds, and keep its own there when it does not", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.print("Built project to game.rbxl\n");
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.reserved).toBe(true);
+			expect(log.texts("print")).toEqual(["Built project to game.rbxl"]);
+
+			const plain = new MockLogService();
+			await fs.writeFile(abs("src/A.luau"), "");
+			await commandHarness({
+				fs,
+				log: plain,
+				config: new MockConfigService([buildable()]),
+			}).run("build", { positionals: [], options: {} });
+			expect(plain.reserved).toBe(false);
+		});
+
 		it("should pass --plugin for -p", async () => {
 			const { running } = await withRojo({ plugin: "Tool.rbxm" });
 			const rojo = await rojoStarted();
@@ -834,7 +854,7 @@ describe("build command", () => {
 		it("should fail when Rojo fails", async () => {
 			const { running } = await withRojo({ output: "g.rbxl" });
 			const rojo = await rojoStarted();
-			rojo.print("ERROR: no such folder\n");
+			rojo.printError("ERROR: no such folder\n");
 			rojo.exit({ code: 1, signal: null });
 
 			const result = await running;
@@ -848,7 +868,7 @@ describe("build command", () => {
 			const { running, log } = await withRojo({ output: "g.rbxl" });
 			const rojo = await rojoStarted();
 			rojo.print("[WARN rojo] odd file\n");
-			rojo.print("ERROR: no such folder\n");
+			rojo.printError("ERROR: no such folder\n");
 			rojo.exit({ code: 1, signal: null });
 
 			await running;
@@ -932,7 +952,7 @@ describe("build command", () => {
 					json: true,
 				});
 				const rojo = await rojoStarted();
-				rojo.print("ERROR: no such folder\n");
+				rojo.printError("ERROR: no such folder\n");
 				rojo.exit({ code: 1, signal: null });
 
 				const result = await running;

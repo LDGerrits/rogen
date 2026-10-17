@@ -21,6 +21,10 @@ import {
 } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import {
+	LifecycleService,
+	exitCodeOfSignal,
+} from "../../platform/lifecycle/lifecycle-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import {
 	ServeJsonLog,
@@ -54,6 +58,13 @@ const AllowedHostsOption = {
 		"A host, besides the address, that may reach every server. Rojo's own flag, from Rojo 7.7.0.",
 } as const satisfies OptionDescriptor;
 
+const AdoptOption = {
+	name: "adopt",
+	type: "boolean",
+	description:
+		"Take over a server no rogen serve started that serves this project: build and watch for it, start none. Without it, that server holds the port.",
+} as const satisfies OptionDescriptor;
+
 const ServeOptions = [
 	{
 		...JsonOption,
@@ -63,6 +74,7 @@ const ServeOptions = [
 	AddressOption,
 	PortOption,
 	AllowedHostsOption,
+	AdoptOption,
 ] as const;
 
 type ServeLine = CommandLine<typeof ServeOptions>;
@@ -104,7 +116,7 @@ registerCommand(
 					summary:
 						"Builds, serves with Rojo, and rebuilds on changes",
 					description:
-						"Builds, serves the project files with Rojo, and rebuilds whenever sources or configs change.",
+						"Builds, serves the project files with Rojo, and rebuilds on every change.",
 					args: ConfigArguments,
 					passthrough: {
 						name: "server args",
@@ -114,6 +126,11 @@ registerCommand(
 					options: ServeOptions,
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
+					exitCodes: {
+						"0": "another rogen serve already serves every project, or a server adopted from one stopped",
+						"128+N":
+							"a signal stopped it: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
+					},
 					examples: [
 						"rogen serve",
 						"rogen serve places/lobby --port 34873",
@@ -128,6 +145,7 @@ registerCommand(
 			line: ServeLine
 		): Promise<Result<void, Error>> {
 			const serveService = accessor.get(ServeService);
+			if (!line.options.json) accessor.get(LogService).reserveStdout();
 			const serverArgs = serverArgsOf(line);
 			if (serverArgs.isErr()) return serverArgs;
 
@@ -140,8 +158,10 @@ registerCommand(
 					signal: stopChecks.signal,
 					refs: line.positionals,
 					serverArgs: serverArgs.value,
+					adopt: line.options.adopt === true,
 				});
-				if (shutdown.isSettled) return ok(undefined);
+				if (shutdown.isSettled)
+					return this.stoppedBy(accessor.get(LifecycleService));
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
@@ -163,13 +183,32 @@ registerCommand(
 				const session = serveService.serve(plan.value);
 				if (session.isErr()) return session;
 				store.add(session.value);
-				return await this.serve(session.value, log, shutdown);
+				return await this.serve(
+					accessor.get(LifecycleService),
+					session.value,
+					log,
+					shutdown
+				);
 			} finally {
 				store[Symbol.dispose]();
 			}
 		}
 
+		/** Ok, unless a signal stopped the run, which ends it as a shell reports a process the signal stopped. */
+		private stoppedBy(lifecycle: LifecycleService): Result<void, Error> {
+			const { signal } = lifecycle;
+			return signal === undefined
+				? ok(undefined)
+				: this.reported(
+						new ExitCodeError(
+							exitCodeOfSignal(signal),
+							new Error(`Stopped by ${signal}.`)
+						)
+					);
+		}
+
 		private async serve(
+			lifecycle: LifecycleService,
 			session: ServeSession,
 			log: ServeReporter,
 			shutdown: DeferredPromise<void>
@@ -203,7 +242,7 @@ registerCommand(
 				if (!stop) log.shutdown(session.targets);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
-					return ok(undefined);
+					return stop ? ok(undefined) : this.stoppedBy(lifecycle);
 				}
 				log.end("serve failed.");
 				return this.reported(

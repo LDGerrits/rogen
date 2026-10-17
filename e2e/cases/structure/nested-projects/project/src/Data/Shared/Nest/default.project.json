@@ -1,0 +1,8 @@
+{
+	"name": "Nested",
+	"tree": {
+		"$className": "Folder",
+		"Val": { "$className": "StringValue" },
+		"Code": { "$path": "code.luau" }
+	}
+}

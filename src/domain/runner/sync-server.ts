@@ -14,6 +14,8 @@ export interface ServerInfo {
 export interface ServerMessage {
 	readonly severity: "error" | "warning" | "info" | "debug";
 	readonly text: string;
+	/** The line as the server printed it on stdout, when it is one a program reading stdout takes in: not a log record. */
+	readonly stdout?: string;
 }
 
 interface SyncServerFields {

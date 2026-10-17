@@ -1,12 +1,13 @@
 import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { stripVTControlCharacters } from "util";
 import {
 	describeWithRojo,
 	makeRojoDir,
 } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { bundleCli, invocation } from "./harness.js";
-import { PROJECTS_DIR } from "./rojo-conformance.js";
+import { PROJECTS_DIR, SYNCBACK_PROJECTS_DIR } from "./rojo-conformance.js";
 
 const projects = fs
 	.readdirSync(PROJECTS_DIR, { withFileTypes: true })
@@ -26,6 +27,29 @@ const SOURCEMAP_FLAGS = [
 	["--absolute"],
 	["--include-non-scripts", "--absolute"],
 ];
+
+/** The files under `root`, by relative path, with what is in them; those `skip` names are left out. */
+const snapshot = (
+	root: string,
+	skip: readonly string[] = []
+): Record<string, string> => {
+	const seen: Record<string, string> = {};
+	const walk = (dir: string) => {
+		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+			if (skip.includes(entry.name)) continue;
+			const full = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				seen[`${path.relative(root, full)}/`] = "";
+				walk(full);
+			} else
+				seen[path.relative(root, full)] = fs
+					.readFileSync(full)
+					.toString("base64");
+		}
+	};
+	walk(root);
+	return seen;
+};
 
 interface Run {
 	readonly status: number | null;
@@ -146,6 +170,112 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 		);
 	});
 
+	describe("a syncback test of Rojo's, as a rogen.json", () => {
+		const cases = fs
+			.readdirSync(SYNCBACK_PROJECTS_DIR, { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name);
+		/** The project file each side keeps, which Rogen writes from its rogen.json. */
+		const PROJECT_FILES = ["default.project.json", "rogen.json"];
+
+		const inputOf = (name: string) => {
+			const dir = path.join(SYNCBACK_PROJECTS_DIR, name);
+			return ["input.rbxl", "input.rbxm"]
+				.map((file) => path.join(dir, file))
+				.find((file) => fs.existsSync(file)) as string;
+		};
+
+		/** The tree of the project file a side keeps, which Rojo rewrites with what Studio changed on its nodes. */
+		const treeOf = (dir: string, file: string): unknown =>
+			(
+				JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")) as {
+					tree: unknown;
+				}
+			).tree;
+
+		const copy = (name: string, side: string) => {
+			const to = path.join(
+				fs.mkdtempSync(path.join(parent, `syncback-${name}-`)),
+				side
+			);
+			fs.cpSync(
+				path.join(SYNCBACK_PROJECTS_DIR, name, "input-project"),
+				to,
+				{ recursive: true }
+			);
+			if (side === "rogen")
+				fs.renameSync(
+					path.join(to, "default.project.json"),
+					path.join(to, "rogen.json")
+				);
+			return to;
+		};
+
+		it.each(cases)(
+			"should write the sources of %s as Rojo does",
+			(name) => {
+				const byRojo = copy(name, "rojo");
+				const byRogen = copy(name, "rogen");
+				const expected = rojo(byRojo, [
+					"syncback",
+					"--input",
+					inputOf(name),
+					"--non-interactive",
+				]);
+				const actual = rogen(byRogen, [
+					"syncback",
+					"--input",
+					inputOf(name),
+					"-y",
+				]);
+
+				expect(actual.status).toBe(expected.status);
+				expect(snapshot(byRogen, PROJECT_FILES)).toEqual(
+					snapshot(byRojo, PROJECT_FILES)
+				);
+				expect(treeOf(byRogen, "rogen.json")).toEqual(
+					treeOf(byRojo, "default.project.json")
+				);
+			},
+			60_000
+		);
+
+		const LISTED_DIFFERENTLY = ["child_but_not", "ignore_paths_init"];
+
+		it.each(cases.filter((name) => !LISTED_DIFFERENTLY.includes(name)))(
+			"should list what %s would write on stdout as Rojo lists it",
+			(name) => {
+				const byRojo = copy(name, "rojo");
+				const byRogen = copy(name, "rogen");
+				const args = ["--input", inputOf(name), "--list", "--dry-run"];
+				const expected = rojo(byRojo, ["syncback", ...args]);
+				const actual = rogen(byRogen, ["syncback", ...args]);
+
+				expect(actual.status).toBe(expected.status);
+				expect(actual.stdout).toBe(
+					stripVTControlCharacters(expected.stdout).replaceAll(
+						"default.project.json",
+						"rogen.json"
+					)
+				);
+			},
+			60_000
+		);
+
+		it.each(cases)(
+			"should change no source of %s in a dry run",
+			(name) => {
+				const byRogen = copy(name, "rogen");
+				const before = snapshot(byRogen, PROJECT_FILES);
+
+				rogen(byRogen, ["syncback", "--input", inputOf(name), "-n"]);
+
+				expect(snapshot(byRogen, PROJECT_FILES)).toEqual(before);
+			},
+			60_000
+		);
+	});
+
 	describe("a plain Rojo project and an edit made in Studio", () => {
 		const PROJECT = {
 			name: "game",
@@ -216,28 +346,6 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				});
 				fs.writeFileSync(path.join(root, file), text);
 			}
-		};
-
-		/** The files under `root`, by relative path, with what is in them. */
-		const snapshot = (root: string): Record<string, string> => {
-			const seen: Record<string, string> = {};
-			const walk = (dir: string) => {
-				for (const entry of fs.readdirSync(dir, {
-					withFileTypes: true,
-				})) {
-					const full = path.join(dir, entry.name);
-					if (entry.isDirectory()) {
-						seen[`${path.relative(root, full)}/`] = "";
-						walk(full);
-					} else
-						seen[path.relative(root, full)] = fs.readFileSync(
-							full,
-							"utf8"
-						);
-				}
-			};
-			walk(root);
-			return seen;
 		};
 
 		it.each(Object.entries(SCENARIOS))(

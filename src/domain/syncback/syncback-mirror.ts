@@ -6,7 +6,9 @@ import { PlacedLocation } from "../build/build-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
 	RojoNode,
+	RojoProject,
 	RojoProjectFile,
+	isProjectFileName,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { SyncRule } from "../rojo/sync-rules.js";
@@ -55,6 +57,17 @@ export interface SyncbackMirrorInputs {
 	/** How Rojo reads the file at an absolute path written with `/`. */
 	readonly fileAt: (target: string) => RojoFile;
 	readonly isFolder: (target: string) => Promise<boolean>;
+	/** The text of the file at an absolute path written with `/`; none when it can't be read. */
+	readonly readText: (target: string) => Promise<string | undefined>;
+}
+
+/** The deepest folder that holds every one of `targets`, absolute and written with `/`. */
+function commonFolder(targets: readonly string[]): string {
+	let folder = targets[0];
+	for (const target of targets)
+		while (!containsPosix(folder, target))
+			folder = path.posix.dirname(folder);
+	return folder;
 }
 
 /** The project file Rojo's syncback runs on: the written one, with every node the build made from a file or a plain folder moved into a mirror folder laid out by instance path, so Rojo edits, adds and removes there as in a plain Rojo project. */
@@ -75,8 +88,26 @@ export class SyncbackMirror {
 		);
 		delete file.syncRules;
 		const walk = new MirrorWalk(inputs);
-		await walk.children(file.tree, [], "");
+		if (file.tree.$path === undefined)
+			await walk.children(file.tree, [], "");
+		else await walk.keep(file.tree, [], undefined);
+		SyncbackMirror.assertInside(file, inputs.root);
 		return new SyncbackMirror(file, walk.entries, walk.folders, rules);
+	}
+
+	/** Throws at a `$path` outside the mirror, which would let Rojo's syncback write the project's own files. */
+	static assertInside(file: RojoProjectFile, root: string): void {
+		const check = (node: RojoNode): void => {
+			if (node.$path !== undefined) {
+				const target = rojoPathTarget(node.$path);
+				if (!containsPosix(root, target))
+					throw new Error(
+						`syncback's project reads "${target}", outside its mirror ${root}.`
+					);
+			}
+			for (const [, child] of childrenOf(node)) check(child);
+		};
+		check(file.tree);
 	}
 
 	/** The mirror folder of the instance at `node`, relative to the mirror's root. */
@@ -237,7 +268,7 @@ class MirrorWalk {
 	}
 
 	/** A node the project file keeps: what it reads from disk is copied into the mirror and its `$path` points there. */
-	private async keep(
+	async keep(
 		node: RojoNode,
 		instancePath: readonly string[],
 		at: string | undefined
@@ -259,6 +290,10 @@ class MirrorWalk {
 			await this.children(node, instancePath, own, true);
 			return;
 		}
+		if (isProjectFileName(target)) {
+			await this.keepProject(node, instancePath, target, optional);
+			return;
+		}
 		const own = this.spare();
 		const base = path.posix.basename(target);
 		const rojoName = this.inputs.fileAt(target).instanceName;
@@ -276,6 +311,86 @@ class MirrorWalk {
 		this.addFolder(own);
 		this.repoint(node, `${own}/${base}`, optional);
 		await this.children(node, instancePath, undefined);
+	}
+
+	/** A nested project file, copied with every file and folder it and the project files it nests read, laid out as they lie on disk, since its `$path`s are relative to it. */
+	private async keepProject(
+		node: RojoNode,
+		instancePath: readonly string[],
+		target: string,
+		optional: boolean
+	): Promise<void> {
+		const projects: string[] = [];
+		const reads: string[] = [];
+		await this.readsOf(target, projects, reads);
+		const folders: string[] = [];
+		for (const read of reads)
+			if (await this.inputs.isFolder(read)) folders.push(read);
+		const inFolder = (file: string) =>
+			folders.some(
+				(folder) => folder !== file && containsPosix(folder, file)
+			);
+		const files = reads.filter((read) => !inFolder(read));
+		const base = commonFolder([
+			...projects.map((project) => path.posix.dirname(project)),
+			...files.map((file) =>
+				folders.includes(file) ? file : path.posix.dirname(file)
+			),
+		]);
+		const own = this.spare();
+		const at = (file: string) =>
+			path.posix.join(own, path.posix.relative(base, file));
+		for (const project of projects.filter((file) => !inFolder(file)))
+			this.entries.push({
+				mirror: at(project),
+				target: project,
+				kind: "file",
+			});
+		for (const file of files) {
+			if (folders.includes(file)) {
+				this.entries.push({
+					mirror: at(file),
+					target: file,
+					kind: "folder",
+				});
+				continue;
+			}
+			const meta = path.posix.join(
+				path.posix.dirname(file),
+				`${this.inputs.fileAt(file).instanceName}${RojoFile.META_SUFFIX}`
+			);
+			this.entries.push(
+				{ mirror: at(file), target: file, kind: "file" },
+				{ mirror: at(meta), target: meta, kind: "file" }
+			);
+		}
+		this.addFolder(own);
+		this.repoint(node, at(target), optional);
+		await this.children(node, instancePath, undefined);
+	}
+
+	/** Adds `project` and every project file it nests to `projects`, and what their `$path`s point at to `reads`. */
+	private async readsOf(
+		project: string,
+		projects: string[],
+		reads: string[]
+	): Promise<void> {
+		if (projects.includes(project)) return;
+		projects.push(project);
+		const text = await this.inputs.readText(project);
+		const parsed = text === undefined ? undefined : RojoProject.parse(text);
+		if (!parsed?.isOk()) return;
+		for (const mounted of parsed.value.mountedPaths()) {
+			const read = toPosix(
+				path.resolve(
+					path.dirname(project),
+					rojoPathTarget(mounted.path)
+				)
+			);
+			if (isProjectFileName(read))
+				await this.readsOf(read, projects, reads);
+			else if (!reads.includes(read)) reads.push(read);
+		}
 	}
 
 	private spare(): string {

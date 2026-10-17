@@ -133,6 +133,10 @@ export class ServeLog implements ServeReporter {
 	}
 
 	said(said: ServerOutputEvent): void {
+		if (said.message.stdout !== undefined) {
+			this.logService.print(said.message.stdout);
+			return;
+		}
 		reportServerMessage(
 			this.logService,
 			this.plan.executable.server.name,

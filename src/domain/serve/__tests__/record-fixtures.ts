@@ -5,9 +5,13 @@ export const recordFile = (
 	{
 		session = "s1",
 		clients,
+		owner,
+		pid,
 	}: {
 		session?: string;
 		clients?: number;
+		owner?: number;
+		pid?: number;
 	} = {}
 ) =>
 	[
@@ -20,5 +24,7 @@ export const recordFile = (
 			session,
 			project,
 			projectFile,
+			owner,
+			pid,
 		}),
 	] as const;

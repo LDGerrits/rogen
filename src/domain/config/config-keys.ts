@@ -2,8 +2,8 @@ import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
+	errorDiagnostic,
 	replaceFixes,
-	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
 	configRemovedFieldAdvice,
@@ -14,15 +14,14 @@ import {
 const KNOWN_KEYS: readonly string[] = [...rojoKeys, ...rogenKeys];
 
 export class ConfigKeys {
-	/** A removed key is an error; a key neither Rojo's nor Rogen's passes through with a warning. */
+	/** A removed key, or one neither Rojo's nor Rogen's, which Rojo would reject in the written file. */
 	static check(
 		keys: readonly string[],
 		locationOf: (key: string) => DiagnosticLocation,
 		/** Whether `locationOf` points at the key, which a replacement needs, and not at its value. */
 		atKey = true
-	): { readonly errors: Diagnostic[]; readonly warnings: Diagnostic[] } {
+	): Diagnostic[] {
 		const errors: Diagnostic[] = [];
-		const warnings: Diagnostic[] = [];
 		for (const key of keys) {
 			if (KNOWN_KEYS.includes(key)) continue;
 			const location = locationOf(key);
@@ -35,11 +34,11 @@ export class ConfigKeys {
 				key,
 				KNOWN_KEYS.filter((other) => !keys.includes(other))
 			);
-			warnings.push(
-				warningDiagnostic(
+			errors.push(
+				errorDiagnostic(
 					"config.unknownField",
 					location,
-					`"${key}" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
+					`"${key}" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know.${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
 					suggestion && atKey
 						? replaceFixes(
 								location,
@@ -50,6 +49,6 @@ export class ConfigKeys {
 				)
 			);
 		}
-		return { errors, warnings };
+		return errors;
 	}
 }

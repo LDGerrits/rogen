@@ -1,4 +1,5 @@
 import path from "path";
+import { withGlobBody } from "../../base/glob.js";
 import { toPosix } from "../../base/path.js";
 import { isObject } from "../../base/objects.js";
 
@@ -10,10 +11,12 @@ export class PathRebaser {
 	}
 
 	static glob(glob: string, from: string, to: string): string {
-		if (path.posix.isAbsolute(glob) || path.win32.isAbsolute(glob))
-			return glob;
-		const prefix = toPosix(path.relative(to, from));
-		return prefix === "" ? glob : path.posix.join(prefix, glob);
+		return withGlobBody(glob, (body) => {
+			if (path.posix.isAbsolute(body) || path.win32.isAbsolute(body))
+				return body;
+			const prefix = toPosix(path.relative(to, from));
+			return prefix === "" ? body : path.posix.join(prefix, body);
+		});
 	}
 
 	/** Rebases the path-valued keys: the tree's `$path`s, `globIgnorePaths` and `syncPath`. */

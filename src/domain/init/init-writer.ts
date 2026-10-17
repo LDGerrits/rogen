@@ -1,11 +1,15 @@
 import path from "path";
-import { ErrorUtils } from "../../base/errors.js";
+import { ErrorUtils, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { GitRepository } from "./git-repository.js";
 import { InitPlan, InitWritten } from "./init-service.js";
 
 export class InitWriter {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		private readonly fileSystemService: FileSystemService,
+		private readonly git: GitRepository
+	) {}
 
 	/** Stops at the first write that fails, calling `onWritten` after each. A dry run writes nothing and calls it for what it would write. */
 	async write(
@@ -49,6 +53,16 @@ export class InitWriter {
 				);
 			}
 			if (created.value) onWritten({ kind: "directory", directory });
+		}
+		if (plan.gitInit) {
+			const made = dryRun
+				? ok(undefined)
+				: await this.git.init(plan.directory);
+			onWritten(
+				made.isErr()
+					? { kind: "git", failed: failureReason(made.error) }
+					: { kind: "git" }
+			);
 		}
 		return ok(undefined);
 	}

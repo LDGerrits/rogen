@@ -1,0 +1,10 @@
+$ rogen where -
+stdin:
+  ServerScriptService.Server.Helper:3: boom
+  ReplicatedStorage.Packages.Roact:12 function a
+  ReplicatedStorage.Packages.Sub.Deep:1
+exit 0
+stdout:
+  src/server/Helper.luau:3: boom
+  Packages/Roact.luau:12 function a
+  Packages/Sub/Deep.luau:1

@@ -45,9 +45,17 @@ export const wasInterrupted = ({ code, signal }: ProcessExit): boolean =>
 export const exitCodeText = (code: number): string =>
 	code > 0x7fffffff ? `0x${code.toString(16).toUpperCase()}` : String(code);
 
+/** One line a process printed, and the stream it printed it on. */
+export interface OutputLine {
+	readonly line: string;
+	readonly stream: "stdout" | "stderr";
+}
+
 export interface ChildProcess extends Disposable {
-	/** Each line it printed, on either stream, as the line completes; one the process left unfinished comes when it exits. */
-	readonly onDidOutputLine: Event<string>;
+	/** Its process id; none when it couldn't start. */
+	readonly pid: number | undefined;
+	/** Each line it printed, with the stream it came on, as the line completes; one the process left unfinished comes when it exits. */
+	readonly onDidOutput: Event<OutputLine>;
 	readonly onDidExit: Event<ProcessExit>;
 
 	/** Ends the process and every process it started, and resolves once it has exited. Safe to call after it exited. */
@@ -63,7 +71,11 @@ export interface ProcessService {
 		args: readonly string[],
 		options: ExecOptions
 	): Promise<Result<ProcessOutput, Error>>;
-	/** Starts `file`, with no input; what it prints comes through `onDidOutputLine`. */
+	/** Whether a process with this id exists, whoever started it. */
+	isRunning(pid: number): boolean;
+	/** Ends the process of this id, which leads a group of its own, and everything it started, and resolves once they are gone. */
+	terminateTree(pid: number): Promise<void>;
+	/** Starts `file`, with no input; what it prints comes through `onDidOutput`. */
 	spawn(
 		file: string,
 		args: readonly string[],

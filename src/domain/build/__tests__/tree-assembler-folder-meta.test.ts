@@ -5,7 +5,6 @@ import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.j
 import { RojoNode } from "../../rojo/rojo-project.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import {
-	FOLDER,
 	abs,
 	assembleFilesOf,
 	assembleResultOf,
@@ -71,8 +70,7 @@ describe("TreeAssembler", () => {
 					nodeAt(value.tree, "ServerScriptService", "Combat")
 				).toEqual({
 					$className: "Actor",
-					$ignoreUnknownInstances: false,
-					Hit: { $path: optional("src/Combat/server/Hit.luau") },
+					$path: optional("src/Combat/server"),
 				});
 				expect(
 					nodeAt(
@@ -83,8 +81,7 @@ describe("TreeAssembler", () => {
 					)
 				).toEqual({
 					$className: "Actor",
-					$ignoreUnknownInstances: false,
-					Aim: { $path: optional("src/Combat/client/Aim.luau") },
+					$path: optional("src/Combat/client"),
 				});
 			});
 
@@ -241,10 +238,7 @@ describe("TreeAssembler", () => {
 
 				expect(
 					nodeAt(value.tree, "ServerScriptService", "Combat")
-				).toEqual({
-					...FOLDER,
-					A: { $path: optional("lobby/Combat/server/A.luau") },
-				});
+				).toEqual({ $path: optional("lobby/Combat/server") });
 			});
 
 			it("should copy an id that reaches one node as $id", async () => {
@@ -302,7 +296,7 @@ describe("TreeAssembler", () => {
 					$properties: { Archivable: false },
 					$attributes: { Priority: 1 },
 					$ignoreUnknownInstances: true,
-					Hit: { $path: optional("src/Combat/server/Hit.luau") },
+					$path: optional("src/Combat/server"),
 				});
 			});
 

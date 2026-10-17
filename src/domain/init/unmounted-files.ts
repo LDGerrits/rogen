@@ -1,6 +1,6 @@
 import path from "path";
 import { containsPosix, joinPosix, normalizeDir } from "../../base/path.js";
-import { isGlobsetMatch } from "../../base/glob.js";
+import { ignoringGlob } from "../../base/glob.js";
 import { tryWithAsync } from "../../base/result.js";
 import {
 	FileReader,
@@ -46,7 +46,7 @@ export class UnmountedFiles {
 			if (
 				name === ".rogen-syncback" ||
 				mounted.some((target) => containsPosix(target, relative)) ||
-				ignored.some((glob) => isGlobsetMatch(relative, glob))
+				ignoringGlob(relative, ignored) !== undefined
 			)
 				continue;
 			if (isDirectoryType(type))

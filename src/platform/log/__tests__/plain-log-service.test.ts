@@ -46,6 +46,31 @@ describe("PlainLogService", () => {
 		]);
 	});
 
+	it("should write its own lines on stderr once stdout is reserved, and leave print and note on stdout", () => {
+		const logService = new PlainLogService();
+		logService.reserveStdout();
+
+		logService.intro("rogen build · game");
+		logService.step("building");
+		logService.section("title", "body");
+		logService.info("a line");
+		logService.success("done");
+		logService.outro("Built 1 config.");
+		logService.print("what a program reads");
+		logService.note("beside it");
+
+		expect(out).toEqual(["what a program reads", "beside it"]);
+		expect(errors).toEqual([
+			"rogen build · game",
+			"building",
+			"title",
+			"  body",
+			"  a line",
+			"  done",
+			"Built 1 config.",
+		]);
+	});
+
 	it("should print a diagnostic without a second severity prefix", () => {
 		const logService = new PlainLogService();
 

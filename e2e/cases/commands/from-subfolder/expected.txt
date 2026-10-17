@@ -3,14 +3,14 @@ exit 0
 stdout:
   rogen build · project · in ../..
   ../../default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build ../..
 exit 0
 stdout:
   rogen build · project · in ../..
   ../../default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build ghost
 exit 2

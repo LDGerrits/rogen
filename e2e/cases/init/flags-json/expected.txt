@@ -9,6 +9,10 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/.gitignore",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/.agents/hooks/rogen-check.sh",
         "outcome": "wrote"
       },
@@ -18,7 +22,13 @@ stdout:
       }
     ],
     "directories": [],
+    "git": "initialised",
     "decided": [
+      {
+        "question": "kind",
+        "value": "place",
+        "flag": "--kind"
+      },
       {
         "question": "language",
         "value": "luau",
@@ -33,6 +43,11 @@ stdout:
         "question": "unmatched",
         "value": "shared",
         "flag": "--unmatched"
+      },
+      {
+        "question": "skipGit",
+        "value": false,
+        "flag": "--skip-git"
       }
     ],
     "built": [
@@ -62,6 +77,8 @@ stdout:
 written:
   .agents/hooks/rogen-check.sh
   .claude/settings.json
+  .git/
+  .gitignore
   default.project.json
   rogen.json
 

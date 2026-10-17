@@ -31,6 +31,16 @@ export interface RojoNode {
 	[key: string]: unknown;
 }
 
+/** The `$` fields of a node; another `$` key holding an object is a child that Rojo warns of. */
+export const NODE_FIELDS: ReadonlySet<string> = new Set([
+	"$className",
+	"$path",
+	"$properties",
+	"$attributes",
+	"$ignoreUnknownInstances",
+	"$id",
+]);
+
 function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(
 		(entry): entry is [string, RojoNode] =>
@@ -143,6 +153,24 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			const here = [...at, key];
 			if (!isObject(value)) return here;
 			const inner = RojoProject.findNonNode(value, here);
+			if (inner) return inner;
+		}
+		return undefined;
+	}
+
+	/** The first `$` key that is no field and holds no object, which Rojo refuses. */
+	static findUnknownField(
+		node: RojoNode,
+		at: readonly string[]
+	): readonly string[] | undefined {
+		for (const [key, value] of Object.entries(node)) {
+			const here = [...at, key];
+			if (!isObject(value)) {
+				if (key.startsWith("$") && !NODE_FIELDS.has(key)) return here;
+				continue;
+			}
+			if (NODE_FIELDS.has(key)) continue;
+			const inner = RojoProject.findUnknownField(value, here);
 			if (inner) return inner;
 		}
 		return undefined;

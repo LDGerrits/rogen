@@ -52,13 +52,13 @@ Give the field the type the message names. `null` is never a value in a `rogen.j
 
 ### `config.unknownField` [#config-unknownfield]
 
-Warning. The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1. Rogen passes it through to the project file it writes, and Rojo refuses a project file with a key it doesn't know, so the file fails to load there.
+Error. The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1. Rojo refuses a project file with a key it doesn't know, so Rogen leaves the written file as it was. A `$` key of a node in the `tree` that is not one of Rojo's fields, such as `$clasName`, gets the same error, unless it holds an object, which Rojo reads as a child.
 
 ```
-rogen.json:4:2 - warning: "exlude" is not a Rojo key and not Rogen's: it is passed through, and Rojo will reject the written file by this name. Did you mean "exclude"? (config.unknownField)
+rogen.json:4:2 - error: "exlude" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. Did you mean "exclude"? (config.unknownField)
 ```
 
-A field of a sync rule that a rule does not have gets the same warning, since Rojo ignores it and the rule then reads differently from what was meant. Rename the key to the one suggested, or remove it. A config with v1 keys also gets [`legacy.config`](#legacy-config). See [Configuration](/docs/v2/configuration#fields).
+A field of a sync rule that a rule does not have gets the same code as a warning, since Rojo ignores it and the rule then reads differently from what was meant. Rename the key to the one suggested, or remove it. A config with v1 keys also gets [`legacy.config`](#legacy-config). See [Configuration](/docs/v2/configuration#fields).
 
 ### `config.removedField` [#config-removedfield]
 
@@ -286,7 +286,7 @@ rogen.json - warning: 2 names write a route key after a dot, where only "@" rout
   src/Inventory/Types.shared.luau (write "Types@shared.luau")
 ```
 
-Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. A name inside a folder that a route already governs gets no rename: `@server` there is [`route.ignoredAt`](/docs/v2/diagnostics#route-ignoredat), so the line says which route governs it and to move it out of that route's files. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.folderTypo` [#route-foldertypo]
 
@@ -374,6 +374,19 @@ src/Save.server.luau - warning: the tree defines "ServerScriptService/Save" too,
 
 Rename the file, or remove the node from the `tree`. See [Configuration](/docs/v2/configuration#tree).
 
+### `tree.mountClash` [#tree-mountclash]
+
+Warning. A route puts files at or below a node of the `tree` that has a `$path`, and the folder that `$path` mounts holds an instance of the same name. Rojo reads the mount itself and adds the files beside what it holds, so the game gets two instances with one name, and `require` finds either. One warning lists the files of a mount, and `rogen where` shows its line under each file. What the config ignores in the mounted folder isn't counted.
+
+```
+rogen.json - warning: 2 files sit next to an instance of the same name that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds, so Rojo builds two of it: (tree.mountClash)
+  src/Combat/Hit.luau -> ReplicatedStorage/Lib/Combat/Hit (next to "Combat")
+  src/Combat/Miss.luau -> ReplicatedStorage/Lib/Combat/Miss (next to "Combat")
+Rename one of each pair, or route outside the mounted folder.
+```
+
+Rename one of them, or route the files somewhere the mount doesn't cover. See [Configuration](/docs/v2/configuration#tree).
+
 ### `tree.initWithoutFolder` [#tree-initwithoutfolder]
 
 Error. An init script becomes the folder it sits in, but that folder never becomes an instance. That's a source path, a plain routing folder or an invisible folder.
@@ -408,7 +421,7 @@ Move the script under a route whose target runs it, or drop `.server`/`.client` 
 
 ### `tree.runContextTarget` [#tree-runcontexttarget]
 
-Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there LocalScripts with a sync rule, but Rojo reads an init script without rules, so this one is a Script with RunContext Client.
+Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.client` script in `StarterPlayerScripts` or `StarterCharacterScripts`. Rogen keeps the other `.client` scripts there LocalScripts with a sync rule, but Rojo reads an init script without rules, so this one is a Script with RunContext Client. A script whose meta sets `RunContext` is left out, and so gets no rule: the meta decides how it runs.
 
 ```
 rogen.json - warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
@@ -490,6 +503,16 @@ src/Combat/init.meta.json:4:16 - error: "attributes": expected an object, found 
 ```
 
 Give the field the type the message names, as Rojo's meta format expects. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+
+### `meta.unreadableValue` [#meta-unreadablevalue]
+
+Error. A value in a meta file's `properties` or `attributes` is one Rojo can't read, such as `null`, a list of numbers of the wrong length, or an object of several keys. Rojo refuses the meta, and without this check the build fails later in a message that doesn't name the file.
+
+```
+src/Combat/init.meta.json:2:36 - error: "properties.WorldPivotData": Rojo can't read this value, so it refuses this meta. Write a boolean, a number, a string, a list of numbers (2, 3, 4 or 12), a list of strings, or a { "Type": value } pair. (meta.unreadableValue)
+```
+
+Write the value Rojo reads, or remove the property. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
 
 ### `meta.unknownField` [#meta-unknownfield]
 
@@ -605,7 +628,7 @@ later - warning: this source path does not exist or is not a folder, so it contr
 srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 ```
 
-Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. `rogen list` shows it too. A running `rogen watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
+Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the folder of `rogen.json`. `rogen list` shows it too. A running `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
 
 ### `scan.unmountedSource` [#scan-unmountedsource]
 
@@ -639,13 +662,13 @@ Change the `suffix`, or the `pattern`, so the suffix ends every file the pattern
 
 ### `scan.nestedProject` [#scan-nestedproject]
 
-Warning. A `default.project.json` lies inside a source path. Rojo reads it as a nested project, so it becomes an instance named `default`, holding that project's tree. A project file for the folder it lies in belongs outside the source paths. Other project files are left alone, since a nested project with a name of its own is a thing Rojo supports.
+Warning. A `default.project.json` (or `.jsonc`) lies in a source path itself, not in a folder below it. Rojo reads such a file as the folder it lies in, but a source path never becomes an instance, so Rogen places the project on its own, named by its `name`, or `default` without one. In a folder below the source path, the file is that folder, as in Rojo: the folder becomes one instance named by the project's `name`, and Rojo reads only what the project mounts.
 
 ```
-places/arena/default.project.json - warning: Rojo reads this project file as a nested project, so it becomes ReplicatedStorage/Shared/default, holding that project's tree. A project file for the folder it lies in belongs outside the source paths. (scan.nestedProject)
+src/default.project.json - warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/Shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
 ```
 
-Move the file out of the source paths. If it is meant as a nested project, mount it in the `tree` with a `$path` instead, which Rogen leaves to Rojo.
+Move the file into a folder of its own, or out of the source paths. See [Nested Projects](/docs/v2/core-concepts/project-layout#nested-projects).
 
 ### `scan.sourcePathNamedAfterKey` [#scan-sourcepathnamedafterkey]
 
@@ -714,13 +737,23 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported, and neither is one that was edited by hand, which is [`output.editedByHand`](#output-editedbyhand).
 
 ```
-default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written, or it was edited by hand. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
+default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
 ```
 
-Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. `build` overwrites the file whatever the cause, so a hand edit is lost; put it in `rogen.json`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
+Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
+
+### `output.editedByHand` [#output-editedbyhand]
+
+Warning, or error. `rogen check`, `rogen where` and `rogen list` warn, and `rogen build` fails, when a project file was changed by hand since Rogen wrote it and writing it again would lose the change. Rogen remembers a hash of each file it writes in the user's cache folder, since the file itself can't carry a mark (Rojo rejects keys it doesn't know). A file whose hash is not the last one written, and that holds a node, property or key the new file would not, is an edit by hand. A file that reads the same as what would be written, as after `rojo fmt-project`, is not.
+
+```
+default.project.json - error: this file was edited by hand, and a build would lose ServerStorage. To keep the edit, add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of rogen.json, since rogen.json is what writes this file, and then write it again. To drop the edit instead, run 'rogen build --force'. (output.editedByHand)
+```
+
+Put what the message names into `rogen.json`: the `tree` of a config holds the nodes names can't express, and its other keys sit beside it. Then `rogen build` writes the file with the edit. `rogen build --force` writes the file over the edit instead. No fix is offered that does either, since the move is yours to check and the force loses the edit. A machine that never wrote the file, or a cache that was cleared, has no hash, so the first build there writes the file as it always did. A file pulled from git that was written from another version of `rogen.json` has a hash this machine never saw and can look edited if it holds something this machine would not write: `rogen build --force` writes it. `build --watch` and `serve` stop on it too, since they cannot take `--force`: stop them, run it, and start them again. See [Output](/docs/v2/core-concepts/output#output).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
@@ -790,10 +823,10 @@ Check that the file is writable and that no other program locks it.
 Error. The folder already has a `rogen.json` or `rogen.jsonc`, and `init` never overwrites one. A run that can't ask (no terminal, `--non-interactive`, `--json`, CI or an agent) stops here when there is nothing else to add; in a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook` or `--rojo-pin` ask for them without one.
 
 ```
-rogen.json - error: this config already exists. Delete it to write a new one. (init.configExists)
+rogen.json - error: this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin. (init.configExists)
 ```
 
-Delete the config to start over, or run `rogen init` in a terminal to add the agent files. See [CLI](/docs/v2/cli).
+Edit the config to change it, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 
@@ -881,7 +914,7 @@ Pin the tool, or fix the install the quoted line points at. Running `rojo --vers
 
 ### `serve.portTaken` [#serve-porttaken]
 
-Error. Another program holds the port a config would be served on. When it's a Rojo server, the message names the project it serves. A server that already serves the same project isn't an error: `rogen serve` leaves it running, and builds for it when no `rogen serve` started it. It is one when another config here has the same project name and no `rogen serve` started the server, since Rogen can't tell which config it serves: stop that server and run `rogen serve` again.
+Error. Another program holds the port a config would be served on. When it's a Rojo server, the message names the project it serves. A server that another `rogen serve` started for the same project file isn't an error: `rogen serve` leaves it running. It is one when no `rogen serve` started the server, even if it serves a project of the same name, since Rojo reports only the name and Rogen can't tell whether it serves this project file: stop that server and run `rogen serve` again, or, if it serves this project file, run `rogen serve --adopt`.
 
 ```
 rogen.json - error: Port 34872 is taken by Rojo serving shop, so default can't be served there. Give default its own servePort in rogen.json, or run 'rogen serve default --port 34873'. (serve.portTaken)
@@ -910,6 +943,16 @@ default.project.json - error: Rojo 7.4.4 does not read "syncRules" before 7.5.0,
 ```
 
 Change the pin, run the manager's install command, and run the command again. See [Installation](/docs/v2/installation).
+
+### `rojo.negationUnsupported` [#rojo-negationunsupported]
+
+Error. The Rojo that would run is older than 7.7.0, which is the first to read a `globIgnorePaths` glob that starts with `!`, and a file Rogen wrote has one. An older Rojo reads it as a name that starts with `!`, so it matches nothing, and the files it brings back stay ignored. Rogen checks before it serves anything.
+
+```
+default.project.json - error: Rojo 7.6.1 reads no "!" glob before 7.7.0, so it ignores what this file's 1 re-includes: "!**/Keep.spec.luau". Change your Rojo pin to 7.7.0 or later, or update the Rojo on the PATH. (rojo.negationUnsupported)
+```
+
+Change the pin, run the manager's install command, and run the command again. See [Ignoring Files](/docs/v2/configuration#ignoring-files).
 
 ### `rojo.windowsRules` [#rojo-windowsrules]
 
@@ -955,7 +998,7 @@ Remove the node from the `tree` of `rogen.json`, or put the instance back in the
 
 ### `syncback.unplaced` [#syncback-unplaced]
 
-Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides: no route puts files where its parent is, two routes do, the project has several source paths and no file beside it says which, or as many files beside it lie in each of two folders of one style. It is also how syncback lists what it can't write: an instance where an ignore glob would put it, a property set on a folder that no one folder of the project is, a copy of an init script edited differently from another copy of it, or deleted while another was edited (the edit is written), and a change Rojo itself can't sync back (a `.json` or `.toml` module). The message says why.
+Warning. The place holds an instance that no folder of the project can take, so syncback left it out. A new instance is written where routing would place a file for it, in the style of the nearest files; this is the case where nothing decides: no route puts files where its parent is, two routes do, the project has several source paths and no file beside it says which, or as many files beside it lie in each of two folders of one style. It is also how syncback lists what it can't write: an instance where an ignore glob would put it, a property set on a folder that no one folder of the project is, a property set on a node that only routing made (the `tree` has none), a copy of an init script edited differently from another copy of it, or deleted while another was edited (the edit is written), and a change Rojo itself can't sync back (a `.json` or `.toml` module). The message says why.
 
 ```
 rogen.json - warning: ServerScriptService/Inventory/Mail is in the place and no folder of the project can take it, so it was left out: files beside it are in more than one place, as many in each: src/Inventory/Server, lib/Inventory/Server. (syncback.unplaced)

@@ -57,6 +57,9 @@ export function withHook(
 	};
 }
 
+/** The file Claude Code reads its hooks from, which marks it among the agents. */
+export const CLAUDE_SETTINGS_FILE = ".claude/settings.json";
+
 export interface CodingAgent {
 	readonly name: string;
 	readonly settingsFile: string;
@@ -73,7 +76,7 @@ const group = (command: string) => ({
 export const CODING_AGENTS: readonly CodingAgent[] = [
 	{
 		name: "Claude Code",
-		settingsFile: ".claude/settings.json",
+		settingsFile: CLAUDE_SETTINGS_FILE,
 		signs: [".claude", "CLAUDE.md"],
 		hook: {
 			event: "Stop",

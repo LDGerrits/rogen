@@ -1,5 +1,6 @@
 import { compareStrings } from "../../base/collections.js";
 import { isObject } from "../../base/objects.js";
+import { FloatText, PropertyValues } from "./property-values.js";
 import { RojoProjectFile } from "./rojo-project.js";
 
 /** The keys of a project file in the order Rojo writes them. */
@@ -18,6 +19,19 @@ const FILE_KEYS = [
 	"globIgnorePaths",
 	"syncbackRules",
 	"syncRules",
+];
+
+/** The keys of a sync rule, in the order Rojo writes them. */
+const SYNC_RULE_KEYS = ["pattern", "exclude", "use", "suffix"];
+
+/** The keys of `syncbackRules`, in the order Rojo writes them. */
+const SYNCBACK_RULE_KEYS = [
+	"ignoreTrees",
+	"ignorePaths",
+	"ignoreProperties",
+	"syncCurrentCamera",
+	"syncUnscriptable",
+	"ignoreReferents",
 ];
 
 /** The node keys around the children, in the order Rojo writes them. */
@@ -77,6 +91,14 @@ export class ProjectText {
 		rogenKeys: readonly string[]
 	): unknown {
 		if (key === "tree" && isObject(value)) return ProjectText.node(value);
+		if (key === "syncRules" && Array.isArray(value))
+			return value.map((rule) =>
+				isObject(rule)
+					? ProjectText.inOrder(rule, SYNC_RULE_KEYS)
+					: rule
+			);
+		if (key === "syncbackRules" && isObject(value))
+			return ProjectText.syncbackRules(value);
 		if (
 			key !== PROJECTS_KEY ||
 			!rogenKeys.includes(key) ||
@@ -123,19 +145,55 @@ export class ProjectText {
 		return new Ordered(entries);
 	}
 
+	private static syncbackRules(rules: Record<string, unknown>): Ordered {
+		const { ignoreProperties } = rules;
+		return ProjectText.inOrder(
+			isObject(ignoreProperties)
+				? {
+						...rules,
+						ignoreProperties:
+							ProjectText.sortedKeys(ignoreProperties),
+					}
+				: rules,
+			SYNCBACK_RULE_KEYS
+		);
+	}
+
+	/** `value` with `keys` first, in that order, then any others as they were. */
+	private static inOrder(
+		value: Record<string, unknown>,
+		keys: readonly string[]
+	): Ordered {
+		return new Ordered([
+			...keys
+				.filter((key) => key in value)
+				.map((key) => [key, value[key]] as const),
+			...Object.entries(value).filter(([key]) => !keys.includes(key)),
+		]);
+	}
+
+	private static sortedKeys(value: Record<string, unknown>): Ordered {
+		return new Ordered(
+			Object.keys(value)
+				.sort(compareStrings)
+				.map((key) => [key, value[key]])
+		);
+	}
+
 	private static sorted(value: unknown): unknown {
-		return isObject(value)
-			? new Ordered(
-					Object.keys(value)
-						.sort(compareStrings)
-						.map((key) => [key, value[key]])
-				)
-			: value;
+		if (!isObject(value)) return value;
+		const typed = PropertyValues.typed(value);
+		return new Ordered(
+			Object.keys(typed)
+				.sort(compareStrings)
+				.map((key) => [key, typed[key]])
+		);
 	}
 
 	/** `serde_json`'s pretty form: two spaces, one entry per line, and `{}` and `[]` for nothing. */
 	private static print(value: unknown, indent: string): string {
 		const inner = indent + INDENT;
+		if (value instanceof FloatText) return value.toString();
 		if (value instanceof Ordered)
 			return value.entries.length === 0
 				? "{}"

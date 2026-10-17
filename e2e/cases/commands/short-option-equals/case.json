@@ -1,0 +1,1 @@
+{"steps":[["sourcemap","-o=sourcemap.json"],["build","-o=game.rbxlx"]],"show":["sourcemap.json"],"rojo":false}

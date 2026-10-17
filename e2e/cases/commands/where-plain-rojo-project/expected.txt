@@ -1,0 +1,44 @@
+$ rogen where src/server/init.server.luau src/server/Helper.luau Packages/Sub/Deep.luau
+exit 0
+stdout:
+  src/server/init.server.luau -> ServerScriptService/Server · mounted, which Rojo reads
+  src/server/Helper.luau -> ServerScriptService/Server/Helper · inside the mount at ServerScriptService/Server, which Rojo reads
+  Packages/Sub/Deep.luau -> ReplicatedStorage/Packages/Sub/Deep · inside the mount at ReplicatedStorage/Packages, which Rojo reads
+
+$ rogen where ServerScriptService.Server ReplicatedStorage.Packages.Sub.Deep
+exit 0
+stdout:
+  src/server/init.server.luau -> ServerScriptService/Server · mounted, which Rojo reads
+  Packages/Sub/Deep.luau -> ReplicatedStorage/Packages/Sub/Deep · inside the mount at ReplicatedStorage/Packages, which Rojo reads
+
+$ rogen where src
+exit 0
+stdout:
+  src/client -> StarterPlayer/StarterPlayerScripts/Client · mounted, which Rojo reads
+  src/server -> ServerScriptService/Server · mounted, which Rojo reads
+  src/shared -> ReplicatedStorage/Shared · mounted, which Rojo reads
+
+$ rogen where --json ReplicatedStorage.Shared.Hello
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "plain",
+        "source": "<dir>/src/shared/Hello.luau",
+        "status": "mounted",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "Shared",
+          "Hello"
+        ],
+        "mount": [
+          "ReplicatedStorage",
+          "Shared"
+        ],
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }

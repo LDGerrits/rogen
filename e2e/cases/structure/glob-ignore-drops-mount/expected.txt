@@ -6,7 +6,7 @@ $ rogen where DevPackages/D.luau Packages/P.luau
 exit 0
 stdout:
   DevPackages/D.luau -> ignored · matches DevPackages/**
-  Packages/P.luau -> mounted · the tree mounts it at ReplicatedStorage/Packages
+  Packages/P.luau -> ReplicatedStorage/Packages/P · inside the mount at ReplicatedStorage/Packages, which Rojo reads
 
 written:
   default.project.json

@@ -22,6 +22,8 @@ export type ScanLeftOut =
 	| { readonly status: "ignored"; readonly pattern: string }
 	/** The tree mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
 	| { readonly status: "mounted"; readonly node: readonly string[] }
+	/** It lies in a folder that holds a `default.project.json`, which Rojo reads as the whole folder. */
+	| { readonly status: "inProject"; readonly project: string }
 	/** A link that loops back to an ancestor or points at nothing. */
 	| { readonly status: "skipped" }
 	/** Rojo ignores it because of the letter case of its extension; `rename` is the file name that Rojo reads. */

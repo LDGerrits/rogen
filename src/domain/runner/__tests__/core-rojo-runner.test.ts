@@ -1,3 +1,4 @@
+import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
@@ -43,6 +44,37 @@ describe("CoreRojoRunner", () => {
 			expect(processes.spawned[0].options.cwd).toBe("/repo");
 		});
 
+		it.each([
+			[LogLevel.Info, []],
+			[LogLevel.Debug, ["-v"]],
+			[LogLevel.Trace, ["-vv"]],
+		])(
+			"should pass Rogen's log level %s on to Rojo as %j",
+			(level, flags) => {
+				runner = new CoreRojoRunner(
+					new CoreToolchainService(new MemoryFileSystemService()),
+					processes,
+					level
+				);
+
+				runner.start(
+					executable,
+					"build",
+					"a.json",
+					["-o", "x"],
+					"/repo"
+				);
+
+				expect(processes.spawned[0].args).toEqual([
+					"build",
+					"a.json",
+					...flags,
+					"-o",
+					"x",
+				]);
+			}
+		);
+
 		it("should run the command with the flags alone when it has no project file", () => {
 			runner.start(executable, "plugin", undefined, ["install"], "/repo");
 
@@ -60,7 +92,7 @@ describe("CoreRojoRunner", () => {
 			);
 			rojo.onDidMessage((message) => said.push(message));
 
-			processes.spawned[0].print("error: no such project\n");
+			processes.spawned[0].printError("error: no such project\n");
 			processes.spawned[0].exit({ code: 1, signal: null });
 
 			expect(said).toEqual([
@@ -80,7 +112,7 @@ describe("CoreRojoRunner", () => {
 			rojo.onDidMessage(({ text }) => events.push(text));
 			rojo.onDidExit(({ code }) => events.push(`exit ${code}`));
 
-			processes.spawned[0].print("error: no such project\n");
+			processes.spawned[0].printError("error: no such project\n");
 			processes.spawned[0].exit({ code: 1, signal: null });
 
 			expect(events).toEqual(["no such project", "exit 1"]);

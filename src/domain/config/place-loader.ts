@@ -32,7 +32,6 @@ interface LoadedPlaces {
 interface PlaceSources {
 	readonly sources: readonly ProjectSource[];
 	readonly serveProject: string;
-	readonly warnings: readonly Diagnostic[];
 }
 
 /** Reads the config of each folder a config lists as a place, on top of the config's own. */
@@ -64,11 +63,10 @@ export class PlaceLoader {
 				})
 			);
 			const declared = new ProjectSourceReader(config, base).read();
-			problems.push(...keys.errors, ...declared.errors);
+			problems.push(...keys, ...declared.errors);
 			read.push({
 				sources: declared.sources,
 				serveProject: declared.serveProject,
-				warnings: keys.warnings,
 			});
 		}
 		if (problems.length > 0)
@@ -86,8 +84,8 @@ export class PlaceLoader {
 				sources.flatMap((source) => portOf(source) ?? [])
 			)
 		);
-		const places = read.map(({ sources, serveProject, warnings }, index) =>
-			ConfigValidator.validateFile(sources, serveProject, warnings, {
+		const places = read.map(({ sources, serveProject }, index) =>
+			ConfigValidator.validateFile(sources, serveProject, {
 				rootFile,
 				placePort: ports[index],
 			})

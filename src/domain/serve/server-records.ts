@@ -7,6 +7,8 @@ import { ServeAddress } from "./serve.js";
 interface ServedBuild {
 	readonly projectFile: string;
 	readonly clients?: number;
+	/** The process that leads the server. */
+	readonly pid?: number;
 }
 
 export interface ServerRecord extends ServedBuild {
@@ -15,6 +17,8 @@ export interface ServerRecord extends ServedBuild {
 	readonly server: string;
 	readonly project: string;
 	readonly session?: string;
+	/** The `rogen serve` process that started the server. */
+	readonly owner?: number;
 }
 
 function recordIn(value: unknown): ServerRecord | undefined {
@@ -26,7 +30,9 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		typeof value.project !== "string" ||
 		typeof value.projectFile !== "string" ||
 		(value.session !== undefined && typeof value.session !== "string") ||
-		(value.clients !== undefined && typeof value.clients !== "number")
+		(value.clients !== undefined && typeof value.clients !== "number") ||
+		(value.owner !== undefined && typeof value.owner !== "number") ||
+		(value.pid !== undefined && typeof value.pid !== "number")
 	)
 		return undefined;
 	return {
@@ -37,6 +43,8 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		session: value.session,
 		projectFile: value.projectFile,
 		clients: value.clients,
+		owner: value.owner,
+		pid: value.pid,
 	};
 }
 
@@ -45,7 +53,8 @@ export class ServerRecords {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		tmpDir: string
+		tmpDir: string,
+		private readonly owner: number
 	) {
 		this.dir = path.join(tmpDir, "rogen-serve");
 	}
@@ -95,6 +104,8 @@ export class ServerRecords {
 				project: info.project,
 				projectFile: built.projectFile,
 				clients: built.clients,
+				owner: this.owner,
+				pid: built.pid,
 			})
 		);
 	}
