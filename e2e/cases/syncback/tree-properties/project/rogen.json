@@ -1,0 +1,15 @@
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Version": {
+        "$className": "StringValue",
+        "$properties": { "Value": "1.0" }
+      }
+    }
+  },
+  "sourcePaths": ["src"],
+  "routes": { "Server": "ServerScriptService" }
+}

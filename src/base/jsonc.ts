@@ -2,7 +2,9 @@ import {
 	Node,
 	ParseError,
 	ParseErrorCode,
+	applyEdits,
 	getNodeValue,
+	modify,
 	parseTree,
 	printParseErrorCode,
 } from "jsonc-parser";
@@ -181,4 +183,26 @@ export function parse(text: string): Result<unknown, Error> {
 	}
 	if (!root) return err(new Error("invalid JSONC: the document is empty."));
 	return ok(value);
+}
+
+/** The indentation and line ending a document is written with, to write an edit the same way. */
+function formattingOf(text: string) {
+	const indent = /^([ \t]+)\S/m.exec(text)?.[1] ?? "  ";
+	return {
+		insertSpaces: !indent.startsWith("\t"),
+		tabSize: indent.startsWith("\t") ? 1 : indent.length,
+		eol: text.includes("\r\n") ? "\r\n" : "\n",
+	};
+}
+
+/** `text` with the value at `at` set, or removed when `value` is undefined; comments and the rest of the formatting stay. */
+export function setJsoncValue(
+	text: string,
+	at: readonly string[],
+	value: unknown
+): string {
+	return applyEdits(
+		text,
+		modify(text, [...at], value, { formattingOptions: formattingOf(text) })
+	);
 }

@@ -20,7 +20,11 @@ import {
 	ConfigLocations,
 	PlacedLocation,
 } from "../build/build-service.js";
-import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
+import {
+	DEFAULT_PROJECT,
+	SYNCBACK_FILES,
+	isSyncbackFileName,
+} from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -41,6 +45,7 @@ import {
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
 import { SyncbackMirror } from "./syncback-mirror.js";
+import { applyTreeChanges, treeChanges } from "./tree-changes.js";
 
 /** The first Rojo release with `syncback`. */
 const SYNCBACK_SINCE = "7.7.0";
@@ -592,6 +597,12 @@ export class CoreSyncbackService implements SyncbackService {
 				}
 			}
 		}
+		const edited = await this.editTree(request, prepared);
+		if (edited.operation) {
+			await touch(edited.operation.file);
+			operations.push(edited.operation);
+		}
+		unplaced.push(...edited.unplaced);
 		const holding = new Set<string>();
 		for (const { path: at } of after) {
 			const names = at.split("/");
@@ -713,6 +724,57 @@ export class CoreSyncbackService implements SyncbackService {
 			before,
 			expected
 		);
+	}
+
+	/** What Rojo changed in the nodes of the project file it ran on, as an edit of the config's own tree; a node the tree does not have, which routing made, has no place for it. */
+	private async editTree(
+		request: SyncbackRequest,
+		prepared: Prepared
+	): Promise<{
+		operation?: Operation;
+		unplaced: UnplacedInstance[];
+	}> {
+		const ran = await tryWithAsync(async () => {
+			const text = await this.fileSystemService.readFile(prepared.file);
+			return (JSON.parse(text) as RojoProjectFile).tree;
+		});
+		if (ran.isErr() || ran.value === undefined) return { unplaced: [] };
+		const changes = treeChanges(prepared.mirror.file.tree, ran.value);
+		if (changes.length === 0) return { unplaced: [] };
+		const { project } = request;
+		const current = await tryWithAsync(() =>
+			this.fileSystemService.readFile(prepared.configFile)
+		);
+		const label = (node: readonly string[]) =>
+			node.length === 0 ? project.projectName : instanceKey(node);
+		if (current.isErr())
+			return {
+				unplaced: changes.map(({ node }) => ({
+					instance: label(node),
+					reason: `${prepared.configFile} could not be read`,
+				})),
+			};
+		const applied = applyTreeChanges(
+			current.value,
+			project.stem === DEFAULT_PROJECT
+				? ["tree"]
+				: ["projects", project.stem, "tree"],
+			changes
+		);
+		const unplaced = applied.unhomed.map((node) => ({
+			instance: label(node),
+			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,
+		}));
+		if (applied.text === current.value) return { unplaced };
+		return {
+			unplaced,
+			operation: {
+				kind: "write",
+				file: prepared.configFile,
+				instance: label(changes[0].node),
+				bytes: new TextEncoder().encode(applied.text),
+			},
+		};
 	}
 
 	/** Where routing puts a new instance, as the files to write; left out when routing can't place it, when a file is already there, or when an ignore glob matches where it goes. */

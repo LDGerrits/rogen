@@ -1,0 +1,46 @@
+$ rogen syncback -i place.rbxl -y --list
+exit 0
+stdout:
+  rogen syncback · game
+  default.project.json · wrote
+  Built 1 config.
+  write  rogen.json
+  Syncback wrote 1 change.
+stderr:
+  rogen.json - warning: ServerScriptService is in the place and no folder of the project can take it, so it was left out: a property or attribute changed in Studio, and the tree of rogen.json has no node for it, since routing made it; add a node for it to the tree. (syncback.unplaced)
+
+written:
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Version": {
+        "$className": "StringValue",
+        "$properties": {
+          "Value": "2.0"
+        },
+        "$attributes": {
+          "Build": {
+            "Float32": 7
+          }
+        }
+      }
+    }
+  },
+  "sourcePaths": ["src"],
+  "routes": { "Server": "ServerScriptService" }
+}
+
+$ rojo sourcemap default.project.json
+game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Version: StringValue
+  ServerScriptService: ServerScriptService
+    Combat: Folder
+      Hit: ModuleScript  <- src/Combat/Server/Hit.luau

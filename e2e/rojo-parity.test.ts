@@ -184,6 +184,14 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				.find((file) => fs.existsSync(file)) as string;
 		};
 
+		/** The tree of the project file a side keeps, which Rojo rewrites with what Studio changed on its nodes. */
+		const treeOf = (dir: string, file: string): unknown =>
+			(
+				JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")) as {
+					tree: unknown;
+				}
+			).tree;
+
 		const copy = (name: string, side: string) => {
 			const to = path.join(
 				fs.mkdtempSync(path.join(parent, `syncback-${name}-`)),
@@ -223,6 +231,9 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				expect(actual.status).toBe(expected.status);
 				expect(snapshot(byRogen, PROJECT_FILES)).toEqual(
 					snapshot(byRojo, PROJECT_FILES)
+				);
+				expect(treeOf(byRogen, "rogen.json")).toEqual(
+					treeOf(byRojo, "default.project.json")
 				);
 			},
 			60_000
