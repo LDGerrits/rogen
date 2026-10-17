@@ -94,7 +94,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse a routing folder into its parent's node, but collapse a folder inside it", async () => {
+			it("should mount a routing folder at the node its files land in", async () => {
 				await write(
 					"src/Combat/server/Hit.luau",
 					"src/Combat/server/Moves/Punch.luau"
@@ -106,15 +106,53 @@ describe("TreeAssembler", () => {
 
 				expect(value.tree.ServerScriptService).toEqual({
 					$className: "ServerScriptService",
+					Combat: { $path: optional("src/Combat/server") },
+				});
+			});
+
+			it("should not mount a routing folder whose node another file also lands in", async () => {
+				await write(
+					"src/Combat/server/Hit.luau",
+					"src/Combat/Extra.server.luau"
+				);
+
+				const { projectFile: value } = await assemble({
+					routes: { server: "ServerScriptService" },
+				});
+
+				expect(value.tree.ServerScriptService).toEqual({
+					$className: "ServerScriptService",
 					Combat: {
 						...FOLDER,
 						Hit: { $path: optional("src/Combat/server/Hit.luau") },
-						Moves: { $path: optional("src/Combat/server/Moves") },
+						Extra: {
+							$path: optional("src/Combat/Extra.server.luau"),
+						},
 					},
 				});
 			});
 
-			it("should not collapse a routing folder into its route's target folder", async () => {
+			it("should not mount a routing folder that holds a folder meta, which Rojo would read as the node's", async () => {
+				await write("src/Combat/server/Hit.luau");
+				await fs.writeFile(
+					abs("src/Combat/server/init.meta.json"),
+					JSON.stringify({ className: "Actor" })
+				);
+
+				const { projectFile: value } = await assemble({
+					routes: { server: "ServerScriptService" },
+				});
+
+				expect(value.tree.ServerScriptService).toEqual({
+					$className: "ServerScriptService",
+					Combat: {
+						...FOLDER,
+						Hit: { $path: optional("src/Combat/server/Hit.luau") },
+					},
+				});
+			});
+
+			it("should mount a routing folder at its route's target folder", async () => {
 				await write("src/shared/Types.luau");
 
 				const storage = await storageOf({
@@ -122,8 +160,7 @@ describe("TreeAssembler", () => {
 				});
 
 				expect(storage.shared).toEqual({
-					...FOLDER,
-					Types: { $path: optional("src/shared/Types.luau") },
+					$path: optional("src/shared"),
 				});
 			});
 

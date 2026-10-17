@@ -77,7 +77,7 @@ In a terminal, the **Routes** question offers these routes ticked, with the hint
 rogen where src
 ```
 
-`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on. `git diff default.project.json` won't show it, because Rogen writes each file as its own node, so the file differs even when nothing moved.
+`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on. `git diff default.project.json` won't show it, because Rogen writes a node for each file a folder mount doesn't cover, so the file differs even when nothing moved.
 
 </Step>
 
@@ -112,7 +112,7 @@ In a folder Rogen routes, these differ from what Rojo does with the same files. 
 | `(Group)/`, `^Hoist.luau` and `Foo@server.luau` are names. | They are routing sigils. | Rename the file, or put it where the tree mounts it. |
 | A glob in `globIgnorePaths` that ends in `/**` and names a mounted folder empties the Folder. | The mount is left out of the written file. | None needed; documented in [Configuration](/docs/v2/configuration#fields). |
 | A glob starting with `/` or `./` matches nothing. | It is read from the config's folder. | Write globs as Rojo reads them. |
-| The project file you wrote. | One node per file, `$path` marked `optional`. | `git diff` of the file shows nothing useful; use `rogen where`. |
+| The project file you wrote. | A folder every file of which routing places under one node is one `$path` mount; any other file is a node of its own. Each `$path` is marked `optional`. | `git diff` of the file shows nothing useful; use `rogen where`. A file added to a mounted folder reaches plain `rojo serve` and `rojo sourcemap` at once; any other waits for the next `rogen build`. |
 
 ## By Hand
 
@@ -150,4 +150,4 @@ Rogen replaces the project file you wrote, and Rojo's commands that read it keep
 - **`rojo sourcemap`** works on it as it does on any project file, for luau-lsp and other tools. `rogen sourcemap` writes the project files first and then runs it, and in a root with places writes a `sourcemap.json` for each: see [`sourcemap`](/docs/v2/cli#sourcemap-project).
 - **`rojo upload`** uploads it. `rogen upload` writes the project files first and then runs it, with Rojo's flags as Rojo spells them: see [`upload`](/docs/v2/cli#upload-project).
 - **`rojo plugin install`** installs Rojo's Studio plugin. `rogen plugin install` has the Rojo your project pins do it, so the plugin matches the server `rogen serve` starts: see [`plugin`](/docs/v2/cli#plugin-install-and-plugin-uninstall).
-- **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds one node per file, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next build. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.
+- **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds a node per file and per mounted folder, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next build. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.

@@ -50,3 +50,4 @@ Game: DataModel
   ServerScriptService: ServerScriptService
     Combat: Folder
       Combat: ModuleScript  <- dist/Combat/Server/Combat.luau
+      Loot: ModuleScript  <- dist/Combat/Server/Loot.luau

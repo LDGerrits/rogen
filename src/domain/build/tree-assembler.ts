@@ -187,6 +187,7 @@ export class TreeAssembler {
 		);
 		const claims = TreeAssembler.claimsOf(placed);
 		const { entriesByDir, namedDirs } = TreeAssembler.dirsOf(placed);
+		const mountableDirs = this.routingDirs(entriesByDir, namedDirs);
 		const blocked = TreeAssembler.dirsAbove(leftOut);
 		const holdsUnplacedFolder = this.unplacedFolderFinder(entriesByDir);
 
@@ -198,7 +199,7 @@ export class TreeAssembler {
 		for (const [dir, entries] of outermostFirst) {
 			if (
 				blocked.has(dir) ||
-				!namedDirs.has(dir) ||
+				!mountableDirs.has(dir) ||
 				covering.covers(dir) ||
 				holdsUnplacedFolder(dir)
 			)
@@ -212,6 +213,28 @@ export class TreeAssembler {
 				collapsed.set(dir, instancePath);
 		}
 		return collapsed;
+	}
+
+	/** The folders a node may be mounted at: those that name one, and routing folders whose own meta Rojo wouldn't read as the node's. */
+	private routingDirs(
+		entriesByDir: ReadonlyMap<string, readonly PlacedEntry[]>,
+		namedDirs: ReadonlySet<string>
+	): Set<string> {
+		const { placement, meta } = this;
+		const withMeta = new Set(meta.folderMeta.map(({ folder }) => folder));
+		const dirs = new Set(namedDirs);
+		for (const [dir, [{ file }]] of entriesByDir) {
+			const sourcePath = toPosix(file.entry.sourcePath);
+			if (
+				!withMeta.has(dir) &&
+				placement.readings.instanceless(
+					sourcePath,
+					path.posix.relative(sourcePath, dir)
+				) === "a routing folder"
+			)
+				dirs.add(dir);
+		}
+		return dirs;
 	}
 
 	private static claimsOf(placed: readonly PlacedEntry[]) {
