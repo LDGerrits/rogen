@@ -8,7 +8,7 @@ stderr:
 $ rogen where src/Net/Vendor/Signal.luau
 exit 0
 stdout:
-  src/Net/Vendor/Signal.luau -> mounted · the tree mounts it at ReplicatedStorage/Vendor
+  src/Net/Vendor/Signal.luau -> ReplicatedStorage/Vendor/Signal · inside the mount at ReplicatedStorage/Vendor, which Rojo reads
 
 written:
   default.project.json

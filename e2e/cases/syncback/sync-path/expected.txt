@@ -10,7 +10,7 @@ stderr:
     default.project.json · wrote
   Game (dist)
     dist.project.json · wrote
-  Built 2 configs.
+  Built 2 projects.
   Syncback wrote 3 changes.
 
 $ rogen syncback -i place.rbxl --dry-run
@@ -25,7 +25,7 @@ stderr:
     default.project.json · unchanged
   Game (dist)
     dist.project.json · unchanged
-  Built 2 configs.
+  Built 2 projects.
   Syncback would change 3 files (2 to write, 1 to remove).
 
 written:

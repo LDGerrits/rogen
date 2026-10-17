@@ -714,13 +714,23 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale or was edited by hand. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported, and neither is one that was edited by hand, which is [`output.editedByHand`](#output-editedbyhand).
 
 ```
-default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written, or it was edited by hand. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
+default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
 ```
 
-Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. `build` overwrites the file whatever the cause, so a hand edit is lost; put it in `rogen.json`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
+Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
+
+### `output.editedByHand` [#output-editedbyhand]
+
+Warning, or error. `rogen check`, `rogen where` and `rogen list` warn, and `rogen build` fails, when a project file was changed by hand since Rogen wrote it and writing it again would lose the change. Rogen remembers a hash of each file it writes in the user's cache folder, since the file itself can't carry a mark (Rojo rejects keys it doesn't know). A file whose hash is not the last one written, and that holds a node, property or key the new file would not, is an edit by hand. A file that reads the same as what would be written, as after `rojo fmt-project`, is not.
+
+```
+default.project.json - error: this file was edited by hand, and a build would lose ServerStorage. To keep the edit, add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of rogen.json, since rogen.json is what writes this file, and then write it again. To drop the edit instead, run 'rogen build --force'. (output.editedByHand)
+```
+
+Put what the message names into `rogen.json`: the `tree` of a config holds the nodes names can't express, and its other keys sit beside it. Then `rogen build` writes the file with the edit. `rogen build --force` writes the file over the edit instead. No fix is offered that does either, since the move is yours to check and the force loses the edit. A machine that never wrote the file, or a cache that was cleared, has no hash, so the first build there writes the file as it always did. A file pulled from git that was written from another version of `rogen.json` has a hash this machine never saw and can look edited if it holds something this machine would not write: `rogen build --force` writes it. `build --watch` and `serve` stop on it too, since they cannot take `--force`: stop them, run it, and start them again. See [Output](/docs/v2/core-concepts/output#output).
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
@@ -790,10 +800,10 @@ Check that the file is writable and that no other program locks it.
 Error. The folder already has a `rogen.json` or `rogen.jsonc`, and `init` never overwrites one. A run that can't ask (no terminal, `--non-interactive`, `--json`, CI or an agent) stops here when there is nothing else to add; in a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook` or `--rojo-pin` ask for them without one.
 
 ```
-rogen.json - error: this config already exists. Delete it to write a new one. (init.configExists)
+rogen.json - error: this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin. (init.configExists)
 ```
 
-Delete the config to start over, or run `rogen init` in a terminal to add the agent files. See [CLI](/docs/v2/cli).
+Edit the config to change it, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 

@@ -89,6 +89,8 @@ interface CommandMetadata<
 		readonly description: string;
 	};
 	readonly examples?: readonly string[];
+	/** What an exit code means for this command where that differs from the general table, by the code as typed (`0`, `1`, `128+N`). */
+	readonly exitCodes?: Readonly<Record<string, string>>;
 	/** The JSON this command prints with `--json`; a command with a `--json` option declares it. */
 	readonly output?: OutputDeclaration;
 	/** What it can do beyond printing, declared by every command: `[]` for one that only reads. */

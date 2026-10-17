@@ -16,6 +16,8 @@ stdout:
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
                                always, never]
+          --force              Write a project file over an edit made to it by hand, which a build
+                               refuses to lose otherwise.
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
       -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,

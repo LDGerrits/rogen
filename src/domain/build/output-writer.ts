@@ -1,3 +1,4 @@
+import path from "path";
 import { failureReason } from "../../base/errors.js";
 import { randomUUID } from "crypto";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
@@ -7,37 +8,89 @@ import { ProjectText } from "../rojo/project-text.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { OutputFile } from "./build.js";
+import { Edited, HandEdits } from "./hand-edits.js";
+import { WrittenRecords } from "./written-records.js";
+
+/** The message of a project file edited by hand: what a write would lose, and where it belongs. */
+export function editedByHandMessage(
+	edited: Edited,
+	configFile: string,
+	write: string
+): string {
+	if (edited === "unreadable")
+		return `this file was edited by hand and no longer reads as a project file, and ${write} would replace it. Fix it or delete it, since what it holds comes from ${configFile}.`;
+	const lost = edited.map((edit) => HandEdits.describe(edit)).join(", ");
+	const tree = HandEdits.asTree(edited);
+	const keys = HandEdits.asKeys(edited);
+	const moves = [
+		...(Object.keys(tree).length > 0
+			? [`add ${JSON.stringify(tree)} to the "tree" of ${configFile}`]
+			: []),
+		...(Object.keys(keys).length > 0
+			? [`set ${JSON.stringify(keys).slice(1, -1)} in ${configFile}`]
+			: []),
+	];
+	return `this file was edited by hand, and ${write} would lose ${lost}. To keep the edit, ${moves.join(" and ")}, since ${configFile} is what writes this file, and then write it again. To drop the edit instead, run 'rogen build --force'.`;
+}
 
 /** Writes a tree to its output through a staging file, so a reader never sees half a project file. */
 export class OutputWriter {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(
+		private readonly fileSystemService: FileSystemService,
+		private readonly records: WrittenRecords = new WrittenRecords()
+	) {}
 
 	static textOf(projectFile: RojoProjectFile): string {
 		return ProjectText.of(projectFile);
 	}
 
-	/** Whether the file was written; unchanged bytes are left alone unless `rewrite`, which makes a watcher see the file again. */
+	/** Whether the file was written; unchanged bytes are left alone unless `rewrite`, which makes a watcher see the file again. A file edited by hand since Rogen wrote it is not written over, unless `force`: the edit is an error that says what it holds. `configFile` is the config the file is written from. */
 	async write(
 		output: OutputFile,
 		tree: RojoProjectFile,
-		rewrite = false
+		configFile: string,
+		{ rewrite = false, force = false } = {}
 	): Promise<Result<boolean, DiagnosticsError>> {
 		const projectFile = output.path;
 		const content = OutputWriter.textOf(tree);
 		const temporary = output.stagingFile(randomUUID());
 
+		let edited: Edited | undefined;
 		const written = await tryWithAsync(async (): Promise<boolean> => {
-			if (
-				!rewrite &&
-				(await this.fileSystemService.isFile(projectFile)) &&
-				(await this.fileSystemService.readFile(projectFile)) === content
-			) {
-				return false;
+			const onDisk = (await this.fileSystemService.isFile(projectFile))
+				? await this.fileSystemService.readFile(projectFile)
+				: undefined;
+			if (onDisk === content) {
+				await this.records.remember(projectFile, content);
+				if (!rewrite) return false;
+			} else if (onDisk !== undefined && !force) {
+				edited = await HandEdits.editedBy(
+					this.records,
+					projectFile,
+					onDisk,
+					content
+				);
+				if (edited) return false;
 			}
 			await this.fileSystemService.writeFile(temporary, content);
 			await this.fileSystemService.rename(temporary, projectFile, true);
+			await this.records.remember(projectFile, content);
 			return true;
 		});
+		if (edited)
+			return err(
+				new DiagnosticsError([
+					errorDiagnostic(
+						"output.editedByHand",
+						{ resource: projectFile },
+						editedByHandMessage(
+							edited,
+							path.basename(configFile),
+							"a build"
+						)
+					),
+				])
+			);
 		if (written.isOk()) return ok(written.value);
 
 		await this.fileSystemService.delete(temporary).catch(() => undefined);

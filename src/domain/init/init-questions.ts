@@ -9,7 +9,7 @@ import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { InitChoices, InitDecision } from "./init-service.js";
+import { InitChoices, InitDecision, InitKind } from "./init-service.js";
 import { TreeChoice } from "./tree-plan.js";
 
 /** What a list flag says to take none of. */
@@ -76,6 +76,22 @@ export class InitQuestions {
 	): T {
 		this.decided.push({ question, value, flag });
 		return value;
+	}
+
+	/** The template of a new project; it is never asked, since Rojo's `init` doesn't ask it. */
+	kind(): InitKind {
+		const given = this.choices.kind;
+		if (given !== undefined) return given;
+		if (!this.interactive) this.decide("kind", "place", "--kind");
+		return "place";
+	}
+
+	/** Whether to leave git out: no `.gitignore` and no `git init`. */
+	skipGit(): boolean {
+		const given = this.choices.skipGit;
+		if (given !== undefined) return given;
+		if (!this.interactive) this.decide("skipGit", false, "--skip-git");
+		return false;
 	}
 
 	async startNestedProject({

@@ -1,9 +1,11 @@
+import path from "path";
 import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
@@ -13,6 +15,7 @@ import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { AgentReader } from "./agent-reader.js";
 import { InitWriter } from "./init-writer.js";
+import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
 	InitChoices,
@@ -34,6 +37,8 @@ const PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
 	["sourcePaths", "--source-path"],
 	["syncPath", "--sync-path"],
 	["projectFile", "--project-file"],
+	["kind", "--kind"],
+	["skipGit", "--skip-git"],
 	["packages", "--package"],
 	["routes", "--route"],
 	["unmatched", "--unmatched"],
@@ -44,16 +49,19 @@ export class CoreInitService implements InitService {
 
 	private readonly agentReader: AgentReader;
 	private readonly writer: InitWriter;
+	private readonly git: GitRepository;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly promptService: PromptService,
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
-		private readonly configService: ConfigService
+		private readonly configService: ConfigService,
+		processService: ProcessService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
-		this.writer = new InitWriter(fileSystemService);
+		this.git = new GitRepository(processService, fileSystemService);
+		this.writer = new InitWriter(fileSystemService, this.git);
 	}
 
 	async plan(
@@ -72,7 +80,20 @@ export class CoreInitService implements InitService {
 		place,
 		choices = {},
 	}: InitOptions): Promise<Result<InitPlan | undefined, Error>> {
-		if (place !== undefined)
+		const { cwd } = this.environmentService;
+		const folder = place === undefined ? cwd : path.resolve(cwd, place);
+		const enclosed =
+			place !== undefined &&
+			(await this.configService.findEnclosing(folder)) !== undefined;
+		if (enclosed) {
+			for (const [key, flag] of [
+				["kind", "--kind"],
+				["skipGit", "--skip-git"],
+			] as const)
+				if (choices[key] !== undefined)
+					throw new UsageError(
+						`${flag} is for a new project, and ${place} is below a rogen.json, so init adds a place there.`
+					);
 			return new PlaceInit(
 				this.fileSystemService,
 				new InitQuestions(
@@ -82,9 +103,23 @@ export class CoreInitService implements InitService {
 				),
 				this.toolchainService,
 				this.configService,
-				this.environmentService.cwd
+				cwd
 			).plan(place);
-		const directory = await this.prepare();
+		}
+		if (place !== undefined) {
+			const flag =
+				choices.placeIds !== undefined
+					? "--place-id"
+					: choices.placeListing !== undefined
+						? "--place-listing"
+						: undefined;
+			if (flag)
+				throw new UsageError(
+					`${flag} is for a place folder, and ${place} is not below a rogen.json.`,
+					"Run 'rogen init' in the folder that holds the code the places share first."
+				);
+		}
+		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
 		const questions = new InitQuestions(
@@ -95,7 +130,16 @@ export class CoreInitService implements InitService {
 		const nested = await this.checkNested(directory.value, questions);
 		if (nested.isErr() || nested.value === "cancelled")
 			return nested.map(() => undefined);
-		return this.planIn(directory.value, questions);
+		const planned = await this.planIn(directory.value, questions);
+		return place === undefined || planned.isErr() || !planned.value
+			? planned
+			: ok({
+					...planned.value,
+					notes: [
+						`No rogen.json is at or above ${place}, so init starts a project there.`,
+						...planned.value.notes,
+					],
+				});
 	}
 
 	/** A run that can't ask refuses to start a project below a config. */
@@ -104,7 +148,9 @@ export class CoreInitService implements InitService {
 		questions: InitQuestions
 	): Promise<Result<"go" | "cancelled", Error>> {
 		if (directory.hasConfigs) return ok("go");
-		const enclosing = await this.configService.findEnclosing();
+		const enclosing = await this.configService.findEnclosing(
+			directory.path
+		);
 		if (!enclosing) return ok("go");
 		const answer = await questions.startNestedProject(enclosing);
 		if (answer === undefined) return ok("cancelled");
@@ -119,11 +165,18 @@ export class CoreInitService implements InitService {
 		);
 	}
 
-	private async prepare(): Promise<Result<InitDirectory, Error>> {
-		const directory = this.environmentService.cwd;
-		const listing = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(directory)
-		);
+	/** `mayBeNew`: the folder was named, and is made if it is not there. */
+	private async prepare(
+		directory: string,
+		mayBeNew: boolean
+	): Promise<Result<InitDirectory, Error>> {
+		const missing =
+			mayBeNew && !(await this.fileSystemService.exists(directory));
+		const listing = !missing
+			? await tryWithAsync(() =>
+					this.fileSystemService.readDirectory(directory)
+				)
+			: ok([]);
 		if (listing.isErr()) {
 			return err(
 				ErrorUtils.wrap(`Failed to read ${directory}`, listing.error)
@@ -180,7 +233,7 @@ export class CoreInitService implements InitService {
 			if (ignored.length > 0)
 				throw new UsageError(
 					`${directory.configFiles[0]} already exists, so ${joinedWithAnd(ignored)} would change nothing.`,
-					"Delete it to write a new one, or add to it with --agent-rules, --agent-hook or --rojo-pin."
+					"Edit it to change those, or add to it with --agent-rules, --agent-hook or --rojo-pin."
 				);
 		}
 		if (!directory.hasConfigs)
@@ -228,11 +281,20 @@ export class CoreInitService implements InitService {
 		const builder = new InitPlanBuilder(
 			directory,
 			questions.interactive,
-			questions.decided
+			questions.decided,
+			this.environmentService.cwd
 		);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
 		const plan = builder.build();
-		return plan.isErr() ? err(new DiagnosticsError(plan.error)) : plan;
+		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
+		return ok(
+			plan.value.gitInit
+				? {
+						...plan.value,
+						gitInit: await this.git.needsInit(plan.value.directory),
+					}
+				: plan.value
+		);
 	}
 
 	write(

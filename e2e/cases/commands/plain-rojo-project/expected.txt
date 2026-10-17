@@ -6,14 +6,14 @@ exit 0
 stdout:
   rogen build · plain
   default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 $ rogen build .
 exit 0
 stdout:
   rogen build · plain
   default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 $ rogen check ./
 exit 0
@@ -33,4 +33,4 @@ stdout:
 $ rogen where src
 exit 0
 stdout:
-  src -> mounted · the tree mounts it at ServerScriptService/Main
+  src -> ServerScriptService/Main · mounted, which Rojo reads

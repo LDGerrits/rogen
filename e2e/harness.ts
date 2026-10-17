@@ -63,12 +63,19 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	place: true,
 };
 
+/** A cache folder for this run alone, so what Rogen remembers of the files it wrote is not shared by runs, and is gone when the run ends. */
+const RUN_CACHE = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-e2e-cache-"));
+process.on("exit", () =>
+	fs.rmSync(RUN_CACHE, { recursive: true, force: true })
+);
+
 /** What the CLI runs with: this process's environment without the variables that make it write GitHub Actions' workflow commands, which this repo's own CI sets, so a transcript holds the same lines wherever it is made. */
 function childEnv(extra: Readonly<Record<string, string>> = {}) {
 	const env: NodeJS.ProcessEnv = {
 		...process.env,
 		NO_COLOR: "1",
 		FORCE_COLOR: "0",
+		XDG_CACHE_HOME: RUN_CACHE,
 		...extra,
 	};
 	if (!("GITHUB_ACTIONS" in extra)) delete env.GITHUB_ACTIONS;
@@ -482,6 +489,8 @@ function snapshot(dir: string): Map<string, string> {
 			const relative = path.relative(dir, full).split(path.sep).join("/");
 			if (entry.isSymbolicLink())
 				files.set(relative, `link:${fs.readlinkSync(full)}`);
+			else if (entry.isDirectory() && entry.name === ".git")
+				files.set(`${relative}/`, "repository");
 			else if (entry.isDirectory()) visit(full);
 			else
 				files.set(

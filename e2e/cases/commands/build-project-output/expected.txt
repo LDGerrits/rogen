@@ -12,7 +12,7 @@ stderr:
   A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
   Release (release)
     release.project.json · wrote · same warnings as Game
-  Built 2 configs with 1 warning.
+  Built 2 projects with 1 warning.
 
 written:
   default.project.json

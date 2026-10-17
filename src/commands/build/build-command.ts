@@ -56,11 +56,19 @@ const WatchOption = {
 		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
+const ForceOption = {
+	name: "force",
+	type: "boolean",
+	description:
+		"Write a project file over an edit made to it by hand, which a build refuses to lose otherwise.",
+} as const satisfies OptionDescriptor;
+
 const BuildOptions = [
 	JsonOption,
 	OutputOption,
 	PluginOption,
 	WatchOption,
+	ForceOption,
 ] as const;
 
 registerCommand(
@@ -117,6 +125,13 @@ registerCommand(
 					line.options.output,
 					line.options.plugin
 				);
+			if (line.options.watch && line.options.force)
+				return err(
+					new UsageError(
+						"--force is for one build, and --watch builds on every change.",
+						"Run 'rogen build --force' once, then 'rogen build --watch'."
+					)
+				);
 			if (line.options.watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
@@ -144,7 +159,10 @@ registerCommand(
 			const plans = step?.plans(selection.value);
 			if (plans?.isErr()) return plans;
 
-			const run = await buildService.build(selection.value);
+			const run = await buildService.build(
+				selection.value,
+				Boolean(line.options.force)
+			);
 
 			const failure = run.failure();
 			const plan = plans?.isOk() ? plans.value[0] : undefined;

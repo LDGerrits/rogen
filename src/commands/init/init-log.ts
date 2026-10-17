@@ -1,6 +1,7 @@
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
+import { toPosix } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
 import {
@@ -43,6 +44,7 @@ export const initDocumentShape = S.object({
 		})
 	),
 	directories: S.array(S.string),
+	git: S.optional(S.enum("initialised", "wouldInitialise", "failed")),
 	decided: S.optional(
 		S.array(
 			S.object({
@@ -69,6 +71,7 @@ export const initDocumentShape = S.object({
 /** A choice as the flags that make it, so the line can be copied: `--no-darklua`, `--route server --route client`. */
 function flagsOf({ question, value, flag }: InitDecision): string[] {
 	if (question === "add") return [flag];
+	if (question === "skipGit") return value === true ? [flag] : [];
 	if (typeof value === "boolean")
 		return [value ? flag : flag.replace("--", "--no-")];
 	if (typeof value === "string") return [`${flag} ${value}`];
@@ -117,13 +120,19 @@ export interface InitReporter {
 
 export class InitLog implements InitReporter {
 	private readonly buildLog: BuildLog;
+	/** Where the plan's folder lies from the folder the user ran in, which its file names are shown after. */
+	private within = "";
 
 	constructor(
 		private readonly logService: LogService,
-		cwd: string,
+		private readonly cwd: string,
 		private readonly dryRun = false
 	) {
 		this.buildLog = new BuildLog(logService, cwd);
+	}
+
+	private shown(name: string): string {
+		return this.within ? path.posix.join(this.within, name) : name;
 	}
 
 	intro(): void {
@@ -131,6 +140,7 @@ export class InitLog implements InitReporter {
 	}
 
 	begin(plan: InitPlan): void {
+		this.within = toPosix(path.relative(this.cwd, plan.directory));
 		if (plan.asked) this.logService.info("");
 		for (const note of plan.notes) this.logService.info(note);
 		for (const warning of plan.warnings)
@@ -143,15 +153,27 @@ export class InitLog implements InitReporter {
 
 	written(item: InitWritten): void {
 		const would = this.dryRun ? "Would create" : "Created";
+		if (item.kind === "git" && item.failed !== undefined) {
+			this.logService.warn(
+				`git init failed (${item.failed}), so the project has no repository. Run it yourself, or pass --skip-git.`
+			);
+			return;
+		}
+		if (item.kind === "git") {
+			this.logService.success(
+				`${this.dryRun ? "Would initialise" : "Initialised"} a git repository.`
+			);
+			return;
+		}
 		if (item.kind === "directory") {
-			this.logService.success(`${would} ${item.directory}/.`);
+			this.logService.success(`${would} ${this.shown(item.directory)}/.`);
 			return;
 		}
 		const { fileName, addition } = item.file;
 		this.logService.success(
 			addition !== undefined
-				? `${this.dryRun ? "Would add" : "Added"} ${addition} to ${fileName}.`
-				: `${would} ${fileName}.`
+				? `${this.dryRun ? "Would add" : "Added"} ${addition} to ${this.shown(fileName)}.`
+				: `${would} ${this.shown(fileName)}.`
 		);
 	}
 
@@ -200,6 +222,7 @@ interface InitDocument {
 	readonly dryRun?: true;
 	readonly files: readonly InitFile[];
 	readonly directories: readonly string[];
+	readonly git?: "initialised" | "wouldInitialise" | "failed";
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
@@ -212,6 +235,7 @@ export class InitJsonLog implements InitReporter {
 	private readonly files: InitFile[] = [];
 	private readonly directories: string[] = [];
 	private decided: readonly InitDecision[] = [];
+	private git: "initialised" | "wouldInitialise" | "failed" | undefined;
 
 	constructor(
 		private readonly logService: LogService,
@@ -224,6 +248,15 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	written(item: InitWritten): void {
+		if (item.kind === "git") {
+			this.git =
+				item.failed !== undefined
+					? "failed"
+					: this.dryRun
+						? "wouldInitialise"
+						: "initialised";
+			return;
+		}
 		if (item.kind === "directory") {
 			this.directories.push(path.join(this.directory, item.directory));
 			return;
@@ -280,10 +313,13 @@ export class InitJsonLog implements InitReporter {
 	private writtenSoFar() {
 		return {
 			changed:
-				!this.dryRun && this.files.length + this.directories.length > 0,
+				!this.dryRun &&
+				(this.files.length + this.directories.length > 0 ||
+					this.git === "initialised"),
 			...(this.dryRun && { dryRun: true as const }),
 			files: this.files,
 			directories: this.directories,
+			...(this.git && { git: this.git }),
 			...(this.decided.length > 0 && { decided: this.decided }),
 		};
 	}

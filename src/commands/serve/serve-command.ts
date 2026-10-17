@@ -126,6 +126,11 @@ registerCommand(
 					options: ServeOptions,
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
+					exitCodes: {
+						"0": "another rogen serve already serves every project, or a server adopted from one stopped",
+						"128+N":
+							"a signal stopped it: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
+					},
 					examples: [
 						"rogen serve",
 						"rogen serve places/lobby --port 34873",

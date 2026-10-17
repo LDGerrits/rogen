@@ -53,6 +53,10 @@ registerCommand(
 					options: CheckOptions,
 					output: { document: CheckOutput },
 					effects: [],
+					exitCodes: {
+						"0": "no diagnostics",
+						"1": "any diagnostic, a warning included; with no path, a project file that is out of date counts too",
+					},
 					examples: [
 						"rogen check src/Inventory/Server/Save.luau",
 						"rogen check src --json",

@@ -132,3 +132,87 @@ export function initRoundTrip(
 		fs.rmSync(dir, { recursive: true, force: true });
 	}
 }
+
+export interface KindRoundTrip {
+	readonly rojo: { readonly status: number | null };
+	readonly rogen: {
+		readonly status: number | null;
+		readonly stderr: string;
+	};
+	/** The place each builds from the project it made, as text. */
+	readonly placeOfRojo?: string;
+	readonly placeOfRogen?: string;
+	/** The files both made that Rojo's template has, by name. */
+	readonly filesOfRojo: Record<string, string>;
+	readonly filesOfRogen: Record<string, string>;
+	readonly gitOfRojo: boolean;
+	readonly gitOfRogen: boolean;
+}
+
+const TEMPLATE_FILES = [
+	".gitignore",
+	"src/init.luau",
+	"src/init.server.luau",
+] as const;
+
+/** Makes a project with `rojo init --kind` and another with `rogen init --kind` in folders of one name, and builds both. */
+export function kindRoundTrip(
+	cli: string,
+	kind: RojoTemplate,
+	extra: readonly string[] = []
+): KindRoundTrip {
+	const dir = makeRojoDir("rogen-kind-conformance-");
+	try {
+		const make = (side: string) => {
+			const project = path.join(dir, side, "project");
+			fs.mkdirSync(project, { recursive: true });
+			return project;
+		};
+		const placeOf = (project: string, output: string) => {
+			const result = runRojo(project, [
+				"build",
+				"default.project.json",
+				"-o",
+				path.join(dir, output),
+			]);
+			return result.status === 0
+				? fs.readFileSync(path.join(dir, output), "utf8")
+				: undefined;
+		};
+		const filesOf = (project: string) =>
+			Object.fromEntries(
+				TEMPLATE_FILES.filter((file) =>
+					fs.existsSync(path.join(project, file))
+				).map((file) => [
+					file,
+					fs.readFileSync(path.join(project, file), "utf8"),
+				])
+			);
+		const rojoDir = make("rojo");
+		const rogenDir = make("rogen");
+		const rojo = runRojo(rojoDir, ["init", "--kind", kind, ...extra]);
+		const [command, args] = invocation(cli, [
+			"init",
+			"--non-interactive",
+			"--kind",
+			kind,
+			...extra,
+		]);
+		const rogen = spawnSync(command, [...args], {
+			cwd: rogenDir,
+			encoding: "utf8",
+		});
+		return {
+			rojo,
+			rogen,
+			placeOfRojo: placeOf(rojoDir, "rojo.rbxmx"),
+			placeOfRogen: placeOf(rogenDir, "rogen.rbxmx"),
+			filesOfRojo: filesOf(rojoDir),
+			filesOfRogen: filesOf(rogenDir),
+			gitOfRojo: fs.existsSync(path.join(rojoDir, ".git")),
+			gitOfRogen: fs.existsSync(path.join(rogenDir, ".git")),
+		};
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}

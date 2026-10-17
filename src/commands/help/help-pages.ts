@@ -25,7 +25,7 @@ function codeNamed(name: string): string | undefined {
 
 const EXIT_CODES = `Exit codes: ${Object.entries(ExitCodes)
 	.map(([code, meaning]) => `${code} ${meaning}`)
-	.join(", ")}.`;
+	.join(", ")}. 'check' also exits 1 on a warning.`;
 
 const ROOT_EXAMPLES = [
 	"rogen build",
@@ -37,7 +37,7 @@ const ROOT_EXAMPLES = [
 export type HelpTarget =
 	| { readonly kind: "command"; readonly command: Command }
 	| { readonly kind: "code"; readonly code: string }
-	| { readonly kind: "codes" };
+	| { readonly kind: "codes"; readonly prefix?: string };
 
 /** The name of the page that lists every diagnostic code. */
 export const CODES_PAGE = "codes";
@@ -215,6 +215,10 @@ function formatCommandHelp(
 				subcommands.map((sub) => [sub.name, sub.description])
 			),
 		],
+		[
+			"EXIT CODES",
+			formatColumns(Object.entries(command.metadata.exitCodes ?? {})),
+		],
 		["EXAMPLES", examples.map((line) => `${INDENT}${line}`)],
 	]);
 }
@@ -227,8 +231,9 @@ export class HelpPages {
 	}
 
 	/** The command or diagnostic code `target` names. */
-	resolve(target: string): HelpTarget | undefined {
-		if (target.toLowerCase() === CODES_PAGE) return { kind: "codes" };
+	resolve(target: string, prefix?: string): HelpTarget | undefined {
+		if (target.toLowerCase() === CODES_PAGE)
+			return { kind: "codes", ...(prefix && { prefix }) };
 		const code = codeNamed(target);
 		const named =
 			code === undefined ? undefined : { kind: "code" as const, code };
@@ -243,7 +248,7 @@ export class HelpPages {
 		if (target.kind === "command")
 			return formatCommandHelp(target.command, GlobalOptions);
 		if (target.kind === "codes") {
-			const { codes } = HelpDocument.codes();
+			const { codes } = HelpDocument.codes(target.prefix);
 			const codeWidth = Math.max(...codes.map(({ code }) => code.length));
 			const indent = " ".repeat(codeWidth + 2);
 			return codes

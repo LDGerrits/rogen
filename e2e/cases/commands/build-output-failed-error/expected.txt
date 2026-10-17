@@ -4,7 +4,7 @@ stdout: (not shown)
 stderr:
   rogen build · Game
   default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
   default.project.json - error: 'rojo build' failed (exit code 1): failed to create file `missing/game.rbxlx`: No such file or directory (os error 2) (rojo.commandFailed)
 
 $ rogen build -o a.rbxl -p b.rbxm

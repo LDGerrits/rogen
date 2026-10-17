@@ -1,0 +1,33 @@
+$ rogen init --kind model --skip-git --non-interactive
+exit 0
+stdout:
+  rogen init
+  Started a model project: its tree mounts src, and Rogen adds no routes to a model.
+  Took the defaults: --language luau, --no-darklua, --agent-rules.
+  Created rogen.json.
+  Created README.md.
+  Created src/init.luau.
+  Created AGENTS.md.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen build -o "project.rbxmx"
+  Wrote 4 files.
+
+written:
+  AGENTS.md
+  README.md
+  default.project.json
+  rogen.json
+  src/init.luau
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$path": "src"
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: ModuleScript

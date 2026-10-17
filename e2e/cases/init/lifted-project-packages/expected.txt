@@ -9,6 +9,8 @@ exit 0
 stdout: (not shown)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json

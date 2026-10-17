@@ -60,9 +60,20 @@ interface BlockedLocation extends Located {
 	readonly own: boolean;
 }
 
+/** A file or folder inside a `$path` of the tree, which Rojo reads: `node` is the node that mounts it, `instancePath` the instance it becomes when Rojo reads one from it. */
+export interface MountedLocation extends Located {
+	readonly status: "mounted";
+	readonly node: readonly string[];
+	readonly instancePath?: readonly string[];
+}
+
 /** Where a path lands in the tree, or why it lands nowhere. */
 export type FileLocation =
-	PlacedLocation | (LeftOut & Located) | UnplacedLocation | BlockedLocation;
+	| PlacedLocation
+	| MountedLocation
+	| (Exclude<LeftOut, { status: "mounted" }> & Located)
+	| UnplacedLocation
+	| BlockedLocation;
 
 /** What a build raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path. */
 export function diagnosticsOf(
@@ -98,7 +109,7 @@ export function requireNoteOf(location: FileLocation): string | undefined {
 /** The files placed at an instance or inside it; none when no file places it. */
 export interface InstanceLocation {
 	readonly reference: InstanceReference;
-	readonly files: readonly PlacedLocation[];
+	readonly files: readonly (PlacedLocation | MountedLocation)[];
 	/** When no file places it: the absolute POSIX folders a new file for it goes in. */
 	readonly folders: readonly string[];
 	/** When no file places it: the renames of files that would, from the diagnostics that propose them. */
@@ -154,8 +165,8 @@ export interface Diagnosis {
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
-	build(selection: ConfigSelection): Promise<BuildRun>;
+	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. A project file edited by hand since Rogen wrote it is a failed write, unless `force`. */
+	build(selection: ConfigSelection, force?: boolean): Promise<BuildRun>;
 
 	/** Builds and writes the project at `projectFile` in a watch's `set`; the sync path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(

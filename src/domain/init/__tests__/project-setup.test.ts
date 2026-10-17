@@ -271,7 +271,7 @@ describe("ProjectSetup plan", () => {
 
 		it("should leave the sourcemap to luau-lsp, and say how without it", async () => {
 			expect((await planFor("luau", true)).nextSteps.edits.at(-1)).toBe(
-				"Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rojo sourcemap default.project.json --output sourcemap.json --watch"
+				"Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rogen sourcemap --watch -o sourcemap.json"
 			);
 		});
 

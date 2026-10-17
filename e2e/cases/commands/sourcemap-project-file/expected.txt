@@ -13,7 +13,7 @@ stderr:
     release.project.json · wrote · same warnings as Game
   Dist (dist)
     dist.project.json · wrote · same warnings as Game
-  Built 3 configs with 1 warning.
+  Built 3 projects with 1 warning.
   sourcemap.json · wrote
 
 written:

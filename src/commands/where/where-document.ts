@@ -51,8 +51,12 @@ export const whereDocumentShape = S.object({
 			fileEntryShape(S.enum("blocked"), {
 				blockedBy: S.object({ file: S.string, code: S.string }),
 			}),
-			fileEntryShape(S.enum("displaced", "mounted"), {
-				node: instancePathShape,
+			fileEntryShape(S.enum("displaced"), {
+				instancePath: instancePathShape,
+			}),
+			fileEntryShape(S.enum("mounted"), {
+				instancePath: S.optional(instancePathShape),
+				mount: instancePathShape,
 			}),
 			fileEntryShape(S.enum("ignored"), { pattern: S.string }),
 			fileEntryShape(S.enum("inProject"), { project: S.string }),
@@ -105,9 +109,11 @@ type LocationFields =
 				readonly code: string;
 			};
 	  }
+	| { readonly status: "displaced"; readonly instancePath: readonly string[] }
 	| {
-			readonly status: "displaced" | "mounted";
-			readonly node: readonly string[];
+			readonly status: "mounted";
+			readonly instancePath?: readonly string[];
+			readonly mount: readonly string[];
 	  }
 	| { readonly status: "ignored"; readonly pattern: string }
 	| { readonly status: "inProject"; readonly project: string }
@@ -166,8 +172,15 @@ function fieldsOf(location: FileLocation): LocationFields {
 				},
 			};
 		case "displaced":
+			return { status: "displaced", instancePath: location.node };
 		case "mounted":
-			return { status: location.status, node: location.node };
+			return {
+				status: "mounted",
+				...(location.instancePath && {
+					instancePath: location.instancePath,
+				}),
+				mount: location.node,
+			};
 		case "inProject":
 			return { status: "inProject", project: toNative(location.project) };
 		case "ignored":

@@ -16,6 +16,8 @@ stdout:
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
                                always, never]
+          --force              Write a project file over an edit made to it by hand, which a build
+                               refuses to lose otherwise.
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
       -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
@@ -48,16 +50,17 @@ $ rogen help init
 exit 0
 stdout:
   rogen-init
-  Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder below
-  a config, adds it as a place of that config.
+  Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder,
+  starts a project there, or adds a place when a rogen.json lies above the folder.
   
   USAGE:
       rogen init [OPTIONS] [PATH]
   
   ARGS:
-      <PATH>    A folder below a rogen.json to add as a place of it: its own rogen.json with the port
-                it is served on, its entry in the config's placePaths when none lists it, and a
-                .code-workspace that lists the config's folder and every place.
+      <PATH>    The folder to start in, made when it is not there. Below a rogen.json it is added as a
+                place of it instead: its own rogen.json with the port it is served on, its entry in
+                the config's placePaths when none lists it, and a .code-workspace that lists the
+                config's folder and every place.
   
   OPTIONS:
           --[no-]agent-hook                  Whether to add the hook that reports Rogen warnings to
@@ -74,6 +77,10 @@ stdout:
                                              would write and the choices it took, then stop.
       -h, --help                             Print help.
           --json                             Print one JSON document instead of text.
+          --kind <KIND>                      What a new project is, as Rojo's init names it: a place
+                                             (the default), or a model or a plugin, which starts with
+                                             Rojo's template of that kind and no routes. [possible
+                                             values: place, model, plugin]
           --language <ID>                    The language: luau or roblox-ts. Detected from the folder
                                              when not given.
           --nested                           Start a project in a folder below another rogen.json,
@@ -102,7 +109,13 @@ stdout:
                                              replicatedFirst, serverStorage or starterGui; repeat for
                                              several, or none. The first three when not given. When a
                                              lifted project file mounts a folder of that name, the
-                                             name stands for the route derived from it. (repeatable)
+                                             name stands for the route derived from it, which `Took
+                                             the defaults` and `--json` write as mount:server.
+                                             (repeatable)
+          --skip-git                         Leave git out of a new project: write no .gitignore and
+                                             run no git init. Otherwise a .gitignore is written where
+                                             none is, and git init runs where no work tree holds the
+                                             folder.
           --source-path <PATH>               A folder with your scripts, relative to here; repeat for
                                              several. src when not given, or where the code is.
                                              (repeatable)
@@ -165,6 +178,8 @@ stdout:
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
                                always, never]
+          --force              Write a project file over an edit made to it by hand, which a build
+                               refuses to lose otherwise.
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
       -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,

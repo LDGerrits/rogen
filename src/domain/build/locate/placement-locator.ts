@@ -4,7 +4,12 @@ import { ignoringAllOf, ignoringGlob } from "../../../base/glob.js";
 import { ancestors, contains, toPosix } from "../../../base/path.js";
 import { IndexReader } from "../../../platform/fs/index-service.js";
 import { InstanceReference } from "../../roblox/roblox.js";
-import { FileLocation, PlacedLocation } from "../build-service.js";
+import {
+	FileLocation,
+	MountedLocation,
+	PlacedLocation,
+} from "../build-service.js";
+import { TreeMounts } from "../build-tree.js";
 import { Placement } from "../placement.js";
 import { RoutedFile } from "../router.js";
 
@@ -52,6 +57,11 @@ export class PlacementLocator {
 				);
 			}
 		return [...found.values()];
+	}
+
+	/** The paths the tree's `$path`s mount. */
+	get mounts(): TreeMounts {
+		return this.placement.tree.mounts;
 	}
 
 	locateInstance(reference: InstanceReference): PlacedLocation[] {
@@ -157,7 +167,9 @@ export class PlacementLocator {
 				exact.status === "placed" ? { ...exact, named: true } : exact,
 				...below,
 			];
-		if (below.length > 0) return below;
+		const mountedBelow = this.mountsBelow(target);
+		if (below.length > 0 || mountedBelow.length > 0)
+			return [...below, ...mountedBelow].sort(this.bySource);
 
 		if (!roots.some((root) => contains(toPosix(root.sourcePath), target)))
 			return [this.outsideRoots(target)];
@@ -195,6 +207,17 @@ export class PlacementLocator {
 				...(folder && { folder: true as const }),
 			},
 		];
+	}
+
+	/** The mounts inside the folder `target`, each as the instance its node is. */
+	private mountsBelow(target: string): MountedLocation[] {
+		return this.mounts.inside(target).map(({ path: mounted, node }) => ({
+			status: "mounted",
+			source: toPosix(mounted),
+			exists: this.exists(toPosix(mounted)),
+			node,
+			instancePath: node,
+		}));
 	}
 
 	private outsideRoots(target: string): FileLocation {

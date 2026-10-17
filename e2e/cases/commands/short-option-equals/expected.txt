@@ -5,7 +5,7 @@ stdout:
 stderr:
   rogen sourcemap · Game
   default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
   sourcemap.json · wrote
 
 $ rogen build -o=game.rbxlx
@@ -14,7 +14,7 @@ stdout: (not shown)
 stderr:
   rogen build · Game
   default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
 
 written:
   default.project.json

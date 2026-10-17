@@ -116,7 +116,29 @@ describe("WhereLog", () => {
 					exists: true,
 					node: ["ServerScriptService", "Save"],
 				},
-				{ node: ["ServerScriptService", "Save"] },
+				{ instancePath: ["ServerScriptService", "Save"] },
+			],
+			[
+				{
+					status: "mounted",
+					source: "/repo/src/Vendor/Lib.luau",
+					exists: true,
+					node: ["ReplicatedStorage", "Vendor"],
+					instancePath: ["ReplicatedStorage", "Vendor", "Lib"],
+				},
+				{
+					mount: ["ReplicatedStorage", "Vendor"],
+					instancePath: ["ReplicatedStorage", "Vendor", "Lib"],
+				},
+			],
+			[
+				{
+					status: "mounted",
+					source: "/repo/src/Vendor/README.md",
+					exists: true,
+					node: ["ReplicatedStorage", "Vendor"],
+				},
+				{ mount: ["ReplicatedStorage", "Vendor"] },
 			],
 			[
 				{

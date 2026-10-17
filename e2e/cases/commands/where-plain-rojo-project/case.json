@@ -1,0 +1,9 @@
+{
+	"steps": [
+		["where", "src/server/init.server.luau", "src/server/Helper.luau", "Packages/Sub/Deep.luau"],
+		["where", "ServerScriptService.Server", "ReplicatedStorage.Packages.Sub.Deep"],
+		["where", "src"],
+		["where", "--json", "ReplicatedStorage.Shared.Hello"]
+	],
+	"rojo": false
+}

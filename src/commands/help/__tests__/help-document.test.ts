@@ -176,10 +176,63 @@ describe("rogen help --json", () => {
 			expect(document().output.document).toContain("code:string");
 		});
 
+		it("should say what each exit code means for the command, where it differs", async () => {
+			await help("check");
+			const check = document().exitCodes;
+			print.mockClear();
+			await help("build");
+
+			expect(check["1"]).toContain("a warning included");
+			expect(check["0"]).toBe("no diagnostics");
+			expect(document().exitCodes).toEqual(
+				expect.objectContaining({ "2": expect.any(String) })
+			);
+			expect(document().exitCodes["0"]).toBe("done (warnings included)");
+		});
+
 		it("should resolve the name in any case", async () => {
 			await help("Where");
 
 			expect(document().name).toBe("where");
+		});
+	});
+
+	describe("with codes and a prefix", () => {
+		it("should list only the codes that start with it, in any case", async () => {
+			await help("codes", "Route.");
+
+			const { codes } = document();
+			expect(codes.length).toBeGreaterThan(0);
+			expect(
+				codes.every(({ code }: { code: string }) =>
+					code.startsWith("route.")
+				)
+			).toBe(true);
+		});
+
+		it("should take a module name without the dot", async () => {
+			await help("codes", "route");
+			const bare = document().codes.length;
+			print.mockClear();
+			await help("codes");
+
+			expect(document().codes.length).toBeGreaterThan(bare);
+		});
+
+		it("should fail when no code starts with it", async () => {
+			const result = await help("codes", "nope");
+
+			expect(
+				((result as ResultError<Error>).error as UsageError).hint
+			).toContain("rogen help codes");
+		});
+
+		it("should refuse a second word after anything but codes", async () => {
+			const result = await help("build", "route");
+
+			expect((result as ResultError<Error>).error).toBeInstanceOf(
+				UsageError
+			);
 		});
 	});
 

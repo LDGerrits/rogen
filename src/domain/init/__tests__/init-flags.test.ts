@@ -50,6 +50,7 @@ describe("init choices given as flags", () => {
 			const { questions } = await run(luau, {});
 
 			expect(questions.decided).toEqual([
+				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "darklua", value: false, flag: "--darklua" },
 				{
@@ -63,6 +64,7 @@ describe("init choices given as flags", () => {
 					flag: "--route",
 				},
 				{ question: "unmatched", value: "shared", flag: "--unmatched" },
+				{ question: "skipGit", value: false, flag: "--skip-git" },
 			]);
 		});
 
@@ -78,6 +80,8 @@ describe("init choices given as flags", () => {
 
 		it("should write down nothing for a choice it was given", async () => {
 			const { questions } = await run(luau, {
+				kind: "place",
+				skipGit: true,
 				language: "luau",
 				darklua: false,
 				sourcePaths: ["src"],

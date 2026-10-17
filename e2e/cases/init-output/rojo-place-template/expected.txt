@@ -5,17 +5,21 @@ stdout:
   Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
   Left out ReplicatedStorage/Shared, since it points into src and Rogen generates that code now.
   Kept ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client in the tree as $path mounts, since their folders hold an init file, which Rojo reads as the instance of the folder itself and a route can't.
-  Took the defaults: --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route server, --route client, --unmatched shared, --agent-rules.
   Created rogen.json.
+  Created .gitignore.
   Created AGENTS.md.
+  Initialised a git repository.
   default.project.json · wrote
   Next steps
     Run:
       rogen serve
     Add your own routes under "routes" in rogen.json.
-  Wrote 2 files.
+  Wrote 3 files.
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json

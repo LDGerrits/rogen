@@ -9,12 +9,22 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/.gitignore",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/AGENTS.md",
         "outcome": "wrote"
       }
     ],
     "directories": [],
+    "git": "initialised",
     "decided": [
+      {
+        "question": "kind",
+        "value": "place",
+        "flag": "--kind"
+      },
       {
         "question": "language",
         "value": "luau",
@@ -45,6 +55,11 @@ stdout:
         "question": "unmatched",
         "value": "shared",
         "flag": "--unmatched"
+      },
+      {
+        "question": "skipGit",
+        "value": false,
+        "flag": "--skip-git"
       },
       {
         "question": "agentRules",
@@ -83,13 +98,15 @@ stdout:
         "file": "<dir>/rogen.json",
         "severity": "error",
         "code": "init.configExists",
-        "message": "this config already exists. Delete it to write a new one.",
+        "message": "this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin.",
         "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#init-configexists"
       }
     ]
   }
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json

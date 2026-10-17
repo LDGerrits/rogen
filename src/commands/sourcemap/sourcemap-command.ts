@@ -116,6 +116,10 @@ registerCommand(
 					},
 					effects: ["writesFiles", "runsProcesses"],
 					longRunningWith: "watch",
+					exitCodes: {
+						"1": "the project has errors, or Rojo failed",
+						"2": "the command line is wrong, or Rojo refused it",
+					},
 					examples: [
 						"rogen sourcemap",
 						"rogen sourcemap -o sourcemap.json",

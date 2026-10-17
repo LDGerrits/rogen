@@ -6,7 +6,7 @@ stdout:
 stderr:
   rogen syncback · Game
   default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
   Syncback wrote 2 changes.
 
 $ rogen where src

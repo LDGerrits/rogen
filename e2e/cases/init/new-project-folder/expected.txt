@@ -1,0 +1,48 @@
+$ rogen init newproj --non-interactive
+exit 0
+stdout:
+  rogen init
+  No rogen.json is at or above newproj, so init starts a project there.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Created newproj/rogen.json.
+  Created newproj/.gitignore.
+  Created newproj/AGENTS.md.
+  Created newproj/src/.
+  Initialised a git repository.
+  newproj/default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    Add your own routes under "routes" in rogen.json.
+  Wrote 3 files.
+
+$ rogen build newproj
+exit 0
+stdout: (not shown)
+
+written:
+  newproj/.git/
+  newproj/.gitignore
+  newproj/AGENTS.md
+  newproj/default.project.json
+  newproj/rogen.json
+
+newproj/rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  }
+}
+
+$ rojo sourcemap newproj/default.project.json
+newproj: DataModel

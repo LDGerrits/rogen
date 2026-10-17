@@ -11,7 +11,7 @@ stderr:
     places/arena/default.project.json · wrote
   lobby
     places/lobby/default.project.json · wrote
-  Built 3 configs.
+  Built 3 projects.
   places/arena/sourcemap.json · wrote
   places/lobby/sourcemap.json · wrote
 

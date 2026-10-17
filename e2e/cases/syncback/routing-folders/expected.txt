@@ -53,7 +53,7 @@ stdout:
 stderr:
   rogen syncback · Game
   default.project.json · unchanged
-  Built 1 config.
+  Built 1 project.
   Syncback would change 5 files (4 to write, 1 to remove).
 
 $ rogen syncback -i place.rbxl -y --list
@@ -67,7 +67,7 @@ stdout:
 stderr:
   rogen syncback · Game
   default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
   Syncback wrote 5 changes.
 
 $ rogen where src

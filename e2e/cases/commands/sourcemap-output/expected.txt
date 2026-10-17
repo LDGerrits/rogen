@@ -5,7 +5,7 @@ stdout:
 stderr:
   rogen sourcemap · Game
   default.project.json · wrote
-  Built 1 config.
+  Built 1 project.
   sourcemap.json · wrote
 
 $ rogen sourcemap -o sourcemap.json --json

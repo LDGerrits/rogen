@@ -13,6 +13,8 @@ stdout:
     require(game:GetService("ReplicatedStorage").Common.Inventory.Types)
 
 written:
+  .git/
+  .gitignore
   AGENTS.md
   default.project.json
   rogen.json
