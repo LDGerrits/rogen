@@ -125,7 +125,7 @@ describe("NativeProcessService", () => {
 					}
 				);
 				let output = "";
-				child.onDidOutputLine((line) => (output += line));
+				child.onDidOutput(({ line }) => (output += line));
 
 				await exitOf(child);
 
@@ -175,7 +175,7 @@ describe("NativeProcessService", () => {
 				{ cwd: dir }
 			);
 			const pid = await new Promise<number>((resolve) =>
-				child.onDidOutputLine((line) => resolve(Number(line.trim())))
+				child.onDidOutput(({ line }) => resolve(Number(line.trim())))
 			);
 
 			await child.terminate();
@@ -250,10 +250,34 @@ describe("NativeProcessService", () => {
 				{ cwd: dir }
 			);
 			const printed: string[] = [];
-			child.onDidOutputLine((line) => printed.push(line));
+			child.onDidOutput(({ line }) => printed.push(line));
 
 			expect(await exitOf(child)).toEqual({ code: 3, signal: null });
 			expect(printed.sort()).toEqual(["err", "out"]);
+			child[Symbol.dispose]();
+		});
+
+		it("should say which stream each line came on", async () => {
+			const child = service.spawn(
+				node,
+				[
+					"-e",
+					"process.stdout.write('out\\nlast'); process.stderr.write('err\\n')",
+				],
+				{ cwd: dir }
+			);
+			const printed: string[] = [];
+			child.onDidOutput(({ line, stream }) =>
+				printed.push(`${stream}:${line}`)
+			);
+
+			await exitOf(child);
+
+			expect(printed.sort()).toEqual([
+				"stderr:err",
+				"stdout:last",
+				"stdout:out",
+			]);
 			child[Symbol.dispose]();
 		});
 
@@ -264,7 +288,7 @@ describe("NativeProcessService", () => {
 				{ cwd: dir }
 			);
 			const events: string[] = [];
-			child.onDidOutputLine((line) => events.push(`line: ${line}`));
+			child.onDidOutput(({ line }) => events.push(`line: ${line}`));
 			child.onDidExit(() => events.push("exit"));
 
 			await exitOf(child);

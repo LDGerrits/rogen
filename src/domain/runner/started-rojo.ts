@@ -36,7 +36,11 @@ export class StartedRojo extends AbstractDisposable implements RojoProcess {
 		super();
 		this._register(child);
 		const output = this._register(new ServerOutput(server));
-		this._register(child.onDidOutputLine((line) => output.readLine(line)));
+		this._register(
+			child.onDidOutput(({ line, stream }) =>
+				output.readLine(line, stream)
+			)
+		);
 		this._register(
 			output.onDidMessage((message) => this._onDidMessage.fire(message))
 		);

@@ -121,7 +121,7 @@ describe("CoreSyncbackService", () => {
 		expect(rojo.requests).toHaveLength(1);
 		expect(rojo.requests[0]).toMatchObject({
 			command: "syncback",
-			flags: ["--input", "game.rbxl", "--non-interactive"],
+			flags: ["--input", "game.rbxl", "--non-interactive", "--list"],
 			projectFile: abs("rogen-syncback.project.json"),
 			since: "7.7.0",
 		});
@@ -166,6 +166,54 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.readFile(abs("src/Inventory/Bag@server.luau"))).toBe(
 			"return 2\r\n"
 		);
+	});
+
+	it("should list what Rojo listed, in its order and as the project's paths, and leave out what the plan does not touch", async () => {
+		await prepare([
+			"src/Inventory/Bag@server.luau",
+			"src/Combat/Hit@server.luau",
+		]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Bag.luau"),
+				"return 1"
+			);
+			await fs.writeFile(
+				mirror("ServerScriptService", "Combat", "Hit.luau"),
+				"return 2"
+			);
+			return [
+				"Writing .rogen-syncback/mirror/ServerScriptService/Inventory/Bag.luau",
+				"Writing .rogen-syncback/mirror/ServerScriptService/Untouched.luau",
+				"Writing .rogen-syncback/mirror/ServerScriptService/Combat/Hit.luau",
+			];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.listed).toEqual([
+			{ kind: "write", file: abs("src/Inventory/Bag@server.luau") },
+			{ kind: "write", file: abs("src/Combat/Hit@server.luau") },
+		]);
+	});
+
+	it("should list a new instance at the file routing puts it in, where Rojo listed it", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+		rojo.say = async () => {
+			await fs.writeFile(
+				mirror("ServerScriptService", "Inventory", "Added.luau"),
+				"return 3"
+			);
+			return [
+				"Writing .rogen-syncback/mirror/ServerScriptService/Inventory/Added.luau",
+			];
+		};
+
+		const plan = (await service.plan(request)).unwrap();
+
+		expect(plan.listed).toEqual(plan.changes);
+		expect(plan.listed).toHaveLength(1);
+		expect(plan.listed[0].file).toContain("Added");
 	});
 
 	it("should keep one change and list the other when two copies of an init script were edited differently", async () => {

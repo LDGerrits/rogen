@@ -1,5 +1,6 @@
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { LogLevel } from "../../platform/log/log-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { StartedRojo } from "./started-rojo.js";
@@ -13,7 +14,9 @@ export class CoreRojoRunner implements RojoRunner {
 
 	constructor(
 		toolchainService: ToolchainService,
-		private readonly processService: ProcessService
+		private readonly processService: ProcessService,
+		/** What Rogen was asked to print: Rojo logs as much as that. */
+		private readonly logLevel: LogLevel = LogLevel.Info
 	) {
 		this.finder = new ServerFinder(toolchainService, processService);
 	}
@@ -47,11 +50,17 @@ export class CoreRojoRunner implements RojoRunner {
 				[
 					command,
 					...(projectFile === undefined ? [] : [projectFile]),
+					...this.verbosity(),
 					...flags,
 				],
 				{ cwd, env: executable.server.env }
 			),
 			executable.server
 		);
+	}
+
+	private verbosity(): string[] {
+		if (this.logLevel >= LogLevel.Trace) return ["-vv"];
+		return this.logLevel >= LogLevel.Debug ? ["-v"] : [];
 	}
 }

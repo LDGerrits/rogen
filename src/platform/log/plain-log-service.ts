@@ -13,23 +13,24 @@ export class PlainLogService extends AbstractLogService {
 	private inStep = false;
 
 	protected write(kind: LogKind, text: string): void {
+		const own = this.stdoutReserved ? console.error : console.info;
 		switch (kind) {
 			case "intro":
 			case "outro":
 				this.inStep = false;
-				console.info(text);
+				own(text);
 				break;
 			case "step":
 			case "section":
 				this.inStep = true;
-				console.info(text);
+				own(text);
 				break;
 			case "sectionBody":
-				console.info(indented(text));
+				own(indented(text));
 				break;
 			case "success":
 			case "info":
-				console.info(this.inStep ? indented(text) : text);
+				own(this.inStep ? indented(text) : text);
 				break;
 			case "warn":
 				console.warn(`warning: ${text}`);

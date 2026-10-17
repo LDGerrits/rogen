@@ -29,11 +29,11 @@ rogen.json:
     "Lighting": {
       "$properties": {
         "Ambient": [
-          0,
-          0,
-          0
+          0.0,
+          0.0,
+          0.0
         ],
-        "Brightness": 2,
+        "Brightness": 2.0,
         "GlobalShadows": true,
         "Outlines": false,
         "Technology": "Voxel"
@@ -69,14 +69,14 @@ rogen.json:
           ],
           "Locked": true,
           "Position": [
-            0,
-            -10,
-            0
+            0.0,
+            -10.0,
+            0.0
           ],
           "Size": [
-            512,
-            20,
-            512
+            512.0,
+            20.0,
+            512.0
           ]
         }
       },

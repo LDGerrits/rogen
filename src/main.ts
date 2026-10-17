@@ -301,7 +301,11 @@ class RogenMain {
 			buildService
 		);
 		services.set(WatchService, watchService);
-		const rojoRunner = new CoreRojoRunner(toolchainService, processService);
+		const rojoRunner = new CoreRojoRunner(
+			toolchainService,
+			processService,
+			environmentService.logLevel
+		);
 		services.set(RojoRunner, rojoRunner);
 		const rojoCommandService = new CoreRojoCommandService(
 			rojoRunner,

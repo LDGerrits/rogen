@@ -162,6 +162,7 @@ registerCommand(
 			}
 
 			const logService = accessor.get(LogService);
+			if (!json) logService.reserveStdout();
 			const fileSystemService = accessor.get(FileSystemService);
 			const selection = await accessor
 				.get(ConfigService)
@@ -240,8 +241,10 @@ registerCommand(
 				(runFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,
 					messages.filter(
-						({ severity }) =>
-							severity === "warning" || severity === "error"
+						({ severity, stdout }) =>
+							(stdout !== undefined && !plans[index].printed) ||
+							severity === "warning" ||
+							severity === "error"
 					),
 					cwd
 				);

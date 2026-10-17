@@ -19,14 +19,16 @@ export function reportServerMessage(
 	else logService.info(said);
 }
 
-/** What Rojo said while it built. */
+/** What Rojo said while it ran: a line it printed on stdout comes out on stdout as it printed it, so a program that reads Rojo's output reads Rogen's. */
 export function reportRojo(
 	logService: LogService,
 	messages: readonly ServerMessage[],
 	cwd: string
 ): void {
-	for (const message of messages)
-		reportServerMessage(logService, "Rojo", message, cwd);
+	for (const message of messages) {
+		if (message.stdout !== undefined) logService.print(message.stdout);
+		else reportServerMessage(logService, "Rojo", message, cwd);
+	}
 }
 
 /** What Rojo said that its failure doesn't repeat: the failure carries its errors. */

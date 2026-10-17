@@ -51,6 +51,27 @@ describe("ConfigFormatter", () => {
 		);
 	});
 
+	it("should name a config after its folder when it has no name, as Rojo does a project file", async () => {
+		await fs.writeFile("/repo/rogen.json", '{"sourcePaths":["src"]}');
+
+		await format();
+
+		expect(JSON.parse(await fs.readFile("/repo/rogen.json"))).toEqual({
+			name: "repo",
+			sourcePaths: ["src"],
+		});
+	});
+
+	it("should keep the name a config has", async () => {
+		await fs.writeFile("/repo/rogen.json", '{"name":"Game"}');
+
+		await format();
+
+		expect(JSON.parse(await fs.readFile("/repo/rogen.json"))).toEqual({
+			name: "Game",
+		});
+	});
+
 	it("should leave a formatted file alone and say nothing changed", async () => {
 		await fs.writeFile("/repo/rogen.json", TABBED);
 		await format();

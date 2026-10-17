@@ -61,6 +61,29 @@ describe("sourcemap command", () => {
 		});
 	});
 
+	it("should leave stdout to the sourcemap and Rojo's lines", async () => {
+		const { log, running } = start(new MockConfigService([buildable()]), {
+			output: "map.json",
+		});
+		const [rojo] = await spawnedCount(1);
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.reserved).toBe(true);
+	});
+
+	it("should print the line Rojo prints about the file it wrote on stdout, as Rojo does", async () => {
+		const { log, running } = start(new MockConfigService([buildable()]), {
+			output: "map.json",
+		});
+		const [rojo] = await spawnedCount(1);
+		rojo.print("Created sourcemap at map.json\n");
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		expect(log.texts("print")).toEqual(["Created sourcemap at map.json"]);
+	});
+
 	it("should print what Rojo writes to a file of its own, and nothing else on stdout", async () => {
 		const { log, running } = start(new MockConfigService([buildable()]));
 		const [rojo] = await spawnedCount(1);
@@ -222,7 +245,7 @@ describe("sourcemap command", () => {
 			output: "map.json",
 		});
 		const [rojo] = await spawnedCount(1);
-		rojo.print("ERROR: no such folder\n");
+		rojo.printError("ERROR: no such folder\n");
 		rojo.exit({ code: 1, signal: null });
 
 		expect(((await running) as ResultError<Error>).error.message).toContain(

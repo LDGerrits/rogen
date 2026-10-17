@@ -1,15 +1,16 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing src/Inventory/Bag@server.luau
+  Writing src/Inventory/Bag@server.meta.json
+  Writing src/Inventory/Save@server.meta.json
+  Writing src/Shop/Server/Kiosk/New.luau
+  Writing src/Hud/Client/Bar.client.luau
+  Removing src/Shop/Server/Kiosk/Item.luau
+stderr:
   rogen syncback · Game
   default.project.json · wrote
   Built 1 config.
-  write  src/Inventory/Bag@server.luau
-  write  src/Inventory/Bag@server.meta.json
-  remove src/Shop/Server/Kiosk/Item.luau
-  write  src/Hud/Client/Bar.client.luau
-  write  src/Inventory/Save@server.meta.json
-  write  src/Shop/Server/Kiosk/New.luau
   Syncback wrote 6 changes.
 
 $ rogen where src

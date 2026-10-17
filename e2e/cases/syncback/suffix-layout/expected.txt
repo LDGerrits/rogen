@@ -1,14 +1,15 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing src/Inventory/ItemTypes@shared.luau
+  Writing src/Boot.server.luau
+  Writing src/Inventory/Mail@server.luau
+  Writing src/Inventory/Save@server.luau
+  Writing src/Quest/Main@server.luau
+stderr:
   rogen syncback · Game
   default.project.json · wrote
   Built 1 config.
-  write  src/Inventory/Save@server.luau
-  write  src/Inventory/ItemTypes@shared.luau
-  write  src/Boot.server.luau
-  write  src/Inventory/Mail@server.luau
-  write  src/Quest/Main@server.luau
   Syncback wrote 5 changes.
 
 $ rogen where src

@@ -47,8 +47,8 @@ interface PlaceAround {
 
 const isBareName = (ref: string): boolean => PROJECT_NAME.test(ref);
 
-const notFound = (ref: string): UsageError =>
-	new UsageError(
+const notFound = (ref: string): ProjectError =>
+	new ProjectError(
 		`"${ref}" not found.`,
 		"Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
 	);
@@ -335,7 +335,7 @@ export class ConfigDiscovery {
 		if (adopted) return ok(adopted);
 		return err(
 			names.length === 0
-				? new UsageError(
+				? new ProjectError(
 						`${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}).`,
 						"Run 'rogen init' to create one."
 					)

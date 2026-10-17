@@ -30,6 +30,7 @@ export abstract class AbstractLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
 	protected level: LogLevel = LogLevel.Info;
+	protected stdoutReserved = false;
 	private frameOpen = false;
 
 	/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to. */
@@ -40,6 +41,10 @@ export abstract class AbstractLogService implements LogService {
 
 	setLevel(level: LogLevel): void {
 		this.level = level;
+	}
+
+	reserveStdout(): void {
+		this.stdoutReserved = true;
 	}
 
 	protected canLog(level: LogLevel): boolean {

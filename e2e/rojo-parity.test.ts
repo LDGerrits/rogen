@@ -1,6 +1,7 @@
 import { spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { stripVTControlCharacters } from "util";
 import {
 	describeWithRojo,
 	makeRojoDir,
@@ -234,6 +235,28 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				);
 				expect(treeOf(byRogen, "rogen.json")).toEqual(
 					treeOf(byRojo, "default.project.json")
+				);
+			},
+			60_000
+		);
+
+		const LISTED_DIFFERENTLY = ["child_but_not", "ignore_paths_init"];
+
+		it.each(cases.filter((name) => !LISTED_DIFFERENTLY.includes(name)))(
+			"should list what %s would write on stdout as Rojo lists it",
+			(name) => {
+				const byRojo = copy(name, "rojo");
+				const byRogen = copy(name, "rogen");
+				const args = ["--input", inputOf(name), "--list", "--dry-run"];
+				const expected = rojo(byRojo, ["syncback", ...args]);
+				const actual = rogen(byRogen, ["syncback", ...args]);
+
+				expect(actual.status).toBe(expected.status);
+				expect(actual.stdout).toBe(
+					stripVTControlCharacters(expected.stdout).replaceAll(
+						"default.project.json",
+						"rogen.json"
+					)
 				);
 			},
 			60_000

@@ -16,6 +16,7 @@ export class NativeLifecycleService
 
 	private readonly _onWillShutdown = this._register(new Emitter<void>());
 	private listening = false;
+	signal: NodeJS.Signals | undefined;
 
 	/** Takes over the signals once something listens, so a run that never listens still dies of them. */
 	readonly onWillShutdown: Event<void> = (listener, disposables) => {
@@ -26,8 +27,11 @@ export class NativeLifecycleService
 	private listenForSignals(): void {
 		if (this.listening) return;
 		this.listening = true;
-		const listener = () => this._onWillShutdown.fire();
 		for (const signal of SHUTDOWN_SIGNALS) {
+			const listener = () => {
+				this.signal ??= signal;
+				this._onWillShutdown.fire();
+			};
 			process.once(signal, listener);
 			this._register(toDisposable(() => process.off(signal, listener)));
 		}

@@ -1,13 +1,13 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing src/Inventory/Server/Bag.luau
+stderr:
   rogen syncback · Game
   default.project.json · wrote
   Built 1 config.
-  write  src/Inventory/Server/Bag.luau
-  Syncback wrote 1 change.
-stderr:
   rogen.json - warning: ServerScriptService/Inventory/Mail.spec is in the place and no folder of the project can take it, so it was left out: src/Inventory/Server/Mail.spec.luau matches an ignore glob of the project, so it is left alone. (syncback.unplaced)
+  Syncback wrote 1 change.
 
 written:
   default.project.json

@@ -34,6 +34,7 @@ export class ServeAddress {
 	}
 
 	toString(): string {
-		return `${this.host}:${this.port}`;
+		const bare = this.host.replace(/^\[(.*)\]$/, "$1");
+		return `${bare.includes(":") ? `[${bare}]` : bare}:${this.port}`;
 	}
 }

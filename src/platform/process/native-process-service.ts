@@ -9,6 +9,7 @@ import { Result, err, ok } from "../../base/result.js";
 import { LineBuffer } from "./line-buffer.js";
 import {
 	ChildProcess,
+	OutputLine,
 	ExecOptions,
 	ProcessExit,
 	ProcessOutput,
@@ -109,7 +110,7 @@ function groupExists(pid: number): boolean {
 class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 	readonly pid = undefined;
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
-	readonly onDidOutputLine: Event<string> = NullEvent;
+	readonly onDidOutput: Event<OutputLine> = NullEvent;
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 	private readonly exit: ProcessExit;
 
@@ -125,26 +126,31 @@ class FailedChildProcess extends AbstractDisposable implements ChildProcess {
 }
 
 class NativeChildProcess extends AbstractDisposable implements ChildProcess {
-	private readonly _onDidOutputLine = this._register(new Emitter<string>());
-	readonly onDidOutputLine: Event<string> = this._onDidOutputLine.event;
+	private readonly _onDidOutput = this._register(new Emitter<OutputLine>());
+	readonly onDidOutput: Event<OutputLine> = this._onDidOutput.event;
 
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
 
-	private readonly lineBuffers: LineBuffer[] = [];
+	private readonly lineBuffers: {
+		readonly lines: LineBuffer;
+		readonly stream: OutputLine["stream"];
+	}[] = [];
 	private exit: ProcessExit | undefined;
 	private readonly exited: Promise<ProcessExit>;
 	private terminating: Promise<ProcessExit> | undefined;
 
 	constructor(private readonly child: childProcess.ChildProcess) {
 		super();
-		for (const stream of [child.stdout, child.stderr]) {
+		for (const [stream, name] of [
+			[child.stdout, "stdout"],
+			[child.stderr, "stderr"],
+		] as const) {
 			const lines = new LineBuffer();
-			this.lineBuffers.push(lines);
+			this.lineBuffers.push({ lines, stream: name });
 			stream?.setEncoding("utf8");
 			stream?.on("data", (text: string) => {
-				for (const line of lines.push(text))
-					this._onDidOutputLine.fire(line);
+				for (const line of lines.push(text)) this.output(line, name);
 			});
 		}
 		this.exited = new Promise((resolve) => {
@@ -152,9 +158,9 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 				if (this.exit) return;
 				this.exit = exit;
 				resolve(exit);
-				for (const lines of this.lineBuffers) {
+				for (const { lines, stream } of this.lineBuffers) {
 					const last = lines.flush();
-					if (last !== undefined) this._onDidOutputLine.fire(last);
+					if (last !== undefined) this.output(last, stream);
 				}
 				this._onDidExit.fire(exit);
 			};
@@ -186,6 +192,10 @@ class NativeChildProcess extends AbstractDisposable implements ChildProcess {
 
 	get pid(): number | undefined {
 		return this.child.pid;
+	}
+
+	private output(line: string, stream: OutputLine["stream"]): void {
+		this._onDidOutput.fire({ line, stream });
 	}
 
 	terminate(): Promise<ProcessExit> {

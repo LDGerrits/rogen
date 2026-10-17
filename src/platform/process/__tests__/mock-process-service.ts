@@ -4,6 +4,7 @@ import { Result, err, ok } from "../../../base/result.js";
 import { LineBuffer } from "../line-buffer.js";
 import {
 	ChildProcess,
+	OutputLine,
 	ProcessExit,
 	ProcessOutput,
 	ProcessService,
@@ -14,9 +15,10 @@ export class MockChildProcess
 	extends AbstractDisposable
 	implements ChildProcess
 {
-	private readonly _onDidOutputLine = this._register(new Emitter<string>());
-	readonly onDidOutputLine: Event<string> = this._onDidOutputLine.event;
+	private readonly _onDidOutput = this._register(new Emitter<OutputLine>());
+	readonly onDidOutput: Event<OutputLine> = this._onDidOutput.event;
 	private readonly lines = new LineBuffer();
+	private readonly errorLines = new LineBuffer();
 
 	private readonly _onDidExit = this._register(new Emitter<ProcessExit>());
 	readonly onDidExit: Event<ProcessExit> = this._onDidExit.event;
@@ -34,15 +36,24 @@ export class MockChildProcess
 	}
 
 	print(text: string): void {
-		for (const line of this.lines.push(text))
-			this._onDidOutputLine.fire(line);
+		for (const line of this.lines.push(text)) this.say(line, "stdout");
+	}
+
+	printError(text: string): void {
+		for (const line of this.errorLines.push(text)) this.say(line, "stderr");
+	}
+
+	private say(line: string, stream: OutputLine["stream"]): void {
+		this._onDidOutput.fire({ line, stream });
 	}
 
 	exit(exit: ProcessExit): void {
 		if (this.exitedWith) return;
 		this.exitedWith = exit;
 		const last = this.lines.flush();
-		if (last !== undefined) this._onDidOutputLine.fire(last);
+		if (last !== undefined) this.say(last, "stdout");
+		const lastError = this.errorLines.flush();
+		if (lastError !== undefined) this.say(lastError, "stderr");
 		this._onDidExit.fire(exit);
 	}
 

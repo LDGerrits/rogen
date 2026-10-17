@@ -67,6 +67,7 @@ export class BuildWatch {
 	): Promise<Result<void, Error>> {
 		const { accessor } = this;
 		const logService = accessor.get(LogService);
+		if (this.step && !this.json) logService.reserveStdout();
 		const configService = accessor.get(ConfigService);
 		const watchService = accessor.get(WatchService);
 		const environment = accessor.get(EnvironmentService);

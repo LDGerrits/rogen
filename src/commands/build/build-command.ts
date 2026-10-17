@@ -135,6 +135,7 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const logService = accessor.get(LogService);
+			if (flags.value && !line.options.json) logService.reserveStdout();
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;

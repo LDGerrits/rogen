@@ -1,19 +1,23 @@
 $ rogen syncback -i place.rbxl --dry-run
 exit 0
 stdout:
+  Writing src/Net/init.luau
+  Writing src/Net
+stderr:
   rogen syncback · Game
   default.project.json · wrote
   Built 1 config.
-  write  src/Net/init.luau
   Syncback would change 1 file (1 to write).
 
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Writing src/Net/init.luau
+  Writing src/Net
+stderr:
   rogen syncback · Game
   default.project.json · unchanged
   Built 1 config.
-  write  src/Net/init.luau
   Syncback wrote 1 change.
 
 written:

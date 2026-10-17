@@ -18,4 +18,13 @@ describe("ServeAddress", () => {
 			new ServeAddress("localhost", 8000).urlAt("127.0.0.1", "/details")
 		).toBe("http://127.0.0.1:8000/details");
 	});
+
+	it.each([
+		["127.0.0.1", "127.0.0.1:34872"],
+		["localhost", "localhost:34872"],
+		["::1", "[::1]:34872"],
+		["[::1]", "[::1]:34872"],
+	])("should write %s as %s", (host, written) => {
+		expect(new ServeAddress(host, 34872).toString()).toBe(written);
+	});
 });

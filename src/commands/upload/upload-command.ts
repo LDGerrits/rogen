@@ -107,6 +107,7 @@ registerCommand(
 			];
 			const rojoService = accessor.get(RojoCommandService);
 			const logService = accessor.get(LogService);
+			if (!line.options.json) logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const selection = await accessor

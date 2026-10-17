@@ -323,14 +323,34 @@ describe("parseArgs", () => {
 			["build", "--quiet=yes"],
 			"Option '--quiet' is a flag and takes no value.",
 		],
-		[
-			["build", "-t=mock"],
-			"Option '-t' takes its value after a space, not after '='.",
-		],
 	])("should explain a misplaced value in %j", (argv, message) => {
 		const result = parse(argv);
 
 		expect(result.isErr() && result.error.message).toBe(message);
+	});
+
+	it("should read -t=mock as -t mock, as Rojo does", () => {
+		const { line } = parse(["build", "-t=mock"]).unwrap();
+
+		expect(line.options.variant).toEqual(["mock"]);
+	});
+
+	it("should keep a value that starts with a dash, after -t=", () => {
+		const { line } = parse(["build", "-t=-x"]).unwrap();
+
+		expect(line.options.variant).toEqual(["-x"]);
+	});
+
+	it("should keep an = in the value of a short option", () => {
+		const { line } = parse(["build", "-t=a=b"]).unwrap();
+
+		expect(line.options.variant).toEqual(["a=b"]);
+	});
+
+	it("should not rewrite -t=mock after --", () => {
+		const { line } = parse(["build", "--", "-t=mock"]).unwrap();
+
+		expect(line.passthrough).toEqual(["-t=mock"]);
 	});
 
 	it.each([["--no-input"], ["--all"], ["-c", "x"]])(

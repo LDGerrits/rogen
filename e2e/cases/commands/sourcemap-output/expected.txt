@@ -1,6 +1,8 @@
 $ rogen sourcemap -o sourcemap.json
 exit 0
 stdout:
+  Created sourcemap at sourcemap.json
+stderr:
   rogen sourcemap · Game
   default.project.json · wrote
   Built 1 config.

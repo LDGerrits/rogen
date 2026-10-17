@@ -39,6 +39,56 @@ describe("ServerOutput", () => {
 			reading(SyncServer.ROJO);
 		});
 
+		describe("streams", () => {
+			it("should keep a plain line of stdout as it was printed", () => {
+				output.readLine("Built project to a.rbxl", "stdout");
+
+				expect(said).toEqual([
+					{
+						severity: "info",
+						text: "Built project to a.rbxl",
+						stdout: "Built project to a.rbxl",
+					},
+				]);
+			});
+
+			it("should keep the lines of a stdout block whole, whatever stderr record is pending", () => {
+				const all: ServerMessage[] = [];
+				output.onDidMessage((message) => all.push(message));
+
+				output.readLine("error: it broke", "stderr");
+				output.readLine("Rojo server listening:", "stdout");
+				output.readLine("  Address: localhost", "stdout");
+				output.readLine("", "stdout");
+				jest.advanceTimersByTime(100);
+
+				expect(
+					all.flatMap(({ stdout }) =>
+						stdout === undefined ? [] : [stdout]
+					)
+				).toEqual([
+					"Rojo server listening:",
+					"  Address: localhost",
+					"",
+				]);
+				expect(said).toContainEqual({
+					severity: "error",
+					text: "it broke",
+				});
+			});
+
+			it("should not take a line of stderr, or a log record, as stdout", () => {
+				output.readLine("something odd", "stderr");
+				output.readLine("[ERROR rojo] it broke", "stdout");
+				jest.advanceTimersByTime(100);
+
+				expect(said).toEqual([
+					{ severity: "info", text: "something odd" },
+					{ severity: "error", text: "it broke" },
+				]);
+			});
+		});
+
 		describe("connections", () => {
 			let changes: string[];
 

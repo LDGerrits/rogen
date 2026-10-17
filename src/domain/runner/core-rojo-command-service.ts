@@ -77,13 +77,16 @@ export class CoreRojoCommandService implements RojoCommandService {
 			project,
 			messages: ran.messages,
 			...(ran.failure && {
-				failure: new DiagnosticsError([
-					errorDiagnostic(
-						"rojo.commandFailed",
-						{ resource: project.projectFile },
-						ran.failure
-					),
-				]),
+				failure: new DiagnosticsError(
+					[
+						errorDiagnostic(
+							"rojo.commandFailed",
+							{ resource: project.projectFile },
+							ran.failure
+						),
+					],
+					ran.refusedArguments ? "usage" : "project"
+				),
 			}),
 		});
 	}
@@ -122,7 +125,11 @@ export class CoreRojoCommandService implements RojoCommandService {
 		);
 		return ok({
 			messages: ran.messages,
-			...(ran.failure && { failure: new Error(ran.failure) }),
+			...(ran.failure && {
+				failure: ran.refusedArguments
+					? new UsageError(ran.failure)
+					: new Error(ran.failure),
+			}),
 		});
 	}
 
@@ -135,7 +142,12 @@ export class CoreRojoCommandService implements RojoCommandService {
 		cwd: string,
 		signal: AbortSignal | undefined,
 		described = command
-	): Promise<{ messages: ServerMessage[]; failure?: string }> {
+	): Promise<{
+		messages: ServerMessage[];
+		failure?: string;
+		/** Whether Rojo exited 2, as it does for a command line it can't read. */
+		refusedArguments?: boolean;
+	}> {
 		if (signal?.aborted) return { messages: [] };
 		const rojo = this.rojoRunner.start(
 			executable,
@@ -166,6 +178,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 		return {
 			messages,
 			failure: `'${executable.server.id} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`,
+			refusedArguments: exit.code === 2,
 		};
 	}
 

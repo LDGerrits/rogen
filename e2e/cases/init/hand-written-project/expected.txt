@@ -28,7 +28,7 @@ default.project.json:
     },
     "Workspace": {
       "$properties": {
-        "Gravity": 50
+        "Gravity": 50.0
       }
     }
   }
@@ -42,7 +42,7 @@ rogen.json:
     "$className": "DataModel",
     "Workspace": {
       "$properties": {
-        "Gravity": 50
+        "Gravity": 50.0
       }
     }
   },

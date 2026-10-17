@@ -15,11 +15,11 @@ stdout:
   }
 
 $ rogen build --json nowhere
-exit 2
+exit 1
 stdout:
   {
     "error": {
-      "kind": "usage",
+      "kind": "project",
       "message": "\"nowhere\" not found.",
       "hint": "Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here."
     }

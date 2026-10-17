@@ -1,10 +1,11 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
+  Removing src/Inventory/Bag@server.luau
+stderr:
   rogen syncback · Game
   default.project.json · wrote
   Built 1 config.
-  remove src/Inventory/Bag@server.luau
   Syncback wrote 1 change.
 
 $ rogen where src

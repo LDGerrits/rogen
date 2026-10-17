@@ -1,0 +1,11 @@
+$ rogen upload --asset_id abc
+exit 2
+stderr:
+  rogen upload · Game
+  default.project.json · wrote
+  Built 1 config.
+  Rojo: For more information try --help
+  default.project.json - error: 'rojo upload' failed (exit code 2): Invalid value "abc" for '--asset_id <ASSET_ID>': invalid digit found in string (rojo.commandFailed)
+
+written:
+  default.project.json

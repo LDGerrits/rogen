@@ -254,7 +254,7 @@ describe("build --watch", () => {
 		it("should report a failed run and go on watching", async () => {
 			void startWatch([], { output: "game.rbxl" });
 			await settle();
-			processes.spawned[0].print("ERROR: boom\n");
+			processes.spawned[0].printError("ERROR: boom\n");
 			await finishRojo(0, 1);
 
 			expect(logService.texts("error").join("\n")).toContain(
@@ -278,7 +278,7 @@ describe("build --watch", () => {
 		it("should print a line for each Rojo build with --json", async () => {
 			void startWatch([], { output: "game.rbxl", json: true });
 			await settle();
-			processes.spawned[0].print("ERROR: boom\n");
+			processes.spawned[0].printError("ERROR: boom\n");
 			await finishRojo(0, 1);
 
 			const lines = logService

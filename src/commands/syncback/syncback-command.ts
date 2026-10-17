@@ -121,6 +121,7 @@ registerCommand(
 			const yes = line.options["non-interactive"] === true;
 			const promptService = accessor.get(PromptService);
 			const logService = accessor.get(LogService);
+			if (!json) logService.reserveStdout();
 			if (!dryRun && !yes && (!promptService.isInteractive || json))
 				return err(
 					new UsageError(
@@ -190,7 +191,9 @@ registerCommand(
 					const rebuilt = await buildService.build(selection.value);
 					if (
 						rebuilt.failure() ||
-						rebuilt.builds.some(({ outcome }) => outcome === "wrote")
+						rebuilt.builds.some(
+							({ outcome }) => outcome === "wrote"
+						)
 					)
 						build = rebuilt;
 				}
@@ -235,14 +238,15 @@ registerCommand(
 			return answer === true;
 		}
 
+		/** Prints what Rojo's `--list` prints: a line for each file and folder, `Writing` or `Removing`, on stdout. */
 		private listChanges(
 			logService: LogService,
 			plan: SyncbackPlan,
 			cwd: string
 		): void {
-			for (const { kind, file } of plan.changes)
-				logService.info(
-					`${kind === "write" ? "write " : "remove"} ${path.relative(cwd, file)}`
+			for (const { kind, file } of plan.listed)
+				logService.print(
+					`${kind === "write" ? "Writing" : "Removing"} ${path.relative(cwd, file)}`
 				);
 		}
 
