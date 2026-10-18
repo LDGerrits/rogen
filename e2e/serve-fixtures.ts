@@ -33,7 +33,7 @@ const isFree = (port: number) =>
 	});
 
 /** A port within 2000 of `firstPort` and the two after it, which a test may serve on, that nothing listens on. */
-async function freePort(firstPort: number): Promise<number> {
+export async function freePort(firstPort: number): Promise<number> {
 	for (;;) {
 		const port = firstPort + Math.floor(Math.random() * 2000);
 		const free = await Promise.all([0, 1, 2].map((n) => isFree(port + n)));

@@ -13,6 +13,7 @@ stdout:
   Next steps
     Run:
       rogen serve
+    In Studio, press Connect in the Rojo plugin.
   Wrote 3 files.
 
 written:

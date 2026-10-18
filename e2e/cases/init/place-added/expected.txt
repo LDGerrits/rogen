@@ -12,6 +12,7 @@ stdout:
   Next steps
     Run:
       rogen serve
+    In Studio, press Connect in the Rojo plugin.
     Put the code of lobby in places/lobby/src: it gets the routes and the tree of rogen.json, and the code in its source paths wins a clash with the shared code.
   Wrote 3 files.
 

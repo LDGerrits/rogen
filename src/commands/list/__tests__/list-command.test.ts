@@ -727,6 +727,43 @@ describe("list command", () => {
 			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");
 		});
 
+		describe("with the code the places share", () => {
+			beforeEach(async () => {
+				await write("rogen.json", {
+					name: "Game",
+					sourcePaths: ["places/shared/src"],
+					placePaths: ["places/*"],
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				});
+				await fs.createDirectory("/repo/places/shared/src");
+			});
+
+			it("should list the folder as shared code, not as a place", async () => {
+				await run();
+
+				expect(steps()).toEqual([
+					"rogen.json",
+					"places/arena (place)",
+					"places/lobby (place)",
+				]);
+				expect(under("rogen.json")[0]).toContain(
+					"places: arena, Lobby\nshared code: places/shared\n"
+				);
+			});
+
+			it("should name it in --json", async () => {
+				await run({ json: true });
+
+				const [config] = JSON.parse(logService.texts("print")[0])
+					.configs as { sharedCode: string[]; places: unknown[] }[];
+				expect(config.sharedCode).toEqual(["/repo/places/shared"]);
+				expect(config.places).toHaveLength(2);
+			});
+		});
+
 		it("should say which place IDs belong to which port", async () => {
 			await write("places/lobby/rogen.json", {
 				name: "Lobby",

@@ -51,7 +51,9 @@ export const defaultProjectChoices = async (
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
 		directoryOf({ workspace: spec, existing: [...existingFiles] }),
-		new InitQuestions(new MockPromptService([], false), false),
+		new InitQuestions(new MockPromptService([], false), false, {
+			sample: false,
+		}),
 		fileSystem
 	);
 	return (await setup.ask()).unwrap() as ProjectChoices;
@@ -80,7 +82,9 @@ export const planProject = ({
 	return planOf(
 		new ProjectSetup(
 			target,
-			new InitQuestions(new MockPromptService([], false), false),
+			new InitQuestions(new MockPromptService([], false), false, {
+				sample: false,
+			}),
 			new MemoryFileSystemService()
 		),
 		choices,

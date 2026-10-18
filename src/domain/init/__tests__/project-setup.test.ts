@@ -231,7 +231,11 @@ describe("ProjectSetup plan", () => {
 				serveProject: "dist",
 				projects: { dist: { syncPath: "dist" } },
 			});
-			expect(files.nextSteps.run).toEqual(["rbxtsc -w", "rogen serve"]);
+			expect(files.nextSteps.run).toEqual([
+				"rbxtsc -w",
+				"darklua process build dist --watch",
+				"rogen serve",
+			]);
 		});
 
 		it("should write no projects when nothing processes the code and no test runner is there", async () => {
@@ -251,7 +255,6 @@ describe("ProjectSetup plan", () => {
 			expect((await planFor("luau", false)).nextSteps).toEqual({
 				setup: [],
 				run: ["rogen serve"],
-				darklua: [],
 				edits: ['Add your own routes under "routes" in rogen.json.'],
 			});
 		});
@@ -263,15 +266,16 @@ describe("ProjectSetup plan", () => {
 			]);
 		});
 
-		it("should say what Darklua must process", async () => {
-			expect((await planFor("luau", true)).nextSteps.darklua).toEqual([
-				"darklua process src dist",
+		it("should run Darklua beside the server, watching", async () => {
+			expect((await planFor("luau", true)).nextSteps.run).toEqual([
+				"darklua process src dist --watch",
+				"rogen serve",
 			]);
 		});
 
-		it("should leave the sourcemap to luau-lsp, and say how without it", async () => {
+		it("should say how to keep the sourcemap current", async () => {
 			expect((await planFor("luau", true)).nextSteps.edits.at(-1)).toBe(
-				"Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rogen sourcemap --watch -o sourcemap.json"
+				"Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json"
 			);
 		});
 
@@ -292,16 +296,19 @@ describe("ProjectSetup plan", () => {
 				},
 			}).unwrap();
 
-			expect(files.nextSteps.darklua).toEqual([
-				"darklua process src dist/src",
-				"darklua process lib/shared dist/lib/shared",
+			expect(files.nextSteps.run).toEqual([
+				"darklua process src dist/src --watch",
+				"darklua process lib/shared dist/lib/shared --watch",
+				"rogen serve",
 			]);
 		});
 
 		it("should tell roblox-ts with darklua to process the compiled output", async () => {
-			expect(
-				(await planFor("roblox-ts", true)).nextSteps.darklua
-			).toEqual(["darklua process build dist"]);
+			expect((await planFor("roblox-ts", true)).nextSteps.run).toEqual([
+				"rbxtsc -w",
+				"darklua process build dist --watch",
+				"rogen serve",
+			]);
 		});
 	});
 

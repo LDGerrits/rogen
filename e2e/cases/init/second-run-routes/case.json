@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "-y", "--route", "serverStorage", "--no-route", "client"]],
+	"output": ["init"],
+	"show": ["rogen.json"]
+}

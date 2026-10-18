@@ -306,4 +306,67 @@ describe("ConsolePromptService", () => {
 			expect(await answer).toBeUndefined();
 		});
 	});
+
+	describe("autocomplete", () => {
+		const choices = [
+			{ value: "build", label: "build", hint: "Builds a project" },
+			{ value: "serve", label: "serve", hint: "Serves with Rojo" },
+			{ value: "where", label: "where", hint: "Shows a route" },
+		] as const;
+
+		it("should resolve to the first choice on Enter", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press(KEY.enter);
+			expect(await answer).toBe("build");
+		});
+
+		it("should resolve to the initial value on Enter", async () => {
+			const answer = service.autocomplete({
+				message: "Pick",
+				choices,
+				initialValue: "serve",
+			});
+			await terminal.press(KEY.enter);
+			expect(await answer).toBe("serve");
+		});
+
+		it("should resolve to the choice moved to", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press(KEY.down, KEY.enter);
+			expect(await answer).toBe("serve");
+		});
+
+		it("should narrow the choices to those matching what is typed", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press("w", "h", KEY.enter);
+			expect(await answer).toBe("where");
+		});
+
+		it("should match the hint too", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press(..."rojo", KEY.enter);
+			expect(await answer).toBe("serve");
+		});
+
+		it("should list every choice with its hint", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press(KEY.enter);
+			await answer;
+			expect(terminal.screen).toContain("serve  Serves with Rojo");
+		});
+
+		it("should say when nothing matches", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press("z", "z");
+			expect(terminal.screen).toContain("No matches found");
+			await terminal.press(KEY.ctrlC);
+			await answer;
+		});
+
+		it("should resolve to undefined on Ctrl+C", async () => {
+			const answer = service.autocomplete({ message: "Pick", choices });
+			await terminal.press(KEY.ctrlC);
+			expect(await answer).toBeUndefined();
+		});
+	});
 });

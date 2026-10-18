@@ -1,0 +1,14 @@
+{
+	"steps": [
+		[
+			"init",
+			"--non-interactive",
+			"--language",
+			"roblox-ts"
+		]
+	],
+	"rojo": false,
+	"tools": {
+		"npm": "echo \"npm error network\" >&2; exit 1"
+	}
+}

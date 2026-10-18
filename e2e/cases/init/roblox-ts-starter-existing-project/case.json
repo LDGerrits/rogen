@@ -1,0 +1,18 @@
+{
+	"steps": [
+		[
+			"init",
+			"--non-interactive",
+			"--skip-git",
+			"--language",
+			"roblox-ts"
+		]
+	],
+	"rojo": false,
+	"show": [
+		"rogen.json"
+	],
+	"tools": {
+		"npm": "echo \"npm error network\" >&2; exit 1"
+	}
+}

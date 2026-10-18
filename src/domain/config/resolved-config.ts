@@ -158,6 +158,8 @@ export interface ResolvedConfigFile {
 	readonly projects: readonly ResolvedConfig[];
 	/** The places it lists, sorted by path. */
 	readonly places?: readonly ResolvedConfigFile[];
+	/** The folders its `placePaths` match that hold its source paths: the code the places share, which are not places. */
+	readonly sharedFolders?: readonly string[];
 }
 
 export function placesIn(

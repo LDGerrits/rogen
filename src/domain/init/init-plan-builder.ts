@@ -12,10 +12,19 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitDecision, InitPlan, PresentItem } from "./init-service.js";
+import {
+	InitDecision,
+	InitPlan,
+	PlannedCommand,
+	PlannedScaffold,
+	InitPurpose,
+	PresentItem,
+	SummaryRow,
+} from "./init-service.js";
 
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
+	private edited: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private claudeImport: PlannedFile | undefined;
@@ -29,9 +38,12 @@ export class InitPlanBuilder {
 	private liftedFrom: string | undefined;
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
-	private readonly darklua: string[] = [];
 	private readonly edits: string[] = [];
 	private readonly present: PresentItem[] = [];
+	private readonly commands: PlannedCommand[] = [];
+	private scaffold: PlannedScaffold | undefined;
+	private readonly summary: SummaryRow[] = [];
+	private purpose: InitPurpose = "create";
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -47,6 +59,11 @@ export class InitPlanBuilder {
 			fileName: DEFAULT_CONFIG_FILE,
 			content: configFileContent(config, written),
 		};
+	}
+
+	/** The config of the folder with changes made to it, which is built after it is written. */
+	editConfig(file: PlannedFile): void {
+		this.edited = file;
 	}
 
 	/** `claudeImport`: also write the `CLAUDE.md` that points Claude Code at the agent file. */
@@ -68,6 +85,25 @@ export class InitPlanBuilder {
 	/** A file of the project's template, which is written after the config. */
 	addFile(file: PlannedFile): void {
 		this.templateFiles.push(file);
+	}
+
+	/** A line of the summary: what the plan sets up in `area`. */
+	addSummary(area: string, text: string): void {
+		this.summary.push({ area, text });
+	}
+
+	setPurpose(purpose: InitPurpose): void {
+		this.purpose = purpose;
+	}
+
+	/** The tool that writes the project's own files first. */
+	setScaffold(scaffold: PlannedScaffold): void {
+		this.scaffold = scaffold;
+	}
+
+	/** A program to run after the files are written, after those added before it. */
+	addCommand(command: PlannedCommand): void {
+		this.commands.push(command);
 	}
 
 	/** Asks for a `git init` in the folder, which the plan drops where a work tree holds it already. */
@@ -105,16 +141,13 @@ export class InitPlanBuilder {
 		this.run.push(...commands);
 	}
 
-	addDarkluaCommands(...commands: readonly string[]): void {
-		this.darklua.push(...commands);
-	}
-
 	addEdit(...lines: readonly string[]): void {
 		this.edits.push(...lines);
 	}
 
 	build(): Result<InitPlan, Diagnostic[]> {
 		const written = this.config ? [this.config] : [];
+		const built = this.edited ? [...written, this.edited] : written;
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
 		);
@@ -122,12 +155,15 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
+			purpose: this.purpose,
+			summary: [...this.summary],
 			asked: this.asked,
 			decided: this.decided,
 			present: [...this.present],
 			gitInit: this.gitInit,
+			...(this.scaffold && { scaffold: this.scaffold }),
 			files: [
-				...written,
+				...built,
 				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
 				...(this.claudeImport ? [this.claudeImport] : []),
@@ -135,7 +171,8 @@ export class InitPlanBuilder {
 				...(this.toolManifest ? [this.toolManifest] : []),
 			],
 			directories: [...this.directories],
-			configs: written.map(({ fileName }) =>
+			commands: [...this.commands],
+			configs: built.map(({ fileName }) =>
 				toPosix(
 					path.relative(
 						this.cwd,
@@ -151,7 +188,6 @@ export class InitPlanBuilder {
 			nextSteps: {
 				setup: [...this.setup],
 				run: [...this.run],
-				darklua: [...this.darklua],
 				edits: [
 					...(this.agentStep ? [this.agentStep] : []),
 					...this.edits,

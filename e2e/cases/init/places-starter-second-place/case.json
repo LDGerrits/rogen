@@ -1,0 +1,4 @@
+{
+	"steps": [["init", "--non-interactive", "--skip-git", "--places"], ["init", "places/lobby", "--non-interactive"], ["list"]],
+	"show": ["places/lobby/rogen.json"]
+}

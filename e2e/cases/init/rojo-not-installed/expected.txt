@@ -1,0 +1,115 @@
+$ rogen init --non-interactive --skip-git --no-sample --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "files": [
+      {
+        "file": "<dir>/rogen.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/AGENTS.md",
+        "outcome": "wrote"
+      }
+    ],
+    "directories": [
+      "<dir>/src"
+    ],
+    "decided": [
+      {
+        "question": "kind",
+        "value": "place",
+        "flag": "--kind"
+      },
+      {
+        "question": "language",
+        "value": "luau",
+        "flag": "--language"
+      },
+      {
+        "question": "darklua",
+        "value": false,
+        "flag": "--darklua"
+      },
+      {
+        "question": "places",
+        "value": false,
+        "flag": "--places"
+      },
+      {
+        "question": "sourcePaths",
+        "value": [
+          "src"
+        ],
+        "flag": "--source-path"
+      },
+      {
+        "question": "routes",
+        "value": [
+          "server",
+          "client",
+          "shared"
+        ],
+        "flag": "--route"
+      },
+      {
+        "question": "unmatched",
+        "value": "shared",
+        "flag": "--unmatched"
+      },
+      {
+        "question": "agentRules",
+        "value": true,
+        "flag": "--agent-rules"
+      },
+      {
+        "question": "rojo",
+        "value": "not installed",
+        "flag": "--rojo"
+      }
+    ],
+    "built": [
+      {
+        "config": "project",
+        "file": "<dir>/rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "wrote",
+        "diagnostics": []
+      }
+    ],
+    "notes": [],
+    "nextSteps": {
+      "setup": [
+        "Rojo isn't installed, and rogen serve needs it. Run 'rogen init --rojo' to install Rokit and Rojo, or install Rokit yourself (curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash), then run 'rokit init' and 'rokit add rojo-rbx/rojo@7.7.1' here."
+      ],
+      "run": [
+        "rogen serve"
+      ],
+      "edits": [
+        "Add your own routes under \"routes\" in rogen.json."
+      ]
+    }
+  }
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  }
+}

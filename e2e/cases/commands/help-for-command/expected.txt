@@ -71,8 +71,14 @@ stdout:
                                              config, asks for this addition.
           --color <COLOR>                    Whether to colour the output. [default: auto] [possible
                                              values: auto, always, never]
+          --customise                        In a terminal, ask every question one after another,
+                                             without the summary of the plan first.
           --[no-]darklua                     Whether Darklua processes your code before Rojo syncs it.
-                                             Found from a Darklua config when not given.
+                                             Found from a Darklua config when not given. On a project
+                                             that has a rogen.json, --darklua adds the dist project
+                                             that serves the processed code, a .darklua.json and
+                                             Darklua's pin, and --no-darklua takes the project off
+                                             again when it is still what init writes.
       -n, --dry-run                          Plan without writing or building: print the files it
                                              would write and the choices it took, then stop.
       -h, --help                             Print help.
@@ -82,15 +88,24 @@ stdout:
                                              Rojo's template of that kind and no routes. [possible
                                              values: place, model, plugin]
           --language <ID>                    The language: luau or roblox-ts. Detected from the folder
-                                             when not given.
+                                             when not given. For roblox-ts in a folder with no code,
+                                             package.json or tsconfig.json, init first runs 'npm
+                                             create roblox-ts', which needs npm and the network.
           --nested                           Start a project in a folder below another rogen.json,
                                              which a run that can't ask refuses otherwise.
+          --no-route <ID>                    On a project that has a rogen.json: takes a standard
+                                             route off, when it still has its standard value. Routes
+                                             of your own are never changed. (repeatable)
+          --no-source-path <PATH>            On a project that has a rogen.json: takes a folder off
+                                             its source paths. The files in it are no longer built,
+                                             which init lists. (repeatable)
       -y, --non-interactive                  Write the defaults without asking, as a run without a
                                              terminal, or under a coding agent or CI, does. --json
                                              implies it. A flag below answers its question either way.
           --package <PATH>                   A package folder to mount as it is; repeat for several,
                                              or none for no mounts. The installed ones when not given.
-                                             (repeatable)
+                                             On a project that has a rogen.json, mounts the folder if
+                                             the tree doesn't. (repeatable)
           --place-id <ID>                    With a place folder: a place ID that the place's server
                                              is for, so a Studio on another place refuses to connect;
                                              repeat for several, or none. None when not given.
@@ -98,27 +113,43 @@ stdout:
           --place-listing <PLACE_LISTING>    With a place folder: list every folder beside it in the
                                              config's placePaths (the default), or only this one.
                                              [possible values: glob, folder]
+          --[no-]places                      Whether a new project is several places: the code they
+                                             share in places/shared, and a first place in places/game,
+                                             more by 'rogen init places/<name>'. One place when not
+                                             given, or several where a places folder exists.
           --project-file <PROJECT_FILE>      With a default.project.json already here: lift its tree
                                              into rogen.json (the default), or start a new tree.
                                              [possible values: lift, new]
       -q, --quiet                            Only print errors.
-          --[no-]rojo-pin                    Whether to pin Rojo in rokit.toml. Not pinned when not
-                                             given. On a folder that has a config, asks for this
-                                             addition.
+          --[no-]rojo                        Whether to set Rojo up when it isn't ready: pin it with
+                                             the toolchain manager found (Rokit, Aftman or Foreman),
+                                             or install Rokit first and pin it. A run that can't ask
+                                             pins with a manager it finds, and installs Rokit only
+                                             with this flag. On a folder that has a config, sets Rojo
+                                             up there.
           --route <ID>                       A route to start with: server, client, shared,
                                              replicatedFirst, serverStorage or starterGui; repeat for
-                                             several, or none. The first three when not given. When a
+                                             several, or none. The first three when not given. On a
+                                             project that has a rogen.json, adds the route. When a
                                              lifted project file mounts a folder of that name, the
                                              name stands for the route derived from it, which `Took
                                              the defaults` and `--json` write as mount:server.
                                              (repeatable)
+          --[no-]sample                      Whether a new place starts with the Greeter sample: three
+                                             hello-world scripts in src/Greeter, Rojo's Baseplate and
+                                             a README. Written when not given, in a folder with no
+                                             code. --no-sample leaves src empty.
           --skip-git                         Leave git out of a new project: write no .gitignore and
                                              run no git init. Otherwise a .gitignore is written where
                                              none is, and git init runs where no work tree holds the
                                              folder.
           --source-path <PATH>               A folder with your scripts, relative to here; repeat for
-                                             several. src when not given, or where the code is.
-                                             (repeatable)
+                                             several. src when not given, or where the code is. On a
+                                             project that has a rogen.json, adds the folder to its
+                                             source paths. (repeatable)
+          --[no-]studio-plugin               Whether to install Rojo's Studio plugin, once Rojo is set
+                                             up. Not installed by a run that can't ask, which prints
+                                             the command instead.
           --sync-path <PATH>                 With Darklua: the folder it writes into, and Rojo syncs
                                              from.
           --unmatched <UNMATCHED>            Where files that match no route go: into the shared route

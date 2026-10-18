@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "--non-interactive", "--skip-git", "--no-sample"]],
+	"rojo": false,
+	"tools": { "aftman": "" }
+}

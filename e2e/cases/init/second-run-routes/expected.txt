@@ -1,0 +1,30 @@
+$ rogen init -y --route serverStorage --no-route client
+exit 0
+stdout:
+  rogen init
+  rogen.json: added routes.serverStorage.
+  rogen.json: removed routes.client.
+  default.project.json · wrote
+  Wrote 1 file.
+
+written:
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+	// the routes of the game
+	"tree": { "$className": "DataModel" },
+	"routes": {
+		"server": "ServerScriptService",
+		"shared": "ReplicatedStorage/shared",
+		"mine": "ReplicatedStorage/Mine",
+		"serverStorage": "ServerStorage"
+	}
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Util: ModuleScript  <- src/shared/Util.luau

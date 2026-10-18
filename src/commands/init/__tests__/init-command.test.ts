@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import path from "path";
+import { parse } from "../../../base/jsonc.js";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
@@ -10,6 +11,7 @@ import { configSchema } from "../../../domain/config/config-schema.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
@@ -23,7 +25,18 @@ import {
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
-const WHAT_TO_ADD = "rogen.json exists. What do you want to add?";
+const readyProcesses = () => {
+	const processes = new MockProcessService();
+	processes.installed.set("rojo", "/bin/rojo");
+	processes.outputs.set("/bin/rojo", {
+		code: 0,
+		stdout: "Rojo 7.7.1\n",
+		stderr: "",
+	});
+	return processes;
+};
+
+const WHAT_TO_CHANGE = "What do you want to change?";
 
 describe("init command", () => {
 	const cwd = path.resolve("/mock/my-game");
@@ -33,16 +46,21 @@ describe("init command", () => {
 		prompt: PromptService = new MockPromptService([], false),
 		log: MockLogService = new MockLogService(),
 		options: CommandLine["options"] = {},
-		positionals: string[] = []
+		positionals: string[] = [],
+		processes: MockProcessService = readyProcesses()
 	) => {
 		const harness = commandHarness({
 			cwd,
+			processes,
 			fs: memFs,
 			log,
 			prompt,
 			environment: new NativeEnvironmentService(options, cwd),
 		});
-		return harness.run("init", { positionals, options });
+		return harness.run("init", {
+			positionals,
+			options: { customise: true, ...options },
+		});
 	};
 
 	const write = (file: string, content = "") =>
@@ -113,7 +131,6 @@ describe("init command", () => {
 				nextSteps: {
 					setup: [],
 					run: ["rbxtsc -w", "rogen serve"],
-					darklua: [],
 					edits: [
 						'Add your own routes under "routes" in rogen.json.',
 					],
@@ -223,17 +240,22 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Created rogen.json.",
 				"success: Created .gitignore.",
+				"success: Created src/Greeter/Shared/Greeting.luau.",
+				"success: Created src/Greeter/Server/Greeter.server.luau.",
+				"success: Created src/Greeter/Client/Greeter.client.luau.",
+				"success: Created README.md.",
 				"success: Created AGENTS.md.",
-				"success: Created src/.",
 				"success: default.project.json · wrote",
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve",
+				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: Add your own routes under "routes" in rogen.json.',
-				"outro: Wrote 3 files.",
+				"outro: Wrote 7 files.",
 			]);
 		});
 
@@ -273,7 +295,7 @@ describe("init command", () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				new MockPromptService(["agent"]),
+				new MockPromptService([["agents"], true]),
 				logService
 			);
 
@@ -404,12 +426,17 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Would create rogen.json.",
 				"success: Would create .gitignore.",
+				"success: Would create src/Greeter/Shared/Greeting.luau.",
+				"success: Would create src/Greeter/Server/Greeter.server.luau.",
+				"success: Would create src/Greeter/Client/Greeter.client.luau.",
+				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
 				"success: Would create src/.",
-				"outro: Would write 3 files. Nothing was written.",
+				"outro: Would write 7 files. Nothing was written.",
 			]);
 		});
 
@@ -434,6 +461,31 @@ describe("init command", () => {
 					},
 					{
 						file: path.join(cwd, ".gitignore"),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"src/Greeter/Shared/Greeting.luau"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"src/Greeter/Server/Greeter.server.luau"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"src/Greeter/Client/Greeter.client.luau"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, "README.md"),
 						outcome: "wouldWrite",
 					},
 					{
@@ -544,28 +596,162 @@ describe("init command", () => {
 			expect(await exists("rogen.json")).toBe(false);
 		});
 
-		it("should refuse a Rojo pin when there is no rokit.toml to hold it", async () => {
-			const result = await runInit(
-				new MockPromptService([], false),
-				new MockLogService(),
-				{ "rojo-pin": true }
-			);
-
-			expect(errorMessage(result)).toContain(
-				"There is no Rojo pin to add."
-			);
-		});
-
-		it("should pin Rojo when asked to, though it can't ask", async () => {
-			await write("rokit.toml", "[tools]\n");
+		it("should set Rojo up when asked to, though it can't ask", async () => {
+			const processes = new MockProcessService();
+			processes.installed.set("rokit", "/bin/rokit");
+			processes.outputs.set("/bin/rokit", {
+				code: 0,
+				stdout: "",
+				stderr: "",
+			});
+			const logService = new MockLogService();
 
 			await runInit(
 				new MockPromptService([], false),
-				new MockLogService(),
-				{ "rojo-pin": true }
+				logService,
+				{ rojo: true },
+				[],
+				processes
 			);
 
-			expect(await read("rokit.toml")).toContain("rojo");
+			expect(await read("rokit.toml")).toBe("[tools]\n");
+			expect(
+				processes.execs.filter(({ file }) => file === "/bin/rokit")
+			).toMatchObject([{ args: ["add", "rojo-rbx/rojo@7.7.1"], cwd }]);
+		});
+
+		it("should warn with what to run, and still finish, when the command fails", async () => {
+			const processes = new MockProcessService();
+			processes.installed.set("rokit", "/bin/rokit");
+			processes.outputs.set("/bin/rokit", {
+				code: 1,
+				stdout: "",
+				stderr: "ERROR No network\n",
+			});
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ rojo: true, "studio-plugin": true },
+				[],
+				processes
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("rogen.json")).toBe(true);
+			expect(
+				logService.entries.filter(({ kind }) => kind === "warn")
+			).toMatchObject([
+				{
+					text: "rokit add rojo-rbx/rojo@7.7.1 failed (ERROR No network). Run these yourself: rokit add rojo-rbx/rojo@7.7.1, then rojo plugin install.",
+				},
+			]);
+		});
+
+		it("should say what it would run in a dry run, and run nothing", async () => {
+			const processes = new MockProcessService();
+			processes.installed.set("rokit", "/bin/rokit");
+			const logService = new MockLogService();
+
+			await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ rojo: true, "dry-run": true },
+				[],
+				processes
+			);
+
+			expect(processes.execs).toEqual([]);
+			expect(logService.entries).toContainEqual(
+				expect.objectContaining({
+					text: "Would run rokit add rojo-rbx/rojo@7.7.1.",
+				})
+			);
+		});
+
+		describe("a new roblox-ts project", () => {
+			const NPM =
+				"npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild";
+			const npmProcesses = (code = 0) => {
+				const processes = readyProcesses();
+				processes.installed.set("npm", "/bin/npm");
+				processes.outputs.set("/bin/npm", {
+					code,
+					stdout: "",
+					stderr: code === 0 ? "" : "npm error network\n",
+				});
+				return processes;
+			};
+			const text = (log: MockLogService) =>
+				log.entries.map(({ text }) => text);
+
+			it("should say it ran create-roblox-ts before it created any file", async () => {
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true },
+					[],
+					npmProcesses()
+				);
+
+				expect(result.isOk()).toBe(true);
+				const lines = text(log);
+				expect(lines).toContain(`Ran ${NPM}.`);
+				expect(lines.indexOf(`Ran ${NPM}.`)).toBeLessThan(
+					lines.indexOf("Created rogen.json.")
+				);
+			});
+
+			it("should list it among the commands of --json", async () => {
+				const log = new MockLogService();
+
+				await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true, json: true },
+					[],
+					npmProcesses()
+				);
+
+				expect(JSON.parse(log.entries[0].text).commands).toEqual([
+					{ command: NPM, outcome: "ran" },
+				]);
+			});
+
+			it("should say what it would run in a dry run, and run nothing", async () => {
+				const log = new MockLogService();
+				const processes = npmProcesses();
+
+				await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "dry-run": true },
+					[],
+					processes
+				);
+
+				expect(text(log)).toContain(`Would run ${NPM}.`);
+				expect(processes.execs.map(({ file }) => file)).not.toContain(
+					"/bin/npm"
+				);
+			});
+
+			it("should fail with the command to run by hand, and write nothing", async () => {
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ language: "roblox-ts" },
+					[],
+					npmProcesses(1)
+				);
+
+				expect(errorMessage(result)).toContain(NPM);
+				expect(errorMessage(result)).toContain("npm error network");
+				expect(await exists("rogen.json")).toBe(false);
+			});
 		});
 
 		it("should refuse a language it doesn't know, naming the ones it does", async () => {
@@ -611,6 +797,130 @@ describe("init command", () => {
 			expect(await exists("AGENTS.md")).toBe(false);
 		});
 
+		describe("on a project that has a config", () => {
+			const CONFIG =
+				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" }\n}\n';
+
+			const readConfig = async () =>
+				parse(await read("rogen.json")).unwrap() as {
+					routes: Record<string, string>;
+					serveProject?: string;
+					projects?: unknown;
+				};
+
+			beforeEach(async () => {
+				await write("rogen.json", CONFIG);
+				await write("src/keep.luau");
+			});
+
+			it("should change the routes the flags name and keep the comment", async () => {
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ route: ["serverStorage"], "no-route": ["client"] }
+				);
+
+				expect(result.isOk()).toBe(true);
+				const text = await read("rogen.json");
+				expect(text).toContain("// my routes");
+				expect(text).toContain('"serverStorage": "ServerStorage"');
+				expect(text).not.toContain('"client"');
+				expect(log.lines).toContain(
+					"success: rogen.json: added routes.serverStorage."
+				);
+				expect(log.lines).toContain(
+					"success: rogen.json: removed routes.client."
+				);
+			});
+
+			it("should list the changes in --json, and write nothing in a dry run", async () => {
+				const log = new MockLogService();
+
+				await runInit(new MockPromptService([], false), log, {
+					json: true,
+					"dry-run": true,
+					"source-path": ["lib"],
+				});
+
+				expect(JSON.parse(log.entries[0].text).files).toEqual([
+					expect.objectContaining({
+						outcome: "wouldWrite",
+						changes: ["added sourcePaths lib"],
+					}),
+				]);
+				expect(await read("rogen.json")).toBe(CONFIG);
+			});
+
+			it("should build the config after changing it", async () => {
+				await runInit(new MockPromptService([], false), undefined, {
+					darklua: true,
+				});
+
+				expect(await exists("dist.project.json")).toBe(true);
+				expect(await exists(".darklua.json")).toBe(true);
+				expect((await readConfig()).serveProject).toBe("dist");
+			});
+
+			it("should take Darklua off again", async () => {
+				await runInit(new MockPromptService([], false), undefined, {
+					darklua: true,
+				});
+
+				await runInit(new MockPromptService([], false), undefined, {
+					darklua: false,
+				});
+
+				const config = await readConfig();
+				expect(config.serveProject).toBeUndefined();
+				expect(config.projects).toBeUndefined();
+			});
+
+			it("should refuse a flag for a new project, and say why", async () => {
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ sample: false }
+				);
+
+				expect(errorMessage(result)).toContain(
+					"--sample is for a new project, and rogen.json exists."
+				);
+			});
+
+			it("should say a take-off that is not possible instead of changing it", async () => {
+				await write(
+					"rogen.json",
+					'{ "tree": { "$className": "DataModel" }, "routes": { "client": "Elsewhere" } }'
+				);
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ "no-route": ["client"] }
+				);
+
+				expect(errorMessage(result)).toContain(
+					"goes to Elsewhere, not to the standard"
+				);
+			});
+
+			it("should ask what to change in a terminal and apply the picks", async () => {
+				const prompts = new MockPromptService({
+					[WHAT_TO_CHANGE]: ["unmatched"],
+					"Files that match no route": "shared",
+				});
+
+				const result = await runInit(prompts);
+
+				expect(result.isOk()).toBe(true);
+				expect((await readConfig()).routes["*"]).toBe(
+					"ReplicatedStorage/Shared"
+				);
+			});
+		});
+
 		it("should do nothing, and succeed, when what a flag asks for is already there", async () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
@@ -623,7 +933,7 @@ describe("init command", () => {
 			const result = await runInit(
 				new MockPromptService([], false),
 				logService,
-				{ json: true, "agent-rules": true, "rojo-pin": true }
+				{ json: true, "agent-rules": true, rojo: true }
 			);
 
 			expect(result.isOk()).toBe(true);
@@ -643,7 +953,7 @@ describe("init command", () => {
 			);
 
 			expect(errorMessage(result)).toContain(
-				"rogen.json already exists, so --language and --route would change nothing."
+				"--language is for a new project, and rogen.json exists."
 			);
 		});
 
@@ -807,7 +1117,7 @@ describe("init command", () => {
 			const log = new MockLogService();
 
 			await runInit(
-				new MockPromptService({ [WHAT_TO_ADD]: "agent" }),
+				new MockPromptService({ [WHAT_TO_CHANGE]: ["agents"] }),
 				log
 			);
 
@@ -851,7 +1161,7 @@ describe("init command", () => {
 			).toEqual({ Packages: { $path: { optional: "Packages" } } });
 		});
 
-		it("should ask six questions on a bare Luau folder, none of them about packages", async () => {
+		it("should ask seven questions on a bare Luau folder, none of them about packages", async () => {
 			const prompts = new MockPromptService({});
 
 			await runInit(prompts);
@@ -859,6 +1169,7 @@ describe("init command", () => {
 			expect(prompts.asked).toEqual([
 				"Language",
 				"Does Darklua process your code before Rojo syncs it?",
+				"One place or several?",
 				"Source paths",
 				"Routes",
 				"Files that match no route",

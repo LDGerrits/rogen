@@ -42,19 +42,29 @@ export const initDocumentShape = S.object({
 			file: S.string,
 			outcome: S.enum("wrote", "wouldWrite"),
 			appended: S.optional(S.boolean),
+			changes: S.optional(S.array(S.string)),
 		})
 	),
 	directories: S.array(S.string),
 	present: S.optional(
 		S.array(
 			S.object({
-				item: S.enum("agentRules", "agentHook", "rojoPin"),
+				item: S.enum("agentRules", "agentHook", "rojo"),
 				file: S.string,
 				state: S.enum("present"),
 			})
 		)
 	),
 	git: S.optional(S.enum("initialised", "wouldInitialise", "failed")),
+	commands: S.optional(
+		S.array(
+			S.object({
+				command: S.string,
+				outcome: S.enum("ran", "wouldRun", "failed", "skipped"),
+				error: S.optional(S.string),
+			})
+		)
+	),
 	decided: S.optional(
 		S.array(
 			S.object({
@@ -72,7 +82,6 @@ export const initDocumentShape = S.object({
 		S.object({
 			setup: S.array(S.string),
 			run: S.array(S.string),
-			darklua: S.array(S.string),
 			edits: S.array(S.string),
 		})
 	),
@@ -80,8 +89,8 @@ export const initDocumentShape = S.object({
 
 /** A choice as the flags that make it, so the line can be copied: `--no-darklua`, `--route server --route client`. */
 function flagsOf({ question, value, flag }: InitDecision): string[] {
-	if (question === "add") return [flag];
 	if (question === "skipGit") return value === true ? [flag] : [];
+	if (question === "rojo" && typeof value === "string") return [];
 	if (typeof value === "boolean")
 		return [value ? flag : flag.replace("--", "--no-")];
 	if (typeof value === "string") return [`${flag} ${value}`];
@@ -90,9 +99,19 @@ function flagsOf({ question, value, flag }: InitDecision): string[] {
 		: value.map((item) => `${flag} ${item}`);
 }
 
+/** The tool that scaffolds the project is reported as the command it is. */
+const asCommand = (
+	written: InitWritten
+): Exclude<InitWritten, { kind: "scaffold" }> =>
+	written.kind === "scaffold"
+		? { kind: "command", command: written.scaffold.command }
+		: written;
+
 const indent = (line: string) => `  ${line}`;
 
-const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
+const STUDIO_STEP = "In Studio, press Connect in the Rojo plugin.";
+
+const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
 	...setup,
 	...(run.length > 0
 		? [
@@ -100,12 +119,7 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 				...run.map(indent),
 			]
 		: []),
-	...(darklua.length > 0
-		? [
-				"Have Darklua process your code into the sync path:",
-				...darklua.map(indent),
-			]
-		: []),
+	...(run.includes("rogen serve") ? [STUDIO_STEP] : []),
 	...edits,
 ];
 
@@ -116,7 +130,9 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 
 /** A run that wrote nothing because the project has what it would add. */
 const nothingToAdd = (plan: InitPlan) =>
-	plan.files.length === 0 && plan.present.length > 0;
+	plan.files.length === 0 &&
+	plan.commands.length === 0 &&
+	plan.scaffold === undefined;
 
 const presentOf = (plan: InitPlan) =>
 	plan.present.length > 0
@@ -187,7 +203,8 @@ export class InitLog implements InitReporter {
 				: `Rojo is already pinned in ${shown}.`;
 	}
 
-	written(item: InitWritten): void {
+	written(written: InitWritten): void {
+		const item = asCommand(written);
 		const would = this.dryRun ? "Would create" : "Created";
 		if (item.kind === "git" && item.failed !== undefined) {
 			this.logService.warn(
@@ -205,7 +222,29 @@ export class InitLog implements InitReporter {
 			this.logService.success(`${would} ${this.shown(item.directory)}/.`);
 			return;
 		}
-		const { fileName, addition } = item.file;
+		if (item.kind === "command") {
+			if (item.failed === undefined) {
+				this.logService.success(
+					`${this.dryRun ? "Would run" : "Ran"} ${item.command.command}.`
+				);
+				return;
+			}
+			const left = [item.command, ...(item.skipped ?? [])].map(
+				({ command }) => command
+			);
+			this.logService.warn(
+				`${item.command.command} failed (${item.failed}). Run ${left.length === 1 ? "it" : "these"} yourself: ${left.join(", then ")}.`
+			);
+			return;
+		}
+		const { fileName, addition, changes } = item.file;
+		if (changes !== undefined) {
+			for (const change of changes)
+				this.logService.success(
+					`${this.dryRun ? "Would change " : ""}${this.shown(fileName)}: ${change}.`
+				);
+			return;
+		}
 		this.logService.success(
 			addition !== undefined
 				? `${this.dryRun ? "Would add" : "Added"} ${addition} to ${this.shown(fileName)}.`
@@ -255,6 +294,8 @@ interface InitFile {
 	readonly outcome: "wrote" | "wouldWrite";
 	/** Set when the file existed and something was added to it. */
 	readonly appended?: true;
+	/** Set when the file is a config that was changed: each change as `added routes.ServerStorage`. */
+	readonly changes?: readonly string[];
 }
 
 interface InitDocument {
@@ -268,6 +309,11 @@ interface InitDocument {
 		readonly state: "present";
 	}[];
 	readonly git?: "initialised" | "wouldInitialise" | "failed";
+	readonly commands?: readonly {
+		readonly command: string;
+		readonly outcome: "ran" | "wouldRun" | "failed" | "skipped";
+		readonly error?: string;
+	}[];
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
@@ -281,6 +327,8 @@ export class InitJsonLog implements InitReporter {
 	private readonly directories: string[] = [];
 	private decided: readonly InitDecision[] = [];
 	private git: "initialised" | "wouldInitialise" | "failed" | undefined;
+	private readonly commands: NonNullable<InitDocument["commands"]>[number][] =
+		[];
 
 	constructor(
 		private readonly logService: LogService,
@@ -292,7 +340,8 @@ export class InitJsonLog implements InitReporter {
 		this.decided = plan.decided;
 	}
 
-	written(item: InitWritten): void {
+	written(written: InitWritten): void {
+		const item = asCommand(written);
 		if (item.kind === "git") {
 			this.git =
 				item.failed !== undefined
@@ -306,11 +355,32 @@ export class InitJsonLog implements InitReporter {
 			this.directories.push(path.join(this.directory, item.directory));
 			return;
 		}
+		if (item.kind === "command") {
+			this.commands.push({
+				command: item.command.command,
+				outcome:
+					item.failed !== undefined
+						? "failed"
+						: this.dryRun
+							? "wouldRun"
+							: "ran",
+				...(item.failed !== undefined && { error: item.failed }),
+			});
+			for (const skipped of item.skipped ?? [])
+				this.commands.push({
+					command: skipped.command,
+					outcome: "skipped",
+				});
+			return;
+		}
 		this.files.push({
 			file: path.join(this.directory, item.file.fileName),
 			outcome: this.dryRun ? "wouldWrite" : "wrote",
 			...(item.file.addition !== undefined && {
 				appended: true as const,
+			}),
+			...(item.file.changes !== undefined && {
+				changes: item.file.changes,
 			}),
 		});
 	}
@@ -362,11 +432,13 @@ export class InitJsonLog implements InitReporter {
 			changed:
 				!this.dryRun &&
 				(this.files.length + this.directories.length > 0 ||
-					this.git === "initialised"),
+					this.git === "initialised" ||
+					this.commands.some(({ outcome }) => outcome === "ran")),
 			...(this.dryRun && { dryRun: true as const }),
 			files: this.files,
 			directories: this.directories,
 			...(this.git && { git: this.git }),
+			...(this.commands.length > 0 && { commands: this.commands }),
 			...(this.decided.length > 0 && { decided: this.decided }),
 		};
 	}

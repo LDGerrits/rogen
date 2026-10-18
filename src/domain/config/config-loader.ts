@@ -10,6 +10,7 @@ import {
 	DiagnosticLocation,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
+import { defaultSourcePaths } from "./config.js";
 import { ConfigKeys } from "./config-keys.js";
 import { ProjectSourceReader } from "./project-sources.js";
 import { configSchema } from "./config-schema.js";
@@ -87,12 +88,18 @@ export class ConfigLoader {
 			return { files: [file], value, resolved: err(failed) };
 
 		const dir = path.dirname(file);
-		const placeDirs = (
-			await this.finder.folders(
-				dir,
-				config.model.getValue<string[]>("placePaths") ?? []
-			)
-		).filter((placeDir) => placeDir !== dir);
+		const globs = config.model.getValue<string[]>("placePaths") ?? [];
+		const sourcePaths =
+			config.model.getValue<string[]>("sourcePaths") ??
+			defaultSourcePaths(
+				Object.keys(
+					config.model.getValue<Record<string, unknown>>("routes") ??
+						{}
+				).length > 0
+			);
+		const matched = await this.finder.matched(dir, globs, sourcePaths);
+		const placeDirs = matched.places.filter((placeDir) => placeDir !== dir);
+		const sharedFolders = matched.shared.filter((shared) => shared !== dir);
 		const own = ConfigValidator.validateFile(
 			declared.sources,
 			declared.serveProject,
@@ -117,6 +124,7 @@ export class ConfigLoader {
 			resolved: places.resolved.map((resolved) => ({
 				...own.value,
 				places: resolved,
+				...(sharedFolders.length > 0 && { sharedFolders }),
 			})),
 		};
 	}

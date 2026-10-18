@@ -40,6 +40,12 @@ const InitOptions = [
 			"Plan without writing or building: print the files it would write and the choices it took, then stop.",
 	},
 	{
+		name: "customise",
+		type: "boolean",
+		description:
+			"In a terminal, ask every question one after another, without the summary of the plan first.",
+	},
+	{
 		name: "kind",
 		type: "string",
 		values: ["place", "model", "plugin"],
@@ -57,14 +63,14 @@ const InitOptions = [
 		type: "string",
 		placeholder: "id",
 		description:
-			"The language: luau or roblox-ts. Detected from the folder when not given.",
+			"The language: luau or roblox-ts. Detected from the folder when not given. For roblox-ts in a folder with no code, package.json or tsconfig.json, init first runs 'npm create roblox-ts', which needs npm and the network.",
 	},
 	{
 		name: "darklua",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given.",
+			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a rogen.json, --darklua adds the dist project that serves the processed code, a .darklua.json and Darklua's pin, and --no-darklua takes the project off again when it is still what init writes.",
 	},
 	{
 		name: "source-path",
@@ -72,7 +78,15 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
+			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is. On a project that has a rogen.json, adds the folder to its source paths.",
+	},
+	{
+		name: "no-source-path",
+		type: "string",
+		multiple: true,
+		placeholder: "path",
+		description:
+			"On a project that has a rogen.json: takes a folder off its source paths. The files in it are no longer built, which init lists.",
 	},
 	{
 		name: "sync-path",
@@ -94,7 +108,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given.",
+			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given. On a project that has a rogen.json, mounts the folder if the tree doesn't.",
 	},
 	{
 		name: "route",
@@ -102,7 +116,15 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. On a project that has a rogen.json, adds the route. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+	},
+	{
+		name: "no-route",
+		type: "string",
+		multiple: true,
+		placeholder: "id",
+		description:
+			"On a project that has a rogen.json: takes a standard route off, when it still has its standard value. Routes of your own are never changed.",
 	},
 	{
 		name: "unmatched",
@@ -110,6 +132,20 @@ const InitOptions = [
 		values: ["shared", "leave"],
 		description:
 			"Where files that match no route go: into the shared route (the default), or nowhere, which Rogen warns about.",
+	},
+	{
+		name: "sample",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
+	},
+	{
+		name: "places",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
 	},
 	{
 		name: "agent-rules",
@@ -126,11 +162,18 @@ const InitOptions = [
 			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. On a folder that has a config, asks for this addition.",
 	},
 	{
-		name: "rojo-pin",
+		name: "rojo",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to pin Rojo in rokit.toml. Not pinned when not given. On a folder that has a config, asks for this addition.",
+			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag. On a folder that has a config, sets Rojo up there.",
+	},
+	{
+		name: "studio-plugin",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether to install Rojo's Studio plugin, once Rojo is set up. Not installed by a run that can't ask, which prints the command instead.",
 	},
 	{
 		name: "nested",
@@ -166,7 +209,8 @@ function choicesOf(
 		placeListing: options["place-listing"] as InitChoices["placeListing"],
 		placeIds: options["place-id"],
 		agentRules: options["agent-rules"],
-		rojoPin: options["rojo-pin"],
+		rojo: options.rojo,
+		plugin: options["studio-plugin"],
 		agentHook: options["agent-hook"],
 		language: options.language,
 		darklua: options.darklua,
@@ -175,7 +219,12 @@ function choicesOf(
 		syncPath: options["sync-path"],
 		packages: options.package,
 		routes: options.route,
+		unroutes: options["no-route"],
+		unsourcePaths: options["no-source-path"],
 		unmatched: options.unmatched as InitChoices["unmatched"],
+		sample: options.sample,
+		places: options.places,
+		customise: options.customise,
 	};
 }
 
@@ -202,6 +251,8 @@ registerCommand(
 					effects: ["writesFiles"],
 					formerOptions: {
 						"--yes": "Use --non-interactive.",
+						"--rojo-pin": "Use --rojo.",
+						"--no-rojo-pin": "Use --no-rojo.",
 					},
 					examples: [
 						"rogen init",
@@ -220,22 +271,16 @@ registerCommand(
 				return err(
 					new UsageError("init takes one folder, the place to add.")
 				);
-			if (line.positionals.length === 0) {
-				const { options } = line;
-				const flag =
-					options["place-id"] !== undefined
-						? "--place-id"
-						: options["place-listing"] !== undefined
-							? "--place-listing"
-							: undefined;
-				if (flag)
-					return err(
-						new UsageError(
-							`${flag} is for a place folder.`,
-							"Give the folder to add, as 'rogen init places/lobby'."
-						)
-					);
-			}
+			if (
+				line.positionals.length === 0 &&
+				line.options["place-listing"] !== undefined
+			)
+				return err(
+					new UsageError(
+						"--place-listing is for a place folder.",
+						"Give the folder to add, as 'rogen init places/lobby'."
+					)
+				);
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const dryRun = Boolean(line.options["dry-run"]);

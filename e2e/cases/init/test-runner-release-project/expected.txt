@@ -3,7 +3,7 @@ exit 0
 stdout:
   rogen init
   Added a release project that leaves the Jest specs out: rogen build writes release.project.json beside default.project.json.
-  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -13,6 +13,7 @@ stdout:
   Next steps
     Run:
       rogen serve
+    In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in rogen.json.
   Wrote 3 files.
 

@@ -1,0 +1,25 @@
+{
+	"network": true,
+	"steps": [
+		[
+			"init",
+			"--non-interactive",
+			"--skip-git",
+			"--language",
+			"roblox-ts"
+		],
+		[
+			"$",
+			"npx",
+			"rbxtsc"
+		],
+		[
+			"build",
+			"-o",
+			"place.rbxlx"
+		]
+	],
+	"show": [
+		"out/Greeter/server/Greeter.server.luau"
+	]
+}

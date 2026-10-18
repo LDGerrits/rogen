@@ -11,7 +11,7 @@ describe("Darklua", () => {
 	describe("processCommands", () => {
 		it("should process one source path into the sync path itself", () => {
 			expect(darklua.processCommands(directory, ["src"], "dist")).toEqual(
-				["darklua process src dist"]
+				["darklua process src dist --watch"]
 			);
 		});
 
@@ -23,8 +23,8 @@ describe("Darklua", () => {
 					"dist/lobby"
 				)
 			).toEqual([
-				"darklua process src dist/lobby/src",
-				"darklua process places/lobby dist/lobby/places/lobby",
+				"darklua process src dist/lobby/src --watch",
+				"darklua process places/lobby dist/lobby/places/lobby --watch",
 			]);
 		});
 
@@ -36,8 +36,8 @@ describe("Darklua", () => {
 					"dist"
 				)
 			).toEqual([
-				"darklua process game/src dist/src",
-				"darklua process game/lib dist/lib",
+				"darklua process game/src dist/src --watch",
+				"darklua process game/lib dist/lib --watch",
 			]);
 		});
 	});

@@ -73,6 +73,17 @@ registerCommand(
 					description:
 						"Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
 					args: ConfigArguments,
+					picker: [
+						{
+							message:
+								"Asset ID of the place or model to upload to",
+							validate: (value) =>
+								/^\d+$/.test(value)
+									? undefined
+									: "An asset ID is a number.",
+							into: { option: "asset_id" },
+						},
+					],
 					options: UploadOptions,
 					output: { document: uploadDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],

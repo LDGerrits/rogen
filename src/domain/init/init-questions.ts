@@ -16,7 +16,7 @@ import { TreeChoice } from "./tree-plan.js";
 const NONE = "none";
 
 /** `value` is one of `known`, else a usage error naming them, the closest first. */
-function oneOf(
+export function oneOf(
 	value: string,
 	known: readonly string[],
 	what: string,
@@ -32,7 +32,10 @@ function oneOf(
 }
 
 /** The values of a list flag that takes `none`, which stands for no value at all. */
-function listOf(given: readonly string[], flag: string): readonly string[] {
+export function listOf(
+	given: readonly string[],
+	flag: string
+): readonly string[] {
 	if (!given.includes(NONE)) return given;
 	if (given.length > 1)
 		throw new UsageError(
@@ -41,13 +44,11 @@ function listOf(given: readonly string[], flag: string): readonly string[] {
 	return [];
 }
 
-export interface AdditionOption<T> {
+/** An area of a project that has a config, which a run can change. */
+export interface ChangeArea {
 	readonly id: string;
-	/** The flag that asks for this addition. */
-	readonly flag: string;
 	readonly label: string;
 	readonly hint: string;
-	readonly addition: T;
 }
 
 const required = (what: string) => (value: string) =>
@@ -62,11 +63,15 @@ const splitList = (value: string): string[] =>
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
+	/** Whether the project being started uses Darklua, once it has been answered. */
+	usesDarklua = false;
 
 	constructor(
 		private readonly promptService: PromptService,
 		readonly interactive: boolean,
-		readonly choices: InitChoices = {}
+		readonly choices: InitChoices = {},
+		/** Asks the questions that are always asked, where `promptService` takes the default of those a summary shows. */
+		private readonly essential: PromptService = promptService
 	) {}
 
 	private decide<T extends InitDecision["value"]>(
@@ -100,7 +105,7 @@ export class InitQuestions {
 	}: EnclosingConfigs): Promise<boolean | undefined> {
 		if (this.choices.nested) return true;
 		if (!this.interactive) return false;
-		return this.promptService.confirm({
+		return this.essential.confirm({
 			message: `${directory} already has ${fileNames.join(", ")}. Start a separate project here anyway?`,
 			description:
 				"This folder may already be part of that project, and a project here would then be built twice.",
@@ -118,7 +123,7 @@ export class InitQuestions {
 			this.decide("placeListing", "glob", "--place-listing");
 			return glob;
 		}
-		const answer = await this.promptService.select<"glob" | "folder">({
+		const answer = await this.essential.select<"glob" | "folder">({
 			message: "How do you want to list this place?",
 			choices: [
 				{
@@ -186,25 +191,159 @@ export class InitQuestions {
 		return Number(value);
 	}
 
-	async whatToAdd<T>(
-		configFile: string,
-		options: readonly AdditionOption<T>[]
-	): Promise<T | undefined> {
-		const [first] = options;
-		if (!this.interactive) {
-			this.decide("add", first.id, first.flag);
-			return first.addition;
-		}
-		const id = await this.promptService.select<string>({
-			message: `${configFile} exists. What do you want to add?`,
-			choices: options.map(({ id, label, hint }) => ({
+	/** The areas of a project that has a config to change, with what it has now; `undefined` when the user cancelled. */
+	async whatToChange(
+		current: string,
+		areas: readonly ChangeArea[]
+	): Promise<readonly string[] | undefined> {
+		return this.essential.multiSelect({
+			message: "What do you want to change?",
+			description: current,
+			choices: areas.map(({ id, label, hint }) => ({
 				value: id,
 				label,
 				hint,
 			})),
-			initialValue: first.id,
+			initialValues: [],
 		});
-		return options.find((option) => option.id === id)?.addition;
+	}
+
+	/** The standard routes to add and to take off, from a list ticked as the config has them. */
+	async changeRoutes(
+		options: readonly { id: string; key: string; target: string }[],
+		configured: readonly string[]
+	): Promise<{ add: string[]; remove: string[] } | undefined> {
+		const ticked = await this.essential.multiSelect({
+			message: "Routes",
+			description:
+				"Ticking adds a route, unticking takes off one that still has its standard value. Routes of your own stay.",
+			choices: options.map(({ id, key, target }) => ({
+				value: id,
+				label: key,
+				hint: `→ ${target}`,
+			})),
+			initialValues: configured,
+		});
+		return ticked === undefined
+			? undefined
+			: {
+					add: ticked.filter((id) => !configured.includes(id)),
+					remove: configured.filter((id) => !ticked.includes(id)),
+				};
+	}
+
+	async changeUnmatched(
+		current: "shared" | "leave",
+		sharedTarget: string
+	): Promise<"shared" | "leave" | undefined> {
+		return this.essential.select<"shared" | "leave">({
+			message: "Files that match no route",
+			description:
+				"Most loose modules in a feature folder are shared code.",
+			choices: [
+				{ value: "shared", label: `Put them in ${sharedTarget}` },
+				{
+					value: "leave",
+					label: "Leave them out (Rogen warns when it does)",
+				},
+			],
+			initialValue: current,
+		});
+	}
+
+	/** The source paths to add and to take off, from the list the user edits. Taking one off with scripts in it asks to confirm. */
+	async changeSourcePaths(
+		current: readonly string[],
+		directory: InitDirectory,
+		codeIn: (sourcePath: string) => Promise<readonly string[]>
+	): Promise<{ add: string[]; remove: string[] } | undefined> {
+		const answer = await this.essential.text({
+			message: "Source paths",
+			description:
+				"Folders with your scripts, relative to here. Separate several with commas.",
+			placeholder: current.join(", "),
+			validate: (value) => directory.sourcePathsProblem(splitList(value)),
+		});
+		if (answer === undefined) return undefined;
+		const next = splitList(answer).map(normalizeDir);
+		const remove: string[] = [];
+		for (const entry of current.filter((one) => !next.includes(one))) {
+			const files = await codeIn(entry);
+			if (files.length > 0) {
+				const sure = await this.promptService.confirm({
+					message: `Stop building ${entry}?`,
+					description: `${files.length === 1 ? "This file" : "These files"} would no longer be built: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}.`,
+					initialValue: false,
+				});
+				if (sure === undefined) return undefined;
+				if (!sure) continue;
+			}
+			remove.push(entry);
+		}
+		return {
+			add: next.filter((entry) => !current.includes(entry)),
+			remove,
+		};
+	}
+
+	/** Whether Darklua is on after this run, asked with its state now. */
+	async changeDarklua(current: boolean): Promise<boolean | undefined> {
+		return this.essential.confirm({
+			message: current
+				? "Keep Darklua processing your code?"
+				: "Does Darklua process your code before Rojo syncs it?",
+			description:
+				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
+			initialValue: current,
+		});
+	}
+
+	async changePackages(
+		offered: readonly { path: string; landing: string }[]
+	): Promise<readonly string[] | undefined> {
+		return this.essential.multiSelect({
+			message: "Packages",
+			description:
+				"Folders placed in the game as they are. Rogen doesn't scan or route them.",
+			choices: offered.map(({ path, landing }) => ({
+				value: path,
+				label: path,
+				hint: `→ ${landing}`,
+			})),
+			initialValues: offered.map(({ path }) => path),
+		});
+	}
+
+	async changePlaces(
+		several: boolean
+	): Promise<"several" | "add" | undefined> {
+		if (several) return "add";
+		return this.essential.select<"several" | "add">({
+			message: "Places",
+			choices: [
+				{
+					value: "several",
+					label: "Turn this into several places",
+					hint: "adds placePaths and a first place, and moves no code",
+				},
+				{
+					value: "add",
+					label: "Add a place",
+					hint: "a folder with its own rogen.json",
+				},
+			],
+			initialValue: "several",
+		});
+	}
+
+	/** The folder of a place to add. */
+	async placeFolder(): Promise<string | undefined> {
+		const answer = await this.essential.text({
+			message: "Place folder",
+			description: "Relative to here, such as places/lobby.",
+			validate: required("a folder"),
+		});
+		return answer === undefined ? undefined : normalizeDir(answer);
 	}
 
 	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {
@@ -220,14 +359,53 @@ export class InitQuestions {
 		});
 	}
 
-	async addRojoPin(fileName: string): Promise<boolean | undefined> {
-		if (this.choices.rojoPin !== undefined) return this.choices.rojoPin;
+	/** Whether to set Rojo up; with no `manager` there is none on the machine, so a Yes installs Rokit first. A run that can't ask pins with a manager it finds and installs nothing otherwise. */
+	async rojo(
+		manager: string | undefined,
+		installer: string,
+		tools: readonly string[]
+	): Promise<boolean | undefined> {
+		const { rojo } = this.choices;
+		if (rojo !== undefined) return rojo;
+		if (!this.interactive) {
+			if (manager !== undefined)
+				return this.decide("rojo", true, "--rojo");
+			this.decide("rojo", "not installed", "--rojo");
+			return false;
+		}
+		return this.promptService.confirm(
+			manager !== undefined
+				? {
+						message: `Pin ${joinedWithAnd(tools)} with ${manager}?`,
+						description:
+							"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
+						initialValue: true,
+					}
+				: {
+						message: this.installMessage(tools),
+						description: `Runs Rokit's installer (${installer}), then pins ${joinedWithAnd(tools)} in a rokit.toml here.`,
+						initialValue: true,
+					}
+		);
+	}
+
+	private installMessage(tools: readonly string[]): string {
+		const names = joinedWithAnd(tools.map((tool) => tool.split(" ")[0]));
+		return tools.length === 1 && names === "Rojo"
+			? "Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?"
+			: `${names} ${tools.length === 1 ? "isn't" : "aren't"} installed, and the project needs ${tools.length === 1 ? "it" : "them"}. Install Rokit and ${tools.length === 1 ? "pin it" : "pin them"} now?`;
+	}
+
+	/** Whether to install Rojo's Studio plugin, which a run that can't ask leaves to the user. */
+	async studioPlugin(): Promise<boolean | undefined> {
+		const { plugin } = this.choices;
+		if (plugin !== undefined) return plugin;
 		if (!this.interactive)
-			return this.decide("rojoPin", false, "--rojo-pin");
+			return this.decide("plugin", false, "--studio-plugin");
 		return this.promptService.confirm({
-			message: `Pin Rojo in ${fileName}?`,
+			message: "Install Rojo's Studio plugin?",
 			description:
-				"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
+				"Studio needs it to connect to rogen serve. It is installed into Studio's plugins folder.",
 			initialValue: true,
 		});
 	}
@@ -245,9 +423,45 @@ export class InitQuestions {
 		});
 	}
 
-	async language({
-		workspace,
-	}: InitDirectory): Promise<Language | undefined> {
+	/** Whether the Greeter sample is written, which only a flag turns off. */
+	sample(): boolean {
+		const given = this.choices.sample;
+		if (given !== undefined) return given;
+		if (!this.interactive) this.decide("sample", true, "--sample");
+		return true;
+	}
+
+	/** Whether a new project is several places; a `places` folder here makes it the default. */
+	async places(directory: InitDirectory): Promise<boolean | undefined> {
+		const given = this.choices.places;
+		if (given !== undefined) return given;
+		if (this.choices.sourcePaths !== undefined) return false;
+		const several =
+			directory.has("places") &&
+			directory.layout.codeFolders.every((folder) => folder === "places");
+		if (!this.interactive)
+			return this.decide("places", several, "--places");
+		const answer = await this.essential.select<"one" | "several">({
+			message: "One place or several?",
+			choices: [
+				{
+					value: "one",
+					label: "One place",
+					hint: "the code is in src",
+				},
+				{
+					value: "several",
+					label: "Several places",
+					hint: "places/shared holds the shared code, places/game the first place",
+				},
+			],
+			initialValue: several ? "several" : "one",
+		});
+		return answer === undefined ? undefined : answer === "several";
+	}
+
+	async language(directory: InitDirectory): Promise<Language | undefined> {
+		const { workspace } = directory;
 		const given = this.choices.language;
 		if (given !== undefined)
 			return workspace.languageFor(
@@ -262,7 +476,13 @@ export class InitQuestions {
 			this.decide("language", workspace.language.id, "--language");
 			return workspace.language;
 		}
-		const id = await this.promptService.select({
+		const detected =
+			workspace.languages.some(({ present }) => present) ||
+			directory.layout.codeFolders.length > 0 ||
+			directory.has("package.json");
+		const id = await (
+			detected ? this.promptService : this.essential
+		).select({
 			message: "Language",
 			choices: workspace.languages.map((language) => ({
 				value: language.id,
@@ -346,7 +566,7 @@ export class InitQuestions {
 			return lift;
 		}
 
-		const answer = await this.promptService.select<TreeChoice["kind"]>({
+		const answer = await this.essential.select<TreeChoice["kind"]>({
 			message: "Project file",
 			description: `${DEFAULT_PROJECT_FILE} exists, and Rogen replaces it on every build.`,
 			choices: [

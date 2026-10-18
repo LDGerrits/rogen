@@ -1,0 +1,41 @@
+$ rogen init --non-interactive --skip-git --language roblox-ts
+exit 0
+stdout: (not shown)
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": {
+              "optional": "node_modules/@rbxts"
+            }
+          }
+        },
+        "$path": {
+          "optional": "include"
+        }
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "syncPath": "out"
+}

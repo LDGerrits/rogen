@@ -2,6 +2,7 @@ import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogLevel } from "../../platform/log/log-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
+import { ToolLocator } from "../toolchain/tool-locator.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { StartedRojo } from "./started-rojo.js";
 import { RojoProcess, RojoRunner, ServerExecutable } from "./rojo-runner.js";
@@ -16,9 +17,14 @@ export class CoreRojoRunner implements RojoRunner {
 		toolchainService: ToolchainService,
 		private readonly processService: ProcessService,
 		/** What Rogen was asked to print: Rojo logs as much as that. */
-		private readonly logLevel: LogLevel = LogLevel.Info
+		private readonly logLevel: LogLevel = LogLevel.Info,
+		locator?: ToolLocator
 	) {
-		this.finder = new ServerFinder(toolchainService, processService);
+		this.finder = new ServerFinder(
+			toolchainService,
+			processService,
+			locator
+		);
 	}
 
 	find(

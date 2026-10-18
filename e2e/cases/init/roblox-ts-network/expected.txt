@@ -1,0 +1,148 @@
+$ rogen init --non-interactive --skip-git --language roblox-ts
+exit 0
+stdout: (not shown)
+
+$ npx rbxtsc
+exit 0
+
+$ rogen build -o place.rbxlx
+exit 0
+stdout: (not shown)
+stderr:
+  rogen build · project
+  default.project.json · unchanged
+  Built 1 project.
+
+written:
+  .eslintrc
+  .prettierrc
+  .vscode/extensions.json
+  .vscode/settings.json
+  AGENTS.md
+  README.md
+  default.project.json
+  include/Promise.lua
+  include/RuntimeLib.lua
+  out/Greeter/client/Greeter.client.luau
+  out/Greeter/server/Greeter.server.luau
+  out/Greeter/shared/Greeting.luau
+  out/tsconfig.tsbuildinfo
+  package-lock.json
+  package.json
+  place.rbxlx
+  rogen.json
+  src/Greeter/client/Greeter.client.ts
+  src/Greeter/server/Greeter.server.ts
+  src/Greeter/shared/Greeting.ts
+  tsconfig.json
+
+out/Greeter/server/Greeter.server.luau:
+-- Compiled with roblox-ts v3.0.0
+local TS = require(game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("RuntimeLib"))
+local greeting = TS.import(script, game:GetService("ReplicatedStorage"), "shared", "Greeter", "Greeting").greeting
+print(greeting("server"))
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": "node_modules/@rbxts"
+          }
+        },
+        "$path": "include"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "server": "ServerScriptService",
+    "client": "StarterPlayer/StarterPlayerScripts",
+    "shared": "ReplicatedStorage/shared",
+    "*": "ReplicatedStorage/shared"
+  },
+  "syncPath": "out"
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    rbxts_include: Folder
+      Promise: ModuleScript  <- include/Promise.lua
+      RuntimeLib: ModuleScript  <- include/RuntimeLib.lua
+      node_modules: Folder
+        @rbxts: Folder
+          compiler-types: Folder
+            package: ModuleScript  <- node_modules/@rbxts/compiler-types/package.json
+            types: Folder
+          types: Folder
+            include: Folder
+              generated: Folder
+            package: ModuleScript  <- node_modules/@rbxts/types/package.json
+    shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- out/Greeter/shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- out/Greeter/server/Greeter.server.luau
+  SoundService: SoundService
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- out/Greeter/client/Greeter.client.luau
+  Workspace: Workspace
+    Baseplate: Part

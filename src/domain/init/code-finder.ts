@@ -57,6 +57,34 @@ export class CodeFinder {
 		return false;
 	}
 
+	/** The scripts under `dir`, as paths below it, up to `limit`; a hidden or vendored folder is not entered. */
+	async codeFilesIn(dir: string, limit = 50): Promise<string[]> {
+		const found: string[] = [];
+		const visit = async (current: string, below: string) => {
+			let entries;
+			try {
+				entries = await this.fileReader.readDirectory(current);
+			} catch {
+				return;
+			}
+			for (const [name, type] of entries
+				.filter(([entry]) => !isHiddenOrVendored(entry))
+				.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+				if (found.length >= limit) return;
+				const shown = below === "" ? name : `${below}/${name}`;
+				if (isDirectoryType(type))
+					await visit(path.join(current, name), shown);
+				else if (
+					isFileType(type) &&
+					new RojoFile(name, SyncRules.DEFAULT).kind === "script"
+				)
+					found.push(shown);
+			}
+		};
+		await visit(dir, "");
+		return found;
+	}
+
 	private async codeFoldersIn(
 		cwd: string,
 		excluded: readonly string[]

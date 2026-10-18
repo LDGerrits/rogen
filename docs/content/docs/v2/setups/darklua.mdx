@@ -22,7 +22,9 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 <Step>
 ### Create the Config
 
-Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code.
+Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, pins Darklua with your toolchain manager, and lists the sync path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the sync path, `init` tells you the line to add.
+
+To add Darklua to a project you already set up, run `rogen init --darklua`: on a project that has a `rogen.json` it adds the `dist` project, `serveProject`, `.darklua.json` and Darklua's pin, keeps your comments, and lists what it changed. `rogen init --no-darklua` takes the `dist` project off again while it is still what `init` writes. Darklua needs one source of code, so it can't start together with `--places`.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -87,25 +89,19 @@ Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `d
 <Step>
 ### Run the Pipeline
 
-`init` prints the commands to run side by side. Rogen doesn't run Darklua or the compiler, so a task runner such as `concurrently` can start them all with one command.
+`init` prints the commands to run side by side, with `--watch` already in the Darklua one. Rogen doesn't run Darklua or the compiler, so a task runner such as `concurrently` can start them all with one command.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
     ```
-    Run:
+    Run each in its own terminal:
+      darklua process src dist --watch
       rogen serve
-    Have Darklua process your code into the sync path:
-      darklua process src dist
     ```
 
-    With several source paths, `init` prints one Darklua command each (`darklua process lib dist/lib`). Run them with `--watch`, each in its own terminal:
+    With several source paths, `init` prints one Darklua command each (`darklua process lib dist/lib --watch`).
 
-    ```bash
-    darklua process src dist --watch
-    rogen serve
-    ```
-
-    luau-lsp keeps `sourcemap.json` current while your editor is open. Without it, run:
+    luau-lsp keeps `sourcemap.json` current while your editor is open, so `init` leaves the next line out when your editor settings name luau-lsp. Without it, run:
 
     ```bash
     rogen sourcemap --watch -o sourcemap.json
@@ -115,9 +111,8 @@ Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `d
     ```
     Run each in its own terminal:
       rbxtsc -w
+      darklua process out dist --watch
       rogen serve
-    Have Darklua process your code into the sync path:
-      darklua process out dist
     ```
 
     ```bash

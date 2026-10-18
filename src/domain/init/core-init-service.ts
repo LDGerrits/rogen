@@ -1,7 +1,6 @@
 import path from "path";
 import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
-import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -19,33 +18,36 @@ import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
-	InitChoices,
 	InitOptions,
 	InitPlan,
+	InitPurpose,
 	InitService,
 	InitWritten,
 	PresentItem,
 } from "./init-service.js";
 import { InitAdditions } from "./init-additions.js";
+import { ProjectChanger } from "./project-changer.js";
+import { ReviewMode, ReviewPrompts } from "./review-prompts.js";
+import { InitSummary } from "./init-summary.js";
 import { Setup } from "./setup.js";
 import { PlaceFinder } from "../config/place-finder.js";
 import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
-import { RojoPinSetup } from "./rojo-pin-setup.js";
+import { ToolchainSetup } from "./toolchain-setup.js";
+import { ServerFinder } from "../runner/server-finder.js";
+import { ToolLocator } from "../toolchain/tool-locator.js";
 
-/** The choices that shape a new config, which a folder that has one doesn't take. */
-const PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
-	["language", "--language"],
-	["darklua", "--darklua"],
-	["sourcePaths", "--source-path"],
-	["syncPath", "--sync-path"],
-	["projectFile", "--project-file"],
-	["kind", "--kind"],
-	["skipGit", "--skip-git"],
-	["packages", "--package"],
-	["routes", "--route"],
-	["unmatched", "--unmatched"],
-];
+const PURPOSE_QUESTIONS: Readonly<Record<InitPurpose, string>> = {
+	create: "Create this project?",
+	change: "Make these changes?",
+	place: "Add this place?",
+};
+
+/** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
+interface RunPrompts {
+	readonly quick: PromptService;
+	readonly essential: PromptService;
+}
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -53,6 +55,7 @@ export class CoreInitService implements InitService {
 	private readonly agentReader: AgentReader;
 	private readonly writer: InitWriter;
 	private readonly git: GitRepository;
+	private readonly finder: ServerFinder;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -60,29 +63,84 @@ export class CoreInitService implements InitService {
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService,
-		processService: ProcessService
+		private readonly processService: ProcessService,
+		private readonly locator: ToolLocator = new ToolLocator(processService)
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);
-		this.writer = new InitWriter(fileSystemService, this.git);
+		this.finder = new ServerFinder(
+			toolchainService,
+			processService,
+			locator
+		);
+		this.writer = new InitWriter(
+			fileSystemService,
+			this.git,
+			processService,
+			locator
+		);
 	}
 
 	async plan(
 		options: InitOptions = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
 		try {
-			return await this.planWithin(options);
+			return await this.review(options);
 		} catch (error) {
 			if (error instanceof UsageError) return err(error);
 			throw error;
 		}
 	}
 
-	private async planWithin({
-		ask = true,
-		place,
-		choices = {},
-	}: InitOptions): Promise<Result<InitPlan | undefined, Error>> {
+	/** In a terminal the plan is shown once and accepted with Enter; Customise asks every question, each with its answer preselected, and shows the plan again. */
+	private async review(
+		options: InitOptions
+	): Promise<Result<InitPlan | undefined, Error>> {
+		const { ask = true, choices = {} } = options;
+		if (!(ask && this.promptService.isInteractive) || choices.customise)
+			return this.planWithin(options, {
+				quick: this.promptService,
+				essential: this.promptService,
+			});
+		const prompts = new ReviewPrompts(this.promptService);
+		let mode: ReviewMode = "quick";
+		for (;;) {
+			prompts.begin(mode);
+			const planned = await this.planWithin(options, prompts);
+			if (planned.isErr() || !planned.value || prompts.asked === 0)
+				return planned;
+			const verdict = await this.accepted(planned.value);
+			if (verdict === "yes") return planned;
+			if (verdict === "cancel") return ok(undefined);
+			mode = "customise";
+		}
+	}
+
+	private accepted(
+		plan: InitPlan
+	): Promise<"yes" | "customise" | "cancel" | undefined> {
+		return this.promptService
+			.select<"yes" | "customise" | "cancel">({
+				message: PURPOSE_QUESTIONS[plan.purpose],
+				description: InitSummary.lines(plan).join("\n"),
+				choices: [
+					{ value: "yes", label: "Yes" },
+					{
+						value: "customise",
+						label: "Customise",
+						hint: "ask every question",
+					},
+					{ value: "cancel", label: "Cancel" },
+				],
+				initialValue: "yes",
+			})
+			.then((answer) => answer ?? "cancel");
+	}
+
+	private async planWithin(
+		{ ask = true, place, choices = {} }: InitOptions,
+		prompts: RunPrompts
+	): Promise<Result<InitPlan | undefined, Error>> {
 		const { cwd } = this.environmentService;
 		const folder = place === undefined ? cwd : path.resolve(cwd, place);
 		const enclosed =
@@ -92,6 +150,8 @@ export class CoreInitService implements InitService {
 			for (const [key, flag] of [
 				["kind", "--kind"],
 				["skipGit", "--skip-git"],
+				["sample", "--sample"],
+				["places", "--places"],
 			] as const)
 				if (choices[key] !== undefined)
 					throw new UsageError(
@@ -100,9 +160,10 @@ export class CoreInitService implements InitService {
 			return new PlaceInit(
 				this.fileSystemService,
 				new InitQuestions(
-					this.promptService,
+					prompts.quick,
 					ask && this.promptService.isInteractive,
-					choices
+					choices,
+					prompts.essential
 				),
 				this.toolchainService,
 				this.configService,
@@ -126,14 +187,15 @@ export class CoreInitService implements InitService {
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
 		const questions = new InitQuestions(
-			this.promptService,
+			prompts.quick,
 			interactive,
-			choices
+			choices,
+			prompts.essential
 		);
 		const nested = await this.checkNested(directory.value, questions);
 		if (nested.isErr() || nested.value === "cancelled")
 			return nested.map(() => undefined);
-		const planned = await this.planIn(directory.value, questions);
+		const planned = await this.planIn(directory.value, questions, prompts);
 		return place === undefined || planned.isErr() || !planned.value
 			? planned
 			: ok({
@@ -202,7 +264,8 @@ export class CoreInitService implements InitService {
 
 	private async planIn(
 		directory: InitDirectory,
-		questions: InitQuestions
+		questions: InitQuestions,
+		prompts: RunPrompts
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const placeOf = await this.projectRootOf(directory);
 		if (placeOf.isErr()) return placeOf;
@@ -213,74 +276,148 @@ export class CoreInitService implements InitService {
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
 		const manifests = await this.toolchainService.readManifests(home.path);
-		const manifest = RojoPinSetup.manifestFor(home.path, manifests);
-		const pin = manifest && new RojoPinSetup(manifest, questions);
+		const tools = ToolchainSetup.of(
+			async () =>
+				ToolchainSetup.stateOf(
+					home.path,
+					manifests,
+					await this.existingFolder(home.path),
+					{
+						finder: this.finder,
+						locator: this.locator,
+						processService: this.processService,
+					}
+				),
+			questions
+		);
 		const { choices } = questions;
 		if (choices.agentHook === true && !hooks.value.inUse)
 			throw new UsageError(
 				"There is no hook to add.",
 				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
 			);
-		if (
-			choices.rojoPin === true &&
-			!pin &&
-			!RojoPinSetup.isPinned(manifests)
-		)
-			throw new UsageError(
-				"There is no Rojo pin to add.",
-				"There is no rokit.toml here to pin Rojo in."
-			);
-		if (directory.hasConfigs) {
-			const ignored = PROJECT_FLAGS.filter(
-				([key]) => choices[key] !== undefined
-			).map(([, flag]) => flag);
-			if (ignored.length > 0)
+		if (!directory.hasConfigs) {
+			if (choices.placeIds !== undefined)
 				throw new UsageError(
-					`${directory.configFiles[0]} already exists, so ${joinedWithAnd(ignored)} would change nothing.`,
-					"Edit it to change those, or add to it with --agent-rules, --agent-hook or --rojo-pin."
+					"--place-id is for a place folder.",
+					"Give the folder to add, as 'rogen init places/lobby'."
 				);
-		}
-		if (!directory.hasConfigs)
+			for (const [key, flag] of [
+				["unroutes", "--no-route"],
+				["unsourcePaths", "--no-source-path"],
+			] as const)
+				if (choices[key] !== undefined)
+					throw new UsageError(
+						`${flag} is for a project that has a rogen.json, and there is none here.`
+					);
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
-				...(pin ? [pin] : []),
+				tools,
 			]);
+		}
+		ProjectChanger.rejectNewProjectFlags(
+			questions,
+			directory.configFiles[0]
+		);
+		if (!placeOf.value && choices.placeIds !== undefined)
+			throw new UsageError(
+				"--place-id is for a place folder.",
+				"Give the folder to add, as 'rogen init places/lobby', or run init in a place."
+			);
+		const place = placeOf.value !== undefined;
+		const changer = await ProjectChanger.of(
+			this.fileSystemService,
+			directory,
+			questions,
+			place
+		);
 		const additions = new InitAdditions(
 			questions,
 			agentFile.value,
 			hooks.value,
-			pin,
-			RojoPinSetup.pinnedIn(manifests),
-			home.path
+			tools,
+			ToolchainSetup.pinnedIn(manifests),
+			home.path,
+			changer
 		);
 		const notes = placeOf.value
 			? [
-					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and the Rojo pin go to the project root.`,
+					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and Rojo go to the project root.`,
 				]
 			: [];
+		if (ProjectChanger.hasFlags(questions)) {
+			if (!changer)
+				throw new UsageError(
+					`${directory.configFiles[0]} can't be read as JSON, so init can't change it.`,
+					"Fix it, then run init again."
+				);
+			const asked = additions.requested();
+			if (place && asked)
+				throw new UsageError(
+					"The changes of a place and the additions of the project root are made from different folders.",
+					"Run init in the root for agent rules, the hook and Rojo."
+				);
+			return this.planWith(
+				place ? directory : home,
+				questions,
+				[
+					changer.setup(() => changer.fromFlags()),
+					...(asked ?? []),
+					...additions.toolsForChanges(),
+				],
+				{ present: additions.presentAsked(), notes, purpose: "change" }
+			);
+		}
 		const requested = additions.requested();
 		if (requested)
 			return this.planWith(home, questions, requested, {
 				present: additions.presentAsked(),
 				notes,
+				purpose: "change",
 			});
-		const options = additions.options();
-		if (options.length === 0) {
+		const chosen = await additions.choose();
+		if (chosen === undefined) return ok(undefined);
+		if (chosen === "nothing") {
 			const present = additions.present();
 			return present.length > 0
-				? this.planWith(home, questions, [], { present, notes })
+				? this.planWith(home, questions, [], {
+						present,
+						notes,
+						purpose: "change",
+					})
 				: err(new DiagnosticsError(home.checkFree(home.configFiles)));
 		}
-		const addition = await questions.whatToAdd(
-			home.configFiles[0],
-			options
+		if ("place" in chosen)
+			return this.planWithin(
+				{
+					ask: questions.interactive,
+					place: chosen.place,
+					choices: {},
+				},
+				prompts
+			);
+		return this.planWith(
+			chosen.inPlace ? directory : home,
+			questions,
+			chosen.setups,
+			{
+				present: additions.presentAsked(),
+				notes,
+				purpose: "change",
+			}
 		);
-		if (addition === undefined) return ok(undefined);
-		return this.planWith(home, questions, [addition], {
-			present: additions.presentAsked(),
-			notes,
-		});
+	}
+
+	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
+	private async existingFolder(folder: string): Promise<string> {
+		let existing = folder;
+		while (!(await this.fileSystemService.exists(existing))) {
+			const parent = path.dirname(existing);
+			if (parent === existing) break;
+			existing = parent;
+		}
+		return existing;
 	}
 
 	/** The project root that lists `directory` as a place, when `directory` is one. */
@@ -311,6 +448,7 @@ export class CoreInitService implements InitService {
 		extras: {
 			present?: readonly PresentItem[];
 			notes?: readonly string[];
+			purpose?: InitPurpose;
 		} = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
@@ -328,6 +466,7 @@ export class CoreInitService implements InitService {
 			this.environmentService.cwd
 		);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
+		builder.setPurpose(extras.purpose ?? "create");
 		for (const note of extras.notes ?? []) builder.addNote(note);
 		builder.addPresent(...(extras.present ?? []));
 		const plan = builder.build();

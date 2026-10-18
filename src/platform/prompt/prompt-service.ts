@@ -14,6 +14,8 @@ export interface PromptDetails {
 export interface TextPromptOptions extends PromptDetails {
 	readonly message: string;
 	readonly placeholder?: string;
+	/** The text the field starts with, which the user edits. */
+	readonly initialValue?: string;
 	readonly validate?: (value: string) => string | undefined;
 }
 
@@ -49,6 +51,10 @@ export interface PromptService {
 	multiSelect<T extends string>(
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined>;
+	/** A select that narrows its choices to those matching what is typed. */
+	autocomplete<T extends string>(
+		options: SelectPromptOptions<T>
+	): Promise<T | undefined>;
 }
 
 export const PromptService =

@@ -147,6 +147,10 @@ stdout:
             "type": "boolean"
           },
           {
+            "name": "customise",
+            "type": "boolean"
+          },
+          {
             "name": "kind",
             "type": "string",
             "enum": [
@@ -174,6 +178,11 @@ stdout:
             "multiple": true
           },
           {
+            "name": "no-source-path",
+            "type": "string",
+            "multiple": true
+          },
+          {
             "name": "sync-path",
             "type": "string"
           },
@@ -196,12 +205,27 @@ stdout:
             "multiple": true
           },
           {
+            "name": "no-route",
+            "type": "string",
+            "multiple": true
+          },
+          {
             "name": "unmatched",
             "type": "string",
             "enum": [
               "shared",
               "leave"
             ]
+          },
+          {
+            "name": "sample",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "places",
+            "type": "boolean",
+            "negatable": true
           },
           {
             "name": "agent-rules",
@@ -214,7 +238,12 @@ stdout:
             "negatable": true
           },
           {
-            "name": "rojo-pin",
+            "name": "rojo",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "studio-plugin",
             "type": "boolean",
             "negatable": true
           },

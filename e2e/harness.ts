@@ -30,11 +30,18 @@ import "../src/commands/where/where-command.js";
 
 const execFileAsync = promisify(execFile);
 
+/** A step that starts with this runs the program after it, such as `["$", "darklua", "process", "src", "dist"]`, with its output left out. */
+const EXTERNAL_STEP = "$";
+
 export const CASES_DIR = path.resolve("e2e/cases");
 
 const RUN_TIMEOUT_MS = 20_000;
 
+/** A step that downloads packages takes longer. */
+export const NETWORK_TIMEOUT_MS = 180_000;
+
 export interface CaseSpec {
+	/** The arguments of each `rogen` run, or `["$", program, ...arguments]` for a program that runs between them. */
 	readonly steps?: readonly (readonly string[])[];
 	readonly cwd?: string;
 	readonly links?: Readonly<Record<string, string>>;
@@ -48,6 +55,10 @@ export interface CaseSpec {
 	readonly stdin?: string;
 	/** A place file the steps read, made before they run: the project as built, synced into a place by Rojo, then changed by the case's `place.luau` as in Studio's command bar. */
 	readonly place?: string;
+	/** Programs that stand in for the toolchain on a machine that has none: each name is a script on the PATH that logs its call, then runs the body given (shell, so not on Windows). The case gets no Rokit file pinning Rojo, and a home folder of its own, so Rogen sees a machine with only these. The calls are in the transcript under `ran:`. */
+	readonly tools?: Readonly<Record<string, string>>;
+	/** The steps download packages (npm), so the case runs only when `ROGEN_E2E_NETWORK=1` is set, and its steps may take longer. */
+	readonly network?: boolean;
 }
 
 /** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
@@ -61,6 +72,8 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	env: true,
 	stdin: true,
 	place: true,
+	tools: true,
+	network: true,
 };
 
 /** A cache folder for this run alone, so what Rogen remembers of the files it wrote is not shared by runs, and is gone when the run ends. */
@@ -159,6 +172,11 @@ export function bundleCli(): { readonly cli: string; dispose(): void } {
 	};
 }
 
+/** Whether the case downloads packages, which it can do only where there is a network. */
+export function needsNetwork(name: string): boolean {
+	return readSpec(path.join(CASES_DIR, name)).network === true;
+}
+
 export async function runCase(cli: string, name: string): Promise<string> {
 	const caseDir = path.join(CASES_DIR, name);
 	const spec = readSpec(caseDir);
@@ -170,10 +188,12 @@ export async function runCase(cli: string, name: string): Promise<string> {
 			recursive: true,
 			verbatimSymlinks: true,
 		});
-		fs.copyFileSync(
-			path.resolve("rokit.toml"),
-			path.join(dir, "rokit.toml")
-		);
+		const fake = spec.tools ? fakeTools(parent, spec.tools) : undefined;
+		if (!fake)
+			fs.copyFileSync(
+				path.resolve("rokit.toml"),
+				path.join(dir, "rokit.toml")
+			);
 		for (const [link, target] of Object.entries(spec.links ?? {})) {
 			const linkPath = path.join(dir, link);
 			const resolved = path.resolve(path.dirname(linkPath), target);
@@ -194,23 +214,35 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		const before = snapshot(dir);
 		const sections: string[] = [];
 		for (const args of spec.steps ?? [["build"]]) {
+			const [first, program, ...programArgs] = args;
+			const external = first === EXTERNAL_STEP;
 			const result = await run(
-				...invocation(cli, args),
+				...(external
+					? ([program, programArgs] as const)
+					: invocation(cli, args)),
 				path.join(dir, spec.cwd ?? ""),
-				spec.env,
-				spec.stdin
+				{ ...fake?.env, ...spec.env },
+				spec.stdin,
+				spec.network ? NETWORK_TIMEOUT_MS : RUN_TIMEOUT_MS
 			);
-			const problem = outputProblem(args, result.stdout);
-			if (problem) throw new Error(`rogen ${args.join(" ")} ${problem}`);
+			if (!external) {
+				const problem = outputProblem(args, result.stdout);
+				if (problem)
+					throw new Error(`rogen ${args.join(" ")} ${problem}`);
+			}
 			sections.push(
 				formatStep(
-					["rogen", ...args],
+					external ? [program, ...programArgs] : ["rogen", ...args],
 					result,
-					showsStdout(args, spec),
+					!external && showsStdout(args, spec),
 					spec.stdin
 				)
 			);
 		}
+
+		const calls = fake?.calls();
+		if (calls?.length)
+			sections.push(`ran:\n${calls.map((c) => `  ${c}`).join("\n")}`);
 
 		const written = changedFiles(before, snapshot(dir));
 		if (written.length > 0) {
@@ -237,6 +269,51 @@ export async function runCase(cli: string, name: string): Promise<string> {
 	} finally {
 		fs.rmSync(parent, { recursive: true, force: true });
 	}
+}
+
+const TOOLCHAIN = ["rokit", "aftman", "foreman", "rojo", "darklua"];
+
+/** Fake programs for a case: a folder of scripts in front of the PATH, which has lost every folder that holds a real toolchain program, and a home folder with no Rokit in it. */
+function fakeTools(
+	parent: string,
+	tools: Readonly<Record<string, string>>
+): { env: Record<string, string>; calls(): string[] } {
+	const bin = path.join(parent, "bin");
+	const home = path.join(parent, "home");
+	const log = path.join(parent, "calls.log");
+	fs.mkdirSync(bin);
+	fs.mkdirSync(home);
+	for (const [name, body] of Object.entries(tools)) {
+		const file = path.join(bin, name);
+		fs.writeFileSync(
+			file,
+			`#!/bin/sh\necho "${name} $*" >> "$ROGEN_E2E_CALLS"\n${body}\n`,
+			{ mode: 0o755 }
+		);
+	}
+	const kept = (process.env.PATH ?? "")
+		.split(path.delimiter)
+		.filter(
+			(dir) =>
+				dir !== "" &&
+				!TOOLCHAIN.some((name) => fs.existsSync(path.join(dir, name)))
+		);
+	return {
+		env: {
+			PATH: [bin, ...kept].join(path.delimiter),
+			HOME: home,
+			USERPROFILE: home,
+			ROGEN_E2E_CALLS: log,
+		},
+		calls: () =>
+			fs.existsSync(log)
+				? fs
+						.readFileSync(log, "utf8")
+						.trimEnd()
+						.split("\n")
+						.map((line) => line.trimEnd())
+				: [],
+	};
 }
 
 /** The case's project built into a place in a folder of its own, then changed by its `place.luau` and saved at `file`. */
@@ -306,18 +383,19 @@ function readSpec(caseDir: string): CaseSpec {
 	return spec;
 }
 
-async function run(
+export async function run(
 	command: string,
 	args: readonly string[],
 	cwd: string,
 	env?: Readonly<Record<string, string>>,
-	stdin = ""
+	stdin = "",
+	timeout = RUN_TIMEOUT_MS
 ): Promise<RunResult> {
 	try {
 		const running = execFileAsync(command, [...args], {
 			cwd,
 			encoding: "utf8",
-			timeout: RUN_TIMEOUT_MS,
+			timeout,
 			env: childEnv(env),
 		});
 		running.child.stdin?.on("error", () => undefined);
@@ -487,6 +565,7 @@ function snapshot(dir: string): Map<string, string> {
 		for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
 			const full = path.join(current, entry.name);
 			const relative = path.relative(dir, full).split(path.sep).join("/");
+			if (entry.isDirectory() && entry.name === "node_modules") continue;
 			if (entry.isSymbolicLink())
 				files.set(relative, `link:${fs.readlinkSync(full)}`);
 			else if (entry.isDirectory() && entry.name === ".git")
@@ -578,7 +657,8 @@ export class RunningRogen {
 		dir: string,
 		args: readonly string[] = [],
 		cwd: string = dir,
-		command = "build --watch"
+		command = "build --watch",
+		env?: Readonly<Record<string, string>>
 	) {
 		const [file, commandArgs] = invocation(cli, [
 			...command.split(" "),
@@ -587,7 +667,7 @@ export class RunningRogen {
 		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
-			env: childEnv(),
+			env: childEnv(env),
 		});
 		for (const stream of [this.child.stdout, this.child.stderr]) {
 			stream?.setEncoding("utf8");

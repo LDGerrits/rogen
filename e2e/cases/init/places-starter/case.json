@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "--non-interactive", "--skip-git", "--places"], ["list"]],
+	"show": ["README.md", "places/game/rogen.json", "places/game/src/Game/Server/Game.server.luau", "places/shared/src/Greeter/Shared/Greeting.luau"],
+	"output": ["init"]
+}

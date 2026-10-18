@@ -6,7 +6,6 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 export interface NextSteps {
 	readonly setup: readonly string[];
 	readonly run: readonly string[];
-	readonly darklua: readonly string[];
 	readonly edits: readonly string[];
 }
 
@@ -22,7 +21,10 @@ export interface InitChoices {
 	/** Place IDs, or `none`. */
 	readonly placeIds?: readonly string[];
 	readonly agentRules?: boolean;
-	readonly rojoPin?: boolean;
+	/** Whether to set Rojo up: pin it with the toolchain manager, or install Rokit and then pin it. */
+	readonly rojo?: boolean;
+	/** Whether to install Rojo's Studio plugin, once Rojo is set up. */
+	readonly plugin?: boolean;
 	readonly agentHook?: boolean;
 	readonly language?: string;
 	readonly darklua?: boolean;
@@ -33,7 +35,17 @@ export interface InitChoices {
 	readonly packages?: readonly string[];
 	/** Route ids, or `none`. */
 	readonly routes?: readonly string[];
+	/** Route ids to take off a project that has a config. */
+	readonly unroutes?: readonly string[];
+	/** Source paths to take off a project that has a config. */
+	readonly unsourcePaths?: readonly string[];
 	readonly unmatched?: "shared" | "leave";
+	/** Whether a new place starts with the Greeter sample. */
+	readonly sample?: boolean;
+	/** Whether a new project is several places under `places/`, rather than one. */
+	readonly places?: boolean;
+	/** Asks every question at once in a terminal, with no summary of the plan first. */
+	readonly customise?: boolean;
 }
 
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */
@@ -45,16 +57,50 @@ export interface InitDecision {
 
 /** An addition the project has already, which init reports instead of adding again. */
 export interface PresentItem {
-	readonly item: "agentRules" | "agentHook" | "rojoPin";
+	readonly item: "agentRules" | "agentHook" | "rojo";
 	/** Relative to the plan's directory. */
 	readonly file: string;
 }
 
+/** A program that `init` runs once it has written the files, such as the toolchain manager that installs Rojo. */
+export interface PlannedCommand {
+	/** The command line as a person types it. */
+	readonly command: string;
+	/** The program, looked for on the PATH and in Rokit's bin folder when it runs, since an installer has just put it there. */
+	readonly file: string;
+	readonly args: readonly string[];
+	/** How long it may run, in milliseconds. */
+	readonly timeout: number;
+}
+
+/** A tool that writes the project's own files before `init` adds its own, such as the create tool of a compiler. */
+export interface PlannedScaffold {
+	readonly command: PlannedCommand;
+	/** Relative to the plan's directory: what the tool writes that `init` replaces, removed once the tool has run. */
+	readonly replaces: readonly string[];
+}
+
+/** One line of the summary a run shows before it writes: an area of the project and what it gets. */
+export interface SummaryRow {
+	readonly area: string;
+	readonly text: string;
+}
+
+/** What the plan does, which words the question that accepts it. */
+export type InitPurpose = "create" | "change" | "place";
+
 export interface InitPlan {
 	readonly directory: string;
+	readonly purpose: InitPurpose;
+	/** What the plan sets up, by area, which the summary shows beside the files and commands. */
+	readonly summary: readonly SummaryRow[];
+	/** Runs before any file is written; a failure writes nothing. */
+	readonly scaffold?: PlannedScaffold;
 	readonly files: readonly PlannedFile[];
 	/** Relative to `directory`; created by `init` when missing. */
 	readonly directories: readonly string[];
+	/** Run in this order, in `directory`, after the files are written; the first to fail stops the rest. */
+	readonly commands: readonly PlannedCommand[];
 	readonly configs: readonly string[];
 	readonly notes: readonly string[];
 	/** What `init` could not do as asked, such as settings of a lifted file it had to leave out. */
@@ -70,10 +116,18 @@ export interface InitPlan {
 }
 
 export type InitWritten =
+	| { readonly kind: "scaffold"; readonly scaffold: PlannedScaffold }
 	| { readonly kind: "file"; readonly file: PlannedFile }
 	| { readonly kind: "directory"; readonly directory: string }
 	/** `failed` is why `git init` did not make a repository, which leaves the project complete without one. */
-	| { readonly kind: "git"; readonly failed?: string };
+	| { readonly kind: "git"; readonly failed?: string }
+	/** `failed` is why it did not finish, and `skipped` the commands after it that did not run. */
+	| {
+			readonly kind: "command";
+			readonly command: PlannedCommand;
+			readonly failed?: string;
+			readonly skipped?: readonly PlannedCommand[];
+	  };
 
 export interface InitOptions {
 	readonly ask?: boolean;

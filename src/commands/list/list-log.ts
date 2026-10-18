@@ -70,6 +70,7 @@ export const listDocumentShape = S.object({
 			status: S.enum("valid", "broken"),
 			served: S.boolean,
 			...optionalDetails,
+			sharedCode: S.optional(S.array(S.string)),
 			places: S.optional(
 				S.array(
 					S.object({
@@ -296,6 +297,11 @@ export class ListLog {
 				...(placeNames.length > 0
 					? [`places: ${placeNames.join(", ")}`]
 					: []),
+				...(resolved.sharedFolders?.length
+					? [
+							`shared code: ${listed(resolved.sharedFolders.map(relative))}`,
+						]
+					: []),
 				...(resolved.projects.length === 0
 					? [
 							`project file: ${relative(config.projectFile)}${notes(config, false)}`,
@@ -336,6 +342,11 @@ export class ListLog {
 					(entry.scope !== undefined || !entry.config.hasPlaces),
 				...(entry.status === "valid" && entry.scope === undefined
 					? configDetails([entry.config, ...entry.projects], serving)
+					: {}),
+				...(entry.status === "valid" &&
+				entry.scope === undefined &&
+				entry.sharedFolders?.length
+					? { sharedCode: entry.sharedFolders.map((folder) => toNative(folder)) }
 					: {}),
 				...(entry.status === "valid" &&
 				placesIn(entry, entry.scope).length > 0

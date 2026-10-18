@@ -33,7 +33,7 @@ const askInitChoices = async (
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
 		directoryOf(context),
-		new InitQuestions(prompts, prompts.isInteractive),
+		new InitQuestions(prompts, prompts.isInteractive, { sample: false }),
 		fileSystem
 	);
 	return setup.ask();
@@ -950,69 +950,109 @@ describe("InitQuestions addAgentHook", () => {
 	});
 });
 
-describe("InitQuestions whatToAdd", () => {
-	const options = [
-		{
-			id: "first",
-			flag: "--first",
-			label: "First",
-			hint: "the first",
-			addition: 1,
-		},
-		{
-			id: "second",
-			flag: "--second",
-			label: "Second",
-			hint: "the second",
-			addition: 2,
-		},
+describe("InitQuestions changing a project", () => {
+	const askedWith = (answers: PromptScript) => {
+		const prompts = new MockPromptService(answers);
+		return { prompts, questions: new InitQuestions(prompts, true) };
+	};
+	const areas = [
+		{ id: "routes", label: "Routes", hint: "add or take off" },
+		{ id: "darklua", label: "Darklua", hint: "process the code" },
 	];
 
-	it("should answer with the addition the user picks", async () => {
-		const questions = new InitQuestions(
-			new MockPromptService(["second"]),
-			true
-		);
+	it("should offer the areas with nothing ticked, and name the state in the description", async () => {
+		const { prompts, questions } = askedWith([["darklua"]]);
 
-		expect(await questions.whatToAdd("rogen.json", options)).toBe(2);
+		const picked = await questions.whatToChange("Routes  Server", areas);
+
+		expect(picked).toEqual(["darklua"]);
+		expect(prompts.prompts[0]).toMatchObject({
+			message: "What do you want to change?",
+			description: "Routes  Server",
+			offered: ["routes", "darklua"],
+		});
 	});
 
-	it("should name the config that exists", async () => {
-		const prompts = new MockPromptService([ACCEPT_DEFAULT]);
+	it("should answer nothing when the user cancels the areas", async () => {
+		const { questions } = askedWith([CANCEL]);
 
-		await new InitQuestions(prompts, true).whatToAdd(
-			"rogen.jsonc",
-			options
-		);
-
-		expect(prompts.asked).toEqual([
-			"rogen.jsonc exists. What do you want to add?",
-		]);
+		expect(await questions.whatToChange("", areas)).toBeUndefined();
 	});
 
-	it("should preselect the first", async () => {
-		const questions = new InitQuestions(
-			new MockPromptService([ACCEPT_DEFAULT]),
-			true
-		);
-
-		expect(await questions.whatToAdd("rogen.json", options)).toBe(1);
-	});
-
-	it("should take the first when it can't ask", async () => {
-		const questions = new InitQuestions(new MockPromptService([]), false);
-
-		expect(await questions.whatToAdd("rogen.json", options)).toBe(1);
-	});
-
-	it("should answer nothing when the user cancels", async () => {
-		const questions = new InitQuestions(
-			new MockPromptService([CANCEL]),
-			true
-		);
+	it("should tell the routes to add from the routes to take off", async () => {
+		const { questions } = askedWith([["server", "shared"]]);
+		const options = [
+			{ id: "server", key: "Server", target: "ServerScriptService" },
+			{ id: "client", key: "Client", target: "StarterPlayer" },
+			{ id: "shared", key: "Shared", target: "ReplicatedStorage" },
+		];
 
 		expect(
-			await questions.whatToAdd("rogen.json", options)
-		).toBeUndefined();
+			await questions.changeRoutes(options, ["server", "client"])
+		).toEqual({ add: ["shared"], remove: ["client"] });
+	});
+
+	it("should offer the source paths as they are, and tell the folders added from those removed", async () => {
+		const { prompts, questions } = askedWith(["src, lib"]);
+
+		const changed = await questions.changeSourcePaths(
+			["src", "old"],
+			directoryOf(),
+			async () => []
+		);
+
+		expect(prompts.prompts[0].placeholder).toBe("src, old");
+		expect(changed).toEqual({ add: ["lib"], remove: ["old"] });
+	});
+
+	it("should ask before taking off a folder that has scripts, and keep it when the answer is No", async () => {
+		const { prompts, questions } = askedWith(["src", false]);
+
+		const changed = await questions.changeSourcePaths(
+			["src", "old"],
+			directoryOf(),
+			async () => ["Main.luau"]
+		);
+
+		expect(prompts.asked).toEqual(["Source paths", "Stop building old?"]);
+		expect(changed).toEqual({ add: [], remove: [] });
+	});
+
+	it("should take a folder off when the answer is Yes", async () => {
+		const { questions } = askedWith(["src", true]);
+
+		expect(
+			await questions.changeSourcePaths(
+				["src", "old"],
+				directoryOf(),
+				async () => ["Main.luau"]
+			)
+		).toEqual({ add: [], remove: ["old"] });
+	});
+
+	it("should offer to add a place, or to turn one place into several", async () => {
+		expect(await askedWith(["several"]).questions.changePlaces(false)).toBe(
+			"several"
+		);
+		const { prompts, questions } = askedWith([]);
+
+		expect(await questions.changePlaces(true)).toBe("add");
+		expect(prompts.asked).toEqual([]);
+	});
+
+	it("should ask whether Darklua stays on, preselecting how it is", async () => {
+		const { questions } = askedWith([ACCEPT_DEFAULT]);
+
+		expect(await questions.changeDarklua(true)).toBe(true);
+	});
+
+	it("should tick every package folder found", async () => {
+		const { questions } = askedWith([ACCEPT_DEFAULT]);
+
+		expect(
+			await questions.changePackages([
+				{ path: "Packages", landing: "ReplicatedStorage/Packages" },
+			])
+		).toEqual(["Packages"]);
 	});
 });

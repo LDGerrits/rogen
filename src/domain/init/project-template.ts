@@ -1,7 +1,8 @@
+import { normalizeDir } from "../../base/path.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { InitKind } from "./init-service.js";
 
-const HOMEPAGE = "https://rogen-playfully.vercel.app/";
+export const HOMEPAGE = "https://rogen-playfully.vercel.app/";
 
 const ROBLOX_LOCKS =
 	"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n";
@@ -11,7 +12,11 @@ export class ProjectTemplate {
 	constructor(
 		readonly kind: InitKind,
 		/** The project's name, which Rojo takes from the folder. */
-		readonly name: string
+		readonly name: string,
+		/** The folder Darklua writes, which git is to leave out. */
+		readonly syncPath?: string,
+		/** Lines the language adds to the `.gitignore`. */
+		readonly ignored: readonly string[] = []
 	) {}
 
 	get readme(): PlannedFile {
@@ -40,9 +45,16 @@ export class ProjectTemplate {
 				: this.kind === "plugin"
 					? `# Plugin model files\n/${name}.rbxmx\n/${name}.rbxm\n`
 					: ROBLOX_LOCKS;
+		const processed = this.syncPath
+			? `\n# Darklua output\n/${normalizeDir(this.syncPath).replace(/\/$/, "")}\n`
+			: "";
+		const language =
+			this.ignored.length > 0
+				? `\n# Compiler output and installed packages\n${this.ignored.join("\n")}\n`
+				: "";
 		return {
 			fileName: ".gitignore",
-			content: `${project}\nsourcemap.json\n`,
+			content: `${project}\nsourcemap.json\n${processed}${language}`,
 		};
 	}
 

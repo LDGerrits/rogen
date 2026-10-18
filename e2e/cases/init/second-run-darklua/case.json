@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "-y", "--darklua"]],
+	"output": ["init"],
+	"show": ["rogen.json", ".darklua.json"]
+}

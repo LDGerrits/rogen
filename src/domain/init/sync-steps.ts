@@ -5,7 +5,9 @@ import { InitPlanBuilder } from "./init-plan-builder.js";
 export class SyncSteps {
 	constructor(
 		readonly language: Language,
-		readonly darklua: Darklua | undefined
+		readonly darklua: Darklua | undefined,
+		/** What compiles the code when the project's own script does, such as the `watch` script of its `package.json`. */
+		private readonly compileCommand?: string
 	) {}
 
 	get syncPath(): string | undefined {
@@ -20,24 +22,27 @@ export class SyncSteps {
 		{
 			processed,
 			syncPath,
+			luauLsp,
 		}: {
 			readonly processed: readonly string[];
 			readonly syncPath?: string;
+			/** Whether luau-lsp is set up here, which keeps `sourcemap.json` current. */
+			readonly luauLsp: boolean;
 		}
 	): void {
 		const { darklua, language } = this;
 		builder.addRun(
-			...(language.compiler ? [language.compiler.compileCommand] : []),
+			...(language.compiler
+				? [this.compileCommand ?? language.compiler.compileCommand]
+				: []),
+			...(darklua && syncPath
+				? darklua.processCommands(directory, processed, syncPath)
+				: []),
 			"rogen serve"
 		);
-		if (darklua && syncPath) {
-			builder.addDarkluaCommands(
-				...darklua.processCommands(directory, processed, syncPath)
-			);
-		}
-		if (darklua && !language.compiler) {
+		if (darklua && !language.compiler && !luauLsp) {
 			builder.addEdit(
-				`Darklua reads sourcemap.json, which luau-lsp keeps current from ${DEFAULT_PROJECT_FILE}. Without luau-lsp, run: ${darklua.sourcemapCommand()}`
+				`Darklua reads sourcemap.json. Keep it current from ${DEFAULT_PROJECT_FILE} in a terminal of its own: ${darklua.sourcemapCommand()}`
 			);
 		}
 	}
