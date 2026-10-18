@@ -1,0 +1,48 @@
+$ rogen init --non-interactive --darklua --no-sample
+exit 0
+stdout: (not shown)
+
+written:
+  .darklua.json
+  .git/
+  .gitignore
+  AGENTS.md
+  default.project.json
+  dist.project.json
+  rogen.json
+
+.gitignore:
+# Project place file
+/project.rbxlx
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+sourcemap.json
+
+# Darklua output
+/dist
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "projects": {
+    "dist": {
+      "syncPath": "dist"
+    }
+  },
+  "serveProject": "dist"
+}

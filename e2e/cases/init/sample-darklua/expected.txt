@@ -3,6 +3,7 @@ exit 0
 stdout: (not shown)
 
 written:
+  .darklua.json
   AGENTS.md
   README.md
   default.project.json

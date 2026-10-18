@@ -6,7 +6,6 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 export interface NextSteps {
 	readonly setup: readonly string[];
 	readonly run: readonly string[];
-	readonly darklua: readonly string[];
 	readonly edits: readonly string[];
 }
 

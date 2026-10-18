@@ -126,7 +126,7 @@ export class InitAdditions {
 						},
 					]
 				: []),
-			...(tools && questions.interactive
+			...(tools?.rojoMissing && questions.interactive
 				? [
 						{
 							id: "rojo",

@@ -122,7 +122,6 @@ export class PlaceInit {
 			nextSteps: {
 				setup: [],
 				run: ["rogen serve"],
-				darklua: [],
 				edits: [
 					`Put the code of ${path.basename(folder)} in ${path.posix.join(place, sourcePaths.directories[0] ?? DEFAULT_SOURCE_PATH)}: it gets the routes and the tree of ${this.named(rootFile)}, and the code in its source paths wins a clash with the shared code.`,
 				],

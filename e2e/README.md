@@ -31,6 +31,14 @@ e2e/cases/<area>/<case>/
   checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - `env` sets variables for the commands, on top of an environment that is not GitHub Actions'.
+- A step that starts with `$` runs a program between the `rogen` runs, such as
+  `["$", "darklua", "process", "src", "dist"]`. Its output is left out of the transcript.
+- `tools` maps a name to the body of a shell script that stands in for a toolchain
+  program (`rokit`, `aftman`, `foreman`, `rojo`, `curl`), for a machine that has none:
+  the case's PATH loses every folder that holds a real one, its home folder is empty,
+  and the project gets no `rokit.toml` pinning Rojo. Each script logs its call, and
+  the calls are in the transcript under `ran:`. Use `"rojo": false` with it, since the
+  sourcemap step needs the real Rojo.
 - `stdin` is the text every step reads on its standard input; the transcript shows it under `stdin:`.
 - `place` makes a place file before the steps run, at that path inside the project:
   the project is built and synced into a place by `rojo build`, then `place.luau`

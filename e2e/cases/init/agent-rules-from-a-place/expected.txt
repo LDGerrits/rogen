@@ -33,7 +33,6 @@ stdout:
     "nextSteps": {
       "setup": [],
       "run": [],
-      "darklua": [],
       "edits": []
     }
   }

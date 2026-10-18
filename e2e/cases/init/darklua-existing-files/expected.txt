@@ -1,0 +1,104 @@
+$ rogen init --non-interactive --darklua
+exit 0
+stdout:
+  rogen init
+  Studio syncs from dist, where Darklua writes: rogen serve serves the dist project. default.project.json keeps pointing at your source, which luau-lsp and Darklua read.
+  Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.
+  Took the defaults: --kind place, --language luau, --source-path src, --sync-path dist, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Created rogen.json.
+  Created src/Greeter/Shared/Greeting.luau.
+  Created src/Greeter/Server/Greeter.server.luau.
+  Created src/Greeter/Client/Greeter.client.luau.
+  Created README.md.
+  Created AGENTS.md.
+  Initialised a git repository.
+  default.project.json · wrote
+  dist.project.json · wrote
+  Next steps
+    Run each in its own terminal:
+      darklua process src dist --watch
+      rogen serve
+    In Studio, press Connect in the Rojo plugin.
+    Add /dist to .gitignore so the processed code isn't committed.
+    Add your own routes under "routes" in rogen.json.
+    Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
+  Wrote 6 files.
+
+written:
+  .git/
+  AGENTS.md
+  README.md
+  default.project.json
+  dist.project.json
+  rogen.json
+  src/Greeter/Client/Greeter.client.luau
+  src/Greeter/Server/Greeter.server.luau
+  src/Greeter/Shared/Greeting.luau
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "projects": {
+    "dist": {
+      "syncPath": "dist"
+    }
+  },
+  "serveProject": "dist"
+}

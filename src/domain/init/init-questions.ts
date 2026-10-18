@@ -4,7 +4,6 @@ import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
-import { SyncServer } from "../runner/sync-server.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
@@ -63,6 +62,8 @@ const splitList = (value: string): string[] =>
 /** Everything `init` asks. A question the user answered with a flag is not asked, and one a run that can't ask takes the default of is written to `decided`. A flag with a value that doesn't fit throws a `UsageError`. */
 export class InitQuestions {
 	readonly decided: InitDecision[] = [];
+	/** Whether the project being started uses Darklua, once it has been answered. */
+	usesDarklua = false;
 
 	constructor(
 		private readonly promptService: PromptService,
@@ -224,7 +225,8 @@ export class InitQuestions {
 	/** Whether to set Rojo up; with no `manager` there is none on the machine, so a Yes installs Rokit first. A run that can't ask pins with a manager it finds and installs nothing otherwise. */
 	async rojo(
 		manager: string | undefined,
-		installer: string
+		installer: string,
+		tools: readonly string[]
 	): Promise<boolean | undefined> {
 		const { rojo } = this.choices;
 		if (rojo !== undefined) return rojo;
@@ -237,18 +239,24 @@ export class InitQuestions {
 		return this.promptService.confirm(
 			manager !== undefined
 				? {
-						message: `Pin Rojo ${SyncServer.ROJO.pinned} with ${manager}?`,
+						message: `Pin ${joinedWithAnd(tools)} with ${manager}?`,
 						description:
 							"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
 						initialValue: true,
 					}
 				: {
-						message:
-							"Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?",
-						description: `Runs Rokit's installer (${installer}), then pins Rojo ${SyncServer.ROJO.pinned} in a rokit.toml here.`,
+						message: this.installMessage(tools),
+						description: `Runs Rokit's installer (${installer}), then pins ${joinedWithAnd(tools)} in a rokit.toml here.`,
 						initialValue: true,
 					}
 		);
+	}
+
+	private installMessage(tools: readonly string[]): string {
+		const names = joinedWithAnd(tools.map((tool) => tool.split(" ")[0]));
+		return tools.length === 1 && names === "Rojo"
+			? "Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?"
+			: `${names} ${tools.length === 1 ? "isn't" : "aren't"} installed, and the project needs ${tools.length === 1 ? "it" : "them"}. Install Rokit and ${tools.length === 1 ? "pin it" : "pin them"} now?`;
 	}
 
 	/** Whether to install Rojo's Studio plugin, which a run that can't ask leaves to the user. */

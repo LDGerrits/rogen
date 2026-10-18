@@ -647,6 +647,161 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("Darklua", () => {
+		const DARKLUA_PIN = "seaofvoices/darklua@0.19.0";
+		const planWithDarklua = async () =>
+			(
+				await serviceFor().plan({
+					ask: false,
+					choices: { darklua: true },
+				})
+			).unwrap();
+		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
+			plan?.files.map(({ fileName }) => fileName);
+		const fileOf = (
+			plan: { files: readonly PlannedFile[] } | undefined,
+			name: string
+		) => plan?.files.find(({ fileName }) => fileName === name);
+		const commandsOf = (
+			plan: { commands: readonly { command: string }[] } | undefined
+		) => plan?.commands.map(({ command }) => command);
+
+		it("should write the config that converts path requires, where there is none", async () => {
+			const plan = await planWithDarklua();
+
+			expect(JSON.parse(fileOf(plan, ".darklua.json")!.content)).toEqual({
+				rules: [
+					{
+						rule: "convert_require",
+						current: { name: "path" },
+						target: {
+							name: "roblox",
+							rojo_sourcemap: "./sourcemap.json",
+							indexing_style: "property",
+						},
+					},
+				],
+			});
+		});
+
+		it("should write a config with no rules for compiled code, which has no path requires", async () => {
+			await write("tsconfig.json", "{}");
+
+			const plan = await planWithDarklua();
+
+			expect(JSON.parse(fileOf(plan, ".darklua.json")!.content)).toEqual({
+				rules: [],
+			});
+		});
+
+		it("should leave a config that is there as it is", async () => {
+			await write(".darklua.json5", "{}");
+
+			const plan = await planWithDarklua();
+
+			expect(names(plan)).not.toContain(".darklua.json");
+		});
+
+		it("should have the new .gitignore list the sync path", async () => {
+			const plan = await planWithDarklua();
+
+			expect(fileOf(plan, ".gitignore")?.content).toContain("\n/dist\n");
+			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+				"to .gitignore"
+			);
+		});
+
+		it("should not edit a .gitignore that is there, and say what to add", async () => {
+			await write(".gitignore", "sourcemap.json\n");
+
+			const plan = await planWithDarklua();
+
+			expect(names(plan)).not.toContain(".gitignore");
+			expect(plan?.nextSteps.edits).toContain(
+				"Add /dist to .gitignore so the processed code isn't committed."
+			);
+		});
+
+		it("should say nothing when the .gitignore there lists the sync path", async () => {
+			await write(".gitignore", "dist/\n");
+
+			const plan = await planWithDarklua();
+
+			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+				"to .gitignore"
+			);
+		});
+
+		it("should leave the sourcemap to luau-lsp where the editor settings name it", async () => {
+			await write(
+				".vscode/settings.json",
+				'{ "luau-lsp.sourcemap.enabled": true }'
+			);
+
+			const plan = await planWithDarklua();
+
+			expect(plan?.nextSteps.edits.join("\n")).not.toContain("sourcemap");
+		});
+
+		it("should pin it beside Rojo, and install both with the manager", async () => {
+			processes.installed.delete("rojo");
+			processes.installed.set("rokit", "/bin/rokit");
+
+			const plan = await planWithDarklua();
+
+			expect(fileOf(plan, "rokit.toml")?.content).toBe("[tools]\n");
+			expect(commandsOf(plan)).toEqual([
+				"rokit add rojo-rbx/rojo@7.7.1",
+				`rokit add ${DARKLUA_PIN}`,
+			]);
+		});
+
+		it("should pin only Darklua when Rojo runs", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+
+			const plan = await planWithDarklua();
+
+			expect(commandsOf(plan)).toEqual([`rokit add ${DARKLUA_PIN}`]);
+		});
+
+		it("should pin nothing when Darklua runs or a toolchain file pins it", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			processes.installed.set("darklua", "/bin/darklua");
+			processes.outputs.set("/bin/darklua", {
+				code: 0,
+				stdout: "darklua 0.19.0\n",
+				stderr: "",
+			});
+			const running = await planWithDarklua();
+			processes.installed.delete("darklua");
+			await write("rokit.toml", `[tools]\ndarklua = "${DARKLUA_PIN}"\n`);
+			const pinned = await planWithDarklua();
+
+			expect(running?.commands).toEqual([]);
+			expect(pinned?.commands).toEqual([]);
+		});
+
+		it("should pin nothing when the project does not use Darklua", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(plan?.commands).toEqual([]);
+		});
+
+		it("should write Foreman's lines for both, then install", async () => {
+			processes.installed.delete("rojo");
+			processes.installed.set("foreman", "/bin/foreman");
+
+			const plan = await planWithDarklua();
+
+			expect(fileOf(plan, "foreman.toml")?.content).toBe(
+				'[tools]\nrojo = { github = "rojo-rbx/rojo", version = "7.7.1" }\ndarklua = { github = "seaofvoices/darklua", version = "0.19.0" }\n'
+			);
+			expect(commandsOf(plan)).toEqual(["foreman install"]);
+		});
+	});
+
 	describe("Rojo", () => {
 		const PIN = "rojo-rbx/rojo@7.7.1";
 		const pinQuestion = (manager: string) =>

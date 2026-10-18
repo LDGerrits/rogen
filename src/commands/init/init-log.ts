@@ -81,7 +81,6 @@ export const initDocumentShape = S.object({
 		S.object({
 			setup: S.array(S.string),
 			run: S.array(S.string),
-			darklua: S.array(S.string),
 			edits: S.array(S.string),
 		})
 	),
@@ -104,7 +103,7 @@ const indent = (line: string) => `  ${line}`;
 
 const STUDIO_STEP = "In Studio, press Connect in the Rojo plugin.";
 
-const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
+const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
 	...setup,
 	...(run.length > 0
 		? [
@@ -113,12 +112,6 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 			]
 		: []),
 	...(run.includes("rogen serve") ? [STUDIO_STEP] : []),
-	...(darklua.length > 0
-		? [
-				"Have Darklua process your code into the sync path:",
-				...darklua.map(indent),
-			]
-		: []),
 	...edits,
 ];
 

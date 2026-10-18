@@ -127,7 +127,6 @@ describe("init command", () => {
 				nextSteps: {
 					setup: [],
 					run: ["rbxtsc -w", "rogen serve"],
-					darklua: [],
 					edits: [
 						'Add your own routes under "routes" in rogen.json.',
 					],

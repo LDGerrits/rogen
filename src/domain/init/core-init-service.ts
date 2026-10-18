@@ -64,7 +64,7 @@ export class CoreInitService implements InitService {
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService,
-		processService: ProcessService,
+		private readonly processService: ProcessService,
 		private readonly locator: ToolLocator = new ToolLocator(processService)
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
@@ -234,9 +234,12 @@ export class CoreInitService implements InitService {
 			await ToolchainSetup.stateOf(
 				home.path,
 				manifests,
-				this.finder,
-				this.locator,
-				await this.existingFolder(home.path)
+				await this.existingFolder(home.path),
+				{
+					finder: this.finder,
+					locator: this.locator,
+					processService: this.processService,
+				}
 			),
 			questions
 		);

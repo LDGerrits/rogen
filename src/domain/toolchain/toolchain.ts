@@ -215,17 +215,39 @@ export class Darklua {
 		},
 	};
 
+	/** Where toolchain managers install it from, and the release `init` pins: the one the guide and the e2e tests ran. */
+	static readonly REPOSITORY = "seaofvoices/darklua";
+	static readonly PINNED = "0.19.0";
+
 	readonly defaultSyncPath = "dist";
 	readonly configFiles: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
 	];
 
+	/** The config `init` writes where none exists. Luau code requires files by path, which `convert_require` turns into instance requires with the sourcemap; compiled code (roblox-ts) has none to convert, and the rule would fail on a missing sourcemap. */
+	configFor(language: Language): string {
+		const rules = language.compiler
+			? []
+			: [
+					{
+						rule: "convert_require",
+						current: { name: "path" },
+						target: {
+							name: "roblox",
+							rojo_sourcemap: "./sourcemap.json",
+							indexing_style: "property",
+						},
+					},
+				];
+		return `${JSON.stringify({ rules }, null, "\t")}\n`;
+	}
+
 	sourcemapCommand(): string {
 		return "rogen sourcemap --watch -o sourcemap.json";
 	}
 
-	/** One `darklua process` per directory, each landing at its path relative to their common root. */
+	/** One `darklua process --watch` per directory, each landing at its path relative to their common root. */
 	processCommands(
 		directory: string,
 		sourceDirs: readonly string[],
@@ -235,7 +257,7 @@ export class Darklua {
 		const common = commonAncestor(absolute);
 		return sourceDirs.map((dir, index) => {
 			const relative = toPosix(path.relative(common, absolute[index]));
-			return `darklua process ${dir} ${relative ? `${syncPath}/${relative}` : syncPath}`;
+			return `darklua process ${dir} ${relative ? `${syncPath}/${relative}` : syncPath} --watch`;
 		});
 	}
 }

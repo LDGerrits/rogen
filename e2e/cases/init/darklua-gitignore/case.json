@@ -1,0 +1,5 @@
+{
+	"steps": [["init", "--non-interactive", "--darklua", "--no-sample"]],
+	"rojo": false,
+	"show": [".gitignore"]
+}

@@ -34,7 +34,6 @@ export class InitPlanBuilder {
 	private liftedFrom: string | undefined;
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
-	private readonly darklua: string[] = [];
 	private readonly edits: string[] = [];
 	private readonly present: PresentItem[] = [];
 	private readonly commands: PlannedCommand[] = [];
@@ -116,10 +115,6 @@ export class InitPlanBuilder {
 		this.run.push(...commands);
 	}
 
-	addDarkluaCommands(...commands: readonly string[]): void {
-		this.darklua.push(...commands);
-	}
-
 	addEdit(...lines: readonly string[]): void {
 		this.edits.push(...lines);
 	}
@@ -163,7 +158,6 @@ export class InitPlanBuilder {
 			nextSteps: {
 				setup: [...this.setup],
 				run: [...this.run],
-				darklua: [...this.darklua],
 				edits: [
 					...(this.agentStep ? [this.agentStep] : []),
 					...this.edits,

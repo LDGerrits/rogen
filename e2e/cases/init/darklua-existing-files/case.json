@@ -1,0 +1,6 @@
+{
+	"steps": [["init", "--non-interactive", "--darklua"]],
+	"rojo": false,
+	"output": ["init"],
+	"show": [".darklua.json", ".gitignore"]
+}

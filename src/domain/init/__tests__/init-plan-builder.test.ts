@@ -58,7 +58,6 @@ describe("domain/init/init-plan-builder", () => {
 			builder.addNote("first");
 			builder.addRun("rbxtsc -w");
 			builder.addRun("rogen serve");
-			builder.addDarkluaCommands("darklua process src dist");
 			builder.addEdit("one", "two");
 			builder.addNote("second");
 
@@ -68,7 +67,6 @@ describe("domain/init/init-plan-builder", () => {
 			expect(plan.nextSteps).toEqual({
 				setup: [],
 				run: ["rbxtsc -w", "rogen serve"],
-				darklua: ["darklua process src dist"],
 				edits: ["one", "two"],
 			});
 		});

@@ -20,24 +20,25 @@ export class SyncSteps {
 		{
 			processed,
 			syncPath,
+			luauLsp,
 		}: {
 			readonly processed: readonly string[];
 			readonly syncPath?: string;
+			/** Whether luau-lsp is set up here, which keeps `sourcemap.json` current. */
+			readonly luauLsp: boolean;
 		}
 	): void {
 		const { darklua, language } = this;
 		builder.addRun(
 			...(language.compiler ? [language.compiler.compileCommand] : []),
+			...(darklua && syncPath
+				? darklua.processCommands(directory, processed, syncPath)
+				: []),
 			"rogen serve"
 		);
-		if (darklua && syncPath) {
-			builder.addDarkluaCommands(
-				...darklua.processCommands(directory, processed, syncPath)
-			);
-		}
-		if (darklua && !language.compiler) {
+		if (darklua && !language.compiler && !luauLsp) {
 			builder.addEdit(
-				`Darklua reads sourcemap.json, which luau-lsp keeps current from ${DEFAULT_PROJECT_FILE}. Without luau-lsp, run: ${darklua.sourcemapCommand()}`
+				`Darklua reads sourcemap.json. Keep it current from ${DEFAULT_PROJECT_FILE} in a terminal of its own: ${darklua.sourcemapCommand()}`
 			);
 		}
 	}

@@ -30,11 +30,15 @@ import "../src/commands/where/where-command.js";
 
 const execFileAsync = promisify(execFile);
 
+/** A step that starts with this runs the program after it, such as `["$", "darklua", "process", "src", "dist"]`, with its output left out. */
+const EXTERNAL_STEP = "$";
+
 export const CASES_DIR = path.resolve("e2e/cases");
 
 const RUN_TIMEOUT_MS = 20_000;
 
 export interface CaseSpec {
+	/** The arguments of each `rogen` run, or `["$", program, ...arguments]` for a program that runs between them. */
 	readonly steps?: readonly (readonly string[])[];
 	readonly cwd?: string;
 	readonly links?: Readonly<Record<string, string>>;
@@ -199,19 +203,26 @@ export async function runCase(cli: string, name: string): Promise<string> {
 		const before = snapshot(dir);
 		const sections: string[] = [];
 		for (const args of spec.steps ?? [["build"]]) {
+			const [first, program, ...programArgs] = args;
+			const external = first === EXTERNAL_STEP;
 			const result = await run(
-				...invocation(cli, args),
+				...(external
+					? ([program, programArgs] as const)
+					: invocation(cli, args)),
 				path.join(dir, spec.cwd ?? ""),
 				{ ...fake?.env, ...spec.env },
 				spec.stdin
 			);
-			const problem = outputProblem(args, result.stdout);
-			if (problem) throw new Error(`rogen ${args.join(" ")} ${problem}`);
+			if (!external) {
+				const problem = outputProblem(args, result.stdout);
+				if (problem)
+					throw new Error(`rogen ${args.join(" ")} ${problem}`);
+			}
 			sections.push(
 				formatStep(
-					["rogen", ...args],
+					external ? [program, ...programArgs] : ["rogen", ...args],
 					result,
-					showsStdout(args, spec),
+					!external && showsStdout(args, spec),
 					spec.stdin
 				)
 			);

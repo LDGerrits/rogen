@@ -11,13 +11,12 @@ stdout:
   default.project.json · wrote
   dist.project.json · wrote
   Next steps
-    Run:
+    Run each in its own terminal:
+      darklua process src dist --watch
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    Have Darklua process your code into the sync path:
-      darklua process src dist
     Add your own routes under "routes" in rogen.json.
-    Darklua reads sourcemap.json, which luau-lsp keeps current from default.project.json. Without luau-lsp, run: rogen sourcemap --watch -o sourcemap.json
+    Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
   Wrote 3 files.
 
 $ rogen build

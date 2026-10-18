@@ -1,6 +1,7 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { normalizeDir } from "../../base/path.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -54,6 +55,10 @@ export interface ProjectChoices {
 	readonly sample?: boolean;
 	/** The places a project of several starts with. */
 	readonly places?: StartingPlaces;
+	/** Whether luau-lsp is set up in the folder, which keeps `sourcemap.json` current for Darklua. */
+	readonly luauLsp?: boolean;
+	/** What to add to the `.gitignore` that was there, which `init` never edits. */
+	readonly gitignoreHint?: string;
 }
 
 function derivedRoutesOf(
@@ -146,6 +151,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const usesDarklua = await questions.darklua(directory);
 		if (usesDarklua === undefined) return ok(undefined);
 		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
+		questions.usesDarklua = usesDarklua;
 
 		const several = await this.severalPlaces(kind, language, darklua);
 		if (several === undefined) return ok(undefined);
@@ -234,6 +240,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: [];
 
 		const skipGit = questions.skipGit();
+		const processed = darklua && syncPath ? syncPath : undefined;
+		const darkluaConfig =
+			darklua && directory.workspace.darkluaConfig === undefined
+				? [
+						{
+							fileName: darklua.configFiles[0],
+							content: darklua.configFor(language),
+						},
+					]
+				: [];
 		return ok({
 			language,
 			darklua,
@@ -251,16 +267,60 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			skipGit,
 			sample,
 			...(places && { places }),
+			luauLsp: await this.luauLspIsSetUp(),
+			...(processed &&
+				!skipGit && {
+					gitignoreHint: await this.gitignoreHint(processed),
+				}),
 			templateFiles: await this.absent([
 				...ProjectSetup.templateFiles(
-					new ProjectTemplate(kind, path.basename(directory.path)),
+					new ProjectTemplate(
+						kind,
+						path.basename(directory.path),
+						processed
+					),
 					tree.value,
 					skipGit
 				),
+				...darkluaConfig,
 				...sampleFiles,
 				...(places?.files ?? []),
 			]),
 		});
+	}
+
+	/** Whether the editor settings here name luau-lsp. */
+	private async luauLspIsSetUp(): Promise<boolean> {
+		for (const file of [
+			".vscode/settings.json",
+			".vscode/extensions.json",
+		]) {
+			const text = await tryWithAsync(() =>
+				this.fileSystemService.readFile(
+					path.join(this.directory.path, file)
+				)
+			);
+			if (text.isOk() && /luau-lsp/i.test(text.value)) return true;
+		}
+		return false;
+	}
+
+	/** What to tell the user to add to the `.gitignore` here when it doesn't list the sync path; none when there is no `.gitignore` (init writes one that does) or it lists it. */
+	private async gitignoreHint(syncPath: string): Promise<string | undefined> {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(
+				path.join(this.directory.path, ".gitignore")
+			)
+		);
+		if (text.isErr()) return undefined;
+		const folder = normalizeDir(syncPath).replace(/\/$/, "");
+		const listed = text.value
+			.split(/\r?\n/)
+			.map((line) => line.trim().replace(/^\//, "").replace(/\/$/, ""))
+			.includes(folder);
+		return listed
+			? undefined
+			: `Add /${folder} to .gitignore so the processed code isn't committed.`;
 	}
 
 	/** Why a new project can't be several places, which `--places` would be an error for. */
@@ -504,6 +564,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			syncPath,
 			tree: chosen,
 			places,
+			luauLsp,
+			gitignoreHint,
 		}: ProjectChoices,
 		tree: TreePlan
 	): void {
@@ -521,6 +583,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
+		if (gitignoreHint) builder.addEdit(gitignoreHint);
 		if (places)
 			builder.addEdit(
 				"Add another place with 'rogen init places/lobby'."
@@ -532,6 +595,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		new SyncSteps(language, darklua).plan(builder, this.directory.path, {
 			processed: compiler ? [compiler.outDir] : sourcePaths,
 			syncPath,
+			luauLsp: luauLsp === true,
 		});
 	}
 }
