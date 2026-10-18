@@ -32,7 +32,7 @@ If you use Rojo with `server`, `client` and `shared` folders, `rogen init` keeps
 rogen init
 ```
 
-`init` moves the project file's keys into `rogen.json`, since Rogen owns `default.project.json` from now on, and leaves out the nodes that point into `src`: Rogen generates those. Each one becomes a route:
+`init` moves the project file's keys into `rogen.json`, since Rogen owns `default.project.json` from now on, and keeps your values as you wrote them: the Baseplate of `rojo init` stays `512`, not `512.0`. It leaves out the nodes that point into `src`: Rogen generates those. Each one becomes a route:
 
 ```json title="rogen.json"
 {

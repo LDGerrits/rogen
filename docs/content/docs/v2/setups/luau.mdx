@@ -47,13 +47,17 @@ Created src/Greeter/Server/Greeter.server.luau.
 Created src/Greeter/Client/Greeter.client.luau.
 Created README.md.
 Created AGENTS.md.
+Created rokit.toml.
 Initialised a git repository.
+Ran rokit add rojo-rbx/rojo@7.7.1.
+Ran rojo plugin install.
 default.project.json · wrote
 Next steps
   Run:
     rogen serve
+  In Studio, press Connect in the Rojo plugin.
   Add your own routes under "routes" in rogen.json.
-Wrote 7 files.
+Wrote 8 files.
 ```
 
 The sample is Rogen's version of what `rojo init` writes: three hello-world scripts, in one feature folder. `Greeting.luau` is a module that the server and the client script both require, and the tree keeps Rojo's Baseplate, Lighting and SoundService, so the place is playable at once. Skip it with `rogen init --no-sample`; it is written only in a folder with no code.
@@ -72,7 +76,7 @@ The sample is Rogen's version of what `rojo init` writes: three hello-world scri
 }
 ```
 
-For several places, see [Several Places](/docs/v2/setups/places). Customise asks about your source paths, your routes and where files that match no route should go; Enter at the summary gives the config above. If it finds Wally or Pesde, it mounts their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
+Run `rogen init` again whenever the project should change (a route, a source path, Darklua, places): see [Changing a project](/docs/v2/cli#changing-a-project). For several places, see [Several Places](/docs/v2/setups/places). Customise asks about your source paths, your routes and where files that match no route should go; Enter at the summary gives the config above. If it finds Wally or Pesde, it mounts their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 </Step>
 

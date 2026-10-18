@@ -92,6 +92,36 @@ You can install Rogen with **Rokit** or **npm**.
 
 Rogen tells you when a newer stable release is out, with one line on stderr after a command run in a terminal, and says which pin or `npm` command to change. To stop it, set `ROGEN_NO_UPDATE_CHECK=1` or `NO_UPDATE_NOTIFIER=1`. It reads GitHub's list of releases once a day. See [Update notice](/docs/v2/cli#update-notice) for when it speaks and what it keeps.
 
-## Next
+## Quick Start
 
-Run `rogen init` in your project: it asks at most the language and whether you want one place or several, shows what it will write and run, and Enter accepts it. Then follow the [Luau](/docs/v2/setups/luau) or [roblox-ts](/docs/v2/setups/roblox-ts) guide.
+In an empty folder, three steps take you to a game in Studio:
+
+<Steps>
+  <Step>
+    ### Set Up
+
+    ```bash
+    rogen init
+    ```
+
+    Answer the one or two questions it asks (the language in an empty folder, one place or several), then press Enter at the summary. It writes the project and a small sample game, pins Rojo with your toolchain manager and installs Rojo's Studio plugin.
+
+  </Step>
+
+  <Step>
+    ### Serve
+
+    ```bash
+    rogen serve
+    ```
+
+  </Step>
+
+  <Step>
+    ### Connect
+
+    In Studio, press Connect in the Rojo plugin. The sample's three scripts print their greeting.
+  </Step>
+</Steps>
+
+Nothing else is needed for Luau. roblox-ts and Darklua have a compiler to run beside `rogen serve`, which `init` prints. The [Luau](/docs/v2/setups/luau), [roblox-ts](/docs/v2/setups/roblox-ts), [Darklua](/docs/v2/setups/darklua) and [Several Places](/docs/v2/setups/places) guides begin from `rogen init`, and run it again later to [change the project](/docs/v2/cli#changing-a-project).

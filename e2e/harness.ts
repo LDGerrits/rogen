@@ -383,7 +383,7 @@ function readSpec(caseDir: string): CaseSpec {
 	return spec;
 }
 
-async function run(
+export async function run(
 	command: string,
 	args: readonly string[],
 	cwd: string,
@@ -657,7 +657,8 @@ export class RunningRogen {
 		dir: string,
 		args: readonly string[] = [],
 		cwd: string = dir,
-		command = "build --watch"
+		command = "build --watch",
+		env?: Readonly<Record<string, string>>
 	) {
 		const [file, commandArgs] = invocation(cli, [
 			...command.split(" "),
@@ -666,7 +667,7 @@ export class RunningRogen {
 		this.child = spawn(file, [...commandArgs], {
 			cwd,
 			stdio: ["ignore", "pipe", "pipe"],
-			env: childEnv(),
+			env: childEnv(env),
 		});
 		for (const stream of [this.child.stdout, this.child.stderr]) {
 			stream?.setEncoding("utf8");

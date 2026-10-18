@@ -1,0 +1,29 @@
+{
+	"steps": [
+		[
+			"init",
+			"-y",
+			"--skip-git"
+		],
+		[
+			"$",
+			"node",
+			"-e",
+			"const fs=require('fs');const s=fs.readFileSync('rogen.json','utf8');fs.writeFileSync('rogen.json',s.replace('\"routes\"','// mine\\n  \"routes\"'))"
+		],
+		[
+			"build"
+		],
+		[
+			"init",
+			"-y",
+			"--darklua"
+		],
+		[
+			"build"
+		]
+	],
+	"show": [
+		".darklua.json"
+	]
+}
