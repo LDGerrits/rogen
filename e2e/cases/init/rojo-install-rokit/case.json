@@ -10,10 +10,13 @@
 		]
 	],
 	"rojo": false,
-	"output": ["init"],
-	"show": ["rokit.toml"],
+	"output": [
+		"init"
+	],
+	"show": [
+		"rokit.toml"
+	],
 	"tools": {
-		"curl": "echo installer",
-		"bash": "cat > /dev/null; dir=$(dirname \"$0\"); for tool in rokit rojo; do printf '#!/bin/sh\\necho \"%s $*\" >> \"$ROGEN_E2E_CALLS\"\\n' \"$tool\" > \"$dir/$tool\"; chmod +x \"$dir/$tool\"; done"
+		"bash": "dir=$(dirname \"$0\"); for tool in rokit rojo; do printf '#!/bin/sh\\necho \"%s $*\" >> \"$ROGEN_E2E_CALLS\"\\n' \"$tool\" > \"$dir/$tool\"; chmod +x \"$dir/$tool\"; done"
 	}
 }

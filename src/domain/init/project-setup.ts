@@ -300,7 +300,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					path.join(this.directory.path, file)
 				)
 			);
-			if (text.isOk() && /luau-lsp/i.test(text.value)) return true;
+			if (
+				text.isOk() &&
+				/luau-lsp/i.test(text.value) &&
+				!/luau-lsp\.sourcemap\.(enabled|autogenerate)"\s*:\s*false/.test(
+					text.value
+				)
+			)
+				return true;
 		}
 		return false;
 	}
@@ -316,7 +323,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const folder = normalizeDir(syncPath).replace(/\/$/, "");
 		const listed = text.value
 			.split(/\r?\n/)
-			.map((line) => line.trim().replace(/^\//, "").replace(/\/$/, ""))
+			.map((line) => line.trim())
+			.filter((line) => line !== "" && !line.startsWith("#"))
+			.map((line) =>
+				line
+					.replace(/^\*\*\//, "")
+					.replace(/^\//, "")
+					.replace(/\/(\*\*?)?$/, "")
+			)
 			.includes(folder);
 		return listed
 			? undefined

@@ -109,8 +109,9 @@ stdout:
           --[no-]rojo                        Whether to set Rojo up when it isn't ready: pin it with
                                              the toolchain manager found (Rokit, Aftman or Foreman),
                                              or install Rokit first and pin it. A run that can't ask
-                                             installs nothing without it. On a folder that has a
-                                             config, sets Rojo up there.
+                                             pins with a manager it finds, and installs Rokit only
+                                             with this flag. On a folder that has a config, sets Rojo
+                                             up there.
           --route <ID>                       A route to start with: server, client, shared,
                                              replicatedFirst, serverStorage or starterGui; repeat for
                                              several, or none. The first three when not given. When a

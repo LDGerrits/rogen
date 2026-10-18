@@ -61,6 +61,8 @@ export interface ToolState {
 		/** The manager's file in the project's folder, when it has one. */
 		readonly manifest?: ToolManifest;
 	};
+	/** The manager whose file is in the folder, when it isn't installed: its file stays the only one, so nothing is pinned. */
+	readonly blocked?: ToolManager;
 }
 
 export interface ToolchainChoice {
@@ -70,6 +72,7 @@ export interface ToolchainChoice {
 	readonly plugin: boolean;
 	/** The tools that are missing, which `install` pins. */
 	readonly tools: readonly ToolPin[];
+	readonly state: ToolState;
 }
 
 /** Rokit's own installer, for the OS. */
@@ -89,8 +92,11 @@ export const ROKIT_INSTALL: Pick<
 		}
 	: {
 			command: `curl -sSf ${ROKIT_INSTALLER}.sh | bash`,
-			file: "sh",
-			args: ["-c", `curl -sSf ${ROKIT_INSTALLER}.sh | bash`],
+			file: "bash",
+			args: [
+				"-c",
+				`set -o pipefail; curl -sSf ${ROKIT_INSTALLER}.sh | bash`,
+			],
 			timeout: 2 * MINUTE_MS,
 		};
 
@@ -105,10 +111,12 @@ const run = (
 	timeout,
 });
 
-/** Gets the tools a project runs on installed: Rojo, and Darklua where the project uses it, pinned with the toolchain manager the machine has, or with Rokit installed first, and Rojo's Studio plugin. A tool is never installed without a Yes or its flag. */
+/** Gets the tools a project runs on installed: Rojo, and Darklua where the project uses it, pinned with the toolchain manager the machine has, or with Rokit installed first, and Rojo's Studio plugin. Pinning with a manager the user already has takes the default; Rokit and the plugin are installed only after a Yes or their flag. */
 export class ToolchainSetup implements Setup<ToolchainChoice> {
+	private state: Promise<ToolState> | undefined;
+
 	private constructor(
-		private readonly state: ToolState,
+		private readonly stateOf: () => Promise<ToolState>,
 		private readonly questions: InitQuestions
 	) {}
 
@@ -152,10 +160,12 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 				break;
 			}
 		}
+		const blocked = own && !manager ? own : undefined;
 		let darklua: Promise<boolean> | undefined;
 		return {
 			rojoReady,
 			manager,
+			...(blocked && { blocked }),
 			darklua: () =>
 				(darklua ??= (async () => {
 					if (manifests.some((one) => one.nameOf(Darklua.REPOSITORY)))
@@ -171,20 +181,28 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 		};
 	}
 
-	static of(state: ToolState, questions: InitQuestions): ToolchainSetup {
-		return new ToolchainSetup(state, questions);
+	/** `stateOf` is called once, and only when a question or a plan needs it, since looking at the tools runs them. */
+	static of(
+		stateOf: () => Promise<ToolState>,
+		questions: InitQuestions
+	): ToolchainSetup {
+		return new ToolchainSetup(stateOf, questions);
+	}
+
+	private loaded(): Promise<ToolState> {
+		return (this.state ??= this.stateOf());
 	}
 
 	/** Whether Rojo has to be set up, which a folder that has a config is offered. */
-	get rojoMissing(): boolean {
-		return !this.state.rojoReady;
+	async rojoMissing(): Promise<boolean> {
+		return !(await this.loaded()).rojoReady;
 	}
 
 	/** The tools this run pins: Rojo when it isn't ready, and Darklua when the project uses it and it isn't. */
-	private async missing(): Promise<ToolPin[]> {
+	private async missing(state: ToolState): Promise<ToolPin[]> {
 		return [
-			...(this.state.rojoReady ? [] : [ROJO_PIN]),
-			...(this.questions.usesDarklua && !(await this.state.darklua())
+			...(state.rojoReady ? [] : [ROJO_PIN]),
+			...(this.questions.usesDarklua && !(await state.darklua())
 				? [DARKLUA_PIN]
 				: []),
 		];
@@ -192,16 +210,27 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 
 	/** The same setup for a run that chose to set Rojo up, which asks about the plugin only. */
 	asked(): Setup<ToolchainChoice> {
+		return this.withPlugin(true);
+	}
+
+	/** The same setup for a run that chose the plugin only: Rojo is left as it is. */
+	pluginOnly(): Setup<ToolchainChoice> {
+		return this.withPlugin(false);
+	}
+
+	private withPlugin(install: boolean): Setup<ToolchainChoice> {
 		return {
 			ask: async () => {
+				const state = await this.loaded();
 				const plugin = await this.questions.studioPlugin();
 				return ok(
 					plugin === undefined
 						? undefined
 						: {
-								install: true,
+								install,
 								plugin,
-								tools: await this.missing(),
+								tools: install ? await this.missing(state) : [],
+								state,
 							}
 				);
 			},
@@ -210,10 +239,11 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 	}
 
 	async ask(): Promise<Result<ToolchainChoice | undefined, Diagnostic[]>> {
-		const { state, questions } = this;
-		const tools = await this.missing();
+		const { questions } = this;
+		const state = await this.loaded();
+		const tools = await this.missing(state);
 		const install =
-			tools.length === 0
+			tools.length === 0 || state.blocked
 				? false
 				: await questions.rojo(
 						state.manager?.id,
@@ -227,15 +257,16 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 				: false;
 		return plugin === undefined
 			? ok(undefined)
-			: ok({ install, plugin, tools });
+			: ok({ install, plugin, tools, state });
 	}
 
 	plan(
-		{ install, plugin, tools }: ToolchainChoice,
+		{ install, plugin, tools, state }: ToolchainChoice,
 		builder: InitPlanBuilder
 	): void {
-		const { manager } = this.state;
-		if (install && tools.length > 0) this.planInstall(tools, builder);
+		const { manager } = state;
+		if (install && tools.length > 0)
+			this.planInstall(tools, state, builder);
 		else if (tools.length > 0) {
 			const names = joinedWithAnd(tools.map(({ label }) => label));
 			const many = tools.length > 1;
@@ -244,10 +275,13 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 				tools.length === 1 && tools[0] === ROJO_PIN
 					? "rogen serve"
 					: "the project";
+			const them = many ? "them" : "it";
 			builder.addSetup(
-				manager
-					? `${names} ${needs} pinned, and ${who} needs ${many ? "them" : "it"}. Run 'rogen init --rojo' to pin ${many ? "them" : "it"} with ${manager.id}.`
-					: `${names} ${needs} installed, and ${who} needs ${many ? "them" : "it"}. Run 'rogen init --rojo' to install Rokit and ${names}, or install Rokit yourself (${ROKIT_INSTALL.command}), then run 'rokit init' and ${tools.map(({ repository, version }) => `'rokit add ${repository}@${version}'`).join(", ")} here.`
+				state.blocked
+					? `${names} ${needs} pinned in ${state.blocked}.toml, and ${state.blocked} isn't installed. Install it, then run 'rogen init --rojo'.`
+					: manager
+						? `${names} ${needs} pinned, and ${who} needs ${them}. Run 'rogen init --rojo' to pin ${them} with ${manager.id}.`
+						: `${names} ${needs} installed, and ${who} needs ${them}. Run 'rogen init --rojo' to install Rokit and ${names}, or install Rokit yourself (${ROKIT_INSTALL.command}), then run 'rokit init' and ${tools.map(({ repository, version }) => `'rokit add ${repository}@${version}'`).join(", ")} here.`
 			);
 		}
 		if (plugin)
@@ -262,9 +296,9 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 
 	private planInstall(
 		tools: readonly ToolPin[],
+		{ manager }: ToolState,
 		builder: InitPlanBuilder
 	): void {
-		const { manager } = this.state;
 		const id = manager?.id ?? "rokit";
 		const file = `${id}.toml`;
 		if (!manager) builder.addCommand({ ...ROKIT_INSTALL });

@@ -231,16 +231,17 @@ export class CoreInitService implements InitService {
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
 		const manifests = await this.toolchainService.readManifests(home.path);
 		const tools = ToolchainSetup.of(
-			await ToolchainSetup.stateOf(
-				home.path,
-				manifests,
-				await this.existingFolder(home.path),
-				{
-					finder: this.finder,
-					locator: this.locator,
-					processService: this.processService,
-				}
-			),
+			async () =>
+				ToolchainSetup.stateOf(
+					home.path,
+					manifests,
+					await this.existingFolder(home.path),
+					{
+						finder: this.finder,
+						locator: this.locator,
+						processService: this.processService,
+					}
+				),
 			questions
 		);
 		const { choices } = questions;
@@ -263,7 +264,7 @@ export class CoreInitService implements InitService {
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
-				...(tools ? [tools] : []),
+				tools,
 			]);
 		const additions = new InitAdditions(
 			questions,
@@ -284,7 +285,7 @@ export class CoreInitService implements InitService {
 				present: additions.presentAsked(),
 				notes,
 			});
-		const options = additions.options();
+		const options = await additions.options();
 		if (options.length === 0) {
 			const present = additions.present();
 			return present.length > 0

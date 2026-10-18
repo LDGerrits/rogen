@@ -732,6 +732,34 @@ describe("CoreInitService", () => {
 			);
 		});
 
+		it("should know the other ways a .gitignore lists the sync path", async () => {
+			for (const line of [
+				"dist/*",
+				"/dist/",
+				"**/dist",
+				"/dist # built",
+			]) {
+				await write(".gitignore", `${line.replace(" # built", "")}\n`);
+
+				const plan = await planWithDarklua();
+
+				expect(plan?.nextSteps.edits.join("\n")).not.toContain(
+					"to .gitignore"
+				);
+			}
+		});
+
+		it("should keep the sourcemap step when luau-lsp is told not to make it", async () => {
+			await write(
+				".vscode/settings.json",
+				'{ "luau-lsp.sourcemap.autogenerate": false }'
+			);
+
+			const plan = await planWithDarklua();
+
+			expect(plan?.nextSteps.edits.join("\n")).toContain("sourcemap");
+		});
+
 		it("should leave the sourcemap to luau-lsp where the editor settings name it", async () => {
 			await write(
 				".vscode/settings.json",
@@ -934,7 +962,7 @@ describe("CoreInitService", () => {
 			).unwrap();
 
 			expect(plan?.commands.map(({ file }) => file)).toEqual([
-				expect.stringMatching(/^(sh|powershell)$/),
+				expect.stringMatching(/^(bash|powershell)$/),
 				"rokit",
 			]);
 			expect(plan?.commands[0].command).toContain(
@@ -955,6 +983,45 @@ describe("CoreInitService", () => {
 				file: "rojo",
 				args: ["plugin", "install"],
 			});
+		});
+
+		it("should install the Rokit installer so that a failed download fails the step", async () => {
+			const plan = (
+				await serviceFor().plan({ ask: false, choices: { rojo: true } })
+			).unwrap();
+
+			const [installer] = plan?.commands ?? [];
+			expect(installer.args.at(-1)).toMatch(
+				/^(set -o pipefail; curl |Invoke-RestMethod )/
+			);
+		});
+
+		it("should pin nothing when the folder's manager is not installed", async () => {
+			await write("aftman.toml", "[tools]\n");
+			const prompts = new MockPromptService({});
+
+			const plan = (await serviceFor(prompts).plan()).unwrap();
+
+			expect(plan?.commands).toEqual([]);
+			expect(names(plan)).not.toContain("rokit.toml");
+			expect(plan?.nextSteps.setup).toEqual([
+				"Rojo isn't pinned in aftman.toml, and aftman isn't installed. Install it, then run 'rogen init --rojo'.",
+			]);
+		});
+
+		it("should ask only about the plugin beside a config, when only the plugin is asked for", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			await write("rogen.json", "{}");
+			const prompts = new MockPromptService({});
+
+			const plan = (
+				await serviceFor(prompts).plan({
+					choices: { plugin: true },
+				})
+			).unwrap();
+
+			expect(prompts.asked).not.toContain(pinQuestion("rokit"));
+			expect(commandsOf(plan)).toEqual(["rojo plugin install"]);
 		});
 
 		it("should install nothing when the install is declined", async () => {

@@ -19,8 +19,7 @@ stdout:
   Wrote 3 files.
 
 ran:
-  curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh
-  bash
+  bash -c set -o pipefail; curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
   rokit add rojo-rbx/rojo@7.7.1
   rojo plugin install
 

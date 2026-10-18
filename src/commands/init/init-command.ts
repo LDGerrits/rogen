@@ -144,7 +144,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask installs nothing without it. On a folder that has a config, sets Rojo up there.",
+			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag. On a folder that has a config, sets Rojo up there.",
 	},
 	{
 		name: "studio-plugin",

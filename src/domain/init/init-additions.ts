@@ -14,7 +14,7 @@ export class InitAdditions {
 		private readonly questions: InitQuestions,
 		private readonly agentFile: AgentFile,
 		private readonly hooks: AgentHooks,
-		private readonly tools: ToolchainSetup | undefined,
+		private readonly tools: ToolchainSetup,
 		/** The toolchain file that pins Rojo already, if one does. */
 		private readonly pinnedIn: string | undefined,
 		/** The folder the files of the additions are named from. */
@@ -86,14 +86,14 @@ export class InitAdditions {
 						),
 					]
 				: []),
-			...(tools && (rojo || choices.plugin === true)
-				? [rojo ? tools.asked() : tools]
+			...(rojo || choices.plugin === true
+				? [rojo ? tools.asked() : tools.pluginOnly()]
 				: []),
 		];
 	}
 
 	/** The hook and the pin are not offered to a run that can't ask, since they edit the repo's tooling. */
-	options(): AdditionOption<Setup<unknown>>[] {
+	async options(): Promise<AdditionOption<Setup<unknown>>[]> {
 		const { questions, agentFile, hooks, tools } = this;
 		const { choices } = questions;
 		const agents = new AgentSetup(agentFile, hooks, questions);
@@ -126,7 +126,7 @@ export class InitAdditions {
 						},
 					]
 				: []),
-			...(tools?.rojoMissing && questions.interactive
+			...((await tools.rojoMissing()) && questions.interactive
 				? [
 						{
 							id: "rojo",
