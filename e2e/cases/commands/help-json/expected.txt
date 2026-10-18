@@ -224,7 +224,12 @@ stdout:
             "negatable": true
           },
           {
-            "name": "rojo-pin",
+            "name": "rojo",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
+            "name": "studio-plugin",
             "type": "boolean",
             "negatable": true
           },

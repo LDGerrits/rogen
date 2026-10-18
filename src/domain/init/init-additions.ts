@@ -6,7 +6,7 @@ import { AgentHooks } from "./agent/agent-hooks.js";
 import { AgentSetup } from "./agent-setup.js";
 import { PresentItem } from "./init-service.js";
 import { AdditionOption, InitQuestions } from "./init-questions.js";
-import { RojoPinSetup } from "./rojo-pin-setup.js";
+import { ToolchainSetup } from "./toolchain-setup.js";
 import { AnsweredSetup, Setup } from "./setup.js";
 
 export class InitAdditions {
@@ -14,7 +14,7 @@ export class InitAdditions {
 		private readonly questions: InitQuestions,
 		private readonly agentFile: AgentFile,
 		private readonly hooks: AgentHooks,
-		private readonly rojoPin: RojoPinSetup | undefined,
+		private readonly tools: ToolchainSetup | undefined,
 		/** The toolchain file that pins Rojo already, if one does. */
 		private readonly pinnedIn: string | undefined,
 		/** The folder the files of the additions are named from. */
@@ -40,10 +40,10 @@ export class InitAdditions {
 						file,
 					}))
 				: []),
-			...(pinnedIn && wanted("rojoPin")
+			...(pinnedIn && wanted("rojo")
 				? [
 						{
-							item: "rojoPin" as const,
+							item: "rojo" as const,
 							file: toPosix(path.relative(directory, pinnedIn)),
 						},
 					]
@@ -58,19 +58,24 @@ export class InitAdditions {
 			new Set([
 				...(choices.agentRules === true ? ["agentRules" as const] : []),
 				...(choices.agentHook === true ? ["agentHook" as const] : []),
-				...(choices.rojoPin === true ? ["rojoPin" as const] : []),
+				...(choices.rojo === true ? ["rojo" as const] : []),
 			])
 		);
 	}
 
 	/** What the flags ask to add, or `undefined` when they ask for nothing. What is already there is not added again. */
 	requested(): Setup<unknown>[] | undefined {
-		const { questions, agentFile, hooks, rojoPin } = this;
+		const { questions, agentFile, hooks, tools } = this;
 		const { choices } = questions;
 		const rules = choices.agentRules === true && !agentFile.hasBlock;
 		const hook = choices.agentHook === true && hooks.offered;
-		const pin = choices.rojoPin === true;
-		if (choices.agentRules !== true && choices.agentHook !== true && !pin)
+		const rojo = choices.rojo === true;
+		if (
+			choices.agentRules !== true &&
+			choices.agentHook !== true &&
+			!rojo &&
+			choices.plugin !== true
+		)
 			return undefined;
 		return [
 			...(rules || hook
@@ -81,13 +86,15 @@ export class InitAdditions {
 						),
 					]
 				: []),
-			...(pin && rojoPin ? [new AnsweredSetup(rojoPin, true)] : []),
+			...(tools && (rojo || choices.plugin === true)
+				? [rojo ? tools.asked() : tools]
+				: []),
 		];
 	}
 
 	/** The hook and the pin are not offered to a run that can't ask, since they edit the repo's tooling. */
 	options(): AdditionOption<Setup<unknown>>[] {
-		const { questions, agentFile, hooks, rojoPin } = this;
+		const { questions, agentFile, hooks, tools } = this;
 		const { choices } = questions;
 		const agents = new AgentSetup(agentFile, hooks, questions);
 		const options: AdditionOption<Setup<unknown>>[] = [
@@ -119,14 +126,14 @@ export class InitAdditions {
 						},
 					]
 				: []),
-			...(rojoPin && questions.interactive
+			...(tools && questions.interactive
 				? [
 						{
 							id: "rojo",
-							flag: "--rojo-pin",
-							label: "Rojo pin",
-							hint: "pins Rojo in your toolchain file",
-							addition: new AnsweredSetup(rojoPin, true),
+							flag: "--rojo",
+							label: "Rojo",
+							hint: "pins Rojo with your toolchain manager, or installs Rokit and Rojo",
+							addition: tools.asked(),
 						},
 					]
 				: []),
@@ -134,7 +141,7 @@ export class InitAdditions {
 		const refused = new Set([
 			...(choices.agentRules === false ? ["agent"] : []),
 			...(choices.agentHook === false ? ["hook"] : []),
-			...(choices.rojoPin === false ? ["rojo"] : []),
+			...(choices.rojo === false ? ["rojo"] : []),
 		]);
 		return options.filter(({ id }) => !refused.has(id));
 	}

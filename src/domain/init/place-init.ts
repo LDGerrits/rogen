@@ -112,6 +112,7 @@ export class PlaceInit {
 			directories: sourcePaths.directories.map((directory) =>
 				path.posix.join(place, directory)
 			),
+			commands: [],
 			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
 			warnings: [],
 			notes: [

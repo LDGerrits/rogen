@@ -132,7 +132,7 @@ stdout:
         "state": "present"
       },
       {
-        "item": "rojoPin",
+        "item": "rojo",
         "file": "<dir>/rokit.toml",
         "state": "present"
       }

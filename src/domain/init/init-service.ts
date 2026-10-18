@@ -22,7 +22,10 @@ export interface InitChoices {
 	/** Place IDs, or `none`. */
 	readonly placeIds?: readonly string[];
 	readonly agentRules?: boolean;
-	readonly rojoPin?: boolean;
+	/** Whether to set Rojo up: pin it with the toolchain manager, or install Rokit and then pin it. */
+	readonly rojo?: boolean;
+	/** Whether to install Rojo's Studio plugin, once Rojo is set up. */
+	readonly plugin?: boolean;
 	readonly agentHook?: boolean;
 	readonly language?: string;
 	readonly darklua?: boolean;
@@ -49,9 +52,20 @@ export interface InitDecision {
 
 /** An addition the project has already, which init reports instead of adding again. */
 export interface PresentItem {
-	readonly item: "agentRules" | "agentHook" | "rojoPin";
+	readonly item: "agentRules" | "agentHook" | "rojo";
 	/** Relative to the plan's directory. */
 	readonly file: string;
+}
+
+/** A program that `init` runs once it has written the files, such as the toolchain manager that installs Rojo. */
+export interface PlannedCommand {
+	/** The command line as a person types it. */
+	readonly command: string;
+	/** The program, looked for on the PATH and in Rokit's bin folder when it runs, since an installer has just put it there. */
+	readonly file: string;
+	readonly args: readonly string[];
+	/** How long it may run, in milliseconds. */
+	readonly timeout: number;
 }
 
 export interface InitPlan {
@@ -59,6 +73,8 @@ export interface InitPlan {
 	readonly files: readonly PlannedFile[];
 	/** Relative to `directory`; created by `init` when missing. */
 	readonly directories: readonly string[];
+	/** Run in this order, in `directory`, after the files are written; the first to fail stops the rest. */
+	readonly commands: readonly PlannedCommand[];
 	readonly configs: readonly string[];
 	readonly notes: readonly string[];
 	/** What `init` could not do as asked, such as settings of a lifted file it had to leave out. */
@@ -77,7 +93,14 @@ export type InitWritten =
 	| { readonly kind: "file"; readonly file: PlannedFile }
 	| { readonly kind: "directory"; readonly directory: string }
 	/** `failed` is why `git init` did not make a repository, which leaves the project complete without one. */
-	| { readonly kind: "git"; readonly failed?: string };
+	| { readonly kind: "git"; readonly failed?: string }
+	/** `failed` is why it did not finish, and `skipped` the commands after it that did not run. */
+	| {
+			readonly kind: "command";
+			readonly command: PlannedCommand;
+			readonly failed?: string;
+			readonly skipped?: readonly PlannedCommand[];
+	  };
 
 export interface InitOptions {
 	readonly ask?: boolean;

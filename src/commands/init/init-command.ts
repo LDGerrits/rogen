@@ -140,11 +140,18 @@ const InitOptions = [
 			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. On a folder that has a config, asks for this addition.",
 	},
 	{
-		name: "rojo-pin",
+		name: "rojo",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to pin Rojo in rokit.toml. Not pinned when not given. On a folder that has a config, asks for this addition.",
+			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask installs nothing without it. On a folder that has a config, sets Rojo up there.",
+	},
+	{
+		name: "studio-plugin",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether to install Rojo's Studio plugin, once Rojo is set up. Not installed by a run that can't ask, which prints the command instead.",
 	},
 	{
 		name: "nested",
@@ -180,7 +187,8 @@ function choicesOf(
 		placeListing: options["place-listing"] as InitChoices["placeListing"],
 		placeIds: options["place-id"],
 		agentRules: options["agent-rules"],
-		rojoPin: options["rojo-pin"],
+		rojo: options.rojo,
+		plugin: options["studio-plugin"],
 		agentHook: options["agent-hook"],
 		language: options.language,
 		darklua: options.darklua,
@@ -218,6 +226,8 @@ registerCommand(
 					effects: ["writesFiles"],
 					formerOptions: {
 						"--yes": "Use --non-interactive.",
+						"--rojo-pin": "Use --rojo.",
+						"--no-rojo-pin": "Use --no-rojo.",
 					},
 					examples: [
 						"rogen init",

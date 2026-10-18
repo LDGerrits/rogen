@@ -19,6 +19,7 @@ stdout:
   Next steps
     Run:
       rogen serve
+    In Studio, press Connect in the Rojo plugin.
     Add another place with 'rogen init places/lobby'.
     Add your own routes under "routes" in rogen.json.
   Wrote 9 files.

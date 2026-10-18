@@ -48,13 +48,22 @@ export const initDocumentShape = S.object({
 	present: S.optional(
 		S.array(
 			S.object({
-				item: S.enum("agentRules", "agentHook", "rojoPin"),
+				item: S.enum("agentRules", "agentHook", "rojo"),
 				file: S.string,
 				state: S.enum("present"),
 			})
 		)
 	),
 	git: S.optional(S.enum("initialised", "wouldInitialise", "failed")),
+	commands: S.optional(
+		S.array(
+			S.object({
+				command: S.string,
+				outcome: S.enum("ran", "wouldRun", "failed", "skipped"),
+				error: S.optional(S.string),
+			})
+		)
+	),
 	decided: S.optional(
 		S.array(
 			S.object({
@@ -82,6 +91,7 @@ export const initDocumentShape = S.object({
 function flagsOf({ question, value, flag }: InitDecision): string[] {
 	if (question === "add") return [flag];
 	if (question === "skipGit") return value === true ? [flag] : [];
+	if (question === "rojo" && typeof value === "string") return [];
 	if (typeof value === "boolean")
 		return [value ? flag : flag.replace("--", "--no-")];
 	if (typeof value === "string") return [`${flag} ${value}`];
@@ -92,6 +102,8 @@ function flagsOf({ question, value, flag }: InitDecision): string[] {
 
 const indent = (line: string) => `  ${line}`;
 
+const STUDIO_STEP = "In Studio, press Connect in the Rojo plugin.";
+
 const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 	...setup,
 	...(run.length > 0
@@ -100,6 +112,7 @@ const stepLines = ({ setup, run, darklua, edits }: NextSteps): string[] => [
 				...run.map(indent),
 			]
 		: []),
+	...(run.includes("rogen serve") ? [STUDIO_STEP] : []),
 	...(darklua.length > 0
 		? [
 				"Have Darklua process your code into the sync path:",
@@ -205,6 +218,21 @@ export class InitLog implements InitReporter {
 			this.logService.success(`${would} ${this.shown(item.directory)}/.`);
 			return;
 		}
+		if (item.kind === "command") {
+			if (item.failed === undefined) {
+				this.logService.success(
+					`${this.dryRun ? "Would run" : "Ran"} ${item.command.command}.`
+				);
+				return;
+			}
+			const left = [item.command, ...(item.skipped ?? [])].map(
+				({ command }) => command
+			);
+			this.logService.warn(
+				`${item.command.command} failed (${item.failed}). Run ${left.length === 1 ? "it" : "these"} yourself: ${left.join(", then ")}.`
+			);
+			return;
+		}
 		const { fileName, addition } = item.file;
 		this.logService.success(
 			addition !== undefined
@@ -268,6 +296,11 @@ interface InitDocument {
 		readonly state: "present";
 	}[];
 	readonly git?: "initialised" | "wouldInitialise" | "failed";
+	readonly commands?: readonly {
+		readonly command: string;
+		readonly outcome: "ran" | "wouldRun" | "failed" | "skipped";
+		readonly error?: string;
+	}[];
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
 	readonly built?: readonly BuildEntry[];
@@ -281,6 +314,8 @@ export class InitJsonLog implements InitReporter {
 	private readonly directories: string[] = [];
 	private decided: readonly InitDecision[] = [];
 	private git: "initialised" | "wouldInitialise" | "failed" | undefined;
+	private readonly commands: NonNullable<InitDocument["commands"]>[number][] =
+		[];
 
 	constructor(
 		private readonly logService: LogService,
@@ -304,6 +339,24 @@ export class InitJsonLog implements InitReporter {
 		}
 		if (item.kind === "directory") {
 			this.directories.push(path.join(this.directory, item.directory));
+			return;
+		}
+		if (item.kind === "command") {
+			this.commands.push({
+				command: item.command.command,
+				outcome:
+					item.failed !== undefined
+						? "failed"
+						: this.dryRun
+							? "wouldRun"
+							: "ran",
+				...(item.failed !== undefined && { error: item.failed }),
+			});
+			for (const skipped of item.skipped ?? [])
+				this.commands.push({
+					command: skipped.command,
+					outcome: "skipped",
+				});
 			return;
 		}
 		this.files.push({
@@ -362,11 +415,13 @@ export class InitJsonLog implements InitReporter {
 			changed:
 				!this.dryRun &&
 				(this.files.length + this.directories.length > 0 ||
-					this.git === "initialised"),
+					this.git === "initialised" ||
+					this.commands.some(({ outcome }) => outcome === "ran")),
 			...(this.dryRun && { dryRun: true as const }),
 			files: this.files,
 			directories: this.directories,
 			...(this.git && { git: this.git }),
+			...(this.commands.length > 0 && { commands: this.commands }),
 			...(this.decided.length > 0 && { decided: this.decided }),
 		};
 	}

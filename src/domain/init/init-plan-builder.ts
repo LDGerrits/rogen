@@ -12,7 +12,12 @@ import { PlannedFile } from "../toolchain/toolchain.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { InitDirectory } from "./init-directory.js";
-import { InitDecision, InitPlan, PresentItem } from "./init-service.js";
+import {
+	InitDecision,
+	InitPlan,
+	PlannedCommand,
+	PresentItem,
+} from "./init-service.js";
 
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
@@ -32,6 +37,7 @@ export class InitPlanBuilder {
 	private readonly darklua: string[] = [];
 	private readonly edits: string[] = [];
 	private readonly present: PresentItem[] = [];
+	private readonly commands: PlannedCommand[] = [];
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -68,6 +74,11 @@ export class InitPlanBuilder {
 	/** A file of the project's template, which is written after the config. */
 	addFile(file: PlannedFile): void {
 		this.templateFiles.push(file);
+	}
+
+	/** A program to run after the files are written, after those added before it. */
+	addCommand(command: PlannedCommand): void {
+		this.commands.push(command);
 	}
 
 	/** Asks for a `git init` in the folder, which the plan drops where a work tree holds it already. */
@@ -135,6 +146,7 @@ export class InitPlanBuilder {
 				...(this.toolManifest ? [this.toolManifest] : []),
 			],
 			directories: [...this.directories],
+			commands: [...this.commands],
 			configs: written.map(({ fileName }) =>
 				toPosix(
 					path.relative(

@@ -1,0 +1,45 @@
+$ rogen init --non-interactive --skip-git --no-sample --studio-plugin
+exit 0
+stdout:
+  rogen init
+  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules, --rojo.
+  Created rogen.json.
+  Created AGENTS.md.
+  Created rokit.toml.
+  Created src/.
+  Ran rokit add rojo-rbx/rojo@7.7.1.
+  Ran rojo plugin install.
+  default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    In Studio, press Connect in the Rojo plugin.
+    Add your own routes under "routes" in rogen.json.
+  Wrote 3 files.
+
+ran:
+  rokit add rojo-rbx/rojo@7.7.1
+  rojo plugin install
+
+written:
+  AGENTS.md
+  default.project.json
+  rogen.json
+  rokit.toml
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  }
+}

@@ -49,6 +49,7 @@ import { CoreBuildService } from "./domain/build/core-build-service.js";
 import { WrittenRecords } from "./domain/build/written-records.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
+import { ToolLocator } from "./domain/toolchain/tool-locator.js";
 import { InitService } from "./domain/init/init-service.js";
 import { LegacyConfig } from "./domain/legacy/legacy-config.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
@@ -290,6 +291,11 @@ class RogenMain {
 			)
 		);
 		services.set(BuildService, buildService);
+		const toolLocator = new ToolLocator(
+			processService,
+			fileSystemService,
+			environmentService.userHome
+		);
 		services.set(
 			InitService,
 			new CoreInitService(
@@ -298,7 +304,8 @@ class RogenMain {
 				environmentService,
 				toolchainService,
 				configService,
-				processService
+				processService,
+				toolLocator
 			)
 		);
 		const watchService = new CoreWatchService(
@@ -310,7 +317,8 @@ class RogenMain {
 		const rojoRunner = new CoreRojoRunner(
 			toolchainService,
 			processService,
-			environmentService.logLevel
+			environmentService.logLevel,
+			toolLocator
 		);
 		services.set(RojoRunner, rojoRunner);
 		const rojoCommandService = new CoreRojoCommandService(

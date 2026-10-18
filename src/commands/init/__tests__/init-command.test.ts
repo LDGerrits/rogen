@@ -10,6 +10,7 @@ import { configSchema } from "../../../domain/config/config-schema.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
+import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
@@ -23,6 +24,17 @@ import {
 } from "../../../platform/commands/commands.js";
 import { Registry } from "../../../platform/registry/registry.js";
 
+const readyProcesses = () => {
+	const processes = new MockProcessService();
+	processes.installed.set("rojo", "/bin/rojo");
+	processes.outputs.set("/bin/rojo", {
+		code: 0,
+		stdout: "Rojo 7.7.1\n",
+		stderr: "",
+	});
+	return processes;
+};
+
 const WHAT_TO_ADD = "rogen.json exists. What do you want to add?";
 
 describe("init command", () => {
@@ -33,10 +45,12 @@ describe("init command", () => {
 		prompt: PromptService = new MockPromptService([], false),
 		log: MockLogService = new MockLogService(),
 		options: CommandLine["options"] = {},
-		positionals: string[] = []
+		positionals: string[] = [],
+		processes: MockProcessService = readyProcesses()
 	) => {
 		const harness = commandHarness({
 			cwd,
+			processes,
 			fs: memFs,
 			log,
 			prompt,
@@ -236,6 +250,7 @@ describe("init command", () => {
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve",
+				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: Add your own routes under "routes" in rogen.json.',
 				"outro: Wrote 7 files.",
 			]);
@@ -578,28 +593,78 @@ describe("init command", () => {
 			expect(await exists("rogen.json")).toBe(false);
 		});
 
-		it("should refuse a Rojo pin when there is no rokit.toml to hold it", async () => {
-			const result = await runInit(
-				new MockPromptService([], false),
-				new MockLogService(),
-				{ "rojo-pin": true }
-			);
-
-			expect(errorMessage(result)).toContain(
-				"There is no Rojo pin to add."
-			);
-		});
-
-		it("should pin Rojo when asked to, though it can't ask", async () => {
-			await write("rokit.toml", "[tools]\n");
+		it("should set Rojo up when asked to, though it can't ask", async () => {
+			const processes = new MockProcessService();
+			processes.installed.set("rokit", "/bin/rokit");
+			processes.outputs.set("/bin/rokit", {
+				code: 0,
+				stdout: "",
+				stderr: "",
+			});
+			const logService = new MockLogService();
 
 			await runInit(
 				new MockPromptService([], false),
-				new MockLogService(),
-				{ "rojo-pin": true }
+				logService,
+				{ rojo: true },
+				[],
+				processes
 			);
 
-			expect(await read("rokit.toml")).toContain("rojo");
+			expect(await read("rokit.toml")).toBe("[tools]\n");
+			expect(
+				processes.execs.filter(({ file }) => file === "/bin/rokit")
+			).toMatchObject([{ args: ["add", "rojo-rbx/rojo@7.7.1"], cwd }]);
+		});
+
+		it("should warn with what to run, and still finish, when the command fails", async () => {
+			const processes = new MockProcessService();
+			processes.installed.set("rokit", "/bin/rokit");
+			processes.outputs.set("/bin/rokit", {
+				code: 1,
+				stdout: "",
+				stderr: "ERROR No network\n",
+			});
+			const logService = new MockLogService();
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ rojo: true, "studio-plugin": true },
+				[],
+				processes
+			);
+
+			expect(result.isOk()).toBe(true);
+			expect(await exists("rogen.json")).toBe(true);
+			expect(
+				logService.entries.filter(({ kind }) => kind === "warn")
+			).toMatchObject([
+				{
+					text: "rokit add rojo-rbx/rojo@7.7.1 failed (ERROR No network). Run these yourself: rokit add rojo-rbx/rojo@7.7.1, then rojo plugin install.",
+				},
+			]);
+		});
+
+		it("should say what it would run in a dry run, and run nothing", async () => {
+			const processes = new MockProcessService();
+			processes.installed.set("rokit", "/bin/rokit");
+			const logService = new MockLogService();
+
+			await runInit(
+				new MockPromptService([], false),
+				logService,
+				{ rojo: true, "dry-run": true },
+				[],
+				processes
+			);
+
+			expect(processes.execs).toEqual([]);
+			expect(logService.entries).toContainEqual(
+				expect.objectContaining({
+					text: "Would run rokit add rojo-rbx/rojo@7.7.1.",
+				})
+			);
 		});
 
 		it("should refuse a language it doesn't know, naming the ones it does", async () => {
@@ -657,7 +722,7 @@ describe("init command", () => {
 			const result = await runInit(
 				new MockPromptService([], false),
 				logService,
-				{ json: true, "agent-rules": true, "rojo-pin": true }
+				{ json: true, "agent-rules": true, rojo: true }
 			);
 
 			expect(result.isOk()).toBe(true);

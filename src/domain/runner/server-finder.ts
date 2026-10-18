@@ -10,6 +10,7 @@ import { ProcessService } from "../../platform/process/process-service.js";
 import { SyncServer } from "./sync-server.js";
 import { ServerExecutable } from "./rojo-runner.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
+import { ToolLocator } from "../toolchain/tool-locator.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 
 /** A toolchain manager may download the tool before `--version` answers. */
@@ -25,12 +26,15 @@ interface PinnedCandidate extends Candidate {
 	readonly manifest: ToolManifest;
 }
 
+const SET_UP = "Run 'rogen init --rojo' to set Rojo up.";
+
 const ARGON_REPOSITORY = "argon-rbx/argon";
 
 export class ServerFinder {
 	constructor(
 		private readonly toolchainService: ToolchainService,
-		private readonly processService: ProcessService
+		private readonly processService: ProcessService,
+		private readonly locator: ToolLocator = new ToolLocator(processService)
 	) {}
 
 	/** Toolchain files are looked for in `directory`, then in every folder above it. A failure without a toolchain file to point at is about `resource`. */
@@ -51,7 +55,7 @@ export class ServerFinder {
 		}
 		const candidate: Candidate = pinned ?? { server, command: server.id };
 
-		const file = await this.processService.which(candidate.command);
+		const file = await this.locator.find(candidate.command);
 		if (!file) {
 			return err(
 				new DiagnosticsError([
@@ -106,7 +110,7 @@ export class ServerFinder {
 				errorDiagnostic(
 					"serve.serverFailed",
 					{ resource: manifest?.file ?? resource },
-					`'${command} --version' failed, so ${server.name} can't start${printed ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If ${server.name} isn't pinned yet, run '${pin.run.command}'.` : ""}`,
+					`'${command} --version' failed, so ${server.name} can't start${printed ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If ${server.name} isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
 					pin ? [pin] : []
 				),
 			])
@@ -151,7 +155,7 @@ export class ServerFinder {
 		return errorDiagnostic(
 			"serve.noServer",
 			{ resource: manifests[0]?.file ?? resource },
-			`No ${server.name} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon}`,
+			`No ${server.name} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon} ${SET_UP}`,
 			pin ? [pin, plugin] : [plugin]
 		);
 	}

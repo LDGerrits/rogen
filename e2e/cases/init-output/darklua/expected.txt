@@ -13,6 +13,7 @@ stdout:
   Next steps
     Run:
       rogen serve
+    In Studio, press Connect in the Rojo plugin.
     Have Darklua process your code into the sync path:
       darklua process src dist
     Add your own routes under "routes" in rogen.json.

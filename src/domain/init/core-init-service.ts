@@ -31,7 +31,9 @@ import { Setup } from "./setup.js";
 import { PlaceFinder } from "../config/place-finder.js";
 import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
-import { RojoPinSetup } from "./rojo-pin-setup.js";
+import { ToolchainSetup } from "./toolchain-setup.js";
+import { ServerFinder } from "../runner/server-finder.js";
+import { ToolLocator } from "../toolchain/tool-locator.js";
 
 /** The choices that shape a new config, which a folder that has one doesn't take. */
 const PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
@@ -54,6 +56,7 @@ export class CoreInitService implements InitService {
 	private readonly agentReader: AgentReader;
 	private readonly writer: InitWriter;
 	private readonly git: GitRepository;
+	private readonly finder: ServerFinder;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -61,11 +64,22 @@ export class CoreInitService implements InitService {
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly configService: ConfigService,
-		processService: ProcessService
+		processService: ProcessService,
+		private readonly locator: ToolLocator = new ToolLocator(processService)
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);
-		this.writer = new InitWriter(fileSystemService, this.git);
+		this.finder = new ServerFinder(
+			toolchainService,
+			processService,
+			locator
+		);
+		this.writer = new InitWriter(
+			fileSystemService,
+			this.git,
+			processService,
+			locator
+		);
 	}
 
 	async plan(
@@ -216,22 +230,21 @@ export class CoreInitService implements InitService {
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
 		const manifests = await this.toolchainService.readManifests(home.path);
-		const manifest = RojoPinSetup.manifestFor(home.path, manifests);
-		const pin = manifest && new RojoPinSetup(manifest, questions);
+		const tools = ToolchainSetup.of(
+			await ToolchainSetup.stateOf(
+				home.path,
+				manifests,
+				this.finder,
+				this.locator,
+				await this.existingFolder(home.path)
+			),
+			questions
+		);
 		const { choices } = questions;
 		if (choices.agentHook === true && !hooks.value.inUse)
 			throw new UsageError(
 				"There is no hook to add.",
 				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
-			);
-		if (
-			choices.rojoPin === true &&
-			!pin &&
-			!RojoPinSetup.isPinned(manifests)
-		)
-			throw new UsageError(
-				"There is no Rojo pin to add.",
-				"There is no rokit.toml here to pin Rojo in."
 			);
 		if (directory.hasConfigs) {
 			const ignored = PROJECT_FLAGS.filter(
@@ -240,26 +253,26 @@ export class CoreInitService implements InitService {
 			if (ignored.length > 0)
 				throw new UsageError(
 					`${directory.configFiles[0]} already exists, so ${joinedWithAnd(ignored)} would change nothing.`,
-					"Edit it to change those, or add to it with --agent-rules, --agent-hook or --rojo-pin."
+					"Edit it to change those, or add to it with --agent-rules, --agent-hook, --rojo or --studio-plugin."
 				);
 		}
 		if (!directory.hasConfigs)
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
-				...(pin ? [pin] : []),
+				...(tools ? [tools] : []),
 			]);
 		const additions = new InitAdditions(
 			questions,
 			agentFile.value,
 			hooks.value,
-			pin,
-			RojoPinSetup.pinnedIn(manifests),
+			tools,
+			ToolchainSetup.pinnedIn(manifests),
 			home.path
 		);
 		const notes = placeOf.value
 			? [
-					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and the Rojo pin go to the project root.`,
+					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and Rojo go to the project root.`,
 				]
 			: [];
 		const requested = additions.requested();
@@ -284,6 +297,17 @@ export class CoreInitService implements InitService {
 			present: additions.presentAsked(),
 			notes,
 		});
+	}
+
+	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
+	private async existingFolder(folder: string): Promise<string> {
+		let existing = folder;
+		while (!(await this.fileSystemService.exists(existing))) {
+			const parent = path.dirname(existing);
+			if (parent === existing) break;
+			existing = parent;
+		}
+		return existing;
 	}
 
 	/** The project root that lists `directory` as a place, when `directory` is one. */

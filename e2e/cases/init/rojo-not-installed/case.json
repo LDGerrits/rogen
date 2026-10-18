@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--no-sample", "--json"]
+	],
+	"rojo": false,
+	"tools": {}
+}

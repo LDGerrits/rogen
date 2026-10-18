@@ -4,6 +4,7 @@ import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
 import { EnclosingConfigs } from "../config/config-service.js";
+import { SyncServer } from "../runner/sync-server.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
@@ -220,14 +221,46 @@ export class InitQuestions {
 		});
 	}
 
-	async addRojoPin(fileName: string): Promise<boolean | undefined> {
-		if (this.choices.rojoPin !== undefined) return this.choices.rojoPin;
+	/** Whether to set Rojo up; with no `manager` there is none on the machine, so a Yes installs Rokit first. A run that can't ask pins with a manager it finds and installs nothing otherwise. */
+	async rojo(
+		manager: string | undefined,
+		installer: string
+	): Promise<boolean | undefined> {
+		const { rojo } = this.choices;
+		if (rojo !== undefined) return rojo;
+		if (!this.interactive) {
+			if (manager !== undefined)
+				return this.decide("rojo", true, "--rojo");
+			this.decide("rojo", "not installed", "--rojo");
+			return false;
+		}
+		return this.promptService.confirm(
+			manager !== undefined
+				? {
+						message: `Pin Rojo ${SyncServer.ROJO.pinned} with ${manager}?`,
+						description:
+							"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
+						initialValue: true,
+					}
+				: {
+						message:
+							"Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?",
+						description: `Runs Rokit's installer (${installer}), then pins Rojo ${SyncServer.ROJO.pinned} in a rokit.toml here.`,
+						initialValue: true,
+					}
+		);
+	}
+
+	/** Whether to install Rojo's Studio plugin, which a run that can't ask leaves to the user. */
+	async studioPlugin(): Promise<boolean | undefined> {
+		const { plugin } = this.choices;
+		if (plugin !== undefined) return plugin;
 		if (!this.interactive)
-			return this.decide("rojoPin", false, "--rojo-pin");
+			return this.decide("plugin", false, "--studio-plugin");
 		return this.promptService.confirm({
-			message: `Pin Rojo in ${fileName}?`,
+			message: "Install Rojo's Studio plugin?",
 			description:
-				"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
+				"Studio needs it to connect to rogen serve. It is installed into Studio's plugins folder.",
 			initialValue: true,
 		});
 	}

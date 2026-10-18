@@ -1,0 +1,6 @@
+{
+	"steps": [["init", "--non-interactive", "--skip-git", "--no-sample"]],
+	"rojo": false,
+	"show": ["foreman.toml"],
+	"tools": { "foreman": "" }
+}

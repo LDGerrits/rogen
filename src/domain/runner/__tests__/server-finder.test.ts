@@ -1,6 +1,7 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { ToolLocator } from "../../toolchain/tool-locator.js";
 import { SyncServer } from "../sync-server.js";
 import { ServerFinder } from "../server-finder.js";
 
@@ -47,6 +48,33 @@ describe("ServerFinder", () => {
 		]);
 	});
 
+	it("should look in Rokit's bin folder when the PATH has no server", async () => {
+		await fs.writeFile("/home/me/.rokit/bin/rojo", "");
+		processes.outputs.set("/home/me/.rokit/bin/rojo", ROJO_VERSION);
+		finder = new ServerFinder(
+			new CoreToolchainService(fs),
+			processes,
+			new ToolLocator(processes, fs, "/home/me")
+		);
+
+		const tool = (await find()).unwrap();
+
+		expect(tool.file).toBe("/home/me/.rokit/bin/rojo");
+	});
+
+	it("should prefer the server on the PATH to Rokit's", async () => {
+		await fs.writeFile("/home/me/.rokit/bin/rojo", "");
+		processes.installed.set("rojo", "/usr/bin/rojo");
+		processes.outputs.set("/usr/bin/rojo", ROJO_VERSION);
+		finder = new ServerFinder(
+			new CoreToolchainService(fs),
+			processes,
+			new ToolLocator(processes, fs, "/home/me")
+		);
+
+		expect((await find()).unwrap().file).toBe("/usr/bin/rojo");
+	});
+
 	it("should let the caller end the version check", async () => {
 		processes.installed.set("rojo", "/usr/bin/rojo");
 		processes.outputs.set("/usr/bin/rojo", ROJO_VERSION);
@@ -82,7 +110,7 @@ describe("ServerFinder", () => {
 		expect(diagnostic.code).toBe("serve.noServer");
 		expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Run 'rogen init --rojo' to set Rojo up."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -126,7 +154,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. Run 'rogen init --rojo' to set Rojo up."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rogen plugin install", cwd: "/repo/game" } },
@@ -145,7 +173,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.code).toBe("serve.serverFailed");
 		expect(diagnostic.message).toBe(
-			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'."
+			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. Run 'rogen init --rojo' to set Rojo up."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -163,7 +191,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.resource).toBe("/repo/game/rokit.toml");
 		expect(diagnostic.message).toBe(
-			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT."
+			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT. Run 'rogen init --rojo' to set Rojo up."
 		);
 		expect(diagnostic.fixes).toBeUndefined();
 	});

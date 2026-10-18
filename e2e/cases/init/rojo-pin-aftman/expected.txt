@@ -1,0 +1,29 @@
+$ rogen init --non-interactive --skip-git --no-sample
+exit 0
+stdout: (not shown)
+
+ran:
+  aftman add rojo-rbx/rojo@7.7.1
+
+written:
+  AGENTS.md
+  aftman.toml
+  default.project.json
+  rogen.json
+
+rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "sourcePaths": [
+    "src"
+  ],
+  "routes": {
+    "Server": "ServerScriptService",
+    "Client": "StarterPlayer/StarterPlayerScripts",
+    "Shared": "ReplicatedStorage/Shared",
+    "*": "ReplicatedStorage/Shared"
+  }
+}
