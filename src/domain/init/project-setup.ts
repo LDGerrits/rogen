@@ -18,6 +18,7 @@ import {
 	Mount,
 	PlannedFile,
 } from "../toolchain/toolchain.js";
+import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { InitDirectory } from "./init-directory.js";
@@ -522,6 +523,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				? choices.tree.project.written
 				: undefined
 		);
+		this.summarise(builder, choices, routes);
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
 		for (const directory of choices.places?.directories ?? [])
 			builder.addDirectory(directory);
@@ -579,6 +581,57 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty ${sourcePaths[0]}.`
 			);
 		this.planNextSteps(builder, choices, tree);
+	}
+
+	private summarise(
+		builder: InitPlanBuilder,
+		{
+			kind,
+			language,
+			darklua,
+			sourcePaths,
+			syncPath,
+			tree,
+			mounts,
+			places,
+			sample,
+		}: ProjectChoices,
+		routes: Record<string, string> | undefined
+	): void {
+		builder.addSummary(
+			"Project",
+			[
+				kind === "place"
+					? places
+						? "several places"
+						: "one place"
+					: `a ${kind}`,
+				language.copy.label,
+				...(tree.kind === "lift" ? [`lifting ${tree.from}`] : []),
+				...(sample ? ["sample Greeter"] : []),
+			].join(", ")
+		);
+		if (routes) {
+			const keys = Object.keys(routes).filter(
+				(key) => key !== DeclaredKeys.FALLBACK_ROUTE
+			);
+			const rest = routes[DeclaredKeys.FALLBACK_ROUTE];
+			builder.addSummary(
+				"Code",
+				`${sourcePaths.join(", ")} → ${keys.length > 0 ? keys.join(", ") : "no routes"}${rest ? `; other files to ${rest}` : ""}`
+			);
+		}
+		builder.addSummary(
+			"Darklua",
+			darklua && syncPath ? `yes, writing to ${syncPath}` : "no"
+		);
+		if (mounts.length > 0)
+			builder.addSummary(
+				"Packages",
+				mounts
+					.map((mount) => `${mount.path} → ${mount.landing}`)
+					.join(", ")
+			);
 	}
 
 	private static unmountedWarning(

@@ -134,6 +134,7 @@ export class ConsolePromptService implements PromptService {
 			...this.streams,
 			placeholder,
 			defaultValue: placeholder,
+			initialValue: options.initialValue,
 			validate: validate && ((value) => validate(value || placeholder)),
 			render() {
 				const empty = placeholder

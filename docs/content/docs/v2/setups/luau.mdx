@@ -19,6 +19,24 @@ In the project root, run:
 rogen init
 ```
 
+In a terminal it asks only what it can't tell from the folder: the language in an empty folder, and `One place or several?` for a new project. It then shows the whole plan once, and Enter accepts it:
+
+```
+Create this project?
+  Project   one place, Luau, sample Greeter
+  Code      src → Server, Client, Shared; other files to
+            ReplicatedStorage/Shared
+  Darklua   no
+  Agents    rules in AGENTS.md
+  Rojo      pin Rojo 7.7.1 in rokit.toml, install the Studio plugin
+  Git       .gitignore, git init
+  Files     rogen.json, .gitignore, src/Greeter/Shared/Greeting.luau, ...
+  Runs      rokit add rojo-rbx/rojo@7.7.1, rojo plugin install
+  ● Yes   ○ Customise (ask every question)   ○ Cancel
+```
+
+The summary lists every file it will write and every command it will run, so nothing happens that wasn't shown. Customise goes through every question, each with its answer preselected, and shows the plan again. A flag answers its line before the summary, and `-y`, `--json` or a run without a terminal skip the summary and take the same defaults.
+
 It writes `rogen.json`, builds `default.project.json` from it, writes a small sample game in `src/Greeter`, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
 
 ```
@@ -54,7 +72,7 @@ The sample is Rogen's version of what `rojo init` writes: three hello-world scri
 }
 ```
 
-In a terminal, `init` also asks `One place or several?`; see [Several Places](/docs/v2/setups/places). It asks about your source paths, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
+For several places, see [Several Places](/docs/v2/setups/places). Customise asks about your source paths, your routes and where files that match no route should go; Enter at the summary gives the config above. If it finds Wally or Pesde, it mounts their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 </Step>
 

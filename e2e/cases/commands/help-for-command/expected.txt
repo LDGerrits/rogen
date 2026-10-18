@@ -71,6 +71,8 @@ stdout:
                                              config, asks for this addition.
           --color <COLOR>                    Whether to colour the output. [default: auto] [possible
                                              values: auto, always, never]
+          --customise                        In a terminal, ask every question one after another,
+                                             without the summary of the plan first.
           --[no-]darklua                     Whether Darklua processes your code before Rojo syncs it.
                                              Found from a Darklua config when not given. On a project
                                              that has a rogen.json, --darklua adds the dist project

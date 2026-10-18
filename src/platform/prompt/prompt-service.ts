@@ -14,6 +14,8 @@ export interface PromptDetails {
 export interface TextPromptOptions extends PromptDetails {
 	readonly message: string;
 	readonly placeholder?: string;
+	/** The text the field starts with, which the user edits. */
+	readonly initialValue?: string;
 	readonly validate?: (value: string) => string | undefined;
 }
 

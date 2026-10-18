@@ -290,6 +290,20 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 						: `${names} ${needs} installed, and ${who} needs ${them}. Run 'rogen init --rojo' to install Rokit and ${names}, or install Rokit yourself (${ROKIT_INSTALL.command}), then run 'rokit init' and ${tools.map(({ repository, version }) => `'rokit add ${repository}@${version}'`).join(", ")} here.`
 			);
 		}
+		builder.addSummary(
+			"Rojo",
+			[
+				...(install && tools.length > 0
+					? [
+							`pin ${joinedWithAnd(tools.map(({ label, version }) => `${label} ${version}`))} in ${manager?.id ?? "rokit"}.toml`,
+							...(manager ? [] : ["install Rokit first"]),
+						]
+					: tools.length > 0
+						? ["not set up"]
+						: ["ready"]),
+				...(plugin ? ["install the Studio plugin"] : []),
+			].join(", ")
+		);
 		if (plugin)
 			builder.addCommand(
 				run(ROJO_NAME, ["plugin", "install"], MINUTE_MS)

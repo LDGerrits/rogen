@@ -17,7 +17,9 @@ import {
 	InitPlan,
 	PlannedCommand,
 	PlannedScaffold,
+	InitPurpose,
 	PresentItem,
+	SummaryRow,
 } from "./init-service.js";
 
 export class InitPlanBuilder {
@@ -40,6 +42,8 @@ export class InitPlanBuilder {
 	private readonly present: PresentItem[] = [];
 	private readonly commands: PlannedCommand[] = [];
 	private scaffold: PlannedScaffold | undefined;
+	private readonly summary: SummaryRow[] = [];
+	private purpose: InitPurpose = "create";
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -81,6 +85,15 @@ export class InitPlanBuilder {
 	/** A file of the project's template, which is written after the config. */
 	addFile(file: PlannedFile): void {
 		this.templateFiles.push(file);
+	}
+
+	/** A line of the summary: what the plan sets up in `area`. */
+	addSummary(area: string, text: string): void {
+		this.summary.push({ area, text });
+	}
+
+	setPurpose(purpose: InitPurpose): void {
+		this.purpose = purpose;
 	}
 
 	/** The tool that writes the project's own files first. */
@@ -142,6 +155,8 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
+			purpose: this.purpose,
+			summary: [...this.summary],
 			asked: this.asked,
 			decided: this.decided,
 			present: [...this.present],

@@ -44,6 +44,8 @@ export interface InitChoices {
 	readonly sample?: boolean;
 	/** Whether a new project is several places under `places/`, rather than one. */
 	readonly places?: boolean;
+	/** Asks every question at once in a terminal, with no summary of the plan first. */
+	readonly customise?: boolean;
 }
 
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */
@@ -78,8 +80,20 @@ export interface PlannedScaffold {
 	readonly replaces: readonly string[];
 }
 
+/** One line of the summary a run shows before it writes: an area of the project and what it gets. */
+export interface SummaryRow {
+	readonly area: string;
+	readonly text: string;
+}
+
+/** What the plan does, which words the question that accepts it. */
+export type InitPurpose = "create" | "change" | "place";
+
 export interface InitPlan {
 	readonly directory: string;
+	readonly purpose: InitPurpose;
+	/** What the plan sets up, by area, which the summary shows beside the files and commands. */
+	readonly summary: readonly SummaryRow[];
 	/** Runs before any file is written; a failure writes nothing. */
 	readonly scaffold?: PlannedScaffold;
 	readonly files: readonly PlannedFile[];

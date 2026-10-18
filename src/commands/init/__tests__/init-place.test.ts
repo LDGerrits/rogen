@@ -36,7 +36,10 @@ describe("init for a place", () => {
 			prompt: new MockPromptService(answers, interactive),
 			environment: new NativeEnvironmentService({}, cwd),
 		});
-		return harness.run("init", { positionals, options });
+		return harness.run("init", {
+			positionals,
+			options: { customise: true, ...options },
+		});
 	};
 
 	const write = (file: string, content: unknown = "") =>

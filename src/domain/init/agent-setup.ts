@@ -39,6 +39,15 @@ export class AgentSetup implements Setup<AgentChoices> {
 				this.hooks.usesClaudeCode && !this.agentFile.hasClaudeFile
 			);
 		if (hook) builder.addAgentHook(this.hooks);
+		builder.addSummary(
+			"Agents",
+			[
+				...(rules || this.agentFile.hasBlock
+					? [`rules in ${this.agentFile.blockFileName}`]
+					: []),
+				...(hook ? [`hook for ${this.hooks.agents.join(", ")}`] : []),
+			].join(", ") || "none"
+		);
 		for (const note of this.hooks.notes) builder.addNote(note);
 	}
 }

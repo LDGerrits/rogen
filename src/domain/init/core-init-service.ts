@@ -20,12 +20,15 @@ import { AgentSetup } from "./agent-setup.js";
 import {
 	InitOptions,
 	InitPlan,
+	InitPurpose,
 	InitService,
 	InitWritten,
 	PresentItem,
 } from "./init-service.js";
 import { InitAdditions } from "./init-additions.js";
 import { ProjectChanger } from "./project-changer.js";
+import { ReviewMode, ReviewPrompts } from "./review-prompts.js";
+import { InitSummary } from "./init-summary.js";
 import { Setup } from "./setup.js";
 import { PlaceFinder } from "../config/place-finder.js";
 import { PlaceInit } from "./place-init.js";
@@ -33,6 +36,18 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
+
+const PURPOSE_QUESTIONS: Readonly<Record<InitPurpose, string>> = {
+	create: "Create this project?",
+	change: "Make these changes?",
+	place: "Add this place?",
+};
+
+/** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
+interface RunPrompts {
+	readonly quick: PromptService;
+	readonly essential: PromptService;
+}
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -70,18 +85,62 @@ export class CoreInitService implements InitService {
 		options: InitOptions = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
 		try {
-			return await this.planWithin(options);
+			return await this.review(options);
 		} catch (error) {
 			if (error instanceof UsageError) return err(error);
 			throw error;
 		}
 	}
 
-	private async planWithin({
-		ask = true,
-		place,
-		choices = {},
-	}: InitOptions): Promise<Result<InitPlan | undefined, Error>> {
+	/** In a terminal the plan is shown once and accepted with Enter; Customise asks every question, each with its answer preselected, and shows the plan again. */
+	private async review(
+		options: InitOptions
+	): Promise<Result<InitPlan | undefined, Error>> {
+		const { ask = true, choices = {} } = options;
+		if (!(ask && this.promptService.isInteractive) || choices.customise)
+			return this.planWithin(options, {
+				quick: this.promptService,
+				essential: this.promptService,
+			});
+		const prompts = new ReviewPrompts(this.promptService);
+		let mode: ReviewMode = "quick";
+		for (;;) {
+			prompts.begin(mode);
+			const planned = await this.planWithin(options, prompts);
+			if (planned.isErr() || !planned.value || prompts.asked === 0)
+				return planned;
+			const verdict = await this.accepted(planned.value);
+			if (verdict === "yes") return planned;
+			if (verdict === "cancel") return ok(undefined);
+			mode = "customise";
+		}
+	}
+
+	private accepted(
+		plan: InitPlan
+	): Promise<"yes" | "customise" | "cancel" | undefined> {
+		return this.promptService
+			.select<"yes" | "customise" | "cancel">({
+				message: PURPOSE_QUESTIONS[plan.purpose],
+				description: InitSummary.lines(plan).join("\n"),
+				choices: [
+					{ value: "yes", label: "Yes" },
+					{
+						value: "customise",
+						label: "Customise",
+						hint: "ask every question",
+					},
+					{ value: "cancel", label: "Cancel" },
+				],
+				initialValue: "yes",
+			})
+			.then((answer) => answer ?? "cancel");
+	}
+
+	private async planWithin(
+		{ ask = true, place, choices = {} }: InitOptions,
+		prompts: RunPrompts
+	): Promise<Result<InitPlan | undefined, Error>> {
 		const { cwd } = this.environmentService;
 		const folder = place === undefined ? cwd : path.resolve(cwd, place);
 		const enclosed =
@@ -101,9 +160,10 @@ export class CoreInitService implements InitService {
 			return new PlaceInit(
 				this.fileSystemService,
 				new InitQuestions(
-					this.promptService,
+					prompts.quick,
 					ask && this.promptService.isInteractive,
-					choices
+					choices,
+					prompts.essential
 				),
 				this.toolchainService,
 				this.configService,
@@ -127,14 +187,15 @@ export class CoreInitService implements InitService {
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
 		const questions = new InitQuestions(
-			this.promptService,
+			prompts.quick,
 			interactive,
-			choices
+			choices,
+			prompts.essential
 		);
 		const nested = await this.checkNested(directory.value, questions);
 		if (nested.isErr() || nested.value === "cancelled")
 			return nested.map(() => undefined);
-		const planned = await this.planIn(directory.value, questions);
+		const planned = await this.planIn(directory.value, questions, prompts);
 		return place === undefined || planned.isErr() || !planned.value
 			? planned
 			: ok({
@@ -203,7 +264,8 @@ export class CoreInitService implements InitService {
 
 	private async planIn(
 		directory: InitDirectory,
-		questions: InitQuestions
+		questions: InitQuestions,
+		prompts: RunPrompts
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const placeOf = await this.projectRootOf(directory);
 		if (placeOf.isErr()) return placeOf;
@@ -295,7 +357,7 @@ export class CoreInitService implements InitService {
 					changer.setup(() => changer.fromFlags()),
 					...(asked ?? additions.toolsForChanges()),
 				],
-				{ present: additions.presentAsked(), notes }
+				{ present: additions.presentAsked(), notes, purpose: "change" }
 			);
 		}
 		const requested = additions.requested();
@@ -303,21 +365,29 @@ export class CoreInitService implements InitService {
 			return this.planWith(home, questions, requested, {
 				present: additions.presentAsked(),
 				notes,
+				purpose: "change",
 			});
 		const chosen = await additions.choose();
 		if (chosen === undefined) return ok(undefined);
 		if (chosen === "nothing") {
 			const present = additions.present();
 			return present.length > 0
-				? this.planWith(home, questions, [], { present, notes })
+				? this.planWith(home, questions, [], {
+						present,
+						notes,
+						purpose: "change",
+					})
 				: err(new DiagnosticsError(home.checkFree(home.configFiles)));
 		}
 		if ("place" in chosen)
-			return this.planWithin({
-				ask: questions.interactive,
-				place: chosen.place,
-				choices: {},
-			});
+			return this.planWithin(
+				{
+					ask: questions.interactive,
+					place: chosen.place,
+					choices: {},
+				},
+				prompts
+			);
 		return this.planWith(
 			chosen.inPlace ? directory : home,
 			questions,
@@ -325,6 +395,7 @@ export class CoreInitService implements InitService {
 			{
 				present: additions.presentAsked(),
 				notes,
+				purpose: "change",
 			}
 		);
 	}
@@ -368,6 +439,7 @@ export class CoreInitService implements InitService {
 		extras: {
 			present?: readonly PresentItem[];
 			notes?: readonly string[];
+			purpose?: InitPurpose;
 		} = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
@@ -385,6 +457,7 @@ export class CoreInitService implements InitService {
 			this.environmentService.cwd
 		);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
+		builder.setPurpose(extras.purpose ?? "create");
 		for (const note of extras.notes ?? []) builder.addNote(note);
 		builder.addPresent(...(extras.present ?? []));
 		const plan = builder.build();

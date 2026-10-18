@@ -42,7 +42,7 @@ describe("CoreInitService", () => {
 		cwd = directory
 	) => {
 		const environmentService = new NativeEnvironmentService({}, cwd);
-		return new CoreInitService(
+		const service = new CoreInitService(
 			fileSystem,
 			promptService,
 			environmentService,
@@ -50,6 +50,13 @@ describe("CoreInitService", () => {
 			new CoreConfigService(fileSystem, environmentService),
 			processes
 		);
+		const plan = service.plan.bind(service);
+		service.plan = (options = {}) =>
+			plan({
+				...options,
+				choices: { customise: true, ...options.choices },
+			});
+		return service;
 	};
 
 	const write = (file: string, content = "") =>
@@ -1473,6 +1480,193 @@ describe("CoreInitService", () => {
 					},
 				]);
 			});
+		});
+	});
+
+	describe("the summary of a new project", () => {
+		const CREATE = "Create this project?";
+		const review = (prompts: PromptService) =>
+			serviceFor(prompts).plan({ choices: { customise: false } });
+
+		it("should ask the language and the layout of an empty folder, then show the summary only", async () => {
+			const prompts = new MockPromptService({
+				Language: "luau",
+				"One place or several?": "one",
+				[CREATE]: "yes",
+			});
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(prompts.asked).toEqual([
+				"Language",
+				"One place or several?",
+				CREATE,
+			]);
+			expect(plan?.files.map(({ fileName }) => fileName)).toContain(
+				"rogen.json"
+			);
+			expect(plan?.decided).toEqual([]);
+		});
+
+		it("should not ask the language of a folder that has a tsconfig.json", async () => {
+			await write("tsconfig.json", "{}");
+			const prompts = new MockPromptService({ [CREATE]: "yes" });
+
+			await review(prompts);
+
+			expect(prompts.asked).toEqual([CREATE]);
+		});
+
+		it("should show the choices and every file the plan writes", async () => {
+			const prompts = new MockPromptService({
+				Language: "luau",
+				"One place or several?": "one",
+				[CREATE]: "yes",
+			});
+
+			await review(prompts);
+			const shown = prompts.prompts.at(-1)?.description ?? "";
+
+			expect(shown).toContain(
+				"Project   one place, Luau, sample Greeter"
+			);
+			expect(shown).toContain("Darklua   no");
+			expect(shown).toContain("Agents    rules in AGENTS.md");
+			expect(shown).toContain("rogen.json");
+		});
+
+		it("should plan nothing on Cancel", async () => {
+			const prompts = new MockPromptService({
+				Language: "luau",
+				"One place or several?": "one",
+				[CREATE]: "cancel",
+			});
+
+			expect((await review(prompts)).unwrap()).toBeUndefined();
+		});
+
+		it("should ask every question on Customise, then show the summary with the new answer", async () => {
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				"luau",
+				ACCEPT_DEFAULT,
+				"one",
+				"lib",
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(prompts.asked).toEqual([
+				"Language",
+				"One place or several?",
+				CREATE,
+				"Language",
+				"Does Darklua process your code before Rojo syncs it?",
+				"One place or several?",
+				"Source paths",
+				"Routes",
+				"Files that match no route",
+				"Add Rogen's rules for coding agents to AGENTS.md?",
+				CREATE,
+			]);
+			expect(prompts.prompts.at(-1)?.description).toContain(
+				"lib → Server"
+			);
+			expect(plan?.summary).toContainEqual({
+				area: "Code",
+				text: expect.stringContaining("lib"),
+			});
+		});
+
+		it("should show the summary and the changes of a second run", async () => {
+			await write("rogen.json", "{}");
+			const prompts = new MockPromptService({
+				[WHAT_TO_CHANGE]: ["unmatched"],
+				"Files that match no route": "shared",
+				"Make these changes?": "yes",
+			});
+
+			const plan = (await review(prompts)).unwrap();
+
+			expect(plan?.purpose).toBe("change");
+			expect(prompts.prompts.at(-1)?.description).toContain(
+				"Changes   rogen.json: added routes.*"
+			);
+		});
+
+		it("should show the place before adding it, and ask only that", async () => {
+			await write("rogen.json", '{ "placePaths": ["places/*"] }');
+			const prompts = new MockPromptService({
+				"Add this place?": "yes",
+			});
+
+			const plan = (
+				await serviceFor(prompts).plan({
+					place: "places/lobby",
+					choices: { customise: false },
+				})
+			).unwrap();
+
+			expect(prompts.asked).toEqual(["Add this place?"]);
+			expect(plan?.purpose).toBe("place");
+			expect(prompts.prompts[0].description).toContain(
+				"Place     places/lobby"
+			);
+			expect(prompts.prompts[0].description).toContain(
+				"places/lobby/rogen.json"
+			);
+		});
+
+		it("should list every file and command of the plan, as a dry run would write them", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			processes.installed.delete("rojo");
+			const prompts = new MockPromptService({
+				Language: "luau",
+				"One place or several?": "one",
+				[CREATE]: "yes",
+			});
+			const service = serviceFor(prompts);
+
+			const plan = (
+				await service.plan({ choices: { customise: false } })
+			).unwrap()!;
+			const written: string[] = [];
+			await service.write(
+				plan,
+				(item) => {
+					if (item.kind === "file") written.push(item.file.fileName);
+					if (item.kind === "command")
+						written.push(item.command.command);
+				},
+				true
+			);
+			const shown = prompts.prompts
+				.at(-1)
+				?.description?.replace(/\n\s{10}/g, " ");
+
+			expect(written.length).toBeGreaterThan(5);
+			for (const item of written) expect(shown).toContain(item);
+			expect(plan.commands.length).toBeGreaterThan(0);
+		});
+
+		it("should show nothing and ask nothing more when flags answered everything", async () => {
+			await write("rogen.json", "{}");
+			const prompts = new MockPromptService({});
+
+			const plan = (
+				await serviceFor(prompts).plan({
+					choices: { customise: false, unmatched: "shared" },
+				})
+			).unwrap();
+
+			expect(prompts.asked).toEqual([]);
+			expect(plan?.files).toHaveLength(1);
 		});
 	});
 

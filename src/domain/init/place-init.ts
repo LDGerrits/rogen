@@ -124,6 +124,24 @@ export class PlaceInit {
 		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
 		return ok({
 			directory: root,
+			purpose: "place",
+			summary: [
+				{ area: "Place", text: place },
+				{
+					area: "Code",
+					text: sourcePaths.directories
+						.map((one) => path.posix.join(place, one))
+						.join(", "),
+				},
+				{
+					area: "Port",
+					text: String(port),
+				},
+				{
+					area: "Place IDs",
+					text: placeIds.length > 0 ? placeIds.join(", ") : "none",
+				},
+			],
 			files: [
 				...(listed.value.edit ? [listed.value.edit] : []),
 				{ fileName: configFile, content: configFileContent(config) },

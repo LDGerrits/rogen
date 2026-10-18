@@ -40,6 +40,12 @@ const InitOptions = [
 			"Plan without writing or building: print the files it would write and the choices it took, then stop.",
 	},
 	{
+		name: "customise",
+		type: "boolean",
+		description:
+			"In a terminal, ask every question one after another, without the summary of the plan first.",
+	},
+	{
 		name: "kind",
 		type: "string",
 		values: ["place", "model", "plugin"],
@@ -218,6 +224,7 @@ function choicesOf(
 		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
 		places: options.places,
+		customise: options.customise,
 	};
 }
 

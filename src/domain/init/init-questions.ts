@@ -78,7 +78,9 @@ export class InitQuestions {
 	constructor(
 		private readonly promptService: PromptService,
 		readonly interactive: boolean,
-		readonly choices: InitChoices = {}
+		readonly choices: InitChoices = {},
+		/** Asks the questions that are always asked, where `promptService` takes the default of those a summary shows. */
+		private readonly essential: PromptService = promptService
 	) {}
 
 	private decide<T extends InitDecision["value"]>(
@@ -112,7 +114,7 @@ export class InitQuestions {
 	}: EnclosingConfigs): Promise<boolean | undefined> {
 		if (this.choices.nested) return true;
 		if (!this.interactive) return false;
-		return this.promptService.confirm({
+		return this.essential.confirm({
 			message: `${directory} already has ${fileNames.join(", ")}. Start a separate project here anyway?`,
 			description:
 				"This folder may already be part of that project, and a project here would then be built twice.",
@@ -130,7 +132,7 @@ export class InitQuestions {
 			this.decide("placeListing", "glob", "--place-listing");
 			return glob;
 		}
-		const answer = await this.promptService.select<"glob" | "folder">({
+		const answer = await this.essential.select<"glob" | "folder">({
 			message: "How do you want to list this place?",
 			choices: [
 				{
@@ -224,7 +226,7 @@ export class InitQuestions {
 		current: string,
 		areas: readonly ChangeArea[]
 	): Promise<readonly string[] | undefined> {
-		return this.promptService.multiSelect({
+		return this.essential.multiSelect({
 			message: "What do you want to change?",
 			description: current,
 			choices: areas.map(({ id, label, hint }) => ({
@@ -241,7 +243,7 @@ export class InitQuestions {
 		options: readonly { id: string; key: string; target: string }[],
 		configured: readonly string[]
 	): Promise<{ add: string[]; remove: string[] } | undefined> {
-		const ticked = await this.promptService.multiSelect({
+		const ticked = await this.essential.multiSelect({
 			message: "Routes",
 			description:
 				"Ticking adds a route, unticking takes off one that still has its standard value. Routes of your own stay.",
@@ -264,7 +266,7 @@ export class InitQuestions {
 		current: "shared" | "leave",
 		sharedTarget: string
 	): Promise<"shared" | "leave" | undefined> {
-		return this.promptService.select<"shared" | "leave">({
+		return this.essential.select<"shared" | "leave">({
 			message: "Files that match no route",
 			description:
 				"Most loose modules in a feature folder are shared code.",
@@ -285,7 +287,7 @@ export class InitQuestions {
 		directory: InitDirectory,
 		codeIn: (sourcePath: string) => Promise<readonly string[]>
 	): Promise<{ add: string[]; remove: string[] } | undefined> {
-		const answer = await this.promptService.text({
+		const answer = await this.essential.text({
 			message: "Source paths",
 			description:
 				"Folders with your scripts, relative to here. Separate several with commas.",
@@ -298,7 +300,7 @@ export class InitQuestions {
 		for (const entry of remove) {
 			const files = await codeIn(entry);
 			if (files.length === 0) continue;
-			const sure = await this.promptService.confirm({
+			const sure = await this.essential.confirm({
 				message: `Stop building ${entry}?`,
 				description: `${files.length === 1 ? "This file" : "These files"} would no longer be built: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}.`,
 				initialValue: false,
@@ -315,7 +317,7 @@ export class InitQuestions {
 
 	/** Whether Darklua is on after this run, asked with its state now. */
 	async changeDarklua(current: boolean): Promise<boolean | undefined> {
-		return this.promptService.confirm({
+		return this.essential.confirm({
 			message: current
 				? "Keep Darklua processing your code?"
 				: "Does Darklua process your code before Rojo syncs it?",
@@ -328,7 +330,7 @@ export class InitQuestions {
 	async changePackages(
 		offered: readonly { path: string; landing: string }[]
 	): Promise<readonly string[] | undefined> {
-		return this.promptService.multiSelect({
+		return this.essential.multiSelect({
 			message: "Packages",
 			description:
 				"Folders placed in the game as they are. Rogen doesn't scan or route them.",
@@ -345,7 +347,7 @@ export class InitQuestions {
 		several: boolean
 	): Promise<"several" | "add" | undefined> {
 		if (several) return "add";
-		return this.promptService.select<"several" | "add">({
+		return this.essential.select<"several" | "add">({
 			message: "Places",
 			choices: [
 				{
@@ -365,7 +367,7 @@ export class InitQuestions {
 
 	/** The folder of a place to add. */
 	async placeFolder(): Promise<string | undefined> {
-		const answer = await this.promptService.text({
+		const answer = await this.essential.text({
 			message: "Place folder",
 			description: "Relative to here, such as places/lobby.",
 			validate: required("a folder"),
@@ -468,7 +470,7 @@ export class InitQuestions {
 			directory.layout.codeFolders.every((folder) => folder === "places");
 		if (!this.interactive)
 			return this.decide("places", several, "--places");
-		const answer = await this.promptService.select<"one" | "several">({
+		const answer = await this.essential.select<"one" | "several">({
 			message: "One place or several?",
 			choices: [
 				{
@@ -487,9 +489,8 @@ export class InitQuestions {
 		return answer === undefined ? undefined : answer === "several";
 	}
 
-	async language({
-		workspace,
-	}: InitDirectory): Promise<Language | undefined> {
+	async language(directory: InitDirectory): Promise<Language | undefined> {
+		const { workspace } = directory;
 		const given = this.choices.language;
 		if (given !== undefined)
 			return workspace.languageFor(
@@ -504,7 +505,13 @@ export class InitQuestions {
 			this.decide("language", workspace.language.id, "--language");
 			return workspace.language;
 		}
-		const id = await this.promptService.select({
+		const detected =
+			workspace.languages.some(({ present }) => present) ||
+			directory.layout.codeFolders.length > 0 ||
+			directory.has("package.json");
+		const id = await (
+			detected ? this.promptService : this.essential
+		).select({
 			message: "Language",
 			choices: workspace.languages.map((language) => ({
 				value: language.id,
@@ -588,7 +595,7 @@ export class InitQuestions {
 			return lift;
 		}
 
-		const answer = await this.promptService.select<TreeChoice["kind"]>({
+		const answer = await this.essential.select<TreeChoice["kind"]>({
 			message: "Project file",
 			description: `${DEFAULT_PROJECT_FILE} exists, and Rogen replaces it on every build.`,
 			choices: [

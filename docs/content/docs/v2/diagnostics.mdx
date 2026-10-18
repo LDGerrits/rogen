@@ -879,6 +879,16 @@ default.project.json - warning: 2 files in the source paths are mounted by no no
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).
 
+### `init.sourcePathRemoved` [#init-sourcepathremoved]
+
+Warning. `init --no-source-path` (or a source path unticked in the menu) took a folder off the source paths of a `rogen.json` that has scripts in it. Rogen builds only the source paths, so those scripts leave the game.
+
+```
+rogen.json - warning: lib is no longer a source path, so Rogen no longer builds these 2 files in it: Util.luau, Other.server.luau. (init.sourcePathRemoved)
+```
+
+The config changed, not the files. To build them again, put the folder back with `rogen init --source-path lib`.
+
 ## Serve
 
 ### `serve.noServer` [#serve-noserver]
