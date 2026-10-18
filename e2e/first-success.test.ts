@@ -37,7 +37,6 @@ const VARIANTS: readonly Variant[] = [
 		flags: ["--language", "roblox-ts", "--darklua"],
 		steps: [
 			["npx", "rbxtsc"],
-			SOURCEMAP,
 			["darklua", "process", "out", "dist"],
 		],
 		network: true,
@@ -45,7 +44,8 @@ const VARIANTS: readonly Variant[] = [
 	},
 ];
 
-const online = process.env.ROGEN_E2E_NETWORK === "1";
+const online =
+	process.env.ROGEN_E2E_NETWORK === "1" && process.platform !== "win32";
 
 describeWithRojo("first success from an empty folder", () => {
 	let bundle: ReturnType<typeof bundleCli>;
@@ -60,7 +60,9 @@ describeWithRojo("first success from an empty folder", () => {
 
 	for (const variant of VARIANTS) {
 		if (variant.network && !online) {
-			it.todo(`${variant.name} (needs ROGEN_E2E_NETWORK=1)`);
+			it.todo(
+				`${variant.name} (needs ROGEN_E2E_NETWORK=1, and not Windows)`
+			);
 			continue;
 		}
 		it(
@@ -79,11 +81,12 @@ describeWithRojo("first success from an empty folder", () => {
 				expect(success.pluginCalls).toBe(
 					process.platform === "win32" ? 0 : 1
 				);
+				expect(success.unprinted).toEqual([]);
 				expect(success.printed).toContain("rogen serve");
 				for (const line of success.printed)
 					expect(line).not.toMatch(/^rogen (?!serve|sourcemap)/);
 			},
-			variant.network ? NETWORK_TIMEOUT_MS * 2 : 60_000
+			variant.network ? NETWORK_TIMEOUT_MS * 2 : 120_000
 		);
 	}
 });

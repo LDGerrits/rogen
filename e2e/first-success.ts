@@ -6,7 +6,6 @@ import { freePort } from "./serve-fixtures.js";
 import {
 	NETWORK_TIMEOUT_MS,
 	RunningRogen,
-	eventually,
 	invocation,
 	run,
 } from "./harness.js";
@@ -29,6 +28,8 @@ export interface Success {
 	readonly commands: readonly string[];
 	/** What Rogen asked the user to run in `init`'s Next steps, as they print. */
 	readonly printed: readonly string[];
+	/** The steps that were run but that `init` did not print. */
+	readonly unprinted: readonly string[];
 	/** The `serving` line of `serve --json`. */
 	readonly serving: Readonly<Record<string, unknown>>;
 	/** The Studio plugin installs the fake Rojo saw. */
@@ -85,16 +86,56 @@ function printedSteps(stdout: string): string[] {
 	if (from < 0) return [];
 	return lines
 		.slice(from + 1)
-		.map((line) => line.trim())
-		.filter(
+		.map(
 			(line) =>
-				/^(rogen|darklua|npx|npm|rbxtsc) /.test(line) ||
-				/^Run '.*' to /.test(line)
-		);
+				/(?:^|: )((?:rogen|darklua|npx|npm|rbxtsc) .*)$/.exec(
+					line.trim()
+				)?.[1] ??
+				/^Run '.*' to /.exec(line.trim())?.[0] ??
+				""
+		)
+		.filter((line) => line !== "");
+}
+
+/** The line of the printed steps that tells the user to run `step`, or none: a Rogen command by its name, Darklua's `process`, and a compiler by `rbxtsc` or the package script that runs it. */
+function printedLine(step: readonly string[], printed: readonly string[]) {
+	const [program, first] = step;
+	const wanted =
+		program === "rogen" || program === "darklua"
+			? `${program} ${first}`
+			: undefined;
+	return printed.find((line) =>
+		wanted
+			? line.startsWith(wanted)
+			: /^(npx rbxtsc|rbxtsc|npm run (watch|build))/.test(line)
+	);
 }
 
 function fail(step: string, result: { stdout: string; stderr: string }) {
 	return new Error(`${step} failed:\n${result.stdout}\n${result.stderr}`);
+}
+
+/** The `serving` line of a `serve --json`, read from its complete lines, or an error as soon as it ends without one. */
+async function servingLine(
+	serving: RunningRogen
+): Promise<Record<string, unknown>> {
+	let exitCode: number | null | undefined;
+	void serving.exited.then((code) => (exitCode = code));
+	const deadline = Date.now() + 30_000;
+	for (;;) {
+		const complete = serving.stdout.split("\n").slice(0, -1);
+		for (const one of complete) {
+			if (!one.startsWith("{")) continue;
+			const parsed = JSON.parse(one) as Record<string, unknown>;
+			if ("serving" in parsed)
+				return parsed.serving as Record<string, unknown>;
+		}
+		if (exitCode !== undefined || Date.now() > deadline)
+			throw new Error(
+				`serve ${exitCode === undefined ? "gave no serving line in time" : `ended with ${exitCode}`}:\n${serving.output}`
+			);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+	}
 }
 
 /** Follows `variant` in a new empty folder: `init -y`, the compilers, a build, then `serve --json` until its `serving` line. */
@@ -147,24 +188,16 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 			env
 		);
 		try {
-			let line: Record<string, unknown> | undefined;
-			await eventually(() => {
-				line = serving.stdout
-					.split("\n")
-					.filter((one) => one.startsWith("{"))
-					.map((one) => JSON.parse(one) as Record<string, unknown>)
-					.find((one) => "serving" in one);
-				if (!line)
-					throw new Error(`no serving line yet:\n${serving.output}`);
-			}, 30_000);
+			const line = await servingLine(serving);
 			commands.push("serve");
+			const printed = printedSteps(init.stdout);
 			return {
 				commands,
-				printed: printedSteps(init.stdout),
-				serving: (line as Record<string, unknown>).serving as Record<
-					string,
-					unknown
-				>,
+				printed,
+				unprinted: variant.steps
+					.filter((step) => !printedLine(step, printed))
+					.map((step) => step.join(" ")),
+				serving: line,
 				pluginCalls: fake?.pluginCalls() ?? 0,
 			};
 		} finally {

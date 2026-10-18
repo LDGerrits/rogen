@@ -9,7 +9,7 @@
 			"$",
 			"node",
 			"-e",
-			"const fs=require('fs');const s=fs.readFileSync('rogen.json','utf8');fs.writeFileSync('rogen.json',s.replace('\"routes\"','// mine\\n  \"routes\"'))"
+			"const fs=require('fs');const s=fs.readFileSync('rogen.json','utf8');const t=s.replace('\"routes\"','// mine\\n  \"routes\"');if(t===s)process.exit(1);fs.writeFileSync('rogen.json',t)"
 		],
 		[
 			"build"
