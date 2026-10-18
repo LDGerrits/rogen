@@ -77,7 +77,6 @@ registerCommand(
 						{
 							message:
 								"Asset ID of the place or model to upload to",
-							placeholder: "123456",
 							validate: (value) =>
 								/^\d+$/.test(value)
 									? undefined

@@ -1,4 +1,5 @@
 import path from "path";
+import { jest } from "@jest/globals";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -28,7 +29,7 @@ describe("ProjectContext", () => {
 			cwd
 		);
 
-	describe("describe", () => {
+	describe("what it says of the project", () => {
 		it("should name the version and the project of the config here", async () => {
 			await write("rogen.json", '{"name":"Cool Game"}');
 
@@ -110,6 +111,32 @@ describe("ProjectContext", () => {
 			for (let at = 0; at < 30; at++) await write(`m${at}.rbxm`);
 
 			expect(await contextAt().files(extensions)).toHaveLength(20);
+		});
+
+		it("should list the files nearest the project first when there are too many", async () => {
+			for (let at = 0; at < 25; at++) await write(`a/m${at}.rbxm`);
+			await write("top.rbxm");
+
+			const found = await contextAt().files(extensions);
+
+			expect(found).toHaveLength(20);
+			expect(found[0]).toBe("top.rbxm");
+		});
+
+		it("should skip a folder it can't read", async () => {
+			await write("locked/a.rbxm");
+			await write("open/b.rbxm");
+			const read = fileSystem.readDirectory.bind(fileSystem);
+			jest.spyOn(fileSystem, "readDirectory").mockImplementation(
+				async (directory) => {
+					if (directory.endsWith("locked")) throw new Error("EACCES");
+					return read(directory);
+				}
+			);
+
+			expect(await contextAt().files(extensions)).toEqual([
+				"open/b.rbxm",
+			]);
 		});
 
 		it("should find none in a folder with none", async () => {

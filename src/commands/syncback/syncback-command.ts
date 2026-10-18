@@ -99,7 +99,10 @@ registerCommand(
 							message:
 								"Place or model file to bring changes from",
 							files: [".rbxl", ".rbxlx", ".rbxm", ".rbxmx"],
-							placeholder: "game.rbxl",
+							validate: (value) =>
+								value.trim() === ""
+									? "A path to a place or model file is needed."
+									: undefined,
 							into: { option: "input" },
 						},
 					],

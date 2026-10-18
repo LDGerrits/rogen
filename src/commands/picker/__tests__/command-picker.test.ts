@@ -251,6 +251,18 @@ describe("CommandPicker", () => {
 			});
 		});
 
+		it("should refuse an empty path for syncback, which can't run without --input", async () => {
+			await expect(run(["syncback", ""])).rejects.toThrow(
+				"A path to a place or model file is needed."
+			);
+		});
+
+		it("should refuse an empty asset ID, as it has no default to stand for one", async () => {
+			await expect(run(["upload", ""])).rejects.toThrow(
+				"An asset ID is a number."
+			);
+		});
+
 		it("should take the asset ID of upload as --asset_id", async () => {
 			expect(await picked(["upload", "123456"])).toEqual([
 				"upload",

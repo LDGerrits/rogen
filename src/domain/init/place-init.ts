@@ -3,7 +3,7 @@ import { isMatch } from "../../base/glob.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { UsageError } from "../../base/errors.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { toPosix } from "../../base/path.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -98,6 +98,20 @@ export class PlaceInit {
 			place,
 			(shared[0] ?? DEFAULT_SOURCE_PATH).replace(/\/$/, "")
 		);
+		const kept: string[] = [];
+		const compiledFiles: PlannedFile[] = [];
+		for (const file of compiled?.files ?? []) {
+			if (
+				await this.fileSystemService.exists(
+					path.join(root, file.fileName)
+				)
+			)
+				kept.push(file.fileName);
+			else compiledFiles.push(file);
+		}
+		const ignoreHint = compiled
+			? await this.compiledIgnoreHint(root, place)
+			: undefined;
 		const config: RogenConfig = {
 			servePort: port,
 			...(placeIds.length > 0 && { servePlaceIds: [...placeIds] }),
@@ -113,7 +127,7 @@ export class PlaceInit {
 			files: [
 				...(listed.value.edit ? [listed.value.edit] : []),
 				{ fileName: configFile, content: configFileContent(config) },
-				...(compiled?.files ?? []),
+				...compiledFiles,
 				...workspace.files,
 			],
 			directories: sourcePaths.directories.map((directory) =>
@@ -125,6 +139,7 @@ export class PlaceInit {
 			notes: [
 				KnownPlaces.pinNote(path.basename(folder), port, configFile),
 				...workspace.notes,
+				...kept.map((file) => `Left ${file} as it is.`),
 			],
 			nextSteps: {
 				setup: [],
@@ -133,6 +148,7 @@ export class PlaceInit {
 					"rogen serve",
 				],
 				edits: [
+					...(ignoreHint ? [ignoreHint] : []),
 					...(compiled
 						? [
 								`Add rbxtsc -p ${place} and rbxtsc -w -p ${place} to the build and watch scripts in package.json, so 'npm run watch' compiles it too.`,
@@ -146,6 +162,23 @@ export class PlaceInit {
 			present: [],
 			gitInit: false,
 		});
+	}
+
+	/** What to add to the `.gitignore` of the root so the compiled code of `place` stays out of git, which init never edits; none when it lists it or there is none. */
+	private async compiledIgnoreHint(
+		root: string,
+		place: string
+	): Promise<string | undefined> {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(path.join(root, ".gitignore"))
+		);
+		const parent = path.posix.dirname(place);
+		const listed = [`${place}/out`, `${parent}/*/out`].some((line) =>
+			text.isOk() ? text.value.includes(line) : true
+		);
+		return listed
+			? undefined
+			: `Add ${place}/out and ${place}/include to .gitignore so the compiled code isn't committed.`;
 	}
 
 	private async locate(

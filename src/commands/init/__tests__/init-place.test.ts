@@ -497,6 +497,37 @@ describe("init for a place", () => {
 			expect(info).toContain("build and watch scripts in package.json");
 		});
 
+		it("should leave a tsconfig the place has alone, and say so", async () => {
+			await write("places/lobby/tsconfig.json", '{"mine":true}');
+
+			await run(["places/lobby"]);
+
+			expect(await read("places/lobby/tsconfig.json")).toBe(
+				'{"mine":true}'
+			);
+			expect(log.texts("info").join("\n")).toContain(
+				"Left places/lobby/tsconfig.json as it is."
+			);
+		});
+
+		it("should say to ignore the compiled code of the place, as init never edits a .gitignore", async () => {
+			await write(".gitignore", "/node_modules\n/out\n");
+
+			await run(["places/lobby"]);
+
+			expect(log.texts("info").join("\n")).toContain(
+				"Add places/lobby/out and places/lobby/include to .gitignore"
+			);
+		});
+
+		it("should not say it when the .gitignore lists the places' compiled code", async () => {
+			await write(".gitignore", "places/*/out\nplaces/*/include\n");
+
+			await run(["places/lobby"]);
+
+			expect(log.texts("info").join("\n")).not.toContain(".gitignore");
+		});
+
 		it("should write no tsconfig for a Luau root", async () => {
 			await memFs.delete(path.join(root, "tsconfig.json"));
 

@@ -74,7 +74,7 @@ export class CommandPicker {
 			const answer = await this.ask(step);
 			if (answer === undefined)
 				return err(new CancelledError("cancelled."));
-			if (answer === "") continue;
+			if (answer === "" && step.choices) continue;
 			line.push(
 				...(step.into === "positional"
 					? [answer]

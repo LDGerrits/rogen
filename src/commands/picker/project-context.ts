@@ -1,5 +1,6 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
+import { tryWithAsync } from "../../base/result.js";
 import { CONFIG_FILE_NAMES } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
@@ -49,28 +50,30 @@ export class ProjectContext implements PickerProject {
 		return false;
 	}
 
+	/** Looks level by level, so the files nearest the project come first when there are too many to list; a folder that can't be read is skipped. */
 	async files(extensions: readonly string[]): Promise<readonly string[]> {
 		const found: string[] = [];
-		const visit = async (directory: string, depth: number) => {
-			for (const [name, type] of await this.fileReader.readDirectory(
-				directory
-			)) {
-				if (found.length >= FILES_SHOWN) return;
-				const full = path.join(directory, name);
-				if (isDirectoryType(type)) {
-					if (
-						depth < FILE_DEPTH &&
-						!name.startsWith(".") &&
-						name !== "node_modules"
+		let level = [this.cwd];
+		for (let depth = 0; depth <= FILE_DEPTH; depth++) {
+			const below: string[] = [];
+			for (const directory of level) {
+				const entries = await tryWithAsync(() =>
+					this.fileReader.readDirectory(directory)
+				);
+				if (entries.isErr()) continue;
+				for (const [name, type] of entries.value) {
+					const full = path.join(directory, name);
+					if (isDirectoryType(type)) {
+						if (!name.startsWith(".") && name !== "node_modules")
+							below.push(full);
+					} else if (
+						extensions.includes(path.extname(name).toLowerCase())
 					)
-						await visit(full, depth + 1);
-				} else if (
-					extensions.includes(path.extname(name).toLowerCase())
-				)
-					found.push(toPosix(path.relative(this.cwd, full)));
+						found.push(toPosix(path.relative(this.cwd, full)));
+				}
 			}
-		};
-		await visit(this.cwd, 0);
-		return found;
+			level = below;
+		}
+		return found.slice(0, FILES_SHOWN);
 	}
 }

@@ -216,6 +216,14 @@ describe("a new roblox-ts project", () => {
 			});
 		});
 
+		it("should say to set the source path of tsconfig.json when it isn't src", async () => {
+			const { nextSteps } = await plan({ sourcePaths: ["lib"] });
+
+			expect(nextSteps.setup).toEqual([
+				expect.stringContaining('Set "sourcePath" to "lib"'),
+			]);
+		});
+
 		it("should ask for nothing about packages", async () => {
 			const planned = await plan();
 

@@ -665,7 +665,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const compiled = this.directory.defaultSourcePath(language);
 		if (
 			compiler &&
-			!scaffold &&
+			!(scaffold && places) &&
 			sourcePaths.length > 0 &&
 			compiled !== sourcePaths[0]
 		) {
