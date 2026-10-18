@@ -5,7 +5,9 @@ import { InitPlanBuilder } from "./init-plan-builder.js";
 export class SyncSteps {
 	constructor(
 		readonly language: Language,
-		readonly darklua: Darklua | undefined
+		readonly darklua: Darklua | undefined,
+		/** What compiles the code when the project's own script does, such as the `watch` script of its `package.json`. */
+		private readonly compileCommand?: string
 	) {}
 
 	get syncPath(): string | undefined {
@@ -30,7 +32,9 @@ export class SyncSteps {
 	): void {
 		const { darklua, language } = this;
 		builder.addRun(
-			...(language.compiler ? [language.compiler.compileCommand] : []),
+			...(language.compiler
+				? [this.compileCommand ?? language.compiler.compileCommand]
+				: []),
 			...(darklua && syncPath
 				? darklua.processCommands(directory, processed, syncPath)
 				: []),

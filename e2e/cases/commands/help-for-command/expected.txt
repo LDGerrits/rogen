@@ -82,7 +82,9 @@ stdout:
                                              Rojo's template of that kind and no routes. [possible
                                              values: place, model, plugin]
           --language <ID>                    The language: luau or roblox-ts. Detected from the folder
-                                             when not given.
+                                             when not given. For roblox-ts in a folder with no code,
+                                             package.json or tsconfig.json, init first runs 'npm
+                                             create roblox-ts', which needs npm and the network.
           --nested                           Start a project in a folder below another rogen.json,
                                              which a run that can't ask refuses otherwise.
       -y, --non-interactive                  Write the defaults without asking, as a run without a

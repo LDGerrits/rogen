@@ -1,0 +1,8 @@
+$ rogen init --non-interactive --language roblox-ts
+exit 1
+stdout: (not shown)
+stderr:
+  error: 'npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild' failed: npm error network. Run it in <dir> yourself, then run 'rogen init' again.
+
+ran:
+  npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild

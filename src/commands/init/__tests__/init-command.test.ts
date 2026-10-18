@@ -666,6 +666,90 @@ describe("init command", () => {
 			);
 		});
 
+		describe("a new roblox-ts project", () => {
+			const NPM =
+				"npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild";
+			const npmProcesses = (code = 0) => {
+				const processes = readyProcesses();
+				processes.installed.set("npm", "/bin/npm");
+				processes.outputs.set("/bin/npm", {
+					code,
+					stdout: "",
+					stderr: code === 0 ? "" : "npm error network\n",
+				});
+				return processes;
+			};
+			const text = (log: MockLogService) =>
+				log.entries.map(({ text }) => text);
+
+			it("should say it ran create-roblox-ts before it created any file", async () => {
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true },
+					[],
+					npmProcesses()
+				);
+
+				expect(result.isOk()).toBe(true);
+				const lines = text(log);
+				expect(lines).toContain(`Ran ${NPM}.`);
+				expect(lines.indexOf(`Ran ${NPM}.`)).toBeLessThan(
+					lines.indexOf("Created rogen.json.")
+				);
+			});
+
+			it("should list it among the commands of --json", async () => {
+				const log = new MockLogService();
+
+				await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "skip-git": true, json: true },
+					[],
+					npmProcesses()
+				);
+
+				expect(JSON.parse(log.entries[0].text).commands).toEqual([
+					{ command: NPM, outcome: "ran" },
+				]);
+			});
+
+			it("should say what it would run in a dry run, and run nothing", async () => {
+				const log = new MockLogService();
+				const processes = npmProcesses();
+
+				await runInit(
+					new MockPromptService([], false),
+					log,
+					{ language: "roblox-ts", "dry-run": true },
+					[],
+					processes
+				);
+
+				expect(text(log)).toContain(`Would run ${NPM}.`);
+				expect(processes.execs.map(({ file }) => file)).not.toContain(
+					"/bin/npm"
+				);
+			});
+
+			it("should fail with the command to run by hand, and write nothing", async () => {
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ language: "roblox-ts" },
+					[],
+					npmProcesses(1)
+				);
+
+				expect(errorMessage(result)).toContain(NPM);
+				expect(errorMessage(result)).toContain("npm error network");
+				expect(await exists("rogen.json")).toBe(false);
+			});
+		});
+
 		it("should refuse a language it doesn't know, naming the ones it does", async () => {
 			const result = await runInit(
 				new MockPromptService([], false),

@@ -1,12 +1,17 @@
 import path from "path";
 import { firstLine } from "../../base/strings.js";
-import { ErrorUtils, failureReason } from "../../base/errors.js";
+import { ErrorUtils, ToolError, failureReason } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { GitRepository } from "./git-repository.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
-import { InitPlan, InitWritten, PlannedCommand } from "./init-service.js";
+import {
+	InitPlan,
+	InitWritten,
+	PlannedCommand,
+	PlannedScaffold,
+} from "./init-service.js";
 
 export class InitWriter {
 	constructor(
@@ -22,6 +27,15 @@ export class InitWriter {
 		onWritten: (written: InitWritten) => void,
 		dryRun = false
 	): Promise<Result<void, Error>> {
+		if (plan.scaffold) {
+			const scaffolded = await this.scaffold(
+				plan.scaffold,
+				plan.directory,
+				dryRun
+			);
+			if (scaffolded.isErr()) return scaffolded;
+			onWritten({ kind: "scaffold", scaffold: plan.scaffold });
+		}
 		for (const file of plan.files) {
 			const { fileName, content } = file;
 			const written = await tryWithAsync(async () => {
@@ -71,6 +85,33 @@ export class InitWriter {
 		}
 		await this.runCommands(plan, onWritten, dryRun);
 		return ok(undefined);
+	}
+
+	/** Runs the tool, then removes what it wrote that `init` replaces; the tool failing is an error with the command to run by hand, since a project without its files is not what was asked for. */
+	private async scaffold(
+		{ command, replaces }: PlannedScaffold,
+		directory: string,
+		dryRun: boolean
+	): Promise<Result<void, Error>> {
+		if (dryRun) return ok(undefined);
+		const failed = await this.failureOf(command, directory);
+		if (failed !== undefined)
+			return err(
+				new ToolError(
+					`'${command.command}' failed: ${failed}.`,
+					`Run it in ${directory} yourself, then run 'rogen init' again.`
+				)
+			);
+		const removed = await tryWithAsync(async () => {
+			for (const file of replaces) {
+				const target = path.join(directory, file);
+				if (await this.fileSystemService.exists(target))
+					await this.fileSystemService.delete(target, true);
+			}
+		});
+		return removed.isErr()
+			? err(ErrorUtils.wrap("Failed to clear the starter", removed.error))
+			: ok(undefined);
 	}
 
 	/** A command that fails leaves the project written, so it is reported to the caller, which says what to run by hand, and the commands after it are skipped. */

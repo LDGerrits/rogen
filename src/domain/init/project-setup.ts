@@ -24,11 +24,12 @@ import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
-import { InitKind } from "./init-service.js";
+import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectTemplate } from "./project-template.js";
 import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
+import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { StarterPlaces, StartingPlaces } from "./starter-places.js";
 import { SyncSteps } from "./sync-steps.js";
@@ -55,6 +56,11 @@ export interface ProjectChoices {
 	readonly sample?: boolean;
 	/** The places a project of several starts with. */
 	readonly places?: StartingPlaces;
+	/** The tool that writes the project's own files first, and what runs once the files are in. */
+	readonly scaffold?: {
+		readonly tool: PlannedScaffold;
+		readonly after: readonly PlannedCommand[];
+	};
 	/** Whether luau-lsp is set up in the folder, which keeps `sourcemap.json` current for Darklua. */
 	readonly luauLsp?: boolean;
 	/** What to add to the `.gitignore` that was there, which `init` never edits. */
@@ -146,18 +152,26 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
 		const kind = questions.kind();
-		const language = await questions.language(directory);
-		if (language === undefined) return ok(undefined);
+		const picked = await questions.language(directory);
+		if (picked === undefined) return ok(undefined);
+		const starter = this.starterFor(kind, picked);
+		const language = starter ? (picked.scaffolded?.() ?? picked) : picked;
 		const usesDarklua = await questions.darklua(directory);
 		if (usesDarklua === undefined) return ok(undefined);
 		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
 		questions.usesDarklua = usesDarklua;
 
-		const several = await this.severalPlaces(kind, language, darklua);
+		const several = await this.severalPlaces(
+			kind,
+			language,
+			darklua,
+			starter !== undefined
+		);
 		if (several === undefined) return ok(undefined);
 		const places = several
 			? await new StarterPlaces(this.fileSystemService).plan(
-					directory.path
+					directory.path,
+					starter && ((place, shared) => starter.place(place, shared))
 				)
 			: undefined;
 		if (places && questions.choices.sourcePaths !== undefined)
@@ -177,7 +191,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const tree = await this.resolveTree(chosen, kind);
 		if (tree.isErr()) return tree;
 
-		let syncPath = new SyncSteps(language, darklua).syncPath;
+		let syncPath = places
+			? undefined
+			: new SyncSteps(language, darklua).syncPath;
 		if (darklua) {
 			const answer = await questions.syncPath(directory, [
 				...sourcePaths,
@@ -188,10 +204,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 
 		const routed = takesRoutes(tree.value);
-		const mounts = routed
+		const mounted = routed
 			? await questions.mounts(directory, language)
 			: [];
-		if (mounts === undefined) return ok(undefined);
+		if (mounted === undefined) return ok(undefined);
+		// Each place compiles into its own include, so the root's is never there.
+		const mounts =
+			starter && places
+				? mounted.map((mount) => ({ ...mount, optional: true }))
+				: mounted;
 
 		const routes = routed
 			? await questions.routes(
@@ -225,7 +246,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			kind,
 			tree.value,
 			language,
-			routes.routes
+			routes.routes,
+			starter !== undefined
 		);
 		const sampleOf = new GreeterSample(
 			language,
@@ -267,6 +289,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			skipGit,
 			sample,
 			...(places && { places }),
+			...(starter && {
+				scaffold: {
+					tool: starter.scaffold(),
+					after: places ? [starter.scripts(places.place)] : [],
+				},
+			}),
 			luauLsp: await this.luauLspIsSetUp(),
 			...(processed &&
 				!skipGit && {
@@ -277,7 +305,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					new ProjectTemplate(
 						kind,
 						path.basename(directory.path),
-						processed
+						processed,
+						starter
+							? RobloxTsStarter.ignored(places !== undefined)
+							: []
 					),
 					tree.value,
 					skipGit
@@ -285,6 +316,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				...darkluaConfig,
 				...sampleFiles,
 				...(places?.files ?? []),
+				...(starter && places
+					? [starter.rootTsconfig(places.sharedSourcePath)]
+					: []),
 			]),
 		});
 	}
@@ -341,13 +375,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private noPlacesBecause(
 		kind: InitKind,
 		language: Language,
-		darklua: Darklua | undefined
+		darklua: Darklua | undefined,
+		scaffolded: boolean
 	): string | undefined {
 		const given = this.questions.choices.projectFile;
 		if (kind !== "place") return `is for a place, not for a ${kind}.`;
 		const later =
 			"Start with one place, then add more with 'rogen init places/<name>'.";
-		if (language.compiler)
+		if (language.compiler && !scaffolded)
 			return `isn't set up for ${language.copy.label} yet. ${later}`;
 		if (darklua) return `isn't set up with Darklua yet. ${later}`;
 		if (this.directory.hasHandWrittenProject && given !== "new")
@@ -359,21 +394,43 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	private async severalPlaces(
 		kind: InitKind,
 		language: Language,
-		darklua: Darklua | undefined
+		darklua: Darklua | undefined,
+		scaffolded: boolean
 	): Promise<boolean | undefined> {
-		const problem = this.noPlacesBecause(kind, language, darklua);
+		const problem = this.noPlacesBecause(
+			kind,
+			language,
+			darklua,
+			scaffolded
+		);
 		if (problem === undefined) return this.questions.places(this.directory);
 		if (this.questions.choices.places === true)
 			throw new UsageError(`--places ${problem}`);
 		return false;
 	}
 
-	/** Whether the Greeter sample is written: in a new place, in Luau, in a folder with no code, with the routes its folders are named after. */
+	/** The tool that starts a new place of `language` in a folder with nothing of its own: no code, no `package.json` or `tsconfig.json` (a language that is present has its own) for the tool to write over, and no project file to lift. */
+	private starterFor(
+		kind: InitKind,
+		language: Language
+	): RobloxTsStarter | undefined {
+		const { directory } = this;
+		return kind === "place" &&
+			!directory.hasHandWrittenProject &&
+			!directory.has("package.json") &&
+			!language.present &&
+			directory.layout.codeFolders.length === 0
+			? RobloxTsStarter.of(language)
+			: undefined;
+	}
+
+	/** Whether the Greeter sample is written: in a new place, in a folder with no code, with the routes its folders are named after, and for a compiled language only when its starter tool has set the folder up. */
 	private wantsSample(
 		kind: InitKind,
 		tree: ProjectTree,
 		language: Language,
-		routes: readonly RouteId[]
+		routes: readonly RouteId[],
+		scaffolded: boolean
 	): boolean {
 		const { codeFolders } = this.directory.layout;
 		const problem =
@@ -381,8 +438,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				? `is for a place, not for a ${kind}.`
 				: tree.kind !== "new"
 					? `needs a new tree, and ${DEFAULT_PROJECT_FILE} is lifted.`
-					: language.compiler
-						? `isn't written for ${language.copy.label} yet.`
+					: language.compiler && !scaffolded
+						? `isn't written for ${language.copy.label} here, where ${language.copy.label} was set up already.`
 						: codeFolders.length > 0
 							? `is for a folder with no code, and ${codeFolders.join(", ")} has some.`
 							: SAMPLE_ROUTES.some(
@@ -494,6 +551,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig(
 			{
+				...(choices.scaffold && {
+					name: path.basename(this.directory.path),
+				}),
 				...tree.fields,
 				...(routes && { sourcePaths: [...sourcePaths], routes }),
 				...(choices.places && {
@@ -510,6 +570,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		for (const directory of choices.places?.directories ?? [])
 			builder.addDirectory(directory);
 		for (const note of choices.places?.notes ?? []) builder.addNote(note);
+		if (choices.scaffold) {
+			builder.setScaffold(choices.scaffold.tool);
+			for (const command of choices.scaffold.after)
+				builder.addCommand(command);
+		}
 		for (const file of choices.templateFiles ?? []) builder.addFile(file);
 		if (choices.kind !== undefined && !choices.skipGit)
 			builder.requestGitInit();
@@ -531,6 +596,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					choices.tree.from,
 					choices.unmounted
 				)
+			);
+		if (choices.scaffold)
+			builder.addNote(
+				`Starts from create-roblox-ts, which writes package.json, tsconfig.json and the compiler's settings.`
 			);
 		if (compiler && !darklua && syncPath) {
 			builder.addNote(
@@ -580,6 +649,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			places,
 			luauLsp,
 			gitignoreHint,
+			scaffold,
 		}: ProjectChoices,
 		tree: TreePlan
 	): void {
@@ -593,7 +663,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			return;
 		}
 		const compiled = this.directory.defaultSourcePath(language);
-		if (compiler && sourcePaths.length > 0 && compiled !== sourcePaths[0]) {
+		if (
+			compiler &&
+			!scaffold &&
+			sourcePaths.length > 0 &&
+			compiled !== sourcePaths[0]
+		) {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
@@ -606,10 +681,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`
 			);
-		new SyncSteps(language, darklua).plan(builder, this.directory.path, {
-			processed: compiler ? [compiler.outDir] : sourcePaths,
-			syncPath,
-			luauLsp: luauLsp === true,
-		});
+		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
+			builder,
+			this.directory.path,
+			{
+				processed: compiler ? [compiler.outDir] : sourcePaths,
+				syncPath,
+				luauLsp: luauLsp === true,
+			}
+		);
 	}
 }

@@ -3,6 +3,7 @@ import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	CONFIG_FILE_NAMES,
 	DEFAULT_SOURCE_PATH,
+	RogenConfig,
 	configFileContent,
 } from "../config/config.js";
 import { PlaceFinder } from "../config/place-finder.js";
@@ -38,7 +39,14 @@ export class StarterPlaces {
 		this.workspaces = new WorkspaceFiles(files);
 	}
 
-	async plan(root: string): Promise<StartingPlaces> {
+	/** `extend` adds what the first place needs beyond its config, given the folders of the place and of the shared code. */
+	async plan(
+		root: string,
+		extend?: (
+			place: string,
+			shared: string
+		) => { files: PlannedFile[]; config: Partial<RogenConfig> }
+	): Promise<StartingPlaces> {
 		const sharedSourcePath = path.posix.join(
 			PLACES_FOLDER,
 			SHARED,
@@ -61,6 +69,7 @@ export class StarterPlaces {
 		);
 		const placeSourcePath = path.posix.join(place, DEFAULT_SOURCE_PATH);
 		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
+		const extra = extend?.(place, sharedSourcePath);
 		return {
 			sharedSourcePath,
 			place,
@@ -69,8 +78,12 @@ export class StarterPlaces {
 			files: [
 				{
 					fileName: configFile,
-					content: configFileContent({ servePort: port }),
+					content: configFileContent({
+						...extra?.config,
+						servePort: port,
+					}),
 				},
+				...(extra?.files ?? []),
 				...workspace.files,
 			],
 			directories: [placeSourcePath],

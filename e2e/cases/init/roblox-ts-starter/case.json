@@ -1,0 +1,28 @@
+{
+	"steps": [
+		[
+			"init",
+			"--non-interactive",
+			"--language",
+			"roblox-ts"
+		],
+		[
+			"where",
+			"src/Greeter/server/Greeter.server.ts"
+		]
+	],
+	"rojo": false,
+	"show": [
+		".gitignore",
+		"README.md",
+		"src/Greeter/shared/Greeting.ts",
+		"src/Greeter/server/Greeter.server.ts",
+		"src/Greeter/client/Greeter.client.ts"
+	],
+	"output": [
+		"init"
+	],
+	"tools": {
+		"npm": "case \"$1\" in\ncreate)\n  mkdir -p src/client src/server src/shared\n  echo '{\"name\":\"made\",\"scripts\":{\"build\":\"rbxtsc\",\"watch\":\"rbxtsc -w\"}}' > package.json\n  echo '{\"compilerOptions\":{\"rootDir\":\"src\",\"outDir\":\"out\"}}' > tsconfig.json\n  echo '{\"name\":\"made\",\"tree\":{\"$className\":\"DataModel\"}}' > default.project.json\n  : > src/client/main.client.ts; : > src/server/main.server.ts; : > src/shared/module.ts ;;\npkg)\n  printf '{\"scripts\":{\"build\":\"%s\",\"watch\":\"%s\"}}\\n' \"${3#scripts.build=}\" \"${4#scripts.watch=}\" > package.json ;;\nesac"
+	}
+}

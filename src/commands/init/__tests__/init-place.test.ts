@@ -449,6 +449,63 @@ describe("init for a place", () => {
 		expect(await exists("places/lobby/rogen.json")).toBe(true);
 	});
 
+	describe("in a roblox-ts root", () => {
+		beforeEach(async () => {
+			await write("tsconfig.json", "{}");
+			await write("rogen.json", {
+				tree: { $className: "DataModel" },
+				sourcePaths: ["places/shared/src"],
+				placePaths: ["places/*"],
+				routes: {
+					server: "ServerScriptService",
+					"*": "ReplicatedStorage",
+				},
+			});
+			await memFs.createDirectory(path.join(root, "places/shared/src"));
+		});
+
+		it("should write the place's tsconfig, which compiles the shared code beside its own", async () => {
+			await run(["places/lobby"]);
+
+			const { compilerOptions, include } = await readJson(
+				"places/lobby/tsconfig.json"
+			);
+			expect(compilerOptions.rootDirs).toEqual(["src", "../shared/src"]);
+			expect(compilerOptions.outDir).toBe("out");
+			expect(include).toEqual(["src", "../shared/src"]);
+		});
+
+		it("should name the place, sync from out and keep the runtime include in its folder", async () => {
+			await run(["places/lobby"]);
+
+			expect(await readJson("places/lobby/rogen.json")).toMatchObject({
+				name: "lobby",
+				syncPath: "out",
+				tree: {
+					ReplicatedStorage: {
+						rbxts_include: { $path: { optional: "include" } },
+					},
+				},
+			});
+		});
+
+		it("should say to compile the place and add it to the package scripts", async () => {
+			await run(["places/lobby"]);
+
+			const info = log.texts("info").join("\n");
+			expect(info).toContain("rbxtsc -w -p places/lobby");
+			expect(info).toContain("build and watch scripts in package.json");
+		});
+
+		it("should write no tsconfig for a Luau root", async () => {
+			await memFs.delete(path.join(root, "tsconfig.json"));
+
+			await run(["places/lobby"]);
+
+			expect(await exists("places/lobby/tsconfig.json")).toBe(false);
+		});
+	});
+
 	it("should say what it wrote and what to do next", async () => {
 		await run(["places/lobby"]);
 

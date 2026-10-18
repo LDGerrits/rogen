@@ -113,6 +113,17 @@ export class RobloxTs implements Language {
 		];
 	}
 
+	scaffolded(): RobloxTs {
+		return new RobloxTs(
+			{
+				...this.facts,
+				includeInstalled: true,
+				rbxtsScopes: [...(this.facts.rbxtsScopes ?? []), "@rbxts"],
+			},
+			true
+		);
+	}
+
 	routeKey(id: string): string {
 		return id;
 	}

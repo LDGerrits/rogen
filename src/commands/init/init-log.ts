@@ -99,6 +99,14 @@ function flagsOf({ question, value, flag }: InitDecision): string[] {
 		: value.map((item) => `${flag} ${item}`);
 }
 
+/** The tool that scaffolds the project is reported as the command it is. */
+const asCommand = (
+	written: InitWritten
+): Exclude<InitWritten, { kind: "scaffold" }> =>
+	written.kind === "scaffold"
+		? { kind: "command", command: written.scaffold.command }
+		: written;
+
 const indent = (line: string) => `  ${line}`;
 
 const STUDIO_STEP = "In Studio, press Connect in the Rojo plugin.";
@@ -193,7 +201,8 @@ export class InitLog implements InitReporter {
 				: `Rojo is already pinned in ${shown}.`;
 	}
 
-	written(item: InitWritten): void {
+	written(written: InitWritten): void {
+		const item = asCommand(written);
 		const would = this.dryRun ? "Would create" : "Created";
 		if (item.kind === "git" && item.failed !== undefined) {
 			this.logService.warn(
@@ -320,7 +329,8 @@ export class InitJsonLog implements InitReporter {
 		this.decided = plan.decided;
 	}
 
-	written(item: InitWritten): void {
+	written(written: InitWritten): void {
+		const item = asCommand(written);
 		if (item.kind === "git") {
 			this.git =
 				item.failed !== undefined

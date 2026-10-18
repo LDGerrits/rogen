@@ -14,7 +14,9 @@ export class ProjectTemplate {
 		/** The project's name, which Rojo takes from the folder. */
 		readonly name: string,
 		/** The folder Darklua writes, which git is to leave out. */
-		readonly syncPath?: string
+		readonly syncPath?: string,
+		/** Lines the language adds to the `.gitignore`. */
+		readonly ignored: readonly string[] = []
 	) {}
 
 	get readme(): PlannedFile {
@@ -46,9 +48,13 @@ export class ProjectTemplate {
 		const processed = this.syncPath
 			? `\n# Darklua output\n/${normalizeDir(this.syncPath).replace(/\/$/, "")}\n`
 			: "";
+		const language =
+			this.ignored.length > 0
+				? `\n# Compiler output and installed packages\n${this.ignored.join("\n")}\n`
+				: "";
 		return {
 			fileName: ".gitignore",
-			content: `${project}\nsourcemap.json\n${processed}`,
+			content: `${project}\nsourcemap.json\n${processed}${language}`,
 		};
 	}
 

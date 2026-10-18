@@ -105,13 +105,30 @@ Open the `.code-workspace` that `init` wrote. luau-lsp starts one language serve
 
 </Steps>
 
+## roblox-ts with Places
+
+`rogen init --language roblox-ts --places` in an empty folder runs [create-roblox-ts](/docs/v2/setups/roblox-ts) for the root's `package.json` and `node_modules`, then lays out the places. rbxtsc compiles one `tsconfig.json` at a time, so each place has one of its own, and the code the places share is compiled once into each place's `out`:
+
+```
+package.json, node_modules/                from create-roblox-ts, at the root
+tsconfig.json                              the editor's: checks places/shared/src
+places/shared/src/Greeter/...              shared by every place
+places/game/tsconfig.json                  compiles src and ../shared/src into out
+places/game/rogen.json                     name, syncPath "out", the include override
+places/game/src/Game/server/Game.server.ts
+```
+
+The place's `tsconfig.json` lists both source folders in `rootDirs` and in `paths`, so `import { greeting } from "Greeter/shared/Greeting"` works from either, and `typeRoots` names the root's `node_modules/@rbxts`. rbxtsc writes its runtime into the `include` beside the `tsconfig.json` it reads, so the place's `rogen.json` overrides the `rbxts_include` mount to the place's own `include`. The root has no `syncPath` and mounts `include` as optional, since nothing compiles into the root. `init` points the `build` and `watch` scripts of `package.json` at the first place, so `npm run watch` compiles it.
+
+`rogen init places/lobby` in such a root writes the same files for the new place, and says to add `rbxtsc -p places/lobby` and `rbxtsc -w -p places/lobby` to the scripts. Run the watch of each place in a terminal of its own.
+
 ## Projects in Places
 
 A project of the root is a project of every place. `release` in the root's `rogen.json` writes `release.project.json` in each place's folder, and `rogen build release -o game.rbxl` inside a place builds that place's release. A place may declare projects of its own too.
 
 ## Darklua with Places
 
-Each place's Darklua config sits beside that place's sourcemap. A place inherits the root's `syncPath`, written relative to its folder, so every place has its own `dist`. The processed copy of the shared code is the same from every place as long as the places mount it at the same instance paths. A place that mounts it somewhere else sets its own `syncPath`. See the [Darklua guide](/docs/v2/setups/darklua).
+Each place's Darklua config sits beside that place's sourcemap. A place inherits the root's `syncPath` as the root's own folder, so places that don't set one share one `dist`. The processed copy of the shared code is the same from every place as long as the places mount it at the same instance paths. A place that mounts it somewhere else, or should have a `dist` of its own, sets its own `syncPath` in its `rogen.json`. See the [Darklua guide](/docs/v2/setups/darklua).
 
 <Callout type="info">
 	A config that lists places is never served, and it can't set `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`: each place sets its own ([`config.placeSetting`](/docs/v2/diagnostics#config-placesetting)).

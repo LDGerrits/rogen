@@ -37,6 +37,9 @@ export const CASES_DIR = path.resolve("e2e/cases");
 
 const RUN_TIMEOUT_MS = 20_000;
 
+/** A step that downloads packages takes longer. */
+export const NETWORK_TIMEOUT_MS = 180_000;
+
 export interface CaseSpec {
 	/** The arguments of each `rogen` run, or `["$", program, ...arguments]` for a program that runs between them. */
 	readonly steps?: readonly (readonly string[])[];
@@ -54,6 +57,8 @@ export interface CaseSpec {
 	readonly place?: string;
 	/** Programs that stand in for the toolchain on a machine that has none: each name is a script on the PATH that logs its call, then runs the body given (shell, so not on Windows). The case gets no Rokit file pinning Rojo, and a home folder of its own, so Rogen sees a machine with only these. The calls are in the transcript under `ran:`. */
 	readonly tools?: Readonly<Record<string, string>>;
+	/** The steps download packages (npm), so the case runs only when `ROGEN_E2E_NETWORK=1` is set, and its steps may take longer. */
+	readonly network?: boolean;
 }
 
 /** Every option a case may set; a key outside it is a typo, which would otherwise be ignored. */
@@ -68,6 +73,7 @@ const SPEC_KEYS: Record<keyof CaseSpec, true> = {
 	stdin: true,
 	place: true,
 	tools: true,
+	network: true,
 };
 
 /** A cache folder for this run alone, so what Rogen remembers of the files it wrote is not shared by runs, and is gone when the run ends. */
@@ -166,6 +172,11 @@ export function bundleCli(): { readonly cli: string; dispose(): void } {
 	};
 }
 
+/** Whether the case downloads packages, which it can do only where there is a network. */
+export function needsNetwork(name: string): boolean {
+	return readSpec(path.join(CASES_DIR, name)).network === true;
+}
+
 export async function runCase(cli: string, name: string): Promise<string> {
 	const caseDir = path.join(CASES_DIR, name);
 	const spec = readSpec(caseDir);
@@ -211,7 +222,8 @@ export async function runCase(cli: string, name: string): Promise<string> {
 					: invocation(cli, args)),
 				path.join(dir, spec.cwd ?? ""),
 				{ ...fake?.env, ...spec.env },
-				spec.stdin
+				spec.stdin,
+				spec.network ? NETWORK_TIMEOUT_MS : RUN_TIMEOUT_MS
 			);
 			if (!external) {
 				const problem = outputProblem(args, result.stdout);
@@ -376,13 +388,14 @@ async function run(
 	args: readonly string[],
 	cwd: string,
 	env?: Readonly<Record<string, string>>,
-	stdin = ""
+	stdin = "",
+	timeout = RUN_TIMEOUT_MS
 ): Promise<RunResult> {
 	try {
 		const running = execFileAsync(command, [...args], {
 			cwd,
 			encoding: "utf8",
-			timeout: RUN_TIMEOUT_MS,
+			timeout,
 			env: childEnv(env),
 		});
 		running.child.stdin?.on("error", () => undefined);
@@ -552,6 +565,7 @@ function snapshot(dir: string): Map<string, string> {
 		for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
 			const full = path.join(current, entry.name);
 			const relative = path.relative(dir, full).split(path.sep).join("/");
+			if (entry.isDirectory() && entry.name === "node_modules") continue;
 			if (entry.isSymbolicLink())
 				files.set(relative, `link:${fs.readlinkSync(full)}`);
 			else if (entry.isDirectory() && entry.name === ".git")

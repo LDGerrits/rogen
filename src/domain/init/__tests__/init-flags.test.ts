@@ -16,6 +16,7 @@ const withPackages: WorkspaceSpec = {
 	packageDirs: ["Packages"],
 };
 const darklua: WorkspaceSpec = { darkluaConfig: ".darklua.json" };
+const rbxts: WorkspaceSpec = { language: "roblox-ts" };
 
 async function run(
 	workspace: WorkspaceSpec,
@@ -176,10 +177,18 @@ describe("init choices given as flags", () => {
 			expect(asked.unwrap()?.sample).toBe(false);
 		});
 
-		it("should write none for roblox-ts", async () => {
+		it("should write it in a new roblox-ts project, whose starter tool sets the folder up", async () => {
 			const { asked } = await run(luau, { language: "roblox-ts" });
 
+			expect(asked.unwrap()?.sample).toBe(true);
+			expect(asked.unwrap()?.scaffold?.tool.command.file).toBe("npm");
+		});
+
+		it("should write none where roblox-ts is set up already", async () => {
+			const { asked } = await run(rbxts, {});
+
 			expect(asked.unwrap()?.sample).toBe(false);
+			expect(asked.unwrap()?.scaffold).toBeUndefined();
 		});
 
 		it("should refuse --sample where it can't be written, saying why", async () => {
@@ -195,12 +204,8 @@ describe("init choices given as flags", () => {
 					.message
 			).toBe("--sample is for a place, not for a model.");
 			expect(
-				(
-					await refused(
-						run(luau, { sample: true, language: "roblox-ts" })
-					)
-				).message
-			).toContain("--sample isn't written for");
+				(await refused(run(rbxts, { sample: true }))).message
+			).toContain("--sample isn't written for roblox-ts here");
 		});
 	});
 
@@ -284,7 +289,7 @@ describe("init choices given as flags", () => {
 			]);
 		});
 
-		it("should refuse a model, a plugin, Darklua and roblox-ts, saying why", async () => {
+		it("should refuse a model, a plugin, Darklua and a roblox-ts project that is set up, saying why", async () => {
 			expect(
 				(await refused(run(luau, { places: true, kind: "model" })))
 					.message
@@ -294,12 +299,8 @@ describe("init choices given as flags", () => {
 					.message
 			).toContain("--places isn't set up with Darklua yet.");
 			expect(
-				(
-					await refused(
-						run(luau, { places: true, language: "roblox-ts" })
-					)
-				).message
-			).toContain("--places isn't set up for");
+				(await refused(run(rbxts, { places: true }))).message
+			).toContain("--places isn't set up for roblox-ts yet.");
 		});
 
 		it("should refuse --source-path, which several places have in places/shared", async () => {

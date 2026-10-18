@@ -131,6 +131,8 @@ export interface Language {
 	/** Top-level folders holding the language's own files, never offered as code folders. */
 	readonly reservedFolders: readonly string[];
 
+	/** The language as it is once its own starter tool has run, which makes the folders that tool is known to make. */
+	scaffolded?(): Language;
 	/** How a route key is spelled, such as Luau's `Server` or roblox-ts's `server`. */
 	routeKey(id: string): string;
 	/** The source path the language's own config names, if any; `init` prefers it. */

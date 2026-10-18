@@ -53,6 +53,12 @@ describe("SyncSteps", () => {
 			]);
 		});
 
+		it("should run the project's own command to compile when it has one", () => {
+			expect(
+				steps(new SyncSteps(robloxTs, undefined, "npm run watch")).run
+			).toEqual(["npm run watch", "rogen serve"]);
+		});
+
 		it("should watch the dirs into the sync path beside the server when Darklua is used", () => {
 			const { run } = steps(new SyncSteps(luau, darklua));
 

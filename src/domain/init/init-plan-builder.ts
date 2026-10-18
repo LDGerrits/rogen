@@ -16,6 +16,7 @@ import {
 	InitDecision,
 	InitPlan,
 	PlannedCommand,
+	PlannedScaffold,
 	PresentItem,
 } from "./init-service.js";
 
@@ -37,6 +38,7 @@ export class InitPlanBuilder {
 	private readonly edits: string[] = [];
 	private readonly present: PresentItem[] = [];
 	private readonly commands: PlannedCommand[] = [];
+	private scaffold: PlannedScaffold | undefined;
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -73,6 +75,11 @@ export class InitPlanBuilder {
 	/** A file of the project's template, which is written after the config. */
 	addFile(file: PlannedFile): void {
 		this.templateFiles.push(file);
+	}
+
+	/** The tool that writes the project's own files first. */
+	setScaffold(scaffold: PlannedScaffold): void {
+		this.scaffold = scaffold;
 	}
 
 	/** A program to run after the files are written, after those added before it. */
@@ -132,6 +139,7 @@ export class InitPlanBuilder {
 			decided: this.decided,
 			present: [...this.present],
 			gitInit: this.gitInit,
+			...(this.scaffold && { scaffold: this.scaffold }),
 			files: [
 				...written,
 				...this.templateFiles,

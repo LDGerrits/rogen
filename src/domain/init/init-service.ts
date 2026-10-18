@@ -67,8 +67,17 @@ export interface PlannedCommand {
 	readonly timeout: number;
 }
 
+/** A tool that writes the project's own files before `init` adds its own, such as the create tool of a compiler. */
+export interface PlannedScaffold {
+	readonly command: PlannedCommand;
+	/** Relative to the plan's directory: what the tool writes that `init` replaces, removed once the tool has run. */
+	readonly replaces: readonly string[];
+}
+
 export interface InitPlan {
 	readonly directory: string;
+	/** Runs before any file is written; a failure writes nothing. */
+	readonly scaffold?: PlannedScaffold;
 	readonly files: readonly PlannedFile[];
 	/** Relative to `directory`; created by `init` when missing. */
 	readonly directories: readonly string[];
@@ -89,6 +98,7 @@ export interface InitPlan {
 }
 
 export type InitWritten =
+	| { readonly kind: "scaffold"; readonly scaffold: PlannedScaffold }
 	| { readonly kind: "file"; readonly file: PlannedFile }
 	| { readonly kind: "directory"; readonly directory: string }
 	/** `failed` is why `git init` did not make a repository, which leaves the project complete without one. */

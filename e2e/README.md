@@ -14,7 +14,7 @@ code, the written files and the tree Rojo sees.
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {}, "place": "place.rbxl" }
+  case.json      optional: { "steps": [["build", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {}, "place": "place.rbxl", "network": false }
   place.luau     with "place": what changed in Studio, run on the place built from project/
   expected.txt   the transcript
 ```
@@ -39,6 +39,7 @@ e2e/cases/<area>/<case>/
   and the project gets no `rokit.toml` pinning Rojo. Each script logs its call, and
   the calls are in the transcript under `ran:`. Use `"rojo": false` with it, since the
   sourcemap step needs the real Rojo.
+- `network: true` marks a case whose steps download packages (`npm create roblox-ts`, `npx rbxtsc`). It runs only with `ROGEN_E2E_NETWORK=1`, and its steps may take three minutes. The transcript lists every file the tools write (not `node_modules`), so a new version of create-roblox-ts that writes another file changes it.
 - `stdin` is the text every step reads on its standard input; the transcript shows it under `stdin:`.
 - `place` makes a place file before the steps run, at that path inside the project:
   the project is built and synced into a place by `rojo build`, then `place.luau`

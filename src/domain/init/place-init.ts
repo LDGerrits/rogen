@@ -18,12 +18,13 @@ import {
 import { ConfigService } from "../config/config-service.js";
 import { PlaceFinder } from "../config/place-finder.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
-import { PlannedFile } from "../toolchain/toolchain.js";
+import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 import { InitQuestions } from "./init-questions.js";
 import { KnownPlaces } from "./known-places.js";
+import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { WorkspaceFiles } from "./workspace-files.js";
 
 interface Listing {
@@ -93,6 +94,10 @@ export class PlaceInit {
 			known.foldersWith(root, folder),
 			place
 		);
+		const compiled = RobloxTsStarter.of(sourcePaths.language)?.place(
+			place,
+			(shared[0] ?? DEFAULT_SOURCE_PATH).replace(/\/$/, "")
+		);
 		const config: RogenConfig = {
 			servePort: port,
 			...(placeIds.length > 0 && { servePlaceIds: [...placeIds] }),
@@ -100,6 +105,7 @@ export class PlaceInit {
 				sourcePaths: sourcePaths.sourcePaths,
 			}),
 			...(sourcePaths.syncPath && { syncPath: sourcePaths.syncPath }),
+			...compiled?.config,
 		};
 		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
 		return ok({
@@ -107,6 +113,7 @@ export class PlaceInit {
 			files: [
 				...(listed.value.edit ? [listed.value.edit] : []),
 				{ fileName: configFile, content: configFileContent(config) },
+				...(compiled?.files ?? []),
 				...workspace.files,
 			],
 			directories: sourcePaths.directories.map((directory) =>
@@ -121,8 +128,16 @@ export class PlaceInit {
 			],
 			nextSteps: {
 				setup: [],
-				run: ["rogen serve"],
+				run: [
+					...(compiled ? [`rbxtsc -w -p ${place}`] : []),
+					"rogen serve",
+				],
 				edits: [
+					...(compiled
+						? [
+								`Add rbxtsc -p ${place} and rbxtsc -w -p ${place} to the build and watch scripts in package.json, so 'npm run watch' compiles it too.`,
+							]
+						: []),
 					`Put the code of ${path.basename(folder)} in ${path.posix.join(place, sourcePaths.directories[0] ?? DEFAULT_SOURCE_PATH)}: it gets the routes and the tree of ${this.named(rootFile)}, and the code in its source paths wins a clash with the shared code.`,
 				],
 			},
@@ -249,6 +264,7 @@ export class PlaceInit {
 				sourcePaths?: string[];
 				syncPath?: string;
 				directories: string[];
+				language: Language;
 		  }
 		| undefined
 	> {
@@ -281,6 +297,7 @@ export class PlaceInit {
 			}),
 			...(syncPath && { syncPath }),
 			directories: answered,
+			language: workspace.language,
 		};
 	}
 }

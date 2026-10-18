@@ -57,7 +57,7 @@ const InitOptions = [
 		type: "string",
 		placeholder: "id",
 		description:
-			"The language: luau or roblox-ts. Detected from the folder when not given.",
+			"The language: luau or roblox-ts. Detected from the folder when not given. For roblox-ts in a folder with no code, package.json or tsconfig.json, init first runs 'npm create roblox-ts', which needs npm and the network.",
 	},
 	{
 		name: "darklua",
