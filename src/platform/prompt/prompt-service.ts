@@ -49,6 +49,10 @@ export interface PromptService {
 	multiSelect<T extends string>(
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined>;
+	/** A select that narrows its choices to those matching what is typed. */
+	autocomplete<T extends string>(
+		options: SelectPromptOptions<T>
+	): Promise<T | undefined>;
 }
 
 export const PromptService =

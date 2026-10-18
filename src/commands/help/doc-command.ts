@@ -35,6 +35,24 @@ registerCommand(
 						"Opens the documentation, or prints one topic offline",
 					description:
 						"Opens the documentation in a browser, or prints one topic of it offline.",
+					picker: [
+						{
+							message: "Which topic?",
+							choices: [
+								{
+									value: "",
+									label: "Open the documentation",
+									hint: "in a browser",
+								},
+								...DocTopics.NAMES.map((name) => ({
+									value: name,
+									label: name,
+									hint: "print it offline",
+								})),
+							],
+							into: "positional",
+						},
+					],
 					options: DocOptions,
 					output: { document: DocOutput },
 					effects: ["opensBrowser"],

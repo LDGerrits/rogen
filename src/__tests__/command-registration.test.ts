@@ -6,7 +6,18 @@ const CLI_PAGE = path.resolve(SRC, "../docs/content/docs/v2/cli.mdx");
 
 const commandIds = fs
 	.readdirSync(path.join(SRC, "commands"), { withFileTypes: true })
-	.filter((entry) => entry.isDirectory() && entry.name !== "__tests__")
+	.filter(
+		(entry) =>
+			entry.isDirectory() &&
+			fs.existsSync(
+				path.join(
+					SRC,
+					"commands",
+					entry.name,
+					`${entry.name}-command.ts`
+				)
+			)
+	)
 	.map((entry) => entry.name);
 
 describe("the commands", () => {

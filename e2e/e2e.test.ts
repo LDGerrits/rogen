@@ -10,6 +10,9 @@ import {
 	runCase,
 } from "./harness.js";
 
+/** Cases run side by side, so a busy machine takes longer than jest's default for one that spawns several programs. */
+const LOCAL_TIMEOUT_MS = 30_000;
+
 const UPDATE = process.env.UPDATE_E2E === "1";
 const online = process.env.ROGEN_E2E_NETWORK === "1";
 const cases = discoverCases();
@@ -44,11 +47,15 @@ describeWithRojo("end to end", () => {
 		expect(cases.length).toBeGreaterThan(0);
 	});
 
-	it.concurrent.each(local)("%s", async (name) => {
-		const { transcript, expected } = await transcriptOf(name);
+	it.concurrent.each(local)(
+		"%s",
+		async (name) => {
+			const { transcript, expected } = await transcriptOf(name);
 
-		expect(transcript).toBe(expected);
-	});
+			expect(transcript).toBe(expected);
+		},
+		LOCAL_TIMEOUT_MS
+	);
 
 	if (online)
 		it.concurrent.each(downloading)(

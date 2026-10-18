@@ -70,6 +70,7 @@ const modules = {
 		help: [],
 		init: [],
 		list: [],
+		picker: ["command-picker", "project-context"],
 		plugin: [],
 		serve: [],
 		sourcemap: [],

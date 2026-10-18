@@ -51,6 +51,8 @@ import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { ToolLocator } from "./domain/toolchain/tool-locator.js";
 import { InitService } from "./domain/init/init-service.js";
+import { CommandPicker } from "./commands/picker/command-picker.js";
+import { ProjectContext } from "./commands/picker/project-context.js";
 import { LegacyConfig } from "./domain/legacy/legacy-config.js";
 import { CoreToolchainService } from "./domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "./domain/toolchain/toolchain-service.js";
@@ -147,12 +149,14 @@ class RogenMain {
 			Extensions.Commands
 		);
 		const rawArgs = process.argv.slice(2);
-		const argsResult = parseArgs(
-			rawArgs,
-			(command) => commandRegistry.getOptions(command),
-			[...commandRegistry.getCommands().keys()],
-			(command) => commandRegistry.getFormerOptions(command)
-		);
+		const parse = (args: string[]) =>
+			parseArgs(
+				args,
+				(command) => commandRegistry.getOptions(command),
+				[...commandRegistry.getCommands().keys()],
+				(command) => commandRegistry.getFormerOptions(command)
+			);
+		const argsResult = parse(rawArgs);
 
 		const json = hasFlag(rawArgs, JsonOption);
 		const options = argsResult.isOk()
@@ -170,7 +174,7 @@ class RogenMain {
 			process.exitCode = failure.finish(argsResult.error);
 			return;
 		}
-		const { command, line, bare } = argsResult.value;
+		let { command, line, bare } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
 			process.exitCode = failure.finish(
 				new UsageError(
@@ -194,6 +198,26 @@ class RogenMain {
 			commandRegistry
 		);
 		services.set(CommandService, commandService);
+
+		if (bare && environmentService.isInteractive && !json) {
+			const picked = await new CommandPicker(
+				commandRegistry,
+				services.get(PromptService),
+				logService,
+				new ProjectContext(
+					services.get(ConfigService),
+					services.get(FileSystemService),
+					services.get(ProductService),
+					environmentService.cwd
+				)
+			).pick();
+			const parsed = picked.isOk() ? parse(picked.value) : picked;
+			if (parsed.isErr()) {
+				process.exitCode = failure.finish(parsed.error);
+				return;
+			}
+			({ command, line, bare } = parsed.value);
+		}
 
 		const notice = new UpdateNotice(
 			logService,

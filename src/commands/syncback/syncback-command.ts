@@ -94,6 +94,15 @@ registerCommand(
 					description:
 						"Writes the project files, then has Rojo's syncback read a place or model file and write what changed into your source folders, as 'rojo syncback' does for a project file. A folder that routing makes one instance, such as src/Inventory/Server, is read by Rojo as it is; an instance the place added where no folder holds it is put where routing places a file for it, beside the files already there. It removes the files of instances the place no longer holds, so look first with --dry-run.",
 					args: ConfigArguments,
+					picker: [
+						{
+							message:
+								"Place or model file to bring changes from",
+							files: [".rbxl", ".rbxlx", ".rbxm", ".rbxmx"],
+							placeholder: "game.rbxl",
+							into: { option: "input" },
+						},
+					],
 					options: SyncbackOptions,
 					output: { document: syncbackDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],

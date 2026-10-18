@@ -9,7 +9,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 rogen [command] [project…] [options]
 ```
 
-The first word is always the command, and a bare `rogen` prints the root help and exits 2. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). A [place](/docs/v2/configuration#places) is a folder too: run inside one, a command answers for that place, and `rogen serve places/lobby` serves only it. At the root of a config that lists places, a command covers the config and every place, and a project name (`rogen build release`) means the project of that name in each. Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+The first word is always the command. A bare `rogen` opens [the command picker](#the-command-picker) in a terminal, and prints the root help and exits 2 anywhere else, as `rojo` does. Whatever follows names projects: a folder with a `rogen.json`, as in `rogen build game`, the path to one of its project files (`game/dist.project.json`), or the name of one of the [projects](/docs/v2/configuration#projects) of the `rogen.json` here (`rogen serve release`). A name that is also a folder holding a `rogen.json` or a `default.project.json` is the folder, and Rogen says which project file to name for the project instead. With none, a command reads the `rogen.json` of the working directory, or of the nearest folder above it that has one, and the text output says which (`rogen build · my-game · in ../..`). A [place](/docs/v2/configuration#places) is a folder too: run inside one, a command answers for that place, and `rogen serve places/lobby` serves only it. At the root of a config that lists places, a command covers the config and every place, and a project name (`rogen build release`) means the project of that name in each. Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 ## Commands
 
@@ -335,6 +335,14 @@ Prints usage, or a command's arguments, options and examples, in the layout Rojo
 `rogen help codes` lists every [diagnostic](/docs/v2/diagnostics) code on a line with its severity and meaning. `rogen help <code>` explains one, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
 With `--json`, `help` answers a program: see [`help --json`](#help---json).
+
+## The command picker
+
+A bare `rogen` in a terminal opens a picker instead of printing the help, so a newcomer doesn't have to read a wall of text and type the command again. The first line says the version and the project (`rogen 2.0.0 · my-game`, or `no rogen.json here`). Below it is every command with its one-line summary: type to filter by name or summary, move with the arrow keys, and press Enter to run the one under the cursor. With no config here `init` comes first. Beside one, `serve`, `build`, `where` and `check` come first, so Enter does the obvious thing. `doc` and `help` come last. Escape or Ctrl+C leaves without running anything.
+
+A command that can't run bare asks for what it lacks, and nothing else: `plugin` asks `install` or `uninstall`, `syncback` offers the `.rbxl`, `.rbxlx`, `.rbxm` and `.rbxmx` files it finds in the project (or a path you type) for `--input`, `upload` asks for the `--asset_id`, and `doc` offers its topics or the site. Every other command runs as it does from the shell. Before it runs, the picker says the command line it composed (`› rogen plugin install`), so next time you can type it; it runs that line and exits with its exit code. There are no flags in the picker: add them on the command line.
+
+Without a terminal (a pipe, CI, a coding agent: the same test `init` uses to decide whether it can ask) a bare `rogen` prints the root help and exits 2, so scripts see what they see from Rojo. `rogen --help`, `rogen -h` and `rogen help` print the help everywhere.
 
 ## Options
 

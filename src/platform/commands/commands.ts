@@ -62,6 +62,23 @@ export interface Command {
 	readonly metadata: CommandMetadata;
 }
 
+/** What the command picker asks for because the command can't run without it, and where the answer goes in the command line. */
+export interface PickerStep {
+	readonly message: string;
+	/** Answers to pick from; a choice with an empty value adds nothing to the command line. Without choices or files, the user types the answer. */
+	readonly choices?: readonly {
+		readonly value: string;
+		readonly label: string;
+		readonly hint?: string;
+	}[];
+	/** Extensions of the project's files to pick from, beside typing a path. */
+	readonly files?: readonly string[];
+	readonly placeholder?: string;
+	readonly validate?: (value: string) => string | undefined;
+	/** A word of the command line, or the value of the option of this name. */
+	readonly into: "positional" | { readonly option: string };
+}
+
 /** What a run of a command can do beyond printing; a command that does none of them is read-only. `longRunning` is not declared here, since a command says it with `longRunning` and `longRunningWith`. */
 export type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
 
@@ -93,6 +110,8 @@ interface CommandMetadata<
 	readonly exitCodes?: Readonly<Record<string, string>>;
 	/** The JSON this command prints with `--json`; a command with a `--json` option declares it. */
 	readonly output?: OutputDeclaration;
+	/** What the command picker asks before it runs the command, for what a bare run of the command lacks; a command that runs bare declares none. */
+	readonly picker?: readonly PickerStep[];
 	/** What it can do beyond printing, declared by every command: `[]` for one that only reads. */
 	readonly effects?: readonly CommandEffect[];
 	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
