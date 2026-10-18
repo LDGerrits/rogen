@@ -302,6 +302,14 @@ export class CoreInitService implements InitService {
 					"--place-id is for a place folder.",
 					"Give the folder to add, as 'rogen init places/lobby'."
 				);
+			for (const [key, flag] of [
+				["unroutes", "--no-route"],
+				["unsourcePaths", "--no-source-path"],
+			] as const)
+				if (choices[key] !== undefined)
+					throw new UsageError(
+						`${flag} is for a project that has a rogen.json, and there is none here.`
+					);
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
@@ -355,7 +363,8 @@ export class CoreInitService implements InitService {
 				questions,
 				[
 					changer.setup(() => changer.fromFlags()),
-					...(asked ?? additions.toolsForChanges()),
+					...(asked ?? []),
+					...additions.toolsForChanges(),
 				],
 				{ present: additions.presentAsked(), notes, purpose: "change" }
 			);

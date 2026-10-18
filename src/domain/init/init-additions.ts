@@ -97,7 +97,11 @@ export class InitAdditions {
 
 	/** The tools a change that turns Darklua on needs pinned. */
 	toolsForChanges(): Setup<unknown>[] {
-		return this.questions.choices.darklua === true && !this.changer?.place
+		const { darklua, rojo, plugin } = this.questions.choices;
+		return darklua === true &&
+			!this.changer?.place &&
+			rojo !== true &&
+			plugin !== true
 			? [this.tools]
 			: [];
 	}
@@ -207,11 +211,14 @@ export class InitAdditions {
 				"Run init in the root for agent rules, the hook and Rojo."
 			);
 		return {
-			inPlace: own && changing !== undefined,
+			inPlace: own && Boolean(changing),
 			setups: [
 				...(changing ? [changer.setup(async () => request)] : []),
 				...(picked.includes("agents") ? [agents] : []),
-				...(picked.includes("tools") ? [tools] : []),
+				...(picked.includes("tools") ||
+				("darklua" in request && request.darklua === true && !own)
+					? [tools]
+					: []),
 			],
 		};
 	}

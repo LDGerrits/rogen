@@ -1,7 +1,7 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { isObject } from "../../base/objects.js";
-import { normalizeDir } from "../../base/path.js";
+import { containsPosix, normalizeDir } from "../../base/path.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -9,7 +9,12 @@ import { FileReader } from "../../platform/fs/file-system-service.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
-import { ConfigChanges, ChangePlan, ChangeRequest } from "./config-changes.js";
+import {
+	ConfigChanges,
+	ChangePlan,
+	ChangeRequest,
+	mountedIn,
+} from "./config-changes.js";
 import { ConfigEdit } from "./config-edit.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
@@ -228,17 +233,39 @@ export class ProjectChanger {
 			.map(({ id }) => id);
 	}
 
+	/** Where unmatched files go, in the words of the menu: the shared route, else the target. */
+	private fallbackLabel(routes: Record<string, unknown>): string {
+		const target = routes[DeclaredKeys.FALLBACK_ROUTE];
+		return target === new StartingRoutes(this.language).sharedTarget
+			? "shared"
+			: String(target);
+	}
+
 	private get darkluaOn(): boolean {
 		return this.edit.value.serveProject === "dist";
 	}
 
+	/** Whether Darklua is set up as init writes it, which init can take off again. */
+	private get darkluaIsOurs(): boolean {
+		const projects = this.edit.value.projects;
+		const dist = isObject(projects) ? projects.dist : undefined;
+		return (
+			this.darkluaOn &&
+			isObject(dist) &&
+			Object.keys(dist).length === 1 &&
+			typeof dist.syncPath === "string"
+		);
+	}
+
 	private packagesToMount() {
-		const mounted = JSON.stringify(this.edit.value.tree ?? {});
+		const mounted = mountedIn(this.edit.value.tree);
 		return [
 			...this.directory.workspace.packageMounts(this.language),
 			...this.language.offeredMounts(),
 		].filter(
-			(mount) => mount.installed && !mounted.includes(`"${mount.path}"`)
+			(mount) =>
+				mount.installed &&
+				!mounted.some((dir) => containsPosix(dir, mount.path))
 		);
 	}
 
@@ -246,14 +273,7 @@ export class ProjectChanger {
 	describe(): [string, string][] {
 		const { value } = this.edit;
 		const routes = isObject(value.routes) ? value.routes : {};
-		const sourcePaths = new ConfigChanges(
-			this.fileSystemService,
-			this.directory,
-			this.edit,
-			this.language,
-			this.routed,
-			this.place
-		).sourcePaths;
+		const sourcePaths = this.changes().sourcePaths;
 		const placePaths = Array.isArray(value.placePaths)
 			? value.placePaths
 			: [];
@@ -275,7 +295,9 @@ export class ProjectChanger {
 			],
 			[
 				"Unmatched files",
-				DeclaredKeys.FALLBACK_ROUTE in routes ? "shared" : "left out",
+				DeclaredKeys.FALLBACK_ROUTE in routes
+					? this.fallbackLabel(routes)
+					: "left out",
 			],
 			["Source paths", label(sourcePaths, "none")],
 			["Darklua", this.darkluaOn ? "yes" : "no"],
@@ -295,10 +317,10 @@ export class ProjectChanger {
 			];
 		const several = Array.isArray(this.edit.value.placePaths);
 		const projects = this.edit.value.projects;
-		const handDarklua =
-			!this.darkluaOn &&
-			(this.edit.value.serveProject !== undefined ||
-				(isObject(projects) && "dist" in projects));
+		const handDarklua = this.darkluaOn
+			? !this.darkluaIsOurs
+			: this.edit.value.serveProject !== undefined ||
+				(isObject(projects) && "dist" in projects);
 		return [
 			{
 				id: "places",

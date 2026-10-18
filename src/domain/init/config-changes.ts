@@ -69,7 +69,7 @@ const stringsOf = (value: unknown): string[] =>
 		: [];
 
 /** Every `$path` a tree mounts, as the folder it names. */
-function mountedIn(node: unknown): string[] {
+export function mountedIn(node: unknown): string[] {
 	if (!isObject(node)) return [];
 	const own = node.$path;
 	const target = isObject(own) ? own.optional : own;
@@ -269,6 +269,12 @@ export class ConfigChanges {
 		if (unmatched === "shared") {
 			const target = new StartingRoutes(this.language).sharedTarget;
 			if (this.routes[fallback] === target) return;
+			if (there) {
+				this.notes.push(
+					`routes.* goes to ${String(this.routes[fallback])}, not to ${target}, so it stays as it is.`
+				);
+				return;
+			}
 			this.edit.set(["routes", fallback], target);
 			return;
 		}
@@ -361,6 +367,12 @@ export class ConfigChanges {
 				`${this.edit.fileName} has a ${PROCESSED_PROJECT} project or a serveProject already, so init can't add Darklua's.`,
 				"Add the project that serves the processed code yourself, or remove those keys first."
 			);
+		const compiled = this.language.compiler?.outDir;
+		if (!compiled && this.sourcePaths.length === 0)
+			throw new UsageError(
+				"Darklua processes the source paths, and this project has none.",
+				"Add a route and a source path first, with --route and --source-path."
+			);
 		const { workspace } = this.directory;
 		const { darklua } = workspace;
 		const syncPath = request.syncPath ?? darklua.defaultSyncPath;
@@ -384,7 +396,6 @@ export class ConfigChanges {
 		this.notes.push(
 			`Studio syncs from ${syncPath}, where Darklua writes: rogen serve serves the ${PROCESSED_PROJECT} project.`
 		);
-		const compiled = this.language.compiler?.outDir;
 		this.run.push(
 			...(compiled ? [this.language.compiler!.compileCommand] : []),
 			...darklua.processCommands(

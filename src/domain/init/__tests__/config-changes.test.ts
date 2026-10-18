@@ -140,6 +140,18 @@ describe("ConfigChanges", () => {
 			);
 		});
 
+		it("should leave a fallback of your own where it goes", async () => {
+			const { plan } = await apply(
+				{ unmatched: "shared" },
+				'{ "routes": { "server": "ServerScriptService", "*": "ReplicatedStorage/Custom" } }'
+			);
+
+			expect(plan.config).toBeUndefined();
+			expect(plan.notes[0]).toContain(
+				"routes.* goes to ReplicatedStorage/Custom"
+			);
+		});
+
 		it("should refuse to leave files out when there is no other route", async () => {
 			await expect(
 				apply(
@@ -257,6 +269,12 @@ describe("ConfigChanges", () => {
 			const { plan } = await apply({ darklua: false });
 
 			expect(plan.notes).toEqual(["Darklua is not set up."]);
+		});
+
+		it("should refuse a project that has no source path to process", async () => {
+			await expect(
+				apply({ darklua: true }, "{}", { routed: false })
+			).rejects.toThrow("has none");
 		});
 
 		it("should refuse to add it beside a serveProject of your own", async () => {

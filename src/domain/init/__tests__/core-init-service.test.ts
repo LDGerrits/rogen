@@ -1483,6 +1483,106 @@ describe("CoreInitService", () => {
 		});
 	});
 
+	describe("changing a project that has a config", () => {
+		const place = path.join(directory, "places/lobby");
+		const ROUTED = JSON.stringify({
+			routed: true,
+			routes: { server: "ServerScriptService" },
+		});
+
+		it("should plan in the project root when a place picks only agents", async () => {
+			await write(
+				"rogen.json",
+				JSON.stringify({ placePaths: ["places/*"] })
+			);
+			await write("places/lobby/rogen.json", "{}");
+			const prompts = new MockPromptService([["agents"], true]);
+
+			const plan = (await serviceFor(prompts, place).plan()).unwrap();
+
+			expect(plan?.directory).toBe(directory);
+		});
+
+		it("should pin Darklua when the menu turns it on", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			await write("rogen.json", ROUTED);
+			await write(
+				"rokit.toml",
+				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+			const prompts = new MockPromptService({
+				[WHAT_TO_CHANGE]: ["darklua"],
+				"Does Darklua process your code before Rojo syncs it?": true,
+				"Sync path": ACCEPT_DEFAULT,
+			});
+
+			const plan = (await serviceFor(prompts).plan()).unwrap();
+
+			expect(plan?.commands.map(({ command }) => command)).toContain(
+				"rokit add seaofvoices/darklua@0.19.0"
+			);
+		});
+
+		it("should pin Darklua beside --agent-rules, as it does alone", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			await write("rogen.json", ROUTED);
+			await write(
+				"rokit.toml",
+				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
+
+			const plan = (
+				await serviceFor().plan({
+					ask: false,
+					choices: { darklua: true, agentRules: true },
+				})
+			).unwrap();
+
+			expect(plan?.commands.map(({ command }) => command)).toContain(
+				"rokit add seaofvoices/darklua@0.19.0"
+			);
+			expect(plan?.files.map(({ fileName }) => fileName)).toContain(
+				"AGENTS.md"
+			);
+		});
+
+		it("should refuse a flag that takes something off in a folder with no config", async () => {
+			await expect(
+				serviceFor().plan({
+					ask: false,
+					choices: { unroutes: ["server"] },
+				})
+			).resolves.toMatchObject({
+				error: { message: expect.stringContaining("--no-route") },
+			});
+		});
+
+		it("should not offer to stop Darklua when the dist project is not what init writes", async () => {
+			await write(
+				"rogen.json",
+				JSON.stringify({
+					serveProject: "dist",
+					projects: {
+						dist: { syncPath: "dist", globIgnorePaths: ["x"] },
+					},
+				})
+			);
+			const prompts = new MockPromptService([CANCEL]);
+			const original = prompts.multiSelect.bind(prompts);
+			let values: string[] = [];
+			prompts.multiSelect = ((
+				options: Parameters<typeof original>[0]
+			) => {
+				values = options.choices.map(({ value }) => value);
+				return original(options);
+			}) as typeof prompts.multiSelect;
+
+			await serviceFor(prompts).plan();
+
+			expect(values).not.toContain("darklua");
+		});
+	});
+
 	describe("the summary of a new project", () => {
 		const CREATE = "Create this project?";
 		const review = (prompts: PromptService) =>

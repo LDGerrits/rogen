@@ -51,15 +51,6 @@ export interface ChangeArea {
 	readonly hint: string;
 }
 
-export interface AdditionOption<T> {
-	readonly id: string;
-	/** The flag that asks for this addition. */
-	readonly flag: string;
-	readonly label: string;
-	readonly hint: string;
-	readonly addition: T;
-}
-
 const required = (what: string) => (value: string) =>
 	value.trim() === "" ? `Enter ${what}.` : undefined;
 
@@ -200,27 +191,6 @@ export class InitQuestions {
 		return Number(value);
 	}
 
-	async whatToAdd<T>(
-		configFile: string,
-		options: readonly AdditionOption<T>[]
-	): Promise<T | undefined> {
-		const [first] = options;
-		if (!this.interactive) {
-			this.decide("add", first.id, first.flag);
-			return first.addition;
-		}
-		const id = await this.promptService.select<string>({
-			message: `${configFile} exists. What do you want to add?`,
-			choices: options.map(({ id, label, hint }) => ({
-				value: id,
-				label,
-				hint,
-			})),
-			initialValue: first.id,
-		});
-		return options.find((option) => option.id === id)?.addition;
-	}
-
 	/** The areas of a project that has a config to change, with what it has now; `undefined` when the user cancelled. */
 	async whatToChange(
 		current: string,
@@ -296,18 +266,19 @@ export class InitQuestions {
 		});
 		if (answer === undefined) return undefined;
 		const next = splitList(answer).map(normalizeDir);
-		const remove = current.filter((entry) => !next.includes(entry));
-		for (const entry of remove) {
+		const remove: string[] = [];
+		for (const entry of current.filter((one) => !next.includes(one))) {
 			const files = await codeIn(entry);
-			if (files.length === 0) continue;
-			const sure = await this.essential.confirm({
-				message: `Stop building ${entry}?`,
-				description: `${files.length === 1 ? "This file" : "These files"} would no longer be built: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}.`,
-				initialValue: false,
-			});
-			if (sure === undefined) return undefined;
-			if (!sure)
-				return this.changeSourcePaths(current, directory, codeIn);
+			if (files.length > 0) {
+				const sure = await this.promptService.confirm({
+					message: `Stop building ${entry}?`,
+					description: `${files.length === 1 ? "This file" : "These files"} would no longer be built: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}.`,
+					initialValue: false,
+				});
+				if (sure === undefined) return undefined;
+				if (!sure) continue;
+			}
+			remove.push(entry);
 		}
 		return {
 			add: next.filter((entry) => !current.includes(entry)),
