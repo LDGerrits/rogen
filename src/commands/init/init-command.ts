@@ -112,6 +112,20 @@ const InitOptions = [
 			"Where files that match no route go: into the shared route (the default), or nowhere, which Rogen warns about.",
 	},
 	{
+		name: "sample",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
+	},
+	{
+		name: "places",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
+	},
+	{
 		name: "agent-rules",
 		type: "boolean",
 		negatable: true,
@@ -176,6 +190,8 @@ function choicesOf(
 		packages: options.package,
 		routes: options.route,
 		unmatched: options.unmatched as InitChoices["unmatched"],
+		sample: options.sample,
+		places: options.places,
 	};
 }
 

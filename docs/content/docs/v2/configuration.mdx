@@ -166,6 +166,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 { "name": "Lobby", "servePort": 34880 }
 ```
 
+- A folder that a `placePaths` glob matches and that holds one of the root's source paths is the code the places share, not a place. `places/*` with `sourcePaths: ["places/shared/src"]` lists every folder under `places` but `shared`, and `rogen list` shows `shared code: places/shared`. A folder named in `placePaths` itself is always a place, so naming `places/shared` is [`config.placeInSourcePath`](/docs/v2/diagnostics#config-placeinsourcepath).
 - A place's `sourcePaths` are its own folders, relative to its folder (default `["src"]`), and Rogen adds them after the root's. The root's list is never replaced, so the shared code is in every place and a place's own code wins a clash. A project in a place's `rogen.json` replaces the place's own list only.
 - A relative path means the same folder wherever it is inherited: a `$path`, a `globIgnorePaths` glob and the `syncPath` of the root are written relative to each place's folder. A place may set its own `syncPath`.
 - `name` is not inherited by a place: a place is named after its folder unless it sets one. A project inherits the name of the place it is in.

@@ -16,7 +16,11 @@ export type TreeChoice =
 	{ readonly kind: "new" } | { readonly kind: "lift"; readonly from: string };
 
 export type ProjectTree =
-	| { readonly kind: "new" }
+	| {
+			readonly kind: "new";
+			/** Whether the tree holds the sample game, which the Greeter sample comes with. */
+			readonly game?: boolean;
+	  }
 	| {
 			readonly kind: "template";
 			readonly template: InitKind;
@@ -70,7 +74,7 @@ export class TreePlan {
 				);
 			case "new":
 				return new TreePlan(
-					StarterProject.fromMounts(mounts).toConfig(),
+					StarterProject.fromMounts(mounts, tree.game).toConfig(),
 					[],
 					[]
 				);

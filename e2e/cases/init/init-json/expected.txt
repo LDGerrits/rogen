@@ -13,6 +13,22 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/src/Greeter/Shared/Greeting.luau",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/src/Greeter/Server/Greeter.server.luau",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/src/Greeter/Client/Greeter.client.luau",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/README.md",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/AGENTS.md",
         "outcome": "wrote"
       }
@@ -36,6 +52,11 @@ stdout:
         "flag": "--darklua"
       },
       {
+        "question": "places",
+        "value": false,
+        "flag": "--places"
+      },
+      {
         "question": "sourcePaths",
         "value": [
           "src"
@@ -57,6 +78,11 @@ stdout:
         "flag": "--unmatched"
       },
       {
+        "question": "sample",
+        "value": true,
+        "flag": "--sample"
+      },
+      {
         "question": "skipGit",
         "value": false,
         "flag": "--skip-git"
@@ -76,7 +102,9 @@ stdout:
         "diagnostics": []
       }
     ],
-    "notes": [],
+    "notes": [
+      "Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src."
+    ],
     "nextSteps": {
       "setup": [],
       "run": [
@@ -122,14 +150,63 @@ written:
   .git/
   .gitignore
   AGENTS.md
+  README.md
   default.project.json
   rogen.json
+  src/Greeter/Client/Greeter.client.luau
+  src/Greeter/Server/Greeter.server.luau
+  src/Greeter/Shared/Greeting.luau
 
 rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
-    "$className": "DataModel"
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
   },
   "sourcePaths": [
     "src"

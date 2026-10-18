@@ -1,4 +1,5 @@
 import path from "path";
+import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -18,6 +19,7 @@ import {
 	PlannedFile,
 } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
+import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
@@ -27,6 +29,7 @@ import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
+import { StarterPlaces, StartingPlaces } from "./starter-places.js";
 import { SyncSteps } from "./sync-steps.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
@@ -47,6 +50,10 @@ export interface ProjectChoices {
 	readonly skipGit?: boolean;
 	/** The files of the template that are not there yet, which `init` writes. */
 	readonly templateFiles?: readonly PlannedFile[];
+	/** Whether the Greeter sample is written. */
+	readonly sample?: boolean;
+	/** The places a project of several starts with. */
+	readonly places?: StartingPlaces;
 }
 
 function derivedRoutesOf(
@@ -140,9 +147,23 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (usesDarklua === undefined) return ok(undefined);
 		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
 
-		const sourcePaths = (await this.startsUnrouted(kind))
-			? []
-			: await questions.sourcePaths(directory, language);
+		const several = await this.severalPlaces(kind, language, darklua);
+		if (several === undefined) return ok(undefined);
+		const places = several
+			? await new StarterPlaces(this.fileSystemService).plan(
+					directory.path
+				)
+			: undefined;
+		if (places && questions.choices.sourcePaths !== undefined)
+			throw new UsageError(
+				`--source-path would change nothing, since several places share ${places.sharedSourcePath}.`
+			);
+
+		const sourcePaths = places
+			? [places.sharedSourcePath]
+			: (await this.startsUnrouted(kind))
+				? []
+				: await questions.sourcePaths(directory, language);
 		if (sourcePaths === undefined) return ok(undefined);
 
 		const chosen = await questions.tree(directory);
@@ -194,27 +215,111 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					)
 				: [];
 
+		const sample = this.wantsSample(
+			kind,
+			tree.value,
+			language,
+			routes.routes
+		);
+		const sampleOf = new GreeterSample(
+			language,
+			path.basename(directory.path)
+		);
+		const sampleFiles = sample
+			? [
+					...sampleOf.feature(sourcePaths[0]),
+					...(places ? [sampleOf.place(places.placeSourcePath)] : []),
+					sampleOf.readme(sourcePaths[0], places?.place),
+				]
+			: [];
+
 		const skipGit = questions.skipGit();
 		return ok({
 			language,
 			darklua,
 			sourcePaths: [...sourcePaths],
 			...(syncPath && { syncPath }),
-			tree: tree.value,
+			tree:
+				sample && tree.value.kind === "new"
+					? { ...tree.value, game: true }
+					: tree.value,
 			mounts,
 			routes: routes.routes,
 			fallback: routes.fallback,
 			unmounted,
 			kind,
 			skipGit,
-			templateFiles: await this.absent(
-				ProjectSetup.templateFiles(
+			sample,
+			...(places && { places }),
+			templateFiles: await this.absent([
+				...ProjectSetup.templateFiles(
 					new ProjectTemplate(kind, path.basename(directory.path)),
 					tree.value,
 					skipGit
-				)
-			),
+				),
+				...sampleFiles,
+				...(places?.files ?? []),
+			]),
 		});
+	}
+
+	/** Why a new project can't be several places, which `--places` would be an error for. */
+	private noPlacesBecause(
+		kind: InitKind,
+		language: Language,
+		darklua: Darklua | undefined
+	): string | undefined {
+		const given = this.questions.choices.projectFile;
+		if (kind !== "place") return `is for a place, not for a ${kind}.`;
+		const later =
+			"Start with one place, then add more with 'rogen init places/<name>'.";
+		if (language.compiler)
+			return `isn't set up for ${language.copy.label} yet. ${later}`;
+		if (darklua) return `isn't set up with Darklua yet. ${later}`;
+		if (this.directory.hasHandWrittenProject && given !== "new")
+			return `starts a new tree, and ${DEFAULT_PROJECT_FILE} is here. Pass --project-file new, or leave --places out to lift it.`;
+		return undefined;
+	}
+
+	/** Whether the new project is several places; `undefined` when the user cancelled. */
+	private async severalPlaces(
+		kind: InitKind,
+		language: Language,
+		darklua: Darklua | undefined
+	): Promise<boolean | undefined> {
+		const problem = this.noPlacesBecause(kind, language, darklua);
+		if (problem === undefined) return this.questions.places(this.directory);
+		if (this.questions.choices.places === true)
+			throw new UsageError(`--places ${problem}`);
+		return false;
+	}
+
+	/** Whether the Greeter sample is written: in a new place, in Luau, in a folder with no code, with the routes its folders are named after. */
+	private wantsSample(
+		kind: InitKind,
+		tree: ProjectTree,
+		language: Language,
+		routes: readonly RouteId[]
+	): boolean {
+		const { codeFolders } = this.directory.layout;
+		const problem =
+			kind !== "place"
+				? `is for a place, not for a ${kind}.`
+				: tree.kind !== "new"
+					? `needs a new tree, and ${DEFAULT_PROJECT_FILE} is lifted.`
+					: language.compiler
+						? `isn't written for ${language.copy.label} yet.`
+						: codeFolders.length > 0
+							? `is for a folder with no code, and ${codeFolders.join(", ")} has some.`
+							: SAMPLE_ROUTES.some(
+										(route) => !routes.includes(route)
+								  )
+								? `needs the ${SAMPLE_ROUTES.join(", ")} routes.`
+								: undefined;
+		if (problem === undefined) return this.questions.sample();
+		if (this.questions.choices.sample === true)
+			throw new UsageError(`--sample ${problem}`);
+		return false;
 	}
 
 	private static templateFiles(
@@ -240,7 +345,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				)
 			)
 		);
-		return files.filter((_, at) => !there[at]);
+		return files.filter(
+			(file, at) => file.addition !== undefined || !there[at]
+		);
 	}
 
 	/** Whether the tree is settled before any question and takes no routes, so a source path would change nothing. */
@@ -315,6 +422,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			{
 				...tree.fields,
 				...(routes && { sourcePaths: [...sourcePaths], routes }),
+				...(choices.places && {
+					placePaths: [...choices.places.placePaths],
+				}),
 				...(defaultSyncPath && { syncPath: defaultSyncPath }),
 				...projects,
 			},
@@ -323,6 +433,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				: undefined
 		);
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
+		for (const directory of choices.places?.directories ?? [])
+			builder.addDirectory(directory);
+		for (const note of choices.places?.notes ?? []) builder.addNote(note);
 		for (const file of choices.templateFiles ?? []) builder.addFile(file);
 		if (choices.kind !== undefined && !choices.skipGit)
 			builder.requestGitInit();
@@ -360,6 +473,12 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Added a ${RELEASE_PROJECT} project that leaves the ${testRunner} specs out: rogen build writes ${RELEASE_PROJECT}.project.json beside default.project.json.`
 			);
 		}
+		if (choices.sample)
+			builder.addNote(
+				choices.places
+					? `Wrote the Greeter sample: the feature in ${choices.places.sharedSourcePath}, which every place shares, and Game in ${choices.places.placeSourcePath}. Pass --no-sample for empty source folders.`
+					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty ${sourcePaths[0]}.`
+			);
 		this.planNextSteps(builder, choices, tree);
 	}
 
@@ -384,6 +503,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			sourcePaths,
 			syncPath,
 			tree: chosen,
+			places,
 		}: ProjectChoices,
 		tree: TreePlan
 	): void {
@@ -401,6 +521,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
+		if (places)
+			builder.addEdit(
+				"Add another place with 'rogen init places/lobby'."
+			);
 		if (takesRoutes(chosen))
 			builder.addEdit(
 				`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`

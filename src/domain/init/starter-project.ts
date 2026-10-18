@@ -21,6 +21,33 @@ const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 const describe = ({ path, instancePath }: MountedPath): string =>
 	`${normalizeDir(rojoPathTarget(path))} at ${instanceKey(instancePath)}`;
 
+/** The sample game of `rojo init`: a Baseplate, and the Lighting and SoundService it plays with. */
+const SAMPLE_GAME: Readonly<Record<string, Partial<RojoNode>>> = {
+	Workspace: {
+		$properties: { FilteringEnabled: true },
+		Baseplate: {
+			$className: "Part",
+			$properties: {
+				Anchored: true,
+				Color: [0.38823, 0.37254, 0.38823],
+				Locked: true,
+				Position: [0, -10, 0],
+				Size: [512, 20, 512],
+			},
+		},
+	} as Partial<RojoNode>,
+	Lighting: {
+		$properties: {
+			Ambient: [0, 0, 0],
+			Brightness: 2,
+			GlobalShadows: true,
+			Outlines: false,
+			Technology: "Voxel",
+		},
+	},
+	SoundService: { $properties: { RespectFilteringEnabled: true } },
+};
+
 export class StarterProject {
 	private constructor(
 		private readonly project: RojoProject<ParsedProjectFile>,
@@ -30,10 +57,17 @@ export class StarterProject {
 		readonly written?: WrittenTree
 	) {}
 
-	static fromMounts(mounts: readonly Mount[]): StarterProject {
+	/** `withGame`: the tree also holds the sample game of `rojo init`. */
+	static fromMounts(
+		mounts: readonly Mount[],
+		withGame = false
+	): StarterProject {
 		const project = new RojoProject<ParsedProjectFile>({
 			tree: { $className: "DataModel" },
 		});
+		if (withGame)
+			for (const [service, node] of Object.entries(SAMPLE_GAME))
+				project.insertNode([service], structuredClone(node));
 		for (const mount of mounts)
 			project.insertNode(mount.landing.split("/"), mountNode(mount));
 		return new StarterProject(project);

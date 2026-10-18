@@ -223,17 +223,21 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Created rogen.json.",
 				"success: Created .gitignore.",
+				"success: Created src/Greeter/Shared/Greeting.luau.",
+				"success: Created src/Greeter/Server/Greeter.server.luau.",
+				"success: Created src/Greeter/Client/Greeter.client.luau.",
+				"success: Created README.md.",
 				"success: Created AGENTS.md.",
-				"success: Created src/.",
 				"success: default.project.json · wrote",
 				"step: Next steps",
 				"info: Run:",
 				"info:   rogen serve",
 				'info: Add your own routes under "routes" in rogen.json.',
-				"outro: Wrote 3 files.",
+				"outro: Wrote 7 files.",
 			]);
 		});
 
@@ -404,12 +408,17 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.",
+				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
 				"success: Would create rogen.json.",
 				"success: Would create .gitignore.",
+				"success: Would create src/Greeter/Shared/Greeting.luau.",
+				"success: Would create src/Greeter/Server/Greeter.server.luau.",
+				"success: Would create src/Greeter/Client/Greeter.client.luau.",
+				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
 				"success: Would create src/.",
-				"outro: Would write 3 files. Nothing was written.",
+				"outro: Would write 7 files. Nothing was written.",
 			]);
 		});
 
@@ -434,6 +443,31 @@ describe("init command", () => {
 					},
 					{
 						file: path.join(cwd, ".gitignore"),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"src/Greeter/Shared/Greeting.luau"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"src/Greeter/Server/Greeter.server.luau"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"src/Greeter/Client/Greeter.client.luau"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, "README.md"),
 						outcome: "wouldWrite",
 					},
 					{
@@ -517,6 +551,7 @@ describe("init command", () => {
 			const { decided } = JSON.parse(logService.entries[0].text);
 			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
 				"--darklua",
+				"--places",
 			]);
 		});
 
@@ -851,7 +886,7 @@ describe("init command", () => {
 			).toEqual({ Packages: { $path: { optional: "Packages" } } });
 		});
 
-		it("should ask six questions on a bare Luau folder, none of them about packages", async () => {
+		it("should ask seven questions on a bare Luau folder, none of them about packages", async () => {
 			const prompts = new MockPromptService({});
 
 			await runInit(prompts);
@@ -859,6 +894,7 @@ describe("init command", () => {
 			expect(prompts.asked).toEqual([
 				"Language",
 				"Does Darklua process your code before Rojo syncs it?",
+				"One place or several?",
 				"Source paths",
 				"Routes",
 				"Files that match no route",

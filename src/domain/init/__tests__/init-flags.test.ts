@@ -1,7 +1,10 @@
 import path from "path";
 import { UsageError } from "../../../base/errors.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import {
+	ACCEPT_DEFAULT,
+	MockPromptService,
+} from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
 import { ProjectSetup } from "../project-setup.js";
@@ -53,6 +56,7 @@ describe("init choices given as flags", () => {
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "darklua", value: false, flag: "--darklua" },
+				{ question: "places", value: false, flag: "--places" },
 				{
 					question: "sourcePaths",
 					value: ["src"],
@@ -64,6 +68,7 @@ describe("init choices given as flags", () => {
 					flag: "--route",
 				},
 				{ question: "unmatched", value: "shared", flag: "--unmatched" },
+				{ question: "sample", value: true, flag: "--sample" },
 				{ question: "skipGit", value: false, flag: "--skip-git" },
 			]);
 		});
@@ -84,6 +89,7 @@ describe("init choices given as flags", () => {
 				skipGit: true,
 				language: "luau",
 				darklua: false,
+				places: false,
 				sourcePaths: ["src"],
 				routes: ["server"],
 				unmatched: "leave",
@@ -100,6 +106,7 @@ describe("init choices given as flags", () => {
 				{
 					language: "luau",
 					darklua: false,
+					places: false,
 					sourcePaths: ["lib"],
 					packages: ["Packages"],
 					routes: ["server", "shared"],
@@ -117,6 +124,214 @@ describe("init choices given as flags", () => {
 			expect(choices?.mounts.map(({ path }) => path)).toEqual([
 				"Packages",
 			]);
+		});
+	});
+
+	describe("--sample", () => {
+		const fileNames = async (choices: InitChoices) =>
+			(await run(luau, choices)).asked
+				.unwrap()
+				?.templateFiles?.map(({ fileName }) => fileName);
+
+		it("should write the Greeter sample and Rojo's game in an empty folder", async () => {
+			const { asked } = await run(luau, {});
+
+			expect(asked.unwrap()?.sample).toBe(true);
+			expect(asked.unwrap()?.tree).toEqual({ kind: "new", game: true });
+			expect(await fileNames({})).toEqual([
+				".gitignore",
+				"src/Greeter/Shared/Greeting.luau",
+				"src/Greeter/Server/Greeter.server.luau",
+				"src/Greeter/Client/Greeter.client.luau",
+				"README.md",
+			]);
+		});
+
+		it("should write none with --no-sample, and say nothing about it", async () => {
+			const { asked, questions } = await run(luau, { sample: false });
+
+			expect(asked.unwrap()?.sample).toBe(false);
+			expect(asked.unwrap()?.tree).toEqual({ kind: "new" });
+			expect(await fileNames({ sample: false })).toEqual([".gitignore"]);
+			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
+				"--sample"
+			);
+		});
+
+		it("should write none in a folder with code, and take that for the default", async () => {
+			const { asked, questions } = await run(
+				{ ...luau, codeFolders: ["src"] },
+				{}
+			);
+
+			expect(asked.unwrap()?.sample).toBe(false);
+			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
+				"--sample"
+			);
+		});
+
+		it("should write none when a route its folders are named after is left out", async () => {
+			const { asked } = await run(luau, { routes: ["server", "shared"] });
+
+			expect(asked.unwrap()?.sample).toBe(false);
+		});
+
+		it("should write none for roblox-ts", async () => {
+			const { asked } = await run(luau, { language: "roblox-ts" });
+
+			expect(asked.unwrap()?.sample).toBe(false);
+		});
+
+		it("should refuse --sample where it can't be written, saying why", async () => {
+			expect(
+				(
+					await refused(
+						run({ ...luau, codeFolders: ["lib"] }, { sample: true })
+					)
+				).message
+			).toBe("--sample is for a folder with no code, and lib has some.");
+			expect(
+				(await refused(run(luau, { sample: true, kind: "model" })))
+					.message
+			).toBe("--sample is for a place, not for a model.");
+			expect(
+				(
+					await refused(
+						run(luau, { sample: true, language: "roblox-ts" })
+					)
+				).message
+			).toContain("--sample isn't written for");
+		});
+	});
+
+	describe("--places", () => {
+		it("should be several places with the flag, the shared code in places/shared", async () => {
+			const { asked, questions } = await run(luau, { places: true });
+
+			const choices = asked.unwrap();
+			expect(choices?.sourcePaths).toEqual(["places/shared/src"]);
+			expect(choices?.places?.place).toBe("places/game");
+			expect(choices?.places?.placePaths).toEqual(["places/*"]);
+			expect(
+				choices?.templateFiles?.map(({ fileName }) => fileName)
+			).toEqual([
+				".gitignore",
+				"places/shared/src/Greeter/Shared/Greeting.luau",
+				"places/shared/src/Greeter/Server/Greeter.server.luau",
+				"places/shared/src/Greeter/Client/Greeter.client.luau",
+				"places/game/src/Game/Server/Game.server.luau",
+				"README.md",
+				"places/game/rogen.json",
+				"my-game.code-workspace",
+			]);
+			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
+				"--places"
+			);
+		});
+
+		it("should be one place when a run that can't ask has no places folder, and several when it has", async () => {
+			expect(
+				(await run(luau, {})).asked.unwrap()?.places
+			).toBeUndefined();
+
+			const { asked, questions } = await run(luau, {}, false, ["places"]);
+
+			expect(asked.unwrap()?.places?.place).toBe("places/game");
+			expect(questions.decided).toContainEqual({
+				question: "places",
+				value: true,
+				flag: "--places",
+			});
+		});
+
+		it("should be one place with --no-places, even beside a places folder", async () => {
+			const { asked } = await run(luau, { places: false }, false, [
+				"places",
+			]);
+
+			expect(asked.unwrap()?.places).toBeUndefined();
+			expect(asked.unwrap()?.sourcePaths).toEqual(["src"]);
+		});
+
+		it("should start with the sample's empty folders when --no-sample", async () => {
+			const { asked } = await run(luau, { places: true, sample: false });
+
+			const choices = asked.unwrap();
+			expect(choices?.sample).toBe(false);
+			expect(choices?.places?.directories).toEqual(["places/game/src"]);
+			expect(
+				choices?.templateFiles?.map(({ fileName }) => fileName)
+			).toEqual([
+				".gitignore",
+				"places/game/rogen.json",
+				"my-game.code-workspace",
+			]);
+		});
+
+		it("should refuse a model, a plugin, Darklua and roblox-ts, saying why", async () => {
+			expect(
+				(await refused(run(luau, { places: true, kind: "model" })))
+					.message
+			).toBe("--places is for a place, not for a model.");
+			expect(
+				(await refused(run(luau, { places: true, darklua: true })))
+					.message
+			).toContain("--places isn't set up with Darklua yet.");
+			expect(
+				(
+					await refused(
+						run(luau, { places: true, language: "roblox-ts" })
+					)
+				).message
+			).toContain("--places isn't set up for");
+		});
+
+		it("should refuse --source-path, which several places have in places/shared", async () => {
+			const error = await refused(
+				run(luau, { places: true, sourcePaths: ["lib"] })
+			);
+
+			expect(error.message).toContain(
+				"--source-path would change nothing"
+			);
+		});
+
+		it("should refuse beside a project file it would lift, and take --project-file new", async () => {
+			const existing = ["default.project.json"];
+
+			expect(
+				(await refused(run(luau, { places: true }, false, existing)))
+					.message
+			).toContain("default.project.json is here");
+			expect(
+				(
+					await run(
+						luau,
+						{ places: true, projectFile: "new" },
+						false,
+						existing
+					)
+				).asked.unwrap()?.places?.place
+			).toBe("places/game");
+		});
+
+		it("should ask in a terminal, and pre-select several beside a places folder", async () => {
+			const ask = async (existing: string[]) => {
+				const prompts = new MockPromptService(
+					{ "One place or several?": ACCEPT_DEFAULT },
+					true
+				);
+				const answer = await new InitQuestions(prompts, true).places(
+					directoryOf({ existing })
+				);
+				return { answer, asked: prompts.asked };
+			};
+
+			expect(await ask([])).toEqual({
+				answer: false,
+				asked: ["One place or several?"],
+			});
+			expect((await ask(["places"])).answer).toBe(true);
 		});
 	});
 

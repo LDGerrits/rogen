@@ -13,14 +13,35 @@ A game with a lobby, a match and a shop is several places that share code. Rogen
 <Step>
 ### Set Up the Root
 
-In the folder that holds the shared code, run `rogen init` as for any [setup](/docs/v2/setups/luau). The root's `rogen.json` has the routes, the `tree` and the packages every place uses.
+In an empty folder, run:
+
+```bash
+rogen init --places
+```
+
+(or answer `Several places` to `One place or several?`). It writes this layout, with the Greeter sample of the [Luau setup](/docs/v2/setups/luau) as the shared code:
+
+```
+places/
+  shared/src/Greeter/...        shared by every place
+  game/
+    rogen.json                  pins the port
+    src/Game/Server/Game.server.luau
+rogen.json                      sourcePaths: ["places/shared/src"], placePaths: ["places/*"]
+<folder>.code-workspace         the root, places/game
+README.md
+```
+
+`places/shared` is the code every place shares, not a place: a folder that `placePaths` matches by a glob and that holds a root source path is skipped (see [Places](/docs/v2/configuration#places)). Open the `.code-workspace` rather than the folder, so the editor runs a language server for each place. `--no-sample` leaves the two source folders empty.
+
+To turn an existing project into one with places, run `rogen init` in the folder that holds the shared code as for any [setup](/docs/v2/setups/luau): the root's `rogen.json` has the routes, the `tree` and the packages every place uses.
 
 </Step>
 
 <Step>
 ### Add a Place
 
-Below the root, run `rogen init` with the place's folder:
+Below the root, run `rogen init` with the place's folder, for a second place or for each place of a project you set up yourself:
 
 ```bash
 rogen init places/lobby

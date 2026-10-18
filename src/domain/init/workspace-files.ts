@@ -4,7 +4,7 @@ import { formatJsonFile } from "../../base/json.js";
 import { insertJsoncItem, parseJsonc } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { normalizeDir, samePath, toPosix } from "../../base/path.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
 const WORKSPACE_SUFFIX = ".code-workspace";
@@ -17,7 +17,7 @@ interface Listed {
 
 /** The editor workspace files of a project: luau-lsp runs one server per folder, so each place has to be one. */
 export class WorkspaceFiles {
-	constructor(private readonly fileSystemService: FileSystemService) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** `folders`: the root's places, sorted, with `place` among them. */
 	async plan(

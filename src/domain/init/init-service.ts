@@ -34,6 +34,10 @@ export interface InitChoices {
 	/** Route ids, or `none`. */
 	readonly routes?: readonly string[];
 	readonly unmatched?: "shared" | "leave";
+	/** Whether a new place starts with the Greeter sample. */
+	readonly sample?: boolean;
+	/** Whether a new project is several places under `places/`, rather than one. */
+	readonly places?: boolean;
 }
 
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */

@@ -98,6 +98,10 @@ stdout:
           --place-listing <PLACE_LISTING>    With a place folder: list every folder beside it in the
                                              config's placePaths (the default), or only this one.
                                              [possible values: glob, folder]
+          --[no-]places                      Whether a new project is several places: the code they
+                                             share in places/shared, and a first place in places/game,
+                                             more by 'rogen init places/<name>'. One place when not
+                                             given, or several where a places folder exists.
           --project-file <PROJECT_FILE>      With a default.project.json already here: lift its tree
                                              into rogen.json (the default), or start a new tree.
                                              [possible values: lift, new]
@@ -112,6 +116,10 @@ stdout:
                                              name stands for the route derived from it, which `Took
                                              the defaults` and `--json` write as mount:server.
                                              (repeatable)
+          --[no-]sample                      Whether a new place starts with the Greeter sample: three
+                                             hello-world scripts in src/Greeter, Rojo's Baseplate and
+                                             a README. Written when not given, in a folder with no
+                                             code. --no-sample leaves src empty.
           --skip-git                         Leave git out of a new project: write no .gitignore and
                                              run no git init. Otherwise a .gitignore is written where
                                              none is, and git init runs where no work tree holds the

@@ -1,7 +1,7 @@
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { InitKind } from "./init-service.js";
 
-const HOMEPAGE = "https://rogen-playfully.vercel.app/";
+export const HOMEPAGE = "https://rogen-playfully.vercel.app/";
 
 const ROBLOX_LOCKS =
 	"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n";

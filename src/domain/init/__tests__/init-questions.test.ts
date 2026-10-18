@@ -33,7 +33,7 @@ const askInitChoices = async (
 		await fileSystem.writeFile(path.join(directory, file), "{}");
 	const setup = new ProjectSetup(
 		directoryOf(context),
-		new InitQuestions(prompts, prompts.isInteractive),
+		new InitQuestions(prompts, prompts.isInteractive, { sample: false }),
 		fileSystem
 	);
 	return setup.ask();

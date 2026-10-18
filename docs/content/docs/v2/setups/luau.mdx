@@ -19,11 +19,15 @@ In the project root, run:
 rogen init
 ```
 
-It writes `rogen.json`, builds `default.project.json` from it, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
+It writes `rogen.json`, builds `default.project.json` from it, writes a small sample game in `src/Greeter`, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
 
 ```
 Created rogen.json.
 Created .gitignore.
+Created src/Greeter/Shared/Greeting.luau.
+Created src/Greeter/Server/Greeter.server.luau.
+Created src/Greeter/Client/Greeter.client.luau.
+Created README.md.
 Created AGENTS.md.
 Initialised a git repository.
 default.project.json · wrote
@@ -31,8 +35,10 @@ Next steps
   Run:
     rogen serve
   Add your own routes under "routes" in rogen.json.
-Wrote 3 files.
+Wrote 7 files.
 ```
+
+The sample is Rogen's version of what `rojo init` writes: three hello-world scripts, in one feature folder. `Greeting.luau` is a module that the server and the client script both require, and the tree keeps Rojo's Baseplate, Lighting and SoundService, so the place is playable at once. Skip it with `rogen init --no-sample`; it is written only in a folder with no code.
 
 ```json title="rogen.json"
 {
@@ -48,7 +54,7 @@ Wrote 3 files.
 }
 ```
 
-In a terminal, `init` asks about your source paths, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
+In a terminal, `init` also asks `One place or several?`; see [Several Places](/docs/v2/setups/places). It asks about your source paths, your routes and where files that match no route should go. Press Enter at every question to get the config above. If it finds Wally or Pesde, it offers to mount their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 </Step>
 
@@ -63,7 +69,7 @@ src/Inventory/Client/InventoryController.luau
 src/Inventory/Shared/InventoryTypes.luau
 ```
 
-Rogen puts these in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/Shared/Inventory`. [Routing](/docs/v2/core-concepts/routing) explains the details.
+That is the layout of `src/Greeter` too. Rogen puts these in `ServerScriptService/Inventory`, `StarterPlayer/StarterPlayerScripts/Inventory` and `ReplicatedStorage/Shared/Inventory`. [Routing](/docs/v2/core-concepts/routing) explains the details.
 
 </Step>
 

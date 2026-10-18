@@ -147,7 +147,9 @@ describe("CoreInitService", () => {
 
 	describe("agent instructions", () => {
 		const agentFile = async (prompts?: PromptService) => {
-			const plan = (await serviceFor(prompts).plan()).unwrap();
+			const plan = (
+				await serviceFor(prompts).plan({ choices: { sample: false } })
+			).unwrap();
 			return plan?.files.find(({ fileName }) => fileName.endsWith(".md"));
 		};
 
@@ -368,7 +370,9 @@ describe("CoreInitService", () => {
 		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
 			plan?.files.map(({ fileName }) => fileName);
 		const planned = async (prompts = answersEverything()) =>
-			(await serviceFor(prompts).plan()).unwrap();
+			(
+				await serviceFor(prompts).plan({ choices: { sample: false } })
+			).unwrap();
 		const fileOf = (
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
@@ -618,7 +622,9 @@ describe("CoreInitService", () => {
 			await write("AGENTS.md", agentBlock);
 			await write(".claude/keep", "");
 
-			const plan = await planned(new MockPromptService(["hook"]));
+			const plan = (
+				await serviceFor(new MockPromptService(["hook"])).plan()
+			).unwrap();
 
 			expect(names(plan)).toEqual([SCRIPT, CLAUDE]);
 		});
@@ -974,6 +980,10 @@ describe("CoreInitService", () => {
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
 				"rogen.json",
 				".gitignore",
+				"src/Greeter/Shared/Greeting.luau",
+				"src/Greeter/Server/Greeter.server.luau",
+				"src/Greeter/Client/Greeter.client.luau",
+				"README.md",
 				"AGENTS.md",
 			]);
 			expect(plan?.configs).toEqual(["rogen.json"]);
@@ -1073,7 +1083,9 @@ describe("CoreInitService", () => {
 
 	describe("write", () => {
 		const planned = async (): Promise<InitPlan> =>
-			(await serviceFor().plan()).unwrap() as InitPlan;
+			(
+				await serviceFor().plan({ choices: { sample: false } })
+			).unwrap() as InitPlan;
 
 		it("should write the config and the agent file into the directory", async () => {
 			await write("tsconfig.json", "{}");

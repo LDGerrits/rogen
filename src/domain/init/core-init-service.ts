@@ -45,6 +45,7 @@ const PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
 	["packages", "--package"],
 	["routes", "--route"],
 	["unmatched", "--unmatched"],
+	["sample", "--sample"],
 ];
 
 export class CoreInitService implements InitService {
@@ -92,6 +93,8 @@ export class CoreInitService implements InitService {
 			for (const [key, flag] of [
 				["kind", "--kind"],
 				["skipGit", "--skip-git"],
+				["sample", "--sample"],
+				["places", "--places"],
 			] as const)
 				if (choices[key] !== undefined)
 					throw new UsageError(
