@@ -36,6 +36,13 @@ export class AgentFile {
 		return this.claudeText !== undefined;
 	}
 
+	/** The file that holds Rogen's rules: this one, else the `CLAUDE.md` beside it. */
+	get blockFileName(): string {
+		return this.claudeText?.includes(MARKER) && !this.text?.includes(MARKER)
+			? CLAUDE_MD
+			: this.fileName;
+	}
+
 	get hasBlock(): boolean {
 		return [this.text, this.claudeText].some(
 			(text) => text?.includes(MARKER) ?? false

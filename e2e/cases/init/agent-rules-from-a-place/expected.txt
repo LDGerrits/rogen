@@ -1,0 +1,39 @@
+$ rogen init --non-interactive
+exit 0
+stdout:
+  rogen init
+  ../../rogen.json lists this folder as a place, so agent rules, the hook and the Rojo pin go to the project root.
+  ../../AGENTS.md already has Rogen's rules.
+  Rojo is already pinned in ../../rokit.toml.
+  Nothing to add.
+
+$ rogen init --non-interactive --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "files": [],
+    "directories": [],
+    "built": [],
+    "present": [
+      {
+        "item": "agentRules",
+        "file": "<dir>/AGENTS.md",
+        "state": "present"
+      },
+      {
+        "item": "rojoPin",
+        "file": "<dir>/rokit.toml",
+        "state": "present"
+      }
+    ],
+    "notes": [
+      "../../rogen.json lists this folder as a place, so agent rules, the hook and the Rojo pin go to the project root."
+    ],
+    "nextSteps": {
+      "setup": [],
+      "run": [],
+      "darklua": [],
+      "edits": []
+    }
+  }

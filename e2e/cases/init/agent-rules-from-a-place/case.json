@@ -1,0 +1,5 @@
+{
+	"cwd": "places/lobby",
+	"steps": [["init", "--non-interactive"], ["init", "--non-interactive", "--json"]],
+	"output": ["init"]
+}

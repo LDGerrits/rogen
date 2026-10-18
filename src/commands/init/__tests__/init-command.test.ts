@@ -121,16 +121,24 @@ describe("init command", () => {
 			});
 		});
 
-		it("should print nothing and return the failure", async () => {
+		it("should list what the project has already as present", async () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
 
 			const { result, logService } = await runJson();
 
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "init.configExists" },
-			]);
-			expect(logService.entries).toEqual([]);
+			expect(result.isOk()).toBe(true);
+			expect(JSON.parse(logService.entries[0].text)).toMatchObject({
+				changed: false,
+				files: [],
+				present: [
+					{
+						item: "agentRules",
+						file: path.join(cwd, "AGENTS.md"),
+						state: "present",
+					},
+				],
+			});
 		});
 
 		it("should name the files it wrote before a write failed", async () => {
@@ -229,7 +237,7 @@ describe("init command", () => {
 			]);
 		});
 
-		it("should print nothing after the header when the config already exists", async () => {
+		it("should say only what is there when the config already exists", async () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
 			const logService = new MockLogService();
@@ -239,8 +247,12 @@ describe("init command", () => {
 				logService
 			);
 
-			expect(result.isErr()).toBe(true);
-			expect(logService.lines).toEqual(["intro: rogen init"]);
+			expect(result.isOk()).toBe(true);
+			expect(logService.lines).toEqual([
+				"intro: rogen init",
+				"info: AGENTS.md already has Rogen's rules.",
+				"outro: Nothing to add.",
+			]);
 		});
 	});
 
@@ -454,18 +466,22 @@ describe("init command", () => {
 			);
 		});
 
-		it("should still refuse a folder that has a config", async () => {
+		it("should say what a folder that has a config has, and write nothing", async () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
+			const logService = new MockLogService();
 
 			const result = await runInit(
 				new MockPromptService([], false),
-				new MockLogService(),
+				logService,
 				{ "dry-run": true }
 			);
 
-			expect(diagnosticsOf(result)).toMatchObject([
-				{ code: "init.configExists" },
+			expect(result.isOk()).toBe(true);
+			expect(logService.lines).toEqual([
+				"intro: rogen init",
+				"info: AGENTS.md already has Rogen's rules.",
+				"outro: Nothing to add.",
 			]);
 		});
 	});
@@ -900,34 +916,50 @@ describe("init command", () => {
 	});
 
 	describe("existing files", () => {
-		it("should fail when the config exists and nothing is left to add, and leave it alone", async () => {
+		it("should report what is there and leave the config alone when nothing is left to add", async () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
 
 			const result = await runInit();
 
-			expect(result.isErr()).toBe(true);
+			expect(result.isOk()).toBe(true);
+			expect(await read("rogen.json")).toBe("{}");
+		});
+
+		it("should fail naming the config when the flags leave nothing to add and nothing is there", async () => {
+			await write("rogen.json", "{}");
+
+			const result = await runInit(
+				new MockPromptService([], false),
+				new MockLogService(),
+				{ "agent-rules": false }
+			);
+
 			expect(diagnosticsOf(result)).toMatchObject([
 				{
 					code: "init.configExists",
 					resource: path.join(cwd, "rogen.json"),
 				},
 			]);
-			expect(await read("rogen.json")).toBe("{}");
 		});
 
-		it("should print nothing after the header when nothing is left to add", async () => {
-			await write("rogen.jsonc", "{}");
+		it("should report the hook and the rules as there when a second run asks for them", async () => {
+			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
 			const logService = new MockLogService();
 
 			const result = await runInit(
 				new MockPromptService([], false),
-				logService
+				logService,
+				{ "agent-rules": true }
 			);
 
-			expect(result.isErr()).toBe(true);
-			expect(logService.lines).toEqual(["intro: rogen init"]);
+			expect(result.isOk()).toBe(true);
+			expect(logService.lines).toEqual([
+				"intro: rogen init",
+				"info: AGENTS.md already has Rogen's rules.",
+				"outro: Nothing to add.",
+			]);
 		});
 
 		it("should add the agent rules beside a config when it can't ask, and leave the config alone", async () => {

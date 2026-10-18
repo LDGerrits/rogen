@@ -499,6 +499,45 @@ describe("ProjectSetup plan", () => {
 	});
 });
 
+describe("ProjectSetup plan, a lifted tree", () => {
+	const liftedConfig = async (text: string) => {
+		const choices = await defaultProjectChoices(luau);
+		const planned = planProject({
+			choices: { ...choices, tree: lifted(text) },
+			existingFiles: new Set(["default.project.json"]),
+		}).unwrap();
+		return planned.files.find(({ fileName }) => fileName === "rogen.json")!
+			.content;
+	};
+
+	it("should keep the numbers, the order of the keys, and the comments of the nodes it keeps", async () => {
+		const content = await liftedConfig(
+			[
+				"{",
+				'\t"name": "g",',
+				'\t"tree": {',
+				'\t\t"$className": "DataModel",',
+				'\t\t"Workspace": {',
+				"\t\t\t// gravity",
+				'\t\t\t"$properties": { "Gravity": 50, },',
+				'\t\t\t"Part": { "$className": "Part" }',
+				"\t\t},",
+				'\t\t"Lighting": { "$properties": { "Brightness": 2 } }',
+				"\t}",
+				"}",
+			].join("\n")
+		);
+
+		expect(content).toContain("// gravity");
+		expect(content).toContain('"Gravity": 50, }');
+		expect(content).toContain('"Brightness": 2 }');
+		expect(content.indexOf('"Workspace"')).toBeLessThan(
+			content.indexOf('"Lighting"')
+		);
+		expect(content).not.toContain("\t");
+	});
+});
+
 describe("an unattended run", () => {
 	it("should lift a hand-written project file the config would replace", async () => {
 		const choices = await defaultProjectChoices(

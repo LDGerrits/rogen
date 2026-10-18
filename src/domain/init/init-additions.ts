@@ -1,7 +1,10 @@
+import path from "path";
+import { toPosix } from "../../base/path.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { AgentSetup } from "./agent-setup.js";
+import { PresentItem } from "./init-service.js";
 import { AdditionOption, InitQuestions } from "./init-questions.js";
 import { RojoPinSetup } from "./rojo-pin-setup.js";
 import { AnsweredSetup, Setup } from "./setup.js";
@@ -11,8 +14,54 @@ export class InitAdditions {
 		private readonly questions: InitQuestions,
 		private readonly agentFile: AgentFile,
 		private readonly hooks: AgentHooks,
-		private readonly rojoPin?: RojoPinSetup
+		private readonly rojoPin: RojoPinSetup | undefined,
+		/** The toolchain file that pins Rojo already, if one does. */
+		private readonly pinnedIn: string | undefined,
+		/** The folder the files of the additions are named from. */
+		private readonly directory: string
 	) {}
+
+	/** What the project has of the additions, as `only` asks (all of them when it is not given). */
+	present(only?: ReadonlySet<PresentItem["item"]>): PresentItem[] {
+		const { agentFile, hooks, pinnedIn, directory } = this;
+		const wanted = (item: PresentItem["item"]) => !only || only.has(item);
+		return [
+			...(agentFile.hasBlock && wanted("agentRules")
+				? [
+						{
+							item: "agentRules" as const,
+							file: agentFile.blockFileName,
+						},
+					]
+				: []),
+			...(wanted("agentHook")
+				? hooks.registeredIn.map((file) => ({
+						item: "agentHook" as const,
+						file,
+					}))
+				: []),
+			...(pinnedIn && wanted("rojoPin")
+				? [
+						{
+							item: "rojoPin" as const,
+							file: toPosix(path.relative(directory, pinnedIn)),
+						},
+					]
+				: []),
+		];
+	}
+
+	/** What the flags ask for that the project has already. */
+	presentAsked(): PresentItem[] {
+		const { choices } = this.questions;
+		return this.present(
+			new Set([
+				...(choices.agentRules === true ? ["agentRules" as const] : []),
+				...(choices.agentHook === true ? ["agentHook" as const] : []),
+				...(choices.rojoPin === true ? ["rojoPin" as const] : []),
+			])
+		);
+	}
 
 	/** What the flags ask to add, or `undefined` when they ask for nothing. What is already there is not added again. */
 	requested(): Setup<unknown>[] | undefined {

@@ -311,12 +311,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			inherited: tree.fields.globIgnorePaths ?? [],
 		});
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
-		builder.setConfig({
-			...tree.fields,
-			...(routes && { sourcePaths: [...sourcePaths], routes }),
-			...(defaultSyncPath && { syncPath: defaultSyncPath }),
-			...projects,
-		});
+		builder.setConfig(
+			{
+				...tree.fields,
+				...(routes && { sourcePaths: [...sourcePaths], routes }),
+				...(defaultSyncPath && { syncPath: defaultSyncPath }),
+				...projects,
+			},
+			choices.tree.kind === "lift"
+				? choices.tree.project.written
+				: undefined
+		);
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
 		for (const file of choices.templateFiles ?? []) builder.addFile(file);
 		if (choices.kind !== undefined && !choices.skipGit)

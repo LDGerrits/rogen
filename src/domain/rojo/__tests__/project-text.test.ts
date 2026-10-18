@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { ProjectText } from "../project-text.js";
+import { parseJsonc } from "../../../base/jsonc.js";
+import { ProjectText, WrittenTree } from "../project-text.js";
 import { RojoNode, RojoProjectFile } from "../rojo-project.js";
 import { describeWithRojo, makeRojoDir, runRojo } from "./rojo-cli.js";
 
@@ -633,6 +634,115 @@ describe("domain/rojo/project-text", () => {
 			} finally {
 				fs.rmSync(dir, { recursive: true, force: true });
 			}
+		});
+	});
+
+	describe("WrittenTree", () => {
+		const source = [
+			"{",
+			'\t"name": "game",',
+			'\t"tree": {',
+			'\t\t"$className": "DataModel",',
+			"\t\t// the sky",
+			'\t\t"Workspace": {',
+			'\t\t\t"$properties": { "Gravity": 50, },',
+			'\t\t\t"Baseplate": { "$className": "Part", "$properties": { "Size": [512, 20, 512] } }',
+			"\t\t},",
+			'\t\t"Lighting": { "$properties": { "Brightness": 2 } }',
+			"\t}",
+			"}",
+			"",
+		].join("\n");
+		const textOf = (tree: unknown) =>
+			ProjectText.ofConfig(
+				{ name: "game", tree },
+				[],
+				WrittenTree.of(source)
+			);
+
+		it("should print an unchanged tree as it was written, but for the indentation", () => {
+			const tree = (parseJsonc(source).value as { tree: unknown }).tree;
+
+			const text = textOf(tree);
+
+			expect(text).toContain('"Gravity": 50, }');
+			expect(text).toContain('"Size": [512, 20, 512]');
+			expect(text).toContain("// the sky");
+			expect(text).not.toContain("\t");
+			expect(text).not.toContain("50.0");
+		});
+
+		it("should keep the order of the keys, and only print what changed afresh", () => {
+			const tree = {
+				$className: "DataModel",
+				Workspace: {
+					$properties: { Gravity: 50 },
+					Baseplate: {
+						$className: "Part",
+						$properties: { Size: [512, 20, 512] },
+					},
+				},
+				Lighting: { $properties: { Brightness: 2 } },
+				ReplicatedStorage: {},
+			};
+
+			const names = Object.keys(
+				JSON.parse(
+					textOf(tree)
+						.replace(/\/\/.*\n/, "")
+						.replace(", }", " }")
+				).tree
+			);
+
+			expect(names).toEqual([
+				"$className",
+				"Workspace",
+				"Lighting",
+				"ReplicatedStorage",
+			]);
+		});
+
+		it("should drop a node the tree no longer has", () => {
+			const tree = {
+				$className: "DataModel",
+				Lighting: { $properties: { Brightness: 2 } },
+			};
+
+			const text = textOf(tree);
+
+			expect(text).not.toContain("Workspace");
+			expect(text).toContain('"Brightness": 2 }');
+		});
+
+		it("should print a node afresh when the file repeats a key in it", () => {
+			const repeated =
+				'{"tree": {"$className": "DataModel", "A": {"x": 1}, "A": {"x": 2}}}';
+
+			const text = ProjectText.ofConfig(
+				{ tree: { $className: "DataModel", A: { x: 3 } } },
+				[],
+				WrittenTree.of(repeated)
+			);
+
+			expect(text.match(/"A"/g)).toHaveLength(1);
+		});
+
+		it("should leave no whitespace on an empty line, and read the indentation from a key, not a comment", () => {
+			const text = ProjectText.ofConfig(
+				{ tree: { A: { x: 1 } } },
+				[],
+				WrittenTree.of(
+					'{\n/*\n * note\n */\n    "tree": {\n        "A": {\n\n            "x": 1\n        }\n    }\n}\n'
+				)
+			);
+
+			expect(text).toContain('"A": {\n\n      "x": 1\n    }');
+			expect(text).not.toMatch(/[ \t]\n/);
+		});
+
+		it("should be undefined for a text that holds no tree", () => {
+			expect(WrittenTree.of("{}")).toBeUndefined();
+			expect(WrittenTree.of("{")).toBeUndefined();
 		});
 	});
 });

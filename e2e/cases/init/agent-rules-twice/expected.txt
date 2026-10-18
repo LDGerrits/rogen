@@ -1,0 +1,40 @@
+$ rogen init --non-interactive --agent-rules
+exit 0
+stdout:
+  rogen init
+  Created AGENTS.md.
+  Wrote 1 file.
+
+$ rogen init --non-interactive --agent-rules
+exit 0
+stdout:
+  rogen init
+  AGENTS.md already has Rogen's rules.
+  Nothing to add.
+
+$ rogen init --non-interactive --agent-rules --json
+exit 0
+stdout:
+  {
+    "changed": false,
+    "files": [],
+    "directories": [],
+    "built": [],
+    "present": [
+      {
+        "item": "agentRules",
+        "file": "<dir>/AGENTS.md",
+        "state": "present"
+      }
+    ],
+    "notes": [],
+    "nextSteps": {
+      "setup": [],
+      "run": [],
+      "darklua": [],
+      "edits": []
+    }
+  }
+
+written:
+  AGENTS.md

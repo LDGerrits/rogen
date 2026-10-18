@@ -25,6 +25,7 @@ export class AgentHooks {
 		readonly existed: boolean;
 	}[];
 	private readonly unreadable: readonly CodingAgent[];
+	private readonly registered: readonly CodingAgent[];
 
 	constructor(private readonly state: AgentHooksParts) {
 		const registrations = state.inUse.map(({ agent: target, text }) => ({
@@ -37,6 +38,9 @@ export class AgentHooks {
 				registration.kind === "added"
 					? [{ target, text: registration.text, existed }]
 					: []
+		);
+		this.registered = registrations.flatMap(({ target, registration }) =>
+			registration.kind === "present" ? [target] : []
 		);
 		this.unreadable = registrations.flatMap(({ target, registration }) =>
 			registration.kind === "unreadable" ? [target] : []
@@ -53,6 +57,11 @@ export class AgentHooks {
 		return this.state.inUse.some(
 			({ agent }) => agent.settingsFile === CLAUDE_SETTINGS_FILE
 		);
+	}
+
+	/** The settings files that have the hook already. */
+	get registeredIn(): string[] {
+		return this.registered.map(({ settingsFile }) => settingsFile);
 	}
 
 	get offered(): boolean {

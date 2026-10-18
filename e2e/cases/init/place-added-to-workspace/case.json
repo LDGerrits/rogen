@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init", "places/lobby", "--non-interactive"],
+		["init", "places/arena", "--non-interactive"]
+	],
+	"output": ["init"],
+	"show": ["project.code-workspace"]
+}

@@ -61,6 +61,49 @@ const SYNTAX_MESSAGES: Record<string, string> = {
 	InvalidCharacter: "invalid character",
 };
 
+/** A value with the place it has in the text, so a caller can copy it as written. */
+export interface JsoncSpan {
+	/** Offsets into `text` of the parsed document, from the first character of the value to just after its last. */
+	readonly start: number;
+	readonly end: number;
+	readonly value: unknown;
+	readonly properties?: readonly {
+		readonly name: string;
+		readonly value: JsoncSpan;
+	}[];
+}
+
+/** The document without a byte order mark, which the offsets of `root` index, and its root value. `undefined` when the text isn't valid. */
+export function parseJsoncSpans(
+	text: string
+): { text: string; root: JsoncSpan } | undefined {
+	const source =
+		text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text;
+	const errors: ParseError[] = [];
+	const tree = parseTree(source, errors, { allowTrailingComma: true });
+	return tree && errors.length === 0
+		? { text: source, root: toSpan(tree) }
+		: undefined;
+}
+
+function toSpan(node: Node): JsoncSpan {
+	const span = {
+		start: node.offset,
+		end: node.offset + node.length,
+		value: getNodeValue(node),
+	};
+	if (node.type !== "object") return span;
+	return {
+		...span,
+		properties: (node.children ?? []).flatMap((property) => {
+			const [key, value] = property.children ?? [];
+			return key && value
+				? [{ name: String(key.value), value: toSpan(value) }]
+				: [];
+		}),
+	};
+}
+
 export function parseJsonc(text: string): JsoncDocument {
 	const source =
 		text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text;
@@ -204,5 +247,21 @@ export function setJsoncValue(
 	return applyEdits(
 		text,
 		modify(text, [...at], value, { formattingOptions: formattingOf(text) })
+	);
+}
+
+/** `text` with `value` put in the array at `at` before `index`, or last when the array is shorter. */
+export function insertJsoncItem(
+	text: string,
+	at: readonly string[],
+	index: number,
+	value: unknown
+): string {
+	return applyEdits(
+		text,
+		modify(text, [...at, index], value, {
+			formattingOptions: formattingOf(text),
+			isArrayInsertion: true,
+		})
 	);
 }

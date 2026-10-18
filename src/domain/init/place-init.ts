@@ -1,7 +1,6 @@
 import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
-import { formatJsonFile } from "../../base/json.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { UsageError } from "../../base/errors.js";
@@ -26,8 +25,7 @@ import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlan } from "./init-service.js";
 import { InitQuestions } from "./init-questions.js";
-
-const WORKSPACE_SUFFIX = ".code-workspace";
+import { WorkspaceFiles } from "./workspace-files.js";
 
 interface Listing {
 	readonly placePaths: readonly string[];
@@ -43,6 +41,7 @@ interface KnownPlace {
 export class PlaceInit {
 	private readonly finder: PlaceFinder;
 	private readonly code: CodeFinder;
+	private readonly workspaces: WorkspaceFiles;
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
@@ -53,6 +52,7 @@ export class PlaceInit {
 	) {
 		this.finder = new PlaceFinder(fileSystemService);
 		this.code = new CodeFinder(fileSystemService);
+		this.workspaces = new WorkspaceFiles(fileSystemService);
 	}
 
 	async plan(target: string): Promise<Result<InitPlan | undefined, Error>> {
@@ -73,7 +73,7 @@ export class PlaceInit {
 
 		const port = this.portOf(folder, known);
 		const place = toPosix(path.relative(root, folder));
-		const workspace = await this.workspace(
+		const workspace = await this.workspaces.plan(
 			root,
 			[...new Set([...known.map((one) => one.directory), folder])]
 				.map((directory) => toPosix(path.relative(root, directory)))
@@ -94,7 +94,7 @@ export class PlaceInit {
 			files: [
 				...(listed.value.edit ? [listed.value.edit] : []),
 				{ fileName: configFile, content: configFileContent(config) },
-				...(workspace.file ? [workspace.file] : []),
+				...workspace.files,
 			],
 			directories: sourcePaths.directories.map((directory) =>
 				path.posix.join(place, directory)
@@ -115,6 +115,7 @@ export class PlaceInit {
 			},
 			asked: this.questions.interactive,
 			decided: this.questions.decided,
+			present: [],
 			gitInit: false,
 		});
 	}
@@ -309,34 +310,5 @@ export class PlaceInit {
 			...PlacePorts.assign(pinned).filter((port) => port !== undefined),
 		]);
 		return PlacePorts.firstFree(taken);
-	}
-
-	private async workspace(
-		root: string,
-		folders: readonly string[],
-		place: string
-	): Promise<{ file?: PlannedFile; notes: string[] }> {
-		const entries = await this.fileSystemService.readDirectory(root);
-		const present = entries
-			.map(([name]) => name)
-			.find((name) => name.endsWith(WORKSPACE_SUFFIX));
-		if (present !== undefined)
-			return {
-				notes: [
-					`${present} is there already: add the folder "${place}" to ${present} so the editor runs a language server for the place.`,
-				],
-			};
-		return {
-			file: {
-				fileName: `${path.basename(root)}${WORKSPACE_SUFFIX}`,
-				content: formatJsonFile({
-					folders: [
-						{ path: "." },
-						...folders.map((one) => ({ path: one })),
-					],
-				}),
-			},
-			notes: [],
-		};
 	}
 }

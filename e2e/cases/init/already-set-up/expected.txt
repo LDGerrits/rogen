@@ -1,0 +1,7 @@
+$ rogen init
+exit 0
+stdout:
+  rogen init
+  AGENTS.md already has Rogen's rules.
+  Rojo is already pinned in rokit.toml.
+  Nothing to add.

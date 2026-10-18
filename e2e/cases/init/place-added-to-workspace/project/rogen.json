@@ -1,0 +1,7 @@
+{
+	"name": "Game",
+	"routes": {
+		"server": "ServerScriptService",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

@@ -1,5 +1,6 @@
 import path from "path";
 import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
+import { toPosix } from "../../base/path.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -23,9 +24,11 @@ import {
 	InitPlan,
 	InitService,
 	InitWritten,
+	PresentItem,
 } from "./init-service.js";
 import { InitAdditions } from "./init-additions.js";
 import { Setup } from "./setup.js";
+import { PlaceFinder } from "../config/place-finder.js";
 import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
 import { RojoPinSetup } from "./rojo-pin-setup.js";
@@ -201,15 +204,16 @@ export class CoreInitService implements InitService {
 		directory: InitDirectory,
 		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const agentFile = await this.agentReader.fileIn(directory);
+		const placeOf = await this.projectRootOf(directory);
+		if (placeOf.isErr()) return placeOf;
+		const home = placeOf.value?.root ?? directory;
+		const agentFile = await this.agentReader.fileIn(home);
 		if (agentFile.isErr()) return agentFile;
-		const hooks = await this.agentReader.hooksIn(directory);
+		const hooks = await this.agentReader.hooksIn(home);
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
-		const manifests = await this.toolchainService.readManifests(
-			directory.path
-		);
-		const manifest = RojoPinSetup.manifestFor(directory.path, manifests);
+		const manifests = await this.toolchainService.readManifests(home.path);
+		const manifest = RojoPinSetup.manifestFor(home.path, manifests);
 		const pin = manifest && new RojoPinSetup(manifest, questions);
 		const { choices } = questions;
 		if (choices.agentHook === true && !hooks.value.inUse)
@@ -237,38 +241,77 @@ export class CoreInitService implements InitService {
 				);
 		}
 		if (!directory.hasConfigs)
-			return this.planWith(
-				directory,
-				questions,
+			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
-				...(pin ? [pin] : [])
-			);
+				...(pin ? [pin] : []),
+			]);
 		const additions = new InitAdditions(
 			questions,
 			agentFile.value,
 			hooks.value,
-			pin
+			pin,
+			RojoPinSetup.pinnedIn(manifests),
+			home.path
 		);
+		const notes = placeOf.value
+			? [
+					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and the Rojo pin go to the project root.`,
+				]
+			: [];
 		const requested = additions.requested();
-		if (requested) return this.planWith(directory, questions, ...requested);
+		if (requested)
+			return this.planWith(home, questions, requested, {
+				present: additions.presentAsked(),
+				notes,
+			});
 		const options = additions.options();
-		if (options.length === 0)
-			return err(
-				new DiagnosticsError(directory.checkFree(directory.configFiles))
-			);
+		if (options.length === 0) {
+			const present = additions.present();
+			return present.length > 0
+				? this.planWith(home, questions, [], { present, notes })
+				: err(new DiagnosticsError(home.checkFree(home.configFiles)));
+		}
 		const addition = await questions.whatToAdd(
-			directory.configFiles[0],
+			home.configFiles[0],
 			options
 		);
 		if (addition === undefined) return ok(undefined);
-		return this.planWith(directory, questions, addition);
+		return this.planWith(home, questions, [addition], {
+			present: additions.presentAsked(),
+			notes,
+		});
+	}
+
+	/** The project root that lists `directory` as a place, when `directory` is one. */
+	private async projectRootOf(
+		directory: InitDirectory
+	): Promise<
+		Result<{ root: InitDirectory; rootFile: string } | undefined, Error>
+	> {
+		if (!directory.hasConfigs) return ok(undefined);
+		const rootConfig = await new PlaceFinder(this.fileSystemService).rootOf(
+			directory.path
+		);
+		if (!rootConfig) return ok(undefined);
+		const root = await this.prepare(path.dirname(rootConfig), false);
+		if (root.isErr()) return root;
+		return ok({
+			root: root.value,
+			rootFile: toPosix(
+				path.relative(this.environmentService.cwd, rootConfig)
+			),
+		});
 	}
 
 	private async planWith(
 		directory: InitDirectory,
 		questions: InitQuestions,
-		...setups: readonly Setup<unknown>[]
+		setups: readonly Setup<unknown>[],
+		extras: {
+			present?: readonly PresentItem[];
+			notes?: readonly string[];
+		} = {}
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
 		for (const setup of setups) {
@@ -285,6 +328,8 @@ export class CoreInitService implements InitService {
 			this.environmentService.cwd
 		);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
+		for (const note of extras.notes ?? []) builder.addNote(note);
+		builder.addPresent(...(extras.present ?? []));
 		const plan = builder.build();
 		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
 		return ok(

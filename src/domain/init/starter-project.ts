@@ -12,6 +12,7 @@ import {
 } from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 import { instanceKey } from "../roblox/roblox.js";
+import { WrittenTree } from "../rojo/project-text.js";
 
 const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 	$path: optional ? { optional: path } : path,
@@ -24,7 +25,9 @@ export class StarterProject {
 	private constructor(
 		private readonly project: RojoProject<ParsedProjectFile>,
 		/** The folders that hold an init file, as `normalizeDir` writes them. */
-		private readonly holdingInit: ReadonlySet<string> = new Set()
+		private readonly holdingInit: ReadonlySet<string> = new Set(),
+		/** The tree of the file this project was parsed from, as written. */
+		readonly written?: WrittenTree
 	) {}
 
 	static fromMounts(mounts: readonly Mount[]): StarterProject {
@@ -45,7 +48,8 @@ export class StarterProject {
 
 	static parse(text: string): Result<StarterProject, Error> {
 		return RojoProject.parse(text).map(
-			(project) => new StarterProject(project)
+			(project) =>
+				new StarterProject(project, new Set(), WrittenTree.of(text))
 		);
 	}
 
@@ -73,7 +77,8 @@ export class StarterProject {
 	withInitIn(folders: readonly string[]): StarterProject {
 		return new StarterProject(
 			this.copy(),
-			new Set(folders.map(normalizeDir))
+			new Set(folders.map(normalizeDir)),
+			this.written
 		);
 	}
 
@@ -107,7 +112,7 @@ export class StarterProject {
 				claimed.some((dir) => containsPosix(dir, normalizeDir(target)))
 		);
 		return {
-			project: new StarterProject(edited, this.holdingInit),
+			project: new StarterProject(edited, this.holdingInit, this.written),
 			removed,
 		};
 	}
@@ -125,7 +130,7 @@ export class StarterProject {
 			if (Object.keys(node).length > 0)
 				edited.insertNode(instancePath, node);
 		}
-		return new StarterProject(edited, this.holdingInit);
+		return new StarterProject(edited, this.holdingInit, this.written);
 	}
 
 	/** A node already there wins and its mounts are `skipped`. */
@@ -150,7 +155,7 @@ export class StarterProject {
 		const edited = this.copy();
 		const { added, skipped } = edited.mergeMissing(additions);
 		return {
-			project: new StarterProject(edited, this.holdingInit),
+			project: new StarterProject(edited, this.holdingInit, this.written),
 			added: added.map(describe),
 			skipped: skipped.map(describe),
 		};

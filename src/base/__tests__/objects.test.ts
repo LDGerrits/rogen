@@ -1,4 +1,10 @@
-import { getOwn, isObject, mergeByKey, setOwn } from "../objects.js";
+import {
+	getOwn,
+	isObject,
+	isSameJson,
+	mergeByKey,
+	setOwn,
+} from "../objects.js";
 
 describe("isObject", () => {
 	it("identifies plain objects", () => {
@@ -64,5 +70,22 @@ describe("mergeByKey", () => {
 		expect(Object.keys(merged)).toEqual(["__proto__"]);
 		expect(merged.x).toBeUndefined();
 		expect(({} as Record<string, unknown>).x).toBeUndefined();
+	});
+});
+
+describe("isSameJson", () => {
+	it("compares by structure, whatever the prototypes", () => {
+		const bare = Object.assign(Object.create(null), { a: [1, { b: 2 }] });
+
+		expect(isSameJson(bare, { a: [1, { b: 2 }] })).toBe(true);
+	});
+
+	it("tells values, keys, lengths and kinds apart", () => {
+		expect(isSameJson({ a: 1 }, { a: 2 })).toBe(false);
+		expect(isSameJson({ a: 1 }, { b: 1 })).toBe(false);
+		expect(isSameJson({ a: 1 }, { a: 1, b: 1 })).toBe(false);
+		expect(isSameJson([1], [1, 2])).toBe(false);
+		expect(isSameJson([], {})).toBe(false);
+		expect(isSameJson(null, {})).toBe(false);
 	});
 });

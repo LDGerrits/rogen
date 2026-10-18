@@ -44,7 +44,7 @@ rogen.json:
     "$className": "DataModel",
     "Workspace": {
       "$properties": {
-        "Gravity": 50.0
+        "Gravity": 50
       }
     }
   },
