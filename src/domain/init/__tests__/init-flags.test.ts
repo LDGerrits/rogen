@@ -244,6 +244,22 @@ describe("init choices given as flags", () => {
 			});
 		});
 
+		it("should be one place when a source path is given, or code lies outside a places folder", async () => {
+			const given = await run(luau, { sourcePaths: ["lib"] }, false, [
+				"places",
+			]);
+			expect(given.asked.unwrap()?.places).toBeUndefined();
+			expect(given.asked.unwrap()?.sourcePaths).toEqual(["lib"]);
+
+			const code = await run(
+				{ ...luau, codeFolders: ["src"] },
+				{},
+				false,
+				["places"]
+			);
+			expect(code.asked.unwrap()?.places).toBeUndefined();
+		});
+
 		it("should be one place with --no-places, even beside a places folder", async () => {
 			const { asked } = await run(luau, { places: false }, false, [
 				"places",

@@ -1,6 +1,4 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
-import { toPosix } from "../../base/path.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
 	CONFIG_FILE_NAMES,
@@ -58,14 +56,7 @@ export class StarterPlaces {
 		const port = known.portFor(path.join(root, place));
 		const workspace = await this.workspaces.plan(
 			root,
-			[
-				...new Set([
-					...known.directories.map((directory) =>
-						toPosix(path.relative(root, directory))
-					),
-					place,
-				]),
-			].sort(compareStrings),
+			known.foldersWith(root, path.join(root, place)),
 			place
 		);
 		const placeSourcePath = path.posix.join(place, DEFAULT_SOURCE_PATH);
@@ -84,7 +75,7 @@ export class StarterPlaces {
 			],
 			directories: [placeSourcePath],
 			notes: [
-				`${FIRST_PLACE} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
+				KnownPlaces.pinNote(FIRST_PLACE, port, configFile),
 				...workspace.notes,
 			],
 		};

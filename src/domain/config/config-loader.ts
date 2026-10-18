@@ -97,12 +97,9 @@ export class ConfigLoader {
 						{}
 				).length > 0
 			);
-		const placeDirs = (
-			await this.finder.folders(dir, globs, sourcePaths)
-		).filter((placeDir) => placeDir !== dir);
-		const sharedFolders = (
-			await this.finder.sharedFolders(dir, globs, sourcePaths)
-		).filter((shared) => shared !== dir);
+		const matched = await this.finder.matched(dir, globs, sourcePaths);
+		const placeDirs = matched.places.filter((placeDir) => placeDir !== dir);
+		const sharedFolders = matched.shared.filter((shared) => shared !== dir);
 		const own = ConfigValidator.validateFile(
 			declared.sources,
 			declared.serveProject,

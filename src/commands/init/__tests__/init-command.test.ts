@@ -551,7 +551,6 @@ describe("init command", () => {
 			const { decided } = JSON.parse(logService.entries[0].text);
 			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
 				"--darklua",
-				"--places",
 			]);
 		});
 

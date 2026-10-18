@@ -257,7 +257,10 @@ export class InitQuestions {
 	async places(directory: InitDirectory): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
-		const several = directory.has("places");
+		if (this.choices.sourcePaths !== undefined) return false;
+		const several =
+			directory.has("places") &&
+			directory.layout.codeFolders.every((folder) => folder === "places");
 		if (!this.interactive)
 			return this.decide("places", several, "--places");
 		const answer = await this.promptService.select<"one" | "several">({

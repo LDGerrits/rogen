@@ -1,5 +1,4 @@
 import path from "path";
-import { compareStrings } from "../../base/collections.js";
 import { isMatch } from "../../base/glob.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
@@ -59,12 +58,27 @@ export class PlaceInit {
 		const listed = await this.listing(rootFile, root, folder);
 		if (listed.isErr()) return listed;
 		if (listed.value === "cancelled") return ok(undefined);
+		const { sourcePaths: shared } = await this.finder.listingOf(rootFile);
+		if (
+			(
+				await this.finder.sharedFolders(
+					root,
+					listed.value.placePaths,
+					shared
+				)
+			).some((one) => toPosix(one) === toPosix(folder))
+		)
+			return err(
+				new UsageError(
+					`${this.named(folder)} holds a source path of ${this.named(rootFile)}, so it is the code the places share, not a place.`
+				)
+			);
 		const known = await KnownPlaces.of(
 			this.fileSystemService,
 			this.finder,
 			root,
 			listed.value.placePaths,
-			(await this.finder.listingOf(rootFile)).sourcePaths
+			shared
 		);
 		const sourcePaths = await this.sourcePaths(folder, root);
 		if (sourcePaths === undefined) return ok(undefined);
@@ -76,9 +90,7 @@ export class PlaceInit {
 		const place = toPosix(path.relative(root, folder));
 		const workspace = await this.workspaces.plan(
 			root,
-			[...new Set([...known.directories, folder])]
-				.map((directory) => toPosix(path.relative(root, directory)))
-				.sort(compareStrings),
+			known.foldersWith(root, folder),
 			place
 		);
 		const config: RogenConfig = {
@@ -103,7 +115,7 @@ export class PlaceInit {
 			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
 			warnings: [],
 			notes: [
-				`${path.basename(folder)} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`,
+				KnownPlaces.pinNote(path.basename(folder), port, configFile),
 				...workspace.notes,
 			],
 			nextSteps: {

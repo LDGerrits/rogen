@@ -1,3 +1,4 @@
+import path from "path";
 import { compareStrings } from "../../base/collections.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
@@ -40,6 +41,22 @@ export class KnownPlaces {
 				})
 			)
 		);
+	}
+
+	/** The folders of the places under `root`, as relative paths, with `folder` among them, sorted: what a workspace file lists. */
+	foldersWith(root: string, folder: string): string[] {
+		return [
+			...new Set(
+				[...this.directories, folder].map((directory) =>
+					toPosix(path.relative(root, directory))
+				)
+			),
+		].sort(compareStrings);
+	}
+
+	/** What `init` says of the port it pinned for a place. */
+	static pinNote(name: string, port: number, configFile: string): string {
+		return `${name} is served on port ${port}, which its ${configFile} pins so adding another place never moves it.`;
 	}
 
 	get directories(): string[] {

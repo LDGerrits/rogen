@@ -40,11 +40,6 @@ stdout:
         "flag": "--darklua"
       },
       {
-        "question": "places",
-        "value": false,
-        "flag": "--places"
-      },
-      {
         "question": "unmatched",
         "value": "shared",
         "flag": "--unmatched"

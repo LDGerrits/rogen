@@ -90,7 +90,8 @@ export class PlaceFinder {
 		return shared;
 	}
 
-	private async matched(
+	/** The folders `globs` match, told apart: the places, and the code they share. */
+	async matched(
 		root: string,
 		globs: readonly string[],
 		sourcePaths: readonly string[]

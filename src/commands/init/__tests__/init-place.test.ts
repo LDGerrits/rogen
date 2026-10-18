@@ -404,6 +404,37 @@ describe("init for a place", () => {
 		expect(await exists("places/lobby/rogen.json")).toBe(true);
 	});
 
+	it("should refuse the folder that holds a source path, which is the code the places share", async () => {
+		await write("rogen.json", {
+			sourcePaths: ["places/shared/src"],
+			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+			placePaths: ["places/*"],
+		});
+		await memFs.createDirectory(path.join(root, "places/shared/src"));
+
+		const result = await run(["places/shared"]);
+
+		expect(failure(result).message).toContain(
+			"places/shared holds a source path of rogen.json, so it is the code the places share, not a place."
+		);
+		expect(await exists("places/shared/rogen.json")).toBe(false);
+	});
+
+	it("should not count the code the places share when it picks the port", async () => {
+		await write("rogen.json", {
+			sourcePaths: ["places/shared/src"],
+			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+			placePaths: ["places/*"],
+		});
+		await memFs.createDirectory(path.join(root, "places/shared/src"));
+
+		await run(["places/lobby"]);
+
+		expect((await readJson("places/lobby/rogen.json")).servePort).toBe(
+			34872
+		);
+	});
+
 	it("should work from a folder below the config", async () => {
 		await memFs.createDirectory(path.join(root, "places"));
 
