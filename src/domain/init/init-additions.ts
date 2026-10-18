@@ -1,11 +1,12 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
-import { joinedWithAnd } from "../../base/strings.js";
+import { UsageError } from "../../base/errors.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { AgentSetup } from "./agent-setup.js";
 import { PresentItem } from "./init-service.js";
-import { AdditionOption, InitQuestions } from "./init-questions.js";
+import { InitQuestions } from "./init-questions.js";
+import { ProjectChanger } from "./project-changer.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { AnsweredSetup, Setup } from "./setup.js";
 
@@ -18,7 +19,9 @@ export class InitAdditions {
 		/** The toolchain file that pins Rojo already, if one does. */
 		private readonly pinnedIn: string | undefined,
 		/** The folder the files of the additions are named from. */
-		private readonly directory: string
+		private readonly directory: string,
+		/** Changes the config of the folder, when it can be read. */
+		private readonly changer?: ProjectChanger
 	) {}
 
 	/** What the project has of the additions, as `only` asks (all of them when it is not given). */
@@ -92,57 +95,124 @@ export class InitAdditions {
 		];
 	}
 
-	/** The hook and the pin are not offered to a run that can't ask, since they edit the repo's tooling. */
-	async options(): Promise<AdditionOption<Setup<unknown>>[]> {
-		const { questions, agentFile, hooks, tools } = this;
-		const { choices } = questions;
+	/** The tools a change that turns Darklua on needs pinned. */
+	toolsForChanges(): Setup<unknown>[] {
+		return this.questions.choices.darklua === true && !this.changer?.place
+			? [this.tools]
+			: [];
+	}
+
+	/** What a run with no flags does: the safe additions it can make without asking in a run that can't ask, else what the user picks from the areas that have something to change. `nothing` when there is none. */
+	async choose(): Promise<
+		| {
+				readonly setups: Setup<unknown>[];
+				/** The setups change the config of a place, so the plan is the place's folder. */
+				readonly inPlace: boolean;
+		  }
+		| { readonly place: string }
+		| "nothing"
+		| undefined
+	> {
+		const { questions, agentFile, hooks, tools, changer } = this;
+		const own = changer?.place === true;
 		const agents = new AgentSetup(agentFile, hooks, questions);
-		const options: AdditionOption<Setup<unknown>>[] = [
-			...(agentFile.hasBlock
-				? []
-				: [
-						{
-							id: "agent",
-							flag: "--agent-rules",
-							label: "Agent instructions",
-							hint: `Rogen's rules for coding agents, in ${agentFile.fileName}`,
-							addition: new AnsweredSetup(agents, {
-								rules: true,
-								hook: false,
-							}),
-						},
-					]),
-			...(hooks.agents.length > 0 && questions.interactive
+		const { choices } = questions;
+		const wantsRules = !agentFile.hasBlock && choices.agentRules !== false;
+		const wantsHook = hooks.offered && choices.agentHook !== false;
+		const wantsTools = choices.rojo !== false;
+		const areas = [
+			...(changer ? await changer.areas() : []),
+			...(wantsRules || wantsHook
 				? [
 						{
-							id: "hook",
-							flag: "--agent-hook",
-							label: "Agent hook",
-							hint: `reports Rogen warnings to ${joinedWithAnd(hooks.agents)}`,
-							addition: new AnsweredSetup(agents, {
-								rules: false,
-								hook: true,
-							}),
+							id: "agents",
+							label: "Agents",
+							hint: wantsRules
+								? "Rogen's rules for coding agents, and the hook"
+								: "the hook",
 						},
 					]
 				: []),
-			...((await tools.rojoMissing()) && questions.interactive
+			...(wantsTools && (await tools.rojoMissing())
 				? [
 						{
-							id: "rojo",
-							flag: "--rojo",
-							label: "Rojo",
-							hint: "pins Rojo with your toolchain manager, or installs Rokit and Rojo",
-							addition: tools.asked(),
+							id: "tools",
+							label: "Tools",
+							hint: "pin Rojo, or install Rokit and Rojo, and the Studio plugin",
 						},
 					]
 				: []),
 		];
-		const refused = new Set([
-			...(choices.agentRules === false ? ["agent"] : []),
-			...(choices.agentHook === false ? ["hook"] : []),
-			...(choices.rojo === false ? ["rojo"] : []),
-		]);
-		return options.filter(({ id }) => !refused.has(id));
+		if (!questions.interactive) {
+			const setups: Setup<unknown>[] = [
+				...(changer && areas.some(({ id }) => id === "workspace")
+					? [changer.setup(async () => ({ workspace: true }))]
+					: []),
+				...(!wantsRules
+					? []
+					: [
+							new AnsweredSetup(agents, {
+								rules: true,
+								hook: false,
+							}),
+						]),
+				...(wantsTools && (await tools.canPin()) ? [tools] : []),
+			];
+			return setups.length > 0 ? { setups, inPlace: false } : "nothing";
+		}
+		if (areas.length === 0) return "nothing";
+		const rows: [string, string][] = [
+			...(changer?.describe() ?? []),
+			...(own
+				? []
+				: ([
+						[
+							"Agents",
+							agentFile.hasBlock
+								? `rules in ${agentFile.blockFileName}`
+								: "no rules",
+						],
+						[
+							"Tools",
+							this.pinnedIn
+								? `Rojo pinned in ${toPosix(path.relative(this.directory, this.pinnedIn))}`
+								: (await tools.rojoMissing())
+									? "Rojo not set up"
+									: "Rojo installed",
+						],
+					] as [string, string][])),
+		];
+		const width = Math.max(...rows.map(([name]) => name.length));
+		const picked = await questions.whatToChange(
+			rows
+				.map(([name, text]) => `${name.padEnd(width)}  ${text}`)
+				.join("\n"),
+			areas
+		);
+		if (picked === undefined) return undefined;
+		const request =
+			changer && picked.some((id) => !["agents", "tools"].includes(id))
+				? await changer.ask(picked)
+				: {};
+		if (request === undefined) return undefined;
+		if ("place" in request) return request;
+		const changing = Object.keys(request).length > 0 && changer;
+		if (
+			own &&
+			changing &&
+			(picked.includes("agents") || picked.includes("tools"))
+		)
+			throw new UsageError(
+				"The changes of a place and the additions of the project root are made from different folders.",
+				"Run init in the root for agent rules, the hook and Rojo."
+			);
+		return {
+			inPlace: own && changing !== undefined,
+			setups: [
+				...(changing ? [changer.setup(async () => request)] : []),
+				...(picked.includes("agents") ? [agents] : []),
+				...(picked.includes("tools") ? [tools] : []),
+			],
+		};
 	}
 }

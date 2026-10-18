@@ -64,7 +64,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given.",
+			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a rogen.json, --darklua adds the dist project that serves the processed code, a .darklua.json and Darklua's pin, and --no-darklua takes the project off again when it is still what init writes.",
 	},
 	{
 		name: "source-path",
@@ -72,7 +72,15 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
+			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is. On a project that has a rogen.json, adds the folder to its source paths.",
+	},
+	{
+		name: "no-source-path",
+		type: "string",
+		multiple: true,
+		placeholder: "path",
+		description:
+			"On a project that has a rogen.json: takes a folder off its source paths. The files in it are no longer built, which init lists.",
 	},
 	{
 		name: "sync-path",
@@ -94,7 +102,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given.",
+			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given. On a project that has a rogen.json, mounts the folder if the tree doesn't.",
 	},
 	{
 		name: "route",
@@ -102,7 +110,15 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. On a project that has a rogen.json, adds the route. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+	},
+	{
+		name: "no-route",
+		type: "string",
+		multiple: true,
+		placeholder: "id",
+		description:
+			"On a project that has a rogen.json: takes a standard route off, when it still has its standard value. Routes of your own are never changed.",
 	},
 	{
 		name: "unmatched",
@@ -197,6 +213,8 @@ function choicesOf(
 		syncPath: options["sync-path"],
 		packages: options.package,
 		routes: options.route,
+		unroutes: options["no-route"],
+		unsourcePaths: options["no-source-path"],
 		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
 		places: options.places,
@@ -246,22 +264,16 @@ registerCommand(
 				return err(
 					new UsageError("init takes one folder, the place to add.")
 				);
-			if (line.positionals.length === 0) {
-				const { options } = line;
-				const flag =
-					options["place-id"] !== undefined
-						? "--place-id"
-						: options["place-listing"] !== undefined
-							? "--place-listing"
-							: undefined;
-				if (flag)
-					return err(
-						new UsageError(
-							`${flag} is for a place folder.`,
-							"Give the folder to add, as 'rogen init places/lobby'."
-						)
-					);
-			}
+			if (
+				line.positionals.length === 0 &&
+				line.options["place-listing"] !== undefined
+			)
+				return err(
+					new UsageError(
+						"--place-listing is for a place folder.",
+						"Give the folder to add, as 'rogen init places/lobby'."
+					)
+				);
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const dryRun = Boolean(line.options["dry-run"]);

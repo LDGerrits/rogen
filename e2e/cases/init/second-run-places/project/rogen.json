@@ -1,0 +1,4 @@
+{
+	"tree": { "$className": "DataModel" },
+	"routes": { "server": "ServerScriptService", "shared": "ReplicatedStorage/shared" }
+}

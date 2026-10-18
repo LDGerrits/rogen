@@ -42,6 +42,7 @@ export const initDocumentShape = S.object({
 			file: S.string,
 			outcome: S.enum("wrote", "wouldWrite"),
 			appended: S.optional(S.boolean),
+			changes: S.optional(S.array(S.string)),
 		})
 	),
 	directories: S.array(S.string),
@@ -130,7 +131,9 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 
 /** A run that wrote nothing because the project has what it would add. */
 const nothingToAdd = (plan: InitPlan) =>
-	plan.files.length === 0 && plan.present.length > 0;
+	plan.files.length === 0 &&
+	plan.commands.length === 0 &&
+	plan.scaffold === undefined;
 
 const presentOf = (plan: InitPlan) =>
 	plan.present.length > 0
@@ -235,7 +238,14 @@ export class InitLog implements InitReporter {
 			);
 			return;
 		}
-		const { fileName, addition } = item.file;
+		const { fileName, addition, changes } = item.file;
+		if (changes !== undefined) {
+			for (const change of changes)
+				this.logService.success(
+					`${this.dryRun ? "Would change " : ""}${this.shown(fileName)}: ${change}.`
+				);
+			return;
+		}
 		this.logService.success(
 			addition !== undefined
 				? `${this.dryRun ? "Would add" : "Added"} ${addition} to ${this.shown(fileName)}.`
@@ -285,6 +295,8 @@ interface InitFile {
 	readonly outcome: "wrote" | "wouldWrite";
 	/** Set when the file existed and something was added to it. */
 	readonly appended?: true;
+	/** Set when the file is a config that was changed: each change as `added routes.ServerStorage`. */
+	readonly changes?: readonly string[];
 }
 
 interface InitDocument {
@@ -367,6 +379,9 @@ export class InitJsonLog implements InitReporter {
 			outcome: this.dryRun ? "wouldWrite" : "wrote",
 			...(item.file.addition !== undefined && {
 				appended: true as const,
+			}),
+			...(item.file.changes !== undefined && {
+				changes: item.file.changes,
 			}),
 		});
 	}

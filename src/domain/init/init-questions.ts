@@ -16,7 +16,7 @@ import { TreeChoice } from "./tree-plan.js";
 const NONE = "none";
 
 /** `value` is one of `known`, else a usage error naming them, the closest first. */
-function oneOf(
+export function oneOf(
 	value: string,
 	known: readonly string[],
 	what: string,
@@ -32,13 +32,23 @@ function oneOf(
 }
 
 /** The values of a list flag that takes `none`, which stands for no value at all. */
-function listOf(given: readonly string[], flag: string): readonly string[] {
+export function listOf(
+	given: readonly string[],
+	flag: string
+): readonly string[] {
 	if (!given.includes(NONE)) return given;
 	if (given.length > 1)
 		throw new UsageError(
 			`'${NONE}' can't be combined with other values of ${flag}.`
 		);
 	return [];
+}
+
+/** An area of a project that has a config, which a run can change. */
+export interface ChangeArea {
+	readonly id: string;
+	readonly label: string;
+	readonly hint: string;
 }
 
 export interface AdditionOption<T> {
@@ -207,6 +217,160 @@ export class InitQuestions {
 			initialValue: first.id,
 		});
 		return options.find((option) => option.id === id)?.addition;
+	}
+
+	/** The areas of a project that has a config to change, with what it has now; `undefined` when the user cancelled. */
+	async whatToChange(
+		current: string,
+		areas: readonly ChangeArea[]
+	): Promise<readonly string[] | undefined> {
+		return this.promptService.multiSelect({
+			message: "What do you want to change?",
+			description: current,
+			choices: areas.map(({ id, label, hint }) => ({
+				value: id,
+				label,
+				hint,
+			})),
+			initialValues: [],
+		});
+	}
+
+	/** The standard routes to add and to take off, from a list ticked as the config has them. */
+	async changeRoutes(
+		options: readonly { id: string; key: string; target: string }[],
+		configured: readonly string[]
+	): Promise<{ add: string[]; remove: string[] } | undefined> {
+		const ticked = await this.promptService.multiSelect({
+			message: "Routes",
+			description:
+				"Ticking adds a route, unticking takes off one that still has its standard value. Routes of your own stay.",
+			choices: options.map(({ id, key, target }) => ({
+				value: id,
+				label: key,
+				hint: `→ ${target}`,
+			})),
+			initialValues: configured,
+		});
+		return ticked === undefined
+			? undefined
+			: {
+					add: ticked.filter((id) => !configured.includes(id)),
+					remove: configured.filter((id) => !ticked.includes(id)),
+				};
+	}
+
+	async changeUnmatched(
+		current: "shared" | "leave",
+		sharedTarget: string
+	): Promise<"shared" | "leave" | undefined> {
+		return this.promptService.select<"shared" | "leave">({
+			message: "Files that match no route",
+			description:
+				"Most loose modules in a feature folder are shared code.",
+			choices: [
+				{ value: "shared", label: `Put them in ${sharedTarget}` },
+				{
+					value: "leave",
+					label: "Leave them out (Rogen warns when it does)",
+				},
+			],
+			initialValue: current,
+		});
+	}
+
+	/** The source paths to add and to take off, from the list the user edits. Taking one off with scripts in it asks to confirm. */
+	async changeSourcePaths(
+		current: readonly string[],
+		directory: InitDirectory,
+		codeIn: (sourcePath: string) => Promise<readonly string[]>
+	): Promise<{ add: string[]; remove: string[] } | undefined> {
+		const answer = await this.promptService.text({
+			message: "Source paths",
+			description:
+				"Folders with your scripts, relative to here. Separate several with commas.",
+			placeholder: current.join(", "),
+			validate: (value) => directory.sourcePathsProblem(splitList(value)),
+		});
+		if (answer === undefined) return undefined;
+		const next = splitList(answer).map(normalizeDir);
+		const remove = current.filter((entry) => !next.includes(entry));
+		for (const entry of remove) {
+			const files = await codeIn(entry);
+			if (files.length === 0) continue;
+			const sure = await this.promptService.confirm({
+				message: `Stop building ${entry}?`,
+				description: `${files.length === 1 ? "This file" : "These files"} would no longer be built: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}.`,
+				initialValue: false,
+			});
+			if (sure === undefined) return undefined;
+			if (!sure)
+				return this.changeSourcePaths(current, directory, codeIn);
+		}
+		return {
+			add: next.filter((entry) => !current.includes(entry)),
+			remove,
+		};
+	}
+
+	/** Whether Darklua is on after this run, asked with its state now. */
+	async changeDarklua(current: boolean): Promise<boolean | undefined> {
+		return this.promptService.confirm({
+			message: current
+				? "Keep Darklua processing your code?"
+				: "Does Darklua process your code before Rojo syncs it?",
+			description:
+				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
+			initialValue: current,
+		});
+	}
+
+	async changePackages(
+		offered: readonly { path: string; landing: string }[]
+	): Promise<readonly string[] | undefined> {
+		return this.promptService.multiSelect({
+			message: "Packages",
+			description:
+				"Folders placed in the game as they are. Rogen doesn't scan or route them.",
+			choices: offered.map(({ path, landing }) => ({
+				value: path,
+				label: path,
+				hint: `→ ${landing}`,
+			})),
+			initialValues: offered.map(({ path }) => path),
+		});
+	}
+
+	async changePlaces(
+		several: boolean
+	): Promise<"several" | "add" | undefined> {
+		if (several) return "add";
+		return this.promptService.select<"several" | "add">({
+			message: "Places",
+			choices: [
+				{
+					value: "several",
+					label: "Turn this into several places",
+					hint: "adds placePaths and a first place, and moves no code",
+				},
+				{
+					value: "add",
+					label: "Add a place",
+					hint: "a folder with its own rogen.json",
+				},
+			],
+			initialValue: "several",
+		});
+	}
+
+	/** The folder of a place to add. */
+	async placeFolder(): Promise<string | undefined> {
+		const answer = await this.promptService.text({
+			message: "Place folder",
+			description: "Relative to here, such as places/lobby.",
+			validate: required("a folder"),
+		});
+		return answer === undefined ? undefined : normalizeDir(answer);
 	}
 
 	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {

@@ -22,6 +22,7 @@ import {
 
 export class InitPlanBuilder {
 	private config: PlannedFile | undefined;
+	private edited: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private claudeImport: PlannedFile | undefined;
@@ -54,6 +55,11 @@ export class InitPlanBuilder {
 			fileName: DEFAULT_CONFIG_FILE,
 			content: configFileContent(config, written),
 		};
+	}
+
+	/** The config of the folder with changes made to it, which is built after it is written. */
+	editConfig(file: PlannedFile): void {
+		this.edited = file;
 	}
 
 	/** `claudeImport`: also write the `CLAUDE.md` that points Claude Code at the agent file. */
@@ -128,6 +134,7 @@ export class InitPlanBuilder {
 
 	build(): Result<InitPlan, Diagnostic[]> {
 		const written = this.config ? [this.config] : [];
+		const built = this.edited ? [...written, this.edited] : written;
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
 		);
@@ -141,7 +148,7 @@ export class InitPlanBuilder {
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
 			files: [
-				...written,
+				...built,
 				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
 				...(this.claudeImport ? [this.claudeImport] : []),
@@ -150,7 +157,7 @@ export class InitPlanBuilder {
 			],
 			directories: [...this.directories],
 			commands: [...this.commands],
-			configs: written.map(({ fileName }) =>
+			configs: built.map(({ fileName }) =>
 				toPosix(
 					path.relative(
 						this.cwd,

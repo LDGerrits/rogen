@@ -35,6 +35,10 @@ export interface InitChoices {
 	readonly packages?: readonly string[];
 	/** Route ids, or `none`. */
 	readonly routes?: readonly string[];
+	/** Route ids to take off a project that has a config. */
+	readonly unroutes?: readonly string[];
+	/** Source paths to take off a project that has a config. */
+	readonly unsourcePaths?: readonly string[];
 	readonly unmatched?: "shared" | "leave";
 	/** Whether a new place starts with the Greeter sample. */
 	readonly sample?: boolean;

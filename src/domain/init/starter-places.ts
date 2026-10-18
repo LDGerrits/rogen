@@ -45,13 +45,13 @@ export class StarterPlaces {
 		extend?: (
 			place: string,
 			shared: string
-		) => { files: PlannedFile[]; config: Partial<RogenConfig> }
+		) => { files: PlannedFile[]; config: Partial<RogenConfig> },
+		/** The source paths of a project that has code to share already, which stay where they are. */
+		existing?: readonly string[]
 	): Promise<StartingPlaces> {
-		const sharedSourcePath = path.posix.join(
-			PLACES_FOLDER,
-			SHARED,
-			DEFAULT_SOURCE_PATH
-		);
+		const sharedSourcePath =
+			existing?.[0] ??
+			path.posix.join(PLACES_FOLDER, SHARED, DEFAULT_SOURCE_PATH);
 		const place = path.posix.join(PLACES_FOLDER, FIRST_PLACE);
 		const placePaths = [path.posix.join(PLACES_FOLDER, "*")];
 		const known = await KnownPlaces.of(
@@ -59,7 +59,7 @@ export class StarterPlaces {
 			this.finder,
 			root,
 			placePaths,
-			[sharedSourcePath]
+			existing ?? [sharedSourcePath]
 		);
 		const port = known.portFor(path.join(root, place));
 		const workspace = await this.workspaces.plan(

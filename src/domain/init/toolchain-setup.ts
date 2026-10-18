@@ -198,6 +198,12 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 		return !(await this.loaded()).rojoReady;
 	}
 
+	/** Whether a run that can't ask can pin Rojo: it is missing, and a manager that is installed can pin it. */
+	async canPin(): Promise<boolean> {
+		const state = await this.loaded();
+		return !state.rojoReady && state.manager !== undefined;
+	}
+
 	/** The tools this run pins: Rojo when it isn't ready, and Darklua when the project uses it and it isn't. */
 	private async missing(state: ToolState): Promise<ToolPin[]> {
 		return [

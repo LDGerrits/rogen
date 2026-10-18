@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import path from "path";
+import { parse } from "../../../base/jsonc.js";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
@@ -35,7 +36,7 @@ const readyProcesses = () => {
 	return processes;
 };
 
-const WHAT_TO_ADD = "rogen.json exists. What do you want to add?";
+const WHAT_TO_CHANGE = "What do you want to change?";
 
 describe("init command", () => {
 	const cwd = path.resolve("/mock/my-game");
@@ -291,7 +292,7 @@ describe("init command", () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				new MockPromptService(["agent"]),
+				new MockPromptService([["agents"], true]),
 				logService
 			);
 
@@ -793,6 +794,130 @@ describe("init command", () => {
 			expect(await exists("AGENTS.md")).toBe(false);
 		});
 
+		describe("on a project that has a config", () => {
+			const CONFIG =
+				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" }\n}\n';
+
+			const readConfig = async () =>
+				parse(await read("rogen.json")).unwrap() as {
+					routes: Record<string, string>;
+					serveProject?: string;
+					projects?: unknown;
+				};
+
+			beforeEach(async () => {
+				await write("rogen.json", CONFIG);
+				await write("src/keep.luau");
+			});
+
+			it("should change the routes the flags name and keep the comment", async () => {
+				const log = new MockLogService();
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					log,
+					{ route: ["serverStorage"], "no-route": ["client"] }
+				);
+
+				expect(result.isOk()).toBe(true);
+				const text = await read("rogen.json");
+				expect(text).toContain("// my routes");
+				expect(text).toContain('"serverStorage": "ServerStorage"');
+				expect(text).not.toContain('"client"');
+				expect(log.lines).toContain(
+					"success: rogen.json: added routes.serverStorage."
+				);
+				expect(log.lines).toContain(
+					"success: rogen.json: removed routes.client."
+				);
+			});
+
+			it("should list the changes in --json, and write nothing in a dry run", async () => {
+				const log = new MockLogService();
+
+				await runInit(new MockPromptService([], false), log, {
+					json: true,
+					"dry-run": true,
+					"source-path": ["lib"],
+				});
+
+				expect(JSON.parse(log.entries[0].text).files).toEqual([
+					expect.objectContaining({
+						outcome: "wouldWrite",
+						changes: ["added sourcePaths lib"],
+					}),
+				]);
+				expect(await read("rogen.json")).toBe(CONFIG);
+			});
+
+			it("should build the config after changing it", async () => {
+				await runInit(new MockPromptService([], false), undefined, {
+					darklua: true,
+				});
+
+				expect(await exists("dist.project.json")).toBe(true);
+				expect(await exists(".darklua.json")).toBe(true);
+				expect((await readConfig()).serveProject).toBe("dist");
+			});
+
+			it("should take Darklua off again", async () => {
+				await runInit(new MockPromptService([], false), undefined, {
+					darklua: true,
+				});
+
+				await runInit(new MockPromptService([], false), undefined, {
+					darklua: false,
+				});
+
+				const config = await readConfig();
+				expect(config.serveProject).toBeUndefined();
+				expect(config.projects).toBeUndefined();
+			});
+
+			it("should refuse a flag for a new project, and say why", async () => {
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ sample: false }
+				);
+
+				expect(errorMessage(result)).toContain(
+					"--sample is for a new project, and rogen.json exists."
+				);
+			});
+
+			it("should say a take-off that is not possible instead of changing it", async () => {
+				await write(
+					"rogen.json",
+					'{ "tree": { "$className": "DataModel" }, "routes": { "client": "Elsewhere" } }'
+				);
+
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ "no-route": ["client"] }
+				);
+
+				expect(errorMessage(result)).toContain(
+					"goes to Elsewhere, not to the standard"
+				);
+			});
+
+			it("should ask what to change in a terminal and apply the picks", async () => {
+				const prompts = new MockPromptService({
+					[WHAT_TO_CHANGE]: ["unmatched"],
+					"Files that match no route": "shared",
+				});
+
+				const result = await runInit(prompts);
+
+				expect(result.isOk()).toBe(true);
+				expect((await readConfig()).routes["*"]).toBe(
+					"ReplicatedStorage/Shared"
+				);
+			});
+		});
+
 		it("should do nothing, and succeed, when what a flag asks for is already there", async () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", "<!-- rogen -->\n");
@@ -825,7 +950,7 @@ describe("init command", () => {
 			);
 
 			expect(errorMessage(result)).toContain(
-				"rogen.json already exists, so --language and --route would change nothing."
+				"--language is for a new project, and rogen.json exists."
 			);
 		});
 
@@ -989,7 +1114,7 @@ describe("init command", () => {
 			const log = new MockLogService();
 
 			await runInit(
-				new MockPromptService({ [WHAT_TO_ADD]: "agent" }),
+				new MockPromptService({ [WHAT_TO_CHANGE]: ["agents"] }),
 				log
 			);
 

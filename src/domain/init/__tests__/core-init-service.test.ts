@@ -20,7 +20,7 @@ import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
-const WHAT_TO_ADD = "rogen.json exists. What do you want to add?";
+const WHAT_TO_CHANGE = "What do you want to change?";
 const directory = path.resolve("/mock/my-game");
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
@@ -230,7 +230,9 @@ describe("CoreInitService", () => {
 			await write("rogen.json", "{}");
 
 			const plan = (
-				await serviceFor(new MockPromptService(["agent"])).plan()
+				await serviceFor(
+					new MockPromptService([["agents"], true])
+				).plan()
 			).unwrap();
 
 			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
@@ -340,29 +342,43 @@ describe("CoreInitService", () => {
 		});
 	});
 
-	describe("what to add", () => {
-		const valuesListed = async (existing: string[]) => {
+	describe("what to change", () => {
+		const areasListed = async (existing: string[]) => {
 			await write("rogen.json", "{}");
 			for (const file of existing) await write(file);
 			const prompts = new MockPromptService([CANCEL]);
 			let values: string[] = [];
-			const original = prompts.select.bind(prompts);
-			prompts.select = ((options: Parameters<typeof original>[0]) => {
+			const original = prompts.multiSelect.bind(prompts);
+			prompts.multiSelect = ((
+				options: Parameters<typeof original>[0]
+			) => {
 				values = options.choices.map(({ value }) => value);
 				return original(options);
-			}) as typeof prompts.select;
+			}) as typeof prompts.multiSelect;
 			await serviceFor(prompts).plan();
 			return values;
 		};
 
-		it("should offer agent instructions until they are there", async () => {
-			expect(await valuesListed([])).toEqual(["agent"]);
-			expect(await valuesListed(["AGENTS.md"])).toContain("agent");
+		it("should offer the areas of the config, and agents until the rules are there", async () => {
+			expect(await areasListed([])).toEqual(
+				expect.arrayContaining([
+					"places",
+					"routes",
+					"unmatched",
+					"sourcePaths",
+					"darklua",
+					"agents",
+				])
+			);
+			expect(await areasListed(["AGENTS.md"])).toContain("agents");
+			expect(await areasListed(["AGENTS.md"])).not.toContain("packages");
 		});
 
-		it("should offer the hook only where an agent is in use", async () => {
-			expect(await valuesListed([])).not.toContain("hook");
-			expect(await valuesListed([".claude/keep"])).toContain("hook");
+		it("should offer the agents once their rules are there only where an agent is in use for the hook", async () => {
+			await write("AGENTS.md", agentBlock);
+
+			expect(await areasListed([])).not.toContain("agents");
+			expect(await areasListed([".claude/keep"])).toContain("agents");
 		});
 	});
 
@@ -627,7 +643,9 @@ describe("CoreInitService", () => {
 			await write(".claude/keep", "");
 
 			const plan = (
-				await serviceFor(new MockPromptService(["hook"])).plan()
+				await serviceFor(
+					new MockPromptService([["agents"], true])
+				).plan()
 			).unwrap();
 
 			expect(names(plan)).toEqual([SCRIPT, CLAUDE]);
@@ -1098,7 +1116,7 @@ describe("CoreInitService", () => {
 			await write("rogen.json", "{}");
 			await write("AGENTS.md", agentBlock);
 			const prompts = new MockPromptService({
-				[WHAT_TO_ADD]: "rojo",
+				[WHAT_TO_CHANGE]: ["tools"],
 			});
 
 			const plan = (await serviceFor(prompts).plan()).unwrap();
@@ -1416,21 +1434,19 @@ describe("CoreInitService", () => {
 				return { prompts, result };
 			};
 
-			it("should ask what to add, preselecting agent instructions and asking nothing more", async () => {
+			it("should ask what to change, with nothing ticked, and write nothing when nothing is picked", async () => {
 				const { prompts, result } = await planWith({
-					[WHAT_TO_ADD]: ACCEPT_DEFAULT,
+					[WHAT_TO_CHANGE]: ACCEPT_DEFAULT,
 				});
 
-				expect(prompts.asked).toEqual([WHAT_TO_ADD]);
-				expect(
-					result.unwrap()?.files.map(({ fileName }) => fileName)
-				).toEqual(["AGENTS.md"]);
+				expect(prompts.asked).toEqual([WHAT_TO_CHANGE]);
+				expect(result.unwrap()?.files).toEqual([]);
 			});
 
-			it("should plan nothing when the user cancels what to add", async () => {
+			it("should plan nothing when the user cancels what to change", async () => {
 				const { prompts, result } = await planWith([CANCEL]);
 
-				expect(prompts.asked).toEqual([WHAT_TO_ADD]);
+				expect(prompts.asked).toEqual([WHAT_TO_CHANGE]);
 				expect(result.unwrap()).toBeUndefined();
 			});
 
@@ -1439,6 +1455,7 @@ describe("CoreInitService", () => {
 
 				const result = await serviceFor(new MockPromptService([])).plan(
 					{
+						ask: false,
 						choices: { agentRules: false },
 					}
 				);
@@ -1452,7 +1469,7 @@ describe("CoreInitService", () => {
 						code: "init.configExists",
 						resource: path.join(directory, "rogen.json"),
 						message:
-							"this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo-pin.",
+							"this config already exists, and init never overwrites one. To change it, run init in a terminal and pick what, or pass a flag: --route, --source-path, --darklua, --package, --places, --agent-rules, --agent-hook or --rojo.",
 					},
 				]);
 			});

@@ -20,10 +20,19 @@ export class WorkspaceFiles {
 	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** `folders`: the root's places, sorted, with `place` among them. */
-	async plan(
+	plan(
 		root: string,
 		folders: readonly string[],
 		place: string
+	): Promise<{ files: PlannedFile[]; notes: string[] }> {
+		return this.planAll(root, folders, [place]);
+	}
+
+	/** The same for several `places` at once: a workspace file gets the ones it lacks, in one edit. */
+	async planAll(
+		root: string,
+		folders: readonly string[],
+		places: readonly string[]
 	): Promise<{ files: PlannedFile[]; notes: string[] }> {
 		const names = (await this.fileSystemService.readDirectory(root))
 			.map(([name]) => name)
@@ -53,33 +62,42 @@ export class WorkspaceFiles {
 			);
 			if (!listed || rootAt === undefined || rootAt < 0) {
 				notes.push(
-					`${name} is there already: add the folder "${place}" to ${name} so the editor runs a language server for the place.`
+					...places.map(
+						(place) =>
+							`${name} is there already: add the folder "${place}" to ${name} so the editor runs a language server for the place.`
+					)
 				);
 				continue;
 			}
-			const target = path.resolve(root, place);
-			if (
-				listed.paths.some(
-					(one) => one !== undefined && this.isAt(root, one, target)
+			let text = listed.text;
+			let paths = [...listed.paths];
+			const added: string[] = [];
+			for (const place of places) {
+				const target = path.resolve(root, place);
+				if (
+					paths.some(
+						(one) =>
+							one !== undefined && this.isAt(root, one, target)
+					)
 				)
-			)
-				continue;
-			const after = listed.paths.findIndex(
-				(one, index) =>
-					index > rootAt &&
-					one !== undefined &&
-					compareStrings(normalizeDir(one), place) > 0
-			);
-			files.push({
-				fileName: name,
-				content: insertJsoncItem(
-					listed.text,
-					["folders"],
-					after < 0 ? listed.paths.length : after,
-					{ path: place }
-				),
-				addition: place,
-			});
+					continue;
+				const after = paths.findIndex(
+					(one, index) =>
+						index > rootAt &&
+						one !== undefined &&
+						compareStrings(normalizeDir(one), place) > 0
+				);
+				const at = after < 0 ? paths.length : after;
+				text = insertJsoncItem(text, ["folders"], at, { path: place });
+				paths = [...paths.slice(0, at), place, ...paths.slice(at)];
+				added.push(place);
+			}
+			if (added.length > 0)
+				files.push({
+					fileName: name,
+					content: text,
+					addition: added.join(", "),
+				});
 		}
 		return { files, notes };
 	}

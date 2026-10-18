@@ -1,7 +1,6 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
-import { normalizeDir } from "../../base/path.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
+import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
 	warningDiagnostic,
@@ -25,6 +24,7 @@ import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
+import { ProjectFiles } from "./project-files.js";
 import { ProjectTemplate } from "./project-template.js";
 import { StarterProject } from "./starter-project.js";
 import { ProjectReader } from "./project-reader.js";
@@ -143,11 +143,15 @@ function projectsOf({
 }
 
 export class ProjectSetup implements Setup<ProjectChoices> {
+	private readonly files: ProjectFiles;
+
 	constructor(
 		private readonly directory: InitDirectory,
 		private readonly questions: InitQuestions,
 		private readonly fileSystemService: FileReader
-	) {}
+	) {
+		this.files = new ProjectFiles(fileSystemService, directory.path);
+	}
 
 	async ask(): Promise<Result<ProjectChoices | undefined, Diagnostic[]>> {
 		const { directory, questions } = this;
@@ -295,10 +299,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					after: places ? [starter.scripts(places.place)] : [],
 				},
 			}),
-			luauLsp: await this.luauLspIsSetUp(),
+			luauLsp: await this.files.luauLspIsSetUp(),
 			...(processed &&
 				!skipGit && {
-					gitignoreHint: await this.gitignoreHint(processed),
+					gitignoreHint: await this.files.gitignoreHint(processed),
 				}),
 			templateFiles: await this.absent([
 				...ProjectSetup.templateFiles(
@@ -321,54 +325,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					: []),
 			]),
 		});
-	}
-
-	/** Whether the editor settings here name luau-lsp. */
-	private async luauLspIsSetUp(): Promise<boolean> {
-		for (const file of [
-			".vscode/settings.json",
-			".vscode/extensions.json",
-		]) {
-			const text = await tryWithAsync(() =>
-				this.fileSystemService.readFile(
-					path.join(this.directory.path, file)
-				)
-			);
-			if (
-				text.isOk() &&
-				/luau-lsp/i.test(text.value) &&
-				!/luau-lsp\.sourcemap\.(enabled|autogenerate)"\s*:\s*false/.test(
-					text.value
-				)
-			)
-				return true;
-		}
-		return false;
-	}
-
-	/** What to tell the user to add to the `.gitignore` here when it doesn't list the sync path; none when there is no `.gitignore` (init writes one that does) or it lists it. */
-	private async gitignoreHint(syncPath: string): Promise<string | undefined> {
-		const text = await tryWithAsync(() =>
-			this.fileSystemService.readFile(
-				path.join(this.directory.path, ".gitignore")
-			)
-		);
-		if (text.isErr()) return undefined;
-		const folder = normalizeDir(syncPath).replace(/\/$/, "");
-		const listed = text.value
-			.split(/\r?\n/)
-			.map((line) => line.trim())
-			.filter((line) => line !== "" && !line.startsWith("#"))
-			.map((line) =>
-				line
-					.replace(/^\*\*\//, "")
-					.replace(/^\//, "")
-					.replace(/\/(\*\*?)?$/, "")
-			)
-			.includes(folder);
-		return listed
-			? undefined
-			: `Add /${folder} to .gitignore so the processed code isn't committed.`;
 	}
 
 	/** Why a new project can't be several places, which `--places` would be an error for. */

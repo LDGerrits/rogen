@@ -1,7 +1,6 @@
 import path from "path";
 import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
 import { toPosix } from "../../base/path.js";
-import { joinedWithAnd } from "../../base/strings.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -19,7 +18,6 @@ import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
-	InitChoices,
 	InitOptions,
 	InitPlan,
 	InitService,
@@ -27,6 +25,7 @@ import {
 	PresentItem,
 } from "./init-service.js";
 import { InitAdditions } from "./init-additions.js";
+import { ProjectChanger } from "./project-changer.js";
 import { Setup } from "./setup.js";
 import { PlaceFinder } from "../config/place-finder.js";
 import { PlaceInit } from "./place-init.js";
@@ -34,21 +33,6 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
-
-/** The choices that shape a new config, which a folder that has one doesn't take. */
-const PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
-	["language", "--language"],
-	["darklua", "--darklua"],
-	["sourcePaths", "--source-path"],
-	["syncPath", "--sync-path"],
-	["projectFile", "--project-file"],
-	["kind", "--kind"],
-	["skipGit", "--skip-git"],
-	["packages", "--package"],
-	["routes", "--route"],
-	["unmatched", "--unmatched"],
-	["sample", "--sample"],
-];
 
 export class CoreInitService implements InitService {
 	declare readonly _serviceBrand: undefined;
@@ -250,57 +234,99 @@ export class CoreInitService implements InitService {
 				"There is no hook to add.",
 				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
 			);
-		if (directory.hasConfigs) {
-			const ignored = PROJECT_FLAGS.filter(
-				([key]) => choices[key] !== undefined
-			).map(([, flag]) => flag);
-			if (ignored.length > 0)
+		if (!directory.hasConfigs) {
+			if (choices.placeIds !== undefined)
 				throw new UsageError(
-					`${directory.configFiles[0]} already exists, so ${joinedWithAnd(ignored)} would change nothing.`,
-					"Edit it to change those, or add to it with --agent-rules, --agent-hook, --rojo or --studio-plugin."
+					"--place-id is for a place folder.",
+					"Give the folder to add, as 'rogen init places/lobby'."
 				);
-		}
-		if (!directory.hasConfigs)
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
 				tools,
 			]);
+		}
+		ProjectChanger.rejectNewProjectFlags(
+			questions,
+			directory.configFiles[0]
+		);
+		if (!placeOf.value && choices.placeIds !== undefined)
+			throw new UsageError(
+				"--place-id is for a place folder.",
+				"Give the folder to add, as 'rogen init places/lobby', or run init in a place."
+			);
+		const place = placeOf.value !== undefined;
+		const changer = await ProjectChanger.of(
+			this.fileSystemService,
+			directory,
+			questions,
+			place
+		);
 		const additions = new InitAdditions(
 			questions,
 			agentFile.value,
 			hooks.value,
 			tools,
 			ToolchainSetup.pinnedIn(manifests),
-			home.path
+			home.path,
+			changer
 		);
 		const notes = placeOf.value
 			? [
 					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and Rojo go to the project root.`,
 				]
 			: [];
+		if (ProjectChanger.hasFlags(questions)) {
+			if (!changer)
+				throw new UsageError(
+					`${directory.configFiles[0]} can't be read as JSON, so init can't change it.`,
+					"Fix it, then run init again."
+				);
+			const asked = additions.requested();
+			if (place && asked)
+				throw new UsageError(
+					"The changes of a place and the additions of the project root are made from different folders.",
+					"Run init in the root for agent rules, the hook and Rojo."
+				);
+			return this.planWith(
+				place ? directory : home,
+				questions,
+				[
+					changer.setup(() => changer.fromFlags()),
+					...(asked ?? additions.toolsForChanges()),
+				],
+				{ present: additions.presentAsked(), notes }
+			);
+		}
 		const requested = additions.requested();
 		if (requested)
 			return this.planWith(home, questions, requested, {
 				present: additions.presentAsked(),
 				notes,
 			});
-		const options = await additions.options();
-		if (options.length === 0) {
+		const chosen = await additions.choose();
+		if (chosen === undefined) return ok(undefined);
+		if (chosen === "nothing") {
 			const present = additions.present();
 			return present.length > 0
 				? this.planWith(home, questions, [], { present, notes })
 				: err(new DiagnosticsError(home.checkFree(home.configFiles)));
 		}
-		const addition = await questions.whatToAdd(
-			home.configFiles[0],
-			options
+		if ("place" in chosen)
+			return this.planWithin({
+				ask: questions.interactive,
+				place: chosen.place,
+				choices: {},
+			});
+		return this.planWith(
+			chosen.inPlace ? directory : home,
+			questions,
+			chosen.setups,
+			{
+				present: additions.presentAsked(),
+				notes,
+			}
 		);
-		if (addition === undefined) return ok(undefined);
-		return this.planWith(home, questions, [addition], {
-			present: additions.presentAsked(),
-			notes,
-		});
 	}
 
 	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */

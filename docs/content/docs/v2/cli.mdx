@@ -285,24 +285,43 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--kind place\|model\|plugin` | What a new project is. A place by default. |
 | `--skip-git` | Write no `.gitignore` and run no `git init`. |
 | `--language <id>` | `luau` or `roblox-ts`; detected from the folder otherwise. |
-| `--[no-]darklua` | Whether Darklua processes your code. Found from its config otherwise. |
-| `--source-path <path>` | A folder with your scripts. Repeat for several; one for roblox-ts. |
-| `--sync-path <path>` | With Darklua: the folder it writes into. |
+| `--[no-]darklua` | Whether Darklua processes your code. Found from its config otherwise. Later: adds or takes off the `dist` project. |
+| `--source-path <path>` | A folder with your scripts. Repeat for several; one for roblox-ts. Later: adds the folder. |
+| `--no-source-path <path>` | Later only: takes a folder off the source paths, and lists the scripts in it that are no longer built. |
+| `--sync-path <path>` | With Darklua: the folder it writes into. In a place: its own sync path. |
 | `--project-file lift\|new` | With a hand-written `default.project.json`: lift its tree (the default) or start a new one. |
-| `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. |
-| `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. When a lifted project file already mounts a folder under one of these names, `server` means that route, which is also called `mount:server`. |
-| `--unmatched shared\|leave` | Where files that match no route go. |
+| `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. Later: mounts the folder when the tree doesn't. |
+| `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. When a lifted project file already mounts a folder under one of these names, `server` means that route, which is also called `mount:server`. Later: adds the route. |
+| `--no-route <id>` | Later only: takes a standard route off when it still has its standard value. Routes of your own are never changed. |
+| `--unmatched shared\|leave` | Where files that match no route go. Later: changes the `*` route. |
 | `--[no-]agent-rules` | Rogen's rules for coding agents. Added by default. |
 | `--[no-]agent-hook` | The hook that reports warnings to the coding agents found. Not added by default. |
 | `--[no-]rojo` | Whether to set Rojo up when it isn't ready: pin it with the manager found, or install Rokit first. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag. |
 | `--[no-]studio-plugin` | Whether to install Rojo's Studio plugin once Rojo is set up. Not installed by a run that can't ask. |
 | `--[no-]sample` | The Greeter sample of a new place. Written by default in a folder with no code. |
-| `--[no-]places` | Whether a new project is several places, `places/shared` and `places/game`. One place by default, several where a `places` folder is. |
+| `--[no-]places` | Whether a new project is several places, `places/shared` and `places/game`. One place by default, several where a `places` folder is. Later: turns one place into several. |
 | `--nested` | Start a project below another `rogen.json`. |
 | `--place-listing glob\|folder` | With a place folder: list its parent as a glob (the default) or the folder. |
-| `--place-id <id>` | With a place folder: the place ID the place's server is for, written as its `servePlaceIds`. Repeat for several, or `none`. |
+| `--place-id <id>` | With a place folder: the place ID the place's server is for, written as its `servePlaceIds`. Repeat for several, or `none`. In a place, run from the place or named by its folder, it changes the place's list. |
 
-Beside a config, `--agent-rules`, `--agent-hook`, `--rojo` and `--studio-plugin` ask for those additions, as the choice does in a terminal. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values, as is `--agent-hook` with no coding agent here, and a flag that shapes a new config (`--language`, `--route`, …) beside one that exists. An addition that is already there is not an error: the run adds nothing and succeeds, so a script can repeat it.
+Every flag works on every run: on a first run it answers its question, and on a later run, beside a `rogen.json`, it makes that change. A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` lists the values, as is `--agent-hook` with no coding agent here. An addition that is already there is not an error: the run adds nothing and succeeds, so a script can repeat it. Only what decides a new project's files has no later form: `--language`, `--kind`, `--skip-git`, `--project-file` and `--sample` are a `usage` error beside a config, and the error says why.
+
+#### Changing a project
+
+`rogen init` in a folder that has a `rogen.json` is how you change the setup. In a terminal it prints what the project has, one row per area, and asks `What do you want to change?` as a multi-select of the areas that have something to change:
+
+| Area | What it changes | Flag |
+|---|---|---|
+| Places | Turns one place into several: adds `placePaths: ["places/*"]`, a first place `places/game` and the workspace file. It moves no code: the existing source paths stay the code the places share, and the output says how to move them under `places/shared`. Or adds a place, as `rogen init places/<name>` does (on its own). | `--places`, `rogen init places/<name>` |
+| Routes | Ticks the standard routes the config has. Ticking adds one, spelled as the routes there are spelled; unticking takes off a standard route whose value is still the standard one. Routes of your own are never changed. | `--route`, `--no-route` |
+| Unmatched files | Puts them in the shared route or leaves them out (the `*` route). | `--unmatched` |
+| Source paths | Adds or removes a folder. Removing one with scripts in it asks to confirm and lists the files that would no longer be built. | `--source-path`, `--no-source-path` |
+| Darklua | Adds the `dist` project, `serveProject`, a `.darklua.json` where none exists and Darklua's pin; or takes the project off, only when `projects.dist` and `serveProject` are still what `init` writes. | `--darklua`, `--no-darklua`, `--sync-path` |
+| Packages | Mounts the Wally or pesde folders found and not mounted. | `--package` |
+| Workspace | Adds the places the `.code-workspace` lacks. | (done with `-y`) |
+| Agents, Tools | The rules, the hook, the Rojo pin and the Studio plugin. | `--agent-rules`, `--agent-hook`, `--rojo`, `--studio-plugin` |
+
+With flags, or `-y`, `init` makes exactly the changes the flags name and asks nothing. `-y` with no flag makes the safe additions that are missing: places in the workspace file, Rojo's pin when a toolchain manager is installed, and the agent rules. Every change goes through the editor that keeps comments, key order and formatting, and is listed as `rogen.json: added routes.ServerStorage.` (`--json` lists them under `changes` of the file, and `--dry-run` prints them without writing). After writing, `init` builds. Inside a place, `init` changes the place's own `rogen.json`: its source paths (`--source-path`, `--no-source-path`), its `syncPath` (`--sync-path`) and its `servePlaceIds` (`--place-id`); the other areas belong to the root, and a flag for one is a `usage` error that says so.
 
 `--dry-run` (`-n`) plans without writing or building: it prints the files it would write, and with `--json` the document of a real run with `dryRun: true`, `changed: false`, no `built`, and `wouldWrite` for the `outcome` of each file. Run `rogen init --dry-run --json` to see what `init` would do and decide, then pass flags for what to change.
 
