@@ -215,7 +215,7 @@ const removedFields: Readonly<Record<string, string>> = {
 	syncPath: advisedCompiledPath,
 };
 
-/** Advice for a field Rogen once read and no longer does, in place of the unknown-key warning. */
+/** Advice for a field Rogen once read and no longer does, in place of the unknown-key error. */
 export function configRemovedFieldAdvice(
 	path: string,
 	location: DiagnosticLocation
