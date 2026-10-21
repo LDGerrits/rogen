@@ -1,4 +1,6 @@
+import path from "path";
 import { Disposable } from "../../base/disposable.js";
+import { isInside, samePath } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -15,6 +17,7 @@ import {
 	ConfigService,
 	ConfigCover,
 	CoveredTargets,
+	buildableFile,
 	EnclosingConfigs,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
@@ -92,7 +95,7 @@ export class CoreConfigService implements ConfigService {
 				if (here.isErr()) return here;
 				cover = { file: here.value.entries[0].file, whole: false };
 				selections.set(cover.file, here.value);
-			} else cover = await this.discovery.coverOf(target);
+			} else cover = await this.coverOf(target);
 			if (!cover) {
 				uncovered.push(index);
 				continue;
@@ -121,8 +124,36 @@ export class CoreConfigService implements ConfigService {
 		});
 	}
 
-	coverOf(target: string): Promise<ConfigCover | undefined> {
-		return this.discovery.coverOf(target);
+	async coverOf(target: string): Promise<ConfigCover | undefined> {
+		const cover = await this.discovery.coverOf(target);
+		if (!cover || cover.whole || !isProjectFileConfig(cover.file))
+			return cover;
+		return (await this.configAbove(cover.file)) ?? cover;
+	}
+
+	/** A plain project file inside the source paths of a `.rogen.json` above it belongs to that config. */
+	private async configAbove(
+		projectFile: string
+	): Promise<ConfigCover | undefined> {
+		const folder = path.dirname(projectFile);
+		let directory = folder;
+		for (;;) {
+			const parent = path.dirname(directory);
+			if (parent === directory) return undefined;
+			const above = await this.discovery.coverOf(parent);
+			if (!above) return undefined;
+			directory = path.dirname(above.file);
+			if (isProjectFileConfig(above.file)) continue;
+			const { config } = buildableFile(await this.read(above.file)) ?? {};
+			if (
+				config?.sourcePaths.some(
+					(sourcePath) =>
+						samePath(folder, sourcePath) ||
+						isInside(folder, sourcePath)
+				)
+			)
+				return above;
+		}
 	}
 
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {

@@ -225,3 +225,63 @@ describe("CoreConfigService selectCovering", () => {
 		expect(result.isErr()).toBe(true);
 	});
 });
+
+describe("CoreConfigService coverOf", () => {
+	useConfigFixture();
+
+	beforeEach(async () => {
+		await fs.createDirectory("/repo/src/pkg");
+		await fs.createDirectory("/repo/tools");
+		await write("/repo/default.rogen.json", {
+			name: "Game",
+			rogen: { routes: ROUTES },
+		});
+		await write("/repo/src/pkg/default.project.json", { name: "Pkg" });
+		await write("/repo/tools/default.project.json", { name: "Tools" });
+		await write("/repo/src/pkg/init.luau", "");
+		await write("/repo/tools/run.luau", "");
+	});
+
+	it("should skip a plain project file inside the source paths of a config above it", async () => {
+		expect(await service.coverOf("/repo/src/pkg/init.luau")).toEqual({
+			file: "/repo/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should keep a plain project file outside every source path above it", async () => {
+		expect(await service.coverOf("/repo/tools/run.luau")).toEqual({
+			file: "/repo/tools/default.project.json",
+			whole: false,
+		});
+	});
+
+	it("should group a path under the nested project with the config above it", async () => {
+		const covered = (
+			await service.selectCovering(["/repo/src/pkg/init.luau"])
+		).unwrap();
+
+		expect(covered.groups[0].selection.entries[0].file).toBe(
+			"/repo/default.rogen.json"
+		);
+	});
+
+	it("should cover an existing project file path whole by the config beside it", async () => {
+		await write("/repo/dist.rogen.json", { name: "Dist" });
+		await write("/repo/dist.project.json", { name: "Dist" });
+
+		expect(await service.coverOf("/repo/dist.project.json")).toEqual({
+			file: "/repo/dist.rogen.json",
+			whole: true,
+		});
+	});
+
+	it("should cover an existing project file path with no config beside it as itself, whole", async () => {
+		await write("/repo/gone.project.json", { name: "Gone" });
+
+		expect(await service.coverOf("/repo/gone.project.json")).toEqual({
+			file: "/repo/gone.project.json",
+			whole: true,
+		});
+	});
+});

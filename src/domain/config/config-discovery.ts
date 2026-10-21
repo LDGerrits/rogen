@@ -18,6 +18,7 @@ import {
 	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
+	projectStem,
 } from "./config.js";
 import { ConfigCover, EnclosingConfigs } from "./config-service.js";
 
@@ -54,7 +55,7 @@ export class ConfigDiscovery {
 		private readonly environmentService: EnvironmentService
 	) {}
 
-	/** The config files `refs` names (a folder, config file, `*.project.json` path or bare name), else the default of the working directory. Paths resolve from the working directory. */
+	/** The config files `refs` names, else the default of the working directory, as Rojo finds its project file. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -86,7 +87,7 @@ export class ConfigDiscovery {
 		});
 	}
 
-	/** Every config file of the working directory, from one directory read: no default is needed. A folder with none is `discover([])`'s. */
+	/** Every config file of the working directory from one directory read, since `list` needs no default. */
 	async discoverFolder(): Promise<Result<DiscoveredConfigs, Error>> {
 		const cwd = this.environmentService.cwd;
 		const files = await this.list(cwd);
@@ -189,9 +190,8 @@ export class ConfigDiscovery {
 		base: string,
 		ref: string
 	): Promise<Result<NamedConfig, Error>> {
-		const stem = base.slice(0, base.indexOf(".project."));
 		const folder = path.dirname(target);
-		const config = await this.configBeside(folder, stem);
+		const config = await this.configBeside(folder, projectStem(base));
 		if (config.isErr()) return err(config.error);
 		if (config.value) return ok({ file: config.value });
 		// A project file with no config beside it is read as it is, as `rojo build test.project.json` reads it.
@@ -217,7 +217,7 @@ export class ConfigDiscovery {
 		return ok({ file: target });
 	}
 
-	/** The config of `stem` in `folder`, when it has one. Both extensions of one stem fail. */
+	/** The config of `stem` in `folder`; both extensions of one stem fail, as the two would write one file. */
 	private async configBeside(
 		folder: string,
 		stem: string
@@ -251,7 +251,7 @@ export class ConfigDiscovery {
 		return ok(undefined);
 	}
 
-	/** The default of `directory`: its `default.rogen.json`, else the Rojo project file Rogen adopts. `named` is how the folder was named, when it was. */
+	/** The default of `directory`: its config, else the plain project file Rogen adopts; `named` words the error. */
 	private async defaultIn(
 		directory: string,
 		named: string | undefined
@@ -317,12 +317,26 @@ export class ConfigDiscovery {
 		return undefined;
 	}
 
-	/** The config that answers for `target`: a `.rogen.json` is its own, whole; any other path has the default of the nearest folder at or above it, a plain project file included. */
+	/** The config that answers for `target`: the default of the nearest folder above a path, so an agent hook can check from the root. */
 	async coverOf(target: string): Promise<ConfigCover | undefined> {
 		if (isConfigFileName(path.basename(target)))
 			return (await this.fileSystemService.isFile(target))
 				? { file: target, whole: true }
 				: undefined;
+		if (
+			isProjectFileConfig(target) &&
+			(await this.fileSystemService.isFile(target))
+		) {
+			const named = await this.projectFileRef(
+				target,
+				path.basename(target),
+				target
+			);
+			return {
+				file: named.isOk() ? named.value.file : target,
+				whole: true,
+			};
+		}
 		let directory = (await this.fileSystemService.isDirectory(target))
 			? target
 			: path.dirname(target);

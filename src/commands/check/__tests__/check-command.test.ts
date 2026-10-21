@@ -317,6 +317,30 @@ describe("check command", () => {
 			]);
 		});
 
+		it("should report the stale project file of the folder it checks", async () => {
+			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
+
+			const result = await run({ _: ["places/arena"] });
+
+			expect(found(failureOf(result))).toContainEqual([
+				"output.differs",
+				"places/arena/default.project.json",
+			]);
+		});
+
+		it("should not report the stale project file for a file of the folder", async () => {
+			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
+
+			const result = await run({
+				_: ["places/arena/src/Sell@sever.luau"],
+			});
+
+			expect(found(failureOf(result))).not.toContainEqual([
+				"output.differs",
+				"places/arena/default.project.json",
+			]);
+		});
+
 		it("should not search upward for a bare check at the root", async () => {
 			const result = await run({});
 

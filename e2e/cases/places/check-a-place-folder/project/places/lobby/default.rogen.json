@@ -1,0 +1,4 @@
+{
+	"name": "Lobby",
+	"rogen": { "routes": { "*": "ReplicatedStorage" } }
+}

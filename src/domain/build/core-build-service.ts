@@ -93,10 +93,11 @@ export class CoreBuildService implements BuildService {
 	): Promise<BuildRun> {
 		const { set, unloaded } = BuildSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths);
-		const attempts = await this.attempt(
+		const built = await this.attempt(
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing
 		);
+		const attempts = write ? built : await this.failOrphaned(built);
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ label }) => label),
@@ -163,7 +164,7 @@ export class CoreBuildService implements BuildService {
 		});
 	}
 
-	/** The warning for each config whose project file differs from what a build would write: from a project file the locate already assembled, else from one more build of the same listing. */
+	/** Warns of each project file that differs from a build, reusing an assembly the locate made to skip a second build. */
 	private async staleOf(
 		configs: readonly ResolvedConfig[],
 		listing: IndexReader,
@@ -328,6 +329,26 @@ export class CoreBuildService implements BuildService {
 							failed
 						)
 			)
+		);
+	}
+
+	/** A check fails an adopted project file whose config is gone, as a build does. */
+	private failOrphaned(attempts: readonly Attempt[]): Promise<Attempt[]> {
+		return Promise.all(
+			attempts.map(async (attempt) => {
+				if (attempt instanceof FailedBuild || !attempt.config.isAdopted)
+					return attempt;
+				const orphaned = await this.writer.orphaned(
+					attempt.config.projectFile
+				);
+				return orphaned
+					? new FailedBuild(
+							attempt.config,
+							orphaned.diagnostics,
+							attempt.findings
+						)
+					: attempt;
+			})
 		);
 	}
 
