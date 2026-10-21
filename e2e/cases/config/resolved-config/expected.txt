@@ -21,7 +21,10 @@ stdout:
         "globIgnorePaths": [
           "<dir>/**/*.spec.luau"
         ],
-        "syncPath": "<dir>/dist",
+        "compiledPath": "<dir>/dist",
+        "compiledLayout": {
+          "<dir>/src": "<dir>/dist"
+        },
         "projectFile": "<dir>/default.project.json",
         "serving": null,
         "rojo": [

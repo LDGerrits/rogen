@@ -33,9 +33,9 @@ describe("ReverseRouter", () => {
 			});
 		});
 
-		it("should write into the sync path when a tool writes the files there", async () => {
+		it("should write into the compiled path when a tool writes the files there", async () => {
 			const router = await routerOf(["src/Inventory/Server/Bag.luau"], {
-				syncPath: abs("dist"),
+				compiledPath: abs("dist"),
 			});
 
 			expect(

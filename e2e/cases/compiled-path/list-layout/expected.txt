@@ -1,0 +1,17 @@
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  default.rogen.json
+    source paths: core, places/lobby
+    routes:
+      server -> ServerScriptService
+      client -> StarterPlayer/StarterPlayerScripts
+      shared -> ReplicatedStorage/shared
+      * -> ReplicatedStorage/shared
+    compiled path: dist/lobby
+      core -> dist/lobby/core
+      places/lobby -> dist/lobby/places/lobby
+    project file: default.project.json
+    rojo: rojo serve default.project.json
+  1 config.

@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:9:15 - error: "rogen.syncPath": expected a string, found null. (config.wrongType)
+  default.rogen.json:9:19 - error: "rogen.compiledPath": expected a string, found null. (config.wrongType)

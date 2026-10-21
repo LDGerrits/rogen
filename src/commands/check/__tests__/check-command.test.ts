@@ -198,9 +198,9 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should leave out the warnings about the sync path", async () => {
+		it("should leave out the warnings about the compiled path", async () => {
 			await writeConfig("default.rogen.json", {
-				rogen: { routes: ROUTES, syncPath: "out" },
+				rogen: { routes: ROUTES, compiledPath: "out" },
 			});
 			await write("src/Clean.luau");
 
@@ -408,9 +408,9 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should include the warnings about the sync path", async () => {
+		it("should include the warnings about the compiled path", async () => {
 			await writeConfig("default.rogen.json", {
-				rogen: { routes: ROUTES, syncPath: "out" },
+				rogen: { routes: ROUTES, compiledPath: "out" },
 			});
 			await write("src/Clean.luau");
 

@@ -9,20 +9,21 @@ stdout:
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync path: (none)
+    compiled path: (none)
     project file: default.project.json
     rojo: rojo serve default.project.json
   dist.rogen.json
     source paths: src
     routes: same as Inventory
-    sync path: dist
+    compiled path: dist
+      src -> dist
     project file: dist.project.json (port 34900)
     rojo: rojo serve dist.project.json --port 34900
-    differs from default.rogen.json: servePort, syncPath
+    differs from default.rogen.json: servePort, compiledPath
   release.rogen.json
     source paths: src
     routes: same as Inventory
-    sync path: (none)
+    compiled path: (none)
     project file: release.project.json
     rojo: rojo serve release.project.json
     differs from default.rogen.json: name, globIgnorePaths
@@ -39,7 +40,8 @@ stdout:
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync path: dist
+    compiled path: dist
+      src -> dist
     project file: dist.project.json (port 34900)
     rojo: rojo serve dist.project.json --port 34900
   1 config.
@@ -65,7 +67,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "globIgnorePaths": [],
-        "syncPath": null,
+        "compiledPath": null,
+        "compiledLayout": {},
         "projectFile": "<dir>/default.project.json",
         "serving": null,
         "rojo": [
@@ -81,7 +84,7 @@ stdout:
         "status": "valid",
         "differsFromDefault": [
           "servePort",
-          "syncPath"
+          "compiledPath"
         ],
         "projectName": "Inventory",
         "sourcePaths": [
@@ -95,7 +98,10 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "globIgnorePaths": [],
-        "syncPath": "<dir>/dist",
+        "compiledPath": "<dir>/dist",
+        "compiledLayout": {
+          "<dir>/src": "<dir>/dist"
+        },
         "projectFile": "<dir>/dist.project.json",
         "serving": null,
         "port": 34900,
@@ -130,7 +136,8 @@ stdout:
         "globIgnorePaths": [
           "<dir>/**/*.spec.luau"
         ],
-        "syncPath": null,
+        "compiledPath": null,
+        "compiledLayout": {},
         "projectFile": "<dir>/release.project.json",
         "serving": null,
         "rojo": [

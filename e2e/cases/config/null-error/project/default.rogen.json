@@ -6,6 +6,6 @@
 		"routes": {
 			"*": "ReplicatedStorage"
 		},
-		"syncPath": null
+		"compiledPath": null
 	}
 }

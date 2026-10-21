@@ -161,7 +161,7 @@ const rogenFields: Readonly<Record<string, JSONSchema>> = {
 			"declares routes; without routes nothing is scanned.",
 	},
 	routes: routesSchema,
-	syncPath: {
+	compiledPath: {
 		type: "string",
 		description:
 			"The folder Rojo syncs from, when that isn't your source " +
@@ -186,6 +186,9 @@ export const configSchema: JSONSchema = {
 	properties: { ...rojoFields, [ROGEN_BLOCK]: rogenBlock },
 };
 
+const advisedCompiledPath =
+	"It is called compiledPath now, inside the rogen block.";
+
 const removedFields: Readonly<Record<string, string>> = {
 	modes: "Write what a mode set in <name>.rogen.json as a complete file with the keys that differ.",
 	mode: "Modes are gone with \"modes\". Name a file instead, as 'rogen build <name>'.",
@@ -208,7 +211,8 @@ const removedFields: Readonly<Record<string, string>> = {
 	placePaths:
 		"A place is a folder with its own complete default.rogen.json. Name the place: rogen serve places/lobby",
 	rootDirs: 'It is called "sourcePaths" now.',
-	syncDir: 'It is called "syncPath" now.',
+	syncDir: advisedCompiledPath,
+	syncPath: advisedCompiledPath,
 };
 
 /** Advice for a field Rogen once read and no longer does, in place of the unknown-key warning. */

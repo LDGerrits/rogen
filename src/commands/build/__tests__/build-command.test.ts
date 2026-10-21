@@ -106,7 +106,7 @@ describe("build command", () => {
 			await fs.writeFile(abs("default.rogen.json"), config());
 			await fs.writeFile(
 				abs("dist.rogen.json"),
-				config({ rogen: { syncPath: "dist" } })
+				config({ rogen: { compiledPath: "dist" } })
 			);
 		});
 

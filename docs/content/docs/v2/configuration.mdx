@@ -5,7 +5,7 @@ description: Every field of rogen.json, the Rojo project file that also says whe
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file with more keys: `sourcePaths` says where your code is, `routes` where it goes, `syncPath` where Rojo reads it from, and `projects` which other project files to write from the same description. Rojo's own keys keep their meaning, and Rogen writes them to `default.project.json` beside the config. Comments and trailing commas are fine.
+A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file with more keys: `sourcePaths` says where your code is, `routes` where it goes, `compiledPath` where Rojo reads it from, and `projects` which other project files to write from the same description. Rojo's own keys keep their meaning, and Rogen writes them to `default.project.json` beside the config. Comments and trailing commas are fine.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -47,7 +47,7 @@ A folder's **config** is `rogen.json` (or `rogen.jsonc`), a Rojo project file wi
     		"*": "ReplicatedStorage/shared"
     	},
     	"globIgnorePaths": ["**/*.spec.ts"],
-    	"syncPath": "out"
+    	"compiledPath": "out"
     }
     ```
   </Tab>
@@ -67,7 +67,7 @@ Rogen's keys:
 |---|---|---|
 | `sourcePaths` | `["src"]` when `routes` exist | The folders to scan and watch. They merge into one tree, and the later one wins a clash. See [Several Source Paths](/docs/v2/core-concepts/project-layout#several-source-paths). Without `routes` it is an error. |
 | `routes` | none | Route keys and their targets, like `"Service/Folder"`. Only declared keys route. Without it, nothing is routed and no source path is scanned. See [Routing](/docs/v2/core-concepts/routing). |
-| `syncPath` | none | The folder Rojo syncs from, usually your compiler's output. See [Sync Path](/docs/v2/core-concepts/output#sync-path). |
+| `compiledPath` | none | The folder Rojo syncs from, usually your compiler's output. See [Compiled Path](/docs/v2/core-concepts/output#compiled-path). |
 | `projects` | none | Other project files to write, each the description with some keys changed. See [Projects](#projects). |
 | `serveProject` | `default` | The project `rogen serve` serves. See [Projects](#projects). |
 | `placePaths` | none | Folder globs that make each matching folder a place. See [Places](#places). |
@@ -105,7 +105,7 @@ A **project** is the description with some keys changed, written beside `default
 	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
 	"serveProject": "dist",
 	"projects": {
-		"dist": { "syncPath": "dist" },
+		"dist": { "compiledPath": "dist" },
 		"release": {
 			"sourcePaths": ["src"],
 			"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"]
@@ -168,7 +168,7 @@ Each folder that matches is a **place**. It inherits the root's keys and project
 
 - A folder that a `placePaths` glob matches and that holds one of the root's source paths is the code the places share, not a place. `places/*` with `sourcePaths: ["places/shared/src"]` lists every folder under `places` but `shared`, and `rogen list` shows `shared code: places/shared`. A folder named in `placePaths` itself is always a place, so naming `places/shared` is [`config.placeInSourcePath`](/docs/v2/diagnostics#config-placeinsourcepath).
 - A place's `sourcePaths` are its own folders, relative to its folder (default `["src"]`), and Rogen adds them after the root's. The root's list is never replaced, so the shared code is in every place and a place's own code wins a clash. A project in a place's `rogen.json` replaces the place's own list only.
-- A relative path means the same folder wherever it is inherited: a `$path`, a `globIgnorePaths` glob and the `syncPath` of the root are written relative to each place's folder. A place may set its own `syncPath`.
+- A relative path means the same folder wherever it is inherited: a `$path`, a `globIgnorePaths` glob and the `compiledPath` of the root are written relative to each place's folder. A place may set its own `compiledPath`.
 - `name` is not inherited by a place: a place is named after its folder unless it sets one. A project inherits the name of the place it is in.
 - A place may declare `projects` and `serveProject` of its own, and may not list places.
 - The root writes its own `default.project.json`, for the shared code, and is never served: `rogen serve` serves the places.
@@ -234,7 +234,7 @@ Rogen matches a glob the way Rojo does, so the two agree on what is ignored: `*`
 - `suffix` is what Rojo cuts off the end of the file name to name the instance, extension included. Without it only the extension goes. A file whose name doesn't end with the suffix keeps its whole name, extension included, and Rogen warns ([`scan.syncRuleSuffix`](/docs/v2/diagnostics#scan-syncrulesuffix)). The meta file of `Combat.module` is `Combat.meta.json`, found by the cut name.
 - Rules never apply to folders or `init` files, and a file a rule of yours doesn't take is read by Rojo's rules.
 
-Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `syncPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. Where the `tree` mounts a folder under the old place of a moved pattern, Rogen also keeps the pattern as you wrote it, so Rojo reads that folder by it too (the same goes for `globIgnorePaths`). See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
+Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder into a place or under a `compiledPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. Where the `tree` mounts a folder under the old place of a moved pattern, Rogen also keeps the pattern as you wrote it, so Rojo reads that folder by it too (the same goes for `globIgnorePaths`). See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
 
 With `emitLegacyScripts: false`, Rogen also writes a `legacyClientScript` rule for each `.client` script a route puts in `StarterPlayerScripts` or `StarterCharacterScripts`, after yours, so they stay LocalScripts. It can't for an `init.client` script, which Rojo reads without rules ([`tree.runContextTarget`](/docs/v2/diagnostics#tree-runcontexttarget)).
 
@@ -251,7 +251,7 @@ A config is one folder's project file, so these keys are gone. Each is an error 
 | `outFile` | Rogen writes `default.project.json` beside `rogen.json`. |
 | `exclude` | `globIgnorePaths`, which also leaves out a mount it ignores. |
 | `rootDirs` | `sourcePaths`. |
-| `syncDir` | `syncPath`. |
+| `syncDir` | `compiledPath`. |
 | `modes`, `mode` | A [project](#projects) with the keys the mode set. |
 | `variants`, `conflicts` | None. A file that replaces another goes in a later source path; sets that exclude each other are a project each. |
 | `server` | None: `rogen serve` starts Rojo. |
@@ -272,7 +272,7 @@ Errors stop the build. Warnings don't, and the build still exits with 0. You'll 
 - names that look like a route key but aren't,
 - server code that ships to clients,
 - scripts placed where they'll never run,
-- an empty sync path or a missing source path,
+- an empty compiled path or a missing source path,
 - instances that clash with the tree,
 - a `default.project.json` that differs from what `build` would write, in `rogen check`.
 

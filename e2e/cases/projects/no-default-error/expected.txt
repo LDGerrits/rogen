@@ -14,13 +14,14 @@ stdout:
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync path: dist
+    compiled path: dist
+      src -> dist
     project file: dist.project.json
     rojo: rojo serve dist.project.json
   release.rogen.jsonc
     source paths: src
     routes: same as Inventory
-    sync path: (none)
+    compiled path: (none)
     project file: release.project.json
     rojo: rojo serve release.project.json
   2 configs.

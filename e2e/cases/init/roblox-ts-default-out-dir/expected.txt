@@ -40,7 +40,7 @@ default.rogen.json:
       "shared": "ReplicatedStorage/shared",
       "*": "ReplicatedStorage/shared"
     },
-    "syncPath": "out"
+    "compiledPath": "out"
   }
 }
 

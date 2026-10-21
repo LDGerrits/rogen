@@ -928,7 +928,7 @@ describe("init command", () => {
 				Language: "luau",
 				"Does Darklua process your code before Rojo syncs it?": true,
 				"Source paths": "src, lib",
-				"Sync path": "out",
+				"Compiled path": "out",
 				Routes: [],
 			});
 

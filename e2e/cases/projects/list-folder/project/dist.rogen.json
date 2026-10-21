@@ -11,6 +11,6 @@
 			"shared": "ReplicatedStorage/shared",
 			"*": "ReplicatedStorage/shared"
 		},
-		"syncPath": "dist"
+		"compiledPath": "dist"
 	}
 }

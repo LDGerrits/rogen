@@ -34,14 +34,14 @@ describe("ConfigDifferences", () => {
 			project: { name: "Other", tree: { $className: "DataModel" } },
 			sourcePaths: ["/repo/src", "/repo/dev"],
 			routes: { "*": "Workspace" },
-			syncPath: "/repo/dist",
+			compiledPath: "/repo/dist",
 		});
 
 		expect(ConfigDifferences.between(config(), other)).toEqual([
 			"name",
 			"sourcePaths",
 			"routes",
-			"syncPath",
+			"compiledPath",
 		]);
 	});
 });

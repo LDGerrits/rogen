@@ -87,12 +87,12 @@ abstract class AbstractConfigBuild {
 		return this.findings.warnings;
 	}
 
-	/** What the sync path check found for this version of the config; `undefined` while unknown. */
+	/** What the compiled path check found for this version of the config; `undefined` while unknown. */
 	get syncWarnings(): readonly Diagnostic[] | undefined {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, sync path warnings, then the errors that failed it. */
+	/** Everything the build has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}

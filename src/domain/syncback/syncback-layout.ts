@@ -41,12 +41,12 @@ export class SyncbackLayout {
 		this.keys = config.keys;
 	}
 
-	/** Where Rojo reads the source folder `dir` from: under the sync path when a tool writes the files there. */
+	/** Where Rojo reads the source folder `dir` from: under the compiled path when a tool writes the files there. */
 	synced(dir: string): string {
-		const { syncPath, commonRoot } = this.config;
-		if (syncPath === undefined || commonRoot === undefined) return dir;
+		const { compiledPath, commonRoot } = this.config;
+		if (compiledPath === undefined || commonRoot === undefined) return dir;
 		return path.posix.join(
-			toPosix(syncPath),
+			toPosix(compiledPath),
 			path.posix.relative(toPosix(commonRoot), dir)
 		);
 	}

@@ -89,7 +89,7 @@ export class ConfigValidator {
 		this.checkNodeFields(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
-		const syncPath = this.checkSyncPath();
+		const compiledPath = this.checkCompiledPath();
 
 		const name = project.name;
 		return this.problems.toResult(
@@ -101,7 +101,7 @@ export class ConfigValidator {
 				sourcePaths: this.sourcePaths,
 				routes,
 				ignored,
-				syncPath,
+				compiledPath,
 				warnings: this.problems.diagnostics.filter(
 					(diagnostic) => !isError(diagnostic)
 				),
@@ -262,21 +262,21 @@ export class ConfigValidator {
 		});
 	}
 
-	private checkSyncPath(): string | undefined {
-		const written = fieldOf(this.config.model, "syncPath");
+	private checkCompiledPath(): string | undefined {
+		const written = fieldOf(this.config.model, "compiledPath");
 		if (written === undefined) return undefined;
-		const syncPath = path.resolve(this.dir, written);
+		const compiledPath = path.resolve(this.dir, written);
 		for (const sourcePath of this.sourcePaths) {
-			const inside = contains(sourcePath, syncPath);
-			if (!inside && !isInside(sourcePath, syncPath)) continue;
+			const inside = contains(sourcePath, compiledPath);
+			if (!inside && !isInside(sourcePath, compiledPath)) continue;
 			this.problems.error(
-				"config.syncPathOverlapsSourcePath",
-				this.locate(ROGEN_BLOCK, "syncPath"),
-				`the sync path "${syncPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "syncPath" to a folder outside the source paths.`
+				"config.compiledPathOverlapsSourcePath",
+				this.locate(ROGEN_BLOCK, "compiledPath"),
+				`the compiled path "${compiledPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "compiledPath" to a folder outside the source paths.`
 			);
 			break;
 		}
-		return syncPath;
+		return compiledPath;
 	}
 
 	private claim(key: string, location: DiagnosticLocation): void {

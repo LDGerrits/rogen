@@ -40,7 +40,7 @@ export const plain = (config: ResolvedConfig | undefined) =>
 			[...config.routes].map(([key, target]) => [key, String(target)])
 		),
 		ignored: config.ignored,
-		syncPath: config.syncPath,
+		compiledPath: config.compiledPath,
 		projectFile: config.projectFile,
 		project: config.project.getFile(),
 	};

@@ -10,7 +10,7 @@ const isIgnored = (target: string, ignored: readonly IgnoredPath[]) =>
 const config = (
 	file: string,
 	sourcePaths: string[],
-	extra: { syncPath?: string } = {}
+	extra: { compiledPath?: string } = {}
 ): ResolvedConfig =>
 	mockConfig({
 		file,
@@ -177,10 +177,10 @@ describe("domain/watch/watch-plan", () => {
 	});
 
 	describe("ignored", () => {
-		it("should list each output file, its sync path and a pattern for its staging files", () => {
+		it("should list each output file, its compiled path and a pattern for its staging files", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
-					syncPath: "/repo/out",
+					compiledPath: "/repo/out",
 				}),
 			]);
 
@@ -256,20 +256,20 @@ describe("domain/watch/watch-plan", () => {
 			).toBe(false);
 		});
 
-		it("should keep a sync path that lies inside a root", () => {
+		it("should keep a compiled path that lies inside a root", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
-					syncPath: "/repo/src/out",
+					compiledPath: "/repo/src/out",
 				}),
 			]);
 
 			expect(plan.ignored).toContain("/repo/src/out");
 		});
 
-		it("should drop a sync path that contains a root", () => {
+		it("should drop a compiled path that contains a root", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/dist/src"], {
-					syncPath: "/repo/dist",
+					compiledPath: "/repo/dist",
 				}),
 			]);
 
@@ -279,10 +279,10 @@ describe("domain/watch/watch-plan", () => {
 		it("should list a path shared by two configs once", () => {
 			const plan = new WatchPlan([
 				config("/repo/default.rogen.json", ["/repo/src"], {
-					syncPath: "/repo/out",
+					compiledPath: "/repo/out",
 				}),
 				config("/repo/arena/default.rogen.json", ["/repo/src"], {
-					syncPath: "/repo/out",
+					compiledPath: "/repo/out",
 				}),
 			]);
 

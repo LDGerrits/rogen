@@ -28,7 +28,7 @@ export interface ChangeRequest {
 	readonly unsourcePaths?: readonly string[];
 	readonly darklua?: boolean;
 	/** Where Darklua writes, when it is added. */
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	/** Mounts to add, by path. */
 	readonly packages?: readonly string[];
 }
@@ -287,7 +287,7 @@ export class ConfigChanges {
 		if (darklua === undefined) return;
 		throw new UsageError(
 			"Darklua's second config file isn't something init writes yet.",
-			'Write the file that sets "syncPath" to the folder Darklua writes yourself.'
+			'Write the file that sets "compiledPath" to the folder Darklua writes yourself.'
 		);
 	}
 

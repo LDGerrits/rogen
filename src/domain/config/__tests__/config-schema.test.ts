@@ -31,7 +31,7 @@ describe("domain/config/config-schema", () => {
 			"syncRules",
 			"syncbackRules",
 		];
-		const ROGEN_FIELDS = ["sourcePaths", "routes", "syncPath"];
+		const ROGEN_FIELDS = ["sourcePaths", "routes", "compiledPath"];
 
 		describe("schema shape", () => {
 			it("declares Rojo's keys and one block for Rogen's", () => {
@@ -87,8 +87,8 @@ describe("domain/config/config-schema", () => {
 				expect(block.properties!.routes.default).toEqual({});
 			});
 
-			it("has no static default for syncPath or the tree", () => {
-				expect(block.properties!.syncPath.default).toBeUndefined();
+			it("has no static default for compiledPath or the tree", () => {
+				expect(block.properties!.compiledPath.default).toBeUndefined();
 				expect(schema.properties!.tree.default).toBeUndefined();
 			});
 		});
@@ -175,6 +175,7 @@ describe("domain/config/config-schema", () => {
 			"exclude",
 			"rootDirs",
 			"syncDir",
+			"syncPath",
 		])("says %s was removed and what to do instead", (field) => {
 			expect(configRemovedFieldAdvice(field, location)).toMatchObject({
 				code: "config.removedField",

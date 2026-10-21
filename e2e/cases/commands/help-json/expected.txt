@@ -182,7 +182,7 @@ stdout:
             "multiple": true
           },
           {
-            "name": "sync-path",
+            "name": "compiled-path",
             "type": "string"
           },
           {

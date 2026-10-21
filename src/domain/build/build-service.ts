@@ -129,7 +129,7 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
-	/** What a build of the config raises, without the sync path's: the errors that stopped the later phases, else the warnings. */
+	/** What a build of the config raises, without the compiled path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -195,7 +195,7 @@ export interface BuildService {
 	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. A project file edited by hand since Rogen wrote it is a failed write, unless `force`. */
 	build(selection: ConfigSelection, force?: boolean): Promise<BuildRun>;
 
-	/** Builds and writes the project at `projectFile` in a watch's `set`; the sync path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
+	/** Builds and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(
 		set: BuildSet,
 		projectFile: string,

@@ -31,7 +31,7 @@ const CHANGE_FLAGS: readonly (readonly [string, string])[] = [
 	["sourcePaths", "--source-path"],
 	["unsourcePaths", "--no-source-path"],
 	["darklua", "--darklua"],
-	["syncPath", "--sync-path"],
+	["compiledPath", "--compiled-path"],
 	["packages", "--package"],
 ];
 
@@ -183,9 +183,9 @@ export class ProjectChanger {
 				);
 			return values;
 		};
-		if (choices.syncPath !== undefined && choices.darklua !== true)
+		if (choices.compiledPath !== undefined && choices.darklua !== true)
 			throw new UsageError(
-				"--sync-path is for Darklua: pass --darklua with it."
+				"--compiled-path is for Darklua: pass --darklua with it."
 			);
 		return {
 			routes: list(choices.routes, "--route"),
@@ -194,7 +194,7 @@ export class ProjectChanger {
 			sourcePaths: list(choices.sourcePaths, "--source-path"),
 			unsourcePaths: choices.unsourcePaths,
 			darklua: choices.darklua,
-			syncPath: choices.syncPath,
+			compiledPath: choices.compiledPath,
 			packages: list(choices.packages, "--package"),
 		};
 	}

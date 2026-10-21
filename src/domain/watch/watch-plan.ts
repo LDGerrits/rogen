@@ -7,7 +7,7 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 
 type WatchPlanConfig = Pick<
 	ResolvedConfig,
-	"indexedPaths" | "projectFile" | "syncPath" | "projectDir"
+	"indexedPaths" | "projectFile" | "compiledPath" | "projectDir"
 > &
 	Partial<Pick<ResolvedConfig, "isAdopted">>;
 
@@ -37,7 +37,9 @@ export class WatchPlan {
 			...new Set([
 				...outputs.map(({ path }) => path),
 				...configs.flatMap((config) =>
-					config.syncPath ? [path.resolve(config.syncPath)] : []
+					config.compiledPath
+						? [path.resolve(config.compiledPath)]
+						: []
 				),
 				...configs.flatMap(({ projectDir }) =>
 					Object.values(SYNCBACK_FILES).map((name) =>

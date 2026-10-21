@@ -292,11 +292,11 @@ describe("CoreBuildService", () => {
 			expect(build.warnings).toEqual([]);
 		});
 
-		it("should keep the sync path warnings of a config that was not written", async () => {
+		it("should keep the compiled path warnings of a config that was not written", async () => {
 			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
 
 			const result = await runOf([
-				configOf({ syncPath: abs("dist") }),
+				configOf({ compiledPath: abs("dist") }),
 				lobby(),
 			]);
 
@@ -324,8 +324,8 @@ describe("CoreBuildService", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
-		it("should raise the diagnostics a build raises, the sync path's included", async () => {
-			const config = configOf({ syncPath: abs("dist") });
+		it("should raise the diagnostics a build raises, the compiled path's included", async () => {
+			const config = configOf({ compiledPath: abs("dist") });
 
 			const [checked] = await checkOf(config);
 			const [built] = (
@@ -641,9 +641,9 @@ describe("CoreBuildService", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 		});
 
-		it("should check the sync path of a config it hasn't built before", async () => {
+		it("should check the compiled path of a config it hasn't built before", async () => {
 			const build = await rebuildOf(
-				new BuildSet([configOf({ syncPath: abs("dist") })])
+				new BuildSet([configOf({ compiledPath: abs("dist") })])
 			);
 
 			expect(build.syncWarnings).toMatchObject([
@@ -651,8 +651,8 @@ describe("CoreBuildService", () => {
 			]);
 		});
 
-		it("should keep what it knows of the sync path while the config is the same", async () => {
-			const set = new BuildSet([configOf({ syncPath: abs("dist") })]);
+		it("should keep what it knows of the compiled path while the config is the same", async () => {
+			const set = new BuildSet([configOf({ compiledPath: abs("dist") })]);
 			const first = await rebuildOf(set);
 			await fs.writeFile(abs("dist/A.luau"), "");
 
@@ -661,14 +661,14 @@ describe("CoreBuildService", () => {
 			expect(again.syncWarnings).toBe(first.syncWarnings);
 		});
 
-		it("should check the sync path again for a new version of the config", async () => {
+		it("should check the compiled path again for a new version of the config", async () => {
 			const first = await rebuildOf(
-				new BuildSet([configOf({ syncPath: abs("dist") })])
+				new BuildSet([configOf({ compiledPath: abs("dist") })])
 			);
 			await fs.writeFile(abs("dist/A.luau"), "");
 
 			const again = await rebuildOf(
-				new BuildSet([configOf({ syncPath: abs("dist") })]),
+				new BuildSet([configOf({ compiledPath: abs("dist") })]),
 				first
 			);
 

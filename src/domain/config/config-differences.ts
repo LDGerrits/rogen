@@ -21,7 +21,9 @@ export class ConfigDifferences {
 			...(isDeepStrictEqual(routeLines(base), routeLines(other))
 				? []
 				: ["routes"]),
-			...(base.syncPath === other.syncPath ? [] : ["syncPath"]),
+			...(base.compiledPath === other.compiledPath
+				? []
+				: ["compiledPath"]),
 		];
 	}
 }

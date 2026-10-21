@@ -34,6 +34,7 @@ describe("CoreConfigService", () => {
 			"exclude",
 			"rootDirs",
 			"syncDir",
+			"syncPath",
 			"projects",
 			"serveProject",
 			"placePaths",
@@ -83,6 +84,23 @@ describe("CoreConfigService", () => {
 					message.includes("<name>.rogen.json")
 				)
 			).toEqual([true, true]);
+		});
+
+		it("should say syncPath was removed inside the rogen block too", async () => {
+			await write("/repo/default.rogen.json", {
+				rogen: { syncPath: "out" },
+			});
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.removedField",
+					message: expect.stringContaining(
+						"It is called compiledPath now, inside the rogen block."
+					),
+				},
+			]);
 		});
 
 		it("should report every removed field at once", async () => {

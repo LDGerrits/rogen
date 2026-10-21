@@ -14,7 +14,7 @@ export class ProjectTemplate {
 		/** The project's name, which Rojo takes from the folder. */
 		readonly name: string,
 		/** The folder Darklua writes, which git is to leave out. */
-		readonly syncPath?: string,
+		readonly compiledPath?: string,
 		/** Lines the language adds to the `.gitignore`. */
 		readonly ignored: readonly string[] = []
 	) {}
@@ -45,8 +45,8 @@ export class ProjectTemplate {
 				: this.kind === "plugin"
 					? `# Plugin model files\n/${name}.rbxmx\n/${name}.rbxm\n`
 					: ROBLOX_LOCKS;
-		const processed = this.syncPath
-			? `\n# Darklua output\n/${normalizeDir(this.syncPath).replace(/\/$/, "")}\n`
+		const processed = this.compiledPath
+			? `\n# Darklua output\n/${normalizeDir(this.compiledPath).replace(/\/$/, "")}\n`
 			: "";
 		const language =
 			this.ignored.length > 0

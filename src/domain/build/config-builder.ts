@@ -14,7 +14,7 @@ import { MetaReader } from "./meta-reader.js";
 import { NestedProjectNames } from "./nested-project-names.js";
 import { Placement } from "./placement.js";
 import { Placer } from "./placer.js";
-import { SyncPathCheck } from "./check/sync-path-check.js";
+import { CompiledPathCheck } from "./check/compiled-path-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 import { UnmountedSources } from "./check/unmounted-sources.js";
 
@@ -46,7 +46,7 @@ type ExaminedConfig =
 export class ConfigBuilder {
 	private readonly metaReader: MetaReader;
 	private readonly projectNames: NestedProjectNames;
-	private readonly syncPathCheck: SyncPathCheck;
+	private readonly compiledPathCheck: CompiledPathCheck;
 	private readonly mountClashes: MountClashes;
 
 	constructor(
@@ -56,7 +56,7 @@ export class ConfigBuilder {
 	) {
 		this.metaReader = new MetaReader(fileSystemService);
 		this.projectNames = new NestedProjectNames(fileSystemService, index);
-		this.syncPathCheck = new SyncPathCheck(fileSystemService);
+		this.compiledPathCheck = new CompiledPathCheck(fileSystemService);
 		this.mountClashes = new MountClashes(fileSystemService);
 	}
 
@@ -72,7 +72,7 @@ export class ConfigBuilder {
 		).place();
 	}
 
-	/** Builds `config`: `examine`, then the sync path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
+	/** Builds `config`: `examine`, then the compiled path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
 	async build(
 		config: ResolvedConfig,
 		syncWarnings?: readonly Diagnostic[]
@@ -93,13 +93,14 @@ export class ConfigBuilder {
 			findings: {
 				warnings,
 				syncWarnings:
-					syncWarnings ?? (await this.syncPathCheck.check(placement)),
+					syncWarnings ??
+					(await this.compiledPathCheck.check(placement)),
 			},
 			readFiles,
 		});
 	}
 
-	/** Runs every phase of `build` but the sync path check. A meta or assembly error doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `build` but the compiled path check. A meta or assembly error doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {

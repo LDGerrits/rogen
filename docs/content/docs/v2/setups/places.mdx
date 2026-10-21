@@ -114,11 +114,11 @@ package.json, node_modules/                from create-roblox-ts, at the root
 tsconfig.json                              the editor's: checks places/shared/src
 places/shared/src/Greeter/...              shared by every place
 places/game/tsconfig.json                  compiles src and ../shared/src into out
-places/game/rogen.json                     name, syncPath "out", the include override
+places/game/rogen.json                     name, compiledPath "out", the include override
 places/game/src/Game/server/Game.server.ts
 ```
 
-The place's `tsconfig.json` lists both source folders in `rootDirs` and in `paths`, so `import { greeting } from "Greeter/shared/Greeting"` works from either, and `typeRoots` names the root's `node_modules/@rbxts`. rbxtsc writes its runtime into the `include` beside the `tsconfig.json` it reads, so the place's `rogen.json` overrides the `rbxts_include` mount to the place's own `include`. The root has no `syncPath` and mounts `include` as optional, since nothing compiles into the root. `init` points the `build` and `watch` scripts of `package.json` at the first place, so `npm run watch` compiles it.
+The place's `tsconfig.json` lists both source folders in `rootDirs` and in `paths`, so `import { greeting } from "Greeter/shared/Greeting"` works from either, and `typeRoots` names the root's `node_modules/@rbxts`. rbxtsc writes its runtime into the `include` beside the `tsconfig.json` it reads, so the place's `rogen.json` overrides the `rbxts_include` mount to the place's own `include`. The root has no `compiledPath` and mounts `include` as optional, since nothing compiles into the root. `init` points the `build` and `watch` scripts of `package.json` at the first place, so `npm run watch` compiles it.
 
 `rogen init places/lobby` in such a root writes the same files for the new place, and says to add `rbxtsc -p places/lobby` and `rbxtsc -w -p places/lobby` to the scripts. Run the watch of each place in a terminal of its own.
 
@@ -128,7 +128,7 @@ A project of the root is a project of every place. `release` in the root's `roge
 
 ## Darklua with Places
 
-Each place's Darklua config sits beside that place's sourcemap. A place inherits the root's `syncPath` as the root's own folder, so places that don't set one share one `dist`. The processed copy of the shared code is the same from every place as long as the places mount it at the same instance paths. A place that mounts it somewhere else, or should have a `dist` of its own, sets its own `syncPath` in its `rogen.json`. See the [Darklua guide](/docs/v2/setups/darklua).
+Each place's Darklua config sits beside that place's sourcemap. A place inherits the root's `compiledPath` as the root's own folder, so places that don't set one share one `dist`. The processed copy of the shared code is the same from every place as long as the places mount it at the same instance paths. A place that mounts it somewhere else, or should have a `dist` of its own, sets its own `compiledPath` in its `rogen.json`. See the [Darklua guide](/docs/v2/setups/darklua).
 
 <Callout type="info">
 	A config that lists places is never served, and it can't set `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` or `gameId`: each place sets its own ([`config.placeSetting`](/docs/v2/diagnostics#config-placesetting)).

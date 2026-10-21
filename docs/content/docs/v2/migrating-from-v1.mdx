@@ -188,7 +188,7 @@ A v1 mode changed which files a build had and where Rojo read them. In v2 it is 
 	},
 	"serveProject": "dist",
 	"projects": {
-		"dist": { "syncPath": "dist" }
+		"dist": { "compiledPath": "dist" }
 	}
 }
 ```
@@ -202,7 +202,7 @@ A v1 mode changed which files a build had and where Rojo read them. In v2 it is 
 | `.rogen.json`, or the first `*.rogen.json` | `rogen.json` (or `rogen.jsonc`), one per folder; `init` writes it |
 | `source` | `sourcePaths` |
 | modes (`luau`, `ts`, `darklua`, custom) | `projects`, each the description with some keys changed |
-| a mode's `build` | `syncPath`, in the description or in a project |
+| a mode's `build` | `compiledPath`, in the description or in a project |
 | a mode's `output` | removed. Rogen writes `default.project.json` beside `rogen.json` |
 | `tags` at the root and in modes | removed. An overlay source path that only the projects wanting those files list, or `globIgnorePaths` |
 | `globIgnorePaths` | `globIgnorePaths`, Rojo's own key, which Rogen also writes to the project file |
@@ -216,7 +216,7 @@ A v1 mode changed which files a build had and where Rojo read them. In v2 it is 
 | v1 | v2 |
 |---|---|
 | the mode is picked from the detected toolchain | only `init` detects anything; a build does what the config says |
-| `build` replaces the first path segment | `syncPath` replaces the [common root](/docs/v2/core-concepts/output#sync-path) of the source paths |
+| `build` replaces the first path segment | `compiledPath` replaces the [common root](/docs/v2/core-concepts/output#compiled-path) of the source paths |
 | Rogen adopts an existing project file | Rogen owns `default.project.json` and replaces it; hand-written content goes in `tree` |
 | packages and `rbxts_include` injected from the toolchain | mounted in the `tree`, which `init` writes |
 | empty placeholder files for compiled toolchains | none: every emitted `$path` is optional |
@@ -227,7 +227,7 @@ A v1 mode changed which files a build had and where Rojo read them. In v2 it is 
 | v1 | v2 |
 |---|---|
 | `-m, --mode <mode>` | removed. Name a project: `rogen build release`, `rogen serve dist` |
-| `-b, --build <path>` | removed. Set `syncPath` in `rogen.json` |
+| `-b, --build <path>` | removed. Set `compiledPath` in `rogen.json` |
 | `-s, --source <path>` | removed. Set `sourcePaths` in `rogen.json` |
 | `-o, --output <path>` | not the same. Rogen writes the project files beside `rogen.json`; `rogen build -o game.rbxl` has Rojo build a place file from one |
 | `-p, --project <path>` | removed. Set `tree` in `rogen.json`. `-p` now builds a plugin: `rogen build -p Tool.rbxm` |

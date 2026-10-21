@@ -3,7 +3,10 @@ import { relativeTo, toNative } from "../../base/path.js";
 import path from "path";
 import { plural, shellWord } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
-import { ResolvedConfig } from "../../domain/config/resolved-config.js";
+import {
+	ResolvedConfig,
+	compiledPathOf,
+} from "../../domain/config/resolved-config.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	configLabel,
@@ -40,7 +43,8 @@ const detailsShape = {
 	commonRoot: S.nullable(S.string),
 	routes: S.record(S.string),
 	globIgnorePaths: S.array(S.string),
-	syncPath: S.nullable(S.string),
+	compiledPath: S.nullable(S.string),
+	compiledLayout: S.record(S.string),
 	projectFile: S.string,
 	serving: S.nullable(servingShape),
 };
@@ -110,6 +114,15 @@ const listed = (values: readonly string[]): string =>
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
+/** Each source path with the folder of the compiled path that repeats it. */
+const compiledFolders = (config: ResolvedConfig): [string, string][] =>
+	config.compiledPath === undefined
+		? []
+		: config.sourcePaths.map((source) => [
+				source,
+				compiledPathOf(config, source),
+			]);
+
 interface ListedServing {
 	readonly server: string;
 	readonly host: string;
@@ -123,7 +136,8 @@ interface ConfigDetails {
 	readonly commonRoot: string | null;
 	readonly routes: Readonly<Record<string, string>>;
 	readonly globIgnorePaths: readonly string[];
-	readonly syncPath: string | null;
+	readonly compiledPath: string | null;
+	readonly compiledLayout: Readonly<Record<string, string>>;
 	readonly projectFile: string;
 	readonly serving: ListedServing | null;
 	readonly port?: number;
@@ -260,7 +274,14 @@ export class ListLog {
 				sameAs
 					? `routes: same as ${sameAs.label}`
 					: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
-				`sync path: ${listed(config.syncPath ? [relative(config.syncPath)] : [])}`,
+				`compiled path: ${listed(config.compiledPath ? [relative(config.compiledPath)] : [])}${compiledFolders(
+					config
+				)
+					.map(
+						([source, folder]) =>
+							`\n  ${relative(source)} -> ${relative(folder)}`
+					)
+					.join("")}`,
 				`project file: ${relative(config.projectFile)}${notes(config)}`,
 				`rojo: ${rojo(config)}`,
 				...(running(config) ? [running(config)] : []),
@@ -328,7 +349,15 @@ function configDetails(
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
 		globIgnorePaths: config.ignored.map(unescapedGlob),
-		syncPath: config.syncPath ? toNative(config.syncPath) : null,
+		compiledPath: config.compiledPath
+			? toNative(config.compiledPath)
+			: null,
+		compiledLayout: Object.fromEntries(
+			compiledFolders(config).map(([source, compiled]) => [
+				toNative(source),
+				toNative(compiled),
+			])
+		),
 		projectFile: toNative(config.projectFile),
 		serving: servingJson(serving.get(config.projectFile)),
 		...(portOf(config) !== undefined ? { port: portOf(config) } : {}),

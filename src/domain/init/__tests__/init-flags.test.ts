@@ -265,16 +265,16 @@ describe("init choices given as flags", () => {
 		});
 	});
 
-	describe("--sync-path", () => {
+	describe("--compiled-path", () => {
 		it("should take a folder of its own", async () => {
-			const { asked } = await run(darklua, { syncPath: "out" });
+			const { asked } = await run(darklua, { compiledPath: "out" });
 
-			expect(asked.unwrap()?.syncPath).toBe("out");
+			expect(asked.unwrap()?.compiledPath).toBe("out");
 		});
 
 		it("should refuse one that overlaps a source path", async () => {
 			const error = await refused(
-				run(darklua, { sourcePaths: ["src"], syncPath: "src" })
+				run(darklua, { sourcePaths: ["src"], compiledPath: "src" })
 			);
 
 			expect(error.message).toContain("overlaps src");

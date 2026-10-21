@@ -654,7 +654,7 @@ describe("CoreInitService", () => {
 			expect(names(plan)).not.toContain(".darklua.json");
 		});
 
-		it("should have the new .gitignore list the sync path", async () => {
+		it("should have the new .gitignore list the compiled path", async () => {
 			const plan = await planWithDarklua();
 
 			expect(fileOf(plan, ".gitignore")?.content).toContain("\n/dist\n");
@@ -674,7 +674,7 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should say nothing when the .gitignore there lists the sync path", async () => {
+		it("should say nothing when the .gitignore there lists the compiled path", async () => {
 			await write(".gitignore", "dist/\n");
 
 			const plan = await planWithDarklua();
@@ -684,7 +684,7 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should know the other ways a .gitignore lists the sync path", async () => {
+		it("should know the other ways a .gitignore lists the compiled path", async () => {
 			for (const line of [
 				"dist/*",
 				"/dist/",

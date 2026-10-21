@@ -436,13 +436,13 @@ export class InitQuestions {
 		return answer === "lift" ? lift : { kind: "new" };
 	}
 
-	async syncPath(
+	async compiledPath(
 		{ workspace }: InitDirectory,
 		read: readonly string[]
 	): Promise<string | undefined> {
-		const placeholder = workspace.darklua.defaultSyncPath;
+		const placeholder = workspace.darklua.defaultCompiledPath;
 		const checked = (value: string): string | undefined => {
-			const missing = required("a sync path")(value);
+			const missing = required("a compiled path")(value);
 			if (missing) return missing;
 			const dir = normalizeDir(value);
 			const overlapped = read.find(
@@ -453,16 +453,16 @@ export class InitQuestions {
 				? `${dir} overlaps ${overlapped}. Darklua must write to a folder of its own.`
 				: undefined;
 		};
-		const given = this.choices.syncPath;
+		const given = this.choices.compiledPath;
 		if (given !== undefined) {
 			const problem = checked(given);
 			if (problem) throw new UsageError(problem);
 			return normalizeDir(given);
 		}
 		if (!this.interactive)
-			return this.decide("syncPath", placeholder, "--sync-path");
+			return this.decide("compiledPath", placeholder, "--compiled-path");
 		const answer = await this.promptService.text({
-			message: "Sync path",
+			message: "Compiled path",
 			description:
 				"The folder Darklua writes into. Rojo syncs from here.",
 			placeholder,

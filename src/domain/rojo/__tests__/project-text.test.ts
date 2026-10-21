@@ -264,7 +264,7 @@ describe("domain/rojo/project-text", () => {
 		});
 
 		describe("ofConfig", () => {
-			const ROGEN = ["sourcePaths", "routes", "syncPath"];
+			const ROGEN = ["sourcePaths", "routes", "compiledPath"];
 
 			const keysOf = (text: string) => Object.keys(JSON.parse(text));
 
@@ -273,7 +273,7 @@ describe("domain/rojo/project-text", () => {
 					{
 						other: 1,
 						rogen: {
-							syncPath: "out",
+							compiledPath: "out",
 							routes: {},
 							sourcePaths: ["src"],
 						},
@@ -294,7 +294,7 @@ describe("domain/rojo/project-text", () => {
 				expect(Object.keys(JSON.parse(text).rogen)).toEqual([
 					"sourcePaths",
 					"routes",
-					"syncPath",
+					"compiledPath",
 				]);
 			});
 

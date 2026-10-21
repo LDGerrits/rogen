@@ -10,9 +10,9 @@ export class SyncSteps {
 		private readonly compileCommand?: string
 	) {}
 
-	get syncPath(): string | undefined {
+	get compiledPath(): string | undefined {
 		return this.darklua
-			? this.darklua.defaultSyncPath
+			? this.darklua.defaultCompiledPath
 			: this.language.compiler?.outDir;
 	}
 
@@ -21,11 +21,11 @@ export class SyncSteps {
 		directory: string,
 		{
 			processed,
-			syncPath,
+			compiledPath,
 			luauLsp,
 		}: {
 			readonly processed: readonly string[];
-			readonly syncPath?: string;
+			readonly compiledPath?: string;
 			/** Whether luau-lsp is set up here, which keeps `sourcemap.json` current. */
 			readonly luauLsp: boolean;
 		}
@@ -35,8 +35,8 @@ export class SyncSteps {
 			...(language.compiler
 				? [this.compileCommand ?? language.compiler.compileCommand]
 				: []),
-			...(darklua && syncPath
-				? darklua.processCommands(directory, processed, syncPath)
+			...(darklua && compiledPath
+				? darklua.processCommands(directory, processed, compiledPath)
 				: []),
 			"rogen serve"
 		);

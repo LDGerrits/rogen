@@ -222,7 +222,7 @@ describe("CoreConfigService", () => {
 				rogen: {
 					sourcePaths: ["src"],
 					routes: ROUTED,
-					syncPath: "out",
+					compiledPath: "out",
 				},
 			});
 

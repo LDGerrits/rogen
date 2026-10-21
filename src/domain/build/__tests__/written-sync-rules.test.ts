@@ -1,7 +1,7 @@
 import { RojoFile } from "../../rojo/rojo.js";
 import { SyncRule } from "../../rojo/sync-rules.js";
 import { ScannedFile } from "../root-scanner.js";
-import { SyncLayout } from "../sync-layout.js";
+import { CompiledLayout } from "../compiled-layout.js";
 import { WrittenGlobs } from "../written-globs.js";
 import { WrittenSyncRules } from "../written-sync-rules.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
@@ -24,7 +24,7 @@ const writtenBy = (
 		project: { tree: {}, syncRules: rules },
 		...overrides,
 	});
-	const layout = new SyncLayout(config, syncTools);
+	const layout = new CompiledLayout(config, syncTools);
 	const entries: ScannedFile[] = sources.map((source) => ({
 		kind: "data",
 		file: RojoFile.at(abs(source), config.syncRules),
@@ -54,7 +54,7 @@ describe("WrittenSyncRules", () => {
 		};
 
 		expect(
-			writtenBy([rule], ["src/A.module"], { syncPath: abs("out") })
+			writtenBy([rule], ["src/A.module"], { compiledPath: abs("out") })
 		).toEqual([{ pattern: "out/A.module", use: "moduleScript" }]);
 	});
 
@@ -93,12 +93,12 @@ describe("WrittenSyncRules", () => {
 			]);
 		});
 
-		it("should write the rule for the file a tool emits under the sync path", () => {
+		it("should write the rule for the file a tool emits under the compiled path", () => {
 			expect(
 				writtenBy(
 					[],
 					[],
-					{ syncPath: abs("out") },
+					{ compiledPath: abs("out") },
 					[],
 					["src/Hud.client.luau"]
 				)
@@ -118,8 +118,8 @@ describe("WrittenSyncRules", () => {
 		});
 	});
 
-	it("should move a pattern that begins with a folder under the sync path", () => {
-		expect(writtenBy([module], [], { syncPath: abs("out") })).toEqual([
+	it("should move a pattern that begins with a folder under the compiled path", () => {
+		expect(writtenBy([module], [], { compiledPath: abs("out") })).toEqual([
 			{ ...module, pattern: "out/*.module" },
 		]);
 	});
@@ -127,7 +127,7 @@ describe("WrittenSyncRules", () => {
 	it("should move the exclude with the pattern", () => {
 		expect(
 			writtenBy([{ ...module, exclude: "src/*.spec.module" }], [], {
-				syncPath: abs("out"),
+				compiledPath: abs("out"),
 			})
 		).toEqual([
 			{
@@ -141,7 +141,9 @@ describe("WrittenSyncRules", () => {
 	it("should leave a pattern that begins with a wildcard where it is", () => {
 		const rule: SyncRule = { pattern: "**/*.note", use: "text" };
 
-		expect(writtenBy([rule], [], { syncPath: abs("out") })).toEqual([rule]);
+		expect(writtenBy([rule], [], { compiledPath: abs("out") })).toEqual([
+			rule,
+		]);
 	});
 
 	it("should write a literal rule for each file a pattern that can't be moved takes", () => {
@@ -153,7 +155,7 @@ describe("WrittenSyncRules", () => {
 
 		expect(
 			writtenBy([rule], ["src/A.module", "src/B.module", "src/C.luau"], {
-				syncPath: abs("out"),
+				compiledPath: abs("out"),
 			})
 		).toEqual([
 			{
@@ -173,7 +175,7 @@ describe("WrittenSyncRules", () => {
 		const rule: SyncRule = { pattern: "{src}/*.md", use: "text" };
 
 		expect(
-			writtenBy([rule], ["src/[A].md"], { syncPath: abs("out") })
+			writtenBy([rule], ["src/[A].md"], { compiledPath: abs("out") })
 		).toEqual([{ pattern: "out/[[]A[]].md", use: "text" }]);
 	});
 
@@ -183,7 +185,7 @@ describe("WrittenSyncRules", () => {
 
 		expect(
 			writtenBy([first, second], ["src/A.md", "src/B.md"], {
-				syncPath: abs("out"),
+				compiledPath: abs("out"),
 			})
 		).toEqual([
 			{ ...first, pattern: "out/A.md" },
@@ -193,13 +195,15 @@ describe("WrittenSyncRules", () => {
 
 	it("should keep the rule as it was where a mount lies under its old place", () => {
 		expect(
-			writtenBy([module], [], { syncPath: abs("out") }, ["src/Vendor"])
+			writtenBy([module], [], { compiledPath: abs("out") }, [
+				"src/Vendor",
+			])
 		).toEqual([{ ...module, pattern: "out/*.module" }, module]);
 	});
 
 	it("should not keep the rule as it was for a mount elsewhere", () => {
 		expect(
-			writtenBy([module], [], { syncPath: abs("out") }, ["vendor"])
+			writtenBy([module], [], { compiledPath: abs("out") }, ["vendor"])
 		).toEqual([{ ...module, pattern: "out/*.module" }]);
 	});
 
@@ -207,7 +211,7 @@ describe("WrittenSyncRules", () => {
 		const rule: SyncRule = { pattern: "{src,lib}/*.md", use: "text" };
 
 		expect(
-			writtenBy([rule], ["src/A.md"], { syncPath: abs("out") }, [
+			writtenBy([rule], ["src/A.md"], { compiledPath: abs("out") }, [
 				"src/Vendor",
 			])
 		).toEqual([{ pattern: "out/A.md", use: "text" }, rule]);
