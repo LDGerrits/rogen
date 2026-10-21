@@ -1,0 +1,24 @@
+{
+	"name": "Inventory",
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared",
+		"spec": "ServerScriptService/Tests"
+	},
+	"globIgnorePaths": [
+		"**/*.draft.luau"
+	],
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$properties": {
+				"Gravity": 196.2
+			}
+		}
+	}
+}

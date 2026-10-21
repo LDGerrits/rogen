@@ -1,0 +1,18 @@
+{
+	"steps": [
+		[
+			"build"
+		],
+		[
+			"build",
+			"dist"
+		]
+	],
+	"show": [
+		"default.project.json",
+		"dist.project.json"
+	],
+	"output": [
+		"build"
+	]
+}

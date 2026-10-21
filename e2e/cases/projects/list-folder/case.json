@@ -1,0 +1,16 @@
+{
+	"steps": [
+		[
+			"list"
+		],
+		[
+			"list",
+			"dist"
+		],
+		[
+			"list",
+			"--json"
+		]
+	],
+	"rojo": false
+}

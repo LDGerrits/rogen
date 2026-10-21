@@ -1,0 +1,14 @@
+{
+	"name": "Inventory",
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"syncPath": "dist",
+	"servePort": 34900
+}

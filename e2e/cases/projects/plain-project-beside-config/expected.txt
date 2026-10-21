@@ -1,0 +1,13 @@
+$ rogen build nested.project.json
+exit 0
+stdout:
+  rogen build · Nested
+  nested.project.json · unchanged
+  Built 1 project.
+
+$ rogen build nested
+exit 0
+stdout:
+  rogen build · Nested
+  nested.project.json · unchanged
+  Built 1 project.

@@ -1,0 +1,26 @@
+{
+	"name": "Inventory",
+	"sourcePaths": [
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"shared": "ReplicatedStorage/shared",
+		"*": "ReplicatedStorage/shared"
+	},
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			},
+			"DevPackages": {
+				"$path": "DevPackages"
+			}
+		}
+	},
+	"globIgnorePaths": [
+		"DevPackages/**"
+	]
+}
