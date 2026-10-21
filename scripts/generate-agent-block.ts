@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { pathToFileURL } from "url";
 
 export const SKILL = path.resolve("skills/rogen/SKILL.md");
 export const OUTPUT = path.resolve("src/domain/init/agent/agent-block.ts");
@@ -19,9 +18,4 @@ export const agentBlock = ${JSON.stringify(`${block}\n`)};
 
 export function currentAgentBlockModule(): string {
 	return renderAgentBlockModule(fs.readFileSync(SKILL, "utf8"));
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-	fs.writeFileSync(OUTPUT, currentAgentBlockModule());
-	console.log(`Wrote ${path.relative(process.cwd(), OUTPUT)}`);
 }

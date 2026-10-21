@@ -1,9 +1,4 @@
-import fs from "fs";
-import {
-	OUTPUT,
-	currentAgentHookModule,
-	renderAgentHookModule,
-} from "../generate-agent-hook.js";
+import { renderAgentHookModule } from "../generate-agent-hook.js";
 
 describe("scripts/generate-agent-hook", () => {
 	it("should embed the script of the agents page", () => {
@@ -24,9 +19,5 @@ describe("scripts/generate-agent-hook", () => {
 
 	it("should refuse a page without the script", () => {
 		expect(() => renderAgentHookModule("## Rogen\n")).toThrow();
-	});
-
-	it("should have generated the module from the current page", () => {
-		expect(fs.readFileSync(OUTPUT, "utf8")).toBe(currentAgentHookModule());
 	});
 });

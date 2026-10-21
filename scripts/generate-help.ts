@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { pathToFileURL } from "url";
 import { renderHelpModule } from "./help-module.js";
 
 export const HELP_DIR = path.resolve("help");
@@ -20,9 +19,4 @@ export function currentHelpModule(): string {
 			])
 	);
 	return renderHelpModule(topics, fs.readFileSync(DIAGNOSTICS_PAGE, "utf8"));
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-	fs.writeFileSync(OUTPUT, currentHelpModule());
-	console.log(`Wrote ${path.relative(process.cwd(), OUTPUT)}`);
 }
