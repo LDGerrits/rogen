@@ -189,7 +189,6 @@ describe("domain/build/build", () => {
 					status: "valid",
 					file: lobby.file,
 					config: lobby,
-					projects: [],
 				},
 				brokenEntry([failure], abs("arena/rogen.json")),
 			]);

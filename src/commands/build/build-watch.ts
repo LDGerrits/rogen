@@ -76,7 +76,6 @@ export class BuildWatch {
 		store.add({ [Symbol.dispose]: () => stopped.abort() });
 		const selection = await configService.select(this.refs);
 		if (selection.isErr()) return selection;
-		for (const note of selection.value.notes) logService.warn(note);
 		let planned: readonly RojoPlan[] | undefined;
 		if (this.step !== undefined) {
 			const plans = this.step.plans(selection.value);

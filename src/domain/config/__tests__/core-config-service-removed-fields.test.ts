@@ -34,6 +34,8 @@ describe("CoreConfigService", () => {
 			"exclude",
 			"rootDirs",
 			"syncDir",
+			"projects",
+			"serveProject",
 		])("should say %s was removed", async (field) => {
 			await write("/repo/rogen.json", { [field]: "x" });
 
@@ -61,6 +63,18 @@ describe("CoreConfigService", () => {
 			await start();
 
 			expect(errors(0)[0].message).toContain('"globIgnorePaths"');
+		});
+
+		it("should name a complete second config file as what replaces extends and projects", async () => {
+			await write("/repo/rogen.json", { extends: "x", projects: {} });
+
+			await start();
+
+			expect(
+				errors(0).map(({ message }) =>
+					message.includes("<name>.rogen.json")
+				)
+			).toEqual([true, true]);
 		});
 
 		it("should report every removed field at once", async () => {

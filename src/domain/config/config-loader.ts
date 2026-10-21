@@ -12,7 +12,7 @@ import {
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { defaultSourcePaths } from "./config.js";
 import { ConfigKeys } from "./config-keys.js";
-import { ProjectSourceReader } from "./project-sources.js";
+import { ConfigSourceReader } from "./config-sources.js";
 import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
@@ -82,7 +82,7 @@ export class ConfigLoader {
 				position: config.positionOfKey(key),
 			})
 		);
-		const declared = new ProjectSourceReader(config).read();
+		const declared = new ConfigSourceReader(config).read();
 		const failed = [...keys, ...declared.errors];
 		if (failed.length > 0)
 			return { files: [file], value, resolved: err(failed) };
@@ -100,21 +100,15 @@ export class ConfigLoader {
 		const matched = await this.finder.matched(dir, globs, sourcePaths);
 		const placeDirs = matched.places.filter((placeDir) => placeDir !== dir);
 		const sharedFolders = matched.shared.filter((shared) => shared !== dir);
-		const own = ConfigValidator.validateFile(
-			declared.sources,
-			declared.serveProject,
-			{ placeDirs }
-		);
+		const own = ConfigValidator.validateFile(declared.source, {
+			placeDirs,
+		});
 		if (own.isErr())
 			return { files: [file], value, resolved: err(own.error) };
 
 		const places = await this.places.load(
 			file,
-			{
-				dir,
-				sources: declared.sources,
-				serveProject: declared.serveProject,
-			},
+			{ dir, source: declared.source },
 			placeDirs
 		);
 		return {

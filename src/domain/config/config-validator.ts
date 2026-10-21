@@ -5,13 +5,12 @@ import {
 	withGlobBody,
 } from "../../base/glob.js";
 import { contains, isInside, toPosix } from "../../base/path.js";
-import { Result, err, ok } from "../../base/result.js";
+import { Result } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
 	isError,
-	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticCollector } from "../../platform/diagnostics/diagnostic-collector.js";
 import { Target } from "../roblox/roblox.js";
@@ -22,7 +21,7 @@ import {
 	RojoProject,
 } from "../rojo/rojo-project.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
-import { ProjectSource } from "./project-sources.js";
+import { ConfigSource } from "./config-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import {
 	PER_PLACE_KEYS,
@@ -56,9 +55,7 @@ export class ConfigValidator {
 	private readonly inheritedCount: number;
 
 	constructor(
-		private readonly config: ProjectSource,
-		private readonly serveProject: string,
-		private readonly projectStems: readonly string[],
+		private readonly config: ConfigSource,
 		private readonly context: PlaceContext = {}
 	) {
 		this.dir = path.dirname(config.file);
@@ -80,22 +77,14 @@ export class ConfigValidator {
 		];
 	}
 
-	/** Validates every project of one config file, the description first. Any project's error fails the file. */
+	/** Validates one config file. */
 	static validateFile(
-		sources: readonly ProjectSource[],
-		serveProject: string,
+		source: ConfigSource,
 		context: PlaceContext = {}
 	): Result<ResolvedConfigFile, Diagnostic[]> {
-		const stems = sources.map(({ stem }) => stem);
-		const results = sources.map((source) =>
-			new ConfigValidator(source, serveProject, stems, context).validate()
-		);
-		const problems = results.flatMap((result) =>
-			result.isErr() ? result.error : []
-		);
-		if (problems.length > 0) return err(uniqueDiagnostics(problems));
-		const [config, ...projects] = results.map((result) => result.unwrap());
-		return ok({ config, projects });
+		return new ConfigValidator(source, context)
+			.validate()
+			.map((config) => ({ config }));
 	}
 
 	validate(): Result<ResolvedConfig, Diagnostic[]> {
@@ -127,9 +116,6 @@ export class ConfigValidator {
 		return this.problems.toResult(
 			new ResolvedConfig({
 				file: this.config.file,
-				stem: this.config.stem,
-				projectStems: this.projectStems,
-				serveProject: this.serveProject,
 				projectName: name ?? (path.basename(this.dir) || FALLBACK_NAME),
 				project:
 					project ?? new RojoProject<ParsedProjectFile>({ tree: {} }),

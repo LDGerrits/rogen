@@ -2,14 +2,10 @@ import path from "path";
 import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
-import {
-	ParsedProjectFile,
-	RojoProject,
-	projectFileName,
-} from "../rojo/rojo-project.js";
+import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import {
-	DEFAULT_PROJECT,
+	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
 	isProjectFileConfig,
 } from "./config.js";
@@ -17,11 +13,6 @@ import { DeclaredKeys } from "./declared-keys.js";
 
 interface ResolvedConfigFields {
 	readonly file: string;
-	/** The project this describes: `default`, or the name of an entry of `projects`. */
-	readonly stem: string;
-	/** Every project the config file writes, `default` first. */
-	readonly projectStems: readonly string[];
-	readonly serveProject: string;
 	/** The name Rojo and Rogen know the project by: the file's `name`, else its folder's. */
 	readonly projectName: string;
 	/** The Rojo project file the config describes; every `$path` and glob is relative to the config's folder. */
@@ -49,9 +40,6 @@ interface ResolvedConfigFields {
 /** A config with its values validated: paths are absolute and route targets are parsed. */
 export class ResolvedConfig {
 	readonly file: string;
-	readonly stem: string;
-	readonly projectStems: readonly string[];
-	readonly serveProject: string;
 	readonly projectName: string;
 	readonly project: RojoProject<ParsedProjectFile>;
 	readonly sourcePaths: readonly string[];
@@ -69,9 +57,6 @@ export class ResolvedConfig {
 
 	constructor(fields: ResolvedConfigFields) {
 		this.file = fields.file;
-		this.stem = fields.stem;
-		this.projectStems = fields.projectStems;
-		this.serveProject = fields.serveProject;
 		this.projectName = fields.projectName;
 		this.project = fields.project;
 		this.sourcePaths = fields.sourcePaths;
@@ -91,16 +76,14 @@ export class ResolvedConfig {
 		);
 	}
 
-	/** What the project is asked for by: the name of the game, and for a project of the config its own name beside it. */
+	/** What the project is asked for by: the name of the game. */
 	get label(): string {
-		return this.stem === DEFAULT_PROJECT
-			? this.projectName
-			: `${this.projectName} (${this.stem})`;
+		return this.projectName;
 	}
 
-	/** Tells this project from every other that is served or built: its config file and its name there. */
+	/** Tells this project from every other that is served or built: its config file. */
 	get id(): string {
-		return `${this.file}#${this.stem}`;
+		return this.file;
 	}
 
 	/** The port a place is served on unless a flag says otherwise: its `servePort`, else the one its position in the list gives. */
@@ -110,32 +93,20 @@ export class ResolvedConfig {
 			: undefined;
 	}
 
-	get isDefault(): boolean {
-		return this.stem === DEFAULT_PROJECT;
-	}
-
 	get projectDir(): string {
 		return path.dirname(this.file);
 	}
 
+	/** The Rojo project file the config writes; for a config that is a Rojo project file, that file, whatever its name. */
 	get projectFile(): string {
-		return this.fileOf(this.stem);
+		return isProjectFileConfig(this.file)
+			? this.file
+			: path.join(this.projectDir, DEFAULT_PROJECT_FILE);
 	}
 
 	/** Whether the config is a Rojo project file Rogen was not given a config for: it is its own output and is never written. */
 	get isAdopted(): boolean {
 		return samePath(this.file, this.projectFile);
-	}
-
-	get projectFiles(): readonly string[] {
-		return this.projectStems.map((stem) => this.fileOf(stem));
-	}
-
-	/** The file of a project; the description of a config that is a Rojo project file is that file, whatever its name. */
-	private fileOf(stem: string): string {
-		return stem === DEFAULT_PROJECT && isProjectFileConfig(this.file)
-			? this.file
-			: path.join(this.projectDir, projectFileName(stem));
 	}
 
 	/** The folders a build lists to find files nothing mounts: its source paths, else the default folder. */
@@ -152,10 +123,9 @@ export class ResolvedConfig {
 	}
 }
 
-/** A `rogen.json` resolved: the description and the projects it writes beside it. */
+/** A `rogen.json` resolved, with the places it lists. */
 export interface ResolvedConfigFile {
 	readonly config: ResolvedConfig;
-	readonly projects: readonly ResolvedConfig[];
 	/** The places it lists, sorted by path. */
 	readonly places?: readonly ResolvedConfigFile[];
 	/** The folders its `placePaths` match that hold its source paths: the code the places share, which are not places. */
@@ -173,13 +143,13 @@ export function placesIn(
 	);
 }
 
-/** Every project a resolved config file writes, the description first, then each place's; a `scope` limits the places to those folders. */
-export function projectsOf(
+/** Every config a resolved file holds, its own first, then each place's; a `scope` limits the places to those folders. */
+export function configsOf(
 	resolved: ResolvedConfigFile,
 	scope?: readonly string[]
 ): ResolvedConfig[] {
 	return [
-		...(scope === undefined ? [resolved.config, ...resolved.projects] : []),
-		...placesIn(resolved, scope).flatMap((place) => projectsOf(place)),
+		...(scope === undefined ? [resolved.config] : []),
+		...placesIn(resolved, scope).flatMap((place) => configsOf(place)),
 	];
 }

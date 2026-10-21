@@ -213,78 +213,12 @@ describe("ConfigChanges", () => {
 	});
 
 	describe("Darklua", () => {
-		it("should add the dist project, serveProject and the config", async () => {
-			const { plan } = await apply({ darklua: true });
-
-			expect(plan.config?.changes).toEqual([
-				"added projects.dist",
-				"added serveProject",
-			]);
-			expect(plan.config?.content).toContain('"serveProject": "dist"');
-			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				".darklua.json",
-			]);
-			expect(plan.usesDarklua).toBe(true);
-			expect(plan.run).toContain("rogen serve");
-		});
-
-		it("should keep a Darklua config that is there", async () => {
-			const { plan } = await apply({ darklua: true }, CONFIG, {
-				spec: { workspace: { darkluaConfig: ".darklua.json" } },
-			});
-
-			expect(plan.files).toEqual([]);
-		});
-
-		it("should write to the sync path it is given", async () => {
-			const { plan } = await apply({ darklua: true, syncPath: "out" });
-
-			expect(plan.config?.content).toContain('"syncPath": "out"');
-		});
-
-		it("should take it off when the project is what init writes", async () => {
-			const { plan } = await apply(
-				{ darklua: false },
-				'{ // keep\n "routes": {}, "projects": { "dist": { "syncPath": "dist" } }, "serveProject": "dist" }'
-			);
-
-			expect(plan.config?.changes).toEqual([
-				"removed serveProject",
-				"removed projects",
-			]);
-			expect(plan.config?.content).toContain("// keep");
-			expect(plan.notes[0]).toContain(".darklua.json");
-		});
-
-		it("should refuse to take off a dist project that was changed", async () => {
-			await expect(
-				apply(
-					{ darklua: false },
-					'{ "projects": { "dist": { "syncPath": "dist", "globIgnorePaths": ["x"] } }, "serveProject": "dist" }'
-				)
-			).rejects.toThrow("not what init writes");
-		});
-
-		it("should say it is not set up when there is nothing to take off", async () => {
-			const { plan } = await apply({ darklua: false });
-
-			expect(plan.notes).toEqual(["Darklua is not set up."]);
-		});
-
-		it("should refuse a project that has no source path to process", async () => {
-			await expect(
-				apply({ darklua: true }, "{}", { routed: false })
-			).rejects.toThrow("has none");
-		});
-
-		it("should refuse to add it beside a serveProject of your own", async () => {
-			await expect(
-				apply(
-					{ darklua: true },
-					'{ "projects": { "web": {} }, "serveProject": "web" }'
-				)
-			).rejects.toThrow("serveProject already");
-		});
+		it.each([true, false])(
+			"should refuse to change it with darklua: %s, since init writes no second config file yet",
+			async (darklua) => {
+				await expect(apply({ darklua })).rejects.toThrow(UsageError);
+			}
+		);
 	});
 
 	describe("packages", () => {

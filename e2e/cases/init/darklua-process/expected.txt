@@ -5,21 +5,15 @@ stdout: (not shown)
 $ rogen build
 exit 0
 stdout: (not shown)
-stderr:
-  dist - warning: the sync path "dist" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 $ rogen sourcemap -o sourcemap.json
 exit 0
 stdout:
   Created sourcemap at sourcemap.json
 stderr:
-  rogen sourcemap · project, project (dist)
-  project
-    default.project.json · unchanged
-  project (dist)
-    dist.project.json · unchanged
-  dist - warning: the sync path "dist" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
-  Built 2 projects with 1 warning.
+  rogen sourcemap · project
+  default.project.json · unchanged
+  Built 1 project.
   sourcemap.json · wrote
 
 $ darklua process src dist
@@ -34,7 +28,6 @@ written:
   .darklua.json
   AGENTS.md
   default.project.json
-  dist.project.json
   dist/Feature/Server/Feature.server.luau
   dist/Feature/Shared/Values.luau
   rogen.json
@@ -76,13 +69,7 @@ rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
-  },
-  "projects": {
-    "dist": {
-      "syncPath": "dist"
-    }
-  },
-  "serveProject": "dist"
+  }
 }
 
 $ rojo sourcemap default.project.json
@@ -94,13 +81,3 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Feature: Folder
       Feature: Script  <- src/Feature/Server/Feature.server.luau
-
-$ rojo sourcemap dist.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Feature: Folder
-        Values: ModuleScript  <- dist/Feature/Shared/Values.luau
-  ServerScriptService: ServerScriptService
-    Feature: Folder
-      Feature: Script  <- dist/Feature/Server/Feature.server.luau

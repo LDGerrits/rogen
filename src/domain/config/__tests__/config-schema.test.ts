@@ -34,8 +34,6 @@ describe("domain/config/config-schema", () => {
 			"sourcePaths",
 			"routes",
 			"syncPath",
-			"projects",
-			"serveProject",
 			"placePaths",
 		];
 
@@ -46,27 +44,6 @@ describe("domain/config/config-schema", () => {
 				);
 				expect([...rojoKeys].sort()).toEqual([...ROJO_FIELDS].sort());
 				expect([...rogenKeys].sort()).toEqual([...ROGEN_FIELDS].sort());
-			});
-
-			it("lets a project change any key but the schema's, projects', serveProject's and placePaths'", () => {
-				const projects = schema.properties!.projects
-					.additionalProperties as {
-					properties: Record<string, unknown>;
-				};
-
-				expect(Object.keys(projects.properties).sort()).toEqual(
-					[...ROJO_FIELDS, ...ROGEN_FIELDS]
-						.filter(
-							(field) =>
-								![
-									"$schema",
-									"projects",
-									"serveProject",
-									"placePaths",
-								].includes(field)
-						)
-						.sort()
-				);
 			});
 
 			it.each([
@@ -89,12 +66,17 @@ describe("domain/config/config-schema", () => {
 				expect(schema.additionalProperties).toBeUndefined();
 			});
 
-			it.each(["source", "aliases", "extends", "template", "outFile"])(
-				"does not declare the unsupported field %s",
-				(field) => {
-					expect(schema.properties![field]).toBeUndefined();
-				}
-			);
+			it.each([
+				"source",
+				"aliases",
+				"extends",
+				"template",
+				"outFile",
+				"projects",
+				"serveProject",
+			])("does not declare the unsupported field %s", (field) => {
+				expect(schema.properties![field]).toBeUndefined();
+			});
 		});
 
 		describe("defaults", () => {

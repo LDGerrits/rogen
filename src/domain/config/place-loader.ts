@@ -18,20 +18,15 @@ import { ConfigKeys } from "./config-keys.js";
 import { ConfigValidator } from "./config-validator.js";
 import { PlacePorts } from "./place-ports.js";
 import {
+	ConfigSource,
+	ConfigSourceReader,
 	PlaceBase,
-	ProjectSource,
-	ProjectSourceReader,
-} from "./project-sources.js";
+} from "./config-sources.js";
 
 interface LoadedPlaces {
 	readonly files: readonly string[];
 	readonly values: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile[], Diagnostic[]>;
-}
-
-interface PlaceSources {
-	readonly sources: readonly ProjectSource[];
-	readonly serveProject: string;
 }
 
 /** Reads the config of each folder a config lists as a place, on top of the config's own. */
@@ -50,7 +45,7 @@ export class PlaceLoader {
 		const files: string[] = [];
 		const values: Record<string, unknown> = {};
 		const problems: Diagnostic[] = [];
-		const read: PlaceSources[] = [];
+		const read: ConfigSource[] = [];
 
 		for (const folder of folders) {
 			const config = await this.read(folder, problems, files, values);
@@ -62,12 +57,9 @@ export class PlaceLoader {
 					position: config.positionOfKey(key),
 				})
 			);
-			const declared = new ProjectSourceReader(config, base).read();
+			const declared = new ConfigSourceReader(config, base).read();
 			problems.push(...keys, ...declared.errors);
-			read.push({
-				sources: declared.sources,
-				serveProject: declared.serveProject,
-			});
+			read.push(declared.source);
 		}
 		if (problems.length > 0)
 			return {
@@ -76,16 +68,11 @@ export class PlaceLoader {
 				resolved: err(uniqueDiagnostics(problems)),
 			};
 
-		const portOf = (source: ProjectSource) =>
+		const portOf = (source: ConfigSource) =>
 			PlacePorts.pinnedBy(source.model.getValue("servePort"));
-		const ports = PlacePorts.assign(
-			read.map(({ sources }) => portOf(sources[0])),
-			read.flatMap(({ sources }) =>
-				sources.flatMap((source) => portOf(source) ?? [])
-			)
-		);
-		const places = read.map(({ sources, serveProject }, index) =>
-			ConfigValidator.validateFile(sources, serveProject, {
+		const ports = PlacePorts.assign(read.map(portOf));
+		const places = read.map((source, index) =>
+			ConfigValidator.validateFile(source, {
 				rootFile,
 				placePort: ports[index],
 			})

@@ -7,7 +7,6 @@ written:
   AGENTS.md
   README.md
   default.project.json
-  dist.project.json
   rogen.json
   src/Greeter/Client/Greeter.client.luau
   src/Greeter/Server/Greeter.server.luau
@@ -72,13 +71,7 @@ rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
-  },
-  "projects": {
-    "dist": {
-      "syncPath": "dist"
-    }
-  },
-  "serveProject": "dist"
+  }
 }
 
 src/Greeter/Server/Greeter.server.luau:
@@ -103,17 +96,5 @@ project: DataModel
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
-  Workspace: Workspace
-    Baseplate: Part
-
-$ rojo sourcemap dist.project.json
-project: DataModel
-  Lighting: Lighting
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-  ServerScriptService: ServerScriptService
-  SoundService: SoundService
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
   Workspace: Workspace
     Baseplate: Part

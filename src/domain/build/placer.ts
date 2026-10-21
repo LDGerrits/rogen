@@ -111,7 +111,7 @@ export class Placer {
 			this.index,
 			this.config.ignored,
 			this.tree.mounts,
-			this.config.projectFiles,
+			[this.config.projectFile],
 			(source) => RojoFile.at(source, this.config.syncRules)
 		);
 		return this.config.sourcePaths.map((sourcePath) =>

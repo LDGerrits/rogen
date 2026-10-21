@@ -171,8 +171,6 @@ registerCommand(
 							accessor.get(EnvironmentService).cwd,
 							plan.value
 						);
-				for (const note of plan.value.selection.notes)
-					accessor.get(LogService).warn(note);
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(

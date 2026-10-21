@@ -170,42 +170,13 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-const projectChangeSchemas: Readonly<Record<string, JSONSchema>> =
-	Object.fromEntries(
-		Object.entries({ ...rojoFields, ...rogenSchemas }).filter(
-			([key]) => key !== "$schema"
-		)
-	);
-
-const projectsSchema: JSONSchema = {
-	type: "object",
-	description:
-		"Other project files to write beside default.project.json, each " +
-		"named for its file: dist writes dist.project.json. A project is " +
-		"the description with the keys it sets changed: a list replaces " +
-		"the list, routes, tree and the nodes below them merge by key. " +
-		"default is the description itself and can't be a project name.",
-	additionalProperties: {
-		type: "object",
-		properties: projectChangeSchemas,
-	},
-};
-
 const wholeConfigSchemas: Readonly<Record<string, JSONSchema>> = {
-	projects: projectsSchema,
-	serveProject: {
-		type: "string",
-		default: "default",
-		description:
-			"The project rogen serve serves when none is named: default, or " +
-			"a key of projects.",
-	},
 	placePaths: {
 		...strings,
 		description:
 			"Folder globs, relative to this file, of the places this config " +
 			"is shared by. Each matching folder is a place: it inherits this " +
-			"config, adds its own code, and gets its own project files in " +
+			"config, adds its own code, and gets its own project file in " +
 			"its folder. The config itself is never served; its places are.",
 	},
 };
@@ -222,15 +193,19 @@ export const configSchema: JSONSchema = {
 };
 
 const removedFields: Readonly<Record<string, string>> = {
-	modes: 'Put what a mode set in a project under "projects", which is written beside default.project.json as <name>.project.json.',
-	mode: "Modes are gone with \"modes\". Name a project instead, as 'rogen build <name>'.",
+	modes: "Write what a mode set in <name>.rogen.json as a complete file with the keys that differ.",
+	mode: "Modes are gone with \"modes\". Name a file instead, as 'rogen build <name>'.",
 	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later source path, which wins a clash.",
 	conflicts:
-		'Variants are gone, and so are their conflict groups. Sets that exclude each other are one project each under "projects", listing their own "sourcePaths".',
+		'Variants are gone, and so are their conflict groups. Sets that exclude each other are one complete <name>.rogen.json each, listing their own "sourcePaths".',
 	extends:
-		'A rogen.json describes one folder. A second output is a project under "projects", which changes the keys it needs, or a rogen.json in another folder.',
+		"Config files don't read each other. Write a second complete <name>.rogen.json with the keys that differ.",
+	projects:
+		"Write <name>.rogen.json as a complete file with the keys that differ.",
+	serveProject:
+		"rogen serve serves default.rogen.json, or the file you name.",
 	template:
 		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
 	outFile: "Rogen writes default.project.json beside rogen.json.",

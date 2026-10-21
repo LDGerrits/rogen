@@ -1278,21 +1278,6 @@ describe("CoreBuildService.locate", () => {
 			expect(located.unwrap().stale).toEqual([]);
 		});
 
-		it("should say the same as staleProjectFiles, for the projects it does not read too", async () => {
-			await write("src/A.luau");
-			const release = configOf({ stem: "release" });
-			await fs.writeFile(abs("default.project.json"), "{}");
-			await fs.writeFile(abs("release.project.json"), "{}");
-			const selection = selectionOf(configOf(), release);
-
-			const stale = await staleOf([], [configOf(), release]);
-
-			expect(stale).toEqual(
-				await buildService().staleProjectFiles(selection)
-			);
-			expect(stale).toHaveLength(2);
-		});
-
 		it("should list the folders once", async () => {
 			await write("src/A.luau");
 			await fs.writeFile(abs("default.project.json"), "{}");
@@ -1315,37 +1300,6 @@ describe("CoreBuildService.locate", () => {
 			await staleOf(["src/A.luau"]);
 
 			expect(rebuilt).not.toHaveBeenCalled();
-			rebuilt.mockRestore();
-		});
-
-		it("should not build a project it doesn't read when its file isn't on disk", async () => {
-			await write("src/A.luau");
-			const rebuilt = jest.spyOn(
-				ConfigBuilder.prototype,
-				"projectFileOf"
-			);
-
-			expect(
-				await staleOf([], [configOf(), configOf({ stem: "release" })])
-			).toEqual([]);
-
-			expect(rebuilt).not.toHaveBeenCalled();
-			rebuilt.mockRestore();
-		});
-
-		it("should build a project it doesn't read once its file is on disk", async () => {
-			await write("src/A.luau");
-			await fs.writeFile(abs("release.project.json"), "{}");
-			const rebuilt = jest.spyOn(
-				ConfigBuilder.prototype,
-				"projectFileOf"
-			);
-
-			expect(
-				await staleOf([], [configOf(), configOf({ stem: "release" })])
-			).toHaveLength(1);
-
-			expect(rebuilt).toHaveBeenCalledTimes(1);
 			rebuilt.mockRestore();
 		});
 

@@ -7,8 +7,7 @@ import {
 	useConfigFixture,
 	write,
 } from "./config-fixture.js";
-import { buildableProjects } from "../config-service.js";
-import { ProjectChoice } from "../project-choice.js";
+import { buildableConfigs } from "../config-service.js";
 
 const ROOT = {
 	name: "Game",
@@ -37,7 +36,7 @@ describe("CoreConfigService places", () => {
 			if (config) await write(`/repo/places/${name}/rogen.json`, config);
 		}
 		await start();
-		return buildableProjects(selection.entries[0]);
+		return buildableConfigs(selection.entries[0]);
 	};
 
 	const placeNamed = async (
@@ -133,24 +132,6 @@ describe("CoreConfigService places", () => {
 		]);
 	});
 
-	it("should keep the root's source paths in a place's project that replaces them", async () => {
-		const found = await resolve(
-			{
-				...ROOT,
-				projects: { release: { sourcePaths: ["dist-shared"] } },
-			},
-			{ lobby: { projects: { release: { sourcePaths: ["lib"] } } } }
-		);
-		const release = found.find(
-			({ isPlace, stem }) => isPlace && stem === "release"
-		);
-
-		expect(release?.sourcePaths).toEqual([
-			"/repo/dist-shared",
-			"/repo/places/lobby/lib",
-		]);
-	});
-
 	it("should rebase a $path and a glob of the root to the place's folder", async () => {
 		const lobby = await placeNamed("lobby");
 
@@ -206,34 +187,6 @@ describe("CoreConfigService places", () => {
 			"/repo/dist",
 			"/repo/places/arena/out",
 			"/repo/dist",
-		]);
-	});
-
-	it("should inherit the root's projects into every place", async () => {
-		const found = await resolve(
-			{ ...ROOT, projects: { release: { globIgnorePaths: [] } } },
-			{ lobby: null }
-		);
-
-		expect(found.map(({ projectFile }) => projectFile)).toEqual([
-			"/repo/default.project.json",
-			"/repo/release.project.json",
-			"/repo/places/lobby/default.project.json",
-			"/repo/places/lobby/release.project.json",
-		]);
-	});
-
-	it("should give a place the projects it declares itself", async () => {
-		const found = await resolve(ROOT, {
-			lobby: { projects: { test: { servePort: 34900 } } },
-			arena: null,
-		});
-
-		expect(found.map(({ projectFile }) => projectFile)).toEqual([
-			"/repo/default.project.json",
-			"/repo/places/arena/default.project.json",
-			"/repo/places/lobby/default.project.json",
-			"/repo/places/lobby/test.project.json",
 		]);
 	});
 
@@ -325,53 +278,15 @@ describe("CoreConfigService places", () => {
 			]);
 		});
 
-		it("should read the project a bare name gives in every place", async () => {
-			await resolve(
-				{ ...ROOT, projects: { release: {} } },
-				{ lobby: null, arena: null }
-			);
-			await start({ names: ["release"] });
-
-			expect(
-				files(ProjectChoice.read(selection.configs, selection.named))
-			).toEqual([
-				"/repo/release.project.json",
-				"/repo/places/arena/release.project.json",
-				"/repo/places/lobby/release.project.json",
-			]);
-		});
-
-		it("should refuse a project that no place and not the root has", async () => {
-			await resolve();
-			const result = await start({ names: ["nope"] });
-
-			expect(result.isErr()).toBe(true);
-		});
-
 		it("should serve the places and never the root", async () => {
 			await resolve();
 			await start();
 
 			expect(
-				files(ProjectChoice.served(selection.configs, selection.named))
+				files(selection.configs.filter(({ hasPlaces }) => !hasPlaces))
 			).toEqual([
 				"/repo/places/arena/default.project.json",
 				"/repo/places/lobby/default.project.json",
-			]);
-		});
-
-		it("should serve each place's own serveProject", async () => {
-			await resolve(
-				{ ...ROOT, projects: { dist: {} } },
-				{ lobby: { serveProject: "dist" }, arena: null }
-			);
-			await start();
-
-			expect(
-				files(ProjectChoice.served(selection.configs, selection.named))
-			).toEqual([
-				"/repo/places/arena/default.project.json",
-				"/repo/places/lobby/dist.project.json",
 			]);
 		});
 	});
@@ -424,19 +339,6 @@ describe("CoreConfigService places", () => {
 			]);
 		});
 
-		it("should skip a port that a project of another place pins", async () => {
-			const found = await resolve(ROOT, {
-				arena: { projects: { test: { servePort: 34872 } } },
-				lobby: null,
-			});
-
-			expect(portsOf(found).filter(([, port]) => port)).toEqual([
-				["arena", 34873],
-				["arena", 34873],
-				["lobby", 34874],
-			]);
-		});
-
 		it("should give the root none", async () => {
 			const [root] = await resolve();
 
@@ -458,20 +360,6 @@ describe("CoreConfigService places", () => {
 			expect(
 				idsOf(await placeNamed("lobby", ROOT, places))
 			).toBeUndefined();
-		});
-
-		it("should give a project of a place the place's servePlaceIds, or its own", async () => {
-			const found = await resolve(ROOT, {
-				arena: {
-					servePlaceIds: [111],
-					projects: { test: { servePlaceIds: [222] } },
-				},
-			});
-			const arena = found.filter(
-				({ isPlace, projectName }) => isPlace && projectName === "arena"
-			);
-
-			expect(arena.map(idsOf)).toEqual([[111], [222]]);
 		});
 	});
 
@@ -495,17 +383,6 @@ describe("CoreConfigService places", () => {
 				]);
 			}
 		);
-
-		it("should refuse a place's setting in a project of the config that lists places", async () => {
-			await resolve({
-				...ROOT,
-				projects: { test: { servePort: 34900 } },
-			});
-
-			expect(errors().map(({ code }) => code)).toEqual([
-				"config.placeSetting",
-			]);
-		});
 
 		it("should allow a setting while no folder matches placePaths, since the config is then served", async () => {
 			await resolve({ ...ROOT, servePort: 34900 }, {});
@@ -533,14 +410,6 @@ describe("CoreConfigService places", () => {
 					code: "config.placeListsPlaces",
 					resource: "/repo/places/lobby/rogen.json",
 				}),
-			]);
-		});
-
-		it("should refuse a place with an unknown serveProject", async () => {
-			await resolve(ROOT, { lobby: { serveProject: "nope" } });
-
-			expect(errors().map(({ code }) => code)).toEqual([
-				"config.unknownServeProject",
 			]);
 		});
 

@@ -135,21 +135,16 @@ describe("RootScanner", () => {
 			});
 		});
 
-		describe("the project files of its projects", () => {
+		describe("the project file of its config", () => {
 			const config = () =>
 				configOf({
 					sourcePaths: [abs("src")],
 					ignored: [],
 					file: abs("src/rogen.json"),
-					projectStems: ["default", "dist"],
 				});
 
 			it("should be left out when a source path holds them", async () => {
-				await write(
-					"src/A.luau",
-					"src/default.project.json",
-					"src/dist.project.json"
-				);
+				await write("src/A.luau", "src/default.project.json");
 				const index = await newIndex().list([abs("src")]);
 
 				const [root] = (
@@ -158,8 +153,11 @@ describe("RootScanner", () => {
 
 				expect(files(root)).toEqual(["script:A.luau"]);
 				expect(
-					root.leftOut.get(toPosix(abs("src/dist.project.json")))
-				).toEqual({ status: "ignored", pattern: "dist.project.json" });
+					root.leftOut.get(toPosix(abs("src/default.project.json")))
+				).toEqual({
+					status: "ignored",
+					pattern: "default.project.json",
+				});
 			});
 
 			it("should be left out before they exist too, so the first build and the next place the same files", async () => {
@@ -172,11 +170,10 @@ describe("RootScanner", () => {
 
 				expect([...root.leftOut.keys()].sort()).toEqual([
 					toPosix(abs("src/default.project.json")),
-					toPosix(abs("src/dist.project.json")),
 				]);
 			});
 
-			it("should not leave out a project file that no project of the config writes", async () => {
+			it("should not leave out a project file that the config does not write", async () => {
 				await write("src/A.luau", "src/other.project.json");
 				const index = await newIndex().list([abs("src")]);
 

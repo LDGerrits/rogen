@@ -97,7 +97,7 @@ describe("ProjectSetup plan", () => {
 
 			expect(notes).toEqual([
 				expect.stringContaining(
-					'Left alone: place.project.json, test.project.json. Rogen writes only default.project.json and the files named under "projects"'
+					"Left alone: place.project.json, test.project.json. Rogen writes only default.project.json here"
 				),
 			]);
 		});
@@ -204,14 +204,10 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files).syncPath).toBeUndefined();
 		});
 
-		it("should leave the description of luau with darklua pointing at the source, and serve a dist project synced from dist", async () => {
+		it("should leave the description of luau with darklua pointing at the source", async () => {
 			const files = await planFor("luau", true);
 
 			expect(files.configs).toEqual(["rogen.json"]);
-			expect(configOf(files)).toMatchObject({
-				serveProject: "dist",
-				projects: { dist: { syncPath: "dist" } },
-			});
 			expect(configOf(files).syncPath).toBeUndefined();
 		});
 
@@ -222,15 +218,11 @@ describe("ProjectSetup plan", () => {
 			expect(configOf(files).syncPath).toBe("build");
 		});
 
-		it("should leave the description of roblox-ts with darklua pointing at the compiled output, and serve a dist project", async () => {
+		it("should leave the description of roblox-ts with darklua pointing at the compiled output", async () => {
 			const files = await planFor("roblox-ts", true);
 
 			expect(files.configs).toEqual(["rogen.json"]);
-			expect(configOf(files)).toMatchObject({
-				syncPath: "build",
-				serveProject: "dist",
-				projects: { dist: { syncPath: "dist" } },
-			});
+			expect(configOf(files).syncPath).toBe("build");
 			expect(files.nextSteps.run).toEqual([
 				"rbxtsc -w",
 				"darklua process build dist --watch",
@@ -238,17 +230,11 @@ describe("ProjectSetup plan", () => {
 			]);
 		});
 
-		it("should write no projects when nothing processes the code and no test runner is there", async () => {
-			const config = configOf(await planFor("luau", false));
+		it("should write no projects or serveProject", async () => {
+			const config = configOf(await planFor("luau", true));
 
 			expect(config).not.toHaveProperty("projects");
 			expect(config).not.toHaveProperty("serveProject");
-		});
-
-		it("should say which project Studio syncs from, and what keeps pointing at the source", async () => {
-			expect((await planFor("luau", true)).notes).toEqual([
-				"Studio syncs from dist, where Darklua writes: rogen serve serves the dist project. default.project.json keeps pointing at your source, which luau-lsp and Darklua read.",
-			]);
 		});
 
 		it("should say how to run luau", async () => {
@@ -623,47 +609,13 @@ describe("ProjectSetup plan with a test runner", () => {
 		testRunner: "Jest",
 	});
 
-	it("should write a release project that ignores the specs", async () => {
-		const config = configOf(await plan(withJest(luau)));
-
-		expect(config.projects).toEqual({
-			release: { globIgnorePaths: ["**/*.spec.luau"] },
-		});
-		expect(config).not.toHaveProperty("serveProject");
-	});
-
-	it("should ignore the specs in the extension of the language", async () => {
-		const config = configOf(
-			await plan(withJest({ ...luau, language: "roblox-ts" }))
-		);
-
-		expect(config.projects?.release.globIgnorePaths).toEqual([
-			"**/*.spec.ts",
-		]);
-	});
-
 	it("should leave the description with the specs in it, for the tests to run", async () => {
 		expect(configOf(await plan(withJest(luau)))).not.toHaveProperty(
 			"globIgnorePaths"
 		);
 	});
 
-	it("should sync the release project from the sync path of Darklua, beside the dist project", async () => {
-		const config = configOf(
-			await plan(withJest({ ...luau, darkluaConfig: ".darklua.json" }))
-		);
-
-		expect(config.serveProject).toBe("dist");
-		expect(config.projects).toEqual({
-			dist: { syncPath: "dist" },
-			release: {
-				syncPath: "dist",
-				globIgnorePaths: ["**/*.spec.luau"],
-			},
-		});
-	});
-
-	it("should keep the globs a lifted project file ignores in the release project", async () => {
+	it("should keep the globs a lifted project file ignores", async () => {
 		const choices = {
 			...(await defaultProjectChoices(withJest(luau))),
 			tree: lifted({
@@ -677,15 +629,5 @@ describe("ProjectSetup plan with a test runner", () => {
 		);
 
 		expect(config.globIgnorePaths).toEqual(["**/*.draft.luau"]);
-		expect(config.projects?.release.globIgnorePaths).toEqual([
-			"**/*.draft.luau",
-			"**/*.spec.luau",
-		]);
-	});
-
-	it("should say the release project is there", async () => {
-		expect((await plan(withJest(luau))).notes).toEqual([
-			"Added a release project that leaves the Jest specs out: rogen build writes release.project.json beside default.project.json.",
-		]);
 	});
 });

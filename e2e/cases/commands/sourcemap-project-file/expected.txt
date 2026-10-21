@@ -1,26 +1,19 @@
-$ rogen sourcemap dist.project.json -o sourcemap.json
+$ rogen sourcemap default.project.json -o sourcemap.json
 exit 0
 stdout:
   Created sourcemap at sourcemap.json
 stderr:
-  rogen sourcemap · Game, Game (release), Dist (dist)
-  Game
-    default.project.json · wrote
+  rogen sourcemap · Game
+  default.project.json · wrote
   rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
     src/A.server.luau -> ReplicatedStorage/A (a Script, placed by the "*" route)
   A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
-  Game (release)
-    release.project.json · wrote · same warnings as Game
-  Dist (dist)
-    dist.project.json · wrote · same warnings as Game
-  Built 3 projects with 1 warning.
+  Built 1 project with 1 warning.
   sourcemap.json · wrote
 
 written:
   default.project.json
-  dist.project.json
-  release.project.json
   sourcemap.json
 
 sourcemap.json:
-{"name":"Dist","className":"DataModel","filePaths":["dist.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"A","className":"Script","filePaths":["src/A.server.luau"]}]}]}
+{"name":"Game","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"A","className":"Script","filePaths":["src/A.server.luau"]}]}]}

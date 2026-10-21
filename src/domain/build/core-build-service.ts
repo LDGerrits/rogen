@@ -12,7 +12,6 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { ProjectChoice } from "../config/project-choice.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	BuildRun,
@@ -141,18 +140,13 @@ export class CoreBuildService implements BuildService {
 			)
 		);
 
-		const read = new BuildSet(
-			ProjectChoice.read(set.configs, selection.named)
-		);
 		const staleness = targets?.staleness === true;
-		const listing = await this.indexService.list(
-			(staleness ? set : read).indexedPaths
-		);
+		const listing = await this.indexService.list(set.indexedPaths);
 		const located = await new Locator(
 			this.fileSystemService,
 			listing,
 			this.syncTools
-		).locate(read.configs, targets);
+		).locate(set.configs, targets);
 		if (located.isErr())
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])

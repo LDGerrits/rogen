@@ -201,11 +201,9 @@ export class ServePorts {
 	}
 
 	private refOf(config: ResolvedConfig): string {
-		const folder =
-			toPosix(path.relative(this.cwd, path.dirname(config.file))) || ".";
-		return config.stem === config.serveProject
-			? folder
-			: toPosix(path.relative(this.cwd, config.projectFile));
+		return (
+			toPosix(path.relative(this.cwd, path.dirname(config.file))) || "."
+		);
 	}
 
 	private ownPortIn(config: ResolvedConfig): string {

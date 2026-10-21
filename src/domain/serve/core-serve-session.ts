@@ -7,7 +7,6 @@ import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { ProjectChoice } from "../config/project-choice.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
 import { WatchSession, WatchUpdate } from "../watch/watch-service.js";
@@ -205,10 +204,7 @@ export class CoreServeSession
 
 	private async reconcile(): Promise<void> {
 		const { selection } = this.plan;
-		const configs = ProjectChoice.served(
-			selection.configs,
-			selection.named
-		);
+		const configs = selection.configs.filter(({ hasPlaces }) => !hasPlaces);
 		const wanted = new Set(configs.map(({ id }) => id));
 		for (const [file, server] of this.servers) {
 			if (this.stopping) return;

@@ -20,11 +20,7 @@ import {
 	ConfigLocations,
 	PlacedLocation,
 } from "../build/build-service.js";
-import {
-	DEFAULT_PROJECT,
-	SYNCBACK_FILES,
-	isSyncbackFileName,
-} from "../config/config.js";
+import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -785,13 +781,7 @@ export class CoreSyncbackService implements SyncbackService {
 					reason: `${prepared.configFile} could not be read`,
 				})),
 			};
-		const applied = applyTreeChanges(
-			current.value,
-			project.stem === DEFAULT_PROJECT
-				? ["tree"]
-				: ["projects", project.stem, "tree"],
-			changes
-		);
+		const applied = applyTreeChanges(current.value, ["tree"], changes);
 		const unplaced = applied.unhomed.map((node) => ({
 			instance: label(node),
 			reason: `a property or attribute changed in Studio, and the tree of ${toNative(prepared.configFile)} has no node for it, since routing made it; add a node for it to the tree`,

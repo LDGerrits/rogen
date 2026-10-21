@@ -7,11 +7,6 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** What a project of a `rogen.json` may change: any key of the description. */
-export type ProjectChanges = Partial<
-	Omit<RogenConfig, "$schema" | "projects" | "serveProject">
->;
-
 /** What a `rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
 export interface RogenConfig {
 	readonly $schema?: string;
@@ -31,8 +26,6 @@ export interface RogenConfig {
 	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
 	readonly syncPath?: string;
-	readonly projects?: Record<string, ProjectChanges>;
-	readonly serveProject?: string;
 	readonly placePaths?: string[];
 }
 
@@ -78,7 +71,7 @@ export function defaultSourcePaths(routed: boolean): string[] {
 	return routed ? [DEFAULT_SOURCE_PATH] : [];
 }
 
-/** The project that is the description itself, which no entry of `projects` may take the name of. */
+/** The stem of the project file a `rogen.json` writes. */
 export const DEFAULT_PROJECT = "default";
 
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
@@ -97,11 +90,7 @@ export const isProjectFileConfig = (file: string): boolean =>
 export const isDefaultProjectFile = (file: string): boolean =>
 	DEFAULT_PROJECT_FILES.includes(path.basename(file));
 
-export const ROOT_ONLY_KEYS: readonly string[] = [
-	"projects",
-	"serveProject",
-	"placePaths",
-];
+export const ROOT_ONLY_KEYS: readonly string[] = ["placePaths"];
 
 /** What one place sets for itself: a config that lists places can't, so no place inherits it. */
 export const PER_PLACE_KEYS: readonly string[] = [
@@ -122,8 +111,6 @@ export const PLACE_OWN_KEYS: readonly string[] = [
 /** Rojo's default port, given to the first place without a `servePort`. */
 export const FIRST_PLACE_PORT = 34872;
 
-export const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
-
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
 export const SCHEMA_URL = schemaUrlFor("2.0.0-beta.1");
@@ -143,8 +130,6 @@ export const ROGEN_KEYS: readonly (keyof RogenConfig)[] = [
 	"sourcePaths",
 	"routes",
 	"syncPath",
-	"projects",
-	"serveProject",
 	"placePaths",
 ];
 

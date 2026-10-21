@@ -1,1 +1,1 @@
-{"steps":[["build","release","-o","game.rbxl"]],"rojo":false,"output":["build"]}
+{"steps":[["build","-o","game.rbxl"]],"rojo":false,"output":["build"]}

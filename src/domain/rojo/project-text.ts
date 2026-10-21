@@ -131,16 +131,13 @@ export class WrittenTree {
 	}
 }
 
-/** The key of a config that holds project files of its own. */
-const PROJECTS_KEY = "projects";
-
 /** A project file as text, formatted as `rojo fmt-project` would. */
 export class ProjectText {
 	static of(file: RojoProjectFile): string {
 		return ProjectText.print(ProjectText.file({ ...file }, []), "");
 	}
 
-	/** A config as text: Rojo's keys in Rojo's order, then `rogenKeys` in the order given, then any other; each entry of `projects` the same way. */
+	/** A config as text: Rojo's keys in Rojo's order, then `rogenKeys` in the order given, then any other. */
 	static ofConfig(
 		config: Record<string, unknown>,
 		rogenKeys: readonly string[],
@@ -166,18 +163,14 @@ export class ProjectText {
 					key,
 					key === "tree" && written
 						? written.printed(all[key])
-						: ProjectText.fileValue(key, all[key], rogenKeys),
+						: ProjectText.fileValue(key, all[key]),
 				]);
 		for (const key of Object.keys(all))
 			if (!ordered.includes(key)) entries.push([key, all[key]]);
 		return new Ordered(entries);
 	}
 
-	private static fileValue(
-		key: string,
-		value: unknown,
-		rogenKeys: readonly string[]
-	): unknown {
+	private static fileValue(key: string, value: unknown): unknown {
 		if (key === "tree" && isObject(value)) return ProjectText.node(value);
 		if (key === "syncRules" && Array.isArray(value))
 			return value.map((rule) =>
@@ -187,19 +180,7 @@ export class ProjectText {
 			);
 		if (key === "syncbackRules" && isObject(value))
 			return ProjectText.syncbackRules(value);
-		if (
-			key !== PROJECTS_KEY ||
-			!rogenKeys.includes(key) ||
-			!isObject(value)
-		)
-			return value;
-		const inner = rogenKeys.filter((rogen) => rogen !== PROJECTS_KEY);
-		return new Ordered(
-			Object.entries(value).map(([name, project]) => [
-				name,
-				isObject(project) ? ProjectText.file(project, inner) : project,
-			])
-		);
+		return value;
 	}
 
 	/** The entries of a tree node in Rojo's order. */

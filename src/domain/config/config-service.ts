@@ -6,14 +6,14 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import {
 	ResolvedConfig,
 	ResolvedConfigFile,
-	projectsOf,
+	configsOf,
 } from "./resolved-config.js";
 
 export const ConfigArguments = [
 	{
 		name: "project",
 		description:
-			"A folder with a rogen.json, a *.project.json path, or the name of a project of the rogen.json here. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
+			"A folder with a rogen.json, or a *.project.json path. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
 		isOptional: true,
 		isVariadic: true,
 	},
@@ -53,10 +53,10 @@ export function buildableConfig(
 	return buildableFile(entry)?.config;
 }
 
-/** Every project that builds for `entry`, the description first. */
-export function buildableProjects(entry: ConfigEntry): ResolvedConfig[] {
+/** Every config that builds for `entry`, its own first, then its places'. */
+export function buildableConfigs(entry: ConfigEntry): ResolvedConfig[] {
 	const file = buildableFile(entry);
-	return file ? projectsOf(file, entry.scope) : [];
+	return file ? configsOf(file, entry.scope) : [];
 }
 
 export type ConfigNotice =
@@ -77,24 +77,14 @@ export interface ConfigReload {
 	readonly notices: readonly ConfigNotice[];
 }
 
-/** The projects a config was named for: these, and the one a command takes by default too when the config itself was named. */
-export interface NamedProjects {
-	readonly names: readonly string[];
-	readonly usual: boolean;
-}
-
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
-	/** Every project that builds now, each config's description first; a broken entry gives its last valid version or none. */
+	/** Every config that builds now, each entry's own first; a broken entry gives its last valid version or none. */
 	readonly configs: readonly ResolvedConfig[];
-	/** The projects each config was asked for by name or project-file path, by config file. */
-	readonly named: ReadonlyMap<string, NamedProjects>;
-	/** What picking had to say, such as a name matching both a folder and a project. */
-	readonly notes: readonly string[];
 	/** The folder configs were looked for in: the working directory, or the nearest folder above it with a config when it has none. */
 	readonly home: string;
 
-	/** The projects of every config, or every error when any entry is broken now. */
+	/** Every config, or every error when any entry is broken now. */
 	requireValid(): Result<ResolvedConfig[], DiagnosticsError>;
 }
 
