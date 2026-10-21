@@ -1,104 +1,93 @@
 import path from "path";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
-import { HOMEPAGE } from "./project-template.js";
-
-/** The feature the sample is. */
-const FEATURE = "Greeter";
-
-/** The feature of the place that starts beside the shared code. */
-const PLACE_FEATURE = "Game";
+import { templateFiles } from "./template-files.js";
+import { fillTemplate } from "./fill-template.js";
 
 /** The routes the sample needs: its folders are named after them. */
 export const SAMPLE_ROUTES = ["server", "client", "shared"] as const;
 
+/** The order `init` lists a feature's files in, by the folder of their route. */
+const ROUTE_ORDER: readonly string[] = ["shared", "server", "client"];
+
+/** The suffix of the variant for several places. */
+export const PLACES_VARIANT = "-places";
+
+/** Where a variant keeps the code that `init` writes to the source paths it computes. */
+export const TEMPLATE_SOURCE_PATHS = {
+	/** The variant for one place. */
+	one: "src",
+	/** The shared code of the variant for several. */
+	shared: "places/shared/src",
+	/** The first place of the variant for several. */
+	place: "places/game/src",
+} as const;
+
+const FEATURE = "Greeter";
+const PLACE_FEATURE = "Game";
+const README = "README.md";
+
 /** The files of the sample a new place starts with: the Greeter feature, whose `Server` and `Client` scripts require its shared `Greeting`, the same three hello-worlds as Rojo's. */
 export class GreeterSample {
-	private readonly shared: string;
-	private readonly server: string;
-	private readonly client: string;
-	private readonly extension: string;
-	private readonly typescript: boolean;
+	private readonly variant: string;
+	private readonly placesVariant: string;
 
 	constructor(
 		language: Language,
 		/** The project's name, which Rojo takes from the folder. */
 		private readonly name: string
 	) {
-		this.shared = language.routeKey("shared");
-		this.server = language.routeKey("server");
-		this.client = language.routeKey("client");
-		this.extension = language.extension;
-		this.typescript = language.id === "roblox-ts";
+		this.variant = language.id;
+		this.placesVariant = `${language.id}${PLACES_VARIANT}`;
 	}
 
 	/** The feature in `sourcePath`, shared by every place that reads it. */
 	feature(sourcePath: string): PlannedFile[] {
-		const file = (folder: string, name: string, content: string) => ({
-			fileName: path.posix.join(
-				sourcePath,
-				FEATURE,
-				folder,
-				`${name}.${this.extension}`
-			),
-			content,
-		});
-		return [
-			file(
-				this.shared,
-				"Greeting",
-				this.typescript
-					? "export function greeting(who: string): string {\n\treturn `Hello, ${who}!`;\n}\n"
-					: "return function(who: string): string\n\treturn `Hello, {who}!`\nend\n"
-			),
-			file(this.server, "Greeter.server", this.script("server")),
-			file(this.client, "Greeter.client", this.script("client")),
-		];
+		return this.mapped(
+			this.variant,
+			`${TEMPLATE_SOURCE_PATHS.one}/${FEATURE}`,
+			path.posix.join(sourcePath, FEATURE)
+		);
 	}
 
-	/** The script of the first place of several, which greets with the shared module. */
-	place(sourcePath: string): PlannedFile {
-		return {
-			fileName: path.posix.join(
-				sourcePath,
-				PLACE_FEATURE,
-				this.server,
-				`${PLACE_FEATURE}.server.${this.extension}`
-			),
-			content: this.script("game"),
-		};
-	}
-
-	/** What `rogen where` prints for the `Greeting` module. */
-	private get greeting(): string {
-		return `ReplicatedStorage.${this.shared}.${FEATURE}.Greeting`;
-	}
-
-	private script(who: string): string {
-		if (this.typescript)
-			return `import { greeting } from "${FEATURE}/${this.shared}/Greeting";\n\nprint(greeting("${who}"));\n`;
-		return `local ReplicatedStorage = game:GetService("ReplicatedStorage")\n\nlocal Greeting = require(${this.greeting})\n\nprint(Greeting("${who}"))\n`;
+	/** The feature of the first place of several, whose script greets with the shared module. */
+	place(sourcePath: string): PlannedFile[] {
+		return this.mapped(
+			this.placesVariant,
+			`${TEMPLATE_SOURCE_PATHS.place}/${PLACE_FEATURE}`,
+			path.posix.join(sourcePath, PLACE_FEATURE)
+		);
 	}
 
 	/** The README of the sample, whose feature is in `sourcePath`; `place` is the folder of the first place of several. */
 	readme(sourcePath: string, place?: string): PlannedFile {
-		const { name } = this;
-		const block = (...lines: string[]) =>
-			`\`\`\`bash\n${lines.join("\n")}\n\`\`\`\n`;
-		const greeting = `${sourcePath}/${FEATURE}/${this.shared}/Greeting.${this.extension}`;
-		const layout = place
-			? `\`${sourcePath}\` holds the code every place shares, here the \`${FEATURE}\` feature: one folder for the code that belongs together. \`${place}\` holds the code of the game place alone.\n\nThe folders inside a feature decide where its code runs: \`${this.server}\` goes to ServerScriptService, \`${this.client}\` to StarterPlayerScripts and \`${this.shared}\` to ReplicatedStorage. To see where a file lands, and how to require it, use:\n\n${block(`rogen where ${greeting}`)}\nOpen \`${name}.code-workspace\` rather than the folder, so the editor runs a language server for each place.\n`
-			: `\`${sourcePath}/${FEATURE}\` is a feature: one folder for the code that belongs together.\n\nThe folders inside it decide where its code runs: \`${this.server}\` goes to ServerScriptService, \`${this.client}\` to StarterPlayerScripts and \`${this.shared}\` to ReplicatedStorage. To see where a file lands, and how to require it, use:\n\n${block(`rogen where ${greeting}`)}`;
-		const compile = this.typescript
-			? `To compile the TypeScript, and keep compiling it as you edit, use this in a terminal of its own:\n\n${block("npm run watch")}\n`
-			: "";
-		const start =
-			compile +
-			(place
-				? `To serve every place, each on its own port, and connect to one from Roblox Studio, use:\n\n${block("rogen serve")}\nTo build the game place from scratch, use:\n\n${block(`rogen build ${place} -o "${name}.rbxlx"`)}\nTo add a place, use:\n\n${block("rogen init places/lobby")}`
-				: `To build the place from scratch, use:\n\n${block(`rogen build -o "${name}.rbxlx"`)}\nNext, open \`${name}.rbxlx\` in Roblox Studio and start the Rojo server:\n\n${block("rogen serve")}`);
+		const content = templateFiles(
+			place ? this.placesVariant : this.variant
+		);
 		return {
-			fileName: "README.md",
-			content: `# ${name}\nGenerated by [Rogen](${HOMEPAGE}).\n\n## What's here\n${layout}\n## Getting Started\n${start}\nFor more help, check out [the Rogen documentation](${HOMEPAGE}).\n`,
+			fileName: README,
+			content: fillTemplate(content.get(README) as string, {
+				name: this.name,
+				source: sourcePath,
+				...(place && { place }),
+			}),
 		};
+	}
+
+	/** The files of `variant` below `from`, written below `to`. */
+	private mapped(variant: string, from: string, to: string): PlannedFile[] {
+		const rank = ([file]: [string, string]) =>
+			ROUTE_ORDER.indexOf(
+				file
+					.slice(from.length + 1)
+					.split("/")[0]
+					.toLowerCase()
+			);
+		return [...templateFiles(variant)]
+			.filter(([file]) => file.startsWith(`${from}/`))
+			.sort((a, b) => rank(a) - rank(b))
+			.map(([file, content]) => ({
+				fileName: path.posix.join(to, file.slice(from.length + 1)),
+				content: fillTemplate(content, { name: this.name }),
+			}));
 	}
 }
