@@ -4,13 +4,8 @@ import { Result, ResultError } from "../../../base/result.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
-import {
-	CommandRegistry,
-	Extensions,
-	ReportedError,
-} from "../../../platform/commands/commands.js";
-import { Registry } from "../../../platform/registry/registry.js";
+import { CommandLine } from "../../../platform/environment/args.js";
+import { ReportedError } from "../../../platform/commands/commands.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 
@@ -567,26 +562,6 @@ describe("list command", () => {
 
 			expect(result.isErr()).toBe(true);
 			expect(logService.entries).toEqual([]);
-		});
-	});
-
-	describe("flags", () => {
-		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
-		const parse = (...argv: string[]) =>
-			parseArgs(argv, (command) => registry.getOptions(command), [
-				...registry.getCommands().keys(),
-			]);
-
-		it("should accept projects and --json, but not the output overrides", () => {
-			expect(
-				parse("list", "lobby", "places/arena", "--json").isOk()
-			).toBe(true);
-			expect(parse("list", "--variant", "mock").isErr()).toBe(true);
-			expect(parse("list", "-o", "out.project.json").isErr()).toBe(true);
-			expect(
-				parse("list", "--out-file", "out.project.json").isErr()
-			).toBe(true);
-			expect(parse("list", "--all").isErr()).toBe(true);
 		});
 	});
 

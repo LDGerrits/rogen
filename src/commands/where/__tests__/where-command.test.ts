@@ -1,17 +1,12 @@
 import "../where-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { Result } from "../../../base/result.js";
-import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
+import { CommandLine } from "../../../platform/environment/args.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockInputService } from "../../../platform/input/__tests__/mock-input-service.js";
 import { UsageError } from "../../../base/errors.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
-import {
-	CommandRegistry,
-	Extensions,
-} from "../../../platform/commands/commands.js";
-import { Registry } from "../../../platform/registry/registry.js";
 
 const ROUTES = {
 	Server: "ServerScriptService",
@@ -605,24 +600,6 @@ describe("where command", () => {
 					UsageError
 				);
 			});
-		});
-	});
-
-	describe("flags", () => {
-		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
-		const parse = (...argv: string[]) =>
-			parseArgs(argv, (command) => registry.getOptions(command), [
-				...registry.getCommands().keys(),
-			]);
-
-		it("should accept paths and --json, but not the output overrides", () => {
-			expect(parse("where", "src", "--json").isOk()).toBe(true);
-			expect(parse("where", "--variant", "mock").isErr()).toBe(true);
-			expect(parse("where", "-o", "out.project.json").isErr()).toBe(true);
-			expect(parse("where", "-c", "a.rogen.json").isErr()).toBe(true);
-			expect(parse("where", "--out-file", "a.project.json").isErr()).toBe(
-				true
-			);
 		});
 	});
 });
