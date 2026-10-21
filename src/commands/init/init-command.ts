@@ -70,7 +70,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a rogen.json, --darklua adds the dist project that serves the processed code, a .darklua.json and Darklua's pin, and --no-darklua takes the project off again when it is still what init writes.",
+			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a rogen.json, init does not change Darklua: the second config file that serves the processed code is written by hand.",
 	},
 	{
 		name: "source-path",
