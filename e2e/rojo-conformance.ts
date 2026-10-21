@@ -142,7 +142,7 @@ export interface KindRoundTrip {
 	/** The place each builds from the project it made, as text. */
 	readonly placeOfRojo?: string;
 	readonly placeOfRogen?: string;
-	/** The files both made that Rojo's template has, by name. */
+	/** The files both made that Rojo's template has, by name; Rogen's `.gitignore` is read without the line that ignores the project files it writes. */
 	readonly filesOfRojo: Record<string, string>;
 	readonly filesOfRogen: Record<string, string>;
 	readonly gitOfRojo: boolean;
@@ -179,14 +179,22 @@ export function kindRoundTrip(
 				? fs.readFileSync(path.join(dir, output), "utf8")
 				: undefined;
 		};
-		const filesOf = (project: string) =>
+		const filesOf = (project: string, ignoresWritten = false) =>
 			Object.fromEntries(
 				TEMPLATE_FILES.filter((file) =>
 					fs.existsSync(path.join(project, file))
-				).map((file) => [
-					file,
-					fs.readFileSync(path.join(project, file), "utf8"),
-				])
+				).map((file) => {
+					const text = fs.readFileSync(
+						path.join(project, file),
+						"utf8"
+					);
+					return [
+						file,
+						ignoresWritten
+							? text.replace("*.project.json\n", "")
+							: text,
+					];
+				})
 			);
 		const rojoDir = make("rojo");
 		const rogenDir = make("rogen");
@@ -208,7 +216,7 @@ export function kindRoundTrip(
 			placeOfRojo: placeOf(rojoDir, "rojo.rbxmx"),
 			placeOfRogen: placeOf(rogenDir, "rogen.rbxmx"),
 			filesOfRojo: filesOf(rojoDir),
-			filesOfRogen: filesOf(rogenDir),
+			filesOfRogen: filesOf(rogenDir, true),
 			gitOfRojo: fs.existsSync(path.join(rojoDir, ".git")),
 			gitOfRogen: fs.existsSync(path.join(rogenDir, ".git")),
 		};
