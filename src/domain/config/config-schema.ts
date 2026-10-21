@@ -67,7 +67,7 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 		description:
 			"The name of the game. default.project.json carries it only " +
 			"when it is set here; Rojo names the project after its folder " +
-			"otherwise.",
+			"otherwise. Every other config must set it.",
 	},
 	tree: {
 		...node,
