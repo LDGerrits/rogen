@@ -16,8 +16,7 @@ describe("CoreConfigService", () => {
 	describe("reload of the config here", () => {
 		beforeEach(async () => {
 			await write("/repo/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["a"],
+				rogen: { sourcePaths: ["a"], routes: ROUTED },
 			});
 		});
 
@@ -43,7 +42,7 @@ describe("CoreConfigService", () => {
 		it("should not concern a config of another name that comes to the folder", async () => {
 			await start();
 
-			await write("/repo/dist.rogen.json", { routes: ROUTED });
+			await write("/repo/dist.rogen.json", { rogen: { routes: ROUTED } });
 			const reload = await selection.reload(["/repo/dist.rogen.json"]);
 
 			expect(selection.concerns("/repo/dist.rogen.json")).toBe(false);
@@ -71,7 +70,9 @@ describe("CoreConfigService", () => {
 			await fs.delete("/repo/default.rogen.json");
 			await selection.reload(["/repo/default.rogen.json"]);
 
-			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
@@ -105,7 +106,9 @@ describe("CoreConfigService", () => {
 		it("should keep the config it has when a second config file appears beside it", async () => {
 			await start();
 
-			await write("/repo/default.rogen.jsonc", { routes: ROUTED });
+			await write("/repo/default.rogen.jsonc", {
+				rogen: { routes: ROUTED },
+			});
 			const reload = await selection.reload([
 				"/repo/default.rogen.jsonc",
 			]);
@@ -133,18 +136,15 @@ describe("CoreConfigService", () => {
 	describe("reload", () => {
 		it("should report each config whose value changed, in selection order", async () => {
 			await write("/repo/one/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["a"],
+				rogen: { sourcePaths: ["a"], routes: ROUTED },
 			});
 			await write("/repo/two/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["z"],
+				rogen: { sourcePaths: ["z"], routes: ROUTED },
 			});
 			await start({ names: ["one", "two"] });
 
 			await write("/repo/one/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["b"],
+				rogen: { sourcePaths: ["b"], routes: ROUTED },
 			});
 			const reload = await selection.reload([
 				"/repo/one/default.rogen.json",
@@ -184,12 +184,22 @@ describe("CoreConfigService", () => {
 
 		it("should report a config whose routes only changed order, since their order is their precedence", async () => {
 			await write("/repo/default.rogen.json", {
-				routes: { server: "ServerScriptService", client: "StarterGui" },
+				rogen: {
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterGui",
+					},
+				},
 			});
 			await start();
 
 			await write("/repo/default.rogen.json", {
-				routes: { client: "StarterGui", server: "ServerScriptService" },
+				rogen: {
+					routes: {
+						client: "StarterGui",
+						server: "ServerScriptService",
+					},
+				},
 			});
 			const reload = await selection.reload(["/repo/default.rogen.json"]);
 

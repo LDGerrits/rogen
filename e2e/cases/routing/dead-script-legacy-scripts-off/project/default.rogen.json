@@ -4,12 +4,14 @@
 		"$className": "DataModel"
 	},
 	"emitLegacyScripts": false,
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

@@ -15,11 +15,13 @@ default.rogen.json:
 {
 	// the routes of the game
 	"tree": { "$className": "DataModel" },
-	"routes": {
-		"server": "ServerScriptService",
-		"shared": "ReplicatedStorage/shared",
-		"mine": "ReplicatedStorage/Mine",
-		"serverStorage": "ServerStorage"
+	"rogen": {
+		"routes": {
+			"server": "ServerScriptService",
+			"shared": "ReplicatedStorage/shared",
+			"mine": "ReplicatedStorage/Mine",
+			"serverStorage": "ServerStorage"
+		}
 	}
 }
 

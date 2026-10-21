@@ -10,6 +10,8 @@
       }
     }
   },
-  "sourcePaths": ["src"],
-  "routes": { "Server": "ServerScriptService" }
+  "rogen": {
+    "sourcePaths": ["src"],
+    "routes": { "Server": "ServerScriptService" }
+  }
 }

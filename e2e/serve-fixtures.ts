@@ -2,13 +2,22 @@ import net from "net";
 import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
 /** The default.rogen.json every serve test starts from, serving on `port`. */
-export const config = (port: number, extra: Record<string, unknown> = {}) =>
+export const config = (
+	port: number,
+	{
+		rogen,
+		...extra
+	}: { rogen?: Record<string, unknown>; [key: string]: unknown } = {}
+) =>
 	JSON.stringify({
 		name: "Game",
 		servePort: port,
 		tree: { $className: "DataModel" },
-		routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
 		...extra,
+		rogen: {
+			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+			...rogen,
+		},
 	});
 
 /** A Rojo project file that serves on `port`. */

@@ -1,15 +1,5 @@
 {
 	"name": "Inventory",
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared",
-		"spec": "ServerScriptService/Tests"
-	},
 	"globIgnorePaths": [
 		"**/*.draft.luau"
 	],
@@ -19,6 +9,18 @@
 			"$properties": {
 				"Gravity": 196.2
 			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared",
+			"spec": "ServerScriptService/Tests"
 		}
 	}
 }

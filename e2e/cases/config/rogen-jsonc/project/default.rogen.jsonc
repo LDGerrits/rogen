@@ -1,5 +1,7 @@
 // the config
 {
-	"sourcePaths": ["src"],
-	"routes": { "*": "ReplicatedStorage/shared" },
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "*": "ReplicatedStorage/shared" },
+	},
 }

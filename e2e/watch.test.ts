@@ -12,8 +12,10 @@ import {
 } from "./harness.js";
 
 const CONFIG = JSON.stringify({
-	sourcePaths: ["src"],
-	routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+	rogen: {
+		sourcePaths: ["src"],
+		routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
+	},
 });
 
 describeWithRojo("end to end watch", () => {
@@ -226,9 +228,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"default.rogen.json",
-			JSON.stringify({
-				routes: { "*": "Workspace" },
-			})
+			JSON.stringify({ rogen: { routes: { "*": "Workspace" } } })
 		);
 
 		await eventually(async () => {
@@ -247,7 +247,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"default.rogen.json",
-			'{ "routes": { "*": "ReplicatedStorage"'
+			'{ "rogen": { "routes": { "*": "ReplicatedStorage"'
 		);
 		await eventually(() => {
 			expect(running.output).toContain(
@@ -268,8 +268,7 @@ describeWithRojo("end to end watch", () => {
 			project.dir,
 			"default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { "*": "Workspace" },
+				rogen: { sourcePaths: ["src"], routes: { "*": "Workspace" } },
 			})
 		);
 		await eventually(async () => {
@@ -281,7 +280,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"lobby/default.rogen.json",
-			JSON.stringify({ routes: { "*": "Workspace" } })
+			JSON.stringify({ rogen: { routes: { "*": "Workspace" } } })
 		);
 		writeProjectFile(project.dir, "lobby/src/Analytics.luau");
 		start(["lobby"]);
@@ -295,8 +294,8 @@ describeWithRojo("end to end watch", () => {
 			project.dir,
 			"lobby/default.rogen.json",
 			JSON.stringify({
-				routes: { "*": "Workspace" },
 				globIgnorePaths: ["nothing/**"],
+				rogen: { routes: { "*": "Workspace" } },
 			})
 		);
 		await eventually(() => {
@@ -320,7 +319,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"lobby/default.rogen.json",
-			JSON.stringify({ routes: { "*": "Workspace" } })
+			JSON.stringify({ rogen: { routes: { "*": "Workspace" } } })
 		);
 		writeProjectFile(project.dir, "lobby/src/L.luau");
 		start(["lobby"]);
@@ -356,7 +355,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"default.rogen.json",
-			JSON.stringify({ routes: { "*": "Workspace" } })
+			JSON.stringify({ rogen: { routes: { "*": "Workspace" } } })
 		);
 		await eventually(async () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
@@ -394,7 +393,7 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"default.rogen.json",
-			JSON.stringify({ routes: { "*": "Workspace" } })
+			JSON.stringify({ rogen: { routes: { "*": "Workspace" } } })
 		);
 
 		await eventually(async () => {
@@ -411,7 +410,10 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(
 			project.dir,
 			"arena.rogen.json",
-			JSON.stringify({ name: "Arena", routes: { "*": "Workspace" } })
+			JSON.stringify({
+				name: "Arena",
+				rogen: { routes: { "*": "Workspace" } },
+			})
 		);
 		writeProjectFile(project.dir, "src/B.server.luau");
 
@@ -429,8 +431,10 @@ describeWithRojo("end to end watch", () => {
 			project.dir,
 			"default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src", "later"],
-				routes: { "*": "ReplicatedStorage" },
+				rogen: {
+					sourcePaths: ["src", "later"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			})
 		);
 		start();

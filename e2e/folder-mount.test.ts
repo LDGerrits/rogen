@@ -23,10 +23,12 @@ describeWithRojo("end to end folder mounts", () => {
 	beforeEach(() => {
 		project = createProject({
 			"default.rogen.json": JSON.stringify({
-				sourcePaths: ["src"],
-				routes: {
-					Server: "ServerScriptService",
-					Client: "StarterPlayer/StarterPlayerScripts",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: {
+						Server: "ServerScriptService",
+						Client: "StarterPlayer/StarterPlayerScripts",
+					},
 				},
 			}),
 			"src/Inventory/Server/Save.luau": "",

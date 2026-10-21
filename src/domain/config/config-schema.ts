@@ -6,6 +6,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
 import { SYNC_RULE_USES } from "../rojo/sync-rules.js";
+import { ROGEN_BLOCK } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
@@ -149,7 +150,7 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
+const rogenFields: Readonly<Record<string, JSONSchema>> = {
 	sourcePaths: {
 		type: "array",
 		items: { type: "string" },
@@ -171,11 +172,18 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 };
 
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
-export const rogenKeys: readonly string[] = Object.keys(rogenSchemas);
+export const rogenKeys: readonly string[] = Object.keys(rogenFields);
+
+const rogenBlock: JSONSchema = {
+	type: "object",
+	description:
+		"Rogen's own keys. Without this block the file is a plain Rojo project file.",
+	properties: rogenFields,
+};
 
 export const configSchema: JSONSchema = {
 	type: "object",
-	properties: { ...rojoFields, ...rogenSchemas },
+	properties: { ...rojoFields, [ROGEN_BLOCK]: rogenBlock },
 };
 
 const removedFields: Readonly<Record<string, string>> = {

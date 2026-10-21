@@ -1,10 +1,12 @@
 {
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"chat": "TextChatService",
-		"teams": "Teams",
-		"*": "ReplicatedStorage"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"chat": "TextChatService",
+			"teams": "Teams",
+			"*": "ReplicatedStorage"
+		}
 	}
 }

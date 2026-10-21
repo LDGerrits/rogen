@@ -1,9 +1,11 @@
 // the game
 {
-	/* where the code is */
-	"sourcePaths": ["src",],
-	"routes": {
-		"server": "ServerScriptService", // scripts
-		"*": "ReplicatedStorage",
+	"rogen": {
+		/* where the code is */
+		"sourcePaths": ["src",],
+		"routes": {
+			"server": "ServerScriptService", // scripts
+			"*": "ReplicatedStorage",
+		},
 	},
 }

@@ -1,5 +1,7 @@
 {
-	"sourcePaths": [
-		"src"
-	]
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		]
+	}
 }

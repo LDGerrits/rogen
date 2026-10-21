@@ -1,1 +1,1 @@
-{ "tree": { "$className": "DataModel", "ReplicatedStorage": { "Lib": { "$path": "vendor/Lib" } } }, "sourcePaths": ["src"], "routes": { "*": "ReplicatedStorage/Lib" } }
+{ "tree": { "$className": "DataModel", "ReplicatedStorage": { "Lib": { "$path": "vendor/Lib" } } }, "rogen": { "sourcePaths": ["src"], "routes": { "*": "ReplicatedStorage/Lib" } } }

@@ -1,10 +1,12 @@
 {
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"ser-ver": "ServerScriptService",
-		"2fast": "ServerScriptService",
-		"*": "ReplicatedStorage"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"ser-ver": "ServerScriptService",
+			"2fast": "ServerScriptService",
+			"*": "ReplicatedStorage"
+		}
 	}
 }

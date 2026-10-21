@@ -8,7 +8,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { defaultSourcePaths } from "../config/config.js";
+import { ROGEN_BLOCK, defaultSourcePaths } from "../config/config.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
@@ -88,13 +88,10 @@ export class ConfigChanges {
 
 	/** The routes and source paths the config has, as the loader reads them. */
 	get sourcePaths(): string[] {
-		const { value } = this.edit;
-		return Array.isArray(value.sourcePaths)
-			? stringsOf(value.sourcePaths).map(normalizeDir)
-			: defaultSourcePaths(
-					isObject(value.routes) &&
-						Object.keys(value.routes).length > 0
-				);
+		const sourcePaths = this.edit.valueAt([ROGEN_BLOCK, "sourcePaths"]);
+		return Array.isArray(sourcePaths)
+			? stringsOf(sourcePaths).map(normalizeDir)
+			: defaultSourcePaths(Object.keys(this.routes).length > 0);
 	}
 
 	/** The keys of the routes the config has, without the one for unmatched files. */
@@ -105,7 +102,7 @@ export class ConfigChanges {
 	}
 
 	private get routes(): Record<string, unknown> {
-		const { routes } = this.edit.value;
+		const routes = this.edit.valueAt([ROGEN_BLOCK, "routes"]);
 		return isObject(routes) ? routes : {};
 	}
 
@@ -169,7 +166,11 @@ export class ConfigChanges {
 			const there = this.routeKeyFor(key);
 			if (there === undefined) {
 				this.edit.set(
-					["routes", lowercase ? DeclaredKeys.identityOf(key) : key],
+					[
+						ROGEN_BLOCK,
+						"routes",
+						lowercase ? DeclaredKeys.identityOf(key) : key,
+					],
 					target
 				);
 				continue;
@@ -192,7 +193,7 @@ export class ConfigChanges {
 					`routes.${there} goes to ${String(this.routes[there])}, not to the standard ${target}, so init leaves it as it is.`,
 					`Edit it in ${this.edit.fileName} to remove it.`
 				);
-			this.edit.remove(["routes", there]);
+			this.edit.remove([ROGEN_BLOCK, "routes", there]);
 		}
 	}
 
@@ -210,7 +211,7 @@ export class ConfigChanges {
 				);
 				return;
 			}
-			this.edit.set(["routes", fallback], target);
+			this.edit.set([ROGEN_BLOCK, "routes", fallback], target);
 			return;
 		}
 		if (!there) return;
@@ -219,7 +220,7 @@ export class ConfigChanges {
 				"--unmatched leave has no route to apply to.",
 				"Add a route with --route first, or keep the files going to the shared route."
 			);
-		this.edit.remove(["routes", fallback]);
+		this.edit.remove([ROGEN_BLOCK, "routes", fallback]);
 	}
 
 	private async changeSourcePaths({
@@ -267,12 +268,16 @@ export class ConfigChanges {
 				);
 		}
 		for (const entry of toAdd.filter((one) => !current.includes(one))) {
-			this.edit.set(["sourcePaths"], next, `added sourcePaths ${entry}`);
+			this.edit.set(
+				[ROGEN_BLOCK, "sourcePaths"],
+				next,
+				`added sourcePaths ${entry}`
+			);
 			this.directories.push(entry);
 		}
 		for (const entry of toRemove)
 			this.edit.set(
-				["sourcePaths"],
+				[ROGEN_BLOCK, "sourcePaths"],
 				next,
 				`removed sourcePaths ${entry}`
 			);

@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:4:3 - error: source path "src/shared" is inside source path "src"; a file under it would belong to both. Remove one. (config.nestedSourcePath)
+  default.rogen.json:5:4 - error: source path "src/shared" is inside source path "src"; a file under it would belong to both. Remove one. (config.nestedSourcePath)

@@ -28,13 +28,13 @@ describe("domain/init/init-plan-builder", () => {
 
 		it("should point the config at the schema, before the fields it was given", () => {
 			const builder = builderFor();
-			builder.setConfig({ sourcePaths: ["src"] });
+			builder.setConfig({ rogen: { sourcePaths: ["src"] } });
 
 			const [file] = builder.build().unwrap().files;
 
 			expect(Object.keys(JSON.parse(file.content))).toEqual([
 				"$schema",
-				"sourcePaths",
+				"rogen",
 			]);
 			expect(JSON.parse(file.content).$schema).toBe(SCHEMA_URL);
 		});

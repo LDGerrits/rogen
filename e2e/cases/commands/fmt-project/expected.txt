@@ -24,11 +24,13 @@ default.rogen.json:
     }
   },
   "servePort": 34873,
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "server": "ServerScriptService",
-    "*": "ReplicatedStorage"
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "server": "ServerScriptService",
+      "*": "ReplicatedStorage"
+    }
   }
 }

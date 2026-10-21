@@ -138,7 +138,7 @@ export class RobloxTsStarter {
 			],
 			config: {
 				name: path.posix.basename(place),
-				syncPath: OUT_DIR,
+				rogen: { syncPath: OUT_DIR },
 				tree: {
 					ReplicatedStorage: {
 						rbxts_include: { $path: { optional: "include" } },

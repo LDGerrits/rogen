@@ -1,1 +1,1 @@
-{"name":"Game","tree":{"$className":"DataModel"},"sourcePaths":["src"],"routes":{"Server":"ServerScriptService","Client":"StarterPlayer/StarterPlayerScripts","*":"ReplicatedStorage/Shared"}}
+{ "name":"Game", "tree":{"$className":"DataModel"}, "rogen": { "sourcePaths":["src"], "routes":{"Server":"ServerScriptService","Client":"StarterPlayer/StarterPlayerScripts","*":"ReplicatedStorage/Shared"} } }

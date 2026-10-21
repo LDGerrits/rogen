@@ -49,9 +49,14 @@ describe("list command", () => {
 		await fs.createDirectory("/repo/src");
 		await fs.createDirectory("/repo/lobby");
 		await write("default.rogen.json", {
-			sourcePaths: ["src", "lobby"],
-			syncPath: "out",
-			routes: { Server: "ServerScriptService", "*": "ReplicatedStorage" },
+			rogen: {
+				sourcePaths: ["src", "lobby"],
+				routes: {
+					Server: "ServerScriptService",
+					"*": "ReplicatedStorage",
+				},
+				syncPath: "out",
+			},
 		});
 
 		const result = await run();
@@ -76,15 +81,19 @@ describe("list command", () => {
 			await fs.createDirectory("/repo/src");
 			await write("default.rogen.json", {
 				name: "Game",
-				sourcePaths: ["src"],
-				routes: { "*": "ReplicatedStorage" },
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			});
 			await write("dist.rogen.json", {
 				name: "Game",
-				sourcePaths: ["src"],
-				routes: { "*": "ReplicatedStorage" },
-				syncPath: "dist",
 				servePort: 34900,
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { "*": "ReplicatedStorage" },
+					syncPath: "dist",
+				},
 			});
 		});
 
@@ -146,8 +155,10 @@ describe("list command", () => {
 
 	it("should say which source paths are no folder, as an error when none is", async () => {
 		await write("default.rogen.json", {
-			sourcePaths: ["srcc"],
-			routes: { "*": "ReplicatedStorage" },
+			rogen: {
+				sourcePaths: ["srcc"],
+				routes: { "*": "ReplicatedStorage" },
+			},
 		});
 
 		await run();
@@ -161,8 +172,10 @@ describe("list command", () => {
 	it("should say it as a warning when another source path is a folder", async () => {
 		await fs.createDirectory("/repo/src");
 		await write("default.rogen.json", {
-			sourcePaths: ["src", "later"],
-			routes: { "*": "ReplicatedStorage" },
+			rogen: {
+				sourcePaths: ["src", "later"],
+				routes: { "*": "ReplicatedStorage" },
+			},
 		});
 
 		await run();
@@ -176,7 +189,7 @@ describe("list command", () => {
 	it("should say when a project file on disk differs from what a build would write", async () => {
 		await fs.createDirectory("/repo/src");
 		await write("default.rogen.json", {
-			routes: { "*": "ReplicatedStorage" },
+			rogen: { routes: { "*": "ReplicatedStorage" } },
 		});
 		await write("default.project.json", "{}");
 
@@ -208,8 +221,8 @@ describe("list command", () => {
 
 	it("should print no extends, extended by or template line", async () => {
 		await write("default.rogen.json", {
-			routes: { "*": "Workspace" },
 			tree: { $className: "DataModel" },
+			rogen: { routes: { "*": "Workspace" } },
 		});
 
 		await run();
@@ -225,8 +238,8 @@ describe("list command", () => {
 		it("should say 'same as' for a config whose routes equal those of an earlier one", async () => {
 			await fs.createDirectory("/repo/lobby/src");
 			await fs.createDirectory("/repo/arena/src");
-			await write("lobby/default.rogen.json", { routes });
-			await write("arena/default.rogen.json", { routes });
+			await write("lobby/default.rogen.json", { rogen: { routes } });
+			await write("arena/default.rogen.json", { rogen: { routes } });
 
 			await run({ _: ["lobby", "arena"] });
 
@@ -241,9 +254,9 @@ describe("list command", () => {
 		it("should print the routes of a config that differs in one", async () => {
 			await fs.createDirectory("/repo/lobby/src");
 			await fs.createDirectory("/repo/arena/src");
-			await write("lobby/default.rogen.json", { routes });
+			await write("lobby/default.rogen.json", { rogen: { routes } });
 			await write("arena/default.rogen.json", {
-				routes: { ...routes, Server: "Workspace" },
+				rogen: { routes: { ...routes, Server: "Workspace" } },
 			});
 
 			await run({ _: ["lobby", "arena"] });
@@ -255,10 +268,10 @@ describe("list command", () => {
 
 		it("should not call routes the same when only their order differs", async () => {
 			await write("a/default.rogen.json", {
-				routes: { Server: "Workspace", Client: "Workspace" },
+				rogen: { routes: { Server: "Workspace", Client: "Workspace" } },
 			});
 			await write("b/default.rogen.json", {
-				routes: { Client: "Workspace", Server: "Workspace" },
+				rogen: { routes: { Client: "Workspace", Server: "Workspace" } },
 			});
 
 			await run({ _: ["a", "b"] });
@@ -267,7 +280,7 @@ describe("list command", () => {
 		});
 
 		it("should print none for a broken config", async () => {
-			await write("a/default.rogen.json", { routes });
+			await write("a/default.rogen.json", { rogen: { routes } });
 			await write("b/default.rogen.json", `{\n\t"extends": "a"\n}`);
 
 			await run({ _: ["a", "b"] });
@@ -379,13 +392,15 @@ describe("list command", () => {
 			await fs.createDirectory("/repo/lobby");
 			await write("default.rogen.json", {
 				name: "Game",
-				sourcePaths: ["src", "lobby"],
-				routes: {
-					Server: "ServerScriptService",
-					"*": "ReplicatedStorage/Shared",
-				},
 				globIgnorePaths: ["**/*.spec.luau"],
-				syncPath: "out",
+				rogen: {
+					sourcePaths: ["src", "lobby"],
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage/Shared",
+					},
+					syncPath: "out",
+				},
 			});
 
 			const result = await run({ json: true });
@@ -417,8 +432,10 @@ describe("list command", () => {
 
 		it("should carry the missing source paths as diagnostics of a valid config", async () => {
 			await write("default.rogen.json", {
-				sourcePaths: ["srcc"],
-				routes: { "*": "ReplicatedStorage" },
+				rogen: {
+					sourcePaths: ["srcc"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			});
 
 			await run({ json: true });
@@ -492,7 +509,9 @@ describe("list command", () => {
 	});
 
 	it("should print the report although it is quiet", async () => {
-		await write("default.rogen.json", { routes: { "*": "Workspace" } });
+		await write("default.rogen.json", {
+			rogen: { routes: { "*": "Workspace" } },
+		});
 		logService.setLevel(LogLevel.Error);
 
 		await run();
@@ -513,7 +532,7 @@ describe("list command", () => {
 			run = ({ _ = [], ...options } = {}) =>
 				harness.run("list", { positionals: _, options });
 			await write("default.rogen.json", {
-				routes: { "*": "ReplicatedStorage" },
+				rogen: { routes: { "*": "ReplicatedStorage" } },
 			});
 		});
 
@@ -561,7 +580,7 @@ describe("list command", () => {
 
 		it("should print the serving server of each config, or null, with --json", async () => {
 			await write("lobby/default.rogen.json", {
-				routes: { "*": "Workspace" },
+				rogen: { routes: { "*": "Workspace" } },
 			});
 			await serve(1);
 
@@ -592,13 +611,15 @@ describe("list command", () => {
 			await fs.createDirectory("/repo/places/lobby/src");
 			await write("places/lobby/default.rogen.json", {
 				name: "Lobby",
-				sourcePaths: ["../shared/src", "src"],
-				routes: {
-					Server: "ServerScriptService",
-					"*": "ReplicatedStorage",
-				},
 				servePort: 34873,
 				servePlaceIds: [1818, 2020],
+				rogen: {
+					sourcePaths: ["../shared/src", "src"],
+					routes: {
+						Server: "ServerScriptService",
+						"*": "ReplicatedStorage",
+					},
+				},
 			});
 		});
 
@@ -621,7 +642,7 @@ describe("list command", () => {
 		it("should give no port to a place that pins none", async () => {
 			await write("places/arena/default.rogen.json", {
 				name: "Arena",
-				routes: { "*": "ReplicatedStorage" },
+				rogen: { routes: { "*": "ReplicatedStorage" } },
 			});
 
 			await run({ _: ["places/arena"] });

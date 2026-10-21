@@ -1,8 +1,10 @@
 {
-	"sourcePaths": [
-		"."
-	],
-	"routes": {
-		"*": "ReplicatedStorage"
+	"rogen": {
+		"sourcePaths": [
+			"."
+		],
+		"routes": {
+			"*": "ReplicatedStorage"
+		}
 	}
 }

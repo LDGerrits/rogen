@@ -549,8 +549,8 @@ describe("init command", () => {
 
 			expect(result.isOk()).toBe(true);
 			const config = await readJson("default.rogen.json");
-			expect(config.sourcePaths).toEqual(["lib"]);
-			expect(Object.keys(config.routes)).not.toContain("Client");
+			expect(config.rogen.sourcePaths).toEqual(["lib"]);
+			expect(Object.keys(config.rogen.routes)).not.toContain("Client");
 			expect(await exists("AGENTS.md")).toBe(false);
 			const { decided } = JSON.parse(logService.entries[0].text);
 			expect(decided.map(({ flag }: { flag: string }) => flag)).toEqual([
@@ -742,11 +742,11 @@ describe("init command", () => {
 
 		describe("on a project that has a config", () => {
 			const CONFIG =
-				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" }\n}\n';
+				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"rogen": { "routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" } }\n}\n';
 
 			const readConfig = async () =>
 				parse(await read("default.rogen.json")).unwrap() as {
-					routes: Record<string, string>;
+					rogen: { routes: Record<string, string> };
 					serveProject?: string;
 					projects?: unknown;
 				};
@@ -795,7 +795,7 @@ describe("init command", () => {
 				const result = await runInit(prompts);
 
 				expect(result.isOk()).toBe(true);
-				expect((await readConfig()).routes["*"]).toBe(
+				expect((await readConfig()).rogen.routes["*"]).toBe(
 					"ReplicatedStorage/Shared"
 				);
 			});
@@ -935,7 +935,7 @@ describe("init command", () => {
 			await runInit(prompts);
 
 			const config = await readJson("default.rogen.json");
-			expect(config.sourcePaths).toEqual(["src", "lib"]);
+			expect(config.rogen.sourcePaths).toEqual(["src", "lib"]);
 			expect(config).not.toHaveProperty("projects");
 		});
 

@@ -1,7 +1,9 @@
 {
-	"sourcePaths": ["src"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
 	"servePort": 34873,
 	"name": "Game",
-	"tree": { "ReplicatedStorage": { "$className": "ReplicatedStorage" }, "$className": "DataModel" }
+	"tree": { "ReplicatedStorage": { "$className": "ReplicatedStorage" }, "$className": "DataModel" },
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
+	}
 }

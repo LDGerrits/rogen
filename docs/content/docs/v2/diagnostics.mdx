@@ -60,6 +60,16 @@ rogen.json:4:2 - error: "exlude" is not a Rojo key and not Rogen's, and Rojo rej
 
 A field of a sync rule that a rule does not have gets the same code as a warning, since Rojo ignores it and the rule then reads differently from what was meant. Rename the key to the one suggested, or remove it. A config with v1 keys also gets [`legacy.config`](#legacy-config). See [Configuration](/docs/v2/configuration#fields).
 
+### `config.rogenKeyOutsideBlock` [#config-rogenkeyoutsideblock]
+
+Error. A key of Rogen (`sourcePaths`, `routes` or `syncPath`) sits at the top level of the config. The top level is Rojo's, so Rogen's keys go in the `rogen` block. A key inside the block that isn't Rogen's gets [`config.unknownField`](#config-unknownfield).
+
+```
+default.rogen.json:2:2 - error: "routes" is one of Rogen's keys, and the top level of the file is Rojo's. Move it into "rogen": { ... }. (config.rogenKeyOutsideBlock)
+```
+
+Move the key into `"rogen": { ... }`. When it is the only Rogen key and the file has no block yet, the error carries the replacement. See [Configuration](/docs/v2/configuration#fields).
+
 ### `config.removedField` [#config-removedfield]
 
 Error. The config has a key that Rogen removed or renamed. The error is at the key, and the message says what to do instead.

@@ -27,14 +27,16 @@ default.rogen.json:
     "$className": "DataModel",
     "ReplicatedStorage": {}
   },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Common"
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Common"
+    }
   }
 }
 

@@ -1,10 +1,12 @@
 {
-	"sourcePaths": [
-		"src"
-	],
 	"outDir": "dist",
 	"exlude": [],
-	"routes": {
-		"*": "ReplicatedStorage"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage"
+		}
 	}
 }

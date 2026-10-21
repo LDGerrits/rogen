@@ -4,13 +4,15 @@
 		"src/Inventory/__tests__/**",
 		"src/Scratch"
 	],
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

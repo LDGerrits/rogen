@@ -2,11 +2,13 @@
 	"syncRules": [
 		{ "pattern": "{src,lib}/*.module", "use": "moduleScript", "suffix": ".module" }
 	],
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"*": "ReplicatedStorage/shared"
-	},
-	"syncPath": "out"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		},
+		"syncPath": "out"
+	}
 }

@@ -1,5 +1,6 @@
 import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
+import { ROGEN_BLOCK } from "../config/config.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
 /** A `default.rogen.json` being changed through the jsonc editor, so its comments, key order and formatting stay. Each change is named as `added routes.ServerStorage`. */
@@ -44,13 +45,18 @@ export class ConfigEdit {
 		this.write(at, value);
 		this.changes.push(
 			change ??
-				`${before === undefined ? "added" : "changed"} ${at.join(".")}`
+				`${before === undefined ? "added" : "changed"} ${ConfigEdit.named(at)}`
 		);
 	}
 
 	remove(at: readonly string[], change?: string): void {
 		this.write(at, undefined);
-		this.changes.push(change ?? `removed ${at.join(".")}`);
+		this.changes.push(change ?? `removed ${ConfigEdit.named(at)}`);
+	}
+
+	/** A key of the `rogen` block is named without the block. */
+	private static named(at: readonly string[]): string {
+		return (at[0] === ROGEN_BLOCK ? at.slice(1) : at).join(".");
 	}
 
 	private write(at: readonly string[], value: unknown): void {
