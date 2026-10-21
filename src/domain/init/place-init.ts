@@ -9,6 +9,7 @@ import {
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
 import {
+	DEFAULT_CONFIG_FILE,
 	DEFAULT_PROJECT,
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
@@ -85,7 +86,7 @@ export class PlaceInit {
 			...(compile ? ["out", "include"] : []),
 			...(processed ? [processed] : []),
 		]);
-		const configFile = path.posix.join(place, "default.rogen.json");
+		const configFile = path.posix.join(place, DEFAULT_CONFIG_FILE);
 
 		return {
 			directory: root,
