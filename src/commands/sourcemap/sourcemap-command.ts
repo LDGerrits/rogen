@@ -65,7 +65,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project file again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const SourcemapOptions = [
@@ -105,9 +105,9 @@ registerCommand(
 				id: "sourcemap",
 				metadata: {
 					summary:
-						"Writes the project files, then a sourcemap with Rojo",
+						"Writes the project file, then a sourcemap with Rojo",
 					description:
-						"Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
+						"Writes the project file, then has Rojo write a sourcemap of the project, printed unless -o names a file.",
 					args: ProjectArgument,
 					options: SourcemapOptions,
 					output: {

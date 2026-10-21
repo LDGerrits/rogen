@@ -119,7 +119,7 @@ registerCommand(
 					summary:
 						"Builds, serves with Rojo, and rebuilds on changes",
 					description:
-						"Builds, serves the project files with Rojo, and rebuilds on every change.",
+						"Builds the project file, serves it with Rojo, and rebuilds on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that.",
 					args: ProjectArgument,
 					passthrough: {
 						name: "server args",
@@ -130,14 +130,14 @@ registerCommand(
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
-						"0": "another rogen serve already serves every project, or a server adopted from one stopped",
+						"0": "another rogen serve already serves the project, or a server adopted from one stopped",
 						"128+N":
 							"a signal stopped it: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen serve",
 						"rogen serve places/lobby --port 34873",
-						"rogen serve . test",
+						"rogen serve dist",
 					],
 				},
 			});

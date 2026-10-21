@@ -70,9 +70,9 @@ registerCommand(
 				id: "upload",
 				metadata: {
 					summary:
-						"Writes the project files, then uploads them with Rojo",
+						"Writes the project file, then uploads it with Rojo",
 					description:
-						"Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
+						"Writes the project file, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
 					args: ProjectArgument,
 					picker: [
 						{
