@@ -8,8 +8,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { defaultSourcePaths } from "../config/config.js";
-import { ROGEN_BLOCK } from "../config/config-schema.js";
+import { ROGEN_BLOCK, defaultSourcePaths } from "../config/config.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";

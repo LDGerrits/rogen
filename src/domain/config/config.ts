@@ -7,6 +7,9 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
+/** The key that holds Rogen's own keys; the top level is Rojo's. */
+export const ROGEN_BLOCK = "rogen";
+
 /** The keys Rogen adds to a Rojo project file, which sit in the `rogen` block. */
 export interface RogenKeys {
 	readonly sourcePaths?: string[];

@@ -6,7 +6,7 @@ import { joinedWithAnd } from "../../base/strings.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { ROGEN_BLOCK } from "../config/config-schema.js";
+import { ROGEN_BLOCK } from "../config/config.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";

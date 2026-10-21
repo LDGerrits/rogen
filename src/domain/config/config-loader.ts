@@ -10,7 +10,8 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
-import { ROGEN_BLOCK, configSchema } from "./config-schema.js";
+import { ROGEN_BLOCK } from "./config.js";
+import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";

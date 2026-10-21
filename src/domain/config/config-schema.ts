@@ -6,6 +6,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
 import { SYNC_RULE_USES } from "../rojo/sync-rules.js";
+import { ROGEN_BLOCK } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
@@ -172,9 +173,6 @@ const rogenFields: Readonly<Record<string, JSONSchema>> = {
 
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
 export const rogenKeys: readonly string[] = Object.keys(rogenFields);
-
-/** The key that holds Rogen's own keys; the top level is Rojo's. */
-export const ROGEN_BLOCK = "rogen";
 
 const rogenBlock: JSONSchema = {
 	type: "object",

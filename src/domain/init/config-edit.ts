@@ -1,6 +1,6 @@
 import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
-import { ROGEN_BLOCK } from "../config/config-schema.js";
+import { ROGEN_BLOCK } from "../config/config.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
 /** A `default.rogen.json` being changed through the jsonc editor, so its comments, key order and formatting stay. Each change is named as `added routes.ServerStorage`. */

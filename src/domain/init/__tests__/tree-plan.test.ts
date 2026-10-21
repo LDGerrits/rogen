@@ -221,7 +221,7 @@ describe("TreePlan", () => {
 					},
 				});
 				expect(
-					Object.keys(configOf(files).rogen?.routes!)
+					Object.keys(configOf(files).rogen!.routes!)
 				).not.toContain("Lib");
 			});
 
@@ -257,7 +257,7 @@ describe("TreePlan", () => {
 					ReplicatedStorage: {},
 				});
 				expect(
-					Object.keys(configOf(files).rogen?.routes!)
+					Object.keys(configOf(files).rogen!.routes!)
 				).not.toContain("mount:server");
 				expect(files.notes).toContain(
 					"Kept ServerScriptService/Server in the tree as a $path mount, since its folder holds an init file, which Rojo reads as the instance of the folder itself and a route can't."

@@ -23,9 +23,9 @@ import {
 } from "../rojo/rojo-project.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ConfigFile } from "../../platform/config/config-file.js";
-import { ROGEN_BLOCK } from "./config-schema.js";
 import {
 	DEFAULT_PROJECT,
+	ROGEN_BLOCK,
 	configStem,
 	defaultSourcePaths,
 	fieldOf,

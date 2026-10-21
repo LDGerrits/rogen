@@ -6,11 +6,11 @@ import {
 	replaceFixes,
 } from "../../platform/diagnostics/diagnostic.js";
 import {
-	ROGEN_BLOCK,
 	configRemovedFieldAdvice,
 	rogenKeys,
 	rojoKeys,
 } from "./config-schema.js";
+import { ROGEN_BLOCK } from "./config.js";
 
 export class ConfigKeys {
 	/** A removed key, a Rogen key outside the `rogen` block, or one neither Rojo's nor Rogen's, which Rojo would reject in the written file. */
