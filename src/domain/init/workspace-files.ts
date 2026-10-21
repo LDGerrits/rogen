@@ -19,25 +19,12 @@ interface Listed {
 export class WorkspaceFiles {
 	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** `folders`: the root's places, sorted, with `place` among them. */
-	plan(
-		root: string,
-		folders: readonly string[],
-		place: string
-	): Promise<{ files: PlannedFile[]; notes: string[] }> {
-		return this.planAll(root, folders, [place]);
-	}
-
-	/** The same for several `places` at once: a workspace file gets the ones it lacks, in one edit. */
+	/** `folders`: the places and the shared code, sorted. A new project gets a workspace file of them, and one that has a workspace file gets the ones it lacks, in one edit. */
 	async planAll(
 		root: string,
-		folders: readonly string[],
-		places: readonly string[]
+		folders: readonly string[]
 	): Promise<{ files: PlannedFile[]; notes: string[] }> {
-		const names = (await this.fileSystemService.readDirectory(root))
-			.map(([name]) => name)
-			.filter((name) => name.endsWith(WORKSPACE_SUFFIX))
-			.sort(compareStrings);
+		const names = await this.namesIn(root);
 		if (names.length === 0)
 			return {
 				files: [
@@ -53,6 +40,29 @@ export class WorkspaceFiles {
 				],
 				notes: [],
 			};
+		return this.editAll(root, names, folders);
+	}
+
+	/** The same for one more place of a project: the workspace files that are there get it, and none is made. */
+	async append(
+		root: string,
+		place: string
+	): Promise<{ files: PlannedFile[]; notes: string[] }> {
+		return this.editAll(root, await this.namesIn(root), [place]);
+	}
+
+	private async namesIn(root: string): Promise<string[]> {
+		return (await this.fileSystemService.readDirectory(root))
+			.map(([name]) => name)
+			.filter((name) => name.endsWith(WORKSPACE_SUFFIX))
+			.sort(compareStrings);
+	}
+
+	private async editAll(
+		root: string,
+		names: readonly string[],
+		places: readonly string[]
+	): Promise<{ files: PlannedFile[]; notes: string[] }> {
 		const files: PlannedFile[] = [];
 		const notes: string[] = [];
 		for (const name of names) {

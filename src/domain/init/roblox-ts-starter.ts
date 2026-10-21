@@ -1,6 +1,5 @@
 import path from "path";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
-import { RogenConfig } from "../config/config.js";
 import { PlannedCommand, PlannedScaffold } from "./init-service.js";
 
 const CREATE_TIMEOUT = 300_000;
@@ -34,6 +33,9 @@ const json = (value: unknown): string =>
 
 /** What `init` takes from create-roblox-ts, which writes the project's `package.json`, `tsconfig.json` and compiler settings, and what it adds for places that share code. */
 export class RobloxTsStarter {
+	/** What a place compiles into its own folder, which its project file mounts from there. */
+	static readonly OWN_FOLDERS: readonly string[] = ["include"];
+
 	/** The starter of `language`, when it has one. */
 	static of(language: Language): RobloxTsStarter | undefined {
 		return language.id === "roblox-ts" ? new RobloxTsStarter() : undefined;
@@ -50,8 +52,8 @@ export class RobloxTsStarter {
 		];
 	}
 
-	/** Runs create-roblox-ts in the folder, and drops its sample, which Rogen's replaces. Git stays Rogen's step. */
-	scaffold(): PlannedScaffold {
+	/** Runs create-roblox-ts in the folder, and drops its sample, which Rogen's replaces; with `several` places also its root `tsconfig.json` and the `src` folder, since no place is at the root. Git stays Rogen's step. */
+	scaffold(several = false): PlannedScaffold {
 		const args = [
 			"create",
 			"roblox-ts@latest",
@@ -70,12 +72,14 @@ export class RobloxTsStarter {
 				args,
 				timeout: CREATE_TIMEOUT,
 			},
-			replaces: [
-				"default.project.json",
-				"src/client",
-				"src/server",
-				"src/shared",
-			],
+			replaces: several
+				? ["default.project.json", "src", "tsconfig.json"]
+				: [
+						"default.project.json",
+						"src/client",
+						"src/server",
+						"src/shared",
+					],
 		};
 	}
 
@@ -93,29 +97,27 @@ export class RobloxTsStarter {
 		};
 	}
 
-	/** The root `tsconfig.json` of several places, which the editor reads to check the shared code. */
-	rootTsconfig(shared: string): PlannedFile {
+	/** The `tsconfig.json` of the shared code of several places, which the editor reads to check it; `rbxtsc` never does. */
+	sharedTsconfig(shared: string): PlannedFile {
+		const folder = path.posix.dirname(shared);
+		const toRoot = path.posix.relative(folder, ".");
 		return {
-			fileName: "tsconfig.json",
+			fileName: path.posix.join(folder, "tsconfig.json"),
 			content: json({
 				compilerOptions: {
 					...REQUIRED_OPTIONS,
-					typeRoots: [TYPES],
-					rootDir: shared,
-					outDir: OUT_DIR,
-					baseUrl: shared,
-					tsBuildInfoFile: TS_BUILD_INFO,
+					typeRoots: [TYPES, `${toRoot}/${TYPES}`],
+					rootDir: "src",
+					baseUrl: "src",
+					noEmit: true,
 				},
-				include: [shared],
+				include: ["src"],
 			}),
 		};
 	}
 
-	/** The files and settings that make `place` (relative to the root) compile its own code with the code in `shared`. */
-	place(
-		place: string,
-		shared: string
-	): { files: PlannedFile[]; config: Partial<RogenConfig> } {
+	/** The `tsconfig.json` that makes `place` (relative to the root) compile its own code with the code in `shared`. */
+	place(place: string, shared: string): { files: PlannedFile[] } {
 		const toShared = path.posix.relative(place, shared);
 		const toRoot = path.posix.relative(place, ".");
 		return {
@@ -136,15 +138,6 @@ export class RobloxTsStarter {
 					}),
 				},
 			],
-			config: {
-				name: path.posix.basename(place),
-				rogen: { compiledPath: OUT_DIR },
-				tree: {
-					ReplicatedStorage: {
-						rbxts_include: { $path: { optional: "include" } },
-					},
-				},
-			} as Partial<RogenConfig>,
 		};
 	}
 }

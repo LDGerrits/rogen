@@ -3,13 +3,13 @@ import { ProjectTemplate } from "../project-template.js";
 describe("ProjectTemplate", () => {
 	it("should write the .gitignore Rojo writes for each kind", () => {
 		expect(new ProjectTemplate("place", "game").gitignore.content).toBe(
-			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n"
+			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n"
 		);
 		expect(new ProjectTemplate("model", "lib").gitignore.content).toBe(
-			"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n"
+			"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n"
 		);
 		expect(new ProjectTemplate("plugin", "tool").gitignore.content).toBe(
-			"# Plugin model files\n/tool.rbxmx\n/tool.rbxm\n\nsourcemap.json\n"
+			"# Plugin model files\n/tool.rbxmx\n/tool.rbxm\n\nsourcemap.json\n*.project.json\n"
 		);
 	});
 
@@ -20,7 +20,7 @@ describe("ProjectTemplate", () => {
 		]).gitignore;
 
 		expect(content).toBe(
-			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n\n# Darklua output\n/dist\n\n# Compiler output and installed packages\n/node_modules\n/out\n"
+			"# Project place file\n/game.rbxlx\n\n# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n\nsourcemap.json\n*.project.json\n\n# Darklua output\n/dist\n\n# Compiler output and installed packages\n/node_modules\n/out\n"
 		);
 	});
 

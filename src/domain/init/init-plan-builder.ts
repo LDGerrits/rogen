@@ -23,7 +23,7 @@ import {
 } from "./init-service.js";
 
 export class InitPlanBuilder {
-	private config: PlannedFile | undefined;
+	private readonly configFiles: { file: PlannedFile; built: boolean }[] = [];
 	private edited: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
@@ -53,12 +53,17 @@ export class InitPlanBuilder {
 		private readonly cwd: string = directory.path
 	) {}
 
-	/** `written`: the tree of the project file the config was lifted from. */
-	setConfig(config: RogenConfig, written?: WrittenTree): void {
-		this.config = {
-			fileName: DEFAULT_CONFIG_FILE,
-			content: configFileContent(config, written),
-		};
+	/** The config `fileName` (relative to the plan's folder, `default.rogen.json` when not given). `written`: the tree of the project file the config was lifted from. `built`: whether `init` builds it once it is written, which only the default of a folder is. */
+	setConfig(
+		config: RogenConfig,
+		written?: WrittenTree,
+		fileName = DEFAULT_CONFIG_FILE,
+		built = true
+	): void {
+		this.configFiles.push({
+			file: { fileName, content: configFileContent(config, written) },
+			built,
+		});
 	}
 
 	/** The config of the folder with changes made to it, which is built after it is written. */
@@ -146,8 +151,14 @@ export class InitPlanBuilder {
 	}
 
 	build(): Result<InitPlan, Diagnostic[]> {
-		const written = this.config ? [this.config] : [];
-		const built = this.edited ? [...written, this.edited] : written;
+		const written = this.configFiles.map(({ file }) => file);
+		const files = this.edited ? [...written, this.edited] : written;
+		const built = [
+			...this.configFiles
+				.filter(({ built }) => built)
+				.map(({ file }) => file),
+			...(this.edited ? [this.edited] : []),
+		];
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
 		);
@@ -163,7 +174,7 @@ export class InitPlanBuilder {
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
 			files: [
-				...built,
+				...files,
 				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
 				...(this.claudeImport ? [this.claudeImport] : []),

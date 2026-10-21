@@ -141,6 +141,13 @@ const InitOptions = [
 			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
 	},
 	{
+		name: "places",
+		type: "boolean",
+		negatable: true,
+		description:
+			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game with its own default.rogen.json, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
+	},
+	{
 		name: "agent-rules",
 		type: "boolean",
 		negatable: true,
@@ -199,6 +206,7 @@ function choicesOf(
 		unsourcePaths: options["no-source-path"],
 		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
+		places: options.places,
 		customise: options.customise,
 	};
 }
@@ -209,14 +217,15 @@ registerCommand(
 			super({
 				id: "init",
 				metadata: {
-					summary: "Writes a starting default.rogen.json",
+					summary:
+						"Writes a starting default.rogen.json, or adds a place",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a places folder that has one.",
 					args: [
 						{
 							name: "path",
 							description:
-								"The folder to start in, made when it is not there.",
+								"The folder to start in, made when it is not there. In a places folder with a place already, it is added as a place instead: its own default.rogen.json with the routes and compiled path of the first place, listing the shared code, and an entry in the .code-workspace when there is one.",
 							isOptional: true,
 						},
 					],
@@ -232,6 +241,7 @@ registerCommand(
 						"rogen init",
 						"rogen init --non-interactive",
 						"rogen init game",
+						"rogen init places/lobby",
 					],
 				},
 			});

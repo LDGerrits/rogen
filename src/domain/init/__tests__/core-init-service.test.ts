@@ -659,7 +659,7 @@ describe("CoreInitService", () => {
 
 			expect(fileOf(plan, ".gitignore")?.content).toContain("\n/dist\n");
 			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
-				"to .gitignore"
+				"/dist to .gitignore"
 			);
 		});
 
@@ -680,7 +680,7 @@ describe("CoreInitService", () => {
 			const plan = await planWithDarklua();
 
 			expect(plan?.nextSteps.edits.join("\n")).not.toContain(
-				"to .gitignore"
+				"/dist to .gitignore"
 			);
 		});
 
@@ -696,7 +696,7 @@ describe("CoreInitService", () => {
 				const plan = await planWithDarklua();
 
 				expect(plan?.nextSteps.edits.join("\n")).not.toContain(
-					"to .gitignore"
+					"/dist to .gitignore"
 				);
 			}
 		});
@@ -1409,12 +1409,17 @@ describe("CoreInitService", () => {
 		it("should ask the language and the layout of an empty folder, then show the summary only", async () => {
 			const prompts = new MockPromptService({
 				Language: "luau",
+				"One place or several?": "one",
 				[CREATE]: "yes",
 			});
 
 			const plan = (await review(prompts)).unwrap();
 
-			expect(prompts.asked).toEqual(["Language", CREATE]);
+			expect(prompts.asked).toEqual([
+				"Language",
+				"One place or several?",
+				CREATE,
+			]);
 			expect(plan?.files.map(({ fileName }) => fileName)).toContain(
 				"default.rogen.json"
 			);
@@ -1450,6 +1455,7 @@ describe("CoreInitService", () => {
 		it("should plan nothing on Cancel", async () => {
 			const prompts = new MockPromptService({
 				Language: "luau",
+				"One place or several?": "one",
 				[CREATE]: "cancel",
 			});
 
@@ -1459,8 +1465,10 @@ describe("CoreInitService", () => {
 		it("should ask every question on Customise, then show the summary with the new answer", async () => {
 			const prompts = new MockPromptService([
 				"luau",
+				"one",
 				"customise",
 				"luau",
+				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
 				"lib",
 				ACCEPT_DEFAULT,
@@ -1473,9 +1481,11 @@ describe("CoreInitService", () => {
 
 			expect(prompts.asked).toEqual([
 				"Language",
+				"One place or several?",
 				CREATE,
 				"Language",
 				"Does Darklua process your code before Rojo syncs it?",
+				"One place or several?",
 				"Source paths",
 				"Routes",
 				"Files that match no route",

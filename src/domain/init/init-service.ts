@@ -39,6 +39,8 @@ export interface InitChoices {
 	readonly unmatched?: "shared" | "leave";
 	/** Whether a new place starts with the Greeter sample. */
 	readonly sample?: boolean;
+	/** Whether a new project is several places under `places/`, rather than one. */
+	readonly places?: boolean;
 	/** Asks every question at once in a terminal, with no summary of the plan first. */
 	readonly customise?: boolean;
 }

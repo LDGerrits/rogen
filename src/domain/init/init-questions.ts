@@ -309,6 +309,35 @@ export class InitQuestions {
 		return true;
 	}
 
+	/** Whether a new project is several places; a `places` folder here makes it the default. */
+	async places(directory: InitDirectory): Promise<boolean | undefined> {
+		const given = this.choices.places;
+		if (given !== undefined) return given;
+		if (this.choices.sourcePaths !== undefined) return false;
+		const several =
+			directory.has("places") &&
+			directory.layout.codeFolders.every((folder) => folder === "places");
+		if (!this.interactive)
+			return this.decide("places", several, "--places");
+		const answer = await this.essential.select<"one" | "several">({
+			message: "One place or several?",
+			choices: [
+				{
+					value: "one",
+					label: "One place",
+					hint: "the code is in src",
+				},
+				{
+					value: "several",
+					label: "Several places",
+					hint: "places/shared holds the shared code, places/game the first place",
+				},
+			],
+			initialValue: several ? "several" : "one",
+		});
+		return answer === undefined ? undefined : answer === "several";
+	}
+
 	async language(directory: InitDirectory): Promise<Language | undefined> {
 		const { workspace } = directory;
 		const given = this.choices.language;

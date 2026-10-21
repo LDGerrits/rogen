@@ -55,4 +55,21 @@ export class ProjectFiles {
 			? undefined
 			: `Add /${folder} to .gitignore so the processed code isn't committed.`;
 	}
+
+	/** What to tell the user to add to the `.gitignore` here so git leaves out the project files Rogen writes; none when there is no `.gitignore` (init writes one that does) or it lists them. */
+	async projectFilesHint(): Promise<string | undefined> {
+		const text = await tryWithAsync(() =>
+			this.fileSystemService.readFile(
+				path.join(this.directory, ".gitignore")
+			)
+		);
+		if (text.isErr()) return undefined;
+		const listed = text.value
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.includes("*.project.json");
+		return listed
+			? undefined
+			: "Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen build' to make them.";
+	}
 }
