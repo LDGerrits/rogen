@@ -12,7 +12,6 @@ stdout: (not shown)
 
 written:
   default.project.json
-  release.project.json
   rogen.json
 
 rogen.json:
@@ -31,16 +30,5 @@ rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "*": "ReplicatedStorage"
-  },
-  "projects": {
-    "release": {
-      "name": "Release",
-      "globIgnorePaths": [
-        "**/*.spec.luau"
-      ],
-      "routes": {
-        "*": "ReplicatedStorage/Game"
-      }
-    }
   }
 }

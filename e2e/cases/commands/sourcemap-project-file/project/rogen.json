@@ -8,15 +8,5 @@
 	],
 	"routes": {
 		"*": "ReplicatedStorage"
-	},
-	"projects": {
-		"release": {
-			"globIgnorePaths": [
-				"**/*.spec.luau"
-			]
-		},
-		"dist": {
-			"name": "Dist"
-		}
 	}
 }

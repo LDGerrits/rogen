@@ -25,18 +25,10 @@ stdout:
         "syncPath": "<dir>/dist",
         "projectFile": "<dir>/default.project.json",
         "serving": null,
-        "projects": [
-          {
-            "name": "default",
-            "file": "<dir>/default.project.json",
-            "served": true,
-            "rojo": [
-              "rojo",
-              "serve",
-              "<dir>/default.project.json"
-            ],
-            "serving": null
-          }
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/default.project.json"
         ],
         "diagnostics": []
       }

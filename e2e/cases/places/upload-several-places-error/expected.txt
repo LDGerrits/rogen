@@ -1,7 +1,7 @@
 $ rogen upload --asset_id 1
 exit 2
 stderr:
-  error: 'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json, or a project.
+  error: 'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json.
 
 $ rogen upload places/lobby --asset_id 1 --api_key key
 exit 1

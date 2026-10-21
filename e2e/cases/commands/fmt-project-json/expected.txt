@@ -45,16 +45,5 @@ rogen.json:
   "routes": {
     "server": "ServerScriptService",
     "*": "ReplicatedStorage"
-  },
-  "projects": {
-    "release": {
-      "name": "Release",
-      "globIgnorePaths": [
-        "**/*.spec.luau"
-      ],
-      "routes": {
-        "*": "ReplicatedStorage/Game"
-      }
-    }
   }
 }

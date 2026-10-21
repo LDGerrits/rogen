@@ -5,7 +5,6 @@ import {
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../../platform/fs/file-system-service.js";
-import { DEFAULT_PROJECT } from "../../config/config.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputWriter, editedByHandMessage } from "../output-writer.js";
@@ -24,10 +23,9 @@ export class ProjectFileStaleness {
 		config: ResolvedConfig,
 		built: () => Promise<RojoProjectFile | undefined>
 	): Promise<Diagnostic | undefined> {
-		const { projectFile, stem } = config;
+		const { projectFile } = config;
 		if (config.isAdopted) return undefined;
-		const command =
-			stem === DEFAULT_PROJECT ? "rogen build" : `rogen build ${stem}`;
+		const command = "rogen build";
 		const onDisk = await tryWithAsync(async () =>
 			(await this.fileSystemService.isFile(projectFile))
 				? await this.fileSystemService.readFile(projectFile)

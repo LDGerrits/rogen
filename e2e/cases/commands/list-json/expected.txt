@@ -25,18 +25,10 @@ stdout:
         "syncPath": "<dir>/game/dist",
         "projectFile": "<dir>/game/default.project.json",
         "serving": null,
-        "projects": [
-          {
-            "name": "default",
-            "file": "<dir>/game/default.project.json",
-            "served": true,
-            "rojo": [
-              "rojo",
-              "serve",
-              "<dir>/game/default.project.json"
-            ],
-            "serving": null
-          }
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/game/default.project.json"
         ],
         "diagnostics": []
       },
@@ -61,18 +53,10 @@ stdout:
         "syncPath": null,
         "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
-        "projects": [
-          {
-            "name": "default",
-            "file": "<dir>/lobby/default.project.json",
-            "served": true,
-            "rojo": [
-              "rojo",
-              "serve",
-              "<dir>/lobby/default.project.json"
-            ],
-            "serving": null
-          }
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/lobby/default.project.json"
         ],
         "diagnostics": []
       }
@@ -105,18 +89,10 @@ stdout:
         "syncPath": null,
         "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
-        "projects": [
-          {
-            "name": "default",
-            "file": "<dir>/lobby/default.project.json",
-            "served": true,
-            "rojo": [
-              "rojo",
-              "serve",
-              "<dir>/lobby/default.project.json"
-            ],
-            "serving": null
-          }
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/lobby/default.project.json"
         ],
         "diagnostics": []
       }

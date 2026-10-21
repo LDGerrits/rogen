@@ -32,19 +32,6 @@ const servingShape = S.named(
 	})
 );
 
-const projectShape = S.named(
-	"Project",
-	S.object({
-		name: S.string,
-		file: S.string,
-		served: S.boolean,
-		port: S.optional(S.integer),
-		placeIds: S.optional(S.array(S.integer)),
-		rojo: S.optional(S.array(S.string)),
-		serving: S.nullable(servingShape),
-	})
-);
-
 const detailsShape = {
 	projectName: S.string,
 	sourcePaths: S.array(S.string),
@@ -54,12 +41,23 @@ const detailsShape = {
 	syncPath: S.nullable(S.string),
 	projectFile: S.string,
 	serving: S.nullable(servingShape),
-	projects: S.array(projectShape),
 };
 
-const optionalDetails = Object.fromEntries(
-	Object.entries(detailsShape).map(([key, shape]) => [key, S.optional(shape)])
-);
+const serveShape = {
+	port: S.optional(S.integer),
+	placeIds: S.optional(S.array(S.integer)),
+	rojo: S.optional(S.array(S.string)),
+};
+
+const optionalDetails = {
+	...Object.fromEntries(
+		Object.entries(detailsShape).map(([key, shape]) => [
+			key,
+			S.optional(shape),
+		])
+	),
+	...serveShape,
+};
 
 /** The document of `list --json`; a config that doesn't load has no details. */
 export const listDocumentShape = S.object({
@@ -77,6 +75,7 @@ export const listDocumentShape = S.object({
 						place: S.string,
 						folder: S.string,
 						...detailsShape,
+						...serveShape,
 					})
 				)
 			),
@@ -125,16 +124,6 @@ const listed = (values: readonly string[]): string =>
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
-interface ListedProject {
-	readonly name: string;
-	readonly file: string;
-	readonly served: boolean;
-	readonly port?: number;
-	readonly placeIds?: readonly number[];
-	readonly rojo?: readonly string[];
-	readonly serving: ListedServing | null;
-}
-
 interface ListedServing {
 	readonly server: string;
 	readonly host: string;
@@ -151,7 +140,9 @@ interface ConfigDetails {
 	readonly syncPath: string | null;
 	readonly projectFile: string;
 	readonly serving: ListedServing | null;
-	readonly projects: readonly ListedProject[];
+	readonly port?: number;
+	readonly placeIds?: readonly number[];
+	readonly rojo?: readonly string[];
 }
 
 interface ListedPlace extends ConfigDetails {
@@ -253,7 +244,6 @@ export class ListLog {
 	): void {
 		const relative = (file: string) => relativeTo(this.cwd, file);
 		const { config } = resolved;
-		const projects = [config, ...resolved.projects];
 		const routes = routeLines(config);
 		const sameAs = printed.find(
 			(other) =>
@@ -261,14 +251,9 @@ export class ListLog {
 				other.routes.every((line, index) => line === routes[index])
 		);
 		printed.push({ label: config.label, routes });
-		const notes = (project: ResolvedConfig, among: boolean): string => {
+		const notes = (project: ResolvedConfig): string => {
 			const { servePlaceIds: placeIds } = project.project;
 			const parts = [
-				...(among &&
-				project.stem === project.serveProject &&
-				!project.hasPlaces
-					? ["served"]
-					: []),
 				...(portOf(project) !== undefined
 					? [`port ${portOf(project)}`]
 					: []),
@@ -302,24 +287,9 @@ export class ListLog {
 							`shared code: ${listed(resolved.sharedFolders.map(relative))}`,
 						]
 					: []),
-				...(resolved.projects.length === 0
-					? [
-							`project file: ${relative(config.projectFile)}${notes(config, false)}`,
-							...(rojo(config) ? [`rojo: ${rojo(config)}`] : []),
-							...(running(config) ? [running(config)] : []),
-						]
-					: [
-							`projects:${projects
-								.map(
-									(project) =>
-										`\n  ${project.stem}: ${relative(project.projectFile)}${notes(project, true)}${
-											running(project)
-												? `, ${running(project)}`
-												: ""
-										}${rojo(project) ? `\n    ${rojo(project)}` : ""}`
-								)
-								.join("")}`,
-						]),
+				`project file: ${relative(config.projectFile)}${notes(config)}`,
+				...(rojo(config) ? [`rojo: ${rojo(config)}`] : []),
+				...(running(config) ? [running(config)] : []),
 			].join("\n")
 		);
 	}
@@ -341,12 +311,16 @@ export class ListLog {
 					entry.status === "valid" &&
 					(entry.scope !== undefined || !entry.config.hasPlaces),
 				...(entry.status === "valid" && entry.scope === undefined
-					? configDetails([entry.config, ...entry.projects], serving)
+					? configDetails(entry.config, serving)
 					: {}),
 				...(entry.status === "valid" &&
 				entry.scope === undefined &&
 				entry.sharedFolders?.length
-					? { sharedCode: entry.sharedFolders.map((folder) => toNative(folder)) }
+					? {
+							sharedCode: entry.sharedFolders.map((folder) =>
+								toNative(folder)
+							),
+						}
 					: {}),
 				...(entry.status === "valid" &&
 				placesIn(entry, entry.scope).length > 0
@@ -355,10 +329,7 @@ export class ListLog {
 								(place) => ({
 									place: place.config.label,
 									folder: toNative(place.config.projectDir),
-									...configDetails(
-										[place.config, ...place.projects],
-										serving
-									),
+									...configDetails(place.config, serving),
 								})
 							),
 						}
@@ -385,10 +356,11 @@ const servingJson = (serving: ServingNow | undefined): ListedServing | null =>
 		: null;
 
 function configDetails(
-	projects: readonly ResolvedConfig[],
+	config: ResolvedConfig,
 	serving: ServingByConfig
 ): ConfigDetails {
-	const [config] = projects;
+	const { servePlaceIds: placeIds } = config.project;
+	const rojo = rojoServe(config, toNative(config.projectFile));
 	return {
 		projectName: config.projectName,
 		sourcePaths: config.sourcePaths.map((file) => toNative(file)),
@@ -400,21 +372,8 @@ function configDetails(
 		syncPath: config.syncPath ? toNative(config.syncPath) : null,
 		projectFile: toNative(config.projectFile),
 		serving: servingJson(serving.get(config.projectFile)),
-		projects: projects.map((project) => {
-			const { servePlaceIds: placeIds } = project.project;
-			const rojo = rojoServe(project, toNative(project.projectFile));
-			return {
-				name: project.stem,
-				file: toNative(project.projectFile),
-				served:
-					project.stem === project.serveProject && !project.hasPlaces,
-				...(portOf(project) !== undefined
-					? { port: portOf(project) }
-					: {}),
-				...(placeIds.length > 0 ? { placeIds } : {}),
-				...(rojo ? { rojo } : {}),
-				serving: servingJson(serving.get(project.projectFile)),
-			};
-		}),
+		...(portOf(config) !== undefined ? { port: portOf(config) } : {}),
+		...(placeIds.length > 0 ? { placeIds } : {}),
+		...(rojo ? { rojo } : {}),
 	};
 }

@@ -142,16 +142,6 @@ rogen.json:7:13 - error: "Server" and "server" differ only in the case of their 
 
 Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
 
-### `config.reservedProject` [#config-reservedproject]
-
-Error. A key of `projects` is `default`. That name stands for the description itself, which Rogen writes as `default.project.json`, so no project can take it.
-
-```
-rogen.json:5:5 - error: "default" is the description itself, written as default.project.json, so it can't name a project. Pick another name. (config.reservedProject)
-```
-
-Rename the project, or move its keys to the root of `rogen.json`. See [Projects](/docs/v2/configuration#projects).
-
 ### `config.unnamedProjectFile` [#config-unnamedprojectfile]
 
 Error. A Rojo project file you named, such as `rogen build test.project.json`, has no `name`. Rojo names `default.project.json` after its folder, but crashes on a project file of any other name without one, so Rogen stops before Rojo does.
@@ -161,36 +151,6 @@ test.project.json:1:1 - error: test.project.json has no "name", and Rojo can't r
 ```
 
 Add a `"name"` to the file. See [Configuration](/docs/v2/configuration).
-
-### `config.invalidProjectName` [#config-invalidprojectname]
-
-Error. A key of `projects` can't be the stem of a project file. The name becomes `<name>.project.json`, so it takes letters, digits, `-` and `_`, and starts with a letter or digit.
-
-```
-rogen.json:5:5 - error: project name "a/b" is invalid: it is the stem of a/b.project.json, so use letters, digits, "-" and "_", starting with a letter or digit. (config.invalidProjectName)
-```
-
-Rename the project, for example `dist` or `release`. See [Projects](/docs/v2/configuration#projects).
-
-### `config.ambiguousProject` [#config-ambiguousproject]
-
-Error. Two keys of `projects` differ only in letter case. On Windows and macOS file names ignore case, so both would write the same project file, and the second would overwrite the first.
-
-```
-rogen.json:7:5 - error: "Dist" and "dist" differ only in letter case, so on Windows and macOS both would write the same project file. Keep one of them. (config.ambiguousProject)
-```
-
-Keep one of them. A spelling of `default` in another case is [`config.reservedProject`](#config-reservedproject) for the same reason. See [Projects](/docs/v2/configuration#projects).
-
-### `config.projectKey` [#config-projectkey]
-
-Error. A project sets `projects` or `serveProject`. Those say which projects there are and which one `rogen serve` serves, so they belong to the whole config.
-
-```
-rogen.json:6:7 - error: "serveProject" is set once for the whole config, not by a project. Move it out of "dist". (config.projectKey)
-```
-
-Move the key to the root of `rogen.json`. See [Projects](/docs/v2/configuration#projects).
 
 ### `config.placeListsPlaces` [#config-placelistsplaces]
 
@@ -221,16 +181,6 @@ rogen.json:3:3 - error: the place /repo/src/places/lobby is inside the source pa
 ```
 
 Move the places out of the source paths, for example to `places/*` beside `src`, or the source path out of the place. A folder that a glob in `placePaths` matches and that holds a source path is not a place but the code the places share, so it raises nothing; only a folder named in `placePaths` itself does. See [Places](/docs/v2/configuration#places).
-
-### `config.unknownServeProject` [#config-unknownserveproject]
-
-Error. `serveProject` names a project that doesn't exist. It takes `default`, or a key of `projects`.
-
-```
-rogen.json:4:19 - error: "serveProject" names "dist", which is not a project. Use "default", "release". (config.unknownServeProject)
-```
-
-Fix the name, or add the project. See [Projects](/docs/v2/configuration#projects).
 
 ## Routes
 

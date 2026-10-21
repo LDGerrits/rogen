@@ -141,26 +141,4 @@ describe("ConfigFormatter", () => {
 		const [diagnostic] = result.isErr() ? result.error : [];
 		expect(diagnostic.code).toBe("config.unreadable");
 	});
-
-	it("should order each project the way it orders the config", async () => {
-		await fs.writeFile(
-			"/repo/rogen.json",
-			JSON.stringify({
-				projects: {
-					release: { routes: {}, globIgnorePaths: ["x"], name: "R" },
-				},
-				name: "Game",
-			})
-		);
-
-		await format();
-
-		const written = JSON.parse(await fs.readFile("/repo/rogen.json"));
-		expect(Object.keys(written)).toEqual(["name", "projects"]);
-		expect(Object.keys(written.projects.release)).toEqual([
-			"name",
-			"globIgnorePaths",
-			"routes",
-		]);
-	});
 });

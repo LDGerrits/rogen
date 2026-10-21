@@ -1,4 +1,0 @@
-{
-	"steps": [["build"], ["list"]],
-	"show": ["places/arena/release.project.json"]
-}

@@ -9,9 +9,9 @@ stdout:
       rogen build [OPTIONS] [PROJECT]...
   
   ARGS:
-      <PROJECT>...    A folder with a rogen.json, a *.project.json path, or the name of a project of
-                      the rogen.json here. The rogen.json of the working directory, or of the nearest
-                      folder above it that has one, when none is given.
+      <PROJECT>...    A folder with a rogen.json, or a *.project.json path. The rogen.json of the
+                      working directory, or of the nearest folder above it that has one, when none is
+                      given.
   
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,

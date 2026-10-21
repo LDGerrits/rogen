@@ -22,7 +22,6 @@ const modules = {
 			"declared-keys",
 			"place-finder",
 			"place-ports",
-			"project-choice",
 			"resolved-config",
 		],
 		init: ["init-service"],

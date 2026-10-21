@@ -32,9 +32,6 @@ describe("ConfigDiscovery", () => {
 				home: "/repo",
 				files: ["/repo/rogen.json"],
 				noneNamed: true,
-				projects: new Map(),
-				folders: [],
-				homeConfig: "/repo/rogen.json",
 				scopes: new Map(),
 			});
 		});
@@ -62,7 +59,6 @@ describe("ConfigDiscovery", () => {
 			const found = (await discovery.discover([])).unwrap();
 
 			expect(found.files).toEqual(["/repo/default.project.json"]);
-			expect(found.homeConfig).toBe("/repo/default.project.json");
 		});
 
 		it("should adopt the Rojo project file of the nearest folder above", async () => {
@@ -82,21 +78,18 @@ describe("ConfigDiscovery", () => {
 			).unwrap();
 
 			expect(found.files).toEqual(["/repo/test.project.json"]);
-			expect(found.projects.size).toBe(0);
 		});
 
-		it("should read a project file of another name as a project of the config beside it", async () => {
+		it("should refuse a project file of another name beside a config, which Rogen does not write", async () => {
 			await fs.writeFile("/repo/rogen.json", "{}");
 			await fs.writeFile("/repo/test.project.json", "{}");
 
-			const found = (
-				await discovery.discover(["test.project.json"])
-			).unwrap();
+			const result = await discovery.discover(["test.project.json"]);
 
-			expect(found.files).toEqual(["/repo/rogen.json"]);
-			expect(found.projects.get("/repo/rogen.json")?.names).toEqual([
-				"test",
-			]);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
+			expect(errorOf(result).message).toContain(
+				"not a file Rogen writes"
+			);
 		});
 
 		it("should adopt a Rojo project file with comments that is named", async () => {
@@ -115,7 +108,6 @@ describe("ConfigDiscovery", () => {
 			const found = (await discovery.discover([])).unwrap();
 
 			expect(found.files).toEqual(["/repo/default.project.jsonc"]);
-			expect(found.homeConfig).toBe("/repo/default.project.jsonc");
 		});
 
 		it("should not adopt a named project file beside two configs", async () => {
@@ -238,7 +230,7 @@ describe("ConfigDiscovery", () => {
 		});
 	});
 
-	describe("with projects named", () => {
+	describe("with configs named", () => {
 		beforeEach(async () => {
 			await fs.createDirectory("/repo/places/lobby");
 			await fs.writeFile("/repo/places/lobby/rogen.json", "{}");
@@ -251,9 +243,6 @@ describe("ConfigDiscovery", () => {
 				home: "/repo",
 				files: ["/repo/places/lobby/rogen.json"],
 				noneNamed: false,
-				projects: new Map(),
-				folders: [],
-				homeConfig: undefined,
 				scopes: new Map(),
 			});
 		});
@@ -307,30 +296,6 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
-		it("should name the project a *.project.json path stands for", async () => {
-			const found = (
-				await discovery.discover(["places/lobby/dist.project.json"])
-			).unwrap();
-
-			expect(found.files).toEqual(["/repo/places/lobby/rogen.json"]);
-			expect(found.projects).toEqual(
-				new Map([
-					[
-						"/repo/places/lobby/rogen.json",
-						{ names: ["dist"], usual: false },
-					],
-				])
-			);
-		});
-
-		it("should name no project for default.project.json, which is the description", async () => {
-			const found = (
-				await discovery.discover(["places/lobby/default.project.json"])
-			).unwrap();
-
-			expect(found.projects).toEqual(new Map());
-		});
-
 		it("should fail for a project file in a folder with no config", async () => {
 			await fs.createDirectory("/repo/places/arena");
 
@@ -346,44 +311,14 @@ describe("ConfigDiscovery", () => {
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
-				`"places/nowhere" not found. Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.`
+				`"places/nowhere" not found. Name a folder with a rogen.json, or a *.project.json path.`
 			);
 		});
 
-		it("should hold every project of one config that is named", async () => {
+		it("should say a folder named twice was named twice", async () => {
 			await fs.writeFile("/repo/rogen.json", "{}");
 
-			const found = (
-				await discovery.discover(["dist", "release.project.json"])
-			).unwrap();
-
-			expect(found.files).toEqual(["/repo/rogen.json"]);
-			expect(found.projects).toEqual(
-				new Map([
-					[
-						"/repo/rogen.json",
-						{ names: ["dist", "release"], usual: false },
-					],
-				])
-			);
-		});
-
-		it("should hold a project named beside its config, and the config's own project too", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
-
-			const found = (await discovery.discover([".", "dist"])).unwrap();
-
-			expect(found.projects).toEqual(
-				new Map([
-					["/repo/rogen.json", { names: ["dist"], usual: true }],
-				])
-			);
-		});
-
-		it("should still say a project named twice was named twice", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
-
-			const result = await discovery.discover(["dist", "dist"]);
+			const result = await discovery.discover([".", "."]);
 
 			expect(errorOf(result).message).toContain(
 				"was named more than once"
@@ -395,81 +330,37 @@ describe("ConfigDiscovery", () => {
 				await fs.writeFile("/repo/rogen.json", "{}");
 			});
 
-			it("should be a project of the config here when nothing by that name exists", async () => {
-				const found = (await discovery.discover(["dist"])).unwrap();
-
-				expect(found.files).toEqual(["/repo/rogen.json"]);
-				expect(found.projects).toEqual(
-					new Map([
-						["/repo/rogen.json", { names: ["dist"], usual: false }],
-					])
-				);
-				expect(found.folders).toEqual([]);
-			});
-
-			it("should be a project of the config found above when the working directory has none", async () => {
-				await fs.createDirectory("/repo/tools");
-
-				const found = (
-					await from("/repo/tools").discover(["dist"])
-				).unwrap();
-
-				expect(found.files).toEqual(["/repo/rogen.json"]);
-				expect(found.projects).toEqual(
-					new Map([
-						["/repo/rogen.json", { names: ["dist"], usual: false }],
-					])
-				);
-			});
-
-			it("should be the folder when a folder with a rogen.json has that name, and say so", async () => {
+			it("should be the folder when a folder with a rogen.json has that name", async () => {
 				await fs.createDirectory("/repo/dist");
 				await fs.writeFile("/repo/dist/rogen.json", "{}");
 
 				const found = (await discovery.discover(["dist"])).unwrap();
 
 				expect(found.files).toEqual(["/repo/dist/rogen.json"]);
-				expect(found.projects).toEqual(new Map());
-				expect(found.folders).toEqual(["dist"]);
 			});
 
-			it("should fail for a folder that holds only a default.project.json, which counts as a folder", async () => {
+			it("should adopt a folder that holds only a default.project.json", async () => {
 				await fs.createDirectory("/repo/dist");
 				await fs.writeFile("/repo/dist/default.project.json", "{}");
 
-				const result = await discovery.discover(["dist"]);
-
-				expect(errorOf(result).message).toContain(
-					"holds no rogen.json"
-				);
-			});
-
-			it("should be a project when a folder of that name holds no config", async () => {
-				await fs.createDirectory("/repo/dist");
-				await fs.writeFile("/repo/dist/Main.luau", "");
-
 				const found = (await discovery.discover(["dist"])).unwrap();
 
-				expect(found.files).toEqual(["/repo/rogen.json"]);
-				expect(found.projects).toEqual(
-					new Map([
-						["/repo/rogen.json", { names: ["dist"], usual: false }],
-					])
-				);
+				expect(found.files).toEqual([
+					"/repo/dist/default.project.json",
+				]);
+			});
+
+			it("should fail as not found when no folder has that name", async () => {
+				const result = await discovery.discover(["dist"]);
+
+				expect(errorOf(result)).toBeInstanceOf(ProjectError);
+				expect(errorOf(result).message).toContain("not found");
 			});
 
 			it("should not be taken for a project when it has a path in it", async () => {
 				const result = await discovery.discover(["a/dist"]);
 
 				expect(errorOf(result)).toBeInstanceOf(ProjectError);
-			});
-
-			it("should fail as not found when there is no config to hold the project", async () => {
-				await fs.delete("/repo/rogen.json");
-
-				const result = await discovery.discover(["dist"]);
-
-				expect(errorOf(result).message).toContain("not found");
 			});
 		});
 
@@ -552,7 +443,6 @@ describe("ConfigDiscovery.findEnclosing", () => {
 			expect(found).toMatchObject({
 				home: "/repo/places/lobby",
 				files: ["/repo/rogen.json"],
-				homeConfig: "/repo/rogen.json",
 				noneNamed: false,
 				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
 			});
@@ -589,18 +479,15 @@ describe("ConfigDiscovery.findEnclosing", () => {
 			});
 		});
 
-		it("should resolve a place's project file to the project of that place", async () => {
+		it("should resolve a place's default.project.json to that place", async () => {
 			const found = (
 				await from("/repo").discover([
-					"places/arena/release.project.json",
+					"places/arena/default.project.json",
 				])
 			).unwrap();
 
 			expect(found).toMatchObject({
 				files: ["/repo/rogen.json"],
-				projects: new Map([
-					["/repo/rogen.json", { names: ["release"], usual: false }],
-				]),
 				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
 			});
 		});
@@ -643,35 +530,6 @@ describe("ConfigDiscovery.findEnclosing", () => {
 			expect(errorOf(result).message).toMatch(/named more than once/);
 		});
 
-		it("should refuse two places named for different projects", async () => {
-			const result = await from("/repo").discover([
-				"places/lobby/a.project.json",
-				"places/arena/b.project.json",
-			]);
-
-			expect(errorOf(result).message).toMatch(
-				/name different projects of one config/
-			);
-		});
-
-		it("should hold a place and a project of that place named together", async () => {
-			const found = (
-				await from("/repo").discover([
-					"places/lobby",
-					"places/lobby/test.project.json",
-				])
-			).unwrap();
-
-			expect(found.projects).toEqual(
-				new Map([
-					["/repo/rogen.json", { names: ["test"], usual: true }],
-				])
-			);
-			expect(found.scopes).toEqual(
-				new Map([["/repo/rogen.json", ["/repo/places/lobby"]]])
-			);
-		});
-
 		it("should take the bare name of a listed place that has no config for the place", async () => {
 			const found = (
 				await from("/repo/places").discover(["lobby"])
@@ -679,33 +537,7 @@ describe("ConfigDiscovery.findEnclosing", () => {
 
 			expect(found).toMatchObject({
 				files: ["/repo/rogen.json"],
-				folders: ["lobby"],
 				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
-			});
-			expect(found.projects.size).toBe(0);
-		});
-
-		it("should scope a project named from inside a place to that place", async () => {
-			const found = (
-				await from("/repo/places/lobby").discover(["release"])
-			).unwrap();
-
-			expect(found.scopes).toEqual(
-				new Map([["/repo/rogen.json", ["/repo/places/lobby"]]])
-			);
-		});
-
-		it("should read a bare name from inside a place as a project of the listing config", async () => {
-			const found = (
-				await from("/repo/places/lobby").discover(["release"])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				homeConfig: "/repo/rogen.json",
-				projects: new Map([
-					["/repo/rogen.json", { names: ["release"], usual: false }],
-				]),
 			});
 		});
 	});

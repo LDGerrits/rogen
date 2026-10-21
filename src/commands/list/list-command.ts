@@ -9,7 +9,7 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { projectsOf } from "../../domain/config/resolved-config.js";
+import { configsOf } from "../../domain/config/resolved-config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
@@ -57,7 +57,7 @@ registerCommand(
 			const serveService = accessor.get(ServeService);
 			const projectFiles = entries.flatMap((entry) =>
 				entry.status === "valid"
-					? projectsOf(entry, entry.scope).map(
+					? configsOf(entry, entry.scope).map(
 							({ projectFile }) => projectFile
 						)
 					: []
@@ -71,7 +71,7 @@ registerCommand(
 			const problems = new Map<string, Diagnostic[]>();
 			for (const entry of entries)
 				if (entry.status === "valid") {
-					const projects = projectsOf(entry, entry.scope);
+					const projects = configsOf(entry, entry.scope);
 					const files = new Set(
 						projects.map(({ projectFile }) => projectFile)
 					);
@@ -91,7 +91,6 @@ registerCommand(
 						])
 					);
 				}
-			for (const note of selection.value.notes) logService.warn(note);
 
 			if (line.options.json)
 				return this.printJson(

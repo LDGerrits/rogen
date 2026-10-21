@@ -59,7 +59,6 @@ describe("CoreConfigService", () => {
 			const config = buildableConfig(selection.entries[0]);
 			expect(config?.isAdopted).toBe(true);
 			expect(config?.projectFile).toBe("/repo/test.project.json");
-			expect(config?.projectFiles).toEqual(["/repo/test.project.json"]);
 			expect(selection.configs).toHaveLength(1);
 		});
 

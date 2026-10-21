@@ -7,7 +7,7 @@ import {
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { CONFIG_FILE_NAMES } from "../../domain/config/config.js";
-import { projectsOf } from "../../domain/config/resolved-config.js";
+import { configsOf } from "../../domain/config/resolved-config.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -96,7 +96,6 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
-			for (const note of selection.value.notes) logService.warn(note);
 
 			const files: FormattedFile[] = [];
 			const failures: Diagnostic[] = [];
@@ -133,7 +132,7 @@ registerCommand(
 			const files = new Set(
 				entries.flatMap((entry) => {
 					if (entry.status === "valid")
-						return projectsOf(entry, entry.scope).map(
+						return configsOf(entry, entry.scope).map(
 							({ file }) => file
 						);
 					return entry.scope

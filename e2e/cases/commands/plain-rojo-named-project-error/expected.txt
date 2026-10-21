@@ -8,4 +8,4 @@ stderr:
 $ rogen build tset.project.json
 exit 1
 stderr:
-  error: "tset.project.json" not found. Name a folder with a rogen.json, a *.project.json path, or a project of the rogen.json here.
+  error: "tset.project.json" not found. Name a folder with a rogen.json, or a *.project.json path.

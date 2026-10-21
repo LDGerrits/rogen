@@ -1,12 +1,12 @@
 $ rogen build ghost.project.json
-exit 2
+exit 1
 stderr:
-  error: No project "ghost" in rogen.json, which has "default". Projects are the keys of "projects" in rogen.json: add "ghost": {} to have Rogen write ghost.project.json. Or name a folder with a rogen.json, or one of the projects above.
+  error: "ghost.project.json" is not a file Rogen writes from rogen.json. Rogen writes default.project.json for it. Name the folder or that file.
 
 $ rogen build lobby/other.project.json
-exit 2
+exit 1
 stderr:
-  error: No project "other" in lobby/rogen.json, which has "default". Projects are the keys of "projects" in rogen.json: add "other": {} to have Rogen write other.project.json. Or name a folder with a rogen.json, or one of the projects above.
+  error: "lobby/other.project.json" is not a file Rogen writes from lobby/rogen.json. Rogen writes default.project.json for it. Name the folder or that file.
 
 $ rogen build README.md
 exit 2

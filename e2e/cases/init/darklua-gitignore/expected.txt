@@ -8,7 +8,6 @@ written:
   .gitignore
   AGENTS.md
   default.project.json
-  dist.project.json
   rogen.json
 
 .gitignore:
@@ -38,11 +37,5 @@ rogen.json:
     "Client": "StarterPlayer/StarterPlayerScripts",
     "Shared": "ReplicatedStorage/Shared",
     "*": "ReplicatedStorage/Shared"
-  },
-  "projects": {
-    "dist": {
-      "syncPath": "dist"
-    }
-  },
-  "serveProject": "dist"
+  }
 }

@@ -71,113 +71,37 @@ describe("build command", () => {
 		);
 	});
 
-	describe("with projects", () => {
-		const write = (file: string, content: unknown) =>
-			fs.writeFile(abs(file), JSON.stringify(content));
-
-		const files = async () =>
-			Object.fromEntries(
-				await Promise.all(
-					["default", "dist", "release"].map(async (stem) => {
-						const file = abs(`${stem}.project.json`);
-						return [
-							stem,
-							(await fs.exists(file))
-								? JSON.parse(await fs.readFile(file))
-								: undefined,
-						] as const;
-					})
-				)
-			);
-
-		beforeEach(async () => {
-			await fs.writeFile(abs("src/A.luau"), "");
-			await fs.writeFile(abs("dev/B.luau"), "");
-			await write("rogen.json", {
+	it("should write nothing when the config fails to build", async () => {
+		await fs.writeFile(abs("bad/Combat/A.luau"), "");
+		await fs.writeFile(abs("bad/Combat/init.meta.json"), '{"id": 1}');
+		await fs.writeFile(
+			abs("rogen.json"),
+			JSON.stringify({
 				routes: { "*": "ReplicatedStorage" },
-				tree: { $className: "DataModel" },
-				projects: {
-					dist: { syncPath: "dist" },
-					release: { sourcePaths: ["src", "dev"] },
-				},
-			});
+				sourcePaths: ["bad"],
+			})
+		);
+		const { run } = commandHarness({ fs });
+
+		const result = await run("build");
+
+		expect(result.isErr()).toBe(true);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
+	it("should fail for a name that is no folder or project file, and write nothing", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+		const { run } = commandHarness({ fs });
+
+		const result = await run("build", {
+			positionals: ["nope"],
+			options: {},
 		});
 
-		it("should write a project file for the description and each project, each from its own source paths", async () => {
-			const { run } = commandHarness({ fs });
-
-			expect((await run("build")).isOk()).toBe(true);
-
-			const written = await files();
-			const children = (stem: string) =>
-				Object.keys(written[stem].tree.ReplicatedStorage).filter(
-					(key) => !key.startsWith("$")
-				);
-			expect(children("default")).toEqual(["A"]);
-			expect(children("release")).toEqual(["A", "B"]);
-			expect(written.dist.tree.ReplicatedStorage.A).toEqual({
-				$path: { optional: "dist/A.luau" },
-			});
-		});
-
-		it("should leave the name off the description and give every project one", async () => {
-			const { run } = commandHarness({ fs });
-
-			await run("build");
-
-			const written = await files();
-			expect(written.default).not.toHaveProperty("name");
-			expect(written.dist.name).toBe("repo");
-			expect(written.release.name).toBe("repo");
-		});
-
-		it("should write every project when one is named", async () => {
-			const { run } = commandHarness({ fs });
-
-			expect(
-				(
-					await run("build", { positionals: ["dist"], options: {} })
-				).isOk()
-			).toBe(true);
-
-			const written = await files();
-			expect(
-				Object.keys(written).filter((stem) => written[stem])
-			).toEqual(["default", "dist", "release"]);
-		});
-
-		it("should fail naming the projects there are when the name is none of them", async () => {
-			const { run } = commandHarness({ fs });
-
-			const result = await run("build", {
-				positionals: ["nope"],
-				options: {},
-			});
-
-			expect((result as ResultError<Error>).error.message).toBe(
-				'No project "nope" in rogen.json, which has "default", "dist" and "release". Projects are the keys of "projects" in rogen.json: add "nope": {} to have Rogen write nope.project.json. Or name a folder with a rogen.json, or one of the projects above.'
-			);
-			expect(await fs.exists(abs("default.project.json"))).toBe(false);
-		});
-
-		it("should write none of them when one fails to build", async () => {
-			await fs.writeFile(abs("bad/Combat/A.luau"), "");
-			await fs.writeFile(abs("bad/Combat/init.meta.json"), '{"id": 1}');
-			await write("rogen.json", {
-				routes: { "*": "ReplicatedStorage" },
-				projects: { dist: { sourcePaths: ["bad"] } },
-			});
-			const { run } = commandHarness({ fs });
-
-			const result = await run("build");
-
-			expect(result.isErr()).toBe(true);
-			expect(await files()).toEqual({
-				default: undefined,
-				dist: undefined,
-				release: undefined,
-			});
-		});
+		expect((result as ResultError<Error>).error.message).toContain(
+			'"nope" not found.'
+		);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
 	it("should open with a header, group each config in a step and close with a result", async () => {

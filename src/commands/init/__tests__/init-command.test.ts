@@ -768,16 +768,6 @@ describe("init command", () => {
 				expect(await read("rogen.json")).toBe(CONFIG);
 			});
 
-			it("should build the config after changing it", async () => {
-				await runInit(new MockPromptService([], false), undefined, {
-					darklua: true,
-				});
-
-				expect(await exists("dist.project.json")).toBe(true);
-				expect(await exists(".darklua.json")).toBe(true);
-				expect((await readConfig()).serveProject).toBe("dist");
-			});
-
 			it("should refuse a flag for a new project, and say why", async () => {
 				const result = await runInit(
 					new MockPromptService([], false),
@@ -940,7 +930,7 @@ describe("init command", () => {
 
 			const config = await readJson("rogen.json");
 			expect(config.sourcePaths).toEqual(["src", "lib"]);
-			expect(config.projects).toEqual({ dist: { syncPath: "out" } });
+			expect(config).not.toHaveProperty("projects");
 		});
 
 		it("should not head next steps when adding the agent rules leaves none", async () => {

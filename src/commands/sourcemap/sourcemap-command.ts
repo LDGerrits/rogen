@@ -172,7 +172,6 @@ registerCommand(
 				.get(ConfigService)
 				.select(line.positionals);
 			if (selection.isErr()) return selection;
-			for (const note of selection.value.notes) logService.warn(note);
 
 			const planned = step.plans(selection.value);
 			if (planned.isErr()) return planned;

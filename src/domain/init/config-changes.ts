@@ -16,15 +16,10 @@ import { ConfigEdit } from "./config-edit.js";
 import { InitDirectory } from "./init-directory.js";
 import { oneOf } from "./init-questions.js";
 import { KnownPlaces } from "./known-places.js";
-import { ProjectFiles } from "./project-files.js";
 import { StarterPlaces } from "./starter-places.js";
 import { StartingRoutes } from "./starting-routes.js";
 import { WorkspaceFiles } from "./workspace-files.js";
 import { PlaceFinder } from "../config/place-finder.js";
-
-/** The `projects` entry and `serveProject` that serve the code Darklua wrote, as init writes them. */
-const PROCESSED_PROJECT = "dist";
-const RELEASE_PROJECT = "release";
 
 /** What a run changes about a project that has a config; every field is a change to make, so an empty request changes nothing. */
 export interface ChangeRequest {
@@ -132,7 +127,7 @@ export class ConfigChanges {
 		this.changeRoutes(request);
 		this.changeUnmatched(request);
 		await this.changeSourcePaths(request);
-		await this.changeDarklua(request);
+		this.changeDarklua(request);
 		this.changePackages(request);
 		await this.changePlaces(request);
 		await this.changeWorkspace(request);
@@ -343,98 +338,11 @@ export class ConfigChanges {
 			);
 	}
 
-	private async changeDarklua(request: ChangeRequest): Promise<void> {
-		const { darklua: wanted } = request;
-		if (wanted === undefined) return;
-		const { value } = this.edit;
-		const projects = isObject(value.projects) ? value.projects : {};
-		const processed = projects[PROCESSED_PROJECT];
-		const synced = isObject(processed) ? processed.syncPath : undefined;
-		const ours =
-			value.serveProject === PROCESSED_PROJECT &&
-			isObject(processed) &&
-			Object.keys(processed).length === 1 &&
-			typeof synced === "string";
-		if (!wanted) return this.removeDarklua(ours, synced as string);
-		if (ours) {
-			this.notes.push(
-				`Darklua is set up already: rogen serve serves the ${PROCESSED_PROJECT} project.`
-			);
-			return;
-		}
-		if (value.serveProject !== undefined || processed !== undefined)
-			throw new UsageError(
-				`${this.edit.fileName} has a ${PROCESSED_PROJECT} project or a serveProject already, so init can't add Darklua's.`,
-				"Add the project that serves the processed code yourself, or remove those keys first."
-			);
-		const compiled = this.language.compiler?.outDir;
-		if (!compiled && this.sourcePaths.length === 0)
-			throw new UsageError(
-				"Darklua processes the source paths, and this project has none.",
-				"Add a route and a source path first, with --route and --source-path."
-			);
-		const { workspace } = this.directory;
-		const { darklua } = workspace;
-		const syncPath = request.syncPath ?? darklua.defaultSyncPath;
-		this.edit.set(["projects", PROCESSED_PROJECT], { syncPath });
-		this.edit.set(["serveProject"], PROCESSED_PROJECT);
-		const release = projects[RELEASE_PROJECT];
-		if (isObject(release) && release.syncPath === undefined)
-			this.edit.set(["projects", RELEASE_PROJECT, "syncPath"], syncPath);
-		if (workspace.darkluaConfig === undefined)
-			this.files.push({
-				fileName: darklua.configFiles[0],
-				content: darklua.configFor(this.language),
-			});
-		this.usesDarklua = true;
-		const files = new ProjectFiles(
-			this.fileSystemService,
-			this.directory.path
-		);
-		const hint = await files.gitignoreHint(syncPath);
-		if (hint) this.edits.push(hint);
-		this.notes.push(
-			`Studio syncs from ${syncPath}, where Darklua writes: rogen serve serves the ${PROCESSED_PROJECT} project.`
-		);
-		this.run.push(
-			...(compiled ? [this.language.compiler!.compileCommand] : []),
-			...darklua.processCommands(
-				this.directory.path,
-				compiled ? [compiled] : this.sourcePaths,
-				syncPath
-			),
-			"rogen serve"
-		);
-		if (!compiled && !(await files.luauLspIsSetUp()))
-			this.edits.push(
-				`Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: ${darklua.sourcemapCommand()}`
-			);
-	}
-
-	private removeDarklua(ours: boolean, synced: string): void {
-		const { value } = this.edit;
-		if (!ours) {
-			if (
-				value.serveProject === undefined &&
-				!isObject(isObject(value.projects) && value.projects.dist)
-			) {
-				this.notes.push("Darklua is not set up.");
-				return;
-			}
-			throw new UsageError(
-				`The ${PROCESSED_PROJECT} project or serveProject of ${this.edit.fileName} is not what init writes, so init leaves them.`,
-				`Remove "serveProject" and projects.${PROCESSED_PROJECT} yourself if Darklua is no longer used.`
-			);
-		}
-		const projects = value.projects as Record<string, unknown>;
-		this.edit.remove(["serveProject"]);
-		if (Object.keys(projects).length === 1) this.edit.remove(["projects"]);
-		else this.edit.remove(["projects", PROCESSED_PROJECT]);
-		const release = projects[RELEASE_PROJECT];
-		if (isObject(release) && release.syncPath === synced)
-			this.edit.remove(["projects", RELEASE_PROJECT, "syncPath"]);
-		this.notes.push(
-			"Left .darklua.json and Darklua's pin as they are; remove them if nothing else uses Darklua."
+	private changeDarklua({ darklua }: ChangeRequest): void {
+		if (darklua === undefined) return;
+		throw new UsageError(
+			"Darklua's second config file isn't something init writes yet.",
+			'Write the file that sets "syncPath" to the folder Darklua writes yourself.'
 		);
 	}
 
@@ -502,11 +410,6 @@ export class ConfigChanges {
 			throw new UsageError(
 				`--places isn't set up for ${this.language.copy.label} on a project that exists.`,
 				"Start a new project with --places, or add a place with 'rogen init places/<name>'."
-			);
-		if (this.edit.valueAt(["projects", PROCESSED_PROJECT]) !== undefined)
-			throw new UsageError(
-				"--places isn't set up with Darklua yet.",
-				"Add a place with 'rogen init places/<name>'."
 			);
 		const own = PER_PLACE_KEYS.filter((key) => key in value);
 		if (own.length > 0)

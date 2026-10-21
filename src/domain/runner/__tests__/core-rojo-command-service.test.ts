@@ -7,7 +7,6 @@ import {
 	MockConfigSelection,
 	mockEntry,
 } from "../../config/__tests__/mock-config-service.js";
-import { NamedProjects } from "../../config/config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoCommandService } from "../core-rojo-command-service.js";
 import { CoreRojoRunner } from "../core-rojo-runner.js";
@@ -20,14 +19,7 @@ describe("CoreRojoCommandService", () => {
 	let processes: MockProcessService;
 	let service: CoreRojoCommandService;
 
-	const selection = (...stems: string[]) =>
-		new MockConfigSelection([
-			mockEntry(
-				{},
-				"/repo/rogen.json",
-				Object.fromEntries(stems.map((stem) => [stem, {}]))
-			),
-		]);
+	const selection = () => new MockConfigSelection([mockEntry()]);
 
 	const run = (chosen = selection(), flags: string[] = ["-o", "a.rbxl"]) =>
 		service.run(chosen, { command: "build", flags, cwd: "/repo" });
@@ -59,7 +51,7 @@ describe("CoreRojoCommandService", () => {
 
 		const ran = (await running).unwrap();
 
-		expect(ran.project.stem).toBe("default");
+		expect(ran.project.projectFile).toBe("/repo/default.project.json");
 		expect(ran.messages).toEqual([
 			{
 				severity: "info",
@@ -123,21 +115,6 @@ describe("CoreRojoCommandService", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it("should run on the project the selection names", async () => {
-		const chosen = new MockConfigSelection(
-			[mockEntry({}, "/repo/rogen.json", { release: {} })],
-			"/repo",
-			new Map([
-				["/repo/rogen.json", { names: ["release"], usual: false }],
-			])
-		);
-		const running = run(chosen);
-		await finish([], 0);
-
-		expect((await running).unwrap().project.stem).toBe("release");
-		expect(processes.spawned[0].args[1]).toBe("release.project.json");
-	});
-
 	it("should return a run with a failure, and what Rojo said, when it exits with an error", async () => {
 		const running = run();
 		await finish(["ERROR: could not write a.rbxl"], 1);
@@ -177,7 +154,7 @@ describe("CoreRojoCommandService", () => {
 		);
 
 		expect((result as ResultError<Error>).error.message).toBe(
-			"'rojo build' runs on one project, and this selects 2. Name one: a folder with a rogen.json, or a project."
+			"'rojo build' runs on one project, and this selects 2. Name one: a folder with a rogen.json."
 		);
 		expect(processes.spawned).toEqual([]);
 	});
@@ -241,8 +218,8 @@ describe("CoreRojoCommandService", () => {
 	});
 
 	it("should name the one project, or say there is none, before it runs", () => {
-		expect(service.choose(selection(), "build").unwrap().stem).toBe(
-			"default"
+		expect(service.choose(selection(), "build").unwrap().file).toBe(
+			"/repo/rogen.json"
 		);
 		const none = service.choose(new MockConfigSelection([]), "build");
 		expect((none as ResultError<Error>).error.message).toBe(
@@ -251,7 +228,7 @@ describe("CoreRojoCommandService", () => {
 	});
 
 	describe("with places", () => {
-		const places = (named = new Map<string, NamedProjects>()) =>
+		const places = () =>
 			new MockConfigSelection(
 				[
 					mockEntry({ hasPlaces: true }, "/repo/rogen.json"),
@@ -264,8 +241,7 @@ describe("CoreRojoCommandService", () => {
 						"/repo/places/arena/rogen.json"
 					),
 				],
-				"/repo",
-				named
+				"/repo"
 			);
 
 		it("should leave out the root that lists them, which is the sum of them", () => {
@@ -275,19 +251,11 @@ describe("CoreRojoCommandService", () => {
 			]);
 		});
 
-		it("should keep the root when it is named", () => {
-			const named = new Map([
-				["/repo/rogen.json", { names: ["default"], usual: false }],
-			]);
-
-			expect(service.projects(places(named))).toHaveLength(3);
-		});
-
 		it("should count the places alone when it says to name one", () => {
 			const chosen = service.choose(places(), "upload");
 
 			expect((chosen as ResultError<Error>).error.message).toBe(
-				"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json, or a project."
+				"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json."
 			);
 		});
 	});

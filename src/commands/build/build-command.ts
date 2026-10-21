@@ -154,7 +154,6 @@ registerCommand(
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
-			for (const note of selection.value.notes) logService.warn(note);
 
 			const plans = step?.plans(selection.value);
 			if (plans?.isErr()) return plans;

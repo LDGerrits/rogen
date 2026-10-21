@@ -286,18 +286,6 @@ export class InitQuestions {
 		};
 	}
 
-	/** Whether Darklua is on after this run, asked with its state now. */
-	async changeDarklua(current: boolean): Promise<boolean | undefined> {
-		return this.essential.confirm({
-			message: current
-				? "Keep Darklua processing your code?"
-				: "Does Darklua process your code before Rojo syncs it?",
-			description:
-				"Darklua writes a processed copy of your code, and Rojo syncs that copy instead.",
-			initialValue: current,
-		});
-	}
-
 	async changePackages(
 		offered: readonly { path: string; landing: string }[]
 	): Promise<readonly string[] | undefined> {

@@ -241,22 +241,6 @@ export class ProjectChanger {
 			: String(target);
 	}
 
-	private get darkluaOn(): boolean {
-		return this.edit.value.serveProject === "dist";
-	}
-
-	/** Whether Darklua is set up as init writes it, which init can take off again. */
-	private get darkluaIsOurs(): boolean {
-		const projects = this.edit.value.projects;
-		const dist = isObject(projects) ? projects.dist : undefined;
-		return (
-			this.darkluaOn &&
-			isObject(dist) &&
-			Object.keys(dist).length === 1 &&
-			typeof dist.syncPath === "string"
-		);
-	}
-
 	private packagesToMount() {
 		const mounted = mountedIn(this.edit.value.tree);
 		return [
@@ -300,7 +284,6 @@ export class ProjectChanger {
 					: "left out",
 			],
 			["Source paths", label(sourcePaths, "none")],
-			["Darklua", this.darkluaOn ? "yes" : "no"],
 		];
 		return rows;
 	}
@@ -316,11 +299,6 @@ export class ProjectChanger {
 				},
 			];
 		const several = Array.isArray(this.edit.value.placePaths);
-		const projects = this.edit.value.projects;
-		const handDarklua = this.darkluaOn
-			? !this.darkluaIsOurs
-			: this.edit.value.serveProject !== undefined ||
-				(isObject(projects) && "dist" in projects);
 		return [
 			{
 				id: "places",
@@ -348,17 +326,6 @@ export class ProjectChanger {
 						},
 					]
 				: []),
-			...(handDarklua
-				? []
-				: [
-						{
-							id: "darklua",
-							label: "Darklua",
-							hint: this.darkluaOn
-								? "stop processing the code"
-								: "process the code before Rojo syncs it",
-						},
-					]),
 			...(this.routed && this.packagesToMount().length > 0
 				? [
 						{
@@ -448,27 +415,6 @@ export class ProjectChanger {
 					if (answer === undefined) return undefined;
 					request.sourcePaths = answer.add;
 					request.unsourcePaths = answer.remove;
-					break;
-				}
-				case "darklua": {
-					const on = await questions.changeDarklua(this.darkluaOn);
-					if (on === undefined) return undefined;
-					if (on !== this.darkluaOn) {
-						request.darklua = on;
-						if (on) {
-							const syncPath = await questions.syncPath(
-								this.directory,
-								[
-									...this.changes().sourcePaths,
-									...(this.language.compiler
-										? [this.language.compiler.outDir]
-										: []),
-								]
-							);
-							if (syncPath === undefined) return undefined;
-							request.syncPath = syncPath;
-						}
-					}
 					break;
 				}
 				case "packages": {

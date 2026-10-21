@@ -6,12 +6,7 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import {
-	DEFAULT_CONFIG_FILE,
-	DEFAULT_PROJECT_FILE,
-	ProjectChanges,
-	RogenConfig,
-} from "../config/config.js";
+import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
 import {
 	Darklua,
 	Language,
@@ -109,39 +104,6 @@ function generatedDirs({
 }
 
 const UNMOUNTED_SHOWN = 5;
-
-const PROCESSED_PROJECT = "dist";
-
-const RELEASE_PROJECT = "release";
-
-function projectsOf({
-	language,
-	darklua,
-	syncPath,
-	testRunner,
-	inherited,
-}: Pick<ProjectChoices, "language" | "darklua" | "syncPath"> & {
-	readonly testRunner: string | undefined;
-	readonly inherited: readonly string[];
-}): Pick<RogenConfig, "projects" | "serveProject"> {
-	const processed = darklua && syncPath ? { syncPath } : undefined;
-	const projects: Record<string, ProjectChanges> = {
-		...(processed && { [PROCESSED_PROJECT]: processed }),
-		...(testRunner && {
-			[RELEASE_PROJECT]: {
-				...processed,
-				globIgnorePaths: [
-					...inherited,
-					`**/*.spec.${language.extension}`,
-				],
-			},
-		}),
-	};
-	return {
-		...(processed && { serveProject: PROCESSED_PROJECT }),
-		...(Object.keys(projects).length > 0 && { projects }),
-	};
-}
 
 export class ProjectSetup implements Setup<ProjectChoices> {
 	private readonly files: ProjectFiles;
@@ -497,14 +459,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			landings: Object.values(routes ?? {}),
 		});
 		const { compiler } = language;
-		const { testRunner } = this.directory.workspace;
-		const projects = projectsOf({
-			language,
-			darklua,
-			syncPath,
-			testRunner,
-			inherited: tree.fields.globIgnorePaths ?? [],
-		});
 		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
 		builder.setConfig(
 			{
@@ -517,7 +471,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					placePaths: [...choices.places.placePaths],
 				}),
 				...(defaultSyncPath && { syncPath: defaultSyncPath }),
-				...projects,
 			},
 			choices.tree.kind === "lift"
 				? choices.tree.project.written
@@ -545,7 +498,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 		if (others.length > 0)
 			builder.addNote(
-				`Left alone: ${others.join(", ")}. Rogen writes only default.project.json and the files named under "projects", and a project inherits the whole tree, so keep a file that holds a subset of it by hand, or add its name under "projects" in ${DEFAULT_CONFIG_FILE} to have Rogen write it.`
+				`Left alone: ${others.join(", ")}. Rogen writes only default.project.json here, so keep a file that holds a subset of the tree by hand.`
 			);
 		for (const warning of tree.warnings) builder.addWarning(warning);
 		if (choices.tree.kind === "lift" && choices.unmounted?.length)
@@ -562,16 +515,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (compiler && !darklua && syncPath) {
 			builder.addNote(
 				`Syncing from ${syncPath}, where ${compiler.name} compiles to.`
-			);
-		}
-		if (projects.serveProject) {
-			builder.addNote(
-				`Studio syncs from ${syncPath}, where Darklua writes: rogen serve serves the ${projects.serveProject} project. default.project.json keeps pointing at ${defaultSyncPath ?? "your source"}, which luau-lsp and Darklua read.`
-			);
-		}
-		if (testRunner) {
-			builder.addNote(
-				`Added a ${RELEASE_PROJECT} project that leaves the ${testRunner} specs out: rogen build writes ${RELEASE_PROJECT}.project.json beside default.project.json.`
 			);
 		}
 		if (choices.sample)

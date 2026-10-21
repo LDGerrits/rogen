@@ -4,7 +4,6 @@ import {
 	Diagnostic,
 	errorDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
-import { DEFAULT_PROJECT } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { containerClassName, instanceKey } from "../roblox/roblox.js";
 import {
@@ -90,7 +89,7 @@ export class BuildTree {
 	constructor(
 		private readonly config: Pick<
 			ResolvedConfig,
-			"file" | "project" | "projectDir" | "stem" | "projectName"
+			"file" | "project" | "projectDir"
 		>,
 		private readonly layout: SyncLayout
 	) {
@@ -163,19 +162,16 @@ export class BuildTree {
 		};
 	}
 
-	/** The project file to write; Rojo names `default.project.json` after its folder, but crashes on any other project file without a `name`. */
+	/** The project file to write; Rojo names `default.project.json` after its folder. */
 	toFile(
 		tree: RojoNode,
 		globIgnorePaths: readonly string[],
 		syncRules: readonly SyncRule[]
 	): RojoProjectFile {
-		const file = this.config.project.toFile({
+		return this.config.project.toFile({
 			tree,
 			globIgnorePaths,
 			syncRules,
 		});
-		return this.config.stem === DEFAULT_PROJECT || file.name !== undefined
-			? file
-			: { ...file, name: this.config.projectName };
 	}
 }

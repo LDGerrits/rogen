@@ -107,43 +107,14 @@ describe("list command", () => {
 		expect(under("rogen.json").at(-1)).toContain("warning");
 	});
 
-	it("should list the projects with their files in place of the one project file, and mark the one that is served", async () => {
-		await write("rogen.json", {
-			routes: { "*": "ReplicatedStorage" },
-			serveProject: "dist",
-			projects: { dist: { syncPath: "dist" } },
-		});
+	it("should show the port a config pins, though it is no place", async () => {
+		await write("rogen.json", { servePort: 34900 });
 
 		await run();
 
-		expect(under("rogen.json")[0]).toBe(
-			[
-				"source paths: src",
-				"routes:",
-				"  * -> ReplicatedStorage",
-				"sync path: (none)",
-				"projects:",
-				"  default: default.project.json",
-				"    rojo serve default.project.json",
-				"  dist: dist.project.json (served)",
-				"    rojo serve dist.project.json",
-			].join("\n")
+		expect(under("rogen.json")[0]).toContain(
+			"project file: default.project.json (port 34900)"
 		);
-	});
-
-	it("should show the port a project pins, though it is no place", async () => {
-		await write("rogen.json", {
-			servePort: 34900,
-			projects: { dist: { servePort: 34901 } },
-		});
-
-		await run();
-
-		const [text] = under("rogen.json");
-		expect(text).toContain(
-			"default: default.project.json (served, port 34900)"
-		);
-		expect(text).toContain("dist: dist.project.json (port 34901)");
 	});
 
 	it("should quote a project file with a space in the Rojo command, and carry the pinned port", async () => {
@@ -156,49 +127,23 @@ describe("list command", () => {
 		);
 	});
 
-	it("should give each project the Rojo command that serves it with --json, and none to a config that lists places", async () => {
-		await write("rogen.json", {
-			placePaths: ["places/*"],
-			projects: { dist: {} },
-		});
+	it("should give each place the Rojo command that serves it with --json, and none to a config that lists places", async () => {
+		await write("rogen.json", { placePaths: ["places/*"] });
 		await fs.createDirectory("/repo/places/lobby");
 
 		await run({ json: true });
 
 		const [config] = JSON.parse(logService.texts("print")[0]).configs as {
-			projects: { name: string; rojo?: string[] }[];
-			places: { projects: { name: string; rojo?: string[] }[] }[];
+			rojo?: string[];
+			places: { rojo?: string[] }[];
 		}[];
-		expect(config.projects.map(({ rojo }) => rojo)).toEqual([
-			undefined,
-			undefined,
-		]);
-		expect(config.places[0].projects.map(({ rojo }) => rojo)).toEqual([
-			[
-				"rojo",
-				"serve",
-				"/repo/places/lobby/default.project.json",
-				"--port",
-				"34872",
-			],
-			[
-				"rojo",
-				"serve",
-				"/repo/places/lobby/dist.project.json",
-				"--port",
-				"34872",
-			],
-		]);
-	});
-
-	it("should say a name that is both a folder and a project is the folder", async () => {
-		await write("rogen.json", { projects: { lobby: {} } });
-		await write("lobby/rogen.json", {});
-
-		await run({ _: ["lobby"] });
-
-		expect(logService.texts("warn")).toEqual([
-			'"lobby" is a folder with a rogen.json and also a project of rogen.json: using the folder. To use the project, name its file, lobby.project.json.',
+		expect(config.rojo).toBeUndefined();
+		expect(config.places[0].rojo).toEqual([
+			"rojo",
+			"serve",
+			"/repo/places/lobby/default.project.json",
+			"--port",
+			"34872",
 		]);
 	});
 
@@ -400,19 +345,7 @@ describe("list command", () => {
 						syncPath: "/repo/out",
 						projectFile: "/repo/default.project.json",
 						serving: null,
-						projects: [
-							{
-								name: "default",
-								file: "/repo/default.project.json",
-								served: true,
-								rojo: [
-									"rojo",
-									"serve",
-									"/repo/default.project.json",
-								],
-								serving: null,
-							},
-						],
+						rojo: ["rojo", "serve", "/repo/default.project.json"],
 						diagnostics: [],
 					},
 				],
@@ -433,65 +366,6 @@ describe("list command", () => {
 					{
 						severity: "error",
 						code: "scan.missingSourcePath",
-					},
-				],
-			});
-		});
-
-		it("should carry a stale project file as a warning with its fix", async () => {
-			await fs.createDirectory("/repo/src");
-			await write("rogen.json", {
-				routes: { "*": "ReplicatedStorage" },
-				projects: { dist: {} },
-			});
-			await write("default.project.json", "{}");
-			await write("dist.project.json", "{}");
-
-			await run({ json: true });
-
-			expect(entry("repo")?.diagnostics).toMatchObject([
-				{
-					severity: "warning",
-					code: "output.differs",
-					file: "/repo/default.project.json",
-					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
-				},
-				{
-					code: "output.differs",
-					file: "/repo/dist.project.json",
-					fixes: [
-						{ run: { command: "rogen build dist", cwd: "/repo" } },
-					],
-				},
-			]);
-		});
-
-		it("should list each project with its file and say which one serve serves", async () => {
-			await write("rogen.json", {
-				routes: { "*": "ReplicatedStorage" },
-				serveProject: "dist",
-				projects: { dist: { syncPath: "dist" }, release: {} },
-			});
-
-			await run({ json: true });
-
-			expect(entry("repo")).toMatchObject({
-				projectFile: "/repo/default.project.json",
-				projects: [
-					{
-						name: "default",
-						file: "/repo/default.project.json",
-						served: false,
-					},
-					{
-						name: "dist",
-						file: "/repo/dist.project.json",
-						served: true,
-					},
-					{
-						name: "release",
-						file: "/repo/release.project.json",
-						served: false,
 					},
 				],
 			});
@@ -755,7 +629,7 @@ describe("list command", () => {
 			);
 		});
 
-		it("should give each project its place IDs with --json, and none to a project without", async () => {
+		it("should give each place its place IDs with --json, and none to a place without", async () => {
 			await write("places/lobby/rogen.json", {
 				name: "Lobby",
 				servePlaceIds: [1818, 2020],
@@ -767,37 +641,21 @@ describe("list command", () => {
 				configs: {
 					places: {
 						place: string;
-						projects: { port: number; placeIds?: number[] }[];
+						port: number;
+						placeIds?: number[];
 					}[];
 				}[];
 			};
 			expect(
-				configs[0].places.map(({ place, projects }) => [
+				configs[0].places.map(({ place, port, placeIds }) => [
 					place,
-					projects[0].port,
-					projects[0].placeIds,
+					port,
+					placeIds,
 				])
 			).toEqual([
 				["arena", 34872, undefined],
 				["Lobby", 34873, [1818, 2020]],
 			]);
-		});
-
-		it("should say the config is not served when it has projects", async () => {
-			await write("rogen.json", {
-				placePaths: ["places/*"],
-				routes: { "*": "ReplicatedStorage" },
-				projects: { dist: {} },
-			});
-
-			await run();
-
-			expect(under("rogen.json")[0]).toContain(
-				"projects:\n  default: default.project.json\n  dist: dist.project.json"
-			);
-			expect(under("places/arena (place)")[0]).toContain(
-				"default: places/arena/default.project.json (served, port 34872)"
-			);
 		});
 
 		it("should close with the configs and the places", async () => {
@@ -814,32 +672,23 @@ describe("list command", () => {
 			const { configs } = JSON.parse(logService.texts("print")[0]) as {
 				configs: {
 					served: boolean;
-					projects: { served: boolean }[];
 					places: {
 						place: string;
 						folder: string;
-						projects: {
-							name: string;
-							served: boolean;
-							port: number;
-						}[];
+						port: number;
 					}[];
 				}[];
 			};
 			expect(configs[0].served).toBe(false);
-			expect(configs[0].projects.map(({ served }) => served)).toEqual([
-				false,
-			]);
 			expect(
-				configs[0].places.map(({ place, folder, projects }) => [
+				configs[0].places.map(({ place, folder, port }) => [
 					place,
 					folder,
-					projects[0].served,
-					projects[0].port,
+					port,
 				])
 			).toEqual([
-				["arena", "/repo/places/arena", true, 34872],
-				["Lobby", "/repo/places/lobby", true, 34873],
+				["arena", "/repo/places/arena", 34872],
+				["Lobby", "/repo/places/lobby", 34873],
 			]);
 		});
 	});

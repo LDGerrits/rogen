@@ -7,10 +7,7 @@ import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { configLabel } from "../config/config.js";
-import {
-	ConfigSelection,
-	buildableProjects,
-} from "../config/config-service.js";
+import { ConfigSelection, buildableConfigs } from "../config/config-service.js";
 
 type MatchForm = "folder" | "marker" | "suffix";
 
@@ -330,7 +327,7 @@ export class BuildSet {
 		return {
 			set: new BuildSet(
 				selection.entries.flatMap((entry) =>
-					entry.status === "valid" ? buildableProjects(entry) : []
+					entry.status === "valid" ? buildableConfigs(entry) : []
 				)
 			),
 			unloaded: selection.entries.flatMap((entry) =>

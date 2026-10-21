@@ -109,7 +109,7 @@ describe("upload command", () => {
 		);
 
 		expect(((await running) as ResultError<Error>).error.message).toBe(
-			"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json, or a project."
+			"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json."
 		);
 		expect(await fs.exists(abs("places/lobby/default.project.json"))).toBe(
 			false

@@ -8,7 +8,6 @@ import {
 	exitCodeText,
 } from "../../platform/process/process-service.js";
 import { ConfigSelection } from "../config/config-service.js";
-import { ProjectChoice } from "../config/project-choice.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import {
 	RojoBareRequest,
@@ -183,10 +182,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 	}
 
 	projects(selection: ConfigSelection): ResolvedConfig[] {
-		return ProjectChoice.read(selection.configs, selection.named).filter(
-			({ hasPlaces, rootFile }) =>
-				!hasPlaces || selection.named.has(rootFile)
-		);
+		return selection.configs.filter(({ hasPlaces }) => !hasPlaces);
 	}
 
 	choose(
@@ -199,7 +195,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 			new UsageError(
 				chosen.length === 0
 					? `There is no project to run 'rojo ${command}' on.`
-					: `'rojo ${command}' runs on one project, and this selects ${chosen.length}. Name one: a folder with a rogen.json, or a project.`
+					: `'rojo ${command}' runs on one project, and this selects ${chosen.length}. Name one: a folder with a rogen.json.`
 			)
 		);
 	}

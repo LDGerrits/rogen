@@ -1040,12 +1040,6 @@ describe("InitQuestions changing a project", () => {
 		expect(prompts.asked).toEqual([]);
 	});
 
-	it("should ask whether Darklua stays on, preselecting how it is", async () => {
-		const { questions } = askedWith([ACCEPT_DEFAULT]);
-
-		expect(await questions.changeDarklua(true)).toBe(true);
-	});
-
 	it("should tick every package folder found", async () => {
 		const { questions } = askedWith([ACCEPT_DEFAULT]);
 
