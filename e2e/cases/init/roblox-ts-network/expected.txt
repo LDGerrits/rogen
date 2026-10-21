@@ -21,6 +21,7 @@ written:
   AGENTS.md
   README.md
   default.project.json
+  default.rogen.json
   include/Promise.lua
   include/RuntimeLib.lua
   out/Greeter/client/Greeter.client.luau
@@ -30,19 +31,12 @@ written:
   package-lock.json
   package.json
   place.rbxlx
-  rogen.json
   src/Greeter/client/Greeter.client.ts
   src/Greeter/server/Greeter.server.ts
   src/Greeter/shared/Greeting.ts
   tsconfig.json
 
-out/Greeter/server/Greeter.server.luau:
--- Compiled with roblox-ts v3.0.0
-local TS = require(game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("RuntimeLib"))
-local greeting = TS.import(script, game:GetService("ReplicatedStorage"), "shared", "Greeter", "Greeting").greeting
-print(greeting("server"))
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "project",
@@ -105,17 +99,25 @@ rogen.json:
       }
     }
   },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "server": "ServerScriptService",
-    "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
-  },
-  "compiledPath": "out"
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "server": "ServerScriptService",
+      "client": "StarterPlayer/StarterPlayerScripts",
+      "shared": "ReplicatedStorage/shared",
+      "*": "ReplicatedStorage/shared"
+    },
+    "compiledPath": "out"
+  }
 }
+
+out/Greeter/server/Greeter.server.luau:
+-- Compiled with roblox-ts v3.0.0
+local TS = require(game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("RuntimeLib"))
+local greeting = TS.import(script, game:GetService("ReplicatedStorage"), "shared", "Greeter", "Greeting").greeting
+print(greeting("server"))
 
 $ rojo sourcemap default.project.json
 project: DataModel

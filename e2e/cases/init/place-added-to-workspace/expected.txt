@@ -1,0 +1,66 @@
+$ rogen init places/lobby --non-interactive
+exit 0
+stdout:
+  rogen init
+  Copied the routes of places/game.
+  Created places/lobby/default.rogen.json.
+  Added places/lobby to project.code-workspace.
+  Created places/lobby/src/.
+  places/lobby/default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve places/lobby
+    In Studio, press Connect in the Rojo plugin.
+    Put the code of lobby in places/lobby/src. A second place is served from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
+  Wrote 2 files.
+
+$ rogen build places/lobby
+exit 0
+stdout: (not shown)
+
+written:
+  places/lobby/default.project.json
+  places/lobby/default.rogen.json
+  project.code-workspace
+
+places/lobby/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "lobby",
+  "rogen": {
+    "sourcePaths": [
+      "../shared/src",
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
+project.code-workspace:
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "places/game"
+		},
+		{
+			"path": "places/lobby"
+		},
+		{
+			"path": "places/shared"
+		}
+	]
+}
+
+$ rojo sourcemap places/lobby/default.project.json
+lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Util: ModuleScript  <- ../shared/src/Util.luau

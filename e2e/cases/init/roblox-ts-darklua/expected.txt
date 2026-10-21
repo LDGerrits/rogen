@@ -12,6 +12,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  dist.rogen.json
 
 default.rogen.json:
 {
@@ -45,6 +46,42 @@ default.rogen.json:
       "*": "ReplicatedStorage/shared"
     },
     "compiledPath": "out"
+  }
+}
+
+dist.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "node_modules": {
+          "$className": "Folder",
+          "@rbxts": {
+            "$path": {
+              "optional": "node_modules/@rbxts"
+            }
+          }
+        },
+        "$path": {
+          "optional": "include"
+        }
+      }
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "server": "ServerScriptService",
+      "client": "StarterPlayer/StarterPlayerScripts",
+      "shared": "ReplicatedStorage/shared",
+      "*": "ReplicatedStorage/shared"
+    },
+    "compiledPath": "dist"
   }
 }
 

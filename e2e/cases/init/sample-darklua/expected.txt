@@ -8,6 +8,7 @@ written:
   README.md
   default.project.json
   default.rogen.json
+  dist.rogen.json
   src/Greeter/Client/Greeter.client.luau
   src/Greeter/Server/Greeter.server.luau
   src/Greeter/Shared/Greeting.luau
@@ -73,6 +74,72 @@ default.rogen.json:
       "Shared": "ReplicatedStorage/Shared",
       "*": "ReplicatedStorage/Shared"
     }
+  }
+}
+
+dist.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    },
+    "compiledPath": "dist"
   }
 }
 
