@@ -17,22 +17,18 @@ export class BuildStep implements RojoStep {
 		private readonly plugin: string | undefined
 	) {}
 
-	plans(selection: ConfigSelection): Result<readonly RojoPlan[], UsageError> {
-		if (selection.requireValid().isErr()) return ok([]);
-		const chosen = this.rojo.choose(selection, this.command);
-		if (chosen.isErr()) return chosen;
-		return ok([
-			{
-				project: chosen.value,
-				flags: this.flags,
+	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError> {
+		if (selection.requireValid().isErr()) return ok(undefined);
+		return ok({
+			project: this.rojo.choose(selection),
+			flags: this.flags,
+			cwd: this.cwd,
+			target: {
+				command: this.command,
 				cwd: this.cwd,
-				target: {
-					command: this.command,
-					cwd: this.cwd,
-					output: this.output,
-					plugin: this.plugin,
-				},
+				output: this.output,
+				plugin: this.plugin,
 			},
-		]);
+		});
 	}
 }

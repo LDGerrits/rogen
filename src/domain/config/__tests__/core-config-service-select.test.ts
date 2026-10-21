@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { buildableConfig } from "../config-service.js";
+import { buildableFile } from "../config-service.js";
 import {
 	useConfigFixture,
 	service,
@@ -43,7 +43,9 @@ describe("CoreConfigService", () => {
 				"/repo/default.project.json",
 			]);
 			expect(selection.followedFolder).toBeUndefined();
-			expect(buildableConfig(selection.entries[0])?.isAdopted).toBe(true);
+			expect(buildableFile(selection.entries[0])?.config.isAdopted).toBe(
+				true
+			);
 		});
 
 		it("should read a named Rojo project file as a config that is its own output", async () => {
@@ -56,7 +58,7 @@ describe("CoreConfigService", () => {
 				true
 			);
 
-			const config = buildableConfig(selection.entries[0]);
+			const config = buildableFile(selection.entries[0])?.config;
 			expect(config?.isAdopted).toBe(true);
 			expect(config?.projectFile).toBe("/repo/test.project.json");
 			expect(selection.configs).toHaveLength(1);
@@ -115,7 +117,9 @@ describe("CoreConfigService", () => {
 			await start({ names: ["a", "b"] });
 
 			expect(
-				selection.entries.map((c) => buildableConfig(c)?.sourcePaths)
+				selection.entries.map(
+					(c) => buildableFile(c)?.config.sourcePaths
+				)
 			).toEqual([["/repo/a/x"], ["/repo/b/y"]]);
 		});
 
@@ -218,7 +222,7 @@ describe("CoreConfigService", () => {
 
 			const entry = await service.read("/repo/other/default.rogen.json");
 
-			expect(buildableConfig(entry)?.sourcePaths).toEqual([
+			expect(buildableFile(entry)?.config.sourcePaths).toEqual([
 				"/repo/other/lib",
 			]);
 			expect(entry.status).toBe("valid");

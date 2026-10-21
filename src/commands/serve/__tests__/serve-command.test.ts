@@ -250,7 +250,7 @@ describe("serve command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · repo",
 			"info: repo is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
-			"outro: Nothing to start: another rogen serve already serves every config, so nothing is built or watched here.",
+			"outro: Nothing to start: another rogen serve already serves this project, so nothing is built or watched here.",
 		]);
 	});
 

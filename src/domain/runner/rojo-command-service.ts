@@ -1,4 +1,3 @@
-import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
@@ -13,7 +12,7 @@ export interface RojoCommandRequest {
 	readonly flags: readonly string[];
 	/** Where Rojo runs, so a path in `flags` is relative to it. */
 	readonly cwd: string;
-	/** The one of the selection's projects to run on, when it holds several and the caller runs on each. */
+	/** The project to run on, when the caller already chose it. */
 	readonly project?: ResolvedConfig;
 	/** The project file Rojo reads, when it is not the project's own: an absolute path. */
 	readonly projectFile?: string;
@@ -49,16 +48,10 @@ export interface RojoCommandRun extends RojoBareRun {
 export interface RojoCommandService {
 	readonly _serviceBrand: undefined;
 
-	/** The one project a Rojo command runs on: the one the selection names, else `default`. Fails when it holds none or several, which the caller can say before it writes anything. */
-	choose(
-		selection: ConfigSelection,
-		command: string
-	): Result<ResolvedConfig, UsageError>;
+	/** The one project a Rojo command runs on; the selection must be valid. */
+	choose(selection: ConfigSelection): ResolvedConfig;
 
-	/** Every project a Rojo command may run on: each the selection names, else the `default` of each config. A root that lists places is the sum of them, so it is left out unless it is named. */
-	projects(selection: ConfigSelection): ResolvedConfig[];
-
-	/** Runs the pinned Rojo on the one project the selection names, or on its `default`, which the caller has written. Fails when the selection holds none or several projects and the request names none, when its files are broken, or when the Rojo can't read them; a Rojo that exits with an error comes back as a run with a `failure`. */
+	/** Runs the pinned Rojo on the project the selection names, which the caller has written. Fails when its files are broken or the Rojo can't read them; a Rojo that exits with an error comes back as a run with a `failure`. */
 	run(
 		selection: ConfigSelection,
 		request: RojoCommandRequest

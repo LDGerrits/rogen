@@ -1,7 +1,7 @@
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfig } from "../resolved-config.js";
-import { ReloadableSelection, buildableConfig } from "../config-service.js";
+import { ReloadableSelection, buildableFile } from "../config-service.js";
 import { CoreConfigService } from "../core-config-service.js";
 
 export interface Refs {
@@ -53,7 +53,7 @@ export const start = async ({ names = [] }: Refs = {}, cwd = "/repo") => {
 };
 
 export const resolved = (index = 0) =>
-	buildableConfig(selection.entries[index]);
+	buildableFile(selection.entries[index])?.config;
 
 export const errors = (index = 0) => {
 	const entry = selection.entries[index];

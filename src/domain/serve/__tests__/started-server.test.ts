@@ -45,7 +45,7 @@ describe("StartedServer", () => {
 	const plan = new ServePlan(
 		new MockConfigSelection(),
 		{ server: SyncServer.ROJO, file: "/bin/rojo", version: "7.7.1" },
-		[target],
+		target,
 		["--port", "34872"]
 	);
 

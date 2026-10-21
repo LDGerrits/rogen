@@ -22,38 +22,28 @@ export class SourcemapStep implements RojoStep {
 		private readonly mayPrint: boolean
 	) {}
 
-	plans(selection: ConfigSelection): Result<readonly RojoPlan[], UsageError> {
-		if (selection.requireValid().isErr()) return ok([]);
-		const projects = this.rojo.projects(selection);
-		if (projects.length === 0)
-			return err(
-				new UsageError(
-					`There is no project to run 'rojo ${this.command}' on.`
-				)
-			);
+	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError> {
+		if (selection.requireValid().isErr()) return ok(undefined);
 		const { output, includeNonScripts, absolute } = this.flags;
 		const rojoFlags = [
 			...(includeNonScripts ? ["--include-non-scripts"] : []),
 			...(absolute ? ["--absolute"] : []),
 		];
-		const [project] = projects;
 		if (output === undefined && !this.mayPrint)
 			return err(
 				new UsageError(
 					"Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
 				)
 			);
-		return ok([
-			{
-				project,
-				flags:
-					output === undefined
-						? rojoFlags
-						: [...rojoFlags, "--output", output],
-				cwd: this.cwd,
-				target: { command: this.command, cwd: this.cwd, output },
-				...(output === undefined && { printed: true as const }),
-			},
-		]);
+		return ok({
+			project: this.rojo.choose(selection),
+			flags:
+				output === undefined
+					? rojoFlags
+					: [...rojoFlags, "--output", output],
+			cwd: this.cwd,
+			target: { command: this.command, cwd: this.cwd, output },
+			...(output === undefined && { printed: true as const }),
+		});
 	}
 }

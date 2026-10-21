@@ -145,42 +145,6 @@ describe("CoreRojoCommandService", () => {
 		}
 	);
 
-	it("should fail when the selection holds several projects", async () => {
-		const result = await run(
-			new MockConfigSelection([
-				mockEntry({}, "/repo/a/default.rogen.json"),
-				mockEntry({}, "/repo/b/default.rogen.json"),
-			])
-		);
-
-		expect((result as ResultError<Error>).error.message).toBe(
-			"'rojo build' runs on one project, and this selects 2. Name one: a folder with a default.rogen.json."
-		);
-		expect(processes.spawned).toEqual([]);
-	});
-
-	it("should run on the project the request names when the selection holds several", async () => {
-		const chosen = new MockConfigSelection([
-			mockEntry({}, "/repo/a/default.rogen.json"),
-			mockEntry({}, "/repo/b/default.rogen.json"),
-		]);
-		const [, second] = service.projects(chosen);
-
-		const running = service.run(chosen, {
-			command: "sourcemap",
-			flags: [],
-			cwd: "/repo/b",
-			project: second,
-		});
-		await finish([], 0);
-
-		expect((await running).unwrap().project).toBe(second);
-		expect(processes.spawned[0].args).toEqual([
-			"sourcemap",
-			"default.project.json",
-		]);
-	});
-
 	it("should fail without running Rojo when no Rojo is found", async () => {
 		processes.installed.clear();
 
@@ -217,13 +181,9 @@ describe("CoreRojoCommandService", () => {
 		expect((await running).unwrap().failure).toBeDefined();
 	});
 
-	it("should name the one project, or say there is none, before it runs", () => {
-		expect(service.choose(selection(), "build").unwrap().file).toBe(
+	it("should name the one project before it runs", () => {
+		expect(service.choose(selection()).file).toBe(
 			"/repo/default.rogen.json"
-		);
-		const none = service.choose(new MockConfigSelection([]), "build");
-		expect((none as ResultError<Error>).error.message).toBe(
-			"There is no project to run 'rojo build' on."
 		);
 	});
 

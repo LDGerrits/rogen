@@ -148,7 +148,6 @@ export class MockConfigService implements ConfigService {
 		return this.covers(target);
 	}
 
-	/** What `coverOf` answers; every path is covered by the first entry unless this says otherwise. */
 	covers: (target: string) => ConfigCover | undefined = () => ({
 		file: this.entries[0].file,
 		whole: false,

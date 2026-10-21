@@ -63,9 +63,7 @@ export function buildableFile(
 	return entry.status === "valid" ? entry : entry.lastValid;
 }
 
-export function buildableConfig(
-	entry: ConfigEntry
-): ResolvedConfig | undefined {
+function buildableConfig(entry: ConfigEntry): ResolvedConfig | undefined {
 	return buildableFile(entry)?.config;
 }
 
@@ -118,7 +116,7 @@ export interface ReloadableSelection extends ConfigSelection {
 	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or the default config that came to the folder. */
 	concerns(file: string): boolean;
 
-	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version; a followed folder's added and dropped configs join and leave first. */
+	/** Reloads the configs that read `files`, in order, keeping a broken config's last valid version so a watch survives a bad edit. */
 	reload(files: readonly string[]): Promise<ConfigReload>;
 }
 
@@ -167,13 +165,13 @@ export interface ConfigService {
 	select(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
-	/** Loads every config file of the working directory, from one read of it; the default is not required. A folder with no config file is `select([])`'s. */
+	/** Loads every config file of the working directory, so `list` can show the siblings without needing a default. */
 	selectFolder(): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
-	/** The config that answers for `target`: a `.rogen.json` is its own, whole; any other path has the default of the nearest folder at or above it, a plain project file included. None when no folder above it has one. */
+	/** The config that answers for `target`, so a command run from the root can take a path of any place. */
 	coverOf(target: string): Promise<ConfigCover | undefined>;
-	/** Loads the config that answers for each target: a path has the config `coverOf` finds, and `undefined` stands for the default of the working directory. */
+	/** Loads the config that answers for each target, one selection per config, so a command can take paths of several places. */
 	selectCovering(
 		targets: readonly (string | undefined)[]
 	): Promise<Result<CoveredTargets, Error>>;

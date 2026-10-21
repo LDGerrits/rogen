@@ -159,8 +159,8 @@ registerCommand(
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			const plans = step?.plans(selection.value);
-			if (plans?.isErr()) return plans;
+			const planned = step?.plan(selection.value);
+			if (planned?.isErr()) return planned;
 
 			const run = await buildService.build(
 				selection.value,
@@ -168,7 +168,7 @@ registerCommand(
 			);
 
 			const failure = run.failure();
-			const plan = plans?.isOk() ? plans.value[0] : undefined;
+			const plan = planned?.isOk() ? planned.value : undefined;
 			const built =
 				failure || plan === undefined
 					? undefined
