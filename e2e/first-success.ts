@@ -10,10 +10,8 @@ import {
 	run,
 } from "./harness.js";
 
-/** A step the printed steps ask for: a program and its arguments, run in the project's root or in `in`. */
 export interface Step {
 	readonly run: readonly string[];
-	/** The folder below the project's root that the step runs in. */
 	readonly in?: string;
 }
 
@@ -24,7 +22,6 @@ export interface Variant {
 	readonly flags: readonly string[];
 	/** What the printed steps run between `init` and `serve`: a compiler or processor as program and arguments, or a Rogen command as `rogen` and its arguments. */
 	readonly steps: readonly (readonly string[] | Step)[];
-	/** What follows `rogen build` and `rogen serve`: the project they name, none for the folder's default. */
 	readonly project?: readonly string[];
 	/** The variant downloads packages, so it runs only with ROGEN_E2E_NETWORK=1. */
 	readonly network?: boolean;

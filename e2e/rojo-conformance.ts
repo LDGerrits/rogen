@@ -25,7 +25,6 @@ export interface RoundTrip {
 	readonly placeOfWritten?: string;
 }
 
-/** Saves the project `name` of `projectsDir` (Rojo's build tests unless told otherwise) as a `default.rogen.json`, builds it with Rogen, and builds the original and the written file with Rojo. */
 export function roundTrip(
 	cli: string,
 	name: string,
@@ -142,7 +141,6 @@ export interface KindRoundTrip {
 	/** The place each builds from the project it made, as text. */
 	readonly placeOfRojo?: string;
 	readonly placeOfRogen?: string;
-	/** The files both made that Rojo's template has, by name; Rogen's `.gitignore` is read without the line that ignores the project files it writes. */
 	readonly filesOfRojo: Record<string, string>;
 	readonly filesOfRogen: Record<string, string>;
 	readonly gitOfRojo: boolean;

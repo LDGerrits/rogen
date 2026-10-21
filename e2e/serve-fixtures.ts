@@ -1,7 +1,6 @@
 import net from "net";
 import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
-/** The default.rogen.json every serve test starts from, serving on `port`. */
 export const config = (
 	port: number,
 	{
