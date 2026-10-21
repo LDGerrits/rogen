@@ -29,13 +29,16 @@ Paste the block into `AGENTS.md`, or run `rogen init` again and pick **Agents** 
 ````md title="AGENTS.md"
 ## Rogen
 
-Rogen writes the Rojo project file from the folders and names under each `rogen.json`'s `sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
+Rogen writes the Rojo project file from the folders and names under each `.rogen.json`'s `rogen.sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
 
-- Edit code and `rogen.json`, never a `*.project.json` that Rogen writes (`default.project.json`, and one for each project under `projects`): change `rogen.json`, whose `tree` holds what names can't express.
-- To change the setup (a route, source path, package mount, Darklua, places, the workspace file), run `rogen init -y` with the flag for it, such as `--route`, `--no-route`, `--source-path`, `--darklua`, `--places` or `rogen init places/<name>`, and check `rogen init --help`, rather than editing `rogen.json`: init keeps its comments, lists what it changed and builds. Edit `rogen.json` yourself only for what init has no flag for.
+- Edit code and `.rogen.json` files, never a `*.project.json` that Rogen writes (`X.rogen.json` writes `X.project.json`): change the `.rogen.json`, whose `tree` holds what names can't express.
+- After editing a `.rogen.json`, run `rogen list` in its folder: it shows how the other `.rogen.json` files there (`dist`, `release`) differ from `default`. Each file is complete and none reads another, so keep them in step.
+- To change the setup (a route, source path, package mount, Darklua, places, the workspace file), run `rogen init -y` with the flag for it, such as `--route`, `--no-route`, `--source-path`, `--darklua`, `--places` or `rogen init places/<name>`, and check `rogen init --help`, rather than editing a `.rogen.json`: init keeps its comments, lists what it changed and builds. Edit a `.rogen.json` yourself only for what init has no flag for.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
-- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
+- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a place's file; a file in `places/shared` has no config and is skipped with a note, so check it through a place (`rogen check places/lobby`).
+- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve places/lobby`, `rogen build dist`).
+- After adding a feature folder, run `rogen build`: `default.project.json` is as fresh as its last build.
 - Leave `rogen build --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions). `rogen list --json` shows the same later as `serving.clients`, without the process that printed it.
 - Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help <code> --json` explains one diagnostic code, and `rogen help codes <module> --json` lists the codes of one module, such as `route`, offline.
@@ -129,7 +132,7 @@ With the hook in place, the "run `rogen check` …" rule in the block is optiona
 - **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`). The script runs on bash 3.2, the one macOS ships.
 - **An agent with no hook for the end of a turn** can still run `rogen check <paths>` and read its exit code, as `lint-staged` does: `"*": "rogen check"`.
 - **Cursor and Copilot have caps and quirks.** Cursor limits automatic follow-ups (`loop_limit`, 5 by default), and its `stop` hook has been reported not to fire in the CLI or to ignore its reply on Windows. Copilot ends the turn after 8 blocks in a row. The script reports each line once, so neither limit is reached by it.
-- **It runs from the folder the agent started in.** `rogen` finds the config there or in the nearest folder above, and the changed files are those below it, so an agent started in a subfolder is checked on that subfolder.
+- **It checks from the folder the agent started in.** The changed files are those below it. `rogen check` finds each file's nearest `default.rogen.json` or `default.project.json`, so a place's file is checked from the repo root. A file with no config above it, such as shared code in `places/shared`, is skipped, and the hook hides the note.
 
 ## Install the skill
 
@@ -143,7 +146,7 @@ npx skills add LDGerrits/rogen
 
 The block is loaded in every session, so it holds only what an agent gets wrong without being told, and the commands that answer the rest:
 
-1. **The block**, about 450 tokens: the rules and the commands that check them.
+1. **The block**, about 600 tokens: the rules and the commands that check them.
 2. **`rogen doc <topic>`**, between 400 and 2,400 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.
 
