@@ -20,7 +20,7 @@ stdout:
     rojo: rojo serve dist.project.json
   release.rogen.jsonc
     source paths: src
-    routes: same as Inventory
+    routes: same as dist.rogen.json
     compiled path: (none)
     project file: release.project.json
     rojo: rojo serve release.project.json

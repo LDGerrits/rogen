@@ -15,7 +15,7 @@ stdout:
     rojo: rojo serve game/default.project.json
   lobby/default.rogen.json
     source paths: lobby/core, lobby/places/lobby
-    routes: same as Game
+    routes: same as game/default.rogen.json
     compiled path: (none)
     project file: lobby/default.project.json
     rojo: rojo serve lobby/default.project.json
