@@ -48,7 +48,7 @@ describe("list command", () => {
 	it("should show a config's source paths, routes, sync path and project file", async () => {
 		await fs.createDirectory("/repo/src");
 		await fs.createDirectory("/repo/lobby");
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			sourcePaths: ["src", "lobby"],
 			syncPath: "out",
 			routes: { Server: "ServerScriptService", "*": "ReplicatedStorage" },
@@ -57,8 +57,8 @@ describe("list command", () => {
 		const result = await run();
 
 		expect(result.isOk()).toBe(true);
-		expect(steps()).toEqual(["rogen.json"]);
-		expect(under("rogen.json")).toEqual([
+		expect(steps()).toEqual(["default.rogen.json"]);
+		expect(under("default.rogen.json")).toEqual([
 			[
 				"source paths: src, lobby",
 				"routes:",
@@ -71,64 +71,143 @@ describe("list command", () => {
 		]);
 	});
 
+	describe("with several configs in a folder", () => {
+		beforeEach(async () => {
+			await fs.createDirectory("/repo/src");
+			await write("default.rogen.json", {
+				name: "Game",
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
+			});
+			await write("dist.rogen.json", {
+				name: "Game",
+				sourcePaths: ["src"],
+				routes: { "*": "ReplicatedStorage" },
+				syncPath: "dist",
+				servePort: 34900,
+			});
+		});
+
+		it("should list every config file of the folder and what each differs from the default in", async () => {
+			const result = await run();
+
+			expect(result.isOk()).toBe(true);
+			expect(steps()).toEqual(["default.rogen.json", "dist.rogen.json"]);
+			expect(under("default.rogen.json")[0]).not.toContain(
+				"differs from"
+			);
+			expect(under("dist.rogen.json")[0]).toContain(
+				"project file: dist.project.json (port 34900)"
+			);
+			expect(under("dist.rogen.json")[0]).toContain(
+				"differs from default.rogen.json: servePort, syncPath"
+			);
+		});
+
+		it("should list only the file named", async () => {
+			await run({ _: ["dist.rogen.json"] });
+
+			expect(steps()).toEqual(["dist.rogen.json"]);
+			expect(under("dist.rogen.json")[0]).not.toContain("differs from");
+		});
+
+		it("should list the files without a default beside them", async () => {
+			await fs.delete("/repo/default.rogen.json");
+
+			const result = await run();
+
+			expect(result.isOk()).toBe(true);
+			expect(steps()).toEqual(["dist.rogen.json"]);
+			expect(under("dist.rogen.json")[0]).not.toContain("differs from");
+		});
+
+		it("should say what each file differs in with --json", async () => {
+			await run({ json: true });
+
+			const document = JSON.parse(logService.texts("print")[0]);
+			expect(
+				document.configs.map(
+					(config: { differsFromDefault?: string[] }) =>
+						config.differsFromDefault
+				)
+			).toEqual([undefined, ["servePort", "syncPath"]]);
+		});
+
+		it("should fail when a stem has both extensions", async () => {
+			await write("dist.rogen.jsonc", {});
+
+			const result = await run();
+
+			expect((result as ResultError<Error>).error.message).toContain(
+				"holds both dist.rogen.json and dist.rogen.jsonc; keep one."
+			);
+		});
+	});
+
 	it("should say which source paths are no folder, as an error when none is", async () => {
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			sourcePaths: ["srcc"],
 			routes: { "*": "ReplicatedStorage" },
 		});
 
 		await run();
 
-		expect(under("rogen.json").at(-1)).toContain("scan.missingSourcePath");
-		expect(under("rogen.json").at(-1)).toContain("error");
+		expect(under("default.rogen.json").at(-1)).toContain(
+			"scan.missingSourcePath"
+		);
+		expect(under("default.rogen.json").at(-1)).toContain("error");
 	});
 
 	it("should say it as a warning when another source path is a folder", async () => {
 		await fs.createDirectory("/repo/src");
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			sourcePaths: ["src", "later"],
 			routes: { "*": "ReplicatedStorage" },
 		});
 
 		await run();
 
-		expect(under("rogen.json").at(-1)).toContain("warning");
-		expect(under("rogen.json").at(-1)).toContain("scan.missingSourcePath");
+		expect(under("default.rogen.json").at(-1)).toContain("warning");
+		expect(under("default.rogen.json").at(-1)).toContain(
+			"scan.missingSourcePath"
+		);
 	});
 
 	it("should say when a project file on disk differs from what a build would write", async () => {
 		await fs.createDirectory("/repo/src");
-		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
+		await write("default.rogen.json", {
+			routes: { "*": "ReplicatedStorage" },
+		});
 		await write("default.project.json", "{}");
 
 		await run();
 
-		expect(under("rogen.json").at(-1)).toContain("output.differs");
-		expect(under("rogen.json").at(-1)).toContain("warning");
+		expect(under("default.rogen.json").at(-1)).toContain("output.differs");
+		expect(under("default.rogen.json").at(-1)).toContain("warning");
 	});
 
 	it("should show the port a config pins, though it is no place", async () => {
-		await write("rogen.json", { servePort: 34900 });
+		await write("default.rogen.json", { servePort: 34900 });
 
 		await run();
 
-		expect(under("rogen.json")[0]).toContain(
+		expect(under("default.rogen.json")[0]).toContain(
 			"project file: default.project.json (port 34900)"
 		);
 	});
 
 	it("should quote a project file with a space in the Rojo command, and carry the pinned port", async () => {
-		await write("my game/rogen.json", { servePort: 34900 });
+		await write("my game/default.rogen.json", { servePort: 34900 });
 
 		await run({ _: ["my game"] });
 
-		expect(under("my game/rogen.json")[0]).toContain(
+		expect(under("my game/default.rogen.json")[0]).toContain(
 			"rojo: rojo serve 'my game/default.project.json' --port 34900"
 		);
 	});
 
 	it("should give each place the Rojo command that serves it with --json, and none to a config that lists places", async () => {
-		await write("rogen.json", { placePaths: ["places/*"] });
+		await write("default.rogen.json", { placePaths: ["places/*"] });
 		await fs.createDirectory("/repo/places/lobby");
 
 		await run({ json: true });
@@ -148,14 +227,14 @@ describe("list command", () => {
 	});
 
 	it("should print no extends, extended by or template line", async () => {
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			routes: { "*": "Workspace" },
 			tree: { $className: "DataModel" },
 		});
 
 		await run();
 
-		expect(under("rogen.json")[0]).not.toMatch(
+		expect(under("default.rogen.json")[0]).not.toMatch(
 			/extends|extended by|template/
 		);
 	});
@@ -166,15 +245,15 @@ describe("list command", () => {
 		it("should say 'same as' for a config whose routes equal those of an earlier one", async () => {
 			await fs.createDirectory("/repo/lobby/src");
 			await fs.createDirectory("/repo/arena/src");
-			await write("lobby/rogen.json", { routes });
-			await write("arena/rogen.json", { routes });
+			await write("lobby/default.rogen.json", { routes });
+			await write("arena/default.rogen.json", { routes });
 
 			await run({ _: ["lobby", "arena"] });
 
-			expect(under("lobby/rogen.json")[0]).toContain(
+			expect(under("lobby/default.rogen.json")[0]).toContain(
 				"routes:\n  Server -> ServerScriptService\n  * -> Workspace"
 			);
-			expect(under("arena/rogen.json").at(-1)).toContain(
+			expect(under("arena/default.rogen.json").at(-1)).toContain(
 				"routes: same as lobby"
 			);
 		});
@@ -182,81 +261,83 @@ describe("list command", () => {
 		it("should print the routes of a config that differs in one", async () => {
 			await fs.createDirectory("/repo/lobby/src");
 			await fs.createDirectory("/repo/arena/src");
-			await write("lobby/rogen.json", { routes });
-			await write("arena/rogen.json", {
+			await write("lobby/default.rogen.json", { routes });
+			await write("arena/default.rogen.json", {
 				routes: { ...routes, Server: "Workspace" },
 			});
 
 			await run({ _: ["lobby", "arena"] });
 
-			const details = under("arena/rogen.json").at(-1)!;
+			const details = under("arena/default.rogen.json").at(-1)!;
 			expect(details).not.toContain("same as");
 			expect(details).toContain("  Server -> Workspace");
 		});
 
 		it("should not call routes the same when only their order differs", async () => {
-			await write("a/rogen.json", {
+			await write("a/default.rogen.json", {
 				routes: { Server: "Workspace", Client: "Workspace" },
 			});
-			await write("b/rogen.json", {
+			await write("b/default.rogen.json", {
 				routes: { Client: "Workspace", Server: "Workspace" },
 			});
 
 			await run({ _: ["a", "b"] });
 
-			expect(under("b/rogen.json")[0]).not.toContain("same as");
+			expect(under("b/default.rogen.json")[0]).not.toContain("same as");
 		});
 
 		it("should print none for a broken config", async () => {
-			await write("a/rogen.json", { routes });
-			await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
+			await write("a/default.rogen.json", { routes });
+			await write("b/default.rogen.json", `{\n\t"extends": "a"\n}`);
 
 			await run({ _: ["a", "b"] });
 
-			expect(under("b/rogen.json").join("\n")).not.toContain("routes");
+			expect(under("b/default.rogen.json").join("\n")).not.toContain(
+				"routes"
+			);
 		});
 	});
 
 	it("should say so when there is no sync path", async () => {
-		await write("rogen.json", {});
+		await write("default.rogen.json", {});
 
 		await run();
 
-		const [details] = under("rogen.json");
+		const [details] = under("default.rogen.json");
 		expect(details).toContain("sync path: (none)");
 	});
 
 	it("should list the config here, and not those in other folders", async () => {
-		await write("rogen.json", {});
-		await write("lobby/rogen.json", {});
+		await write("default.rogen.json", {});
+		await write("lobby/default.rogen.json", {});
 		await write("notes.json", {});
 
 		await run();
 
-		expect(steps()).toEqual(["rogen.json"]);
+		expect(steps()).toEqual(["default.rogen.json"]);
 	});
 
 	it("should report a broken config in place, print the rest and fail", async () => {
-		await write("a/rogen.json", {});
-		await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
-		await write("c/rogen.json", {});
+		await write("a/default.rogen.json", {});
+		await write("b/default.rogen.json", `{\n\t"extends": "a"\n}`);
+		await write("c/default.rogen.json", {});
 
 		const result = await run({ _: ["a", "b", "c"] });
 
 		expect(steps()).toEqual([
-			"a/rogen.json",
-			"b/rogen.json",
-			"c/rogen.json",
+			"a/default.rogen.json",
+			"b/default.rogen.json",
+			"c/default.rogen.json",
 		]);
-		expect(under("b/rogen.json")).toEqual([
-			expect.stringContaining("/repo/b/rogen.json:2:2 - error:"),
+		expect(under("b/default.rogen.json")).toEqual([
+			expect.stringContaining("/repo/b/default.rogen.json:2:2 - error:"),
 		]);
 		expect(result.isErr()).toBe(true);
 	});
 
 	it("should count every broken config when none loads", async () => {
-		await write("a/rogen.json", `{\n\t"extends": "a"\n}`);
-		await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
+		await write("a/default.rogen.json", `{\n\t"extends": "a"\n}`);
+		await write("b/default.rogen.json", `{\n\t"extends": "a"\n}`);
 
 		const result = await run({ _: ["a", "b"] });
 
@@ -266,8 +347,8 @@ describe("list command", () => {
 	});
 
 	it("should say how many of the configs are broken when some load", async () => {
-		await write("a/rogen.json", {});
-		await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
+		await write("a/default.rogen.json", {});
+		await write("b/default.rogen.json", `{\n\t"extends": "a"\n}`);
 
 		const result = await run({ _: ["a", "b"] });
 
@@ -280,27 +361,30 @@ describe("list command", () => {
 		const result = await run();
 
 		expect((result as ResultError<Error>).error.message).toContain(
-			"No rogen.json found"
+			"No default.rogen.json or default.project.json in this folder"
 		);
 	});
 
 	it("should list only the named projects", async () => {
-		await write("rogen.json", {});
-		await write("lobby/rogen.json", {});
-		await write("match/rogen.json", {});
+		await write("default.rogen.json", {});
+		await write("lobby/default.rogen.json", {});
+		await write("match/default.rogen.json", {});
 
 		await run({ _: ["lobby", "match"] });
 
-		expect(steps()).toEqual(["lobby/rogen.json", "match/rogen.json"]);
+		expect(steps()).toEqual([
+			"lobby/default.rogen.json",
+			"match/default.rogen.json",
+		]);
 	});
 
 	it("should list the project of a default.project.json path", async () => {
-		await write("rogen.json", {});
-		await write("places/lobby/rogen.json", {});
+		await write("default.rogen.json", {});
+		await write("places/lobby/default.rogen.json", {});
 
 		await run({ _: ["places/lobby/default.project.json"] });
 
-		expect(steps()).toEqual(["places/lobby/rogen.json"]);
+		expect(steps()).toEqual(["places/lobby/default.rogen.json"]);
 	});
 
 	describe("with --json", () => {
@@ -313,7 +397,7 @@ describe("list command", () => {
 		it("should print each config's resolved fields, identity first", async () => {
 			await fs.createDirectory("/repo/src");
 			await fs.createDirectory("/repo/lobby");
-			await write("rogen.json", {
+			await write("default.rogen.json", {
 				name: "Game",
 				sourcePaths: ["src", "lobby"],
 				routes: {
@@ -331,7 +415,7 @@ describe("list command", () => {
 				configs: [
 					{
 						config: "Game",
-						file: "/repo/rogen.json",
+						file: "/repo/default.rogen.json",
 						status: "valid",
 						served: true,
 						projectName: "Game",
@@ -353,7 +437,7 @@ describe("list command", () => {
 		});
 
 		it("should carry the missing source paths as diagnostics of a valid config", async () => {
-			await write("rogen.json", {
+			await write("default.rogen.json", {
 				sourcePaths: ["srcc"],
 				routes: { "*": "ReplicatedStorage" },
 			});
@@ -372,8 +456,8 @@ describe("list command", () => {
 		});
 
 		it("should say every config that loads is served", async () => {
-			await write("lobby/rogen.json", {});
-			await write("arena/rogen.json", {});
+			await write("lobby/default.rogen.json", {});
+			await write("arena/default.rogen.json", {});
 
 			await run({ _: ["lobby", "arena"], json: true });
 
@@ -382,8 +466,8 @@ describe("list command", () => {
 		});
 
 		it("should print the named projects in the order they are named", async () => {
-			await write("lobby/rogen.json", {});
-			await write("arena/rogen.json", {});
+			await write("lobby/default.rogen.json", {});
+			await write("arena/default.rogen.json", {});
 
 			await run({ _: ["lobby", "arena"], json: true });
 
@@ -394,8 +478,8 @@ describe("list command", () => {
 		});
 
 		it("should print a broken config's diagnostics in place of its fields and fail without reporting again", async () => {
-			await write("a/rogen.json", {});
-			await write("b/rogen.json", `{\n\t"extends": "a"\n}`);
+			await write("a/default.rogen.json", {});
+			await write("b/default.rogen.json", `{\n\t"extends": "a"\n}`);
 
 			const result = await run({ _: ["a", "b"], json: true });
 
@@ -403,12 +487,12 @@ describe("list command", () => {
 			expect(entry("a")).toHaveProperty("sourcePaths");
 			expect(entry("b")).toEqual({
 				config: "b",
-				file: "/repo/b/rogen.json",
+				file: "/repo/b/default.rogen.json",
 				status: "broken",
 				served: false,
 				diagnostics: [
 					expect.objectContaining({
-						file: "/repo/b/rogen.json",
+						file: "/repo/b/default.rogen.json",
 						line: 2,
 						column: 2,
 						severity: "error",
@@ -422,7 +506,7 @@ describe("list command", () => {
 		});
 
 		it("should print nothing but the document", async () => {
-			await write("rogen.json", {});
+			await write("default.rogen.json", {});
 
 			await run({ json: true });
 
@@ -440,12 +524,12 @@ describe("list command", () => {
 	});
 
 	it("should print the report although it is quiet", async () => {
-		await write("rogen.json", { routes: { "*": "Workspace" } });
+		await write("default.rogen.json", { routes: { "*": "Workspace" } });
 		logService.setLevel(LogLevel.Error);
 
 		await run();
 
-		expect(logService.texts("section")).toEqual(["rogen.json"]);
+		expect(logService.texts("section")).toEqual(["default.rogen.json"]);
 		expect(logService.texts("intro")).toEqual([]);
 	});
 
@@ -460,7 +544,7 @@ describe("list command", () => {
 			logService = harness.log;
 			run = ({ _ = [], ...options } = {}) =>
 				harness.run("list", { positionals: _, options });
-			await write("rogen.json", {
+			await write("default.rogen.json", {
 				routes: { "*": "ReplicatedStorage" },
 			});
 		});
@@ -490,7 +574,7 @@ describe("list command", () => {
 
 				await run();
 
-				const [details] = under("rogen.json");
+				const [details] = under("default.rogen.json");
 				expect(details).toContain(`\n${line}`);
 			}
 		);
@@ -504,11 +588,13 @@ describe("list command", () => {
 
 			await run();
 
-			expect(under("rogen.json")[0]).not.toContain("serving:");
+			expect(under("default.rogen.json")[0]).not.toContain("serving:");
 		});
 
 		it("should print the serving server of each config, or null, with --json", async () => {
-			await write("lobby/rogen.json", { routes: { "*": "Workspace" } });
+			await write("lobby/default.rogen.json", {
+				routes: { "*": "Workspace" },
+			});
 			await serve(1);
 
 			await run({ _: [".", "lobby"], json: true });
@@ -534,7 +620,7 @@ describe("list command", () => {
 	});
 	describe("places", () => {
 		beforeEach(async () => {
-			await write("rogen.json", {
+			await write("default.rogen.json", {
 				name: "Game",
 				placePaths: ["places/*"],
 				routes: {
@@ -542,7 +628,7 @@ describe("list command", () => {
 					"*": "ReplicatedStorage",
 				},
 			});
-			await write("places/lobby/rogen.json", { name: "Lobby" });
+			await write("places/lobby/default.rogen.json", { name: "Lobby" });
 			await fs.createDirectory("/repo/places/arena");
 		});
 
@@ -551,11 +637,11 @@ describe("list command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(steps()).toEqual([
-				"rogen.json",
+				"default.rogen.json",
 				"places/arena (place)",
 				"places/lobby (place)",
 			]);
-			expect(under("rogen.json")).toEqual([
+			expect(under("default.rogen.json")).toEqual([
 				[
 					"source paths: src",
 					"routes:\n  Server -> ServerScriptService\n  * -> ReplicatedStorage",
@@ -578,7 +664,7 @@ describe("list command", () => {
 
 		describe("with the code the places share", () => {
 			beforeEach(async () => {
-				await write("rogen.json", {
+				await write("default.rogen.json", {
 					name: "Game",
 					sourcePaths: ["places/shared/src"],
 					placePaths: ["places/*"],
@@ -594,11 +680,11 @@ describe("list command", () => {
 				await run();
 
 				expect(steps()).toEqual([
-					"rogen.json",
+					"default.rogen.json",
 					"places/arena (place)",
 					"places/lobby (place)",
 				]);
-				expect(under("rogen.json")[0]).toContain(
+				expect(under("default.rogen.json")[0]).toContain(
 					"places: arena, Lobby\nshared code: places/shared\n"
 				);
 			});
@@ -614,7 +700,7 @@ describe("list command", () => {
 		});
 
 		it("should say which place IDs belong to which port", async () => {
-			await write("places/lobby/rogen.json", {
+			await write("places/lobby/default.rogen.json", {
 				name: "Lobby",
 				servePlaceIds: [1818, 2020],
 			});
@@ -630,7 +716,7 @@ describe("list command", () => {
 		});
 
 		it("should give each place its place IDs with --json, and none to a place without", async () => {
-			await write("places/lobby/rogen.json", {
+			await write("places/lobby/default.rogen.json", {
 				name: "Lobby",
 				servePlaceIds: [1818, 2020],
 			});

@@ -317,7 +317,7 @@ export class InitQuestions {
 				{
 					value: "add",
 					label: "Add a place",
-					hint: "a folder with its own rogen.json",
+					hint: "a folder with its own default.rogen.json",
 				},
 			],
 			initialValue: "several",

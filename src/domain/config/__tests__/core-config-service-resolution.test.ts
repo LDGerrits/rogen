@@ -17,7 +17,7 @@ describe("CoreConfigService", () => {
 	describe("resolution", () => {
 		const diagnosticsFor = async (
 			config: Record<string, unknown> | string,
-			file = "/repo/rogen.json"
+			file = "/repo/default.rogen.json"
 		) => {
 			await write(file, config);
 			await start();
@@ -30,7 +30,7 @@ describe("CoreConfigService", () => {
 		};
 
 		it("should default the source paths to src when it declares routes", async () => {
-			await write("/repo/rogen.json", { routes: ROUTED });
+			await write("/repo/default.rogen.json", { routes: ROUTED });
 
 			await start();
 
@@ -38,7 +38,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should scan nothing when it declares no routes", async () => {
-			await write("/repo/rogen.json", {});
+			await write("/repo/default.rogen.json", {});
 
 			await start();
 
@@ -49,8 +49,64 @@ describe("CoreConfigService", () => {
 			});
 		});
 
+		it.each([
+			["default.rogen.json", "default.project.json"],
+			["default.rogen.jsonc", "default.project.json"],
+			["dist.rogen.json", "dist.project.json"],
+			["release.rogen.jsonc", "release.project.json"],
+		])(
+			"should write the project file of %s as %s beside it",
+			async (file, written) => {
+				await write(`/repo/${file}`, { name: "Game", routes: ROUTED });
+
+				await start({ names: [file] });
+
+				expect(resolved(0)?.projectFile).toBe(`/repo/${written}`);
+				expect(resolved(0)?.isAdopted).toBe(false);
+			}
+		);
+
+		it("should select only the file named when others sit beside it", async () => {
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/dist.rogen.json", { name: "Game" });
+			await write("/repo/broken.rogen.json", { modes: {} });
+
+			await start({ names: ["dist"] });
+
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/dist.rogen.json",
+			]);
+			expect(selection.requireValid().isOk()).toBe(true);
+		});
+
+		it("should not read a plain project file beside a config of another name as written by it", async () => {
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/nested.project.json", { name: "Nested" });
+
+			await start({ names: ["nested.project.json"] });
+
+			expect(resolved(0)?.isAdopted).toBe(true);
+			expect(resolved(0)?.projectFile).toBe("/repo/nested.project.json");
+		});
+
+		it("should refuse a config other than default that has no name, which Rojo can't read once written", async () => {
+			await write("/repo/dist.rogen.json", { routes: ROUTED });
+			await start({ names: ["dist"] });
+
+			expect(errors(0).map((d) => d.code)).toEqual([
+				"config.unnamedProjectFile",
+			]);
+		});
+
+		it("should not need a name in the default", async () => {
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await start();
+
+			expect(errors(0)).toEqual([]);
+		});
+
 		it("should resolve its paths against the folder of the config", async () => {
-			await write("/repo/places/lobby/rogen.json", {
+			await write("/repo/places/lobby/default.rogen.json", {
 				routes: ROUTED,
 				sourcePaths: ["code"],
 				syncPath: "out",
@@ -66,7 +122,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should resolve globIgnorePaths against the folder, and keep them for Rojo as written", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				globIgnorePaths: ["**/*.spec.luau"],
 			});
 
@@ -80,7 +136,7 @@ describe("CoreConfigService", () => {
 
 		describe("project name", () => {
 			it("should be the name the config sets", async () => {
-				await write("/repo/rogen.json", { name: "Dungeon" });
+				await write("/repo/default.rogen.json", { name: "Dungeon" });
 
 				await start();
 
@@ -88,7 +144,7 @@ describe("CoreConfigService", () => {
 			});
 
 			it("should fall back to the config's directory", async () => {
-				await write("/repo/rogen.json", {});
+				await write("/repo/default.rogen.json", {});
 
 				await start();
 
@@ -96,7 +152,7 @@ describe("CoreConfigService", () => {
 			});
 
 			it("should never be empty", async () => {
-				await write("/rogen.json", {});
+				await write("/default.rogen.json", {});
 
 				await start({}, "/");
 
@@ -104,7 +160,7 @@ describe("CoreConfigService", () => {
 			});
 
 			it("should ignore an empty name", async () => {
-				await write("/repo/rogen.json", { name: "" });
+				await write("/repo/default.rogen.json", { name: "" });
 
 				await start();
 
@@ -114,7 +170,7 @@ describe("CoreConfigService", () => {
 
 		describe("project", () => {
 			it("should default to a bare DataModel", async () => {
-				await write("/repo/rogen.json", {});
+				await write("/repo/default.rogen.json", {});
 
 				await start();
 
@@ -124,7 +180,7 @@ describe("CoreConfigService", () => {
 			});
 
 			it("should hold the tree and Rojo's keys, without Rogen's or the schema", async () => {
-				await write("/repo/rogen.json", {
+				await write("/repo/default.rogen.json", {
 					$schema: "https://example.com/rogen.json",
 					name: "Dungeon",
 					servePort: 34873,
@@ -159,7 +215,7 @@ describe("CoreConfigService", () => {
 				expect(problems).toEqual([
 					[
 						'"tree.Workspace": expected an object, found a number.',
-						"/repo/rogen.json",
+						"/repo/default.rogen.json",
 						2,
 						52,
 					],
@@ -178,7 +234,7 @@ describe("CoreConfigService", () => {
 				expect(problems).toEqual([
 					[
 						'route key "my-key" is invalid: use letters and digits only, starting with a letter.',
-						"/repo/rogen.json",
+						"/repo/default.rogen.json",
 						3,
 						13,
 					],
@@ -231,7 +287,7 @@ describe("CoreConfigService", () => {
 				expect(problems).toEqual([
 					[
 						'"Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.',
-						"/repo/rogen.json",
+						"/repo/default.rogen.json",
 						2,
 						57,
 					],
@@ -259,7 +315,7 @@ describe("CoreConfigService", () => {
 					'"Nowhere" is not a supported service'
 				);
 				expect(problems[0].slice(1)).toEqual([
-					"/repo/rogen.json",
+					"/repo/default.rogen.json",
 					2,
 					24,
 				]);
@@ -274,7 +330,7 @@ describe("CoreConfigService", () => {
 				expect(problems).toEqual([
 					[
 						'source path "/repo/src/shared" is inside source path "/repo/src"; a file under it would belong to both. Remove one.',
-						"/repo/rogen.json",
+						"/repo/default.rogen.json",
 						3,
 						25,
 					],
@@ -290,7 +346,7 @@ describe("CoreConfigService", () => {
 				expect(problems).toEqual([
 					[
 						'source path "/repo/src" is listed twice; a file under it would belong to both. Remove one.',
-						"/repo/rogen.json",
+						"/repo/default.rogen.json",
 						3,
 						25,
 					],
@@ -329,17 +385,17 @@ describe("CoreConfigService", () => {
 			});
 
 			it("should keep the last valid config when a reload turns a rule bad", async () => {
-				await write("/repo/rogen.json", {
+				await write("/repo/default.rogen.json", {
 					routes: ROUTED,
 					sourcePaths: ["a"],
 				});
 				await start();
 
-				await write("/repo/rogen.json", {
+				await write("/repo/default.rogen.json", {
 					routes: ROUTED,
 					sourcePaths: ["a", "a/b"],
 				});
-				await selection.reload(["/repo/rogen.json"]);
+				await selection.reload(["/repo/default.rogen.json"]);
 
 				expect(resolved(0)?.sourcePaths).toEqual(["/repo/a"]);
 				expect(errors(0)).toHaveLength(1);
@@ -347,7 +403,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should read neither the working directory nor the clock", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				routes: ROUTED,
 				sourcePaths: ["a"],
 			});

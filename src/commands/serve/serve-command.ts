@@ -38,7 +38,7 @@ const AddressOption = {
 	type: "string",
 	placeholder: "address",
 	description:
-		"The address to listen on, for one project. Rojo's own flag; a project's serveAddress sets it in rogen.json.",
+		"The address to listen on, for one project. Rojo's own flag; a project's serveAddress sets it in default.rogen.json.",
 } as const satisfies OptionDescriptor;
 
 const PortOption = {
@@ -46,7 +46,7 @@ const PortOption = {
 	type: "string",
 	placeholder: "port",
 	description:
-		"The port to listen on, for one project. Rojo's own flag; a project's servePort sets it in rogen.json.",
+		"The port to listen on, for one project. Rojo's own flag; a project's servePort sets it in default.rogen.json.",
 } as const satisfies OptionDescriptor;
 
 const AllowedHostsOption = {
@@ -171,6 +171,8 @@ registerCommand(
 							accessor.get(EnvironmentService).cwd,
 							plan.value
 						);
+				for (const note of plan.value.selection.notes)
+					accessor.get(LogService).warn(note);
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(

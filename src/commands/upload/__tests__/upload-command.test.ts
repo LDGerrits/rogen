@@ -27,7 +27,7 @@ describe("upload command", () => {
 				routes: { "*": "ReplicatedStorage" },
 				...overrides,
 			},
-			abs(folder, "rogen.json")
+			abs(folder, "default.rogen.json")
 		);
 
 	const start = (
@@ -109,7 +109,7 @@ describe("upload command", () => {
 		);
 
 		expect(((await running) as ResultError<Error>).error.message).toBe(
-			"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json."
+			"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a default.rogen.json."
 		);
 		expect(await fs.exists(abs("places/lobby/default.project.json"))).toBe(
 			false
@@ -123,7 +123,7 @@ describe("upload command", () => {
 				brokenEntry([
 					errorDiagnostic(
 						"config.invalidSyntax",
-						{ resource: abs("rogen.json") },
+						{ resource: abs("default.rogen.json") },
 						"bad"
 					),
 				]),

@@ -34,7 +34,7 @@ export interface ResolvedConfigSpec {
 }
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
-	const file = spec.file ?? "/repo/rogen.json";
+	const file = spec.file ?? "/repo/default.rogen.json";
 	return new ResolvedConfig({
 		file,
 		projectName: spec.name ?? "repo",
@@ -63,14 +63,14 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 
 export function mockEntry(
 	resolved: ResolvedConfigSpec = {},
-	file = "/repo/rogen.json"
+	file = "/repo/default.rogen.json"
 ): ValidConfigEntry {
 	return { status: "valid", file, config: mockConfig({ file, ...resolved }) };
 }
 
 export function brokenEntry(
 	errors: readonly Diagnostic[],
-	file = "/repo/rogen.json",
+	file = "/repo/default.rogen.json",
 	lastValid?: ResolvedConfigSpec
 ): BrokenConfigEntry {
 	return {
@@ -96,6 +96,7 @@ export function selectionOf(
 export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
 	readonly followedFolder = undefined;
+	readonly notes: readonly string[] = [];
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],
@@ -145,6 +146,10 @@ export class MockConfigService implements ConfigService {
 
 	async select(): Promise<Result<ReloadableSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries, this.home));
+	}
+
+	async selectFolder(): Promise<Result<ReloadableSelection, Error>> {
+		return this.select();
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

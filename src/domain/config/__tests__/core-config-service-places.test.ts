@@ -30,10 +30,11 @@ describe("CoreConfigService places", () => {
 			arena: null,
 		}
 	) => {
-		await write("/repo/rogen.json", root);
+		await write("/repo/default.rogen.json", root);
 		for (const [name, config] of Object.entries(places)) {
 			await fs.createDirectory(`/repo/places/${name}`);
-			if (config) await write(`/repo/places/${name}/rogen.json`, config);
+			if (config)
+				await write(`/repo/places/${name}/default.rogen.json`, config);
 		}
 		await start();
 		return buildableConfigs(selection.entries[0]);
@@ -71,14 +72,16 @@ describe("CoreConfigService places", () => {
 			true,
 		]);
 		expect(
-			found.every(({ rootFile }) => rootFile === "/repo/rogen.json")
+			found.every(
+				({ rootFile }) => rootFile === "/repo/default.rogen.json"
+			)
 		).toBe(true);
 	});
 
-	it("should make a folder with no rogen.json a place named after the folder", async () => {
+	it("should make a folder with no default.rogen.json a place named after the folder", async () => {
 		const lobby = await placeNamed("lobby");
 
-		expect(lobby?.file).toBe("/repo/places/lobby/rogen.json");
+		expect(lobby?.file).toBe("/repo/places/lobby/default.rogen.json");
 		expect(lobby?.projectName).toBe("lobby");
 		expect(lobby?.project.getFile()).not.toHaveProperty("name", "Game");
 	});
@@ -378,7 +381,7 @@ describe("CoreConfigService places", () => {
 				expect(errors()).toEqual([
 					expect.objectContaining({
 						code: "config.placeSetting",
-						resource: "/repo/rogen.json",
+						resource: "/repo/default.rogen.json",
 					}),
 				]);
 			}
@@ -408,7 +411,7 @@ describe("CoreConfigService places", () => {
 			expect(errors()).toEqual([
 				expect.objectContaining({
 					code: "config.placeListsPlaces",
-					resource: "/repo/places/lobby/rogen.json",
+					resource: "/repo/places/lobby/default.rogen.json",
 				}),
 			]);
 		});
@@ -416,7 +419,9 @@ describe("CoreConfigService places", () => {
 		it("should report a broken place's config as the root's error", async () => {
 			await resolve(ROOT, { lobby: { sourcePaths: "src" } });
 
-			expect(errors()[0].resource).toBe("/repo/places/lobby/rogen.json");
+			expect(errors()[0].resource).toBe(
+				"/repo/places/lobby/default.rogen.json"
+			);
 		});
 
 		it("should refuse a place inside a source path of the root", async () => {
@@ -462,7 +467,9 @@ describe("CoreConfigService places", () => {
 		it("should plain-read the first place", async () => {
 			const found = await resolve();
 
-			expect(plain(found[1])?.file).toBe("/repo/places/arena/rogen.json");
+			expect(plain(found[1])?.file).toBe(
+				"/repo/places/arena/default.rogen.json"
+			);
 		});
 	});
 });

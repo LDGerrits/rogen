@@ -80,7 +80,7 @@ registerCommand(
 					summary:
 						"Writes the project files; with -o or -p, builds with Rojo",
 					description:
-						"Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
+						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
 					args: ConfigArguments,
 					options: BuildOptions,
 					output: {
@@ -154,6 +154,7 @@ registerCommand(
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
 			const plans = step?.plans(selection.value);
 			if (plans?.isErr()) return plans;

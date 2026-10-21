@@ -682,7 +682,7 @@ describe("WhereLog", () => {
 		});
 		const strayAt = warningDiagnostic(
 			"route.strayAt",
-			{ resource: "/repo/rogen.json" },
+			{ resource: "/repo/default.rogen.json" },
 			'2 names have an "@" that routes nowhere:',
 			[
 				{

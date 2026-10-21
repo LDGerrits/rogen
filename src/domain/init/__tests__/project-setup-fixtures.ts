@@ -110,9 +110,9 @@ export const errorsOf = (result: Awaited<ReturnType<typeof planResult>>) =>
 
 export const configOf = (planned: InitPlan): RogenConfig => {
 	const file = planned.files.find(
-		({ fileName }) => fileName === "rogen.json"
+		({ fileName }) => fileName === "default.rogen.json"
 	);
-	if (!file) throw new Error("rogen.json was not planned");
+	if (!file) throw new Error("default.rogen.json was not planned");
 	return JSON.parse(file.content);
 };
 

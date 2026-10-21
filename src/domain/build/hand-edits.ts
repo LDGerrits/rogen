@@ -90,7 +90,7 @@ export const HandEdits = {
 		return edit.key === undefined ? node : `${node} (${edit.key})`;
 	},
 
-	/** The nodes of the edits as the `tree` entries that hold them, which go into the `tree` of `rogen.json`. */
+	/** The nodes of the edits as the `tree` entries that hold them, which go into the `tree` of `default.rogen.json`. */
 	asTree(edits: readonly HandEdit[]): Record<string, unknown> {
 		const tree = Object.create(null) as Record<string, unknown>;
 		for (const edit of edits) {
@@ -114,7 +114,7 @@ export const HandEdits = {
 		return tree;
 	},
 
-	/** The keys of the file among the edits, which go into `rogen.json` beside its `tree`. */
+	/** The keys of the file among the edits, which go into `default.rogen.json` beside its `tree`. */
 	asKeys(edits: readonly HandEdit[]): Record<string, unknown> {
 		return Object.fromEntries(
 			edits.flatMap((edit) =>

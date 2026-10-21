@@ -70,7 +70,7 @@ describeWithRojo("build command against Rojo", () => {
 		write("src/shared/Util.luau", "return 1");
 		write("src/client/Hud.client.luau", "print('hud')");
 		write(
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: {
@@ -101,7 +101,7 @@ describeWithRojo("build command against Rojo", () => {
 		const routes = { server: "ServerScriptService", "*": "Workspace" };
 		for (const folder of ["lobby", "arena"])
 			write(
-				`${folder}/rogen.json`,
+				`${folder}/default.rogen.json`,
 				JSON.stringify({ sourcePaths: ["../src"], routes })
 			);
 
@@ -132,7 +132,7 @@ describeWithRojo("build command against Rojo", () => {
 			})
 		);
 		write(
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: { server: "ServerScriptService", "*": "Workspace" },

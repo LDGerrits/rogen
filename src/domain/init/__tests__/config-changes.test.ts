@@ -35,7 +35,7 @@ describe("ConfigChanges", () => {
 			routed?: boolean;
 		} = {}
 	) => {
-		const edit = ConfigEdit.of("rogen.json", text)!;
+		const edit = ConfigEdit.of("default.rogen.json", text)!;
 		const plan = await new ConfigChanges(
 			files,
 			directoryOf(options.spec),
@@ -264,7 +264,7 @@ describe("ConfigChanges", () => {
 
 			expect(plan.config?.changes).toEqual(["added placePaths places/*"]);
 			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				"places/game/rogen.json",
+				"places/game/default.rogen.json",
 				"my-game.code-workspace",
 			]);
 			expect(plan.directories).toEqual(["places/game/src"]);
@@ -304,8 +304,8 @@ describe("ConfigChanges", () => {
 		});
 
 		it("should add the places a workspace file lacks", async () => {
-			await write("rogen.json", '{ "placePaths": ["places/*"] }');
-			await write("places/lobby/rogen.json", "{}");
+			await write("default.rogen.json", '{ "placePaths": ["places/*"] }');
+			await write("places/lobby/default.rogen.json", "{}");
 			await write(
 				"my-game.code-workspace",
 				'{ "folders": [{ "path": "." }] }'

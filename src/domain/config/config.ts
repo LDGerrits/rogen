@@ -7,7 +7,7 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** What a `rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
+/** What a `.rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
 export interface RogenConfig {
 	readonly $schema?: string;
 	readonly name?: string;
@@ -40,15 +40,34 @@ export function fieldOf<K extends keyof RogenConfig>(
 	return values.getValue<RogenConfig[K]>(key);
 }
 
-export const CONFIG_FILE_NAMES: readonly string[] = [
+const CONFIG_FILE_PATTERN = /^(.+)\.rogen\.jsonc?$/;
+
+/** The stem of a config file's name: `dist` for `dist.rogen.json`. */
+export const configStem = (fileName: string): string | undefined =>
+	CONFIG_FILE_PATTERN.exec(path.basename(fileName))?.[1];
+
+export const isConfigFileName = (fileName: string): boolean =>
+	configStem(fileName) !== undefined;
+
+/** The stem of the project file a config writes when it is named `default`. */
+export const DEFAULT_PROJECT = "default";
+
+export const DEFAULT_CONFIG_FILE = `${DEFAULT_PROJECT}.rogen.json`;
+
+/** A folder's default config, in either extension. */
+export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
+	DEFAULT_CONFIG_FILE,
+	`${DEFAULT_CONFIG_FILE}c`,
+];
+
+export const isDefaultConfigFileName = (fileName: string): boolean =>
+	DEFAULT_CONFIG_FILE_NAMES.includes(fileName);
+
+/** The names a folder's config had before configs were named for the project file they write. */
+export const LEGACY_CONFIG_FILE_NAMES: readonly string[] = [
 	"rogen.json",
 	"rogen.jsonc",
 ];
-
-export const DEFAULT_CONFIG_FILE = "rogen.json";
-
-export const isConfigFileName = (fileName: string): boolean =>
-	CONFIG_FILE_NAMES.includes(fileName);
 
 /** What `rogen syncback` writes beside a config while it runs: the project file Rojo reads, and the folder it writes new instances into. */
 export const SYNCBACK_FILES = {
@@ -71,9 +90,6 @@ export function defaultSourcePaths(routed: boolean): string[] {
 	return routed ? [DEFAULT_SOURCE_PATH] : [];
 }
 
-/** The stem of the project file a `rogen.json` writes. */
-export const DEFAULT_PROJECT = "default";
-
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
 /** The names Rojo looks for in a folder, in its order. */
@@ -82,7 +98,7 @@ export const DEFAULT_PROJECT_FILES = [
 	`${DEFAULT_PROJECT_FILE}c`,
 ];
 
-/** Whether a file is named as a Rojo project file is. A config that is one was given no `rogen.json`, and is its own output. */
+/** Whether a file is named as a Rojo project file is. A config that is one was given no `.rogen.json`, and is its own output. */
 export const isProjectFileConfig = (file: string): boolean =>
 	isProjectFileName(path.basename(file));
 

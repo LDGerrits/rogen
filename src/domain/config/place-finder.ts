@@ -9,7 +9,7 @@ import {
 	FileReader,
 	isDirectoryType,
 } from "../../platform/fs/file-system-service.js";
-import { CONFIG_FILE_NAMES, defaultSourcePaths } from "./config.js";
+import { DEFAULT_CONFIG_FILE_NAMES, defaultSourcePaths } from "./config.js";
 
 /** What a config lists: `placePaths`, and the `sourcePaths` that tell a place from the shared code a glob also matches. */
 interface Listing {
@@ -40,7 +40,7 @@ export class PlaceFinder {
 	async rootOf(folder: string): Promise<string | undefined> {
 		for (const above of ancestors(folder)) {
 			const relative = toPosix(path.relative(above, folder));
-			for (const name of CONFIG_FILE_NAMES) {
+			for (const name of DEFAULT_CONFIG_FILE_NAMES) {
 				const file = path.join(above, name);
 				const { globs, sourcePaths } = await this.listingOf(file);
 				if (
@@ -63,7 +63,7 @@ export class PlaceFinder {
 
 	/** The config file in `folder`, if it has one. */
 	async configIn(folder: string): Promise<string | undefined> {
-		for (const name of CONFIG_FILE_NAMES) {
+		for (const name of DEFAULT_CONFIG_FILE_NAMES) {
 			const file = path.join(folder, name);
 			if (await this.files.isFile(file)) return file;
 		}

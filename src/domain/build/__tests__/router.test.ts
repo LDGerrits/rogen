@@ -449,7 +449,7 @@ describe("Router", () => {
 				const result = (
 					await route(
 						{
-							file: abs("place/rogen.json"),
+							file: abs("place/default.rogen.json"),
 							...mounting(["Vendor", "src/Vendor"]),
 						},
 						[abs("place/src")]

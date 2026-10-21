@@ -6,6 +6,8 @@ import { ServeAddress } from "./serve.js";
 
 interface ServedBuild {
 	readonly projectFile: string;
+	/** The config the project file was written from. */
+	readonly configFile?: string;
 	readonly clients?: number;
 	/** The process that leads the server. */
 	readonly pid?: number;
@@ -30,6 +32,8 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		typeof value.project !== "string" ||
 		typeof value.projectFile !== "string" ||
 		(value.session !== undefined && typeof value.session !== "string") ||
+		(value.configFile !== undefined &&
+			typeof value.configFile !== "string") ||
 		(value.clients !== undefined && typeof value.clients !== "number") ||
 		(value.owner !== undefined && typeof value.owner !== "number") ||
 		(value.pid !== undefined && typeof value.pid !== "number")
@@ -42,6 +46,7 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		project: value.project,
 		session: value.session,
 		projectFile: value.projectFile,
+		configFile: value.configFile,
 		clients: value.clients,
 		owner: value.owner,
 		pid: value.pid,
@@ -103,6 +108,7 @@ export class ServerRecords {
 				session: info.session,
 				project: info.project,
 				projectFile: built.projectFile,
+				configFile: built.configFile,
 				clients: built.clients,
 				owner: this.owner,
 				pid: built.pid,

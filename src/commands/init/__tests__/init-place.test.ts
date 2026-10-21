@@ -56,17 +56,17 @@ describe("init for a place", () => {
 	beforeEach(async () => {
 		memFs = new MemoryFileSystemService();
 		await memFs.createDirectory(root);
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
 			placePaths: ["places/*"],
 		});
 	});
 
-	it("should write the place's rogen.json with the port it is served on, and its source folder", async () => {
+	it("should write the place's default.rogen.json with the port it is served on, and its source folder", async () => {
 		const result = await run(["places/lobby"]);
 
 		expect(result.isOk()).toBe(true);
-		expect(await readJson("places/lobby/rogen.json")).toEqual({
+		expect(await readJson("places/lobby/default.rogen.json")).toEqual({
 			$schema: expect.any(String),
 			servePort: 34872,
 		});
@@ -76,11 +76,11 @@ describe("init for a place", () => {
 	});
 
 	it("should leave the config that lists the place alone when a glob already lists it", async () => {
-		const before = await read("rogen.json");
+		const before = await read("default.rogen.json");
 
 		await run(["places/lobby"]);
 
-		expect(await read("rogen.json")).toBe(before);
+		expect(await read("default.rogen.json")).toBe(before);
 	});
 
 	it("should build the place it adds", async () => {
@@ -90,26 +90,26 @@ describe("init for a place", () => {
 	});
 
 	it("should count the places that are there when it picks the port, and keep the ones they pin", async () => {
-		await write("places/arena/rogen.json", { servePort: 34872 });
+		await write("places/arena/default.rogen.json", { servePort: 34872 });
 		await memFs.createDirectory(path.join(root, "places/hub"));
 
 		await run(["places/lobby"]);
 
-		expect((await readJson("places/lobby/rogen.json")).servePort).toBe(
-			34874
-		);
+		expect(
+			(await readJson("places/lobby/default.rogen.json")).servePort
+		).toBe(34874);
 	});
 
 	it("should pin a port that does not move when a place that sorts earlier is added", async () => {
 		await run(["places/lobby"]);
 		await run(["places/arena"]);
 
-		expect((await readJson("places/lobby/rogen.json")).servePort).toBe(
-			34872
-		);
-		expect((await readJson("places/arena/rogen.json")).servePort).toBe(
-			34873
-		);
+		expect(
+			(await readJson("places/lobby/default.rogen.json")).servePort
+		).toBe(34872);
+		expect(
+			(await readJson("places/arena/default.rogen.json")).servePort
+		).toBe(34873);
 	});
 
 	it("should give a place that sorts first a port that moves none of the places that pin none", async () => {
@@ -117,29 +117,35 @@ describe("init for a place", () => {
 
 		await run(["places/aaa"]);
 
-		expect((await readJson("places/aaa/rogen.json")).servePort).toBe(34873);
+		expect(
+			(await readJson("places/aaa/default.rogen.json")).servePort
+		).toBe(34873);
 	});
 
 	it("should add the parent folder as a glob to placePaths, without asking, when nothing is a place yet", async () => {
-		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
+		await write("default.rogen.json", {
+			routes: { "*": "ReplicatedStorage" },
+		});
 
 		await run(["places/lobby"]);
 
-		expect((await readJson("rogen.json")).placePaths).toEqual(["places/*"]);
+		expect((await readJson("default.rogen.json")).placePaths).toEqual([
+			"places/*",
+		]);
 		expect(log.texts("success")).toContain(
-			'Added "places/*" as a place path to rogen.json.'
+			'Added "places/*" as a place path to default.rogen.json.'
 		);
 	});
 
-	it("should keep what rogen.json holds when it adds the glob", async () => {
-		await write("rogen.json", {
+	it("should keep what default.rogen.json holds when it adds the glob", async () => {
+		await write("default.rogen.json", {
 			name: "Game",
 			routes: { "*": "ReplicatedStorage" },
 		});
 
 		await run(["places/lobby"]);
 
-		expect(await readJson("rogen.json")).toEqual({
+		expect(await readJson("default.rogen.json")).toEqual({
 			name: "Game",
 			routes: { "*": "ReplicatedStorage" },
 			placePaths: ["places/*"],
@@ -147,21 +153,23 @@ describe("init for a place", () => {
 	});
 
 	it("should add to the list when a glob does not match the place", async () => {
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			routes: { "*": "ReplicatedStorage" },
 			placePaths: ["games/*"],
 		});
 
 		await run(["places/lobby"]);
 
-		expect((await readJson("rogen.json")).placePaths).toEqual([
+		expect((await readJson("default.rogen.json")).placePaths).toEqual([
 			"games/*",
 			"places/*",
 		]);
 	});
 
 	it("should ask whether to list the glob or the folder in a terminal", async () => {
-		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
+		await write("default.rogen.json", {
+			routes: { "*": "ReplicatedStorage" },
+		});
 
 		await run(
 			["places/lobby"],
@@ -169,17 +177,21 @@ describe("init for a place", () => {
 			true
 		);
 
-		expect((await readJson("rogen.json")).placePaths).toEqual([
+		expect((await readJson("default.rogen.json")).placePaths).toEqual([
 			"places/lobby",
 		]);
 	});
 
 	it("should list the folder itself when it sits directly in the root", async () => {
-		await write("rogen.json", { routes: { "*": "ReplicatedStorage" } });
+		await write("default.rogen.json", {
+			routes: { "*": "ReplicatedStorage" },
+		});
 
 		await run(["lobby"], { [PLACE_ID]: "" }, true);
 
-		expect((await readJson("rogen.json")).placePaths).toEqual(["lobby"]);
+		expect((await readJson("default.rogen.json")).placePaths).toEqual([
+			"lobby",
+		]);
 	});
 
 	it("should write the place's own source paths when asked for others", async () => {
@@ -189,9 +201,11 @@ describe("init for a place", () => {
 			true
 		);
 
-		expect(await readJson("places/lobby/rogen.json")).toMatchObject({
-			sourcePaths: ["code", "dev"],
-		});
+		expect(await readJson("places/lobby/default.rogen.json")).toMatchObject(
+			{
+				sourcePaths: ["code", "dev"],
+			}
+		);
 		expect(
 			await memFs.isDirectory(path.join(root, "places/lobby/code"))
 		).toBe(true);
@@ -201,7 +215,9 @@ describe("init for a place", () => {
 		it("should ask for it once in a terminal, and pin it as servePlaceIds", async () => {
 			await run(["places/lobby"], { [PLACE_ID]: "1818" }, true);
 
-			expect(await readJson("places/lobby/rogen.json")).toMatchObject({
+			expect(
+				await readJson("places/lobby/default.rogen.json")
+			).toMatchObject({
 				servePort: 34872,
 				servePlaceIds: [1818],
 			});
@@ -212,7 +228,8 @@ describe("init for a place", () => {
 			await run(["places/lobby"], { [PLACE_ID]: "1818, 2020" }, true);
 
 			expect(
-				(await readJson("places/lobby/rogen.json")).servePlaceIds
+				(await readJson("places/lobby/default.rogen.json"))
+					.servePlaceIds
 			).toEqual([1818, 2020]);
 		});
 
@@ -220,7 +237,7 @@ describe("init for a place", () => {
 			await run(["places/lobby"], { [PLACE_ID]: "" }, true);
 
 			expect(
-				await readJson("places/lobby/rogen.json")
+				await readJson("places/lobby/default.rogen.json")
 			).not.toHaveProperty("servePlaceIds");
 		});
 
@@ -234,7 +251,7 @@ describe("init for a place", () => {
 			await run(["places/lobby"]);
 
 			expect(
-				await readJson("places/lobby/rogen.json")
+				await readJson("places/lobby/default.rogen.json")
 			).not.toHaveProperty("servePlaceIds");
 			expect(log.texts("info").join("\n")).toContain(
 				", --place-id none."
@@ -247,7 +264,8 @@ describe("init for a place", () => {
 			});
 
 			expect(
-				(await readJson("places/lobby/rogen.json")).servePlaceIds
+				(await readJson("places/lobby/default.rogen.json"))
+					.servePlaceIds
 			).toEqual([1818]);
 			expect(log.texts("info").join("\n")).not.toContain("--place-id");
 		});
@@ -260,7 +278,7 @@ describe("init for a place", () => {
 			);
 
 			expect(result.isErr()).toBe(true);
-			expect(await exists("places/lobby/rogen.json")).toBe(false);
+			expect(await exists("places/lobby/default.rogen.json")).toBe(false);
 		});
 	});
 
@@ -272,11 +290,11 @@ describe("init for a place", () => {
 		);
 
 		expect(result.isErr()).toBe(true);
-		expect(await exists("places/lobby/rogen.json")).toBe(false);
+		expect(await exists("places/lobby/default.rogen.json")).toBe(false);
 	});
 
 	it("should write a workspace file that lists the config's folder and every place", async () => {
-		await write("places/arena/rogen.json", "{}");
+		await write("places/arena/default.rogen.json", "{}");
 
 		await run(["places/lobby"]);
 
@@ -398,17 +416,17 @@ describe("init for a place", () => {
 		});
 	});
 
-	it("should take the folder of a place the config lists that has no rogen.json yet", async () => {
+	it("should take the folder of a place the config lists that has no default.rogen.json yet", async () => {
 		await memFs.createDirectory(path.join(root, "places/lobby"));
 
 		const result = await run(["places/lobby"]);
 
 		expect(result.isOk()).toBe(true);
-		expect(await exists("places/lobby/rogen.json")).toBe(true);
+		expect(await exists("places/lobby/default.rogen.json")).toBe(true);
 	});
 
 	it("should refuse the folder that holds a source path, which is the code the places share", async () => {
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			sourcePaths: ["places/shared/src"],
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
 			placePaths: ["places/*"],
@@ -418,13 +436,13 @@ describe("init for a place", () => {
 		const result = await run(["places/shared"]);
 
 		expect(failure(result).message).toContain(
-			"places/shared holds a source path of rogen.json, so it is the code the places share, not a place."
+			"places/shared holds a source path of default.rogen.json, so it is the code the places share, not a place."
 		);
-		expect(await exists("places/shared/rogen.json")).toBe(false);
+		expect(await exists("places/shared/default.rogen.json")).toBe(false);
 	});
 
 	it("should not count the code the places share when it picks the port", async () => {
-		await write("rogen.json", {
+		await write("default.rogen.json", {
 			sourcePaths: ["places/shared/src"],
 			routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
 			placePaths: ["places/*"],
@@ -433,9 +451,9 @@ describe("init for a place", () => {
 
 		await run(["places/lobby"]);
 
-		expect((await readJson("places/lobby/rogen.json")).servePort).toBe(
-			34872
-		);
+		expect(
+			(await readJson("places/lobby/default.rogen.json")).servePort
+		).toBe(34872);
 	});
 
 	it("should work from a folder below the config", async () => {
@@ -449,13 +467,13 @@ describe("init for a place", () => {
 		);
 
 		expect(result.isOk()).toBe(true);
-		expect(await exists("places/lobby/rogen.json")).toBe(true);
+		expect(await exists("places/lobby/default.rogen.json")).toBe(true);
 	});
 
 	describe("in a roblox-ts root", () => {
 		beforeEach(async () => {
 			await write("tsconfig.json", "{}");
-			await write("rogen.json", {
+			await write("default.rogen.json", {
 				tree: { $className: "DataModel" },
 				sourcePaths: ["places/shared/src"],
 				placePaths: ["places/*"],
@@ -481,7 +499,9 @@ describe("init for a place", () => {
 		it("should name the place, sync from out and keep the runtime include in its folder", async () => {
 			await run(["places/lobby"]);
 
-			expect(await readJson("places/lobby/rogen.json")).toMatchObject({
+			expect(
+				await readJson("places/lobby/default.rogen.json")
+			).toMatchObject({
 				name: "lobby",
 				syncPath: "out",
 				tree: {
@@ -545,7 +565,7 @@ describe("init for a place", () => {
 
 		expect(log.texts("success")).toEqual(
 			expect.arrayContaining([
-				"Created places/lobby/rogen.json.",
+				"Created places/lobby/default.rogen.json.",
 				"Created my-game.code-workspace.",
 			])
 		);
@@ -574,7 +594,7 @@ describe("init for a place", () => {
 
 	describe("what it refuses", () => {
 		it("should refuse a folder that has a config", async () => {
-			await write("places/lobby/rogen.json", "{}");
+			await write("places/lobby/default.rogen.json", "{}");
 
 			const result = await run(["places/lobby"]);
 
@@ -585,28 +605,28 @@ describe("init for a place", () => {
 		});
 
 		it("should refuse a config that has errors", async () => {
-			await write("rogen.json", { sourcePaths: "src" });
+			await write("default.rogen.json", { sourcePaths: "src" });
 
 			const result = await run(["places/lobby"]);
 
 			expect(failure(result)).toBeInstanceOf(DiagnosticsError);
-			expect(await exists("places/lobby/rogen.json")).toBe(false);
+			expect(await exists("places/lobby/default.rogen.json")).toBe(false);
 		});
 
 		it("should refuse to add a place below a place", async () => {
-			await write("places/lobby/rogen.json", "{}");
+			await write("places/lobby/default.rogen.json", "{}");
 
 			const result = await run(["places/lobby/sub"]);
 
 			expect(failure(result).message).toContain(
-				"is a place of rogen.json"
+				"is a place of default.rogen.json"
 			);
 		});
 
 		it("should not rewrite a .jsonc config, and say what to add", async () => {
-			await memFs.delete(path.join(root, "rogen.json"));
+			await memFs.delete(path.join(root, "default.rogen.json"));
 			await write(
-				"rogen.jsonc",
+				"default.rogen.jsonc",
 				'{ // routes\n "routes": { "*": "ReplicatedStorage" } }'
 			);
 
@@ -615,13 +635,13 @@ describe("init for a place", () => {
 			expect(failure(result).message).toContain(
 				'"placePaths": ["places/*"]'
 			);
-			expect(await read("rogen.jsonc")).toContain("// routes");
-			expect(await exists("places/lobby/rogen.json")).toBe(false);
+			expect(await read("default.rogen.jsonc")).toContain("// routes");
+			expect(await exists("places/lobby/default.rogen.json")).toBe(false);
 		});
 
-		it("should not rewrite a rogen.json that holds comments either", async () => {
+		it("should not rewrite a default.rogen.json that holds comments either", async () => {
 			await write(
-				"rogen.json",
+				"default.rogen.json",
 				'{ // routes\n "routes": { "*": "ReplicatedStorage" } }'
 			);
 
@@ -630,7 +650,7 @@ describe("init for a place", () => {
 			expect(failure(result).message).toContain(
 				'"placePaths": ["places/*"]'
 			);
-			expect(await read("rogen.json")).toContain("// routes");
+			expect(await read("default.rogen.json")).toContain("// routes");
 		});
 
 		it("should take one folder only", async () => {

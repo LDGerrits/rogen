@@ -60,7 +60,9 @@ describe("WrittenGlobs", () => {
 	});
 
 	it("should rebase a glob from the folder it was written in", () => {
-		const config = configOf({ file: abs("places/lobby/rogen.json") });
+		const config = configOf({
+			file: abs("places/lobby/default.rogen.json"),
+		});
 		const globs = new WrittenGlobs(new SyncLayout(config, syncTools), []);
 
 		expect(globs.of("src/*.md", abs(""))).toEqual(["../../src/*.md"]);

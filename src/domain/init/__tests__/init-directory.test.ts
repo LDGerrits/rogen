@@ -27,14 +27,14 @@ describe("domain/init/init-directory", () => {
 
 		describe("checkFree", () => {
 			const target = directoryOf({
-				existing: ["rogen.json", "tsconfig.json"],
+				existing: ["default.rogen.json", "tsconfig.json"],
 			});
 
 			it("should say a config that already exists can be deleted", () => {
-				expect(target.checkFree(["rogen.json"])).toMatchObject([
+				expect(target.checkFree(["default.rogen.json"])).toMatchObject([
 					{
 						code: "init.configExists",
-						resource: path.join(directory, "rogen.json"),
+						resource: path.join(directory, "default.rogen.json"),
 					},
 				]);
 			});
@@ -52,19 +52,19 @@ describe("domain/init/init-directory", () => {
 				expect(
 					target
 						.checkFree([
-							"rogen.json",
-							"rogen.jsonc",
+							"default.rogen.json",
+							"default.rogen.jsonc",
 							"tsconfig.json",
 						])
 						.map(({ resource }) => resource)
 				).toEqual([
-					path.join(directory, "rogen.json"),
+					path.join(directory, "default.rogen.json"),
 					path.join(directory, "tsconfig.json"),
 				]);
 			});
 
 			it("should say nothing when every file is free", () => {
-				expect(target.checkFree(["rogen.jsonc"])).toEqual([]);
+				expect(target.checkFree(["default.rogen.jsonc"])).toEqual([]);
 			});
 		});
 
@@ -72,15 +72,15 @@ describe("domain/init/init-directory", () => {
 			it("should list the config files here, sorted", () => {
 				const target = directoryOf({
 					existing: [
-						"rogen.jsonc",
-						"rogen.json",
+						"default.rogen.jsonc",
+						"default.rogen.json",
 						"default.project.json",
 					],
 				});
 
 				expect(target.configFiles).toEqual([
-					"rogen.json",
-					"rogen.jsonc",
+					"default.rogen.json",
+					"default.rogen.jsonc",
 				]);
 				expect(target.hasConfigs).toBe(true);
 			});

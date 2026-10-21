@@ -155,7 +155,7 @@ export class CoreInitService implements InitService {
 			] as const)
 				if (choices[key] !== undefined)
 					throw new UsageError(
-						`${flag} is for a new project, and ${place} is below a rogen.json, so init adds a place there.`
+						`${flag} is for a new project, and ${place} is below a default.rogen.json, so init adds a place there.`
 					);
 			return new PlaceInit(
 				this.fileSystemService,
@@ -179,7 +179,7 @@ export class CoreInitService implements InitService {
 						: undefined;
 			if (flag)
 				throw new UsageError(
-					`${flag} is for a place folder, and ${place} is not below a rogen.json.`,
+					`${flag} is for a place folder, and ${place} is not below a default.rogen.json.`,
 					"Run 'rogen init' in the folder that holds the code the places share first."
 				);
 		}
@@ -201,7 +201,7 @@ export class CoreInitService implements InitService {
 			: ok({
 					...planned.value,
 					notes: [
-						`No rogen.json is at or above ${place}, so init starts a project there.`,
+						`No default.rogen.json is at or above ${place}, so init starts a project there.`,
 						...planned.value.notes,
 					],
 				});
@@ -308,7 +308,7 @@ export class CoreInitService implements InitService {
 			] as const)
 				if (choices[key] !== undefined)
 					throw new UsageError(
-						`${flag} is for a project that has a rogen.json, and there is none here.`
+						`${flag} is for a project that has a default.rogen.json, and there is none here.`
 					);
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),

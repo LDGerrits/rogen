@@ -155,7 +155,7 @@ describe("CommandPicker", () => {
 			const { log } = await run(["init"], { name: undefined });
 
 			expect(log.texts("intro")).toEqual([
-				"rogen 2.0.0 · no rogen.json here",
+				"rogen 2.0.0 · no default.rogen.json here",
 			]);
 		});
 

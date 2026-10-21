@@ -19,12 +19,15 @@ import {
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
+	projectFileName,
 } from "../rojo/rojo-project.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
 import { ConfigSource } from "./config-sources.js";
 import { rogenKeys } from "./config-schema.js";
 import {
+	DEFAULT_PROJECT,
 	PER_PLACE_KEYS,
+	configStem,
 	defaultSourcePaths,
 	fieldOf,
 	isDefaultProjectFile,
@@ -163,19 +166,17 @@ export class ConfigValidator {
 		});
 	}
 
-	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't read one either. */
+	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't write or read one either. */
 	private checkName(project: RojoProject<ParsedProjectFile>): void {
-		const file = path.basename(this.config.file);
-		if (
-			project.name !== undefined ||
-			!isProjectFileConfig(this.config.file) ||
-			isDefaultProjectFile(this.config.file)
-		)
-			return;
+		const { file } = this.config;
+		const target = isProjectFileConfig(file)
+			? path.basename(file)
+			: projectFileName(configStem(file) ?? DEFAULT_PROJECT);
+		if (project.name !== undefined || isDefaultProjectFile(target)) return;
 		this.problems.error(
 			"config.unnamedProjectFile",
-			{ resource: this.config.file, position: { line: 1, column: 1 } },
-			`${file} has no "name", and Rojo can't read a project file without one unless it is default.project.json or default.project.jsonc. Add "name".`
+			{ resource: file, position: { line: 1, column: 1 } },
+			`${path.basename(file)} has no "name", and Rojo can't read ${target} without one unless it is default.project.json or default.project.jsonc. Add "name".`
 		);
 	}
 
@@ -309,7 +310,7 @@ export class ConfigValidator {
 				this.problems.error(
 					"config.placeSetting",
 					this.locateKey(key),
-					`"${key}" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place.`
+					`"${key}" is set by each place, since a config that lists places is never served. Move it to the default.rogen.json of each place.`
 				);
 		for (const placeDir of this.context.placeDirs ?? []) {
 			const around = this.sourcePaths.find((dir) =>

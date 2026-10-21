@@ -175,7 +175,7 @@ describe("a new roblox-ts project", () => {
 	const fileOf = (planned: InitPlan, name: string) =>
 		planned.files.find(({ fileName }) => fileName === name);
 
-	const configOf = (planned: InitPlan, name = "rogen.json") =>
+	const configOf = (planned: InitPlan, name = "default.rogen.json") =>
 		JSON.parse(fileOf(planned, name)?.content ?? "{}");
 
 	describe("plan", () => {
@@ -314,7 +314,9 @@ describe("a new roblox-ts project", () => {
 			const planned = await several();
 
 			expect(fileOf(planned, "places/game/tsconfig.json")).toBeDefined();
-			expect(configOf(planned, "places/game/rogen.json")).toMatchObject({
+			expect(
+				configOf(planned, "places/game/default.rogen.json")
+			).toMatchObject({
 				name: "game",
 				syncPath: "out",
 				servePort: expect.any(Number),
@@ -366,7 +368,7 @@ describe("a new roblox-ts project", () => {
 			jest.spyOn(processes, "exec").mockImplementation(
 				async (file, args, options) => {
 					if (file === "/bin/npm")
-						configThere = await present("rogen.json");
+						configThere = await present("default.rogen.json");
 					return exec(file, args, options);
 				}
 			);
@@ -375,7 +377,7 @@ describe("a new roblox-ts project", () => {
 
 			expect(written.isOk()).toBe(true);
 			expect(configThere).toBe(false);
-			expect(await present("rogen.json")).toBe(true);
+			expect(await present("default.rogen.json")).toBe(true);
 		});
 
 		it("should remove what create-roblox-ts wrote and the sample replaces", async () => {
@@ -442,7 +444,7 @@ describe("a new roblox-ts project", () => {
 			expect(message).toContain("npm error network");
 			expect(message).toContain("rogen init");
 			expect(onWritten).not.toHaveBeenCalled();
-			expect(await present("rogen.json")).toBe(false);
+			expect(await present("default.rogen.json")).toBe(false);
 			expect(processes.execs.map(({ file }) => file)).toEqual([
 				"/bin/rojo",
 				"/bin/npm",
@@ -460,7 +462,7 @@ describe("a new roblox-ts project", () => {
 			expect((result as ResultError<Error>).error.message).toContain(
 				"npm isn't installed"
 			);
-			expect(await present("rogen.json")).toBe(false);
+			expect(await present("default.rogen.json")).toBe(false);
 		});
 
 		it("should run nothing in a dry run, and still report the tool", async () => {
@@ -476,7 +478,7 @@ describe("a new roblox-ts project", () => {
 			expect(processes.execs.map(({ file }) => file)).toEqual([
 				"/bin/rojo",
 			]);
-			expect(await present("rogen.json")).toBe(false);
+			expect(await present("default.rogen.json")).toBe(false);
 		});
 	});
 });

@@ -25,7 +25,7 @@ describe("sourcemap command", () => {
 				routes: { "*": "ReplicatedStorage" },
 				...overrides,
 			},
-			abs(folder, "rogen.json")
+			abs(folder, "default.rogen.json")
 		);
 
 	const start = (
@@ -154,11 +154,11 @@ describe("sourcemap command", () => {
 			buildable("", { hasPlaces: true }),
 			buildable("places/lobby", {
 				isPlace: true,
-				rootFile: abs("rogen.json"),
+				rootFile: abs("default.rogen.json"),
 			}),
 			buildable("places/arena", {
 				isPlace: true,
-				rootFile: abs("rogen.json"),
+				rootFile: abs("default.rogen.json"),
 			}),
 		]);
 		await fs.writeFile(abs("places/lobby/src/A.luau"), "");

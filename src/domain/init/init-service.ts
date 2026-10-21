@@ -135,7 +135,7 @@ export interface InitOptions {
 	readonly choices?: InitChoices;
 }
 
-/** Writes a starter `rogen.json` in two steps, so a caller can print between them. */
+/** Writes a starter `default.rogen.json` in two steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 

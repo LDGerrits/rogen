@@ -26,8 +26,8 @@ describe("domain/config/config", () => {
 		});
 
 		it.each([
-			"/repo/rogen.json",
-			"/repo/rogen.jsonc",
+			"/repo/default.rogen.json",
+			"/repo/default.rogen.jsonc",
 			"/repo/project.json",
 		])("should not take %s for one", (file) => {
 			expect(isProjectFileConfig(file)).toBe(false);
@@ -52,16 +52,25 @@ describe("domain/config/config", () => {
 	});
 
 	describe("isConfigFileName", () => {
-		it.each(["rogen.json", "rogen.jsonc"])("should accept %s", (name) => {
+		it.each([
+			"default.rogen.json",
+			"default.rogen.jsonc",
+			"dist.rogen.json",
+			"release.rogen.jsonc",
+		])("should accept %s", (name) => {
 			expect(isConfigFileName(name)).toBe(true);
 		});
 
-		it.each(["default.rogen.json", "rogen.json5", "Rogen.json"])(
-			"should not accept %s",
-			(name) => {
-				expect(isConfigFileName(name)).toBe(false);
-			}
-		);
+		it.each([
+			"rogen.json",
+			"rogen.jsonc",
+			".rogen.json",
+			"dist.rogen.json5",
+			"Rogen.json",
+			"dist.project.json",
+		])("should not accept %s", (name) => {
+			expect(isConfigFileName(name)).toBe(false);
+		});
 	});
 
 	describe("ROGEN_KEYS", () => {
@@ -72,7 +81,7 @@ describe("domain/config/config", () => {
 
 	describe("configLabel", () => {
 		it("should be the name of the folder the config lies in", () => {
-			expect(configLabel("/repo/lobby/rogen.json")).toBe("lobby");
+			expect(configLabel("/repo/lobby/default.rogen.json")).toBe("lobby");
 		});
 	});
 
@@ -236,13 +245,14 @@ describe("domain/config/config", () => {
 
 		it("should build in the directory of its config file", () => {
 			expect(
-				mockConfig({ file: "/repo/places/lobby/rogen.json" }).projectDir
+				mockConfig({ file: "/repo/places/lobby/default.rogen.json" })
+					.projectDir
 			).toBe("/repo/places/lobby");
 		});
 
 		it("should write default.project.json beside its config", () => {
 			expect(
-				mockConfig({ file: "/repo/places/lobby/rogen.json" })
+				mockConfig({ file: "/repo/places/lobby/default.rogen.json" })
 					.projectFile
 			).toBe("/repo/places/lobby/default.project.json");
 		});

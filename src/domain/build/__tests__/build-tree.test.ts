@@ -32,7 +32,7 @@ describe("BuildTree", () => {
 
 	it("should mount a path of a config in another folder relative to that folder", () => {
 		const tree = treeOf({
-			file: abs("places/main/rogen.json"),
+			file: abs("places/main/default.rogen.json"),
 			project: mounting("Packages"),
 		});
 
@@ -106,7 +106,7 @@ describe("BuildTree", () => {
 			expect(rest).toEqual([]);
 			expect(error).toMatchObject({
 				code: "tree.mountsSourcePath",
-				resource: abs("rogen.json"),
+				resource: abs("default.rogen.json"),
 			});
 			expect(error.message).toContain(
 				`"ReplicatedStorage" mounts the source path ${abs("src")}`

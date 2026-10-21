@@ -190,7 +190,7 @@ describe("ConfigBuilder", () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const unknownKey = warningDiagnostic(
 				"config.unknownField",
-				{ resource: abs("rogen.json") },
+				{ resource: abs("default.rogen.json") },
 				'"colour" is no key of a project file.'
 			);
 

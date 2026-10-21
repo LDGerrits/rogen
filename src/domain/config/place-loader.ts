@@ -12,7 +12,7 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { CONFIG_FILE_NAMES, DEFAULT_CONFIG_FILE } from "./config.js";
+import { DEFAULT_CONFIG_FILE, DEFAULT_CONFIG_FILE_NAMES } from "./config.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigKeys } from "./config-keys.js";
 import { ConfigValidator } from "./config-validator.js";
@@ -96,7 +96,7 @@ export class PlaceLoader {
 		values: Record<string, unknown>
 	): Promise<ConfigFile | undefined> {
 		const present: string[] = [];
-		for (const name of CONFIG_FILE_NAMES) {
+		for (const name of DEFAULT_CONFIG_FILE_NAMES) {
 			const file = path.join(folder, name);
 			if (await this.files.isFile(file)) present.push(file);
 		}
@@ -105,7 +105,7 @@ export class PlaceLoader {
 				errorDiagnostic(
 					"config.unreadable",
 					{ resource: folder },
-					`${folder} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+					`${folder} holds both ${DEFAULT_CONFIG_FILE_NAMES.join(" and ")}; keep one.`
 				)
 			);
 			return undefined;

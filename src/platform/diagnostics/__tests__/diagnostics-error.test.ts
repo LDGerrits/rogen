@@ -91,8 +91,10 @@ describe("platform/diagnostics/diagnostics-error", () => {
 					hint: "Run 'rogen help'.",
 				},
 			});
-			expect(failureToJson(new ProjectError("No rogen.json."))).toEqual({
-				error: { kind: "project", message: "No rogen.json." },
+			expect(
+				failureToJson(new ProjectError("No default.rogen.json."))
+			).toEqual({
+				error: { kind: "project", message: "No default.rogen.json." },
 			});
 		});
 

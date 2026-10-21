@@ -29,9 +29,9 @@ registerCommand(
 				id: "list",
 				metadata: {
 					summary:
-						"Lists the configs, their projects and their ports",
+						"Lists the configs here, their files and their ports",
 					description:
-						"Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
+						"Lists every config file of this folder, or the one you name, with its source paths, routes, sync path and project file, and which are served. A config other than default.rogen.json also lists the keys that differ from it; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
 					output: { document: listDocumentShape },
@@ -49,8 +49,12 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.select(line.positionals);
+			const selection =
+				line.positionals.length === 0
+					? await configService.selectFolder()
+					: await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 			const { entries, home } = selection.value;
 			const report = new ListLog(logService, cwd);
 			const broken = ListLog.failure(entries);

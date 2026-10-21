@@ -40,7 +40,7 @@ describe("where command", () => {
 	});
 
 	it("should print where each path lands and why, relative to the working directory", async () => {
-		await writeConfig("rogen.json", {
+		await writeConfig("default.rogen.json", {
 			routes: ROUTES,
 			globIgnorePaths: ["**/*.spec.luau"],
 		});
@@ -70,7 +70,7 @@ describe("where command", () => {
 
 	describe("a project file that is out of date", () => {
 		beforeEach(async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 			await write("src/Util.luau");
 			await fs.writeFile("/repo/default.project.json", "{}");
 		});
@@ -110,7 +110,7 @@ describe("where command", () => {
 	});
 
 	it("should say a file that is no instance is not one", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await write("src/Notes.md");
 
 		await run({ _: ["src/Notes.md"] });
@@ -120,7 +120,7 @@ describe("where command", () => {
 
 	describe("when an error elsewhere stops the build", () => {
 		beforeEach(async () => {
-			await writeConfig("rogen.json", {
+			await writeConfig("default.rogen.json", {
 				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
 			});
 			await write(
@@ -162,7 +162,7 @@ describe("where command", () => {
 	});
 
 	it("should show the misspelt folder a named file lies in, but not under a directory's files", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await write("src/F/Sever/A.luau");
 
 		await run({ _: ["src/F/Sever/A.luau"] });
@@ -175,7 +175,7 @@ describe("where command", () => {
 	});
 
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
-		await writeConfig("rogen.json", {
+		await writeConfig("default.rogen.json", {
 			sourcePaths: ["."],
 			routes: { ...ROUTES, ReplicatedFirst: "ReplicatedFirst" },
 		});
@@ -189,7 +189,7 @@ describe("where command", () => {
 	});
 
 	it("should print every file in the tree when given no path", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await write("src/B.luau", "src/A/Server/C.luau");
 
 		await run({});
@@ -201,7 +201,7 @@ describe("where command", () => {
 	});
 
 	it("should say there are no files rather than print nothing", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { routes: ROUTES });
 		await fs.createDirectory("/repo/src");
 
 		const result = await run({});
@@ -211,7 +211,10 @@ describe("where command", () => {
 	});
 
 	it("should fail with the config's errors", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES, extends: "base" });
+		await writeConfig("default.rogen.json", {
+			routes: ROUTES,
+			extends: "base",
+		});
 
 		const result = await run({ _: ["src/A.luau"] });
 
@@ -234,7 +237,7 @@ describe("where command", () => {
 	])(
 		"should read a backslash as a separator, so %s answers as with slashes",
 		async (_, backslashed, slashed) => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 			await write("src/A.luau");
 
 			await run({ _: [slashed] });
@@ -250,7 +253,7 @@ describe("where command", () => {
 		const notes = () => logService.texts("note");
 
 		beforeEach(async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 		});
 
 		it("should print a module's require as a note under its line", async () => {
@@ -330,7 +333,7 @@ describe("where command", () => {
 			).locations;
 
 		beforeEach(async () => {
-			await writeConfig("rogen.json", {
+			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
 				globIgnorePaths: ["**/*.spec.luau"],
 			});
@@ -407,7 +410,7 @@ describe("where command", () => {
 		});
 
 		it("should print the errors of a config that doesn't load", async () => {
-			await writeConfig("rogen.json", {
+			await writeConfig("default.rogen.json", {
 				routes: ROUTES,
 				extends: "base",
 			});
@@ -424,7 +427,7 @@ describe("where command", () => {
 			expect(locations).toEqual([]);
 			expect(diagnostics).toMatchObject([
 				{
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					code: "config.removedField",
 				},
 			]);
@@ -450,7 +453,7 @@ describe("where command", () => {
 			fs.writeFile(`/repo/${file}`, JSON.stringify(value));
 
 		it("should write both forms Studio prints as file:line and leave the other text as it is", async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 			await write("src/Inventory/Server/Save.luau");
 
 			const result = await pipe(
@@ -478,7 +481,7 @@ describe("where command", () => {
 		});
 
 		it("should leave an instance no file places as it is", async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 			await write("src/Inventory/Server/Save.luau");
 
 			await pipe("ServerScriptService.Other.Thing:3: boom");
@@ -495,13 +498,13 @@ describe("where command", () => {
 
 		describe("at the root of several places", () => {
 			beforeEach(async () => {
-				await writeJson("rogen.json", {
+				await writeJson("default.rogen.json", {
 					name: "Game",
 					placePaths: ["places/*"],
 					routes: ROUTES,
 				});
-				await writeJson("places/lobby/rogen.json", {});
-				await writeJson("places/arena/rogen.json", {});
+				await writeJson("places/lobby/default.rogen.json", {});
+				await writeJson("places/arena/default.rogen.json", {});
 				await write(
 					"src/Common/Util.luau",
 					"places/lobby/src/Server/Only.luau",
@@ -542,7 +545,7 @@ describe("where command", () => {
 		});
 
 		it("should keep a Windows line ending and print nothing for empty input", async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", { routes: ROUTES });
 			await write("src/Inventory/Server/Save.luau");
 
 			await pipe("a\r\nServerScriptService.Inventory.Save:1\r\n");
