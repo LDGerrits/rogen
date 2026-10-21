@@ -16,7 +16,7 @@ stdout:
       -V, --version          Print the version.
   
   SUBCOMMANDS:
-      build          Writes the project files; with -o or -p, builds with Rojo
+      build          Writes the project file; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
@@ -25,9 +25,9 @@ stdout:
       list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
-      sourcemap      Writes the project files, then a sourcemap with Rojo
+      sourcemap      Writes the project file, then a sourcemap with Rojo
       syncback       Brings a place file's changes back into the source files
-      upload         Writes the project files, then uploads them with Rojo
+      upload         Writes the project file, then uploads it with Rojo
       where          Prints where each file lands in the game, and why
   
   EXAMPLES:

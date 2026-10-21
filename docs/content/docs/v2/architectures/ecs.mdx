@@ -70,15 +70,17 @@ The world and the scheduler are shared by every feature, so they sit at the top.
 
 The routes `rogen init` writes are enough:
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```

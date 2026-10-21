@@ -54,7 +54,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project file again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const ForceOption = {
@@ -79,7 +79,7 @@ registerCommand(
 				id: "build",
 				metadata: {
 					summary:
-						"Writes the project files; with -o or -p, builds with Rojo",
+						"Writes the project file; with -o or -p, builds with Rojo",
 					description:
 						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
 					args: ProjectArgument,

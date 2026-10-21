@@ -82,15 +82,17 @@ In [MVVM](https://learn.microsoft.com/en-us/archive/blogs/johngossman/introducti
 
 The routes `rogen init` writes are all this layout needs, and the invisible folder doesn't need any config at all.
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```

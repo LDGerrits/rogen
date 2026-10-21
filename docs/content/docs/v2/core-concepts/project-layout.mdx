@@ -46,7 +46,7 @@ A `default.project.json` in a source path itself has no folder to become, so Rog
 
 Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.jsonc`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Route suffixes go before the extension. `.d.ts` files are skipped.
 
-A folder is an instance because of the files in it. One with nothing that places (it is empty, or holds only a `.gitkeep` or a `README.md`) is left out of the project file, where Rojo reading the same directory would make it an empty Folder. To keep an empty Folder, declare it in the `tree` of `rogen.json`.
+A folder is an instance because of the files in it. One with nothing that places (it is empty, or holds only a `.gitkeep` or a `README.md`) is left out of the project file, where Rojo reading the same directory would make it an empty Folder. To keep an empty Folder, declare it in the `tree` of the config.
 
 ## Metadata Files
 
@@ -70,13 +70,13 @@ Rogen warns about metadata with nothing to apply to, such as an `init.meta.json`
 
 ## Leaving Out Files
 
-`globIgnorePaths` lists globs, relative to `rogen.json`, for files that should never be built. Rojo ignores them, Rogen writes the list to the project file, and Rogen doesn't route or warn about them.
+`globIgnorePaths` lists globs, relative to the config, for files that should never be built. Rojo ignores them, Rogen writes the list to the project file, and Rogen doesn't route or warn about them.
 
 ```json
 { "globIgnorePaths": ["**/*.spec.luau", "**/*.story.luau"] }
 ```
 
-A `rogen.json` inside a source path is never built, whatever the globs say: a config is Rogen's own file, not game data. `rogen where` reports it as `ignored · matches rogen.json`.
+A `.rogen.json` file inside a source path is never built, whatever the globs say: a config is Rogen's own file, not game data. `rogen where` reports it as `ignored`.
 
 A glob that ignores some of the files a `tree` `$path` mounts leaves the mount, and Rojo ignores those files. A glob that names the mounted folder or file ignores nothing of it, as in Rojo. A glob that covers all of a mounted folder with `/**` leaves the mount out of the project file, where Rojo would keep an empty Folder. To sync a vendored library exactly as it is, [mount it in the tree](/docs/v2/configuration#tree) instead.
 
@@ -109,16 +109,16 @@ Symlinks and Windows junctions inside a source path are followed, which is handy
 
 Several source paths merge into one tree, and the later one wins any clash. Source paths can't nest, and one that doesn't exist yet only gets a warning until it appears.
 
-```json title="rogen.json"
-{ "sourcePaths": ["core", "game"] }
+```json title="default.rogen.json"
+{ "rogen": { "sourcePaths": ["core", "game"] } }
 ```
 
 ## Replacing a File
 
 Put the replacement in a later source path. When two source paths give one instance, the last one wins, and Rogen says nothing about it. This swaps in a mock `Analytics`:
 
-```json title="rogen.json"
-{ "sourcePaths": ["src", "dev"] }
+```json title="default.rogen.json"
+{ "rogen": { "sourcePaths": ["src", "dev"] } }
 ```
 
 ```
@@ -126,21 +126,25 @@ src/Analytics/Analytics.luau  ->  left out
 dev/Analytics/Analytics.luau  ->  Analytics
 ```
 
-To keep the swap out of the default build, give the build that wants it a folder of its own with a `rogen.json` that lists `dev`. Paths in a config are relative to its folder, hence the `..`:
+To keep the swap out of the default build, give the build that wants it a config of its own. `mock.rogen.json` is a complete file beside the default, with the same `name`, `routes` and `tree` and the longer list:
 
-```json title="mock/rogen.json"
+```json title="mock.rogen.json"
 {
-	"sourcePaths": ["../src", "../dev"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"rogen": {
+		"sourcePaths": ["src", "dev"],
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```
 
-`rogen build mock` writes `mock/default.project.json`. A config doesn't inherit from another, so the second one states its own routes. The same goes for files that only one build has: a source path that one config lists and another doesn't, or a [`globIgnorePaths`](#leaving-out-files) entry in the second config, leaves them out of the other. Two files in one source path that give one instance are a [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) warning, and the last one wins.
+`rogen build mock` writes `mock.project.json` and nothing else. A config doesn't inherit from another, so the second one states its own routes, and `rogen list` shows how it differs from `default.rogen.json`. The same goes for files that only one build has: a source path that one config lists and another doesn't, or a [`globIgnorePaths`](#leaving-out-files) entry in one config, leaves them out of the other. Two files in one source path that give one instance are a [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) warning, and the last one wins.
 
 <Callout type="info" title="Rogen only reads names">
 	The tree depends only on file and folder names, so editing a script's contents never changes the output.

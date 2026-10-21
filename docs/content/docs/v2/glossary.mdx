@@ -5,24 +5,26 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## The Pipeline
 
-- **Source path**: A folder Rogen scans and watches for code, listed in `sourcePaths`. With several, their feature folders merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-source-paths).
+- **Source path**: A folder Rogen scans and watches for code, listed in `sourcePaths`. With several, their feature folders merge into one tree, and the later one wins a clash. A file lists its source paths in full, relative to itself (`["../shared/src", "src"]`). See [Project Layout](/docs/v2/core-concepts/project-layout#several-source-paths).
 
-- **Common root**: The deepest folder that contains every source path. Rogen works it out; you never write it in the config. See [Compiled Path](/docs/v2/core-concepts/output#compiled-path).
+- **Common root**: The deepest folder that contains every source path of one config. Rogen works it out; you never write it in the config. See [Compiled Path](/docs/v2/core-concepts/output#compiled-path).
 
 - **Linked directory**: A symlink or Windows junction inside a source path, read as the directory it points to. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
 
 - **Feature folder**: A folder inside a source path that holds everything for one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Compiled path**: The folder Rojo syncs from, set as `compiledPath`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#compiled-path).
+- **Compiled path**: The folder Rojo syncs from, set as `rogen.compiledPath`: your compiler's output (`out` for roblox-ts, `dist` for Darklua). Each config file sets its own. See [Output and Sync](/docs/v2/core-concepts/output#compiled-path).
 
-- **Tree**: The instance tree in `rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
+- **Tree**: The instance tree in a `.rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
-- **Project file**: A Rojo project file Rogen writes beside the `rogen.json` it comes from: `default.project.json`, and one `<name>.project.json` for each project. Rogen owns them. See [Output and Sync](/docs/v2/core-concepts/output#output).
-- **Project**: A variation of the config with some keys changed, written as `<name>.project.json` and listed under `projects`. `default` is the config itself, and `serveProject` names the one `rogen serve` serves. See [Projects](/docs/v2/configuration#projects).
+- **Project file**: A Rojo project file Rogen writes beside the `.rogen.json` it comes from: `X.rogen.json` writes `X.project.json`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
+- **Project**: A `.rogen.json` and the `.project.json` it writes. `default.rogen.json` is a folder's default; a second output, such as `dist.rogen.json` for Darklua, is a second complete file that repeats `name`, `routes` and `tree`, and nothing is inherited. A plain `default.project.json` with no config beside it counts as a default too. See [Configuration](/docs/v2/configuration).
 
-- **Place**: A folder that a config lists in `placePaths`. It inherits the config, adds its own `sourcePaths`, and writes its project files in its own folder. A folder with no `rogen.json` is a place named after the folder. See [Places](/docs/v2/configuration#places).
+- **Place**: One Roblox place of a repo that builds several: a folder, usually in `places/`, with its own complete `default.rogen.json` that lists its source paths in full and sets its own `name`. Serve it by naming it, `rogen serve places/lobby`; a second place at once is a second terminal with `--port`. See [Places](/docs/v2/setups/places).
 
-- **Build**: One complete run that turns the source paths into a project. See [CLI](/docs/v2/cli#build-project).
+- **Shared code**: A plain folder inside `places/` (`places/shared/src`) with no config, that each place lists in its `sourcePaths`. See [Places](/docs/v2/setups/places).
+
+- **Build**: One complete run that turns the source paths into the named project file. See [CLI](/docs/v2/cli#build-project).
 
 - **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#build---watch).
 
@@ -67,6 +69,6 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Configuration
 
-- **Config**: A folder's `rogen.json`: a Rojo project file plus `sourcePaths`, `routes`, `compiledPath` and `projects`. See [Configuration](/docs/v2/configuration).
+- **Config**: A `.rogen.json` file (or `.rogen.jsonc`): a Rojo project file whose top level is Rojo's keys, plus one `rogen` block holding `sourcePaths`, `routes` and `compiledPath`. Every path in it is relative to the file, and no file reads another. See [Configuration](/docs/v2/configuration).
 
-- **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `rogen.json` with v1's keys is an error that links to the [migration page](/docs/v2/migrating-from-v1).
+- **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `default.rogen.json` with v1's keys is an error that links to the [migration page](/docs/v2/migrating-from-v1).

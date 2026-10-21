@@ -8,69 +8,90 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 [jest-roblox-cli](https://github.com/christopher-buss/jest-roblox-cli) builds a place with Rojo, runs your Jest specs inside Roblox and prints the results. Rogen's part is the project files it builds the place from: one with the specs in it, and a release one that must not have them.
 
-The two differ by a `globIgnorePaths` entry, which is what a [project](/docs/v2/configuration#projects) is for. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
+The two differ by a `globIgnorePaths` entry, so each is its own config file: `default.rogen.json` and `release.rogen.json`. This page is for the [Luau setup](/docs/v2/setups/luau), where the project file points at your source.
 
 <Steps>
 
 <Step>
 ### Build the Specs In, and Leave Them Out of Release
 
-The description is what you work on and test, so it keeps the specs. A `release` project is the same description with the specs ignored:
+`default.rogen.json` is what you work on and test, so it keeps the specs. `release.rogen.json` is a complete copy of it with the specs ignored. It repeats `name`, `routes` and `tree`, since no file reads another:
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
-	},
-	"projects": {
-		"release": { "globIgnorePaths": ["**/*.spec.luau"] }
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"rogen": {
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```
 
-`rogen init` writes this when it finds a test runner. `rogen build` writes `default.project.json` with the specs and `release.project.json` without them. A `globIgnorePaths` in a project replaces the list of the description, so state every glob the release should ignore.
+```json title="release.rogen.json"
+{
+	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"globIgnorePaths": ["**/*.spec.luau"],
+	"rogen": {
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
+	}
+}
+```
+
+`rogen init` writes `release.rogen.json` when it finds a test runner. `rogen build` writes `default.project.json` with the specs, and `rogen build release` writes `release.project.json` without them. When you change a route, change it in both files; `rogen list` shows how `release.rogen.json` differs from the default.
 
 </Step>
 
 <Step>
 ### Keep Test-only Settings Out of Release
 
-A game you ship should not have `LoadStringEnabled`, which Jest needs. Put it in the description's `tree` and turn it off in `release`:
+A game you ship should not have `LoadStringEnabled`, which Jest needs. Put it in the `tree` of `default.rogen.json` and turn it off in the `tree` of `release.rogen.json`:
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"tree": {
 		"$className": "DataModel",
 		"ServerScriptService": { "$properties": { "LoadStringEnabled": true } }
-	},
-	"projects": {
-		"release": {
-			"globIgnorePaths": ["**/*.spec.luau"],
-			"tree": { "ServerScriptService": { "$properties": { "LoadStringEnabled": false } } }
-		}
 	}
 }
 ```
 
-To leave out anything else that is only for development, such as a `DevPackages` mount, ignore its folder in `release`: `"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"]` drops the mount from `release.project.json`.
+```json title="release.rogen.json"
+{
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": { "$properties": { "LoadStringEnabled": false } }
+	}
+}
+```
+
+(Both files also hold the keys of the first step.) To leave out anything else that is only for development, such as a `DevPackages` mount, ignore its folder in `release.rogen.json`: `"globIgnorePaths": ["DevPackages/**", "**/*.spec.luau"]` drops the mount from `release.project.json`.
 
 </Step>
 
 <Step>
 ### Run Them
 
-Build, then point jest-roblox at the project file with the specs. `default.project.json` is the one it looks for when it isn't told otherwise:
+Build, then point jest-roblox at the project file with the specs. `default.project.json` is the one it looks for when it isn't told otherwise, and `rogen build` is what keeps it fresh:
 
 ```bash
 rogen build
 jest-roblox
 ```
 
-Build the release place from the other file:
+Build the release place from the other config:
 
 ```bash
 rogen build release -o game.rbxl
