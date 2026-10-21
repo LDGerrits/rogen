@@ -1,0 +1,23 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--language", "roblox-ts", "--places"],
+		["init", "places/lobby", "--non-interactive"],
+		["build", "places/lobby"]
+	],
+	"rojo": false,
+	"show": [
+		".gitignore",
+		"package.json",
+		"places/game/default.rogen.json",
+		"places/game/tsconfig.json",
+		"places/lobby/default.rogen.json",
+		"places/lobby/tsconfig.json",
+		"places/shared/tsconfig.json",
+		"places/shared/src/Greeter/shared/Greeting.ts",
+		"places/game/src/Game/server/Game.server.ts"
+	],
+	"output": ["init"],
+	"tools": {
+		"npm": "case \"$1\" in\ncreate)\n  mkdir -p src/client src/server src/shared\n  echo '{\"name\":\"made\",\"scripts\":{\"build\":\"rbxtsc\",\"watch\":\"rbxtsc -w\"}}' > package.json\n  echo '{\"compilerOptions\":{\"rootDir\":\"src\",\"outDir\":\"out\"}}' > tsconfig.json\n  echo '{\"name\":\"made\",\"tree\":{\"$className\":\"DataModel\"}}' > default.project.json\n  : > src/client/main.client.ts; : > src/server/main.server.ts; : > src/shared/module.ts ;;\npkg)\n  printf '{\"scripts\":{\"build\":\"%s\",\"watch\":\"%s\"}}\\n' \"${3#scripts.build=}\" \"${4#scripts.watch=}\" > package.json ;;\nesac"
+	}
+}

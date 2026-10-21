@@ -71,18 +71,28 @@ describe("RobloxTsStarter", () => {
 		});
 	});
 
-	it("should have the root tsconfig check the shared code alone", () => {
-		const { fileName, content } = new RobloxTsStarter().rootTsconfig(
+	it("should also replace the root tsconfig and src with several places, since none is at the root", () => {
+		expect(new RobloxTsStarter().scaffold(true).replaces).toEqual([
+			"default.project.json",
+			"src",
+			"tsconfig.json",
+		]);
+	});
+
+	it("should have the tsconfig of the shared code check it for the editor alone", () => {
+		const { fileName, content } = new RobloxTsStarter().sharedTsconfig(
 			"places/shared/src"
 		);
 
-		expect(fileName).toBe("tsconfig.json");
+		expect(fileName).toBe("places/shared/tsconfig.json");
 		const tsconfig = JSON.parse(content);
 		expect(tsconfig.compilerOptions).toMatchObject({
-			rootDir: "places/shared/src",
-			baseUrl: "places/shared/src",
+			rootDir: "src",
+			baseUrl: "src",
+			noEmit: true,
+			typeRoots: ["node_modules/@rbxts", "../../node_modules/@rbxts"],
 		});
-		expect(tsconfig.include).toEqual(["places/shared/src"]);
+		expect(tsconfig.include).toEqual(["src"]);
 	});
 
 	describe("place", () => {
@@ -107,18 +117,6 @@ describe("RobloxTsStarter", () => {
 			expect(tsconfig.compilerOptions).not.toHaveProperty("rootDir");
 			expect(tsconfig).not.toHaveProperty("extends");
 			expect(tsconfig.include).toEqual(["src", "../shared/src"]);
-		});
-
-		it("should name itself, sync from out and keep its runtime include in its own folder", () => {
-			expect(place.config).toEqual({
-				name: "game",
-				rogen: { compiledPath: "out" },
-				tree: {
-					ReplicatedStorage: {
-						rbxts_include: { $path: { optional: "include" } },
-					},
-				},
-			});
 		});
 
 		it("should reach the shared code of the root from any folder", () => {

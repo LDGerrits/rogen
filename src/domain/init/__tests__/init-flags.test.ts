@@ -54,6 +54,7 @@ describe("init choices given as flags", () => {
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "darklua", value: false, flag: "--darklua" },
+				{ question: "places", value: false, flag: "--places" },
 				{
 					question: "sourcePaths",
 					value: ["src"],

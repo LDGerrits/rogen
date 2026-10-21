@@ -15,7 +15,9 @@ stdout:
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
+    Rogen writes default.project.json now, so git can stop tracking it: git rm --cached default.project.json
     Add your own routes under "routes" in default.rogen.json.
+    Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
   Wrote 3 files.
 
 written:

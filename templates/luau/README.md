@@ -20,7 +20,7 @@ rogen build -o "{{name}}.rbxlx"
 Next, open `{{name}}.rbxlx` in Roblox Studio and start the Rojo server:
 
 ```bash
-rogen serve
+{{serve}}
 ```
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).

@@ -57,6 +57,11 @@ stdout:
         "flag": "--darklua"
       },
       {
+        "question": "places",
+        "value": false,
+        "flag": "--places"
+      },
+      {
         "question": "sourcePaths",
         "value": [
           "src"
@@ -102,7 +107,8 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "Add your own routes under \"routes\" in default.rogen.json."
+        "Add your own routes under \"routes\" in default.rogen.json.",
+        "Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows."
       ]
     }
   }

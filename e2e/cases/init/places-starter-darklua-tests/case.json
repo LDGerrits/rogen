@@ -1,0 +1,16 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--places", "--darklua"],
+		["init", "places/lobby", "--non-interactive"]
+	],
+	"rojo": false,
+	"show": [
+		".gitignore",
+		"places/game/.darklua.json",
+		"places/game/dist.rogen.json",
+		"places/game/release.rogen.json",
+		"places/lobby/dist.rogen.json",
+		"places/lobby/release.rogen.json"
+	],
+	"output": ["init"]
+}

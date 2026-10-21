@@ -60,7 +60,10 @@ export const isConfigFileName = (fileName: string): boolean =>
 /** The stem of the project file a config writes when it is named `default`. */
 export const DEFAULT_PROJECT = "default";
 
-export const DEFAULT_CONFIG_FILE = `${DEFAULT_PROJECT}.rogen.json`;
+/** The name of the config file for the project file `stem`: `dist.rogen.json` for `dist`. */
+export const configFileName = (stem: string): string => `${stem}.rogen.json`;
+
+export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_PROJECT);
 
 /** A folder's default config, in either extension. */
 export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [

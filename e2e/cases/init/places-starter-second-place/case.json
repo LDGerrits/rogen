@@ -1,0 +1,9 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--places"],
+		["init", "places/lobby", "--non-interactive"],
+		["build", "places/lobby"]
+	],
+	"show": ["project.code-workspace", "places/lobby/default.rogen.json"],
+	"output": ["init"]
+}

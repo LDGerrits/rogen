@@ -119,7 +119,9 @@ const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
 				...run.map(indent),
 			]
 		: []),
-	...(run.includes("rogen serve") ? [STUDIO_STEP] : []),
+	...(run.some((line) => line.startsWith("rogen serve"))
+		? [STUDIO_STEP]
+		: []),
 	...edits,
 ];
 

@@ -58,8 +58,8 @@ export class GreeterSample {
 		);
 	}
 
-	/** The README of the sample, whose feature is in `sourcePath`; `place` is the folder of the first place of several. */
-	readme(sourcePath: string, place?: string): PlannedFile {
+	/** The README of the sample, whose feature is in `sourcePath`; `serve` is the command that serves the project, and `place` the folder of the first place of several. */
+	readme(sourcePath: string, serve: string, place?: string): PlannedFile {
 		const content = templateFiles(
 			place ? this.placesVariant : this.variant
 		);
@@ -68,6 +68,7 @@ export class GreeterSample {
 			content: fillTemplate(content.get(README) as string, {
 				name: this.name,
 				source: sourcePath,
+				serve,
 				...(place && { place }),
 			}),
 		};

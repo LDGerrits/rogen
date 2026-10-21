@@ -9,6 +9,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  dist.rogen.json
 
 .gitignore:
 # Project place file
@@ -19,6 +20,7 @@ written:
 /*.rbxl.lock
 
 sourcemap.json
+*.project.json
 
 # Darklua output
 /dist
@@ -39,5 +41,26 @@ default.rogen.json:
       "Shared": "ReplicatedStorage/Shared",
       "*": "ReplicatedStorage/Shared"
     }
+  }
+}
+
+dist.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    },
+    "compiledPath": "dist"
   }
 }

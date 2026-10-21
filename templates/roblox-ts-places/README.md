@@ -19,10 +19,10 @@ To compile the TypeScript, and keep compiling it as you edit, use this in a term
 npm run watch
 ```
 
-To serve every place, each on its own port, and connect to one from Roblox Studio, use:
+To serve the game place and connect to it from Roblox Studio, use:
 
 ```bash
-rogen serve
+{{serve}}
 ```
 
 To build the game place from scratch, use:
@@ -35,6 +35,12 @@ To add a place, use:
 
 ```bash
 rogen init places/lobby
+```
+
+A second place is served from a second terminal, on a port of its own:
+
+```bash
+rogen serve places/lobby --port 34873
 ```
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).

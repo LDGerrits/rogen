@@ -222,6 +222,11 @@ stdout:
             "negatable": true
           },
           {
+            "name": "places",
+            "type": "boolean",
+            "negatable": true
+          },
+          {
             "name": "agent-rules",
             "type": "boolean",
             "negatable": true

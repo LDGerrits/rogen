@@ -2,8 +2,9 @@ $ rogen init --non-interactive
 exit 0
 stdout:
   rogen init
-  Took the defaults: --kind place, --language luau, --darklua, --source-path src, --compiled-path dist, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --darklua, --no-places, --source-path src, --compiled-path dist, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
   Created default.rogen.json.
+  Created dist.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
   Initialised a git repository.
@@ -11,11 +12,12 @@ stdout:
   Next steps
     Run each in its own terminal:
       darklua process src dist --watch
-      rogen serve
+      rogen serve dist
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in default.rogen.json.
+    Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
     Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
-  Wrote 3 files.
+  Wrote 4 files.
 
 written:
   .git/
@@ -23,6 +25,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  dist.rogen.json
 
 default.rogen.json:
 {
@@ -40,6 +43,27 @@ default.rogen.json:
       "Shared": "ReplicatedStorage/Shared",
       "*": "ReplicatedStorage/Shared"
     }
+  }
+}
+
+dist.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "project",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    },
+    "compiledPath": "dist"
   }
 }
 
