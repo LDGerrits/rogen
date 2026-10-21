@@ -316,18 +316,15 @@ describeWithRojo("end to end watch", () => {
 		).toBe(false);
 	}, 30_000);
 
-	it("should watch several projects", async () => {
+	it("should watch the one project it is given, and build no other", async () => {
 		writeProjectFile(
 			project.dir,
 			"lobby/default.rogen.json",
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 		writeProjectFile(project.dir, "lobby/src/L.luau");
-		start([".", "lobby"]);
+		start(["lobby"]);
 		await eventually(async () => {
-			expect(await tree("default.project.json")).toContain(
-				"<- src/A.server.luau"
-			);
 			expect(await tree("lobby/default.project.json")).toContain(
 				"<- src/L.luau"
 			);
@@ -336,13 +333,13 @@ describeWithRojo("end to end watch", () => {
 		writeProjectFile(project.dir, "src/B.luau");
 		writeProjectFile(project.dir, "lobby/src/M.luau");
 		await eventually(async () => {
-			expect(await tree("default.project.json")).toContain(
-				"<- src/B.luau"
-			);
 			expect(await tree("lobby/default.project.json")).toContain(
 				"<- src/M.luau"
 			);
 		});
+		expect(
+			fs.existsSync(path.join(project.dir, "default.project.json"))
+		).toBe(false);
 	}, 30_000);
 
 	it("should stop building a config that is deleted, and build it again when it returns", async () => {

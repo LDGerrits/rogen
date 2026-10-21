@@ -1,5 +1,0 @@
-{
-	// the editor's folders, in the order the team likes
-	"folders": [{ "path": "." }],
-	"settings": { "luau-lsp.platform.type": "roblox" }
-}

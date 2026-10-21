@@ -1,0 +1,26 @@
+{
+	"steps": [
+		[
+			"$",
+			"darklua",
+			"process",
+			"places/shared/src",
+			"places/lobby/dist/shared/src"
+		],
+		[
+			"$",
+			"darklua",
+			"process",
+			"places/lobby/src",
+			"places/lobby/dist/lobby/src"
+		],
+		[
+			"build",
+			"places/lobby/dist.rogen.json"
+		],
+		[
+			"build",
+			"places/lobby"
+		]
+	]
+}

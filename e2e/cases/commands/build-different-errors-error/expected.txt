@@ -1,8 +1,13 @@
-$ rogen build lobby match
+$ rogen build lobby
 exit 1
 stdout: (not shown)
 stderr:
   error: lobby/default.project.json · not written
   lobby/src/init.luau - error: an init script becomes the folder it sits in, but it sits in a source path, which never becomes an instance. Move it into a folder of its own, or rename it. (tree.initWithoutFolder)
+
+$ rogen build match
+exit 1
+stdout: (not shown)
+stderr:
   error: match/default.project.json · not written
   match/src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)

@@ -7,7 +7,6 @@ stdout:
         "config": "Game",
         "file": "<dir>/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "Game",
         "sourcePaths": [
           "<dir>/src"

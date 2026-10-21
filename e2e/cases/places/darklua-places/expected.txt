@@ -1,0 +1,43 @@
+$ darklua process places/shared/src places/lobby/dist/shared/src
+exit 0
+stdout: (not shown)
+
+$ darklua process places/lobby/src places/lobby/dist/lobby/src
+exit 0
+stdout: (not shown)
+
+$ rogen build places/lobby/dist.rogen.json
+exit 0
+stdout: (not shown)
+
+$ rogen build places/lobby
+exit 0
+stdout: (not shown)
+
+written:
+  places/lobby/default.project.json
+  places/lobby/dist.project.json
+  places/lobby/dist/lobby/src/Main.server.luau
+  places/lobby/dist/shared/src/Common/Util.luau
+
+$ rojo sourcemap places/lobby/default.project.json
+Lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- ../../Packages/Roact.luau
+    Shared: Folder
+      Common: Folder
+        Util: ModuleScript  <- ../shared/src/Common/Util.luau
+  ServerScriptService: ServerScriptService
+    Main: Script  <- src/Main.server.luau
+
+$ rojo sourcemap places/lobby/dist.project.json
+Lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Packages: Folder
+      Roact: ModuleScript  <- ../../Packages/Roact.luau
+    Shared: Folder
+      Common: Folder
+        Util: ModuleScript  <- dist/shared/src/Common/Util.luau
+  ServerScriptService: ServerScriptService
+    Main: Script  <- dist/lobby/src/Main.server.luau

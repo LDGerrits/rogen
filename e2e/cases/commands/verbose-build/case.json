@@ -3,9 +3,15 @@
 		[
 			"build",
 			"lobby",
+			"-v"
+		],
+		[
+			"build",
 			"match",
 			"-v"
 		]
 	],
-	"output": ["build"]
+	"output": [
+		"build"
+	]
 }

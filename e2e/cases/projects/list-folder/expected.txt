@@ -53,7 +53,6 @@ stdout:
         "config": "Inventory",
         "file": "<dir>/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "Inventory",
         "sourcePaths": [
           "<dir>/src"
@@ -80,7 +79,6 @@ stdout:
         "config": "Inventory",
         "file": "<dir>/dist.rogen.json",
         "status": "valid",
-        "served": true,
         "differsFromDefault": [
           "servePort",
           "syncPath"
@@ -114,7 +112,6 @@ stdout:
         "config": "Release",
         "file": "<dir>/release.rogen.json",
         "status": "valid",
-        "served": true,
         "differsFromDefault": [
           "name",
           "globIgnorePaths"

@@ -9,14 +9,14 @@ stdout:
     }
   }
 
-$ rogen init --json --place-listing flder
+$ rogen init --json --unmatched shard
 exit 2
 stdout:
   {
     "error": {
       "kind": "usage",
-      "message": "'flder' is not a value of '--place-listing'.",
-      "hint": "The values are folder and glob."
+      "message": "'shard' is not a value of '--unmatched'.",
+      "hint": "The values are shared and leave."
     }
   }
 

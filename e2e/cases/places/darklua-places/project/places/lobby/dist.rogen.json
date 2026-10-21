@@ -1,0 +1,21 @@
+{
+	"name": "Lobby",
+	"sourcePaths": [
+		"../shared/src",
+		"src"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/Shared"
+	},
+	"syncPath": "dist",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "../../Packages"
+			}
+		}
+	}
+}

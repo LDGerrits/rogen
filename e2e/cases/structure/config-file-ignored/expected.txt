@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 
-$ rogen where src/Inventory
+$ rogen where
 exit 0
 stdout:
   src/Inventory/A.luau -> ReplicatedStorage/shared/Inventory/A · route * (fallback)

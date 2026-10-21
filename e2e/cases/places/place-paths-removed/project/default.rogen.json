@@ -1,0 +1,11 @@
+{
+	"name": "Game",
+	"placePaths": [
+		"places/*"
+	],
+	"routes": {
+		"server": "ServerScriptService",
+		"client": "StarterPlayer/StarterPlayerScripts",
+		"*": "ReplicatedStorage/Shared"
+	}
+}

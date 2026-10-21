@@ -1,5 +1,0 @@
-{
-	"steps": [["init", "places/lobby", "--non-interactive"], ["list"]],
-	"output": ["init"],
-	"show": ["places/lobby/default.rogen.json", "default.rogen.json", "project.code-workspace"]
-}

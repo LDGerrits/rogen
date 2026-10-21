@@ -7,12 +7,12 @@ stdout:
   Rojo.
   
   USAGE:
-      rogen build [OPTIONS] [PROJECT]...
+      rogen build [OPTIONS] [PROJECT]
   
   ARGS:
-      <PROJECT>...    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
-                      (dist for dist.rogen.json). The default.rogen.json of the working directory, or
-                      its default.project.json, when none is given.
+      <PROJECT>    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
+                   (dist for dist.rogen.json). The default.rogen.json of the working directory, or its
+                   default.project.json, when none is given.
   
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,

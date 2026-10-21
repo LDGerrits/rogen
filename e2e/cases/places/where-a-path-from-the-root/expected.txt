@@ -1,0 +1,25 @@
+$ rogen where places/lobby/src/Main.server.luau
+exit 0
+stdout:
+  places/lobby/src/Main.server.luau -> ServerScriptService/Main · route server (suffix)
+    no require by this path: a script runs on its own and is not a module
+
+$ rogen where places/arena/src/Rules.luau places/lobby/src/Main.server.luau
+exit 0
+stdout:
+  Arena: places/arena/src/Rules.luau -> ReplicatedStorage/Shared/Rules · route * (fallback)
+    Arena: require(game:GetService("ReplicatedStorage").Shared.Rules)
+  Lobby: places/lobby/src/Main.server.luau -> ServerScriptService/Main · route server (suffix)
+    Lobby: no require by this path: a script runs on its own and is not a module
+
+$ rogen where places/shared/src/Common/Util.luau
+exit 0
+stderr:
+  warning: places/shared/src/Common/Util.luau: no config covers this file; see where it lands through a place: rogen where places/lobby
+
+$ rogen where places/arena/default.rogen.json
+exit 0
+stdout:
+  places/arena/src/Main.server.luau -> ServerScriptService/Main · route server (suffix)
+  places/arena/src/Rules.luau -> ReplicatedStorage/Shared/Rules · route * (fallback)
+  places/shared/src/Common/Util.luau -> ReplicatedStorage/Shared/Common/Util · route * (fallback)

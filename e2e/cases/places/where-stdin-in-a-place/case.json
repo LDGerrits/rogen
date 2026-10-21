@@ -1,5 +1,10 @@
 {
-	"steps": [["where", "-"]],
+	"steps": [
+		[
+			"where",
+			"-"
+		]
+	],
 	"stdin": "ServerScriptService.Main:9: attempt to index nil\nReplicatedStorage.Shared.Common.Util:4: attempt to call nil\n",
 	"cwd": "places/arena",
 	"rojo": false

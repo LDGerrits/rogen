@@ -1,1 +1,28 @@
-{"steps":[["sourcemap"],["sourcemap","-o","sourcemap.json"],["sourcemap","places/arena"],["sourcemap","--json"]],"show":["places/arena/sourcemap.json","places/lobby/sourcemap.json"],"rojo":false}
+{
+	"steps": [
+		[
+			"sourcemap",
+			"places/lobby"
+		],
+		[
+			"sourcemap",
+			"places/arena",
+			"-o",
+			"arena-sourcemap.json"
+		],
+		[
+			"sourcemap",
+			"places/arena",
+			"places/lobby"
+		],
+		[
+			"sourcemap",
+			"places/lobby",
+			"--json"
+		]
+	],
+	"show": [
+		"arena-sourcemap.json"
+	],
+	"rojo": false
+}

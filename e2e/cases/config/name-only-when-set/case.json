@@ -1,1 +1,16 @@
-{ "steps": [["build", "named", "unnamed"]], "show": ["named/default.project.json", "unnamed/default.project.json"] }
+{
+	"steps": [
+		[
+			"build",
+			"named"
+		],
+		[
+			"build",
+			"unnamed"
+		]
+	],
+	"show": [
+		"named/default.project.json",
+		"unnamed/default.project.json"
+	]
+}

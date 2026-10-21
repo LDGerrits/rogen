@@ -7,12 +7,6 @@ const SOURCEMAP = ["rogen", "sourcemap", "-o", "sourcemap.json"] as const;
 const VARIANTS: readonly Variant[] = [
 	{ name: "Luau, one place", flags: [], steps: [], served: "project" },
 	{
-		name: "Luau, several places",
-		flags: ["--places"],
-		steps: [],
-		served: "game",
-	},
-	{
 		name: "Luau with Darklua",
 		flags: ["--darklua"],
 		steps: [SOURCEMAP, ["darklua", "process", "src", "dist"]],
@@ -24,13 +18,6 @@ const VARIANTS: readonly Variant[] = [
 		steps: [["npx", "rbxtsc"]],
 		network: true,
 		served: "project",
-	},
-	{
-		name: "roblox-ts, several places",
-		flags: ["--language", "roblox-ts", "--places"],
-		steps: [["npx", "rbxtsc", "-p", "places/game"]],
-		network: true,
-		served: "game",
 	},
 	{
 		name: "roblox-ts with Darklua",

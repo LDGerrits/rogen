@@ -1,0 +1,19 @@
+$ rogen build
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>). Run 'rogen init' to create one.
+
+$ rogen build places/shared
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in "places/shared" (<dir>/places/shared). Run 'rogen init' to create one.
+
+$ rogen build places/lobbby
+exit 1
+stderr:
+  error: "places/lobbby" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
+
+$ rogen serve places/lobby places/arena
+exit 2
+stderr:
+  error: unexpected argument 'places/arena' found: serve takes one [PROJECT]. Serve a second place from a second terminal, as 'rogen serve <project> --port <port>'.

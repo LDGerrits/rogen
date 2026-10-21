@@ -1,0 +1,13 @@
+{
+	"steps": [
+		[
+			"build"
+		],
+		[
+			"build",
+			".."
+		]
+	],
+	"cwd": "places/lobby/src",
+	"rojo": false
+}
