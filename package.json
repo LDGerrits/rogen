@@ -34,7 +34,7 @@
 		"LICENSE.md"
 	],
 	"scripts": {
-		"prepare": "npm run generate",
+		"prepare": "node scripts/prepare.ts",
 		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"prebuild": "npm run generate",
 		"build": "tsc",
