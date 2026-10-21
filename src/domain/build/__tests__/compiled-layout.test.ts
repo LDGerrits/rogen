@@ -51,13 +51,13 @@ describe("CompiledLayout", () => {
 			[]
 		);
 
-		expect(several.compiledOf(abs("places/shared/src"))).toBe(
+		expect(several.emittedPath(abs("places/shared/src"))).toBe(
 			abs("places/lobby/out/shared/src")
 		);
-		expect(several.compiledOf(abs("places/lobby/src/Foo.luau"))).toBe(
+		expect(several.emittedPath(abs("places/lobby/src/Foo.luau"))).toBe(
 			abs("places/lobby/out/lobby/src/Foo.luau")
 		);
-		expect(one.compiledOf(abs("src/Foo.luau"))).toBe(abs("out/Foo.luau"));
+		expect(one.emittedPath(abs("src/Foo.luau"))).toBe(abs("out/Foo.luau"));
 	});
 
 	it("should leave the compiled path out when there is none", () => {

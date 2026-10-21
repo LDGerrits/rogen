@@ -106,6 +106,18 @@ export class ResolvedConfig {
 	}
 }
 
+/** Where `compiledPath` repeats `file`: under the common folder of the source paths, as tsc's `outDir` does under `rootDir`; `file` itself without a compiled path. */
+export function compiledPathOf(
+	config: Pick<ResolvedConfig, "commonRoot" | "compiledPath" | "projectDir">,
+	file: string
+): string {
+	if (config.compiledPath === undefined) return file;
+	return path.join(
+		config.compiledPath,
+		path.relative(config.commonRoot ?? config.projectDir, file)
+	);
+}
+
 /** A `.rogen.json` resolved. */
 export interface ResolvedConfigFile {
 	readonly config: ResolvedConfig;

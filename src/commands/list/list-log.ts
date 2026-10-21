@@ -3,8 +3,10 @@ import { relativeTo, toNative } from "../../base/path.js";
 import path from "path";
 import { plural, shellWord } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
-import { CompiledLayout } from "../../domain/build/compiled-layout.js";
-import { ResolvedConfig } from "../../domain/config/resolved-config.js";
+import {
+	ResolvedConfig,
+	compiledPathOf,
+} from "../../domain/config/resolved-config.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	configLabel,
@@ -113,14 +115,13 @@ const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
 
 /** Each source path with the folder of the compiled path that repeats it. */
-const compiledFolders = (config: ResolvedConfig): [string, string][] => {
-	if (config.compiledPath === undefined) return [];
-	const layout = new CompiledLayout(config, []);
-	return config.sourcePaths.map((source) => [
-		source,
-		layout.compiledOf(source),
-	]);
-};
+const compiledFolders = (config: ResolvedConfig): [string, string][] =>
+	config.compiledPath === undefined
+		? []
+		: config.sourcePaths.map((source) => [
+				source,
+				compiledPathOf(config, source),
+			]);
 
 interface ListedServing {
 	readonly server: string;

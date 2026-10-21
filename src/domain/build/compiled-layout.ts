@@ -1,6 +1,6 @@
 import path from "path";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { ResolvedConfig } from "../config/resolved-config.js";
+import { ResolvedConfig, compiledPathOf } from "../config/resolved-config.js";
 import { RojoFile } from "../rojo/rojo.js";
 import { OptionalRojoPath } from "../rojo/rojo-project.js";
 import {
@@ -52,21 +52,12 @@ export class CompiledLayout {
 		return toPosix(path.relative(this.projectDir, absolutePath));
 	}
 
-	/** Where `compiledPath` repeats `filePath`, under the common folder of the source paths as tsc's `outDir` does; `filePath` itself when nothing syncs elsewhere. */
-	compiledOf(filePath: string): string {
-		if (this.compiledPath === undefined) return filePath;
-		return path.join(
-			this.compiledPath,
-			path.relative(this.commonRoot, filePath)
-		);
-	}
-
 	/** The absolute path the tools write for `filePath` under `compiledPath`, or `filePath` itself when nothing syncs elsewhere. */
 	emittedPath(filePath: string): string {
 		if (this.compiledPath === undefined) return filePath;
 		return this.tools.reduce(
 			(emitted, tool) => tool.emittedPath?.(emitted) ?? emitted,
-			this.compiledOf(filePath)
+			compiledPathOf(this, filePath)
 		);
 	}
 
