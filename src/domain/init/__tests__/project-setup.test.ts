@@ -118,7 +118,7 @@ describe("ProjectSetup plan", () => {
 	it("should write the starting routes explicitly", async () => {
 		const config = configOf(await plan(luau));
 
-		expect(config.routes).toEqual(LUAU_ROUTES);
+		expect(config.rogen?.routes).toEqual(LUAU_ROUTES);
 	});
 
 	it("should write fields in pipeline order", async () => {
@@ -132,6 +132,9 @@ describe("ProjectSetup plan", () => {
 		expect(Object.keys(JSON.parse(files[0].content))).toEqual([
 			"$schema",
 			"tree",
+			"rogen",
+		]);
+		expect(Object.keys(JSON.parse(files[0].content).rogen)).toEqual([
 			"sourcePaths",
 			"routes",
 			"syncPath",
@@ -161,7 +164,7 @@ describe("ProjectSetup plan", () => {
 		const config = configOf(await plan(luau));
 
 		expect(config.tree).toEqual({ $className: "DataModel" });
-		expect(config.syncPath).toBeUndefined();
+		expect(config.rogen?.syncPath).toBeUndefined();
 		expect(config.name).toBeUndefined();
 	});
 
@@ -174,7 +177,7 @@ describe("ProjectSetup plan", () => {
 		);
 
 		expect(files.configs).toEqual(["default.rogen.json"]);
-		expect(configOf(files).syncPath).toBe("build");
+		expect(configOf(files).rogen?.syncPath).toBe("build");
 	});
 
 	describe("language and darklua", () => {
@@ -201,28 +204,28 @@ describe("ProjectSetup plan", () => {
 			const files = await planFor("luau", false);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).syncPath).toBeUndefined();
+			expect(configOf(files).rogen?.syncPath).toBeUndefined();
 		});
 
 		it("should leave the description of luau with darklua pointing at the source", async () => {
 			const files = await planFor("luau", true);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).syncPath).toBeUndefined();
+			expect(configOf(files).rogen?.syncPath).toBeUndefined();
 		});
 
 		it("should write one config with the outDir for roblox-ts", async () => {
 			const files = await planFor("roblox-ts", false);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).syncPath).toBe("build");
+			expect(configOf(files).rogen?.syncPath).toBe("build");
 		});
 
 		it("should leave the description of roblox-ts with darklua pointing at the compiled output", async () => {
 			const files = await planFor("roblox-ts", true);
 
 			expect(files.configs).toEqual(["default.rogen.json"]);
-			expect(configOf(files).syncPath).toBe("build");
+			expect(configOf(files).rogen?.syncPath).toBe("build");
 			expect(files.nextSteps.run).toEqual([
 				"rbxtsc -w",
 				"darklua process build dist --watch",
@@ -315,7 +318,7 @@ describe("ProjectSetup plan", () => {
 					...choices,
 				},
 			}).unwrap();
-			return configOf(files).routes;
+			return configOf(files).rogen?.routes;
 		};
 
 		it("should write the standard routes with capitalised keys for luau", async () => {
@@ -386,7 +389,10 @@ describe("ProjectSetup plan", () => {
 		it("should write the chosen source paths", async () => {
 			const files = await planChoices({ sourcePaths: ["src", "shared"] });
 
-			expect(configOf(files).sourcePaths).toEqual(["src", "shared"]);
+			expect(configOf(files).rogen?.sourcePaths).toEqual([
+				"src",
+				"shared",
+			]);
 		});
 
 		it("should tell roblox-ts to compile the source path chosen when it is not the one it compiles", async () => {
@@ -406,7 +412,7 @@ describe("ProjectSetup plan", () => {
 				syncPath: "lib",
 			});
 
-			expect(configOf(files).syncPath).toBe("lib");
+			expect(configOf(files).rogen?.syncPath).toBe("lib");
 		});
 
 		it("should write optional mounts as optional paths", async () => {
@@ -448,7 +454,7 @@ describe("ProjectSetup plan", () => {
 				syncPath: undefined,
 			});
 
-			expect(configOf(files).syncPath).toBeUndefined();
+			expect(configOf(files).rogen?.syncPath).toBeUndefined();
 		});
 	});
 

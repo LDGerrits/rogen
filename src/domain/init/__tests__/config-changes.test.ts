@@ -10,7 +10,9 @@ import { directory, directoryOf, DirectorySpec } from "./init-fixtures.js";
 
 const CONFIG = `{
 	// the routes of the game
-	"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts", "shared": "ReplicatedStorage/shared", "*": "ReplicatedStorage/shared" }
+	"rogen": {
+		"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts", "shared": "ReplicatedStorage/shared", "*": "ReplicatedStorage/shared" }
+	}
 }
 `;
 
@@ -61,7 +63,7 @@ describe("ConfigChanges", () => {
 		it("should spell a new route as the routes there are spelled", async () => {
 			const { plan } = await apply(
 				{ routes: ["serverStorage"] },
-				'{ "routes": { "Server": "ServerScriptService" } }'
+				'{ "rogen": { "routes": { "Server": "ServerScriptService" } } }'
 			);
 
 			expect(plan.config?.changes).toEqual([
@@ -79,7 +81,7 @@ describe("ConfigChanges", () => {
 		it("should not move a route that goes elsewhere", async () => {
 			const { plan } = await apply(
 				{ routes: ["server"] },
-				'{ "routes": { "server": "Elsewhere" } }'
+				'{ "rogen": { "routes": { "server": "Elsewhere" } } }'
 			);
 
 			expect(plan.config).toBeUndefined();
@@ -89,7 +91,7 @@ describe("ConfigChanges", () => {
 		it("should take a standard route off and leave routes of your own", async () => {
 			const { plan } = await apply(
 				{ unroutes: ["client"] },
-				'{ "routes": { "client": "StarterPlayer/StarterPlayerScripts", "tools": "ServerStorage/Tools" } }'
+				'{ "rogen": { "routes": { "client": "StarterPlayer/StarterPlayerScripts", "tools": "ServerStorage/Tools" } } }'
 			);
 
 			expect(plan.config?.changes).toEqual(["removed routes.client"]);
@@ -101,7 +103,7 @@ describe("ConfigChanges", () => {
 			await expect(
 				apply(
 					{ unroutes: ["client"] },
-					'{ "routes": { "client": "Elsewhere" } }'
+					'{ "rogen": { "routes": { "client": "Elsewhere" } } }'
 				)
 			).rejects.toThrow("goes to Elsewhere");
 		});
@@ -129,7 +131,7 @@ describe("ConfigChanges", () => {
 		it("should put them in the shared route", async () => {
 			const { plan } = await apply(
 				{ unmatched: "shared" },
-				'{ "routes": { "server": "ServerScriptService" } }'
+				'{ "rogen": { "routes": { "server": "ServerScriptService" } } }'
 			);
 
 			expect(plan.config?.changes).toEqual(["added routes.*"]);
@@ -141,7 +143,7 @@ describe("ConfigChanges", () => {
 		it("should leave a fallback of your own where it goes", async () => {
 			const { plan } = await apply(
 				{ unmatched: "shared" },
-				'{ "routes": { "server": "ServerScriptService", "*": "ReplicatedStorage/Custom" } }'
+				'{ "rogen": { "routes": { "server": "ServerScriptService", "*": "ReplicatedStorage/Custom" } } }'
 			);
 
 			expect(plan.config).toBeUndefined();
@@ -154,7 +156,7 @@ describe("ConfigChanges", () => {
 			await expect(
 				apply(
 					{ unmatched: "leave" },
-					'{ "routes": { "*": "ReplicatedStorage/shared" } }'
+					'{ "rogen": { "routes": { "*": "ReplicatedStorage/shared" } } }'
 				)
 			).rejects.toThrow("no route to apply to");
 		});
@@ -175,7 +177,7 @@ describe("ConfigChanges", () => {
 
 			const { plan } = await apply(
 				{ unsourcePaths: ["lib"] },
-				'{ "routes": {}, "sourcePaths": ["src", "lib"] }'
+				'{ "rogen": { "routes": {}, "sourcePaths": ["src", "lib"] } }'
 			);
 
 			expect(plan.config?.changes).toEqual(["removed sourcePaths lib"]);

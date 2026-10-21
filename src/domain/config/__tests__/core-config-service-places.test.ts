@@ -20,8 +20,7 @@ describe("CoreConfigService places", () => {
 		await fs.createDirectory("/repo/places/lobby/src");
 		await write("/repo/places/lobby/default.rogen.json", {
 			name: "Lobby",
-			sourcePaths: ["../shared/src", "src"],
-			routes: ROUTES,
+			rogen: { sourcePaths: ["../shared/src", "src"], routes: ROUTES },
 		});
 	});
 
@@ -49,8 +48,8 @@ describe("CoreConfigService places", () => {
 	it("should read only what the place's file says", async () => {
 		await write("/repo/default.rogen.json", {
 			name: "Root",
-			routes: { "*": "Workspace" },
 			globIgnorePaths: ["**/*.spec.luau"],
+			rogen: { routes: { "*": "Workspace" } },
 		});
 		await lobby();
 
@@ -67,7 +66,7 @@ describe("CoreConfigService places", () => {
 			servePlaceIds: [1],
 			placeId: 2,
 			gameId: 3,
-			routes: ROUTES,
+			rogen: { routes: ROUTES },
 		});
 		await lobby();
 
@@ -137,8 +136,10 @@ describe("CoreConfigService selectCovering", () => {
 		for (const name of ["lobby", "arena"])
 			await write(`/repo/places/${name}/default.rogen.json`, {
 				name,
-				sourcePaths: ["../shared/src", "src"],
-				routes: ROUTES,
+				rogen: {
+					sourcePaths: ["../shared/src", "src"],
+					routes: ROUTES,
+				},
 			});
 		await start();
 	});

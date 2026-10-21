@@ -76,8 +76,10 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { "*": "ReplicatedStorage" },
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			})
 		);
 		watcher = new MemoryWatcher(memFs, new NullLogService());
@@ -531,9 +533,11 @@ describe("serve command", () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
 				JSON.stringify({
-					sourcePaths: ["src"],
-					routes: { "*": "ReplicatedStorage" },
 					servePort,
+					rogen: {
+						sourcePaths: ["src"],
+						routes: { "*": "ReplicatedStorage" },
+					},
 				})
 			);
 			await settle();
@@ -792,8 +796,10 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["../src"],
-				routes: { "*": "Workspace" },
+				rogen: {
+					sourcePaths: ["../src"],
+					routes: { "*": "Workspace" },
+				},
 			})
 		);
 
@@ -807,8 +813,10 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["../src"],
-				routes: { "*": "Workspace" },
+				rogen: {
+					sourcePaths: ["../src"],
+					routes: { "*": "Workspace" },
+				},
 			})
 		);
 
@@ -832,9 +840,11 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["../src"],
-				routes: { "*": "Workspace" },
 				servePort: 40001,
+				rogen: {
+					sourcePaths: ["../src"],
+					routes: { "*": "Workspace" },
+				},
 			})
 		);
 
@@ -853,10 +863,12 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: {
-					server: "ServerScriptService",
-					client: "StarterPlayer/StarterPlayerScripts",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+					},
 				},
 			})
 		);
@@ -879,10 +891,12 @@ describe("serve command", () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: {
-					server: "ServerScriptService",
-					client: "StarterPlayer/StarterPlayerScripts",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+					},
 				},
 			})
 		);

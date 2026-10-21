@@ -32,10 +32,16 @@ describe("build --watch", () => {
 			typeof body === "string" ? body : JSON.stringify(body)
 		);
 
-	const config = (extra: Record<string, unknown> = {}) => ({
-		sourcePaths: ["src"],
-		routes: { "*": "ReplicatedStorage" },
+	const config = ({
+		rogen,
+		...extra
+	}: { rogen?: Record<string, unknown>; [key: string]: unknown } = {}) => ({
 		...extra,
+		rogen: {
+			sourcePaths: ["src"],
+			routes: { "*": "ReplicatedStorage" },
+			...rogen,
+		},
 	});
 
 	const startWatch = async (
@@ -70,7 +76,7 @@ describe("build --watch", () => {
 		for (const [folder, extra] of projects)
 			await write(
 				`/repo/${folder}/default.rogen.json`,
-				config({ sourcePaths: ["../src"], ...extra })
+				config({ ...extra, rogen: { sourcePaths: ["../src"] } })
 			);
 	};
 
@@ -227,11 +233,11 @@ describe("build --watch", () => {
 			await memFs.createDirectory("/repo/b");
 			await write(
 				"/repo/a/default.rogen.json",
-				config({ sourcePaths: ["../src"] })
+				config({ rogen: { sourcePaths: ["../src"] } })
 			);
 			await write(
 				"/repo/b/default.rogen.json",
-				config({ sourcePaths: ["../src"] })
+				config({ rogen: { sourcePaths: ["../src"] } })
 			);
 
 			const result = await startWatch(["a", "b"], { output: "g.rbxl" });

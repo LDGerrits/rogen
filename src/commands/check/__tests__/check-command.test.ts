@@ -62,7 +62,9 @@ describe("check command", () => {
 
 	describe("with paths", () => {
 		beforeEach(async () => {
-			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 		});
 
 		it("should warn of a path whose first folder is a typo of the source path", async () => {
@@ -87,7 +89,9 @@ describe("check command", () => {
 
 		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
 			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				rogen: {
+					routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				},
 			});
 			await write(
 				"src/F/Shared/Good.luau",
@@ -105,7 +109,9 @@ describe("check command", () => {
 
 		it("should list what stops the build in the JSON document, beside the findings", async () => {
 			await writeConfig("default.rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				rogen: {
+					routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				},
 			});
 			await write(
 				"src/F/Shared/Good.luau",
@@ -194,8 +200,7 @@ describe("check command", () => {
 
 		it("should leave out the warnings about the sync path", async () => {
 			await writeConfig("default.rogen.json", {
-				routes: ROUTES,
-				syncPath: "out",
+				rogen: { routes: ROUTES, syncPath: "out" },
 			});
 			await write("src/Clean.luau");
 
@@ -227,8 +232,10 @@ describe("check command", () => {
 			for (const place of ["lobby", "arena"])
 				await writeConfig(`places/${place}/default.rogen.json`, {
 					name: place,
-					sourcePaths: ["../shared/src", "src"],
-					routes: ROUTES,
+					rogen: {
+						sourcePaths: ["../shared/src", "src"],
+						routes: ROUTES,
+					},
 				});
 			await write(
 				"places/shared/src/Stray@sever.luau",
@@ -350,7 +357,9 @@ describe("check command", () => {
 
 	describe("without paths", () => {
 		beforeEach(async () => {
-			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 		});
 
 		it("should fail with every diagnostic of the project", async () => {
@@ -389,8 +398,7 @@ describe("check command", () => {
 		it("should keep a warning that is not about a file as it is", async () => {
 			await write("src/Clean.luau");
 			await writeConfig("default.rogen.json", {
-				routes: ROUTES,
-				sourcePaths: ["src", "missing"],
+				rogen: { sourcePaths: ["src", "missing"], routes: ROUTES },
 			});
 
 			await run({});
@@ -402,8 +410,7 @@ describe("check command", () => {
 
 		it("should include the warnings about the sync path", async () => {
 			await writeConfig("default.rogen.json", {
-				routes: ROUTES,
-				syncPath: "out",
+				rogen: { routes: ROUTES, syncPath: "out" },
 			});
 			await write("src/Clean.luau");
 
@@ -459,7 +466,9 @@ describe("check command", () => {
 
 	describe("with --json", () => {
 		beforeEach(async () => {
-			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 		});
 
 		it("should print the diagnostics and fail when there are any", async () => {
@@ -497,7 +506,9 @@ describe("check command", () => {
 			const harness = commandHarness({ log: annotated, fs });
 			runAnnotated = ({ _ = [], ...options }) =>
 				harness.run("check", { positionals: _, options });
-			await writeConfig("default.rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 			await write("src/Save@sever.luau");
 		});
 

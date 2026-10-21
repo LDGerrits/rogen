@@ -25,6 +25,7 @@ describe("CoreWatchSession", () => {
 	let configService: CoreConfigService;
 	let selection: ReloadableSelection;
 	let store: DisposableStore;
+	type Extra = { rogen?: Record<string, unknown>; [key: string]: unknown };
 	let updates: WatchUpdate[];
 	let errors: Error[];
 
@@ -33,15 +34,8 @@ describe("CoreWatchSession", () => {
 		for (let i = 0; i < 10; i++) await jest.advanceTimersByTimeAsync(0);
 	};
 
-	const writeConfig = (file: string, body: Record<string, unknown>) =>
-		fs.writeFile(
-			file,
-			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { "*": "ReplicatedStorage" },
-				...body,
-			})
-		);
+	const writeConfig = (file: string, body: Extra) =>
+		fs.writeFile(file, JSON.stringify(config(body)));
 
 	const write = (file: string, body: Record<string, unknown> | string) =>
 		fs.writeFile(
@@ -49,14 +43,17 @@ describe("CoreWatchSession", () => {
 			typeof body === "string" ? body : JSON.stringify(body)
 		);
 
-	const config = (extra: Record<string, unknown> = {}) => ({
-		sourcePaths: ["src"],
-		routes: { "*": "ReplicatedStorage" },
+	const config = ({ rogen, ...extra }: Extra = {}) => ({
 		...extra,
+		rogen: {
+			sourcePaths: ["src"],
+			routes: { "*": "ReplicatedStorage" },
+			...rogen,
+		},
 	});
 
-	const sharing = (extra: Record<string, unknown> = {}) =>
-		config({ sourcePaths: ["../src"], ...extra });
+	const sharing = ({ rogen, ...extra }: Extra = {}) =>
+		config({ ...extra, rogen: { sourcePaths: ["../src"], ...rogen } });
 
 	const built = async (name: string): Promise<string[]> => {
 		const project = JSON.parse(
@@ -178,8 +175,10 @@ describe("CoreWatchSession", () => {
 			for (const place of ["lobby", "arena"])
 				await write(`/repo/places/${place}/default.rogen.json`, {
 					name: place,
-					sourcePaths: ["../shared/src", "src"],
-					routes: { "*": "ReplicatedStorage" },
+					rogen: {
+						sourcePaths: ["../shared/src", "src"],
+						routes: { "*": "ReplicatedStorage" },
+					},
 				});
 		});
 
@@ -217,8 +216,10 @@ describe("CoreWatchSession", () => {
 
 			await write("/repo/places/lobby/default.rogen.json", {
 				name: "Lobby",
-				sourcePaths: ["../shared/src", "src"],
-				routes: { "*": "ReplicatedStorage" },
+				rogen: {
+					sourcePaths: ["../shared/src", "src"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			});
 			await settle();
 
@@ -363,7 +364,7 @@ describe("CoreWatchSession", () => {
 			await start([]);
 			await fs.delete("/repo/default.rogen.json");
 			await writeConfig("/repo/default.rogen.jsonc", {
-				sourcePaths: ["more"],
+				rogen: { sourcePaths: ["more"] },
 			});
 			await fs.createDirectory("/repo/more");
 			await settle();
@@ -448,7 +449,9 @@ describe("CoreWatchSession", () => {
 	});
 
 	it("should check the sync path when the config loads, and not again until it changes", async () => {
-		await writeConfig("/repo/default.rogen.json", { syncPath: "dist" });
+		await writeConfig("/repo/default.rogen.json", {
+			rogen: { syncPath: "dist" },
+		});
 		await fs.writeFile("/repo/src/A.luau", "");
 		await start();
 
@@ -698,7 +701,7 @@ describe("CoreWatchSession", () => {
 		it("should drop a root that lies inside another", async () => {
 			await write(
 				"/repo/lobby/default.rogen.json",
-				config({ sourcePaths: ["../src/shared"] })
+				config({ rogen: { sourcePaths: ["../src/shared"] } })
 			);
 			const watch = jest.spyOn(watcher, "watch");
 
@@ -711,7 +714,7 @@ describe("CoreWatchSession", () => {
 		it("should not watch the parent that two roots share", async () => {
 			await write(
 				"/repo/default.rogen.json",
-				config({ sourcePaths: ["places/a", "places/b"] })
+				config({ rogen: { sourcePaths: ["places/a", "places/b"] } })
 			);
 			const watch = jest.spyOn(watcher, "watch");
 
@@ -727,7 +730,7 @@ describe("CoreWatchSession", () => {
 		it("should tell the watcher to skip each output file and sync path", async () => {
 			await write(
 				"/repo/default.rogen.json",
-				config({ syncPath: "out" })
+				config({ rogen: { syncPath: "out" } })
 			);
 			const watch = jest.spyOn(watcher, "watch");
 
@@ -756,7 +759,7 @@ describe("CoreWatchSession", () => {
 		it("should not rebuild off its own write to a watched root", async () => {
 			await write(
 				"/repo/src/default.rogen.json",
-				config({ sourcePaths: ["."] })
+				config({ rogen: { sourcePaths: ["."] } })
 			);
 			await start(["src"]);
 
@@ -816,7 +819,7 @@ describe("CoreWatchSession", () => {
 		it("should rebuild when a folder's meta changes, and keep the last output while it is invalid", async () => {
 			await write(
 				"/repo/default.rogen.json",
-				config({ routes: { server: "ServerScriptService" } })
+				config({ rogen: { routes: { server: "ServerScriptService" } } })
 			);
 			await fs.writeFile("/repo/src/Combat/server/Hit.luau", "");
 			await write("/repo/src/Combat/init.meta.json", {
@@ -878,9 +881,11 @@ describe("CoreWatchSession", () => {
 			await write(
 				"/repo/default.rogen.json",
 				config({
-					routes: {
-						"*": "ReplicatedStorage",
-						server: "ServerScriptService",
+					rogen: {
+						routes: {
+							"*": "ReplicatedStorage",
+							server: "ServerScriptService",
+						},
 					},
 				})
 			);
@@ -974,9 +979,11 @@ describe("CoreWatchSession", () => {
 			await write(
 				"/repo/default.rogen.json",
 				config({
-					routes: {
-						server: "ServerScriptService",
-						"*": "ReplicatedStorage",
+					rogen: {
+						routes: {
+							server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
 					},
 				})
 			);
@@ -995,9 +1002,11 @@ describe("CoreWatchSession", () => {
 			await write(
 				"/repo/default.rogen.json",
 				config({
-					routes: {
-						server: "ServerScriptService",
-						"*": "ReplicatedStorage",
+					rogen: {
+						routes: {
+							server: "ServerScriptService",
+							"*": "ReplicatedStorage",
+						},
 					},
 				})
 			);
@@ -1048,7 +1057,7 @@ describe("CoreWatchSession", () => {
 
 			await write(
 				"/repo/default.rogen.json",
-				config({ sourcePaths: ["lib"] })
+				config({ rogen: { sourcePaths: ["lib"] } })
 			);
 			await settle();
 			await fs.writeFile("/repo/lib/L.luau", "");
@@ -1068,7 +1077,7 @@ describe("CoreWatchSession", () => {
 				async (requests, options) => {
 					await write(
 						"/repo/default.rogen.json",
-						config({ sourcePaths: ["lib2"] })
+						config({ rogen: { sourcePaths: ["lib2"] } })
 					);
 					return watch(requests, options);
 				}
@@ -1076,7 +1085,7 @@ describe("CoreWatchSession", () => {
 
 			await write(
 				"/repo/default.rogen.json",
-				config({ sourcePaths: ["lib"] })
+				config({ rogen: { sourcePaths: ["lib"] } })
 			);
 			await settle();
 
@@ -1103,7 +1112,7 @@ describe("CoreWatchSession", () => {
 
 			await write(
 				"/repo/default.rogen.json",
-				config({ sourcePaths: ["lib"] })
+				config({ rogen: { sourcePaths: ["lib"] } })
 			);
 			await fs.createDirectory("/repo/lib");
 			await fs.writeFile("/repo/lib/L.luau", "");

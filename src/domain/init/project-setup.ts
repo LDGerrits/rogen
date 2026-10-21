@@ -388,8 +388,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 					name: path.basename(this.directory.path),
 				}),
 				...tree.fields,
-				...(routes && { sourcePaths: [...sourcePaths], routes }),
-				...(defaultSyncPath && { syncPath: defaultSyncPath }),
+				...((routes || defaultSyncPath) && {
+					rogen: {
+						...(routes && {
+							sourcePaths: [...sourcePaths],
+							routes,
+						}),
+						...(defaultSyncPath && { syncPath: defaultSyncPath }),
+					},
+				}),
 			},
 			choices.tree.kind === "lift"
 				? choices.tree.project.written

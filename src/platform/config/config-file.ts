@@ -1,6 +1,6 @@
 import { failureReason } from "../../base/errors.js";
 import { JSONSchema } from "../../base/json-schema.js";
-import { JsoncNode, parse } from "../../base/jsonc.js";
+import { JsoncNode, parse, parseJsoncSpans } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -17,7 +17,13 @@ export interface ConfigFile {
 	readonly model: ConfigModel;
 	/** Where the value at `section` starts in the file, for pointing a diagnostic at it. */
 	positionOf(section: ConfigSection): DiagnosticPosition | undefined;
-	positionOfKey(key: string): DiagnosticPosition | undefined;
+	/** Where the key starts in the object at `within`, the top level by default. */
+	positionOfKey(
+		key: string,
+		within?: ConfigSection
+	): DiagnosticPosition | undefined;
+	/** The text of a top-level entry, from its key to the end of its value. */
+	entryOf(key: string): string | undefined;
 }
 
 /** Why a config file didn't load: it couldn't be read at all, or what it holds is wrong. */
@@ -88,13 +94,26 @@ export class ConfigFileReader {
 			file,
 			model: new ConfigModel(value),
 			positionOf: (section) => positionIn(root, section),
-			positionOfKey: (key) => {
-				const property = [...root.properties]
-					.reverse()
-					.find(({ name }) => name === key);
+			positionOfKey: (key, within = []) => {
+				const parent = nodeAt(root, within);
+				const property =
+					parent?.kind === "object"
+						? [...parent.properties]
+								.reverse()
+								.find(({ name }) => name === key)
+						: undefined;
 				return (
 					property && { line: property.line, column: property.column }
 				);
+			},
+			entryOf: (key) => {
+				const spans = parseJsoncSpans(text);
+				const entry = spans?.root.properties
+					?.filter(({ name }) => name === key)
+					.at(-1);
+				return spans && entry
+					? spans.text.slice(entry.start, entry.value.end)
+					: undefined;
 			},
 		});
 	}
@@ -104,6 +123,14 @@ function positionIn(
 	root: JsoncNode,
 	section: ConfigSection
 ): DiagnosticPosition | undefined {
+	const node = nodeAt(root, section);
+	return node && { line: node.line, column: node.column };
+}
+
+function nodeAt(
+	root: JsoncNode,
+	section: ConfigSection
+): JsoncNode | undefined {
 	let node: JsoncNode | undefined = root;
 
 	for (const segment of sectionPath(section)) {
@@ -118,7 +145,7 @@ function positionIn(
 		}
 	}
 
-	return node && { line: node.line, column: node.column };
+	return node;
 }
 
 /** `reason` is why it could not be read; none when the file does not exist. */

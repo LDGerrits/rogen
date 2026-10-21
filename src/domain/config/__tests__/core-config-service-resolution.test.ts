@@ -30,7 +30,9 @@ describe("CoreConfigService", () => {
 		};
 
 		it("should default the source paths to src when it declares routes", async () => {
-			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 
 			await start();
 
@@ -57,7 +59,10 @@ describe("CoreConfigService", () => {
 		])(
 			"should write the project file of %s as %s beside it",
 			async (file, written) => {
-				await write(`/repo/${file}`, { name: "Game", routes: ROUTED });
+				await write(`/repo/${file}`, {
+					name: "Game",
+					rogen: { routes: ROUTED },
+				});
 
 				await start({ names: [file] });
 
@@ -67,7 +72,9 @@ describe("CoreConfigService", () => {
 		);
 
 		it("should select only the file named when others sit beside it", async () => {
-			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 			await write("/repo/dist.rogen.json", { name: "Game" });
 			await write("/repo/broken.rogen.json", { modes: {} });
 
@@ -80,7 +87,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should not read a plain project file beside a config of another name as written by it", async () => {
-			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 			await write("/repo/nested.project.json", { name: "Nested" });
 
 			await start({ names: ["nested.project.json"] });
@@ -90,7 +99,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should refuse a config other than default that has no name, which Rojo can't read once written", async () => {
-			await write("/repo/dist.rogen.json", { routes: ROUTED });
+			await write("/repo/dist.rogen.json", { rogen: { routes: ROUTED } });
 			await start({ names: ["dist"] });
 
 			expect(errors(0).map((d) => d.code)).toEqual([
@@ -99,7 +108,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should not need a name in the default", async () => {
-			await write("/repo/default.rogen.json", { routes: ROUTED });
+			await write("/repo/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 			await start();
 
 			expect(errors(0)).toEqual([]);
@@ -107,9 +118,11 @@ describe("CoreConfigService", () => {
 
 		it("should resolve its paths against the folder of the config", async () => {
 			await write("/repo/places/lobby/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["code"],
-				syncPath: "out",
+				rogen: {
+					sourcePaths: ["code"],
+					routes: ROUTED,
+					syncPath: "out",
+				},
 			});
 
 			await start({ names: ["places/lobby"] });
@@ -189,9 +202,11 @@ describe("CoreConfigService", () => {
 						$className: "DataModel",
 						ReplicatedStorage: { Packages: { $path: "Packages" } },
 					},
-					routes: ROUTED,
-					sourcePaths: ["src"],
-					syncPath: "out",
+					rogen: {
+						sourcePaths: ["src"],
+						routes: ROUTED,
+						syncPath: "out",
+					},
 				});
 
 				await start();
@@ -226,8 +241,10 @@ describe("CoreConfigService", () => {
 		describe("validation", () => {
 			it("should reject a route key with a separator", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": {
-		"my-key": "ServerScriptService"
+	"rogen": {
+		"routes": {
+			"my-key": "ServerScriptService"
+		}
 	}
 }`);
 
@@ -235,8 +252,8 @@ describe("CoreConfigService", () => {
 					[
 						'route key "my-key" is invalid: use letters and digits only, starting with a letter.',
 						"/repo/default.rogen.json",
-						3,
-						13,
+						4,
+						14,
 					],
 				]);
 			});
@@ -244,7 +261,7 @@ describe("CoreConfigService", () => {
 			it("should accept the fallback route key", async () => {
 				expect(
 					await diagnosticsFor({
-						routes: { "*": "ReplicatedStorage" },
+						rogen: { routes: { "*": "ReplicatedStorage" } },
 					})
 				).toEqual([]);
 			});
@@ -257,9 +274,11 @@ describe("CoreConfigService", () => {
 				"should reject the sync path %j against the source path src",
 				async (syncPath, relation) => {
 					const problems = await diagnosticsFor({
-						routes: ROUTED,
-						sourcePaths: ["src"],
-						syncPath,
+						rogen: {
+							sourcePaths: ["src"],
+							routes: ROUTED,
+							syncPath,
+						},
 					});
 
 					expect(problems).toHaveLength(1);
@@ -272,24 +291,28 @@ describe("CoreConfigService", () => {
 			it("should accept a sync path beside the source paths", async () => {
 				expect(
 					await diagnosticsFor({
-						routes: ROUTED,
-						sourcePaths: ["src"],
-						syncPath: "dist",
+						rogen: {
+							sourcePaths: ["src"],
+							routes: ROUTED,
+							syncPath: "dist",
+						},
 					})
 				).toEqual([]);
 			});
 
 			it("should reject two route keys that differ only in the case of their first letter", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService", "Server": "Workspace" }
+	"rogen": {
+		"routes": { "server": "ServerScriptService", "Server": "Workspace" }
+	}
 }`);
 
 				expect(problems).toEqual([
 					[
 						'"Server" and "server" differ only in the case of their first letter, so both would match the same names; keep one of them.',
 						"/repo/default.rogen.json",
-						2,
-						57,
+						3,
+						58,
 					],
 				]);
 			});
@@ -297,9 +320,11 @@ describe("CoreConfigService", () => {
 			it("should accept keys that differ beyond the first letter", async () => {
 				expect(
 					await diagnosticsFor({
-						routes: {
-							server: "ServerScriptService",
-							SERVER: "Workspace",
+						rogen: {
+							routes: {
+								server: "ServerScriptService",
+								SERVER: "Workspace",
+							},
 						},
 					})
 				).toEqual([]);
@@ -307,7 +332,9 @@ describe("CoreConfigService", () => {
 
 			it("should reject a route target whose service is unsupported", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": { "server": "Nowhere/Folder" }
+	"rogen": {
+		"routes": { "server": "Nowhere/Folder" }
+	}
 }`);
 
 				expect(problems).toHaveLength(1);
@@ -316,47 +343,53 @@ describe("CoreConfigService", () => {
 				);
 				expect(problems[0].slice(1)).toEqual([
 					"/repo/default.rogen.json",
-					2,
-					24,
+					3,
+					25,
 				]);
 			});
 
 			it("should reject a source path inside another, naming both", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService" },
-	"sourcePaths": ["src", "src/shared"]
+	"rogen": {
+		"routes": { "server": "ServerScriptService" },
+		"sourcePaths": ["src", "src/shared"]
+	}
 }`);
 
 				expect(problems).toEqual([
 					[
 						'source path "/repo/src/shared" is inside source path "/repo/src"; a file under it would belong to both. Remove one.',
 						"/repo/default.rogen.json",
-						3,
-						25,
+						4,
+						26,
 					],
 				]);
 			});
 
 			it("should reject a source path listed twice, at the repeat", async () => {
 				const problems = await diagnosticsFor(`{
-	"routes": { "server": "ServerScriptService" },
-	"sourcePaths": ["src", "./src"]
+	"rogen": {
+		"routes": { "server": "ServerScriptService" },
+		"sourcePaths": ["src", "./src"]
+	}
 }`);
 
 				expect(problems).toEqual([
 					[
 						'source path "/repo/src" is listed twice; a file under it would belong to both. Remove one.',
 						"/repo/default.rogen.json",
-						3,
-						25,
+						4,
+						26,
 					],
 				]);
 			});
 
 			it("should catch the nesting whichever order the source paths come in", async () => {
 				const problems = await diagnosticsFor({
-					routes: ROUTED,
-					sourcePaths: ["src/shared", "src"],
+					rogen: {
+						sourcePaths: ["src/shared", "src"],
+						routes: ROUTED,
+					},
 				});
 
 				expect(problems).toHaveLength(1);
@@ -368,17 +401,21 @@ describe("CoreConfigService", () => {
 			it("should accept source paths that are only siblings or share a prefix", async () => {
 				expect(
 					await diagnosticsFor({
-						routes: ROUTED,
-						sourcePaths: ["core", "places/lobby", "core-extra"],
+						rogen: {
+							sourcePaths: ["core", "places/lobby", "core-extra"],
+							routes: ROUTED,
+						},
 					})
 				).toEqual([]);
 			});
 
 			it("should report every problem at once", async () => {
 				const problems = await diagnosticsFor({
-					routes: { "a-b": "Nowhere" },
-					syncPath: "src",
-					sourcePaths: ["src", "src/x"],
+					rogen: {
+						sourcePaths: ["src", "src/x"],
+						routes: { "a-b": "Nowhere" },
+						syncPath: "src",
+					},
 				});
 
 				expect(problems).toHaveLength(4);
@@ -386,14 +423,12 @@ describe("CoreConfigService", () => {
 
 			it("should keep the last valid config when a reload turns a rule bad", async () => {
 				await write("/repo/default.rogen.json", {
-					routes: ROUTED,
-					sourcePaths: ["a"],
+					rogen: { sourcePaths: ["a"], routes: ROUTED },
 				});
 				await start();
 
 				await write("/repo/default.rogen.json", {
-					routes: ROUTED,
-					sourcePaths: ["a", "a/b"],
+					rogen: { sourcePaths: ["a", "a/b"], routes: ROUTED },
 				});
 				await selection.reload(["/repo/default.rogen.json"]);
 
@@ -404,8 +439,7 @@ describe("CoreConfigService", () => {
 
 		it("should read neither the working directory nor the clock", async () => {
 			await write("/repo/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["a"],
+				rogen: { sourcePaths: ["a"], routes: ROUTED },
 			});
 			const cwd = jest.spyOn(process, "cwd");
 			const now = jest.spyOn(Date, "now");

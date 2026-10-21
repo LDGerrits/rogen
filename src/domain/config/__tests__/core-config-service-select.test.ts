@@ -106,12 +106,10 @@ describe("CoreConfigService", () => {
 
 		it("should resolve several configs in one service", async () => {
 			await write("/repo/a/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["x"],
+				rogen: { sourcePaths: ["x"], routes: ROUTED },
 			});
 			await write("/repo/b/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["y"],
+				rogen: { sourcePaths: ["y"], routes: ROUTED },
 			});
 
 			await start({ names: ["a", "b"] });
@@ -174,12 +172,10 @@ describe("CoreConfigService", () => {
 	describe("selection", () => {
 		it("should return every config when all are valid", async () => {
 			await write("/repo/a/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["x"],
+				rogen: { sourcePaths: ["x"], routes: ROUTED },
 			});
 			await write("/repo/b/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["y"],
+				rogen: { sourcePaths: ["y"], routes: ROUTED },
 			});
 			await start({ names: ["a", "b"] });
 
@@ -217,8 +213,7 @@ describe("CoreConfigService", () => {
 	describe("read", () => {
 		it("should resolve a config file without adding it to the configs", async () => {
 			await write("/repo/other/default.rogen.json", {
-				routes: ROUTED,
-				sourcePaths: ["lib"],
+				rogen: { sourcePaths: ["lib"], routes: ROUTED },
 			});
 
 			const entry = await service.read("/repo/other/default.rogen.json");
@@ -251,7 +246,7 @@ describe("CoreConfigService", () => {
 
 		it("should add a check's hints to the errors of a file that fails to load", async () => {
 			await write("/repo/a/default.rogen.json", {
-				routes: { "a-b": "Nowhere" },
+				rogen: { routes: { "a-b": "Nowhere" } },
 			});
 			service.registerFileCheck(({ file }) => [hint(file)]);
 
@@ -291,7 +286,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should leave a config alone that the check has nothing to say about", async () => {
-			await write("/repo/a/default.rogen.json", { routes: ROUTED });
+			await write("/repo/a/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 			service.registerFileCheck(() => []);
 
 			const entry = await service.read("/repo/a/default.rogen.json");
@@ -300,7 +297,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should stop running once the registration is disposed", async () => {
-			await write("/repo/a/default.rogen.json", { routes: ROUTED });
+			await write("/repo/a/default.rogen.json", {
+				rogen: { routes: ROUTED },
+			});
 			const check = jest.fn(() => []);
 			const registration = service.registerFileCheck(check);
 

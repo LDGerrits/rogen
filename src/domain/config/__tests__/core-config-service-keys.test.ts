@@ -102,7 +102,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should suggest the key a misspelling is closest to", async () => {
-			await write("/repo/default.rogen.json", { sourcePath: ["src"] });
+			await write("/repo/default.rogen.json", {
+				rogen: { sourcePath: ["src"] },
+			});
 
 			await start();
 
@@ -115,7 +117,9 @@ describe("CoreConfigService", () => {
 			await write(
 				"/repo/default.rogen.json",
 				`{
-	"sourcePath": ["src"]
+	"rogen": {
+		"sourcePath": ["src"]
+	}
 }`
 			);
 
@@ -125,8 +129,8 @@ describe("CoreConfigService", () => {
 				{
 					replace: {
 						file: "/repo/default.rogen.json",
-						line: 2,
-						column: 2,
+						line: 3,
+						column: 3,
 						from: '"sourcePath"',
 						to: '"sourcePaths"',
 					},
@@ -140,6 +144,105 @@ describe("CoreConfigService", () => {
 			await start();
 
 			expect(errors(0)[0].fixes).toBeUndefined();
+		});
+
+		it("should refuse a key in the rogen block that is not Rogen's, pointing into the block", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"rogen": {
+		"zzzzzzzz": 1
+	}
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.unknownField",
+					position: { line: 3, column: 3 },
+					message: '"zzzzzzzz" is not one of Rogen\'s keys.',
+				},
+			]);
+		});
+
+		it("should refuse a Rogen key at the top level, and move a lone one into the block", async () => {
+			await write(
+				"/repo/default.rogen.json",
+				`{
+	"name": "Game",
+	"routes": { "server": "ServerScriptService" }
+}`
+			);
+
+			await start();
+
+			expect(errors(0)).toMatchObject([
+				{
+					code: "config.rogenKeyOutsideBlock",
+					position: { line: 3, column: 2 },
+					fixes: [
+						{
+							replace: {
+								file: "/repo/default.rogen.json",
+								line: 3,
+								column: 2,
+								from: '"routes": { "server": "ServerScriptService" }',
+								to: '"rogen": { "routes": { "server": "ServerScriptService" } }',
+							},
+						},
+					],
+				},
+			]);
+		});
+
+		it("should offer no move for several Rogen keys at the top level, or when the block is there", async () => {
+			await write("/repo/default.rogen.json", {
+				sourcePaths: ["src"],
+				routes: ROUTED,
+				rogen: {},
+			});
+
+			await start();
+
+			expect(errors(0).map(({ code }) => code)).toEqual([
+				"config.rogenKeyOutsideBlock",
+				"config.rogenKeyOutsideBlock",
+			]);
+			expect(errors(0).map(({ fixes }) => fixes)).toEqual([
+				undefined,
+				undefined,
+			]);
+		});
+
+		it("should leave the rogen block out of the project", async () => {
+			await write("/repo/default.rogen.json", {
+				name: "Game",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: ROUTED,
+					syncPath: "out",
+				},
+			});
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
+			expect(resolved(0)?.project.getFile()).not.toHaveProperty("rogen");
+		});
+
+		it("should read a file with no rogen block as a plain Rojo project", async () => {
+			await write("/repo/default.rogen.json", {
+				name: "Game",
+				tree: { $className: "DataModel" },
+			});
+
+			await start();
+
+			expect(errors(0)).toEqual([]);
+			expect(resolved(0)?.routes.size).toBe(0);
+			expect(resolved(0)?.sourcePaths).toEqual([]);
 		});
 
 		it("should accept syncRules", async () => {
@@ -197,7 +300,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should refuse sourcePaths without routes", async () => {
-			await write("/repo/default.rogen.json", { sourcePaths: ["src"] });
+			await write("/repo/default.rogen.json", {
+				rogen: { sourcePaths: ["src"] },
+			});
 
 			await start();
 
@@ -211,8 +316,8 @@ describe("CoreConfigService", () => {
 
 		it("should refuse routes under a root that is not a DataModel", async () => {
 			await write("/repo/default.rogen.json", {
-				routes: ROUTED,
 				tree: { $className: "Folder" },
+				rogen: { routes: ROUTED },
 			});
 
 			await start();
@@ -229,8 +334,8 @@ describe("CoreConfigService", () => {
 
 		it("should refuse routes under a $path root", async () => {
 			await write("/repo/default.rogen.json", {
-				routes: ROUTED,
 				tree: { $path: "lib" },
+				rogen: { routes: ROUTED },
 			});
 
 			await start();

@@ -13,6 +13,7 @@ import {
 describe("domain/config/config-schema", () => {
 	describe("configSchema", () => {
 		const schema = configSchema;
+		const block = schema.properties!.rogen;
 
 		const ROJO_FIELDS = [
 			"$schema",
@@ -33,9 +34,12 @@ describe("domain/config/config-schema", () => {
 		const ROGEN_FIELDS = ["sourcePaths", "routes", "syncPath"];
 
 		describe("schema shape", () => {
-			it("declares Rojo's keys and Rogen's", () => {
+			it("declares Rojo's keys and one block for Rogen's", () => {
 				expect(Object.keys(schema.properties!).sort()).toEqual(
-					[...ROJO_FIELDS, ...ROGEN_FIELDS].sort()
+					[...ROJO_FIELDS, "rogen"].sort()
+				);
+				expect(Object.keys(block.properties!).sort()).toEqual(
+					[...ROGEN_FIELDS].sort()
 				);
 				expect([...rojoKeys].sort()).toEqual([...ROJO_FIELDS].sort());
 				expect([...rogenKeys].sort()).toEqual([...ROGEN_FIELDS].sort());
@@ -76,22 +80,22 @@ describe("domain/config/config-schema", () => {
 
 		describe("defaults", () => {
 			it('defaults sourcePaths to ["src"]', () => {
-				expect(schema.properties!.sourcePaths.default).toEqual(["src"]);
+				expect(block.properties!.sourcePaths.default).toEqual(["src"]);
 			});
 
 			it("defaults routes to {}", () => {
-				expect(schema.properties!.routes.default).toEqual({});
+				expect(block.properties!.routes.default).toEqual({});
 			});
 
 			it("has no static default for syncPath or the tree", () => {
-				expect(schema.properties!.syncPath.default).toBeUndefined();
+				expect(block.properties!.syncPath.default).toBeUndefined();
 				expect(schema.properties!.tree.default).toBeUndefined();
 			});
 		});
 
 		it("carries a description on every Rogen field", () => {
 			for (const field of ROGEN_FIELDS) {
-				expect(schema.properties![field].description).toBeTruthy();
+				expect(block.properties![field].description).toBeTruthy();
 			}
 		});
 	});
@@ -100,8 +104,9 @@ describe("domain/config/config-schema", () => {
 		const matches = (pattern: string | undefined, text: string) =>
 			new RegExp(pattern ?? "").test(text);
 
-		const routeKeys = configSchema.properties!.routes.propertyNames;
-		const target = configSchema.properties!.routes
+		const routeKeys =
+			configSchema.properties!.rogen.properties!.routes.propertyNames;
+		const target = configSchema.properties!.rogen.properties!.routes
 			.additionalProperties as JSONSchema;
 
 		it.each(["server", "Server", "Shared2", "*"])(

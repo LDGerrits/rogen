@@ -10,7 +10,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
-import { configSchema } from "./config-schema.js";
+import { ROGEN_BLOCK, configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
@@ -61,13 +61,26 @@ export class ConfigLoader {
 	private resolve(config: ConfigFile): LoadedConfig {
 		const { file } = config;
 		const value = config.model.contents;
-		const keys = ConfigKeys.check(
-			config.model.keys,
-			(key): DiagnosticLocation => ({
-				resource: file,
-				position: config.positionOfKey(key),
-			})
-		);
+		const block =
+			config.model.getValue<Record<string, unknown>>(ROGEN_BLOCK);
+		const keys = [
+			...ConfigKeys.check(
+				config.model.keys,
+				(key): DiagnosticLocation => ({
+					resource: file,
+					position: config.positionOfKey(key),
+				}),
+				true,
+				(key) => config.entryOf(key)
+			),
+			...ConfigKeys.checkBlock(
+				Object.keys(block ?? {}),
+				(key): DiagnosticLocation => ({
+					resource: file,
+					position: config.positionOfKey(key, [ROGEN_BLOCK]),
+				})
+			),
+		];
 		if (keys.length > 0)
 			return { files: [file], value, resolved: err(keys) };
 		return {

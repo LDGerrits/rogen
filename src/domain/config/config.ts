@@ -7,7 +7,14 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** What a `.rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
+/** The keys Rogen adds to a Rojo project file, which sit in the `rogen` block. */
+export interface RogenKeys {
+	readonly sourcePaths?: string[];
+	readonly routes?: Record<string, string>;
+	readonly syncPath?: string;
+}
+
+/** What a `.rogen.json` holds: a Rojo project file, plus a `rogen` block of the keys Rogen reads. */
 export interface RogenConfig {
 	readonly $schema?: string;
 	readonly name?: string;
@@ -23,20 +30,19 @@ export interface RogenConfig {
 	readonly globIgnorePaths?: string[];
 	readonly syncRules?: unknown[];
 	readonly syncbackRules?: Record<string, unknown>;
-	readonly sourcePaths?: string[];
-	readonly routes?: Record<string, string>;
-	readonly syncPath?: string;
+	readonly rogen?: RogenKeys;
 }
 
 interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
 
-export function fieldOf<K extends keyof RogenConfig>(
+/** A key of the `rogen` block. */
+export function fieldOf<K extends keyof RogenKeys>(
 	values: ConfigValues,
 	key: K
-): RogenConfig[K] {
-	return values.getValue<RogenConfig[K]>(key);
+): RogenKeys[K] {
+	return values.getValue<RogenKeys[K]>(["rogen", key]);
 }
 
 const CONFIG_FILE_PATTERN = /^(.+)\.rogen\.jsonc?$/;
@@ -119,8 +125,8 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
-/** The keys Rogen adds to a Rojo project file, in the order `rogen fmt-project` writes them. */
-export const ROGEN_KEYS: readonly (keyof RogenConfig)[] = [
+/** The keys of the `rogen` block, in the order `rogen fmt-project` writes them. */
+export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",
 	"syncPath",

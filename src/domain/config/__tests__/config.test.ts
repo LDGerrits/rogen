@@ -88,7 +88,10 @@ describe("domain/config/config", () => {
 	describe("fieldOf", () => {
 		const values = {
 			getValue: <T>(section?: string | readonly string[]) =>
-				(section === "syncPath" ? "dist" : undefined) as T | undefined,
+				(Array.isArray(section) &&
+				section.join(".") === "rogen.syncPath"
+					? "dist"
+					: undefined) as T | undefined,
 		};
 
 		it("should read a field the values hold, as the config declares it", () => {
@@ -98,7 +101,7 @@ describe("domain/config/config", () => {
 		});
 
 		it("should give undefined for a field they lack", () => {
-			expect(fieldOf(values, "tree")).toBeUndefined();
+			expect(fieldOf(values, "routes")).toBeUndefined();
 		});
 	});
 

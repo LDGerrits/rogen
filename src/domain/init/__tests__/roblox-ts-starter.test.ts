@@ -112,7 +112,7 @@ describe("RobloxTsStarter", () => {
 		it("should name itself, sync from out and keep its runtime include in its own folder", () => {
 			expect(place.config).toEqual({
 				name: "game",
-				syncPath: "out",
+				rogen: { syncPath: "out" },
 				tree: {
 					ReplicatedStorage: {
 						rbxts_include: { $path: { optional: "include" } },
@@ -209,7 +209,7 @@ describe("a new roblox-ts project", () => {
 			const config = configOf(await plan());
 
 			expect(config.name).toBe("my-game");
-			expect(config.syncPath).toBe("out");
+			expect(config.rogen?.syncPath).toBe("out");
 			expect(config.tree.ReplicatedStorage.rbxts_include).toMatchObject({
 				$path: "include",
 				node_modules: { "@rbxts": { $path: "node_modules/@rbxts" } },

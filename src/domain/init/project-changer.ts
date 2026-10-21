@@ -6,6 +6,7 @@ import { joinedWithAnd } from "../../base/strings.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
+import { ROGEN_BLOCK } from "../config/config-schema.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
@@ -198,11 +199,15 @@ export class ProjectChanger {
 		};
 	}
 
+	private routesOf(): Record<string, unknown> {
+		const routes = this.edit.valueAt([ROGEN_BLOCK, "routes"]);
+		return isObject(routes) ? routes : {};
+	}
+
 	/** The routes the config has, as the ids of the standard routes they are. */
 	private configuredRoutes(): string[] {
 		const starting = new StartingRoutes(this.language);
-		const { routes } = this.edit.value;
-		const keys = isObject(routes) ? Object.keys(routes) : [];
+		const keys = Object.keys(this.routesOf());
 		return starting.options
 			.filter((option) =>
 				keys.some(
@@ -236,8 +241,7 @@ export class ProjectChanger {
 
 	/** One row per area with what the project has. */
 	describe(): [string, string][] {
-		const { value } = this.edit;
-		const routes = isObject(value.routes) ? value.routes : {};
+		const routes = this.routesOf();
 		const sourcePaths = this.changes().sourcePaths;
 		const rows: [string, string][] = [
 			[
@@ -313,9 +317,7 @@ export class ProjectChanger {
 					break;
 				}
 				case "unmatched": {
-					const routes = isObject(this.edit.value.routes)
-						? this.edit.value.routes
-						: {};
+					const routes = this.routesOf();
 					const answer = await questions.changeUnmatched(
 						DeclaredKeys.FALLBACK_ROUTE in routes
 							? "shared"

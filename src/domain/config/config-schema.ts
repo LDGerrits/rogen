@@ -149,7 +149,7 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
+const rogenFields: Readonly<Record<string, JSONSchema>> = {
 	sourcePaths: {
 		type: "array",
 		items: { type: "string" },
@@ -171,11 +171,21 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 };
 
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
-export const rogenKeys: readonly string[] = Object.keys(rogenSchemas);
+export const rogenKeys: readonly string[] = Object.keys(rogenFields);
+
+/** The key that holds Rogen's own keys; the top level is Rojo's. */
+export const ROGEN_BLOCK = "rogen";
+
+const rogenBlock: JSONSchema = {
+	type: "object",
+	description:
+		"Rogen's own keys. Without this block the file is a plain Rojo project file.",
+	properties: rogenFields,
+};
 
 export const configSchema: JSONSchema = {
 	type: "object",
-	properties: { ...rojoFields, ...rogenSchemas },
+	properties: { ...rojoFields, [ROGEN_BLOCK]: rogenBlock },
 };
 
 const removedFields: Readonly<Record<string, string>> = {
