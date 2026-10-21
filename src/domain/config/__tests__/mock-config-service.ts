@@ -26,7 +26,7 @@ export interface ResolvedConfigSpec {
 	readonly routes?: Readonly<Record<string, string>>;
 	readonly ignored?: readonly string[];
 	readonly project?: Readonly<Record<string, unknown>>;
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	readonly warnings?: readonly Diagnostic[];
 }
 
@@ -48,7 +48,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 			])
 		),
 		ignored: spec.ignored ?? [],
-		syncPath: spec.syncPath,
+		compiledPath: spec.compiledPath,
 		warnings: spec.warnings ?? [],
 	});
 }

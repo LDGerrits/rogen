@@ -89,7 +89,7 @@ const InitOptions = [
 			"On a project that has a default.rogen.json: takes a folder off its source paths. The files in it are no longer built, which init lists.",
 	},
 	{
-		name: "sync-path",
+		name: "compiled-path",
 		type: "string",
 		placeholder: "path",
 		description:
@@ -192,7 +192,7 @@ function choicesOf(
 		darklua: options.darklua,
 		sourcePaths: options["source-path"],
 		projectFile: options["project-file"] as InitChoices["projectFile"],
-		syncPath: options["sync-path"],
+		compiledPath: options["compiled-path"],
 		packages: options.package,
 		routes: options.route,
 		unroutes: options["no-route"],

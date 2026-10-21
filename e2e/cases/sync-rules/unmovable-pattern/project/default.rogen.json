@@ -9,6 +9,6 @@
 		"routes": {
 			"*": "ReplicatedStorage/shared"
 		},
-		"syncPath": "out"
+		"compiledPath": "out"
 	}
 }

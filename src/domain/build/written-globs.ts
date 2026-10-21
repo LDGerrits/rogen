@@ -1,19 +1,19 @@
 import path from "path";
 import { negationOf } from "../../base/glob.js";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { SyncLayout } from "./sync-layout.js";
+import { CompiledLayout } from "./compiled-layout.js";
 
 const GLOB_MAGIC = /[*?[\]{}]/;
 
-/** The globs of a project as its written file carries them: moved under the sync path, and kept as they were where the tree mounts a folder the move leaves behind. */
+/** The globs of a project as its written file carries them: moved under the compiled path, and kept as they were where the tree mounts a folder the move leaves behind. */
 export class WrittenGlobs {
 	/** `mounts` are the absolute POSIX paths the tree mounts. */
 	constructor(
-		private readonly layout: SyncLayout,
+		private readonly layout: CompiledLayout,
 		private readonly mounts: readonly string[]
 	) {}
 
-	/** The globs for `glob` ahead of the sync path's move; `from` is the absolute POSIX folder it is relative to, when that is not the project's own. */
+	/** The globs for `glob` ahead of the compiled path's move; `from` is the absolute POSIX folder it is relative to, when that is not the project's own. */
 	of(glob: string, from?: string): string[] {
 		const { negated, body } = negationOf(glob);
 		if (negated) return this.of(body, from).map((each) => `!${each}`);
@@ -31,7 +31,7 @@ export class WrittenGlobs {
 	moved(glob: string, from?: string): string | undefined {
 		if (this.isAbsolute(glob) || glob.startsWith("*")) return glob;
 		const inProject = this.inProject(glob, from);
-		if (this.layout.syncPath === undefined) return inProject;
+		if (this.layout.compiledPath === undefined) return inProject;
 		if (GLOB_MAGIC.test(glob.split("/")[0])) return undefined;
 		return this.layout.syncedGlob(inProject);
 	}

@@ -521,7 +521,7 @@ describeWithRojo("end to end serve", () => {
 		writeProjectFile(
 			serve.dir,
 			"dist.rogen.json",
-			config(serve.port, { rogen: { syncPath: "dist" } })
+			config(serve.port, { rogen: { compiledPath: "dist" } })
 		);
 		const first = serve.start();
 		await eventually(() => {

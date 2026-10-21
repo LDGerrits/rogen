@@ -24,13 +24,13 @@ import {
 } from "./router.js";
 import { RootClaims } from "./dir-claims.js";
 import { MarkerClashes } from "./marker-clashes.js";
-import { SyncLayout } from "./sync-layout.js";
+import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceResolver } from "./instance-resolver.js";
 import { DisplacedFile, LeftOutPaths, Placement } from "./placement.js";
 
 /** Finds where every file of a config lands: scans the source paths, routes each file, then resolves clashes across files. */
 export class Placer {
-	private readonly layout: SyncLayout;
+	private readonly layout: CompiledLayout;
 	private readonly tree: BuildTree;
 	private readonly initScripts: InitScripts;
 
@@ -40,7 +40,7 @@ export class Placer {
 		tools: readonly SyncTool[],
 		private readonly projectNames: ReadonlyMap<string, string> = new Map()
 	) {
-		this.layout = new SyncLayout(config, tools);
+		this.layout = new CompiledLayout(config, tools);
 		this.tree = new BuildTree(config, this.layout);
 		this.initScripts = new InitScripts(this.tree);
 	}

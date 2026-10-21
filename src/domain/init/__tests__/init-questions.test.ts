@@ -125,7 +125,7 @@ describe("InitQuestions askProject", () => {
 			const choices = await asked(luau, { Language: "roblox-ts" });
 
 			expect(choices.language.id).toBe("roblox-ts");
-			expect(choices.syncPath).toBe("out");
+			expect(choices.compiledPath).toBe("out");
 		});
 	});
 
@@ -137,7 +137,7 @@ describe("InitQuestions askProject", () => {
 			);
 
 			expect(choices.darklua).toBeInstanceOf(Darklua);
-			expect(choices.syncPath).toBe("dist");
+			expect(choices.compiledPath).toBe("dist");
 		});
 
 		it("should hint at the Darklua config that was found", async () => {
@@ -161,20 +161,20 @@ describe("InitQuestions askProject", () => {
 			});
 
 			expect(choices.darklua).toBeInstanceOf(Darklua);
-			expect(choices.syncPath).toBe("dist");
+			expect(choices.compiledPath).toBe("dist");
 		});
 	});
 
-	describe("sync path", () => {
-		const syncPathPrompt = (prompts: MockPromptService) =>
-			prompts.prompts.find(({ message }) => message === "Sync path");
+	describe("compiled path", () => {
+		const compiledPathPrompt = (prompts: MockPromptService) =>
+			prompts.prompts.find(({ message }) => message === "Compiled path");
 
 		it("should be skipped for plain luau", async () => {
 			const prompts = new MockPromptService({});
 
 			await askInitChoices(prompts, contextOf(luau));
 
-			expect(syncPathPrompt(prompts)).toBeUndefined();
+			expect(compiledPathPrompt(prompts)).toBeUndefined();
 		});
 
 		it("should not be asked for roblox-ts, which syncs from its outDir", async () => {
@@ -182,8 +182,8 @@ describe("InitQuestions askProject", () => {
 
 			const result = await askInitChoices(prompts, contextOf(rbxts));
 
-			expect(syncPathPrompt(prompts)).toBeUndefined();
-			expect(result.unwrap()?.syncPath).toBe("build");
+			expect(compiledPathPrompt(prompts)).toBeUndefined();
+			expect(result.unwrap()?.compiledPath).toBe("build");
 		});
 
 		it("should default to dist for Darklua and say what Darklua does", async () => {
@@ -194,8 +194,8 @@ describe("InitQuestions askProject", () => {
 				contextOf({ ...luau, darkluaConfig: ".darklua.json" })
 			);
 
-			expect(syncPathPrompt(prompts)?.placeholder).toBe("dist");
-			expect(syncPathPrompt(prompts)?.description).toContain(
+			expect(compiledPathPrompt(prompts)?.placeholder).toBe("dist");
+			expect(compiledPathPrompt(prompts)?.description).toContain(
 				"Darklua writes into"
 			);
 		});
@@ -208,7 +208,7 @@ describe("InitQuestions askProject", () => {
 						{ ...luau, darkluaConfig: ".darklua.json" },
 						{
 							"Does Darklua process your code before Rojo syncs it?": true,
-							"Sync path": answer,
+							"Compiled path": answer,
 						}
 					)
 				).rejects.toThrow("overlaps src");
@@ -809,7 +809,7 @@ describe("InitQuestions askProject", () => {
 		const text = prompts.prompts.filter(({ placeholder }) => placeholder);
 		expect(text.map(({ message }) => message)).toEqual([
 			"Source path",
-			"Sync path",
+			"Compiled path",
 		]);
 		expect(text.map(({ placeholder }) => placeholder)).toEqual([
 			"src",

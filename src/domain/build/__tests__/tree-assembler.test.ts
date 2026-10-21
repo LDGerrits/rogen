@@ -78,7 +78,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should keep a tree $path as written and never move it under the sync path", async () => {
+			it("should keep a tree $path as written and never move it under the compiled path", async () => {
 				await write("src/Foo.ts");
 				const project = {
 					tree: {
@@ -92,7 +92,7 @@ describe("TreeAssembler", () => {
 
 				const storage = await storageOf({
 					project,
-					syncPath: abs("dist"),
+					compiledPath: abs("dist"),
 				});
 
 				expect(storage.Packages).toEqual({ $path: "Packages" });
@@ -190,10 +190,10 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should apply the sync-path rule when a sync path is set", async () => {
+			it("should apply the compiled-path rule when a compiled path is set", async () => {
 				await write("src/Foo.ts", "src/Bar.luau");
 
-				const storage = await storageOf({ syncPath: abs("dist") });
+				const storage = await storageOf({ compiledPath: abs("dist") });
 
 				expect(storage).toMatchObject({
 					Foo: { $path: optional("dist/Foo.luau") },
@@ -577,7 +577,7 @@ describe("TreeAssembler", () => {
 
 				const { projectFile: value } = await assemble({
 					routes: SPLIT,
-					syncPath: abs("out"),
+					compiledPath: abs("out"),
 				});
 
 				expect(

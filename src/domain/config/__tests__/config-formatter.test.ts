@@ -3,7 +3,7 @@ import { ConfigFormatter } from "../config-formatter.js";
 
 const TABBED = `{
 	"rogen": {
-		"syncPath": "out",
+		"compiledPath": "out",
 		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
 		"sourcePaths": ["src"]
 	},
@@ -51,7 +51,7 @@ describe("ConfigFormatter", () => {
 				'      "server": "ServerScriptService",',
 				'      "*": "ReplicatedStorage"',
 				"    },",
-				'    "syncPath": "out"',
+				'    "compiledPath": "out"',
 				"  }",
 				"}",
 			].join("\n")

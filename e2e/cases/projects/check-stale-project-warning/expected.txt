@@ -14,16 +14,17 @@ stdout:
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync path: (none)
+    compiled path: (none)
     project file: default.project.json
     rojo: rojo serve default.project.json
   dist.rogen.json
     source paths: src
     routes: same as Inventory
-    sync path: dist
+    compiled path: dist
+      src -> dist
     project file: dist.project.json
     rojo: rojo serve dist.project.json
-    differs from default.rogen.json: syncPath
+    differs from default.rogen.json: compiledPath
   2 configs.
 stderr:
   default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)

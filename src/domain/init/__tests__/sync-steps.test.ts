@@ -9,21 +9,21 @@ const robloxTs = workspaceOf().languageFor("roblox-ts");
 const darklua = new Darklua();
 
 describe("SyncSteps", () => {
-	describe("syncPath", () => {
+	describe("compiledPath", () => {
 		it("should be Darklua's output when Darklua processes the code", () => {
-			expect(new SyncSteps(luau, darklua).syncPath).toBe("dist");
+			expect(new SyncSteps(luau, darklua).compiledPath).toBe("dist");
 		});
 
 		it("should be Darklua's output rather than the compiler's when both are used", () => {
-			expect(new SyncSteps(robloxTs, darklua).syncPath).toBe("dist");
+			expect(new SyncSteps(robloxTs, darklua).compiledPath).toBe("dist");
 		});
 
 		it("should be the compiler's output when there is one", () => {
-			expect(new SyncSteps(robloxTs, undefined).syncPath).toBe("out");
+			expect(new SyncSteps(robloxTs, undefined).compiledPath).toBe("out");
 		});
 
 		it("should be none for plain Luau", () => {
-			expect(new SyncSteps(luau, undefined).syncPath).toBeUndefined();
+			expect(new SyncSteps(luau, undefined).compiledPath).toBeUndefined();
 		});
 	});
 
@@ -34,7 +34,7 @@ describe("SyncSteps", () => {
 			const builder = new InitPlanBuilder(target, false, []);
 			set.plan(builder, target.path, {
 				processed: ["src"],
-				syncPath: set.syncPath,
+				compiledPath: set.compiledPath,
 				luauLsp,
 			});
 			return builder.build().unwrap().nextSteps;
@@ -59,7 +59,7 @@ describe("SyncSteps", () => {
 			).toEqual(["npm run watch", "rogen serve"]);
 		});
 
-		it("should watch the dirs into the sync path beside the server when Darklua is used", () => {
+		it("should watch the dirs into the compiled path beside the server when Darklua is used", () => {
 			const { run } = steps(new SyncSteps(luau, darklua));
 
 			expect(run).toEqual([

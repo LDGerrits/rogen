@@ -35,7 +35,7 @@ export interface ProjectChoices {
 	readonly language: Language;
 	readonly darklua: Darklua | undefined;
 	readonly sourcePaths: readonly string[];
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	readonly tree: ProjectTree;
 	readonly mounts: readonly Mount[];
 	readonly routes: readonly RouteId[];
@@ -87,15 +87,15 @@ function generatedDirs({
 	language,
 	darklua,
 	sourcePaths,
-	syncPath,
+	compiledPath,
 }: Pick<
 	ProjectChoices,
-	"language" | "darklua" | "sourcePaths" | "syncPath"
+	"language" | "darklua" | "sourcePaths" | "compiledPath"
 >): string[] {
 	const { compiler } = language;
 	return [
 		...sourcePaths,
-		...(syncPath ? [syncPath] : []),
+		...(compiledPath ? [compiledPath] : []),
 		...(darklua && compiler ? [compiler.outDir] : []),
 	];
 }
@@ -135,14 +135,14 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const tree = await this.resolveTree(chosen, kind);
 		if (tree.isErr()) return tree;
 
-		let syncPath = new SyncSteps(language, darklua).syncPath;
+		let compiledPath = new SyncSteps(language, darklua).compiledPath;
 		if (darklua) {
-			const answer = await questions.syncPath(directory, [
+			const answer = await questions.compiledPath(directory, [
 				...sourcePaths,
 				...(language.compiler ? [language.compiler.outDir] : []),
 			]);
 			if (answer === undefined) return ok(undefined);
-			syncPath = answer;
+			compiledPath = answer;
 		}
 
 		const routed = takesRoutes(tree.value);
@@ -161,7 +161,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 							language,
 							darklua,
 							sourcePaths,
-							syncPath,
+							compiledPath,
 						})
 					)
 				)
@@ -199,7 +199,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: [];
 
 		const skipGit = questions.skipGit();
-		const processed = darklua && syncPath ? syncPath : undefined;
+		const processed = darklua && compiledPath ? compiledPath : undefined;
 		const darkluaConfig =
 			darklua && directory.workspace.darkluaConfig === undefined
 				? [
@@ -213,7 +213,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			language,
 			darklua,
 			sourcePaths: [...sourcePaths],
-			...(syncPath && { syncPath }),
+			...(compiledPath && { compiledPath }),
 			tree:
 				sample && tree.value.kind === "new"
 					? { ...tree.value, game: true }
@@ -364,7 +364,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 	}
 
 	plan(choices: ProjectChoices, builder: InitPlanBuilder): void {
-		const { language, darklua, sourcePaths, syncPath } = choices;
+		const { language, darklua, sourcePaths, compiledPath } = choices;
 		const dirs = generatedDirs(choices);
 		const derived = derivedRoutesOf(choices.tree, dirs);
 		const routes = takesRoutes(choices.tree)
@@ -381,20 +381,22 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			landings: Object.values(routes ?? {}),
 		});
 		const { compiler } = language;
-		const defaultSyncPath = darklua ? compiler?.outDir : syncPath;
+		const defaultCompiledPath = darklua ? compiler?.outDir : compiledPath;
 		builder.setConfig(
 			{
 				...(choices.scaffold && {
 					name: path.basename(this.directory.path),
 				}),
 				...tree.fields,
-				...((routes || defaultSyncPath) && {
+				...((routes || defaultCompiledPath) && {
 					rogen: {
 						...(routes && {
 							sourcePaths: [...sourcePaths],
 							routes,
 						}),
-						...(defaultSyncPath && { syncPath: defaultSyncPath }),
+						...(defaultCompiledPath && {
+							compiledPath: defaultCompiledPath,
+						}),
 					},
 				}),
 			},
@@ -435,9 +437,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addNote(
 				`Starts from create-roblox-ts, which writes package.json, tsconfig.json and the compiler's settings.`
 			);
-		if (compiler && !darklua && syncPath) {
+		if (compiler && !darklua && compiledPath) {
 			builder.addNote(
-				`Syncing from ${syncPath}, where ${compiler.name} compiles to.`
+				`Syncing from ${compiledPath}, where ${compiler.name} compiles to.`
 			);
 		}
 		if (choices.sample)
@@ -454,7 +456,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			language,
 			darklua,
 			sourcePaths,
-			syncPath,
+			compiledPath,
 			tree,
 			mounts,
 			sample,
@@ -482,7 +484,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 		builder.addSummary(
 			"Darklua",
-			darklua && syncPath ? `yes, writing to ${syncPath}` : "no"
+			darklua && compiledPath ? `yes, writing to ${compiledPath}` : "no"
 		);
 		if (mounts.length > 0)
 			builder.addSummary(
@@ -512,7 +514,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			language,
 			darklua,
 			sourcePaths,
-			syncPath,
+			compiledPath,
 			tree: chosen,
 			luauLsp,
 			gitignoreHint,
@@ -544,7 +546,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			this.directory.path,
 			{
 				processed: compiler ? [compiler.outDir] : sourcePaths,
-				syncPath,
+				compiledPath,
 				luauLsp: luauLsp === true,
 			}
 		);

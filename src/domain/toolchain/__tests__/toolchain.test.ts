@@ -9,7 +9,7 @@ const darklua = new Darklua();
 
 describe("Darklua", () => {
 	describe("processCommands", () => {
-		it("should process one source path into the sync path itself", () => {
+		it("should process one source path into the compiled path itself", () => {
 			expect(darklua.processCommands(directory, ["src"], "dist")).toEqual(
 				["darklua process src dist --watch"]
 			);

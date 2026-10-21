@@ -14,7 +14,7 @@ export const ROGEN_BLOCK = "rogen";
 export interface RogenKeys {
 	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 }
 
 /** What a `.rogen.json` holds: a Rojo project file, plus a `rogen` block of the keys Rogen reads. */
@@ -132,7 +132,7 @@ export function schemaUrlFor(version: string): string {
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",
-	"syncPath",
+	"compiledPath",
 ];
 
 /** A config as `rogen fmt-project` writes it, so the first format changes nothing. */

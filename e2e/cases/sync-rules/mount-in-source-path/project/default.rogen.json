@@ -12,6 +12,6 @@
 	"rogen": {
 		"sourcePaths": ["src"],
 		"routes": { "*": "ReplicatedStorage/shared" },
-		"syncPath": "out"
+		"compiledPath": "out"
 	}
 }

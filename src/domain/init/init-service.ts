@@ -27,7 +27,7 @@ export interface InitChoices {
 	readonly darklua?: boolean;
 	readonly sourcePaths?: readonly string[];
 	readonly projectFile?: "lift" | "new";
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	/** Folders to mount, or `none`. */
 	readonly packages?: readonly string[];
 	/** Route ids, or `none`. */

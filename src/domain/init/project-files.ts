@@ -31,15 +31,15 @@ export class ProjectFiles {
 		return false;
 	}
 
-	/** What to tell the user to add to the `.gitignore` here when it doesn't list the sync path; none when there is no `.gitignore` (init writes one that does) or it lists it. */
-	async gitignoreHint(syncPath: string): Promise<string | undefined> {
+	/** What to tell the user to add to the `.gitignore` here when it doesn't list the compiled path; none when there is no `.gitignore` (init writes one that does) or it lists it. */
+	async gitignoreHint(compiledPath: string): Promise<string | undefined> {
 		const text = await tryWithAsync(() =>
 			this.fileSystemService.readFile(
 				path.join(this.directory, ".gitignore")
 			)
 		);
 		if (text.isErr()) return undefined;
-		const folder = normalizeDir(syncPath).replace(/\/$/, "");
+		const folder = normalizeDir(compiledPath).replace(/\/$/, "");
 		const listed = text.value
 			.split(/\r?\n/)
 			.map((line) => line.trim())

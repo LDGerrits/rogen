@@ -62,7 +62,7 @@ A field of a sync rule that a rule does not have gets the same code as a warning
 
 ### `config.rogenKeyOutsideBlock` [#config-rogenkeyoutsideblock]
 
-Error. A key of Rogen (`sourcePaths`, `routes` or `syncPath`) sits at the top level of the config. The top level is Rojo's, so Rogen's keys go in the `rogen` block. A key inside the block that isn't Rogen's gets [`config.unknownField`](#config-unknownfield).
+Error. A key of Rogen (`sourcePaths`, `routes` or `compiledPath`) sits at the top level of the config. The top level is Rojo's, so Rogen's keys go in the `rogen` block. A key inside the block that isn't Rogen's gets [`config.unknownField`](#config-unknownfield).
 
 ```
 default.rogen.json:2:2 - error: "routes" is one of Rogen's keys, and the top level of the file is Rojo's. Move it into "rogen": { ... }. (config.rogenKeyOutsideBlock)
@@ -80,7 +80,7 @@ rogen.json:5:2 - error: "extends" was removed. A rogen.json describes one folder
 rogen.json:6:2 - error: "exclude" was removed. "globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo. (config.removedField)
 ```
 
-Remove the key and do what the message says. `rootDirs` is now `sourcePaths` and `syncDir` is `syncPath`. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the key and do what the message says. `rootDirs` is now `sourcePaths`, and `syncDir` and `syncPath` are `compiledPath` inside the `rogen` block. `template` is gone: write its `tree` and its other keys in `rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. `extends` and `modes` are gone: a `rogen.json` describes one folder, and a project under `projects` changes what a second output needs. For `variants`, a file that replaces another goes in a later source path, which wins a clash. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -102,15 +102,15 @@ rogen.json:4:3 - error: source path "src/shared" is inside source path "src"; a 
 
 Remove the inner one, or move it out of the outer one. See [Several Source Paths](/docs/v2/core-concepts/project-layout#several-source-paths).
 
-### `config.syncPathOverlapsSourcePath` [#config-syncpathoverlapssourcepath]
+### `config.compiledPathOverlapsSourcePath` [#config-compiledpathoverlapssourcepath]
 
-Error. The sync path is a source path, lies inside one, or contains one. The sync path is where Darklua or a compiler writes the code the source paths hold, so Rogen would read that output as source and write the project file from it.
+Error. The compiled path is a source path, lies inside one, or contains one. The compiled path is where Darklua or a compiler writes the code the source paths hold, so Rogen would read that output as source and write the project file from it.
 
 ```
-rogen.json:4:14 - error: the sync path "/repo/src/out" is inside source path "/repo/src", so Rogen would read what the tools write as source. Set "syncPath" to a folder outside the source paths. (config.syncPathOverlapsSourcePath)
+rogen.json:4:14 - error: the compiled path "/repo/src/out" is inside source path "/repo/src", so Rogen would read what the tools write as source. Set "compiledPath" to a folder outside the source paths. (config.compiledPathOverlapsSourcePath)
 ```
 
-Set `syncPath` to a folder beside the source paths, such as `dist` or `out`. See [Darklua](/docs/v2/setups/darklua).
+Set `compiledPath` to a folder beside the source paths, such as `dist` or `out`. See [Darklua](/docs/v2/setups/darklua).
 
 ### `config.sourcePathsWithoutRoutes` [#config-sourcepathswithoutroutes]
 
@@ -697,12 +697,12 @@ Restore or rename the config. To go back to a plain Rojo project, change the pro
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
-Warning. The config has a `syncPath`, but nothing the compiler or processor should have written for a source path exists there. Rojo would find nothing to sync.
+Warning. The config has a `compiledPath`, but nothing the compiler or processor should have written for a source path exists there. Rojo would find nothing to sync.
 
-When the sync path itself doesn't exist, which is the case before the compiler or processor has run once, there is one warning for the config, whatever the number of source paths:
+When the compiled path itself doesn't exist, which is the case before the compiler or processor has run once, there is one warning for the config, whatever the number of source paths:
 
 ```
-out - warning: the sync path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 ```
 
 When it exists and a source path's part of it is missing, the warning names that source path, the nearest path that does exist, and where the output was found if it is rooted one level off:
@@ -712,27 +712,27 @@ src - warning: nothing emitted for source path "src" exists under "out/src". The
 core - warning: nothing emitted for source path "core" exists under "out/core". Found "out/Types.luau" — is the output of your compiler or processor rooted differently? (output.nothingEmitted)
 ```
 
-Run the compiler or processor first. If the message finds the files elsewhere, point `syncPath` at the folder that mirrors the source paths. See [Sync Path](/docs/v2/core-concepts/output#sync-path).
+Run the compiler or processor first. If the message finds the files elsewhere, point `compiledPath` at the folder that mirrors the source paths. See [Compiled Path](/docs/v2/core-concepts/output#compiled-path).
 
 ### `output.metaNotSynced` [#output-metanotsynced]
 
-Warning. `.meta.json` files have no copy in the sync path, so Rojo doesn't apply them. Either the compiler didn't copy them, or a processor converted them: Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
+Warning. `.meta.json` files have no copy in the compiled path, so Rojo doesn't apply them. Either the compiler didn't copy them, or a processor converted them: Darklua turns them into `.meta.lua`, which Rojo reads as a ModuleScript.
 
 ```
 default.project.json - warning: 1 meta file has no copy under "dist" (src/Inventory/Save.meta.json), so Rojo doesn't apply it. The processor turned it into .meta.lua, which Rojo syncs as a ModuleScript instead of applying. Darklua converts every .meta.json this way. (output.metaNotSynced)
 ```
 
-Copy the `.meta.json` files unchanged into the sync path after the compiler or processor runs. See [Data Files](/docs/v2/setups/darklua#data-files).
+Copy the `.meta.json` files unchanged into the compiled path after the compiler or processor runs. See [Data Files](/docs/v2/setups/darklua#data-files).
 
 ### `output.dataFileConverted` [#output-datafileconverted]
 
-Warning. A processor turned data files such as `.json` or `.txt` into Lua modules in the sync path, so Rojo doesn't find them at the path the build expects.
+Warning. A processor turned data files such as `.json` or `.txt` into Lua modules in the compiled path, so Rojo doesn't find them at the path the build expects.
 
 ```
-default.project.json - warning: 1 data file was turned into a Lua module under "dist" (src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the sync path after it runs, or require them as modules. (output.dataFileConverted)
+default.project.json - warning: 1 data file was turned into a Lua module under "dist" (src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the compiled path after it runs, or require them as modules. (output.dataFileConverted)
 ```
 
-Copy the data files unchanged into the sync path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
+Copy the data files unchanged into the compiled path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
 
 ## Format
 

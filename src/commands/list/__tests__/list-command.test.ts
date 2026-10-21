@@ -45,7 +45,7 @@ describe("list command", () => {
 			harness.run("list", { positionals: _, options });
 	});
 
-	it("should show a config's source paths, routes, sync path and project file", async () => {
+	it("should show a config's source paths, routes, compiled path and project file", async () => {
 		await fs.createDirectory("/repo/src");
 		await fs.createDirectory("/repo/lobby");
 		await write("default.rogen.json", {
@@ -55,7 +55,7 @@ describe("list command", () => {
 					Server: "ServerScriptService",
 					"*": "ReplicatedStorage",
 				},
-				syncPath: "out",
+				compiledPath: "out",
 			},
 		});
 
@@ -69,11 +69,29 @@ describe("list command", () => {
 				"routes:",
 				"  Server -> ServerScriptService",
 				"  * -> ReplicatedStorage",
-				"sync path: out",
+				"compiled path: out",
+				"  src -> out/src",
+				"  lobby -> out/lobby",
 				"project file: default.project.json",
 				"rojo: rojo serve default.project.json",
 			].join("\n"),
 		]);
+	});
+
+	it("should repeat a lone source path's folder as the compiled path's root", async () => {
+		await fs.createDirectory("/repo/src");
+		await write("default.rogen.json", {
+			rogen: {
+				routes: { "*": "ReplicatedStorage" },
+				compiledPath: "out",
+			},
+		});
+
+		await run();
+
+		expect(under("default.rogen.json")[0]).toContain(
+			"compiled path: out\n  src -> out\n"
+		);
 	});
 
 	describe("with several configs in a folder", () => {
@@ -92,7 +110,7 @@ describe("list command", () => {
 				rogen: {
 					sourcePaths: ["src"],
 					routes: { "*": "ReplicatedStorage" },
-					syncPath: "dist",
+					compiledPath: "dist",
 				},
 			});
 		});
@@ -109,7 +127,7 @@ describe("list command", () => {
 				"project file: dist.project.json (port 34900)"
 			);
 			expect(under("dist.rogen.json")[0]).toContain(
-				"differs from default.rogen.json: servePort, syncPath"
+				"differs from default.rogen.json: servePort, compiledPath"
 			);
 		});
 
@@ -139,7 +157,7 @@ describe("list command", () => {
 					(config: { differsFromDefault?: string[] }) =>
 						config.differsFromDefault
 				)
-			).toEqual([undefined, ["servePort", "syncPath"]]);
+			).toEqual([undefined, ["servePort", "compiledPath"]]);
 		});
 
 		it("should fail when a stem has both extensions", async () => {
@@ -291,13 +309,13 @@ describe("list command", () => {
 		});
 	});
 
-	it("should say so when there is no sync path", async () => {
+	it("should say so when there is no compiled path", async () => {
 		await write("default.rogen.json", {});
 
 		await run();
 
 		const [details] = under("default.rogen.json");
-		expect(details).toContain("sync path: (none)");
+		expect(details).toContain("compiled path: (none)");
 	});
 
 	it("should list the config here, and not those in other folders", async () => {
@@ -399,7 +417,7 @@ describe("list command", () => {
 						Server: "ServerScriptService",
 						"*": "ReplicatedStorage/Shared",
 					},
-					syncPath: "out",
+					compiledPath: "out",
 				},
 			});
 
@@ -420,7 +438,11 @@ describe("list command", () => {
 							"*": "ReplicatedStorage/Shared",
 						},
 						globIgnorePaths: ["/repo/**/*.spec.luau"],
-						syncPath: "/repo/out",
+						compiledPath: "/repo/out",
+						compiledLayout: {
+							"/repo/src": "/repo/out/src",
+							"/repo/lobby": "/repo/out/lobby",
+						},
 						projectFile: "/repo/default.project.json",
 						serving: null,
 						rojo: ["rojo", "serve", "/repo/default.project.json"],
@@ -632,7 +654,7 @@ describe("list command", () => {
 				[
 					"source paths: places/shared/src, places/lobby/src",
 					"routes:\n  Server -> ServerScriptService\n  * -> ReplicatedStorage",
-					"sync path: (none)",
+					"compiled path: (none)",
 					"project file: places/lobby/default.project.json (port 34873, place IDs 1818, 2020)",
 					"rojo: rojo serve places/lobby/default.project.json --port 34873",
 				].join("\n"),

@@ -121,7 +121,7 @@ describe("CoreConfigService", () => {
 				rogen: {
 					sourcePaths: ["code"],
 					routes: ROUTED,
-					syncPath: "out",
+					compiledPath: "out",
 				},
 			});
 
@@ -129,7 +129,7 @@ describe("CoreConfigService", () => {
 
 			expect(plain(resolved(0))).toMatchObject({
 				sourcePaths: ["/repo/places/lobby/code"],
-				syncPath: "/repo/places/lobby/out",
+				compiledPath: "/repo/places/lobby/out",
 				projectFile: "/repo/places/lobby/default.project.json",
 			});
 		});
@@ -205,7 +205,7 @@ describe("CoreConfigService", () => {
 					rogen: {
 						sourcePaths: ["src"],
 						routes: ROUTED,
-						syncPath: "out",
+						compiledPath: "out",
 					},
 				});
 
@@ -271,13 +271,13 @@ describe("CoreConfigService", () => {
 				["src", "is inside"],
 				[".", "contains"],
 			])(
-				"should reject the sync path %j against the source path src",
-				async (syncPath, relation) => {
+				"should reject the compiled path %j against the source path src",
+				async (compiledPath, relation) => {
 					const problems = await diagnosticsFor({
 						rogen: {
 							sourcePaths: ["src"],
 							routes: ROUTED,
-							syncPath,
+							compiledPath,
 						},
 					});
 
@@ -288,13 +288,13 @@ describe("CoreConfigService", () => {
 				}
 			);
 
-			it("should accept a sync path beside the source paths", async () => {
+			it("should accept a compiled path beside the source paths", async () => {
 				expect(
 					await diagnosticsFor({
 						rogen: {
 							sourcePaths: ["src"],
 							routes: ROUTED,
-							syncPath: "dist",
+							compiledPath: "dist",
 						},
 					})
 				).toEqual([]);
@@ -414,7 +414,7 @@ describe("CoreConfigService", () => {
 					rogen: {
 						sourcePaths: ["src", "src/x"],
 						routes: { "a-b": "Nowhere" },
-						syncPath: "src",
+						compiledPath: "src",
 					},
 				});
 

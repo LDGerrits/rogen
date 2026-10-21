@@ -385,7 +385,7 @@ describe("CoreServeService", () => {
 		it("should name the config another serve started on the port, and not offer --adopt", async () => {
 			await memFs.writeFile(
 				"/repo/dist.rogen.json",
-				config({ name: "repo", rogen: { syncPath: "dist" } })
+				config({ name: "repo", rogen: { compiledPath: "dist" } })
 			);
 			await memFs.writeFile(
 				...recordFile(34872, "repo", "/repo/default.project.json", {

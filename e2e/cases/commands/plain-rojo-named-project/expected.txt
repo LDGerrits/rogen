@@ -12,7 +12,7 @@ stdout:
   test.project.json
     source paths: (none)
     routes:
-    sync path: (none)
+    compiled path: (none)
     project file: test.project.json
     rojo: rojo serve test.project.json
   1 config.

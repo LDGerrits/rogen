@@ -30,7 +30,7 @@ registerCommand(
 					summary:
 						"Lists the configs here, their files and their ports",
 					description:
-						"Lists every config file of this folder, or the one you name, with its source paths, routes, sync path and project file, and which are served. A config other than default.rogen.json also lists the keys that differ from it; with --json, each fully resolved.",
+						"Lists every config file of this folder, or the one you name, with its source paths, routes, compiled path and project file, and which are served. A config other than default.rogen.json also lists the keys that differ from it; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
 					output: { document: listDocumentShape },

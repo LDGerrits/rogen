@@ -29,7 +29,7 @@ interface ResolvedConfigFields {
 	/** `globIgnorePaths` as globs on absolute POSIX paths. */
 	readonly ignored: readonly string[];
 	/** Absolute. */
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	readonly warnings: readonly Diagnostic[];
 }
 
@@ -41,7 +41,7 @@ export class ResolvedConfig {
 	readonly sourcePaths: readonly string[];
 	readonly routes: ReadonlyMap<string, Target>;
 	readonly ignored: readonly string[];
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	readonly warnings: readonly Diagnostic[];
 	readonly keys: DeclaredKeys;
 	/** The project's `syncRules` in front of Rojo's. */
@@ -54,7 +54,7 @@ export class ResolvedConfig {
 		this.sourcePaths = fields.sourcePaths;
 		this.routes = fields.routes;
 		this.ignored = fields.ignored;
-		this.syncPath = fields.syncPath;
+		this.compiledPath = fields.compiledPath;
 		this.warnings = fields.warnings;
 		this.keys = new DeclaredKeys(fields.routes.keys());
 		this.syncRules = SyncRules.following(

@@ -448,9 +448,9 @@ describe("CoreWatchSession", () => {
 		expect(updates.at(-1)?.reports[0].fixed).toEqual([]);
 	});
 
-	it("should check the sync path when the config loads, and not again until it changes", async () => {
+	it("should check the compiled path when the config loads, and not again until it changes", async () => {
 		await writeConfig("/repo/default.rogen.json", {
-			rogen: { syncPath: "dist" },
+			rogen: { compiledPath: "dist" },
 		});
 		await fs.writeFile("/repo/src/A.luau", "");
 		await start();
@@ -727,10 +727,10 @@ describe("CoreWatchSession", () => {
 			]);
 		});
 
-		it("should tell the watcher to skip each output file and sync path", async () => {
+		it("should tell the watcher to skip each output file and compiled path", async () => {
 			await write(
 				"/repo/default.rogen.json",
-				config({ rogen: { syncPath: "out" } })
+				config({ rogen: { compiledPath: "out" } })
 			);
 			const watch = jest.spyOn(watcher, "watch");
 

@@ -21,7 +21,10 @@ stdout:
         "globIgnorePaths": [
           "<dir>/game/**/*.spec.luau"
         ],
-        "syncPath": "<dir>/game/dist",
+        "compiledPath": "<dir>/game/dist",
+        "compiledLayout": {
+          "<dir>/game/src": "<dir>/game/dist"
+        },
         "projectFile": "<dir>/game/default.project.json",
         "serving": null,
         "rojo": [
@@ -48,7 +51,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "globIgnorePaths": [],
-        "syncPath": null,
+        "compiledPath": null,
+        "compiledLayout": {},
         "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
         "rojo": [
@@ -83,7 +87,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "globIgnorePaths": [],
-        "syncPath": null,
+        "compiledPath": null,
+        "compiledLayout": {},
         "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
         "rojo": [

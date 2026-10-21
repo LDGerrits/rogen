@@ -9,13 +9,14 @@ stdout:
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync path: game/dist
+    compiled path: game/dist
+      game/src -> game/dist
     project file: game/default.project.json
     rojo: rojo serve game/default.project.json
   lobby/default.rogen.json
     source paths: lobby/core, lobby/places/lobby
     routes: same as Game
-    sync path: (none)
+    compiled path: (none)
     project file: lobby/default.project.json
     rojo: rojo serve lobby/default.project.json
   2 configs.

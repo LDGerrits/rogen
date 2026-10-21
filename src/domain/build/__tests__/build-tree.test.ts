@@ -1,10 +1,10 @@
-import { SyncLayout } from "../sync-layout.js";
+import { CompiledLayout } from "../compiled-layout.js";
 import { BuildTree } from "../build-tree.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
 const treeOf = (spec: Parameters<typeof configOf>[0] = {}) => {
 	const config = configOf(spec);
-	return new BuildTree(config, new SyncLayout(config, syncTools));
+	return new BuildTree(config, new CompiledLayout(config, syncTools));
 };
 
 const mounting = (target: string) => ({

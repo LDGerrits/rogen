@@ -404,7 +404,7 @@ describe("TreePlan", () => {
 			});
 		});
 
-		it("should leave out of a lifted tree the nodes that point into the sync path", async () => {
+		it("should leave out of a lifted tree the nodes that point into the compiled path", async () => {
 			const files = planProject({
 				choices: {
 					...(await defaultProjectChoices({
@@ -434,7 +434,7 @@ describe("TreePlan", () => {
 			);
 		});
 
-		it("should write routes for the nodes it leaves out that point into the sync path", async () => {
+		it("should write routes for the nodes it leaves out that point into the compiled path", async () => {
 			const tsChoices = await defaultProjectChoices({
 				...luau,
 				language: "roblox-ts",

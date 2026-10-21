@@ -92,7 +92,7 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `cases/routing` for how folders and names place a file, `cases/structure` for
   init folders, the tree, `globIgnorePaths` and a config without routes,
   `cases/data-files` for `.meta.json` and `.model.json`, `cases/links` for
-  symlinks, `cases/sync-path` for `syncPath` (roblox-ts and Darklua output),
+  symlinks, `cases/compiled-path` for `compiledPath` (roblox-ts and Darklua output),
   and `cases/config` for the config file itself: its keys, the removed and unknown
   ones, `name`, the source paths and JSONC.
 - Which file a command picks and writes, in a folder with several configs

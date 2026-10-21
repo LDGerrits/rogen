@@ -89,15 +89,18 @@ describe("domain/config/config", () => {
 		const values = {
 			getValue: <T>(section?: string | readonly string[]) =>
 				(Array.isArray(section) &&
-				section.join(".") === "rogen.syncPath"
+				section.join(".") === "rogen.compiledPath"
 					? "dist"
 					: undefined) as T | undefined,
 		};
 
 		it("should read a field the values hold, as the config declares it", () => {
-			const syncPath: string | undefined = fieldOf(values, "syncPath");
+			const compiledPath: string | undefined = fieldOf(
+				values,
+				"compiledPath"
+			);
 
-			expect(syncPath).toBe("dist");
+			expect(compiledPath).toBe("dist");
 		});
 
 		it("should give undefined for a field they lack", () => {

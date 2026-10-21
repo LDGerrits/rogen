@@ -7,13 +7,13 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Source path**: A folder Rogen scans and watches for code, listed in `sourcePaths`. With several, their feature folders merge into one tree, and the later one wins a clash. See [Project Layout](/docs/v2/core-concepts/project-layout#several-source-paths).
 
-- **Common root**: The deepest folder that contains every source path. Rogen works it out; you never write it in the config. See [Sync Path](/docs/v2/core-concepts/output#sync-path).
+- **Common root**: The deepest folder that contains every source path. Rogen works it out; you never write it in the config. See [Compiled Path](/docs/v2/core-concepts/output#compiled-path).
 
 - **Linked directory**: A symlink or Windows junction inside a source path, read as the directory it points to. See [Project Layout](/docs/v2/core-concepts/project-layout#linked-directories).
 
 - **Feature folder**: A folder inside a source path that holds everything for one gameplay feature, whichever service each file ends up in. See [Routing](/docs/v2/core-concepts/routing#routing-folders).
 
-- **Sync path**: The folder Rojo syncs from, set as `syncPath`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#sync-path).
+- **Compiled path**: The folder Rojo syncs from, set as `compiledPath`: your compiler's output. See [Output and Sync](/docs/v2/core-concepts/output#compiled-path).
 
 - **Tree**: The instance tree in `rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
@@ -67,6 +67,6 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 ## Configuration
 
-- **Config**: A folder's `rogen.json`: a Rojo project file plus `sourcePaths`, `routes`, `syncPath` and `projects`. See [Configuration](/docs/v2/configuration).
+- **Config**: A folder's `rogen.json`: a Rojo project file plus `sourcePaths`, `routes`, `compiledPath` and `projects`. See [Configuration](/docs/v2/configuration).
 
 - **Legacy config**: A config written for Rogen 1, which v2 doesn't read. A `rogen.json` with v1's keys is an error that links to the [migration page](/docs/v2/migrating-from-v1).

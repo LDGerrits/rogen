@@ -84,7 +84,7 @@ describe("domain/build/build", () => {
 			expect(run.warningCount).toBe(1);
 		});
 
-		it("should count sync path warnings with the rest", () => {
+		it("should count compiled path warnings with the rest", () => {
 			const run = new BuildRun([written(lobby, [], [shared])]);
 
 			expect(run.warningCount).toBe(1);

@@ -1,0 +1,8 @@
+{
+	"syncPath": "out",
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "*": "ReplicatedStorage" },
+		"syncPath": "out"
+	}
+}

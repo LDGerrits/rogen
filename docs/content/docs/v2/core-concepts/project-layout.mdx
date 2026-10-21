@@ -65,7 +65,7 @@ When several folders become the same node, the last source path with a meta wins
 Rogen warns about metadata with nothing to apply to, such as an `init.meta.json` in a routing or invisible folder, or a `*.meta.json` no file claims.
 
 <Callout type="warn" title="Darklua drops metadata">
-	With a `syncPath`, Rojo reads metadata from your compiler's output. roblox-ts copies it over, but Darklua turns each file into a stray `.meta.lua` module. Folder meta survives because Rogen reads it from your source, and Rogen warns about any other `*.meta.json` missing from the sync path.
+	With a `compiledPath`, Rojo reads metadata from your compiler's output. roblox-ts copies it over, but Darklua turns each file into a stray `.meta.lua` module. Folder meta survives because Rogen reads it from your source, and Rogen warns about any other `*.meta.json` missing from the compiled path.
 </Callout>
 
 ## Leaving Out Files
