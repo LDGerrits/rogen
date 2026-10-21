@@ -1,19 +1,19 @@
 $ rogen syncback -i place.rbxl -y --list
 exit 0
 stdout:
-  Writing rogen.json
+  Writing default.rogen.json
 stderr:
   rogen syncback · game
   default.project.json · wrote
   Built 1 project.
-  rogen.json - warning: ServerScriptService is in the place and no folder of the project can take it, so it was left out: a property or attribute changed in Studio, and the tree of rogen.json has no node for it, since routing made it; add a node for it to the tree. (syncback.unplaced)
+  default.rogen.json - warning: ServerScriptService is in the place and no folder of the project can take it, so it was left out: a property or attribute changed in Studio, and the tree of default.rogen.json has no node for it, since routing made it; add a node for it to the tree. (syncback.unplaced)
   Syncback wrote 1 change.
 
 written:
   default.project.json
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "name": "game",
   "tree": {

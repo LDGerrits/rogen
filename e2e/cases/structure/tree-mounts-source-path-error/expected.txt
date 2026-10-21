@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
-  rogen.json - error: "ReplicatedStorage/All" mounts the source path src, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the source path, or remove the source path from "sourcePaths". (tree.mountsSourcePath)
+  default.rogen.json - error: "ReplicatedStorage/All" mounts the source path src, so Rojo would read all of it and Rogen would place nothing there. Mount a folder inside the source path, or remove the source path from "sourcePaths". (tree.mountsSourcePath)

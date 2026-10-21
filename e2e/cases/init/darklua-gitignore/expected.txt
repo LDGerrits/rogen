@@ -8,7 +8,7 @@ written:
   .gitignore
   AGENTS.md
   default.project.json
-  rogen.json
+  default.rogen.json
 
 .gitignore:
 # Project place file
@@ -23,7 +23,7 @@ sourcemap.json
 # Darklua output
 /dist
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {

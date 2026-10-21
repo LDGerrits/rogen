@@ -5,7 +5,7 @@ stdout:
     "changed": true,
     "files": [
       {
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "outcome": "wrote"
       },
       {
@@ -53,7 +53,7 @@ stdout:
     "built": [
       {
         "config": "project",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
@@ -68,7 +68,7 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "Add your own routes under \"routes\" in rogen.json."
+        "Add your own routes under \"routes\" in default.rogen.json."
       ]
     }
   }
@@ -79,9 +79,9 @@ written:
   .git/
   .gitignore
   default.project.json
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {

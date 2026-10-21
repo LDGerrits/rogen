@@ -2,10 +2,10 @@ $ rogen init places/lobby --non-interactive
 exit 0
 stdout:
   rogen init
-  lobby is served on port 34872, which its places/lobby/rogen.json pins so adding another place never moves it.
+  lobby is served on port 34872, which its places/lobby/default.rogen.json pins so adding another place never moves it.
   Took the defaults: --place-listing glob, --source-path src, --place-id none.
-  Added "places/*" as a place path to rogen.json.
-  Created places/lobby/rogen.json.
+  Added "places/*" as a place path to default.rogen.json.
+  Created places/lobby/default.rogen.json.
   Created project.code-workspace.
   Created places/lobby/src/.
   places/lobby/default.project.json · wrote
@@ -13,14 +13,14 @@ stdout:
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    Put the code of lobby in places/lobby/src: it gets the routes and the tree of rogen.json, and the code in its source paths wins a clash with the shared code.
+    Put the code of lobby in places/lobby/src: it gets the routes and the tree of default.rogen.json, and the code in its source paths wins a clash with the shared code.
   Wrote 3 files.
 
 $ rogen list
 exit 0
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
     source paths: src
     routes:
       server -> ServerScriptService
@@ -43,12 +43,24 @@ stdout:
   1 config and 2 places.
 
 written:
+  default.rogen.json
   places/lobby/default.project.json
-  places/lobby/rogen.json
+  places/lobby/default.rogen.json
   project.code-workspace
-  rogen.json
 
-places/lobby/rogen.json:
+default.rogen.json:
+{
+  "name": "Game",
+  "routes": {
+    "server": "ServerScriptService",
+    "*": "ReplicatedStorage/Shared"
+  },
+  "placePaths": [
+    "places/*"
+  ]
+}
+
+places/lobby/default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "servePort": 34872
@@ -67,18 +79,6 @@ project.code-workspace:
 			"path": "places/lobby"
 		}
 	]
-}
-
-rogen.json:
-{
-  "name": "Game",
-  "routes": {
-    "server": "ServerScriptService",
-    "*": "ReplicatedStorage/Shared"
-  },
-  "placePaths": [
-    "places/*"
-  ]
 }
 
 $ rojo sourcemap places/lobby/default.project.json

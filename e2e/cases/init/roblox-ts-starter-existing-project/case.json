@@ -10,7 +10,7 @@
 	],
 	"rojo": false,
 	"show": [
-		"rogen.json"
+		"default.rogen.json"
 	],
 	"tools": {
 		"npm": "echo \"npm error network\" >&2; exit 1"

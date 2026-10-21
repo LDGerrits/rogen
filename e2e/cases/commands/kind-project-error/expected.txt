@@ -1,7 +1,7 @@
 $ rogen list
 exit 1
 stderr:
-  error: No rogen.json found in <dir>. Run 'rogen init' to create one.
+  error: No default.rogen.json or default.project.json in this folder (<dir>). Run 'rogen init' to create one.
 
 $ rogen list --json
 exit 1
@@ -9,7 +9,7 @@ stdout:
   {
     "error": {
       "kind": "project",
-      "message": "No rogen.json found in <dir>.",
+      "message": "No default.rogen.json or default.project.json in this folder (<dir>).",
       "hint": "Run 'rogen init' to create one."
     }
   }
@@ -21,6 +21,6 @@ stdout:
     "error": {
       "kind": "project",
       "message": "\"nowhere\" not found.",
-      "hint": "Name a folder with a rogen.json, or a *.project.json path."
+      "hint": "Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path."
     }
   }

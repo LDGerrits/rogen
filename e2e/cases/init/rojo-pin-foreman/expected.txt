@@ -8,14 +8,10 @@ ran:
 written:
   AGENTS.md
   default.project.json
+  default.rogen.json
   foreman.toml
-  rogen.json
 
-foreman.toml:
-[tools]
-rojo = { github = "rojo-rbx/rojo", version = "7.7.1" }
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -31,3 +27,7 @@ rogen.json:
     "*": "ReplicatedStorage/Shared"
   }
 }
+
+foreman.toml:
+[tools]
+rojo = { github = "rojo-rbx/rojo", version = "7.7.1" }

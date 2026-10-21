@@ -4,5 +4,5 @@ stdout:
   rogen build · project
   build failed.
 stderr:
-  error: rogen.json · not loaded
-  rogen.json - error: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)
+  error: default.rogen.json · not loaded
+  default.rogen.json - error: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)

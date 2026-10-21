@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout:
   rogen init
-  ../../rogen.json lists this folder as a place, so agent rules, the hook and Rojo go to the project root.
+  ../../default.rogen.json lists this folder as a place, so agent rules, the hook and Rojo go to the project root.
   ../../AGENTS.md already has Rogen's rules.
   Rojo is already pinned in ../../rokit.toml.
   Nothing to add.
@@ -28,7 +28,7 @@ stdout:
       }
     ],
     "notes": [
-      "../../rogen.json lists this folder as a place, so agent rules, the hook and Rojo go to the project root."
+      "../../default.rogen.json lists this folder as a place, so agent rules, the hook and Rojo go to the project root."
     ],
     "nextSteps": {
       "setup": [],

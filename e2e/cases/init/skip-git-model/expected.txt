@@ -4,7 +4,7 @@ stdout:
   rogen init
   Started a model project: its tree mounts src, and Rogen adds no routes to a model.
   Took the defaults: --language luau, --no-darklua, --agent-rules.
-  Created rogen.json.
+  Created default.rogen.json.
   Created README.md.
   Created src/init.luau.
   Created AGENTS.md.
@@ -18,10 +18,10 @@ written:
   AGENTS.md
   README.md
   default.project.json
-  rogen.json
+  default.rogen.json
   src/init.luau
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {

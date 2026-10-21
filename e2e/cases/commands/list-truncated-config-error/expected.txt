@@ -2,8 +2,8 @@ $ rogen list
 exit 1
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
   list failed.
 stderr:
-  rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  default.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
   error: 1 config has errors.

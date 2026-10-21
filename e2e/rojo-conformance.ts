@@ -25,7 +25,7 @@ export interface RoundTrip {
 	readonly placeOfWritten?: string;
 }
 
-/** Saves the project `name` of `projectsDir` (Rojo's build tests unless told otherwise) as a `rogen.json`, builds it with Rogen, and builds the original and the written file with Rojo. */
+/** Saves the project `name` of `projectsDir` (Rojo's build tests unless told otherwise) as a `default.rogen.json`, builds it with Rogen, and builds the original and the written file with Rojo. */
 export function roundTrip(
 	cli: string,
 	name: string,
@@ -50,7 +50,7 @@ export function roundTrip(
 		};
 
 		const placeOfOriginal = placeOf("original.rbxmx");
-		fs.renameSync(file, path.join(project, "rogen.json"));
+		fs.renameSync(file, path.join(project, "default.rogen.json"));
 		const [command, args] = invocation(cli, ["build"]);
 		const rogen = spawnSync(command, [...args], {
 			cwd: project,

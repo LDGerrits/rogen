@@ -2,16 +2,16 @@ $ rogen init --non-interactive --skip-git --places
 exit 0
 stdout:
   rogen init
-  game is served on port 34872, which its places/game/rogen.json pins so adding another place never moves it.
+  game is served on port 34872, which its places/game/default.rogen.json pins so adding another place never moves it.
   Wrote the Greeter sample: the feature in places/shared/src, which every place shares, and Game in places/game/src. Pass --no-sample for empty source folders.
   Took the defaults: --kind place, --language luau, --no-darklua, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
-  Created rogen.json.
+  Created default.rogen.json.
   Created places/shared/src/Greeter/Shared/Greeting.luau.
   Created places/shared/src/Greeter/Server/Greeter.server.luau.
   Created places/shared/src/Greeter/Client/Greeter.client.luau.
   Created places/game/src/Game/Server/Game.server.luau.
   Created README.md.
-  Created places/game/rogen.json.
+  Created places/game/default.rogen.json.
   Created project.code-workspace.
   Created AGENTS.md.
   default.project.json · wrote
@@ -21,14 +21,14 @@ stdout:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     Add another place with 'rogen init places/lobby'.
-    Add your own routes under "routes" in rogen.json.
+    Add your own routes under "routes" in default.rogen.json.
   Wrote 9 files.
 
 $ rogen list
 exit 0
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
     source paths: places/shared/src
     routes:
       Server -> ServerScriptService
@@ -51,14 +51,14 @@ written:
   AGENTS.md
   README.md
   default.project.json
+  default.rogen.json
   places/game/default.project.json
-  places/game/rogen.json
+  places/game/default.rogen.json
   places/game/src/Game/Server/Game.server.luau
   places/shared/src/Greeter/Client/Greeter.client.luau
   places/shared/src/Greeter/Server/Greeter.server.luau
   places/shared/src/Greeter/Shared/Greeting.luau
   project.code-workspace
-  rogen.json
 
 README.md:
 # project
@@ -96,25 +96,7 @@ rogen init places/lobby
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).
 
-places/game/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "servePort": 34872
-}
-
-places/game/src/Game/Server/Game.server.luau:
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Greeting = require(ReplicatedStorage.Shared.Greeter.Greeting)
-
-print(Greeting("game"))
-
-places/shared/src/Greeter/Shared/Greeting.luau:
-return function(who: string): string
-	return `Hello, {who}!`
-end
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -178,6 +160,24 @@ rogen.json:
     "places/*"
   ]
 }
+
+places/game/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "servePort": 34872
+}
+
+places/game/src/Game/Server/Game.server.luau:
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Greeting = require(ReplicatedStorage.Shared.Greeter.Greeting)
+
+print(Greeting("game"))
+
+places/shared/src/Greeter/Shared/Greeting.luau:
+return function(who: string): string
+	return `Hello, {who}!`
+end
 
 $ rojo sourcemap default.project.json
 project: DataModel

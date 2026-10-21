@@ -95,7 +95,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 		fs.rmSync(parent, { recursive: true, force: true });
 	});
 
-	/** Two copies of Rojo's build test `name`: `rojo` holds its project file, `rogen` holds it as a `rogen.json`. */
+	/** Two copies of Rojo's build test `name`: `rojo` holds its project file, `rogen` holds it as a `default.rogen.json`. */
 	const copies = (name: string) => {
 		const dir = fs.mkdtempSync(path.join(parent, `${name}-`));
 		const [byRojo, byRogen] = ["rojo", "rogen"].map((side) => {
@@ -105,7 +105,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 		});
 		fs.renameSync(
 			path.join(byRogen, "default.project.json"),
-			path.join(byRogen, "rogen.json")
+			path.join(byRogen, "default.rogen.json")
 		);
 		return { dir, byRojo, byRogen };
 	};
@@ -170,13 +170,13 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 		);
 	});
 
-	describe("a syncback test of Rojo's, as a rogen.json", () => {
+	describe("a syncback test of Rojo's, as a default.rogen.json", () => {
 		const cases = fs
 			.readdirSync(SYNCBACK_PROJECTS_DIR, { withFileTypes: true })
 			.filter((entry) => entry.isDirectory())
 			.map((entry) => entry.name);
-		/** The project file each side keeps, which Rogen writes from its rogen.json. */
-		const PROJECT_FILES = ["default.project.json", "rogen.json"];
+		/** The project file each side keeps, which Rogen writes from its default.rogen.json. */
+		const PROJECT_FILES = ["default.project.json", "default.rogen.json"];
 
 		const inputOf = (name: string) => {
 			const dir = path.join(SYNCBACK_PROJECTS_DIR, name);
@@ -206,7 +206,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 			if (side === "rogen")
 				fs.renameSync(
 					path.join(to, "default.project.json"),
-					path.join(to, "rogen.json")
+					path.join(to, "default.rogen.json")
 				);
 			return to;
 		};
@@ -233,7 +233,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				expect(snapshot(byRogen, PROJECT_FILES)).toEqual(
 					snapshot(byRojo, PROJECT_FILES)
 				);
-				expect(treeOf(byRogen, "rogen.json")).toEqual(
+				expect(treeOf(byRogen, "default.rogen.json")).toEqual(
 					treeOf(byRojo, "default.project.json")
 				);
 			},
@@ -255,7 +255,7 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 				expect(actual.stdout).toBe(
 					stripVTControlCharacters(expected.stdout).replaceAll(
 						"default.project.json",
-						"rogen.json"
+						"default.rogen.json"
 					)
 				);
 			},

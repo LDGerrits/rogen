@@ -1,7 +1,7 @@
 import net from "net";
 import { RunningRogen, bundleCli, createProject } from "./harness.js";
 
-/** The rogen.json every serve test starts from, serving on `port`. */
+/** The default.rogen.json every serve test starts from, serving on `port`. */
 export const config = (port: number, extra: Record<string, unknown> = {}) =>
 	JSON.stringify({
 		name: "Game",
@@ -21,7 +21,7 @@ export const rojoProjectFile = (port: number, name: string) =>
 
 /** The files of a project that serves on `port`. */
 export const projectFiles = (port: number) => ({
-	"rogen.json": config(port),
+	"default.rogen.json": config(port),
 	"src/A.server.luau": "",
 });
 

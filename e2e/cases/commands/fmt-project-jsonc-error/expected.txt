@@ -1,4 +1,4 @@
 $ rogen fmt-project
 exit 1
 stderr:
-  rogen.jsonc - error: rogen.jsonc may hold comments, and formatting writes none. Rename it to rogen.json to format it, or format it in your editor. (format.commentsLost)
+  default.rogen.jsonc - error: default.rogen.jsonc may hold comments, and formatting writes none. Rename it to default.rogen.json to format it, or format it in your editor. (format.commentsLost)

@@ -10,7 +10,7 @@ $ rogen list
 exit 0
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
     source paths: places/shared/src
     routes:
       Server -> ServerScriptService
@@ -39,30 +39,18 @@ written:
   AGENTS.md
   README.md
   default.project.json
+  default.rogen.json
   places/game/default.project.json
-  places/game/rogen.json
+  places/game/default.rogen.json
   places/game/src/Game/Server/Game.server.luau
   places/lobby/default.project.json
-  places/lobby/rogen.json
+  places/lobby/default.rogen.json
   places/shared/src/Greeter/Client/Greeter.client.luau
   places/shared/src/Greeter/Server/Greeter.server.luau
   places/shared/src/Greeter/Shared/Greeting.luau
   project.code-workspace
-  rogen.json
 
-places/game/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "servePort": 34872
-}
-
-places/lobby/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "servePort": 34873
-}
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -125,6 +113,18 @@ rogen.json:
   "placePaths": [
     "places/*"
   ]
+}
+
+places/game/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "servePort": 34872
+}
+
+places/lobby/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "servePort": 34873
 }
 
 $ rojo sourcemap default.project.json

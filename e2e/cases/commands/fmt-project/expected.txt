@@ -1,7 +1,7 @@
 $ rogen fmt-project
 exit 0
 stdout:
-  formatted rogen.json
+  formatted default.rogen.json
 
 $ rogen fmt-project
 exit 0
@@ -12,9 +12,9 @@ stdout: (not shown)
 
 written:
   default.project.json
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "name": "Game",
   "tree": {

@@ -19,10 +19,10 @@ stdout:
       build          Writes the project files; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
-      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
+      fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting rogen.json, or adds a place to one
-      list           Lists the configs, their projects and their ports
+      init           Writes a starting default.rogen.json, or adds a place to one
+      list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
       sourcemap      Writes the project files, then a sourcemap with Rojo
@@ -63,10 +63,10 @@ stdout:
       build          Writes the project files; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
-      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
+      fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting rogen.json, or adds a place to one
-      list           Lists the configs, their projects and their ports
+      init           Writes a starting default.rogen.json, or adds a place to one
+      list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
       sourcemap      Writes the project files, then a sourcemap with Rojo
@@ -107,10 +107,10 @@ stdout:
       build          Writes the project files; with -o or -p, builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
-      fmt-project    Formats rogen.json the way 'rojo fmt-project' does
+      fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting rogen.json, or adds a place to one
-      list           Lists the configs, their projects and their ports
+      init           Writes a starting default.rogen.json, or adds a place to one
+      list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
       sourcemap      Writes the project files, then a sourcemap with Rojo

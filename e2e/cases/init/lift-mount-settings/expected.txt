@@ -5,7 +5,7 @@ stdout:
     "changed": true,
     "files": [
       {
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "outcome": "wrote"
       },
       {
@@ -76,14 +76,14 @@ stdout:
     "built": [
       {
         "config": "game",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
       }
     ],
     "notes": [
-      "Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
+      "Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
       "Left out Workspace/Map and Workspace/Level/Props, since they point into src and Rogen generates that code now.",
       "Kept what Workspace/Map and Workspace/Level/Props set in the tree, on the node the route lands on.",
       "Kept ReplicatedStorage/Deep in the tree as a $path mount, since a route can't carry its settings."
@@ -103,7 +103,7 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "Add your own routes under \"routes\" in rogen.json."
+        "Add your own routes under \"routes\" in default.rogen.json."
       ]
     }
   }
@@ -113,7 +113,7 @@ written:
   .gitignore
   AGENTS.md
   default.project.json
-  rogen.json
+  default.rogen.json
 
 default.project.json:
 {
@@ -158,7 +158,7 @@ default.project.json:
   }
 }
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",

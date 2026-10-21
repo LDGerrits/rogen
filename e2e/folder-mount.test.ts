@@ -22,7 +22,7 @@ describeWithRojo("end to end folder mounts", () => {
 
 	beforeEach(() => {
 		project = createProject({
-			"rogen.json": JSON.stringify({
+			"default.rogen.json": JSON.stringify({
 				sourcePaths: ["src"],
 				routes: {
 					Server: "ServerScriptService",

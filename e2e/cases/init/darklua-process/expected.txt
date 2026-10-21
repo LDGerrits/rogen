@@ -28,9 +28,9 @@ written:
   .darklua.json
   AGENTS.md
   default.project.json
+  default.rogen.json
   dist/Feature/Server/Feature.server.luau
   dist/Feature/Shared/Values.luau
-  rogen.json
   sourcemap.json
 
 .darklua.json:
@@ -50,12 +50,7 @@ written:
 	]
 }
 
-dist/Feature/Server/Feature.server.luau:
-local Values = require(game:GetService('ReplicatedStorage').Shared.Feature.Values)
-
-print(Values.greeting)
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -71,6 +66,11 @@ rogen.json:
     "*": "ReplicatedStorage/Shared"
   }
 }
+
+dist/Feature/Server/Feature.server.luau:
+local Values = require(game:GetService('ReplicatedStorage').Shared.Feature.Values)
+
+print(Values.greeting)
 
 $ rojo sourcemap default.project.json
 project: DataModel

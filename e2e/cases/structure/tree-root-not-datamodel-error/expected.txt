@@ -2,5 +2,5 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: rogen.json · not loaded
-  rogen.json:2:10 - error: routes name services, but the root of the tree is a Folder, not a DataModel. Give it "$className": "DataModel", or remove the routes. (tree.rootNotDataModel)
+  error: default.rogen.json · not loaded
+  default.rogen.json:2:10 - error: routes name services, but the root of the tree is a Folder, not a DataModel. Give it "$className": "DataModel", or remove the routes. (tree.rootNotDataModel)

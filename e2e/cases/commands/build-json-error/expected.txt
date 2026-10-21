@@ -6,12 +6,12 @@ stdout:
     "configs": [
       {
         "config": "project",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": null,
         "outcome": "notWritten",
         "diagnostics": [
           {
-            "file": "<dir>/rogen.json",
+            "file": "<dir>/default.rogen.json",
             "line": 2,
             "column": 17,
             "severity": "error",

@@ -2,5 +2,5 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: rogen.json · not loaded
-  rogen.json:4:2 - error: "servePort" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place. (config.placeSetting)
+  error: default.rogen.json · not loaded
+  default.rogen.json:4:2 - error: "servePort" is set by each place, since a config that lists places is never served. Move it to the default.rogen.json of each place. (config.placeSetting)

@@ -9,7 +9,7 @@
 		["serve", "--server", "rojo"],
 		["serve", "--tool", "argon"],
 		["build", "--all"],
-		["build", "-c", "rogen.json"],
+		["build", "-c", "default.rogen.json"],
 		["list", "--all"],
 		["where", "--all"],
 		["init", "--no-input"],

@@ -39,7 +39,7 @@ describeWithRojo("end to end watch", () => {
 
 	beforeEach(() => {
 		project = createProject({
-			"rogen.json": CONFIG,
+			"default.rogen.json": CONFIG,
 			"src/A.server.luau": "",
 		});
 	});
@@ -225,7 +225,7 @@ describeWithRojo("end to end watch", () => {
 
 		writeProjectFile(
 			project.dir,
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				routes: { "*": "Workspace" },
 			})
@@ -235,7 +235,7 @@ describeWithRojo("end to end watch", () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
 		expect(await tree()).not.toContain("ServerScriptService");
-		expect(session?.output).toContain("rogen.json changed");
+		expect(session?.output).toContain("default.rogen.json changed");
 	}, 30_000);
 
 	it("should keep building from the last valid config while the config is invalid", async () => {
@@ -246,7 +246,7 @@ describeWithRojo("end to end watch", () => {
 
 		writeProjectFile(
 			project.dir,
-			"rogen.json",
+			"default.rogen.json",
 			'{ "routes": { "*": "ReplicatedStorage"'
 		);
 		await eventually(() => {
@@ -266,7 +266,7 @@ describeWithRojo("end to end watch", () => {
 
 		writeProjectFile(
 			project.dir,
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: { "*": "Workspace" },
@@ -280,7 +280,7 @@ describeWithRojo("end to end watch", () => {
 	it("should keep watching the folders it was given across a config reload", async () => {
 		writeProjectFile(
 			project.dir,
-			"lobby/rogen.json",
+			"lobby/default.rogen.json",
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 		writeProjectFile(project.dir, "lobby/src/Analytics.luau");
@@ -293,14 +293,16 @@ describeWithRojo("end to end watch", () => {
 
 		writeProjectFile(
 			project.dir,
-			"lobby/rogen.json",
+			"lobby/default.rogen.json",
 			JSON.stringify({
 				routes: { "*": "Workspace" },
 				globIgnorePaths: ["nothing/**"],
 			})
 		);
 		await eventually(() => {
-			expect(session?.output).toContain("lobby/rogen.json changed");
+			expect(session?.output).toContain(
+				"lobby/default.rogen.json changed"
+			);
 		});
 
 		writeProjectFile(project.dir, "lobby/src/Other.luau");
@@ -317,7 +319,7 @@ describeWithRojo("end to end watch", () => {
 	it("should watch several projects", async () => {
 		writeProjectFile(
 			project.dir,
-			"lobby/rogen.json",
+			"lobby/default.rogen.json",
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 		writeProjectFile(project.dir, "lobby/src/L.luau");
@@ -349,34 +351,34 @@ describeWithRojo("end to end watch", () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
-		fs.rmSync(path.join(project.dir, "rogen.json"));
+		fs.rmSync(path.join(project.dir, "default.rogen.json"));
 		await eventually(() => {
-			expect(running.output).toContain("rogen.json removed");
+			expect(running.output).toContain("default.rogen.json removed");
 		});
 
 		writeProjectFile(
 			project.dir,
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 		await eventually(async () => {
 			expect(await tree()).toContain("  Workspace: Workspace");
 		});
-		expect(running.output).toContain("rogen.json added");
+		expect(running.output).toContain("default.rogen.json added");
 	}, 30_000);
 
-	it("should build from rogen.jsonc when the config is renamed to it", async () => {
+	it("should build from default.rogen.jsonc when the config is renamed to it", async () => {
 		const running = start();
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
 
 		fs.renameSync(
-			path.join(project.dir, "rogen.json"),
-			path.join(project.dir, "rogen.jsonc")
+			path.join(project.dir, "default.rogen.json"),
+			path.join(project.dir, "default.rogen.jsonc")
 		);
 		await eventually(() => {
-			expect(running.output).toContain("rogen.jsonc added");
+			expect(running.output).toContain("default.rogen.jsonc added");
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
@@ -385,18 +387,16 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
-	it("should watch the config of the folder above, and reload it when it changes", async () => {
-		const running = start([], path.join(project.dir, "src"));
+	it("should watch the config of a folder named from below, and reload it when it changes", async () => {
+		const running = start([".."], path.join(project.dir, "src"));
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
-		expect(running.output).toContain(
-			"rogen build --watch · project · in .."
-		);
+		expect(running.output).toContain("rogen build --watch · project");
 
 		writeProjectFile(
 			project.dir,
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({ routes: { "*": "Workspace" } })
 		);
 
@@ -405,10 +405,32 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
+	it("should not mind a config of another name that comes to the folder", async () => {
+		const running = start();
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/A.server.luau");
+		});
+
+		writeProjectFile(
+			project.dir,
+			"arena.rogen.json",
+			JSON.stringify({ name: "Arena", routes: { "*": "Workspace" } })
+		);
+		writeProjectFile(project.dir, "src/B.server.luau");
+
+		await eventually(async () => {
+			expect(await tree()).toContain("<- src/B.server.luau");
+		});
+		expect(running.output).not.toContain("arena.rogen.json");
+		expect(
+			fs.existsSync(path.join(project.dir, "arena.project.json"))
+		).toBe(false);
+	}, 30_000);
+
 	it("should pick up a source path that appears later", async () => {
 		writeProjectFile(
 			project.dir,
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src", "later"],
 				routes: { "*": "ReplicatedStorage" },

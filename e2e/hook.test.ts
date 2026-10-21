@@ -95,7 +95,7 @@ const available = has("bash") && has("git") && has("jq");
 			cwd: path.join(dir, "project"),
 		});
 		write(
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: {
@@ -201,7 +201,7 @@ const available = has("bash") && has("git") && has("jq");
 		expect(reply?.decision).toBe("block");
 	});
 
-	it("should find the config above the folder the agent runs in", () => {
+	it("should do nothing in a folder below the config, which a bare command no longer searches up from", () => {
 		write("src/sub/Buy@sever.luau");
 
 		const { reply } = stop(
@@ -210,7 +210,7 @@ const available = has("bash") && has("git") && has("jq");
 			{ CLAUDE_PROJECT_DIR: undefined }
 		);
 
-		expect(reply?.decision).toBe("block");
+		expect(reply).toBeUndefined();
 	});
 
 	it("should not count a report as given when the reply could not be made", () => {
@@ -235,7 +235,7 @@ const available = has("bash") && has("git") && has("jq");
 	});
 
 	it("should do nothing without a config in the project dir", () => {
-		fs.rmSync(path.join(dir, "project/rogen.json"));
+		fs.rmSync(path.join(dir, "project/default.rogen.json"));
 		write("src/Buy@sever.luau");
 
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });

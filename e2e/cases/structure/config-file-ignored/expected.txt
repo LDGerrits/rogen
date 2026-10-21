@@ -6,7 +6,7 @@ $ rogen where src/Inventory
 exit 0
 stdout:
   src/Inventory/A.luau -> ReplicatedStorage/shared/Inventory/A · route * (fallback)
-  src/Inventory/rogen.json -> ignored · matches rogen.json
+  src/Inventory/default.rogen.json -> ignored · matches default.rogen.json
 
 written:
   default.project.json

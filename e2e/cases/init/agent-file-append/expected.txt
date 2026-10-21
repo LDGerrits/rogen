@@ -11,7 +11,7 @@ written:
   .gitignore
   AGENTS.md
   default.project.json
-  rogen.json
+  default.rogen.json
 
 AGENTS.md:
 # Team rules
@@ -33,7 +33,7 @@ Rogen writes the Rojo project file from the folders and names under each `rogen.
 - Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help <code> --json` explains one diagnostic code, and `rogen help codes <module> --json` lists the codes of one module, such as `route`, offline.
 <!-- /rogen -->
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {

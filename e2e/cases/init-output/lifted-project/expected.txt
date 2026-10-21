@@ -2,10 +2,10 @@ $ rogen init
 exit 0
 stdout:
   rogen init
-  Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
+  Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.
   Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
   Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route mount:client, --unmatched shared, --agent-rules.
-  Created rogen.json.
+  Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
   Initialised a git repository.
@@ -14,7 +14,7 @@ stdout:
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    Add your own routes under "routes" in rogen.json.
+    Add your own routes under "routes" in default.rogen.json.
   Wrote 3 files.
 
 $ rogen build
@@ -26,9 +26,9 @@ written:
   .gitignore
   AGENTS.md
   default.project.json
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "my-game",

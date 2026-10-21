@@ -2,8 +2,8 @@ $ rogen build broken ok
 exit 1
 stdout: (not shown)
 stderr:
-  error: broken/rogen.json · not loaded
-  broken/rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  error: broken/default.rogen.json · not loaded
+  broken/default.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
   error: ok/default.project.json · not written · broken failed
 
 $ rogen build broken ok --json
@@ -14,12 +14,12 @@ stdout:
     "configs": [
       {
         "config": "broken",
-        "file": "<dir>/broken/rogen.json",
+        "file": "<dir>/broken/default.rogen.json",
         "projectFile": null,
         "outcome": "notWritten",
         "diagnostics": [
           {
-            "file": "<dir>/broken/rogen.json",
+            "file": "<dir>/broken/default.rogen.json",
             "line": 3,
             "column": 38,
             "severity": "error",
@@ -31,7 +31,7 @@ stdout:
       },
       {
         "config": "ok",
-        "file": "<dir>/ok/rogen.json",
+        "file": "<dir>/ok/default.rogen.json",
         "projectFile": "<dir>/ok/default.project.json",
         "outcome": "notWritten",
         "blockedBy": [

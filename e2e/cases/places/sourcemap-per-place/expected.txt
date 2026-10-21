@@ -33,21 +33,21 @@ stdout:
     "configs": [
       {
         "config": "Game",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []
       },
       {
         "config": "Arena",
-        "file": "<dir>/places/arena/rogen.json",
+        "file": "<dir>/places/arena/default.rogen.json",
         "projectFile": "<dir>/places/arena/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []
       },
       {
         "config": "lobby",
-        "file": "<dir>/places/lobby/rogen.json",
+        "file": "<dir>/places/lobby/default.rogen.json",
         "projectFile": "<dir>/places/lobby/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []

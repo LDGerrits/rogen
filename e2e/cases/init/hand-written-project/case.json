@@ -8,7 +8,7 @@
 		]
 	],
 	"show": [
-		"rogen.json",
+		"default.rogen.json",
 		"default.project.json"
 	]
 }

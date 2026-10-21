@@ -8,7 +8,7 @@ stdout:
     match/default.project.json · wrote · same warnings as lobby
   Built 2 projects with 1 warning.
 stderr:
-  lobby/rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
+  lobby/default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
     src/Inventory/Sever (did you mean "server"?)
   Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
 

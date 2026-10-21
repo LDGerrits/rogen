@@ -2,5 +2,5 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: rogen.json · not loaded
-  rogen.json:4:3 - error: source path "src/shared" is inside source path "src"; a file under it would belong to both. Remove one. (config.nestedSourcePath)
+  error: default.rogen.json · not loaded
+  default.rogen.json:4:3 - error: source path "src/shared" is inside source path "src"; a file under it would belong to both. Remove one. (config.nestedSourcePath)
