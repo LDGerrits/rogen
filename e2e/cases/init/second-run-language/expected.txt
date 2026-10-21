@@ -2,4 +2,4 @@ $ rogen init -y --language roblox-ts
 exit 2
 stdout: (not shown)
 stderr:
-  error: --language is for a new project, and rogen.json exists. The language decides the starter files and the compiler, and changing it means changing the code.
+  error: --language is for a new project, and default.rogen.json exists. The language decides the starter files and the compiler, and changing it means changing the code.

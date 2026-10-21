@@ -181,7 +181,7 @@ describe("TreeAssembler", () => {
 				await writeFiles(fs, "place/src/Foo.luau");
 
 				const storage = await storageOf({
-					file: abs("place/rogen.json"),
+					file: abs("place/default.rogen.json"),
 					sourcePaths: [abs("place/src")],
 				});
 

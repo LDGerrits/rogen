@@ -66,7 +66,7 @@ export const abs = (...segments: string[]): string =>
 
 export const configOf = (overrides: ResolvedConfigSpec = {}): ResolvedConfig =>
 	mockConfig({
-		file: abs("rogen.json"),
+		file: abs("default.rogen.json"),
 		sourcePaths: [abs("src")],
 		routes: { "*": "ReplicatedStorage" },
 		...overrides,

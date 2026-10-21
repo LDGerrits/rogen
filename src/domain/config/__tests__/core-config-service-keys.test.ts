@@ -15,7 +15,7 @@ describe("CoreConfigService", () => {
 		const warningsOf = (index = 0) => resolved(index)?.warnings ?? [];
 
 		it("should pass Rojo's keys through to the project", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				servePort: 34873,
 				servePlaceIds: [1, 2],
 				blockedPlaceIds: [3],
@@ -48,7 +48,7 @@ describe("CoreConfigService", () => {
 
 		it("should refuse a key on neither list, which Rojo would reject", async () => {
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"bogus": 1
 }`
@@ -59,7 +59,7 @@ describe("CoreConfigService", () => {
 			expect(errors(0)).toMatchObject([
 				{
 					code: "config.unknownField",
-					resource: "/repo/rogen.json",
+					resource: "/repo/default.rogen.json",
 					position: { line: 2, column: 2 },
 					message: expect.stringContaining(
 						"\"bogus\" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know."
@@ -69,7 +69,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should refuse a $ key of a node that is no field and holds no object", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				tree: {
 					$className: "DataModel",
 					Workspace: { $clasName: "Folder" },
@@ -92,7 +92,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should leave a $ key holding an object to the build, since Rojo reads it as a child", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				tree: { $className: "DataModel", Workspace: { $Thing: {} } },
 			});
 
@@ -102,7 +102,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should suggest the key a misspelling is closest to", async () => {
-			await write("/repo/rogen.json", { sourcePath: ["src"] });
+			await write("/repo/default.rogen.json", { sourcePath: ["src"] });
 
 			await start();
 
@@ -113,7 +113,7 @@ describe("CoreConfigService", () => {
 
 		it("should offer the suggested key as a text replacement", async () => {
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"sourcePath": ["src"]
 }`
@@ -124,7 +124,7 @@ describe("CoreConfigService", () => {
 			expect(errors(0)[0].fixes).toEqual([
 				{
 					replace: {
-						file: "/repo/rogen.json",
+						file: "/repo/default.rogen.json",
 						line: 2,
 						column: 2,
 						from: '"sourcePath"',
@@ -135,7 +135,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should offer no replacement for a key nothing is close to", async () => {
-			await write("/repo/rogen.json", `{\n\t"zzzzzzzz": 1\n}`);
+			await write("/repo/default.rogen.json", `{\n\t"zzzzzzzz": 1\n}`);
 
 			await start();
 
@@ -144,7 +144,7 @@ describe("CoreConfigService", () => {
 
 		it("should accept syncRules", async () => {
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"syncRules": [{ "pattern": "*.md", "use": "text" }]
 }`
@@ -157,7 +157,7 @@ describe("CoreConfigService", () => {
 
 		it("should refuse a sync rule Rojo can't read", async () => {
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"syncRules": [
 		{ "pattern": "*.md", "use": "text" },
@@ -179,7 +179,7 @@ describe("CoreConfigService", () => {
 
 		it("should warn of a field a sync rule does not have", async () => {
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"syncRules": [{ "pattern": "*.md", "use": "text", "sufix": ".md" }]
 }`
@@ -197,7 +197,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should refuse sourcePaths without routes", async () => {
-			await write("/repo/rogen.json", { sourcePaths: ["src"] });
+			await write("/repo/default.rogen.json", { sourcePaths: ["src"] });
 
 			await start();
 
@@ -210,7 +210,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should refuse routes under a root that is not a DataModel", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				routes: ROUTED,
 				tree: { $className: "Folder" },
 			});
@@ -228,7 +228,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should refuse routes under a $path root", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				routes: ROUTED,
 				tree: { $path: "lib" },
 			});
@@ -244,7 +244,7 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should accept any root without routes", async () => {
-			await write("/repo/rogen.json", { tree: { $path: "lib" } });
+			await write("/repo/default.rogen.json", { tree: { $path: "lib" } });
 
 			await start();
 

@@ -1,7 +1,7 @@
 import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import {
-	CONFIG_FILE_NAMES,
+	DEFAULT_CONFIG_FILE,
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
 	configFileContent,
@@ -68,7 +68,7 @@ export class StarterPlaces {
 			place
 		);
 		const placeSourcePath = path.posix.join(place, DEFAULT_SOURCE_PATH);
-		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
+		const configFile = path.posix.join(place, DEFAULT_CONFIG_FILE);
 		const extra = extend?.(place, sharedSourcePath);
 		return {
 			sharedSourcePath,

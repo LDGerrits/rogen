@@ -15,7 +15,7 @@ describe("CoreConfigService", () => {
 
 	describe("reload of the config here", () => {
 		beforeEach(async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				routes: ROUTED,
 				sourcePaths: ["a"],
 			});
@@ -32,56 +32,71 @@ describe("CoreConfigService", () => {
 		it("should concern the config files of that folder and the files it reads", async () => {
 			await start();
 
-			expect(selection.concerns("/repo/rogen.json")).toBe(true);
-			expect(selection.concerns("/repo/rogen.jsonc")).toBe(true);
-			expect(selection.concerns("/repo/src/rogen.json")).toBe(false);
+			expect(selection.concerns("/repo/default.rogen.json")).toBe(true);
+			expect(selection.concerns("/repo/default.rogen.jsonc")).toBe(true);
+			expect(selection.concerns("/repo/src/default.rogen.json")).toBe(
+				false
+			);
 			expect(selection.concerns("/repo/README.md")).toBe(false);
+		});
+
+		it("should not concern a config of another name that comes to the folder", async () => {
+			await start();
+
+			await write("/repo/dist.rogen.json", { routes: ROUTED });
+			const reload = await selection.reload(["/repo/dist.rogen.json"]);
+
+			expect(selection.concerns("/repo/dist.rogen.json")).toBe(false);
+			expect(selection.entries.map(({ file }) => file)).toEqual([
+				"/repo/default.rogen.json",
+			]);
+			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
 		it("should drop a config deleted from the folder, and report it", async () => {
 			await start();
 
-			await fs.delete("/repo/rogen.json");
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await fs.delete("/repo/default.rogen.json");
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(selection.entries).toEqual([]);
 			expect(reload.notices).toEqual([
-				{ kind: "removed", file: "/repo/rogen.json" },
+				{ kind: "removed", file: "/repo/default.rogen.json" },
 			]);
-			expect(selection.files.has("/repo/rogen.json")).toBe(false);
+			expect(selection.files.has("/repo/default.rogen.json")).toBe(false);
 		});
 
 		it("should pick up a config that comes back to the folder, and report it", async () => {
 			await start();
-			await fs.delete("/repo/rogen.json");
-			await selection.reload(["/repo/rogen.json"]);
+			await fs.delete("/repo/default.rogen.json");
+			await selection.reload(["/repo/default.rogen.json"]);
 
-			await write("/repo/rogen.json", { routes: ROUTED });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { routes: ROUTED });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 			]);
-			expect(reload.changed).toEqual(["/repo/rogen.json"]);
+			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 			expect(reload.notices).toEqual([
-				{ kind: "added", file: "/repo/rogen.json" },
+				{ kind: "added", file: "/repo/default.rogen.json" },
 			]);
 		});
 
 		it("should report a config that comes back broken with its errors, which no earlier version stands in for", async () => {
 			await start();
-			await fs.delete("/repo/rogen.json");
-			await selection.reload(["/repo/rogen.json"]);
+			await fs.delete("/repo/default.rogen.json");
+			await selection.reload(["/repo/default.rogen.json"]);
 
-			await write("/repo/rogen.json", { modes: {} });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { modes: {} });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(selection.entries[0].status).toBe("broken");
 			expect(reload.changed).toEqual([]);
 			expect(reload.notices).toMatchObject([
 				{
 					kind: "broken",
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					keptLastValid: false,
 				},
 			]);
@@ -90,21 +105,25 @@ describe("CoreConfigService", () => {
 		it("should keep the config it has when a second config file appears beside it", async () => {
 			await start();
 
-			await write("/repo/rogen.jsonc", { routes: ROUTED });
-			const reload = await selection.reload(["/repo/rogen.jsonc"]);
+			await write("/repo/default.rogen.jsonc", { routes: ROUTED });
+			const reload = await selection.reload([
+				"/repo/default.rogen.jsonc",
+			]);
 
 			expect(selection.entries.map(({ file }) => file)).toEqual([
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 			]);
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
 		it("should not look for new configs when the selection named its configs", async () => {
-			await write("/repo/lobby/rogen.json", {});
+			await write("/repo/lobby/default.rogen.json", {});
 			await start({ names: ["lobby"] });
 
-			await write("/repo/lobby/rogen.jsonc", {});
-			const reload = await selection.reload(["/repo/lobby/rogen.jsonc"]);
+			await write("/repo/lobby/default.rogen.jsonc", {});
+			const reload = await selection.reload([
+				"/repo/lobby/default.rogen.jsonc",
+			]);
 
 			expect(selection.entries).toHaveLength(1);
 			expect(reload).toEqual({ changed: [], notices: [] });
@@ -113,24 +132,26 @@ describe("CoreConfigService", () => {
 
 	describe("reload", () => {
 		it("should report each config whose value changed, in selection order", async () => {
-			await write("/repo/one/rogen.json", {
+			await write("/repo/one/default.rogen.json", {
 				routes: ROUTED,
 				sourcePaths: ["a"],
 			});
-			await write("/repo/two/rogen.json", {
+			await write("/repo/two/default.rogen.json", {
 				routes: ROUTED,
 				sourcePaths: ["z"],
 			});
 			await start({ names: ["one", "two"] });
 
-			await write("/repo/one/rogen.json", {
+			await write("/repo/one/default.rogen.json", {
 				routes: ROUTED,
 				sourcePaths: ["b"],
 			});
-			const reload = await selection.reload(["/repo/one/rogen.json"]);
+			const reload = await selection.reload([
+				"/repo/one/default.rogen.json",
+			]);
 
 			expect(reload).toEqual({
-				changed: ["/repo/one/rogen.json"],
+				changed: ["/repo/one/default.rogen.json"],
 				notices: [],
 			});
 			expect(resolved(0)?.sourcePaths).toEqual(["/repo/one/b"]);
@@ -138,71 +159,71 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should report nothing when the resolved value is unchanged", async () => {
-			await write("/repo/rogen.json", { name: "A" });
+			await write("/repo/default.rogen.json", { name: "A" });
 			await start();
 
-			await write("/repo/rogen.json", { name: "A" });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { name: "A" });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
 		it("should report a change to the tree", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				tree: { $className: "DataModel" },
 			});
 			await start();
 
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				tree: { $className: "DataModel", Workspace: {} },
 			});
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
-			expect(reload.changed).toEqual(["/repo/rogen.json"]);
+			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
 
 		it("should report a config whose routes only changed order, since their order is their precedence", async () => {
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				routes: { server: "ServerScriptService", client: "StarterGui" },
 			});
 			await start();
 
-			await write("/repo/rogen.json", {
+			await write("/repo/default.rogen.json", {
 				routes: { client: "StarterGui", server: "ServerScriptService" },
 			});
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
-			expect(reload.changed).toEqual(["/repo/rogen.json"]);
+			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
 
 		it("should keep the same config when a reload loads it unchanged, even after it broke", async () => {
-			await write("/repo/rogen.json", { name: "A" });
+			await write("/repo/default.rogen.json", { name: "A" });
 			await start();
 			const before = resolved(0);
 
-			await write("/repo/rogen.json", { name: "A" });
-			await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { name: "A" });
+			await selection.reload(["/repo/default.rogen.json"]);
 			expect(resolved(0)).toBe(before);
 
-			await fs.writeFile("/repo/rogen.json", "{ nope");
-			await selection.reload(["/repo/rogen.json"]);
-			await write("/repo/rogen.json", { name: "A" });
-			await selection.reload(["/repo/rogen.json"]);
+			await fs.writeFile("/repo/default.rogen.json", "{ nope");
+			await selection.reload(["/repo/default.rogen.json"]);
+			await write("/repo/default.rogen.json", { name: "A" });
+			await selection.reload(["/repo/default.rogen.json"]);
 			expect(resolved(0)).toBe(before);
 		});
 
 		it("should keep the last valid value when a reload breaks the config, and report the new errors", async () => {
-			await write("/repo/rogen.json", { name: "A" });
+			await write("/repo/default.rogen.json", { name: "A" });
 			await start();
 
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"name": "B",
 	"modes": {}
 }`
 			);
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(resolved(0)?.projectName).toBe("A");
 			expect(errors(0)).toMatchObject([
@@ -215,7 +236,7 @@ describe("CoreConfigService", () => {
 			expect(reload.notices).toEqual([
 				{
 					kind: "broken",
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					errors: errors(0),
 					keptLastValid: true,
 				},
@@ -223,11 +244,11 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should report only the errors the previous load didn't have", async () => {
-			await write("/repo/rogen.json", { modes: {} });
+			await write("/repo/default.rogen.json", { modes: {} });
 			await start();
 
-			await write("/repo/rogen.json", { modes: {}, mode: "x" });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { modes: {}, mode: "x" });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(errors(0)).toHaveLength(2);
 			expect(
@@ -240,45 +261,47 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should report nothing new when a broken config breaks the same way again", async () => {
-			await write("/repo/rogen.json", { modes: {} });
+			await write("/repo/default.rogen.json", { modes: {} });
 			await start();
 
-			await write("/repo/rogen.json", { modes: {} });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { modes: {} });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(reload).toEqual({ changed: [], notices: [] });
 		});
 
 		it("should clear the errors, report a change and say it loads again once the file is fixed", async () => {
-			await write("/repo/rogen.json", { name: "A" });
+			await write("/repo/default.rogen.json", { name: "A" });
 			await start();
-			await write("/repo/rogen.json", { modes: {} });
-			await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { modes: {} });
+			await selection.reload(["/repo/default.rogen.json"]);
 
-			await write("/repo/rogen.json", { name: "C" });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { name: "C" });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(errors(0)).toEqual([]);
 			expect(resolved(0)?.projectName).toBe("C");
 			expect(reload).toEqual({
-				changed: ["/repo/rogen.json"],
-				notices: [{ kind: "recovered", file: "/repo/rogen.json" }],
+				changed: ["/repo/default.rogen.json"],
+				notices: [
+					{ kind: "recovered", file: "/repo/default.rogen.json" },
+				],
 			});
 		});
 
 		it("should report a change when a config that was never valid becomes valid", async () => {
-			await write("/repo/rogen.json", "{ nope");
+			await write("/repo/default.rogen.json", "{ nope");
 			await start();
 
-			await write("/repo/rogen.json", { name: "A" });
-			const reload = await selection.reload(["/repo/rogen.json"]);
+			await write("/repo/default.rogen.json", { name: "A" });
+			const reload = await selection.reload(["/repo/default.rogen.json"]);
 
 			expect(resolved(0)?.projectName).toBe("A");
-			expect(reload.changed).toEqual(["/repo/rogen.json"]);
+			expect(reload.changed).toEqual(["/repo/default.rogen.json"]);
 		});
 
 		it("should ignore files no config reads", async () => {
-			await write("/repo/rogen.json", {});
+			await write("/repo/default.rogen.json", {});
 			await start();
 			const [before] = selection.entries;
 

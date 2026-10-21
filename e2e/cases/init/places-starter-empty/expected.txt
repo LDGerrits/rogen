@@ -5,18 +5,12 @@ stdout: (not shown)
 written:
   AGENTS.md
   default.project.json
+  default.rogen.json
   places/game/default.project.json
-  places/game/rogen.json
+  places/game/default.rogen.json
   project.code-workspace
-  rogen.json
 
-places/game/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "servePort": 34872
-}
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -34,6 +28,12 @@ rogen.json:
   "placePaths": [
     "places/*"
   ]
+}
+
+places/game/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "servePort": 34872
 }
 
 $ rojo sourcemap default.project.json

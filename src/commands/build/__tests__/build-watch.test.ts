@@ -75,7 +75,7 @@ describe("build --watch", () => {
 	) => {
 		for (const [folder, extra] of projects)
 			await write(
-				`/repo/${folder}/rogen.json`,
+				`/repo/${folder}/default.rogen.json`,
 				config({ sourcePaths: ["../src"], ...extra })
 			);
 	};
@@ -108,7 +108,7 @@ describe("build --watch", () => {
 			memFs,
 			new MockEnvironmentService("/repo")
 		);
-		await write("/repo/rogen.json", config());
+		await write("/repo/default.rogen.json", config());
 	});
 
 	afterEach(async () => {
@@ -152,7 +152,7 @@ describe("build --watch", () => {
 			await settle();
 			logService.clear();
 
-			await write("/repo/rogen.json", { extends: "base" });
+			await write("/repo/default.rogen.json", { extends: "base" });
 			await settle();
 
 			expect(
@@ -160,7 +160,7 @@ describe("build --watch", () => {
 			).toContainEqual({
 				notice: {
 					kind: "broken",
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					keptLastValid: true,
 					diagnostics: [
 						expect.objectContaining({
@@ -232,11 +232,11 @@ describe("build --watch", () => {
 			await memFs.createDirectory("/repo/a");
 			await memFs.createDirectory("/repo/b");
 			await write(
-				"/repo/a/rogen.json",
+				"/repo/a/default.rogen.json",
 				config({ sourcePaths: ["../src"] })
 			);
 			await write(
-				"/repo/b/rogen.json",
+				"/repo/b/default.rogen.json",
 				config({ sourcePaths: ["../src"] })
 			);
 
@@ -328,7 +328,7 @@ describe("build --watch", () => {
 		});
 
 		it("should refuse to start when a config is invalid", async () => {
-			await write("/repo/rogen.json", { extends: "base" });
+			await write("/repo/default.rogen.json", { extends: "base" });
 			const watch = jest.spyOn(watcher, "watch");
 
 			const result = await startWatch();
@@ -348,12 +348,12 @@ describe("build --watch", () => {
 		});
 
 		it("should refuse to start when no project is found", async () => {
-			await memFs.delete("/repo/rogen.json");
+			await memFs.delete("/repo/default.rogen.json");
 
 			const result = await startWatch();
 
 			expect((result as ResultError<Error>).error.message).toContain(
-				"No rogen.json found"
+				"No default.rogen.json or default.project.json in this folder"
 			);
 		});
 
@@ -444,7 +444,7 @@ describe("build --watch", () => {
 			await run();
 			logService.clear();
 
-			await write("/repo/rogen.json", config());
+			await write("/repo/default.rogen.json", config());
 			await settle();
 
 			expect(blocks()).toEqual([]);

@@ -6,7 +6,7 @@ $ rogen list
 exit 0
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
     source paths: places/shared/src
     routes:
       server -> ServerScriptService
@@ -39,19 +39,19 @@ written:
   AGENTS.md
   README.md
   default.project.json
+  default.rogen.json
   package.json
   places/game/default.project.json
-  places/game/rogen.json
+  places/game/default.rogen.json
   places/game/src/Game/server/Game.server.ts
   places/game/tsconfig.json
   places/lobby/default.project.json
-  places/lobby/rogen.json
+  places/lobby/default.rogen.json
   places/lobby/tsconfig.json
   places/shared/src/Greeter/client/Greeter.client.ts
   places/shared/src/Greeter/server/Greeter.server.ts
   places/shared/src/Greeter/shared/Greeting.ts
   project.code-workspace
-  rogen.json
   tsconfig.json
 
 .gitignore:
@@ -72,138 +72,7 @@ sourcemap.json
 places/*/out
 places/*/include
 
-package.json:
-{"scripts":{"build":"rbxtsc -p places/game","watch":"rbxtsc -w -p places/game"}}
-
-places/game/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "game",
-  "tree": {
-    "ReplicatedStorage": {
-      "rbxts_include": {
-        "$path": {
-          "optional": "include"
-        }
-      }
-    }
-  },
-  "servePort": 34872,
-  "syncPath": "out"
-}
-
-places/game/src/Game/server/Game.server.ts:
-import { greeting } from "Greeter/shared/Greeting";
-
-print(greeting("game"));
-
-places/game/tsconfig.json:
-{
-	"compilerOptions": {
-		"allowSyntheticDefaultImports": true,
-		"downlevelIteration": true,
-		"jsx": "react",
-		"jsxFactory": "React.createElement",
-		"jsxFragmentFactory": "React.Fragment",
-		"module": "commonjs",
-		"moduleResolution": "Node",
-		"noLib": true,
-		"resolveJsonModule": true,
-		"experimentalDecorators": true,
-		"forceConsistentCasingInFileNames": true,
-		"moduleDetection": "force",
-		"strict": true,
-		"target": "ESNext",
-		"incremental": true,
-		"typeRoots": [
-			"node_modules/@rbxts",
-			"../../node_modules/@rbxts"
-		],
-		"outDir": "out",
-		"rootDirs": [
-			"src",
-			"../shared/src"
-		],
-		"baseUrl": ".",
-		"paths": {
-			"*": [
-				"src/*",
-				"../shared/src/*"
-			]
-		},
-		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
-	},
-	"include": [
-		"src",
-		"../shared/src"
-	]
-}
-
-places/lobby/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "lobby",
-  "tree": {
-    "ReplicatedStorage": {
-      "rbxts_include": {
-        "$path": {
-          "optional": "include"
-        }
-      }
-    }
-  },
-  "servePort": 34873,
-  "syncPath": "out"
-}
-
-places/lobby/tsconfig.json:
-{
-	"compilerOptions": {
-		"allowSyntheticDefaultImports": true,
-		"downlevelIteration": true,
-		"jsx": "react",
-		"jsxFactory": "React.createElement",
-		"jsxFragmentFactory": "React.Fragment",
-		"module": "commonjs",
-		"moduleResolution": "Node",
-		"noLib": true,
-		"resolveJsonModule": true,
-		"experimentalDecorators": true,
-		"forceConsistentCasingInFileNames": true,
-		"moduleDetection": "force",
-		"strict": true,
-		"target": "ESNext",
-		"incremental": true,
-		"typeRoots": [
-			"node_modules/@rbxts",
-			"../../node_modules/@rbxts"
-		],
-		"outDir": "out",
-		"rootDirs": [
-			"src",
-			"../shared/src"
-		],
-		"baseUrl": ".",
-		"paths": {
-			"*": [
-				"src/*",
-				"../shared/src/*"
-			]
-		},
-		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
-	},
-	"include": [
-		"src",
-		"../shared/src"
-	]
-}
-
-places/shared/src/Greeter/shared/Greeting.ts:
-export function greeting(who: string): string {
-	return `Hello, ${who}!`;
-}
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "project",
@@ -282,6 +151,137 @@ rogen.json:
   "placePaths": [
     "places/*"
   ]
+}
+
+package.json:
+{"scripts":{"build":"rbxtsc -p places/game","watch":"rbxtsc -w -p places/game"}}
+
+places/game/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "game",
+  "tree": {
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "$path": {
+          "optional": "include"
+        }
+      }
+    }
+  },
+  "servePort": 34872,
+  "syncPath": "out"
+}
+
+places/game/src/Game/server/Game.server.ts:
+import { greeting } from "Greeter/shared/Greeting";
+
+print(greeting("game"));
+
+places/game/tsconfig.json:
+{
+	"compilerOptions": {
+		"allowSyntheticDefaultImports": true,
+		"downlevelIteration": true,
+		"jsx": "react",
+		"jsxFactory": "React.createElement",
+		"jsxFragmentFactory": "React.Fragment",
+		"module": "commonjs",
+		"moduleResolution": "Node",
+		"noLib": true,
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"forceConsistentCasingInFileNames": true,
+		"moduleDetection": "force",
+		"strict": true,
+		"target": "ESNext",
+		"incremental": true,
+		"typeRoots": [
+			"node_modules/@rbxts",
+			"../../node_modules/@rbxts"
+		],
+		"outDir": "out",
+		"rootDirs": [
+			"src",
+			"../shared/src"
+		],
+		"baseUrl": ".",
+		"paths": {
+			"*": [
+				"src/*",
+				"../shared/src/*"
+			]
+		},
+		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
+	},
+	"include": [
+		"src",
+		"../shared/src"
+	]
+}
+
+places/lobby/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "lobby",
+  "tree": {
+    "ReplicatedStorage": {
+      "rbxts_include": {
+        "$path": {
+          "optional": "include"
+        }
+      }
+    }
+  },
+  "servePort": 34873,
+  "syncPath": "out"
+}
+
+places/lobby/tsconfig.json:
+{
+	"compilerOptions": {
+		"allowSyntheticDefaultImports": true,
+		"downlevelIteration": true,
+		"jsx": "react",
+		"jsxFactory": "React.createElement",
+		"jsxFragmentFactory": "React.Fragment",
+		"module": "commonjs",
+		"moduleResolution": "Node",
+		"noLib": true,
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
+		"forceConsistentCasingInFileNames": true,
+		"moduleDetection": "force",
+		"strict": true,
+		"target": "ESNext",
+		"incremental": true,
+		"typeRoots": [
+			"node_modules/@rbxts",
+			"../../node_modules/@rbxts"
+		],
+		"outDir": "out",
+		"rootDirs": [
+			"src",
+			"../shared/src"
+		],
+		"baseUrl": ".",
+		"paths": {
+			"*": [
+				"src/*",
+				"../shared/src/*"
+			]
+		},
+		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
+	},
+	"include": [
+		"src",
+		"../shared/src"
+	]
+}
+
+places/shared/src/Greeter/shared/Greeting.ts:
+export function greeting(who: string): string {
+	return `Hello, ${who}!`;
 }
 
 tsconfig.json:

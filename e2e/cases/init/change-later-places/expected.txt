@@ -2,7 +2,7 @@ $ rogen init -y --skip-git
 exit 0
 stdout: (not shown)
 
-$ node -e const fs=require('fs');const s=fs.readFileSync('rogen.json','utf8');const t=s.replace('"routes"','// mine\n  "routes"');if(t===s)process.exit(1);fs.writeFileSync('rogen.json',t)
+$ node -e const fs=require('fs');const s=fs.readFileSync('default.rogen.json','utf8');const t=s.replace('"routes"','// mine\n  "routes"');if(t===s)process.exit(1);fs.writeFileSync('default.rogen.json',t)
 exit 0
 
 $ rogen build
@@ -29,12 +29,12 @@ written:
   AGENTS.md
   README.md
   default.project.json
+  default.rogen.json
   places/game/default.project.json
-  places/game/rogen.json
+  places/game/default.rogen.json
   places/shop/default.project.json
-  places/shop/rogen.json
+  places/shop/default.rogen.json
   project.code-workspace
-  rogen.json
   src/Greeter/Client/Greeter.client.luau
   src/Greeter/Server/Greeter.server.luau
   src/Greeter/Shared/Greeting.luau
@@ -67,19 +67,7 @@ rogen serve
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).
 
-places/game/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "servePort": 34872
-}
-
-places/shop/rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "servePort": 34873
-}
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -143,6 +131,18 @@ rogen.json:
   "placePaths": [
     "places/*"
   ]
+}
+
+places/game/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "servePort": 34872
+}
+
+places/shop/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "servePort": 34873
 }
 
 $ rojo sourcemap default.project.json

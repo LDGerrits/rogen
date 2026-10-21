@@ -9,6 +9,7 @@ import {
 	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
 	isConfigFileName,
+	isDefaultConfigFileName,
 	sourcePathOverlap,
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
@@ -39,7 +40,7 @@ export class InitDirectory {
 	}
 
 	get configFiles(): string[] {
-		return [...this.entries].filter(isConfigFileName).sort();
+		return [...this.entries].filter(isDefaultConfigFileName).sort();
 	}
 
 	/** The `*.project.json` files here other than `except`, which init does not lift. */

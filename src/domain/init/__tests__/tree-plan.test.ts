@@ -63,7 +63,7 @@ describe("TreePlan", () => {
 				routes: LUAU_ROUTES,
 			});
 			expect(files.notes).toEqual([
-				"Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
 			]);
 			expect(files.nextSteps.edits).not.toContainEqual(
 				expect.stringContaining("Remove the nodes")
@@ -112,7 +112,7 @@ describe("TreePlan", () => {
 				},
 			});
 			expect(files.notes).toEqual([
-				"Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
 				"Left out ReplicatedStorage/Shared, ServerScriptService/Server, StarterPlayer/StarterPlayerScripts/Client and Workspace/Map, since they point into src and Rogen generates that code now.",
 				"Kept what Workspace/Map set in the tree, on the node the route lands on.",
 			]);
@@ -388,7 +388,7 @@ describe("TreePlan", () => {
 					tree: { $path: "src" },
 				});
 				expect(files.notes).toContain(
-					"The root of default.project.json is not a DataModel, as in a model or a plugin, so rogen.json keeps the tree as Rojo reads it and adds no routes."
+					"The root of default.project.json is not a DataModel, as in a model or a plugin, so default.rogen.json keeps the tree as Rojo reads it and adds no routes."
 				);
 				expect(files.nextSteps.edits).not.toContainEqual(
 					expect.stringContaining("Add your own routes")
@@ -494,7 +494,7 @@ describe("TreePlan", () => {
 
 			expect(configOf(files).tree).toEqual(tree);
 			expect(files.nextSteps.edits[0]).toBe(
-				"Remove the nodes in the tree of rogen.json that point into .; Rogen generates those now."
+				"Remove the nodes in the tree of default.rogen.json that point into .; Rogen generates those now."
 			);
 		});
 
@@ -543,7 +543,7 @@ describe("TreePlan", () => {
 				},
 			});
 			expect(files.notes[1]).toBe(
-				"Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to rogen.json."
+				"Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to default.rogen.json."
 			);
 		});
 
@@ -563,7 +563,7 @@ describe("TreePlan", () => {
 			]);
 
 			expect(files.notes[1]).toBe(
-				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to rogen.json."
+				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to default.rogen.json."
 			);
 		});
 
@@ -634,7 +634,7 @@ describe("TreePlan", () => {
 
 			expect(configOf(files).tree).toEqual(tree);
 			expect(files.notes[1]).toBe(
-				"Didn't add Packages at ReplicatedStorage/Packages to rogen.json, since it already has a node there."
+				"Didn't add Packages at ReplicatedStorage/Packages to default.rogen.json, since it already has a node there."
 			);
 		});
 	});

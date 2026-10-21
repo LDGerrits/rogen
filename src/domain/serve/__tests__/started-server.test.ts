@@ -36,7 +36,7 @@ describe("StartedServer", () => {
 	let connections: string[];
 	let server: StartedServer;
 
-	const config = mockConfig({ file: "/repo/rogen.json" });
+	const config = mockConfig({ file: "/repo/default.rogen.json" });
 	const target: ServeTarget = {
 		config,
 		project: "repo",

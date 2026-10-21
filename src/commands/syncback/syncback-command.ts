@@ -151,6 +151,7 @@ registerCommand(
 				.get(ConfigService)
 				.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
 			const chosen = selection.value.requireValid().isErr()
 				? undefined

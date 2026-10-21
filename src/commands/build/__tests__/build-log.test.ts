@@ -185,7 +185,7 @@ describe("BuildLog report", () => {
 	const configNamed = (label: string) =>
 		mockConfig({
 			name: label,
-			file: path.join(cwd, label, "rogen.json"),
+			file: path.join(cwd, label, "default.rogen.json"),
 		});
 
 	const report = (builds: readonly ConfigBuild[]) => {
@@ -305,7 +305,7 @@ describe("BuildLog report, warnings", () => {
 	const configNamed = (label: string) =>
 		mockConfig({
 			name: label,
-			file: path.join(cwd, label, "rogen.json"),
+			file: path.join(cwd, label, "default.rogen.json"),
 		});
 
 	const writtenWith = (
@@ -332,7 +332,7 @@ describe("BuildLog report, warnings", () => {
 	const aboutSrc = (label: string) =>
 		warningDiagnostic(
 			"x.folder",
-			{ resource: path.join(cwd, label, "rogen.json") },
+			{ resource: path.join(cwd, label, "default.rogen.json") },
 			"1 folder is odd:\n  src/Sever"
 		);
 
@@ -345,7 +345,7 @@ describe("BuildLog report, warnings", () => {
 		).toEqual([
 			"step: arena",
 			"success: arena/default.project.json · wrote",
-			"diagnosticWarning: /repo/arena/rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
+			"diagnosticWarning: /repo/arena/default.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
 			"step: match",
 			"success: match/default.project.json · wrote · same warnings as arena",
 			"outro: Built 2 projects with 1 warning.",
@@ -355,7 +355,7 @@ describe("BuildLog report, warnings", () => {
 	it("should print the warnings only a later config has, with no note", () => {
 		const own = warningDiagnostic(
 			"x.own",
-			{ resource: path.join(cwd, "match/rogen.json") },
+			{ resource: path.join(cwd, "match/default.rogen.json") },
 			"only here."
 		);
 
@@ -367,7 +367,7 @@ describe("BuildLog report, warnings", () => {
 		).toEqual([
 			"step: match",
 			"success: match/default.project.json · wrote",
-			"diagnosticWarning: /repo/match/rogen.json - warning: only here. (x.own)",
+			"diagnosticWarning: /repo/match/default.rogen.json - warning: only here. (x.own)",
 			"outro: Built 2 projects with 2 warnings.",
 		]);
 	});
@@ -488,7 +488,7 @@ describe("BuildLog.diagnostics", () => {
 		}));
 		return warningDiagnostic(
 			"route.strayAt",
-			{ resource: "/repo/rogen.json" },
+			{ resource: "/repo/default.rogen.json" },
 			[
 				`${count} names:`,
 				...related.map(({ resource }) => `  ${resource} (hint)`),

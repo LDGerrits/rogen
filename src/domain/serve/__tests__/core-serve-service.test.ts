@@ -95,7 +95,7 @@ describe("CoreServeService", () => {
 			"/repo/rokit.toml",
 			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 		);
-		await memFs.writeFile("/repo/rogen.json", config());
+		await memFs.writeFile("/repo/default.rogen.json", config());
 		watcher = new MemoryWatcher(memFs, new NullLogService());
 		processes = new MockProcessService(
 			new Map([["rojo", "/bin/rojo"]]),
@@ -124,13 +124,13 @@ describe("CoreServeService", () => {
 			expect(servePlan.toStart).toHaveLength(1);
 		});
 
-		it("should serve each place on the port its rogen.json sets", async () => {
+		it("should serve each place on the port its default.rogen.json sets", async () => {
 			await memFs.writeFile(
-				"/repo/lobby/rogen.json",
+				"/repo/lobby/default.rogen.json",
 				place({ servePort: 34900, name: "Lobby" })
 			);
 			await memFs.writeFile(
-				"/repo/shop/rogen.json",
+				"/repo/shop/default.rogen.json",
 				place({ servePort: 34901, serveAddress: "0.0.0.0" })
 			);
 
@@ -149,11 +149,11 @@ describe("CoreServeService", () => {
 		describe("with places", () => {
 			beforeEach(async () => {
 				await memFs.writeFile(
-					"/repo/rogen.json",
+					"/repo/default.rogen.json",
 					config({ name: "Game", placePaths: ["places/*"] })
 				);
 				await memFs.writeFile(
-					"/repo/places/lobby/rogen.json",
+					"/repo/places/lobby/default.rogen.json",
 					JSON.stringify({ name: "Lobby" })
 				);
 				await memFs.createDirectory("/repo/places/arena");
@@ -178,7 +178,7 @@ describe("CoreServeService", () => {
 				]);
 			});
 
-			it("should name the place's own rogen.json in a taken port's error", async () => {
+			it("should name the place's own default.rogen.json in a taken port's error", async () => {
 				requests.answer(
 					"http://127.0.0.1:34872/api/rojo",
 					rojoInfo("Other")
@@ -187,24 +187,24 @@ describe("CoreServeService", () => {
 				const error = (await errorOf()) as DiagnosticsError;
 
 				expect(error.diagnostics[0].message).toContain(
-					"Give arena its own servePort in places/arena/rogen.json"
+					"Stop it, set a servePort in places/arena/default.rogen.json"
 				);
 			});
 		});
 
 		it("should serve only the named configs", async () => {
-			await memFs.writeFile("/repo/lobby/rogen.json", place());
+			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
 
 			const servePlan = await plan({ refs: ["."] });
 
 			expect(served(servePlan)).toEqual([["repo", "127.0.0.1:34872"]]);
 			expect(servePlan.selection.entries.map(({ file }) => file)).toEqual(
-				["/repo/rogen.json"]
+				["/repo/default.rogen.json"]
 			);
 		});
 
 		it("should fail when a named config is broken, before looking for a server", async () => {
-			await memFs.writeFile("/repo/lobby/rogen.json", "{ nope");
+			await memFs.writeFile("/repo/lobby/default.rogen.json", "{ nope");
 
 			const error = await errorOf({ refs: [".", "lobby"] });
 
@@ -214,14 +214,14 @@ describe("CoreServeService", () => {
 
 		it("should watch a config named from another folder on its own", async () => {
 			await memFs.writeFile(
-				"/elsewhere/lobby/rogen.json",
+				"/elsewhere/lobby/default.rogen.json",
 				config({ sourcePaths: ["/repo/src"] })
 			);
 
 			const servePlan = await plan({ refs: ["/elsewhere/lobby"] });
 
 			expect(servePlan.selection.entries.map(({ file }) => file)).toEqual(
-				["/elsewhere/lobby/rogen.json"]
+				["/elsewhere/lobby/default.rogen.json"]
 			);
 		});
 
@@ -264,20 +264,23 @@ describe("CoreServeService", () => {
 		});
 
 		it("should refuse two configs on one port, naming them and the fix", async () => {
-			await memFs.writeFile("/repo/lobby/rogen.json", place());
-			await memFs.writeFile("/repo/shop/rogen.json", place());
+			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
+			await memFs.writeFile("/repo/shop/default.rogen.json", place());
 
 			const error = await errorOf({ refs: ["lobby", "shop"] });
 
 			expect(error).toBeInstanceOf(UsageError);
 			expect(error.message).toBe(
-				"lobby and shop both serve on port 34872. Give each its own servePort in its rogen.json, or serve one at a time, as 'rogen serve lobby'."
+				"lobby/default.rogen.json and shop/default.rogen.json both serve on port 34872. Give each its own servePort in its config, or serve one at a time, as 'rogen serve lobby'."
 			);
 		});
 
 		it("should ask for one project when a port is given to several", async () => {
 			for (const name of ["lobby", "shop", "arena"])
-				await memFs.writeFile(`/repo/${name}/rogen.json`, place());
+				await memFs.writeFile(
+					`/repo/${name}/default.rogen.json`,
+					place()
+				);
 
 			const error = await errorOf({
 				refs: ["arena", "lobby", "shop"],
@@ -286,16 +289,16 @@ describe("CoreServeService", () => {
 
 			expect(error).toEqual(
 				new UsageError(
-					"--port names one server's port, and this serves arena, lobby and shop.",
-					"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its rogen.json."
+					"--port names one server's port, and this serves arena/default.rogen.json, lobby/default.rogen.json and shop/default.rogen.json.",
+					"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its config."
 				)
 			);
 		});
 
 		it("should serve every project at an address given to several, each on its own port", async () => {
-			await memFs.writeFile("/repo/lobby/rogen.json", place());
+			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
 			await memFs.writeFile(
-				"/repo/shop/rogen.json",
+				"/repo/shop/default.rogen.json",
 				place({ servePort: 40001 })
 			);
 
@@ -311,9 +314,9 @@ describe("CoreServeService", () => {
 		});
 
 		it("should give each project its own port when none is given", async () => {
-			await memFs.writeFile("/repo/lobby/rogen.json", place());
+			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
 			await memFs.writeFile(
-				"/repo/shop/rogen.json",
+				"/repo/shop/default.rogen.json",
 				place({ servePort: 40001 })
 			);
 
@@ -358,15 +361,17 @@ describe("CoreServeService", () => {
 			const error = (await errorOf()) as DiagnosticsError;
 
 			expect(error.diagnostics[0].code).toBe("serve.portTaken");
-			expect(error.diagnostics[0].resource).toBe("/repo/rogen.json");
+			expect(error.diagnostics[0].resource).toBe(
+				"/repo/default.rogen.json"
+			);
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34872 is taken by Rojo serving repo, which no rogen serve started, so Rogen can't tell whether it serves repo's project file. Stop it and run 'rogen serve' to start the server, or if it serves /repo/default.project.json, run 'rogen serve . --adopt'."
+				"Port 34872 is taken by Rojo serving repo, which no rogen serve started, so Rogen can't tell whether it serves default.rogen.json's project file. Stop it and run 'rogen serve' to start the server, or if it serves /repo/default.project.json, run 'rogen serve . --adopt'."
 			);
 		});
 
 		it("should take a server another serve recorded for the config, though another config has the same name", async () => {
 			await memFs.writeFile(
-				"/repo/lobby/rogen.json",
+				"/repo/lobby/default.rogen.json",
 				place({ name: "repo", servePort: 34900 })
 			);
 			await memFs.writeFile(
@@ -384,9 +389,9 @@ describe("CoreServeService", () => {
 					config.file,
 					adopted,
 				])
-			).toEqual([["/repo/rogen.json", undefined]]);
+			).toEqual([["/repo/default.rogen.json", undefined]]);
 			expect(servePlan.toStart.map(({ config }) => config.file)).toEqual([
-				"/repo/lobby/rogen.json",
+				"/repo/lobby/default.rogen.json",
 			]);
 		});
 
@@ -406,7 +411,7 @@ describe("CoreServeService", () => {
 
 		it("should adopt a server no serve started when asked to, though another config has the project name", async () => {
 			await memFs.writeFile(
-				"/repo/lobby/rogen.json",
+				"/repo/lobby/default.rogen.json",
 				place({ name: "repo", servePort: 34900 })
 			);
 			requests.answer(
@@ -417,7 +422,7 @@ describe("CoreServeService", () => {
 			const servePlan = await plan({ refs: [".", "lobby"], adopt: true });
 
 			expect(servePlan.adopted.map(({ config }) => config.file)).toEqual([
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 			]);
 		});
 
@@ -446,7 +451,63 @@ describe("CoreServeService", () => {
 			const error = (await errorOf()) as DiagnosticsError;
 
 			expect(error.diagnostics[0].message).toContain(
-				"Port 34872 is taken by Rojo serving repo from /other/repo, so repo can't be served there."
+				"Port 34872 is taken by Rojo serving repo, which rogen serve started for /other/repo/default.project.json, so default.rogen.json can't be served there."
+			);
+		});
+
+		it("should name the config another serve started on the port, and not offer --adopt", async () => {
+			await memFs.writeFile(
+				"/repo/dist.rogen.json",
+				config({ name: "repo", syncPath: "dist" })
+			);
+			await memFs.writeFile(
+				...recordFile(34872, "repo", "/repo/default.project.json", {
+					configFile: "/repo/default.rogen.json",
+				})
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("repo")
+			);
+
+			const error = (await errorOf({
+				refs: ["dist"],
+				adopt: true,
+			})) as DiagnosticsError;
+
+			expect(error.diagnostics[0].message).toBe(
+				"Port 34872 is taken by Rojo serving repo, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port 34873'."
+			);
+		});
+
+		it("should name the place another serve started on the port, in another folder", async () => {
+			await memFs.writeFile(
+				"/repo/places/lobby/default.rogen.json",
+				place({ name: "Lobby" })
+			);
+			await memFs.writeFile(
+				"/repo/places/arena/default.rogen.json",
+				place({ name: "Lobby" })
+			);
+			await memFs.writeFile(
+				...recordFile(
+					34872,
+					"Lobby",
+					"/repo/places/lobby/default.project.json",
+					{ configFile: "/repo/places/lobby/default.rogen.json" }
+				)
+			);
+			requests.answer(
+				"http://127.0.0.1:34872/api/rojo",
+				rojoInfo("Lobby")
+			);
+
+			const error = (await errorOf({
+				refs: ["places/arena"],
+			})) as DiagnosticsError;
+
+			expect(error.diagnostics[0].message).toBe(
+				"Port 34872 is taken by Rojo serving Lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port 34873'."
 			);
 		});
 
@@ -572,9 +633,9 @@ describe("CoreServeService", () => {
 			expect(error).toBeInstanceOf(DiagnosticsError);
 			const [diagnostic] = (error as DiagnosticsError).diagnostics;
 			expect(diagnostic.code).toBe("serve.portTaken");
-			expect(diagnostic.resource).toBe("/repo/rogen.json");
+			expect(diagnostic.resource).toBe("/repo/default.rogen.json");
 			expect(diagnostic.message).toBe(
-				"Port 34872 is taken by Rojo serving Other, so repo can't be served there. Give repo its own servePort in rogen.json, or run 'rogen serve . --port 34874'."
+				"Port 34872 is taken by Rojo serving Other, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34874'."
 			);
 			expect(diagnostic.fixes).toEqual([
 				{
@@ -613,9 +674,9 @@ describe("CoreServeService", () => {
 			});
 		});
 
-		it("should name the rogen.json of the config in a taken port's error", async () => {
+		it("should name the default.rogen.json of the config in a taken port's error", async () => {
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({ servePort: 34900 })
 			);
 			requests.responses.set("http://127.0.0.1:34900/api/rojo", {
@@ -626,15 +687,17 @@ describe("CoreServeService", () => {
 
 			const error = (await errorOf()) as DiagnosticsError;
 
-			expect(error.diagnostics[0].resource).toBe("/repo/rogen.json");
+			expect(error.diagnostics[0].resource).toBe(
+				"/repo/default.rogen.json"
+			);
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34900 is taken by another program, so repo can't be served there. Give repo its own servePort in rogen.json, or run 'rogen serve . --port 34901'."
+				"Port 34900 is taken by another program, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34901'."
 			);
 		});
 
 		it("should name no port to run on when none of the next twenty is free", async () => {
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({ servePort: 34900 })
 			);
 			for (let port = 34900; port <= 34920; port++) {
@@ -655,7 +718,7 @@ describe("CoreServeService", () => {
 
 		it("should name no port to run on when the port is the last one", async () => {
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({ servePort: 65535 })
 			);
 			requests.responses.set("http://127.0.0.1:65535/api/rojo", {
@@ -670,7 +733,7 @@ describe("CoreServeService", () => {
 		});
 
 		it("should fail with a broken config's errors before looking for a server", async () => {
-			await memFs.writeFile("/repo/rogen.json", "{ nope");
+			await memFs.writeFile("/repo/default.rogen.json", "{ nope");
 
 			const error = await errorOf();
 
@@ -806,7 +869,7 @@ describe("CoreServeService", () => {
 
 		it("should give each server the port it serves on, so a place without a servePort is not left on Rojo's default", async () => {
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({ name: "Game", placePaths: ["places/*"] })
 			);
 			await memFs.createDirectory("/repo/places/lobby");
@@ -837,7 +900,7 @@ describe("CoreServeService", () => {
 				stderr: "",
 			});
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({ globIgnorePaths: ["../shared/*.md"] })
 			);
 			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
@@ -866,7 +929,7 @@ describe("CoreServeService", () => {
 			session.onDidError((error) => errors.push(error));
 
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({ globIgnorePaths: ["../shared/*.md"] })
 			);
 			await settle();
@@ -920,7 +983,7 @@ describe("CoreServeService", () => {
 
 		it("should start nothing when the first build fails, and fail with its errors", async () => {
 			await memFs.writeFile(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				config({
 					routes: {
 						server: "ServerScriptService",
@@ -961,6 +1024,7 @@ describe("CoreServeService", () => {
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",
+				configFile: "/repo/default.rogen.json",
 				owner: 4242,
 				pid: processes.spawned[0].pid,
 			});
@@ -1111,14 +1175,14 @@ describe("CoreServeService", () => {
 
 			const lobby = (servePort = 34900, extra = {}) =>
 				memFs.writeFile(
-					"/repo/lobby/rogen.json",
+					"/repo/lobby/default.rogen.json",
 					place({ name: "Lobby", servePort, ...extra })
 				);
 
 			const replaceWithLobby = async (servePort = 34900, extra = {}) => {
-				await memFs.delete("/repo/rogen.json");
+				await memFs.delete("/repo/default.rogen.json");
 				await memFs.writeFile(
-					"/repo/rogen.jsonc",
+					"/repo/default.rogen.jsonc",
 					config({ name: "Lobby", servePort, ...extra })
 				);
 			};
@@ -1200,7 +1264,7 @@ describe("CoreServeService", () => {
 					"lobby/default.project.json",
 				]);
 				expect(changes).toEqual([
-					"refused Lobby: Port 34872 is taken by the server of repo, so Lobby can't be served there. Give Lobby its own servePort in rogen.json, or serve it on its own, as 'rogen serve lobby'.",
+					"refused Lobby: Port 34872 is taken by the server of default.rogen.json, so lobby/default.rogen.json can't be served there. Set a servePort in lobby/default.rogen.json, or serve it on its own, as 'rogen serve lobby'.",
 				]);
 				expect(stops).toEqual([]);
 			});
@@ -1218,7 +1282,7 @@ describe("CoreServeService", () => {
 					"lobby/default.project.json",
 				]);
 				expect(changes).toEqual([
-					"refused Lobby: Port 34901 is taken by another program, so Lobby can't be served there. Give Lobby its own servePort in rogen.json, or run 'rogen serve lobby --port 34902'.",
+					"refused Lobby: Port 34901 is taken by another program, so lobby/default.rogen.json can't be served there. Stop it, set a servePort in lobby/default.rogen.json, or run 'rogen serve lobby --port 34902'.",
 				]);
 			});
 
@@ -1234,7 +1298,7 @@ describe("CoreServeService", () => {
 				]);
 				expect(changes).toEqual([
 					"retired repo (removed)",
-					"refused Lobby: Port 34900 is taken by another program, so Lobby can't be served there. Give Lobby its own servePort in rogen.jsonc, or run 'rogen serve . --port 34901'.",
+					"refused Lobby: Port 34900 is taken by another program, so default.rogen.jsonc can't be served there. Stop it, set a servePort in default.rogen.jsonc, or run 'rogen serve . --port 34901'.",
 				]);
 			});
 
@@ -1260,7 +1324,7 @@ describe("CoreServeService", () => {
 			it("should stop the server of a config that is removed, without calling it a failure", async () => {
 				await start();
 
-				await memFs.delete("/repo/rogen.json");
+				await memFs.delete("/repo/default.rogen.json");
 				await settle();
 
 				expect(spawnedProjects()).toEqual([
@@ -1321,11 +1385,11 @@ describe("CoreServeService", () => {
 				occupy(34900);
 				await replaceWithLobby();
 				await settle();
-				await memFs.delete("/repo/rogen.jsonc");
+				await memFs.delete("/repo/default.rogen.jsonc");
 				await settle();
 
 				await memFs.writeFile(
-					"/repo/rogen.jsonc",
+					"/repo/default.rogen.jsonc",
 					config({ name: "Lobby", servePort: 34900 })
 				);
 				await settle();

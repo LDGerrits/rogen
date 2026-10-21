@@ -352,7 +352,7 @@ export class CoreBuildService implements BuildService {
 				continue;
 			}
 			const written = config.isAdopted
-				? ok(false)
+				? await this.checkAdopted(config)
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
 						projectFile,
@@ -377,6 +377,13 @@ export class CoreBuildService implements BuildService {
 			);
 		}
 		return builds;
+	}
+
+	private async checkAdopted(
+		config: ResolvedConfig
+	): Promise<Result<boolean, DiagnosticsError>> {
+		const orphaned = await this.writer.orphaned(config.projectFile);
+		return orphaned ? err(orphaned) : ok(false);
 	}
 
 	private static unwritten(

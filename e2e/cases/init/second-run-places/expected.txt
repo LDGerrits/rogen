@@ -2,15 +2,15 @@ $ rogen init -y --places
 exit 0
 stdout:
   rogen init
-  game is served on port 34872, which its places/game/rogen.json pins so adding another place never moves it.
-  rogen.json: added placePaths places/*.
-  Created places/game/rogen.json.
+  game is served on port 34872, which its places/game/default.rogen.json pins so adding another place never moves it.
+  default.rogen.json: added placePaths places/*.
+  Created places/game/default.rogen.json.
   Created project.code-workspace.
   Created places/game/src/.
   default.project.json · wrote
   places/game/default.project.json · wrote
   Next steps
-    src stays the code every place shares. To keep it with the places, move it to places/shared/src and set "sourcePaths" in rogen.json to ["places/shared/src"].
+    src stays the code every place shares. To keep it with the places, move it to places/shared/src and set "sourcePaths" in default.rogen.json to ["places/shared/src"].
     Add another place with 'rogen init places/lobby'.
   Wrote 3 files.
 
@@ -18,7 +18,7 @@ $ rogen list
 exit 0
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
     source paths: src
     routes:
       server -> ServerScriptService
@@ -40,12 +40,24 @@ stdout: (not shown)
 
 written:
   default.project.json
+  default.rogen.json
   places/game/default.project.json
-  places/game/rogen.json
+  places/game/default.rogen.json
   project.code-workspace
-  rogen.json
 
-places/game/rogen.json:
+default.rogen.json:
+{
+	"tree": { "$className": "DataModel" },
+	"routes": {
+		"server": "ServerScriptService",
+		"shared": "ReplicatedStorage/shared"
+	},
+	"placePaths": [
+		"places/*"
+	]
+}
+
+places/game/default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "servePort": 34872
@@ -60,18 +72,6 @@ project.code-workspace:
 		{
 			"path": "places/game"
 		}
-	]
-}
-
-rogen.json:
-{
-	"tree": { "$className": "DataModel" },
-	"routes": {
-		"server": "ServerScriptService",
-		"shared": "ReplicatedStorage/shared"
-	},
-	"placePaths": [
-		"places/*"
 	]
 }
 

@@ -1,0 +1,15 @@
+{
+	"steps": [
+		[
+			"build",
+			"nested.project.json"
+		],
+		[
+			"build",
+			"nested"
+		]
+	],
+	"output": [
+		"build"
+	]
+}

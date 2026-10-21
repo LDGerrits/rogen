@@ -19,7 +19,7 @@ describe("SyncLayout", () => {
 			configOf({
 				sourcePaths: [abs("src/server"), abs("src/shared")],
 				syncPath: abs("out"),
-				file: abs("game/rogen.json"),
+				file: abs("game/default.rogen.json"),
 			}),
 			syncTools
 		);

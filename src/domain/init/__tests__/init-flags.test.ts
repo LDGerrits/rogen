@@ -226,7 +226,7 @@ describe("init choices given as flags", () => {
 				"places/shared/src/Greeter/Client/Greeter.client.luau",
 				"places/game/src/Game/Server/Game.server.luau",
 				"README.md",
-				"places/game/rogen.json",
+				"places/game/default.rogen.json",
 				"my-game.code-workspace",
 			]);
 			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
@@ -284,7 +284,7 @@ describe("init choices given as flags", () => {
 				choices?.templateFiles?.map(({ fileName }) => fileName)
 			).toEqual([
 				".gitignore",
-				"places/game/rogen.json",
+				"places/game/default.rogen.json",
 				"my-game.code-workspace",
 			]);
 		});
@@ -573,7 +573,10 @@ describe("the yes or no questions", () => {
 	});
 
 	it("should start a nested project only when told to", async () => {
-		const enclosing = { directory: "/mock", fileNames: ["rogen.json"] };
+		const enclosing = {
+			directory: "/mock",
+			fileNames: ["default.rogen.json"],
+		};
 
 		expect(await questions({}).startNestedProject(enclosing)).toBe(false);
 		expect(

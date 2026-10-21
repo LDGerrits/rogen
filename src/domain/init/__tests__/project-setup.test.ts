@@ -82,10 +82,10 @@ describe("ProjectSetup plan", () => {
 		]);
 	});
 
-	it("should write rogen.json", async () => {
+	it("should write default.rogen.json", async () => {
 		const { configs } = await plan(luau);
 
-		expect(configs).toEqual(["rogen.json"]);
+		expect(configs).toEqual(["default.rogen.json"]);
 	});
 
 	describe("other project files in the folder", () => {
@@ -142,19 +142,19 @@ describe("ProjectSetup plan", () => {
 		const { files } = await plan(luau);
 
 		const config = new MemoryFileSystemService();
-		await config.writeFile("/repo/rogen.json", files[0].content);
+		await config.writeFile("/repo/default.rogen.json", files[0].content);
 		const formatter = new ConfigFormatter(config);
 
-		await formatter.format("/repo/rogen.json");
-		const named = await config.readFile("/repo/rogen.json");
+		await formatter.format("/repo/default.rogen.json");
+		const named = await config.readFile("/repo/default.rogen.json");
 
 		expect(JSON.parse(named)).toEqual({
 			...JSON.parse(files[0].content),
 			name: "repo",
 		});
-		expect((await formatter.format("/repo/rogen.json")).unwrap()).toBe(
-			false
-		);
+		expect(
+			(await formatter.format("/repo/default.rogen.json")).unwrap()
+		).toBe(false);
 	});
 
 	it("should write a bare DataModel tree and no sync path or name for plain luau", async () => {
@@ -173,7 +173,7 @@ describe("ProjectSetup plan", () => {
 			)
 		);
 
-		expect(files.configs).toEqual(["rogen.json"]);
+		expect(files.configs).toEqual(["default.rogen.json"]);
 		expect(configOf(files).syncPath).toBe("build");
 	});
 
@@ -200,28 +200,28 @@ describe("ProjectSetup plan", () => {
 		it("should write one config without a sync path for luau", async () => {
 			const files = await planFor("luau", false);
 
-			expect(files.configs).toEqual(["rogen.json"]);
+			expect(files.configs).toEqual(["default.rogen.json"]);
 			expect(configOf(files).syncPath).toBeUndefined();
 		});
 
 		it("should leave the description of luau with darklua pointing at the source", async () => {
 			const files = await planFor("luau", true);
 
-			expect(files.configs).toEqual(["rogen.json"]);
+			expect(files.configs).toEqual(["default.rogen.json"]);
 			expect(configOf(files).syncPath).toBeUndefined();
 		});
 
 		it("should write one config with the outDir for roblox-ts", async () => {
 			const files = await planFor("roblox-ts", false);
 
-			expect(files.configs).toEqual(["rogen.json"]);
+			expect(files.configs).toEqual(["default.rogen.json"]);
 			expect(configOf(files).syncPath).toBe("build");
 		});
 
 		it("should leave the description of roblox-ts with darklua pointing at the compiled output", async () => {
 			const files = await planFor("roblox-ts", true);
 
-			expect(files.configs).toEqual(["rogen.json"]);
+			expect(files.configs).toEqual(["default.rogen.json"]);
 			expect(configOf(files).syncPath).toBe("build");
 			expect(files.nextSteps.run).toEqual([
 				"rbxtsc -w",
@@ -241,7 +241,9 @@ describe("ProjectSetup plan", () => {
 			expect((await planFor("luau", false)).nextSteps).toEqual({
 				setup: [],
 				run: ["rogen serve"],
-				edits: ['Add your own routes under "routes" in rogen.json.'],
+				edits: [
+					'Add your own routes under "routes" in default.rogen.json.',
+				],
 			});
 		});
 
@@ -471,13 +473,13 @@ describe("ProjectSetup plan", () => {
 
 	describe("existing files", () => {
 		it("should fail when the config it would write exists", async () => {
-			const result = await planResult(luau, ["rogen.json"]);
+			const result = await planResult(luau, ["default.rogen.json"]);
 
 			expect(result.isErr()).toBe(true);
 			expect(errorsOf(result)).toMatchObject([
 				{
 					code: "init.configExists",
-					resource: path.join(directory, "rogen.json"),
+					resource: path.join(directory, "default.rogen.json"),
 				},
 			]);
 		});
@@ -499,8 +501,9 @@ describe("ProjectSetup plan, a lifted tree", () => {
 			choices: { ...choices, tree: lifted(text) },
 			existingFiles: new Set(["default.project.json"]),
 		}).unwrap();
-		return planned.files.find(({ fileName }) => fileName === "rogen.json")!
-			.content;
+		return planned.files.find(
+			({ fileName }) => fileName === "default.rogen.json"
+		)!.content;
 	};
 
 	it("should keep the numbers, the order of the keys, and the comments of the nodes it keeps", async () => {

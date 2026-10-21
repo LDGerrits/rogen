@@ -148,21 +148,21 @@ describe("CoreRojoCommandService", () => {
 	it("should fail when the selection holds several projects", async () => {
 		const result = await run(
 			new MockConfigSelection([
-				mockEntry({}, "/repo/a/rogen.json"),
-				mockEntry({}, "/repo/b/rogen.json"),
+				mockEntry({}, "/repo/a/default.rogen.json"),
+				mockEntry({}, "/repo/b/default.rogen.json"),
 			])
 		);
 
 		expect((result as ResultError<Error>).error.message).toBe(
-			"'rojo build' runs on one project, and this selects 2. Name one: a folder with a rogen.json."
+			"'rojo build' runs on one project, and this selects 2. Name one: a folder with a default.rogen.json."
 		);
 		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should run on the project the request names when the selection holds several", async () => {
 		const chosen = new MockConfigSelection([
-			mockEntry({}, "/repo/a/rogen.json"),
-			mockEntry({}, "/repo/b/rogen.json"),
+			mockEntry({}, "/repo/a/default.rogen.json"),
+			mockEntry({}, "/repo/b/default.rogen.json"),
 		]);
 		const [, second] = service.projects(chosen);
 
@@ -219,7 +219,7 @@ describe("CoreRojoCommandService", () => {
 
 	it("should name the one project, or say there is none, before it runs", () => {
 		expect(service.choose(selection(), "build").unwrap().file).toBe(
-			"/repo/rogen.json"
+			"/repo/default.rogen.json"
 		);
 		const none = service.choose(new MockConfigSelection([]), "build");
 		expect((none as ResultError<Error>).error.message).toBe(
@@ -231,14 +231,14 @@ describe("CoreRojoCommandService", () => {
 		const places = () =>
 			new MockConfigSelection(
 				[
-					mockEntry({ hasPlaces: true }, "/repo/rogen.json"),
+					mockEntry({ hasPlaces: true }, "/repo/default.rogen.json"),
 					mockEntry(
-						{ isPlace: true, rootFile: "/repo/rogen.json" },
-						"/repo/places/lobby/rogen.json"
+						{ isPlace: true, rootFile: "/repo/default.rogen.json" },
+						"/repo/places/lobby/default.rogen.json"
 					),
 					mockEntry(
-						{ isPlace: true, rootFile: "/repo/rogen.json" },
-						"/repo/places/arena/rogen.json"
+						{ isPlace: true, rootFile: "/repo/default.rogen.json" },
+						"/repo/places/arena/default.rogen.json"
 					),
 				],
 				"/repo"
@@ -246,8 +246,8 @@ describe("CoreRojoCommandService", () => {
 
 		it("should leave out the root that lists them, which is the sum of them", () => {
 			expect(service.projects(places()).map(({ file }) => file)).toEqual([
-				"/repo/places/lobby/rogen.json",
-				"/repo/places/arena/rogen.json",
+				"/repo/places/lobby/default.rogen.json",
+				"/repo/places/arena/default.rogen.json",
 			]);
 		});
 
@@ -255,7 +255,7 @@ describe("CoreRojoCommandService", () => {
 			const chosen = service.choose(places(), "upload");
 
 			expect((chosen as ResultError<Error>).error.message).toBe(
-				"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a rogen.json."
+				"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a default.rogen.json."
 			);
 		});
 	});

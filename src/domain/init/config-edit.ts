@@ -2,7 +2,7 @@ import { parse, setJsoncValue } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 
-/** A `rogen.json` being changed through the jsonc editor, so its comments, key order and formatting stay. Each change is named as `added routes.ServerStorage`. */
+/** A `default.rogen.json` being changed through the jsonc editor, so its comments, key order and formatting stay. Each change is named as `added routes.ServerStorage`. */
 export class ConfigEdit {
 	private text: string;
 	private current: Record<string, unknown>;

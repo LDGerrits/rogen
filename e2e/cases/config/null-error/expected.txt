@@ -2,5 +2,5 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: rogen.json · not loaded
-  rogen.json:5:14 - error: "syncPath": expected a string, found null. (config.wrongType)
+  error: default.rogen.json · not loaded
+  default.rogen.json:5:14 - error: "syncPath": expected a string, found null. (config.wrongType)

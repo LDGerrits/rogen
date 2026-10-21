@@ -1,0 +1,14 @@
+{
+	"steps": [
+		[
+			"build",
+			"dist"
+		],
+		[
+			"list"
+		],
+		[
+			"build"
+		]
+	]
+}

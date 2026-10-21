@@ -161,7 +161,7 @@ describe("domain/config/config-schema", () => {
 	});
 
 	describe("removed field advice", () => {
-		const location = { resource: "/repo/rogen.json" };
+		const location = { resource: "/repo/default.rogen.json" };
 
 		it.each([
 			"modes",

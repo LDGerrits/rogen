@@ -5,7 +5,7 @@ stdout:
     "changed": true,
     "files": [
       {
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "outcome": "wrote",
         "diagnostics": []
       }
@@ -19,7 +19,7 @@ stdout:
     "changed": false,
     "files": [
       {
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "outcome": "unchanged",
         "diagnostics": []
       }
@@ -27,9 +27,9 @@ stdout:
   }
 
 written:
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "name": "Game",
   "tree": {

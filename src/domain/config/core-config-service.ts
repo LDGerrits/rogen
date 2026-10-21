@@ -5,7 +5,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { ConfigDiscovery } from "./config-discovery.js";
+import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
 import { isProjectFileConfig } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
@@ -44,10 +44,25 @@ export class CoreConfigService implements ConfigService {
 	async select(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>> {
-		const discovered = await this.discovery.discover(refs);
+		return this.open(await this.discovery.discover(refs));
+	}
+
+	async selectFolder(): Promise<Result<ReloadableSelection, Error>> {
+		return this.open(await this.discovery.discoverFolder());
+	}
+
+	private async open(
+		discovered: Result<DiscoveredConfigs, Error>
+	): Promise<Result<ReloadableSelection, Error>> {
 		if (discovered.isErr()) return err(discovered.error);
 
-		const { home: directory, files, noneNamed, scopes } = discovered.value;
+		const {
+			home: directory,
+			files,
+			noneNamed,
+			scopes,
+			notes,
+		} = discovered.value;
 		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, this.loader))
 		);
@@ -59,13 +74,14 @@ export class CoreConfigService implements ConfigService {
 				noneNamed && !files.some(isProjectFileConfig)
 					? { directory, list: () => this.firstConfigIn(directory) }
 					: undefined,
+				notes,
 				scopes
 			)
 		);
 	}
 
 	private async firstConfigIn(directory: string): Promise<string[]> {
-		return (await this.discovery.list(directory)).slice(0, 1);
+		return (await this.discovery.defaultConfigs(directory)).slice(0, 1);
 	}
 
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {

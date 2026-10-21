@@ -5,7 +5,7 @@ stdout:
     "configs": [
       {
         "config": "Game",
-        "file": "<dir>/game/rogen.json",
+        "file": "<dir>/game/default.rogen.json",
         "status": "valid",
         "served": true,
         "projectName": "Game",
@@ -34,7 +34,7 @@ stdout:
       },
       {
         "config": "lobby",
-        "file": "<dir>/lobby/rogen.json",
+        "file": "<dir>/lobby/default.rogen.json",
         "status": "valid",
         "served": true,
         "projectName": "lobby",
@@ -70,7 +70,7 @@ stdout:
     "configs": [
       {
         "config": "lobby",
-        "file": "<dir>/lobby/rogen.json",
+        "file": "<dir>/lobby/default.rogen.json",
         "status": "valid",
         "served": true,
         "projectName": "lobby",

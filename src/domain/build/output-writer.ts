@@ -44,6 +44,27 @@ export class OutputWriter {
 		return ProjectText.of(projectFile);
 	}
 
+	/** An error when `projectFile` is as Rogen last wrote it and no config is left to write it: the config was deleted or renamed. A file changed since is the user's. */
+	async orphaned(projectFile: string): Promise<DiagnosticsError | undefined> {
+		const last = await this.records.lastWritten(projectFile);
+		if (last === undefined) return undefined;
+		const onDisk = await tryWithAsync(() =>
+			this.fileSystemService.readFile(projectFile)
+		);
+		if (onDisk.isErr() || WrittenRecords.hashOf(onDisk.value) !== last)
+			return undefined;
+		const config = path
+			.basename(projectFile)
+			.replace(/\.project\.jsonc?$/, ".rogen.json");
+		return new DiagnosticsError([
+			errorDiagnostic(
+				"output.configMissing",
+				{ resource: projectFile },
+				`Rogen wrote this file from ${config}, which is not here now: the config was deleted or renamed. Restore ${config}, or change this file by hand to use it as a plain Rojo project.`
+			),
+		]);
+	}
+
 	/** Whether the file was written; unchanged bytes are left alone unless `rewrite`, which makes a watcher see the file again. A file edited by hand since Rogen wrote it is not written over, unless `force`: the edit is an error that says what it holds. `configFile` is the config the file is written from. */
 	async write(
 		output: OutputFile,

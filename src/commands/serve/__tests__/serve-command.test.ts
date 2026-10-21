@@ -74,7 +74,7 @@ describe("serve command", () => {
 			'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
 		);
 		await memFs.writeFile(
-			"/repo/rogen.json",
+			"/repo/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: { "*": "ReplicatedStorage" },
@@ -225,7 +225,7 @@ describe("serve command", () => {
 		expect((error as ReportedError).cause).toBeInstanceOf(ExitCodeError);
 		expect(exitCodeOf(error)).toBe(3);
 		expect(logService.lines.slice(-2)).toEqual([
-			"diagnosticError: /repo/rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)",
+			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)",
 			"outro: serve failed.",
 		]);
 	});
@@ -334,7 +334,7 @@ describe("serve command", () => {
 			{
 				build: {
 					config: "repo",
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					projectFile: "/repo/default.project.json",
 					outcome: "wrote",
 					diagnostics: [],
@@ -484,7 +484,7 @@ describe("serve command", () => {
 		void serve([], { json: true, adopt: true });
 		await settle();
 
-		await memFs.delete("/repo/rogen.json");
+		await memFs.delete("/repo/default.rogen.json");
 		await settle();
 
 		expect(printed().filter((line) => "stopped" in line)).toContainEqual({
@@ -506,7 +506,7 @@ describe("serve command", () => {
 		void serve([], { adopt: true });
 		await settle();
 
-		await memFs.delete("/repo/rogen.json");
+		await memFs.delete("/repo/default.rogen.json");
 		await settle();
 
 		expect(logService.lines).toContain(
@@ -529,7 +529,7 @@ describe("serve command", () => {
 	describe("as the configs change", () => {
 		const writeLobby = async (servePort: number) => {
 			await memFs.writeFile(
-				"/repo/lobby/rogen.json",
+				"/repo/lobby/default.rogen.json",
 				JSON.stringify({
 					sourcePaths: ["../src"],
 					routes: { "*": "ReplicatedStorage" },
@@ -551,7 +551,7 @@ describe("serve command", () => {
 			await writeLobby(34872);
 
 			expect(logService.lines).toContainEqual(
-				"diagnosticError: /repo/lobby/rogen.json - error: Port 34872 is taken by the server of repo, so lobby can't be served there. Give lobby its own servePort in rogen.json, or serve it on its own, as 'rogen serve lobby'. (serve.portTaken)"
+				"diagnosticError: /repo/lobby/default.rogen.json - error: Port 34872 is taken by the server of default.rogen.json, so lobby/default.rogen.json can't be served there. Set a servePort in lobby/default.rogen.json, or serve it on its own, as 'rogen serve lobby'. (serve.portTaken)"
 			);
 			expect(
 				processes.spawned.map(({ terminated }) => terminated)
@@ -565,7 +565,7 @@ describe("serve command", () => {
 			const result = serve([], { json: true });
 			await settle();
 
-			await memFs.delete("/repo/rogen.json");
+			await memFs.delete("/repo/default.rogen.json");
 			await settle();
 			lifecycle.shutdown();
 			await result;
@@ -631,13 +631,16 @@ describe("serve command", () => {
 		void serve([], { json: true });
 		await settle();
 
-		await memFs.writeFile("/repo/rogen.json", '{"extends": "base"}');
+		await memFs.writeFile(
+			"/repo/default.rogen.json",
+			'{"extends": "base"}'
+		);
 		await settle();
 
 		expect(printed()).toContainEqual({
 			notice: expect.objectContaining({
 				kind: "broken",
-				file: "/repo/rogen.json",
+				file: "/repo/default.rogen.json",
 				keptLastValid: true,
 				diagnostics: [expect.objectContaining({ severity: "error" })],
 			}),
@@ -781,7 +784,7 @@ describe("serve command", () => {
 
 	it("should start one server for each project named, each on its own port", async () => {
 		await memFs.writeFile(
-			"/repo/lobby/rogen.json",
+			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["../src"],
 				routes: { "*": "Workspace" },
@@ -817,7 +820,7 @@ describe("serve command", () => {
 
 	it("should refuse --port for several projects, starting none", async () => {
 		await memFs.writeFile(
-			"/repo/lobby/rogen.json",
+			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["../src"],
 				routes: { "*": "Workspace" },
@@ -832,7 +835,7 @@ describe("serve command", () => {
 
 	it("should serve the named project, and build only that one", async () => {
 		await memFs.writeFile(
-			"/repo/lobby/rogen.json",
+			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["../src"],
 				routes: { "*": "Workspace" },
@@ -857,7 +860,7 @@ describe("serve command", () => {
 
 	it("should fail naming the port when two projects share it", async () => {
 		await memFs.writeFile(
-			"/repo/lobby/rogen.json",
+			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["../src"],
 				routes: { "*": "Workspace" },
@@ -867,14 +870,14 @@ describe("serve command", () => {
 		const error = await failureOf(serve([".", "lobby"]));
 
 		expect(error.message).toContain(
-			"repo and lobby both serve on port 34872"
+			"default.rogen.json and lobby/default.rogen.json both serve on port 34872"
 		);
 		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should fail with the build's errors and start nothing when the first build fails", async () => {
 		await memFs.writeFile(
-			"/repo/rogen.json",
+			"/repo/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: {
@@ -900,7 +903,7 @@ describe("serve command", () => {
 
 	it("should end the JSON lines with the build's errors when the first build fails", async () => {
 		await memFs.writeFile(
-			"/repo/rogen.json",
+			"/repo/default.rogen.json",
 			JSON.stringify({
 				sourcePaths: ["src"],
 				routes: {

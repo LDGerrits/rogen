@@ -1,0 +1,16 @@
+{
+	"steps": [
+		[
+			"build",
+			"dist"
+		],
+		[
+			"build",
+			"dist.rogen.jsonc"
+		],
+		[
+			"list"
+		]
+	],
+	"rojo": false
+}

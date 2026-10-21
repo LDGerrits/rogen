@@ -136,7 +136,7 @@ describe("rogen help --json", () => {
 			const build = document();
 			expect(build.name).toBe("build");
 			expect(build.args[0].description).toContain(
-				"A folder with a rogen.json"
+				"A folder, a .rogen.json file"
 			);
 			expect(build.options).toContainEqual(
 				expect.objectContaining({

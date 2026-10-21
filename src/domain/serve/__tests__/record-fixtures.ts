@@ -4,11 +4,13 @@ export const recordFile = (
 	projectFile: string,
 	{
 		session = "s1",
+		configFile,
 		clients,
 		owner,
 		pid,
 	}: {
 		session?: string;
+		configFile?: string;
 		clients?: number;
 		owner?: number;
 		pid?: number;
@@ -24,6 +26,7 @@ export const recordFile = (
 			session,
 			project,
 			projectFile,
+			configFile,
 			owner,
 			pid,
 		}),

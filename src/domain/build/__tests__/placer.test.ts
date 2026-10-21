@@ -32,7 +32,7 @@ describe("Placer", () => {
 
 		it("should root the layout at the config's folder", () => {
 			const { layout } = prepare({
-				file: abs("out/rogen.json"),
+				file: abs("out/default.rogen.json"),
 			}).unwrap();
 
 			expect(layout.projectDir).toBe(abs("out"));

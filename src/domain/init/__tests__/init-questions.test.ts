@@ -871,7 +871,7 @@ describe("InitQuestions askProject project file", () => {
 		]);
 
 		expect(choices.map(({ label }) => label)).toEqual([
-			"Lift default.project.json into rogen.json",
+			"Lift default.project.json into default.rogen.json",
 			"Start a new tree",
 		]);
 		expect(initial).toBe("lift");

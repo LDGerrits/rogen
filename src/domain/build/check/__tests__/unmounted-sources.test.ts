@@ -65,7 +65,9 @@ describe("UnmountedSources", () => {
 	it("should look in the src folder beside the config", async () => {
 		await write("place/src/A.luau", "src/B.luau");
 
-		const warnings = await warningsOf({ file: abs("place/rogen.json") });
+		const warnings = await warningsOf({
+			file: abs("place/default.rogen.json"),
+		});
 
 		expect(warnings).toMatchObject([{ resource: abs("place/src") }]);
 		expect(warnings[0].message).toContain("1 file here");

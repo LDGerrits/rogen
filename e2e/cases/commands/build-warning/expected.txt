@@ -5,7 +5,7 @@ stdout:
   default.project.json · wrote
   Built 1 project with 1 warning.
 stderr:
-  rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
+  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
     src/Save@sever.luau (did you mean "@Server"?)
 
 $ rogen build --json
@@ -16,12 +16,12 @@ stdout:
     "configs": [
       {
         "config": "project",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/rogen.json",
+            "file": "<dir>/default.rogen.json",
             "severity": "warning",
             "code": "route.strayAt",
             "message": "1 name has an \"@\" that routes nowhere, so it is read as an ordinary name:\n  <dir>/src/Save@sever.luau (did you mean \"@Server\"?)",

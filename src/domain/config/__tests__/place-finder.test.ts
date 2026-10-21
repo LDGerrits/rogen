@@ -111,7 +111,7 @@ describe("PlaceFinder shared code", () => {
 
 	it("should not list the shared folder's root as the config that lists it", async () => {
 		await fs.writeFile(
-			"/repo/rogen.json",
+			"/repo/default.rogen.json",
 			JSON.stringify({
 				sourcePaths,
 				routes: { Server: "ServerScriptService" },
@@ -120,21 +120,21 @@ describe("PlaceFinder shared code", () => {
 		);
 		const finder = new PlaceFinder(fs);
 		expect(await finder.rootOf("/repo/places/game")).toBe(
-			"/repo/rogen.json"
+			"/repo/default.rogen.json"
 		);
 		expect(await finder.rootOf("/repo/places/shared")).toBeUndefined();
 	});
 
 	it("should list a named folder with a source path as a place of its root", async () => {
 		await fs.writeFile(
-			"/repo/rogen.json",
+			"/repo/default.rogen.json",
 			JSON.stringify({
 				sourcePaths,
 				placePaths: ["places/shared"],
 			})
 		);
 		expect(await new PlaceFinder(fs).rootOf("/repo/places/shared")).toBe(
-			"/repo/rogen.json"
+			"/repo/default.rogen.json"
 		);
 	});
 });

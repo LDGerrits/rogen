@@ -1,0 +1,109 @@
+$ rogen build
+exit 0
+stdout:
+  rogen build · Inventory
+  default.project.json · wrote
+  Built 1 project.
+
+$ rogen build dist
+exit 0
+stdout:
+  rogen build · Inventory
+  dist.project.json · wrote
+  Built 1 project.
+
+written:
+  default.project.json
+  dist.project.json
+
+default.project.json:
+{
+  "name": "Inventory",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Inventory": {
+          "$className": "Folder",
+          "Types": {
+            "$path": {
+              "optional": "src/Inventory/Types.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Inventory": {
+        "$className": "Folder",
+        "Save": {
+          "$path": {
+            "optional": "src/Inventory/Save.server.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  }
+}
+
+dist.project.json:
+{
+  "name": "Inventory",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Inventory": {
+          "$className": "Folder",
+          "Types": {
+            "$path": {
+              "optional": "dist/Inventory/Types.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Inventory": {
+        "$className": "Folder",
+        "Save": {
+          "$path": {
+            "optional": "dist/Inventory/Save.server.luau"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+Inventory: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- src/Inventory/Save.server.luau
+
+$ rojo sourcemap dist.project.json
+Inventory: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- dist/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- dist/Inventory/Save.server.luau

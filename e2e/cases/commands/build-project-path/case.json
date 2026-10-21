@@ -4,7 +4,7 @@
 		["build", "default.project.json"],
 		["build", "lobby"],
 		["build", "lobby/default.project.json"],
-		["build", "lobby/rogen.json"]
+		["build", "lobby/default.rogen.json"]
 	],
 	"output": ["build"]
 }

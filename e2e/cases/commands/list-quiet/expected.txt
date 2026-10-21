@@ -1,7 +1,7 @@
 $ rogen list -q
 exit 0
 stdout:
-  rogen.json
+  default.rogen.json
     source paths: src
     routes:
       * -> ReplicatedStorage/shared

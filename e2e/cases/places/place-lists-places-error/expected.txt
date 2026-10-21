@@ -2,5 +2,5 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: rogen.json · not loaded
-  places/arena/rogen.json:1:3 - error: a place can't list places: "placePaths" belongs to the config that lists this folder. Remove it. (config.placeListsPlaces)
+  error: default.rogen.json · not loaded
+  places/arena/default.rogen.json:1:3 - error: a place can't list places: "placePaths" belongs to the config that lists this folder. Remove it. (config.placeListsPlaces)

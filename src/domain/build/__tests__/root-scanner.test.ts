@@ -118,7 +118,7 @@ describe("RootScanner", () => {
 				const config = configOf({
 					sourcePaths: [abs("src")],
 					ignored: [],
-					file: abs("src/rogen.json"),
+					file: abs("src/default.rogen.json"),
 				});
 
 				const [root] = (
@@ -140,7 +140,7 @@ describe("RootScanner", () => {
 				configOf({
 					sourcePaths: [abs("src")],
 					ignored: [],
-					file: abs("src/rogen.json"),
+					file: abs("src/default.rogen.json"),
 				});
 
 			it("should be left out when a source path holds them", async () => {
@@ -191,7 +191,7 @@ describe("RootScanner", () => {
 			const config = configOf({
 				sourcePaths: [abs("src")],
 				ignored: [],
-				file: abs("src/rogen.json"),
+				file: abs("src/default.rogen.json"),
 			});
 
 			const [root] = (
@@ -450,8 +450,8 @@ describe("RootScanner", () => {
 			it("should leave a Rogen config out, as it is no game data", async () => {
 				await write(
 					"src/Keep.luau",
-					"src/Inventory/rogen.json",
-					"src/Inventory/rogen.jsonc"
+					"src/Inventory/default.rogen.json",
+					"src/Inventory/default.rogen.jsonc"
 				);
 
 				const { roots } = await scan();
@@ -459,14 +459,17 @@ describe("RootScanner", () => {
 				expect(files(roots[0])).toEqual(["script:Keep.luau"]);
 				expect(
 					roots[0].leftOut.get(
-						toPosix(abs("src/Inventory/rogen.json"))
+						toPosix(abs("src/Inventory/default.rogen.json"))
 					)
-				).toEqual({ status: "ignored", pattern: "rogen.json" });
+				).toEqual({ status: "ignored", pattern: "default.rogen.json" });
 				expect(
 					roots[0].leftOut.get(
-						toPosix(abs("src/Inventory/rogen.jsonc"))
+						toPosix(abs("src/Inventory/default.rogen.jsonc"))
 					)
-				).toEqual({ status: "ignored", pattern: "rogen.jsonc" });
+				).toEqual({
+					status: "ignored",
+					pattern: "default.rogen.jsonc",
+				});
 			});
 
 			it("should leave out what syncback writes while it runs", async () => {

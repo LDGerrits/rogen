@@ -9,7 +9,8 @@ import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import {
-	CONFIG_FILE_NAMES,
+	DEFAULT_CONFIG_FILE,
+	DEFAULT_CONFIG_FILE_NAMES,
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
 	configFileContent,
@@ -121,7 +122,7 @@ export class PlaceInit {
 			...(sourcePaths.syncPath && { syncPath: sourcePaths.syncPath }),
 			...compiled?.config,
 		};
-		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
+		const configFile = path.posix.join(place, DEFAULT_CONFIG_FILE);
 		return ok({
 			directory: root,
 			purpose: "place",
@@ -206,14 +207,14 @@ export class PlaceInit {
 		if (!enclosing)
 			return err(
 				new UsageError(
-					`No ${CONFIG_FILE_NAMES[0]} found above ${folder}.`,
+					`No ${DEFAULT_CONFIG_FILE} found above ${folder}.`,
 					"Run 'rogen init' in the folder that holds the code the places share first."
 				)
 			);
 		if (enclosing.fileNames.length > 1)
 			return err(
 				new UsageError(
-					`${enclosing.directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+					`${enclosing.directory} holds both ${DEFAULT_CONFIG_FILE_NAMES.join(" and ")}; keep one.`
 				)
 			);
 		const root = enclosing.directory;

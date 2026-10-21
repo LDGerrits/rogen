@@ -1,0 +1,54 @@
+$ rogen build dist
+exit 0
+stdout: (not shown)
+
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  default.rogen.json
+    source paths: src
+    routes:
+      server -> ServerScriptService
+      client -> StarterPlayer/StarterPlayerScripts
+      shared -> ReplicatedStorage/shared
+      * -> ReplicatedStorage/shared
+    sync path: (none)
+    project file: default.project.json
+    rojo: rojo serve default.project.json
+  dist.rogen.json
+    source paths: src
+    routes: same as Inventory
+    sync path: dist
+    project file: dist.project.json
+    rojo: rojo serve dist.project.json
+    differs from default.rogen.json: syncPath
+  2 configs.
+
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  dist.project.json
+
+$ rojo sourcemap default.project.json
+Inventory: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- src/Inventory/Save.server.luau
+
+$ rojo sourcemap dist.project.json
+Inventory: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- dist/Inventory/Types.luau
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: Script  <- dist/Inventory/Save.server.luau

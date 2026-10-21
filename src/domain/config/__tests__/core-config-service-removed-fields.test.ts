@@ -6,7 +6,7 @@ describe("CoreConfigService", () => {
 	describe("removed fields", () => {
 		it("should say modes was removed, where it is written", async () => {
 			await write(
-				"/repo/rogen.json",
+				"/repo/default.rogen.json",
 				`{
 	"modes": { "dev": {} }
 }`
@@ -37,7 +37,7 @@ describe("CoreConfigService", () => {
 			"projects",
 			"serveProject",
 		])("should say %s was removed", async (field) => {
-			await write("/repo/rogen.json", { [field]: "x" });
+			await write("/repo/default.rogen.json", { [field]: "x" });
 
 			await start();
 
@@ -50,7 +50,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should name a later source path as what replaces a variant", async () => {
-			await write("/repo/rogen.json", { variants: { mock: true } });
+			await write("/repo/default.rogen.json", {
+				variants: { mock: true },
+			});
 
 			await start();
 
@@ -58,7 +60,9 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should name globIgnorePaths as what replaces exclude", async () => {
-			await write("/repo/rogen.json", { exclude: ["**/*.spec.luau"] });
+			await write("/repo/default.rogen.json", {
+				exclude: ["**/*.spec.luau"],
+			});
 
 			await start();
 
@@ -66,7 +70,10 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should name a complete second config file as what replaces extends and projects", async () => {
-			await write("/repo/rogen.json", { extends: "x", projects: {} });
+			await write("/repo/default.rogen.json", {
+				extends: "x",
+				projects: {},
+			});
 
 			await start();
 
@@ -78,7 +85,10 @@ describe("CoreConfigService", () => {
 		});
 
 		it("should report every removed field at once", async () => {
-			await write("/repo/rogen.json", { extends: "x", template: "y" });
+			await write("/repo/default.rogen.json", {
+				extends: "x",
+				template: "y",
+			});
 
 			await start();
 

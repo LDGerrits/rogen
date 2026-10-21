@@ -2,11 +2,16 @@ import path from "path";
 import { commonAncestor, samePath, toPosix } from "../../base/path.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Target } from "../roblox/roblox.js";
-import { ParsedProjectFile, RojoProject } from "../rojo/rojo-project.js";
+import {
+	ParsedProjectFile,
+	RojoProject,
+	projectFileName,
+} from "../rojo/rojo-project.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import {
-	DEFAULT_PROJECT_FILE,
+	DEFAULT_PROJECT,
 	DEFAULT_SOURCE_PATH,
+	configStem,
 	isProjectFileConfig,
 } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
@@ -97,11 +102,14 @@ export class ResolvedConfig {
 		return path.dirname(this.file);
 	}
 
-	/** The Rojo project file the config writes; for a config that is a Rojo project file, that file, whatever its name. */
+	/** The Rojo project file the config writes, beside it and named for its stem; for a config that is a Rojo project file, that file. */
 	get projectFile(): string {
 		return isProjectFileConfig(this.file)
 			? this.file
-			: path.join(this.projectDir, DEFAULT_PROJECT_FILE);
+			: path.join(
+					this.projectDir,
+					projectFileName(configStem(this.file) ?? DEFAULT_PROJECT)
+				);
 	}
 
 	/** Whether the config is a Rojo project file Rogen was not given a config for: it is its own output and is never written. */
@@ -123,7 +131,7 @@ export class ResolvedConfig {
 	}
 }
 
-/** A `rogen.json` resolved, with the places it lists. */
+/** A `.rogen.json` resolved, with the places it lists. */
 export interface ResolvedConfigFile {
 	readonly config: ResolvedConfig;
 	/** The places it lists, sorted by path. */

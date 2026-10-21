@@ -1,0 +1,33 @@
+$ rogen build lobby
+exit 0
+stdout:
+  rogen build · Lobby
+  lobby/default.project.json · wrote
+  Built 1 project.
+stderr:
+  warning: "lobby" is a folder with a default config and also lobby.rogen.json: using the folder. To use the file, name it: lobby.rogen.json.
+
+$ rogen build lobby.rogen.json
+exit 0
+stdout:
+  rogen build · Tie
+  lobby.project.json · wrote
+  Built 1 project.
+
+written:
+  lobby.project.json
+  lobby/default.project.json
+
+$ rojo sourcemap lobby.project.json
+Tie: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
+
+$ rojo sourcemap lobby/default.project.json
+Lobby: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- ../src/Inventory/Types.luau

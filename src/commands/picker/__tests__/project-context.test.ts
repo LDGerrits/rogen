@@ -31,7 +31,7 @@ describe("ProjectContext", () => {
 
 	describe("what it says of the project", () => {
 		it("should name the version and the project of the config here", async () => {
-			await write("rogen.json", '{"name":"Cool Game"}');
+			await write("default.rogen.json", '{"name":"Cool Game"}');
 
 			expect(await contextAt().describe()).toEqual({
 				version: "2.0.1",
@@ -40,13 +40,13 @@ describe("ProjectContext", () => {
 		});
 
 		it("should name the folder when the config sets no name", async () => {
-			await write("rogen.json", "{}");
+			await write("default.rogen.json", "{}");
 
 			expect((await contextAt().describe()).name).toBe("my-game");
 		});
 
 		it("should find the config above the folder", async () => {
-			await write("rogen.json", "{}");
+			await write("default.rogen.json", "{}");
 			await fileSystem.createDirectory(path.join(root, "src"));
 
 			expect(
@@ -62,7 +62,7 @@ describe("ProjectContext", () => {
 		});
 
 		it("should still name the folder of a config that is broken", async () => {
-			await write("rogen.json", "{ nope");
+			await write("default.rogen.json", "{ nope");
 
 			expect((await contextAt().describe()).name).toBe("my-game");
 		});

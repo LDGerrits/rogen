@@ -219,7 +219,7 @@ Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"
 Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
 
 ```
-rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
+default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
   src/Inventory/Load@SERVER.luau (did you mean "@server"?)
   src/Inventory/Report@server.bak.luau ("@server" must end the name)
 ```
@@ -231,7 +231,7 @@ Rename the file to the spelling suggested, or move the `@key` to the end of the 
 Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns. One warning lists every such name.
 
 ```
-rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
   src/Inventory/.server (write "@server")
   src/Inventory/Types.shared.luau (write "Types@shared.luau")
 ```
@@ -704,6 +704,16 @@ default.project.json - error: this file was edited by hand, and a build would lo
 ```
 
 Put what the message names into `rogen.json`: the `tree` of a config holds the nodes names can't express, and its other keys sit beside it. Then `rogen build` writes the file with the edit. `rogen build --force` writes the file over the edit instead. No fix is offered that does either, since the move is yours to check and the force loses the edit. A machine that never wrote the file, or a cache that was cleared, has no hash, so the first build there writes the file as it always did. A file pulled from git that was written from another version of `rogen.json` has a hash this machine never saw and can look edited if it holds something this machine would not write: `rogen build --force` writes it. `build --watch` and `serve` stop on it too, since they cannot take `--force`: stop them, run it, and start them again. See [Output](/docs/v2/core-concepts/output#output).
+
+### `output.configMissing` [#output-configmissing]
+
+Error. `rogen build`, `rogen serve` and the commands that build first found a project file that Rogen wrote and that is as Rogen wrote it, but the `.rogen.json` beside it that wrote it is gone, so the config was deleted or renamed. Rogen writes `X.project.json` only from `X.rogen.json`, and it will not run a leftover as if it were a plain Rojo project.
+
+```
+default.project.json - error: Rogen wrote this file from default.rogen.json, which is not here now: the config was deleted or renamed. Restore default.rogen.json, or change this file by hand to use it as a plain Rojo project. (output.configMissing)
+```
+
+Restore or rename the config. To go back to a plain Rojo project, change the project file by hand: a file that differs from what Rogen wrote is yours.
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 

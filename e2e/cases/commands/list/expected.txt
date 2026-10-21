@@ -2,7 +2,7 @@ $ rogen list game lobby
 exit 0
 stdout:
   rogen list
-  game/rogen.json
+  game/default.rogen.json
     source paths: game/src
     routes:
       server -> ServerScriptService
@@ -12,7 +12,7 @@ stdout:
     sync path: game/dist
     project file: game/default.project.json
     rojo: rojo serve game/default.project.json
-  lobby/rogen.json
+  lobby/default.rogen.json
     source paths: lobby/core, lobby/places/lobby
     routes: same as Game
     sync path: (none)

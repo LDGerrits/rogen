@@ -34,11 +34,11 @@ const summary: BuildSummary = {
 describe("domain/build/build", () => {
 	describe("BuildRun", () => {
 		const lobby = configOf({
-			file: abs("lobby/rogen.json"),
+			file: abs("lobby/default.rogen.json"),
 			name: "lobby",
 		});
 		const arena = configOf({
-			file: abs("arena/rogen.json"),
+			file: abs("arena/default.rogen.json"),
 			name: "arena",
 		});
 		const shared = warningDiagnostic(
@@ -98,7 +98,7 @@ describe("domain/build/build", () => {
 			);
 			const run = new BuildRun([
 				new FailedBuild(lobby, [error]),
-				new UnloadedBuild(abs("arena/rogen.json"), [error]),
+				new UnloadedBuild(abs("arena/default.rogen.json"), [error]),
 			]);
 
 			expect(run.failed).toBe(true);
@@ -149,16 +149,16 @@ describe("domain/build/build", () => {
 
 	describe("BuildSet", () => {
 		const lobby = configOf({
-			file: abs("lobby/rogen.json"),
+			file: abs("lobby/default.rogen.json"),
 			name: "lobby",
 		});
 		const arena = configOf({
-			file: abs("arena/rogen.json"),
+			file: abs("arena/default.rogen.json"),
 			name: "arena",
 		});
 		const failure = errorDiagnostic(
 			"config.invalid",
-			{ resource: abs("arena/rogen.json") },
+			{ resource: abs("arena/default.rogen.json") },
 			"broken"
 		);
 
@@ -174,8 +174,8 @@ describe("domain/build/build", () => {
 
 		it("should fail with every error when a config of the selection is broken", () => {
 			const selection = new MockConfigSelection([
-				mockEntry({}, abs("lobby/rogen.json")),
-				brokenEntry([failure], abs("arena/rogen.json")),
+				mockEntry({}, abs("lobby/default.rogen.json")),
+				brokenEntry([failure], abs("arena/default.rogen.json")),
 			]);
 
 			const set = BuildSet.of(selection);
@@ -190,25 +190,25 @@ describe("domain/build/build", () => {
 					file: lobby.file,
 					config: lobby,
 				},
-				brokenEntry([failure], abs("arena/rogen.json")),
+				brokenEntry([failure], abs("arena/default.rogen.json")),
 			]);
 
 			const { set, unloaded } = BuildSet.partition(selection);
 
 			expect(set.configs).toEqual([lobby]);
 			expect(unloaded).toEqual([
-				new UnloadedBuild(abs("arena/rogen.json"), [failure]),
+				new UnloadedBuild(abs("arena/default.rogen.json"), [failure]),
 			]);
 			expect(unloaded[0].label).toBe("arena");
 		});
 
 		it("should list the source paths of configs with routes, and the default source path of one without", () => {
 			const routed = configOf({
-				file: abs("lobby/rogen.json"),
+				file: abs("lobby/default.rogen.json"),
 				sourcePaths: [abs("lobby/server"), abs("lobby/shared")],
 			});
 			const unrouted = configOf({
-				file: abs("arena/rogen.json"),
+				file: abs("arena/default.rogen.json"),
 				sourcePaths: [],
 				routes: {},
 			});

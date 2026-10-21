@@ -1,0 +1,32 @@
+{
+	"steps": [
+		[
+			"build",
+			"dist"
+		],
+		[
+			"build",
+			"release.project.json"
+		],
+		[
+			"build",
+			"default.project.json"
+		],
+		[
+			"build",
+			"dist.rogen.json",
+			"--json"
+		],
+		[
+			"build",
+			"nope"
+		],
+		[
+			"build",
+			"nope.project.json"
+		]
+	],
+	"output": [
+		"build"
+	]
+}

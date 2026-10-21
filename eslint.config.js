@@ -18,6 +18,7 @@ const modules = {
 		build: ["build", "build-service"],
 		config: [
 			"config",
+			"config-differences",
 			"config-service",
 			"declared-keys",
 			"place-finder",

@@ -13,7 +13,7 @@ export const ConfigArguments = [
 	{
 		name: "project",
 		description:
-			"A folder with a rogen.json, or a *.project.json path. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given.",
+			"A folder, a .rogen.json file, a *.project.json path, or the name of a file here (dist for dist.rogen.json). The default.rogen.json of the working directory, or its default.project.json, when none is given.",
 		isOptional: true,
 		isVariadic: true,
 	},
@@ -81,7 +81,9 @@ export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
 	/** Every config that builds now, each entry's own first; a broken entry gives its last valid version or none. */
 	readonly configs: readonly ResolvedConfig[];
-	/** The folder configs were looked for in: the working directory, or the nearest folder above it with a config when it has none. */
+	/** What picking had to say, such as a name matching both a folder and a file. */
+	readonly notes: readonly string[];
+	/** The folder configs were looked for in: the working directory, or the place folder it lies in. */
 	readonly home: string;
 
 	/** Every config, or every error when any entry is broken now. */
@@ -91,13 +93,13 @@ export interface ConfigSelection {
 /** The caller owns it; only `reload` changes it. */
 export interface ReloadableSelection extends ConfigSelection {
 	readonly files: ReadonlySet<string>;
-	/** The folder the selection was picked from when no config was named; a `reload` follows its added and deleted configs. */
+	/** The folder the selection was picked from when no config was named; a `reload` follows the added and deleted default config of it, and no other file. */
 	readonly followedFolder: string | undefined;
 
 	/** Whether a selected config reads `file`; a watcher reports POSIX paths on every system, so any spelling of the path matches. */
 	reads(file: string): boolean;
 
-	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or a config that came to the folder. */
+	/** Whether `reload` should hear of a change to `file`: one a selected config reads, or the default config that came to the folder. */
 	concerns(file: string): boolean;
 
 	/** Reloads every config that reads one of `files`, after any earlier reload. A broken config keeps its last valid version; a followed folder's added and dropped configs join and leave first. */
@@ -124,11 +126,13 @@ export type ConfigFileCheck = (
 export interface ConfigService {
 	readonly _serviceBrand: undefined;
 
-	/** Loads the configs `refs` names, else the one here or in the nearest folder above. Fails only when they can't be picked; a broken config lands on its entry. */
+	/** Loads the configs `refs` names, else the default of the working directory. Fails only when they can't be picked; a broken config lands on its entry. */
 	select(
 		refs: readonly string[]
 	): Promise<Result<ReloadableSelection, Error>>;
-	/** The nearest folder above `from`, the working directory unless given, that has configs. */
+	/** Loads every config file of the working directory, from one read of it; the default is not required. A folder with no config file is `select([])`'s. */
+	selectFolder(): Promise<Result<ReloadableSelection, Error>>;
+	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** Loads one config file as `select` would, outside any selection. */
 	read(file: string): Promise<ConfigEntry>;

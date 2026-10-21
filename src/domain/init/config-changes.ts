@@ -160,7 +160,7 @@ export class ConfigChanges {
 			if (request[key] !== undefined)
 				throw new UsageError(
 					`${flag} is for the project root, and ${this.directory.path} is a place.`,
-					"Run init in the folder of the root rogen.json."
+					"Run init in the folder of the root default.rogen.json."
 				);
 		await this.changeSourcePaths(request);
 		if (request.syncPath !== undefined)
@@ -396,7 +396,7 @@ export class ConfigChanges {
 		if (!places)
 			throw new UsageError(
 				"--no-places would move the code of the places back into one project, which init doesn't do.",
-				"Move the code and edit placePaths in rogen.json yourself."
+				"Move the code and edit placePaths in default.rogen.json yourself."
 			);
 		if (stringsOf(value.placePaths).length > 0) {
 			this.notes.push(

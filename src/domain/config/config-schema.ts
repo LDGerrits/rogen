@@ -207,8 +207,8 @@ const removedFields: Readonly<Record<string, string>> = {
 	serveProject:
 		"rogen serve serves default.rogen.json, or the file you name.",
 	template:
-		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
-	outFile: "Rogen writes default.project.json beside rogen.json.",
+		'Write the tree inline: move the template\'s "tree" and its other keys into default.rogen.json.',
+	outFile: "Rogen writes default.project.json beside default.rogen.json.",
 	exclude:
 		'"globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo.',
 	rootDirs: 'It is called "sourcePaths" now.',

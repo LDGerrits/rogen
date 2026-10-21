@@ -147,7 +147,7 @@ describe("WrittenSyncRules", () => {
 	it("should move a pattern from the folder its rule was written in", () => {
 		expect(
 			writtenBy([module], [], {
-				file: abs("places/lobby/rogen.json"),
+				file: abs("places/lobby/default.rogen.json"),
 				syncRulesDir: abs(""),
 			})
 		).toEqual([{ ...module, pattern: "../../src/*.module" }]);
@@ -230,7 +230,7 @@ describe("WrittenSyncRules", () => {
 				[rule],
 				[],
 				{
-					file: abs("places/lobby/rogen.json"),
+					file: abs("places/lobby/default.rogen.json"),
 					syncRulesDir: abs(""),
 					syncPath: abs("places/lobby/out"),
 				},

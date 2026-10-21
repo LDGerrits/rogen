@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  rogen.json:3:48 - warning: "sufix" is not a field of a sync rule, so Rojo ignores it. Did you mean "suffix"? (config.unknownField)
+  default.rogen.json:3:48 - warning: "sufix" is not a field of a sync rule, so Rojo ignores it. Did you mean "suffix"? (config.unknownField)
 
 written:
   default.project.json

@@ -29,7 +29,7 @@ describe("syncback command", () => {
 					"*": "ReplicatedStorage",
 				},
 			},
-			abs("rogen.json")
+			abs("default.rogen.json")
 		);
 
 	const start = (

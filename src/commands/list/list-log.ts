@@ -1,5 +1,6 @@
 import { ProjectError } from "../../base/errors.js";
 import { relativeTo, toNative } from "../../base/path.js";
+import path from "path";
 import { joinedWithAnd, plural, shellWord } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import {
@@ -7,7 +8,12 @@ import {
 	ResolvedConfigFile,
 	placesIn,
 } from "../../domain/config/resolved-config.js";
-import { configLabel } from "../../domain/config/config.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	configLabel,
+	isDefaultConfigFileName,
+} from "../../domain/config/config.js";
+import { ConfigDifferences } from "../../domain/config/config-differences.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -67,6 +73,7 @@ export const listDocumentShape = S.object({
 			file: S.string,
 			status: S.enum("valid", "broken"),
 			served: S.boolean,
+			differsFromDefault: S.optional(S.array(S.string)),
 			...optionalDetails,
 			sharedCode: S.optional(S.array(S.string)),
 			places: S.optional(
@@ -155,6 +162,7 @@ interface ListedConfig extends Partial<ConfigDetails> {
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
 	readonly served: boolean;
+	readonly differsFromDefault?: readonly string[];
 	readonly places?: readonly ListedPlace[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
@@ -182,6 +190,32 @@ export class ListLog {
 		);
 	}
 
+	/** The keys each valid config other than the default has other values for than the default, by config file; none without a valid default beside it. */
+	static differences(
+		entries: readonly ConfigEntry[]
+	): ReadonlyMap<string, readonly string[]> {
+		const base = entries.find(
+			(entry) =>
+				entry.status === "valid" &&
+				entry.scope === undefined &&
+				isDefaultConfigFileName(path.basename(entry.file))
+		);
+		const differences = new Map<string, readonly string[]>();
+		if (base?.status !== "valid") return differences;
+		for (const entry of entries)
+			if (
+				entry.status === "valid" &&
+				entry.scope === undefined &&
+				entry !== base &&
+				!isDefaultConfigFileName(path.basename(entry.file))
+			)
+				differences.set(
+					entry.file,
+					ConfigDifferences.between(base.config, entry.config)
+				);
+		return differences;
+	}
+
 	print(
 		entries: readonly ConfigEntry[],
 		home?: string,
@@ -191,6 +225,7 @@ export class ListLog {
 		const { logService } = this;
 		new BuildLog(logService, this.cwd).begin("list", [], home);
 		const printed: { label: string; routes: readonly string[] }[] = [];
+		const differences = ListLog.differences(entries);
 		let configs = 0;
 		let places = 0;
 		for (const entry of entries) {
@@ -208,7 +243,8 @@ export class ListLog {
 						? placesIn(entry).map(({ config }) => config.label)
 						: [],
 					printed,
-					serving
+					serving,
+					differences.get(entry.file)
 				);
 			}
 			for (const place of placesIn(entry, entry.scope)) {
@@ -240,7 +276,8 @@ export class ListLog {
 		resolved: ResolvedConfigFile,
 		placeNames: readonly string[],
 		printed: { label: string; routes: readonly string[] }[],
-		serving: ServingByConfig
+		serving: ServingByConfig,
+		differs?: readonly string[]
 	): void {
 		const relative = (file: string) => relativeTo(this.cwd, file);
 		const { config } = resolved;
@@ -290,6 +327,11 @@ export class ListLog {
 				`project file: ${relative(config.projectFile)}${notes(config)}`,
 				...(rojo(config) ? [`rojo: ${rojo(config)}`] : []),
 				...(running(config) ? [running(config)] : []),
+				...(differs
+					? [
+							`differs from ${DEFAULT_CONFIG_FILE}: ${listed(differs)}`,
+						]
+					: []),
 			].join("\n")
 		);
 	}
@@ -299,6 +341,7 @@ export class ListLog {
 		serving: ServingByConfig = new Map(),
 		problems: ProblemsByConfig = new Map()
 	): ListDocument {
+		const differences = ListLog.differences(entries);
 		return {
 			configs: entries.map((entry) => ({
 				config:
@@ -310,6 +353,9 @@ export class ListLog {
 				served:
 					entry.status === "valid" &&
 					(entry.scope !== undefined || !entry.config.hasPlaces),
+				...(differences.has(entry.file)
+					? { differsFromDefault: differences.get(entry.file) }
+					: {}),
 				...(entry.status === "valid" && entry.scope === undefined
 					? configDetails(entry.config, serving)
 					: {}),

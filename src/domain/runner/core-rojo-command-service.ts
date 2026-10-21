@@ -195,7 +195,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 			new UsageError(
 				chosen.length === 0
 					? `There is no project to run 'rojo ${command}' on.`
-					: `'rojo ${command}' runs on one project, and this selects ${chosen.length}. Name one: a folder with a rogen.json.`
+					: `'rojo ${command}' runs on one project, and this selects ${chosen.length}. Name one: a folder with a default.rogen.json.`
 			)
 		);
 	}

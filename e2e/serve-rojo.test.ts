@@ -161,7 +161,7 @@ describeWithRojo("end to end serve", () => {
 			expect(serving.output).toContain("Serving Game");
 		}, 20_000);
 
-		fs.rmSync(path.join(serve.dir, "rogen.json"));
+		fs.rmSync(path.join(serve.dir, "default.rogen.json"));
 
 		await eventually(() => {
 			expect(serving.output).toContain(
@@ -170,19 +170,19 @@ describeWithRojo("end to end serve", () => {
 		}, 20_000);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 
-		writeProjectFile(serve.dir, "rogen.json", config(serve.port));
+		writeProjectFile(serve.dir, "default.rogen.json", config(serve.port));
 
 		await eventually(async () => {
 			expect(await rojoProject(serve.port)).toBe("Game");
 		}, 20_000);
-		expect(serving.output).toContain("rogen.json added");
+		expect(serving.output).toContain("default.rogen.json added");
 	}, 60_000);
 
 	it("should serve every project it is given, each under its own name and port", async () => {
 		for (const [index, folder] of ["lobby", "arena"].entries()) {
 			writeProjectFile(
 				serve.dir,
-				`${folder}/rogen.json`,
+				`${folder}/default.rogen.json`,
 				JSON.stringify({
 					servePort: serve.port + 1 + index,
 					tree: { $className: "DataModel" },
@@ -215,7 +215,7 @@ describeWithRojo("end to end serve", () => {
 	it("should serve every place, each under its folder's name and port, and never the config that lists them", async () => {
 		writeProjectFile(
 			serve.dir,
-			"rogen.json",
+			"default.rogen.json",
 			config(serve.port, {
 				placePaths: ["places/*"],
 				servePort: undefined,
@@ -224,7 +224,7 @@ describeWithRojo("end to end serve", () => {
 		for (const [index, folder] of ["lobby", "arena"].entries()) {
 			writeProjectFile(
 				serve.dir,
-				`places/${folder}/rogen.json`,
+				`places/${folder}/default.rogen.json`,
 				JSON.stringify({ servePort: serve.port + 1 + index })
 			);
 			writeProjectFile(serve.dir, `places/${folder}/src/A.luau`);
@@ -250,7 +250,7 @@ describeWithRojo("end to end serve", () => {
 	it("should serve only the place it is run in", async () => {
 		writeProjectFile(
 			serve.dir,
-			"rogen.json",
+			"default.rogen.json",
 			config(serve.port, {
 				placePaths: ["places/*"],
 				servePort: undefined,
@@ -259,7 +259,7 @@ describeWithRojo("end to end serve", () => {
 		for (const [index, folder] of ["lobby", "arena"].entries())
 			writeProjectFile(
 				serve.dir,
-				`places/${folder}/rogen.json`,
+				`places/${folder}/default.rogen.json`,
 				JSON.stringify({ servePort: serve.port + 1 + index })
 			);
 
@@ -277,7 +277,7 @@ describeWithRojo("end to end serve", () => {
 	it("should serve only the project in the folder it is given", async () => {
 		writeProjectFile(
 			serve.dir,
-			"lobby/rogen.json",
+			"lobby/default.rogen.json",
 			config(serve.port + 1, { name: "Lobby" })
 		);
 		writeProjectFile(serve.dir, "lobby/src/A.luau");
@@ -293,10 +293,10 @@ describeWithRojo("end to end serve", () => {
 		expect(await serving.stop()).toBe(130);
 	}, 40_000);
 
-	it("should name the project after its folder when rogen.json sets no name", async () => {
+	it("should name the project after its folder when default.rogen.json sets no name", async () => {
 		writeProjectFile(
 			serve.dir,
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
 				servePort: serve.port,
 				tree: { $className: "DataModel" },
@@ -317,7 +317,7 @@ describeWithRojo("end to end serve", () => {
 	it("should refuse two projects on one port", async () => {
 		writeProjectFile(
 			serve.dir,
-			"lobby/rogen.json",
+			"lobby/default.rogen.json",
 			config(serve.port, { name: "Lobby" })
 		);
 
@@ -325,7 +325,7 @@ describeWithRojo("end to end serve", () => {
 
 		expect(await serving.exited).toBe(2);
 		expect(serving.output).toContain(
-			`Game and Lobby both serve on port ${serve.port}.`
+			`default.rogen.json and lobby/default.rogen.json both serve on port ${serve.port}.`
 		);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);
@@ -333,7 +333,7 @@ describeWithRojo("end to end serve", () => {
 	it("should refuse --port for several projects, and serve one project on it", async () => {
 		writeProjectFile(
 			serve.dir,
-			"lobby/rogen.json",
+			"lobby/default.rogen.json",
 			config(serve.port + 1, { name: "Lobby" })
 		);
 		writeProjectFile(serve.dir, "lobby/src/A.luau");
@@ -365,7 +365,11 @@ describeWithRojo("end to end serve", () => {
 			expect(serving.output).toContain("Serving Game");
 		}, 20_000);
 
-		writeProjectFile(serve.dir, "rogen.json", config(serve.port + 2));
+		writeProjectFile(
+			serve.dir,
+			"default.rogen.json",
+			config(serve.port + 2)
+		);
 
 		await eventually(async () => {
 			expect(await rojoProject(serve.port + 2)).toBe("Game");
@@ -394,11 +398,15 @@ describeWithRojo("end to end serve", () => {
 				expect(serving.output).toContain("Serving Game");
 			}, 20_000);
 
-			writeProjectFile(serve.dir, "rogen.json", config(serve.port + 1));
+			writeProjectFile(
+				serve.dir,
+				"default.rogen.json",
+				config(serve.port + 1)
+			);
 
 			await eventually(() => {
 				expect(serving.output).toContain(
-					`Port ${serve.port + 1} is taken by Rojo serving Other, so Game can't be served there.`
+					`Port ${serve.port + 1} is taken by Rojo serving Other, so default.rogen.json can't be served there.`
 				);
 			}, 20_000);
 			expect(await rojoProject(serve.port)).toBe("Game");
@@ -532,11 +540,32 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await second.exited).toBe(1);
 			expect(second.output).toContain(
-				`Port ${serve.port} is taken by Rojo serving Game from ${serve.dir}`
+				`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for ${serve.dir}/default.rogen.json`
 			);
 		} finally {
 			checkout.dispose();
 		}
+	}, 40_000);
+
+	it("should serve the default when a sibling config sits beside it, and refuse the sibling on the same port, naming the file", async () => {
+		writeProjectFile(
+			serve.dir,
+			"dist.rogen.json",
+			config(serve.port, { syncPath: "dist" })
+		);
+		const first = serve.start();
+		await eventually(() => {
+			expect(first.output).toContain("Serving Game");
+		}, 20_000);
+
+		const second = serve.start(["dist"]);
+
+		expect(await second.exited).toBe(1);
+		expect(second.output).toContain(
+			`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port`
+		);
+		expect(second.output).not.toContain("--adopt");
+		expect(await rojoProject(serve.port)).toBe("Game");
 	}, 40_000);
 
 	it("should refuse a port another project's server holds", async () => {
@@ -556,7 +585,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await serving.exited).toBe(1);
 			expect(serving.output).toContain(
-				`Port ${serve.port} is taken by Rojo serving Other, so Game can't be served there.`
+				`Port ${serve.port} is taken by Rojo serving Other, so default.rogen.json can't be served there.`
 			);
 		} finally {
 			rojo.kill("SIGINT");
