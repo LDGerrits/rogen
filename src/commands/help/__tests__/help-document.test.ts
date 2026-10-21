@@ -77,9 +77,7 @@ describe("rogen help --json", () => {
 			const build = commands.find(
 				({ name }: { name: string }) => name === "build"
 			);
-			expect(build.args).toEqual([
-				{ name: "project", optional: true, variadic: true },
-			]);
+			expect(build.args).toEqual([{ name: "project", optional: true }]);
 			expect(build.options).toContainEqual({
 				name: "output",
 				short: "o",

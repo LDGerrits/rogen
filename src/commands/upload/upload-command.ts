@@ -2,7 +2,8 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
@@ -72,7 +73,7 @@ registerCommand(
 						"Writes the project files, then uploads them with Rojo",
 					description:
 						"Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
-					args: ConfigArguments,
+					args: ProjectArgument,
 					picker: [
 						{
 							message:
@@ -104,6 +105,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof UploadOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("upload", line.positionals);
+			if (tooMany) return err(tooMany);
 			const { asset_id, api_key, universe_id, cookie } = line.options;
 			if (asset_id === undefined)
 				return err(

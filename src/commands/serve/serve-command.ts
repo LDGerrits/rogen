@@ -2,7 +2,10 @@ import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { UsageError, onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigArguments } from "../../domain/config/config-service.js";
+import {
+	ProjectArgument,
+	singleProjectError,
+} from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
 	ServeService,
@@ -117,7 +120,7 @@ registerCommand(
 						"Builds, serves with Rojo, and rebuilds on changes",
 					description:
 						"Builds, serves the project files with Rojo, and rebuilds on every change.",
-					args: ConfigArguments,
+					args: ProjectArgument,
 					passthrough: {
 						name: "server args",
 						description:
@@ -144,6 +147,12 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: ServeLine
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError(
+				"serve",
+				line.positionals,
+				"Serve a second place from a second terminal, as 'rogen serve <project> --port <port>'."
+			);
+			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
 			if (!line.options.json) accessor.get(LogService).reserveStdout();
 			const serverArgs = serverArgsOf(line);

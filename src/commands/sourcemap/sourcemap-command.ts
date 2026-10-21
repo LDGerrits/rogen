@@ -6,7 +6,8 @@ import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import {
@@ -43,8 +44,7 @@ const OutputOption = {
 	short: "o",
 	type: "string",
 	placeholder: "output",
-	description:
-		"Write the sourcemap to this file instead of printing it. With several projects selected, each gets a sourcemap.json beside its project file and -o is refused.",
+	description: "Write the sourcemap to this file instead of printing it.",
 } as const satisfies OptionDescriptor;
 
 const IncludeNonScriptsOption = {
@@ -108,7 +108,7 @@ registerCommand(
 						"Writes the project files, then a sourcemap with Rojo",
 					description:
 						"Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
-					args: ConfigArguments,
+					args: ProjectArgument,
 					options: SourcemapOptions,
 					output: {
 						document: sourcemapDocumentShape,
@@ -135,6 +135,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof SourcemapOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("sourcemap", line.positionals);
+			if (tooMany) return err(tooMany);
 			const { json, watch, output } = line.options;
 			const rojoService = accessor.get(RojoCommandService);
 			const cwd = accessor.get(EnvironmentService).cwd;
