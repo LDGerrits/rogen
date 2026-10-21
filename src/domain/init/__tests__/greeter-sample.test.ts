@@ -1,9 +1,7 @@
 import { Luau } from "../../toolchain/luau.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
-import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { DEFAULT_SOURCE_PATH } from "../../config/config.js";
 import { GreeterSample, TEMPLATE_SOURCE_PATHS } from "../greeter-sample.js";
-import { StarterPlaces } from "../starter-places.js";
 
 describe("GreeterSample", () => {
 	const sample = new GreeterSample(new Luau(), "game");
@@ -123,15 +121,11 @@ describe("GreeterSample", () => {
 	describe("templates", () => {
 		const languages = [new Luau(), workspaceOf().languageFor("roblox-ts")];
 
-		it("should keep each variant's code where init writes it", async () => {
-			const fileSystem = new MemoryFileSystemService();
-			await fileSystem.createDirectory("/project");
-			const places = await new StarterPlaces(fileSystem).plan("/project");
-
+		it("should keep each variant's code where its template has it", () => {
 			expect(TEMPLATE_SOURCE_PATHS).toEqual({
 				one: DEFAULT_SOURCE_PATH,
-				shared: places.sharedSourcePath,
-				place: places.placeSourcePath,
+				shared: "places/shared/src",
+				place: "places/game/src",
 			});
 		});
 

@@ -1,6 +1,5 @@
 import path from "path";
 import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
-import { toPosix } from "../../base/path.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -30,8 +29,6 @@ import { ProjectChanger } from "./project-changer.js";
 import { ReviewMode, ReviewPrompts } from "./review-prompts.js";
 import { InitSummary } from "./init-summary.js";
 import { Setup } from "./setup.js";
-import { PlaceFinder } from "../config/place-finder.js";
-import { PlaceInit } from "./place-init.js";
 import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
@@ -40,7 +37,6 @@ import { ToolLocator } from "../toolchain/tool-locator.js";
 const PURPOSE_QUESTIONS: Readonly<Record<InitPurpose, string>> = {
 	create: "Create this project?",
 	change: "Make these changes?",
-	place: "Add this place?",
 };
 
 /** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
@@ -143,46 +139,6 @@ export class CoreInitService implements InitService {
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const { cwd } = this.environmentService;
 		const folder = place === undefined ? cwd : path.resolve(cwd, place);
-		const enclosed =
-			place !== undefined &&
-			(await this.configService.findEnclosing(folder)) !== undefined;
-		if (enclosed) {
-			for (const [key, flag] of [
-				["kind", "--kind"],
-				["skipGit", "--skip-git"],
-				["sample", "--sample"],
-				["places", "--places"],
-			] as const)
-				if (choices[key] !== undefined)
-					throw new UsageError(
-						`${flag} is for a new project, and ${place} is below a default.rogen.json, so init adds a place there.`
-					);
-			return new PlaceInit(
-				this.fileSystemService,
-				new InitQuestions(
-					prompts.quick,
-					ask && this.promptService.isInteractive,
-					choices,
-					prompts.essential
-				),
-				this.toolchainService,
-				this.configService,
-				cwd
-			).plan(place);
-		}
-		if (place !== undefined) {
-			const flag =
-				choices.placeIds !== undefined
-					? "--place-id"
-					: choices.placeListing !== undefined
-						? "--place-listing"
-						: undefined;
-			if (flag)
-				throw new UsageError(
-					`${flag} is for a place folder, and ${place} is not below a default.rogen.json.`,
-					"Run 'rogen init' in the folder that holds the code the places share first."
-				);
-		}
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
 		const interactive = ask && this.promptService.isInteractive;
@@ -195,7 +151,7 @@ export class CoreInitService implements InitService {
 		const nested = await this.checkNested(directory.value, questions);
 		if (nested.isErr() || nested.value === "cancelled")
 			return nested.map(() => undefined);
-		const planned = await this.planIn(directory.value, questions, prompts);
+		const planned = await this.planIn(directory.value, questions);
 		return place === undefined || planned.isErr() || !planned.value
 			? planned
 			: ok({
@@ -264,24 +220,22 @@ export class CoreInitService implements InitService {
 
 	private async planIn(
 		directory: InitDirectory,
-		questions: InitQuestions,
-		prompts: RunPrompts
+		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const placeOf = await this.projectRootOf(directory);
-		if (placeOf.isErr()) return placeOf;
-		const home = placeOf.value?.root ?? directory;
-		const agentFile = await this.agentReader.fileIn(home);
+		const agentFile = await this.agentReader.fileIn(directory);
 		if (agentFile.isErr()) return agentFile;
-		const hooks = await this.agentReader.hooksIn(home);
+		const hooks = await this.agentReader.hooksIn(directory);
 		if (hooks.isErr()) return hooks;
 		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
-		const manifests = await this.toolchainService.readManifests(home.path);
+		const manifests = await this.toolchainService.readManifests(
+			directory.path
+		);
 		const tools = ToolchainSetup.of(
 			async () =>
 				ToolchainSetup.stateOf(
-					home.path,
+					directory.path,
 					manifests,
-					await this.existingFolder(home.path),
+					await this.existingFolder(directory.path),
 					{
 						finder: this.finder,
 						locator: this.locator,
@@ -297,11 +251,6 @@ export class CoreInitService implements InitService {
 				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
 			);
 		if (!directory.hasConfigs) {
-			if (choices.placeIds !== undefined)
-				throw new UsageError(
-					"--place-id is for a place folder.",
-					"Give the folder to add, as 'rogen init places/lobby'."
-				);
 			for (const [key, flag] of [
 				["unroutes", "--no-route"],
 				["unsourcePaths", "--no-source-path"],
@@ -320,17 +269,10 @@ export class CoreInitService implements InitService {
 			questions,
 			directory.configFiles[0]
 		);
-		if (!placeOf.value && choices.placeIds !== undefined)
-			throw new UsageError(
-				"--place-id is for a place folder.",
-				"Give the folder to add, as 'rogen init places/lobby', or run init in a place."
-			);
-		const place = placeOf.value !== undefined;
 		const changer = await ProjectChanger.of(
 			this.fileSystemService,
 			directory,
-			questions,
-			place
+			questions
 		);
 		const additions = new InitAdditions(
 			questions,
@@ -338,14 +280,9 @@ export class CoreInitService implements InitService {
 			hooks.value,
 			tools,
 			ToolchainSetup.pinnedIn(manifests),
-			home.path,
+			directory.path,
 			changer
 		);
-		const notes = placeOf.value
-			? [
-					`${placeOf.value.rootFile} lists this folder as a place, so agent rules, the hook and Rojo go to the project root.`,
-				]
-			: [];
 		if (ProjectChanger.hasFlags(questions)) {
 			if (!changer)
 				throw new UsageError(
@@ -353,27 +290,21 @@ export class CoreInitService implements InitService {
 					"Fix it, then run init again."
 				);
 			const asked = additions.requested();
-			if (place && asked)
-				throw new UsageError(
-					"The changes of a place and the additions of the project root are made from different folders.",
-					"Run init in the root for agent rules, the hook and Rojo."
-				);
 			return this.planWith(
-				place ? directory : home,
+				directory,
 				questions,
 				[
 					changer.setup(() => changer.fromFlags()),
 					...(asked ?? []),
 					...additions.toolsForChanges(),
 				],
-				{ present: additions.presentAsked(), notes, purpose: "change" }
+				{ present: additions.presentAsked(), purpose: "change" }
 			);
 		}
 		const requested = additions.requested();
 		if (requested)
-			return this.planWith(home, questions, requested, {
+			return this.planWith(directory, questions, requested, {
 				present: additions.presentAsked(),
-				notes,
 				purpose: "change",
 			});
 		const chosen = await additions.choose();
@@ -381,32 +312,20 @@ export class CoreInitService implements InitService {
 		if (chosen === "nothing") {
 			const present = additions.present();
 			return present.length > 0
-				? this.planWith(home, questions, [], {
+				? this.planWith(directory, questions, [], {
 						present,
-						notes,
 						purpose: "change",
 					})
-				: err(new DiagnosticsError(home.checkFree(home.configFiles)));
+				: err(
+						new DiagnosticsError(
+							directory.checkFree(directory.configFiles)
+						)
+					);
 		}
-		if ("place" in chosen)
-			return this.planWithin(
-				{
-					ask: questions.interactive,
-					place: chosen.place,
-					choices: {},
-				},
-				prompts
-			);
-		return this.planWith(
-			chosen.inPlace ? directory : home,
-			questions,
-			chosen.setups,
-			{
-				present: additions.presentAsked(),
-				notes,
-				purpose: "change",
-			}
-		);
+		return this.planWith(directory, questions, chosen, {
+			present: additions.presentAsked(),
+			purpose: "change",
+		});
 	}
 
 	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
@@ -418,27 +337,6 @@ export class CoreInitService implements InitService {
 			existing = parent;
 		}
 		return existing;
-	}
-
-	/** The project root that lists `directory` as a place, when `directory` is one. */
-	private async projectRootOf(
-		directory: InitDirectory
-	): Promise<
-		Result<{ root: InitDirectory; rootFile: string } | undefined, Error>
-	> {
-		if (!directory.hasConfigs) return ok(undefined);
-		const rootConfig = await new PlaceFinder(this.fileSystemService).rootOf(
-			directory.path
-		);
-		if (!rootConfig) return ok(undefined);
-		const root = await this.prepare(path.dirname(rootConfig), false);
-		if (root.isErr()) return root;
-		return ok({
-			root: root.value,
-			rootFile: toPosix(
-				path.relative(this.environmentService.cwd, rootConfig)
-			),
-		});
 	}
 
 	private async planWith(

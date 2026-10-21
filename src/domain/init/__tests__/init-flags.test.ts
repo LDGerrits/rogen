@@ -1,10 +1,7 @@
 import path from "path";
 import { UsageError } from "../../../base/errors.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import {
-	ACCEPT_DEFAULT,
-	MockPromptService,
-} from "../../../platform/prompt/__tests__/mock-prompt-service.js";
+import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
 import { ProjectSetup } from "../project-setup.js";
@@ -57,7 +54,6 @@ describe("init choices given as flags", () => {
 				{ question: "kind", value: "place", flag: "--kind" },
 				{ question: "language", value: "luau", flag: "--language" },
 				{ question: "darklua", value: false, flag: "--darklua" },
-				{ question: "places", value: false, flag: "--places" },
 				{
 					question: "sourcePaths",
 					value: ["src"],
@@ -90,7 +86,6 @@ describe("init choices given as flags", () => {
 				skipGit: true,
 				language: "luau",
 				darklua: false,
-				places: false,
 				sourcePaths: ["src"],
 				routes: ["server"],
 				unmatched: "leave",
@@ -107,7 +102,6 @@ describe("init choices given as flags", () => {
 				{
 					language: "luau",
 					darklua: false,
-					places: false,
 					sourcePaths: ["lib"],
 					packages: ["Packages"],
 					routes: ["server", "shared"],
@@ -206,149 +200,6 @@ describe("init choices given as flags", () => {
 			expect(
 				(await refused(run(rbxts, { sample: true }))).message
 			).toContain("--sample isn't written for roblox-ts here");
-		});
-	});
-
-	describe("--places", () => {
-		it("should be several places with the flag, the shared code in places/shared", async () => {
-			const { asked, questions } = await run(luau, { places: true });
-
-			const choices = asked.unwrap();
-			expect(choices?.sourcePaths).toEqual(["places/shared/src"]);
-			expect(choices?.places?.place).toBe("places/game");
-			expect(choices?.places?.placePaths).toEqual(["places/*"]);
-			expect(
-				choices?.templateFiles?.map(({ fileName }) => fileName)
-			).toEqual([
-				".gitignore",
-				"places/shared/src/Greeter/Shared/Greeting.luau",
-				"places/shared/src/Greeter/Server/Greeter.server.luau",
-				"places/shared/src/Greeter/Client/Greeter.client.luau",
-				"places/game/src/Game/Server/Game.server.luau",
-				"README.md",
-				"places/game/default.rogen.json",
-				"my-game.code-workspace",
-			]);
-			expect(questions.decided.map(({ flag }) => flag)).not.toContain(
-				"--places"
-			);
-		});
-
-		it("should be one place when a run that can't ask has no places folder, and several when it has", async () => {
-			expect(
-				(await run(luau, {})).asked.unwrap()?.places
-			).toBeUndefined();
-
-			const { asked, questions } = await run(luau, {}, false, ["places"]);
-
-			expect(asked.unwrap()?.places?.place).toBe("places/game");
-			expect(questions.decided).toContainEqual({
-				question: "places",
-				value: true,
-				flag: "--places",
-			});
-		});
-
-		it("should be one place when a source path is given, or code lies outside a places folder", async () => {
-			const given = await run(luau, { sourcePaths: ["lib"] }, false, [
-				"places",
-			]);
-			expect(given.asked.unwrap()?.places).toBeUndefined();
-			expect(given.asked.unwrap()?.sourcePaths).toEqual(["lib"]);
-
-			const code = await run(
-				{ ...luau, codeFolders: ["src"] },
-				{},
-				false,
-				["places"]
-			);
-			expect(code.asked.unwrap()?.places).toBeUndefined();
-		});
-
-		it("should be one place with --no-places, even beside a places folder", async () => {
-			const { asked } = await run(luau, { places: false }, false, [
-				"places",
-			]);
-
-			expect(asked.unwrap()?.places).toBeUndefined();
-			expect(asked.unwrap()?.sourcePaths).toEqual(["src"]);
-		});
-
-		it("should start with the sample's empty folders when --no-sample", async () => {
-			const { asked } = await run(luau, { places: true, sample: false });
-
-			const choices = asked.unwrap();
-			expect(choices?.sample).toBe(false);
-			expect(choices?.places?.directories).toEqual(["places/game/src"]);
-			expect(
-				choices?.templateFiles?.map(({ fileName }) => fileName)
-			).toEqual([
-				".gitignore",
-				"places/game/default.rogen.json",
-				"my-game.code-workspace",
-			]);
-		});
-
-		it("should refuse a model, a plugin, Darklua and a roblox-ts project that is set up, saying why", async () => {
-			expect(
-				(await refused(run(luau, { places: true, kind: "model" })))
-					.message
-			).toBe("--places is for a place, not for a model.");
-			expect(
-				(await refused(run(luau, { places: true, darklua: true })))
-					.message
-			).toContain("--places isn't set up with Darklua yet.");
-			expect(
-				(await refused(run(rbxts, { places: true }))).message
-			).toContain("--places isn't set up for roblox-ts yet.");
-		});
-
-		it("should refuse --source-path, which several places have in places/shared", async () => {
-			const error = await refused(
-				run(luau, { places: true, sourcePaths: ["lib"] })
-			);
-
-			expect(error.message).toContain(
-				"--source-path would change nothing"
-			);
-		});
-
-		it("should refuse beside a project file it would lift, and take --project-file new", async () => {
-			const existing = ["default.project.json"];
-
-			expect(
-				(await refused(run(luau, { places: true }, false, existing)))
-					.message
-			).toContain("default.project.json is here");
-			expect(
-				(
-					await run(
-						luau,
-						{ places: true, projectFile: "new" },
-						false,
-						existing
-					)
-				).asked.unwrap()?.places?.place
-			).toBe("places/game");
-		});
-
-		it("should ask in a terminal, and pre-select several beside a places folder", async () => {
-			const ask = async (existing: string[]) => {
-				const prompts = new MockPromptService(
-					{ "One place or several?": ACCEPT_DEFAULT },
-					true
-				);
-				const answer = await new InitQuestions(prompts, true).places(
-					directoryOf({ existing })
-				);
-				return { answer, asked: prompts.asked };
-			};
-
-			expect(await ask([])).toEqual({
-				answer: false,
-				asked: ["One place or several?"],
-			});
-			expect((await ask(["places"])).answer).toBe(true);
 		});
 	});
 
@@ -582,84 +433,5 @@ describe("the yes or no questions", () => {
 		expect(
 			await questions({ nested: true }).startNestedProject(enclosing)
 		).toBe(true);
-	});
-
-	it("should list a place by the flag, or by the glob when it can't ask", async () => {
-		expect(
-			await questions({ placeListing: "folder" }).placeListing(
-				"places/*",
-				"places/lobby"
-			)
-		).toBe("places/lobby");
-		const asked = questions({});
-		expect(await asked.placeListing("places/*", "places/lobby")).toBe(
-			"places/*"
-		);
-		expect(asked.decided).toEqual([
-			{
-				question: "placeListing",
-				value: "glob",
-				flag: "--place-listing",
-			},
-		]);
-	});
-});
-
-describe("--place-id", () => {
-	const questions = (choices: InitChoices, interactive = false) =>
-		new InitQuestions(
-			new MockPromptService([], interactive),
-			interactive,
-			choices
-		);
-
-	it("should take the place IDs it is given, and ask nothing", async () => {
-		const asked = questions({ placeIds: ["1818", "2020"] });
-
-		expect(await asked.placeIds("lobby")).toEqual([1818, 2020]);
-		expect(asked.decided).toEqual([]);
-	});
-
-	it("should keep a place ID once, however often it is given", async () => {
-		expect(
-			await questions({ placeIds: ["1818", "2020", "1818"] }).placeIds(
-				"lobby"
-			)
-		).toEqual([1818, 2020]);
-	});
-
-	it("should take none for no place ID", async () => {
-		const asked = questions({ placeIds: ["none"] });
-
-		expect(await asked.placeIds("lobby")).toEqual([]);
-		expect(asked.decided).toEqual([]);
-	});
-
-	it("should write down that a run that can't ask took none", async () => {
-		const asked = questions({});
-
-		expect(await asked.placeIds("lobby")).toEqual([]);
-		expect(asked.decided).toEqual([
-			{ question: "placeIds", value: [], flag: "--place-id" },
-		]);
-	});
-
-	it.each([["abc"], ["0"], ["-4"], ["1.5"], ["1e3"]])(
-		"should refuse %s as a place ID",
-		async (value) => {
-			const error = await refused(
-				questions({ placeIds: [value] }).placeIds("lobby")
-			);
-
-			expect(error.message).toContain(`'${value}'`);
-		}
-	);
-
-	it("should refuse none beside a place ID", async () => {
-		const error = await refused(
-			questions({ placeIds: ["none", "1"] }).placeIds("lobby")
-		);
-
-		expect(error.message).toContain("can't be combined");
 	});
 });

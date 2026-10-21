@@ -296,67 +296,6 @@ describe("a new roblox-ts project", () => {
 		});
 	});
 
-	describe("with several places", () => {
-		const several = () => plan({ places: true });
-
-		it("should have the shared code and the game place, in TypeScript", async () => {
-			const planned = await several();
-
-			expect(planned.files.map(({ fileName }) => fileName)).toEqual(
-				expect.arrayContaining([
-					"places/shared/src/Greeter/shared/Greeting.ts",
-					"places/game/src/Game/server/Game.server.ts",
-				])
-			);
-		});
-
-		it("should give the game place a tsconfig and a config that overrides the include", async () => {
-			const planned = await several();
-
-			expect(fileOf(planned, "places/game/tsconfig.json")).toBeDefined();
-			expect(
-				configOf(planned, "places/game/default.rogen.json")
-			).toMatchObject({
-				name: "game",
-				syncPath: "out",
-				servePort: expect.any(Number),
-				tree: {
-					ReplicatedStorage: {
-						rbxts_include: { $path: { optional: "include" } },
-					},
-				},
-			});
-		});
-
-		it("should leave the sync path to the places, so the root warns of no empty out folder", async () => {
-			expect(configOf(await several())).not.toHaveProperty("syncPath");
-		});
-
-		it("should point the root tsconfig at the shared code", async () => {
-			const root = JSON.parse(
-				fileOf(await several(), "tsconfig.json")?.content ?? "{}"
-			);
-
-			expect(root.compilerOptions.rootDir).toBe("places/shared/src");
-		});
-
-		it("should point the package scripts at the game place after create-roblox-ts", async () => {
-			const planned = await several();
-
-			expect(planned.commands.map(({ command }) => command)).toContain(
-				'npm pkg set "scripts.build=rbxtsc -p places/game" "scripts.watch=rbxtsc -w -p places/game"'
-			);
-		});
-
-		it("should ignore each place's out and include", async () => {
-			const planned = await plan({ places: true, skipGit: false });
-
-			expect(fileOf(planned, ".gitignore")?.content).toContain(
-				"places/*/out\nplaces/*/include\n"
-			);
-		});
-	});
-
 	describe("write", () => {
 		const present = (file: string) =>
 			fileSystem.exists(path.join(directory, file));

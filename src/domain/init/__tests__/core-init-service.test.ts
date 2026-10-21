@@ -277,83 +277,6 @@ describe("CoreInitService", () => {
 		});
 	});
 
-	describe("additions from a place", () => {
-		const place = path.join(directory, "places/lobby");
-
-		beforeEach(async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ placePaths: ["places/*"] })
-			);
-			await write("places/lobby/default.rogen.json", "{}");
-		});
-
-		it("should add the agent rules to the project root, not to the place", async () => {
-			const plan = (await serviceFor(undefined, place).plan()).unwrap();
-
-			expect(plan?.directory).toBe(directory);
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"AGENTS.md",
-			]);
-			expect(plan?.notes.join("\n")).toContain(
-				"../../default.rogen.json lists this folder as a place"
-			);
-		});
-
-		it("should report the rules the root has, and write nothing", async () => {
-			await write("AGENTS.md", agentBlock);
-
-			const plan = (await serviceFor(undefined, place).plan()).unwrap();
-
-			expect(plan?.files).toEqual([]);
-			expect(plan?.present).toEqual([
-				{ item: "agentRules", file: "AGENTS.md" },
-			]);
-		});
-
-		it("should find the root's hook and Rojo pin", async () => {
-			await write("AGENTS.md", agentBlock);
-			await write(
-				"rokit.toml",
-				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
-			);
-			await write(
-				".claude/settings.json",
-				JSON.stringify({
-					hooks: {
-						Stop: [
-							{
-								hooks: [
-									{
-										type: "command",
-										command:
-											'bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh',
-									},
-								],
-							},
-						],
-					},
-				})
-			);
-
-			const plan = (await serviceFor(undefined, place).plan()).unwrap();
-
-			expect(plan?.present).toEqual([
-				{ item: "agentRules", file: "AGENTS.md" },
-				{ item: "agentHook", file: ".claude/settings.json" },
-				{ item: "rojo", file: "rokit.toml" },
-			]);
-		});
-
-		it("should add the agent rules to the place's own folder when no root lists it", async () => {
-			await write("default.rogen.json", "{}");
-
-			const plan = (await serviceFor(undefined, place).plan()).unwrap();
-
-			expect(plan?.directory).toBe(place);
-		});
-	});
-
 	describe("what to change", () => {
 		const areasListed = async (existing: string[]) => {
 			await write("default.rogen.json", "{}");
@@ -374,7 +297,6 @@ describe("CoreInitService", () => {
 		it("should offer the areas of the config, and agents until the rules are there", async () => {
 			expect(await areasListed([])).toEqual(
 				expect.arrayContaining([
-					"places",
 					"routes",
 					"unmatched",
 					"sourcePaths",
@@ -1357,28 +1279,6 @@ describe("CoreInitService", () => {
 				'rogen build -o "newproj.rbxmx"',
 			]);
 		});
-
-		it("should add a place when a config is above it", async () => {
-			await write("default.rogen.json", "{}");
-
-			const plan = (
-				await serviceFor().plan({ place: "places/lobby" })
-			).unwrap();
-
-			expect(plan?.directory).toBe(directory);
-			expect(plan?.files[0].fileName).toBe("default.rogen.json");
-		});
-
-		it("should refuse the flags of a place for a project it starts", async () => {
-			const result = await serviceFor().plan({
-				place: "newproj",
-				choices: { placeIds: ["1"] },
-			});
-
-			expect((result as ResultError<Error>).error.message).toContain(
-				"--place-id"
-			);
-		});
 	});
 
 	describe("plan", () => {
@@ -1481,7 +1381,7 @@ describe("CoreInitService", () => {
 						code: "init.configExists",
 						resource: path.join(directory, "default.rogen.json"),
 						message:
-							"this config already exists, and init never overwrites one. To change it, run init in a terminal and pick what, or pass a flag: --route, --source-path, --darklua, --package, --places, --agent-rules, --agent-hook or --rojo.",
+							"this config already exists, and init never overwrites one. To change it, run init in a terminal and pick what, or pass a flag: --route, --source-path, --darklua, --package, --agent-rules, --agent-hook or --rojo.",
 					},
 				]);
 			});
@@ -1489,21 +1389,6 @@ describe("CoreInitService", () => {
 	});
 
 	describe("changing a project that has a config", () => {
-		const place = path.join(directory, "places/lobby");
-
-		it("should plan in the project root when a place picks only agents", async () => {
-			await write(
-				"default.rogen.json",
-				JSON.stringify({ placePaths: ["places/*"] })
-			);
-			await write("places/lobby/default.rogen.json", "{}");
-			const prompts = new MockPromptService([["agents"], true]);
-
-			const plan = (await serviceFor(prompts, place).plan()).unwrap();
-
-			expect(plan?.directory).toBe(directory);
-		});
-
 		it("should refuse a flag that takes something off in a folder with no config", async () => {
 			await expect(
 				serviceFor().plan({
@@ -1524,17 +1409,12 @@ describe("CoreInitService", () => {
 		it("should ask the language and the layout of an empty folder, then show the summary only", async () => {
 			const prompts = new MockPromptService({
 				Language: "luau",
-				"One place or several?": "one",
 				[CREATE]: "yes",
 			});
 
 			const plan = (await review(prompts)).unwrap();
 
-			expect(prompts.asked).toEqual([
-				"Language",
-				"One place or several?",
-				CREATE,
-			]);
+			expect(prompts.asked).toEqual(["Language", CREATE]);
 			expect(plan?.files.map(({ fileName }) => fileName)).toContain(
 				"default.rogen.json"
 			);
@@ -1553,7 +1433,6 @@ describe("CoreInitService", () => {
 		it("should show the choices and every file the plan writes", async () => {
 			const prompts = new MockPromptService({
 				Language: "luau",
-				"One place or several?": "one",
 				[CREATE]: "yes",
 			});
 
@@ -1571,7 +1450,6 @@ describe("CoreInitService", () => {
 		it("should plan nothing on Cancel", async () => {
 			const prompts = new MockPromptService({
 				Language: "luau",
-				"One place or several?": "one",
 				[CREATE]: "cancel",
 			});
 
@@ -1581,11 +1459,9 @@ describe("CoreInitService", () => {
 		it("should ask every question on Customise, then show the summary with the new answer", async () => {
 			const prompts = new MockPromptService([
 				"luau",
-				"one",
 				"customise",
 				"luau",
 				ACCEPT_DEFAULT,
-				"one",
 				"lib",
 				ACCEPT_DEFAULT,
 				ACCEPT_DEFAULT,
@@ -1597,11 +1473,9 @@ describe("CoreInitService", () => {
 
 			expect(prompts.asked).toEqual([
 				"Language",
-				"One place or several?",
 				CREATE,
 				"Language",
 				"Does Darklua process your code before Rojo syncs it?",
-				"One place or several?",
 				"Source paths",
 				"Routes",
 				"Files that match no route",
@@ -1633,35 +1507,11 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should show the place before adding it, and ask only that", async () => {
-			await write("default.rogen.json", '{ "placePaths": ["places/*"] }');
-			const prompts = new MockPromptService({
-				"Add this place?": "yes",
-			});
-
-			const plan = (
-				await serviceFor(prompts).plan({
-					place: "places/lobby",
-					choices: { customise: false },
-				})
-			).unwrap();
-
-			expect(prompts.asked).toEqual(["Add this place?"]);
-			expect(plan?.purpose).toBe("place");
-			expect(prompts.prompts[0].description).toContain(
-				"Place     places/lobby"
-			);
-			expect(prompts.prompts[0].description).toContain(
-				"places/lobby/default.rogen.json"
-			);
-		});
-
 		it("should list every file and command of the plan, as a dry run would write them", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 			processes.installed.delete("rojo");
 			const prompts = new MockPromptService({
 				Language: "luau",
-				"One place or several?": "one",
 				[CREATE]: "yes",
 			});
 			const service = serviceFor(prompts);
