@@ -1,19 +1,37 @@
 import { Disposable } from "../../base/disposable.js";
+import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import {
-	ResolvedConfig,
-	ResolvedConfigFile,
-	configsOf,
-} from "./resolved-config.js";
+import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
+
+const PROJECT_DESCRIPTION =
+	"A folder, a .rogen.json file, a *.project.json path, or the name of a file here (dist for dist.rogen.json). The default.rogen.json of the working directory, or its default.project.json, when none is given.";
+
+/** The `[PROJECT]` of a Rojo verb, which takes one. */
+export const ProjectArgument = [
+	{ name: "project", description: PROJECT_DESCRIPTION, isOptional: true },
+] as const;
+
+/** Rojo's usage error for a second `[PROJECT]`. */
+export function singleProjectError(
+	command: string,
+	refs: readonly string[],
+	hint?: string
+): UsageError | undefined {
+	return refs.length > 1
+		? new UsageError(
+				`unexpected argument '${refs[1]}' found: ${command} takes one [PROJECT].`,
+				hint ?? `Usage: rogen ${command} [OPTIONS] [PROJECT]`
+			)
+		: undefined;
+}
 
 export const ConfigArguments = [
 	{
 		name: "project",
-		description:
-			"A folder, a .rogen.json file, a *.project.json path, or the name of a file here (dist for dist.rogen.json). The default.rogen.json of the working directory, or its default.project.json, when none is given.",
+		description: PROJECT_DESCRIPTION,
 		isOptional: true,
 		isVariadic: true,
 	},
@@ -21,8 +39,6 @@ export const ConfigArguments = [
 
 interface ConfigEntryFields {
 	readonly file: string;
-	/** The place folders read, when the selection reads only them; none reads the config and all its places. */
-	readonly scope?: readonly string[];
 }
 
 export interface ValidConfigEntry
@@ -53,10 +69,10 @@ export function buildableConfig(
 	return buildableFile(entry)?.config;
 }
 
-/** Every config that builds for `entry`, its own first, then its places'. */
+/** The config that builds for `entry`, if one does. */
 export function buildableConfigs(entry: ConfigEntry): ResolvedConfig[] {
-	const file = buildableFile(entry);
-	return file ? configsOf(file, entry.scope) : [];
+	const config = buildableConfig(entry);
+	return config ? [config] : [];
 }
 
 export type ConfigNotice =
@@ -79,11 +95,11 @@ export interface ConfigReload {
 
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
-	/** Every config that builds now, each entry's own first; a broken entry gives its last valid version or none. */
+	/** Every config that builds now; a broken entry gives its last valid version or none. */
 	readonly configs: readonly ResolvedConfig[];
 	/** What picking had to say, such as a name matching both a folder and a file. */
 	readonly notes: readonly string[];
-	/** The folder configs were looked for in: the working directory, or the place folder it lies in. */
+	/** The folder configs were looked for in: the working directory. */
 	readonly home: string;
 
 	/** Every config, or every error when any entry is broken now. */
@@ -112,6 +128,27 @@ export interface EnclosingConfigs {
 	readonly fileNames: readonly string[];
 }
 
+/** The config file that answers for a path. */
+export interface ConfigCover {
+	readonly file: string;
+	/** The path is a `.rogen.json` itself, so its config is answered whole. */
+	readonly whole: boolean;
+}
+
+/** What `selectCovering` found for a list of targets. */
+export interface CoveredTargets {
+	/** One per config, in the order its first target was given. */
+	readonly groups: readonly {
+		readonly selection: ReloadableSelection;
+		/** The targets this config answers for, by position. */
+		readonly indexes: readonly number[];
+		/** A target is a `.rogen.json`, so the config is answered whole. */
+		readonly whole: boolean;
+	}[];
+	/** The targets no config covers, by position. */
+	readonly uncovered: readonly number[];
+}
+
 export interface FailedConfigFile {
 	readonly file: string;
 	/** What the file holds when it parses as JSON; `undefined` when it doesn't. */
@@ -134,6 +171,12 @@ export interface ConfigService {
 	selectFolder(): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
+	/** The config that answers for `target`: a `.rogen.json` is its own, whole; any other path has the default of the nearest folder at or above it, a plain project file included. None when no folder above it has one. */
+	coverOf(target: string): Promise<ConfigCover | undefined>;
+	/** Loads the config that answers for each target: a path has the config `coverOf` finds, and `undefined` stands for the default of the working directory. */
+	selectCovering(
+		targets: readonly (string | undefined)[]
+	): Promise<Result<CoveredTargets, Error>>;
 	/** Loads one config file as `select` would, outside any selection. */
 	read(file: string): Promise<ConfigEntry>;
 	/** Rewrites one config file in Rojo's formatting, Rogen's keys after Rojo's; whether the file changed. A file with comments is left as it is, and so is a file that doesn't load as JSON. */

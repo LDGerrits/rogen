@@ -11,7 +11,9 @@ import {
 	ConfigFileCheck,
 	ConfigReload,
 	ReloadableSelection,
+	ConfigCover,
 	ConfigService,
+	CoveredTargets,
 	EnclosingConfigs,
 	ValidConfigEntry,
 	buildableConfigs,
@@ -25,12 +27,7 @@ export interface ResolvedConfigSpec {
 	readonly ignored?: readonly string[];
 	readonly project?: Readonly<Record<string, unknown>>;
 	readonly syncPath?: string;
-	readonly syncRulesDir?: string;
 	readonly warnings?: readonly Diagnostic[];
-	readonly rootFile?: string;
-	readonly isPlace?: boolean;
-	readonly hasPlaces?: boolean;
-	readonly placePort?: number;
 }
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
@@ -52,12 +49,7 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 		),
 		ignored: spec.ignored ?? [],
 		syncPath: spec.syncPath,
-		syncRulesDir: spec.syncRulesDir,
 		warnings: spec.warnings ?? [],
-		rootFile: spec.rootFile,
-		isPlace: spec.isPlace,
-		hasPlaces: spec.hasPlaces,
-		placePort: spec.placePort,
 	});
 }
 
@@ -150,6 +142,52 @@ export class MockConfigService implements ConfigService {
 
 	async selectFolder(): Promise<Result<ReloadableSelection, Error>> {
 		return this.select();
+	}
+
+	async coverOf(target: string): Promise<ConfigCover | undefined> {
+		return this.covers(target);
+	}
+
+	/** What `coverOf` answers; every path is covered by the first entry unless this says otherwise. */
+	covers: (target: string) => ConfigCover | undefined = () => ({
+		file: this.entries[0].file,
+		whole: false,
+	});
+
+	async selectCovering(
+		targets: readonly (string | undefined)[]
+	): Promise<Result<CoveredTargets, Error>> {
+		const groups = new Map<string, { indexes: number[]; whole: boolean }>();
+		const uncovered: number[] = [];
+		for (const [index, target] of targets.entries()) {
+			const cover =
+				target === undefined
+					? { file: this.entries[0].file, whole: false }
+					: this.covers(target);
+			if (!cover) {
+				uncovered.push(index);
+				continue;
+			}
+			const group = groups.get(cover.file) ?? {
+				indexes: [],
+				whole: false,
+			};
+			groups.set(cover.file, {
+				indexes: [...group.indexes, index],
+				whole: group.whole || cover.whole,
+			});
+		}
+		return ok({
+			groups: [...groups].map(([file, { indexes, whole }]) => ({
+				selection: new MockConfigSelection(
+					this.entries.filter((entry) => entry.file === file),
+					this.home
+				),
+				indexes,
+				whole,
+			})),
+			uncovered,
+		});
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

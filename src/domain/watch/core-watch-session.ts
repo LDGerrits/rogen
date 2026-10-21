@@ -362,9 +362,7 @@ export class CoreWatchSession
 		);
 		const affected = new Set([
 			...this.selection.configs
-				.filter(
-					({ rootFile }) => reindexed || reloaded.includes(rootFile)
-				)
+				.filter(({ file }) => reindexed || reloaded.includes(file))
 				.map(({ projectFile }) => projectFile),
 			...sourceChanges.flatMap((change) =>
 				this.plan.projectsFor(change.path)

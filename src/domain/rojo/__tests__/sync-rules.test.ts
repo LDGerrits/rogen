@@ -127,17 +127,6 @@ describe("domain/rojo/sync-rules", () => {
 				});
 			});
 
-			it("should match a rule against the path from the folder the rule was written in", () => {
-				const rules = SyncRules.following(
-					[{ pattern: "docs/*.md", use: "text" }],
-					"/repo/places/lobby",
-					"/repo"
-				);
-
-				expect(rules.match("../../docs/A.md")?.rule.use).toBe("text");
-				expect(rules.match("docs/A.md")).toBeUndefined();
-			});
-
 			it("should list only the rules it was given as its own", () => {
 				const own: SyncRule[] = [{ pattern: "*.md", use: "text" }];
 

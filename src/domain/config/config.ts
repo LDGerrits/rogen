@@ -26,7 +26,6 @@ export interface RogenConfig {
 	readonly sourcePaths?: string[];
 	readonly routes?: Record<string, string>;
 	readonly syncPath?: string;
-	readonly placePaths?: string[];
 }
 
 interface ConfigValues {
@@ -106,27 +105,6 @@ export const isProjectFileConfig = (file: string): boolean =>
 export const isDefaultProjectFile = (file: string): boolean =>
 	DEFAULT_PROJECT_FILES.includes(path.basename(file));
 
-export const ROOT_ONLY_KEYS: readonly string[] = ["placePaths"];
-
-/** What one place sets for itself: a config that lists places can't, so no place inherits it. */
-export const PER_PLACE_KEYS: readonly string[] = [
-	"servePort",
-	"servePlaceIds",
-	"blockedPlaceIds",
-	"placeId",
-	"gameId",
-];
-
-/** Keys a place never inherits from the config that lists it. */
-export const PLACE_OWN_KEYS: readonly string[] = [
-	"name",
-	"sourcePaths",
-	...PER_PLACE_KEYS,
-];
-
-/** Rojo's default port, given to the first place without a `servePort`. */
-export const FIRST_PLACE_PORT = 34872;
-
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
 export const SCHEMA_URL = schemaUrlFor("2.0.0-beta.1");
@@ -146,7 +124,6 @@ export const ROGEN_KEYS: readonly (keyof RogenConfig)[] = [
 	"sourcePaths",
 	"routes",
 	"syncPath",
-	"placePaths",
 ];
 
 /** A config as `rogen fmt-project` writes it, so the first format changes nothing. */

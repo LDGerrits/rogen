@@ -55,7 +55,7 @@ export class WrittenSyncRules {
 		rule: SyncRule,
 		taken: readonly string[]
 	): SyncRule[] | undefined {
-		const from = this.config.syncRules.ownDir;
+		const from = this.config.syncRules.dir;
 		const pattern = this.globs.moved(rule.pattern, from);
 		const exclude =
 			rule.exclude === undefined
@@ -85,7 +85,7 @@ export class WrittenSyncRules {
 
 	/** The rule as it is in the project, for the files a mount brings in under the pattern's old place. */
 	private original(rule: SyncRule): SyncRule[] {
-		const from = this.config.syncRules.ownDir;
+		const from = this.config.syncRules.dir;
 		const pattern = this.globs.original(rule.pattern, from);
 		if (pattern === undefined) return [];
 		const exclude =

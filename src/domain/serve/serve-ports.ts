@@ -2,7 +2,7 @@ import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { samePath, toPosix } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { joinedWithAnd, shellWord } from "../../base/strings.js";
+import { shellWord } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -52,40 +52,10 @@ export class ServePorts {
 			address: new ServeAddress(
 				this.host ?? project?.serveAddress ?? server.defaultHost,
 				this.port.unwrapOr(undefined) ??
-					config.placeServePort ??
 					project?.servePort ??
 					server.defaultPort
 			),
 		};
-	}
-
-	/** The error for a port given to several servers, which can't all listen on it. */
-	portForSeveral(targets: readonly ServeTarget[]): UsageError | undefined {
-		if (this.port.unwrapOr(undefined) === undefined || targets.length < 2)
-			return undefined;
-		return new UsageError(
-			`--port names one server's port, and this serves ${joinedWithAnd(targets.map(({ config }) => this.nameOf(config)))}.`,
-			"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its config."
-		);
-	}
-
-	clashOf(targets: readonly ServeTarget[]): UsageError | undefined {
-		const byPort = new Map<number, ServeTarget[]>();
-		for (const target of targets) {
-			const sharing = byPort.get(target.address.port) ?? [];
-			byPort.set(target.address.port, [...sharing, target]);
-		}
-		const clashes = [...byPort].filter(([, sharing]) => sharing.length > 1);
-		if (clashes.length === 0) return undefined;
-		const lines = clashes.map(
-			([port, sharing]) =>
-				`${joinedWithAnd(sharing.map(({ config }) => this.nameOf(config)))} ${sharing.length === 2 ? "both" : "all"} serve on port ${port}.`
-		);
-		const first = this.refOf(clashes[0][1][0].config);
-		return new UsageError(
-			lines.join("\n"),
-			`Give each its own servePort in its config, or serve one at a time, as 'rogen serve ${first}'.`
-		);
 	}
 
 	/** Whether the server on `target`'s port was recorded for its project file by a `rogen serve` that has ended. */
@@ -142,15 +112,6 @@ export class ServePorts {
 		return recorded.pid !== undefined && this.runner.isRunning(recorded.pid)
 			? { ...target, orphan: recorded }
 			: { ...target, servedBy: holder, adopted: true };
-	}
-
-	sharedPort(target: ServeTarget, holder: ServeTarget): Diagnostic {
-		const { config, address } = target;
-		return errorDiagnostic(
-			"serve.portTaken",
-			{ resource: config.file },
-			`Port ${address.port} is taken by the server of ${this.nameOf(holder.config)}, so ${this.nameOf(config)} can't be served there. Set a servePort in ${this.nameOf(config)}, or serve it on its own, as 'rogen serve ${this.refOf(config)}'.`
-		);
 	}
 
 	private async portTaken(

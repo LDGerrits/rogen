@@ -204,7 +204,7 @@ export class CoreServeSession
 
 	private async reconcile(): Promise<void> {
 		const { selection } = this.plan;
-		const configs = selection.configs.filter(({ hasPlaces }) => !hasPlaces);
+		const { configs } = selection;
 		const wanted = new Set(configs.map(({ id }) => id));
 		for (const [file, server] of this.servers) {
 			if (this.stopping) return;
@@ -228,22 +228,14 @@ export class CoreServeSession
 		const others = this.targets.filter(
 			(other) => other.config.id !== config.id
 		);
-		const holder = others.find(
-			(other) => other.address.port === target.address.port
-		);
 		const prior = this.declined.get(config.id);
 		const declinedHere =
 			prior?.address === address ? prior.kind : undefined;
-		if (
-			!holder &&
-			declinedHere &&
-			(await this.stillDeclined(target, declinedHere))
-		)
+		if (declinedHere && (await this.stillDeclined(target, declinedHere)))
 			return;
 		const samePort = started?.target.address.port === target.address.port;
-		const checked = holder
-			? err(this.ports.sharedPort(target, holder))
-			: started instanceof StartedServer && samePort
+		const checked =
+			started instanceof StartedServer && samePort
 				? ok(target)
 				: await this.ports.check(target, others);
 		if (this.stopping) return;

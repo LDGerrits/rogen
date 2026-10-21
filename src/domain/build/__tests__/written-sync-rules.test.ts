@@ -144,15 +144,6 @@ describe("WrittenSyncRules", () => {
 		expect(writtenBy([rule], [], { syncPath: abs("out") })).toEqual([rule]);
 	});
 
-	it("should move a pattern from the folder its rule was written in", () => {
-		expect(
-			writtenBy([module], [], {
-				file: abs("places/lobby/default.rogen.json"),
-				syncRulesDir: abs(""),
-			})
-		).toEqual([{ ...module, pattern: "../../src/*.module" }]);
-	});
-
 	it("should write a literal rule for each file a pattern that can't be moved takes", () => {
 		const rule: SyncRule = {
 			pattern: "{src,lib}/*.module",
@@ -220,22 +211,5 @@ describe("WrittenSyncRules", () => {
 				"src/Vendor",
 			])
 		).toEqual([{ pattern: "out/A.md", use: "text" }, rule]);
-	});
-
-	it("should not write a second rule for a pattern that begins with a wildcard in a place", () => {
-		const rule: SyncRule = { pattern: "**/*.note", use: "text" };
-
-		expect(
-			writtenBy(
-				[rule],
-				[],
-				{
-					file: abs("places/lobby/default.rogen.json"),
-					syncRulesDir: abs(""),
-					syncPath: abs("places/lobby/out"),
-				},
-				["src/Vendor", "places/lobby/src/Vendor"]
-			)
-		).toEqual([rule]);
 	});
 });

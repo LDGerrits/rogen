@@ -4,6 +4,7 @@ import {
 	RenameFix,
 	diagnosticsAbout,
 	diagnosticsReaching,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -161,6 +162,32 @@ export interface Diagnosis {
 	readonly stoppedBy: readonly Diagnostic[];
 }
 
+/** One `diagnose` for what several configs were each asked about. */
+export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
+	return {
+		diagnostics: uniqueDiagnostics(
+			parts.flatMap(({ diagnostics }) => diagnostics)
+		),
+		stoppedBy: uniqueDiagnostics(
+			parts.flatMap(({ stoppedBy }) => stoppedBy)
+		),
+	};
+}
+
+/** One `locate` for what several configs were each asked about, the configs in the order given. */
+export function mergeLocations(
+	parts: readonly Locations[],
+	asked: readonly Asked[]
+): Locations {
+	return {
+		everyFile: false,
+		asked,
+		configs: parts.flatMap((part) => part.configs),
+		errors: uniqueDiagnostics(parts.flatMap((part) => part.errors)),
+		stale: uniqueDiagnostics(parts.flatMap((part) => part.stale)),
+	};
+}
+
 /** Builds configs from the index and writes them; `build`, `rebuild` and `locate` place files the same way. */
 export interface BuildService {
 	readonly _serviceBrand: undefined;
@@ -182,6 +209,9 @@ export interface BuildService {
 		selection: ConfigSelection,
 		targets?: LocateQuery
 	): Promise<Result<Diagnosis, DiagnosticsError>>;
+
+	/** What each of `query.args` is, one entry each and in order: a path, resolved, or an instance. */
+	askedAbout(query: LocateQuery): Promise<readonly Asked[]>;
 
 	/** The project files on disk that differ from what a build would write, as the diagnostics `check` raises for them. Writes nothing. */
 	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;

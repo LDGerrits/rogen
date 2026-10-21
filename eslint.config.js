@@ -21,8 +21,6 @@ const modules = {
 			"config-differences",
 			"config-service",
 			"declared-keys",
-			"place-finder",
-			"place-ports",
 			"resolved-config",
 		],
 		init: ["init-service"],

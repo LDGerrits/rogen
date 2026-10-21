@@ -167,36 +167,35 @@ describe("CoreWatchSession", () => {
 		).toEqual(["/repo/lobby/default.rogen.json"]);
 	});
 
-	describe("with places", () => {
+	describe("a place that shares source", () => {
 		const projectFiles = (update: WatchUpdate) =>
 			update.reports.map(({ build }) => build.config.projectFile).sort();
 
 		beforeEach(async () => {
+			await fs.createDirectory("/repo/places/shared/src");
 			await fs.createDirectory("/repo/places/lobby/src");
 			await fs.createDirectory("/repo/places/arena/src");
-			await writeConfig("/repo/default.rogen.json", {
-				placePaths: ["places/*"],
-			});
-			await write("/repo/places/arena/default.rogen.json", {
-				servePort: 34900,
-			});
+			for (const place of ["lobby", "arena"])
+				await write(`/repo/places/${place}/default.rogen.json`, {
+					name: place,
+					sourcePaths: ["../shared/src", "src"],
+					routes: { "*": "ReplicatedStorage" },
+				});
 		});
 
-		it("should build the config and every place once it starts", async () => {
-			await start();
+		it("should build the place it names once it starts, and no other", async () => {
+			await start(["places/lobby"]);
 
 			expect(updates).toHaveLength(1);
 			expect(projectFiles(updates[0])).toEqual([
-				"/repo/default.project.json",
-				"/repo/places/arena/default.project.json",
 				"/repo/places/lobby/default.project.json",
 			]);
 		});
 
-		it("should rebuild only the place whose own source holds a change", async () => {
-			await start();
+		it("should rebuild it for a change to the shared source", async () => {
+			await start(["places/lobby"]);
 
-			await fs.writeFile("/repo/places/lobby/src/B.luau", "");
+			await fs.writeFile("/repo/places/shared/src/B.luau", "");
 			await settle();
 
 			expect(projectFiles(updates[1])).toEqual([
@@ -204,36 +203,31 @@ describe("CoreWatchSession", () => {
 			]);
 		});
 
-		it("should rebuild the config and every place for a change to the shared source", async () => {
-			await start();
+		it("should not rebuild it for a change to the source of another place", async () => {
+			await start(["places/lobby"]);
 
-			await fs.writeFile("/repo/src/B.luau", "");
+			await fs.writeFile("/repo/places/arena/src/B.luau", "");
 			await settle();
 
-			expect(projectFiles(updates[1])).toEqual([
-				"/repo/default.project.json",
-				"/repo/places/arena/default.project.json",
-				"/repo/places/lobby/default.project.json",
-			]);
+			expect(updates).toHaveLength(1);
 		});
 
-		it("should rebuild the place whose default.rogen.json changed", async () => {
-			await start();
+		it("should rebuild it when its default.rogen.json changes", async () => {
+			await start(["places/lobby"]);
 
-			await write("/repo/places/arena/default.rogen.json", {
-				name: "Arena",
+			await write("/repo/places/lobby/default.rogen.json", {
+				name: "Lobby",
+				sourcePaths: ["../shared/src", "src"],
+				routes: { "*": "ReplicatedStorage" },
 			});
 			await settle();
 
 			expect(updates[1].cause).toMatchObject({ reloaded: true });
-			expect(projectFiles(updates[1])).toContain(
-				"/repo/places/arena/default.project.json"
-			);
 			expect(
 				JSON.parse(
-					await fs.readFile("/repo/places/arena/default.project.json")
+					await fs.readFile("/repo/places/lobby/default.project.json")
 				)
-			).toMatchObject({ name: "Arena" });
+			).toMatchObject({ name: "Lobby" });
 		});
 	});
 

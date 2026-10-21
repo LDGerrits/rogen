@@ -1,4 +1,3 @@
-import path from "path";
 import { Disposable, toDisposable } from "../../base/disposable.js";
 import { Result, err } from "../../base/result.js";
 import {
@@ -10,38 +9,25 @@ import {
 	DiagnosticLocation,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { defaultSourcePaths } from "./config.js";
 import { ConfigKeys } from "./config-keys.js";
-import { ConfigSourceReader } from "./config-sources.js";
 import { configSchema } from "./config-schema.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
-import { PlaceFinder } from "./place-finder.js";
-import { PlaceLoader } from "./place-loader.js";
 
 /** One read of one config, with what a reload compares against. */
 export interface LoadedConfig {
 	readonly files: readonly string[];
 	readonly value?: Readonly<Record<string, unknown>>;
-	readonly placeValues?: Readonly<Record<string, unknown>>;
 	readonly resolved: Result<ResolvedConfigFile, Diagnostic[]>;
 }
 
 export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 	private readonly fileChecks = new Set<ConfigFileCheck>();
-	private readonly places: PlaceLoader;
-	private readonly finder: PlaceFinder;
 
 	constructor(fileSystemService: FileReader) {
-		this.finder = new PlaceFinder(fileSystemService);
 		this.reader = new ConfigFileReader(fileSystemService, configSchema);
-		this.places = new PlaceLoader(
-			fileSystemService,
-			this.reader,
-			(file, value) => this.hintsOf(file, value)
-		);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {
@@ -72,7 +58,7 @@ export class ConfigLoader {
 		return this.resolve(config);
 	}
 
-	private async resolve(config: ConfigFile): Promise<LoadedConfig> {
+	private resolve(config: ConfigFile): LoadedConfig {
 		const { file } = config;
 		const value = config.model.contents;
 		const keys = ConfigKeys.check(
@@ -82,44 +68,12 @@ export class ConfigLoader {
 				position: config.positionOfKey(key),
 			})
 		);
-		const declared = new ConfigSourceReader(config).read();
-		const failed = [...keys, ...declared.errors];
-		if (failed.length > 0)
-			return { files: [file], value, resolved: err(failed) };
-
-		const dir = path.dirname(file);
-		const globs = config.model.getValue<string[]>("placePaths") ?? [];
-		const sourcePaths =
-			config.model.getValue<string[]>("sourcePaths") ??
-			defaultSourcePaths(
-				Object.keys(
-					config.model.getValue<Record<string, unknown>>("routes") ??
-						{}
-				).length > 0
-			);
-		const matched = await this.finder.matched(dir, globs, sourcePaths);
-		const placeDirs = matched.places.filter((placeDir) => placeDir !== dir);
-		const sharedFolders = matched.shared.filter((shared) => shared !== dir);
-		const own = ConfigValidator.validateFile(declared.source, {
-			placeDirs,
-		});
-		if (own.isErr())
-			return { files: [file], value, resolved: err(own.error) };
-
-		const places = await this.places.load(
-			file,
-			{ dir, source: declared.source },
-			placeDirs
-		);
+		if (keys.length > 0)
+			return { files: [file], value, resolved: err(keys) };
 		return {
-			files: [file, ...places.files],
+			files: [file],
 			value,
-			placeValues: places.values,
-			resolved: places.resolved.map((resolved) => ({
-				...own.value,
-				places: resolved,
-				...(sharedFolders.length > 0 && { sharedFolders }),
-			})),
+			resolved: ConfigValidator.validateFile(config),
 		};
 	}
 

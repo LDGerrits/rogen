@@ -19,29 +19,20 @@ import {
 	isDefaultConfigFileName,
 	isProjectFileConfig,
 } from "./config.js";
-import { EnclosingConfigs } from "./config-service.js";
-import { PlaceFinder } from "./place-finder.js";
+import { ConfigCover, EnclosingConfigs } from "./config-service.js";
 
 export interface DiscoveredConfigs {
-	/** The working directory, or the place folder it lies in. */
+	/** The working directory. */
 	readonly home: string;
 	readonly files: readonly string[];
 	readonly noneNamed: boolean;
-	/** The place folders named or holding the working directory, by config file; a config named whole has no entry. */
-	readonly scopes: ReadonlyMap<string, readonly string[]>;
 	/** What picking had to say, such as a name matching both a folder and a file. */
 	readonly notes: readonly string[];
 }
 
 interface NamedConfig {
 	readonly file: string;
-	readonly place?: string;
 	readonly note?: string;
-}
-
-interface PlaceAround {
-	readonly file: string;
-	readonly place: string;
 }
 
 const notFound = (ref: string): ProjectError =>
@@ -58,36 +49,21 @@ const isBareName = (ref: string): boolean =>
 
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
-	private readonly places: PlaceFinder;
-
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
-	) {
-		this.places = new PlaceFinder(fileSystemService);
-	}
+	) {}
 
 	/** The config files `refs` names (a folder, config file, `*.project.json` path or bare name), else the default of the working directory. Paths resolve from the working directory. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
-		const around = await this.placeAround();
 		return refs.length === 0
-			? this.discoverHere(around)
-			: this.discoverNamed(refs, around);
+			? this.discoverHere()
+			: this.discoverNamed(refs);
 	}
 
-	private async discoverHere(
-		around: PlaceAround | undefined
-	): Promise<Result<DiscoveredConfigs, Error>> {
-		if (around)
-			return ok({
-				home: around.place,
-				files: [around.file],
-				noneNamed: false,
-				scopes: new Map([[around.file, [around.place]]]),
-				notes: [],
-			});
+	private async discoverHere(): Promise<Result<DiscoveredConfigs, Error>> {
 		const cwd = this.environmentService.cwd;
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(cwd)
@@ -106,16 +82,14 @@ export class ConfigDiscovery {
 			home: cwd,
 			files: [file.value],
 			noneNamed: true,
-			scopes: new Map(),
 			notes: [],
 		});
 	}
 
 	/** Every config file of the working directory, from one directory read: no default is needed. A folder with none is `discover([])`'s. */
 	async discoverFolder(): Promise<Result<DiscoveredConfigs, Error>> {
-		const around = await this.placeAround();
 		const cwd = this.environmentService.cwd;
-		const files = around ? [] : await this.list(cwd);
+		const files = await this.list(cwd);
 		const twin = ConfigDiscovery.twinStem(files);
 		if (twin !== undefined)
 			return err(
@@ -126,12 +100,11 @@ export class ConfigDiscovery {
 						.map((file) => path.basename(file))
 				)
 			);
-		if (around || files.length === 0) return this.discoverHere(around);
+		if (files.length === 0) return this.discoverHere();
 		return ok({
 			home: cwd,
 			files,
 			noneNamed: false,
-			scopes: new Map(),
 			notes: [],
 		});
 	}
@@ -142,8 +115,7 @@ export class ConfigDiscovery {
 	}
 
 	private async discoverNamed(
-		refs: readonly string[],
-		around: PlaceAround | undefined
+		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
 		const cwd = this.environmentService.cwd;
 		const resolved: NamedConfig[] = [];
@@ -153,64 +125,22 @@ export class ConfigDiscovery {
 			resolved.push(found.value);
 		}
 
-		const merged = this.merge(resolved, refs);
-		if (merged.isErr()) return err(merged.error);
-		const { files, scopes } = merged.value;
+		const files: string[] = [];
+		for (const [index, { file }] of resolved.entries()) {
+			if (files.includes(file))
+				return err(
+					new UsageError(
+						`"${refs[index]}" was named more than once; each config can only be built once per invocation.`
+					)
+				);
+			files.push(file);
+		}
 		return ok({
-			home: around?.place ?? cwd,
+			home: cwd,
 			files,
 			noneNamed: false,
-			scopes,
 			notes: resolved.flatMap(({ note }) => note ?? []),
 		});
-	}
-
-	private merge(
-		resolved: readonly NamedConfig[],
-		refs: readonly string[]
-	): Result<{ files: string[]; scopes: Map<string, string[]> }, Error> {
-		const files: string[] = [];
-		const scopes = new Map<string, string[]>();
-		for (const [index, named] of resolved.entries()) {
-			const earlier = resolved
-				.slice(0, index)
-				.filter((before) => before.file === named.file);
-			if (earlier.length === 0) files.push(named.file);
-			for (const before of earlier) {
-				if (
-					before.place === named.place ||
-					before.place === undefined ||
-					named.place === undefined
-				)
-					return err(
-						new UsageError(
-							`"${refs[index]}" was named more than once; each config can ` +
-								`only be built once per invocation.`
-						)
-					);
-			}
-			if (
-				named.place !== undefined &&
-				!scopes.get(named.file)?.includes(named.place)
-			)
-				scopes.set(named.file, [
-					...(scopes.get(named.file) ?? []),
-					named.place,
-				]);
-		}
-		return ok({ files, scopes });
-	}
-
-	private async placeAround(): Promise<PlaceAround | undefined> {
-		let directory = this.environmentService.cwd;
-		for (;;) {
-			const file = await this.places.rootOf(directory);
-			if (file) return { file, place: directory };
-			if ((await this.list(directory)).length > 0) return undefined;
-			const parent = path.dirname(directory);
-			if (parent === directory) return undefined;
-			directory = parent;
-		}
 	}
 
 	private async configOf(
@@ -250,8 +180,6 @@ export class ConfigDiscovery {
 		target: string,
 		ref: string
 	): Promise<Result<NamedConfig, Error>> {
-		const listing = await this.places.rootOf(target);
-		if (listing) return ok({ file: listing, place: target });
 		const config = await this.defaultIn(target, ref);
 		return config.isOk() ? ok({ file: config.value }) : err(config.error);
 	}
@@ -263,10 +191,6 @@ export class ConfigDiscovery {
 	): Promise<Result<NamedConfig, Error>> {
 		const stem = base.slice(0, base.indexOf(".project."));
 		const folder = path.dirname(target);
-		if (stem === DEFAULT_PROJECT) {
-			const listing = await this.places.rootOf(folder);
-			if (listing) return ok({ file: listing, place: folder });
-		}
 		const config = await this.configBeside(folder, stem);
 		if (config.isErr()) return err(config.error);
 		if (config.value) return ok({ file: config.value });
@@ -290,12 +214,7 @@ export class ConfigDiscovery {
 		const folder = path.dirname(target);
 		const beside = await this.configBeside(folder, configStem(base)!);
 		if (beside.isErr()) return err(beside.error);
-		const listing = isDefaultConfigFileName(base)
-			? await this.places.rootOf(folder)
-			: undefined;
-		return ok(
-			listing ? { file: listing, place: folder } : { file: target }
-		);
+		return ok({ file: target });
 	}
 
 	/** The config of `stem` in `folder`, when it has one. Both extensions of one stem fail. */
@@ -396,6 +315,25 @@ export class ConfigDiscovery {
 			if (await this.fileSystemService.isFile(file)) return file;
 		}
 		return undefined;
+	}
+
+	/** The config that answers for `target`: a `.rogen.json` is its own, whole; any other path has the default of the nearest folder at or above it, a plain project file included. */
+	async coverOf(target: string): Promise<ConfigCover | undefined> {
+		if (isConfigFileName(path.basename(target)))
+			return (await this.fileSystemService.isFile(target))
+				? { file: target, whole: true }
+				: undefined;
+		let directory = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
+		for (;;) {
+			const [config] = await this.defaultConfigs(directory);
+			const file = config ?? (await this.adoptable(directory));
+			if (file) return { file, whole: false };
+			const parent = path.dirname(directory);
+			if (parent === directory) return undefined;
+			directory = parent;
+		}
 	}
 
 	/** The nearest folder above `from`, the working directory unless given, with a default config. */

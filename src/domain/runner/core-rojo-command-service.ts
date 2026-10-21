@@ -182,7 +182,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 	}
 
 	projects(selection: ConfigSelection): ResolvedConfig[] {
-		return selection.configs.filter(({ hasPlaces }) => !hasPlaces);
+		return [...selection.configs];
 	}
 
 	choose(

@@ -30,12 +30,7 @@ describe("domain/config/config-schema", () => {
 			"syncRules",
 			"syncbackRules",
 		];
-		const ROGEN_FIELDS = [
-			"sourcePaths",
-			"routes",
-			"syncPath",
-			"placePaths",
-		];
+		const ROGEN_FIELDS = ["sourcePaths", "routes", "syncPath"];
 
 		describe("schema shape", () => {
 			it("declares Rojo's keys and Rogen's", () => {

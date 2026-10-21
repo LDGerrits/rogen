@@ -36,6 +36,7 @@ describe("CoreConfigService", () => {
 			"syncDir",
 			"projects",
 			"serveProject",
+			"placePaths",
 		])("should say %s was removed", async (field) => {
 			await write("/repo/default.rogen.json", { [field]: "x" });
 
