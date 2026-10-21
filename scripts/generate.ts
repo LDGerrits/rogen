@@ -9,11 +9,16 @@ import {
 	currentAgentHookModule,
 } from "./generate-agent-hook.js";
 import { OUTPUT as HELP, currentHelpModule } from "./generate-help.js";
+import {
+	OUTPUT as TEMPLATES,
+	currentTemplatesModule,
+} from "./generate-templates.js";
 
 const modules = [
 	[HELP, currentHelpModule],
 	[AGENT_BLOCK, currentAgentBlockModule],
 	[AGENT_HOOK, currentAgentHookModule],
+	[TEMPLATES, currentTemplatesModule],
 ] as const;
 
 // Skips a module that is already current, so a watcher doesn't see a change.
