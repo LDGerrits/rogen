@@ -223,7 +223,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const sampleFiles = sample
 			? [
 					...sampleOf.feature(sourcePaths[0]),
-					...(places ? [sampleOf.place(places.placeSourcePath)] : []),
+					...(places ? sampleOf.place(places.placeSourcePath) : []),
 					sampleOf.readme(sourcePaths[0], places?.place),
 				]
 			: [];
