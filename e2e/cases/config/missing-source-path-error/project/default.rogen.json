@@ -1,6 +1,8 @@
 {
-	"sourcePaths": ["srcc"],
-	"routes": {
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": ["srcc"],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

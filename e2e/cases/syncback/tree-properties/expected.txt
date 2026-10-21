@@ -33,8 +33,10 @@ default.rogen.json:
       }
     }
   },
-  "sourcePaths": ["src"],
-  "routes": { "Server": "ServerScriptService" }
+  "rogen": {
+    "sourcePaths": ["src"],
+    "routes": { "Server": "ServerScriptService" }
+  }
 }
 
 $ rojo sourcemap default.project.json

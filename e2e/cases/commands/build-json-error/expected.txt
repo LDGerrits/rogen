@@ -12,11 +12,11 @@ stdout:
         "diagnostics": [
           {
             "file": "<dir>/default.rogen.json",
-            "line": 2,
-            "column": 17,
+            "line": 3,
+            "column": 18,
             "severity": "error",
             "code": "config.wrongType",
-            "message": "\"sourcePaths\": expected an array, found a string.",
+            "message": "\"rogen.sourcePaths\": expected an array, found a string.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-wrongtype"
           }
         ]

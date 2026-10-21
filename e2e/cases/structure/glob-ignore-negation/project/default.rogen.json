@@ -1,12 +1,14 @@
 {
-	"sourcePaths": ["src"],
-	"routes": {
-		"*": "ReplicatedStorage"
-	},
 	"globIgnorePaths": [
 		"**/*.spec.luau",
 		"!**/Keep.spec.luau",
 		"src/Vendor/**",
 		"!src/Vendor/Keep.luau"
-	]
+	],
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"*": "ReplicatedStorage"
+		}
+	}
 }

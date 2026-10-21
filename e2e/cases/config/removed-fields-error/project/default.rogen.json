@@ -1,10 +1,4 @@
 {
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"*": "ReplicatedStorage/Shared"
-	},
 	"mode": "dev",
 	"modes": {
 		"dev": {
@@ -22,5 +16,13 @@
 			"dev"
 		]
 	],
-	"server": "argon"
+	"server": "argon",
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/Shared"
+		}
+	}
 }

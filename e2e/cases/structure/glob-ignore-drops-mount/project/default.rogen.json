@@ -15,10 +15,12 @@
 	"globIgnorePaths": [
 		"DevPackages/**"
 	],
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

@@ -1,7 +1,9 @@
 {
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"Server": "ServerScriptService",
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

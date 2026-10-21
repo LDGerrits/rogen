@@ -1,3 +1,4 @@
 {
-	"sourcePaths": ["src"],
-	"routes": {}
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {}

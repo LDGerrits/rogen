@@ -87,11 +87,13 @@ default.rogen.json:
   "tree": {
     "$className": "DataModel"
   },
-  "sourcePaths": [
-    "lib"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "*": "ReplicatedStorage/Shared"
+  "rogen": {
+    "sourcePaths": [
+      "lib"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "*": "ReplicatedStorage/Shared"
+    }
   }
 }

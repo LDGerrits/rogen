@@ -1,22 +1,24 @@
 {
 	"name": "Inventory",
-	"sourcePaths": [
-		"src",
-		"tests"
-	],
-	"routes": {
-		"server": "ServerStorage",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared",
-		"spec": "ServerScriptService/Specs"
-	},
 	"tree": {
 		"$className": "DataModel",
 		"Workspace": {
 			"$properties": {
 				"Gravity": 98.1
 			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src",
+			"tests"
+		],
+		"routes": {
+			"server": "ServerStorage",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared",
+			"spec": "ServerScriptService/Specs"
 		}
 	}
 }

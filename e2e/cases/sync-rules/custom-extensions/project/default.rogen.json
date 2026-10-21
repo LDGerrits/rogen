@@ -5,12 +5,14 @@
 		{ "pattern": "*.note", "use": "text", "suffix": ".note" },
 		{ "pattern": "*.skip", "use": "ignore" }
 	],
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

@@ -3,4 +3,4 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:2:17 - error: "sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths". (config.sourcePathsWithoutRoutes)
+  default.rogen.json:3:18 - error: "sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths". (config.sourcePathsWithoutRoutes)

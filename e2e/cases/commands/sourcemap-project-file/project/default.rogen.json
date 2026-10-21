@@ -3,10 +3,12 @@
 	"tree": {
 		"$className": "DataModel"
 	},
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"*": "ReplicatedStorage"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage"
+		}
 	}
 }

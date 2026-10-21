@@ -1,7 +1,7 @@
 $ rogen where src/A.luau
 exit 1
 stderr:
-  default.rogen.json:3:38 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  default.rogen.json:4:39 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
 
 $ rogen where src/A.luau --json
 exit 1
@@ -11,8 +11,8 @@ stdout:
     "diagnostics": [
       {
         "file": "<dir>/default.rogen.json",
-        "line": 3,
-        "column": 38,
+        "line": 4,
+        "column": 39,
         "severity": "error",
         "code": "config.invalidSyntax",
         "message": "invalid JSONC: expected '}'.",

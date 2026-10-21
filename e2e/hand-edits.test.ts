@@ -38,8 +38,10 @@ describe("end to end project files edited by hand", () => {
 		cache = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-hand-edits-"));
 		project = createProject({
 			"default.rogen.json": JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService" },
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { Server: "ServerScriptService" },
+				},
 			}),
 			"src/Server/Main.server.luau": "",
 		});
@@ -71,11 +73,13 @@ describe("end to end project files edited by hand", () => {
 		fs.writeFileSync(
 			path.join(project.dir, "default.rogen.json"),
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService" },
 				tree: {
 					$className: "DataModel",
 					ServerStorage: { Assets: { $className: "Folder" } },
+				},
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { Server: "ServerScriptService" },
 				},
 			})
 		);
@@ -103,9 +107,11 @@ describe("end to end project files edited by hand", () => {
 		fs.writeFileSync(
 			path.join(project.dir, "default.rogen.json"),
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService" },
 				globIgnorePaths: ["**/Ignored/**"],
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { Server: "ServerScriptService" },
+				},
 			})
 		);
 

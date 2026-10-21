@@ -1,9 +1,11 @@
 {
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"character": "StarterPlayer/StarterCharacterScripts",
-		"*": "ReplicatedStorage/shared"
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"character": "StarterPlayer/StarterCharacterScripts",
+			"*": "ReplicatedStorage/shared"
+		}
 	}
 }

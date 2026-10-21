@@ -97,11 +97,13 @@ const available = has("bash") && has("git") && has("jq");
 		write(
 			"default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: {
-					Server: "ServerScriptService",
-					Shared: "ReplicatedStorage/Shared",
-					"*": "ReplicatedStorage/Shared",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: {
+						Server: "ServerScriptService",
+						Shared: "ReplicatedStorage/Shared",
+						"*": "ReplicatedStorage/Shared",
+					},
 				},
 			})
 		);
@@ -224,8 +226,7 @@ const available = has("bash") && has("git") && has("jq");
 			"places/lobby/default.rogen.json",
 			JSON.stringify({
 				name: "Lobby",
-				sourcePaths: ["../shared/src", "src"],
-				routes,
+				rogen: { sourcePaths: ["../shared/src", "src"], routes },
 			})
 		);
 		git("add", "-A");
