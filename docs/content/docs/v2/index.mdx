@@ -74,13 +74,15 @@ Put all the code for one feature in a single **feature folder**, named after wha
 
 Your [config](/docs/v2/configuration) maps each kind of folder to a service:
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+	"rogen": {
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```
@@ -121,6 +123,6 @@ Feature folders are a good place to start, but [Architectures](/docs/v2/architec
 		title="Configuration"
 		href="/docs/v2/configuration"
 	>
-		Every field of `rogen.json`.
+		Every key of a config file.
 	</Card>
 </Cards>

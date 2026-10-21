@@ -10,25 +10,29 @@ A **route** sends files to a **target**, a path that starts at a Roblox **servic
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    ```json title="rogen.json"
+    ```json title="default.rogen.json"
     {
-    	"routes": {
-    		"Server": "ServerScriptService",
-    		"Client": "StarterPlayer/StarterPlayerScripts",
-    		"Shared": "ReplicatedStorage/Shared",
-    		"*": "ReplicatedStorage/Shared"
+    	"rogen": {
+    		"routes": {
+    			"Server": "ServerScriptService",
+    			"Client": "StarterPlayer/StarterPlayerScripts",
+    			"Shared": "ReplicatedStorage/Shared",
+    			"*": "ReplicatedStorage/Shared"
+    		}
     	}
     }
     ```
   </Tab>
   <Tab value="roblox-ts">
-    ```json title="rogen.json"
+    ```json title="default.rogen.json"
     {
-    	"routes": {
-    		"server": "ServerScriptService",
-    		"client": "StarterPlayer/StarterPlayerScripts",
-    		"shared": "ReplicatedStorage/shared",
-    		"*": "ReplicatedStorage/shared"
+    	"rogen": {
+    		"routes": {
+    			"server": "ServerScriptService",
+    			"client": "StarterPlayer/StarterPlayerScripts",
+    			"shared": "ReplicatedStorage/shared",
+    			"*": "ReplicatedStorage/shared"
+    		}
     	}
     }
     ```
@@ -135,7 +139,7 @@ src/Shared/(Server)/Datastore.luau  ->  ReplicatedStorage/Shared/Datastore
 Rogen warns when such a folder's route points at `ServerScriptService` or `ServerStorage` but the file lands somewhere that replicates:
 
 ```
-rogen.json - warning: 1 file under a "Server" route ships to clients, because "Shared" governs it: (route.serverCodeShipped)
+default.rogen.json - warning: 1 file under a "Server" route ships to clients, because "Shared" governs it: (route.serverCodeShipped)
   src/Shared/Server/Datastore.luau -> ReplicatedStorage/Shared/Server/Datastore
 Move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder.
 ```
@@ -152,7 +156,7 @@ src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 ```
 
 <Callout type="info" title="RunContext scripts">
-	With `emitLegacyScripts: false` in your `rogen.json`, every script is a `Script` with a `RunContext`, which runs in more places. Rogen keeps the `.client` scripts it routes to `StarterPlayerScripts` and `StarterCharacterScripts` as LocalScripts, with one [sync rule](/docs/v2/configuration#sync-rules) per file in the project file. Rogen then only warns about `Client` scripts in `ServerScriptService`, where they'd never run. It also reads a `RunContext` from the script's `.meta.json`.
+	With `emitLegacyScripts: false` in your config, every script is a `Script` with a `RunContext`, which runs in more places. Rogen keeps the `.client` scripts it routes to `StarterPlayerScripts` and `StarterCharacterScripts` as LocalScripts, with one [sync rule](/docs/v2/configuration#sync-rules) per file in the project file. Rogen then only warns about `Client` scripts in `ServerScriptService`, where they'd never run. It also reads a `RunContext` from the script's `.meta.json`.
 </Callout>
 
 `rogen where` shows which route governs any file and how it matched.

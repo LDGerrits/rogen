@@ -19,7 +19,7 @@ Rojo's plugin can connect on its own, with **Auto Reconnect**. It is off by defa
 	them. Publish the place, or save it to Roblox, then connect once by hand.
 </Callout>
 
-Rojo also checks the **name of the project** against the one it synced last: a place reconnects only to a server that serves a project of the same name. That name is `name` in `rogen.json`, which Rogen writes to the project file. Without one, Rojo names the project after its folder. Give the project a name, and keep it.
+Rojo also checks the **name of the project** against the one it synced last: a place reconnects only to a server that serves a project of the same name. That name is `name` in the config, which Rogen writes to the project file. Without one, Rojo names a `default.project.json` after its folder, and every other project file needs a `name`. Give the project a name, and keep it.
 
 ### The Confirmation Dialog
 
@@ -31,42 +31,46 @@ Rojo's plugin asks to confirm the first changes of each project in a session. It
 
 ## Place IDs
 
-`rogen.json` can say which places the server is for, with `servePlaceIds`, as a Rojo project file does:
+A config can say which places the server is for, with `servePlaceIds`, as a Rojo project file does:
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"name": "Game",
 	"servePlaceIds": [1818],
-	"routes": { "*": "ReplicatedStorage" }
+	"rogen": { "routes": { "*": "ReplicatedStorage" } }
 }
 ```
 
-Rojo refuses to connect from any other place, and says which IDs it expects. `blockedPlaceIds` does the opposite, and names places that may never connect. Rogen writes both to the project file as they are.
+Rojo refuses to connect from any other place, and says which IDs it expects. `blockedPlaceIds` does the opposite, and names places that may never connect. Rogen writes both to the project file as they are. They are ordinary Rojo keys in every config file, so a `dist.rogen.json` repeats them.
 
 <Callout type="warn">
 	A place that was never saved to Roblox has the place ID `0`, which no list
-	holds, so a listed project refuses it. Add the IDs once the places are
-	published. `rogen init` asks for the ID of a place it adds, and an empty answer
-	writes none.
+	holds, so a listed project refuses it. Add the IDs to the config once the places are
+	published.
 </Callout>
 
 ### Several places
 
-Each [place](/docs/v2/configuration#places) is served on its own port, and Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port and sync that place's code. Give each place its own `servePlaceIds` in its `rogen.json`, and Rojo refuses the connection from any other place, with an error that names `servePlaceIds`:
+Each [place](/docs/v2/setups/places) is served by naming it, and a second place at once is a second terminal with `--port`. Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port and sync that place's code. Give each place its own `servePlaceIds` in its `default.rogen.json`, and Rojo refuses the connection from any other place, with an error that names `servePlaceIds`:
 
-```json title="places/lobby/rogen.json"
+```json title="places/lobby/default.rogen.json"
 {
+	"name": "Lobby",
 	"servePort": 34872,
-	"servePlaceIds": [1818]
+	"servePlaceIds": [1818],
+	"rogen": {
+		"sourcePaths": ["../shared/src", "src"],
+		"routes": { "*": "ReplicatedStorage" }
+	}
 }
 ```
 
-`rogen init places/lobby` asks for the ID once, when it adds the place, and `--place-id 1818` answers it. Without a terminal it writes none. `rogen list` shows each place's port beside its place IDs.
+Rogen writes no port and picks none: set `servePort` yourself, or pass `--port` to the second terminal.
 
 ## The Port
 
-`rogen serve` starts the server on the `servePort` of `rogen.json`, else on 34872. In Studio, connect to that port. Rojo remembers the port for a place after the first connect, so Auto Reconnect takes it back to the same one. See [`serve`](/docs/v2/cli#serve) for how Rogen picks the Rojo and the port.
+`rogen serve` starts the server on the `servePort` of the config, else on 34872. A second `rogen serve` at the same time needs `--port` or its own `servePort`, as a second `rojo serve` does. In Studio, connect to that port. Rojo remembers the port for a place after the first connect, so Auto Reconnect takes it back to the same one. See [`serve`](/docs/v2/cli#serve) for how Rogen picks the Rojo and the port.
 
 ## Serve With Argon
 
-`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen build --watch` to keep `default.project.json` current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own. A project file with [`syncRules`](/docs/v2/configuration#sync-rules) is Rojo's alone, since Argon rejects it.
+`rogen serve` only starts Rojo. [Argon](https://github.com/argon-rbx/argon) reads the Rojo project files Rogen writes, so run `rogen build --watch` to keep the project file current, and serve it with Argon, from its VS Code extension or with `argon serve` beside it. Argon's plugin and its settings are then Argon's own. A project file with [`syncRules`](/docs/v2/configuration#sync-rules) is Rojo's alone, since Argon rejects it.

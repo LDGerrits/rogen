@@ -5,26 +5,28 @@ description: The project file Rogen writes, and how its paths reach your compile
 
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-Each **build** turns your source paths into one **project**: the Rojo project file for a `rogen.json`. This page covers that file and how its paths find your code.
+Each **build** turns your source paths into one **project**: the Rojo project file for a `.rogen.json`. This page covers that file and how its paths find your code.
 
 ## Output
 
-The output is `default.project.json`, beside the `rogen.json` that describes it, and a `<name>.project.json` for each of its [projects](/docs/v2/configuration#projects). It is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. It carries `name` only when `rogen.json` sets one. Rojo names the project after its folder otherwise. A project's file always carries a `name`, the config's or the folder's, since Rojo can't open a project file without one.
+A config named `X.rogen.json` writes `X.project.json` beside it, the way Rojo names project files, and `default.rogen.json` writes `default.project.json`. A second output, such as a Darklua build or a release without the specs, is a second complete config file with its own project file. See [Configuration](/docs/v2/configuration). The project file is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it. `default.project.json` carries `name` only when the config sets one. Rojo names the project after its folder otherwise. Every other project file carries a `name`, the config's or the file's stem, since Rojo can't open a project file without one.
 
-Every other Rojo key in `rogen.json` (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
+Every other Rojo key in the config (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
 
-**Rogen owns the output.** Every build replaces the file, so anything Rogen can't know about goes in the [`tree`](/docs/v2/configuration#tree) of `rogen.json`. When nothing has changed, the file is left untouched, so Rojo doesn't re-sync for no reason. `build` says `wrote` when it replaced a file with different content. A file Rogen wrote that was edited by hand since is not replaced: `build` fails with [`output.editedByHand`](/docs/v2/diagnostics#output-editedbyhand), names what the write would lose and the `tree` to put it in, and `rogen build --force` writes over it. A merely stale file is [`output.differs`](/docs/v2/diagnostics#output-differs) in `check`, `where` and `list`, and `build` writes it again. A file Rogen has no record of writing (a clone, a cleared cache, a hand-written one `init` lifted) is written over as before.
+**Rogen owns the output.** Every build replaces the file, so anything Rogen can't know about goes in the [`tree`](/docs/v2/configuration#tree) of the config. When nothing has changed, the file is left untouched, so Rojo doesn't re-sync for no reason. `build` says `wrote` when it replaced a file with different content. A file Rogen wrote that was edited by hand since is not replaced: `build` fails with [`output.editedByHand`](/docs/v2/diagnostics#output-editedbyhand), names what the write would lose and the `tree` to put it in, and `rogen build --force` writes over it. A merely stale file is [`output.differs`](/docs/v2/diagnostics#output-differs) in `check`, `where` and `list`, and `build` writes it again. A file Rogen has no record of writing (a clone, a cleared cache, a hand-written one `init` lifted) is written over as before.
 
 **A stale file loads without complaint.** Every `$path` Rogen writes is `optional`, since a compiler's or Darklua's output may not exist yet and a file can go while `serve` is running. So when a source file is renamed and `rogen build` has not run, Rojo builds a place without it and does not fail. Run `rogen build` before `rojo`, or let `rogen serve` and `rogen build --watch` do it.
 
 A bare `rojo serve`, `rbxtsc` and luau-lsp's sourcemap all use `default.project.json`, so they read the file Rogen writes with nothing to configure.
 
+**A command writes only the file it is given.** `rogen serve dist` writes `dist.project.json` and serves it, and `rogen build release -o game.rbxl` writes `release.project.json`. Nothing else is written, so `default.project.json` is as fresh as your last `rogen build`. After you add a feature folder, or a file with an `@key` name, run `rogen build` so the editor reads the new file.
+
 ### Ignore or commit the project files
 
-Rogen never edits `.gitignore`: whether the files it writes are committed is yours to decide.
+`rogen init` writes `*.project.json` into the `.gitignore` it creates, beside `sourcemap.json`, and Rogen never edits one that exists. Whether the files it writes are committed is yours to decide.
 
-- **Ignored:** list the exact files, `default.project.json`, one for each project, and `sourcemap.json` when a tool writes one, as Wally's `Packages/` is listed. They are generated and regenerated by one command, so they never conflict, and a script does not change a committed file every time it is added. After a clone, `rogen build` writes them, and CI runs it before `rojo build`; `rogen serve` builds first on its own. On a clone, `rojo serve` and `rbxtsc` find no project file until someone has run it, and nor do luau-lsp and the Rojo plugin, so put `rogen build` first in your setup instructions. A pattern such as `*.project.json` also hides project files you write by hand.
-- **Committed:** a clone works at once, for a repo whose collaborators or CI do not install Rogen. `rogen check` warns when a file on disk differs from what `build` would write ([`output.differs`](/docs/v2/diagnostics#output-differs)), committed or not, and CI can run `git diff --exit-code -- '*.project.json'` after `rogen build`. The price is a merge conflict now and then in a generated file, fixed by running `rogen build`.
+- **Ignored:** `*.project.json` and `sourcemap.json`, as Wally's `Packages/` is listed. The files are generated and regenerated by one command, so they never conflict, and a script does not change a committed file every time it is added. After a clone, `rogen build` writes `default.project.json`, and CI runs it before `rojo build`; `rogen serve` builds first on its own. On a clone, `rojo serve` and `rbxtsc` find no project file until someone has run it, and nor do luau-lsp and the Rojo plugin, so put `rogen build` first in your setup instructions. The pattern also hides project files you write by hand: add `!name.project.json` to keep one tracked.
+- **Committed:** a clone works at once, for a repo whose collaborators or CI do not install Rogen. `rogen check` warns when the file on disk differs from what `build` would write ([`output.differs`](/docs/v2/diagnostics#output-differs)), committed or not, and CI can run `git diff --exit-code -- '*.project.json'` after `rogen build`. Remove `*.project.json` from `.gitignore` for this. The price is a merge conflict now and then in a generated file, fixed by running `rogen build`.
 
 ## Compiled Path
 
@@ -47,18 +49,18 @@ With a compiler, Rojo syncs from its output instead of your source. That folder 
   </Tab>
 </Tabs>
 
-With one source path, `compiledPath` simply takes its place. With several, Rogen keeps each path relative to their **common root**, the deepest folder containing all of them, just like `tsc` does. For `["core", "places/lobby"]` that's the repo root, so paths land at `dist/core/…` and `dist/places/lobby/…`. `rogen list --json` shows the common root.
+With one source path, `compiledPath` simply takes its place. With several, Rogen keeps each path relative to their **common root**, the deepest folder containing all of them, just like `tsc` does. A place `places/lobby` with `["../shared/src", "src"]` and `"compiledPath": "out"` reads `out/shared/src/…` and `out/lobby/src/…`, which is what a compiler listing both folders writes. Adding a source path can change the common root, and so the layout. `rogen list` prints each source path with its compiled folder, and `rogen list --json` shows the common root.
 
 A few things to keep in mind:
 
 - `compiledPath` only affects paths Rogen generates. `tree` paths like Wally's `Packages` are copied through untouched.
-- Rojo syncs from the compiled path, but luau-lsp and Darklua read a sourcemap of your source. Keep `default.project.json` pointing at the source, and give the compiled path to a [project](/docs/v2/configuration#projects) that Studio serves. See the [Darklua guide](/docs/v2/setups/darklua).
+- Rojo syncs from the compiled path, but luau-lsp and Darklua read a sourcemap of your source. Keep `default.rogen.json` pointing at the source, and give the compiled path to a second config such as `dist.rogen.json`, which Studio serves with `rogen serve dist`. See the [Darklua guide](/docs/v2/setups/darklua).
 - If none of the paths Rogen writes for a source path exist after a build, Rogen warns and suggests the closest match. Usually the compiler just hasn't run yet.
 - Rogen never reads the compiled path, so compiled leftovers whose source is gone still sync. Clean it as part of your compile step.
 
 ## Serving
 
-`rogen serve` builds, starts Rojo on the project `serveProject` names (`default.project.json` unless it says otherwise), and rebuilds as `build --watch` does. Rojo reads the port from the project file, so a `servePort` in `rogen.json` applies. When a Rojo you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which Rojo runs, the port, `--json` and exit codes.
+`rogen serve` builds the project it is given, starts Rojo on it, and rebuilds as `build --watch` does. With no argument that is `default.rogen.json` of the current folder, so in a Darklua setup a bare `rogen serve` serves your source and `rogen serve dist` serves the processed code. Rojo reads the port from the project file, so a `servePort` in the config applies. When a Rojo you started yourself already serves the project, `serve` builds for it instead of starting another. See [`serve`](/docs/v2/cli#serve) for which Rojo runs, the port, `--json` and exit codes.
 
 ## Place Files
 
@@ -68,7 +70,7 @@ Rogen writes the project files, and `-o` has Rojo make a place or model file fro
 rogen build -o game.rbxl
 ```
 
-It writes every project file first and then runs the Rojo your toolchain file pins on `default.project.json`, so the place always matches the files. Name another project to build that one: a place that differs from your default build, such as one with the specs in it or without the dev packages, is a [project](/docs/v2/configuration#projects), built with `rogen build release -o game.rbxl`. See [Testing](/docs/v2/testing). `-p Tool.rbxm` builds a plugin into Roblox's plugins folder, and `rogen upload` uploads the place. Without `-o`, `rogen build` needs no Rojo, and running `rojo build default.project.json -o game.rbxl` yourself after it works the same.
+It writes the project file first and then runs the Rojo your toolchain file pins on it, so the place always matches the file. Name another config to build that one: a place that differs from your default build, such as one with the specs in it or without the dev packages, is a second config file, built with `rogen build release -o game.rbxl`. See [Testing](/docs/v2/testing). `-p Tool.rbxm` builds a plugin into Roblox's plugins folder, and `rogen upload` uploads the place. Without `-o`, `rogen build` needs no Rojo, and running `rojo build default.project.json -o game.rbxl` yourself after it works the same.
 
 With [Darklua](/docs/v2/setups/darklua) or roblox-ts, run the compiler first, so the place holds the compiled code the `compiledPath` points at.
 
