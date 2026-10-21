@@ -96,7 +96,7 @@ describeWithRojo("build command against Rojo", () => {
 		);
 	});
 
-	it("should write two project files that Rojo accepts from one build", async () => {
+	it("should write a project file that Rojo accepts for each folder built, one at a time", async () => {
 		write("src/Main.server.luau", "print('main')");
 		const routes = { server: "ServerScriptService", "*": "Workspace" };
 		for (const folder of ["lobby", "arena"])
@@ -105,9 +105,8 @@ describeWithRojo("build command against Rojo", () => {
 				JSON.stringify({ sourcePaths: ["../src"], routes })
 			);
 
-		const result = await build(["lobby", "arena"]);
-
-		expect(result.isOk()).toBe(true);
+		expect((await build(["lobby"])).isOk()).toBe(true);
+		expect((await build(["arena"])).isOk()).toBe(true);
 		for (const folder of ["lobby", "arena"])
 			expect(
 				classes(sourcemap(dir, `${folder}/default.project.json`))

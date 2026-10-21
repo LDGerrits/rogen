@@ -7,7 +7,6 @@ stdout:
         "config": "Game",
         "file": "<dir>/game/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "Game",
         "sourcePaths": [
           "<dir>/game/src"
@@ -36,7 +35,6 @@ stdout:
         "config": "lobby",
         "file": "<dir>/lobby/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "lobby",
         "sourcePaths": [
           "<dir>/lobby/core",
@@ -72,7 +70,6 @@ stdout:
         "config": "lobby",
         "file": "<dir>/lobby/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "lobby",
         "sourcePaths": [
           "<dir>/lobby/core",

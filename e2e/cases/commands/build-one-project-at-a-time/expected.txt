@@ -1,0 +1,27 @@
+$ rogen build lobby
+exit 0
+stdout: (not shown)
+
+$ rogen build match
+exit 0
+stdout: (not shown)
+
+$ rogen build lobby
+exit 0
+stdout: (not shown)
+
+written:
+  lobby/default.project.json
+  match/default.project.json
+
+$ rojo sourcemap lobby/default.project.json
+lobby: DataModel
+  ServerScriptService: ServerScriptService
+    Inventory: Folder
+      Save: ModuleScript  <- src/Inventory/Server/Save.luau
+
+$ rojo sourcemap match/default.project.json
+match: DataModel
+  ServerScriptService: ServerScriptService
+    Match: Folder
+      Queue: ModuleScript  <- src/Match/Server/Queue.luau

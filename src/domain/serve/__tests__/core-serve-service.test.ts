@@ -146,52 +146,6 @@ describe("CoreServeService", () => {
 			]);
 		});
 
-		describe("with places", () => {
-			beforeEach(async () => {
-				await memFs.writeFile(
-					"/repo/default.rogen.json",
-					config({ name: "Game", placePaths: ["places/*"] })
-				);
-				await memFs.writeFile(
-					"/repo/places/lobby/default.rogen.json",
-					JSON.stringify({ name: "Lobby" })
-				);
-				await memFs.createDirectory("/repo/places/arena");
-			});
-
-			it("should serve each place on a port from 34872 by path, and never the config that lists them", async () => {
-				const servePlan = await plan();
-
-				expect(served(servePlan)).toEqual([
-					["arena", "127.0.0.1:34872"],
-					["Lobby", "127.0.0.1:34873"],
-				]);
-			});
-
-			it("should serve only the place it is run in", async () => {
-				service = serviceAt("/repo/places/lobby");
-
-				const servePlan = await plan();
-
-				expect(served(servePlan)).toEqual([
-					["Lobby", "127.0.0.1:34873"],
-				]);
-			});
-
-			it("should name the place's own default.rogen.json in a taken port's error", async () => {
-				requests.answer(
-					"http://127.0.0.1:34872/api/rojo",
-					rojoInfo("Other")
-				);
-
-				const error = (await errorOf()) as DiagnosticsError;
-
-				expect(error.diagnostics[0].message).toContain(
-					"Stop it, set a servePort in places/arena/default.rogen.json"
-				);
-			});
-		});
-
 		it("should serve only the named configs", async () => {
 			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
 
@@ -260,38 +214,6 @@ describe("CoreServeService", () => {
 
 			expect(error).toEqual(
 				new UsageError("--port takes a number from 1 to 65535.")
-			);
-		});
-
-		it("should refuse two configs on one port, naming them and the fix", async () => {
-			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
-			await memFs.writeFile("/repo/shop/default.rogen.json", place());
-
-			const error = await errorOf({ refs: ["lobby", "shop"] });
-
-			expect(error).toBeInstanceOf(UsageError);
-			expect(error.message).toBe(
-				"lobby/default.rogen.json and shop/default.rogen.json both serve on port 34872. Give each its own servePort in its config, or serve one at a time, as 'rogen serve lobby'."
-			);
-		});
-
-		it("should ask for one project when a port is given to several", async () => {
-			for (const name of ["lobby", "shop", "arena"])
-				await memFs.writeFile(
-					`/repo/${name}/default.rogen.json`,
-					place()
-				);
-
-			const error = await errorOf({
-				refs: ["arena", "lobby", "shop"],
-				serverArgs: ["--port", "40000"],
-			});
-
-			expect(error).toEqual(
-				new UsageError(
-					"--port names one server's port, and this serves arena/default.rogen.json, lobby/default.rogen.json and shop/default.rogen.json.",
-					"Serve one at a time, as 'rogen serve <project> --port <port>', or give each its own servePort in its config."
-				)
 			);
 		});
 
@@ -867,32 +789,6 @@ describe("CoreServeService", () => {
 			]);
 		});
 
-		it("should give each server the port it serves on, so a place without a servePort is not left on Rojo's default", async () => {
-			await memFs.writeFile(
-				"/repo/default.rogen.json",
-				config({ name: "Game", placePaths: ["places/*"] })
-			);
-			await memFs.createDirectory("/repo/places/lobby");
-			await memFs.createDirectory("/repo/places/arena");
-
-			expect((await start()).isOk()).toBe(true);
-
-			expect(processes.spawned.map(({ args }) => args)).toEqual([
-				[
-					"serve",
-					"places/arena/default.project.json",
-					"--port",
-					"34872",
-				],
-				[
-					"serve",
-					"places/lobby/default.project.json",
-					"--port",
-					"34873",
-				],
-			]);
-		});
-
 		it("should not start Rojo 7.7.0 on Windows for a file with a glob that starts with ../", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
@@ -1248,25 +1144,6 @@ describe("CoreServeService", () => {
 					"default.project.json (ended)",
 					"default.project.json",
 				]);
-			});
-
-			it("should keep a server where it is, and refuse once, when its config moves it to the port of another server it runs", async () => {
-				await lobby();
-				await start(both);
-
-				await lobby(34872);
-				await settle();
-				await memFs.writeFile("/repo/src/B.luau", "");
-				await settle();
-
-				expect(spawnedProjects()).toEqual([
-					"default.project.json",
-					"lobby/default.project.json",
-				]);
-				expect(changes).toEqual([
-					"refused Lobby: Port 34872 is taken by the server of default.rogen.json, so lobby/default.rogen.json can't be served there. Set a servePort in lobby/default.rogen.json, or serve it on its own, as 'rogen serve lobby'.",
-				]);
-				expect(stops).toEqual([]);
 			});
 
 			it("should keep a server where it is when its config moves it to a port another program holds", async () => {

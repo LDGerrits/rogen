@@ -31,7 +31,6 @@ describe("ConfigChanges", () => {
 		options: {
 			language?: Language;
 			spec?: DirectorySpec;
-			place?: boolean;
 			routed?: boolean;
 		} = {}
 	) => {
@@ -41,8 +40,7 @@ describe("ConfigChanges", () => {
 			directoryOf(options.spec),
 			edit,
 			options.language ?? new Luau(),
-			options.routed ?? true,
-			options.place
+			options.routed ?? true
 		).apply(request);
 		return { plan, edit };
 	};
@@ -255,121 +253,6 @@ describe("ConfigChanges", () => {
 			await expect(
 				apply({ packages: ["Nope"] }, CONFIG, { spec: wally })
 			).rejects.toThrow("not a folder to mount");
-		});
-	});
-
-	describe("places", () => {
-		it("should list places, plan the first one and keep the code where it is", async () => {
-			const { plan } = await apply({ places: true });
-
-			expect(plan.config?.changes).toEqual(["added placePaths places/*"]);
-			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				"places/game/default.rogen.json",
-				"my-game.code-workspace",
-			]);
-			expect(plan.directories).toEqual(["places/game/src"]);
-			expect(plan.edits[0]).toContain(
-				"src stays the code every place shares"
-			);
-		});
-
-		it("should say a project that lists places has them", async () => {
-			const { plan } = await apply(
-				{ places: true },
-				'{ "placePaths": ["places/*"] }'
-			);
-
-			expect(plan.config).toBeUndefined();
-			expect(plan.notes[0]).toContain("lists places already");
-		});
-
-		it("should refuse for a compiled language", async () => {
-			await expect(
-				apply({ places: true }, CONFIG, {
-					language: new RobloxTs({}, true),
-				})
-			).rejects.toThrow("isn't set up for roblox-ts");
-		});
-
-		it("should refuse to turn several places back into one", async () => {
-			await expect(apply({ places: false })).rejects.toThrow(
-				"--no-places"
-			);
-		});
-
-		it("should refuse when the root serves a port that a place would own", async () => {
-			await expect(
-				apply({ places: true }, '{ "routes": {}, "servePort": 4000 }')
-			).rejects.toThrow("servePort");
-		});
-
-		it("should add the places a workspace file lacks", async () => {
-			await write("default.rogen.json", '{ "placePaths": ["places/*"] }');
-			await write("places/lobby/default.rogen.json", "{}");
-			await write(
-				"my-game.code-workspace",
-				'{ "folders": [{ "path": "." }] }'
-			);
-
-			const { plan } = await apply(
-				{ workspace: true },
-				'{ "placePaths": ["places/*"] }'
-			);
-
-			expect(plan.files).toEqual([
-				expect.objectContaining({
-					fileName: "my-game.code-workspace",
-					addition: "places/lobby",
-				}),
-			]);
-		});
-	});
-
-	describe("a place", () => {
-		const inPlace = { place: true };
-
-		it("should add and take off source paths of its own", async () => {
-			const { plan } = await apply(
-				{ sourcePaths: ["lib"], unsourcePaths: ["src"] },
-				'{ "servePort": 34872 }',
-				inPlace
-			);
-
-			expect(plan.config?.content).toContain('"sourcePaths": [');
-			expect(plan.config?.changes).toEqual([
-				"added sourcePaths lib",
-				"removed sourcePaths src",
-			]);
-		});
-
-		it("should set its sync path and place IDs", async () => {
-			const { plan } = await apply(
-				{ syncPath: "out/", placeIds: [123] },
-				"{}",
-				inPlace
-			);
-
-			expect(plan.config?.changes).toEqual([
-				"added syncPath",
-				"added servePlaceIds",
-			]);
-			expect(plan.config?.content).toContain('"syncPath": "out"');
-		});
-
-		it("should clear its place IDs", async () => {
-			const { plan } = await apply(
-				{ placeIds: [] },
-				'{ "servePlaceIds": [1] }',
-				inPlace
-			);
-
-			expect(plan.config?.changes).toEqual(["removed servePlaceIds"]);
-		});
-
-		it("should send the areas of the root to the root", async () => {
-			await expect(
-				apply({ routes: ["server"] }, "{}", inPlace)
-			).rejects.toThrow("--route is for the project root");
 		});
 	});
 });

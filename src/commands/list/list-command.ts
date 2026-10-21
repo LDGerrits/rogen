@@ -9,7 +9,6 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { configsOf } from "../../domain/config/resolved-config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
@@ -60,11 +59,7 @@ registerCommand(
 			const broken = ListLog.failure(entries);
 			const serveService = accessor.get(ServeService);
 			const projectFiles = entries.flatMap((entry) =>
-				entry.status === "valid"
-					? configsOf(entry, entry.scope).map(
-							({ projectFile }) => projectFile
-						)
-					: []
+				entry.status === "valid" ? [entry.config.projectFile] : []
 			);
 			const served = await serveService.servedBy(projectFiles);
 			const serving: ServingByConfig = new Map(
@@ -75,22 +70,15 @@ registerCommand(
 			const problems = new Map<string, Diagnostic[]>();
 			for (const entry of entries)
 				if (entry.status === "valid") {
-					const projects = configsOf(entry, entry.scope);
-					const files = new Set(
-						projects.map(({ projectFile }) => projectFile)
-					);
 					problems.set(
 						entry.file,
 						uniqueDiagnostics([
-							...(
-								await Promise.all(
-									projects.map((project) =>
-										buildService.missingSourcePaths(project)
-									)
-								)
-							).flat(),
-							...stale.filter(({ resource }) =>
-								files.has(resource)
+							...(await buildService.missingSourcePaths(
+								entry.config
+							)),
+							...stale.filter(
+								({ resource }) =>
+									resource === entry.config.projectFile
 							),
 						])
 					);

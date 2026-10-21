@@ -201,7 +201,7 @@ const available = has("bash") && has("git") && has("jq");
 		expect(reply?.decision).toBe("block");
 	});
 
-	it("should do nothing in a folder below the config, which a bare command no longer searches up from", () => {
+	it("should check a changed file from a folder below the config, which its path finds", () => {
 		write("src/sub/Buy@sever.luau");
 
 		const { reply } = stop(
@@ -210,7 +210,38 @@ const available = has("bash") && has("git") && has("jq");
 			{ CLAUDE_PROJECT_DIR: undefined }
 		);
 
-		expect(reply).toBeUndefined();
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should answer for a changed file of a place from the repo root, and skip shared code that no config covers", () => {
+		fs.rmSync(path.join(dir, "project/default.rogen.json"));
+		fs.rmSync(path.join(dir, "project/src"), { recursive: true });
+		const routes = {
+			Server: "ServerScriptService",
+			"*": "ReplicatedStorage/Shared",
+		};
+		write(
+			"places/lobby/default.rogen.json",
+			JSON.stringify({
+				name: "Lobby",
+				sourcePaths: ["../shared/src", "src"],
+				routes,
+			})
+		);
+		git("add", "-A");
+		git("commit", "-qm", "places");
+		write("places/lobby/src/Buy@sever.luau");
+		write("places/shared/src/Stray@sever.luau");
+
+		const { exit, reply, report } = stop();
+
+		expect(exit).toBe(0);
+		expect(reply?.decision).toBe("block");
+		expect(report).toEqual([
+			expect.stringMatching(
+				/^places\/lobby\/src\/Buy@sever\.luau - warning: .*\(route\.strayAt\)$/
+			),
+		]);
 	});
 
 	it("should not count a report as given when the reply could not be made", () => {

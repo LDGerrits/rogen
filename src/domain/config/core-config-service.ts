@@ -13,6 +13,8 @@ import {
 	ConfigFileCheck,
 	ReloadableSelection,
 	ConfigService,
+	ConfigCover,
+	CoveredTargets,
 	EnclosingConfigs,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
@@ -56,13 +58,7 @@ export class CoreConfigService implements ConfigService {
 	): Promise<Result<ReloadableSelection, Error>> {
 		if (discovered.isErr()) return err(discovered.error);
 
-		const {
-			home: directory,
-			files,
-			noneNamed,
-			scopes,
-			notes,
-		} = discovered.value;
+		const { home: directory, files, noneNamed, notes } = discovered.value;
 		const opened = await Promise.all(
 			files.map((file) => ManagedConfig.open(file, this.loader))
 		);
@@ -74,14 +70,59 @@ export class CoreConfigService implements ConfigService {
 				noneNamed && !files.some(isProjectFileConfig)
 					? { directory, list: () => this.firstConfigIn(directory) }
 					: undefined,
-				notes,
-				scopes
+				notes
 			)
 		);
 	}
 
 	private async firstConfigIn(directory: string): Promise<string[]> {
 		return (await this.discovery.defaultConfigs(directory)).slice(0, 1);
+	}
+
+	async selectCovering(
+		targets: readonly (string | undefined)[]
+	): Promise<Result<CoveredTargets, Error>> {
+		const selections = new Map<string, ReloadableSelection>();
+		const found = new Map<string, { indexes: number[]; whole: boolean }>();
+		const uncovered: number[] = [];
+		for (const [index, target] of targets.entries()) {
+			let cover: ConfigCover | undefined;
+			if (target === undefined) {
+				const here = await this.select([]);
+				if (here.isErr()) return here;
+				cover = { file: here.value.entries[0].file, whole: false };
+				selections.set(cover.file, here.value);
+			} else cover = await this.discovery.coverOf(target);
+			if (!cover) {
+				uncovered.push(index);
+				continue;
+			}
+			if (!selections.has(cover.file)) {
+				const selection = await this.select([cover.file]);
+				if (selection.isErr()) return selection;
+				selections.set(cover.file, selection.value);
+			}
+			const group = found.get(cover.file) ?? {
+				indexes: [],
+				whole: false,
+			};
+			found.set(cover.file, {
+				indexes: [...group.indexes, index],
+				whole: group.whole || cover.whole,
+			});
+		}
+		return ok({
+			groups: [...found].map(([file, { indexes, whole }]) => ({
+				selection: selections.get(file)!,
+				indexes,
+				whole,
+			})),
+			uncovered,
+		});
+	}
+
+	coverOf(target: string): Promise<ConfigCover | undefined> {
+		return this.discovery.coverOf(target);
 	}
 
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined> {

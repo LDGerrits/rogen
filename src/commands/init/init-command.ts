@@ -141,13 +141,6 @@ const InitOptions = [
 			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
 	},
 	{
-		name: "places",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
-	},
-	{
 		name: "agent-rules",
 		type: "boolean",
 		negatable: true,
@@ -181,21 +174,6 @@ const InitOptions = [
 		description:
 			"Start a project in a folder below another default.rogen.json, which a run that can't ask refuses otherwise.",
 	},
-	{
-		name: "place-listing",
-		type: "string",
-		values: ["glob", "folder"],
-		description:
-			"With a place folder: list every folder beside it in the config's placePaths (the default), or only this one.",
-	},
-	{
-		name: "place-id",
-		type: "string",
-		multiple: true,
-		placeholder: "id",
-		description:
-			"With a place folder: a place ID that the place's server is for, so a Studio on another place refuses to connect; repeat for several, or none. None when not given.",
-	},
 ] as const;
 
 /** The flags, as the choices `init` is not to ask about. Their values were checked against `values` when the line was parsed. */
@@ -206,8 +184,6 @@ function choicesOf(
 		kind: options.kind as InitChoices["kind"],
 		skipGit: options["skip-git"],
 		nested: options.nested,
-		placeListing: options["place-listing"] as InitChoices["placeListing"],
-		placeIds: options["place-id"],
 		agentRules: options["agent-rules"],
 		rojo: options.rojo,
 		plugin: options["studio-plugin"],
@@ -223,7 +199,6 @@ function choicesOf(
 		unsourcePaths: options["no-source-path"],
 		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
-		places: options.places,
 		customise: options.customise,
 	};
 }
@@ -234,15 +209,14 @@ registerCommand(
 			super({
 				id: "init",
 				metadata: {
-					summary:
-						"Writes a starting default.rogen.json, or adds a place to one",
+					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when a default.rogen.json lies above the folder.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there.",
 					args: [
 						{
 							name: "path",
 							description:
-								"The folder to start in, made when it is not there. Below a default.rogen.json it is added as a place of it instead: its own default.rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.",
+								"The folder to start in, made when it is not there.",
 							isOptional: true,
 						},
 					],
@@ -257,7 +231,7 @@ registerCommand(
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",
-						"rogen init places/lobby",
+						"rogen init game",
 					],
 				},
 			});
@@ -268,19 +242,7 @@ registerCommand(
 			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
 			if (line.positionals.length > 1)
-				return err(
-					new UsageError("init takes one folder, the place to add.")
-				);
-			if (
-				line.positionals.length === 0 &&
-				line.options["place-listing"] !== undefined
-			)
-				return err(
-					new UsageError(
-						"--place-listing is for a place folder.",
-						"Give the folder to add, as 'rogen init places/lobby'."
-					)
-				);
+				return err(new UsageError("init takes one folder."));
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const dryRun = Boolean(line.options["dry-run"]);

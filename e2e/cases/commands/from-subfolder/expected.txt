@@ -21,9 +21,10 @@ stderr:
   error: No default.rogen.json or default.project.json in this folder (<dir>/src/Inventory). Run 'rogen init' to create one.
 
 $ rogen where Server/Save.luau
-exit 1
-stderr:
-  error: No default.rogen.json or default.project.json in this folder (<dir>/src/Inventory). Run 'rogen init' to create one.
+exit 0
+stdout:
+  Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
+    require(game:GetService("ServerScriptService").Inventory.Save)
 
 $ rogen build ../../default.project.json --json
 exit 0

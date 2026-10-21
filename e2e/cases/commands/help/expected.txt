@@ -21,7 +21,7 @@ stdout:
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting default.rogen.json, or adds a place to one
+      init           Writes a starting default.rogen.json
       list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
@@ -65,7 +65,7 @@ stdout:
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting default.rogen.json, or adds a place to one
+      init           Writes a starting default.rogen.json
       list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes
@@ -109,7 +109,7 @@ stdout:
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
       help           Prints usage, a command's details, or what a code means
-      init           Writes a starting default.rogen.json, or adds a place to one
+      init           Writes a starting default.rogen.json
       list           Lists the configs here, their files and their ports
       plugin         Installs or removes Rojo's Studio plugin
       serve          Builds, serves with Rojo, and rebuilds on changes

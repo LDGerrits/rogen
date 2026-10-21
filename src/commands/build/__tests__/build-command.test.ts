@@ -47,6 +47,21 @@ describe("build command", () => {
 			abs(folder, "default.rogen.json")
 		);
 
+	it("should refuse a second project, as Rojo's build does, and write nothing", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+
+		const result = await run(
+			new MockConfigService([buildable()]),
+			new MockLogService(),
+			{ positionals: ["a", "b"], options: {} }
+		);
+
+		expect((result as ResultError<Error>).error.message).toContain(
+			"unexpected argument 'b' found: build takes one [PROJECT]"
+		);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
 	it("should write the project file for a config", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 		const logService = new MockLogService();

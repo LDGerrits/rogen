@@ -3,7 +3,6 @@ import "../build-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";
-import { OutputFile } from "../../../domain/build/build.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -13,11 +12,6 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
-
-const isStagingOf = (folder: string, file: string): boolean =>
-	new OutputFile(`/repo/${folder}/default.project.json`).stagingPattern.test(
-		file
-	);
 
 describe("build --watch", () => {
 	let memFs: MemoryFileSystemService;
@@ -337,13 +331,15 @@ describe("build --watch", () => {
 			expect(watch).not.toHaveBeenCalled();
 		});
 
-		it("should refuse to start when a project is named twice", async () => {
-			await writeProjects(["lobby"]);
+		it("should refuse to start when two projects are named, as Rojo's own command does", async () => {
+			await writeProjects(["lobby"], ["arena"]);
 			const watch = jest.spyOn(watcher, "watch");
 
-			const result = await startWatch(["lobby", "lobby"]);
+			const result = await startWatch(["lobby", "arena"]);
 
-			expect(result.isErr()).toBe(true);
+			expect((result as ResultError<Error>).error.message).toContain(
+				"unexpected argument 'arena'"
+			);
 			expect(watch).not.toHaveBeenCalled();
 		});
 
@@ -398,28 +394,25 @@ describe("build --watch", () => {
 		};
 
 		it("should open with a header naming the configs it watches", async () => {
-			await writeProjects(["lobby"], ["arena"]);
+			await writeProjects(["lobby"]);
 
-			await run(["lobby", "arena"]);
+			await run(["lobby"]);
 
 			expect(logService.entries[0]).toEqual({
 				kind: "intro",
-				text: "rogen build --watch · lobby, arena",
+				text: "rogen build --watch · lobby",
 			});
 		});
 
-		it("should print the initial build as one block with a result per config", async () => {
-			await writeProjects(["lobby"], ["arena"]);
+		it("should print the initial build as one block with a result", async () => {
+			await writeProjects(["lobby"]);
 
-			await run(["lobby", "arena"]);
+			await run(["lobby"]);
 
 			expect(blocks()).toEqual([
 				{
 					title: "initial build",
-					lines: [
-						"lobby/default.project.json · wrote",
-						"arena/default.project.json · wrote",
-					],
+					lines: ["lobby/default.project.json · wrote"],
 				},
 			]);
 		});
@@ -448,47 +441,6 @@ describe("build --watch", () => {
 			await settle();
 
 			expect(blocks()).toEqual([]);
-		});
-
-		it("should print a finished rebuild that was waiting behind a slower block when shutdown is requested", async () => {
-			await memFs.createDirectory("/repo/lib");
-			await writeProjects(
-				["lobby"],
-				["arena", { sourcePaths: ["../lib"] }]
-			);
-			await run(["lobby", "arena"]);
-			logService.clear();
-			const gate = new DeferredPromise<void>();
-			const writeFile = memFs.writeFile.bind(memFs);
-			jest.spyOn(memFs, "writeFile").mockImplementation(
-				async (file, content) => {
-					if (isStagingOf("lobby", file)) await gate.p;
-					return writeFile(file, content);
-				}
-			);
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-			await memFs.writeFile("/repo/lib/B.luau", "");
-			await settle();
-			lifecycle.shutdown();
-			gate.complete();
-			await settle();
-
-			expect(blocks()).toEqual([
-				{
-					title: "1 file changed",
-					lines: ["lobby/default.project.json · wrote"],
-				},
-				{
-					title: "1 file changed",
-					lines: ["arena/default.project.json · wrote"],
-				},
-			]);
-			expect(logService.entries.at(-1)).toEqual({
-				kind: "outro",
-				text: "Stopped watching.",
-			});
 		});
 
 		it("should close with a result line when it stops", async () => {

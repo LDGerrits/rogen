@@ -1,0 +1,21 @@
+{
+	"steps": [
+		[
+			"build"
+		],
+		[
+			"build",
+			"places/shared"
+		],
+		[
+			"build",
+			"places/lobbby"
+		],
+		[
+			"serve",
+			"places/lobby",
+			"places/arena"
+		]
+	],
+	"rojo": false
+}

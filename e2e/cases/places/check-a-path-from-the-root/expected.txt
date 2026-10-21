@@ -1,0 +1,25 @@
+$ rogen check places/lobby/src/Buy@sever.luau
+exit 1
+stdout:
+  places/lobby/src/Buy@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check places/shared/src/Stray@sever.luau
+exit 0
+stderr:
+  warning: places/shared/src/Stray@sever.luau: no config covers this file; check it through a place: rogen check places/lobby
+
+$ rogen check places/shared/src/Stray@sever.luau places/lobby/src/Main.server.luau
+exit 0
+stderr:
+  warning: places/shared/src/Stray@sever.luau: no config covers this file; check it through a place: rogen check places/lobby
+
+$ rogen check places/lobby/default.rogen.json
+exit 1
+stdout:
+  places/shared/src/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  places/lobby/src/Buy@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>). Run 'rogen init' to create one.

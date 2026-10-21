@@ -23,6 +23,7 @@ import {
 	WrittenBuild,
 } from "./build.js";
 import {
+	Asked,
 	BuildService,
 	ConfigLocations,
 	Diagnosis,
@@ -33,6 +34,7 @@ import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
+import { LocateTargets } from "./locate/locate-targets.js";
 import { AssembledFile, Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 import { WrittenRecords } from "./written-records.js";
@@ -103,7 +105,7 @@ export class CoreBuildService implements BuildService {
 		);
 		const builds = groupBy(
 			[...unloaded, ...settled],
-			(build) => build.rootFile
+			(build) => build.file
 		);
 		return new BuildRun(
 			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])
@@ -187,6 +189,12 @@ export class CoreBuildService implements BuildService {
 			if (diagnostic) stale.push(diagnostic);
 		}
 		return stale;
+	}
+
+	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {
+		return new LocateTargets(this.fileSystemService)
+			.classify(query)
+			.then(({ asked }) => asked);
 	}
 
 	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {

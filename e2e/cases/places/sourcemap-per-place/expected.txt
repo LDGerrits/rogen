@@ -1,95 +1,37 @@
-$ rogen sourcemap
+$ rogen sourcemap places/lobby
 exit 0
 stdout:
-  Created sourcemap at sourcemap.json
-  Created sourcemap at sourcemap.json
-stderr:
-  rogen sourcemap · Game, Arena, lobby
-  Game
-    default.project.json · wrote
-  Arena
-    places/arena/default.project.json · wrote
-  lobby
-    places/lobby/default.project.json · wrote
-  Built 3 projects.
-  places/arena/sourcemap.json · wrote
-  places/lobby/sourcemap.json · wrote
+  {"name":"Lobby","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"Packages","className":"Folder","children":[{"name":"Roact","className":"ModuleScript","filePaths":["../../Packages/Roact.luau"]}]},{"name":"Shared","className":"Folder","children":[{"name":"Common","className":"Folder","children":[{"name":"Util","className":"ModuleScript","filePaths":["../shared/src/Common/Util.luau"]}]}]}]},{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}
 
-$ rogen sourcemap -o sourcemap.json
+$ rogen sourcemap places/arena -o arena-sourcemap.json
+exit 0
+stdout:
+  Created sourcemap at arena-sourcemap.json
+stderr:
+  rogen sourcemap · Arena
+  places/arena/default.project.json · wrote
+  Built 1 project.
+  arena-sourcemap.json · wrote
+
+$ rogen sourcemap places/arena places/lobby
 exit 2
 stderr:
-  error: -o names one file, and this selects 2 projects. Name one place, or leave -o out to write a sourcemap.json beside each project file.
+  error: unexpected argument 'places/lobby' found: sourcemap takes one [PROJECT]. Usage: rogen sourcemap [OPTIONS] [PROJECT]
 
-$ rogen sourcemap places/arena
-exit 0
-stdout:
-  {"name":"Arena","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"Packages","className":"Folder","children":[{"name":"Roact","className":"ModuleScript","filePaths":["../../Packages/Roact.luau"]}]},{"name":"Shared","className":"Folder","children":[{"name":"Common","className":"Folder","children":[{"name":"Util","className":"ModuleScript","filePaths":["../../src/Common/Util.luau"]}]},{"name":"Rules","className":"ModuleScript","filePaths":["src/Rules.luau"]}]}]},{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}
-
-$ rogen sourcemap --json
-exit 0
+$ rogen sourcemap places/lobby --json
+exit 2
 stdout:
   {
-    "changed": true,
-    "configs": [
-      {
-        "config": "Game",
-        "file": "<dir>/default.rogen.json",
-        "projectFile": "<dir>/default.project.json",
-        "outcome": "unchanged",
-        "diagnostics": []
-      },
-      {
-        "config": "Arena",
-        "file": "<dir>/places/arena/default.rogen.json",
-        "projectFile": "<dir>/places/arena/default.project.json",
-        "outcome": "unchanged",
-        "diagnostics": []
-      },
-      {
-        "config": "lobby",
-        "file": "<dir>/places/lobby/default.rogen.json",
-        "projectFile": "<dir>/places/lobby/default.project.json",
-        "outcome": "unchanged",
-        "diagnostics": []
-      }
-    ],
-    "sourcemaps": [
-      {
-        "command": "sourcemap",
-        "output": "<dir>/places/arena/sourcemap.json",
-        "outcome": "built",
-        "project": "<dir>/places/arena/default.project.json",
-        "messages": [
-          {
-            "severity": "info",
-            "text": "Created sourcemap at sourcemap.json"
-          }
-        ]
-      },
-      {
-        "command": "sourcemap",
-        "output": "<dir>/places/lobby/sourcemap.json",
-        "outcome": "built",
-        "project": "<dir>/places/lobby/default.project.json",
-        "messages": [
-          {
-            "severity": "info",
-            "text": "Created sourcemap at sourcemap.json"
-          }
-        ]
-      }
-    ]
+    "error": {
+      "kind": "usage",
+      "message": "Without -o the sourcemap is printed, which leaves no room for --json: give -o <file>."
+    }
   }
 
 written:
-  default.project.json
+  arena-sourcemap.json
   places/arena/default.project.json
-  places/arena/sourcemap.json
   places/lobby/default.project.json
-  places/lobby/sourcemap.json
 
-places/arena/sourcemap.json:
-{"name":"Arena","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"Packages","className":"Folder","children":[{"name":"Roact","className":"ModuleScript","filePaths":["../../Packages/Roact.luau"]}]},{"name":"Shared","className":"Folder","children":[{"name":"Common","className":"Folder","children":[{"name":"Util","className":"ModuleScript","filePaths":["../../src/Common/Util.luau"]}]},{"name":"Rules","className":"ModuleScript","filePaths":["src/Rules.luau"]}]}]},{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}
-
-places/lobby/sourcemap.json:
-{"name":"lobby","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"Packages","className":"Folder","children":[{"name":"Roact","className":"ModuleScript","filePaths":["../../Packages/Roact.luau"]}]},{"name":"Shared","className":"Folder","children":[{"name":"Common","className":"Folder","children":[{"name":"Util","className":"ModuleScript","filePaths":["../../src/Common/Util.luau"]}]}]}]},{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}
+arena-sourcemap.json:
+{"name":"Arena","className":"DataModel","filePaths":["default.project.json"],"children":[{"name":"ReplicatedStorage","className":"ReplicatedStorage","children":[{"name":"Packages","className":"Folder","children":[{"name":"Roact","className":"ModuleScript","filePaths":["../../Packages/Roact.luau"]}]},{"name":"Shared","className":"Folder","children":[{"name":"Common","className":"Folder","children":[{"name":"Util","className":"ModuleScript","filePaths":["../shared/src/Common/Util.luau"]}]},{"name":"Rules","className":"ModuleScript","filePaths":["src/Rules.luau"]}]}]},{"name":"ServerScriptService","className":"ServerScriptService","children":[{"name":"Main","className":"Script","filePaths":["src/Main.server.luau"]}]}]}

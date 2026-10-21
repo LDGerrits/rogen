@@ -17,9 +17,6 @@ export interface InitChoices {
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
 	readonly nested?: boolean;
-	readonly placeListing?: "glob" | "folder";
-	/** Place IDs, or `none`. */
-	readonly placeIds?: readonly string[];
 	readonly agentRules?: boolean;
 	/** Whether to set Rojo up: pin it with the toolchain manager, or install Rokit and then pin it. */
 	readonly rojo?: boolean;
@@ -42,8 +39,6 @@ export interface InitChoices {
 	readonly unmatched?: "shared" | "leave";
 	/** Whether a new place starts with the Greeter sample. */
 	readonly sample?: boolean;
-	/** Whether a new project is several places under `places/`, rather than one. */
-	readonly places?: boolean;
 	/** Asks every question at once in a terminal, with no summary of the plan first. */
 	readonly customise?: boolean;
 }
@@ -87,7 +82,7 @@ export interface SummaryRow {
 }
 
 /** What the plan does, which words the question that accepts it. */
-export type InitPurpose = "create" | "change" | "place";
+export type InitPurpose = "create" | "change";
 
 export interface InitPlan {
 	readonly directory: string;

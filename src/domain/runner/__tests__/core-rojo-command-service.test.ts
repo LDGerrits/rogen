@@ -227,39 +227,6 @@ describe("CoreRojoCommandService", () => {
 		);
 	});
 
-	describe("with places", () => {
-		const places = () =>
-			new MockConfigSelection(
-				[
-					mockEntry({ hasPlaces: true }, "/repo/default.rogen.json"),
-					mockEntry(
-						{ isPlace: true, rootFile: "/repo/default.rogen.json" },
-						"/repo/places/lobby/default.rogen.json"
-					),
-					mockEntry(
-						{ isPlace: true, rootFile: "/repo/default.rogen.json" },
-						"/repo/places/arena/default.rogen.json"
-					),
-				],
-				"/repo"
-			);
-
-		it("should leave out the root that lists them, which is the sum of them", () => {
-			expect(service.projects(places()).map(({ file }) => file)).toEqual([
-				"/repo/places/lobby/default.rogen.json",
-				"/repo/places/arena/default.rogen.json",
-			]);
-		});
-
-		it("should count the places alone when it says to name one", () => {
-			const chosen = service.choose(places(), "upload");
-
-			expect((chosen as ResultError<Error>).error.message).toBe(
-				"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a default.rogen.json."
-			);
-		});
-	});
-
 	it("should end Rojo when the signal aborts", async () => {
 		const controller = new AbortController();
 		const running = service.run(selection(), {

@@ -170,26 +170,12 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-const wholeConfigSchemas: Readonly<Record<string, JSONSchema>> = {
-	placePaths: {
-		...strings,
-		description:
-			"Folder globs, relative to this file, of the places this config " +
-			"is shared by. Each matching folder is a place: it inherits this " +
-			"config, adds its own code, and gets its own project file in " +
-			"its folder. The config itself is never served; its places are.",
-	},
-};
-
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
-export const rogenKeys: readonly string[] = [
-	...Object.keys(rogenSchemas),
-	...Object.keys(wholeConfigSchemas),
-];
+export const rogenKeys: readonly string[] = Object.keys(rogenSchemas);
 
 export const configSchema: JSONSchema = {
 	type: "object",
-	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
+	properties: { ...rojoFields, ...rogenSchemas },
 };
 
 const removedFields: Readonly<Record<string, string>> = {
@@ -211,6 +197,8 @@ const removedFields: Readonly<Record<string, string>> = {
 	outFile: "Rogen writes default.project.json beside default.rogen.json.",
 	exclude:
 		'"globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo.',
+	placePaths:
+		"A place is a folder with its own complete default.rogen.json. Name the place: rogen serve places/lobby",
 	rootDirs: 'It is called "sourcePaths" now.',
 	syncDir: 'It is called "syncPath" now.',
 };

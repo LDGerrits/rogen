@@ -1,0 +1,25 @@
+{
+	"steps": [
+		[
+			"check",
+			"places/lobby/src/Buy@sever.luau"
+		],
+		[
+			"check",
+			"places/shared/src/Stray@sever.luau"
+		],
+		[
+			"check",
+			"places/shared/src/Stray@sever.luau",
+			"places/lobby/src/Main.server.luau"
+		],
+		[
+			"check",
+			"places/lobby/default.rogen.json"
+		],
+		[
+			"check"
+		]
+	],
+	"rojo": false
+}

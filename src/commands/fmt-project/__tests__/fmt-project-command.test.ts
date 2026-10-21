@@ -53,15 +53,9 @@ describe("fmt-project command", () => {
 		expect(logService.texts("print")).toEqual([]);
 	});
 
-	it("should format every place of a root, and the root", async () => {
+	it("should format the config of a place it is given, and not the one at the root", async () => {
 		await harness.fs.createDirectory("/repo/places/lobby");
-		await harness.fs.writeFile(
-			"/repo/default.rogen.json",
-			JSON.stringify({
-				placePaths: ["places/*"],
-				name: "Game",
-			})
-		);
+		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
 		await harness.fs.writeFile(
 			"/repo/places/lobby/default.rogen.json",
 			JSON.stringify({
@@ -71,35 +65,11 @@ describe("fmt-project command", () => {
 			})
 		);
 
-		await fmt();
-
-		expect(logService.texts("print")).toContain(
-			"formatted default.rogen.json"
-		);
-		expect(logService.texts("print")).toContain(
-			"formatted places/lobby/default.rogen.json"
-		);
-	});
-
-	it("should format only the place it is given when the root doesn't load", async () => {
-		await harness.fs.createDirectory("/repo/places/lobby");
-		await harness.fs.writeFile(
-			"/repo/default.rogen.json",
-			'{ "placePaths": ["places/*"], "name": "Game", "routes": 5 }'
-		);
-		await harness.fs.writeFile(
-			"/repo/places/lobby/default.rogen.json",
-			JSON.stringify({ sourcePaths: ["src"], name: "Lobby" })
-		);
-
 		await fmt("places/lobby");
 
-		expect(logService.texts("print")).toContain(
-			"formatted places/lobby/default.rogen.json"
-		);
-		expect(logService.texts("print")).not.toContain(
-			"formatted default.rogen.json"
-		);
+		expect(logService.texts("print")).toEqual([
+			"formatted places/lobby/default.rogen.json",
+		]);
 	});
 
 	it("should tell each file's outcome with --json", async () => {

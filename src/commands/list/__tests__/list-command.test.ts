@@ -206,26 +206,6 @@ describe("list command", () => {
 		);
 	});
 
-	it("should give each place the Rojo command that serves it with --json, and none to a config that lists places", async () => {
-		await write("default.rogen.json", { placePaths: ["places/*"] });
-		await fs.createDirectory("/repo/places/lobby");
-
-		await run({ json: true });
-
-		const [config] = JSON.parse(logService.texts("print")[0]).configs as {
-			rojo?: string[];
-			places: { rojo?: string[] }[];
-		}[];
-		expect(config.rojo).toBeUndefined();
-		expect(config.places[0].rojo).toEqual([
-			"rojo",
-			"serve",
-			"/repo/places/lobby/default.project.json",
-			"--port",
-			"34872",
-		]);
-	});
-
 	it("should print no extends, extended by or template line", async () => {
 		await write("default.rogen.json", {
 			routes: { "*": "Workspace" },
@@ -417,7 +397,6 @@ describe("list command", () => {
 						config: "Game",
 						file: "/repo/default.rogen.json",
 						status: "valid",
-						served: true,
 						projectName: "Game",
 						sourcePaths: ["/repo/src", "/repo/lobby"],
 						commonRoot: "/repo",
@@ -455,16 +434,6 @@ describe("list command", () => {
 			});
 		});
 
-		it("should say every config that loads is served", async () => {
-			await write("lobby/default.rogen.json", {});
-			await write("arena/default.rogen.json", {});
-
-			await run({ _: ["lobby", "arena"], json: true });
-
-			expect(entry("lobby")).toMatchObject({ served: true });
-			expect(entry("arena")).toMatchObject({ served: true });
-		});
-
 		it("should print the named projects in the order they are named", async () => {
 			await write("lobby/default.rogen.json", {});
 			await write("arena/default.rogen.json", {});
@@ -489,7 +458,6 @@ describe("list command", () => {
 				config: "b",
 				file: "/repo/b/default.rogen.json",
 				status: "broken",
-				served: false,
 				diagnostics: [
 					expect.objectContaining({
 						file: "/repo/b/default.rogen.json",
@@ -618,164 +586,86 @@ describe("list command", () => {
 			]);
 		});
 	});
-	describe("places", () => {
+	describe("a place", () => {
 		beforeEach(async () => {
-			await write("default.rogen.json", {
-				name: "Game",
-				placePaths: ["places/*"],
+			await fs.createDirectory("/repo/places/shared/src");
+			await fs.createDirectory("/repo/places/lobby/src");
+			await write("places/lobby/default.rogen.json", {
+				name: "Lobby",
+				sourcePaths: ["../shared/src", "src"],
 				routes: {
 					Server: "ServerScriptService",
 					"*": "ReplicatedStorage",
 				},
+				servePort: 34873,
+				servePlaceIds: [1818, 2020],
 			});
-			await write("places/lobby/default.rogen.json", { name: "Lobby" });
-			await fs.createDirectory("/repo/places/arena");
 		});
 
-		it("should list the config, then each place with its folder and port", async () => {
-			const result = await run();
+		it("should list its source paths in full, and the port and place IDs it pins", async () => {
+			const result = await run({ _: ["places/lobby"] });
 
 			expect(result.isOk()).toBe(true);
-			expect(steps()).toEqual([
-				"default.rogen.json",
-				"places/arena (place)",
-				"places/lobby (place)",
-			]);
-			expect(under("default.rogen.json")).toEqual([
+			expect(steps()).toEqual(["places/lobby/default.rogen.json"]);
+			expect(under("places/lobby/default.rogen.json")).toEqual([
 				[
-					"source paths: src",
+					"source paths: places/shared/src, places/lobby/src",
 					"routes:\n  Server -> ServerScriptService\n  * -> ReplicatedStorage",
 					"sync path: (none)",
-					"places: arena, Lobby",
-					"project file: default.project.json",
+					"project file: places/lobby/default.project.json (port 34873, place IDs 1818, 2020)",
+					"rojo: rojo serve places/lobby/default.project.json --port 34873",
 				].join("\n"),
 			]);
-			expect(under("places/arena (place)")).toEqual([
-				[
-					"source paths: src, places/arena/src",
-					"routes: same as Game",
-					"sync path: (none)",
-					"project file: places/arena/default.project.json (port 34872)",
-					"rojo: rojo serve places/arena/default.project.json --port 34872",
-				].join("\n"),
-			]);
-			expect(under("places/lobby (place)")[0]).toContain("(port 34873)");
 		});
 
-		describe("with the code the places share", () => {
-			beforeEach(async () => {
-				await write("default.rogen.json", {
-					name: "Game",
-					sourcePaths: ["places/shared/src"],
-					placePaths: ["places/*"],
-					routes: {
-						Server: "ServerScriptService",
-						"*": "ReplicatedStorage",
-					},
-				});
-				await fs.createDirectory("/repo/places/shared/src");
+		it("should give no port to a place that pins none", async () => {
+			await write("places/arena/default.rogen.json", {
+				name: "Arena",
+				routes: { "*": "ReplicatedStorage" },
 			});
 
-			it("should list the folder as shared code, not as a place", async () => {
-				await run();
+			await run({ _: ["places/arena"] });
 
-				expect(steps()).toEqual([
-					"default.rogen.json",
-					"places/arena (place)",
-					"places/lobby (place)",
-				]);
-				expect(under("default.rogen.json")[0]).toContain(
-					"places: arena, Lobby\nshared code: places/shared\n"
-				);
-			});
-
-			it("should name it in --json", async () => {
-				await run({ json: true });
-
-				const [config] = JSON.parse(logService.texts("print")[0])
-					.configs as { sharedCode: string[]; places: unknown[] }[];
-				expect(config.sharedCode).toEqual(["/repo/places/shared"]);
-				expect(config.places).toHaveLength(2);
-			});
-		});
-
-		it("should say which place IDs belong to which port", async () => {
-			await write("places/lobby/default.rogen.json", {
-				name: "Lobby",
-				servePlaceIds: [1818, 2020],
-			});
-
-			await run();
-
-			expect(under("places/lobby (place)")[0]).toContain(
-				"places/lobby/default.project.json (port 34873, place IDs 1818, 2020)"
-			);
-			expect(under("places/arena (place)")[0]).toContain(
-				"default.project.json (port 34872)"
+			expect(under("places/arena/default.rogen.json")[0]).toContain(
+				"project file: places/arena/default.project.json\n"
 			);
 		});
 
-		it("should give each place its place IDs with --json, and none to a place without", async () => {
-			await write("places/lobby/default.rogen.json", {
-				name: "Lobby",
-				servePlaceIds: [1818, 2020],
+		it("should list nothing for the folder of the shared code, which has no config", async () => {
+			const result = await run({ _: ["places/shared"] });
+
+			expect(result.isErr()).toBe(true);
+			expect((result as { error: Error }).error.message).toContain(
+				'No default.rogen.json or default.project.json in "places/shared"'
+			);
+		});
+
+		it("should close with the configs", async () => {
+			await run({ _: ["places/lobby"] });
+
+			expect(logService.texts("outro")).toEqual(["1 config."]);
+		});
+
+		it("should give the Rojo command that serves it with --json", async () => {
+			await run({ _: ["places/lobby"], json: true });
+
+			const [config] = JSON.parse(logService.texts("print")[0])
+				.configs as {
+				port: number;
+				placeIds: number[];
+				rojo: string[];
+			}[];
+			expect(config).toMatchObject({
+				port: 34873,
+				placeIds: [1818, 2020],
+				rojo: [
+					"rojo",
+					"serve",
+					"/repo/places/lobby/default.project.json",
+					"--port",
+					"34873",
+				],
 			});
-
-			await run({ json: true });
-
-			const { configs } = JSON.parse(logService.texts("print")[0]) as {
-				configs: {
-					places: {
-						place: string;
-						port: number;
-						placeIds?: number[];
-					}[];
-				}[];
-			};
-			expect(
-				configs[0].places.map(({ place, port, placeIds }) => [
-					place,
-					port,
-					placeIds,
-				])
-			).toEqual([
-				["arena", 34872, undefined],
-				["Lobby", 34873, [1818, 2020]],
-			]);
-		});
-
-		it("should close with the configs and the places", async () => {
-			await run();
-
-			expect(logService.texts("outro")).toEqual([
-				"1 config and 2 places.",
-			]);
-		});
-
-		it("should list each place with its port with --json", async () => {
-			await run({ json: true });
-
-			const { configs } = JSON.parse(logService.texts("print")[0]) as {
-				configs: {
-					served: boolean;
-					places: {
-						place: string;
-						folder: string;
-						port: number;
-					}[];
-				}[];
-			};
-			expect(configs[0].served).toBe(false);
-			expect(
-				configs[0].places.map(({ place, folder, port }) => [
-					place,
-					folder,
-					port,
-				])
-			).toEqual([
-				["arena", "/repo/places/arena", 34872],
-				["Lobby", "/repo/places/lobby", 34873],
-			]);
 		});
 	});
 });

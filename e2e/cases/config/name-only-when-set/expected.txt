@@ -1,4 +1,8 @@
-$ rogen build named unnamed
+$ rogen build named
+exit 0
+stdout: (not shown)
+
+$ rogen build unnamed
 exit 0
 stdout: (not shown)
 

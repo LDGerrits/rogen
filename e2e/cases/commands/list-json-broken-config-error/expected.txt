@@ -7,7 +7,6 @@ stdout:
         "config": "project",
         "file": "<dir>/default.rogen.json",
         "status": "broken",
-        "served": false,
         "diagnostics": [
           {
             "file": "<dir>/default.rogen.json",

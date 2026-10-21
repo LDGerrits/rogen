@@ -1,0 +1,12 @@
+{
+	"steps": [
+		[
+			"fmt-project",
+			"places/lobby"
+		]
+	],
+	"rojo": false,
+	"show": [
+		"places/lobby/default.rogen.json"
+	]
+}

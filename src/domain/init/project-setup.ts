@@ -27,7 +27,6 @@ import { ProjectReader } from "./project-reader.js";
 import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
-import { StarterPlaces, StartingPlaces } from "./starter-places.js";
 import { SyncSteps } from "./sync-steps.js";
 import { UnmountedFiles } from "./unmounted-files.js";
 import { ProjectTree, TreeChoice, TreePlan } from "./tree-plan.js";
@@ -50,8 +49,6 @@ export interface ProjectChoices {
 	readonly templateFiles?: readonly PlannedFile[];
 	/** Whether the Greeter sample is written. */
 	readonly sample?: boolean;
-	/** The places a project of several starts with. */
-	readonly places?: StartingPlaces;
 	/** The tool that writes the project's own files first, and what runs once the files are in. */
 	readonly scaffold?: {
 		readonly tool: PlannedScaffold;
@@ -128,29 +125,9 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const darklua = usesDarklua ? directory.workspace.darklua : undefined;
 		questions.usesDarklua = usesDarklua;
 
-		const several = await this.severalPlaces(
-			kind,
-			language,
-			darklua,
-			starter !== undefined
-		);
-		if (several === undefined) return ok(undefined);
-		const places = several
-			? await new StarterPlaces(this.fileSystemService).plan(
-					directory.path,
-					starter && ((place, shared) => starter.place(place, shared))
-				)
-			: undefined;
-		if (places && questions.choices.sourcePaths !== undefined)
-			throw new UsageError(
-				`--source-path would change nothing, since several places share ${places.sharedSourcePath}.`
-			);
-
-		const sourcePaths = places
-			? [places.sharedSourcePath]
-			: (await this.startsUnrouted(kind))
-				? []
-				: await questions.sourcePaths(directory, language);
+		const sourcePaths = (await this.startsUnrouted(kind))
+			? []
+			: await questions.sourcePaths(directory, language);
 		if (sourcePaths === undefined) return ok(undefined);
 
 		const chosen = await questions.tree(directory);
@@ -158,9 +135,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const tree = await this.resolveTree(chosen, kind);
 		if (tree.isErr()) return tree;
 
-		let syncPath = places
-			? undefined
-			: new SyncSteps(language, darklua).syncPath;
+		let syncPath = new SyncSteps(language, darklua).syncPath;
 		if (darklua) {
 			const answer = await questions.syncPath(directory, [
 				...sourcePaths,
@@ -175,11 +150,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			? await questions.mounts(directory, language)
 			: [];
 		if (mounted === undefined) return ok(undefined);
-		// Each place compiles into its own include, so the root's is never there.
-		const mounts =
-			starter && places
-				? mounted.map((mount) => ({ ...mount, optional: true }))
-				: mounted;
+		const mounts = mounted;
 
 		const routes = routed
 			? await questions.routes(
@@ -223,8 +194,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const sampleFiles = sample
 			? [
 					...sampleOf.feature(sourcePaths[0]),
-					...(places ? sampleOf.place(places.placeSourcePath) : []),
-					sampleOf.readme(sourcePaths[0], places?.place),
+					sampleOf.readme(sourcePaths[0]),
 				]
 			: [];
 
@@ -255,12 +225,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			kind,
 			skipGit,
 			sample,
-			...(places && { places }),
 			...(starter && {
-				scaffold: {
-					tool: starter.scaffold(),
-					after: places ? [starter.scripts(places.place)] : [],
-				},
+				scaffold: { tool: starter.scaffold(), after: [] },
 			}),
 			luauLsp: await this.files.luauLspIsSetUp(),
 			...(processed &&
@@ -273,59 +239,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						kind,
 						path.basename(directory.path),
 						processed,
-						starter
-							? RobloxTsStarter.ignored(places !== undefined)
-							: []
+						starter ? RobloxTsStarter.ignored(false) : []
 					),
 					tree.value,
 					skipGit
 				),
 				...darkluaConfig,
 				...sampleFiles,
-				...(places?.files ?? []),
-				...(starter && places
-					? [starter.rootTsconfig(places.sharedSourcePath)]
-					: []),
 			]),
 		});
-	}
-
-	/** Why a new project can't be several places, which `--places` would be an error for. */
-	private noPlacesBecause(
-		kind: InitKind,
-		language: Language,
-		darklua: Darklua | undefined,
-		scaffolded: boolean
-	): string | undefined {
-		const given = this.questions.choices.projectFile;
-		if (kind !== "place") return `is for a place, not for a ${kind}.`;
-		const later =
-			"Start with one place, then add more with 'rogen init places/<name>'.";
-		if (language.compiler && !scaffolded)
-			return `isn't set up for ${language.copy.label} yet. ${later}`;
-		if (darklua) return `isn't set up with Darklua yet. ${later}`;
-		if (this.directory.hasHandWrittenProject && given !== "new")
-			return `starts a new tree, and ${DEFAULT_PROJECT_FILE} is here. Pass --project-file new, or leave --places out to lift it.`;
-		return undefined;
-	}
-
-	/** Whether the new project is several places; `undefined` when the user cancelled. */
-	private async severalPlaces(
-		kind: InitKind,
-		language: Language,
-		darklua: Darklua | undefined,
-		scaffolded: boolean
-	): Promise<boolean | undefined> {
-		const problem = this.noPlacesBecause(
-			kind,
-			language,
-			darklua,
-			scaffolded
-		);
-		if (problem === undefined) return this.questions.places(this.directory);
-		if (this.questions.choices.places === true)
-			throw new UsageError(`--places ${problem}`);
-		return false;
 	}
 
 	/** The tool that starts a new place of `language` in a folder with nothing of its own: no code, no `package.json` or `tsconfig.json` (a language that is present has its own) for the tool to write over, and no project file to lift. */
@@ -467,9 +389,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				}),
 				...tree.fields,
 				...(routes && { sourcePaths: [...sourcePaths], routes }),
-				...(choices.places && {
-					placePaths: [...choices.places.placePaths],
-				}),
 				...(defaultSyncPath && { syncPath: defaultSyncPath }),
 			},
 			choices.tree.kind === "lift"
@@ -478,9 +397,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		);
 		this.summarise(builder, choices, routes);
 		for (const sourcePath of sourcePaths) builder.addDirectory(sourcePath);
-		for (const directory of choices.places?.directories ?? [])
-			builder.addDirectory(directory);
-		for (const note of choices.places?.notes ?? []) builder.addNote(note);
 		if (choices.scaffold) {
 			builder.setScaffold(choices.scaffold.tool);
 			for (const command of choices.scaffold.after)
@@ -519,9 +435,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		}
 		if (choices.sample)
 			builder.addNote(
-				choices.places
-					? `Wrote the Greeter sample: the feature in ${choices.places.sharedSourcePath}, which every place shares, and Game in ${choices.places.placeSourcePath}. Pass --no-sample for empty source folders.`
-					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty ${sourcePaths[0]}.`
+				`Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty ${sourcePaths[0]}.`
 			);
 		this.planNextSteps(builder, choices, tree);
 	}
@@ -536,7 +450,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			syncPath,
 			tree,
 			mounts,
-			places,
 			sample,
 		}: ProjectChoices,
 		routes: Record<string, string> | undefined
@@ -544,11 +457,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		builder.addSummary(
 			"Project",
 			[
-				kind === "place"
-					? places
-						? "several places"
-						: "one place"
-					: `a ${kind}`,
+				kind === "place" ? "one place" : `a ${kind}`,
 				language.copy.label,
 				...(tree.kind === "lift" ? [`lifting ${tree.from}`] : []),
 				...(sample ? ["sample Greeter"] : []),
@@ -598,7 +507,6 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			sourcePaths,
 			syncPath,
 			tree: chosen,
-			places,
 			luauLsp,
 			gitignoreHint,
 			scaffold,
@@ -615,20 +523,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			return;
 		}
 		const compiled = this.directory.defaultSourcePath(language);
-		if (
-			compiler &&
-			!(scaffold && places) &&
-			sourcePaths.length > 0 &&
-			compiled !== sourcePaths[0]
-		) {
+		if (compiler && sourcePaths.length > 0 && compiled !== sourcePaths[0]) {
 			builder.addSetup(compiler.sourcePathStep(sourcePaths[0]));
 		}
 		builder.addEdit(...tree.edits);
 		if (gitignoreHint) builder.addEdit(gitignoreHint);
-		if (places)
-			builder.addEdit(
-				"Add another place with 'rogen init places/lobby'."
-			);
 		if (takesRoutes(chosen))
 			builder.addEdit(
 				`Add your own routes under "routes" in ${DEFAULT_CONFIG_FILE}.`

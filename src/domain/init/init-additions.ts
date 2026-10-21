@@ -1,6 +1,5 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
-import { UsageError } from "../../base/errors.js";
 import { AgentFile } from "./agent/agent-file.js";
 import { AgentHooks } from "./agent/agent-hooks.js";
 import { AgentSetup } from "./agent-setup.js";
@@ -98,27 +97,14 @@ export class InitAdditions {
 	/** The tools a change that turns Darklua on needs pinned. */
 	toolsForChanges(): Setup<unknown>[] {
 		const { darklua, rojo, plugin } = this.questions.choices;
-		return darklua === true &&
-			!this.changer?.place &&
-			rojo !== true &&
-			plugin !== true
+		return darklua === true && rojo !== true && plugin !== true
 			? [this.tools]
 			: [];
 	}
 
 	/** What a run with no flags does: the safe additions it can make without asking in a run that can't ask, else what the user picks from the areas that have something to change. `nothing` when there is none. */
-	async choose(): Promise<
-		| {
-				readonly setups: Setup<unknown>[];
-				/** The setups change the config of a place, so the plan is the place's folder. */
-				readonly inPlace: boolean;
-		  }
-		| { readonly place: string }
-		| "nothing"
-		| undefined
-	> {
+	async choose(): Promise<Setup<unknown>[] | "nothing" | undefined> {
 		const { questions, agentFile, hooks, tools, changer } = this;
-		const own = changer?.place === true;
 		const agents = new AgentSetup(agentFile, hooks, questions);
 		const { choices } = questions;
 		const wantsRules = !agentFile.hasBlock && choices.agentRules !== false;
@@ -149,9 +135,6 @@ export class InitAdditions {
 		];
 		if (!questions.interactive) {
 			const setups: Setup<unknown>[] = [
-				...(changer && areas.some(({ id }) => id === "workspace")
-					? [changer.setup(async () => ({ workspace: true }))]
-					: []),
 				...(!wantsRules
 					? []
 					: [
@@ -162,29 +145,25 @@ export class InitAdditions {
 						]),
 				...(wantsTools && (await tools.canPin()) ? [tools] : []),
 			];
-			return setups.length > 0 ? { setups, inPlace: false } : "nothing";
+			return setups.length > 0 ? setups : "nothing";
 		}
 		if (areas.length === 0) return "nothing";
 		const rows: [string, string][] = [
 			...(changer?.describe() ?? []),
-			...(own
-				? []
-				: ([
-						[
-							"Agents",
-							agentFile.hasBlock
-								? `rules in ${agentFile.blockFileName}`
-								: "no rules",
-						],
-						[
-							"Tools",
-							this.pinnedIn
-								? `Rojo pinned in ${toPosix(path.relative(this.directory, this.pinnedIn))}`
-								: (await tools.rojoMissing())
-									? "Rojo not set up"
-									: "Rojo installed",
-						],
-					] as [string, string][])),
+			[
+				"Agents",
+				agentFile.hasBlock
+					? `rules in ${agentFile.blockFileName}`
+					: "no rules",
+			],
+			[
+				"Tools",
+				this.pinnedIn
+					? `Rojo pinned in ${toPosix(path.relative(this.directory, this.pinnedIn))}`
+					: (await tools.rojoMissing())
+						? "Rojo not set up"
+						: "Rojo installed",
+			],
 		];
 		const width = Math.max(...rows.map(([name]) => name.length));
 		const picked = await questions.whatToChange(
@@ -199,27 +178,14 @@ export class InitAdditions {
 				? await changer.ask(picked)
 				: {};
 		if (request === undefined) return undefined;
-		if ("place" in request) return request;
 		const changing = Object.keys(request).length > 0 && changer;
-		if (
-			own &&
-			changing &&
-			(picked.includes("agents") || picked.includes("tools"))
-		)
-			throw new UsageError(
-				"The changes of a place and the additions of the project root are made from different folders.",
-				"Run init in the root for agent rules, the hook and Rojo."
-			);
-		return {
-			inPlace: own && Boolean(changing),
-			setups: [
-				...(changing ? [changer.setup(async () => request)] : []),
-				...(picked.includes("agents") ? [agents] : []),
-				...(picked.includes("tools") ||
-				("darklua" in request && request.darklua === true && !own)
-					? [tools]
-					: []),
-			],
-		};
+		return [
+			...(changing ? [changer.setup(async () => request)] : []),
+			...(picked.includes("agents") ? [agents] : []),
+			...(picked.includes("tools") ||
+			("darklua" in request && request.darklua === true)
+				? [tools]
+				: []),
+		];
 	}
 }

@@ -1,8 +1,28 @@
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
-import { buildableConfig } from "../config-service.js";
+import { UsageError } from "../../../base/errors.js";
+import { buildableConfig, singleProjectError } from "../config-service.js";
 import { brokenEntry, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
+	describe("singleProjectError", () => {
+		it("should be nothing for none or one project", () => {
+			expect(singleProjectError("build", [])).toBeUndefined();
+			expect(
+				singleProjectError("build", ["places/lobby"])
+			).toBeUndefined();
+		});
+
+		it("should name the second project and the usage", () => {
+			const error = singleProjectError("serve", ["a", "b", "c"]);
+
+			expect(error).toBeInstanceOf(UsageError);
+			expect(error?.reason).toBe(
+				"unexpected argument 'b' found: serve takes one [PROJECT]."
+			);
+			expect(error?.hint).toBe("Usage: rogen serve [OPTIONS] [PROJECT]");
+		});
+	});
+
 	describe("buildableConfig", () => {
 		const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
 

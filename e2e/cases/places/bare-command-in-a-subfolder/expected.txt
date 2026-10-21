@@ -1,0 +1,11 @@
+$ rogen build
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>/places/lobby/src). Run 'rogen init' to create one.
+
+$ rogen build ..
+exit 0
+stdout: (not shown)
+
+written:
+  places/lobby/default.project.json

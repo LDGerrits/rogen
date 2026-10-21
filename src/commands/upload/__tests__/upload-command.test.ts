@@ -32,7 +32,8 @@ describe("upload command", () => {
 
 	const start = (
 		config: MockConfigService,
-		options: CommandLine["options"] = { asset_id: "123" }
+		options: CommandLine["options"] = { asset_id: "123" },
+		positionals: string[] = []
 	) => {
 		const log = new MockLogService();
 		const running = commandHarness({
@@ -40,7 +41,7 @@ describe("upload command", () => {
 			log,
 			config,
 			processes,
-		}).run("upload", { positionals: [], options });
+		}).run("upload", { positionals, options });
 		return { log, running };
 	};
 
@@ -100,16 +101,15 @@ describe("upload command", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it("should say to name one place when it selects several, before it writes anything", async () => {
+	it("should refuse a second project, as Rojo's upload does, before it writes anything", async () => {
 		const { running } = start(
-			new MockConfigService([
-				buildable("places/lobby", { isPlace: true }),
-				buildable("places/arena", { isPlace: true }),
-			])
+			new MockConfigService([buildable("places/lobby")]),
+			{ asset_id: "123" },
+			["places/lobby", "places/arena"]
 		);
 
-		expect(((await running) as ResultError<Error>).error.message).toBe(
-			"'rojo upload' runs on one project, and this selects 2. Name one: a folder with a default.rogen.json."
+		expect(((await running) as ResultError<Error>).error.message).toContain(
+			"unexpected argument 'places/arena' found: upload takes one [PROJECT]"
 		);
 		expect(await fs.exists(abs("places/lobby/default.project.json"))).toBe(
 			false

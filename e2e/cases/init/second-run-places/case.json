@@ -1,5 +1,0 @@
-{
-	"steps": [["init", "-y", "--places"], ["list"], ["build", "places/game"]],
-	"output": ["init"],
-	"show": ["default.rogen.json", "places/game/default.rogen.json", "project.code-workspace"]
-}

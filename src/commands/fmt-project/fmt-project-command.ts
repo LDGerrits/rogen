@@ -1,4 +1,3 @@
-import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { relativeTo, toNative } from "../../base/path.js";
 import {
@@ -6,8 +5,6 @@ import {
 	ConfigEntry,
 	ConfigService,
 } from "../../domain/config/config-service.js";
-import { DEFAULT_CONFIG_FILE_NAMES } from "../../domain/config/config.js";
-import { configsOf } from "../../domain/config/resolved-config.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -130,23 +127,8 @@ registerCommand(
 			entries: readonly ConfigEntry[],
 			fileSystemService: FileSystemService
 		): Promise<string[]> {
-			const files = new Set(
-				entries.flatMap((entry) => {
-					if (entry.status === "valid")
-						return configsOf(entry, entry.scope).map(
-							({ file }) => file
-						);
-					return entry.scope
-						? entry.scope.flatMap((folder) =>
-								DEFAULT_CONFIG_FILE_NAMES.map((name) =>
-									path.join(folder, name)
-								)
-							)
-						: [entry.file];
-				})
-			);
 			const found = [];
-			for (const file of files)
+			for (const { file } of entries)
 				if (await fileSystemService.exists(file)) found.push(file);
 			return found;
 		}

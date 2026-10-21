@@ -1,4 +1,4 @@
 $ rogen init lobby shop
 exit 2
 stderr:
-  error: init takes one folder, the place to add.
+  error: init takes one folder.

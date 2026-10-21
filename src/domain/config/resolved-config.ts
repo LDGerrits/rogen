@@ -30,16 +30,7 @@ interface ResolvedConfigFields {
 	readonly ignored: readonly string[];
 	/** Absolute. */
 	readonly syncPath?: string;
-	/** The absolute POSIX folder the patterns of `syncRules` are relative to, when it is not the config's own: a place takes the rules of the config that lists it. */
-	readonly syncRulesDir?: string;
 	readonly warnings: readonly Diagnostic[];
-	/** The config file that lists this folder as a place; for anything else, `file` itself. */
-	readonly rootFile?: string;
-	readonly isPlace?: boolean;
-	/** Whether the config lists places; such a config is never served. */
-	readonly hasPlaces?: boolean;
-	/** The port this place is served on when no `servePort` says otherwise. */
-	readonly placePort?: number;
 }
 
 /** A config with its values validated: paths are absolute and route targets are parsed. */
@@ -52,10 +43,6 @@ export class ResolvedConfig {
 	readonly ignored: readonly string[];
 	readonly syncPath?: string;
 	readonly warnings: readonly Diagnostic[];
-	readonly rootFile: string;
-	readonly isPlace: boolean;
-	readonly hasPlaces: boolean;
-	readonly placePort?: number;
 	readonly keys: DeclaredKeys;
 	/** The project's `syncRules` in front of Rojo's. */
 	readonly syncRules: SyncRules;
@@ -69,15 +56,10 @@ export class ResolvedConfig {
 		this.ignored = fields.ignored;
 		this.syncPath = fields.syncPath;
 		this.warnings = fields.warnings;
-		this.rootFile = fields.rootFile ?? fields.file;
-		this.isPlace = fields.isPlace ?? false;
-		this.hasPlaces = fields.hasPlaces ?? false;
-		this.placePort = fields.placePort;
 		this.keys = new DeclaredKeys(fields.routes.keys());
 		this.syncRules = SyncRules.following(
 			SyncRules.read(fields.project.syncRules).rules,
-			toPosix(this.projectDir),
-			fields.syncRulesDir
+			toPosix(this.projectDir)
 		);
 	}
 
@@ -89,13 +71,6 @@ export class ResolvedConfig {
 	/** Tells this project from every other that is served or built: its config file. */
 	get id(): string {
 		return this.file;
-	}
-
-	/** The port a place is served on unless a flag says otherwise: its `servePort`, else the one its position in the list gives. */
-	get placeServePort(): number | undefined {
-		return this.isPlace
-			? (this.project.servePort ?? this.placePort)
-			: undefined;
 	}
 
 	get projectDir(): string {
@@ -131,33 +106,7 @@ export class ResolvedConfig {
 	}
 }
 
-/** A `.rogen.json` resolved, with the places it lists. */
+/** A `.rogen.json` resolved. */
 export interface ResolvedConfigFile {
 	readonly config: ResolvedConfig;
-	/** The places it lists, sorted by path. */
-	readonly places?: readonly ResolvedConfigFile[];
-	/** The folders its `placePaths` match that hold its source paths: the code the places share, which are not places. */
-	readonly sharedFolders?: readonly string[];
-}
-
-export function placesIn(
-	resolved: ResolvedConfigFile,
-	scope?: readonly string[]
-): ResolvedConfigFile[] {
-	return (resolved.places ?? []).filter(
-		({ config }) =>
-			scope === undefined ||
-			scope.some((folder) => samePath(config.projectDir, folder))
-	);
-}
-
-/** Every config a resolved file holds, its own first, then each place's; a `scope` limits the places to those folders. */
-export function configsOf(
-	resolved: ResolvedConfigFile,
-	scope?: readonly string[]
-): ResolvedConfig[] {
-	return [
-		...(scope === undefined ? [resolved.config] : []),
-		...placesIn(resolved, scope).flatMap((place) => configsOf(place)),
-	];
 }

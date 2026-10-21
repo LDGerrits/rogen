@@ -74,7 +74,7 @@ export class CoreServeService implements ServeService {
 		const selection = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const served = configs.value.filter(({ hasPlaces }) => !hasPlaces);
+		const served = configs.value;
 		const executable = await this.rojoRunner.find(
 			selection.home,
 			served[0]?.file ?? selection.home,
@@ -99,11 +99,6 @@ export class CoreServeService implements ServeService {
 		if (ports.portError) return err(ports.portError);
 		const targets: ServeTarget[] = [];
 		for (const config of served) targets.push(ports.targetOf(config));
-
-		const portForSeveral = ports.portForSeveral(targets);
-		if (portForSeveral) return err(portForSeveral);
-		const clash = ports.clashOf(targets);
-		if (clash) return err(clash);
 
 		const checked: ServeTarget[] = [];
 		const taken: Diagnostic[] = [];

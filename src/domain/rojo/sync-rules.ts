@@ -1,7 +1,6 @@
 import { isGlobsetMatch } from "../../base/glob.js";
 import path from "path";
 import { isObject } from "../../base/objects.js";
-import { joinPosix } from "../../base/path.js";
 
 export const SYNC_RULE_USES = [
 	"serverScript",
@@ -94,26 +93,16 @@ export const DEFAULT_SYNC_RULES: readonly SyncRule[] = [
 export class SyncRules {
 	static readonly DEFAULT = new SyncRules(DEFAULT_SYNC_RULES);
 
-	/** `dir` is the absolute POSIX folder the paths to match are relative to; the patterns of the first `ownCount` rules are relative to `ownDir`. */
+	/** `dir` is the absolute POSIX folder the paths to match are relative to. */
 	constructor(
 		private readonly rules: readonly SyncRule[],
 		private readonly ownCount = 0,
-		private readonly dir = "",
-		readonly ownDir = dir
+		readonly dir = ""
 	) {}
 
-	/** `own` in front of Rojo's rules, the first match winning; their patterns are relative to `ownDir`, which differs from `dir` for rules a place inherits. */
-	static following(
-		own: readonly SyncRule[],
-		dir: string,
-		ownDir = dir
-	): SyncRules {
-		return new SyncRules(
-			[...own, ...DEFAULT_SYNC_RULES],
-			own.length,
-			dir,
-			ownDir
-		);
+	/** `own` in front of Rojo's rules, the first match winning. */
+	static following(own: readonly SyncRule[], dir: string): SyncRules {
+		return new SyncRules([...own, ...DEFAULT_SYNC_RULES], own.length, dir);
 	}
 
 	/** The rules a project's `syncRules` holds, and what is wrong with the ones it can't read. */
@@ -176,15 +165,8 @@ export class SyncRules {
 
 	/** The first rule that takes `filePath`, a path relative to the folder the rules are written for, written with `/`. */
 	match(filePath: string): SyncRuleMatch | undefined {
-		const fromOwnDir =
-			this.ownDir === this.dir
-				? filePath
-				: path.posix.relative(
-						this.ownDir,
-						joinPosix(this.dir, filePath)
-					);
-		const index = this.rules.findIndex((rule, at) =>
-			SyncRules.takes(rule, at < this.ownCount ? fromOwnDir : filePath)
+		const index = this.rules.findIndex((rule) =>
+			SyncRules.takes(rule, filePath)
 		);
 		if (index === -1) return undefined;
 		const rule = this.rules[index];

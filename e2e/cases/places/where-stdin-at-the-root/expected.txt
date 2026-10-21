@@ -3,10 +3,10 @@ stdin:
   ReplicatedStorage.Shared.Common.Util:4: attempt to call nil
   ServerScriptService.Main:9: attempt to index nil
   Script 'ServerScriptService.Main', Line 9
-exit 0
+exit 1
 stdout:
-  src/Common/Util.luau:4: attempt to call nil
+  ReplicatedStorage.Shared.Common.Util:4: attempt to call nil
   ServerScriptService.Main:9: attempt to index nil
   Script 'ServerScriptService.Main', Line 9
 stderr:
-  warning: ServerScriptService.Main is placed by more than one file, so it is left as it is: Arena: places/arena/src/Main.server.luau; lobby: places/lobby/src/Main.server.luau.
+  error: No default.rogen.json or default.project.json in this folder (<dir>). Run 'rogen init' to create one.

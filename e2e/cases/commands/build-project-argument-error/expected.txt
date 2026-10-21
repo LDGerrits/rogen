@@ -16,7 +16,7 @@ stderr:
 $ rogen build lobby lobby
 exit 2
 stderr:
-  error: "lobby" was named more than once; each config can only be built once per invocation.
+  error: unexpected argument 'lobby' found: build takes one [PROJECT]. Usage: rogen build [OPTIONS] [PROJECT]
 
 $ rogen build lobby --json
 exit 0

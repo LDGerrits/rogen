@@ -4,7 +4,8 @@ import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
@@ -81,7 +82,7 @@ registerCommand(
 						"Writes the project files; with -o or -p, builds with Rojo",
 					description:
 						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
-					args: ConfigArguments,
+					args: ProjectArgument,
 					options: BuildOptions,
 					output: {
 						document: buildDocumentShape,
@@ -113,6 +114,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof BuildOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("build", line.positionals);
+			if (tooMany) return err(tooMany);
 			const flags = this.rojoFlags(line);
 			if (flags.isErr()) return flags;
 			const cwd = accessor.get(EnvironmentService).cwd;

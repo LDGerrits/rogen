@@ -305,10 +305,8 @@ describe("help command", () => {
 			expect(description.join(" ")).toBe(
 				registry.getCommand("build")?.metadata.description
 			);
-			expect(usage).toBe(
-				"USAGE:\n    rogen build [OPTIONS] [PROJECT]..."
-			);
-			expect(printed()).toContain("<PROJECT>...");
+			expect(usage).toBe("USAGE:\n    rogen build [OPTIONS] [PROJECT]");
+			expect(printed()).toContain("<PROJECT>");
 			expect(printed()).toContain("A folder, a .rogen.json file");
 		});
 

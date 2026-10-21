@@ -1,4 +1,0 @@
-{
-	"steps": [["build", "lobby", "match"]],
-	"output": ["build"]
-}

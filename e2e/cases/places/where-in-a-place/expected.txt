@@ -1,11 +1,15 @@
-$ rogen where ../../src/Common/Util.luau
+$ rogen where ../shared/src/Common/Util.luau
 exit 0
-stdout:
-  ../../src/Common/Util.luau -> ReplicatedStorage/Shared/Common/Util · route * (fallback)
-    require(game:GetService("ReplicatedStorage").Shared.Common.Util)
+stderr:
+  warning: ../shared/src/Common/Util.luau: no config covers this file; see where it lands through a place: rogen where places/lobby
 
 $ rogen where src/Main.server.luau
 exit 0
 stdout:
   src/Main.server.luau -> ServerScriptService/Main · route server (suffix)
     no require by this path: a script runs on its own and is not a module
+
+$ rogen where ServerScriptService.Main
+exit 0
+stdout:
+  src/Main.server.luau -> ServerScriptService/Main · route server (suffix)

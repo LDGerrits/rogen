@@ -34,7 +34,8 @@ describe("syncback command", () => {
 
 	const start = (
 		options: CommandLine["options"] = { input: "game.rbxl" },
-		prompt = new MockPromptService([], false)
+		prompt = new MockPromptService([], false),
+		positionals: string[] = []
 	) => {
 		const log = new MockLogService();
 		const running = commandHarness({
@@ -43,7 +44,7 @@ describe("syncback command", () => {
 			config: new MockConfigService([buildable()]),
 			processes,
 			prompt,
-		}).run("syncback", { positionals: [], options });
+		}).run("syncback", { positionals, options });
 		return { log, running };
 	};
 
@@ -75,6 +76,19 @@ describe("syncback command", () => {
 			"--input names the place or model file to bring changes from, and Rojo needs it."
 		);
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
+	it("should refuse a second project, as Rojo's syncback does, and run nothing", async () => {
+		const { running } = start(
+			{ input: "game.rbxl", "non-interactive": true },
+			undefined,
+			["a", "b"]
+		);
+
+		expect(((await running) as ResultError<Error>).error.message).toContain(
+			"unexpected argument 'b' found: syncback takes one [PROJECT]"
+		);
+		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should refuse to write without -y when it cannot ask", async () => {

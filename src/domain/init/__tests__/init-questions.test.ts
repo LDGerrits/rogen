@@ -1030,16 +1030,6 @@ describe("InitQuestions changing a project", () => {
 		).toEqual({ add: [], remove: ["old"] });
 	});
 
-	it("should offer to add a place, or to turn one place into several", async () => {
-		expect(await askedWith(["several"]).questions.changePlaces(false)).toBe(
-			"several"
-		);
-		const { prompts, questions } = askedWith([]);
-
-		expect(await questions.changePlaces(true)).toBe("add");
-		expect(prompts.asked).toEqual([]);
-	});
-
 	it("should tick every package folder found", async () => {
 		const { questions } = askedWith([ACCEPT_DEFAULT]);
 

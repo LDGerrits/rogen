@@ -52,11 +52,6 @@ stdout:
         "flag": "--darklua"
       },
       {
-        "question": "places",
-        "value": false,
-        "flag": "--places"
-      },
-      {
         "question": "sourcePaths",
         "value": [
           "src"

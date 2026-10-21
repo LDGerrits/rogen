@@ -29,7 +29,7 @@ export class ManagedConfig {
 	}
 
 	private static identityOf(loaded: LoadedConfig): string | undefined {
-		return safeStringify([loaded.value, loaded.placeValues]);
+		return safeStringify(loaded.value);
 	}
 
 	get entry(): ConfigEntry {
