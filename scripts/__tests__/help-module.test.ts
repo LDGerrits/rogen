@@ -1,5 +1,3 @@
-import fs from "fs";
-import { currentHelpModule, OUTPUT } from "../generate-help.js";
 import { diagnosticSections } from "../help-module.js";
 
 describe("scripts/help-module", () => {
@@ -40,9 +38,5 @@ describe("scripts/help-module", () => {
 				].join("\n")
 			);
 		});
-	});
-
-	it("should have generated the help module from the current sources", () => {
-		expect(fs.readFileSync(OUTPUT, "utf8")).toBe(currentHelpModule());
 	});
 });

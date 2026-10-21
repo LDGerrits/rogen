@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { pathToFileURL } from "url";
 
 export const PAGE = path.resolve("docs/content/docs/v2/agents.mdx");
 export const OUTPUT = path.resolve("src/domain/init/agent/hook-script.ts");
@@ -21,9 +20,4 @@ export const hookScript = ${JSON.stringify(`${script}\n`)};
 
 export function currentAgentHookModule(): string {
 	return renderAgentHookModule(fs.readFileSync(PAGE, "utf8"));
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-	fs.writeFileSync(OUTPUT, currentAgentHookModule());
-	console.log(`Wrote ${path.relative(process.cwd(), OUTPUT)}`);
 }
