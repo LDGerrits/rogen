@@ -1,5 +1,5 @@
-/** What `init` fills in a template: the project's name, the first place's folder and the source path of a single place. */
-export const PLACEHOLDERS = ["name", "place", "source"] as const;
+/** What `init` fills in a template: the project's name, the first place's folder, the source path of a single place and the command that serves it. */
+export const PLACEHOLDERS = ["name", "place", "source", "serve"] as const;
 
 export type Placeholder = (typeof PLACEHOLDERS)[number];
 

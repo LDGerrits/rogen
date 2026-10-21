@@ -52,7 +52,7 @@ describe("GreeterSample", () => {
 	});
 
 	it("should describe one place in the README, with the commands to build and serve it", () => {
-		const { content } = sample.readme("src");
+		const { content } = sample.readme("src", "rogen serve");
 
 		expect(content).toContain("# game\n");
 		expect(content).toContain(
@@ -63,7 +63,11 @@ describe("GreeterSample", () => {
 	});
 
 	it("should describe several places in the README, with the workspace file and how to add one", () => {
-		const { content } = sample.readme("places/shared/src", "places/game");
+		const { content } = sample.readme(
+			"places/shared/src",
+			"rogen serve places/game",
+			"places/game"
+		);
 
 		expect(content).toContain(
 			"rogen where places/shared/src/Greeter/Shared/Greeting.luau"
@@ -71,6 +75,14 @@ describe("GreeterSample", () => {
 		expect(content).toContain("`game.code-workspace`");
 		expect(content).toContain('rogen build places/game -o "game.rbxlx"');
 		expect(content).toContain("rogen init places/lobby");
+		expect(content).toContain("```bash\nrogen serve places/game\n```");
+		expect(content).toContain("rogen serve places/lobby --port");
+	});
+
+	it("should print the command that serves the project", () => {
+		const { content } = sample.readme("src", "rogen serve dist");
+
+		expect(content).toContain("```bash\nrogen serve dist\n```");
 	});
 
 	describe("for roblox-ts", () => {
@@ -103,7 +115,7 @@ describe("GreeterSample", () => {
 		});
 
 		it("should say to compile before building or serving", () => {
-			const { content } = typescript.readme("src");
+			const { content } = typescript.readme("src", "rogen serve");
 
 			expect(content).toContain("npm run watch");
 			expect(content.indexOf("npm run watch")).toBeLessThan(
@@ -168,8 +180,12 @@ describe("GreeterSample", () => {
 				const files = [
 					...sample.feature("lib"),
 					...sample.place("places/game/src"),
-					sample.readme("lib"),
-					sample.readme("places/shared/src", "places/game"),
+					sample.readme("lib", "rogen serve"),
+					sample.readme(
+						"places/shared/src",
+						"rogen serve places/game",
+						"places/game"
+					),
 				];
 
 				for (const { content } of files)
