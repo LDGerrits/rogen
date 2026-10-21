@@ -12,7 +12,7 @@ import { RojoCompatibility } from "../../domain/runner/rojo-compatibility.js";
 import { CoreToolchainService } from "../../domain/toolchain/core-toolchain-service.js";
 import { ToolchainService } from "../../domain/toolchain/toolchain-service.js";
 import { CoreCommandService } from "../../platform/commands/core-command-service.js";
-import { CommandLine } from "../../platform/environment/args.js";
+import { CommandLine, parseArgs } from "../../platform/environment/args.js";
 import { MockEnvironmentService } from "../../platform/environment/__tests__/mock-environment-service.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { CoreIndexService } from "../../platform/fs/core-index-service.js";
@@ -76,6 +76,14 @@ export interface CommandHarness<L extends LogService> {
 		command: string,
 		line?: Partial<CommandLine>
 	): Promise<Result<void, Error>>;
+}
+
+/** Parses `argv` as `rogen` does, over the commands registered so far. */
+export function parseCommandLine(...argv: string[]) {
+	const registry = Registry.as<CommandRegistry>(Extensions.Commands);
+	return parseArgs(argv, (command) => registry.getOptions(command), [
+		...registry.getCommands().keys(),
+	]);
 }
 
 export function commandHarness(

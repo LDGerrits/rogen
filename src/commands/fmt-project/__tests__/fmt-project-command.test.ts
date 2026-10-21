@@ -1,6 +1,5 @@
-import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
-import { NullLogService } from "../../../platform/log/null-log-service.js";
+import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import {
 	CommandHarness,
 	commandHarness,
@@ -14,16 +13,14 @@ const CONFIG = JSON.stringify({
 });
 
 describe("fmt-project command", () => {
-	let logService: NullLogService;
-	let print: ReturnType<typeof jest.spyOn>;
-	let harness: CommandHarness<NullLogService>;
+	let logService: MockLogService;
+	let harness: CommandHarness<MockLogService>;
 
 	const fmt = (...positionals: string[]) =>
 		harness.run("fmt-project", { positionals });
 
 	beforeEach(() => {
-		logService = new NullLogService();
-		print = jest.spyOn(logService, "print");
+		logService = new MockLogService();
 		harness = commandHarness({ log: logService });
 	});
 
@@ -33,7 +30,7 @@ describe("fmt-project command", () => {
 		const result = await fmt();
 
 		expect(result.isOk()).toBe(true);
-		expect(print).toHaveBeenCalledWith("formatted rogen.json");
+		expect(logService.texts("print")).toContain("formatted rogen.json");
 		expect(
 			Object.keys(
 				JSON.parse(await harness.fs.readFile("/repo/rogen.json"))
@@ -44,12 +41,12 @@ describe("fmt-project command", () => {
 	it("should say nothing when the file is already formatted", async () => {
 		await harness.fs.writeFile("/repo/rogen.json", CONFIG);
 		await fmt();
-		print.mockClear();
+		logService.clear();
 
 		const result = await fmt();
 
 		expect(result.isOk()).toBe(true);
-		expect(print).not.toHaveBeenCalled();
+		expect(logService.texts("print")).toEqual([]);
 	});
 
 	it("should format every place of a root, and the root", async () => {
@@ -72,8 +69,10 @@ describe("fmt-project command", () => {
 
 		await fmt();
 
-		expect(print).toHaveBeenCalledWith("formatted rogen.json");
-		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
+		expect(logService.texts("print")).toContain("formatted rogen.json");
+		expect(logService.texts("print")).toContain(
+			"formatted places/lobby/rogen.json"
+		);
 	});
 
 	it("should format only the place it is given when the root doesn't load", async () => {
@@ -89,8 +88,10 @@ describe("fmt-project command", () => {
 
 		await fmt("places/lobby");
 
-		expect(print).toHaveBeenCalledWith("formatted places/lobby/rogen.json");
-		expect(print).not.toHaveBeenCalledWith("formatted rogen.json");
+		expect(logService.texts("print")).toContain(
+			"formatted places/lobby/rogen.json"
+		);
+		expect(logService.texts("print")).not.toContain("formatted rogen.json");
 	});
 
 	it("should tell each file's outcome with --json", async () => {
@@ -105,9 +106,9 @@ describe("fmt-project command", () => {
 			options: { json: true },
 		});
 
-		const [first, second] = print.mock.calls.map((call: unknown[]) =>
-			JSON.parse(String(call[0]))
-		);
+		const [first, second] = logService
+			.texts("print")
+			.map((text) => JSON.parse(text));
 		expect(first).toEqual({
 			changed: true,
 			files: [
@@ -120,7 +121,7 @@ describe("fmt-project command", () => {
 		});
 		expect(second.changed).toBe(false);
 		expect(second.files[0].outcome).toBe("unchanged");
-		expect(print).toHaveBeenCalledTimes(2);
+		expect(logService.texts("print")).toHaveLength(2);
 	});
 
 	it("should tell a refused file in the document, and exit 1", async () => {
@@ -132,7 +133,7 @@ describe("fmt-project command", () => {
 		});
 
 		expect(result.isErr()).toBe(true);
-		const document = JSON.parse(String(print.mock.calls[0][0]));
+		const document = JSON.parse(logService.texts("print")[0]);
 		expect(document.files[0]).toMatchObject({
 			file: "/repo/rogen.jsonc",
 			outcome: "failed",

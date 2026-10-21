@@ -5,6 +5,7 @@ import { MockProductService } from "../../../platform/product/__tests__/mock-pro
 import {
 	CommandHarness,
 	commandHarness,
+	parseCommandLine,
 } from "../../__tests__/command-harness.js";
 import "../../build/build-command.js";
 import "../../check/check-command.js";
@@ -31,7 +32,6 @@ import {
 import {
 	GlobalOptions,
 	OptionDescriptor,
-	parseArgs,
 } from "../../../platform/environment/args.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
@@ -278,10 +278,6 @@ describe("help command", () => {
 		});
 
 		it("should print the same for 'help build', 'build --help' and 'build -h'", async () => {
-			const parsed = (argv: string[]) =>
-				parseArgs(argv, (id) => registry.getOptions(id), [
-					...registry.getCommands().keys(),
-				]).unwrap();
 			const texts: string[] = [];
 			for (const argv of [
 				["help", "build"],
@@ -289,7 +285,7 @@ describe("help command", () => {
 				["build", "-h"],
 			]) {
 				info.mockClear();
-				const { command, line } = parsed(argv);
+				const { command, line } = parseCommandLine(...argv).unwrap();
 				await harness.run(command, line);
 				texts.push(printed());
 			}
@@ -575,11 +571,7 @@ describe("help command", () => {
 							? [option.values?.[0] ?? "x"]
 							: []),
 					];
-					expect(
-						parseArgs(argv, (id) => registry.getOptions(id), [
-							...registry.getCommands().keys(),
-						]).isOk()
-					).toBe(true);
+					expect(parseCommandLine(...argv).isOk()).toBe(true);
 				}
 			}
 		});

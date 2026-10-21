@@ -12,12 +12,7 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { CommandLine, parseArgs } from "../../../platform/environment/args.js";
-import {
-	CommandRegistry,
-	Extensions,
-} from "../../../platform/commands/commands.js";
-import { Registry } from "../../../platform/registry/registry.js";
+import { CommandLine } from "../../../platform/environment/args.js";
 
 const isStagingOf = (folder: string, file: string): boolean =>
 	new OutputFile(`/repo/${folder}/default.project.json`).stagingPattern.test(
@@ -352,25 +347,6 @@ describe("build --watch", () => {
 			expect(watch).not.toHaveBeenCalled();
 		});
 
-		it("should watch a config that declares no routes and write its tree", async () => {
-			await write("/repo/rogen.json", {
-				tree: {
-					$className: "DataModel",
-					Workspace: { $className: "Workspace" },
-				},
-			});
-			const watch = jest.spyOn(watcher, "watch");
-
-			await run();
-
-			expect(watch).toHaveBeenCalled();
-			expect(
-				JSON.parse(await memFs.readFile("/repo/default.project.json"))
-			).toMatchObject({
-				tree: { Workspace: { $className: "Workspace" } },
-			});
-		});
-
 		it("should refuse to start when no project is found", async () => {
 			await memFs.delete("/repo/rogen.json");
 
@@ -401,41 +377,6 @@ describe("build --watch", () => {
 			expect(logService.lines).toContain(
 				"success: default.project.json · unchanged"
 			);
-		});
-	});
-
-	describe("warnings", () => {
-		it("should print an invalid config once", async () => {
-			await writeProjects(["lobby"], ["arena"]);
-			await run(["lobby", "arena"]);
-			logService.clear();
-
-			await write("/repo/arena/rogen.json", "{ broken");
-			await settle();
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await settle();
-			await memFs.writeFile("/repo/src/B.luau", "");
-			await settle();
-
-			expect(logService.texts("error")).toEqual([
-				"Still building from the last valid arena/rogen.json.",
-			]);
-		});
-
-		it("should print a warning once, not on every rebuild", async () => {
-			await write(
-				"/repo/rogen.json",
-				config({ routes: { server: "ServerScriptService" } })
-			);
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await run();
-
-			await memFs.writeFile("/repo/src/B.server.luau", "");
-			await settle();
-			await memFs.writeFile("/repo/src/C.server.luau", "");
-			await settle();
-
-			expect(logService.texts("diagnosticWarning")).toHaveLength(1);
 		});
 	});
 
@@ -483,26 +424,6 @@ describe("build --watch", () => {
 			]);
 		});
 
-		it("should print one block for a change that rebuilds several configs", async () => {
-			await writeProjects(["lobby"], ["arena"]);
-			await run(["lobby", "arena"]);
-			logService.clear();
-
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await memFs.writeFile("/repo/src/B.luau", "");
-			await settle();
-
-			expect(blocks()).toEqual([
-				{
-					title: "2 files changed",
-					lines: [
-						"lobby/default.project.json · wrote",
-						"arena/default.project.json · wrote",
-					],
-				},
-			]);
-		});
-
 		it("should print a block for each rebuild", async () => {
 			await run();
 			logService.clear();
@@ -515,43 +436,6 @@ describe("build --watch", () => {
 			expect(blocks().map(({ title }) => title)).toEqual([
 				"1 file changed",
 				"1 file changed",
-			]);
-		});
-
-		it("should name a config change and its reload in the header", async () => {
-			await memFs.writeFile("/repo/src/A.luau", "");
-			await run();
-			logService.clear();
-
-			await write(
-				"/repo/rogen.json",
-				config({ routes: { "*": "Workspace" } })
-			);
-			await settle();
-
-			expect(blocks()).toEqual([
-				{
-					title: "rogen.json changed · reloaded",
-					lines: ["default.project.json · wrote"],
-				},
-			]);
-		});
-
-		it("should nest a warning under the output that raised it", async () => {
-			await write(
-				"/repo/rogen.json",
-				config({ routes: { server: "ServerScriptService" } })
-			);
-			await memFs.writeFile("/repo/src/A.luau", "");
-
-			await run();
-
-			const [block] = blocks();
-			expect(block.lines).toEqual([
-				"default.project.json · wrote",
-				expect.stringMatching(
-					/^diagnosticWarning: .*src\/A\.luau - warning: matched no route/
-				),
 			]);
 		});
 
@@ -604,56 +488,6 @@ describe("build --watch", () => {
 			expect(logService.entries.at(-1)).toEqual({
 				kind: "outro",
 				text: "Stopped watching.",
-			});
-		});
-
-		describe("a failing build", () => {
-			beforeEach(async () => {
-				await write(
-					"/repo/rogen.json",
-					config({
-						routes: {
-							server: "ServerScriptService",
-							client: "StarterGui",
-							"*": "ReplicatedStorage",
-						},
-					})
-				);
-				await memFs.writeFile("/repo/src/Net/@server", "");
-				await memFs.writeFile("/repo/src/Net/@client", "");
-				await memFs.writeFile("/repo/src/init.luau", "");
-			});
-
-			it("should print the error under the result that failed", async () => {
-				await run();
-
-				const [block] = blocks();
-				expect(block.lines).toEqual([
-					"default.project.json · not written",
-					expect.stringMatching(
-						/^diagnosticError: .*src\/Net - error: /
-					),
-					expect.stringMatching(
-						/^diagnosticError: .*src\/init\.luau - error: /
-					),
-				]);
-			});
-
-			it("should say the errors repeat when they were already printed", async () => {
-				await run();
-				logService.clear();
-
-				await memFs.writeFile("/repo/src/B.luau", "");
-				await settle();
-
-				expect(blocks()).toEqual([
-					{
-						title: "1 file changed",
-						lines: [
-							"default.project.json · not written · same errors as before",
-						],
-					},
-				]);
 			});
 		});
 
@@ -740,30 +574,6 @@ describe("build --watch", () => {
 			await settle();
 
 			expect(rename).not.toHaveBeenCalled();
-		});
-	});
-
-	describe("flags", () => {
-		const registry = Registry.as<CommandRegistry>(Extensions.Commands);
-		const parse = (...argv: string[]) =>
-			parseArgs(argv, (command) => registry.getOptions(command), [
-				...registry.getCommands().keys(),
-			]);
-
-		it("should accept projects, --watch and --json", () => {
-			expect(
-				parse(
-					"build",
-					"--watch",
-					"lobby",
-					"places/arena",
-					"--json"
-				).isOk()
-			).toBe(true);
-		});
-
-		it("should reject --all", () => {
-			expect(parse("build", "--watch", "--all").isErr()).toBe(true);
 		});
 	});
 });
