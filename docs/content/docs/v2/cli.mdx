@@ -328,7 +328,7 @@ A flag with a value that doesn't fit is a `usage` [error](#errors) whose `hint` 
 
 #### A folder that has a config
 
-`init` starts projects; it never changes a config that exists. In a folder that has a `default.rogen.json`, it fails with [`init.configExists`](/docs/v2/diagnostics#init-configexists) and writes nothing, whatever the flags. To change the routes, the source paths, the packages or Darklua, edit the `.rogen.json` in place, which keeps its comments, then run `rogen check`. A `dist.rogen.json` or `release.rogen.json` is yours to keep in step with it. To add the agent rules or the agent hook to a project later, see [Working with agents](/docs/v2/agents#add-it-to-an-existing-repo); to set Rojo up, see [Installation](/docs/v2/installation).
+`init` starts projects; it never changes a config that exists. In a folder that has a `.rogen.json`, `default.rogen.json` or any other, it fails with [`init.configExists`](/docs/v2/diagnostics#init-configexists) and writes nothing, whatever the flags. To change the routes, the source paths, the packages or Darklua, edit the `.rogen.json` in place, which keeps its comments, then run `rogen check`. A `dist.rogen.json` or `release.rogen.json` is yours to keep in step with it. To add the agent rules or the agent hook to a project later, see [Working with agents](/docs/v2/agents#add-it-to-an-existing-repo); to set Rojo up, see [Installation](/docs/v2/installation).
 
 `--dry-run` (`-n`) plans without writing or building: it prints the files it would write, and with `--json` the document of a real run with `dryRun: true`, `changed: false`, no `built`, and `wouldWrite` for the `outcome` of each file. Run `rogen init --dry-run --json` to see what `init` would do and decide, then pass flags for what to answer.
 
@@ -396,6 +396,7 @@ rogen check
 
 - Run the compiler or processor before `rogen check` when `compiledPath` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the compiled path.
+- A file in the compiled path that no source makes, left over from a source you removed, fails `check` with [`compiled.orphan`](/docs/v2/diagnostics#compiled-orphan) until you delete it or compile from a clean folder.
 - `check` also fails when you commit project files and one is out of date ([`output.differs`](/docs/v2/diagnostics#output-differs)), so no `git diff` step is needed.
 - `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
 - A place file comes from `rojo build` on the project file; see [Place Files](/docs/v2/core-concepts/output#place-files).

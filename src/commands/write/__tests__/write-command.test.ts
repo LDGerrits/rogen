@@ -15,10 +15,13 @@ import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
 
-const config = JSON.stringify({
-	name: "Game",
-	rogen: { sourcePaths: ["src"], routes: { "*": "ReplicatedStorage" } },
-});
+const named = (name: string) =>
+	JSON.stringify({
+		name,
+		rogen: { sourcePaths: ["src"], routes: { "*": "ReplicatedStorage" } },
+	});
+
+const config = named("Game");
 
 describe("write command", () => {
 	let fs: MemoryFileSystemService;
@@ -32,7 +35,7 @@ describe("write command", () => {
 	describe("with no project", () => {
 		beforeEach(async () => {
 			await fs.writeFile(abs("game.rogen.json"), config);
-			await fs.writeFile(abs("lobby.rogen.json"), config);
+			await fs.writeFile(abs("lobby.rogen.json"), named("Lobby"));
 		});
 
 		it("should write the project file of every config of the folder", async () => {
@@ -95,6 +98,7 @@ describe("write command", () => {
 			await fs.writeFile(
 				abs("lobby.rogen.json"),
 				JSON.stringify({
+					name: "Lobby",
 					rogen: {
 						sourcePaths: ["bad"],
 						routes: { "*": "ReplicatedStorage" },
@@ -111,7 +115,7 @@ describe("write command", () => {
 		});
 
 		it("should write only the configs it is given, any number of them", async () => {
-			await fs.writeFile(abs("dist.rogen.json"), config);
+			await fs.writeFile(abs("dist.rogen.json"), named("Dist"));
 			const { run } = commandHarness({ fs });
 
 			const result = await run("write", {
@@ -238,7 +242,7 @@ describe("write command", () => {
 			lifecycle = new MockLifecycleService();
 			log = new MockLogService();
 			await fs.writeFile(abs("game.rogen.json"), config);
-			await fs.writeFile(abs("lobby.rogen.json"), config);
+			await fs.writeFile(abs("lobby.rogen.json"), named("Lobby"));
 		});
 
 		afterEach(async () => {

@@ -112,7 +112,7 @@ $ rogen init broken --non-interactive --skip-git --no-sample
 exit 1
 stdout: (not shown)
 stderr:
-  broken/default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
+  broken/default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
 
 $ rogen init a b
 exit 2

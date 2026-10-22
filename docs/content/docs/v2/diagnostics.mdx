@@ -105,6 +105,26 @@ default.rogen.json:4:3 - error: source path "src/shared" is inside source path "
 
 Remove the inner one, or move it out of the outer one. See [Several Source Paths](/docs/v2/core-concepts/project-layout#several-source-paths).
 
+### `config.identicalConfig` [#config-identicalconfig]
+
+Error. Two configs of one folder are the same in everything but their file name: the same `name`, source paths, routes, tree and every other key. It is a copy that was never edited, so Studio would list two projects of one name that read the same code. Both configs report it.
+
+```
+lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it. (config.identicalConfig)
+```
+
+Edit the copy so it is the place or output it stands for, or delete it. A second output of one game, such as `dist` or `release`, repeats the `name` and changes what differs. See [More Files](/docs/v2/configuration#more-files).
+
+### `config.duplicateName` [#config-duplicatename]
+
+Error. Two configs of one folder have the same `name` and differ only in their source paths. They are two games that Studio and Rojo would list under one name: a place copied, given other source paths, and left with the old name. Both configs report it.
+
+```
+lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are both named "Game" but read other source paths, so Studio and Rojo would list two games under one name. Change "name" in the copy. (config.duplicateName)
+```
+
+Change the `name` of the copy. A config that shares the `name` and differs in its routes, tree, `compiledPath`, `globIgnorePaths` or another key besides the source paths is a second output of the game and passes. See [More Files](/docs/v2/configuration#more-files) and [Several Places](/docs/v2/setups/places).
+
 ### `config.compiledPathOverlapsSourcePath` [#config-compiledpathoverlapssourcepath]
 
 Error. The compiled path is a source path, lies inside one, or contains one. The compiled path is where Darklua or a compiler writes the code the source paths hold, so Rogen would read that output as source and write the project file from it.
@@ -714,6 +734,16 @@ default.project.json - warning: 1 data file was turned into a Lua module under "
 
 Copy the data files unchanged into the compiled path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
 
+### `compiled.orphan` [#compiled-orphan]
+
+Warning. The compiled path holds a file that no source file makes. A compiler or processor doesn't delete what it wrote on an earlier run, so a file whose source you removed or renamed stays. Where a folder collapses into one `$path` (see [Compiled Path](/docs/v2/core-concepts/output#compiled-path)), Rojo syncs every file in it, the stale one too; in a folder that doesn't collapse, Rojo skips it, but it still waits there. There is one warning for each folder, and it lists the first few files:
+
+```
+dist/Inventory - warning: dist/Inventory/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+```
+
+Delete the file, or empty the compiled path and run the compiler or processor again. Rogen matches a file to its source by the name a tool gives it: a roblox-ts `.ts` or `.tsx` compiles to `.luau`, `index.ts` to `init.luau`, and Darklua turns a data file into `.lua`. A source that `globIgnorePaths` leaves out still counts as making its file, and when Rogen cannot tell, it doesn't warn. `rogen check` exits 1 on it; `build` only prints it.
+
 ## Format
 
 ### `format.commentsLost` [#format-commentslost]
@@ -740,13 +770,13 @@ Check that the file is writable and that no other program locks it.
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites or changes one. `init` starts projects, so it stops here and writes nothing, whatever the flags.
+Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, `default` or named, and `init` never overwrites or changes one. `init` starts projects, so it stops here and writes nothing, whatever the flags.
 
 ```
-default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
+default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
 ```
 
-Edit the config in place to change it, then run `rogen check`. To add the agent rules or the agent hook later, see [Working with agents](/docs/v2/agents#add-it-to-an-existing-repo); to set Rojo up, see [Installation](/docs/v2/installation). See [CLI](/docs/v2/cli).
+Edit the config in place to change it, then run `rogen check`. For a new place, copy a config and edit the copy ([Several Places](/docs/v2/setups/places)). To add the agent rules or the agent hook later, see [Working with agents](/docs/v2/agents#add-it-to-an-existing-repo); to set Rojo up, see [Installation](/docs/v2/installation). See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 

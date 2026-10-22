@@ -159,6 +159,7 @@ A second project is a second complete config. `X.rogen.json` writes `X.project.j
 ```
 
 - A file other than `default` must set `name`.
+- Configs of one folder may share a `name`, as these do, when something besides the file name tells them apart. Rogen refuses two that are the same ([`config.identicalConfig`](/docs/v2/diagnostics#config-identicalconfig)) and two that differ only in their source paths ([`config.duplicateName`](/docs/v2/diagnostics#config-duplicatename)): a copy made and not edited.
 - `release` lists `"DevPackages/**"` in `globIgnorePaths`, which drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files).
 - A bare `rogen serve` serves `default.rogen.json`, even when `dist.rogen.json` sits beside it. See [Serving](/docs/v2/core-concepts/output#serving).
 - The files repeat each other and can drift: after you change a route, a source path or the tree in one, make the same change in the siblings that should follow it.
