@@ -1,5 +1,9 @@
 import { Result, err, ok } from "../../base/result.js";
-import { closestMatch, joinedWithOr } from "../../base/strings.js";
+import {
+	closestMatches,
+	editDistance,
+	joinedWithOr,
+} from "../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticLocation,
@@ -15,6 +19,17 @@ import {
 const PLAYER_SCRIPT_CONTAINERS: readonly string[] = [
 	"StarterPlayerScripts",
 	"StarterCharacterScripts",
+];
+
+const ROUTED_SERVICES: readonly string[] = [
+	"ServerScriptService",
+	"ServerStorage",
+	"ReplicatedStorage",
+	"ReplicatedFirst",
+	"StarterPlayer",
+	"StarterGui",
+	"StarterPack",
+	"Workspace",
 ];
 
 const SERVER_ONLY_SERVICES: readonly string[] = [
@@ -134,9 +149,24 @@ export class Target {
 	}
 
 	private static serviceFor(name: string): string | undefined {
-		const container = closestMatch(name, PLAYER_SCRIPT_CONTAINERS);
+		const container = Target.couldHaveMeant(name, PLAYER_SCRIPT_CONTAINERS);
 		if (container) return `StarterPlayer/${container}`;
-		return closestMatch(name, SUPPORTED_SERVICES);
+		return Target.couldHaveMeant(name, SUPPORTED_SERVICES);
+	}
+
+	/** The candidate a typo of at most a quarter of `name` could be, a routed service first on a tie. */
+	private static couldHaveMeant(
+		name: string,
+		candidates: readonly string[]
+	): string | undefined {
+		const closest = closestMatches(name, candidates);
+		if (closest.length === 0) return undefined;
+		const distance = editDistance(
+			name.toLowerCase(),
+			closest[0].toLowerCase()
+		);
+		if (distance * 4 > name.length) return undefined;
+		return closest.find((c) => ROUTED_SERVICES.includes(c)) ?? closest[0];
 	}
 
 	get instancePath(): readonly string[] {
