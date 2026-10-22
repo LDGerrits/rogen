@@ -1,37 +1,37 @@
-$ rogen build .
+$ rogen write .
 exit 0
 stdout:
-  rogen build · project
+  rogen write
   default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build default.project.json
+$ rogen write default.project.json
 exit 0
 stdout:
-  rogen build · project
+  rogen write
   default.project.json · unchanged
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build lobby
+$ rogen write lobby
 exit 0
 stdout:
-  rogen build · lobby
+  rogen write
   lobby/default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build lobby/default.project.json
+$ rogen write lobby/default.project.json
 exit 0
 stdout:
-  rogen build · lobby
+  rogen write
   lobby/default.project.json · unchanged
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build lobby/default.rogen.json
+$ rogen write lobby/default.rogen.json
 exit 0
 stdout:
-  rogen build · lobby
+  rogen write
   lobby/default.project.json · unchanged
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
 written:
   default.project.json

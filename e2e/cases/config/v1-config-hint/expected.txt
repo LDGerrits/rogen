@@ -1,8 +1,8 @@
-$ rogen build
+$ rogen write
 exit 1
 stdout:
-  rogen build · project
-  build failed.
+  rogen write
+  Wrote 0 of 1 project file.
 stderr:
   error: default.rogen.json · not loaded
   default.rogen.json - error: this looks like a config for Rogen 1, which v2 doesn't read. See https://rogen-playfully.vercel.app/docs/v2/migrating-from-v1 to migrate it. (legacy.config)

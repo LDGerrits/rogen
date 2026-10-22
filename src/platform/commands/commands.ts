@@ -90,7 +90,7 @@ interface CommandMetadata<
 	readonly output?: OutputDeclaration;
 	/** What it can do beyond printing, declared by every command: `[]` for one that only reads. */
 	readonly effects?: readonly CommandEffect[];
-	/** What this command would do with a first word that names no command, offered in its place: "To build a config" offers `rogen build <word>`. */
+	/** What this command would do with a first word that names no command, offered in its place: "To write a config" offers `rogen write <word>`. */
 	readonly unknownWordOffer?: string;
 	/** Whether the command runs until it is stopped, so anything to tell the user comes before it starts, not after it ends. */
 	readonly longRunning?: boolean;

@@ -14,7 +14,7 @@ stdout: (not shown)
 stderr:
   rogen build · Game
   default.project.json · unchanged
-  Built 1 project.
+  Built game.rbxlx.
 
 written:
   default.project.json

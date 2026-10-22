@@ -1,4 +1,4 @@
-$ rogen build release
+$ rogen write release
 exit 0
 stdout: (not shown)
 

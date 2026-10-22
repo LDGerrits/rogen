@@ -11,11 +11,11 @@ rogen [command] [project] [options]
 
 The first word is always the command. A bare `rogen` prints the root help and exits 2, as `rojo` does. Whatever follows names a project, as it does in Rojo, and `build`, `serve`, `sourcemap`, `upload` and `syncback` take one: a second is a usage error, exit 2. A project is named by:
 
-- a folder, which means its `default.rogen.json` (`rogen build places/lobby`);
+- a folder, which means its `default.rogen.json` (`rogen serve places/lobby`);
 - the path to a `.rogen.json` file (`rogen serve places/lobby/dist.rogen.json`), or to a `*.project.json` file, which means the `.rogen.json` beside it, and when there is none, the plain Rojo project as it is;
 - the name of a file in the current folder, so `rogen serve dist` is `dist.rogen.json` (else a plain `dist.project.json`), unless a folder `dist` holds a default, which wins.
 
-With none, a command reads the `default.rogen.json` of the working directory, or its `default.project.json` when it has no config, and nothing else. It does not look in the folders above, as `rojo serve` does not. A bare command in a folder with neither is an error, "No default.rogen.json or default.project.json in this folder", which names the folder's other `.rogen.json` files when it has any, and suggests `rogen write` to write them all. A repo of [places](/docs/v2/setups/places) has no config at its root, so name the place: `rogen serve places/lobby`. The text output says which config it read (`rogen build · my-game`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+With none, a command reads the `default.rogen.json` of the working directory, or its `default.project.json` when it has no config, and nothing else. It does not look in the folders above, as `rojo serve` does not. A bare command in a folder with neither is an error, "No default.rogen.json or default.project.json in this folder", which names the folder's other `.rogen.json` files when it has any, and suggests `rogen write` to write them all. A repo of [places](/docs/v2/setups/places) has no config at its root, so name the place: `rogen serve places/lobby`. The text output says which config it read (`rogen build · my-game`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen write lobby`.
 
 `fmt-project` takes several projects, and `check` and `where` take paths, which [find their own config](#where-path).
 
@@ -23,7 +23,7 @@ With none, a command reads the `default.rogen.json` of the working directory, or
 
 ### `write [project…]`
 
-Writes the project file of every `.rogen.json` of the working directory: `default.rogen.json` writes `default.project.json`, `game.rogen.json` writes `game.project.json`. Name projects as `build` does (a folder, a file, a bare name) to write only those; unlike `build`, `write` takes any number of them. Run it in a fresh clone, and after you add a feature folder or an `@key` file, so the editor's project files follow. A project file whose bytes wouldn't change isn't written, so running it again is cheap. The `*.project.json` that Rogen writes is overwritten by every write that changes it, so edit the `.rogen.json`, not the project file.
+Writes the project file of every `.rogen.json` of the working directory: `default.rogen.json` writes `default.project.json`, `game.rogen.json` writes `game.project.json`. Name projects as `serve` does (a folder, a file, a bare name) to write only those; unlike the Rojo commands, `write` takes any number of them. Run it in a fresh clone, and after you add a feature folder or an `@key` file, so the editor's project files follow. A project file whose bytes wouldn't change isn't written, so running it again is cheap. The `*.project.json` that Rogen writes is overwritten by every write that changes it, so edit the `.rogen.json`, not the project file.
 
 ```
 $ rogen write
@@ -38,21 +38,23 @@ A `.rogen.json` that doesn't load, or doesn't build, doesn't stop the others: th
 
 #### `write --watch`
 
-Writes, then writes again whenever files or a config change, the way [`build --watch`](#build---watch) does without Rojo. With several configs it watches all of them. A config reloads when its `.rogen.json` changes, and a broken one keeps its last valid version. Press Ctrl+C to stop; `--json` prints one JSON object per line, as `build --watch --json` does.
+Writes, then writes again whenever files or a config change, the way [`build --watch`](#build---watch) does before it runs Rojo. With several configs it watches all of them. A config reloads when its `.rogen.json` changes, and a broken one keeps its last valid version. Press Ctrl+C to stop; `--json` prints one JSON object per line, as `build --watch --json` does.
 
 ### `build [project]`
 
-Writes the project file of the `default.rogen.json` here, or of the project you name, beside it: `rogen build dist` writes `dist.project.json`. That file is the only one it writes, as `rojo build` reads only the file you give it, so `default.project.json` is as fresh as the last write of the default. Run [`rogen write`](#write-project) after you add a feature folder or an `@key` file, so the editor's project files follow, and in a fresh clone before the editor or a compiler needs them. A project file whose bytes wouldn't change isn't written, so building again is cheap. A broken `.rogen.json` you didn't name doesn't stop the build. The `*.project.json` that Rogen writes is overwritten by every build that changes it, so edit the `.rogen.json`, not the project file. A `*.project.json` with no `.rogen.json` beside it is a plain Rojo project: it is built as it is, and Rogen writes nothing to it.
+`rogen build` means `rojo build`: it writes the project file, then builds a place, model or plugin from it with Rojo. Like `rojo build`, which requires `--output`, it requires `-o` or `-p`; without either it is a usage error (exit 2) that names `rogen write`, which writes the project files and builds nothing.
 
-Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 project with 4 warnings.`
+It writes the project file of the `default.rogen.json` here, or of the project you name, beside it: `rogen build dist -o dist.rbxl` writes `dist.project.json`. That file is the only one it writes, as `rojo build` reads only the file you give it, so `default.project.json` is as fresh as the last write of the default. Run [`rogen write`](#write-project) after you add a feature folder or an `@key` file, so the editor's project files follow, and in a fresh clone before the editor or a compiler needs them. A project file whose bytes wouldn't change isn't written, so building again is cheap. A broken `.rogen.json` you didn't name doesn't stop the build. The `*.project.json` that Rogen writes is overwritten by every build that changes it, so edit the `.rogen.json`, not the project file. A `*.project.json` with no `.rogen.json` beside it is a plain Rojo project: it is built as it is, and Rogen writes nothing to it.
+
+Each warning and error ends with its [code](/docs/v2/diagnostics). The closing line names what Rojo built and counts the warnings: `Built game.rbxl with 4 warnings.` If Rojo fails there is no such line: the run closes with `build failed.`, prints Rojo's error and exits 1.
 
 #### `build -o` and `-p`
 
-`rogen build -o game.rbxl` writes the project files, then runs Rojo's own `build` on the project and passes it `--output game.rbxl`: a place or model file, as `rojo build` makes. `-p Tool.rbxm` passes `--plugin`, which builds into Roblox's plugins folder. The Rojo that runs is the one your toolchain file pins, as for [`serve`](#serve). Rojo builds the project you name (`rogen build release -o game.rbxl`), the default one otherwise. In a repo of places, name the place (`rogen build places/lobby -o lobby.rbxl`). Nothing is built when the project files have errors, and a failed Rojo build exits 1 with what Rojo said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)).
+`rogen build -o game.rbxl` writes the project file, then runs Rojo's own `build` on the project and passes it `--output game.rbxl`: a place or model file, as `rojo build` makes. `-p Tool.rbxm` passes `--plugin`, which builds into Roblox's plugins folder. Give one of them, not both. The Rojo that runs is the one your toolchain file pins, as for [`serve`](#serve); when there is none, the run prints the same error as `serve` ([`serve.noServer`](/docs/v2/diagnostics#serve-noserver)) and exits 1. Rojo builds the project you name (`rogen build release -o game.rbxl`), the default one otherwise. In a repo of places, name the place (`rogen build places/lobby -o lobby.rbxl`). Nothing is built when the project files have errors, and a failed Rojo build exits 1 with what Rojo said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)).
 
 #### `build --watch`
 
-Builds, then rebuilds whenever files or the config change. Without `-o` or `-p` only names matter, since the project file holds no contents, so editing inside a script triggers nothing. With `-o` or `-p`, Rojo's build runs again after each write and after each edit of a file under the source paths, so the file it built holds what you saved. Rogen runs Rojo's build itself each time and never passes `--watch` to it.
+Builds, then rebuilds whenever files or the config change. It needs `-o` or `-p`, as `build` does. Rojo's build runs again after each write and after each edit of a file under the source paths, so the file it built holds what you saved. Rogen runs Rojo's build itself each time and never passes `--watch` to it. To keep the project files current without building, run [`write --watch`](#write---watch).
 
 A config reloads when its `.rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `build --watch` prints the error and keeps using the last valid version.
 
@@ -73,7 +75,7 @@ A block prints only the diagnostics the last one didn't have, so a standing warn
 
 It builds the one project it names, `default.rogen.json` when none is named. A `.rogen.json` you add beside it is not built until you name it.
 
-With `--json`, `build --watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it builds, a `notice` line when the config is removed, broken or recovered, and, with `-o` or `-p`, a `rojo` line after each Rojo build, shaped as [`rojo` in `build --json`](#build---json).
+With `--json`, `build --watch` prints one JSON object per line, as [`serve --json`](#serve---json) does, without the server lines: a `build` line each time it writes, a `notice` line when the config is removed, broken or recovered, and a `rojo` line after each Rojo build, shaped as [`rojo` in `build --json`](#build---json).
 
 It's safe to run `build` while `build --watch` is running. Press Ctrl+C to stop.
 
@@ -507,7 +509,7 @@ A failure that isn't a list of diagnostics prints `{ "error": { "kind", "message
 
 `outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
 
-With `-o` or `-p`, the document also has `rojo`, the Rojo build that ran after the files were written:
+`build` adds `rojo`, the Rojo build that ran after the files were written (`write --json` has no `rojo`):
 
 ```json
 {

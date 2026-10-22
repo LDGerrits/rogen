@@ -175,6 +175,14 @@ function inFolder(cwd: string, home: string | undefined): string | undefined {
 		: `in ${relativeTo(cwd, home)}`;
 }
 
+/** What Rojo built from the project files, for the closing line. */
+export interface BuiltFile {
+	/** The file or plugin as the closing line names it. */
+	readonly name: string;
+	/** Whether Rojo failed, so there is nothing to claim. */
+	readonly failed: boolean;
+}
+
 export class BuildLog {
 	constructor(
 		private readonly logService: LogService,
@@ -207,7 +215,8 @@ export class BuildLog {
 		run: BuildRun,
 		home?: string,
 		command = "build",
-		writes = true
+		writes = true,
+		built?: BuiltFile
 	): void {
 		this.begin(
 			command,
@@ -230,8 +239,9 @@ export class BuildLog {
 				],
 			});
 		}
-		if (run.failed) this.logService.closeFrame("build failed.");
-		else this.end(run.builds.length, run.warningCount, writes);
+		if (run.failed || built?.failed)
+			this.logService.closeFrame("build failed.");
+		else this.end(run.builds.length, run.warningCount, writes, built);
 	}
 
 	private heading(label: string): void {
@@ -294,8 +304,13 @@ export class BuildLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(projects: number, warnings: number, writes: boolean): void {
-		const built = `${writes ? "Built" : "Checked"} ${plural(projects, "project")}`;
+	private end(
+		projects: number,
+		warnings: number,
+		writes: boolean,
+		file?: BuiltFile
+	): void {
+		const built = `${writes ? "Built" : "Checked"} ${file?.name ?? plural(projects, "project")}`;
 		this.logService.outro(
 			warnings === 0
 				? `${built}.`

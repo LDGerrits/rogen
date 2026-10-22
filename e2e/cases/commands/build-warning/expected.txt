@@ -1,14 +1,14 @@
-$ rogen build
+$ rogen write
 exit 0
 stdout:
-  rogen build · project
+  rogen write
   default.project.json · wrote
-  Built 1 project with 1 warning.
+  Wrote 1 of 1 project file with 1 warning.
 stderr:
   default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
     src/Save@sever.luau (did you mean "@Server"?)
 
-$ rogen build --json
+$ rogen write --json
 exit 0
 stdout:
   {

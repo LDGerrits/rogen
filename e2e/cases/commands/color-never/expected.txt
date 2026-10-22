@@ -1,4 +1,4 @@
-$ rogen build --color never
+$ rogen write --color never
 exit 0
 stdout: (not shown)
 stderr:
@@ -6,14 +6,9 @@ stderr:
     src/Save@sever.luau (did you mean "@Server"?)
 
 $ rogen build --color=never -v
-exit 0
-stdout: (not shown)
+exit 2
 stderr:
-  [debug] src: 1 file
-  [debug] route Server -> ServerScriptService: 0 files
-  [debug] route * -> ReplicatedStorage/Shared: 1 file
-  default.rogen.json - warning: 1 name has an "@" that routes nowhere, so it is read as an ordinary name: (route.strayAt)
-    src/Save@sever.luau (did you mean "@Server"?)
+  error: build needs -o <file> or -p <name>, as 'rojo build' does. To write the project file only, run 'rogen write'.
 
 written:
   default.project.json

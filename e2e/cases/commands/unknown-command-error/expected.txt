@@ -1,7 +1,7 @@
 $ rogen prod
 exit 2
 stderr:
-  error: Unknown command "prod". To build a project, run 'rogen build prod'; run 'rogen help' to see the commands.
+  error: Unknown command "prod". To write a project file, run 'rogen write prod'; run 'rogen help' to see the commands.
 
 $ rogen deploy --json
 exit 2
@@ -10,7 +10,7 @@ stdout:
     "error": {
       "kind": "usage",
       "message": "Unknown command \"deploy\".",
-      "hint": "To build a project, run 'rogen build deploy'; run 'rogen help' to see the commands."
+      "hint": "To write a project file, run 'rogen write deploy'; run 'rogen help' to see the commands."
     }
   }
 
@@ -31,6 +31,6 @@ stdout:
     "error": {
       "kind": "usage",
       "message": "Unknown command \"prod\".",
-      "hint": "To build a project, run 'rogen build prod'; run 'rogen help' to see the commands."
+      "hint": "To write a project file, run 'rogen write prod'; run 'rogen help' to see the commands."
     }
   }

@@ -1,11 +1,11 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"lobyy"
 		],
 		[
-			"build",
+			"write",
 			"lobyy",
 			"--json"
 		]

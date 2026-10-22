@@ -1,12 +1,12 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"lobby",
 			"--json"
 		],
 		[
-			"build",
+			"write",
 			"match",
 			"--json"
 		]

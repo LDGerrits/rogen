@@ -1,1 +1,1 @@
-{ "steps": [["build"]], "show": ["default.project.json"] }
+{ "steps": [["write"]], "show": ["default.project.json"] }

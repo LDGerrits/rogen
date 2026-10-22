@@ -1,5 +1,5 @@
 {
-	"steps": [["build", "--color", "always"], ["where", "--color", "always"]],
+	"steps": [["write", "--color", "always"], ["where", "--color", "always"]],
 	"rojo": false,
-	"output": ["build"]
+	"output": ["write"]
 }

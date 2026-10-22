@@ -1,10 +1,10 @@
 {
 	"steps": [
 		["init", "--non-interactive", "--skip-git", "--darklua"],
-		["build"],
+		["write"],
 		["sourcemap", "-o", "sourcemap.json"],
 		["$", "darklua", "process", "src", "dist"],
-		["build"]
+		["write"]
 	],
 	"show": [".darklua.json", ".gitignore", "dist/Feature/Server/Feature.server.luau"]
 }

@@ -464,7 +464,7 @@ describeWithRojo("end to end serve", () => {
 
 	it("should refuse a Rojo it didn't start, naming it as another process", async () => {
 		const other = createProject(projectFiles(serve.port));
-		const [build, buildArgs] = invocation(serve.cli, ["build"]);
+		const [build, buildArgs] = invocation(serve.cli, ["write"]);
 		expect(spawnSync(build, buildArgs, { cwd: other.dir }).status).toBe(0);
 		const rojo = spawn("rojo", ["serve", "default.project.json"], {
 			cwd: other.dir,

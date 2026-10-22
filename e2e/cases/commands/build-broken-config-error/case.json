@@ -1,11 +1,11 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"broken"
 		],
 		[
-			"build",
+			"write",
 			"broken",
 			"--json"
 		]

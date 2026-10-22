@@ -1,11 +1,11 @@
-$ rogen build test.project.json
+$ rogen write test.project.json
 exit 1
 stdout: (not shown)
 stderr:
   error: test.project.json · not loaded
   test.project.json:1:1 - error: test.project.json has no "name", and Rojo can't read test.project.json without one unless it is default.project.json or default.project.jsonc. Add "name". (config.unnamedProjectFile)
 
-$ rogen build tset.project.json
+$ rogen write tset.project.json
 exit 1
 stderr:
   error: "tset.project.json" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.

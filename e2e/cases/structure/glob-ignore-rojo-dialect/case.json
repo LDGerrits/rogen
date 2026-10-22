@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src/a/b/X.tmp.luau", "src/Deep/n/Y.skip.luau", "src/Named/N.luau"]] }
+{ "steps": [["write"], ["where", "src/a/b/X.tmp.luau", "src/Deep/n/Y.skip.luau", "src/Named/N.luau"]] }

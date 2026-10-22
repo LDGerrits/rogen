@@ -1,11 +1,11 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"named"
 		],
 		[
-			"build",
+			"write",
 			"unnamed"
 		]
 	],

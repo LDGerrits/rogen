@@ -11,7 +11,7 @@ stdout: (not shown)
 stderr:
   rogen build · project
   default.project.json · unchanged
-  Built 1 project.
+  Built place.rbxl.
 
 $ rogen syncback -i place.rbxl -y
 exit 0

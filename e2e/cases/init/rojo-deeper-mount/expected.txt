@@ -4,7 +4,7 @@ stdout: (not shown)
 stderr:
   default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen places it if a route matches it: src/server/Main.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 

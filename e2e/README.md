@@ -6,7 +6,7 @@ exit codes, output, written files and the tree Rojo sees) is compared with
 `expected.txt`.
 
 A case is about one thing, and its transcript shows that thing. The printed
-output of `build` and `init` is the same frame in nearly every case, so it is
+output of `write`, `build` and `init` is the same frame in nearly every case, so it is
 left out (`stdout: (not shown)`) unless the case lists the command under
 `output`. Errors and warnings are on stderr and always show, and so do the exit
 code, the written files and the tree Rojo sees.
@@ -14,20 +14,20 @@ code, the written files and the tree Rojo sees.
 ```
 e2e/cases/<area>/<case>/
   project/       copied to a temp directory and used as the working directory
-  case.json      optional: { "steps": [["build", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {}, "place": "place.rbxl", "network": false }
+  case.json      optional: { "steps": [["write", "lobby", "match"]], "cwd": "src", "links": {}, "rojo": false, "show": [], "output": [], "env": {}, "place": "place.rbxl", "network": false }
   place.luau     with "place": what changed in Studio, run on the place built from project/
   expected.txt   the transcript
 ```
 
-- `steps` defaults to `[["build"]]`. Each step is the argument list of one `rogen` run. A
+- `steps` defaults to `[["write"]]`. Each step is the argument list of one `rogen` run. A
   project is a folder with its own `default.rogen.json`, so a case with several holds a
-  folder for each, and a step names the folders (`["build", "lobby", "match"]`).
+  folder for each, and a step names the folders (`["write", "lobby", "match"]`).
 - `cwd` is a folder inside `project/` that every step runs from; the project root when omitted.
 - `links` maps a path inside `project/` to a symlink target, created at run time so
   the fixtures work on any checkout.
 - `show` lists other written files to print, for what a sourcemap can't show
   (like `$properties`).
-- `output` lists the commands (`build`, `init`) whose printed output this case
+- `output` lists the commands (`write`, `build`, `init`) whose printed output this case
   checks. `--json` and `--help` output always shows.
 - `rojo: false` skips the sourcemap for cases where Rojo can't read the output.
 - `env` sets variables for the commands, on top of an environment that is not GitHub Actions'.
@@ -80,7 +80,7 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `src/commands/init/__tests__/init-command.test.ts` and the tests of
   `src/domain/init`. The other `cases/init/` cases check what `init` writes and
   that Rojo accepts it.
-- What `build` prints (header, per-project lines, closing line) is checked by
+- What `build` and `write` print (header, per-project lines, closing line) is checked by
   `build-log.test.ts` and `build-command.test.ts` in
   `src/commands/build/__tests__/`. A case lists `build` under `output` only when
   a line of it is the point, such as the `same warnings as` note of several
@@ -109,7 +109,7 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `--json`, `--quiet`, `--verbose`, `--color`, help, and the unknown
   and removed commands and options.
 
-A new case needs no `output`. Add it only when the printed output of `build` or
+A new case needs no `output`. Add it only when the printed output of `write`, `build` or
 `init` is what the case is about.
 
 ## Updating transcripts

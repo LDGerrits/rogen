@@ -41,7 +41,7 @@ describeWithRojo("end to end folder mounts", () => {
 	});
 
 	it("should let plain Rojo see a file added to a routing folder after the build", async () => {
-		const [command, args] = invocation(bundle.cli, ["build"]);
+		const [command, args] = invocation(bundle.cli, ["write"]);
 		spawnSync(command, args, { cwd: project.dir });
 
 		writeProjectFile(project.dir, "src/Inventory/Server/Load.luau");

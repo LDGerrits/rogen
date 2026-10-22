@@ -1,1 +1,1 @@
-{ "steps": [["where"], ["check"], ["build"], ["where"]] }
+{ "steps": [["where"], ["check"], ["write"], ["where"]] }

@@ -1,12 +1,12 @@
-$ rogen build lobby
+$ rogen write lobby
 exit 0
 stdout: (not shown)
 
-$ rogen build match
+$ rogen write match
 exit 0
 stdout: (not shown)
 
-$ rogen build lobby
+$ rogen write lobby
 exit 0
 stdout: (not shown)
 

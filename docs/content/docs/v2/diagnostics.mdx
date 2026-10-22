@@ -83,7 +83,7 @@ default.rogen.json:5:2 - error: "extends" was removed. Config files don't read e
 default.rogen.json:6:2 - error: "syncPath" was removed. It is called compiledPath now, inside the rogen block. (config.removedField)
 ```
 
-Remove the key and do what the message says. `rootDirs` is now `sourcePaths`, and `syncDir` and `syncPath` are `compiledPath` inside the `rogen` block. `projects`, `modes` and `extends` are gone: a second output is a second complete `<name>.rogen.json` that repeats the keys it needs and changes the ones that differ, and `mode` is a file you name (`rogen build <name>`). `serveProject` is gone: `rogen serve` serves `default.rogen.json`, or the file you name. `placePaths` is gone: a place is a folder with its own `default.rogen.json`, served by naming it (`rogen serve places/lobby`). `template` is gone: write its `tree` and its other keys in `default.rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `default.rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. For `variants` and `conflicts`, a file that replaces another goes in a later source path, which wins a clash, and sets that exclude each other are a complete file each. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys), [Migrating from v1](/docs/v2/migrating-from-v1) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Remove the key and do what the message says. `rootDirs` is now `sourcePaths`, and `syncDir` and `syncPath` are `compiledPath` inside the `rogen` block. `projects`, `modes` and `extends` are gone: a second output is a second complete `<name>.rogen.json` that repeats the keys it needs and changes the ones that differ, and `mode` is a file you name (`rogen write <name>`). `serveProject` is gone: `rogen serve` serves `default.rogen.json`, or the file you name. `placePaths` is gone: a place is a folder with its own `default.rogen.json`, served by naming it (`rogen serve places/lobby`). `template` is gone: write its `tree` and its other keys in `default.rogen.json`. `outFile` is gone: Rogen writes `default.project.json` beside `default.rogen.json`. `exclude` is `globIgnorePaths`, which also leaves out a mount it ignores. For `variants` and `conflicts`, a file that replaces another goes in a later source path, which wins a clash, and sets that exclude each other are a complete file each. For `server`, `rogen serve` starts Rojo, and serving with Argon is described in [Studio](/docs/v2/studio#serve-with-argon). See [Configuration](/docs/v2/configuration#removed-keys), [Migrating from v1](/docs/v2/migrating-from-v1) and [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `config.duplicateSourcePath` [#config-duplicatesourcepath]
 
@@ -157,7 +157,7 @@ Keep one of them. See [Matching](/docs/v2/core-concepts/routing#matching).
 
 ### `config.unnamedProjectFile` [#config-unnamedprojectfile]
 
-Error. A Rojo project file you named, such as `rogen build test.project.json`, has no `name`. Rojo names `default.project.json` after its folder, but crashes on a project file of any other name without one, so Rogen stops before Rojo does.
+Error. A Rojo project file you named, such as `rogen serve test.project.json`, has no `name`. Rojo names `default.project.json` after its folder, but crashes on a project file of any other name without one, so Rogen stops before Rojo does.
 
 ```
 test.project.json:1:1 - error: test.project.json has no "name", and Rojo can't read a project file without one unless it is default.project.json or default.project.jsonc. Add "name". (config.unnamedProjectFile)
@@ -549,7 +549,7 @@ Remove `className`, or name the init script for the class you want. See [Metadat
 
 ### `scan.missingSourcePath` [#scan-missingsourcepath]
 
-Warning, or error. A folder in `sourcePaths` doesn't exist, or is a file. It is a warning while another source path is a folder, and the missing one contributes nothing. It is an error when none is, since the build would write an empty tree over your project file: `rogen build` and `rogen check` fail, and the project file stays as it was.
+Warning, or error. A folder in `sourcePaths` doesn't exist, or is a file. It is a warning while another source path is a folder, and the missing one contributes nothing. It is an error when none is, since the build would write an empty tree over your project file: `rogen write`, `rogen build` and `rogen check` fail, and the project file stays as it was.
 
 ```
 later - warning: this source path does not exist or is not a folder, so it contributes nothing. (scan.missingSourcePath)
@@ -559,7 +559,7 @@ later - warning: this source path does not exist or is not a folder, so it contr
 srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 ```
 
-A config with no `sourcePaths` has the default `src`, and the error then says to create it, or to set `sourcePaths` to where your code is. Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the `.rogen.json` that lists it. A running `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
+A config with no `sourcePaths` has the default `src`, and the error then says to create it, or to set `sourcePaths` to where your code is. Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the `.rogen.json` that lists it. A running `rogen write --watch`, `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
 
 ### `scan.unmountedSource` [#scan-unmountedsource]
 
@@ -807,10 +807,10 @@ Error. `rogen serve` found no Rojo: it is not pinned in a `rokit.toml`, `aftman.
 
 ```
 default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
-default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
+default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
 ```
 
-Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. Rogen never installs Rojo: `rogen init` in a new project writes the pin into your toolchain file, and you run the manager's `install`; see [Installation](/docs/v2/installation). To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
+Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. Rogen never installs Rojo: `rogen init` in a new project writes the pin into your toolchain file, and you run the manager's `install`; see [Installation](/docs/v2/installation). To serve with Argon, run `rogen write --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
 
 ### `serve.notInstalled` [#serve-notinstalled]
 

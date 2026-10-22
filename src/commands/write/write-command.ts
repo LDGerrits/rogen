@@ -58,6 +58,7 @@ registerCommand(
 						lines: buildLineShape,
 					},
 					effects: ["writesFiles"],
+					unknownWordOffer: "To write a project file",
 					longRunningWith: "watch",
 					examples: [
 						"rogen write",

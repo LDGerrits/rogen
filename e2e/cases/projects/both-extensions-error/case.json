@@ -1,11 +1,11 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"dist"
 		],
 		[
-			"build",
+			"write",
 			"dist.rogen.jsonc"
 		]
 	],

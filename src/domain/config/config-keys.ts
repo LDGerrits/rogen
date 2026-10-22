@@ -15,7 +15,7 @@ const advisedCompiledPath =
 
 const removedFields: Readonly<Record<string, string>> = {
 	modes: "Write what a mode set in <name>.rogen.json as a complete file with the keys that differ.",
-	mode: "Modes are gone with \"modes\". Name a file instead, as 'rogen build <name>'.",
+	mode: "Modes are gone with \"modes\". Name a file instead, as 'rogen write <name>'.",
 	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen write --watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later source path, which wins a clash.",

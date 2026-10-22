@@ -1,4 +1,4 @@
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 stderr:

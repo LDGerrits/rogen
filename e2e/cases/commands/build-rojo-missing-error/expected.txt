@@ -1,0 +1,56 @@
+$ rogen build -o game.rbxlx
+exit 1
+stderr:
+  rogen build · Game
+  default.project.json · wrote
+  build failed.
+  default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
+
+$ rogen build -o game.rbxlx --json
+exit 1
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/default.rogen.json",
+        "projectFile": "<dir>/default.project.json",
+        "outcome": "unchanged",
+        "diagnostics": []
+      }
+    ],
+    "rojo": {
+      "command": "build",
+      "output": "<dir>/game.rbxlx",
+      "outcome": "failed",
+      "project": null,
+      "messages": [],
+      "diagnostics": [
+        {
+          "file": "<dir>/default.rogen.json",
+          "severity": "error",
+          "code": "serve.noServer",
+          "message": "No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation.",
+          "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#serve-noserver",
+          "fixes": [
+            {
+              "run": {
+                "command": "rokit add rojo-rbx/rojo",
+                "cwd": "<dir>"
+              }
+            },
+            {
+              "run": {
+                "command": "rogen plugin install",
+                "cwd": "<dir>"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+
+written:
+  default.project.json

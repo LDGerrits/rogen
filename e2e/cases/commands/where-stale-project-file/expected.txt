@@ -8,7 +8,7 @@ exit 1
 stdout:
   default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 

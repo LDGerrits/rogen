@@ -6,11 +6,11 @@ $ darklua process places/lobby/src places/lobby/dist/lobby/src
 exit 0
 stdout: (not shown)
 
-$ rogen build places/lobby/dist.rogen.json
+$ rogen write places/lobby/dist.rogen.json
 exit 0
 stdout: (not shown)
 
-$ rogen build places/lobby
+$ rogen write places/lobby
 exit 0
 stdout: (not shown)
 

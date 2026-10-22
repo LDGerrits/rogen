@@ -1,16 +1,16 @@
-$ rogen build
+$ rogen write
 exit 1
 stderr:
   error: No default.rogen.json or default.project.json in this folder (<dir>/src/Inventory). Run 'rogen init' to create one.
 
-$ rogen build ../..
+$ rogen write ../..
 exit 0
 stdout:
-  rogen build · project
+  rogen write
   ../../default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build ghost
+$ rogen write ghost
 exit 1
 stderr:
   error: "ghost" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
@@ -26,7 +26,7 @@ stdout:
   Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
     require(game:GetService("ServerScriptService").Inventory.Save)
 
-$ rogen build ../../default.project.json --json
+$ rogen write ../../default.project.json --json
 exit 0
 stdout:
   {

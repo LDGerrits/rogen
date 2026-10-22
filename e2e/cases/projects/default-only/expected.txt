@@ -1,20 +1,28 @@
-$ rogen build
+$ rogen build -o game.rbxl
 exit 0
 stdout:
+  Building project 'Inventory'
+  Built project to game.rbxl
+stderr:
   rogen build · Inventory
   default.project.json · wrote
-  Built 1 project.
+  Built game.rbxl.
 
-$ rogen build dist
+$ rogen build dist -o dist.rbxl
 exit 0
 stdout:
+  Building project 'Inventory'
+  Built project to dist.rbxl
+stderr:
   rogen build · Inventory
   dist.project.json · wrote
-  Built 1 project.
+  Built dist.rbxl.
 
 written:
   default.project.json
   dist.project.json
+  dist.rbxl
+  game.rbxl
 
 default.project.json:
 {

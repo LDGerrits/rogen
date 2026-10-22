@@ -199,7 +199,10 @@ describe("write command", () => {
 		await fs.writeFile(abs("game.rogen.json"), config);
 		const { run } = commandHarness({ fs });
 
-		const result = await run("build");
+		const result = await run("build", {
+			positionals: [],
+			options: { output: "game.rbxl" },
+		});
 
 		const { error } = result as ResultError<Error>;
 		expect(error).toMatchObject({

@@ -1,20 +1,9 @@
 {
 	"steps": [
-		[
-			"build",
-			"places/lobby"
-		],
-		[
-			"build",
-			"places/arena"
-		],
-		[
-			"build",
-			"places/arena",
-			"places/lobby"
-		]
+		["write", "places/lobby"],
+		["write", "places/arena"],
+		["write", "places/arena", "places/lobby"],
+		["build", "places/arena", "places/lobby", "-o", "game.rbxl"]
 	],
-	"output": [
-		"build"
-	]
+	"output": ["write"]
 }

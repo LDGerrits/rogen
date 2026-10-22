@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src/Save.LUAU"], ["check"]] }
+{ "steps": [["write"], ["where", "src/Save.LUAU"], ["check"]] }

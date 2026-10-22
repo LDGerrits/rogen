@@ -1,11 +1,11 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"places/lobby"
 		],
 		[
-			"build",
+			"write",
 			"places/arena"
 		]
 	]
