@@ -42,6 +42,8 @@ export type HelpTarget =
 /** The name of the page that lists every diagnostic code. */
 const CODES_PAGE = "codes";
 
+const SHORT_HELP_NOTE = "Run with --help for details.";
+
 const INDENT = "    ";
 const GAP = "    ";
 /** The width help is wrapped to, as Rojo's is. */
@@ -77,7 +79,22 @@ function usageArgs(command: Command): string[] {
 	});
 }
 
-function formatOption(option: OptionDescriptor): [string, string] {
+/** `text` up to its first full stop followed by a space, or all of it. */
+export function firstSentence(text: string): string {
+	const end = text.indexOf(". ");
+	return end === -1 ? text : text.slice(0, end + 1);
+}
+
+/** How much of each description help prints. */
+export type HelpForm = "short" | "long";
+
+const describedAs = (text: string, form: HelpForm) =>
+	form === "short" ? firstSentence(text) : text;
+
+function formatOption(
+	option: OptionDescriptor,
+	form: HelpForm
+): [string, string] {
 	const name = option.negatable ? `[no-]${option.name}` : option.name;
 	const flags = `${option.short ? `-${option.short}, ` : INDENT}--${name}`;
 	const value =
@@ -87,7 +104,7 @@ function formatOption(option: OptionDescriptor): [string, string] {
 	return [
 		flags + value,
 		[
-			option.description,
+			describedAs(option.description, form),
 			option.multiple ? "(repeatable)" : undefined,
 			option.default === undefined
 				? undefined
@@ -99,10 +116,10 @@ function formatOption(option: OptionDescriptor): [string, string] {
 	];
 }
 
-function formatArgument(arg: Argument): [string, string] {
+function formatArgument(arg: Argument, form: HelpForm): [string, string] {
 	return [
 		`<${capitalised(arg.name)}>${arg.isVariadic ? "..." : ""}`,
-		arg.description,
+		describedAs(arg.description, form),
 	];
 }
 
@@ -150,7 +167,11 @@ function formatHelp(
 			["USAGE", [`${INDENT}rogen [OPTIONS] <SUBCOMMAND>`]],
 			[
 				"OPTIONS",
-				formatColumns(sortedOptions(globalOptions).map(formatOption)),
+				formatColumns(
+					sortedOptions(globalOptions).map((option) =>
+						formatOption(option, "long")
+					)
+				),
 			],
 			["SUBCOMMANDS", formatColumns(subcommands)],
 			["EXAMPLES", ROOT_EXAMPLES.map((line) => `${INDENT}${line}`)],
@@ -167,7 +188,8 @@ function formatHelp(
 
 function formatCommandHelp(
 	command: Command,
-	globalOptions: readonly OptionDescriptor[]
+	globalOptions: readonly OptionDescriptor[],
+	form: HelpForm
 ): string {
 	const {
 		description,
@@ -180,24 +202,31 @@ function formatCommandHelp(
 		.join(" ");
 	const subcommands = args.flatMap((arg) => arg.subcommands ?? []);
 
-	return formatSections(`rogen-${command.id}`, description, [
+	const text = formatSections(`rogen-${command.id}`, description, [
 		["USAGE", [`${INDENT}${usage}`]],
 		[
 			"ARGS",
 			formatColumns(
-				args.filter((arg) => !arg.subcommands).map(formatArgument)
+				args
+					.filter((arg) => !arg.subcommands)
+					.map((arg) => formatArgument(arg, form))
 			),
 		],
 		[
 			"OPTIONS",
 			formatColumns(
-				sortedOptions([...globalOptions, ...options]).map(formatOption)
+				sortedOptions([...globalOptions, ...options]).map((option) =>
+					formatOption(option, form)
+				)
 			),
 		],
 		[
 			"SUBCOMMANDS",
 			formatColumns(
-				subcommands.map((sub) => [sub.name, sub.description])
+				subcommands.map((sub) => [
+					sub.name,
+					describedAs(sub.description, form),
+				])
 			),
 		],
 		[
@@ -206,6 +235,7 @@ function formatCommandHelp(
 		],
 		["EXAMPLES", examples.map((line) => `${INDENT}${line}`)],
 	]);
+	return form === "short" ? `${text}\n\n${SHORT_HELP_NOTE}` : text;
 }
 
 export class HelpPages {
@@ -229,9 +259,9 @@ export class HelpPages {
 		return DocTopics.has(name) ? undefined : named;
 	}
 
-	textOf(target: HelpTarget): string {
+	textOf(target: HelpTarget, form: HelpForm = "long"): string {
 		if (target.kind === "command")
-			return formatCommandHelp(target.command, GlobalOptions);
+			return formatCommandHelp(target.command, GlobalOptions, form);
 		if (target.kind === "codes") {
 			const { codes } = HelpDocument.codes(target.prefix);
 			const codeWidth = Math.max(...codes.map(({ code }) => code.length));

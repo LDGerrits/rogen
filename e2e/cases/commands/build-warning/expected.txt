@@ -21,17 +21,11 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/src/Save@sever.luau",
             "severity": "warning",
             "code": "route.strayAt",
-            "message": "1 name has an \"@\" that routes nowhere, so it is read as an ordinary name:\n  <dir>/src/Save@sever.luau (did you mean \"@Server\"?)",
+            "message": "did you mean \"@Server\"?",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
-            "related": [
-              {
-                "file": "<dir>/src/Save@sever.luau",
-                "message": "did you mean \"@Server\"?"
-              }
-            ],
             "fixes": [
               {
                 "rename": {

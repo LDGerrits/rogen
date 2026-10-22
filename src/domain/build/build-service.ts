@@ -1,3 +1,4 @@
+import { toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -7,9 +8,11 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
 	InstanceReference,
@@ -144,22 +147,62 @@ export interface Locations {
 	readonly configs: readonly ConfigLocations[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
-	/** The project files on disk that differ from what a build would write, as `check` raises them; empty unless `staleness` was asked for. */
-	readonly stale: readonly Diagnostic[];
+	/** The paths asked about that no config's source paths hold. */
+	readonly skipped: readonly SkippedPath[];
 }
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
 export interface LocateQuery {
 	readonly args: readonly string[];
 	readonly cwd: string;
-	/** Also say which project files differ from what a build would write, from the same scan. */
-	readonly staleness?: boolean;
 }
 
 export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
 	readonly stoppedBy: readonly Diagnostic[];
+	/** The paths asked about that no build reads and that no diagnostic is about. */
+	readonly skipped: readonly SkippedPath[];
+}
+
+/** The files asked about that no selected config reads: outside the source paths of every one. */
+export function outsideEveryConfig(
+	configs: readonly ConfigLocations[]
+): string[] {
+	const [first, ...others] = configs;
+	if (!first) return [];
+	return first.files
+		.filter(({ status }) => status === "outside")
+		.map(({ source }) => source)
+		.filter((source) =>
+			others.every(({ files }) =>
+				files.some(
+					(file) =>
+						file.source === source && file.status === "outside"
+				)
+			)
+		);
+}
+
+/** Each of `sources`, outside every config, once for each config that covers its folder. */
+export function skippedOutside(
+	sources: readonly string[],
+	configs: readonly ConfigLocations[]
+): SkippedPath[] {
+	return sources.flatMap((path) =>
+		configs.map(({ config }) => ({
+			path,
+			reason: "outsideSourcePaths" as const,
+			config: toPosix(config.file),
+		}))
+	);
+}
+
+/** The files asked about that every config leaves out, once for each config that covers its folder. */
+export function skippedByEveryConfig(
+	configs: readonly ConfigLocations[]
+): SkippedPath[] {
+	return skippedOutside(outsideEveryConfig(configs), configs);
 }
 
 /** One `diagnose` for what several configs were each asked about. */
@@ -171,7 +214,19 @@ export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
 		stoppedBy: uniqueDiagnostics(
 			parts.flatMap(({ stoppedBy }) => stoppedBy)
 		),
+		skipped: uniqueSkipped(parts.flatMap(({ skipped }) => skipped)),
 	};
+}
+
+/** `skipped` without the repeats. */
+export function uniqueSkipped(skipped: readonly SkippedPath[]): SkippedPath[] {
+	const seen = new Set<string>();
+	return skipped.filter(({ path, reason, config }) => {
+		const key = `${reason}\0${path}\0${config ?? ""}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 /** One `locate` for what several configs were each asked about, the configs in the order given. */
@@ -179,12 +234,13 @@ export function mergeLocations(
 	parts: readonly Locations[],
 	asked: readonly Asked[]
 ): Locations {
+	const configs = parts.flatMap((part) => part.configs);
 	return {
 		everyFile: false,
 		asked,
-		configs: parts.flatMap((part) => part.configs),
+		configs,
 		errors: uniqueDiagnostics(parts.flatMap((part) => part.errors)),
-		stale: uniqueDiagnostics(parts.flatMap((part) => part.stale)),
+		skipped: skippedByEveryConfig(configs),
 	};
 }
 
@@ -194,6 +250,14 @@ export interface BuildService {
 
 	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
 	build(selection: ConfigSelection): Promise<BuildRun>;
+
+	/** Builds every selected config as `build` does, and writes nothing. */
+	check(selection: ConfigSelection): Promise<BuildRun>;
+
+	/** The project file a build of `project` would write, or none when the build fails. Writes nothing. */
+	projectFileOf(
+		project: ResolvedConfig
+	): Promise<RojoProjectFile | undefined>;
 
 	/** Builds and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(

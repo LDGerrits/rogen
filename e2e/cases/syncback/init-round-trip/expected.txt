@@ -1,0 +1,84 @@
+$ rogen init --non-interactive --skip-git
+exit 0
+stdout: (not shown)
+
+$ cp default.rogen.json before.json
+exit 0
+
+$ rogen build -o place.rbxl
+exit 0
+stdout: (not shown)
+stderr:
+  rogen build · project
+  default.project.json · unchanged
+  Built 1 project.
+
+$ rogen syncback -i place.rbxl -y
+exit 0
+stderr:
+  rogen syncback · project
+  default.project.json · unchanged
+  Built 1 project.
+  Syncback wrote 1 change.
+
+$ cmp before.json default.rogen.json
+exit 0
+
+written:
+  AGENTS.md
+  README.md
+  before.json
+  default.project.json
+  default.rogen.json
+  place.rbxl
+  place/Lighting/init.meta.json
+  place/SoundService/init.meta.json
+  place/Workspace/Baseplate.model.json
+  place/Workspace/init.meta.json
+  src/Greeter/Client/Greeter.client.luau
+  src/Greeter/Server/Greeter.server.luau
+  src/Greeter/Shared/Greeting.luau
+
+default.rogen.json:
+{
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$path": "place/Lighting"
+    },
+    "SoundService": {
+      "$path": "place/SoundService"
+    },
+    "Workspace": {
+      "$path": "place/Workspace"
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  Lighting: Lighting  <- place/Lighting/init.meta.json
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+  SoundService: SoundService  <- place/SoundService/init.meta.json
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json

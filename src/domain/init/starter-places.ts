@@ -10,6 +10,7 @@ import {
 import { projectFileName } from "../rojo/rojo-project.js";
 import { Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
+import { SAMPLE_GAME_FOLDER } from "./sample-game.js";
 
 /** Where the places of a compiled project start: the folder that holds them, the code they share and the first one. */
 export const PROJECTS_FOLDER = "projects";
@@ -42,6 +43,8 @@ export interface StartingPlaces {
 	readonly commonSourcePath: string;
 	/** The first place's source path, relative to the project. */
 	readonly placeSourcePath: string;
+	/** Where the first place keeps its sample game, relative to its config. */
+	readonly gameFolder: string;
 	/** The editor settings of a Luau project and the tsconfig files of a compiled one. */
 	readonly files: readonly PlannedFile[];
 	readonly directories: readonly string[];
@@ -75,6 +78,7 @@ export class StarterPlaces {
 			sourcePaths: PROJECT_SOURCE_PATHS,
 			commonSourcePath,
 			placeSourcePath,
+			gameFolder: SAMPLE_GAME_FOLDER,
 			files: [
 				starter.commonTsconfig(commonSourcePath),
 				...starter.place(place, commonSourcePath).files,
@@ -99,6 +103,7 @@ export class StarterPlaces {
 			sourcePaths: [commonSourcePath, placeSourcePath],
 			commonSourcePath,
 			placeSourcePath,
+			gameFolder: path.posix.join(SAMPLE_GAME_FOLDER, FIRST_PLACE),
 			files: [
 				{
 					fileName: SETTINGS_FILE,

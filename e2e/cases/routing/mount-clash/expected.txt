@@ -2,8 +2,8 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 1 file sits next to an instance of the same name that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds, so Rojo builds two of it: (tree.mountClash)
-    src/Combat/Hit.luau -> ReplicatedStorage/Lib/Combat/Hit (next to "Combat")
+  default.rogen.json - warning: 1 file sits next to an instance of the same name that a mount of the tree holds, so Rojo builds two of it: (tree.mountClash)
+    src/Combat/Hit.luau (makes a "Combat" next to the "Combat" that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds)
   Rename one of them, or route outside the mounted folder.
 
 $ rogen check

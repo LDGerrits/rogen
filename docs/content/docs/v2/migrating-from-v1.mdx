@@ -19,7 +19,7 @@ v2 is a clean break. It won't read a v1 `.rogen.json`, and a `default.rogen.json
 rogen init
 ```
 
-It writes `default.rogen.json`. If you have a hand-written `default.project.json`, its keys are lifted into `default.rogen.json`, because v2 [owns its output](/docs/v2/core-concepts/output#output). Rogen writes `default.project.json` from then on, so `init` prints `git rm --cached default.project.json` to stop git tracking it.
+It writes `default.rogen.json`. If you have a hand-written `default.project.json`, its keys are lifted into `default.rogen.json`, because v2 [owns its project file](/docs/v2/core-concepts/output#output). Rogen writes `default.project.json` from then on, so `init` prints `git rm --cached default.project.json` to stop git tracking it.
 
 v2 doesn't look for a `.rogen.json`, so your v1 config stays where it is for the comparison below. Rename it if you want it out of the way:
 

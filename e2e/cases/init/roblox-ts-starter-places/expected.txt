@@ -4,14 +4,18 @@ stdout:
   rogen init
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
   Syncing from out, where roblox-ts compiles to.
-  Wrote the Greeter sample: the feature in projects/common/src, which every place shares, and Game in projects/game/src. Pass --no-sample for empty source folders.
-  Took the defaults: --kind place, --no-darklua, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Wrote the Greeter sample: the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
+  Took the defaults: --kind place, --no-darklua, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
   Created projects/game/default.rogen.json.
   Created projects/common/src/Greeter/shared/Greeting.ts.
   Created projects/common/src/Greeter/server/Greeter.server.ts.
   Created projects/common/src/Greeter/client/Greeter.client.ts.
   Created projects/game/src/Game/server/Game.server.ts.
+  Created projects/game/place/Lighting/init.meta.json.
+  Created projects/game/place/SoundService/init.meta.json.
+  Created projects/game/place/Workspace/Baseplate.model.json.
+  Created projects/game/place/Workspace/init.meta.json.
   Created README.md.
   Created projects/common/tsconfig.json.
   Created projects/game/tsconfig.json.
@@ -28,8 +32,8 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in projects/game/default.rogen.json.
     Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build projects/game' so the editor's projects/game/default.project.json follows.
-    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json and projects/game/tsconfig.json into projects/lobby (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
-  Wrote 10 files.
+    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
+  Wrote 14 files.
 
 ran:
   npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild
@@ -45,6 +49,10 @@ written:
   projects/common/tsconfig.json
   projects/game/default.project.json
   projects/game/default.rogen.json
+  projects/game/place/Lighting/init.meta.json
+  projects/game/place/SoundService/init.meta.json
+  projects/game/place/Workspace/Baseplate.model.json
+  projects/game/place/Workspace/init.meta.json
   projects/game/src/Game/server/Game.server.ts
   projects/game/tsconfig.json
   rokit.toml
@@ -94,17 +102,7 @@ projects/game/default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
+      "$path": "place/Lighting"
     },
     "ReplicatedStorage": {
       "rbxts_include": {
@@ -122,36 +120,10 @@ projects/game/default.rogen.json:
       }
     },
     "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
+      "$path": "place/SoundService"
     },
     "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
+      "$path": "place/Workspace"
     }
   },
   "rogen": {
@@ -162,8 +134,7 @@ projects/game/default.rogen.json:
     "routes": {
       "server": "ServerScriptService",
       "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared",
-      "*": "ReplicatedStorage/shared"
+      "shared": "ReplicatedStorage/shared"
     },
     "compiledPath": "out"
   }

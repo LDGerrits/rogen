@@ -65,7 +65,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project file again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project file again whenever names or configs change. Write the sourcemap after each write, and after each edit of a file under the source paths. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const SourcemapOptions = [
@@ -216,12 +216,11 @@ registerCommand(
 				);
 			const buildLog = new BuildLog(logService, cwd);
 			if (printed)
-				buildLog.diagnostics(
-					build.builds.flatMap((one) => [
-						...one.warnings,
-						...one.errors,
-					])
-				);
+				for (const one of build.builds)
+					buildLog.diagnostics(
+						[...one.warnings, ...one.errors],
+						one.file
+					);
 			else buildLog.report(build, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;

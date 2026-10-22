@@ -68,6 +68,47 @@ describe("where command", () => {
 		]);
 	});
 
+	describe("a file in no source path", () => {
+		beforeEach(async () => {
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
+			await write("src/Util.luau", "lib/x.luau");
+		});
+
+		it("should keep its outside line and say no build reads it", async () => {
+			const result = await run({ _: ["lib/x.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"lib/x.luau -> outside the source paths",
+			]);
+			expect(logService.texts("notice")).toEqual([
+				"note: lib/x.luau: in no source path of default.rogen.json, so no build reads it.",
+			]);
+		});
+
+		it("should list it under skipped in the JSON document", async () => {
+			await run({ _: ["lib/x.luau", "src/Util.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n")).skipped).toEqual([
+				{
+					path: "/repo/lib/x.luau",
+					reason: "outsideSourcePaths",
+					config: "/repo/default.rogen.json",
+				},
+			]);
+		});
+
+		it("should not list a path some build reads", async () => {
+			await run({ _: ["src/Util.luau"], json: true });
+
+			expect(JSON.parse(printed().join("\n"))).not.toHaveProperty(
+				"skipped"
+			);
+		});
+	});
+
 	describe("a project file that is out of date", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {
@@ -77,34 +118,23 @@ describe("where command", () => {
 			await fs.writeFile("/repo/default.project.json", "{}");
 		});
 
-		it("should be said after the answers", async () => {
+		it("should not be said with a path", async () => {
 			const result = await run({ _: ["src/Util.luau"] });
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
 				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			]);
-			expect(logService.texts("diagnosticWarning")).toEqual([
-				expect.stringContaining("output.differs"),
-			]);
+			expect(logService.texts("diagnosticWarning")).toEqual([]);
 		});
 
-		it("should be a warning in the JSON document", async () => {
-			await run({ _: ["src/Util.luau"], json: true });
+		it("should not be said with no path", async () => {
+			await run({ _: [] });
 
-			expect(JSON.parse(printed().join("\n")).diagnostics).toMatchObject([
-				{
-					severity: "warning",
-					code: "output.differs",
-					file: "/repo/default.project.json",
-					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
-				},
-			]);
+			expect(logService.texts("diagnosticWarning")).toEqual([]);
 		});
 
-		it("should not be said once the file is written", async () => {
-			await fs.delete("/repo/default.project.json");
-
+		it("should not be in the JSON document", async () => {
 			await run({ _: ["src/Util.luau"], json: true });
 
 			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);
@@ -307,9 +337,39 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([]);
-			expect(logService.texts("warn")).toEqual([
-				"places/shared/src/Common/Util.luau: no config covers this file; see where it lands through a place: rogen where places/lobby",
+			expect(logService.texts("warn")).toEqual([]);
+			expect(logService.texts("notice")).toEqual([
+				"note: places/shared/src/Common/Util.luau: no config at or above it reads it.",
 			]);
+		});
+
+		it("should name the named configs of the working folder as the way to see where it lands", async () => {
+			await writeConfig("game.rogen.json", {
+				name: "game",
+				rogen: { routes: ROUTES },
+			});
+
+			await run({ _: ["places/shared/src/Common/Util.luau"] });
+
+			expect(logService.texts("notice")).toEqual([
+				"note: places/shared/src/Common/Util.luau: no config at or above it reads it. See where it lands through one: rogen where game.rogen.json.",
+			]);
+		});
+
+		it("should list a file that no config covers under skipped in the JSON document", async () => {
+			await run({
+				_: ["places/shared/src/Common/Util.luau"],
+				json: true,
+			});
+
+			expect(JSON.parse(printed().join("\n"))).toMatchObject({
+				skipped: [
+					{
+						path: "/repo/places/shared/src/Common/Util.luau",
+						reason: "noConfig",
+					},
+				],
+			});
 		});
 
 		it("should answer the files it can and skip the one it can't", async () => {
@@ -324,7 +384,7 @@ describe("where command", () => {
 			expect(printed()).toEqual([
 				"places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
 			]);
-			expect(logService.texts("warn")).toHaveLength(1);
+			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
 		it("should list every file of a config named by its file", async () => {
@@ -389,6 +449,33 @@ describe("where command", () => {
 			]);
 		});
 
+		it("should list every file of a config named by its bare name", async () => {
+			const byName = await run({ _: ["game"] });
+			const named = printed();
+			logService.clear();
+			const byFile = await run({ _: ["game.rogen.json"] });
+
+			expect(byName.isOk()).toBe(true);
+			expect(byFile.isOk()).toBe(true);
+			expect(named).toEqual(printed());
+			expect(named).toEqual(
+				expect.arrayContaining([
+					expect.stringContaining("src/common/Util.luau"),
+					expect.stringContaining("src/game/Server/Main.luau"),
+				])
+			);
+			expect(named.join("\n")).not.toContain("src/lobby");
+		});
+
+		it("should still place a file that no config is named for", async () => {
+			const result = await run({ _: ["src/game/Server/New.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/game/Server/New.luau -> ServerScriptService/New · route Server (folder) · the file does not exist yet",
+			]);
+		});
+
 		it("should print a shared file once when every config places it alike", async () => {
 			const result = await run({ _: ["src/common/Util.luau"] });
 
@@ -434,7 +521,7 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([]);
-			expect(logService.texts("warn")).toHaveLength(1);
+			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
 		it("should name the configs a bare where can't choose between", async () => {

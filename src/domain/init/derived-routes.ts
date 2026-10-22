@@ -29,6 +29,8 @@ export interface NarrowedMount {
 export class DerivedRoutes {
 	readonly routes = new Map<string, string>();
 	readonly fallback: string | undefined;
+	/** Where the node that mounted a whole source path lands: only the fallback route places what it held. */
+	readonly mountedRoot: string | undefined;
 	readonly unrouted: UnroutedMount[] = [];
 	readonly narrowed: NarrowedMount | undefined;
 
@@ -107,6 +109,7 @@ export class DerivedRoutes {
 			folders.length > 0
 				? { node: rootTarget, target: rootMount, folders }
 				: undefined;
+		this.mountedRoot = rootTarget;
 		this.fallback =
 			rootTarget ??
 			[...this.routes].find(

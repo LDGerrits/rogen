@@ -39,12 +39,7 @@ export class WhereAnswers {
 	private readonly sorted: boolean;
 	private readonly asked: readonly Asked[];
 
-	constructor({
-		everyFile,
-		asked,
-		configs,
-		errors,
-	}: Omit<Locations, "stale">) {
+	constructor({ everyFile, asked, configs, errors }: Locations) {
 		this.errors = errors;
 		this.asked = asked;
 		this.sourcePaths = configs.flatMap(({ config }) => config.sourcePaths);

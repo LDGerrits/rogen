@@ -4,7 +4,7 @@ import {
 	DiagnosticSeverity,
 	renderDiagnostic,
 } from "../diagnostics/diagnostic.js";
-import { diagnosticAnnotationLines } from "../diagnostics/diagnostic-annotation-lines.js";
+import { diagnosticAnnotationLine } from "../diagnostics/diagnostic-annotation-line.js";
 import { LogLevel, LogService } from "./log-service.js";
 
 export type LogKind =
@@ -168,11 +168,10 @@ export abstract class AbstractLogService implements LogService {
 	annotate(diagnostic: Diagnostic): void {
 		if (this.annotationsIn === undefined || this.level === LogLevel.Off)
 			return;
-		for (const line of diagnosticAnnotationLines(
-			diagnostic,
-			this.annotationsIn
-		))
-			this.write("annotation", line);
+		this.write(
+			"annotation",
+			diagnosticAnnotationLine(diagnostic, this.annotationsIn)
+		);
 	}
 
 	diagnostic(diagnostic: Diagnostic): void {

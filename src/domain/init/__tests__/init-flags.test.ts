@@ -5,6 +5,7 @@ import { MockPromptService } from "../../../platform/prompt/__tests__/mock-promp
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
 import { ProjectSetup } from "../project-setup.js";
+import { SampleGame } from "../sample-game.js";
 import { WorkspaceSpec, directory, directoryOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = {};
@@ -65,7 +66,7 @@ describe("init choices given as flags", () => {
 					value: ["server", "client", "shared"],
 					flag: "--route",
 				},
-				{ question: "unmatched", value: "shared", flag: "--unmatched" },
+				{ question: "unmatched", value: "leave", flag: "--unmatched" },
 				{ question: "sample", value: true, flag: "--sample" },
 				{ question: "skipGit", value: false, flag: "--skip-git" },
 			]);
@@ -133,12 +134,19 @@ describe("init choices given as flags", () => {
 			const { asked } = await run(luau, {});
 
 			expect(asked.unwrap()?.sample).toBe(true);
-			expect(asked.unwrap()?.tree).toEqual({ kind: "new", game: true });
+			expect(asked.unwrap()?.tree).toEqual({
+				kind: "new",
+				game: new SampleGame("place"),
+			});
 			expect(await fileNames({})).toEqual([
 				".gitignore",
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
 				"src/Greeter/Client/Greeter.client.luau",
+				"place/Lighting/init.meta.json",
+				"place/SoundService/init.meta.json",
+				"place/Workspace/Baseplate.model.json",
+				"place/Workspace/init.meta.json",
 				"README.md",
 			]);
 		});
@@ -356,6 +364,14 @@ describe("init choices given as flags", () => {
 
 			expect(asked.unwrap()?.routes).toEqual([]);
 			expect(decidedFlags(questions)).not.toContain("--unmatched");
+		});
+
+		it("should leave out the files that match no route unless asked to put them in the shared route", async () => {
+			const left = await run(luau, {});
+			const shared = await run(luau, { unmatched: "shared" });
+
+			expect(left.asked.unwrap()?.fallback).toBe(false);
+			expect(shared.asked.unwrap()?.fallback).toBe(true);
 		});
 
 		it("should refuse --unmatched when there is no route for it to apply to", async () => {

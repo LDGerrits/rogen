@@ -8,6 +8,7 @@ import {
 	WrittenBuild,
 } from "../../../domain/build/build.js";
 import { ResolvedConfig } from "../../../domain/config/resolved-config.js";
+import { WHERE_SCRIPTS_RUN } from "../../../domain/roblox/roblox.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -207,6 +208,28 @@ describe("BuildLog report", () => {
 		).toEqual([
 			"lobby/default.project.json · not written · match failed",
 			"match/default.project.json · not written",
+		]);
+	});
+
+	it("should report a config that only a check built as checked, and close with a check", () => {
+		const logService = new MockLogService();
+
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				builtOf(summaryOf(), "notWritten", configNamed("a"), []),
+			]),
+			undefined,
+			"syncback",
+			false
+		);
+
+		expect(
+			logService.entries
+				.filter(({ kind }) => kind !== "intro")
+				.map(({ kind, text }) => `${kind}: ${text}`)
+		).toEqual([
+			"success: a/default.project.json · checked",
+			"outro: Checked 1 project.",
 		]);
 	});
 
@@ -459,7 +482,10 @@ describe("BuildLog.diagnostics", () => {
 
 	const printed = (diagnostics: readonly Diagnostic[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).diagnostics(diagnostics);
+		new BuildLog(logService, cwd).diagnostics(
+			diagnostics,
+			"/repo/default.rogen.json"
+		);
 		return logService.entries.map(({ text }) => text);
 	};
 
@@ -481,36 +507,28 @@ describe("BuildLog.diagnostics", () => {
 		expect(printed(warnings(10))[9]).not.toContain("more like it");
 	});
 
-	const groupedOf = (count: number) => {
-		const related = Array.from({ length: count }, (_, n) => ({
-			resource: `/repo/src/F${n}`,
-			message: "hint",
-		}));
-		return warningDiagnostic(
-			"route.strayAt",
-			{ resource: "/repo/default.rogen.json" },
+	it("should print two dead scripts as one block under the config, headed and listed", () => {
+		expect(printed(warnings(2, "tree.deadScript"))).toEqual([
 			[
-				`${count} names:`,
-				...related.map(({ resource }) => `  ${resource} (hint)`),
-				"Fix them.",
+				`${path.normalize("/repo/default.rogen.json")} - warning: 2 scripts will never run where they land: (tree.deadScript)`,
+				"  /repo/src/F0.luau (bad.)",
+				"  /repo/src/F1.luau (bad.)",
+				WHERE_SCRIPTS_RUN,
 			].join("\n"),
-			[],
-			related
-		);
-	};
-
-	it("should print ten of the related files a grouped warning lists, then count the rest", () => {
-		const [text] = printed([groupedOf(12)]);
-
-		const lines = text.split("\n");
-		expect(lines).toHaveLength(13);
-		expect(lines[10]).toContain("/repo/src/F9 (hint)");
-		expect(lines[11]).toBe("  2 more like it aren't listed.");
-		expect(lines[12]).toBe("Fix them.");
+		]);
 	});
 
-	it("should say 'isn't' when one related file is left out", () => {
-		const [text] = printed([groupedOf(11)]);
+	it("should list ten files of a block, then count the rest", () => {
+		const [text] = printed(warnings(12, "route.strayAt"));
+
+		const lines = text.split("\n");
+		expect(lines).toHaveLength(12);
+		expect(lines[10]).toBe("  /repo/src/F9.luau (bad.)");
+		expect(lines[11]).toBe("  2 more like it aren't listed.");
+	});
+
+	it("should say 'isn't' when one file of a block is left out", () => {
+		const [text] = printed(warnings(11, "route.strayAt"));
 
 		expect(text.split("\n")[11]).toBe("  1 more like it isn't listed.");
 	});

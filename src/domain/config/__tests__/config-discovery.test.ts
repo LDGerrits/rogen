@@ -721,3 +721,49 @@ describe("ConfigDiscovery.findEnclosing", () => {
 		});
 	});
 });
+
+describe("ConfigDiscovery.fileNamedHere", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/src");
+	});
+
+	const named = (ref: string) =>
+		new ConfigDiscovery(
+			fs,
+			new MockEnvironmentService("/repo")
+		).fileNamedHere(ref);
+
+	it("should be the config of that name, else the project file", async () => {
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/lobby.project.json", "{}");
+
+		expect((await named("game")).unwrap()).toBe("/repo/game.rogen.json");
+		expect((await named("lobby")).unwrap()).toBe(
+			"/repo/lobby.project.json"
+		);
+	});
+
+	it("should prefer the config over the project file of one name", async () => {
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/game.project.json", "{}");
+
+		expect((await named("game")).unwrap()).toBe("/repo/game.rogen.json");
+	});
+
+	it("should be nothing for a name with no config or a path", async () => {
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+
+		expect((await named("arena")).unwrap()).toBeUndefined();
+		expect((await named("src/game")).unwrap()).toBeUndefined();
+	});
+
+	it("should fail when both extensions of one name are there", async () => {
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/game.rogen.jsonc", "{}");
+
+		expect(errorOf(await named("game"))).toBeInstanceOf(UsageError);
+	});
+});

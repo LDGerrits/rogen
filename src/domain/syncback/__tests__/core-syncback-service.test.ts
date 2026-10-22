@@ -133,6 +133,25 @@ describe("CoreSyncbackService", () => {
 		expect(copied).toBe("");
 	});
 
+	it("should name the project file Rojo runs on after the folder when the config names none, as Rojo names a default one", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+
+		await service.plan(request);
+
+		expect(JSON.parse(rojo.projectTexts[0]).name).toBe("repo");
+	});
+
+	it("should keep the name the config gives the project", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"], {
+			name: "Inventory",
+			project: { name: "Inventory", tree: { $className: "DataModel" } },
+		});
+
+		await service.plan(request);
+
+		expect(JSON.parse(rojo.projectTexts[0]).name).toBe("Inventory");
+	});
+
 	it("should leave no file of its own behind, after a plan or a run", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 
@@ -761,17 +780,6 @@ describe("CoreSyncbackService", () => {
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 	});
 
-	it("should fail, not throw, when the written project file is not JSON", async () => {
-		await prepare(["src/Combat/Server/Combat.luau"]);
-		await fs.writeFile(abs("default.project.json"), "{");
-
-		const planned = await service.plan(request);
-
-		expect((planned as ResultError<Error>).error.message).toContain(
-			"is not valid JSON"
-		);
-	});
-
 	it("should fail with Rojo's error when it fails for another reason", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 		const failure = new DiagnosticsError([
@@ -788,7 +796,7 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
-	it("should say when the project file has not been written", async () => {
+	it("should plan from what a build would write, with no project file on disk", async () => {
 		await writeFiles(fs, "src/A.luau");
 		config = configOf({ routes: ROUTES });
 		request = {
@@ -800,6 +808,23 @@ describe("CoreSyncbackService", () => {
 
 		const planned = await service.plan(request);
 
-		expect(planned.isErr()).toBe(true);
+		expect(planned.isOk()).toBe(true);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
+
+	it("should say when the project does not build", async () => {
+		config = configOf({ routes: ROUTES });
+		request = {
+			selection: selectionOf(config),
+			project: config,
+			input: "x",
+			cwd: "/repo",
+		};
+
+		const planned = await service.plan(request);
+
+		expect((planned as ResultError<Error>).error.message).toContain(
+			"does not build"
+		);
 	});
 });

@@ -451,15 +451,16 @@ export class InitQuestions {
 		}
 		if (unmatched !== undefined)
 			return { routes, fallback: unmatched === "shared" };
+		const byDefault = starting.fallbackByDefault ? "shared" : "leave";
 		if (!this.interactive) {
-			this.decide("unmatched", "shared", "--unmatched");
-			return { routes, fallback: true };
+			this.decide("unmatched", byDefault, "--unmatched");
+			return { routes, fallback: byDefault === "shared" };
 		}
 
 		const fallback = await this.promptService.select<"shared" | "leave">({
 			message: "Files that match no route",
 			description:
-				"Most loose modules in a feature folder are shared code.",
+				"Rogen can't tell server code by reading it, and shared code reaches every client. Left out, a file gets a warning that names the folder to move it into.",
 			choices: [
 				{
 					value: "shared",
@@ -470,7 +471,7 @@ export class InitQuestions {
 					label: "Leave them out (Rogen warns when it does)",
 				},
 			],
-			initialValue: "shared",
+			initialValue: byDefault,
 		});
 		return fallback && { routes, fallback: fallback === "shared" };
 	}

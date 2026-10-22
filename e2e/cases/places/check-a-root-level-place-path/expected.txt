@@ -40,7 +40,7 @@ stdout:
 $ rogen check README.md
 exit 0
 stderr:
-  warning: README.md: no config covers this file; check it through a place: rogen check places/lobby
+  note: README.md: no config at or above it reads it. Check it through one: rogen check game.rogen.json or lobby.rogen.json.
 
 $ rogen check
 exit 1

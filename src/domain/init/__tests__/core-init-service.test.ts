@@ -299,7 +299,7 @@ describe("CoreInitService", () => {
 	});
 
 	describe("agent hook", () => {
-		const SCRIPT = ".agents/hooks/rogen-check.sh";
+		const SCRIPT = ".agents/hooks/rogen-check.mjs";
 		const CLAUDE = ".claude/settings.json";
 		const CODEX = ".codex/hooks.json";
 		const answersEverything = () => new MockPromptService({});
@@ -338,7 +338,7 @@ describe("CoreInitService", () => {
 								{
 									type: "command",
 									command:
-										'bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh',
+										'node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
 								},
 							],
 						},
@@ -468,7 +468,7 @@ describe("CoreInitService", () => {
 				CLAUDE,
 				JSON.stringify({
 					hooks: {
-						Stop: [{ hooks: [{ command: "x/rogen-check.sh" }] }],
+						Stop: [{ hooks: [{ command: "x/rogen-check.mjs" }] }],
 					},
 				})
 			);
@@ -491,7 +491,7 @@ describe("CoreInitService", () => {
 				CLAUDE,
 				JSON.stringify({
 					hooks: {
-						Stop: [{ hooks: [{ command: "x/rogen-check.sh" }] }],
+						Stop: [{ hooks: [{ command: "x/rogen-check.mjs" }] }],
 					},
 				})
 			);
@@ -528,7 +528,7 @@ describe("CoreInitService", () => {
 				CODEX,
 			]);
 			expect(plan?.notes).toEqual([
-				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.sh in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
+				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
 			]);
 		});
 
@@ -539,7 +539,7 @@ describe("CoreInitService", () => {
 
 			expect(names(plan)).not.toContain(SCRIPT);
 			expect(plan?.notes).toEqual([
-				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.sh in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
+				".claude/settings.json isn't plain JSON, so it was left alone. Register .agents/hooks/rogen-check.mjs in it by hand: https://rogen-playfully.vercel.app/docs/v2/agents",
 			]);
 		});
 
@@ -550,7 +550,7 @@ describe("CoreInitService", () => {
 			const plan = await planned();
 
 			expect(plan?.nextSteps.setup).toEqual([
-				"The hook needs bash, git and jq; on Windows, winget install jqlang.jq.",
+				"The hook runs the Rogen in node_modules/.bin, else the one on the PATH; install Rogen in the project or globally.",
 				"Codex runs a new hook only once you trust it: open /hooks in Codex to review it.",
 			]);
 		});
@@ -1149,6 +1149,10 @@ describe("CoreInitService", () => {
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
 				"src/Greeter/Client/Greeter.client.luau",
+				"place/Lighting/init.meta.json",
+				"place/SoundService/init.meta.json",
+				"place/Workspace/Baseplate.model.json",
+				"place/Workspace/init.meta.json",
 				"README.md",
 				"AGENTS.md",
 			]);

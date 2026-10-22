@@ -209,6 +209,15 @@ export class ConfigDiscovery {
 			: ok(present[0]);
 	}
 
+	/** The file a bare `ref` names here, as `build` reads it. */
+	async fileNamedHere(
+		ref: string
+	): Promise<Result<string | undefined, Error>> {
+		return isBareName(ref)
+			? this.fileNamed(this.environmentService.cwd, ref)
+			: ok(undefined);
+	}
+
 	/** What a bare name stands for in `folder`: its config of that name, else its project file of that name. */
 	private async fileNamed(
 		folder: string,

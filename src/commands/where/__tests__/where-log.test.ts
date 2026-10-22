@@ -141,6 +141,7 @@ describe("WhereLog", () => {
 						everyFile: false,
 						asked: [],
 						errors: [],
+						skipped: [],
 						configs: [
 							{
 								config: mockConfig({}),
@@ -635,6 +636,7 @@ describe("WhereLog", () => {
 					everyFile: true,
 					asked: [],
 					errors: [],
+					skipped: [],
 					configs: [
 						{
 							config: mockConfig({
@@ -682,27 +684,14 @@ describe("WhereLog", () => {
 		});
 		const strayAt = warningDiagnostic(
 			"route.strayAt",
-			{ resource: "/repo/default.rogen.json" },
-			'2 names have an "@" that routes nowhere:',
+			{ resource: source },
+			'did you mean "@server"?',
 			[
 				{
 					rename: {
 						from: source,
 						to: "/repo/src/Save@server.luau",
 					},
-				},
-				{
-					rename: {
-						from: "/repo/src/Other@sever.luau",
-						to: "/repo/src/Other@server.luau",
-					},
-				},
-			],
-			[
-				{ resource: source, message: 'did you mean "@server"?' },
-				{
-					resource: "/repo/src/Other@sever.luau",
-					message: 'did you mean "@server"?',
 				},
 			]
 		);
@@ -712,18 +701,7 @@ describe("WhereLog", () => {
 			"matched no route."
 		);
 
-		it("should print a line under the path for a grouped diagnostic's entry about it, with the code", () => {
-			const report = reportOf([
-				["default", [placed(source)], [], [strayAt]],
-			]);
-
-			expect(report.lines()).toEqual([
-				"src/Save@sever.luau -> ReplicatedStorage/Save · route * (fallback)",
-				'  warning: did you mean "@server"? (route.strayAt)',
-			]);
-		});
-
-		it("should print a path's own diagnostic and none about other paths or the config as a whole", () => {
+		it("should print a path's own diagnostic and none about other paths", () => {
 			const report = reportOf([
 				[
 					"default",
@@ -802,7 +780,7 @@ describe("WhereLog", () => {
 			]);
 		});
 
-		it("should narrow a grouped diagnostic to the path in json: its entry's message and its own fixes", () => {
+		it("should give a path's diagnostic in json with its fixes", () => {
 			const [entry] = documentOf([
 				["default", [placed(source)], [], [strayAt]],
 			]).locations;

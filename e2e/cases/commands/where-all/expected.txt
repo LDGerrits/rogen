@@ -11,6 +11,8 @@ stdout:
     require(game:GetService("ServerScriptService").Lobby.Queue)
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
   README.md -> outside the source paths
+stderr:
+  note: README.md: in no source path of default.rogen.json, so no build reads it.
 
 $ rogen where places/lobby/Lobby/Server/Queue.luau README.md --json
 exit 0
@@ -40,5 +42,14 @@ stdout:
         "diagnostics": []
       }
     ],
-    "diagnostics": []
+    "diagnostics": [],
+    "skipped": [
+      {
+        "path": "<dir>/README.md",
+        "reason": "outsideSourcePaths",
+        "config": "<dir>/default.rogen.json"
+      }
+    ]
   }
+stderr:
+  note: README.md: in no source path of default.rogen.json, so no build reads it.

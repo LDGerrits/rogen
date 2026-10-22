@@ -1,0 +1,11 @@
+$ rogen syncback -i place.rbxl --dry-run
+exit 0
+stdout:
+  Writing src/Net/init.luau
+  Writing src/Net
+stderr:
+  rogen syncback · Game
+  default.project.json · checked
+  default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
+  Checked 1 project with 1 warning.
+  Syncback would change 1 file (1 to write).

@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git"],
+		["build", "-o", "place.rbxl"],
+		["$", "lune", "run", "dump-place", "place.rbxl", "place.txt"]
+	],
+	"show": ["place.txt"]
+}

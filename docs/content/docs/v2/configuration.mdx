@@ -17,8 +17,7 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
     		"routes": {
     			"Server": "ServerScriptService",
     			"Client": "StarterPlayer/StarterPlayerScripts",
-    			"Shared": "ReplicatedStorage/Shared",
-    			"*": "ReplicatedStorage/Shared"
+    			"Shared": "ReplicatedStorage/Shared"
     		}
     	}
     }
@@ -45,8 +44,7 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
     		"routes": {
     			"server": "ServerScriptService",
     			"client": "StarterPlayer/StarterPlayerScripts",
-    			"shared": "ReplicatedStorage/shared",
-    			"*": "ReplicatedStorage/shared"
+    			"shared": "ReplicatedStorage/shared"
     		},
     		"compiledPath": "out"
     	}
@@ -106,15 +104,15 @@ A key on neither list is an error, since Rojo rejects a project file with a key 
 
 ## Project Files Are as Fresh as Their Last Build
 
-`default.project.json` is what the editor and your compiler read, and Rogen writes it only when a command builds that config. So it is as fresh as its last build. `rogen serve` and `rogen build` keep it current while they run. When you add a feature folder, or a file named with an `@` key, run `rogen build` before you open the editor or run the compiler; a file added to a folder that is already mounted whole needs nothing. A fresh clone runs `rogen build` before the editor or a compiler needs the file. `rogen check` reports a project file that differs from what a build would write.
+`default.project.json` is what the editor and your compiler read, and Rogen writes it only when a command builds that config. See [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build) for when to run `rogen build`.
 
-Rogen writes these files, so `rogen init` adds `*.project.json` to the `.gitignore` it creates, beside `sourcemap.json`. The pattern covers a project file you wrote by hand as well; add `!name.project.json` below it to keep one tracked.
+`rogen init` adds `*.project.json` to the `.gitignore` it creates. See [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 ---
 
 ## More Files
 
-A second output is a second complete file. `X.rogen.json` writes `X.project.json` beside it. Use one when the same code needs another project file: a Darklua build that Studio reads while your editor reads the source, a release without the dev packages, a test place. The file repeats `name`, `routes` and `tree` and changes what differs. Nothing is inherited:
+A second project is a second complete config. `X.rogen.json` writes `X.project.json` beside it. Use one when the same code needs another project file: a Darklua build that Studio reads while your editor reads the source, a release without the dev packages, a test place. The file repeats `name`, `routes` and `tree` and changes what differs. Nothing is inherited:
 
 ```json title="default.rogen.json"
 {
@@ -162,9 +160,8 @@ A second output is a second complete file. `X.rogen.json` writes `X.project.json
 
 - A file other than `default` must set `name`.
 - `release` lists `"DevPackages/**"` in `globIgnorePaths`, which drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files).
-- A bare `rogen serve` serves `default.rogen.json`, even when `dist.rogen.json` sits beside it. With Darklua that is unprocessed source, as a bare `rojo serve` would serve: serve the processed code with `rogen serve dist`. `init` prints the run line that fits your setup.
+- A bare `rogen serve` serves `default.rogen.json`, even when `dist.rogen.json` sits beside it. See [Serving](/docs/v2/core-concepts/output#serving).
 - The files repeat each other and can drift: after you change a route, a source path or the tree in one, make the same change in the siblings that should follow it.
-- A `test.project.json` you wrote by hand stays as it is. `rogen build test.project.json` runs it as a plain Rojo project when no `test.rogen.json` sits beside it.
 
 **A test or subset file.** A second file is complete, so a smaller one is its own tree: give it its own `sourcePaths`, its mounts under `tree`, and `globIgnorePaths` for the mounts and specs it leaves out.
 
@@ -281,7 +278,7 @@ Every diagnostic points at the problem:
 default.rogen.json:7:3 - error: "outDir" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
 ```
 
-Errors stop the build. Warnings don't, and the build still exits with 0. You'll get warnings for:
+Errors stop the build. Warnings don't, and the build still exits with 0. [`rogen check`](/docs/v2/cli#check-path) exits 1 on a warning too, so use it where a warning should stop a merge. You'll get warnings for:
 
 - files that match no route,
 - names that look like a route key but aren't,

@@ -184,6 +184,17 @@ describe("parseArgs", () => {
 		expect(positionals(["--version"])).toEqual([]);
 	});
 
+	it("should pass help only the command name when --help follows an argument", () => {
+		expect(positionals(["build", "game", "--help"])).toEqual(["build"]);
+		expect(positionals(["build", "game", "-h"])).toEqual(["build"]);
+		expect(positionals(["--help", "build", "game"])).toEqual(["build"]);
+		expect(positionals(["help", "codes", "route", "-h"])).toEqual(["help"]);
+		expect(positionals(["help", "codes", "route"])).toEqual([
+			"codes",
+			"route",
+		]);
+	});
+
 	it("should reject --verbose together with --quiet as a usage error", () => {
 		const result = parse(["build", "--verbose", "-q"]);
 

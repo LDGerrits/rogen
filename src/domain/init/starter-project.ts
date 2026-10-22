@@ -13,7 +13,7 @@ import {
 import { Mount } from "../toolchain/toolchain.js";
 import { instanceKey } from "../roblox/roblox.js";
 import { WrittenTree } from "../rojo/project-text.js";
-import { sampleGame } from "./template-files.js";
+import { SampleGame } from "./sample-game.js";
 
 const mountNode = ({ path, optional }: Mount): Partial<RojoNode> => ({
 	$path: optional ? { optional: path } : path,
@@ -31,16 +31,16 @@ export class StarterProject {
 		readonly written?: WrittenTree
 	) {}
 
-	/** `withGame`: the tree also holds the sample game of `rojo init`. */
+	/** `game`: the sample game of `rojo init`, whose services the tree also mounts. */
 	static fromMounts(
 		mounts: readonly Mount[],
-		withGame = false
+		game?: SampleGame
 	): StarterProject {
 		const project = new RojoProject<ParsedProjectFile>({
 			tree: { $className: "DataModel" },
 		});
-		if (withGame)
-			for (const [service, node] of Object.entries(sampleGame()))
+		if (game)
+			for (const [service, node] of Object.entries(game.nodes()))
 				project.insertNode([service], node);
 		for (const mount of mounts)
 			project.insertNode(mount.landing.split("/"), mountNode(mount));

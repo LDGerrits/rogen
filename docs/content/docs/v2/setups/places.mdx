@@ -27,26 +27,31 @@ rogen init --places
 game.rogen.json                 complete: name, tree, source paths, routes
 src/common/Greeter/...          shared by every place
 src/game/Game/Server/Game.server.luau
+place/game/...                  Rojo's Baseplate and lighting, mounted by the tree
 .vscode/settings.json           luau-lsp's sourcemap generator, for game
 .gitignore                      includes *.project.json and sourcemap.json
 README.md
 ```
 
-`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game`). `--no-sample` leaves the two source folders empty.
+`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game`). `--no-sample` leaves the two source folders empty and writes no `place/game`.
 
 The place's config lists the shared folder and its own, in full, and sets its own `name`:
 
 ```json title="game.rogen.json"
 {
 	"name": "game",
-	"tree": { "$className": "DataModel" },
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/game/Lighting" },
+		"SoundService": { "$path": "place/game/SoundService" },
+		"Workspace": { "$path": "place/game/Workspace" }
+	},
 	"rogen": {
 		"sourcePaths": ["src/common", "src/game"],
 		"routes": {
 			"Server": "ServerScriptService",
 			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared",
-			"*": "ReplicatedStorage/Shared"
+			"Shared": "ReplicatedStorage/Shared"
 		}
 	}
 }
@@ -59,25 +64,29 @@ Every path is relative to the file, and the later source path wins a clash, so a
 <Step>
 ### Add a Place
 
-Copy the config, change its `name` and its own source path, and make the folder:
+Copy the config and the place's Rojo files, change its `name`, its own source path and the folder it mounts them from, and make the folder:
 
 ```bash
 cp game.rogen.json lobby.rogen.json
+cp -r place/game place/lobby
 mkdir src/lobby
 ```
 
-In `lobby.rogen.json`, set `"name": "lobby"` and `"sourcePaths": ["src/common", "src/lobby"]`. The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't. `rogen init lobby` does not do this: like `rojo init`, it starts a separate project in `lobby/`. With Darklua, copy `game.dist.rogen.json` and `game.release.rogen.json` the same way (see [Darklua with Places](/docs/v2/setups/darklua#darklua-with-places)). `.vscode/settings.json` keeps reading the first place until you change its name (see [Open the Editor](#open-the-editor)).
+In `lobby.rogen.json`, set `"name": "lobby"`, `"sourcePaths": ["src/common", "src/lobby"]` and each `place/game` in the `tree` to `place/lobby`. The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't. `rogen init lobby` does not do this: like `rojo init`, it starts a separate project in `lobby/`. With Darklua, copy `game.dist.rogen.json` and `game.release.rogen.json` the same way (see [Darklua with Places](/docs/v2/setups/darklua#darklua-with-places)). `.vscode/settings.json` keeps reading the first place until you change its name (see [Open the Editor](#open-the-editor)).
 
 ```
 game.rogen.json
 lobby.rogen.json
+place/
+  game/
+  lobby/
 src/
   common/
   game/
   lobby/
 ```
 
-For roblox-ts, copy the folder of a place: make `projects/lobby/src`, copy `projects/game/default.rogen.json` and `projects/game/tsconfig.json` into `projects/lobby` (with `dist.rogen.json`, `release.rogen.json` and `.darklua.json` when the place has them), and set the `name` in each config to `lobby`. Nothing else in them depends on the folder: the source paths, `compiledPath` and `tsconfig.json` are relative to it. Run `rogen build projects/lobby` for its project file, and add `rbxtsc -p projects/lobby` and `rbxtsc -w -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
+For roblox-ts, copy the folder of a place: make `projects/lobby/src`, copy `projects/game/default.rogen.json`, `projects/game/tsconfig.json` and `projects/game/place` into `projects/lobby` (with `dist.rogen.json`, `release.rogen.json` and `.darklua.json` when the place has them), and set the `name` in each config to `lobby`. Nothing else in them depends on the folder: the source paths, `compiledPath`, the `place` the tree mounts and `tsconfig.json` are relative to it. Run `rogen build projects/lobby` for its project file, and add `rbxtsc -p projects/lobby` and `rbxtsc -w -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
 
 </Step>
 
@@ -112,7 +121,7 @@ rogen serve arena --port <port>
 
 A `servePort` in the place's file does the same, and Rogen writes none. If the port is held by a server Rogen started for another file, in any folder, the error names that file and says to stop it or give this one a port. Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port. Give each place its `servePlaceIds` and Rojo refuses the connection from any other place: see [Several places](/docs/v2/studio#several-places).
 
-`lobby.project.json` is as fresh as the last `rogen build lobby`. Serving writes only the named file, so after adding a feature folder, run `rogen build lobby` before the editor needs it.
+Serving writes only the named file, so `lobby.project.json` is as fresh as the last `rogen build lobby`: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
 
 </Step>
 
@@ -139,10 +148,10 @@ rogen sourcemap game -o sourcemap.json && luau-lsp analyze --definitions=@roblox
 rogen sourcemap lobby -o sourcemap.json && luau-lsp analyze --definitions=@roblox=<types.d.luau> --sourcemap=sourcemap.json src/common src/lobby
 ```
 
-`rogen check` and `rogen where` find a file's config in the folders at and above it: its default config, else the root-level `.rogen.json` files whose source paths hold it. `rogen check src/game/Main.server.luau` checks the file against `game`, and `rogen check src/common/Net.luau` against every place, printing a shared diagnostic once; `rogen where src/common/Net.luau` prints one answer, or one for each place when they place it differently. To check a place whole, name its config: `rogen check game.rogen.json` and `rogen where game.rogen.json`. A folder-per-place project is covered from the root by path, as `rogen check projects/lobby/src/Lobby/Server/LobbyService.ts`; a path that no config covers, such as a file in `projects/common`, gets a note and is skipped, so check it through a place:
+`rogen check` and `rogen where` find a file's config in the folders at and above it: its default config, else the root-level `.rogen.json` files whose source paths hold it. `rogen check src/game/Main.server.luau` checks the file against `game`, and `rogen check src/common/Net.luau` against every place, printing a shared diagnostic once; `rogen where src/common/Net.luau` prints one answer, or one for each place when they place it differently. To check a place whole, name its config: `rogen check game.rogen.json` and `rogen where game.rogen.json`. A folder-per-place project is covered from the root by path, as `rogen check projects/lobby/src/Lobby/Server/LobbyService.ts`; a path that no config covers, such as a file in `projects/common`, gets a note and is skipped, so check it through a place (`rogen check projects/lobby`):
 
 ```
-warning: projects/common/src/Net/Types.ts: no config covers this file; check it through a place: rogen check places/lobby
+note: projects/common/src/Net/Types.ts: no config at or above it reads it.
 ```
 
 Bare `rogen check`, `rogen where <instance>` and `rogen where -` read the current folder, as the Rojo commands do, so name a place's config or run them inside a place's folder; the error lists the configs the folder holds.
@@ -162,6 +171,7 @@ projects/common/tsconfig.json              for the editor only, rbxtsc never rea
 projects/game/tsconfig.json                compiles src and ../common/src into out
 projects/game/default.rogen.json           name, compiledPath "out", the rbxts_include mount
 projects/game/src/Game/server/Game.server.ts
+projects/game/place/...                    Rojo's Baseplate and lighting, mounted by the tree
 ```
 
 Name a place by its folder: `rogen serve projects/game`, `rogen build projects/game`.
@@ -184,7 +194,7 @@ rbxtsc needs a project file beside the `tsconfig.json`, so run `rogen build proj
 
 ## More Files in a Place
 
-A place that needs a second output has its own second file, as a single project does. A Darklua place has a `dist` config and a place with tests a `release` config: `game.dist.rogen.json` and `game.release.rogen.json` beside `game.rogen.json` for a root-level place, `dist.rogen.json` and `release.rogen.json` in the folder of a place in `projects/`. Each is a complete file: it repeats `name`, `routes` and `tree`, and adds what differs, and it lists the source paths again. `rogen build game.release -o game.rbxl` builds that place's release, and `rogen serve game.dist.rogen.json` serves its Darklua output. See the [Darklua guide](/docs/v2/setups/darklua#darklua-with-places).
+A place that needs a second project has its own second config, as a single project does (see [More Files](/docs/v2/configuration#more-files)). A Darklua place has a `dist` config and a place with tests a `release` config: `game.dist.rogen.json` and `game.release.rogen.json` beside `game.rogen.json` for a root-level place, `dist.rogen.json` and `release.rogen.json` in the folder of a place in `projects/`. Each lists the source paths again. `rogen build game.release -o game.rbxl` builds that place's release, and `rogen serve game.dist.rogen.json` serves its Darklua output. See the [Darklua guide](/docs/v2/setups/darklua#darklua-with-places).
 
 <Callout type="info">
 	A place file is an ordinary config. `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are Rojo keys that go at its top level, like `name`.

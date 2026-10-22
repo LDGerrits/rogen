@@ -2,18 +2,16 @@ import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
-import { capitalized, joinedWithAnd } from "../../../base/strings.js";
+import { capitalized, joinedWithOr } from "../../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
-	DiagnosticRelated,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import { DeclaredKeys } from "../../config/declared-keys.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	ScriptRun,
-	WHERE_SCRIPTS_RUN,
 	isServerOnlyService,
 	scriptFate,
 	instanceKey,
@@ -43,16 +41,6 @@ function reservedKeys(
 			...reservedKeys(value, here),
 		];
 	});
-}
-
-function renames(
-	noted: ReadonlyMap<string, NotedName<unknown>>
-): DiagnosticFix[] {
-	return [...noted]
-		.sort(([a], [b]) => compareStrings(a, b))
-		.flatMap(([from, { renamedTo }]) =>
-			renamedTo ? [{ rename: { from, to: renamedTo } }] : []
-		);
 }
 
 /** Reports on a finished build without re-deciding what its phases decided. */
@@ -102,53 +90,22 @@ export class BuildValidator {
 
 	private sourcePathNamedAfterKey(): Diagnostic[] {
 		const configDir = path.dirname(this.config.file);
-		const named = this.config.sourcePaths.flatMap((sourcePath) => {
-			const key = this.config.keys.resolve(path.basename(sourcePath));
+		return this.config.sourcePaths.flatMap((sourcePath) => {
+			const name = path.basename(sourcePath);
+			const key = this.config.keys.resolve(name);
 			if (key === undefined) return [];
 			const parent = path.dirname(sourcePath);
-			const relativeParent = toPosix(path.relative(configDir, parent));
+			const fix = isInside(parent, configDir)
+				? `use "${toPosix(path.relative(configDir, parent))}" as the source path instead, so "${name}" is read as a key`
+				: `move it into a folder, such as src/${toPosix(path.relative(configDir, sourcePath))}, and use "sourcePaths": ["src"]`;
 			return [
-				{
-					sourcePath,
-					shown: toPosix(path.relative(configDir, sourcePath)),
-					key,
-					parent: isInside(parent, configDir)
-						? relativeParent
-						: undefined,
-				},
+				warningDiagnostic(
+					"scan.sourcePathNamedAfterKey",
+					{ resource: sourcePath },
+					`named after the "${key}" route: ${fix}`
+				),
 			];
 		});
-		if (named.length === 0) return [];
-
-		const many = named.length > 1;
-		const inside = named.filter(({ parent }) => parent !== undefined);
-		const atTop = named.filter(({ parent }) => parent === undefined);
-		const fixes = [
-			...(inside.length > 0
-				? [
-						`Use ${joinedWithAnd([...new Set(inside.map(({ parent }) => `"${parent}"`))])} as the source path instead, so ${joinedWithAnd(inside.map(({ sourcePath }) => `"${path.basename(sourcePath)}"`))} ${inside.length > 1 ? "are" : "is"} read as ${inside.length > 1 ? "keys" : "a key"}.`,
-					]
-				: []),
-			...(atTop.length > 0
-				? [
-						`Move ${atTop.length > 1 ? "them" : "it"} into one folder, such as ${joinedWithAnd(atTop.map(({ shown }) => `src/${shown}`))}, and use "sourcePaths": ["src"].`,
-					]
-				: []),
-		];
-		const items = named.map(({ sourcePath, shown, key }) => ({
-			resource: sourcePath,
-			message: `named after the "${key}" route`,
-			line: `  ${shown} ("${key}" route)`,
-		}));
-		return [
-			this.grouped(
-				"scan.sourcePathNamedAfterKey",
-				`${named.length} source ${many ? "paths are" : "path is"} named after a route key, but routing starts below a source path, so ${many ? "their names" : "its name"} route${many ? "" : "s"} nothing:`,
-				items.map(({ line }) => line),
-				items.map(({ resource, message }) => ({ resource, message })),
-				fixes
-			),
-		];
 	}
 
 	private unresolvedLink(): Diagnostic[] {
@@ -250,8 +207,6 @@ export class BuildValidator {
 		return this.misspelt(
 			"route.strayAt",
 			"strayAt",
-			(count) =>
-				`${count} ${count === 1 ? "name has" : "names have"} an "@" that routes nowhere, so ${count === 1 ? "it is read as an ordinary name" : "they are read as ordinary names"}:`,
 			(_, { text, suggestion, notLast }) =>
 				notLast
 					? `"@${text}" must end the name`
@@ -263,11 +218,8 @@ export class BuildValidator {
 		return this.misspelt(
 			"route.dotRoute",
 			"dotRoute",
-			(count) =>
-				`${count} ${count > 1 ? "names write" : "name writes"} a route key after a dot, where only "@" routes, so ${count > 1 ? "they route" : "it routes"} nothing:`,
 			(resource, { renamedTo }) =>
 				`write "${path.posix.basename(renamedTo ?? resource)}"`,
-			[],
 			(resource, { key, respelling }) => {
 				if (!respelling.spelling.startsWith("@")) return undefined;
 				const governing = this.governingRoute(resource, key);
@@ -301,79 +253,67 @@ export class BuildValidator {
 		return this.misspelt(
 			"route.folderTypo",
 			"folderTypo",
-			(count) =>
-				`${count} ${count > 1 ? "folders are" : "folder is"} one edit from a declared route key, so ${count > 1 ? "they are read as ordinary folders" : "it is read as an ordinary folder"}:`,
-			(_, { key }) => `did you mean "${key}"?`,
-			[
-				"Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.",
-			]
+			(_, { key }) => `did you mean "${key}"?`
 		);
 	}
 
 	private misspelt<K extends MisspellingKind>(
 		code: string,
 		kind: K,
-		headline: (count: number) => string,
 		hint: (
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
 		) => string,
-		tail: readonly string[] = [],
 		/** Why the fix the hint names would not work, which replaces the hint and the rename. */
 		unusable: (
 			resource: string,
 			misspelt: NotedName<MisspellingOf<K>>
 		) => string | undefined = () => undefined
 	): Diagnostic[] {
-		const noted = this.placement.readings.misspelt(kind);
-		if (noted.size === 0) return [];
-		const unusableAt = new Map(
-			[...noted].map(([resource, misspelt]) => [
-				resource,
-				unusable(resource, misspelt),
-			])
+		return [...this.placement.readings.misspelt(kind)].map(
+			([resource, misspelt]) => {
+				const why = unusable(resource, misspelt);
+				const { renamedTo } = misspelt;
+				return warningDiagnostic(
+					code,
+					{ resource },
+					why ?? hint(resource, misspelt),
+					why === undefined && renamedTo
+						? [{ rename: { from: resource, to: renamedTo } }]
+						: []
+				);
+			}
 		);
-		const items = [...noted].map(([resource, misspelt]) => ({
-			resource,
-			message: unusableAt.get(resource) ?? hint(resource, misspelt),
-		}));
-		return [
-			this.grouped(
-				code,
-				headline(noted.size),
-				items.map(
-					({ resource, message }) => `  ${resource} (${message})`
-				),
-				items,
-				tail,
-				renames(
-					new Map(
-						[...noted].filter(
-							([resource]) =>
-								unusableAt.get(resource) === undefined
-						)
-					)
-				)
-			),
-		];
 	}
 
 	private unrouted(): Diagnostic[] {
+		const [first, ...rest] = this.config.keys.routeKeys;
 		return this.placement.leftOut
 			.withStatus("unrouted")
 			.map(([resource]) =>
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
-					'matched no route, so it is left out. Add a "*" route, or move it into a routing folder.'
+					`matched no route, so it is left out. Move it into ${joinedWithOr([path.join(this.featureFolderOf(resource), first), ...rest])}.`
 				)
 			);
 	}
 
-	private shipped(): { file: RoutedFile; ignored: string[] }[] {
+	/** The folder directly in a source path that holds `source`, or the source path for a file at its top. */
+	private featureFolderOf(source: string): string {
+		const sourcePath =
+			this.config.sourcePaths.find((dir) => isInside(source, dir)) ??
+			path.dirname(source);
+		const [top, ...below] = path
+			.relative(sourcePath, source)
+			.split(path.sep);
+		return below.length > 0 ? path.join(sourcePath, top) : sourcePath;
+	}
+
+	private shipped(): RoutedFile[] {
 		const { routes } = this.config;
-		return this.placement.files.flatMap((file) => {
-			const ignored = [...new Set(file.outrankedFolderRoutes)].filter(
+		return this.placement.files.filter((file) => {
+			const outranksServerRoute = file.outrankedFolderRoutes.some(
 				(key) => {
 					const service = routes.get(key)?.service;
 					return (
@@ -383,47 +323,22 @@ export class BuildValidator {
 			);
 			const isScript =
 				this.placement.readingOf(file).scriptSuffix !== undefined;
-			return ignored.length > 0 &&
+			return (
+				outranksServerRoute &&
 				!isScript &&
 				!isServerOnlyService(file.instancePath[0])
-				? [{ file, ignored }]
-				: [];
+			);
 		});
 	}
 
 	private serverCodeShipped(): Diagnostic[] {
-		const shipped = this.shipped();
-		if (shipped.length === 0) return [];
-
-		const quoted = (keys: Iterable<string>) =>
-			joinedWithAnd([...new Set(keys)].map((key) => `"${key}"`));
-		const ignoredKeys = quoted(shipped.flatMap(({ ignored }) => ignored));
-		const routeKeys = [...new Set(shipped.map(({ file }) => file.route))];
-		const governing = quoted(routeKeys);
-		const related = shipped.map(({ file }) => ({
-			resource: file.entry.source,
-			message: `ships to clients as ${instanceKey(file.instancePath)}: move it out of the "${file.route}" route's files if it's server code, or keep it there with a "@${file.route}" marker file in its folder`,
-		}));
-		const listed = shipped.map(
-			({ file }) =>
-				`  ${file.entry.source} -> ${instanceKey(file.instancePath)}`
-		);
-		const many = shipped.length > 1;
-		const marker =
-			routeKeys.length === 1
-				? `a "@${routeKeys[0]}" marker file`
-				: `a marker file that restates their route (${routeKeys.map((key) => `"@${key}"`).join(" or ")})`;
-		return [
-			this.grouped(
+		return this.shipped().map((file) =>
+			warningDiagnostic(
 				"route.serverCodeShipped",
-				`${shipped.length} ${many ? "files" : "file"} under a ${ignoredKeys} route ${many ? "ship" : "ships"} to clients, because ${governing} ${governing.includes(" and ") ? "govern" : "governs"} ${many ? "them" : "it"}:`,
-				listed,
-				related,
-				[
-					`Move ${many ? "them" : "it"} out of the ${governing} route's files if ${many ? "they're" : "it's"} server code, or keep ${many ? "them" : "it"} there with ${marker} in ${many ? "their" : "its"} folder.`,
-				]
-			),
-		];
+				{ resource: file.entry.source },
+				`ships to clients as ${instanceKey(file.instancePath)}: move it out of the "${file.route}" route's files if it's server code, or keep it there with a "@${file.route}" marker file in its folder`
+			)
+		);
 	}
 
 	private scriptsThatNeverRun(): { file: RoutedFile; run: ScriptRun }[] {
@@ -437,43 +352,12 @@ export class BuildValidator {
 	}
 
 	private deadScript(): Diagnostic[] {
-		const dead = this.scriptsThatNeverRun();
-		if (dead.length === 0) return [];
-
-		const related = dead.map(({ file, run }) => ({
-			resource: file.entry.source,
-			message: `${BuildValidator.describeRun(run)} never runs in ${file.instancePath[0]}`,
-		}));
-		const listed = dead.map(
-			({ file, run }) =>
-				`  ${file.entry.source} -> ${instanceKey(file.instancePath)} (${BuildValidator.describeRun(run)}, placed by the "${file.route}" route)`
-		);
-		const many = dead.length > 1;
-		return [
-			this.grouped(
+		return this.scriptsThatNeverRun().map(({ file, run }) =>
+			warningDiagnostic(
 				"tree.deadScript",
-				`${dead.length} ${many ? "scripts" : "script"} will never run where ${many ? "they land" : "it lands"}:`,
-				listed,
-				related,
-				[WHERE_SCRIPTS_RUN]
-			),
-		];
-	}
-
-	private grouped(
-		code: string,
-		headline: string,
-		lines: readonly string[],
-		related: readonly DiagnosticRelated[],
-		tail: readonly string[] = [],
-		fixes: readonly DiagnosticFix[] = []
-	): Diagnostic {
-		return warningDiagnostic(
-			code,
-			{ resource: this.config.file },
-			[headline, ...lines, ...tail].join("\n"),
-			fixes,
-			related
+				{ resource: file.entry.source },
+				`${BuildValidator.describeRun(run)} never runs in ${file.instancePath[0]}`
+			)
 		);
 	}
 
@@ -544,7 +428,14 @@ export class BuildValidator {
 				warningDiagnostic(
 					"tree.instanceClash",
 					{ resource: entry.source },
-					`becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`
+					`becomes "${instance}", as ${winner.entry.source} does, which takes its place. Rename one of them to keep both.`,
+					[],
+					[
+						{
+							resource: winner.entry.source,
+							message: `takes its place as "${instance}"`,
+						},
+					]
 				)
 			)
 		);
@@ -575,30 +466,18 @@ export class BuildValidator {
 	}
 
 	private runContextTarget(): Diagnostic[] {
-		const inits = this.placement.playerClientScripts.inits.filter(
-			({ entry }) =>
-				this.assembly.meta.runContextOf(entry.source) === undefined
-		);
-		if (inits.length === 0) return [];
-		const listed = inits.map(
-			({ entry, instancePath }) =>
-				`  ${entry.source} -> ${instanceKey(instancePath)}`
-		);
-		return [
-			this.grouped(
-				"tree.runContextTarget",
-				`emitLegacyScripts: false makes ${inits.length === 1 ? "an init script" : "init scripts"} in StarterPlayerScripts or StarterCharacterScripts ${inits.length === 1 ? "a Script" : "Scripts"} with RunContext Client, because Rojo reads init scripts without sync rules:`,
-				listed,
-				inits.map(({ entry }) => ({
-					resource: entry.source,
-					message:
-						"an init script that sync rules can't keep a LocalScript",
-				})),
-				[
-					"Route the folder to another service, or remove emitLegacyScripts from the config.",
-				]
-			),
-		];
+		return this.placement.playerClientScripts.inits
+			.filter(
+				({ entry }) =>
+					this.assembly.meta.runContextOf(entry.source) === undefined
+			)
+			.map(({ entry }) =>
+				warningDiagnostic(
+					"tree.runContextTarget",
+					{ resource: entry.source },
+					"an init script that sync rules can't keep a LocalScript"
+				)
+			);
 	}
 
 	private nodeClash(): Diagnostic[] {

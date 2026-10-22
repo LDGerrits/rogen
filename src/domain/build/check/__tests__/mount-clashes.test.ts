@@ -24,7 +24,7 @@ describe("MountClashes", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	it("should warn once for the files that sit next to the mount's own instances of their names", async () => {
+	it("should warn at each file that sits next to one of the mount's own instances of its name", async () => {
 		await writeFiles(
 			fs,
 			"vendor/Lib/Util.luau",
@@ -35,27 +35,17 @@ describe("MountClashes", () => {
 			"src/Other.luau"
 		);
 
-		const [warning, ...others] = await warningsOf();
+		const warnings = await warningsOf();
 
-		expect(others).toEqual([]);
-		expect(warning.message).toContain("3 files sit next to instances");
-		expect(warning.message).toContain(
-			`${abs("src/Combat/Hit.luau")} -> ReplicatedStorage/Lib/Combat/Hit (next to "Combat")`
-		);
-		expect(warning.message).not.toContain("Other");
-		expect(warning.related).toEqual([
-			{
-				resource: abs("src/Combat/Hit.luau"),
-				message: expect.stringContaining('makes a "Combat" next to'),
-			},
-			{
-				resource: abs("src/Combat/Miss.luau"),
-				message: expect.stringContaining('makes a "Combat" next to'),
-			},
-			{
-				resource: abs("src/Util.luau"),
-				message: expect.stringContaining('makes a "Util" next to'),
-			},
+		expect(
+			warnings.map(({ resource, message }) => [resource, message])
+		).toEqual([
+			[
+				abs("src/Combat/Hit.luau"),
+				'makes a "Combat" next to the "Combat" that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds',
+			],
+			[abs("src/Combat/Miss.luau"), expect.stringContaining('"Combat"')],
+			[abs("src/Util.luau"), expect.stringContaining('makes a "Util"')],
 		]);
 	});
 

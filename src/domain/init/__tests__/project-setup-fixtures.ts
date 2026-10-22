@@ -20,13 +20,11 @@ export const LUAU_ROUTES = {
 	Server: "ServerScriptService",
 	Client: "StarterPlayer/StarterPlayerScripts",
 	Shared: "ReplicatedStorage/Shared",
-	"*": "ReplicatedStorage/Shared",
 };
 export const ROBLOX_TS_ROUTES = {
 	server: "ServerScriptService",
 	client: "StarterPlayer/StarterPlayerScripts",
 	shared: "ReplicatedStorage/shared",
-	"*": "ReplicatedStorage/shared",
 };
 
 export const luau: WorkspaceSpec = {};

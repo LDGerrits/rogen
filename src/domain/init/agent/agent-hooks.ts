@@ -85,7 +85,7 @@ export class AgentHooks {
 
 	get setup(): string[] {
 		return [
-			"The hook needs bash, git and jq; on Windows, winget install jqlang.jq.",
+			"The hook runs the Rogen in node_modules/.bin, else the one on the PATH; install Rogen in the project or globally.",
 			...this.registering.flatMap(({ target }) =>
 				target.afterwards ? [target.afterwards] : []
 			),

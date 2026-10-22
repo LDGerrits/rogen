@@ -2,13 +2,17 @@ $ rogen init newproj --non-interactive
 exit 0
 stdout:
   rogen init
-  Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.
-  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.
+  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Created newproj/default.rogen.json.
   Created newproj/.gitignore.
   Created newproj/src/Greeter/Shared/Greeting.luau.
   Created newproj/src/Greeter/Server/Greeter.server.luau.
   Created newproj/src/Greeter/Client/Greeter.client.luau.
+  Created newproj/place/Lighting/init.meta.json.
+  Created newproj/place/SoundService/init.meta.json.
+  Created newproj/place/Workspace/Baseplate.model.json.
+  Created newproj/place/Workspace/init.meta.json.
   Created newproj/README.md.
   Created newproj/AGENTS.md.
   Initialised a git repository.
@@ -19,7 +23,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in default.rogen.json.
     Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
-  Wrote 7 files.
+  Wrote 11 files.
 
 $ rogen build newproj
 exit 0
@@ -32,6 +36,10 @@ written:
   newproj/README.md
   newproj/default.project.json
   newproj/default.rogen.json
+  newproj/place/Lighting/init.meta.json
+  newproj/place/SoundService/init.meta.json
+  newproj/place/Workspace/Baseplate.model.json
+  newproj/place/Workspace/init.meta.json
   newproj/src/Greeter/Client/Greeter.client.luau
   newproj/src/Greeter/Server/Greeter.server.luau
   newproj/src/Greeter/Shared/Greeting.luau
@@ -41,49 +49,13 @@ newproj/default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
+      "$path": "place/Lighting"
     },
     "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
+      "$path": "place/SoundService"
     },
     "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
+      "$path": "place/Workspace"
     }
   },
   "rogen": {
@@ -93,15 +65,14 @@ newproj/default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }
 
 $ rojo sourcemap newproj/default.project.json
 newproj: DataModel
-  Lighting: Lighting
+  Lighting: Lighting  <- place/Lighting/init.meta.json
   ReplicatedStorage: ReplicatedStorage
     Shared: Folder
       Greeter: Folder
@@ -109,10 +80,10 @@ newproj: DataModel
   ServerScriptService: ServerScriptService
     Greeter: Folder
       Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
-  SoundService: SoundService
+  SoundService: SoundService  <- place/SoundService/init.meta.json
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
-  Workspace: Workspace
-    Baseplate: Part
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json

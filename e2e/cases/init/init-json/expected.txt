@@ -25,6 +25,22 @@ stdout:
         "outcome": "wrote"
       },
       {
+        "file": "<dir>/place/Lighting/init.meta.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/place/SoundService/init.meta.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/place/Workspace/Baseplate.model.json",
+        "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/place/Workspace/init.meta.json",
+        "outcome": "wrote"
+      },
+      {
         "file": "<dir>/README.md",
         "outcome": "wrote"
       },
@@ -74,7 +90,7 @@ stdout:
       },
       {
         "question": "unmatched",
-        "value": "shared",
+        "value": "leave",
         "flag": "--unmatched"
       },
       {
@@ -103,7 +119,7 @@ stdout:
       }
     ],
     "notes": [
-      "Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src."
+      "Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place."
     ],
     "nextSteps": {
       "setup": [],
@@ -124,6 +140,10 @@ written:
   README.md
   default.project.json
   default.rogen.json
+  place/Lighting/init.meta.json
+  place/SoundService/init.meta.json
+  place/Workspace/Baseplate.model.json
+  place/Workspace/init.meta.json
   src/Greeter/Client/Greeter.client.luau
   src/Greeter/Server/Greeter.server.luau
   src/Greeter/Shared/Greeting.luau
@@ -133,49 +153,13 @@ default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
+      "$path": "place/Lighting"
     },
     "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
+      "$path": "place/SoundService"
     },
     "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
+      "$path": "place/Workspace"
     }
   },
   "rogen": {
@@ -185,8 +169,7 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

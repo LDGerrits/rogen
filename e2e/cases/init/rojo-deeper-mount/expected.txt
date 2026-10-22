@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 stderr:
-  default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen's routes will place it: src/server/Main.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
+  default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen places it if a route matches it: src/server/Main.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
 
 $ rogen build
 exit 0
@@ -31,8 +31,7 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

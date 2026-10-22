@@ -2,7 +2,6 @@ import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsPerFile,
 	diagnosticsReaching,
 	isError,
 	uniqueDiagnostics,
@@ -11,6 +10,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
@@ -29,12 +29,15 @@ import {
 	Diagnosis,
 	LocateQuery,
 	Locations,
+	outsideEveryConfig,
+	skippedByEveryConfig,
+	skippedOutside,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
-import { AssembledFile, Locator } from "./locate/locator.js";
+import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 interface WriteOptions {
@@ -42,23 +45,6 @@ interface WriteOptions {
 }
 
 type Attempt = BuiltConfig | FailedBuild;
-
-/** The files asked about that no selected config reads: outside the source paths of every one. */
-function outsideEveryConfig(configs: readonly ConfigLocations[]): string[] {
-	const [first, ...others] = configs;
-	if (!first) return [];
-	return first.files
-		.filter(({ status }) => status === "outside")
-		.map(({ source }) => source)
-		.filter((source) =>
-			others.every(({ files }) =>
-				files.some(
-					(file) =>
-						file.source === source && file.status === "outside"
-				)
-			)
-		);
-}
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -77,9 +63,19 @@ export class CoreBuildService implements BuildService {
 		return this.buildAll(selection, true);
 	}
 
-	/** Builds every selected config as `build` does, and writes nothing. */
 	check(selection: ConfigSelection): Promise<BuildRun> {
 		return this.buildAll(selection, false);
+	}
+
+	async projectFileOf(
+		project: ResolvedConfig
+	): Promise<RojoProjectFile | undefined> {
+		const listing = await this.indexService.list([...project.indexedPaths]);
+		return new ConfigBuilder(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		).projectFileOf(project);
 	}
 
 	private async buildAll(
@@ -136,7 +132,6 @@ export class CoreBuildService implements BuildService {
 			)
 		);
 
-		const staleness = targets?.staleness === true;
 		const listing = await this.indexService.list(set.indexedPaths);
 		const located = await new Locator(
 			this.fileSystemService,
@@ -147,39 +142,11 @@ export class CoreBuildService implements BuildService {
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
-		const { built, ...found } = located.value;
 		return ok({
-			...found,
+			...located.value,
 			errors,
-			stale: staleness
-				? await this.staleOf(set.configs, listing, built)
-				: [],
+			skipped: skippedByEveryConfig(located.value.configs),
 		});
-	}
-
-	/** Warns of each project file that differs from a build, reusing an assembly the locate made to skip a second build. */
-	private async staleOf(
-		configs: readonly ResolvedConfig[],
-		listing: IndexReader,
-		built: ReadonlyMap<ResolvedConfig, AssembledFile>
-	): Promise<Diagnostic[]> {
-		const staleness = new ProjectFileStaleness(this.fileSystemService);
-		const builder = new ConfigBuilder(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		);
-		const stale: Diagnostic[] = [];
-		for (const config of configs) {
-			const known = built.get(config);
-			const diagnostic = await staleness.diagnostic(config, () =>
-				known
-					? Promise.resolve(known.file)
-					: builder.projectFileOf(config)
-			);
-			if (diagnostic) stale.push(diagnostic);
-		}
-		return stale;
 	}
 
 	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {
@@ -206,10 +173,7 @@ export class CoreBuildService implements BuildService {
 	): Promise<Result<Diagnosis, DiagnosticsError>> {
 		if (!targets || targets.args.length === 0) {
 			const { diagnostics } = await this.check(selection);
-			return ok({
-				diagnostics: diagnosticsPerFile(diagnostics),
-				stoppedBy: [],
-			});
+			return ok({ diagnostics, stoppedBy: [], skipped: [] });
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
@@ -220,12 +184,20 @@ export class CoreBuildService implements BuildService {
 			const outside = new OutsideSourcePaths(
 				configs.flatMap(({ config }) => config.sourcePaths)
 			);
+			const misspelt = outsideEveryConfig(configs).map((source) => ({
+				source,
+				warnings: outside.about(source),
+			}));
 			return {
+				skipped: skippedOutside(
+					misspelt
+						.filter(({ warnings }) => warnings.length === 0)
+						.map(({ source }) => source),
+					configs
+				),
 				diagnostics: uniqueDiagnostics([
 					...errors,
-					...outsideEveryConfig(configs).flatMap((source) =>
-						outside.about(source)
-					),
+					...misspelt.flatMap(({ warnings }) => warnings),
 					...configs.flatMap((config) =>
 						about(config).flatMap((target) =>
 							diagnosticsReaching(config.diagnostics, target)

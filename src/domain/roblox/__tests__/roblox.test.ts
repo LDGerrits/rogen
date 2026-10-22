@@ -91,6 +91,30 @@ describe("domain/roblox/roblox", () => {
 			]);
 		});
 
+		it.each([
+			["ServerScripService", "ServerScriptService"],
+			["ReplicatedStorag", "ReplicatedStorage"],
+			["serverstorage", "ServerStorage"],
+			["StarterPlayerScript/Ui", "StarterPlayer/StarterPlayerScripts/Ui"],
+		])("should suggest %j as %j", (target, suggestion) => {
+			const result = Target.parse(target, location);
+
+			expect(result.isErr() && result.error[0].message).toContain(
+				`Did you mean "${suggestion}"?`
+			);
+		});
+
+		it.each(["NotAService", "StarterPlayerFiles"])(
+			"should suggest nothing for %j, which no one could have meant",
+			(target) => {
+				const result = Target.parse(target, location);
+
+				expect(result.isErr() && result.error[0].message).toBe(
+					`"${target}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`
+				);
+			}
+		);
+
 		it("should offer no replacement when nothing is close", () => {
 			const result = Target.parse("Zzzzzzzzzz", location);
 

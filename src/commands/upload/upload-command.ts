@@ -37,7 +37,7 @@ const ApiKeyOption = {
 	type: "string",
 	placeholder: "api_key",
 	description:
-		"An API key from create.roblox.com/credentials: Rojo uploads with Open Cloud, to a place only, and needs --universe_id.",
+		"An API key from create.roblox.com/credentials. Rojo uploads with Open Cloud, to a place only, and needs --universe_id.",
 } as const satisfies OptionDescriptor;
 
 const UniverseIdOption = {

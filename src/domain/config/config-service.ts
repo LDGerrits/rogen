@@ -7,7 +7,7 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const PROJECT_DESCRIPTION =
-	"A folder, a .rogen.json file, a *.project.json path, or the name of a file here (dist for dist.rogen.json). The default.rogen.json of the working directory, or its default.project.json, when none is given.";
+	"A folder, a .rogen.json file, a *.project.json path, or the name of a file here. A name such as dist stands for dist.rogen.json. The default.rogen.json of the working directory, or its default.project.json, when none is given.";
 
 /** The `[PROJECT]` of a Rojo verb, which takes one. */
 export const ProjectArgument = [
@@ -167,6 +167,10 @@ export interface ConfigService {
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
+	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
+	namedConfigs(): Promise<string[]>;
+	/** Each argument that names a config as a bare name is replaced by its file; a file, or a folder with a default, stays a path. */
+	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;
 	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. */

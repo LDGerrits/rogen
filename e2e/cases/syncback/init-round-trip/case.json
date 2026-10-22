@@ -1,0 +1,9 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git"],
+		["$", "cp", "default.rogen.json", "before.json"],
+		["build", "-o", "place.rbxl"],
+		["syncback", "-i", "place.rbxl", "-y"],
+		["$", "cmp", "before.json", "default.rogen.json"]
+	]
+}

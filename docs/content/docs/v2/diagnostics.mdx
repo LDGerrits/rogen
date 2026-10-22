@@ -7,6 +7,8 @@ Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints
 
 An error stops the project file from being written. A warning never does, but it always names something to fix.
 
+A diagnostic is about one file, the one to fix, and every command gives it the same way, in `--json` and in `rogen check`. When a warning such as `route.strayAt` fires for several files, the commands that print a build (`build`, `serve`, `sourcemap`, `upload`, `syncback` and `watch`) head them as one block under the config, with a line for each of up to ten files.
+
 ## Config
 
 ### `config.unreadable` [#config-unreadable]
@@ -190,14 +192,14 @@ Remove the extra slash, or name the folder. See [Targets](/docs/v2/core-concepts
 Warning. No route matches the file and there's no `*` route, so it's left out of the project file.
 
 ```
-src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared. (route.unrouted)
 ```
 
-Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"` route. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
+The message names the routing folders of the file's feature: the folder directly in the source path that holds it, or the source path for a file at its top. Move the file into one, give it an `@key` suffix, or declare a `"*"` route if every such file belongs in one place. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
 
 ### `route.strayAt` [#route-strayat]
 
-Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
+Warning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.
 
 ```
 default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)
@@ -209,7 +211,7 @@ Rename the file to the spelling suggested, or move the `@key` to the end of the 
 
 ### `route.dotRoute` [#route-dotroute]
 
-Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns. One warning lists every such name.
+Warning. A route key is written after a dot, where only `@` routes, so it routes nothing: a dot-file like `.server`, which isn't a marker, a dot-folder like `.server/`, which isn't a routing folder, or a dot part of a name like `Types.shared.luau` or `Net.server/`, which stays in the name. What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too. Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns.
 
 ```
 default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
@@ -217,11 +219,11 @@ default.rogen.json - warning: 2 names write a route key after a dot, where only 
   src/Inventory/Types.shared.luau (write "Types@shared.luau")
 ```
 
-Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds every rename. A name inside a folder that a route already governs gets no rename: `@server` there is [`route.ignoredAt`](/docs/v2/diagnostics#route-ignoredat), so the line says which route governs it and to move it out of that route's files. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
+Rename each to its `@` form: a marker file is `@server`, a folder `@server/`, and a name `Types@shared.luau` or `Config@server.json`. In `--json`, `fixes` holds the rename. A name inside a folder that a route already governs gets no rename: `@server` there is [`route.ignoredAt`](/docs/v2/diagnostics#route-ignoredat), so its message says which route governs it and to move it out of that route's files. See [Marker Files](/docs/v2/core-concepts/routing#marker-files).
 
 ### `route.folderTypo` [#route-foldertypo]
 
-Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). A plural counts too: `Servers/` reads as an ordinary folder, so it warns; rename it if its files belong under the route. The folder's name is read with its parentheses and `^` off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead. One warning lists every such folder.
+Warning. A folder is named one edit away from a declared route key, such as `Sever/` next to `Server`, so it's read as an ordinary folder and its files fall through to the route above it or `*`. The edit can be a letter added, dropped or changed, or two neighbours swapped (`Sevrer/`). A plural counts too: `Servers/` reads as an ordinary folder, so it warns; rename it if its files belong under the route. The folder's name is read with its parentheses and `^` off. Only keys of four letters or more are offered, since shorter ones are one edit from real words, and a name that matches a key in any letter case is `route.caseMismatch` instead.
 
 ```
 default.rogen.json - warning: 1 folder is one edit from a declared route key, so it is read as an ordinary folder: (route.folderTypo)
@@ -266,9 +268,7 @@ Rename it to the key, or declare it as written if it's meant to route. `SHARED/`
 Warning. A file sits in a plain folder named after a server route, such as `Server/` or `(Server)/`, that an outer route outranks, so the outer route, which replicates to clients, places it. Server code under `Shared/` ships to every client.
 
 ```
-default.rogen.json - warning: 1 file under a "server" route ships to clients, because "shared" governs it: (route.serverCodeShipped)
-  src/Shared/(Server)/Datastore.luau -> ReplicatedStorage/shared/Datastore
-Move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder.
+src/Shared/(Server)/Datastore.luau - warning: ships to clients as ReplicatedStorage/Shared/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
 ```
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`. If the folder is meant to replicate, put a marker file that restates the governing route in it, such as `Shared/Server/@shared`: it covers every file below it. `Secret@shared.luau` covers just that file. A route written with `@`, like `Shared/Data@server.luau`, is the [`route.ignoredAt`](#route-ignoredat) error instead. See [Server Code Under a Replicating Route](/docs/v2/core-concepts/routing#server-code-under-a-replicating-route).
@@ -293,7 +293,7 @@ Warning. Two files in one source path become the same instance, such as `Types.l
 src/Inventory/Types.lua - warning: becomes "ReplicatedStorage/shared/Inventory/Types", as src/Inventory/Types.luau does, which takes its place. Rename one of them to keep both. (tree.instanceClash)
 ```
 
-Rename or delete one of them. `rogen where` shows the left-out file as `replaced by`. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+Rename or delete one of them. In `--json`, `related` names the file that takes its place. `rogen where` shows the left-out file as `replaced by`. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 ### `tree.nodeClash` [#tree-nodeclash]
 
@@ -307,12 +307,12 @@ Rename the file, or remove the node from the `tree`. See [Configuration](/docs/v
 
 ### `tree.mountClash` [#tree-mountclash]
 
-Warning. A route puts files at or below a node of the `tree` that has a `$path`, and the folder that `$path` mounts holds an instance of the same name. Rojo reads the mount itself and adds the files beside what it holds, so the game gets two instances with one name, and `require` finds either. One warning lists the files of a mount, and `rogen where` shows its line under each file. What the config ignores in the mounted folder isn't counted.
+Warning. A route puts files at or below a node of the `tree` that has a `$path`, and the folder that `$path` mounts holds an instance of the same name. Rojo reads the mount itself and adds the files beside what it holds, so the game gets two instances with one name, and `require` finds either. `rogen where` shows the warning under each file. What the config ignores in the mounted folder isn't counted.
 
 ```
-default.rogen.json - warning: 2 files sit next to an instance of the same name that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds, so Rojo builds two of it: (tree.mountClash)
-  src/Combat/Hit.luau -> ReplicatedStorage/Lib/Combat/Hit (next to "Combat")
-  src/Combat/Miss.luau -> ReplicatedStorage/Lib/Combat/Miss (next to "Combat")
+default.rogen.json - warning: 2 files sit next to an instance of the same name that a mount of the tree holds, so Rojo builds two of each: (tree.mountClash)
+  src/Combat/Hit.luau (makes a "Combat" next to the "Combat" that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds)
+  src/Combat/Miss.luau (makes a "Combat" next to the "Combat" that the mount of vendor/Lib at "ReplicatedStorage/Lib" holds)
 Rename one of each pair, or route outside the mounted folder.
 ```
 
@@ -340,11 +340,11 @@ Rename the script back to `init.luau` and the folder to `^Net`. See [Hoisted Nam
 
 ### `tree.deadScript` [#tree-deadscript]
 
-Warning. A Script or LocalScript lands in a service where Roblox never runs it, such as a LocalScript in `ServerScriptService`. One warning lists every such script.
+Warning. A Script or LocalScript lands in a service where Roblox never runs it, such as a LocalScript in `ServerScriptService`.
 
 ```
 default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
-  src/Shared/Secret.server.luau -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)
+  src/Shared/Secret.server.luau (a Script never runs in ReplicatedStorage)
 A Script runs in ServerScriptService or Workspace, and a LocalScript in StarterPlayerScripts, StarterCharacterScripts, StarterGui, StarterPack or ReplicatedFirst. A Script with RunContext Client never runs in ServerScriptService, which clients can't see.
 ```
 
@@ -356,7 +356,7 @@ Warning. The config sets `emitLegacyScripts: false`, and a route puts an `init.c
 
 ```
 default.rogen.json - warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
-  src/Panel/init.client.luau -> StarterPlayer/StarterPlayerScripts/Panel
+  src/Panel/init.client.luau (an init script that sync rules can't keep a LocalScript)
 Route the folder to another service, or remove emitLegacyScripts from the config.
 ```
 
@@ -603,13 +603,12 @@ Move the file into a folder of its own, or out of the source paths. See [Nested 
 
 ### `scan.sourcePathNamedAfterKey` [#scan-sourcepathnamedafterkey]
 
-Warning. A source path is named after a route key. Routing starts below a source path, so its name routes nothing, and its files land wherever the `*` route sends them, or nowhere. One warning lists every such source path.
+Warning. A source path is named after a route key. Routing starts below a source path, so its name routes nothing, and its files land wherever the `*` route sends them, or nowhere.
 
 ```
 default.rogen.json - warning: 2 source paths are named after a route key, but routing starts below a source path, so their names route nothing: (scan.sourcePathNamedAfterKey)
-  server ("server" route)
-  client ("client" route)
-Move them into one folder, such as src/server and src/client, and use "sourcePaths": ["src"].
+  server (named after the "server" route: move it into a folder, such as src/server, and use "sourcePaths": ["src"])
+  client (named after the "client" route: move it into a folder, such as src/client, and use "sourcePaths": ["src"])
 ```
 
 When the source path has a parent inside the project (`src/server`), use the parent: `"sourcePaths": ["src"]`, and the `server` folder routes. When it sits at the folder of the `.rogen.json`, move the folders into one code folder first, since `"."` would scan the whole repo. The build still runs and writes. See [Routing](/docs/v2/core-concepts/routing).
@@ -668,7 +667,7 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check` and `rogen where` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check`, with no path, found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
 default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
@@ -792,10 +791,10 @@ Add the settings to the node in the `tree` of `default.rogen.json`. Settings of 
 
 ### `init.unmountedFiles` [#init-unmountedfiles]
 
-Warning. `init` lifted a `default.project.json` and found files in the source paths that no node of it mounts. Rojo ignored them. Rogen places every file below a source path by its routes, so they now join the game.
+Warning. `init` lifted a `default.project.json` and found files in the source paths that no node of it mounts. Rojo ignored them. Rogen places every file below a source path that a route matches, so those join the game; with no `*` route, the others are left out with [`route.unrouted`](#route-unrouted).
 
 ```
-default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
 ```
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).

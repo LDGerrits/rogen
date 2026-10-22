@@ -1,0 +1,6 @@
+$ rogen build -o game.rbxlx -q
+exit 0
+
+written:
+  default.project.json
+  game.rbxlx
