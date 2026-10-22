@@ -23,11 +23,10 @@ import { InitPlan } from "./init-service.js";
 import { InitQuestions } from "./init-questions.js";
 import { PROCESSED_OUTPUT, RELEASE_OUTPUT } from "./output-configs.js";
 import {
-	PLACE_SOURCE_PATHS,
-	PLACES_FOLDER,
-	SHARED_FOLDER,
+	COMMON_FOLDER,
+	PROJECT_SOURCE_PATHS,
+	PROJECTS_FOLDER,
 } from "./starter-places.js";
-import { WorkspaceFiles } from "./workspace-files.js";
 
 const TSCONFIG = "tsconfig.json";
 
@@ -37,23 +36,19 @@ interface Model {
 	readonly config: Record<string, unknown>;
 }
 
-/** A place added below a `places` folder that has one already: a complete `default.rogen.json` copied from the first place that has one, beside the files that place has for its toolchain. */
+/** A place added below a `projects` folder that has one already: a complete `default.rogen.json` copied from the first place that has one, beside the files that place has for its toolchain. */
 export class PlaceInit {
-	private readonly workspaces: WorkspaceFiles;
-
 	constructor(
 		private readonly fileReader: FileReader,
 		private readonly questions: InitQuestions,
 		/** The folder the user ran in, which the plan's config paths are relative to. */
 		private readonly cwd: string
-	) {
-		this.workspaces = new WorkspaceFiles(fileReader);
-	}
+	) {}
 
-	/** The plan to add `folder` as a place, or `undefined` when it is not a new folder in a `places` folder with a place to copy. */
+	/** The plan to add `folder` as a place, or `undefined` when it is not a new folder in a `projects` folder with a place to copy. */
 	async plan(folder: string): Promise<InitPlan | undefined> {
 		const places = path.dirname(folder);
-		if (path.basename(places) !== PLACES_FOLDER) return undefined;
+		if (path.basename(places) !== PROJECTS_FOLDER) return undefined;
 		if ((await this.configIn(folder, DEFAULT_PROJECT)) !== undefined)
 			return undefined;
 		const model = await this.modelIn(places, folder);
@@ -61,18 +56,17 @@ export class PlaceInit {
 
 		const root = path.dirname(places);
 		const place = toPosix(path.relative(root, folder));
-		const shared = await this.fileReader.isDirectory(
-			path.join(places, SHARED_FOLDER)
+		const common = await this.fileReader.isDirectory(
+			path.join(places, COMMON_FOLDER)
 		);
-		const sourcePaths = shared
-			? [...PLACE_SOURCE_PATHS]
+		const sourcePaths = common
+			? [...PROJECT_SOURCE_PATHS]
 			: [DEFAULT_SOURCE_PATH];
 		const source = path.posix.join(place, DEFAULT_SOURCE_PATH);
 		const base = this.copyOf(model, path.basename(folder), sourcePaths);
 
 		const outputs = await this.outputsOf(model, base);
 		const copied = await this.copiedFiles(model, place);
-		const workspace = await this.workspaces.append(root, place);
 		const compiled = base.rogen?.compiledPath;
 		const processed = outputs.find(({ stem }) => stem === PROCESSED_OUTPUT)
 			?.config.rogen?.compiledPath;
@@ -105,7 +99,6 @@ export class PlaceInit {
 					content: configFileContent(config),
 				})),
 				...copied,
-				...workspace.files,
 			],
 			directories: [source],
 			commands: [],
@@ -115,7 +108,6 @@ export class PlaceInit {
 			warnings: [],
 			notes: [
 				`Copied the ${joinedWithAnd(["routes", ...(compiled ? ["compiled path"] : []), ...(base.tree ? ["tree"] : [])])} of ${toPosix(path.relative(root, model.folder))}.`,
-				...workspace.notes,
 			],
 			nextSteps: {
 				setup: [],
@@ -172,7 +164,7 @@ export class PlaceInit {
 			: undefined;
 	}
 
-	/** The first place beside `folder`, in name order, whose default config parses; the shared code is not one. */
+	/** The first place beside `folder`, in name order, whose default config parses; the common code is not one. */
 	private async modelIn(
 		places: string,
 		folder: string
@@ -182,7 +174,7 @@ export class PlaceInit {
 		);
 		if (entries.isErr()) return undefined;
 		for (const [name, type] of entries.value) {
-			if (!isDirectoryType(type) || name === SHARED_FOLDER) continue;
+			if (!isDirectoryType(type) || name === COMMON_FOLDER) continue;
 			const sibling = path.join(places, name);
 			if (sibling === folder) continue;
 			const file = await this.configIn(sibling, DEFAULT_PROJECT);

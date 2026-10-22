@@ -48,7 +48,7 @@ export class RobloxTsStarter {
 			`/${OUT_DIR}`,
 			"/include",
 			"*.tsbuildinfo",
-			...(several ? [`places/*/${OUT_DIR}`, "places/*/include"] : []),
+			...(several ? [`projects/*/${OUT_DIR}`, "projects/*/include"] : []),
 		];
 	}
 
@@ -97,9 +97,9 @@ export class RobloxTsStarter {
 		};
 	}
 
-	/** The `tsconfig.json` of the shared code of several places, which the editor reads to check it; `rbxtsc` never does. */
-	sharedTsconfig(shared: string): PlannedFile {
-		const folder = path.posix.dirname(shared);
+	/** The `tsconfig.json` of the common code of several places, which the editor reads to check it; `rbxtsc` never does. */
+	commonTsconfig(common: string): PlannedFile {
+		const folder = path.posix.dirname(common);
 		const toRoot = path.posix.relative(folder, ".");
 		return {
 			fileName: path.posix.join(folder, "tsconfig.json"),
@@ -116,9 +116,9 @@ export class RobloxTsStarter {
 		};
 	}
 
-	/** The `tsconfig.json` that makes `place` (relative to the root) compile its own code with the code in `shared`. */
-	place(place: string, shared: string): { files: PlannedFile[] } {
-		const toShared = path.posix.relative(place, shared);
+	/** The `tsconfig.json` that makes `place` (relative to the root) compile its own code with the code in `common`. */
+	place(place: string, common: string): { files: PlannedFile[] } {
+		const toCommon = path.posix.relative(place, common);
 		const toRoot = path.posix.relative(place, ".");
 		return {
 			files: [
@@ -129,12 +129,12 @@ export class RobloxTsStarter {
 							...REQUIRED_OPTIONS,
 							typeRoots: [TYPES, `${toRoot}/${TYPES}`],
 							outDir: OUT_DIR,
-							rootDirs: ["src", toShared],
+							rootDirs: ["src", toCommon],
 							baseUrl: ".",
-							paths: { "*": ["src/*", `${toShared}/*`] },
+							paths: { "*": ["src/*", `${toCommon}/*`] },
 							tsBuildInfoFile: TS_BUILD_INFO,
 						},
-						include: ["src", toShared],
+						include: ["src", toCommon],
 					}),
 				},
 			],

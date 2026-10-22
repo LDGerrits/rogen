@@ -10,6 +10,7 @@ import { InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { InitChoices, InitDecision, InitKind } from "./init-service.js";
+import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
 /** What a list flag says to take none of. */
@@ -215,14 +216,20 @@ export class InitQuestions {
 		return true;
 	}
 
-	/** Whether a new project is several places; a `places` folder here makes it the default. */
-	async places(directory: InitDirectory): Promise<boolean | undefined> {
+	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */
+	async places(
+		directory: InitDirectory,
+		language: Language
+	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
 		if (this.choices.sourcePaths !== undefined) return false;
 		const several =
-			directory.has("places") &&
-			directory.layout.codeFolders.every((folder) => folder === "places");
+			language.compiler !== undefined &&
+			directory.has(PROJECTS_FOLDER) &&
+			directory.layout.codeFolders.every(
+				(folder) => folder === PROJECTS_FOLDER
+			);
 		if (!this.interactive)
 			return this.decide("places", several, "--places");
 		const answer = await this.essential.select<"one" | "several">({
@@ -236,7 +243,9 @@ export class InitQuestions {
 				{
 					value: "several",
 					label: "Several places",
-					hint: "places/shared holds the shared code, places/game the first place",
+					hint: language.compiler
+						? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
+						: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`,
 				},
 			],
 			initialValue: several ? "several" : "one",

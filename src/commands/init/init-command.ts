@@ -123,7 +123,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new project is several places: the code they share in places/shared (for Luau with a default.rogen.json of the routes, so the editor resolves requires in it; never served), and a first place in places/game with its own default.rogen.json, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
+			"Whether a new project is several places. Luau: the code they share in src/common, a first place in src/game, a game.rogen.json at the root for it, and editor settings for luau-lsp; more places by copying that file. roblox-ts: the code they share in projects/common and a first place in projects/game with its own default.rogen.json, more by 'rogen init projects/<name>'. One place when not given, or several where a projects folder exists for roblox-ts.",
 	},
 	{
 		name: "agent-rules",
@@ -194,12 +194,12 @@ registerCommand(
 				metadata: {
 					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a places folder that has one. It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a projects folder that has one. It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",
 							description:
-								"The folder to start in, made when it is not there. In a places folder with a place already, it is added as a place instead: its own default.rogen.json with the routes and compiled path of the first place, listing the shared code, and an entry in the .code-workspace when there is one.",
+								"The folder to start in, made when it is not there. In a projects folder with a place already, it is added as a place instead: its own default.rogen.json with the routes and compiled path of the first place, listing the common code.",
 							isOptional: true,
 						},
 					],
@@ -215,7 +215,7 @@ registerCommand(
 						"rogen init",
 						"rogen init --non-interactive",
 						"rogen init game",
-						"rogen init places/lobby",
+						"rogen init projects/lobby",
 					],
 				},
 			});
