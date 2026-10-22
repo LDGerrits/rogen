@@ -102,10 +102,28 @@ describe("init for several places", () => {
 			const workspace = jsonOf(await plan(), "my-game.code-workspace");
 
 			expect(workspace.folders).toEqual([
-				{ path: "." },
 				{ path: "places/game" },
 				{ path: "places/shared" },
 			]);
+		});
+
+		it("should tell the user to open the workspace file, and why", async () => {
+			const planned = await plan();
+
+			expect(planned.nextSteps.edits.join("\n")).toContain(
+				"code my-game.code-workspace"
+			);
+			expect(planned.nextSteps.edits.join("\n")).toContain("sourcemap");
+		});
+
+		it("should not tell the user to open a workspace file that is there already", async () => {
+			await put("mine.code-workspace", '{ "folders": [] }');
+
+			const planned = await plan();
+
+			expect(planned.nextSteps.edits.join("\n")).not.toContain(
+				"code my-game.code-workspace"
+			);
 		});
 
 		it("should ignore the project files Rogen writes", async () => {
@@ -299,11 +317,57 @@ describe("init for several places", () => {
 			const workspace = fileOf(planned, "my-game.code-workspace");
 			expect(workspace?.addition).toBe("places/lobby");
 			expect(JSON.parse(workspace?.content ?? "{}").folders).toEqual([
+				{ path: "places/game" },
+				{ path: "places/lobby" },
+				{ path: "places/shared" },
+			]);
+		});
+
+		it("should add the place next to the others in a workspace that still lists the root", async () => {
+			await put(
+				"my-game.code-workspace",
+				'{ "folders": [{ "path": "." }, { "path": "places/game" }, { "path": "places/shared" }] }'
+			);
+
+			const planned = await plan({}, "places/lobby");
+
+			expect(
+				JSON.parse(
+					fileOf(planned, "my-game.code-workspace")?.content ?? "{}"
+				).folders
+			).toEqual([
 				{ path: "." },
 				{ path: "places/game" },
 				{ path: "places/lobby" },
 				{ path: "places/shared" },
 			]);
+		});
+
+		it("should keep the comments of the workspace it adds to", async () => {
+			await put(
+				"my-game.code-workspace",
+				'{\n\t// mine\n\t"folders": [{ "path": "places/game" }]\n}\n'
+			);
+
+			const planned = await plan({}, "places/lobby");
+
+			expect(
+				fileOf(planned, "my-game.code-workspace")?.content
+			).toContain("// mine");
+		});
+
+		it("should say which folder to add to a workspace that lists no place", async () => {
+			await put(
+				"my-game.code-workspace",
+				'{ "folders": [{ "path": "docs" }] }'
+			);
+
+			const planned = await plan({}, "places/lobby");
+
+			expect(fileOf(planned, "my-game.code-workspace")).toBeUndefined();
+			expect(planned.notes.join("\n")).toContain(
+				'add the folder "places/lobby" to my-game.code-workspace'
+			);
 		});
 
 		it("should make no workspace when there is none", async () => {

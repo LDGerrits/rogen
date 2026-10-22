@@ -19,6 +19,7 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in places/game/default.rogen.json.
     Edit places/game/default.rogen.json and leave places/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build places/game' so the editor's places/game/default.project.json follows.
+    Open the workspace with 'code project.code-workspace', as VS Code does not open a workspace file by itself. Each place is a workspace folder, so luau-lsp reads each place's own sourcemap.
     Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
   Wrote 8 files.
 
@@ -66,7 +67,7 @@ The folders inside a feature decide where its code runs: `Server` goes to Server
 rogen where places/shared/src/Greeter/Shared/Greeting.luau
 ```
 
-Open `project.code-workspace` rather than the folder, so the editor runs a language server for each place.
+Open `project.code-workspace` once (`code project.code-workspace`) rather than the folder. Each place is a folder of it, so luau-lsp reads the sourcemap of each place's own project file. The root is not listed because it has no project file.
 
 ## Getting Started
 To serve the game place and connect to it from Roblox Studio, use:
@@ -176,9 +177,6 @@ end
 project.code-workspace:
 {
 	"folders": [
-		{
-			"path": "."
-		},
 		{
 			"path": "places/game"
 		},

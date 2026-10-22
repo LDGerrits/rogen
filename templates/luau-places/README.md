@@ -10,7 +10,7 @@ The folders inside a feature decide where its code runs: `Server` goes to Server
 rogen where {{source}}/Greeter/Shared/Greeting.luau
 ```
 
-Open `{{name}}.code-workspace` rather than the folder, so the editor runs a language server for each place.
+Open `{{name}}.code-workspace` once (`code {{name}}.code-workspace`) rather than the folder. Each place is a folder of it, so luau-lsp reads the sourcemap of each place's own project file. The root is not listed because it has no project file.
 
 ## Getting Started
 To serve the game place and connect to it from Roblox Studio, use:

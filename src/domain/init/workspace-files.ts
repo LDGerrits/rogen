@@ -31,10 +31,9 @@ export class WorkspaceFiles {
 					{
 						fileName: `${path.basename(root)}${WORKSPACE_SUFFIX}`,
 						content: formatJsonFile({
-							folders: [
-								{ path: "." },
-								...folders.map((one) => ({ path: one })),
-							],
+							folders: [...folders]
+								.sort(compareStrings)
+								.map((one) => ({ path: one })),
 						}),
 					},
 				],
@@ -70,7 +69,17 @@ export class WorkspaceFiles {
 			const rootAt = listed?.paths.findIndex(
 				(one) => one !== undefined && this.isAt(root, one, root)
 			);
-			if (!listed || rootAt === undefined || rootAt < 0) {
+			const beside = places.some((place) =>
+				listed?.paths.some(
+					(one) =>
+						one !== undefined &&
+						samePath(
+							path.dirname(path.resolve(root, toPosix(one))),
+							path.dirname(path.resolve(root, place))
+						)
+				)
+			);
+			if (!listed || rootAt === undefined || (rootAt < 0 && !beside)) {
 				notes.push(
 					...places.map(
 						(place) =>
