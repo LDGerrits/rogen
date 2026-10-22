@@ -311,11 +311,11 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
-					"success: Created .agents/hooks/rogen-check.sh.",
+					"success: Created .agents/hooks/rogen-check.mjs.",
 					"success: Created .claude/settings.json.",
 				])
 			);
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
 		it("should say it added the hook to a file that exists, and list it as appended", async () => {
@@ -337,7 +337,7 @@ describe("init command", () => {
 
 			await runInit();
 
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(false);
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(false);
 		});
 	});
 
@@ -494,7 +494,7 @@ describe("init command", () => {
 				{ "agent-hook": true }
 			);
 
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
 		it("should refuse a hook when no coding agent is missing it", async () => {
