@@ -2,7 +2,6 @@ import { groupBy } from "../../base/collections.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	Diagnostic,
-	diagnosticsPerFile,
 	diagnosticsReaching,
 	isError,
 	uniqueDiagnostics,
@@ -158,11 +157,7 @@ export class CoreBuildService implements BuildService {
 	): Promise<Result<Diagnosis, DiagnosticsError>> {
 		if (!targets || targets.args.length === 0) {
 			const { diagnostics } = await this.check(selection);
-			return ok({
-				diagnostics: diagnosticsPerFile(diagnostics),
-				stoppedBy: [],
-				skipped: [],
-			});
+			return ok({ diagnostics, stoppedBy: [], skipped: [] });
 		}
 		const located = await this.locate(selection, targets);
 		return located.map(({ errors, configs }) => {
