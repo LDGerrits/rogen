@@ -133,6 +133,25 @@ describe("CoreSyncbackService", () => {
 		expect(copied).toBe("");
 	});
 
+	it("should name the project file Rojo runs on after the folder when the config names none, as Rojo names a default one", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"]);
+
+		await service.plan(request);
+
+		expect(JSON.parse(rojo.projectTexts[0]).name).toBe("repo");
+	});
+
+	it("should keep the name the config gives the project", async () => {
+		await prepare(["src/Inventory/Bag@server.luau"], {
+			name: "Inventory",
+			project: { name: "Inventory", tree: { $className: "DataModel" } },
+		});
+
+		await service.plan(request);
+
+		expect(JSON.parse(rojo.projectTexts[0]).name).toBe("Inventory");
+	});
+
 	it("should leave no file of its own behind, after a plan or a run", async () => {
 		await prepare(["src/Combat/Server/Combat.luau"]);
 
