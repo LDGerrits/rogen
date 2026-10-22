@@ -731,7 +731,7 @@ describe("CoreServeService", () => {
 			).toEqual([["repo", "7.7.1"]]);
 		});
 
-		it("should start nothing when the first build fails, and fail with its errors", async () => {
+		it("should keep watching when the first build fails, and start the server once a build succeeds", async () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
 				config({
@@ -746,14 +746,21 @@ describe("CoreServeService", () => {
 			);
 			await memFs.writeFile("/repo/src/X/@server", "");
 			await memFs.writeFile("/repo/src/X/@client", "");
+			const updates: string[] = [];
 
 			const started = await start();
+			session.onDidUpdate(({ reports }) =>
+				updates.push(...reports.map(({ build }) => build.outcome))
+			);
 
-			expect(
-				started.isErr() &&
-					(started.error as DiagnosticsError).diagnostics[0].code
-			).toBe("route.markerClash");
+			expect(started.isOk()).toBe(true);
 			expect(processes.spawned).toEqual([]);
+
+			await memFs.delete("/repo/src/X/@client");
+			await settle();
+
+			expect(updates).toEqual(["wrote"]);
+			expect(processes.spawned).toHaveLength(1);
 		});
 
 		it("should record the server once it answers, and drop the record on stop", async () => {

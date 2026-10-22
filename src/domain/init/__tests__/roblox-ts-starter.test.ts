@@ -7,6 +7,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 import { RobloxTsStarter } from "../roblox-ts-starter.js";
@@ -157,7 +158,9 @@ describe("a new roblox-ts project", () => {
 			new MockPromptService([], false),
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			processes
+			processes,
+			undefined,
+			new CoreConfigService(fileSystem, environmentService)
 		);
 	};
 

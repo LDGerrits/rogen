@@ -1,3 +1,5 @@
+import path from "path";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "../config-discovery.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -96,6 +98,25 @@ describe("ConfigDiscovery", () => {
 				);
 			}
 		);
+
+		it("should name the stale config a registered check finds, in place of the rename advice", async () => {
+			await fs.writeFile("/repo/.rogen.json", "{}");
+			await fs.writeFile("/repo/rogen.json", "{}");
+			discovery.registerFolderCheck(async (folder) => [
+				errorDiagnostic(
+					"stale",
+					{ resource: path.join(folder, ".rogen.json") },
+					"is old."
+				),
+			]);
+
+			const result = await discovery.discover([]);
+
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
+			expect(errorOf(result).message).toBe(
+				".rogen.json in /repo: is old."
+			);
+		});
 
 		it("should not search the folders above", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");

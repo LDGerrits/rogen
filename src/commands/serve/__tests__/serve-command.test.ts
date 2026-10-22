@@ -695,7 +695,7 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should fail with the build's errors and start nothing when the first build fails", async () => {
+	const clashing = async () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
@@ -710,43 +710,58 @@ describe("serve command", () => {
 		);
 		await memFs.writeFile("/repo/src/X/@server", "");
 		await memFs.writeFile("/repo/src/X/@client", "");
+	};
 
-		const error = await failureOf(serve());
+	it("should print the build's errors once, start nothing and keep watching when the first build fails", async () => {
+		await clashing();
 
-		expect(exitCodeOf(error)).toBe(1);
+		const result = serve();
+		await settle();
+
 		expect(processes.spawned).toEqual([]);
-		expect(logService.lines.at(-1)).toBe("outro: serve failed.");
 		expect(
 			logService.lines.filter((line) =>
 				line.includes("route.markerClash")
 			)
 		).toHaveLength(1);
+		expect(logService.lines.at(-1)).not.toMatch(/^outro/);
+
+		lifecycle.shutdown();
+		expect((await result).isOk()).toBe(true);
 	});
 
-	it("should end the JSON lines with the build's errors when the first build fails", async () => {
-		await memFs.writeFile(
-			"/repo/default.rogen.json",
-			JSON.stringify({
-				rogen: {
-					sourcePaths: ["src"],
-					routes: {
-						server: "ServerScriptService",
-						client: "StarterPlayer/StarterPlayerScripts",
-					},
-				},
-			})
-		);
-		await memFs.writeFile("/repo/src/X/@server", "");
-		await memFs.writeFile("/repo/src/X/@client", "");
+	it("should serve once a later build succeeds", async () => {
+		await clashing();
+		void serve();
+		await settle();
 
-		const error = await failureOf(serve([], { json: true }));
-
-		expect(exitCodeOf(error)).toBe(1);
-		expect(processes.spawned).toEqual([]);
-		expect(printed().at(-1)).toEqual({
-			diagnostics: [
-				expect.objectContaining({ code: "route.markerClash" }),
-			],
+		await memFs.delete("/repo/src/X/@client");
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
 		});
+		await settle();
+
+		expect(processes.spawned).toHaveLength(1);
+		expect(logService.lines.at(-1)).toBe(
+			"success: Serving repo with Rojo 7.7.1 at 127.0.0.1:34872."
+		);
+	});
+
+	it("should print the build's errors once as JSON lines and wait for a fix when the first build fails", async () => {
+		await clashing();
+
+		void serve([], { json: true });
+		await settle();
+
+		expect(processes.spawned).toEqual([]);
+		expect(
+			printed().filter((line) =>
+				JSON.stringify(line).includes("route.markerClash")
+			)
+		).toHaveLength(1);
+		expect(printed().some((line) => "serving" in line)).toBe(false);
 	});
 });

@@ -124,7 +124,15 @@ export function commandHarness(
 	services.set(BuildService, build);
 	services.set(
 		InitService,
-		new CoreInitService(fs, prompt, environment, toolchain, processes)
+		new CoreInitService(
+			fs,
+			prompt,
+			environment,
+			toolchain,
+			processes,
+			undefined,
+			config
+		)
 	);
 	services.set(
 		LifecycleService,
@@ -181,5 +189,6 @@ export function commandHarness(
 
 function legacyChecked(config: CoreConfigService): CoreConfigService {
 	config.registerFileCheck(LegacyConfig.check);
+	config.registerFolderCheck(LegacyConfig.find);
 	return config;
 }

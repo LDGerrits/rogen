@@ -280,6 +280,7 @@ class RogenMain {
 		);
 		services.set(ConfigService, configService);
 		disposables.add(configService.registerFileCheck(LegacyConfig.check));
+		disposables.add(configService.registerFolderCheck(LegacyConfig.find));
 		const toolchainService = new CoreToolchainService(fileSystemService);
 		services.set(ToolchainService, toolchainService);
 		const buildService = new CoreBuildService(
@@ -301,7 +302,8 @@ class RogenMain {
 				environmentService,
 				toolchainService,
 				processService,
-				toolLocator
+				toolLocator,
+				configService
 			)
 		);
 		const watchService = new CoreWatchService(
