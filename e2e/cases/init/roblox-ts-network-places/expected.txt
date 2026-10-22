@@ -36,6 +36,10 @@ written:
   projects/game/out/common/src/Greeter/shared/Greeting.luau
   projects/game/out/game/src/Game/server/Game.server.luau
   projects/game/out/tsconfig.tsbuildinfo
+  projects/game/place/Lighting/init.meta.json
+  projects/game/place/SoundService/init.meta.json
+  projects/game/place/Workspace/Baseplate.model.json
+  projects/game/place/Workspace/init.meta.json
   projects/game/src/Game/server/Game.server.ts
   projects/game/tsconfig.json
 
@@ -45,17 +49,7 @@ projects/game/default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
+      "$path": "place/Lighting"
     },
     "ReplicatedStorage": {
       "rbxts_include": {
@@ -73,36 +67,10 @@ projects/game/default.rogen.json:
       }
     },
     "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
+      "$path": "place/SoundService"
     },
     "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
+      "$path": "place/Workspace"
     }
   },
   "rogen": {
@@ -130,7 +98,7 @@ return {
 
 $ rojo sourcemap projects/game/default.project.json
 game: DataModel
-  Lighting: Lighting
+  Lighting: Lighting  <- place/Lighting/init.meta.json
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
       Promise: ModuleScript  <- include/Promise.lua
@@ -152,10 +120,10 @@ game: DataModel
       Game: Script  <- out/game/src/Game/server/Game.server.luau
     Greeter: Folder
       Greeter: Script  <- out/common/src/Greeter/server/Greeter.server.luau
-  SoundService: SoundService
+  SoundService: SoundService  <- place/SoundService/init.meta.json
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- out/common/src/Greeter/client/Greeter.client.luau
-  Workspace: Workspace
-    Baseplate: Part
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json

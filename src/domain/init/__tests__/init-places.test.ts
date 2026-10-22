@@ -91,6 +91,40 @@ describe("init for several places", () => {
 			expect(config).not.toHaveProperty("servePort");
 		});
 
+		it("should keep the place's sample game in a folder of its own, which its tree mounts", async () => {
+			const planned = await plan();
+
+			expect(
+				names(planned).filter((name) => name.startsWith("place/"))
+			).toEqual([
+				"place/game/Lighting/init.meta.json",
+				"place/game/SoundService/init.meta.json",
+				"place/game/Workspace/Baseplate.model.json",
+				"place/game/Workspace/init.meta.json",
+			]);
+			expect(jsonOf(planned, "game.rogen.json").tree).toMatchObject({
+				Lighting: { $path: "place/game/Lighting" },
+				SoundService: { $path: "place/game/SoundService" },
+				Workspace: { $path: "place/game/Workspace" },
+			});
+		});
+
+		it("should say to copy the sample game with the config, and to mount the copy", async () => {
+			const edits = (await plan()).nextSteps.edits.join("\n");
+
+			expect(edits).toContain("place/game to place/lobby");
+			expect(edits).toContain("copy place/game to place/lobby");
+		});
+
+		it("should say nothing of a sample game with --no-sample", async () => {
+			const edits = (await plan({ sample: false })).nextSteps.edits.join(
+				"\n"
+			);
+
+			expect(edits).toContain("copy game.rogen.json to lobby.rogen.json");
+			expect(edits).not.toContain("place/game");
+		});
+
 		it("should write no config for the common code", async () => {
 			const planned = await plan();
 
@@ -279,6 +313,22 @@ describe("init for several places", () => {
 			).toEqual(["../common/src", "src"]);
 		});
 
+		it("should keep the place's sample game in its folder", async () => {
+			const result = await planned();
+
+			expect(
+				names(result).filter((name) => name.includes("/place/"))
+			).toEqual([
+				"projects/game/place/Lighting/init.meta.json",
+				"projects/game/place/SoundService/init.meta.json",
+				"projects/game/place/Workspace/Baseplate.model.json",
+				"projects/game/place/Workspace/init.meta.json",
+			]);
+			expect(
+				jsonOf(result, "projects/game/default.rogen.json").tree.Lighting
+			).toEqual({ $path: "place/Lighting" });
+		});
+
 		it("should write no workspace file", async () => {
 			const result = await planned();
 
@@ -372,7 +422,7 @@ describe("init for several places", () => {
 
 			const edits = result.nextSteps.edits.join("\n");
 			expect(edits).toContain(
-				"copy projects/game/default.rogen.json and projects/game/tsconfig.json into projects/lobby"
+				"copy projects/game/default.rogen.json, projects/game/tsconfig.json and projects/game/place into projects/lobby"
 			);
 			expect(edits).toContain("rbxtsc -w -p projects/lobby");
 			expect(edits).toContain("rogen serve projects/lobby --port");

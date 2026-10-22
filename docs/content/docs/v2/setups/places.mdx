@@ -27,19 +27,25 @@ rogen init --places
 game.rogen.json                 complete: name, tree, source paths, routes
 src/common/Greeter/...          shared by every place
 src/game/Game/Server/Game.server.luau
+place/game/...                  Rojo's Baseplate and lighting, mounted by the tree
 .vscode/settings.json           luau-lsp's sourcemap generator, for game
 .gitignore                      includes *.project.json and sourcemap.json
 README.md
 ```
 
-`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game`). `--no-sample` leaves the two source folders empty.
+`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game`). `--no-sample` leaves the two source folders empty and writes no `place/game`.
 
 The place's config lists the shared folder and its own, in full, and sets its own `name`:
 
 ```json title="game.rogen.json"
 {
 	"name": "game",
-	"tree": { "$className": "DataModel" },
+	"tree": {
+		"$className": "DataModel",
+		"Lighting": { "$path": "place/game/Lighting" },
+		"SoundService": { "$path": "place/game/SoundService" },
+		"Workspace": { "$path": "place/game/Workspace" }
+	},
 	"rogen": {
 		"sourcePaths": ["src/common", "src/game"],
 		"routes": {
@@ -58,25 +64,29 @@ Every path is relative to the file, and the later source path wins a clash, so a
 <Step>
 ### Add a Place
 
-Copy the config, change its `name` and its own source path, and make the folder:
+Copy the config and the place's Rojo files, change its `name`, its own source path and the folder it mounts them from, and make the folder:
 
 ```bash
 cp game.rogen.json lobby.rogen.json
+cp -r place/game place/lobby
 mkdir src/lobby
 ```
 
-In `lobby.rogen.json`, set `"name": "lobby"` and `"sourcePaths": ["src/common", "src/lobby"]`. The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't. `rogen init lobby` does not do this: like `rojo init`, it starts a separate project in `lobby/`. With Darklua, copy `game.dist.rogen.json` and `game.release.rogen.json` the same way (see [Darklua with Places](/docs/v2/setups/darklua#darklua-with-places)). `.vscode/settings.json` keeps reading the first place until you change its name (see [Open the Editor](#open-the-editor)).
+In `lobby.rogen.json`, set `"name": "lobby"`, `"sourcePaths": ["src/common", "src/lobby"]` and each `place/game` in the `tree` to `place/lobby`. The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't. `rogen init lobby` does not do this: like `rojo init`, it starts a separate project in `lobby/`. With Darklua, copy `game.dist.rogen.json` and `game.release.rogen.json` the same way (see [Darklua with Places](/docs/v2/setups/darklua#darklua-with-places)). `.vscode/settings.json` keeps reading the first place until you change its name (see [Open the Editor](#open-the-editor)).
 
 ```
 game.rogen.json
 lobby.rogen.json
+place/
+  game/
+  lobby/
 src/
   common/
   game/
   lobby/
 ```
 
-For roblox-ts, copy the folder of a place: make `projects/lobby/src`, copy `projects/game/default.rogen.json` and `projects/game/tsconfig.json` into `projects/lobby` (with `dist.rogen.json`, `release.rogen.json` and `.darklua.json` when the place has them), and set the `name` in each config to `lobby`. Nothing else in them depends on the folder: the source paths, `compiledPath` and `tsconfig.json` are relative to it. Run `rogen build projects/lobby` for its project file, and add `rbxtsc -p projects/lobby` and `rbxtsc -w -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
+For roblox-ts, copy the folder of a place: make `projects/lobby/src`, copy `projects/game/default.rogen.json`, `projects/game/tsconfig.json` and `projects/game/place` into `projects/lobby` (with `dist.rogen.json`, `release.rogen.json` and `.darklua.json` when the place has them), and set the `name` in each config to `lobby`. Nothing else in them depends on the folder: the source paths, `compiledPath`, the `place` the tree mounts and `tsconfig.json` are relative to it. Run `rogen build projects/lobby` for its project file, and add `rbxtsc -p projects/lobby` and `rbxtsc -w -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
 
 </Step>
 
@@ -161,6 +171,7 @@ projects/common/tsconfig.json              for the editor only, rbxtsc never rea
 projects/game/tsconfig.json                compiles src and ../common/src into out
 projects/game/default.rogen.json           name, compiledPath "out", the rbxts_include mount
 projects/game/src/Game/server/Game.server.ts
+projects/game/place/...                    Rojo's Baseplate and lighting, mounted by the tree
 ```
 
 Name a place by its folder: `rogen serve projects/game`, `rogen build projects/game`.

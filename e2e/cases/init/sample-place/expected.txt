@@ -1,0 +1,116 @@
+$ rogen init --non-interactive --skip-git
+exit 0
+stdout: (not shown)
+
+$ rogen build -o place.rbxl
+exit 0
+stdout: (not shown)
+stderr:
+  rogen build · project
+  default.project.json · unchanged
+  Built 1 project.
+
+$ lune run dump-place place.rbxl place.txt
+exit 0
+
+written:
+  AGENTS.md
+  README.md
+  default.project.json
+  default.rogen.json
+  place.rbxl
+  place.txt
+  place/Lighting/init.meta.json
+  place/SoundService/init.meta.json
+  place/Workspace/Baseplate.model.json
+  place/Workspace/init.meta.json
+  src/Greeter/Client/Greeter.client.luau
+  src/Greeter/Server/Greeter.server.luau
+  src/Greeter/Shared/Greeting.luau
+
+default.rogen.json:
+{
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$path": "place/Lighting"
+    },
+    "SoundService": {
+      "$path": "place/SoundService"
+    },
+    "Workspace": {
+      "$path": "place/Workspace"
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
+place.txt:
+Lighting (Lighting)
+  Ambient = 0, 0, 0
+  Brightness = 2
+  GlobalShadows = true
+ReplicatedStorage (ReplicatedStorage)
+ReplicatedStorage/Shared (Folder)
+ReplicatedStorage/Shared/Greeter (Folder)
+ReplicatedStorage/Shared/Greeter/Greeting (ModuleScript)
+  Source = return function(who: string): string
+	return `Hello, {who}!`
+end
+
+ServerScriptService (ServerScriptService)
+ServerScriptService/Greeter (Folder)
+ServerScriptService/Greeter/Greeter (Script)
+  Source = local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Greeting = require(ReplicatedStorage.Shared.Greeter.Greeting)
+
+print(Greeting("server"))
+
+SoundService (SoundService)
+  RespectFilteringEnabled = true
+StarterPlayer (StarterPlayer)
+StarterPlayer/StarterPlayerScripts (StarterPlayerScripts)
+StarterPlayer/StarterPlayerScripts/Greeter (Folder)
+StarterPlayer/StarterPlayerScripts/Greeter/Greeter (LocalScript)
+  Source = local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Greeting = require(ReplicatedStorage.Shared.Greeter.Greeting)
+
+print(Greeting("client"))
+
+Workspace (Workspace)
+  CurrentCamera = Camera
+Workspace/Baseplate (Part)
+  Anchored = true
+  Color = 0.3882353, 0.37254903, 0.3882353
+  Locked = true
+  Size = 512, 20, 512
+Workspace/Camera (Camera)
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  Lighting: Lighting  <- place/Lighting/init.meta.json
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+  SoundService: SoundService  <- place/SoundService/init.meta.json
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json

@@ -1,6 +1,7 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -22,6 +23,7 @@ import {
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
+import { SAMPLE_GAME_FOLDER, SampleGame } from "./sample-game.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import {
@@ -238,13 +240,17 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			language,
 			path.basename(directory.path)
 		);
+		const game = sample
+			? new SampleGame(places?.gameFolder ?? SAMPLE_GAME_FOLDER)
+			: undefined;
 		const processed = darklua && compiledPath ? compiledPath : undefined;
-		const sampleFiles = sample
+		const sampleFiles = game
 			? [
 					...sampleOf.feature(
 						places?.commonSourcePath ?? sourcePaths[0]
 					),
 					...(places ? sampleOf.place(places.placeSourcePath) : []),
+					...game.written(places?.folder ?? ""),
 					sampleOf.readme(
 						places?.commonSourcePath ?? sourcePaths[0],
 						ProjectSetup.serveCommand(places, processed),
@@ -273,8 +279,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			sourcePaths: [...sourcePaths],
 			...(compiledPath && { compiledPath }),
 			tree:
-				sample && tree.value.kind === "new"
-					? { ...tree.value, game: true }
+				game && tree.value.kind === "new"
+					? { ...tree.value, game }
 					: tree.value,
 			mounts,
 			routes: routes.routes,
@@ -337,24 +343,37 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return processed ? `rogen serve ${PROCESSED_OUTPUT}` : "rogen serve";
 	}
 
-	/** How to add a second place, which `init` starts but never adds. */
+	/** How to add a second place, which `init` starts but never adds; `game`: whether the first place has the sample game, which the second copies. */
 	private static addPlaceStep(
 		places: StartingPlaces,
-		processed: string | undefined
+		processed: string | undefined,
+		game: boolean
 	): string {
 		const port = "from a second terminal with its own --port";
 		if (places.folder === "") {
-			const { outputPrefix } = places;
+			const { outputPrefix, gameFolder } = places;
 			const lobby = (file: string) =>
 				file.replace(outputPrefix, "lobby.");
 			const dist = configFileName(`${outputPrefix}${PROCESSED_OUTPUT}`);
 			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
+			const lobbyGame = path.posix.join(
+				path.posix.dirname(gameFolder),
+				"lobby"
+			);
+			const copy = game
+				? `copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby, its source path ${places.placeSourcePath} to src/lobby and each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}.`
+				: `copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby.`;
 			return processed
-				? `Add another place: copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
-				: `Add another place: copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
+				? `Add another place: ${copy} Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
+				: `Add another place: ${copy} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
 		}
 		const lobby = `${PROJECTS_FOLDER}/lobby`;
-		return `Add another place: make ${lobby}/src, copy ${places.folder}/${DEFAULT_CONFIG_FILE} and ${places.folder}/tsconfig.json into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		const copied = [
+			`${places.folder}/${DEFAULT_CONFIG_FILE}`,
+			`${places.folder}/tsconfig.json`,
+			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
+		];
+		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
 	/** An error when the first place has a config already, which init never overwrites. */
@@ -623,8 +642,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.sample)
 			builder.addNote(
 				places
-					? `Wrote the Greeter sample: the feature in ${places.commonSourcePath}, which every place shares, and Game in ${places.placeSourcePath}. Pass --no-sample for empty source folders.`
-					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty ${sourcePaths[0]}.`
+					? `Wrote the Greeter sample: the feature in ${places.commonSourcePath}, which every place shares, Game in ${places.placeSourcePath}, and Rojo's sample Baseplate and lighting in ${path.posix.join(places.folder, places.gameFolder)}. Pass --no-sample for empty source folders.`
+					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, and Rojo's sample Baseplate and lighting in ${SAMPLE_GAME_FOLDER}, which the tree mounts. Pass --no-sample for an empty ${sourcePaths[0]} and no ${SAMPLE_GAME_FOLDER}.`
 			);
 		this.planNextSteps(builder, choices, tree);
 	}
@@ -751,7 +770,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				ProjectSetup.addPlaceStep(
 					places,
-					darklua && compiledPath ? compiledPath : undefined
+					darklua && compiledPath ? compiledPath : undefined,
+					chosen.kind === "new" && chosen.game !== undefined
 				)
 			);
 		const processed = darklua && compiledPath ? compiledPath : undefined;

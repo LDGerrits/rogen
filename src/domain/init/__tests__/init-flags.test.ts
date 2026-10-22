@@ -5,6 +5,7 @@ import { MockPromptService } from "../../../platform/prompt/__tests__/mock-promp
 import { InitQuestions } from "../init-questions.js";
 import { InitChoices } from "../init-service.js";
 import { ProjectSetup } from "../project-setup.js";
+import { SampleGame } from "../sample-game.js";
 import { WorkspaceSpec, directory, directoryOf } from "./init-fixtures.js";
 
 const luau: WorkspaceSpec = {};
@@ -133,12 +134,19 @@ describe("init choices given as flags", () => {
 			const { asked } = await run(luau, {});
 
 			expect(asked.unwrap()?.sample).toBe(true);
-			expect(asked.unwrap()?.tree).toEqual({ kind: "new", game: true });
+			expect(asked.unwrap()?.tree).toEqual({
+				kind: "new",
+				game: new SampleGame("place"),
+			});
 			expect(await fileNames({})).toEqual([
 				".gitignore",
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
 				"src/Greeter/Client/Greeter.client.luau",
+				"place/Lighting/init.meta.json",
+				"place/SoundService/init.meta.json",
+				"place/Workspace/Baseplate.model.json",
+				"place/Workspace/init.meta.json",
 				"README.md",
 			]);
 		});

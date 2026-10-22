@@ -31,6 +31,10 @@ written:
   package-lock.json
   package.json
   place.rbxlx
+  place/Lighting/init.meta.json
+  place/SoundService/init.meta.json
+  place/Workspace/Baseplate.model.json
+  place/Workspace/init.meta.json
   src/Greeter/client/Greeter.client.ts
   src/Greeter/server/Greeter.server.ts
   src/Greeter/shared/Greeting.ts
@@ -42,17 +46,7 @@ default.rogen.json:
   "tree": {
     "$className": "DataModel",
     "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
+      "$path": "place/Lighting"
     },
     "ReplicatedStorage": {
       "rbxts_include": {
@@ -66,36 +60,10 @@ default.rogen.json:
       }
     },
     "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
+      "$path": "place/SoundService"
     },
     "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
+      "$path": "place/Workspace"
     }
   },
   "rogen": {
@@ -119,7 +87,7 @@ print(greeting("server"))
 
 $ rojo sourcemap default.project.json
 project: DataModel
-  Lighting: Lighting
+  Lighting: Lighting  <- place/Lighting/init.meta.json
   ReplicatedStorage: ReplicatedStorage
     rbxts_include: Folder
       Promise: ModuleScript  <- include/Promise.lua
@@ -139,10 +107,10 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Greeter: Folder
       Greeter: Script  <- out/Greeter/server/Greeter.server.luau
-  SoundService: SoundService
+  SoundService: SoundService  <- place/SoundService/init.meta.json
   StarterPlayer: StarterPlayer
     StarterPlayerScripts: StarterPlayerScripts
       Greeter: Folder
         Greeter: LocalScript  <- out/Greeter/client/Greeter.client.luau
-  Workspace: Workspace
-    Baseplate: Part
+  Workspace: Workspace  <- place/Workspace/init.meta.json
+    Baseplate: Part  <- place/Workspace/Baseplate.model.json

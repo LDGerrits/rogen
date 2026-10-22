@@ -109,9 +109,10 @@ stdout:
                                            stands for the route derived from it, which `Took the
                                            defaults` and `--json` write as mount:server. (repeatable)
           --[no-]sample                    Whether a new place starts with the Greeter sample: three
-                                           hello-world scripts in src/Greeter, Rojo's Baseplate and a
-                                           README. Written when not given, in a folder with no code.
-                                           --no-sample leaves src empty.
+                                           hello-world scripts in src/Greeter, Rojo's Baseplate and
+                                           lighting in place, which the tree mounts, and a README.
+                                           Written when not given, in a folder with no code.
+                                           --no-sample leaves src empty and writes no place.
           --skip-git                       Leave git out of a new project: write no .gitignore and run
                                            no git init. Otherwise a .gitignore is written where none
                                            is, and git init runs where no work tree holds the folder.

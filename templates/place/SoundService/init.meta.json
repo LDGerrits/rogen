@@ -1,0 +1,6 @@
+{
+	"className": "SoundService",
+	"properties": {
+		"RespectFilteringEnabled": true
+	}
+}
