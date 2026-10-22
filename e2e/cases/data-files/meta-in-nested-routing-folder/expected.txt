@@ -2,10 +2,9 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 2 files under a "server" route ship to clients, because "shared" governs them: (route.serverCodeShipped)
-    src/Shared/Server/Datastore.luau -> ReplicatedStorage/shared/Server/Datastore
-    src/Shared/Server/Other.mock.luau -> ReplicatedStorage/shared/Server/Other.mock
-  Move them out of the "shared" route's files if they're server code, or keep them there with a "@shared" marker file in their folder.
+  default.rogen.json - warning: 2 files under a server-only route ship to clients, because an outer route governs them: (route.serverCodeShipped)
+    src/Shared/Server/Datastore.luau (ships to clients as ReplicatedStorage/shared/Server/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
+    src/Shared/Server/Other.mock.luau (ships to clients as ReplicatedStorage/shared/Server/Other.mock: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
 
 written:
   default.project.json
