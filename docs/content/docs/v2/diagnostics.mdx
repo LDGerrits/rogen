@@ -714,6 +714,16 @@ default.project.json - warning: 1 data file was turned into a Lua module under "
 
 Copy the data files unchanged into the compiled path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
 
+### `compiled.orphan` [#compiled-orphan]
+
+Warning. The compiled path holds a file that no source file makes. A compiler or processor doesn't delete what it wrote on an earlier run, so a file whose source you removed or renamed stays. Where a folder collapses into one `$path` (see [Compiled Path](/docs/v2/core-concepts/output#compiled-path)), Rojo syncs every file in it, the stale one too; in a folder that doesn't collapse, Rojo skips it, but it still waits there. There is one warning for each folder, and it lists the first few files:
+
+```
+dist/Inventory - warning: dist/Inventory/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+```
+
+Delete the file, or empty the compiled path and run the compiler or processor again. Rogen matches a file to its source by the name a tool gives it: a roblox-ts `.ts` or `.tsx` compiles to `.luau`, `index.ts` to `init.luau`, and Darklua turns a data file into `.lua`. A source that `globIgnorePaths` leaves out still counts as making its file, and when Rogen cannot tell, it doesn't warn. `rogen check` exits 1 on it; `build` only prints it.
+
 ## Format
 
 ### `format.commentsLost` [#format-commentslost]
