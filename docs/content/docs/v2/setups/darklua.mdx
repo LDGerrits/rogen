@@ -160,26 +160,28 @@ rogen build release -o game.rbxl
 
 ## Darklua with Places
 
-A repository with [several places](/docs/v2/setups/places) gives each place its own `dist.rogen.json` and its own `.darklua.json`, since Darklua reads its config and `sourcemap.json` from the folder it runs in. Shared code is compiled once per place, into the place's own compiled path, which repeats the layout of its source paths (`dist/shared/src` and `dist/game/src`):
+A repository with [several places](/docs/v2/setups/places) gives each place its own dist config: `game.dist.rogen.json` beside `game.rogen.json` for Luau, with one `.darklua.json` at the root, or `projects/game/dist.rogen.json` and its own `.darklua.json` for a place in `projects/`, since Darklua reads its config from the folder it runs in. Common code is compiled once per place, into the place's own compiled path, which repeats the layout of its source paths (`dist/common` and `dist/game` in Luau):
 
-```json title="places/game/dist.rogen.json"
+```json title="game.dist.rogen.json"
 {
 	"name": "game",
 	"rogen": {
-		"sourcePaths": ["../shared/src", "src"],
+		"sourcePaths": ["src/common", "src/game"],
 		"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
 		"compiledPath": "dist"
 	}
 }
 ```
 
-So a place has two `darklua process` commands, one for the shared folder and one for its own source, both run from the place's folder. `init --places --darklua` prints them:
+So a place has two `darklua process` commands, one for the common folder and one for its own source. `init --places --darklua` prints them:
 
 ```
 Run each in its own terminal:
-  cd places/game && darklua process ../shared/src dist/shared/src --watch
-  cd places/game && darklua process src dist/game/src --watch
-  rogen serve places/game/dist.rogen.json
+  darklua process src/common dist/common --watch
+  darklua process src/game dist/game --watch
+  rogen serve game.dist.rogen.json
 ```
+
+In roblox-ts they run from the place's folder, as `cd projects/game && darklua process out dist --watch`.
 
 Another place is a second terminal set with its own `--port`.

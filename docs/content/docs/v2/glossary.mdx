@@ -20,9 +20,9 @@ description: The terms Rogen's docs use, and where each one is explained.
 - **Project file**: A Rojo project file Rogen writes beside the `.rogen.json` it comes from: `X.rogen.json` writes `X.project.json`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
 - **Project**: A `.rogen.json` and the `.project.json` it writes. `default.rogen.json` is a folder's default; a second output, such as `dist.rogen.json` for Darklua, is a second complete file that repeats `name`, `routes` and `tree`, and nothing is inherited. A plain `default.project.json` with no config beside it counts as a default too. See [Configuration](/docs/v2/configuration).
 
-- **Place**: One Roblox place of a repo that builds several: a folder, usually in `places/`, with its own complete `default.rogen.json` that lists its source paths in full and sets its own `name`. Serve it by naming it, `rogen serve places/lobby`; a second place at once is a second terminal with `--port`. See [Places](/docs/v2/setups/places).
+- **Place**: One Roblox place of a repo that builds several: a complete config of its own that lists its source paths in full and sets its own `name`: a `lobby.rogen.json` at the root, or a folder, usually in `projects/`, with a `default.rogen.json`. Serve it by naming it, `rogen serve lobby` or `rogen serve projects/lobby`; a second place at once is a second terminal with `--port`. See [Places](/docs/v2/setups/places).
 
-- **Shared code**: A plain folder inside `places/` (`places/shared/src`) that each place lists in its `sourcePaths`. For Luau it has a `default.rogen.json` of routes only, for the editor; it is never served. See [Places](/docs/v2/setups/places).
+- **Shared code**: A plain folder (`src/common`, or `projects/common/src` in roblox-ts) that each place lists in its `sourcePaths`. It has no config of its own. See [Places](/docs/v2/setups/places).
 
 - **Build**: One complete run that turns the source paths into the named project file. See [CLI](/docs/v2/cli#build-project).
 
