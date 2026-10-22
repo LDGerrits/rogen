@@ -26,7 +26,7 @@ stdout:
       rogen serve places/game
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in places/game/default.rogen.json.
-    Edit places/game/default.rogen.json and leave places/game/default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build places/game' so the editor's places/game/default.project.json follows.
+    Edit places/game/default.rogen.json and leave places/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build places/game' so the editor's places/game/default.project.json follows.
     Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
   Wrote 10 files.
 

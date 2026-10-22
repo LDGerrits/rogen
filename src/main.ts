@@ -46,7 +46,6 @@ import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
 import { BuildService } from "./domain/build/build-service.js";
 import { CoreBuildService } from "./domain/build/core-build-service.js";
-import { WrittenRecords } from "./domain/build/written-records.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { ToolLocator } from "./domain/toolchain/tool-locator.js";
@@ -308,11 +307,7 @@ class RogenMain {
 		const buildService = new CoreBuildService(
 			fileSystemService,
 			indexService,
-			toolchainService.syncTools,
-			new WrittenRecords(
-				fileSystemService,
-				path.join(environmentService.cacheDir, "rogen", "written")
-			)
+			toolchainService.syncTools
 		);
 		services.set(BuildService, buildService);
 		const toolLocator = new ToolLocator(

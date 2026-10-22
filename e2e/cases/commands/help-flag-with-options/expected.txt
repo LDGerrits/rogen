@@ -17,8 +17,6 @@ stdout:
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
                                always, never]
-          --force              Write a project file over an edit made to it by hand, which a build
-                               refuses to lose otherwise.
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
       -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
@@ -78,11 +76,6 @@ stdout:
         "name": "watch",
         "type": "boolean",
         "description": "Keep going: write the project file again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line."
-      },
-      {
-        "name": "force",
-        "type": "boolean",
-        "description": "Write a project file over an edit made to it by hand, which a build refuses to lose otherwise."
       }
     ],
     "effects": [

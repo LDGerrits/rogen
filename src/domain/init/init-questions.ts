@@ -44,7 +44,7 @@ export function listOf(
 	return [];
 }
 
-/** An area of a project that has a config, which a run can change. */
+/** An area a run can add to a project that has a config. */
 export interface ChangeArea {
 	readonly id: string;
 	readonly label: string;
@@ -113,7 +113,7 @@ export class InitQuestions {
 		});
 	}
 
-	/** The areas of a project that has a config to change, with what it has now; `undefined` when the user cancelled. */
+	/** The areas of a project that has a config to add to, with what it has now; `undefined` when the user cancelled. */
 	async whatToChange(
 		current: string,
 		areas: readonly ChangeArea[]
@@ -127,100 +127,6 @@ export class InitQuestions {
 				hint,
 			})),
 			initialValues: [],
-		});
-	}
-
-	/** The standard routes to add and to take off, from a list ticked as the config has them. */
-	async changeRoutes(
-		options: readonly { id: string; key: string; target: string }[],
-		configured: readonly string[]
-	): Promise<{ add: string[]; remove: string[] } | undefined> {
-		const ticked = await this.essential.multiSelect({
-			message: "Routes",
-			description:
-				"Ticking adds a route, unticking takes off one that still has its standard value. Routes of your own stay.",
-			choices: options.map(({ id, key, target }) => ({
-				value: id,
-				label: key,
-				hint: `→ ${target}`,
-			})),
-			initialValues: configured,
-		});
-		return ticked === undefined
-			? undefined
-			: {
-					add: ticked.filter((id) => !configured.includes(id)),
-					remove: configured.filter((id) => !ticked.includes(id)),
-				};
-	}
-
-	async changeUnmatched(
-		current: "shared" | "leave",
-		sharedTarget: string
-	): Promise<"shared" | "leave" | undefined> {
-		return this.essential.select<"shared" | "leave">({
-			message: "Files that match no route",
-			description:
-				"Most loose modules in a feature folder are shared code.",
-			choices: [
-				{ value: "shared", label: `Put them in ${sharedTarget}` },
-				{
-					value: "leave",
-					label: "Leave them out (Rogen warns when it does)",
-				},
-			],
-			initialValue: current,
-		});
-	}
-
-	/** The source paths to add and to take off, from the list the user edits. Taking one off with scripts in it asks to confirm. */
-	async changeSourcePaths(
-		current: readonly string[],
-		directory: InitDirectory,
-		codeIn: (sourcePath: string) => Promise<readonly string[]>
-	): Promise<{ add: string[]; remove: string[] } | undefined> {
-		const answer = await this.essential.text({
-			message: "Source paths",
-			description:
-				"Folders with your scripts, relative to here. Separate several with commas.",
-			placeholder: current.join(", "),
-			validate: (value) => directory.sourcePathsProblem(splitList(value)),
-		});
-		if (answer === undefined) return undefined;
-		const next = splitList(answer).map(normalizeDir);
-		const remove: string[] = [];
-		for (const entry of current.filter((one) => !next.includes(one))) {
-			const files = await codeIn(entry);
-			if (files.length > 0) {
-				const sure = await this.promptService.confirm({
-					message: `Stop building ${entry}?`,
-					description: `${files.length === 1 ? "This file" : "These files"} would no longer be built: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", ..." : ""}.`,
-					initialValue: false,
-				});
-				if (sure === undefined) return undefined;
-				if (!sure) continue;
-			}
-			remove.push(entry);
-		}
-		return {
-			add: next.filter((entry) => !current.includes(entry)),
-			remove,
-		};
-	}
-
-	async changePackages(
-		offered: readonly { path: string; landing: string }[]
-	): Promise<readonly string[] | undefined> {
-		return this.essential.multiSelect({
-			message: "Packages",
-			description:
-				"Folders placed in the game as they are. Rogen doesn't scan or route them.",
-			choices: offered.map(({ path, landing }) => ({
-				value: path,
-				label: path,
-				hint: `→ ${landing}`,
-			})),
-			initialValues: offered.map(({ path }) => path),
 		});
 	}
 

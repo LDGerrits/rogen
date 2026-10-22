@@ -52,8 +52,7 @@ export class CoreServeService implements ServeService {
 
 	private portsFor(
 		server: SyncServer,
-		serverArgs: readonly string[],
-		adopt: boolean
+		serverArgs: readonly string[]
 	): ServePorts {
 		return new ServePorts(
 			this.probe,
@@ -61,7 +60,6 @@ export class CoreServeService implements ServeService {
 			server,
 			serverArgs,
 			this.environmentService.cwd,
-			adopt,
 			this.rojoRunner
 		);
 	}
@@ -91,8 +89,7 @@ export class CoreServeService implements ServeService {
 
 		const ports = this.portsFor(
 			executable.value.server,
-			request.serverArgs,
-			request.adopt === true
+			request.serverArgs
 		);
 		if (ports.portError) return err(ports.portError);
 		const checked = await ports.check(ports.targetOf(config));
@@ -102,8 +99,7 @@ export class CoreServeService implements ServeService {
 				selection,
 				executable.value,
 				checked.value,
-				request.serverArgs,
-				request.adopt === true
+				request.serverArgs
 			)
 		);
 	}
@@ -118,11 +114,7 @@ export class CoreServeService implements ServeService {
 				this.rojoRunner,
 				this.probe,
 				this.records,
-				this.portsFor(
-					plan.executable.server,
-					plan.serverArgs,
-					plan.adopt
-				),
+				this.portsFor(plan.executable.server, plan.serverArgs),
 				this.compatibility
 			)
 		);

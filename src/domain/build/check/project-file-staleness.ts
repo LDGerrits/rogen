@@ -8,18 +8,13 @@ import { FileReader } from "../../../platform/fs/file-system-service.js";
 import { DEFAULT_PROJECT } from "../../config/config.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
-import { OutputWriter, editedByHandMessage } from "../output-writer.js";
-import { HandEdits } from "../hand-edits.js";
-import { WrittenRecords } from "../written-records.js";
+import { OutputWriter } from "../output-writer.js";
 
 /** Whether the project file on disk is what a build would write, which a command that writes nothing says by a warning. */
 export class ProjectFileStaleness {
-	constructor(
-		private readonly fileSystemService: FileReader,
-		private readonly records: WrittenRecords = new WrittenRecords()
-	) {}
+	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** The warning for `config`'s project file when it is on disk and differs from what `built` gives: that it is out of date, or that it was edited by hand since Rogen wrote it and a build would lose the edit. None for a file that isn't there, one Rogen never writes, or a build that fails. `built` runs only for a file that is there. */
+	/** The warning for `config`'s project file when it is on disk and differs from what `built` gives: that it is out of date. None for a file that isn't there, one Rogen never writes, or a build that fails. `built` runs only for a file that is there. */
 	async diagnostic(
 		config: ResolvedConfig,
 		built: () => Promise<RojoProjectFile | undefined>
@@ -39,18 +34,6 @@ export class ProjectFileStaleness {
 		const file = await built();
 		if (!file || onDisk.value === OutputWriter.textOf(file))
 			return undefined;
-		const edited = await HandEdits.editedBy(
-			this.records,
-			projectFile,
-			onDisk.value,
-			OutputWriter.textOf(file)
-		);
-		if (edited)
-			return warningDiagnostic(
-				"output.editedByHand",
-				{ resource: projectFile },
-				editedByHandMessage(edited, configName, `'${command}'`)
-			);
 		return warningDiagnostic(
 			"output.differs",
 			{ resource: projectFile },

@@ -668,33 +668,13 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported, and neither is one that was edited by hand, which is [`output.editedByHand`](#output-editedbyhand).
+Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
 default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 ```
 
 Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
-
-### `output.editedByHand` [#output-editedbyhand]
-
-Warning, or error. `rogen check`, `rogen where` and `rogen list` warn, and `rogen build` fails, when a project file was changed by hand since Rogen wrote it and writing it again would lose the change. Rogen remembers a hash of each file it writes in the user's cache folder, since the file itself can't carry a mark (Rojo rejects keys it doesn't know). A file whose hash is not the last one written, and that holds a node, property or key the new file would not, is an edit by hand. A file that reads the same as what would be written, as after `rojo fmt-project`, is not.
-
-```
-default.project.json - error: this file was edited by hand, and a build would lose ServerStorage. To keep the edit, add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of default.rogen.json, since default.rogen.json is what writes this file, and then write it again. To drop the edit instead, run 'rogen build --force'. (output.editedByHand)
-```
-
-Put what the message names into the `.rogen.json`: the `tree` of a config holds the nodes names can't express, and its other keys sit beside it. Then `rogen build` writes the file with the edit. `rogen build --force` writes the file over the edit instead. No fix is offered that does either, since the move is yours to check and the force loses the edit. A machine that never wrote the file, or a cache that was cleared, has no hash, so the first build there writes the file as it always did. A file pulled from git that was written from another version of the `.rogen.json` has a hash this machine never saw and can look edited if it holds something this machine would not write: `rogen build --force` writes it. `build --watch` and `serve` stop on it too, since they cannot take `--force`: stop them, run it, and start them again. See [Output](/docs/v2/core-concepts/output#output).
-
-### `output.configMissing` [#output-configmissing]
-
-Error. `rogen build`, `rogen serve` and the commands that build first found a project file that Rogen wrote and that is as Rogen wrote it, but the `.rogen.json` beside it that wrote it is gone, so the config was deleted or renamed. Rogen writes `X.project.json` only from `X.rogen.json`, and it will not run a leftover as if it were a plain Rojo project.
-
-```
-default.project.json - error: Rogen wrote this file from default.rogen.json, which is not here now: the config was deleted or renamed. Restore default.rogen.json, or change this file by hand to use it as a plain Rojo project. (output.configMissing)
-```
-
-Restore or rename the config. To go back to a plain Rojo project, change the project file by hand: a file that differs from what Rogen wrote is yours.
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 
@@ -761,13 +741,13 @@ Check that the file is writable and that no other program locks it.
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
+Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites or changes one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
 
 ```
-default.rogen.json - error: this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo. (init.configExists)
+default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo. (init.configExists)
 ```
 
-Edit the config to change it, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
+Edit the config in place to change it, then run `rogen check`, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 
@@ -820,16 +800,6 @@ default.project.json - warning: 2 files in the source paths are mounted by no no
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).
 
-### `init.sourcePathRemoved` [#init-sourcepathremoved]
-
-Warning. `init --no-source-path` (or a source path unticked in the menu) took a folder off the source paths of a `default.rogen.json` that has scripts in it. Rogen builds only the source paths, so those scripts leave the game.
-
-```
-default.rogen.json - warning: lib is no longer a source path, so Rogen no longer builds these 2 files in it: Util.luau, Other.server.luau. (init.sourcePathRemoved)
-```
-
-The config changed, not the files. To build them again, put the folder back with `rogen init --source-path lib`.
-
 ## Serve
 
 ### `serve.noServer` [#serve-noserver]
@@ -865,7 +835,7 @@ Pin the tool, or fix the install the quoted line points at. Running `rojo --vers
 
 ### `serve.portTaken` [#serve-porttaken]
 
-Error. Another program holds the port a config would be served on. When it's a Rojo server, the message names the project it serves, and the file `rogen serve` started it for when one did. A server that another `rogen serve` started for the same project file isn't an error: `rogen serve` leaves it running. A server that a `rogen serve` started for another file is one, in this folder or another, such as a second place on the same port: stop it, give this one a `servePort`, or pass a free port with `--port`, since a second place is served from a second terminal. `--adopt` is not offered then. A server that no `rogen serve` started is one too, even if it serves a project of the same name, since Rojo reports only the name and Rogen can't tell whether it serves this project file: stop that server and run `rogen serve` again, or, if it serves this project file, run `rogen serve --adopt`.
+Error. Another process holds the port a config would be served on. When it's a Rojo server, the message names the project it serves, and the file `rogen serve` started it for when one did. A server that another `rogen serve` started for the same project file isn't an error: `rogen serve` leaves it running. A server that a `rogen serve` started for another file is one, in this folder or another, such as a second place on the same port: stop it, give this one a `servePort`, or pass a free port with `--port`, since a second place is served from a second terminal. A server that no `rogen serve` started, such as a `rojo serve` you ran yourself or an Argon server, is one too, even if it serves a project of the same name: the message says another process holds the port. Stop it, or give this one another port.
 
 ```
 places/arena/default.rogen.json - error: Port 34872 is taken by Rojo serving lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port 34873'. (serve.portTaken)

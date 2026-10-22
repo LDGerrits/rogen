@@ -33,9 +33,6 @@ function summaryLines(plan: InitPlan, width: number): string[] {
 			: undefined,
 		plan.gitInit ? "git init" : undefined,
 	].filter((one) => one !== undefined);
-	const changes = plan.files.flatMap(({ fileName, changes: made }) =>
-		(made ?? []).map((change) => `${fileName}: ${change}`)
-	);
 	const commands = [
 		...(plan.scaffold ? [plan.scaffold.command.command] : []),
 		...plan.commands.map(({ command }) => command),
@@ -44,9 +41,6 @@ function summaryLines(plan: InitPlan, width: number): string[] {
 		...plan.summary.map(({ area, text }): [string, string] => [area, text]),
 		...(git.length > 0
 			? [["Git", git.join(", ")] as [string, string]]
-			: []),
-		...(changes.length > 0
-			? [["Changes", changes.join(", ")] as [string, string]]
 			: []),
 		[
 			"Files",

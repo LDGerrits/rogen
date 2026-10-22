@@ -17,8 +17,6 @@ stdout:
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
                                always, never]
-          --force              Write a project file over an edit made to it by hand, which a build
-                               refuses to lose otherwise.
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
       -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
@@ -53,7 +51,9 @@ stdout:
   rogen-init
   Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a
   folder, starts a project there, or adds a place when the folder lies in a places folder that has
-  one.
+  one. It starts projects and never changes a config that exists: where one is, it only adds the agent
+  rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run
+  'rogen check'.
   
   USAGE:
       rogen init [OPTIONS] [PATH]
@@ -75,13 +75,8 @@ stdout:
                                            values: auto, always, never]
           --compiled-path <PATH>           With Darklua: the folder it writes into, and Rojo syncs
                                            from.
-          --customise                      In a terminal, ask every question one after another,
-                                           without the summary of the plan first.
           --[no-]darklua                   Whether Darklua processes your code before Rojo syncs it.
-                                           Found from a Darklua config when not given. On a project
-                                           that has a default.rogen.json, init does not change
-                                           Darklua: the second config file that serves the processed
-                                           code is written by hand.
+                                           Found from a Darklua config when not given.
       -n, --dry-run                        Plan without writing or building: print the files it would
                                            write and the choices it took, then stop.
       -h, --help                           Print help.
@@ -97,19 +92,12 @@ stdout:
           --nested                         Start a project in a folder below another
                                            default.rogen.json, which a run that can't ask refuses
                                            otherwise.
-          --no-route <ID>                  On a project that has a default.rogen.json: takes a
-                                           standard route off, when it still has its standard value.
-                                           Routes of your own are never changed. (repeatable)
-          --no-source-path <PATH>          On a project that has a default.rogen.json: takes a folder
-                                           off its source paths. The files in it are no longer built,
-                                           which init lists. (repeatable)
       -y, --non-interactive                Write the defaults without asking, as a run without a
                                            terminal, or under a coding agent or CI, does. --json
                                            implies it. A flag below answers its question either way.
           --package <PATH>                 A package folder to mount as it is; repeat for several, or
-                                           none for no mounts. The installed ones when not given. On a
-                                           project that has a default.rogen.json, mounts the folder if
-                                           the tree doesn't. (repeatable)
+                                           none for no mounts. The installed ones when not given.
+                                           (repeatable)
           --[no-]places                    Whether a new project is several places: the code they
                                            share in places/shared, and a first place in places/game
                                            with its own default.rogen.json, more by 'rogen init
@@ -126,10 +114,9 @@ stdout:
                                            flag. On a folder that has a config, sets Rojo up there.
           --route <ID>                     A route to start with: server, client, shared,
                                            replicatedFirst, serverStorage or starterGui; repeat for
-                                           several, or none. The first three when not given. On a
-                                           project that has a default.rogen.json, adds the route. When
-                                           a lifted project file mounts a folder of that name, the
-                                           name stands for the route derived from it, which `Took the
+                                           several, or none. The first three when not given. When a
+                                           lifted project file mounts a folder of that name, the name
+                                           stands for the route derived from it, which `Took the
                                            defaults` and `--json` write as mount:server. (repeatable)
           --[no-]sample                    Whether a new place starts with the Greeter sample: three
                                            hello-world scripts in src/Greeter, Rojo's Baseplate and a
@@ -139,9 +126,8 @@ stdout:
                                            no git init. Otherwise a .gitignore is written where none
                                            is, and git init runs where no work tree holds the folder.
           --source-path <PATH>             A folder with your scripts, relative to here; repeat for
-                                           several. src when not given, or where the code is. On a
-                                           project that has a default.rogen.json, adds the folder to
-                                           its source paths. (repeatable)
+                                           several. src when not given, or where the code is.
+                                           (repeatable)
           --[no-]studio-plugin             Whether to install Rojo's Studio plugin, once Rojo is set
                                            up. Not installed by a run that can't ask, which prints the
                                            command instead.
@@ -205,8 +191,6 @@ stdout:
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
                                always, never]
-          --force              Write a project file over an edit made to it by hand, which a build
-                               refuses to lose otherwise.
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
       -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,

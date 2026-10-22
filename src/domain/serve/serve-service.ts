@@ -21,8 +21,6 @@ export interface ServeRequest {
 	readonly refs: readonly string[];
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
-	/** Serves the project file that a server no serve started serves under the project's name, instead of refusing the port. */
-	readonly adopt?: boolean;
 	/** Aborts the checks that run other programs. */
 	readonly signal?: AbortSignal;
 }
@@ -33,8 +31,6 @@ export interface ServeTarget {
 	readonly project: string;
 	readonly address: ServeAddress;
 	readonly servedBy?: ServerInfo;
-	/** Whether `servedBy` is a server no serve started. */
-	readonly adopted?: boolean;
 	/** The record of a server whose `rogen serve` ended without ending it, which holds the port and must end before this target starts. */
 	readonly orphan?: {
 		readonly pid?: number;
@@ -53,13 +49,12 @@ export class ServePlan {
 		readonly selection: ReloadableSelection,
 		readonly executable: ServerExecutable,
 		readonly target: ServeTarget,
-		readonly serverArgs: readonly string[],
-		readonly adopt = false
+		readonly serverArgs: readonly string[]
 	) {}
 
 	/** Whether another serve already serves the target, so nothing is built or watched. */
 	get isIdle(): boolean {
-		return isServed(this.target) && !this.target.adopted;
+		return isServed(this.target);
 	}
 }
 
@@ -89,11 +84,11 @@ export interface ServerOutputEvent {
 	readonly message: ServerMessage;
 }
 
-/** A server the session started or adopted that stopped before the session did. */
+/** A server the session started that stopped before the session did. */
 export type ServerExitEvent = {
 	readonly target: ServeTarget;
-	/** How its process exited; none for an adopted server, which only stopped answering. */
-	readonly exit?: ProcessExit;
+	/** How its process exited. */
+	readonly exit: ProcessExit;
 	/** It was interrupted along with Rogen, as Ctrl+C does, rather than stopping on its own. */
 	readonly interrupted: boolean;
 } & (
@@ -135,7 +130,7 @@ export interface ServeSession extends Disposable {
 	/** Fired for each message a server prints; its own info logs and noise come as `debug`. */
 	readonly onDidOutput: Event<ServerOutputEvent>;
 	readonly onDidChange: Event<ServeChangeEvent>;
-	/** Fired when a server stops before the session does, or an adopted one stops answering for its project. */
+	/** Fired when a server stops before the session does. */
 	readonly onDidExit: Event<ServerExitEvent>;
 
 	/** The target a server of the session runs for; none until one starts. */

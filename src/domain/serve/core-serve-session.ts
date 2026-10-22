@@ -19,16 +19,14 @@ import {
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
-	ServedTarget,
 	isServed,
 } from "./serve-service.js";
 import { ServePorts } from "./serve-ports.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
-import { RunningServer, StartedServer } from "./started-server.js";
-import { AdoptedServer } from "./adopted-server.js";
+import { StartedServer } from "./started-server.js";
 
-/** Watches the plan's configs and keeps a started or adopted server for each config to serve. */
+/** Watches the plan's configs and keeps a started server for each config to serve. */
 export class CoreServeSession
 	extends AbstractDisposable
 	implements ServeSession
@@ -65,7 +63,7 @@ export class CoreServeSession
 	);
 	readonly onDidExit: Event<ServerExitEvent> = this._onDidExit.event;
 
-	private readonly servers = new Map<string, RunningServer>();
+	private readonly servers = new Map<string, StartedServer>();
 	private readonly retirements = new Set<Promise<void>>();
 	private readonly declined = new Map<
 		string,
@@ -156,8 +154,7 @@ export class CoreServeSession
 			await this.endOrphanOf(target);
 			if (this.stopping) return ok(undefined);
 			this.launch(target);
-		} else if (target.adopted) this.adopt(target);
-		else
+		} else
 			this.declined.set(target.config.id, {
 				kind: "elsewhere",
 				address: target.address.toString(),
@@ -231,16 +228,14 @@ export class CoreServeSession
 			return;
 		const samePort = started?.target.address.port === target.address.port;
 		const checked =
-			started instanceof StartedServer && samePort
-				? ok(target)
-				: await this.ports.check(target);
+			started && samePort ? ok(target) : await this.ports.check(target);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
 	}
 
 	private async settle(
 		target: ServeTarget,
-		started: RunningServer | undefined,
+		started: StartedServer | undefined,
 		declinedHere: "refused" | "elsewhere" | undefined,
 		checked: Result<ServeTarget, Diagnostic>
 	): Promise<void> {
@@ -263,10 +258,7 @@ export class CoreServeSession
 					kind: "servedElsewhere",
 					target: checked.value,
 				});
-			if (checked.value.adopted) {
-				this.declined.delete(file);
-				this.adopt(checked.value);
-			} else this.declined.set(file, { kind: "elsewhere", address });
+			this.declined.set(file, { kind: "elsewhere", address });
 			return;
 		}
 		this.declined.delete(file);
@@ -293,7 +285,7 @@ export class CoreServeSession
 	}
 
 	private async retire(
-		server: RunningServer,
+		server: StartedServer,
 		reason: "removed" | "moved"
 	): Promise<void> {
 		const { target } = server;
@@ -345,15 +337,6 @@ export class CoreServeSession
 				failed: (error) => this._onDidError.fire(error),
 			}
 		);
-		this.servers.set(target.config.id, server);
-	}
-
-	private adopt(target: ServedTarget): void {
-		if (this.stopping) return;
-		const server = new AdoptedServer(target, this.probe, {
-			stopped: (stop) => this._onDidExit.fire(stop),
-			failed: (error) => this._onDidError.fire(error),
-		});
 		this.servers.set(target.config.id, server);
 	}
 }

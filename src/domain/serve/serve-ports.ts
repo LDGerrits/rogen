@@ -30,7 +30,6 @@ export class ServePorts {
 		private readonly server: SyncServer,
 		serverArgs: readonly string[],
 		private readonly cwd: string,
-		private readonly adopt: boolean,
 		private readonly runner: RojoRunner
 	) {
 		this.host = server.hostIn(serverArgs);
@@ -78,16 +77,14 @@ export class ServePorts {
 		const holder = state.kind === "serving" ? state.info : undefined;
 		const recorded =
 			holder && (await this.records.recordOf(target.address, holder));
-		if (holder?.project === target.project) {
-			if (
-				recorded &&
-				samePath(recorded.projectFile, target.config.projectFile)
-			)
-				return ok(this.targetServedBy(target, holder, recorded));
-			if (!recorded)
-				return this.adopt
-					? ok({ ...target, servedBy: holder, adopted: true })
-					: err(this.unknownServer(target, holder));
+		if (
+			holder?.project === target.project &&
+			recorded &&
+			samePath(recorded.projectFile, target.config.projectFile)
+		) {
+			const served = this.targetServedBy(target, holder, recorded);
+			if (served) return ok(served);
+			return err(await this.portTaken(target, holder, undefined));
 		}
 		return err(await this.portTaken(target, holder, recorded));
 	}
@@ -99,16 +96,16 @@ export class ServePorts {
 		);
 	}
 
-	/** The target as its recorded server serves it: left alone while its `rogen serve` runs, to end when only a server is left, to watch when there is no process to end. */
+	/** The target as its recorded server serves it: left alone while its `rogen serve` runs, to end when only a server is left; none when there is no process to end. */
 	private targetServedBy(
 		target: ServeTarget,
 		holder: ServerInfo,
 		recorded: ServerRecord
-	): ServeTarget {
+	): ServeTarget | undefined {
 		if (!this.ownerEnded(recorded)) return { ...target, servedBy: holder };
 		return recorded.pid !== undefined && this.runner.isRunning(recorded.pid)
 			? { ...target, orphan: recorded }
-			: { ...target, servedBy: holder, adopted: true };
+			: undefined;
 	}
 
 	private async portTaken(
@@ -117,9 +114,10 @@ export class ServePorts {
 		recorded: ServerRecord | undefined
 	): Promise<Diagnostic> {
 		const { config, address } = target;
-		const by = holder
-			? `${holder.server.name} serving ${holder.project}${recorded ? `, which rogen serve started for ${this.nameOfFile(recorded.configFile ?? recorded.projectFile)}` : ""}`
-			: "another program";
+		const by =
+			holder && recorded
+				? `taken by ${holder.server.name} serving ${holder.project}, which rogen serve started for ${this.nameOfFile(recorded.configFile ?? recorded.projectFile)}`
+				: `held by another process${holder ? ` (${holder.server.name} serving ${holder.project})` : ""}`;
 		const free = address.isLocal
 			? await this.freePortAfter(address)
 			: undefined;
@@ -131,7 +129,7 @@ export class ServePorts {
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },
-			`Port ${address.port} is taken by ${by}, so ${this.nameOf(config)} can't be served there. Stop it, set a servePort in ${this.nameOf(config)}, or run '${command}'.`,
+			`Port ${address.port} is ${by}, so ${this.nameOf(config)} can't be served there. Stop it, set a servePort in ${this.nameOf(config)}, or run '${command}'.`,
 			free === undefined
 				? []
 				: [
@@ -139,15 +137,6 @@ export class ServePorts {
 							run: { command, cwd: this.cwd },
 						},
 					]
-		);
-	}
-
-	private unknownServer(target: ServeTarget, holder: ServerInfo): Diagnostic {
-		const { config, address } = target;
-		return errorDiagnostic(
-			"serve.portTaken",
-			{ resource: config.file },
-			`Port ${address.port} is taken by ${holder.server.name} serving ${holder.project}, which no rogen serve started, so Rogen can't tell whether it serves ${this.nameOf(config)}'s project file. Stop it and run '${this.serveCommand(config)}' to start the server, or if it serves ${config.projectFile}, run 'rogen serve ${this.refOf(config)} --adopt'.`
 		);
 	}
 

@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import { parse } from "../../../base/jsonc.js";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
@@ -13,6 +12,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
+	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -52,7 +52,7 @@ describe("init command", () => {
 		});
 		return harness.run("init", {
 			positionals,
-			options: { customise: true, ...options },
+			options,
 		});
 	};
 
@@ -127,7 +127,7 @@ describe("init command", () => {
 					run: ["rbxtsc -w", "rogen serve"],
 					edits: [
 						'Add your own routes under "routes" in default.rogen.json.',
-						"Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
+						"Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
 					],
 				},
 			});
@@ -242,7 +242,7 @@ describe("init command", () => {
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				"info: Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
+				"info: Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
 				"outro: Wrote 7 files.",
 			]);
 		});
@@ -283,7 +283,7 @@ describe("init command", () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				new MockPromptService([["agents"], true]),
+				new MockPromptService([["agents"], "yes"]),
 				logService
 			);
 
@@ -746,33 +746,21 @@ describe("init command", () => {
 			const CONFIG =
 				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"rogen": { "routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" } }\n}\n';
 
-			const readConfig = async () =>
-				parse(await read("default.rogen.json")).unwrap() as {
-					rogen: { routes: Record<string, string> };
-					serveProject?: string;
-					projects?: unknown;
-				};
-
 			beforeEach(async () => {
 				await write("default.rogen.json", CONFIG);
 				await write("src/keep.luau");
 			});
 
-			it("should list the changes in --json, and write nothing in a dry run", async () => {
-				const log = new MockLogService();
+			it("should refuse a flag that would change the config, and leave it alone", async () => {
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ "source-path": ["lib"] }
+				);
 
-				await runInit(new MockPromptService([], false), log, {
-					json: true,
-					"dry-run": true,
-					"source-path": ["lib"],
-				});
-
-				expect(JSON.parse(log.entries[0].text).files).toEqual([
-					expect.objectContaining({
-						outcome: "wouldWrite",
-						changes: ["added sourcePaths lib"],
-					}),
-				]);
+				expect(errorMessage(result)).toContain(
+					"--source-path is for a new project, and default.rogen.json exists."
+				);
 				expect(await read("default.rogen.json")).toBe(CONFIG);
 			});
 
@@ -788,18 +776,16 @@ describe("init command", () => {
 				);
 			});
 
-			it("should ask what to change in a terminal and apply the picks", async () => {
+			it("should offer only the additions in a terminal, and leave the config as it is", async () => {
 				const prompts = new MockPromptService({
-					[WHAT_TO_CHANGE]: ["unmatched"],
-					"Files that match no route": "shared",
+					[WHAT_TO_CHANGE]: ["agents"],
 				});
 
 				const result = await runInit(prompts);
 
 				expect(result.isOk()).toBe(true);
-				expect((await readConfig()).rogen.routes["*"]).toBe(
-					"ReplicatedStorage/Shared"
-				);
+				expect(await read("default.rogen.json")).toBe(CONFIG);
+				expect(await exists("AGENTS.md")).toBe(true);
 			});
 		});
 
@@ -926,13 +912,21 @@ describe("init command", () => {
 		});
 
 		it("should write the answers", async () => {
-			const prompts = new MockPromptService({
-				Language: "luau",
-				"Does Darklua process your code before Rojo syncs it?": true,
-				"Source paths": "src, lib",
-				"Compiled path": "out",
-				Routes: [],
-			});
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				"luau",
+				true,
+				"one",
+				"src, lib",
+				"out",
+				[],
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
 
 			await runInit(prompts);
 
