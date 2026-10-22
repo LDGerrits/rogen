@@ -1,7 +1,9 @@
+import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { Result, ok } from "../../base/result.js";
 import { BuildRun } from "../../domain/build/build.js";
 import { BuildService } from "../../domain/build/build-service.js";
+import { isDefaultConfigFileName } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -86,7 +88,7 @@ registerCommand(
 				try {
 					return await new BuildWatch(
 						accessor,
-						refs,
+						this.watched(refs),
 						Boolean(line.options.json),
 						undefined,
 						"write"
@@ -119,6 +121,14 @@ registerCommand(
 				);
 			new WriteLog(logService, cwd).report(run, home, plain);
 			return failure ? this.reported(failure) : ok(undefined);
+		}
+
+		/** A lone default config is watched as the default, so the watch follows the folder when its source paths come and go. */
+		private watched(refs: readonly string[]): readonly string[] {
+			return refs.length === 1 &&
+				isDefaultConfigFileName(path.basename(refs[0]))
+				? []
+				: refs;
 		}
 
 		/** The configs to write: the ones named, else every one of the working directory, and the plain project files that are left alone. */

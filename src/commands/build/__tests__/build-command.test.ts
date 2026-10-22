@@ -42,7 +42,9 @@ class RojoThatBuilds extends MockProcessService {
 	}
 }
 
-const harness = (options: CommandHarnessOptions<MockLogService> = {}) => {
+const harness = <L extends LogService = MockLogService>(
+	options: CommandHarnessOptions<L> & { readonly log?: L } = {}
+) => {
 	const processes = new RojoThatBuilds();
 	processes.installed.set("rojo", "/bin/rojo");
 	processes.outputs.set("/bin/rojo", {
@@ -50,7 +52,10 @@ const harness = (options: CommandHarnessOptions<MockLogService> = {}) => {
 		stdout: "Rojo 7.7.1\n",
 		stderr: "",
 	});
-	return commandHarness({ processes, ...options });
+	return commandHarness<L>({
+		processes,
+		...options,
+	} as CommandHarnessOptions<L> & { readonly log: L });
 };
 
 describe("build command", () => {
