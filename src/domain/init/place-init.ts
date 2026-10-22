@@ -1,354 +1,283 @@
 import path from "path";
-import { isMatch } from "../../base/glob.js";
 import { parse } from "../../base/jsonc.js";
 import { isObject } from "../../base/objects.js";
-import { UsageError } from "../../base/errors.js";
-import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { toPosix } from "../../base/path.js";
-import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
-import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { tryWithAsync } from "../../base/result.js";
+import { joinedWithAnd } from "../../base/strings.js";
 import {
-	CONFIG_FILE_NAMES,
+	FileReader,
+	isDirectoryType,
+} from "../../platform/fs/file-system-service.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	DEFAULT_PROJECT,
 	DEFAULT_SOURCE_PATH,
 	RogenConfig,
+	RogenKeys,
 	configFileContent,
-	configText,
+	configFileName,
 } from "../config/config.js";
-import { ConfigService } from "../config/config-service.js";
-import { PlaceFinder } from "../config/place-finder.js";
-import { ToolchainService } from "../toolchain/toolchain-service.js";
-import { Language, PlannedFile } from "../toolchain/toolchain.js";
-import { CodeFinder } from "./code-finder.js";
-import { InitDirectory } from "./init-directory.js";
+import { RojoNode } from "../rojo/rojo-project.js";
+import { Darklua, PlannedFile } from "../toolchain/toolchain.js";
 import { InitPlan } from "./init-service.js";
 import { InitQuestions } from "./init-questions.js";
-import { KnownPlaces } from "./known-places.js";
-import { RobloxTsStarter } from "./roblox-ts-starter.js";
+import { PROCESSED_OUTPUT, RELEASE_OUTPUT } from "./output-configs.js";
+import {
+	PLACE_SOURCE_PATHS,
+	PLACES_FOLDER,
+	SHARED_FOLDER,
+} from "./starter-places.js";
 import { WorkspaceFiles } from "./workspace-files.js";
 
-interface Listing {
-	readonly placePaths: readonly string[];
-	readonly raw: Record<string, unknown>;
-	readonly edit?: PlannedFile;
+const TSCONFIG = "tsconfig.json";
+
+interface Model {
+	/** The folder of the place the new one copies. */
+	readonly folder: string;
+	readonly config: Record<string, unknown>;
 }
 
+/** A place added below a `places` folder that has one already: a complete `default.rogen.json` copied from the first place that has one, beside the files that place has for its toolchain. */
 export class PlaceInit {
-	private readonly finder: PlaceFinder;
-	private readonly code: CodeFinder;
 	private readonly workspaces: WorkspaceFiles;
 
 	constructor(
-		private readonly fileSystemService: FileSystemService,
+		private readonly fileReader: FileReader,
 		private readonly questions: InitQuestions,
-		private readonly toolchainService: ToolchainService,
-		private readonly configService: ConfigService,
+		/** The folder the user ran in, which the plan's config paths are relative to. */
 		private readonly cwd: string
 	) {
-		this.finder = new PlaceFinder(fileSystemService);
-		this.code = new CodeFinder(fileSystemService);
-		this.workspaces = new WorkspaceFiles(fileSystemService);
+		this.workspaces = new WorkspaceFiles(fileReader);
 	}
 
-	async plan(target: string): Promise<Result<InitPlan | undefined, Error>> {
-		const folder = path.resolve(this.cwd, target);
-		const located = await this.locate(folder);
-		if (located.isErr()) return located;
-		const { root, rootFile } = located.value;
+	/** The plan to add `folder` as a place, or `undefined` when it is not a new folder in a `places` folder with a place to copy. */
+	async plan(folder: string): Promise<InitPlan | undefined> {
+		const places = path.dirname(folder);
+		if (path.basename(places) !== PLACES_FOLDER) return undefined;
+		if ((await this.configIn(folder, DEFAULT_PROJECT)) !== undefined)
+			return undefined;
+		const model = await this.modelIn(places, folder);
+		if (!model) return undefined;
 
-		const listed = await this.listing(rootFile, root, folder);
-		if (listed.isErr()) return listed;
-		if (listed.value === "cancelled") return ok(undefined);
-		const { sourcePaths: shared } = await this.finder.listingOf(rootFile);
-		if (
-			(
-				await this.finder.sharedFolders(
-					root,
-					listed.value.placePaths,
-					shared
-				)
-			).some((one) => toPosix(one) === toPosix(folder))
-		)
-			return err(
-				new UsageError(
-					`${this.named(folder)} holds a source path of ${this.named(rootFile)}, so it is the code the places share, not a place.`
-				)
-			);
-		const known = await KnownPlaces.of(
-			this.fileSystemService,
-			this.finder,
-			root,
-			listed.value.placePaths,
-			shared
-		);
-		const sourcePaths = await this.sourcePaths(folder, root);
-		if (sourcePaths === undefined) return ok(undefined);
-
-		const placeIds = await this.questions.placeIds(path.basename(folder));
-		if (placeIds === undefined) return ok(undefined);
-
-		const port = known.portFor(folder);
+		const root = path.dirname(places);
 		const place = toPosix(path.relative(root, folder));
-		const workspace = await this.workspaces.plan(
-			root,
-			known.foldersWith(root, folder),
-			place
+		const shared = await this.fileReader.isDirectory(
+			path.join(places, SHARED_FOLDER)
 		);
-		const compiled = RobloxTsStarter.of(sourcePaths.language)?.place(
-			place,
-			(shared[0] ?? DEFAULT_SOURCE_PATH).replace(/\/$/, "")
+		const sourcePaths = shared
+			? [...PLACE_SOURCE_PATHS]
+			: [DEFAULT_SOURCE_PATH];
+		const source = path.posix.join(place, DEFAULT_SOURCE_PATH);
+		const base = this.copyOf(model, path.basename(folder), sourcePaths);
+
+		const outputs = await this.outputsOf(model, base);
+		const copied = await this.copiedFiles(model, place);
+		const workspace = await this.workspaces.append(root, place);
+		const compiled = base.rogen?.compiledPath;
+		const processed = outputs.find(({ stem }) => stem === PROCESSED_OUTPUT)
+			?.config.rogen?.compiledPath;
+		const serve = processed
+			? path.posix.join(place, configFileName(PROCESSED_OUTPUT))
+			: place;
+		const compile = copied.some(({ fileName }) =>
+			fileName.endsWith(TSCONFIG)
 		);
-		const kept: string[] = [];
-		const compiledFiles: PlannedFile[] = [];
-		for (const file of compiled?.files ?? []) {
-			if (
-				await this.fileSystemService.exists(
-					path.join(root, file.fileName)
-				)
-			)
-				kept.push(file.fileName);
-			else compiledFiles.push(file);
-		}
-		const ignoreHint = compiled
-			? await this.compiledIgnoreHint(root, place)
-			: undefined;
-		const config: RogenConfig = {
-			servePort: port,
-			...(placeIds.length > 0 && { servePlaceIds: [...placeIds] }),
-			...(sourcePaths.sourcePaths && {
-				sourcePaths: sourcePaths.sourcePaths,
-			}),
-			...(sourcePaths.syncPath && { syncPath: sourcePaths.syncPath }),
-			...compiled?.config,
-		};
-		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
-		return ok({
+		const ignored = await this.ignoreHint(root, place, [
+			...(compile ? ["out", "include"] : []),
+			...(processed ? [processed] : []),
+		]);
+		const configFile = path.posix.join(place, DEFAULT_CONFIG_FILE);
+
+		return {
 			directory: root,
-			purpose: "place",
+			purpose: "create",
 			summary: [
 				{ area: "Place", text: place },
-				{
-					area: "Code",
-					text: sourcePaths.directories
-						.map((one) => path.posix.join(place, one))
-						.join(", "),
-				},
-				{
-					area: "Port",
-					text: String(port),
-				},
-				{
-					area: "Place IDs",
-					text: placeIds.length > 0 ? placeIds.join(", ") : "none",
-				},
+				{ area: "Code", text: [...sourcePaths].join(", ") },
 			],
 			files: [
-				...(listed.value.edit ? [listed.value.edit] : []),
-				{ fileName: configFile, content: configFileContent(config) },
-				...compiledFiles,
+				{
+					fileName: configFile,
+					content: configFileContent(base),
+				},
+				...outputs.map(({ stem, config }) => ({
+					fileName: path.posix.join(place, configFileName(stem)),
+					content: configFileContent(config),
+				})),
+				...copied,
 				...workspace.files,
 			],
-			directories: sourcePaths.directories.map((directory) =>
-				path.posix.join(place, directory)
-			),
+			directories: [source],
 			commands: [],
-			configs: [toPosix(path.relative(this.cwd, folder)) || "."],
+			configs: [
+				toPosix(path.relative(this.cwd, path.join(root, configFile))),
+			],
 			warnings: [],
 			notes: [
-				KnownPlaces.pinNote(path.basename(folder), port, configFile),
+				`Copied the ${joinedWithAnd(["routes", ...(compiled ? ["compiled path"] : []), ...(base.tree ? ["tree"] : [])])} of ${toPosix(path.relative(root, model.folder))}.`,
 				...workspace.notes,
-				...kept.map((file) => `Left ${file} as it is.`),
 			],
 			nextSteps: {
 				setup: [],
 				run: [
-					...(compiled ? [`rbxtsc -w -p ${place}`] : []),
-					"rogen serve",
+					...(compile ? [`rbxtsc -w -p ${place}`] : []),
+					...(processed
+						? new Darklua()
+								.processCommands(
+									folder,
+									compile ? [compiled ?? "out"] : sourcePaths,
+									processed
+								)
+								.map((command) => `cd ${place} && ${command}`)
+						: []),
+					`rogen serve ${serve}`,
 				],
 				edits: [
-					...(ignoreHint ? [ignoreHint] : []),
-					...(compiled
+					...(ignored ? [ignored] : []),
+					...(compile
 						? [
 								`Add rbxtsc -p ${place} and rbxtsc -w -p ${place} to the build and watch scripts in package.json, so 'npm run watch' compiles it too.`,
 							]
 						: []),
-					`Put the code of ${path.basename(folder)} in ${path.posix.join(place, sourcePaths.directories[0] ?? DEFAULT_SOURCE_PATH)}: it gets the routes and the tree of ${this.named(rootFile)}, and the code in its source paths wins a clash with the shared code.`,
+					`Put the code of ${path.basename(folder)} in ${source}. A second place is served from a second terminal with its own port: 'rogen serve ${serve} --port 34873'.`,
 				],
 			},
 			asked: this.questions.interactive,
 			decided: this.questions.decided,
 			present: [],
 			gitInit: false,
-		});
-	}
-
-	/** What to add to the `.gitignore` of the root so the compiled code of `place` stays out of git, which init never edits; none when it lists it or there is none. */
-	private async compiledIgnoreHint(
-		root: string,
-		place: string
-	): Promise<string | undefined> {
-		const text = await tryWithAsync(() =>
-			this.fileSystemService.readFile(path.join(root, ".gitignore"))
-		);
-		const parent = path.posix.dirname(place);
-		const listed = [`${place}/out`, `${parent}/*/out`].some((line) =>
-			text.isOk() ? text.value.includes(line) : true
-		);
-		return listed
-			? undefined
-			: `Add ${place}/out and ${place}/include to .gitignore so the compiled code isn't committed.`;
-	}
-
-	private async locate(
-		folder: string
-	): Promise<Result<{ root: string; rootFile: string }, Error>> {
-		const enclosing = await this.configService.findEnclosing(folder);
-		if (!enclosing)
-			return err(
-				new UsageError(
-					`No ${CONFIG_FILE_NAMES[0]} found above ${folder}.`,
-					"Run 'rogen init' in the folder that holds the code the places share first."
-				)
-			);
-		if (enclosing.fileNames.length > 1)
-			return err(
-				new UsageError(
-					`${enclosing.directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
-				)
-			);
-		const root = enclosing.directory;
-		const rootFile = path.join(root, enclosing.fileNames[0]);
-		const above = await this.finder.rootOf(root);
-		if (above)
-			return err(
-				new UsageError(
-					`${this.named(rootFile)} is a place of ${this.named(above)}, and a place can't list places. Add the folder to ${this.named(above)} instead.`
-				)
-			);
-		const taken = await this.finder.configIn(folder);
-		if (taken)
-			return err(
-				new DiagnosticsError([
-					errorDiagnostic(
-						"init.configExists",
-						{ resource: taken },
-						"this config already exists, and init never overwrites one. Edit it to change the place."
-					),
-				])
-			);
-		const entry = await this.configService.read(rootFile);
-		return entry.status === "broken"
-			? err(new DiagnosticsError(entry.errors))
-			: ok({ root, rootFile });
-	}
-
-	private named(file: string): string {
-		return toPosix(path.relative(this.cwd, file)) || file;
-	}
-
-	private async listing(
-		rootFile: string,
-		root: string,
-		folder: string
-	): Promise<Result<Listing | "cancelled", Error>> {
-		const raw = await this.rawConfig(rootFile);
-		const globs = Array.isArray(raw.placePaths)
-			? raw.placePaths.filter(
-					(glob): glob is string => typeof glob === "string"
-				)
-			: [];
-		const relative = toPosix(path.relative(root, folder));
-		if (
-			globs.some((glob) =>
-				isMatch(relative, glob.replace(/^\.\//, "").replace(/\/$/, ""))
-			)
-		)
-			return ok({ placePaths: globs, raw });
-
-		const parent = path.posix.dirname(relative);
-		const entry =
-			parent === "."
-				? relative
-				: await this.questions.placeListing(`${parent}/*`, relative);
-		if (entry === undefined) return ok("cancelled");
-		const placePaths = [...globs, entry];
-		if (
-			!PlaceInit.isStrictJson(
-				await this.fileSystemService.readFile(rootFile)
-			)
-		)
-			return err(
-				new UsageError(
-					`${this.named(rootFile)} holds comments or a trailing comma, which Rogen would lose by rewriting it. Add this key to it yourself: "placePaths": ${JSON.stringify(placePaths)}.`
-				)
-			);
-		return ok({
-			placePaths,
-			raw,
-			edit: {
-				fileName: path.relative(root, rootFile),
-				content: configText({ ...raw, placePaths }),
-				addition: `"${entry}" as a place path`,
-			},
-		});
-	}
-
-	private static isStrictJson(text: string): boolean {
-		try {
-			JSON.parse(text);
-			return true;
-		} catch {
-			return false;
-		}
-	}
-
-	private async rawConfig(file: string): Promise<Record<string, unknown>> {
-		const parsed = parse(await this.fileSystemService.readFile(file));
-		return parsed.isOk() && isObject(parsed.value) ? parsed.value : {};
-	}
-
-	private async sourcePaths(
-		folder: string,
-		root: string
-	): Promise<
-		| {
-				sourcePaths?: string[];
-				syncPath?: string;
-				directories: string[];
-				language: Language;
-		  }
-		| undefined
-	> {
-		const exists = await this.fileSystemService.isDirectory(folder);
-		const workspace = await this.toolchainService.detect(
-			exists ? folder : root
-		);
-		const entries = exists
-			? (await this.fileSystemService.readDirectory(folder)).map(
-					([name]) => name
-				)
-			: [];
-		const directory = new InitDirectory(
-			folder,
-			new Set(entries),
-			workspace,
-			exists
-				? await this.code.layoutOf(folder, workspace)
-				: { codeFolders: [] }
-		);
-		const answered = await this.questions.sourcePaths(
-			directory,
-			workspace.language
-		);
-		if (answered === undefined) return undefined;
-		const syncPath = workspace.language.compiler?.outDir;
-		return {
-			...(answered.join() !== DEFAULT_SOURCE_PATH && {
-				sourcePaths: answered,
-			}),
-			...(syncPath && { syncPath }),
-			directories: answered,
-			language: workspace.language,
 		};
+	}
+
+	/** The config of the project file `stem` in `folder`, in either extension. */
+	private async configIn(
+		folder: string,
+		stem: string
+	): Promise<string | undefined> {
+		const name = configFileName(stem);
+		for (const candidate of [name, `${name}c`]) {
+			const file = path.join(folder, candidate);
+			if (await this.fileReader.isFile(file)) return file;
+		}
+		return undefined;
+	}
+
+	private async read(
+		file: string
+	): Promise<Record<string, unknown> | undefined> {
+		const text = await tryWithAsync(() => this.fileReader.readFile(file));
+		const parsed = text.isOk() ? parse(text.value) : undefined;
+		return parsed?.isOk() && isObject(parsed.value)
+			? parsed.value
+			: undefined;
+	}
+
+	/** The first place beside `folder`, in name order, whose default config parses; the shared code is not one. */
+	private async modelIn(
+		places: string,
+		folder: string
+	): Promise<Model | undefined> {
+		const entries = await tryWithAsync(() =>
+			this.fileReader.readDirectory(places)
+		);
+		if (entries.isErr()) return undefined;
+		for (const [name, type] of entries.value) {
+			if (!isDirectoryType(type) || name === SHARED_FOLDER) continue;
+			const sibling = path.join(places, name);
+			if (sibling === folder) continue;
+			const file = await this.configIn(sibling, DEFAULT_PROJECT);
+			const config = file ? await this.read(file) : undefined;
+			if (config) return { folder: sibling, config };
+		}
+		return undefined;
+	}
+
+	private copyOf(
+		{ config }: Model,
+		name: string,
+		sourcePaths: readonly string[]
+	): RogenConfig {
+		const rogen = isObject(config.rogen) ? config.rogen : {};
+		const { routes, compiledPath } = rogen as RogenKeys;
+		const keys: RogenKeys = {
+			sourcePaths: [...sourcePaths],
+			...(routes && { routes }),
+			...(compiledPath && { compiledPath }),
+		};
+		return {
+			name,
+			...(isObject(config.tree) && { tree: config.tree as RojoNode }),
+			rogen: keys,
+		};
+	}
+
+	/** `dist` and `release` for the new place when the model has them, each as the model's with the new place's keys. */
+	private async outputsOf(
+		model: Model,
+		base: RogenConfig
+	): Promise<{ stem: string; config: RogenConfig }[]> {
+		const outputs: { stem: string; config: RogenConfig }[] = [];
+		for (const stem of [PROCESSED_OUTPUT, RELEASE_OUTPUT]) {
+			const file = await this.configIn(model.folder, stem);
+			const twin = file ? await this.read(file) : undefined;
+			if (!twin) continue;
+			const rogen = isObject(twin.rogen) ? (twin.rogen as RogenKeys) : {};
+			outputs.push({
+				stem,
+				config: {
+					...base,
+					rogen: {
+						...base.rogen,
+						...(rogen.compiledPath && {
+							compiledPath: rogen.compiledPath,
+						}),
+					},
+					...(Array.isArray(twin.globIgnorePaths) && {
+						globIgnorePaths: twin.globIgnorePaths as string[],
+					}),
+				},
+			});
+		}
+		return outputs;
+	}
+
+	/** The files the model has for the toolchain of its code, which are the same in a place at the same depth. */
+	private async copiedFiles(
+		model: Model,
+		place: string
+	): Promise<PlannedFile[]> {
+		const copied: PlannedFile[] = [];
+		for (const name of [TSCONFIG, ...new Darklua().configFiles]) {
+			const file = path.join(model.folder, name);
+			if (await this.fileReader.isFile(file))
+				copied.push({
+					fileName: path.posix.join(place, name),
+					content: await this.fileReader.readFile(file),
+				});
+		}
+		return copied;
+	}
+
+	/** What to add to the `.gitignore` of the root so what a toolchain writes into `place` stays out of git, which init never edits; none when it lists them or there is none. */
+	private async ignoreHint(
+		root: string,
+		place: string,
+		folders: readonly string[]
+	): Promise<string | undefined> {
+		if (folders.length === 0) return undefined;
+		const text = await tryWithAsync(() =>
+			this.fileReader.readFile(path.join(root, ".gitignore"))
+		);
+		if (text.isErr()) return undefined;
+		const missing = folders.filter(
+			(folder) =>
+				![
+					`${place}/${folder}`,
+					`${path.posix.dirname(place)}/*/${folder}`,
+				].some((line) => text.value.includes(line))
+		);
+		return missing.length === 0
+			? undefined
+			: `Add ${missing.map((folder) => `${place}/${folder}`).join(" and ")} to .gitignore so what is built into ${missing.length === 1 ? "it" : "them"} isn't committed.`;
 	}
 }

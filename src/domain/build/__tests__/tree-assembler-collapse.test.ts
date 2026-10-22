@@ -57,10 +57,10 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should collapse into the sync path", async () => {
+			it("should collapse into the compiled path", async () => {
 				await write("src/Inventory/Save.ts");
 
-				const storage = await storageOf({ syncPath: abs("dist") });
+				const storage = await storageOf({ compiledPath: abs("dist") });
 
 				expect(storage.Inventory).toEqual({
 					$path: optional("dist/Inventory"),
@@ -193,13 +193,13 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should collapse a directory with an empty folder when a sync path holds what Rojo reads", async () => {
+			it("should collapse a directory with an empty folder when a compiled path holds what Rojo reads", async () => {
 				await write(
 					"src/Inventory/Save.ts",
 					"src/Inventory/Assets/.gitkeep"
 				);
 
-				const storage = await storageOf({ syncPath: abs("dist") });
+				const storage = await storageOf({ compiledPath: abs("dist") });
 
 				expect(storage.Inventory).toEqual({
 					$path: optional("dist/Inventory"),
@@ -434,7 +434,7 @@ describe("TreeAssembler", () => {
 				expect(value.globIgnorePaths).toEqual(["src/Save.spec.luau"]);
 			});
 
-			it("should list ignored files in path order, translated to sync paths", async () => {
+			it("should list ignored files in path order, translated to compiled paths", async () => {
 				await write(
 					"src/Inventory/Analytics.luau",
 					"src/Inventory/Save.spec.ts",
@@ -442,7 +442,7 @@ describe("TreeAssembler", () => {
 				);
 
 				const { projectFile: value } = await assemble({
-					syncPath: abs("dist"),
+					compiledPath: abs("dist"),
 					ignored: [abs("**/*.spec.ts")],
 				});
 
@@ -460,7 +460,7 @@ describe("TreeAssembler", () => {
 				);
 
 				const { projectFile: value } = await assemble({
-					syncPath: abs("dist"),
+					compiledPath: abs("dist"),
 					ignored: [abs("**/*.spec.ts")],
 				});
 
@@ -475,7 +475,7 @@ describe("TreeAssembler", () => {
 				await write("src/Hud.ts", "src/Combat.server.ts");
 
 				const { projectFile: value } = await assemble({
-					syncPath: abs("dist"),
+					compiledPath: abs("dist"),
 					routes: { server: "ServerScriptService" },
 				});
 
@@ -486,7 +486,7 @@ describe("TreeAssembler", () => {
 				await write("src/Analytics.luau", "src/Analytics.ts");
 
 				const { projectFile: value } = await assemble({
-					syncPath: abs("dist"),
+					compiledPath: abs("dist"),
 				});
 
 				expect(value.globIgnorePaths).toBeUndefined();

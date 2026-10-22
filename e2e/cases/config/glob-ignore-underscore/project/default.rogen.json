@@ -1,0 +1,13 @@
+{
+	"globIgnorePaths": [
+		"**/_*"
+	],
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

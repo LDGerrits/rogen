@@ -25,7 +25,7 @@ describe("OutputWriter", () => {
 	let writer: OutputWriter;
 	let store: DisposableStore;
 
-	const configFile = path.resolve("/repo", "rogen.json");
+	const configFile = path.resolve("/repo", "default.rogen.json");
 
 	const write = (tree: RojoProjectFile, options?: { force?: boolean }) =>
 		writer.write(new OutputFile(projectFile), tree, configFile, options);
@@ -201,7 +201,7 @@ describe("OutputWriter", () => {
 				});
 				expect(diagnostic?.message).toContain("ServerStorage");
 				expect(diagnostic?.message).toContain(
-					'add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of rogen.json'
+					'add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of default.rogen.json'
 				);
 				expect(diagnostic?.message).toContain("rogen build --force");
 				expect(
@@ -251,7 +251,7 @@ describe("OutputWriter", () => {
 
 				expect(
 					result.isErr() ? result.error.diagnostics[0].message : ""
-				).toContain('set "servePort":34999 in rogen.json');
+				).toContain('set "servePort":34999 in default.rogen.json');
 			});
 
 			it("should not be told from the first write of a file Rogen never wrote", async () => {

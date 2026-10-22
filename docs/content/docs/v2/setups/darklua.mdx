@@ -6,14 +6,14 @@ description: Set up Rogen with Darklua.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, the **sync path**, and Rojo syncs from there. Rogen still reads your source to decide where files go; a [project](/docs/v2/configuration#projects) points Rojo's paths at the sync path.
+[Darklua](https://github.com/seaofvoices/darklua) rewrites your code into a folder of its own, the **compiled path**, and Rojo syncs from there. Rogen still reads your source to decide where files go; a second config file points Rojo's paths at the compiled path.
 
-Two files matter here. `default.project.json` keeps pointing at your source, which is what luau-lsp builds `sourcemap.json` from and what Darklua's `convert_require` reads. A `dist` project points at the sync path, which is what Studio syncs. `rogen serve` serves the one `serveProject` names, so you never serve unprocessed code by accident.
+Two configs matter here. `default.rogen.json` keeps pointing at your source, which is what luau-lsp builds `sourcemap.json` from and what Darklua's `convert_require` reads. `dist.rogen.json` is a complete copy of it that also sets the compiled path, and writes `dist.project.json`, which is what Studio syncs. A bare `rogen serve` serves `default.rogen.json`, so it serves unprocessed source, as a bare `rojo serve` would: serve the processed code with `rogen serve dist`. `init` prints that line.
 
 <Steps>
 
 <Step>
-### Define the Sync Path
+### Define the Compiled Path
 
 This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it reads the compiled `out` folder instead.
 
@@ -22,37 +22,38 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 <Step>
 ### Create the Config
 
-Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, pins Darklua with your toolchain manager, and lists the sync path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the sync path, `init` tells you the line to add.
+Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, pins Darklua with your toolchain manager, and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
 
-To add Darklua to a project you already set up, run `rogen init --darklua`: on a project that has a `rogen.json` it adds the `dist` project, `serveProject`, `.darklua.json` and Darklua's pin, keeps your comments, and lists what it changed. `rogen init --no-darklua` takes the `dist` project off again while it is still what `init` writes. Darklua needs one source of code, so it can't start together with `--places`.
+`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A config repeats what it needs and reads no other file, so a change to `routes` or `tree` goes into both. `rogen list` shows how `dist.rogen.json` differs from `default.rogen.json`.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    `init` writes one `rogen.json`, with a `dist` project that has `"syncPath": "dist"` and is the one `rogen serve` serves:
+    `init` writes `default.rogen.json` and, beside it, a `dist.rogen.json` that sets `"compiledPath": "dist"`:
 
-    ```json title="rogen.json"
+    ```json title="dist.rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-    	"sourcePaths": ["src"],
-    	"routes": {
-    		"Server": "ServerScriptService",
-    		"Client": "StarterPlayer/StarterPlayerScripts",
-    		"Shared": "ReplicatedStorage/Shared",
-    		"*": "ReplicatedStorage/Shared"
-    	},
-    	"serveProject": "dist",
-    	"projects": {
-    		"dist": { "syncPath": "dist" }
+    	"name": "Game",
+    	"rogen": {
+    		"sourcePaths": ["src"],
+    		"routes": {
+    			"Server": "ServerScriptService",
+    			"Client": "StarterPlayer/StarterPlayerScripts",
+    			"Shared": "ReplicatedStorage/Shared",
+    			"*": "ReplicatedStorage/Shared"
+    		},
+    		"compiledPath": "dist"
     	}
     }
     ```
   </Tab>
   <Tab value="roblox-ts">
-    `init` writes one `rogen.json`. `rbxtsc` compiles `src` into `out`, which `default.project.json` points at, and Darklua processes `out` into the sync path of the `dist` project:
+    `rbxtsc` compiles `src` into `out`, which `default.rogen.json` sets as its `compiledPath`, and Darklua processes `out` into the compiled path of `dist.rogen.json`. `init` writes both, and `dist.rogen.json` repeats the `tree` of `default.rogen.json`:
 
-    ```json title="rogen.json"
+    ```json title="dist.rogen.json"
     {
     	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+    	"name": "Game",
     	"tree": {
     		"$className": "DataModel",
     		"ReplicatedStorage": {
@@ -65,24 +66,22 @@ To add Darklua to a project you already set up, run `rogen init --darklua`: on a
     			}
     		}
     	},
-    	"sourcePaths": ["src"],
-    	"routes": {
-    		"server": "ServerScriptService",
-    		"client": "StarterPlayer/StarterPlayerScripts",
-    		"shared": "ReplicatedStorage/shared",
-    		"*": "ReplicatedStorage/shared"
-    	},
-    	"syncPath": "out",
-    	"serveProject": "dist",
-    	"projects": {
-    		"dist": { "syncPath": "dist" }
+    	"rogen": {
+    		"sourcePaths": ["src"],
+    		"routes": {
+    			"server": "ServerScriptService",
+    			"client": "StarterPlayer/StarterPlayerScripts",
+    			"shared": "ReplicatedStorage/shared",
+    			"*": "ReplicatedStorage/shared"
+    		},
+    		"compiledPath": "dist"
     	}
     }
     ```
   </Tab>
 </Tabs>
 
-Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `default.project.json` still maps your files for luau-lsp, `rbxtsc` and Darklua's sourcemap.
+Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `default.project.json` still maps your files for luau-lsp, `rbxtsc` and Darklua's sourcemap. `rogen serve dist` writes `dist.project.json` and serves it. It writes only that file, so `default.project.json` is as fresh as your last `rogen build`: run it after adding a feature folder.
 
 </Step>
 
@@ -96,7 +95,7 @@ Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `d
     ```
     Run each in its own terminal:
       darklua process src dist --watch
-      rogen serve
+      rogen serve dist
     ```
 
     With several source paths, `init` prints one Darklua command each (`darklua process lib dist/lib --watch`).
@@ -112,13 +111,13 @@ Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `d
     Run each in its own terminal:
       rbxtsc -w
       darklua process out dist --watch
-      rogen serve
+      rogen serve dist
     ```
 
     ```bash
     rbxtsc -w
     darklua process out dist --watch
-    rogen serve
+    rogen serve dist
     ```
   </Tab>
 </Tabs>
@@ -132,21 +131,22 @@ Rojo syncs from `dist.project.json`, so Studio gets the processed code, while `d
 Darklua turns `.txt`, `.json`, `.toml`, `.yaml` and `.yml` files into Lua modules (`src/Note.txt` becomes `dist/Note.lua`) and drops `.csv` files. Rogen still points at `dist/Note.txt`, so the instance goes missing, and Rogen warns:
 
 ```
-rogen.json - warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua"). (output.dataFileConverted)
+dist.project.json - warning: 1 data file was turned into a Lua module under "dist" (src/Note.txt: expected "dist/Note.txt", found "dist/Note.lua"). (output.dataFileConverted)
 ```
 
 Either require the module (`require(script.Parent.Note)` returns the string), or copy the data files into `dist` after Darklua runs.
 
 ## Darklua at Release Only
 
-If Darklua should process your code only for a release, serve the source while you work and give the processed code to a `release` project:
+If Darklua should process your code only for a release, serve the source while you work and give the processed code to a `release.rogen.json`, a complete file that also sets the compiled path:
 
-```json title="rogen.json"
+```json title="release.rogen.json"
 {
-	"sourcePaths": ["src"],
-	"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
-	"projects": {
-		"release": { "syncPath": "dist" }
+	"name": "Game",
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
+		"compiledPath": "dist"
 	}
 }
 ```
@@ -157,3 +157,29 @@ If Darklua should process your code only for a release, serve the source while y
 darklua process src dist
 rogen build release -o game.rbxl
 ```
+
+## Darklua with Places
+
+A repository with [several places](/docs/v2/setups/places) gives each place its own `dist.rogen.json` and its own `.darklua.json`, since Darklua reads its config and `sourcemap.json` from the folder it runs in. Shared code is compiled once per place, into the place's own compiled path, which repeats the layout of its source paths (`dist/shared/src` and `dist/game/src`):
+
+```json title="places/game/dist.rogen.json"
+{
+	"name": "game",
+	"rogen": {
+		"sourcePaths": ["../shared/src", "src"],
+		"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
+		"compiledPath": "dist"
+	}
+}
+```
+
+So a place has two `darklua process` commands, one for the shared folder and one for its own source, both run from the place's folder. `init --places --darklua` prints them:
+
+```
+Run each in its own terminal:
+  cd places/game && darklua process ../shared/src dist/shared/src --watch
+  cd places/game && darklua process src dist/game/src --watch
+  rogen serve places/game/dist.rogen.json
+```
+
+Another place is a second terminal set with its own `--port`.

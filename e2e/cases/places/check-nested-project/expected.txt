@@ -1,0 +1,7 @@
+$ rogen where src/pkg/init.luau
+exit 0
+stdout:
+  src/pkg/init.luau -> in a nested project · src/pkg/default.project.json decides what Rojo reads of its folder
+
+$ rogen check src/pkg/init.luau
+exit 0

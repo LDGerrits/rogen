@@ -2,6 +2,6 @@ $ rogen build
 exit 1
 stdout: (not shown)
 stderr:
-  error: rogen.json · not loaded
-  rogen.json:5:2 - error: "outDir" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
-  rogen.json:6:2 - error: "exlude" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
+  error: default.rogen.json · not loaded
+  default.rogen.json:2:2 - error: "outDir" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
+  default.rogen.json:3:2 - error: "exlude" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)

@@ -59,11 +59,10 @@ describe("TreePlan", () => {
 				tree: { $className: "DataModel", Workspace: { Map: {} } },
 				servePort: 34872,
 				globIgnorePaths: ["**/*.spec.luau"],
-				sourcePaths: ["src"],
-				routes: LUAU_ROUTES,
+				rogen: { sourcePaths: ["src"], routes: LUAU_ROUTES },
 			});
 			expect(files.notes).toEqual([
-				"Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
 			]);
 			expect(files.nextSteps.edits).not.toContainEqual(
 				expect.stringContaining("Remove the nodes")
@@ -112,7 +111,7 @@ describe("TreePlan", () => {
 				},
 			});
 			expect(files.notes).toEqual([
-				"Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
 				"Left out ReplicatedStorage/Shared, ServerScriptService/Server, StarterPlayer/StarterPlayerScripts/Client and Workspace/Map, since they point into src and Rogen generates that code now.",
 				"Kept what Workspace/Map set in the tree, on the node the route lands on.",
 			]);
@@ -173,7 +172,7 @@ describe("TreePlan", () => {
 			it("should write routes that put each folder where the project file had it", async () => {
 				const files = await planDerived(tree);
 
-				expect(configOf(files).routes).toEqual({
+				expect(configOf(files).rogen?.routes).toEqual({
 					Server: "ServerScriptService/Server",
 					Shared: "ReplicatedStorage/Shared",
 					Client: "StarterPlayer/StarterPlayerScripts/Client",
@@ -221,9 +220,9 @@ describe("TreePlan", () => {
 						Two: { $path: "src/Lib" },
 					},
 				});
-				expect(Object.keys(configOf(files).routes!)).not.toContain(
-					"Lib"
-				);
+				expect(
+					Object.keys(configOf(files).rogen!.routes!)
+				).not.toContain("Lib");
 			});
 
 			it("should keep a mounted file in the tree", async () => {
@@ -257,9 +256,9 @@ describe("TreePlan", () => {
 					ServerScriptService: { Server: { $path: "src/server" } },
 					ReplicatedStorage: {},
 				});
-				expect(Object.keys(configOf(files).routes!)).not.toContain(
-					"mount:server"
-				);
+				expect(
+					Object.keys(configOf(files).rogen!.routes!)
+				).not.toContain("mount:server");
 				expect(files.notes).toContain(
 					"Kept ServerScriptService/Server in the tree as a $path mount, since its folder holds an init file, which Rojo reads as the instance of the folder itself and a route can't."
 				);
@@ -388,7 +387,7 @@ describe("TreePlan", () => {
 					tree: { $path: "src" },
 				});
 				expect(files.notes).toContain(
-					"The root of default.project.json is not a DataModel, as in a model or a plugin, so rogen.json keeps the tree as Rojo reads it and adds no routes."
+					"The root of default.project.json is not a DataModel, as in a model or a plugin, so default.rogen.json keeps the tree as Rojo reads it and adds no routes."
 				);
 				expect(files.nextSteps.edits).not.toContainEqual(
 					expect.stringContaining("Add your own routes")
@@ -405,7 +404,7 @@ describe("TreePlan", () => {
 			});
 		});
 
-		it("should leave out of a lifted tree the nodes that point into the sync path", async () => {
+		it("should leave out of a lifted tree the nodes that point into the compiled path", async () => {
 			const files = planProject({
 				choices: {
 					...(await defaultProjectChoices({
@@ -435,7 +434,7 @@ describe("TreePlan", () => {
 			);
 		});
 
-		it("should write routes for the nodes it leaves out that point into the sync path", async () => {
+		it("should write routes for the nodes it leaves out that point into the compiled path", async () => {
 			const tsChoices = await defaultProjectChoices({
 				...luau,
 				language: "roblox-ts",
@@ -468,7 +467,7 @@ describe("TreePlan", () => {
 				existingFiles: new Set(["default.project.json"]),
 			}).unwrap();
 
-			expect(configOf(files).routes).toMatchObject({
+			expect(configOf(files).rogen?.routes).toMatchObject({
 				server: "ServerScriptService/TS",
 			});
 		});
@@ -494,7 +493,7 @@ describe("TreePlan", () => {
 
 			expect(configOf(files).tree).toEqual(tree);
 			expect(files.nextSteps.edits[0]).toBe(
-				"Remove the nodes in the tree of rogen.json that point into .; Rogen generates those now."
+				"Remove the nodes in the tree of default.rogen.json that point into .; Rogen generates those now."
 			);
 		});
 
@@ -543,7 +542,7 @@ describe("TreePlan", () => {
 				},
 			});
 			expect(files.notes[1]).toBe(
-				"Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to rogen.json."
+				"Added Packages at ReplicatedStorage/Packages and ServerPackages at ServerScriptService/ServerPackages to default.rogen.json."
 			);
 		});
 
@@ -563,7 +562,7 @@ describe("TreePlan", () => {
 			]);
 
 			expect(files.notes[1]).toBe(
-				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to rogen.json."
+				"Added include at ReplicatedStorage/rbxts_include and node_modules/@rbxts at ReplicatedStorage/rbxts_include/node_modules/@rbxts to default.rogen.json."
 			);
 		});
 
@@ -634,7 +633,7 @@ describe("TreePlan", () => {
 
 			expect(configOf(files).tree).toEqual(tree);
 			expect(files.notes[1]).toBe(
-				"Didn't add Packages at ReplicatedStorage/Packages to rogen.json, since it already has a node there."
+				"Didn't add Packages at ReplicatedStorage/Packages to default.rogen.json, since it already has a node there."
 			);
 		});
 	});

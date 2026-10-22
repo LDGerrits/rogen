@@ -2,467 +2,286 @@ import {
 	errors,
 	fs,
 	plain,
+	resolved,
 	selection,
+	service,
 	start,
 	useConfigFixture,
 	write,
 } from "./config-fixture.js";
-import { buildableConfigs } from "../config-service.js";
 
-const ROOT = {
-	name: "Game",
-	placePaths: ["places/*"],
-	tree: {
-		$className: "DataModel",
-		ReplicatedStorage: { Vendor: { $path: "vendor" } },
-	},
-	routes: { server: "ServerScriptService", "*": "ReplicatedStorage" },
-	globIgnorePaths: ["**/*.spec.luau"],
-};
+const ROUTES = { server: "ServerScriptService", "*": "ReplicatedStorage" };
 
 describe("CoreConfigService places", () => {
 	useConfigFixture();
 
-	const resolve = async (
-		root: Record<string, unknown> = ROOT,
-		places: Record<string, Record<string, unknown> | null> = {
-			lobby: null,
-			arena: null,
-		}
-	) => {
-		await write("/repo/rogen.json", root);
-		for (const [name, config] of Object.entries(places)) {
-			await fs.createDirectory(`/repo/places/${name}`);
-			if (config) await write(`/repo/places/${name}/rogen.json`, config);
-		}
+	beforeEach(async () => {
+		await fs.createDirectory("/repo/places/shared/src");
+		await fs.createDirectory("/repo/places/lobby/src");
+		await write("/repo/places/lobby/default.rogen.json", {
+			name: "Lobby",
+			rogen: { sourcePaths: ["../shared/src", "src"], routes: ROUTES },
+		});
+	});
+
+	const lobby = (cwd = "/repo/places/lobby") => start({}, cwd);
+
+	it("should read a place as a project of its own folder", async () => {
+		await lobby();
+
+		expect(plain(resolved())).toMatchObject({
+			file: "/repo/places/lobby/default.rogen.json",
+			name: "Lobby",
+			projectFile: "/repo/places/lobby/default.project.json",
+		});
+	});
+
+	it("should list the shared code and then the place's own as source paths", async () => {
+		await lobby();
+
+		expect(resolved()?.sourcePaths).toEqual([
+			"/repo/places/shared/src",
+			"/repo/places/lobby/src",
+		]);
+	});
+
+	it("should read only what the place's file says", async () => {
+		await write("/repo/default.rogen.json", {
+			name: "Root",
+			globIgnorePaths: ["**/*.spec.luau"],
+			rogen: { routes: { "*": "Workspace" } },
+		});
+		await lobby();
+
+		expect(plain(resolved())).toMatchObject({
+			routes: ROUTES,
+			ignored: [],
+		});
+	});
+
+	it("should take servePort, servePlaceIds, placeId and gameId as ordinary keys", async () => {
+		await write("/repo/places/lobby/default.rogen.json", {
+			name: "Lobby",
+			servePort: 34873,
+			servePlaceIds: [1],
+			placeId: 2,
+			gameId: 3,
+			rogen: { routes: ROUTES },
+		});
+		await lobby();
+
+		expect(errors()).toEqual([]);
+		expect(resolved()?.project).toMatchObject({
+			servePort: 34873,
+			servePlaceIds: [1],
+		});
+	});
+
+	it("should not number the places: no port is computed", async () => {
+		await lobby();
+
+		expect(resolved()?.project.servePort).toBeUndefined();
+	});
+
+	it("should say a config at the root no longer lists places", async () => {
+		await write("/repo/default.rogen.json", {
+			name: "Game",
+			placePaths: ["places/*"],
+		});
 		await start();
-		return buildableConfigs(selection.entries[0]);
-	};
 
-	const placeNamed = async (
-		name: string,
-		...args: Parameters<typeof resolve>
-	) =>
-		(await resolve(...args)).find(
-			(config) => config.isPlace && config.projectName === name
-		);
-
-	it("should resolve the root and then each place, sorted by path", async () => {
-		const found = await resolve();
-
-		expect(found.map(({ projectFile }) => projectFile)).toEqual([
-			"/repo/default.project.json",
-			"/repo/places/arena/default.project.json",
-			"/repo/places/lobby/default.project.json",
-		]);
-	});
-
-	it("should mark the root as one that has places and the places as places", async () => {
-		const found = await resolve();
-
-		expect(found.map(({ hasPlaces }) => hasPlaces)).toEqual([
-			true,
-			false,
-			false,
-		]);
-		expect(found.map(({ isPlace }) => isPlace)).toEqual([
-			false,
-			true,
-			true,
-		]);
-		expect(
-			found.every(({ rootFile }) => rootFile === "/repo/rogen.json")
-		).toBe(true);
-	});
-
-	it("should make a folder with no rogen.json a place named after the folder", async () => {
-		const lobby = await placeNamed("lobby");
-
-		expect(lobby?.file).toBe("/repo/places/lobby/rogen.json");
-		expect(lobby?.projectName).toBe("lobby");
-		expect(lobby?.project.getFile()).not.toHaveProperty("name", "Game");
-	});
-
-	it("should not hand the root's name to a place, and let a place set its own", async () => {
-		const arena = await placeNamed("Arena Royale", ROOT, {
-			arena: { name: "Arena Royale" },
-		});
-
-		expect(arena?.project.name).toBe("Arena Royale");
-	});
-
-	it("should keep a place that sets no name unnamed in its written file", async () => {
-		const lobby = await placeNamed("lobby");
-
-		expect(lobby?.project.name).toBeUndefined();
-	});
-
-	it("should add a place's own source paths after the root's", async () => {
-		const lobby = await placeNamed("lobby");
-
-		expect(lobby?.sourcePaths).toEqual([
-			"/repo/src",
-			"/repo/places/lobby/src",
-		]);
-	});
-
-	it("should read a place's sourcePaths as its own folders", async () => {
-		const lobby = await placeNamed("lobby", ROOT, {
-			lobby: { sourcePaths: ["code", "dev"] },
-		});
-
-		expect(lobby?.sourcePaths).toEqual([
-			"/repo/src",
-			"/repo/places/lobby/code",
-			"/repo/places/lobby/dev",
-		]);
-	});
-
-	it("should keep the root's source paths in a place when the root names them", async () => {
-		const lobby = await placeNamed(
-			"lobby",
-			{ ...ROOT, sourcePaths: ["shared", "common"] },
-			{ lobby: null }
-		);
-
-		expect(lobby?.sourcePaths).toEqual([
-			"/repo/shared",
-			"/repo/common",
-			"/repo/places/lobby/src",
-		]);
-	});
-
-	it("should rebase a $path and a glob of the root to the place's folder", async () => {
-		const lobby = await placeNamed("lobby");
-
-		expect(lobby?.project.getFile()).toMatchObject({
-			tree: {
-				ReplicatedStorage: { Vendor: { $path: "../../vendor" } },
+		expect(errors()).toMatchObject([
+			{
+				code: "config.removedField",
+				message: expect.stringContaining(
+					"A place is a folder with its own complete default.rogen.json. Name the place: rogen serve places/lobby"
+				),
 			},
-			globIgnorePaths: ["../../**/*.spec.luau"],
-		});
-		expect(lobby?.ignored).toEqual(["/repo/**/*.spec.luau"]);
+		]);
 	});
 
-	it("should rebase an optional $path", async () => {
-		const lobby = await placeNamed("lobby", {
-			...ROOT,
-			tree: {
-				$className: "DataModel",
-				ReplicatedStorage: {
-					Vendor: { $path: { optional: "vendor" } },
+	it("should not read a config in the folders below the one it selected", async () => {
+		await write("/repo/default.rogen.json", { name: "Root" });
+		await start();
+
+		expect(selection.files).toEqual(new Set(["/repo/default.rogen.json"]));
+	});
+
+	it("should fail for the folder of the shared code, which has no config", async () => {
+		const result = await start({ names: ["places/shared"] });
+
+		expect(result.isErr()).toBe(true);
+		expect((result as { error: Error }).error.message).toContain(
+			'No default.rogen.json or default.project.json in "places/shared"'
+		);
+	});
+
+	it("should fail for a path that does not exist", async () => {
+		const result = await start({ names: ["places/lobbby"] });
+
+		expect(result.isErr()).toBe(true);
+		expect((result as { error: Error }).error.message).toContain(
+			'"places/lobbby" not found'
+		);
+	});
+});
+
+describe("CoreConfigService selectCovering", () => {
+	useConfigFixture();
+
+	beforeEach(async () => {
+		await fs.createDirectory("/repo/places/shared/src");
+		await fs.createDirectory("/repo/places/lobby/src");
+		await fs.createDirectory("/repo/places/arena/src");
+		for (const name of ["lobby", "arena"])
+			await write(`/repo/places/${name}/default.rogen.json`, {
+				name,
+				rogen: {
+					sourcePaths: ["../shared/src", "src"],
+					routes: ROUTES,
 				},
-			},
-		});
-
-		expect(lobby?.project.getFile().tree).toMatchObject({
-			ReplicatedStorage: {
-				Vendor: { $path: { optional: "../../vendor" } },
-			},
-		});
+			});
+		await start();
 	});
 
-	it("should leave an absolute $path alone", async () => {
-		const lobby = await placeNamed("lobby", {
-			...ROOT,
-			tree: {
-				$className: "DataModel",
-				ReplicatedStorage: { Vendor: { $path: "/opt/vendor" } },
+	it("should group the paths by the config that covers them, in the order given", async () => {
+		const covered = (
+			await service.selectCovering([
+				"/repo/places/arena/src/A.luau",
+				"/repo/places/lobby/src/B.luau",
+				"/repo/places/arena/src/C.luau",
+			])
+		).unwrap();
+
+		expect(
+			covered.groups.map(({ selection, indexes, whole }) => ({
+				file: selection.entries[0].file,
+				indexes,
+				whole,
+			}))
+		).toEqual([
+			{
+				file: "/repo/places/arena/default.rogen.json",
+				indexes: [0, 2],
+				whole: false,
 			},
-		});
-
-		expect(lobby?.project.getFile().tree).toMatchObject({
-			ReplicatedStorage: { Vendor: { $path: "/opt/vendor" } },
-		});
-	});
-
-	it("should rebase the root's syncPath, and let a place set its own", async () => {
-		const found = await resolve(
-			{ ...ROOT, syncPath: "dist" },
-			{ lobby: null, arena: { syncPath: "out" } }
-		);
-		const syncPaths = found.map(({ syncPath }) => syncPath);
-
-		expect(syncPaths).toEqual([
-			"/repo/dist",
-			"/repo/places/arena/out",
-			"/repo/dist",
+			{
+				file: "/repo/places/lobby/default.rogen.json",
+				indexes: [1],
+				whole: false,
+			},
 		]);
 	});
 
-	it("should merge a place's routes with the root's by key", async () => {
-		const lobby = await placeNamed("lobby", ROOT, {
-			lobby: { routes: { client: "StarterPlayer/StarterPlayerScripts" } },
-		});
+	it("should leave out a path that no config covers, by its position", async () => {
+		const covered = (
+			await service.selectCovering([
+				"/repo/places/shared/src/A.luau",
+				"/repo/places/lobby/src/B.luau",
+			])
+		).unwrap();
 
-		expect([...(lobby?.routes.keys() ?? [])]).toEqual([
-			"server",
-			"*",
-			"client",
-		]);
+		expect(covered.uncovered).toEqual([0]);
+		expect(covered.groups).toHaveLength(1);
 	});
 
-	it("should refuse null in a place", async () => {
-		await resolve(ROOT, {
-			lobby: { tree: { ReplicatedStorage: { Vendor: null } } },
-		});
+	it("should mark a config named by its own file as read whole", async () => {
+		const covered = (
+			await service.selectCovering([
+				"/repo/places/lobby/default.rogen.json",
+			])
+		).unwrap();
 
-		expect(errors().map(({ code }) => code)).toEqual(["config.wrongType"]);
+		expect(covered.groups[0]).toMatchObject({ whole: true });
 	});
 
-	it("should write a root with places its own project file", async () => {
-		const [root] = await resolve();
+	it("should stand the default of the working directory for an undefined target", async () => {
+		await start({}, "/repo/places/arena");
 
-		expect(root.projectFile).toBe("/repo/default.project.json");
-		expect(root.sourcePaths).toEqual(["/repo/src"]);
-	});
+		const covered = (await service.selectCovering([undefined])).unwrap();
 
-	it("should find an exact folder as a place", async () => {
-		const found = await resolve(
-			{ ...ROOT, placePaths: ["places/lobby"] },
-			{ lobby: null, arena: null }
+		expect(covered.groups[0].selection.entries[0].file).toBe(
+			"/repo/places/arena/default.rogen.json"
 		);
-
-		expect(found.map(({ projectFile }) => projectFile)).toEqual([
-			"/repo/default.project.json",
-			"/repo/places/lobby/default.project.json",
-		]);
 	});
 
-	it("should find the places of several globs once each", async () => {
-		const found = await resolve(
-			{ ...ROOT, placePaths: ["places/*", "places/lobby"] },
-			{ lobby: null }
+	it("should read the working directory's config once for a path in it and an undefined target", async () => {
+		await start({}, "/repo/places/arena");
+
+		const covered = (
+			await service.selectCovering([
+				undefined,
+				"/repo/places/arena/src/A.luau",
+			])
+		).unwrap();
+
+		expect(covered.groups).toHaveLength(1);
+		expect(covered.groups[0].indexes).toEqual([0, 1]);
+	});
+
+	it("should fail when the default of the working directory is missing and a target needs it", async () => {
+		const result = await service.selectCovering([undefined]);
+
+		expect(result.isErr()).toBe(true);
+	});
+});
+
+describe("CoreConfigService coverOf", () => {
+	useConfigFixture();
+
+	beforeEach(async () => {
+		await fs.createDirectory("/repo/src/pkg");
+		await fs.createDirectory("/repo/tools");
+		await write("/repo/default.rogen.json", {
+			name: "Game",
+			rogen: { routes: ROUTES },
+		});
+		await write("/repo/src/pkg/default.project.json", { name: "Pkg" });
+		await write("/repo/tools/default.project.json", { name: "Tools" });
+		await write("/repo/src/pkg/init.luau", "");
+		await write("/repo/tools/run.luau", "");
+	});
+
+	it("should skip a plain project file inside the source paths of a config above it", async () => {
+		expect(await service.coverOf("/repo/src/pkg/init.luau")).toEqual({
+			file: "/repo/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should keep a plain project file outside every source path above it", async () => {
+		expect(await service.coverOf("/repo/tools/run.luau")).toEqual({
+			file: "/repo/tools/default.project.json",
+			whole: false,
+		});
+	});
+
+	it("should group a path under the nested project with the config above it", async () => {
+		const covered = (
+			await service.selectCovering(["/repo/src/pkg/init.luau"])
+		).unwrap();
+
+		expect(covered.groups[0].selection.entries[0].file).toBe(
+			"/repo/default.rogen.json"
 		);
-
-		expect(found.filter(({ isPlace }) => isPlace)).toHaveLength(1);
 	});
 
-	it("should find no place in a glob that matches no folder", async () => {
-		const found = await resolve({ ...ROOT, placePaths: ["games/*"] }, {});
+	it("should cover an existing project file path whole by the config beside it", async () => {
+		await write("/repo/dist.rogen.json", { name: "Dist" });
+		await write("/repo/dist.project.json", { name: "Dist" });
 
-		expect(found.map(({ isPlace }) => isPlace)).toEqual([false]);
-	});
-
-	describe("what a selection reads", () => {
-		const files = (configs: readonly { projectFile: string }[]) =>
-			configs.map(({ projectFile }) => projectFile);
-
-		it("should read the root and every place from the root", async () => {
-			await resolve();
-			await start();
-
-			expect(files(selection.configs)).toEqual([
-				"/repo/default.project.json",
-				"/repo/places/arena/default.project.json",
-				"/repo/places/lobby/default.project.json",
-			]);
-		});
-
-		it("should read only the place from inside it", async () => {
-			await resolve();
-			await start({}, "/repo/places/lobby");
-
-			expect(files(selection.configs)).toEqual([
-				"/repo/places/lobby/default.project.json",
-			]);
-		});
-
-		it("should read only the places named", async () => {
-			await resolve();
-			await start({ names: ["places/lobby", "places/arena"] });
-
-			expect(files(selection.configs)).toEqual([
-				"/repo/places/arena/default.project.json",
-				"/repo/places/lobby/default.project.json",
-			]);
-		});
-
-		it("should serve the places and never the root", async () => {
-			await resolve();
-			await start();
-
-			expect(
-				files(selection.configs.filter(({ hasPlaces }) => !hasPlaces))
-			).toEqual([
-				"/repo/places/arena/default.project.json",
-				"/repo/places/lobby/default.project.json",
-			]);
+		expect(await service.coverOf("/repo/dist.project.json")).toEqual({
+			file: "/repo/dist.rogen.json",
+			whole: true,
 		});
 	});
 
-	describe("ports", () => {
-		const portsOf = (found: Awaited<ReturnType<typeof resolve>>) =>
-			found
-				.filter(({ isPlace }) => isPlace)
-				.map(({ projectName, placePort }) => [projectName, placePort]);
+	it("should cover an existing project file path with no config beside it as itself, whole", async () => {
+		await write("/repo/gone.project.json", { name: "Gone" });
 
-		it("should number the places by path from 34872", async () => {
-			const found = await resolve(ROOT, {
-				lobby: null,
-				arena: null,
-				hub: null,
-			});
-
-			expect(portsOf(found)).toEqual([
-				["arena", 34872],
-				["hub", 34873],
-				["lobby", 34874],
-			]);
-		});
-
-		it("should count only the places that pin no port, and skip a pinned one", async () => {
-			const found = await resolve(ROOT, {
-				arena: { servePort: 34872 },
-				hub: null,
-				lobby: null,
-			});
-
-			expect(portsOf(found)).toEqual([
-				["arena", undefined],
-				["hub", 34873],
-				["lobby", 34874],
-			]);
-		});
-
-		it("should skip a port another place pins", async () => {
-			const found = await resolve(ROOT, {
-				arena: null,
-				hub: { servePort: 34873 },
-				lobby: null,
-			});
-
-			expect(portsOf(found)).toEqual([
-				["arena", 34872],
-				["hub", undefined],
-				["lobby", 34874],
-			]);
-		});
-
-		it("should give the root none", async () => {
-			const [root] = await resolve();
-
-			expect(root.placePort).toBeUndefined();
-		});
-	});
-
-	describe("place IDs", () => {
-		const idsOf = (place: { project: { getFile(): object } } | undefined) =>
-			(place?.project.getFile() as { servePlaceIds?: number[] })
-				?.servePlaceIds;
-
-		it("should write a place's servePlaceIds to that place's file only", async () => {
-			const places = { arena: { servePlaceIds: [111] }, lobby: null };
-
-			expect(idsOf(await placeNamed("arena", ROOT, places))).toEqual([
-				111,
-			]);
-			expect(
-				idsOf(await placeNamed("lobby", ROOT, places))
-			).toBeUndefined();
-		});
-	});
-
-	describe("what a place sets for itself", () => {
-		it.each([
-			["servePort", 34900],
-			["servePlaceIds", [1]],
-			["blockedPlaceIds", [2]],
-			["placeId", 3],
-			["gameId", 4],
-		])(
-			"should refuse %s in the config that lists places",
-			async (key, value) => {
-				await resolve({ ...ROOT, [key]: value });
-
-				expect(errors()).toEqual([
-					expect.objectContaining({
-						code: "config.placeSetting",
-						resource: "/repo/rogen.json",
-					}),
-				]);
-			}
-		);
-
-		it("should allow a setting while no folder matches placePaths, since the config is then served", async () => {
-			await resolve({ ...ROOT, servePort: 34900 }, {});
-
-			expect(errors()).toEqual([]);
-		});
-
-		it("should leave serveAddress to be shared by every place", async () => {
-			const lobby = await placeNamed(
-				"lobby",
-				{ ...ROOT, serveAddress: "0.0.0.0" },
-				{ lobby: null }
-			);
-
-			expect(lobby?.project.serveAddress).toBe("0.0.0.0");
-		});
-	});
-
-	describe("what is wrong", () => {
-		it("should refuse a place that lists places", async () => {
-			await resolve(ROOT, { lobby: { placePaths: ["x/*"] } });
-
-			expect(errors()).toEqual([
-				expect.objectContaining({
-					code: "config.placeListsPlaces",
-					resource: "/repo/places/lobby/rogen.json",
-				}),
-			]);
-		});
-
-		it("should report a broken place's config as the root's error", async () => {
-			await resolve(ROOT, { lobby: { sourcePaths: "src" } });
-
-			expect(errors()[0].resource).toBe("/repo/places/lobby/rogen.json");
-		});
-
-		it("should refuse a place inside a source path of the root", async () => {
-			await resolve({ ...ROOT, placePaths: ["src/places/*"] }, {});
-			await fs.createDirectory("/repo/src/places/lobby");
-			await start();
-
-			expect(errors().map(({ code }) => code)).toEqual([
-				"config.placeInSourcePath",
-			]);
-		});
-
-		it("should refuse a source path inside a place that is named", async () => {
-			await resolve(
-				{ ...ROOT, placePaths: ["app"], sourcePaths: ["app/src"] },
-				{}
-			);
-			await fs.createDirectory("/repo/app/src");
-			await start();
-
-			expect(errors().map(({ code }) => code)).toEqual([
-				"config.placeInSourcePath",
-			]);
-		});
-
-		it("should take a folder a glob matches that holds a source path for shared code", async () => {
-			await fs.createDirectory("/repo/places/shared/src");
-			const found = await resolve(
-				{ ...ROOT, sourcePaths: ["places/shared/src"] },
-				{ game: null }
-			);
-
-			expect(errors()).toEqual([]);
-			expect(found.map(({ projectFile }) => projectFile)).toEqual([
-				"/repo/default.project.json",
-				"/repo/places/game/default.project.json",
-			]);
-			expect(selection.entries[0]).toMatchObject({
-				sharedFolders: ["/repo/places/shared"],
-			});
-		});
-
-		it("should plain-read the first place", async () => {
-			const found = await resolve();
-
-			expect(plain(found[1])?.file).toBe("/repo/places/arena/rogen.json");
+		expect(await service.coverOf("/repo/gone.project.json")).toEqual({
+			file: "/repo/gone.project.json",
+			whole: true,
 		});
 	});
 });

@@ -1,9 +1,0 @@
-{
-	"sourcePaths": [
-		"../src",
-		"lib"
-	],
-	"routes": {
-		"server": "ServerScriptService"
-	}
-}

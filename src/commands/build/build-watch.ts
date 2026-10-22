@@ -76,13 +76,14 @@ export class BuildWatch {
 		store.add({ [Symbol.dispose]: () => stopped.abort() });
 		const selection = await configService.select(this.refs);
 		if (selection.isErr()) return selection;
-		let planned: readonly RojoPlan[] | undefined;
+		for (const note of selection.value.notes) logService.warn(note);
+		let planned: RojoPlan | undefined;
 		if (this.step !== undefined) {
-			const plans = this.step.plans(selection.value);
-			if (plans.isErr()) return plans;
-			planned = plans.value;
+			const stepPlan = this.step.plan(selection.value);
+			if (stepPlan.isErr()) return stepPlan;
+			planned = stepPlan.value;
 		}
-		const printing = planned?.some(({ printed }) => printed) ?? false;
+		const printing = planned?.printed ?? false;
 		const log: WatchReporter = this.json
 			? new WatchJsonLog(logService)
 			: printing
@@ -94,13 +95,17 @@ export class BuildWatch {
 					);
 		const watched = watchService.watch(
 			selection.value,
-			planned && {
+			this.step && {
 				contentEdits: {
-					ignoring: planned.flatMap(({ target }) =>
-						target.output === undefined
+					ignoring:
+						planned?.target.output === undefined
 							? []
-							: [path.resolve(target.cwd, target.output)]
-					),
+							: [
+									path.resolve(
+										planned.target.cwd,
+										planned.target.output
+									),
+								],
 				},
 			}
 		);
@@ -116,49 +121,46 @@ export class BuildWatch {
 				log.update(update);
 				const { step } = this;
 				if (step === undefined) return;
-				const plans = step.plans(selection.value);
-				if (plans.isErr()) {
-					log.error(plans.error);
+				const planned = step.plan(selection.value);
+				if (planned.isErr()) {
+					log.error(planned.error);
 					return;
 				}
-				for (const plan of plans.value) {
-					const id = plan.project.id;
-					if (
-						!update.reports.some(
-							({ build }) =>
-								isWritten(build) && build.config.id === id
-						) ||
-						waiting.has(id)
-					)
-						continue;
-					waiting.add(id);
-					rojoRuns
-						.queue(async () => {
-							waiting.delete(id);
-							const tmp = path.join(
-								environment.tmpDir,
-								`rogen-${step.command}-${randomUUID()}.json`
-							);
-							const ran = await accessor
-								.get(RojoCommandService)
-								.run(selection.value, {
-									command: step.command,
-									flags: plan.printed
-										? [...plan.flags, "--output", tmp]
-										: plan.flags,
-									cwd: plan.cwd,
-									project: plan.project,
-									signal: stopped.signal,
-								});
-							if (plan.printed)
-								await this.print(tmp, ran, stopped);
-							if (stopped.signal.aborted) return;
-							log.rojo(ran, plan.target);
-						})
-						.catch((error) =>
-							log.error(ErrorUtils.fromUnknown(error))
+				const plan = planned.value;
+				if (plan === undefined) return;
+				const id = plan.project.id;
+				if (
+					!update.reports.some(
+						({ build }) =>
+							isWritten(build) && build.config.id === id
+					) ||
+					waiting.has(id)
+				)
+					return;
+				waiting.add(id);
+				rojoRuns
+					.queue(async () => {
+						waiting.delete(id);
+						const tmp = path.join(
+							environment.tmpDir,
+							`rogen-${step.command}-${randomUUID()}.json`
 						);
-				}
+						const ran = await accessor
+							.get(RojoCommandService)
+							.run(selection.value, {
+								command: step.command,
+								flags: plan.printed
+									? [...plan.flags, "--output", tmp]
+									: plan.flags,
+								cwd: plan.cwd,
+								project: plan.project,
+								signal: stopped.signal,
+							});
+						if (plan.printed) await this.print(tmp, ran, stopped);
+						if (stopped.signal.aborted) return;
+						log.rojo(ran, plan.target);
+					})
+					.catch((error) => log.error(ErrorUtils.fromUnknown(error)));
 			})
 		);
 		store.add(session.onDidError((error) => log.error(error)));

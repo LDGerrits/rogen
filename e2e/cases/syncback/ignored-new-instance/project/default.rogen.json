@@ -1,0 +1,1 @@
+{ "name":"Game", "tree":{"$className":"DataModel"}, "globIgnorePaths":["src/**/*.spec.luau"], "rogen": { "sourcePaths":["src"], "routes":{"Server":"ServerScriptService","*":"ReplicatedStorage/Shared"} } }

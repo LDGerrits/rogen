@@ -1,0 +1,6 @@
+{
+	"tree": { "$className": "DataModel" },
+	"rogen": {
+		"routes": { "server": "ServerScriptService" }
+	}
+}

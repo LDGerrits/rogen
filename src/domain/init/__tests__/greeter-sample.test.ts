@@ -1,6 +1,7 @@
 import { Luau } from "../../toolchain/luau.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
-import { GreeterSample } from "../greeter-sample.js";
+import { DEFAULT_SOURCE_PATH } from "../../config/config.js";
+import { GreeterSample, TEMPLATE_SOURCE_PATHS } from "../greeter-sample.js";
 
 describe("GreeterSample", () => {
 	const sample = new GreeterSample(new Luau(), "game");
@@ -42,16 +43,16 @@ describe("GreeterSample", () => {
 	});
 
 	it("should put the script of a place in its own feature", () => {
-		const script = sample.place("places/game/src");
+		const files = sample.place("places/game/src");
 
-		expect(script.fileName).toBe(
-			"places/game/src/Game/Server/Game.server.luau"
-		);
-		expect(script.content).toContain('print(Greeting("game"))');
+		expect(files.map(({ fileName }) => fileName)).toEqual([
+			"places/game/src/Game/Server/Game.server.luau",
+		]);
+		expect(files[0].content).toContain('print(Greeting("game"))');
 	});
 
 	it("should describe one place in the README, with the commands to build and serve it", () => {
-		const { content } = sample.readme("src");
+		const { content } = sample.readme("src", "rogen serve");
 
 		expect(content).toContain("# game\n");
 		expect(content).toContain(
@@ -62,7 +63,11 @@ describe("GreeterSample", () => {
 	});
 
 	it("should describe several places in the README, with the workspace file and how to add one", () => {
-		const { content } = sample.readme("places/shared/src", "places/game");
+		const { content } = sample.readme(
+			"places/shared/src",
+			"rogen serve places/game",
+			"places/game"
+		);
 
 		expect(content).toContain(
 			"rogen where places/shared/src/Greeter/Shared/Greeting.luau"
@@ -70,6 +75,14 @@ describe("GreeterSample", () => {
 		expect(content).toContain("`game.code-workspace`");
 		expect(content).toContain('rogen build places/game -o "game.rbxlx"');
 		expect(content).toContain("rogen init places/lobby");
+		expect(content).toContain("```bash\nrogen serve places/game\n```");
+		expect(content).toContain("rogen serve places/lobby --port");
+	});
+
+	it("should print the command that serves the project", () => {
+		const { content } = sample.readme("src", "rogen serve dist");
+
+		expect(content).toContain("```bash\nrogen serve dist\n```");
 	});
 
 	describe("for roblox-ts", () => {
@@ -102,7 +115,7 @@ describe("GreeterSample", () => {
 		});
 
 		it("should say to compile before building or serving", () => {
-			const { content } = typescript.readme("src");
+			const { content } = typescript.readme("src", "rogen serve");
 
 			expect(content).toContain("npm run watch");
 			expect(content.indexOf("npm run watch")).toBeLessThan(
@@ -111,8 +124,78 @@ describe("GreeterSample", () => {
 		});
 
 		it("should print no Luau", () => {
-			expect(typescript.place("places/game/src").content).not.toContain(
-				"local "
+			expect(
+				typescript.place("places/game/src")[0].content
+			).not.toContain("local ");
+		});
+	});
+
+	describe("templates", () => {
+		const languages = [new Luau(), workspaceOf().languageFor("roblox-ts")];
+
+		it("should keep each variant's code where its template has it", () => {
+			expect(TEMPLATE_SOURCE_PATHS).toEqual({
+				one: DEFAULT_SOURCE_PATH,
+				shared: "places/shared/src",
+				place: "places/game/src",
+			});
+		});
+
+		it.each(languages)(
+			"should name the feature's folders after the routes of $id",
+			(language) => {
+				const folders = new GreeterSample(language, "game")
+					.feature("src")
+					.map(({ fileName }) => fileName.split("/")[2]);
+
+				expect(folders.sort()).toEqual(
+					["shared", "server", "client"]
+						.map((route) => language.routeKey(route))
+						.sort()
+				);
+			}
+		);
+
+		it.each(languages)(
+			"should write every file of $id with its extension",
+			(language) => {
+				const sample = new GreeterSample(language, "game");
+				const scripts = [
+					...sample.feature("src"),
+					...sample.place("places/game/src"),
+				];
+
+				expect(scripts).toHaveLength(4);
+				for (const { fileName } of scripts)
+					expect(fileName).toMatch(
+						new RegExp(`\\.${language.extension}$`)
+					);
+			}
+		);
+
+		it.each(languages)(
+			"should fill every placeholder of $id",
+			(language) => {
+				const sample = new GreeterSample(language, "game");
+				const files = [
+					...sample.feature("lib"),
+					...sample.place("places/game/src"),
+					sample.readme("lib", "rogen serve"),
+					sample.readme(
+						"places/shared/src",
+						"rogen serve places/game",
+						"places/game"
+					),
+				];
+
+				for (const { content } of files)
+					expect(content).not.toContain("{{");
+			}
+		);
+
+		it("should leave a Luau interpolation alone", () => {
+			expect(sample.feature("src")[0].content).toContain(
+				"`Hello, {who}!`"
 			);
 		});
 	});

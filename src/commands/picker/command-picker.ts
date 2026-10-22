@@ -51,7 +51,7 @@ export class CommandPicker {
 	async pick(): Promise<Result<string[], Error>> {
 		const { version, name } = await this.project.describe();
 		this.logService.intro(
-			`rogen ${version} · ${name ?? "no rogen.json here"}`
+			`rogen ${version} · ${name ?? "no default.rogen.json here"}`
 		);
 		const commands = this.registry.getCommands();
 		const ids = CommandPicker.order(

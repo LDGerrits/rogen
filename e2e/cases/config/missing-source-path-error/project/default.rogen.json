@@ -1,0 +1,8 @@
+{
+	"rogen": {
+		"sourcePaths": ["srcc"],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

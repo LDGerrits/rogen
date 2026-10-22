@@ -5,17 +5,16 @@ stdout:
     "configs": [
       {
         "config": "project",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "status": "broken",
-        "served": false,
         "diagnostics": [
           {
-            "file": "<dir>/rogen.json",
-            "line": 3,
-            "column": 8,
+            "file": "<dir>/default.rogen.json",
+            "line": 4,
+            "column": 9,
             "severity": "error",
             "code": "config.wrongType",
-            "message": "\"routes.*\": expected a string, found a number.",
+            "message": "\"rogen.routes.*\": expected a string, found a number.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-wrongtype"
           }
         ]

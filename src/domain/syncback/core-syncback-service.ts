@@ -340,7 +340,9 @@ export class CoreSyncbackService implements SyncbackService {
 			placed,
 			reads: [
 				...project.sourcePaths,
-				...(project.syncPath === undefined ? [] : [project.syncPath]),
+				...(project.compiledPath === undefined
+					? []
+					: [project.compiledPath]),
 			].map(toPosix),
 			fileAt: (target) => RojoFile.at(target, project.syncRules),
 			isFolder: (target) =>
@@ -1137,12 +1139,12 @@ export class CoreSyncbackService implements SyncbackService {
 			: listed;
 	}
 
-	/** Builds again and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A sync path holds what a tool wrote, which the build does not place. */
+	/** Builds again and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the build does not place. */
 	private async verify(
 		request: SyncbackRequest,
 		expected: readonly Expected[]
 	): Promise<Diagnostic[]> {
-		if (expected.length === 0 || request.project.syncPath !== undefined)
+		if (expected.length === 0 || request.project.compiledPath !== undefined)
 			return [];
 		const located = await this.buildService.locate(request.selection, {
 			args: expected.map(({ file }) => file),

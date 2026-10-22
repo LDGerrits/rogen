@@ -95,13 +95,15 @@ const available = has("bash") && has("git") && has("jq");
 			cwd: path.join(dir, "project"),
 		});
 		write(
-			"rogen.json",
+			"default.rogen.json",
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: {
-					Server: "ServerScriptService",
-					Shared: "ReplicatedStorage/Shared",
-					"*": "ReplicatedStorage/Shared",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: {
+						Server: "ServerScriptService",
+						Shared: "ReplicatedStorage/Shared",
+						"*": "ReplicatedStorage/Shared",
+					},
 				},
 			})
 		);
@@ -201,7 +203,7 @@ const available = has("bash") && has("git") && has("jq");
 		expect(reply?.decision).toBe("block");
 	});
 
-	it("should find the config above the folder the agent runs in", () => {
+	it("should check a changed file from a folder below the config, which its path finds", () => {
 		write("src/sub/Buy@sever.luau");
 
 		const { reply } = stop(
@@ -211,6 +213,36 @@ const available = has("bash") && has("git") && has("jq");
 		);
 
 		expect(reply?.decision).toBe("block");
+	});
+
+	it("should answer for a changed file of a place from the repo root, and skip shared code that no config covers", () => {
+		fs.rmSync(path.join(dir, "project/default.rogen.json"));
+		fs.rmSync(path.join(dir, "project/src"), { recursive: true });
+		const routes = {
+			Server: "ServerScriptService",
+			"*": "ReplicatedStorage/Shared",
+		};
+		write(
+			"places/lobby/default.rogen.json",
+			JSON.stringify({
+				name: "Lobby",
+				rogen: { sourcePaths: ["../shared/src", "src"], routes },
+			})
+		);
+		git("add", "-A");
+		git("commit", "-qm", "places");
+		write("places/lobby/src/Buy@sever.luau");
+		write("places/shared/src/Stray@sever.luau");
+
+		const { exit, reply, report } = stop();
+
+		expect(exit).toBe(0);
+		expect(reply?.decision).toBe("block");
+		expect(report).toEqual([
+			expect.stringMatching(
+				/^places\/lobby\/src\/Buy@sever\.luau - warning: .*\(route\.strayAt\)$/
+			),
+		]);
 	});
 
 	it("should not count a report as given when the reply could not be made", () => {
@@ -235,7 +267,7 @@ const available = has("bash") && has("git") && has("jq");
 	});
 
 	it("should do nothing without a config in the project dir", () => {
-		fs.rmSync(path.join(dir, "project/rogen.json"));
+		fs.rmSync(path.join(dir, "project/default.rogen.json"));
 		write("src/Buy@sever.luau");
 
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });

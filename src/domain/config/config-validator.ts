@@ -19,12 +19,14 @@ import {
 	ParsedProjectFile,
 	RojoNode,
 	RojoProject,
+	projectFileName,
 } from "../rojo/rojo-project.js";
 import { SYNC_RULE_FIELDS, SyncRules } from "../rojo/sync-rules.js";
-import { ConfigSource } from "./config-sources.js";
-import { rogenKeys } from "./config-schema.js";
+import { ConfigFile } from "../../platform/config/config-file.js";
 import {
-	PER_PLACE_KEYS,
+	DEFAULT_PROJECT,
+	ROGEN_BLOCK,
+	configStem,
 	defaultSourcePaths,
 	fieldOf,
 	isDefaultProjectFile,
@@ -36,12 +38,6 @@ import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const FALLBACK_NAME = "project";
 
-interface PlaceContext {
-	readonly rootFile?: string;
-	readonly placeDirs?: readonly string[];
-	readonly placePort?: number;
-}
-
 const NAME_RULE = "use letters and digits only, starting with a letter";
 
 /** Checks every rule on one project's values that doesn't need the source tree, and returns the config with its route targets parsed. */
@@ -51,38 +47,22 @@ export class ConfigValidator {
 	private readonly dir: string;
 	private readonly routes: Readonly<Record<string, string>>;
 	private readonly sourcePaths: readonly string[];
-	/** How many leading source paths a place takes from the config that lists it. */
-	private readonly inheritedCount: number;
 
-	constructor(
-		private readonly config: ConfigSource,
-		private readonly context: PlaceContext = {}
-	) {
+	constructor(private readonly config: ConfigFile) {
 		this.dir = path.dirname(config.file);
 		this.routes = fieldOf(config.model, "routes") ?? {};
 		const routed = Object.keys(this.routes).length > 0;
 		const defaults = defaultSourcePaths(routed);
-		const { inherited } = config;
-		const inheritedPaths = inherited
-			? (inherited.sourcePaths ?? defaults).map((sourcePath) =>
-					path.resolve(inherited.dir, sourcePath)
-				)
-			: [];
-		this.inheritedCount = inheritedPaths.length;
-		this.sourcePaths = [
-			...inheritedPaths,
-			...(fieldOf(config.model, "sourcePaths") ?? defaults).map(
-				(sourcePath) => path.resolve(this.dir, sourcePath)
-			),
-		];
+		this.sourcePaths = (
+			fieldOf(config.model, "sourcePaths") ?? defaults
+		).map((sourcePath) => path.resolve(this.dir, sourcePath));
 	}
 
 	/** Validates one config file. */
 	static validateFile(
-		source: ConfigSource,
-		context: PlaceContext = {}
+		source: ConfigFile
 	): Result<ResolvedConfigFile, Diagnostic[]> {
-		return new ConfigValidator(source, context)
+		return new ConfigValidator(source)
 			.validate()
 			.map((config) => ({ config }));
 	}
@@ -109,8 +89,7 @@ export class ConfigValidator {
 		this.checkNodeFields(project);
 		this.checkRoot(project, routed);
 		this.checkSourcePaths(routed);
-		this.checkPlaces();
-		const syncPath = this.checkSyncPath();
+		const compiledPath = this.checkCompiledPath();
 
 		const name = project.name;
 		return this.problems.toResult(
@@ -122,26 +101,12 @@ export class ConfigValidator {
 				sourcePaths: this.sourcePaths,
 				routes,
 				ignored,
-				syncPath,
-				syncRulesDir: this.config.inherited?.syncRules
-					? toPosix(this.config.inherited.dir)
-					: undefined,
+				compiledPath,
 				warnings: this.problems.diagnostics.filter(
 					(diagnostic) => !isError(diagnostic)
 				),
-				rootFile: this.context.rootFile,
-				isPlace: this.context.rootFile !== undefined,
-				hasPlaces: (this.context.placeDirs?.length ?? 0) > 0,
-				placePort: this.context.placePort,
 			})
 		);
-	}
-
-	private locateKey(key: string): DiagnosticLocation {
-		return {
-			resource: this.config.file,
-			position: this.config.positionOfKey(key),
-		};
 	}
 
 	private locate(...section: string[]): DiagnosticLocation {
@@ -154,7 +119,7 @@ export class ConfigValidator {
 	private readProject(): RojoProject<ParsedProjectFile> {
 		const rojo = Object.fromEntries(
 			Object.entries(this.config.model.contents).filter(
-				([key]) => key !== "$schema" && !rogenKeys.includes(key)
+				([key]) => key !== "$schema" && key !== ROGEN_BLOCK
 			)
 		);
 		return new RojoProject<ParsedProjectFile>({
@@ -163,19 +128,17 @@ export class ConfigValidator {
 		});
 	}
 
-	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't read one either. */
+	/** Rojo crashes on a project file of another name than `default` that has no `name`, so Rogen won't write or read one either. */
 	private checkName(project: RojoProject<ParsedProjectFile>): void {
-		const file = path.basename(this.config.file);
-		if (
-			project.name !== undefined ||
-			!isProjectFileConfig(this.config.file) ||
-			isDefaultProjectFile(this.config.file)
-		)
-			return;
+		const { file } = this.config;
+		const target = isProjectFileConfig(file)
+			? path.basename(file)
+			: projectFileName(configStem(file) ?? DEFAULT_PROJECT);
+		if (project.name !== undefined || isDefaultProjectFile(target)) return;
 		this.problems.error(
 			"config.unnamedProjectFile",
-			{ resource: this.config.file, position: { line: 1, column: 1 } },
-			`${file} has no "name", and Rojo can't read a project file without one unless it is default.project.json or default.project.jsonc. Add "name".`
+			{ resource: file, position: { line: 1, column: 1 } },
+			`${path.basename(file)} has no "name", and Rojo can't read ${target} without one unless it is default.project.json or default.project.jsonc. Add "name".`
 		);
 	}
 
@@ -230,7 +193,7 @@ export class ConfigValidator {
 	private checkRoutes(): Map<string, Target> {
 		const targets = new Map<string, Target>();
 		for (const [key, text] of Object.entries(this.routes)) {
-			const location = this.locate("routes", key);
+			const location = this.locate(ROGEN_BLOCK, "routes", key);
 			if (key !== DeclaredKeys.FALLBACK_ROUTE) {
 				if (DeclaredKeys.isName(key)) this.claim(key, location);
 				else {
@@ -272,19 +235,17 @@ export class ConfigValidator {
 		if (!routed && fieldOf(this.config.model, "sourcePaths") !== undefined)
 			this.problems.error(
 				"config.sourcePathsWithoutRoutes",
-				this.locate("sourcePaths"),
+				this.locate(ROGEN_BLOCK, "sourcePaths"),
 				'"sourcePaths" lists what routes scan, but the config declares no routes. Add "routes", or remove "sourcePaths".'
 			);
 		this.sourcePaths.forEach((sourcePath, index) => {
 			const overlap = sourcePathOverlap(this.sourcePaths, index);
 			if (!overlap) return;
-			const location =
-				index < this.inheritedCount
-					? { resource: this.config.file }
-					: this.locate(
-							"sourcePaths",
-							String(index - this.inheritedCount)
-						);
+			const location = this.locate(
+				ROGEN_BLOCK,
+				"sourcePaths",
+				String(index)
+			);
 			if (overlap.kind === "duplicate") {
 				this.problems.error(
 					"config.duplicateSourcePath",
@@ -301,49 +262,21 @@ export class ConfigValidator {
 		});
 	}
 
-	private checkPlaces(): void {
-		if ((this.context.placeDirs?.length ?? 0) > 0)
-			for (const key of this.config.model.keys.filter((key) =>
-				PER_PLACE_KEYS.includes(key)
-			))
-				this.problems.error(
-					"config.placeSetting",
-					this.locateKey(key),
-					`"${key}" is set by each place, since a config that lists places is never served. Move it to the rogen.json of each place.`
-				);
-		for (const placeDir of this.context.placeDirs ?? []) {
-			const around = this.sourcePaths.find((dir) =>
-				contains(dir, placeDir)
-			);
-			const inside = this.sourcePaths.find((dir) =>
-				contains(placeDir, dir)
-			);
-			if (around === undefined && inside === undefined) continue;
-			this.problems.error(
-				"config.placeInSourcePath",
-				this.locateKey("placePaths"),
-				around !== undefined
-					? `the place ${placeDir} is inside the source path ${around}, so its files would belong to both. Move the place out of the source path, or the source path out of the place.`
-					: `the source path ${inside} is inside the place ${placeDir}, so the place would read it as its own code too. Move the source path out of the place, or the place out of the way.`
-			);
-		}
-	}
-
-	private checkSyncPath(): string | undefined {
-		const written = fieldOf(this.config.model, "syncPath");
+	private checkCompiledPath(): string | undefined {
+		const written = fieldOf(this.config.model, "compiledPath");
 		if (written === undefined) return undefined;
-		const syncPath = path.resolve(this.dir, written);
+		const compiledPath = path.resolve(this.dir, written);
 		for (const sourcePath of this.sourcePaths) {
-			const inside = contains(sourcePath, syncPath);
-			if (!inside && !isInside(sourcePath, syncPath)) continue;
+			const inside = contains(sourcePath, compiledPath);
+			if (!inside && !isInside(sourcePath, compiledPath)) continue;
 			this.problems.error(
-				"config.syncPathOverlapsSourcePath",
-				this.locate("syncPath"),
-				`the sync path "${syncPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "syncPath" to a folder outside the source paths.`
+				"config.compiledPathOverlapsSourcePath",
+				this.locate(ROGEN_BLOCK, "compiledPath"),
+				`the compiled path "${compiledPath}" ${inside ? "is inside" : "contains"} source path "${sourcePath}", so Rogen would read what the tools write as source. Set "compiledPath" to a folder outside the source paths.`
 			);
 			break;
 		}
-		return syncPath;
+		return compiledPath;
 	}
 
 	private claim(key: string, location: DiagnosticLocation): void {

@@ -199,7 +199,7 @@ describe("help command", () => {
 				)
 			).toEqual([]);
 			expect(lines).toContain(
-				'  rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
+				'  default.rogen.json - warning: 2 names have an "@" that routes nowhere, so they are read as ordinary names: (route.strayAt)'
 			);
 		});
 
@@ -305,11 +305,9 @@ describe("help command", () => {
 			expect(description.join(" ")).toBe(
 				registry.getCommand("build")?.metadata.description
 			);
-			expect(usage).toBe(
-				"USAGE:\n    rogen build [OPTIONS] [PROJECT]..."
-			);
-			expect(printed()).toContain("<PROJECT>...");
-			expect(printed()).toContain("A folder with a rogen.json");
+			expect(usage).toBe("USAGE:\n    rogen build [OPTIONS] [PROJECT]");
+			expect(printed()).toContain("<PROJECT>");
+			expect(printed()).toContain("A folder, a .rogen.json file");
 		});
 
 		it("should give every command examples, after its options", async () => {

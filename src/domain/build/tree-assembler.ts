@@ -294,7 +294,8 @@ export class TreeAssembler {
 			known.set(dir, found);
 			return found;
 		};
-		return (dir) => placement.layout.syncPath === undefined && holds(dir);
+		return (dir) =>
+			placement.layout.compiledPath === undefined && holds(dir);
 	}
 
 	private instancePathOf(

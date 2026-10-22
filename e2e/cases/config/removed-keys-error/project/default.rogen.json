@@ -1,0 +1,17 @@
+{
+	"extends": "base.rogen.json",
+	"template": "template.project.json",
+	"outFile": "out/game.project.json",
+	"exclude": [
+		"**/*.spec.luau"
+	],
+	"rootDirs": [
+		"src"
+	],
+	"syncDir": "dist",
+	"rogen": {
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

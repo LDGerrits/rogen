@@ -1,0 +1,20 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": {
+			"Combat": {
+				"$className": "Model"
+			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

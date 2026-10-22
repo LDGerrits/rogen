@@ -4,7 +4,7 @@ stdout:
   rogen init
   Started a plugin project: its tree mounts src, and Rogen adds no routes to a plugin.
   Took the defaults: --language luau, --no-darklua, --agent-rules.
-  Created rogen.json.
+  Created default.rogen.json.
   Created README.md.
   Created .gitignore.
   Created src/init.server.luau.
@@ -22,7 +22,7 @@ written:
   AGENTS.md
   README.md
   default.project.json
-  rogen.json
+  default.rogen.json
   src/init.server.luau
 
 .gitignore:
@@ -31,6 +31,7 @@ written:
 /project.rbxm
 
 sourcemap.json
+*.project.json
 
 README.md:
 # project
@@ -51,7 +52,7 @@ rogen build -p "project.rbxm" --watch
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {

@@ -177,11 +177,11 @@ describe("platform/diagnostics/diagnostic", () => {
 		it("should give a replace fix's file as a native path and keep its text", () => {
 			const fixed = warningDiagnostic(
 				"test.example",
-				{ resource: "/repo/rogen.json" },
+				{ resource: "/repo/default.rogen.json" },
 				"",
 				replaceFixes(
 					{
-						resource: "/repo/rogen.json",
+						resource: "/repo/default.rogen.json",
 						position: { line: 2, column: 3 },
 					},
 					'"a"',
@@ -192,7 +192,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			expect(diagnosticToJson(fixed).fixes).toEqual([
 				{
 					replace: {
-						file: path.normalize("/repo/rogen.json"),
+						file: path.normalize("/repo/default.rogen.json"),
 						line: 2,
 						column: 3,
 						from: '"a"',
@@ -204,7 +204,11 @@ describe("platform/diagnostics/diagnostic", () => {
 
 		it("should offer no replace fix for a location with no position", () => {
 			expect(
-				replaceFixes({ resource: "/repo/rogen.json" }, '"a"', '"b"')
+				replaceFixes(
+					{ resource: "/repo/default.rogen.json" },
+					'"a"',
+					'"b"'
+				)
 			).toEqual([]);
 		});
 

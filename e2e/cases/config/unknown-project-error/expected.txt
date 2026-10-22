@@ -1,7 +1,7 @@
 $ rogen build lobyy
 exit 1
 stderr:
-  error: "lobyy" not found. Name a folder with a rogen.json, or a *.project.json path.
+  error: "lobyy" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
 $ rogen build lobyy --json
 exit 1
@@ -10,6 +10,6 @@ stdout:
     "error": {
       "kind": "project",
       "message": "\"lobyy\" not found.",
-      "hint": "Name a folder with a rogen.json, or a *.project.json path."
+      "hint": "Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path."
     }
   }

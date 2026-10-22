@@ -26,7 +26,7 @@ describe("scripts/generate-schema", () => {
 						"utf8"
 					)
 				) as { properties: Record<string, unknown> };
-				expect(Object.keys(schema.properties)).toContain("sourcePaths");
+				expect(Object.keys(schema.properties)).toContain("rogen");
 			}
 		});
 	});

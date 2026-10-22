@@ -2,7 +2,8 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
@@ -69,10 +70,10 @@ registerCommand(
 				id: "upload",
 				metadata: {
 					summary:
-						"Writes the project files, then uploads them with Rojo",
+						"Writes the project file, then uploads it with Rojo",
 					description:
-						"Writes the project files, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
-					args: ConfigArguments,
+						"Writes the project file, then has Rojo build the project and upload it to Roblox, as 'rojo upload' does.",
+					args: ProjectArgument,
 					picker: [
 						{
 							message:
@@ -104,6 +105,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof UploadOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("upload", line.positionals);
+			if (tooMany) return err(tooMany);
 			const { asset_id, api_key, universe_id, cookie } = line.options;
 			if (asset_id === undefined)
 				return err(
@@ -129,12 +132,11 @@ registerCommand(
 				.get(ConfigService)
 				.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
-			const chosen = selection.value.requireValid().isErr()
+			const project = selection.value.requireValid().isErr()
 				? undefined
-				: rojoService.choose(selection.value, "upload");
-			if (chosen?.isErr()) return chosen;
-			const project = chosen?.isOk() ? chosen.value : undefined;
+				: rojoService.choose(selection.value);
 
 			const build = await accessor
 				.get(BuildService)

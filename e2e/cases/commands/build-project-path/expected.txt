@@ -26,7 +26,7 @@ stdout:
   lobby/default.project.json · unchanged
   Built 1 project.
 
-$ rogen build lobby/rogen.json
+$ rogen build lobby/default.rogen.json
 exit 0
 stdout:
   rogen build · lobby

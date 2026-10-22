@@ -1,0 +1,19 @@
+{
+	"name": "game",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Vendor": {
+				"$path": "src/Net/Vendor"
+			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/Shared"
+		}
+	}
+}

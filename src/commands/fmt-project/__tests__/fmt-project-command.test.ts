@@ -7,9 +7,8 @@ import {
 import "../fmt-project-command.js";
 
 const CONFIG = JSON.stringify({
-	sourcePaths: ["src"],
-	routes: { "*": "ReplicatedStorage" },
 	name: "Game",
+	rogen: { sourcePaths: ["src"], routes: { "*": "ReplicatedStorage" } },
 });
 
 describe("fmt-project command", () => {
@@ -25,21 +24,25 @@ describe("fmt-project command", () => {
 	});
 
 	it("should format the config here and say which file it formatted", async () => {
-		await harness.fs.writeFile("/repo/rogen.json", CONFIG);
+		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
 
 		const result = await fmt();
 
 		expect(result.isOk()).toBe(true);
-		expect(logService.texts("print")).toContain("formatted rogen.json");
+		expect(logService.texts("print")).toContain(
+			"formatted default.rogen.json"
+		);
 		expect(
 			Object.keys(
-				JSON.parse(await harness.fs.readFile("/repo/rogen.json"))
+				JSON.parse(
+					await harness.fs.readFile("/repo/default.rogen.json")
+				)
 			)
-		).toEqual(["name", "sourcePaths", "routes"]);
+		).toEqual(["name", "rogen"]);
 	});
 
 	it("should say nothing when the file is already formatted", async () => {
-		await harness.fs.writeFile("/repo/rogen.json", CONFIG);
+		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
 		await fmt();
 		logService.clear();
 
@@ -49,53 +52,29 @@ describe("fmt-project command", () => {
 		expect(logService.texts("print")).toEqual([]);
 	});
 
-	it("should format every place of a root, and the root", async () => {
+	it("should format the config of a place it is given, and not the one at the root", async () => {
 		await harness.fs.createDirectory("/repo/places/lobby");
+		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
 		await harness.fs.writeFile(
-			"/repo/rogen.json",
+			"/repo/places/lobby/default.rogen.json",
 			JSON.stringify({
-				placePaths: ["places/*"],
-				name: "Game",
-			})
-		);
-		await harness.fs.writeFile(
-			"/repo/places/lobby/rogen.json",
-			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { "*": "ReplicatedStorage" },
 				name: "Lobby",
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			})
-		);
-
-		await fmt();
-
-		expect(logService.texts("print")).toContain("formatted rogen.json");
-		expect(logService.texts("print")).toContain(
-			"formatted places/lobby/rogen.json"
-		);
-	});
-
-	it("should format only the place it is given when the root doesn't load", async () => {
-		await harness.fs.createDirectory("/repo/places/lobby");
-		await harness.fs.writeFile(
-			"/repo/rogen.json",
-			'{ "placePaths": ["places/*"], "name": "Game", "routes": 5 }'
-		);
-		await harness.fs.writeFile(
-			"/repo/places/lobby/rogen.json",
-			JSON.stringify({ sourcePaths: ["src"], name: "Lobby" })
 		);
 
 		await fmt("places/lobby");
 
-		expect(logService.texts("print")).toContain(
-			"formatted places/lobby/rogen.json"
-		);
-		expect(logService.texts("print")).not.toContain("formatted rogen.json");
+		expect(logService.texts("print")).toEqual([
+			"formatted places/lobby/default.rogen.json",
+		]);
 	});
 
 	it("should tell each file's outcome with --json", async () => {
-		await harness.fs.writeFile("/repo/rogen.json", CONFIG);
+		await harness.fs.writeFile("/repo/default.rogen.json", CONFIG);
 
 		await harness.run("fmt-project", {
 			positionals: [],
@@ -113,7 +92,7 @@ describe("fmt-project command", () => {
 			changed: true,
 			files: [
 				{
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					outcome: "wrote",
 					diagnostics: [],
 				},
@@ -125,7 +104,7 @@ describe("fmt-project command", () => {
 	});
 
 	it("should tell a refused file in the document, and exit 1", async () => {
-		await harness.fs.writeFile("/repo/rogen.jsonc", CONFIG);
+		await harness.fs.writeFile("/repo/default.rogen.jsonc", CONFIG);
 
 		const result = await harness.run("fmt-project", {
 			positionals: [],
@@ -135,21 +114,23 @@ describe("fmt-project command", () => {
 		expect(result.isErr()).toBe(true);
 		const document = JSON.parse(logService.texts("print")[0]);
 		expect(document.files[0]).toMatchObject({
-			file: "/repo/rogen.jsonc",
+			file: "/repo/default.rogen.jsonc",
 			outcome: "failed",
 			diagnostics: [{ code: "format.commentsLost", severity: "error" }],
 		});
 	});
 
-	it("should refuse a rogen.jsonc and exit with the diagnostic", async () => {
-		await harness.fs.writeFile("/repo/rogen.jsonc", CONFIG);
+	it("should refuse a default.rogen.jsonc and exit with the diagnostic", async () => {
+		await harness.fs.writeFile("/repo/default.rogen.jsonc", CONFIG);
 
 		const result = await fmt();
 
 		expect((result as ResultError<Error>).error.message).toContain(
 			"format.commentsLost"
 		);
-		expect(await harness.fs.readFile("/repo/rogen.jsonc")).toBe(CONFIG);
+		expect(await harness.fs.readFile("/repo/default.rogen.jsonc")).toBe(
+			CONFIG
+		);
 	});
 
 	it("should fail when there is no config to format", async () => {

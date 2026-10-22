@@ -7,94 +7,116 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
+import { projectFileName } from "../rojo/rojo-project.js";
 import {
-	CONFIG_FILE_NAMES,
+	DEFAULT_CONFIG_FILE,
+	DEFAULT_CONFIG_FILE_NAMES,
 	DEFAULT_PROJECT,
 	DEFAULT_PROJECT_FILES,
-	isProjectFileConfig,
+	LEGACY_CONFIG_FILE_NAMES,
+	configStem,
 	isConfigFileName,
+	isDefaultConfigFileName,
+	isProjectFileConfig,
+	projectStem,
 } from "./config.js";
-import { EnclosingConfigs } from "./config-service.js";
-import { PlaceFinder } from "./place-finder.js";
+import { ConfigCover, EnclosingConfigs } from "./config-service.js";
 
-interface DiscoveredConfigs {
-	/** The working directory, or the nearest folder above it with a config. */
+export interface DiscoveredConfigs {
+	/** The working directory. */
 	readonly home: string;
 	readonly files: readonly string[];
 	readonly noneNamed: boolean;
-	/** The place folders named or holding the working directory, by config file; a config named whole has no entry. */
-	readonly scopes: ReadonlyMap<string, readonly string[]>;
+	/** What picking had to say, such as a name matching both a folder and a file. */
+	readonly notes: readonly string[];
 }
 
 interface NamedConfig {
 	readonly file: string;
-	readonly place?: string;
-}
-
-interface PlaceAround {
-	readonly file: string;
-	readonly place: string;
+	readonly note?: string;
 }
 
 const notFound = (ref: string): ProjectError =>
 	new ProjectError(
 		`"${ref}" not found.`,
-		"Name a folder with a rogen.json, or a *.project.json path."
+		`Name a folder with a ${DEFAULT_CONFIG_FILE}, a .rogen.json file, or a *.project.json path.`
 	);
 
-/** Finds which config files a command reads: in the working directory, else in the nearest folder above that has one. */
-export class ConfigDiscovery {
-	private readonly places: PlaceFinder;
+const keepOne = (directory: string, names: readonly string[]): UsageError =>
+	new UsageError(`${directory} holds both ${names.join(" and ")}; keep one.`);
 
+const isBareName = (ref: string): boolean =>
+	ref !== "" && ref !== "." && ref !== ".." && ref === path.basename(ref);
+
+/** Finds which config file a command reads: the one it names, else the default of the working directory. */
+export class ConfigDiscovery {
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
-	) {
-		this.places = new PlaceFinder(fileSystemService);
-	}
+	) {}
 
-	/** The config files `refs` names (a folder, config file, `*.project.json` path or project name), else those of the folder found. Paths resolve from the working directory. */
+	/** The config files `refs` names, else the default of the working directory, as Rojo finds its project file. */
 	async discover(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
-		const around = await this.placeAround();
-		const home = await this.home();
 		return refs.length === 0
-			? this.discoverHere(around, home)
-			: this.discoverNamed(refs, around, home);
+			? this.discoverHere()
+			: this.discoverNamed(refs);
 	}
 
-	private discoverHere(
-		around: PlaceAround | undefined,
-		home: Result<EnclosingConfigs, Error>
-	): Result<DiscoveredConfigs, Error> {
-		if (around)
-			return ok({
-				home: around.place,
-				files: [around.file],
-				noneNamed: false,
-				scopes: new Map([[around.file, [around.place]]]),
-			});
-		if (home.isErr()) return err(home.error);
-		const { directory, fileNames } = home.value;
-		if (fileNames.length > 1)
+	private async discoverHere(): Promise<Result<DiscoveredConfigs, Error>> {
+		const cwd = this.environmentService.cwd;
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(cwd)
+		);
+		if (listing.isErr())
 			return err(
-				new UsageError(
-					`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
+				new IoError(
+					`Could not look for a config file in ${cwd}: ${listing.error.message}`,
+					undefined,
+					{ cause: listing.error }
 				)
 			);
+		const file = await this.defaultIn(cwd, undefined);
+		if (file.isErr()) return err(file.error);
 		return ok({
-			home: directory,
-			files: fileNames.map((name) => path.join(directory, name)),
+			home: cwd,
+			files: [file.value],
 			noneNamed: true,
-			scopes: new Map(),
+			notes: [],
 		});
 	}
 
+	/** Every config file of the working directory from one directory read, since `list` needs no default. */
+	async discoverFolder(): Promise<Result<DiscoveredConfigs, Error>> {
+		const cwd = this.environmentService.cwd;
+		const files = await this.list(cwd);
+		const twin = ConfigDiscovery.twinStem(files);
+		if (twin !== undefined)
+			return err(
+				keepOne(
+					cwd,
+					files
+						.filter((file) => configStem(file) === twin)
+						.map((file) => path.basename(file))
+				)
+			);
+		if (files.length === 0) return this.discoverHere();
+		return ok({
+			home: cwd,
+			files,
+			noneNamed: false,
+			notes: [],
+		});
+	}
+
+	private static twinStem(files: readonly string[]): string | undefined {
+		const stems = files.map((file) => configStem(file));
+		return stems.find((stem, index) => stems.indexOf(stem) !== index);
+	}
+
 	private async discoverNamed(
-		refs: readonly string[],
-		around: PlaceAround | undefined,
-		home: Result<EnclosingConfigs, Error>
+		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
 		const cwd = this.environmentService.cwd;
 		const resolved: NamedConfig[] = [];
@@ -104,63 +126,22 @@ export class ConfigDiscovery {
 			resolved.push(found.value);
 		}
 
-		const merged = this.merge(resolved, refs);
-		if (merged.isErr()) return err(merged.error);
-		const { files, scopes } = merged.value;
+		const files: string[] = [];
+		for (const [index, { file }] of resolved.entries()) {
+			if (files.includes(file))
+				return err(
+					new UsageError(
+						`"${refs[index]}" was named more than once; each config can only be built once per invocation.`
+					)
+				);
+			files.push(file);
+		}
 		return ok({
-			home: around?.place ?? (home.isOk() ? home.value.directory : cwd),
+			home: cwd,
 			files,
 			noneNamed: false,
-			scopes,
+			notes: resolved.flatMap(({ note }) => note ?? []),
 		});
-	}
-
-	private merge(
-		resolved: readonly NamedConfig[],
-		refs: readonly string[]
-	): Result<{ files: string[]; scopes: Map<string, string[]> }, Error> {
-		const files: string[] = [];
-		const scopes = new Map<string, string[]>();
-		for (const [index, named] of resolved.entries()) {
-			const earlier = resolved
-				.slice(0, index)
-				.filter((before) => before.file === named.file);
-			if (earlier.length === 0) files.push(named.file);
-			for (const before of earlier) {
-				if (
-					before.place === named.place ||
-					before.place === undefined ||
-					named.place === undefined
-				)
-					return err(
-						new UsageError(
-							`"${refs[index]}" was named more than once; each config can ` +
-								`only be built once per invocation.`
-						)
-					);
-			}
-			if (
-				named.place !== undefined &&
-				!scopes.get(named.file)?.includes(named.place)
-			)
-				scopes.set(named.file, [
-					...(scopes.get(named.file) ?? []),
-					named.place,
-				]);
-		}
-		return ok({ files, scopes });
-	}
-
-	private async placeAround(): Promise<PlaceAround | undefined> {
-		let directory = this.environmentService.cwd;
-		for (;;) {
-			const file = await this.places.rootOf(directory);
-			if (file) return { file, place: directory };
-			if ((await this.list(directory)).length > 0) return undefined;
-			const parent = path.dirname(directory);
-			if (parent === directory) return undefined;
-			directory = parent;
-		}
 	}
 
 	private async configOf(
@@ -172,18 +153,35 @@ export class ConfigDiscovery {
 			return this.folderRef(target, ref);
 		if (isProjectFileConfig(target))
 			return this.projectFileRef(target, base, ref);
-		if (!(await this.fileSystemService.exists(target)))
-			return err(notFound(ref));
-		return this.configFileRef(target, base, ref);
+		if (await this.fileSystemService.exists(target))
+			return this.configFileRef(target, base, ref);
+		if (!isBareName(ref)) return err(notFound(ref));
+		const file = await this.fileNamed(this.environmentService.cwd, ref);
+		if (file.isErr()) return err(file.error);
+		return file.value ? ok({ file: file.value }) : err(notFound(ref));
 	}
 
 	private async folderRef(
 		target: string,
 		ref: string
 	): Promise<Result<NamedConfig, Error>> {
-		const listing = await this.places.rootOf(target);
-		if (listing) return ok({ file: listing, place: target });
-		const config = await this.configIn(target, `"${ref}"`);
+		const folder = await this.folderDefault(target, ref);
+		if (!isBareName(ref)) return folder;
+		const file = await this.fileNamed(this.environmentService.cwd, ref);
+		if (file.isErr() || !file.value) return folder;
+		if (folder.isErr()) return ok({ file: file.value });
+		const name = path.basename(file.value);
+		return ok({
+			...folder.value,
+			note: `"${ref}" is a folder with a default config and also ${name}: using the folder. To use the file, name it: ${name}.`,
+		});
+	}
+
+	private async folderDefault(
+		target: string,
+		ref: string
+	): Promise<Result<NamedConfig, Error>> {
+		const config = await this.defaultIn(target, ref);
 		return config.isOk() ? ok({ file: config.value }) : err(config.error);
 	}
 
@@ -192,25 +190,11 @@ export class ConfigDiscovery {
 		base: string,
 		ref: string
 	): Promise<Result<NamedConfig, Error>> {
-		const stem = base.slice(0, base.indexOf(".project."));
-		const isDefault = stem === DEFAULT_PROJECT;
 		const folder = path.dirname(target);
-		const listing = isDefault
-			? await this.places.rootOf(folder)
-			: undefined;
-		if (listing) return ok({ file: listing, place: folder });
-		const config = await this.configIn(folder, `"${ref}"`, isDefault);
-		if (config.isOk())
-			return isDefault
-				? ok({ file: config.value })
-				: err(
-						new ProjectError(
-							`"${ref}" is not a file Rogen writes from ${path.relative(this.environmentService.cwd, config.value) || config.value}.`,
-							`Rogen writes ${DEFAULT_PROJECT}.project.json for it. Name the folder or that file.`
-						)
-					);
-		// A Rojo project file of any name, in a folder with no config, is read as it is, as `rojo build test.project.json` reads it.
-		if ((await this.list(folder)).length > 0) return err(config.error);
+		const config = await this.configBeside(folder, projectStem(base));
+		if (config.isErr()) return err(config.error);
+		if (config.value) return ok({ file: config.value });
+		// A project file with no config beside it is read as it is, as `rojo build test.project.json` reads it.
 		return (await this.fileSystemService.isFile(target))
 			? ok({ file: target })
 			: err(notFound(ref));
@@ -224,42 +208,95 @@ export class ConfigDiscovery {
 		if (!isConfigFileName(base))
 			return err(
 				new UsageError(
-					`"${ref}" is not a folder with a rogen.json, nor a *.project.json path.`
+					`"${ref}" is not a folder with a ${DEFAULT_CONFIG_FILE}, a .rogen.json file, nor a *.project.json path.`
 				)
 			);
 		const folder = path.dirname(target);
-		const listing = await this.places.rootOf(folder);
-		return ok(
-			listing ? { file: listing, place: folder } : { file: target }
-		);
+		const beside = await this.configBeside(folder, configStem(base)!);
+		if (beside.isErr()) return err(beside.error);
+		return ok({ file: target });
 	}
 
-	/** `adopt` lets a folder with only a Rojo project file stand in for a config. */
-	private async configIn(
+	/** The config of `stem` in `folder`; both extensions of one stem fail, as the two would write one file. */
+	private async configBeside(
+		folder: string,
+		stem: string
+	): Promise<Result<string | undefined, Error>> {
+		const present: string[] = [];
+		for (const extension of ["json", "jsonc"]) {
+			const file = path.join(folder, `${stem}.rogen.${extension}`);
+			if (await this.fileSystemService.isFile(file)) present.push(file);
+		}
+		return present.length > 1
+			? err(
+					keepOne(
+						folder,
+						present.map((file) => path.basename(file))
+					)
+				)
+			: ok(present[0]);
+	}
+
+	/** What a bare name stands for in `folder`: its config of that name, else its project file of that name. */
+	private async fileNamed(
+		folder: string,
+		name: string
+	): Promise<Result<string | undefined, Error>> {
+		const config = await this.configBeside(folder, name);
+		if (config.isErr() || config.value) return config;
+		for (const suffix of ["", "c"]) {
+			const file = path.join(folder, `${projectFileName(name)}${suffix}`);
+			if (await this.fileSystemService.isFile(file)) return ok(file);
+		}
+		return ok(undefined);
+	}
+
+	/** The default of `directory`: its config, else the plain project file Rogen adopts; `named` words the error. */
+	private async defaultIn(
 		directory: string,
-		named: string,
-		adopt = true
+		named: string | undefined
 	): Promise<Result<string, Error>> {
-		const names = await this.list(directory);
-		if (names.length === 1) return ok(names[0]);
-		const adopted =
-			adopt && names.length === 0
-				? await this.adoptable(directory)
-				: undefined;
+		const configs = await this.defaultConfigs(directory);
+		if (configs.length > 1)
+			return err(keepOne(directory, DEFAULT_CONFIG_FILE_NAMES));
+		if (configs.length === 1) return ok(configs[0]);
+		const adopted = await this.adoptable(directory);
 		if (adopted) return ok(adopted);
-		return err(
-			names.length === 0
-				? new ProjectError(
-						`${named} holds no ${CONFIG_FILE_NAMES[0]} (${directory}).`,
-						"Run 'rogen init' to create one."
-					)
-				: new UsageError(
-						`${directory} holds both ${CONFIG_FILE_NAMES.join(" and ")}; keep one.`
-					)
+		return err(await this.noDefault(directory, named));
+	}
+
+	private async noDefault(
+		directory: string,
+		named: string | undefined
+	): Promise<ProjectError> {
+		for (const name of LEGACY_CONFIG_FILE_NAMES)
+			if (await this.fileSystemService.isFile(path.join(directory, name)))
+				return new ProjectError(
+					`${name} in ${directory} is not read any more: a config is named for the project file it writes.`,
+					`Rename it to ${DEFAULT_CONFIG_FILE}.`
+				);
+		const others = (await this.list(directory)).map((file) =>
+			path.basename(file)
+		);
+		const where = named === undefined ? "this folder" : `"${named}"`;
+		const holds =
+			others.length > 0 ? ` It holds ${others.join(", ")}.` : "";
+		return new ProjectError(
+			`No ${DEFAULT_CONFIG_FILE} or ${DEFAULT_PROJECT}.project.json in ${where} (${directory}).${holds}`,
+			others.length > 0
+				? `Name one of them, or run 'rogen init' to create ${DEFAULT_CONFIG_FILE}.`
+				: "Run 'rogen init' to create one."
 		);
 	}
 
-	/** Absolute paths; none when the folder can't be read. */
+	/** The default configs of a folder, absolute and sorted: one, or two when it holds both extensions. */
+	async defaultConfigs(directory: string): Promise<string[]> {
+		return (await this.list(directory)).filter((file) =>
+			isDefaultConfigFileName(path.basename(file))
+		);
+	}
+
+	/** Every config file of a folder, absolute and sorted; none when it can't be read. */
 	async list(directory: string): Promise<string[]> {
 		const listing = await tryWithAsync(() =>
 			this.fileSystemService.readDirectory(directory)
@@ -268,36 +305,6 @@ export class ConfigDiscovery {
 			? []
 			: configFileNames(listing.value).map((name) =>
 					path.join(directory, name)
-				);
-	}
-
-	private async home(): Promise<Result<EnclosingConfigs, Error>> {
-		const cwd = this.environmentService.cwd;
-		const listing = await tryWithAsync(() =>
-			this.fileSystemService.readDirectory(cwd)
-		);
-		if (listing.isErr()) {
-			return err(
-				new IoError(
-					`Could not look for a config file in ${cwd}: ${listing.error.message}`,
-					undefined,
-					{ cause: listing.error }
-				)
-			);
-		}
-
-		const fileNames = configFileNames(listing.value);
-		if (fileNames.length > 0) return ok({ directory: cwd, fileNames });
-
-		const enclosing =
-			(await this.findEnclosing()) ?? (await this.findAdoptable());
-		return enclosing
-			? ok(enclosing)
-			: err(
-					new ProjectError(
-						`No ${CONFIG_FILE_NAMES[0]} found in ${cwd}.`,
-						"Run 'rogen init' to create one."
-					)
 				);
 	}
 
@@ -310,21 +317,40 @@ export class ConfigDiscovery {
 		return undefined;
 	}
 
-	/** The nearest folder, the working directory included, with a Rojo project file; looked for only when no folder above holds a config. */
-	async findAdoptable(
-		from = this.environmentService.cwd
-	): Promise<EnclosingConfigs | undefined> {
-		let directory = from;
+	/** The config that answers for `target`: the default of the nearest folder above a path, so an agent hook can check from the root. */
+	async coverOf(target: string): Promise<ConfigCover | undefined> {
+		if (isConfigFileName(path.basename(target)))
+			return (await this.fileSystemService.isFile(target))
+				? { file: target, whole: true }
+				: undefined;
+		if (
+			isProjectFileConfig(target) &&
+			(await this.fileSystemService.isFile(target))
+		) {
+			const named = await this.projectFileRef(
+				target,
+				path.basename(target),
+				target
+			);
+			return {
+				file: named.isOk() ? named.value.file : target,
+				whole: true,
+			};
+		}
+		let directory = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
 		for (;;) {
-			const adopted = await this.adoptable(directory);
-			if (adopted)
-				return { directory, fileNames: [path.basename(adopted)] };
+			const [config] = await this.defaultConfigs(directory);
+			const file = config ?? (await this.adoptable(directory));
+			if (file) return { file, whole: false };
 			const parent = path.dirname(directory);
 			if (parent === directory) return undefined;
 			directory = parent;
 		}
 	}
 
+	/** The nearest folder above `from`, the working directory unless given, with a default config. */
 	async findEnclosing(
 		from = this.environmentService.cwd
 	): Promise<EnclosingConfigs | undefined> {
@@ -333,11 +359,9 @@ export class ConfigDiscovery {
 			const parent = path.dirname(directory);
 			if (parent === directory) return undefined;
 			directory = parent;
-			const listing = await tryWithAsync(() =>
-				this.fileSystemService.readDirectory(directory)
+			const fileNames = (await this.defaultConfigs(directory)).map(
+				(file) => path.basename(file)
 			);
-			if (listing.isErr()) continue;
-			const fileNames = configFileNames(listing.value);
 			if (fileNames.length > 0) return { directory, fileNames };
 		}
 	}

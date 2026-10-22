@@ -11,7 +11,9 @@ import {
 	ConfigFileCheck,
 	ConfigReload,
 	ReloadableSelection,
+	ConfigCover,
 	ConfigService,
+	CoveredTargets,
 	EnclosingConfigs,
 	ValidConfigEntry,
 	buildableConfigs,
@@ -24,17 +26,12 @@ export interface ResolvedConfigSpec {
 	readonly routes?: Readonly<Record<string, string>>;
 	readonly ignored?: readonly string[];
 	readonly project?: Readonly<Record<string, unknown>>;
-	readonly syncPath?: string;
-	readonly syncRulesDir?: string;
+	readonly compiledPath?: string;
 	readonly warnings?: readonly Diagnostic[];
-	readonly rootFile?: string;
-	readonly isPlace?: boolean;
-	readonly hasPlaces?: boolean;
-	readonly placePort?: number;
 }
 
 export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
-	const file = spec.file ?? "/repo/rogen.json";
+	const file = spec.file ?? "/repo/default.rogen.json";
 	return new ResolvedConfig({
 		file,
 		projectName: spec.name ?? "repo",
@@ -51,26 +48,21 @@ export function mockConfig(spec: ResolvedConfigSpec = {}): ResolvedConfig {
 			])
 		),
 		ignored: spec.ignored ?? [],
-		syncPath: spec.syncPath,
-		syncRulesDir: spec.syncRulesDir,
+		compiledPath: spec.compiledPath,
 		warnings: spec.warnings ?? [],
-		rootFile: spec.rootFile,
-		isPlace: spec.isPlace,
-		hasPlaces: spec.hasPlaces,
-		placePort: spec.placePort,
 	});
 }
 
 export function mockEntry(
 	resolved: ResolvedConfigSpec = {},
-	file = "/repo/rogen.json"
+	file = "/repo/default.rogen.json"
 ): ValidConfigEntry {
 	return { status: "valid", file, config: mockConfig({ file, ...resolved }) };
 }
 
 export function brokenEntry(
 	errors: readonly Diagnostic[],
-	file = "/repo/rogen.json",
+	file = "/repo/default.rogen.json",
 	lastValid?: ResolvedConfigSpec
 ): BrokenConfigEntry {
 	return {
@@ -96,6 +88,7 @@ export function selectionOf(
 export class MockConfigSelection implements ReloadableSelection {
 	readonly files: ReadonlySet<string>;
 	readonly followedFolder = undefined;
+	readonly notes: readonly string[] = [];
 
 	constructor(
 		readonly entries: readonly ConfigEntry[] = [mockEntry()],
@@ -145,6 +138,55 @@ export class MockConfigService implements ConfigService {
 
 	async select(): Promise<Result<ReloadableSelection, Error>> {
 		return ok(new MockConfigSelection(this.entries, this.home));
+	}
+
+	async selectFolder(): Promise<Result<ReloadableSelection, Error>> {
+		return this.select();
+	}
+
+	async coverOf(target: string): Promise<ConfigCover | undefined> {
+		return this.covers(target);
+	}
+
+	covers: (target: string) => ConfigCover | undefined = () => ({
+		file: this.entries[0].file,
+		whole: false,
+	});
+
+	async selectCovering(
+		targets: readonly (string | undefined)[]
+	): Promise<Result<CoveredTargets, Error>> {
+		const groups = new Map<string, { indexes: number[]; whole: boolean }>();
+		const uncovered: number[] = [];
+		for (const [index, target] of targets.entries()) {
+			const cover =
+				target === undefined
+					? { file: this.entries[0].file, whole: false }
+					: this.covers(target);
+			if (!cover) {
+				uncovered.push(index);
+				continue;
+			}
+			const group = groups.get(cover.file) ?? {
+				indexes: [],
+				whole: false,
+			};
+			groups.set(cover.file, {
+				indexes: [...group.indexes, index],
+				whole: group.whole || cover.whole,
+			});
+		}
+		return ok({
+			groups: [...groups].map(([file, { indexes, whole }]) => ({
+				selection: new MockConfigSelection(
+					this.entries.filter((entry) => entry.file === file),
+					this.home
+				),
+				indexes,
+				whole,
+			})),
+			uncovered,
+		});
 	}
 
 	async read(file: string): Promise<ConfigEntry> {

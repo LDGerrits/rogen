@@ -3,22 +3,22 @@ exit 0
 stdout:
   src/A.luau -> ReplicatedStorage/shared/A · route * (fallback)
 stderr:
-  default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
+  default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 
 $ rogen list
 exit 0
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
     source paths: src
     routes:
       * -> ReplicatedStorage/shared
-    sync path: (none)
+    compiled path: (none)
     project file: default.project.json
     rojo: rojo serve default.project.json
   1 config.
 stderr:
-  default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from rogen.json, so change that to change it. (output.differs)
+  default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 
 $ rogen build
 exit 0

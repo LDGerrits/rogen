@@ -2,14 +2,14 @@ import { isGlobsetMatch, literalGlob } from "../../base/glob.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { SyncRule } from "../rojo/sync-rules.js";
 import { ScannedFile } from "./root-scanner.js";
-import { SyncLayout } from "./sync-layout.js";
+import { CompiledLayout } from "./compiled-layout.js";
 import { WrittenGlobs } from "./written-globs.js";
 
-/** The sync rules of a project as its written file carries them: each pattern moved to the folder and the sync path the file is written for, or one literal rule per file the rule takes when the moved pattern would miss one. A rule is also kept as it was where the tree mounts a folder the move leaves behind. */
+/** The sync rules as the written file carries them, moved to where the file's folders are so Rojo reads the files Rogen did. */
 export class WrittenSyncRules {
 	constructor(
 		private readonly config: ResolvedConfig,
-		private readonly layout: SyncLayout,
+		private readonly layout: CompiledLayout,
 		private readonly globs: WrittenGlobs
 	) {}
 
@@ -55,7 +55,7 @@ export class WrittenSyncRules {
 		rule: SyncRule,
 		taken: readonly string[]
 	): SyncRule[] | undefined {
-		const from = this.config.syncRules.ownDir;
+		const from = this.config.syncRules.dir;
 		const pattern = this.globs.moved(rule.pattern, from);
 		const exclude =
 			rule.exclude === undefined
@@ -85,7 +85,7 @@ export class WrittenSyncRules {
 
 	/** The rule as it is in the project, for the files a mount brings in under the pattern's old place. */
 	private original(rule: SyncRule): SyncRule[] {
-		const from = this.config.syncRules.ownDir;
+		const from = this.config.syncRules.dir;
 		const pattern = this.globs.original(rule.pattern, from);
 		if (pattern === undefined) return [];
 		const exclude =

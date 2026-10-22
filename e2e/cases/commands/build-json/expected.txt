@@ -1,4 +1,4 @@
-$ rogen build lobby match --json
+$ rogen build lobby --json
 exit 0
 stdout:
   {
@@ -6,14 +6,23 @@ stdout:
     "configs": [
       {
         "config": "lobby",
-        "file": "<dir>/lobby/rogen.json",
+        "file": "<dir>/lobby/default.rogen.json",
         "projectFile": "<dir>/lobby/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
-      },
+      }
+    ]
+  }
+
+$ rogen build match --json
+exit 0
+stdout:
+  {
+    "changed": true,
+    "configs": [
       {
         "config": "match",
-        "file": "<dir>/match/rogen.json",
+        "file": "<dir>/match/default.rogen.json",
         "projectFile": "<dir>/match/default.project.json",
         "outcome": "wrote",
         "diagnostics": [

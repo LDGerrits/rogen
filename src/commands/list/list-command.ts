@@ -9,7 +9,6 @@ import {
 } from "../../platform/commands/commands.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
-import { configsOf } from "../../domain/config/resolved-config.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ServeService } from "../../domain/serve/serve-service.js";
@@ -29,9 +28,9 @@ registerCommand(
 				id: "list",
 				metadata: {
 					summary:
-						"Lists the configs, their projects and their ports",
+						"Lists the configs here, their files and their ports",
 					description:
-						"Lists every config here with its source paths, routes, sync path and project files, and which project is served; with --json, each fully resolved.",
+						"Lists every config file of this folder, or the one you name, with its source paths, routes, compiled path and project file, and which are served. A config other than default.rogen.json also lists the keys that differ from it; with --json, each fully resolved.",
 					args: ConfigArguments,
 					options: ListOptions,
 					output: { document: listDocumentShape },
@@ -49,18 +48,18 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 
-			const selection = await configService.select(line.positionals);
+			const selection =
+				line.positionals.length === 0
+					? await configService.selectFolder()
+					: await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 			const { entries, home } = selection.value;
 			const report = new ListLog(logService, cwd);
 			const broken = ListLog.failure(entries);
 			const serveService = accessor.get(ServeService);
 			const projectFiles = entries.flatMap((entry) =>
-				entry.status === "valid"
-					? configsOf(entry, entry.scope).map(
-							({ projectFile }) => projectFile
-						)
-					: []
+				entry.status === "valid" ? [entry.config.projectFile] : []
 			);
 			const served = await serveService.servedBy(projectFiles);
 			const serving: ServingByConfig = new Map(
@@ -71,22 +70,15 @@ registerCommand(
 			const problems = new Map<string, Diagnostic[]>();
 			for (const entry of entries)
 				if (entry.status === "valid") {
-					const projects = configsOf(entry, entry.scope);
-					const files = new Set(
-						projects.map(({ projectFile }) => projectFile)
-					);
 					problems.set(
 						entry.file,
 						uniqueDiagnostics([
-							...(
-								await Promise.all(
-									projects.map((project) =>
-										buildService.missingSourcePaths(project)
-									)
-								)
-							).flat(),
-							...stale.filter(({ resource }) =>
-								files.has(resource)
+							...(await buildService.missingSourcePaths(
+								entry.config
+							)),
+							...stale.filter(
+								({ resource }) =>
+									resource === entry.config.projectFile
 							),
 						])
 					);

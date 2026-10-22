@@ -1,1 +1,13 @@
-{ "steps": [["build", "lobby", "match"]], "rojo": false }
+{
+	"steps": [
+		[
+			"build",
+			"lobby"
+		],
+		[
+			"build",
+			"match"
+		]
+	],
+	"rojo": false
+}

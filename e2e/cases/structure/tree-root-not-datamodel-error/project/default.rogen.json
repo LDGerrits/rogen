@@ -1,0 +1,13 @@
+{
+	"tree": {
+		"$className": "Folder"
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

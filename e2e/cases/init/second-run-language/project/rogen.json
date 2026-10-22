@@ -1,4 +1,0 @@
-{
-	"tree": { "$className": "DataModel" },
-	"routes": { "server": "ServerScriptService" }
-}

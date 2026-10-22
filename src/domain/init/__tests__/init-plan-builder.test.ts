@@ -16,10 +16,10 @@ describe("domain/init/init-plan-builder", () => {
 			const plan = builder.build().unwrap();
 
 			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				"rogen.json",
+				"default.rogen.json",
 				"AGENTS.md",
 			]);
-			expect(plan.configs).toEqual(["rogen.json"]);
+			expect(plan.configs).toEqual(["default.rogen.json"]);
 		});
 
 		it("should write no config for a run that only adds agent files", () => {
@@ -28,13 +28,13 @@ describe("domain/init/init-plan-builder", () => {
 
 		it("should point the config at the schema, before the fields it was given", () => {
 			const builder = builderFor();
-			builder.setConfig({ sourcePaths: ["src"] });
+			builder.setConfig({ rogen: { sourcePaths: ["src"] } });
 
 			const [file] = builder.build().unwrap().files;
 
 			expect(Object.keys(JSON.parse(file.content))).toEqual([
 				"$schema",
-				"sourcePaths",
+				"rogen",
 			]);
 			expect(JSON.parse(file.content).$schema).toBe(SCHEMA_URL);
 		});
@@ -76,7 +76,7 @@ describe("domain/init/init-plan-builder", () => {
 		});
 
 		it("should fail naming the config when it already exists", () => {
-			const builder = builderFor(["rogen.json"]);
+			const builder = builderFor(["default.rogen.json"]);
 			builder.setConfig({});
 
 			const result = builder.build();
@@ -84,7 +84,9 @@ describe("domain/init/init-plan-builder", () => {
 			expect(
 				result.isErr() &&
 					result.error.map(({ code, resource }) => [code, resource])
-			).toEqual([["init.configExists", `${directory}/rogen.json`]]);
+			).toEqual([
+				["init.configExists", `${directory}/default.rogen.json`],
+			]);
 		});
 
 		it("should not mind a project file that already exists, which the build replaces", () => {

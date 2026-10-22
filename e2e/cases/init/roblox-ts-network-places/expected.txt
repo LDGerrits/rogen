@@ -20,11 +20,11 @@ written:
   .vscode/settings.json
   AGENTS.md
   README.md
-  default.project.json
   game.rbxlx
   package-lock.json
   package.json
   places/game/default.project.json
+  places/game/default.rogen.json
   places/game/include/Promise.lua
   places/game/include/RuntimeLib.lua
   places/game/out/game/src/Game/server/Game.server.luau
@@ -32,46 +32,18 @@ written:
   places/game/out/shared/src/Greeter/server/Greeter.server.luau
   places/game/out/shared/src/Greeter/shared/Greeting.luau
   places/game/out/tsconfig.tsbuildinfo
-  places/game/rogen.json
   places/game/src/Game/server/Game.server.ts
   places/game/tsconfig.json
   places/shared/src/Greeter/client/Greeter.client.ts
   places/shared/src/Greeter/server/Greeter.server.ts
   places/shared/src/Greeter/shared/Greeting.ts
+  places/shared/tsconfig.json
   project.code-workspace
-  rogen.json
-  tsconfig.json
 
-places/game/out/shared/src/Greeter/shared/Greeting.luau:
--- Compiled with roblox-ts v3.0.0
-local function greeting(who)
-	return `Hello, {who}!`
-end
-return {
-	greeting = greeting,
-}
-
-places/game/rogen.json:
+places/game/default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
-  "tree": {
-    "ReplicatedStorage": {
-      "rbxts_include": {
-        "$path": {
-          "optional": "include"
-        }
-      }
-    }
-  },
-  "servePort": 34872,
-  "syncPath": "out"
-}
-
-rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "project",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -93,7 +65,7 @@ rogen.json:
           "$className": "Folder",
           "@rbxts": {
             "$path": {
-              "optional": "node_modules/@rbxts"
+              "optional": "../../node_modules/@rbxts"
             }
           }
         },
@@ -135,34 +107,29 @@ rogen.json:
       }
     }
   },
-  "sourcePaths": [
-    "places/shared/src"
-  ],
-  "routes": {
-    "server": "ServerScriptService",
-    "client": "StarterPlayer/StarterPlayerScripts",
-    "shared": "ReplicatedStorage/shared",
-    "*": "ReplicatedStorage/shared"
-  },
-  "placePaths": [
-    "places/*"
-  ]
+  "rogen": {
+    "sourcePaths": [
+      "../shared/src",
+      "src"
+    ],
+    "routes": {
+      "server": "ServerScriptService",
+      "client": "StarterPlayer/StarterPlayerScripts",
+      "shared": "ReplicatedStorage/shared",
+      "*": "ReplicatedStorage/shared"
+    },
+    "compiledPath": "out"
+  }
 }
 
-$ rojo sourcemap default.project.json
-project: DataModel
-  Lighting: Lighting
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      Greeter: Folder
-  ServerScriptService: ServerScriptService
-    Greeter: Folder
-  SoundService: SoundService
-  StarterPlayer: StarterPlayer
-    StarterPlayerScripts: StarterPlayerScripts
-      Greeter: Folder
-  Workspace: Workspace
-    Baseplate: Part
+places/game/out/shared/src/Greeter/shared/Greeting.luau:
+-- Compiled with roblox-ts v3.0.0
+local function greeting(who)
+	return `Hello, {who}!`
+end
+return {
+	greeting = greeting,
+}
 
 $ rojo sourcemap places/game/default.project.json
 game: DataModel

@@ -5,7 +5,7 @@ stdout:
     "changed": true,
     "files": [
       {
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "outcome": "wrote"
       },
       {
@@ -53,7 +53,7 @@ stdout:
     "built": [
       {
         "config": "project",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
@@ -68,7 +68,8 @@ stdout:
         "rogen serve"
       ],
       "edits": [
-        "Add your own routes under \"routes\" in rogen.json."
+        "Add your own routes under \"routes\" in default.rogen.json.",
+        "Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows."
       ]
     }
   }
@@ -79,19 +80,21 @@ written:
   .git/
   .gitignore
   default.project.json
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel"
   },
-  "sourcePaths": [
-    "lib"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "*": "ReplicatedStorage/Shared"
+  "rogen": {
+    "sourcePaths": [
+      "lib"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "*": "ReplicatedStorage/Shared"
+    }
   }
 }

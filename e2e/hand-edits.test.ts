@@ -37,9 +37,11 @@ describe("end to end project files edited by hand", () => {
 	beforeEach(() => {
 		cache = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-hand-edits-"));
 		project = createProject({
-			"rogen.json": JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService" },
+			"default.rogen.json": JSON.stringify({
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { Server: "ServerScriptService" },
+				},
 			}),
 			"src/Server/Main.server.luau": "",
 		});
@@ -50,7 +52,7 @@ describe("end to end project files edited by hand", () => {
 		fs.rmSync(cache, { recursive: true, force: true });
 	});
 
-	it("should refuse to lose an edit, say where it belongs, and write it once it is in rogen.json", () => {
+	it("should refuse to lose an edit, say where it belongs, and write it once it is in default.rogen.json", () => {
 		expect(rogen("build").status).toBe(0);
 		editByHand();
 
@@ -69,13 +71,15 @@ describe("end to end project files edited by hand", () => {
 		).toHaveProperty("ServerStorage");
 
 		fs.writeFileSync(
-			path.join(project.dir, "rogen.json"),
+			path.join(project.dir, "default.rogen.json"),
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService" },
 				tree: {
 					$className: "DataModel",
 					ServerStorage: { Assets: { $className: "Folder" } },
+				},
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { Server: "ServerScriptService" },
 				},
 			})
 		);
@@ -101,11 +105,13 @@ describe("end to end project files edited by hand", () => {
 			""
 		);
 		fs.writeFileSync(
-			path.join(project.dir, "rogen.json"),
+			path.join(project.dir, "default.rogen.json"),
 			JSON.stringify({
-				sourcePaths: ["src"],
-				routes: { Server: "ServerScriptService" },
 				globIgnorePaths: ["**/Ignored/**"],
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { Server: "ServerScriptService" },
+				},
 			})
 		);
 

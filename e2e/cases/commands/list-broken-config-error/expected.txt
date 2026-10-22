@@ -2,8 +2,8 @@ $ rogen list
 exit 1
 stdout:
   rogen list
-  rogen.json
+  default.rogen.json
   list failed.
 stderr:
-  rogen.json:3:8 - error: "routes.*": expected a string, found a number. (config.wrongType)
+  default.rogen.json:4:9 - error: "rogen.routes.*": expected a string, found a number. (config.wrongType)
   error: 1 config has errors.

@@ -70,7 +70,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a rogen.json, init does not change Darklua: the second config file that serves the processed code is written by hand.",
+			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a default.rogen.json, init does not change Darklua: the second config file that serves the processed code is written by hand.",
 	},
 	{
 		name: "source-path",
@@ -78,7 +78,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is. On a project that has a rogen.json, adds the folder to its source paths.",
+			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is. On a project that has a default.rogen.json, adds the folder to its source paths.",
 	},
 	{
 		name: "no-source-path",
@@ -86,10 +86,10 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"On a project that has a rogen.json: takes a folder off its source paths. The files in it are no longer built, which init lists.",
+			"On a project that has a default.rogen.json: takes a folder off its source paths. The files in it are no longer built, which init lists.",
 	},
 	{
-		name: "sync-path",
+		name: "compiled-path",
 		type: "string",
 		placeholder: "path",
 		description:
@@ -100,7 +100,7 @@ const InitOptions = [
 		type: "string",
 		values: ["lift", "new"],
 		description:
-			"With a default.project.json already here: lift its tree into rogen.json (the default), or start a new tree.",
+			"With a default.project.json already here: lift its tree into default.rogen.json (the default), or start a new tree.",
 	},
 	{
 		name: "package",
@@ -108,7 +108,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given. On a project that has a rogen.json, mounts the folder if the tree doesn't.",
+			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given. On a project that has a default.rogen.json, mounts the folder if the tree doesn't.",
 	},
 	{
 		name: "route",
@@ -116,7 +116,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. On a project that has a rogen.json, adds the route. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. On a project that has a default.rogen.json, adds the route. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
 	},
 	{
 		name: "no-route",
@@ -124,7 +124,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"On a project that has a rogen.json: takes a standard route off, when it still has its standard value. Routes of your own are never changed.",
+			"On a project that has a default.rogen.json: takes a standard route off, when it still has its standard value. Routes of your own are never changed.",
 	},
 	{
 		name: "unmatched",
@@ -145,7 +145,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
+			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game with its own default.rogen.json, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
 	},
 	{
 		name: "agent-rules",
@@ -179,22 +179,7 @@ const InitOptions = [
 		name: "nested",
 		type: "boolean",
 		description:
-			"Start a project in a folder below another rogen.json, which a run that can't ask refuses otherwise.",
-	},
-	{
-		name: "place-listing",
-		type: "string",
-		values: ["glob", "folder"],
-		description:
-			"With a place folder: list every folder beside it in the config's placePaths (the default), or only this one.",
-	},
-	{
-		name: "place-id",
-		type: "string",
-		multiple: true,
-		placeholder: "id",
-		description:
-			"With a place folder: a place ID that the place's server is for, so a Studio on another place refuses to connect; repeat for several, or none. None when not given.",
+			"Start a project in a folder below another default.rogen.json, which a run that can't ask refuses otherwise.",
 	},
 ] as const;
 
@@ -206,8 +191,6 @@ function choicesOf(
 		kind: options.kind as InitChoices["kind"],
 		skipGit: options["skip-git"],
 		nested: options.nested,
-		placeListing: options["place-listing"] as InitChoices["placeListing"],
-		placeIds: options["place-id"],
 		agentRules: options["agent-rules"],
 		rojo: options.rojo,
 		plugin: options["studio-plugin"],
@@ -216,7 +199,7 @@ function choicesOf(
 		darklua: options.darklua,
 		sourcePaths: options["source-path"],
 		projectFile: options["project-file"] as InitChoices["projectFile"],
-		syncPath: options["sync-path"],
+		compiledPath: options["compiled-path"],
 		packages: options.package,
 		routes: options.route,
 		unroutes: options["no-route"],
@@ -234,15 +217,14 @@ registerCommand(
 			super({
 				id: "init",
 				metadata: {
-					summary:
-						"Writes a starting rogen.json, or adds a place to one",
+					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when a rogen.json lies above the folder.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a places folder that has one.",
 					args: [
 						{
 							name: "path",
 							description:
-								"The folder to start in, made when it is not there. Below a rogen.json it is added as a place of it instead: its own rogen.json with the port it is served on, its entry in the config's placePaths when none lists it, and a .code-workspace that lists the config's folder and every place.",
+								"The folder to start in, made when it is not there. In a places folder with a place already, it is added as a place instead: its own default.rogen.json with the routes and compiled path of the first place, listing the shared code, and an entry in the .code-workspace when there is one.",
 							isOptional: true,
 						},
 					],
@@ -257,6 +239,7 @@ registerCommand(
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",
+						"rogen init game",
 						"rogen init places/lobby",
 					],
 				},
@@ -268,19 +251,7 @@ registerCommand(
 			line: CommandLine<typeof InitOptions>
 		): Promise<Result<void, Error>> {
 			if (line.positionals.length > 1)
-				return err(
-					new UsageError("init takes one folder, the place to add.")
-				);
-			if (
-				line.positionals.length === 0 &&
-				line.options["place-listing"] !== undefined
-			)
-				return err(
-					new UsageError(
-						"--place-listing is for a place folder.",
-						"Give the folder to add, as 'rogen init places/lobby'."
-					)
-				);
+				return err(new UsageError("init takes one folder."));
 			const initService = accessor.get(InitService);
 			const logService = accessor.get(LogService);
 			const dryRun = Boolean(line.options["dry-run"]);

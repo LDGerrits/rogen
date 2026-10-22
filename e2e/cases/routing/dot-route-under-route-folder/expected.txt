@@ -2,7 +2,7 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
+  default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
     src/Odd/Net.client (write "Net@client")
     src/Odd/Shared/Ui.client (the "Shared" route governs it, so "@client" would do nothing; move it out of that route's files to route it)
 

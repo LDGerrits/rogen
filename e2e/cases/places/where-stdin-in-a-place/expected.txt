@@ -5,4 +5,4 @@ stdin:
 exit 0
 stdout:
   src/Main.server.luau:9: attempt to index nil
-  ../../src/Common/Util.luau:4: attempt to call nil
+  ../shared/src/Common/Util.luau:4: attempt to call nil

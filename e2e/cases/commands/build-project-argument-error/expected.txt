@@ -1,22 +1,22 @@
 $ rogen build ghost.project.json
 exit 1
 stderr:
-  error: "ghost.project.json" is not a file Rogen writes from rogen.json. Rogen writes default.project.json for it. Name the folder or that file.
+  error: "ghost.project.json" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
 $ rogen build lobby/other.project.json
 exit 1
 stderr:
-  error: "lobby/other.project.json" is not a file Rogen writes from lobby/rogen.json. Rogen writes default.project.json for it. Name the folder or that file.
+  error: "lobby/other.project.json" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
 $ rogen build README.md
 exit 2
 stderr:
-  error: "README.md" is not a folder with a rogen.json, nor a *.project.json path.
+  error: "README.md" is not a folder with a default.rogen.json, a .rogen.json file, nor a *.project.json path.
 
 $ rogen build lobby lobby
 exit 2
 stderr:
-  error: "lobby" was named more than once; each config can only be built once per invocation.
+  error: unexpected argument 'lobby' found: build takes one [PROJECT]. Usage: rogen build [OPTIONS] [PROJECT]
 
 $ rogen build lobby --json
 exit 0
@@ -26,7 +26,7 @@ stdout:
     "configs": [
       {
         "config": "lobby",
-        "file": "<dir>/lobby/rogen.json",
+        "file": "<dir>/lobby/default.rogen.json",
         "projectFile": "<dir>/lobby/default.project.json",
         "outcome": "wrote",
         "diagnostics": []

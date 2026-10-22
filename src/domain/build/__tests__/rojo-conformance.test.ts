@@ -111,7 +111,7 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 		const fileSystem = new DiskFileSystemService();
 		const index = new CoreIndexService(fileSystem);
 		const config = mockConfig({
-			file: path.join(dir, "rogen.json"),
+			file: path.join(dir, "default.rogen.json"),
 			name: "t",
 			sourcePaths: [path.join(dir, "src")],
 			routes: { "*": "ReplicatedStorage" },

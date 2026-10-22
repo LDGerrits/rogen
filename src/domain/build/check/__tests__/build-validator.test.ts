@@ -215,7 +215,7 @@ describe("BuildValidator rules", () => {
 
 				expect(warning).toMatchObject({
 					severity: DiagnosticSeverity.Warning,
-					resource: abs("rogen.json"),
+					resource: abs("default.rogen.json"),
 					related: [
 						{
 							resource: abs("server"),
@@ -571,7 +571,7 @@ describe("BuildValidator rules", () => {
 
 				expect(others).toEqual([]);
 				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-				expect(warning.resource).toBe(abs("rogen.json"));
+				expect(warning.resource).toBe(abs("default.rogen.json"));
 				expect(warning.message).toBe(
 					[
 						'2 files under a "server" route ship to clients, because "ReplicatedFirst" governs them:',

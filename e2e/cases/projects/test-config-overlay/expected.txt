@@ -1,0 +1,60 @@
+$ rogen build test
+exit 0
+stdout: (not shown)
+
+written:
+  test.project.json
+
+test.project.json:
+{
+  "name": "Inventory",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$className": "Folder",
+        "Inventory": {
+          "$path": {
+            "optional": "src/Inventory"
+          }
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Specs": {
+        "$className": "Folder",
+        "Inventory": {
+          "$className": "Folder",
+          "Types": {
+            "$path": {
+              "optional": "tests/Inventory/Types@spec.luau"
+            }
+          },
+          "$ignoreUnknownInstances": false
+        },
+        "$ignoreUnknownInstances": false
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "Gravity": 98.1
+      }
+    }
+  }
+}
+
+$ rojo sourcemap test.project.json
+Inventory: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- src/Inventory/Types.luau
+        Wip.draft: ModuleScript  <- src/Inventory/Wip.draft.luau
+  ServerScriptService: ServerScriptService
+    Specs: Folder
+      Inventory: Folder
+        Types: ModuleScript  <- tests/Inventory/Types@spec.luau
+  Workspace: Workspace

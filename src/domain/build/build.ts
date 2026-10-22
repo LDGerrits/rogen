@@ -83,21 +83,16 @@ abstract class AbstractConfigBuild {
 		return this.config.file;
 	}
 
-	/** The config file the user names it by: the one that lists it, for a place. */
-	get rootFile(): string {
-		return this.config.rootFile;
-	}
-
 	get warnings(): readonly Diagnostic[] {
 		return this.findings.warnings;
 	}
 
-	/** What the sync path check found for this version of the config; `undefined` while unknown. */
+	/** What the compiled path check found for this version of the config; `undefined` while unknown. */
 	get syncWarnings(): readonly Diagnostic[] | undefined {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, sync path warnings, then the errors that failed it. */
+	/** Everything the build has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}
@@ -128,10 +123,6 @@ export class UnloadedBuild {
 
 	get label(): string {
 		return configLabel(this.file);
-	}
-
-	get rootFile(): string {
-		return this.file;
 	}
 
 	get warnings(): readonly Diagnostic[] {

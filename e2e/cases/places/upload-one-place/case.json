@@ -1,0 +1,25 @@
+{
+	"steps": [
+		[
+			"upload",
+			"--asset_id",
+			"1"
+		],
+		[
+			"upload",
+			"places/lobby",
+			"places/arena",
+			"--asset_id",
+			"1"
+		],
+		[
+			"upload",
+			"places/lobby",
+			"--asset_id",
+			"1",
+			"--api_key",
+			"key"
+		]
+	],
+	"rojo": false
+}

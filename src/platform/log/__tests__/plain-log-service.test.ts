@@ -37,12 +37,12 @@ describe("PlainLogService", () => {
 
 		logService.section(
 			"default.rogen.json",
-			"source paths: src\nsync path: out"
+			"source paths: src\ncompiled path: out"
 		);
 
 		expect(out).toEqual([
 			"default.rogen.json",
-			"  source paths: src\n  sync path: out",
+			"  source paths: src\n  compiled path: out",
 		]);
 	});
 
@@ -105,7 +105,7 @@ describe("PlainLogService", () => {
 		logService.info("Not building: a.rogen.json.");
 		logService.step("default.rogen.json");
 		logService.success("Wrote default.project.json.");
-		logService.info("source paths: src\nsync path: (none)");
+		logService.info("source paths: src\ncompiled path: (none)");
 		logService.diagnostic(
 			warningDiagnostic("x.y", { resource: "/repo/a" }, "w")
 		);
@@ -116,7 +116,7 @@ describe("PlainLogService", () => {
 			"Not building: a.rogen.json.",
 			"default.rogen.json",
 			"  Wrote default.project.json.",
-			"  source paths: src\n  sync path: (none)",
+			"  source paths: src\n  compiled path: (none)",
 			"1 config.",
 		]);
 		expect(errors).toEqual(["/repo/a - warning: w (x.y)"]);

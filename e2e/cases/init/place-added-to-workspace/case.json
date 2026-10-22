@@ -1,7 +1,7 @@
 {
 	"steps": [
 		["init", "places/lobby", "--non-interactive"],
-		["init", "places/arena", "--non-interactive"]
+		["build", "places/lobby"]
 	],
 	"output": ["init"],
 	"show": ["project.code-workspace"]

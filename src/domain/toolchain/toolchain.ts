@@ -14,7 +14,7 @@ export interface DataReplacement {
 	readonly note: string;
 }
 
-/** A tool that rewrites code between the source paths and the sync path. */
+/** A tool that rewrites code between the source paths and the compiled path. */
 export interface SyncTool {
 	readonly id: string;
 	emittedPath?(source: string): string;
@@ -223,7 +223,7 @@ export class Darklua {
 	static readonly REPOSITORY = "seaofvoices/darklua";
 	static readonly PINNED = "0.19.0";
 
-	readonly defaultSyncPath = "dist";
+	readonly defaultCompiledPath = "dist";
 	readonly configFiles: readonly string[] = [
 		".darklua.json",
 		".darklua.json5",
@@ -255,13 +255,13 @@ export class Darklua {
 	processCommands(
 		directory: string,
 		sourceDirs: readonly string[],
-		syncPath: string
+		compiledPath: string
 	): string[] {
 		const absolute = sourceDirs.map((dir) => path.resolve(directory, dir));
 		const common = commonAncestor(absolute);
 		return sourceDirs.map((dir, index) => {
 			const relative = toPosix(path.relative(common, absolute[index]));
-			return `darklua process ${dir} ${relative ? `${syncPath}/${relative}` : syncPath} --watch`;
+			return `darklua process ${dir} ${relative ? `${compiledPath}/${relative}` : compiledPath} --watch`;
 		});
 	}
 }

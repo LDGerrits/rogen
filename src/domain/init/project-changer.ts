@@ -6,6 +6,7 @@ import { joinedWithAnd } from "../../base/strings.js";
 import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
+import { ROGEN_BLOCK } from "../config/config.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
@@ -30,10 +31,8 @@ const CHANGE_FLAGS: readonly (readonly [string, string])[] = [
 	["sourcePaths", "--source-path"],
 	["unsourcePaths", "--no-source-path"],
 	["darklua", "--darklua"],
-	["syncPath", "--sync-path"],
+	["compiledPath", "--compiled-path"],
 	["packages", "--package"],
-	["places", "--places"],
-	["placeIds", "--place-id"],
 ];
 
 const NEW_PROJECT_FLAGS: readonly (readonly [string, string, string])[] = [
@@ -75,16 +74,14 @@ export class ProjectChanger {
 		private readonly questions: InitQuestions,
 		private readonly edit: ConfigEdit,
 		private readonly language: Language,
-		private readonly routed: boolean,
-		readonly place: boolean
+		private readonly routed: boolean
 	) {}
 
 	/** `undefined` when the config can't be read as JSON, which a change can't be made to. */
 	static async of(
 		fileSystemService: FileReader,
 		directory: InitDirectory,
-		questions: InitQuestions,
-		place: boolean
+		questions: InitQuestions
 	): Promise<ProjectChanger | undefined> {
 		const fileName = directory.configFiles[0];
 		const edit = ConfigEdit.of(
@@ -96,7 +93,6 @@ export class ProjectChanger {
 		if (!edit) return undefined;
 		const root = edit.valueAt(["tree"]);
 		const routed =
-			place ||
 			!isObject(root) ||
 			root.$className === "DataModel" ||
 			(root.$className === undefined && root.$path === undefined);
@@ -106,8 +102,7 @@ export class ProjectChanger {
 			questions,
 			edit,
 			directory.workspace.language,
-			routed,
-			place
+			routed
 		);
 	}
 
@@ -140,8 +135,7 @@ export class ProjectChanger {
 			this.directory,
 			this.edit,
 			this.language,
-			this.routed,
-			this.place
+			this.routed
 		);
 	}
 
@@ -189,20 +183,10 @@ export class ProjectChanger {
 				);
 			return values;
 		};
-		if (
-			choices.syncPath !== undefined &&
-			choices.darklua !== true &&
-			!this.place
-		)
+		if (choices.compiledPath !== undefined && choices.darklua !== true)
 			throw new UsageError(
-				"--sync-path is for Darklua: pass --darklua with it."
+				"--compiled-path is for Darklua: pass --darklua with it."
 			);
-		const placeIds =
-			choices.placeIds === undefined
-				? undefined
-				: await this.questions.placeIds(
-						path.basename(this.directory.path)
-					);
 		return {
 			routes: list(choices.routes, "--route"),
 			unroutes: choices.unroutes,
@@ -210,18 +194,20 @@ export class ProjectChanger {
 			sourcePaths: list(choices.sourcePaths, "--source-path"),
 			unsourcePaths: choices.unsourcePaths,
 			darklua: choices.darklua,
-			syncPath: choices.syncPath,
+			compiledPath: choices.compiledPath,
 			packages: list(choices.packages, "--package"),
-			places: choices.places,
-			placeIds,
 		};
+	}
+
+	private routesOf(): Record<string, unknown> {
+		const routes = this.edit.valueAt([ROGEN_BLOCK, "routes"]);
+		return isObject(routes) ? routes : {};
 	}
 
 	/** The routes the config has, as the ids of the standard routes they are. */
 	private configuredRoutes(): string[] {
 		const starting = new StartingRoutes(this.language);
-		const { routes } = this.edit.value;
-		const keys = isObject(routes) ? Object.keys(routes) : [];
+		const keys = Object.keys(this.routesOf());
 		return starting.options
 			.filter((option) =>
 				keys.some(
@@ -255,19 +241,9 @@ export class ProjectChanger {
 
 	/** One row per area with what the project has. */
 	describe(): [string, string][] {
-		const { value } = this.edit;
-		const routes = isObject(value.routes) ? value.routes : {};
+		const routes = this.routesOf();
 		const sourcePaths = this.changes().sourcePaths;
-		const placePaths = Array.isArray(value.placePaths)
-			? value.placePaths
-			: [];
 		const rows: [string, string][] = [
-			[
-				"Places",
-				placePaths.length > 0
-					? `several (${placePaths.join(", ")})`
-					: "one",
-			],
 			[
 				"Routes",
 				label(
@@ -290,23 +266,7 @@ export class ProjectChanger {
 
 	/** The areas of the config that have something to change. */
 	async areas(): Promise<ChangeArea[]> {
-		if (this.place)
-			return [
-				{
-					id: "sourcePaths",
-					label: "Source paths",
-					hint: "add or remove a folder",
-				},
-			];
-		const several = Array.isArray(this.edit.value.placePaths);
 		return [
-			{
-				id: "places",
-				label: "Places",
-				hint: several
-					? "add a place"
-					: "turn this into several places, or add a place",
-			},
 			...(this.routed
 				? [
 						{
@@ -335,46 +295,17 @@ export class ProjectChanger {
 						},
 					]
 				: []),
-			...(several &&
-			(await this.changes().missingFromWorkspace()).length > 0
-				? [
-						{
-							id: "workspace",
-							label: "Workspace",
-							hint: "add the places the workspace file lacks",
-						},
-					]
-				: []),
 		];
 	}
 
-	/** Asks what each picked area needs; `place` is the folder of a place to add, which init does on its own. */
-	async ask(
-		picked: readonly string[]
-	): Promise<ChangeRequest | { readonly place: string } | undefined> {
+	/** Asks what each picked area needs. */
+	async ask(picked: readonly string[]): Promise<ChangeRequest | undefined> {
 		const { questions } = this;
 		const request: {
 			-readonly [K in keyof ChangeRequest]: ChangeRequest[K];
 		} = {};
 		for (const id of picked) {
 			switch (id) {
-				case "places": {
-					const several = Array.isArray(this.edit.value.placePaths);
-					const answer = await questions.changePlaces(several);
-					if (answer === undefined) return undefined;
-					if (answer === "several") request.places = true;
-					else {
-						const folder = await questions.placeFolder();
-						if (folder === undefined) return undefined;
-						if (picked.length > 1)
-							throw new UsageError(
-								"Adding a place runs on its own, since it changes the config that lists the places.",
-								"Run init again for the other changes."
-							);
-						return { place: folder };
-					}
-					break;
-				}
 				case "routes": {
 					const routes = await questions.changeRoutes(
 						new StartingRoutes(this.language).options,
@@ -386,9 +317,7 @@ export class ProjectChanger {
 					break;
 				}
 				case "unmatched": {
-					const routes = isObject(this.edit.value.routes)
-						? this.edit.value.routes
-						: {};
+					const routes = this.routesOf();
 					const answer = await questions.changeUnmatched(
 						DeclaredKeys.FALLBACK_ROUTE in routes
 							? "shared"
@@ -425,9 +354,6 @@ export class ProjectChanger {
 					request.packages = mounts;
 					break;
 				}
-				case "workspace":
-					request.workspace = true;
-					break;
 			}
 		}
 		return request;

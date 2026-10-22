@@ -52,7 +52,7 @@ export interface SyncbackMirrorInputs {
 	readonly root: string;
 	/** The files the build placed, which tell a node it made from a node of the user's tree. */
 	readonly placed: readonly PlacedLocation[];
-	/** The absolute folders the build's `$path`s point into: the source paths and the sync path. */
+	/** The absolute folders the build's `$path`s point into: the source paths and the compiled path. */
 	readonly reads: readonly string[];
 	/** How Rojo reads the file at an absolute path written with `/`. */
 	readonly fileAt: (target: string) => RojoFile;

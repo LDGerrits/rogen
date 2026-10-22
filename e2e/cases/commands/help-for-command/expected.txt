@@ -2,16 +2,17 @@ $ rogen help build
 exit 0
 stdout:
   rogen-build
-  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each
-  named one; with -o or -p, also builds a place, model or plugin with Rojo.
+  Writes the project file of default.rogen.json here, or of the config you name, beside it
+  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
+  Rojo.
   
   USAGE:
-      rogen build [OPTIONS] [PROJECT]...
+      rogen build [OPTIONS] [PROJECT]
   
   ARGS:
-      <PROJECT>...    A folder with a rogen.json, or a *.project.json path. The rogen.json of the
-                      working directory, or of the nearest folder above it that has one, when none is
-                      given.
+      <PROJECT>    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
+                   (dist for dist.rogen.json). The default.rogen.json of the working directory, or its
+                   default.project.json, when none is given.
   
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
@@ -27,7 +28,7 @@ stdout:
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
-          --watch              Keep going: write the project files again whenever names or configs
+          --watch              Keep going: write the project file again whenever names or configs
                                change, and build with Rojo after each write when -o or -p is given.
                                With -o or -p, an edit inside a file under the source paths builds
                                again too. Press Ctrl+C to stop; --json prints one JSON object per
@@ -50,132 +51,127 @@ $ rogen help init
 exit 0
 stdout:
   rogen-init
-  Writes a starting rogen.json, detecting the workspace and asking in a terminal. With a folder,
-  starts a project there, or adds a place when a rogen.json lies above the folder.
+  Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a
+  folder, starts a project there, or adds a place when the folder lies in a places folder that has
+  one.
   
   USAGE:
       rogen init [OPTIONS] [PATH]
   
   ARGS:
-      <PATH>    The folder to start in, made when it is not there. Below a rogen.json it is added as a
-                place of it instead: its own rogen.json with the port it is served on, its entry in
-                the config's placePaths when none lists it, and a .code-workspace that lists the
-                config's folder and every place.
+      <PATH>    The folder to start in, made when it is not there. In a places folder with a place
+                already, it is added as a place instead: its own default.rogen.json with the routes
+                and compiled path of the first place, listing the shared code, and an entry in the
+                .code-workspace when there is one.
   
   OPTIONS:
-          --[no-]agent-hook                  Whether to add the hook that reports Rogen warnings to
-                                             the coding agents found. Not added when not given. On a
-                                             folder that has a config, asks for this addition.
-          --[no-]agent-rules                 Whether to add Rogen's rules for coding agents to the
-                                             agent file. Added when not given. On a folder that has a
-                                             config, asks for this addition.
-          --color <COLOR>                    Whether to colour the output. [default: auto] [possible
-                                             values: auto, always, never]
-          --customise                        In a terminal, ask every question one after another,
-                                             without the summary of the plan first.
-          --[no-]darklua                     Whether Darklua processes your code before Rojo syncs it.
-                                             Found from a Darklua config when not given. On a project
-                                             that has a rogen.json, init does not change Darklua: the
-                                             second config file that serves the processed code is
-                                             written by hand.
-      -n, --dry-run                          Plan without writing or building: print the files it
-                                             would write and the choices it took, then stop.
-      -h, --help                             Print help.
-          --json                             Print one JSON document instead of text.
-          --kind <KIND>                      What a new project is, as Rojo's init names it: a place
-                                             (the default), or a model or a plugin, which starts with
-                                             Rojo's template of that kind and no routes. [possible
-                                             values: place, model, plugin]
-          --language <ID>                    The language: luau or roblox-ts. Detected from the folder
-                                             when not given. For roblox-ts in a folder with no code,
-                                             package.json or tsconfig.json, init first runs 'npm
-                                             create roblox-ts', which needs npm and the network.
-          --nested                           Start a project in a folder below another rogen.json,
-                                             which a run that can't ask refuses otherwise.
-          --no-route <ID>                    On a project that has a rogen.json: takes a standard
-                                             route off, when it still has its standard value. Routes
-                                             of your own are never changed. (repeatable)
-          --no-source-path <PATH>            On a project that has a rogen.json: takes a folder off
-                                             its source paths. The files in it are no longer built,
-                                             which init lists. (repeatable)
-      -y, --non-interactive                  Write the defaults without asking, as a run without a
-                                             terminal, or under a coding agent or CI, does. --json
-                                             implies it. A flag below answers its question either way.
-          --package <PATH>                   A package folder to mount as it is; repeat for several,
-                                             or none for no mounts. The installed ones when not given.
-                                             On a project that has a rogen.json, mounts the folder if
-                                             the tree doesn't. (repeatable)
-          --place-id <ID>                    With a place folder: a place ID that the place's server
-                                             is for, so a Studio on another place refuses to connect;
-                                             repeat for several, or none. None when not given.
-                                             (repeatable)
-          --place-listing <PLACE_LISTING>    With a place folder: list every folder beside it in the
-                                             config's placePaths (the default), or only this one.
-                                             [possible values: glob, folder]
-          --[no-]places                      Whether a new project is several places: the code they
-                                             share in places/shared, and a first place in places/game,
-                                             more by 'rogen init places/<name>'. One place when not
-                                             given, or several where a places folder exists.
-          --project-file <PROJECT_FILE>      With a default.project.json already here: lift its tree
-                                             into rogen.json (the default), or start a new tree.
-                                             [possible values: lift, new]
-      -q, --quiet                            Only print errors.
-          --[no-]rojo                        Whether to set Rojo up when it isn't ready: pin it with
-                                             the toolchain manager found (Rokit, Aftman or Foreman),
-                                             or install Rokit first and pin it. A run that can't ask
-                                             pins with a manager it finds, and installs Rokit only
-                                             with this flag. On a folder that has a config, sets Rojo
-                                             up there.
-          --route <ID>                       A route to start with: server, client, shared,
-                                             replicatedFirst, serverStorage or starterGui; repeat for
-                                             several, or none. The first three when not given. On a
-                                             project that has a rogen.json, adds the route. When a
-                                             lifted project file mounts a folder of that name, the
-                                             name stands for the route derived from it, which `Took
-                                             the defaults` and `--json` write as mount:server.
-                                             (repeatable)
-          --[no-]sample                      Whether a new place starts with the Greeter sample: three
-                                             hello-world scripts in src/Greeter, Rojo's Baseplate and
-                                             a README. Written when not given, in a folder with no
-                                             code. --no-sample leaves src empty.
-          --skip-git                         Leave git out of a new project: write no .gitignore and
-                                             run no git init. Otherwise a .gitignore is written where
-                                             none is, and git init runs where no work tree holds the
-                                             folder.
-          --source-path <PATH>               A folder with your scripts, relative to here; repeat for
-                                             several. src when not given, or where the code is. On a
-                                             project that has a rogen.json, adds the folder to its
-                                             source paths. (repeatable)
-          --[no-]studio-plugin               Whether to install Rojo's Studio plugin, once Rojo is set
-                                             up. Not installed by a run that can't ask, which prints
-                                             the command instead.
-          --sync-path <PATH>                 With Darklua: the folder it writes into, and Rojo syncs
-                                             from.
-          --unmatched <UNMATCHED>            Where files that match no route go: into the shared route
-                                             (the default), or nowhere, which Rogen warns about.
-                                             [possible values: shared, leave]
-      -v, --verbose                          Print debug output; -vv, trace output. (repeatable)
-      -V, --version                          Print the version.
+          --[no-]agent-hook                Whether to add the hook that reports Rogen warnings to the
+                                           coding agents found. Not added when not given. On a folder
+                                           that has a config, asks for this addition.
+          --[no-]agent-rules               Whether to add Rogen's rules for coding agents to the agent
+                                           file. Added when not given. On a folder that has a config,
+                                           asks for this addition.
+          --color <COLOR>                  Whether to colour the output. [default: auto] [possible
+                                           values: auto, always, never]
+          --compiled-path <PATH>           With Darklua: the folder it writes into, and Rojo syncs
+                                           from.
+          --customise                      In a terminal, ask every question one after another,
+                                           without the summary of the plan first.
+          --[no-]darklua                   Whether Darklua processes your code before Rojo syncs it.
+                                           Found from a Darklua config when not given. On a project
+                                           that has a default.rogen.json, init does not change
+                                           Darklua: the second config file that serves the processed
+                                           code is written by hand.
+      -n, --dry-run                        Plan without writing or building: print the files it would
+                                           write and the choices it took, then stop.
+      -h, --help                           Print help.
+          --json                           Print one JSON document instead of text.
+          --kind <KIND>                    What a new project is, as Rojo's init names it: a place
+                                           (the default), or a model or a plugin, which starts with
+                                           Rojo's template of that kind and no routes. [possible
+                                           values: place, model, plugin]
+          --language <ID>                  The language: luau or roblox-ts. Detected from the folder
+                                           when not given. For roblox-ts in a folder with no code,
+                                           package.json or tsconfig.json, init first runs 'npm create
+                                           roblox-ts', which needs npm and the network.
+          --nested                         Start a project in a folder below another
+                                           default.rogen.json, which a run that can't ask refuses
+                                           otherwise.
+          --no-route <ID>                  On a project that has a default.rogen.json: takes a
+                                           standard route off, when it still has its standard value.
+                                           Routes of your own are never changed. (repeatable)
+          --no-source-path <PATH>          On a project that has a default.rogen.json: takes a folder
+                                           off its source paths. The files in it are no longer built,
+                                           which init lists. (repeatable)
+      -y, --non-interactive                Write the defaults without asking, as a run without a
+                                           terminal, or under a coding agent or CI, does. --json
+                                           implies it. A flag below answers its question either way.
+          --package <PATH>                 A package folder to mount as it is; repeat for several, or
+                                           none for no mounts. The installed ones when not given. On a
+                                           project that has a default.rogen.json, mounts the folder if
+                                           the tree doesn't. (repeatable)
+          --[no-]places                    Whether a new project is several places: the code they
+                                           share in places/shared, and a first place in places/game
+                                           with its own default.rogen.json, more by 'rogen init
+                                           places/<name>'. One place when not given, or several where
+                                           a places folder exists.
+          --project-file <PROJECT_FILE>    With a default.project.json already here: lift its tree
+                                           into default.rogen.json (the default), or start a new tree.
+                                           [possible values: lift, new]
+      -q, --quiet                          Only print errors.
+          --[no-]rojo                      Whether to set Rojo up when it isn't ready: pin it with the
+                                           toolchain manager found (Rokit, Aftman or Foreman), or
+                                           install Rokit first and pin it. A run that can't ask pins
+                                           with a manager it finds, and installs Rokit only with this
+                                           flag. On a folder that has a config, sets Rojo up there.
+          --route <ID>                     A route to start with: server, client, shared,
+                                           replicatedFirst, serverStorage or starterGui; repeat for
+                                           several, or none. The first three when not given. On a
+                                           project that has a default.rogen.json, adds the route. When
+                                           a lifted project file mounts a folder of that name, the
+                                           name stands for the route derived from it, which `Took the
+                                           defaults` and `--json` write as mount:server. (repeatable)
+          --[no-]sample                    Whether a new place starts with the Greeter sample: three
+                                           hello-world scripts in src/Greeter, Rojo's Baseplate and a
+                                           README. Written when not given, in a folder with no code.
+                                           --no-sample leaves src empty.
+          --skip-git                       Leave git out of a new project: write no .gitignore and run
+                                           no git init. Otherwise a .gitignore is written where none
+                                           is, and git init runs where no work tree holds the folder.
+          --source-path <PATH>             A folder with your scripts, relative to here; repeat for
+                                           several. src when not given, or where the code is. On a
+                                           project that has a default.rogen.json, adds the folder to
+                                           its source paths. (repeatable)
+          --[no-]studio-plugin             Whether to install Rojo's Studio plugin, once Rojo is set
+                                           up. Not installed by a run that can't ask, which prints the
+                                           command instead.
+          --unmatched <UNMATCHED>          Where files that match no route go: into the shared route
+                                           (the default), or nowhere, which Rogen warns about.
+                                           [possible values: shared, leave]
+      -v, --verbose                        Print debug output; -vv, trace output. (repeatable)
+      -V, --version                        Print the version.
   
   EXAMPLES:
       rogen init
       rogen init --non-interactive
+      rogen init game
       rogen init places/lobby
 
 $ rogen help list
 exit 0
 stdout:
   rogen-list
-  Lists every config here with its source paths, routes, sync path and project files, and which
-  project is served; with --json, each fully resolved.
+  Lists every config file of this folder, or the one you name, with its source paths, routes, compiled
+  path and project file, and which are served. A config other than default.rogen.json also lists the
+  keys that differ from it; with --json, each fully resolved.
   
   USAGE:
       rogen list [OPTIONS] [PROJECT]...
   
   ARGS:
-      <PROJECT>...    A folder with a rogen.json, or a *.project.json path. The rogen.json of the
-                      working directory, or of the nearest folder above it that has one, when none is
-                      given.
+      <PROJECT>...    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
+                      (dist for dist.rogen.json). The default.rogen.json of the working directory, or
+                      its default.project.json, when none is given.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
@@ -194,16 +190,17 @@ $ rogen build --help
 exit 0
 stdout:
   rogen-build
-  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each
-  named one; with -o or -p, also builds a place, model or plugin with Rojo.
+  Writes the project file of default.rogen.json here, or of the config you name, beside it
+  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
+  Rojo.
   
   USAGE:
-      rogen build [OPTIONS] [PROJECT]...
+      rogen build [OPTIONS] [PROJECT]
   
   ARGS:
-      <PROJECT>...    A folder with a rogen.json, or a *.project.json path. The rogen.json of the
-                      working directory, or of the nearest folder above it that has one, when none is
-                      given.
+      <PROJECT>    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
+                   (dist for dist.rogen.json). The default.rogen.json of the working directory, or its
+                   default.project.json, when none is given.
   
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
@@ -219,7 +216,7 @@ stdout:
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
-          --watch              Keep going: write the project files again whenever names or configs
+          --watch              Keep going: write the project file again whenever names or configs
                                change, and build with Rojo after each write when -o or -p is given.
                                With -o or -p, an edit inside a file under the source paths builds
                                again too. Press Ctrl+C to stop; --json prints one JSON object per

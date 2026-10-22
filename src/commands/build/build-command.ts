@@ -4,7 +4,8 @@ import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
@@ -53,7 +54,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project file again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const ForceOption = {
@@ -78,10 +79,10 @@ registerCommand(
 				id: "build",
 				metadata: {
 					summary:
-						"Writes the project files; with -o or -p, builds with Rojo",
+						"Writes the project file; with -o or -p, builds with Rojo",
 					description:
-						"Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
-					args: ConfigArguments,
+						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
+					args: ProjectArgument,
 					options: BuildOptions,
 					output: {
 						document: buildDocumentShape,
@@ -113,6 +114,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof BuildOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("build", line.positionals);
+			if (tooMany) return err(tooMany);
 			const flags = this.rojoFlags(line);
 			if (flags.isErr()) return flags;
 			const cwd = accessor.get(EnvironmentService).cwd;
@@ -154,9 +157,10 @@ registerCommand(
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
-			const plans = step?.plans(selection.value);
-			if (plans?.isErr()) return plans;
+			const planned = step?.plan(selection.value);
+			if (planned?.isErr()) return planned;
 
 			const run = await buildService.build(
 				selection.value,
@@ -164,7 +168,7 @@ registerCommand(
 			);
 
 			const failure = run.failure();
-			const plan = plans?.isOk() ? plans.value[0] : undefined;
+			const plan = planned?.isOk() ? planned.value : undefined;
 			const built =
 				failure || plan === undefined
 					? undefined

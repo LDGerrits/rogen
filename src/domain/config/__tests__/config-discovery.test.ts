@@ -23,24 +23,43 @@ describe("ConfigDiscovery", () => {
 	});
 
 	describe("with nothing named", () => {
-		it("should resolve the rogen.json here", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
+		it("should resolve the default.rogen.json here", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
 
 			const found = (await discovery.discover([])).unwrap();
 
 			expect(found).toEqual({
 				home: "/repo",
-				files: ["/repo/rogen.json"],
+				files: ["/repo/default.rogen.json"],
 				noneNamed: true,
-				scopes: new Map(),
+				notes: [],
 			});
 		});
 
-		it("should resolve a rogen.jsonc", async () => {
-			await fs.writeFile("/repo/rogen.jsonc", "{}");
+		it("should resolve a default.rogen.jsonc", async () => {
+			await fs.writeFile("/repo/default.rogen.jsonc", "{}");
 
 			expect((await discovery.discover([])).unwrap().files).toEqual([
-				"/repo/rogen.jsonc",
+				"/repo/default.rogen.jsonc",
+			]);
+		});
+
+		it("should resolve the default and nothing else beside it", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/dist.rogen.json", "{}");
+			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
+
+			expect((await discovery.discover([])).unwrap().files).toEqual([
+				"/repo/default.rogen.json",
+			]);
+		});
+
+		it("should prefer the default config to a plain default.project.json", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/default.project.json", "{}");
+
+			expect((await discovery.discover([])).unwrap().files).toEqual([
+				"/repo/default.rogen.json",
 			]);
 		});
 
@@ -48,58 +67,62 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result).message).toBe(
-				"No rogen.json found in /repo. Run 'rogen init' to create one."
+				"No default.rogen.json or default.project.json in this folder (/repo). Run 'rogen init' to create one."
 			);
-			expect(errorOf(result)).not.toBeInstanceOf(UsageError);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 		});
 
-		it("should adopt the Rojo project file here when no folder holds a config", async () => {
+		it("should name the other configs of the folder when there is no default", async () => {
+			await fs.writeFile("/repo/dist.rogen.json", "{}");
+			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
+
+			const result = await discovery.discover([]);
+
+			expect(errorOf(result).message).toBe(
+				"No default.rogen.json or default.project.json in this folder (/repo). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen init' to create default.rogen.json."
+			);
+		});
+
+		it.each(["rogen.json", "rogen.jsonc"])(
+			"should tell a folder holding only %s to rename it",
+			async (name) => {
+				await fs.writeFile(`/repo/${name}`, "{}");
+
+				const result = await discovery.discover([]);
+
+				expect(errorOf(result)).toBeInstanceOf(ProjectError);
+				expect(errorOf(result).message).toBe(
+					`${name} in /repo is not read any more: a config is named for the project file it writes. Rename it to default.rogen.json.`
+				);
+			}
+		);
+
+		it("should not search the folders above", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.createDirectory("/repo/src/Inventory");
+
+			const result = await from("/repo/src/Inventory").discover([]);
+
+			expect(errorOf(result).message).toContain(
+				"No default.rogen.json or default.project.json in this folder"
+			);
+		});
+
+		it("should not search the folders above for a plain project either", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+			await fs.createDirectory("/repo/src");
+
+			const result = await from("/repo/src").discover([]);
+
+			expect(result.isErr()).toBe(true);
+		});
+
+		it("should adopt the Rojo project file here when no config is here", async () => {
 			await fs.writeFile("/repo/default.project.json", "{}");
 
 			const found = (await discovery.discover([])).unwrap();
 
 			expect(found.files).toEqual(["/repo/default.project.json"]);
-		});
-
-		it("should adopt the Rojo project file of the nearest folder above", async () => {
-			await fs.writeFile("/repo/default.project.json", "{}");
-			await fs.createDirectory("/repo/src");
-
-			const found = (await from("/repo/src").discover([])).unwrap();
-
-			expect(found.files).toEqual(["/repo/default.project.json"]);
-		});
-
-		it("should adopt a Rojo project file of another name that is named", async () => {
-			await fs.writeFile("/repo/test.project.json", "{}");
-
-			const found = (
-				await discovery.discover(["test.project.json"])
-			).unwrap();
-
-			expect(found.files).toEqual(["/repo/test.project.json"]);
-		});
-
-		it("should refuse a project file of another name beside a config, which Rogen does not write", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
-			await fs.writeFile("/repo/test.project.json", "{}");
-
-			const result = await discovery.discover(["test.project.json"]);
-
-			expect(errorOf(result)).toBeInstanceOf(ProjectError);
-			expect(errorOf(result).message).toContain(
-				"not a file Rogen writes"
-			);
-		});
-
-		it("should adopt a Rojo project file with comments that is named", async () => {
-			await fs.writeFile("/repo/test.project.jsonc", "{}");
-
-			const found = (
-				await discovery.discover(["test.project.jsonc"])
-			).unwrap();
-
-			expect(found.files).toEqual(["/repo/test.project.jsonc"]);
 		});
 
 		it("should adopt default.project.jsonc when nothing else is there", async () => {
@@ -110,99 +133,16 @@ describe("ConfigDiscovery", () => {
 			expect(found.files).toEqual(["/repo/default.project.jsonc"]);
 		});
 
-		it("should not adopt a named project file beside two configs", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
-			await fs.writeFile("/repo/rogen.jsonc", "{}");
+		it("should not take a project file of another name for the default", async () => {
 			await fs.writeFile("/repo/test.project.json", "{}");
 
-			const result = await discovery.discover(["test.project.json"]);
+			const result = await discovery.discover([]);
 
-			expect(errorOf(result).message).toContain("holds both");
-		});
-
-		it("should not adopt a project file of another name that is not there", async () => {
-			await fs.writeFile("/repo/default.project.json", "{}");
-
-			const result = await discovery.discover(["other.project.json"]);
-
-			expect(errorOf(result).message).toContain(
-				'"other.project.json" not found'
-			);
-		});
-
-		it("should prefer a config above to a Rojo project file here", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
-			await fs.createDirectory("/repo/lib");
-			await fs.writeFile("/repo/lib/default.project.json", "{}");
-
-			const found = (await from("/repo/lib").discover([])).unwrap();
-
-			expect(found.files).toEqual(["/repo/rogen.json"]);
-		});
-
-		it("should adopt the Rojo project file of a folder that is named", async () => {
-			await fs.createDirectory("/repo/pkg");
-			await fs.writeFile("/repo/pkg/default.project.json", "{}");
-
-			const found = (await discovery.discover(["pkg"])).unwrap();
-
-			expect(found.files).toEqual(["/repo/pkg/default.project.json"]);
-		});
-
-		it.each([".", "./", "/repo"])(
-			"should adopt the Rojo project file here named as %s",
-			async (ref) => {
-				await fs.writeFile("/repo/default.project.json", "{}");
-
-				const found = (await discovery.discover([ref])).unwrap();
-
-				expect(found.files).toEqual(["/repo/default.project.json"]);
-			}
-		);
-
-		it("should adopt the Rojo project file of a subfolder from a plain project", async () => {
-			await fs.writeFile("/repo/default.project.json", "{}");
-			await fs.createDirectory("/repo/lib");
-			await fs.writeFile("/repo/lib/default.project.json", "{}");
-
-			const found = (await discovery.discover(["lib"])).unwrap();
-
-			expect(found.files).toEqual(["/repo/lib/default.project.json"]);
-		});
-
-		it("should use the config of the nearest folder above when this one has none", async () => {
-			await fs.createDirectory("/repo/src/Inventory");
-			await fs.writeFile("/repo/rogen.json", "{}");
-
-			const found = (
-				await from("/repo/src/Inventory").discover([])
-			).unwrap();
-
-			expect(found.home).toBe("/repo");
-			expect(found.files).toEqual(["/repo/rogen.json"]);
-		});
-
-		it("should prefer the config here over those above", async () => {
-			await fs.createDirectory("/repo/places");
-			await fs.writeFile("/repo/rogen.json", "{}");
-			await fs.writeFile("/repo/places/rogen.json", "{}");
-
-			const found = (await from("/repo/places").discover([])).unwrap();
-
-			expect(found.home).toBe("/repo/places");
-			expect(found.files).toEqual(["/repo/places/rogen.json"]);
-		});
-
-		it("should fail when no folder above has one either", async () => {
-			await fs.createDirectory("/repo/src");
-
-			const result = await from("/repo/src").discover([]);
-
-			expect(errorOf(result).message).toContain("No rogen.json found");
+			expect(result.isErr()).toBe(true);
 		});
 
 		it("should ignore a directory named like a config", async () => {
-			await fs.createDirectory("/repo/rogen.json");
+			await fs.createDirectory("/repo/default.rogen.json");
 
 			const result = await discovery.discover([]);
 
@@ -217,15 +157,244 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
-		it("should fail when both names are here", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
-			await fs.writeFile("/repo/rogen.jsonc", "{}");
+		it("should fail when both extensions of the default are here", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/default.rogen.jsonc", "{}");
 
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result)).toBeInstanceOf(UsageError);
 			expect(errorOf(result).message).toBe(
-				"/repo holds both rogen.json and rogen.jsonc; keep one."
+				"/repo holds both default.rogen.json and default.rogen.jsonc; keep one."
+			);
+		});
+
+		it("should not mind both extensions of a stem it is not asked for", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/dist.rogen.json", "{}");
+			await fs.writeFile("/repo/dist.rogen.jsonc", "{}");
+
+			expect((await discovery.discover([])).unwrap().files).toEqual([
+				"/repo/default.rogen.json",
+			]);
+		});
+	});
+
+	describe("with a file named in the working directory", () => {
+		beforeEach(async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/dist.rogen.json", "{}");
+		});
+
+		it("should resolve a .rogen.json path to that file", async () => {
+			const found = (
+				await discovery.discover(["dist.rogen.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist.rogen.json"]);
+		});
+
+		it("should resolve a .rogen.jsonc file that is not the default", async () => {
+			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
+
+			const found = (
+				await discovery.discover(["release.rogen.jsonc"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/release.rogen.jsonc"]);
+		});
+
+		it("should resolve an X.project.json path to the X.rogen.json beside it", async () => {
+			await fs.writeFile("/repo/dist.project.json", "{}");
+
+			const found = (
+				await discovery.discover(["dist.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist.rogen.json"]);
+		});
+
+		it("should resolve an X.project.json path that is not there to the X.rogen.json beside it", async () => {
+			const found = (
+				await discovery.discover(["dist.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist.rogen.json"]);
+		});
+
+		it("should resolve a bare name to its X.rogen.json", async () => {
+			const found = (await discovery.discover(["dist"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist.rogen.json"]);
+			expect(found.notes).toEqual([]);
+		});
+
+		it("should resolve a bare name to its X.rogen.jsonc", async () => {
+			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
+
+			const found = (await discovery.discover(["release"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/release.rogen.jsonc"]);
+		});
+
+		it("should resolve a bare name to a plain X.project.json when no config has that name", async () => {
+			await fs.writeFile("/repo/test.project.json", "{}");
+
+			const found = (await discovery.discover(["test"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/test.project.json"]);
+		});
+
+		it("should prefer the config of a bare name to a plain project file", async () => {
+			await fs.writeFile("/repo/dist.project.json", "{}");
+
+			const found = (await discovery.discover(["dist"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist.rogen.json"]);
+		});
+
+		it("should resolve default to the default config", async () => {
+			const found = (await discovery.discover(["default"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/default.rogen.json"]);
+		});
+
+		it("should take a plain X.project.json path beside a config of another name", async () => {
+			await fs.writeFile("/repo/nested.project.json", "{}");
+
+			const found = (
+				await discovery.discover(["nested.project.json"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/nested.project.json"]);
+		});
+
+		it("should take a plain project file with comments that is named", async () => {
+			await fs.writeFile("/repo/test.project.jsonc", "{}");
+
+			const found = (
+				await discovery.discover(["test.project.jsonc"])
+			).unwrap();
+
+			expect(found.files).toEqual(["/repo/test.project.jsonc"]);
+		});
+
+		it("should fail naming a project file that is not there and has no config", async () => {
+			const result = await discovery.discover(["other.project.json"]);
+
+			expect(errorOf(result).message).toContain(
+				'"other.project.json" not found'
+			);
+		});
+
+		it("should fail when both extensions of the stem named are here", async () => {
+			await fs.writeFile("/repo/dist.rogen.jsonc", "{}");
+
+			for (const ref of [
+				"dist",
+				"dist.rogen.json",
+				"dist.project.json",
+			]) {
+				const result = await discovery.discover([ref]);
+
+				expect(errorOf(result)).toBeInstanceOf(UsageError);
+				expect(errorOf(result).message).toBe(
+					"/repo holds both dist.rogen.json and dist.rogen.jsonc; keep one."
+				);
+			}
+		});
+
+		it("should say a folder wins over the file of the same name, and name the file", async () => {
+			await fs.createDirectory("/repo/dist");
+			await fs.writeFile("/repo/dist/default.rogen.json", "{}");
+
+			const found = (await discovery.discover(["dist"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist/default.rogen.json"]);
+			expect(found.notes).toEqual([
+				'"dist" is a folder with a default config and also dist.rogen.json: using the folder. To use the file, name it: dist.rogen.json.',
+			]);
+		});
+
+		it("should take the file of a bare name when the folder of that name holds no default", async () => {
+			await fs.createDirectory("/repo/dist");
+
+			const found = (await discovery.discover(["dist"])).unwrap();
+
+			expect(found.files).toEqual(["/repo/dist.rogen.json"]);
+			expect(found.notes).toEqual([]);
+		});
+
+		it("should say nothing of a folder that is not also a file", async () => {
+			await fs.createDirectory("/repo/pkg");
+			await fs.writeFile("/repo/pkg/default.rogen.json", "{}");
+
+			const found = (await discovery.discover(["pkg"])).unwrap();
+
+			expect(found.notes).toEqual([]);
+		});
+
+		it("should not let a path with a folder in it stand for a bare name", async () => {
+			const result = await discovery.discover(["a/dist"]);
+
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
+		});
+	});
+
+	describe("with a folder holding other configs and no default", () => {
+		it("should fail naming a folder with only an X.rogen.json", async () => {
+			await fs.createDirectory("/repo/pkg");
+			await fs.writeFile("/repo/pkg/dist.rogen.json", "{}");
+
+			const result = await discovery.discover(["pkg"]);
+
+			expect(errorOf(result).message).toBe(
+				"No default.rogen.json or default.project.json in \"pkg\" (/repo/pkg). It holds dist.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json."
+			);
+		});
+	});
+
+	describe("every config of the folder", () => {
+		it("should list each config file, with no default needed", async () => {
+			await fs.writeFile("/repo/dist.rogen.json", "{}");
+			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
+			await fs.writeFile("/repo/README.md", "");
+
+			const found = (await discovery.discoverFolder()).unwrap();
+
+			expect(found).toEqual({
+				home: "/repo",
+				files: ["/repo/dist.rogen.json", "/repo/release.rogen.jsonc"],
+				noneNamed: false,
+				notes: [],
+			});
+		});
+
+		it("should fall back to the default project file when there is no config", async () => {
+			await fs.writeFile("/repo/default.project.json", "{}");
+
+			const found = (await discovery.discoverFolder()).unwrap();
+
+			expect(found.files).toEqual(["/repo/default.project.json"]);
+		});
+
+		it("should fail like a bare command when there is nothing", async () => {
+			const result = await discovery.discoverFolder();
+
+			expect(errorOf(result).message).toContain(
+				"No default.rogen.json or default.project.json in this folder"
+			);
+		});
+
+		it("should fail when a stem has both extensions", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
+			await fs.writeFile("/repo/dist.rogen.json", "{}");
+			await fs.writeFile("/repo/dist.rogen.jsonc", "{}");
+
+			const result = await discovery.discoverFolder();
+
+			expect(errorOf(result).message).toBe(
+				"/repo holds both dist.rogen.json and dist.rogen.jsonc; keep one."
 			);
 		});
 	});
@@ -233,7 +402,7 @@ describe("ConfigDiscovery", () => {
 	describe("with configs named", () => {
 		beforeEach(async () => {
 			await fs.createDirectory("/repo/places/lobby");
-			await fs.writeFile("/repo/places/lobby/rogen.json", "{}");
+			await fs.writeFile("/repo/places/lobby/default.rogen.json", "{}");
 		});
 
 		it("should resolve a folder to its config", async () => {
@@ -241,9 +410,9 @@ describe("ConfigDiscovery", () => {
 
 			expect(found).toEqual({
 				home: "/repo",
-				files: ["/repo/places/lobby/rogen.json"],
+				files: ["/repo/places/lobby/default.rogen.json"],
 				noneNamed: false,
-				scopes: new Map(),
+				notes: [],
 			});
 		});
 
@@ -252,7 +421,9 @@ describe("ConfigDiscovery", () => {
 				await discovery.discover(["/repo/places/lobby"])
 			).unwrap();
 
-			expect(found.files).toEqual(["/repo/places/lobby/rogen.json"]);
+			expect(found.files).toEqual([
+				"/repo/places/lobby/default.rogen.json",
+			]);
 		});
 
 		it("should resolve a default.project.json path to the config of its folder", async () => {
@@ -260,28 +431,32 @@ describe("ConfigDiscovery", () => {
 				await discovery.discover(["places/lobby/default.project.json"])
 			).unwrap();
 
-			expect(found.files).toEqual(["/repo/places/lobby/rogen.json"]);
+			expect(found.files).toEqual([
+				"/repo/places/lobby/default.rogen.json",
+			]);
 		});
 
 		it("should resolve a path to the config file itself", async () => {
 			const found = (
-				await discovery.discover(["places/lobby/rogen.json"])
+				await discovery.discover(["places/lobby/default.rogen.json"])
 			).unwrap();
 
-			expect(found.files).toEqual(["/repo/places/lobby/rogen.json"]);
+			expect(found.files).toEqual([
+				"/repo/places/lobby/default.rogen.json",
+			]);
 		});
 
 		it("should resolve each in the order given", async () => {
 			await fs.createDirectory("/repo/places/arena");
-			await fs.writeFile("/repo/places/arena/rogen.json", "{}");
+			await fs.writeFile("/repo/places/arena/default.rogen.json", "{}");
 
 			const found = (
 				await discovery.discover(["places/lobby", "places/arena"])
 			).unwrap();
 
 			expect(found.files).toEqual([
-				"/repo/places/lobby/rogen.json",
-				"/repo/places/arena/rogen.json",
+				"/repo/places/lobby/default.rogen.json",
+				"/repo/places/arena/default.rogen.json",
 			]);
 		});
 
@@ -292,7 +467,7 @@ describe("ConfigDiscovery", () => {
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
-				`"places/arena" holds no rogen.json (/repo/places/arena). Run 'rogen init' to create one.`
+				`No default.rogen.json or default.project.json in "places/arena" (/repo/places/arena). Run 'rogen init' to create one.`
 			);
 		});
 
@@ -311,12 +486,12 @@ describe("ConfigDiscovery", () => {
 
 			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
-				`"places/nowhere" not found. Name a folder with a rogen.json, or a *.project.json path.`
+				`"places/nowhere" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.`
 			);
 		});
 
 		it("should say a folder named twice was named twice", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
+			await fs.writeFile("/repo/default.rogen.json", "{}");
 
 			const result = await discovery.discover([".", "."]);
 
@@ -327,16 +502,16 @@ describe("ConfigDiscovery", () => {
 
 		describe("a bare name", () => {
 			beforeEach(async () => {
-				await fs.writeFile("/repo/rogen.json", "{}");
+				await fs.writeFile("/repo/default.rogen.json", "{}");
 			});
 
-			it("should be the folder when a folder with a rogen.json has that name", async () => {
+			it("should be the folder when a folder with a default.rogen.json has that name", async () => {
 				await fs.createDirectory("/repo/dist");
-				await fs.writeFile("/repo/dist/rogen.json", "{}");
+				await fs.writeFile("/repo/dist/default.rogen.json", "{}");
 
 				const found = (await discovery.discover(["dist"])).unwrap();
 
-				expect(found.files).toEqual(["/repo/dist/rogen.json"]);
+				expect(found.files).toEqual(["/repo/dist/default.rogen.json"]);
 			});
 
 			it("should adopt a folder that holds only a default.project.json", async () => {
@@ -370,14 +545,14 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["README.md"]);
 
 			expect(errorOf(result).message).toBe(
-				`"README.md" is not a folder with a rogen.json, nor a *.project.json path.`
+				`"README.md" is not a folder with a default.rogen.json, a .rogen.json file, nor a *.project.json path.`
 			);
 		});
 
 		it("should fail when the same config is named twice", async () => {
 			const result = await discovery.discover([
 				"places/lobby",
-				"places/lobby/rogen.json",
+				"places/lobby/default.rogen.json",
 			]);
 
 			expect(errorOf(result).message).toContain(
@@ -385,16 +560,118 @@ describe("ConfigDiscovery", () => {
 			);
 		});
 
-		it("should take the folder found for home when the working directory has no config", async () => {
-			await fs.writeFile("/repo/rogen.json", "{}");
+		it("should take the working directory for home", async () => {
+			await fs.writeFile("/repo/default.rogen.json", "{}");
 			await fs.createDirectory("/repo/tools");
 
 			const found = (
 				await from("/repo/tools").discover(["../places/lobby"])
 			).unwrap();
 
-			expect(found.home).toBe("/repo");
-			expect(found.files).toEqual(["/repo/places/lobby/rogen.json"]);
+			expect(found.home).toBe("/repo/tools");
+			expect(found.files).toEqual([
+				"/repo/places/lobby/default.rogen.json",
+			]);
+		});
+	});
+});
+
+describe("ConfigDiscovery.coverOf", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/places/lobby/src");
+		await fs.createDirectory("/repo/places/arena/src");
+		await fs.createDirectory("/repo/places/shared/src");
+		await fs.writeFile("/repo/places/lobby/default.rogen.json", "{}");
+		await fs.writeFile("/repo/places/lobby/dist.rogen.json", "{}");
+		await fs.writeFile("/repo/places/arena/default.rogen.jsonc", "{}");
+		await fs.writeFile("/repo/places/lobby/src/Foo.luau", "");
+	});
+
+	const cover = (target: string) =>
+		new ConfigDiscovery(fs, new MockEnvironmentService("/repo")).coverOf(
+			target
+		);
+
+	it("should take the default config of the nearest folder above a file", async () => {
+		expect(await cover("/repo/places/lobby/src/Foo.luau")).toEqual({
+			file: "/repo/places/lobby/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should take a default.rogen.jsonc as the default", async () => {
+		expect(await cover("/repo/places/arena/src/Bar.luau")).toEqual({
+			file: "/repo/places/arena/default.rogen.jsonc",
+			whole: false,
+		});
+	});
+
+	it("should cover a file that does not exist yet", async () => {
+		expect(await cover("/repo/places/lobby/src/New/Baz.luau")).toEqual({
+			file: "/repo/places/lobby/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should take the default config of a folder for the folder", async () => {
+		expect(await cover("/repo/places/lobby")).toEqual({
+			file: "/repo/places/lobby/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should answer a .rogen.json whole, whatever its name", async () => {
+		expect(await cover("/repo/places/lobby/dist.rogen.json")).toEqual({
+			file: "/repo/places/lobby/dist.rogen.json",
+			whole: true,
+		});
+	});
+
+	it("should cover nothing for a .rogen.json that is not there", async () => {
+		expect(
+			await cover("/repo/places/lobby/nope.rogen.json")
+		).toBeUndefined();
+	});
+
+	it("should take the default config of the folder for a project file path", async () => {
+		expect(await cover("/repo/places/lobby/dist.project.json")).toEqual({
+			file: "/repo/places/lobby/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should fall back to a plain default.project.json", async () => {
+		await fs.createDirectory("/repo/tools/src");
+		await fs.writeFile("/repo/tools/default.project.json", "{}");
+
+		expect(await cover("/repo/tools/src/Foo.luau")).toEqual({
+			file: "/repo/tools/default.project.json",
+			whole: false,
+		});
+	});
+
+	it("should prefer a config to a plain project file in the same folder", async () => {
+		await fs.writeFile("/repo/places/lobby/default.project.json", "{}");
+
+		expect(await cover("/repo/places/lobby/src/Foo.luau")).toEqual({
+			file: "/repo/places/lobby/default.rogen.json",
+			whole: false,
+		});
+	});
+
+	it("should cover nothing for shared code that no config lies above", async () => {
+		expect(await cover("/repo/places/shared/src/Foo.luau")).toBeUndefined();
+	});
+
+	it("should go up past folders that hold no config", async () => {
+		await fs.writeFile("/repo/default.rogen.json", "{}");
+
+		expect(await cover("/repo/places/shared/src/Foo.luau")).toEqual({
+			file: "/repo/default.rogen.json",
+			whole: false,
 		});
 	});
 });
@@ -412,150 +689,20 @@ describe("ConfigDiscovery.findEnclosing", () => {
 	const from = (cwd: string) =>
 		new ConfigDiscovery(fs, new MockEnvironmentService(cwd));
 
-	describe("places", () => {
-		beforeEach(async () => {
-			await fs.writeFile(
-				"/repo/rogen.json",
-				JSON.stringify({ placePaths: ["places/*"] })
-			);
-			await fs.createDirectory("/repo/places/lobby/src");
-			await fs.createDirectory("/repo/places/arena");
-			await fs.writeFile("/repo/places/arena/rogen.json", "{}");
-			await fs.createDirectory("/repo/tools");
-			await fs.writeFile("/repo/tools/rogen.json", "{}");
-		});
-
-		it("should read the whole root from the root", async () => {
-			const found = (await from("/repo").discover([])).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				scopes: new Map(),
-				noneNamed: true,
-			});
-		});
-
-		it("should scope to a place without a config of its own from inside it", async () => {
-			const found = (
-				await from("/repo/places/lobby/src").discover([])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				home: "/repo/places/lobby",
-				files: ["/repo/rogen.json"],
-				noneNamed: false,
-				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
-			});
-		});
-
-		it("should scope to a place with a config of its own from its folder", async () => {
-			const found = (
-				await from("/repo/places/arena").discover([])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
-			});
-		});
-
-		it("should read a config that no root lists as its own", async () => {
-			const found = (await from("/repo/tools").discover([])).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/tools/rogen.json"],
-				scopes: new Map(),
-			});
-		});
-
-		it("should resolve a place folder without a config to the config that lists it", async () => {
-			const found = (
-				await from("/repo").discover(["places/lobby"])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
-			});
-		});
-
-		it("should resolve a place's default.project.json to that place", async () => {
-			const found = (
-				await from("/repo").discover([
-					"places/arena/default.project.json",
-				])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
-			});
-		});
-
-		it("should resolve a place's config file", async () => {
-			const found = (
-				await from("/repo").discover(["places/arena/rogen.json"])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				scopes: new Map([["/repo/rogen.json", ["/repo/places/arena"]]]),
-			});
-		});
-
-		it("should join the places named into one scope", async () => {
-			const found = (
-				await from("/repo").discover(["places/lobby", "places/arena"])
-			).unwrap();
-
-			expect(found.files).toEqual(["/repo/rogen.json"]);
-			expect(found.scopes.get("/repo/rogen.json")).toEqual([
-				"/repo/places/lobby",
-				"/repo/places/arena",
-			]);
-		});
-
-		it("should refuse the same place named twice", async () => {
-			const result = await from("/repo").discover([
-				"places/lobby",
-				"places/lobby",
-			]);
-
-			expect(errorOf(result).message).toMatch(/named more than once/);
-		});
-
-		it("should refuse a place and the whole config named together", async () => {
-			const result = await from("/repo").discover([".", "places/lobby"]);
-
-			expect(errorOf(result).message).toMatch(/named more than once/);
-		});
-
-		it("should take the bare name of a listed place that has no config for the place", async () => {
-			const found = (
-				await from("/repo/places").discover(["lobby"])
-			).unwrap();
-
-			expect(found).toMatchObject({
-				files: ["/repo/rogen.json"],
-				scopes: new Map([["/repo/rogen.json", ["/repo/places/lobby"]]]),
-			});
-		});
-	});
-
 	it("should find the nearest parent folder with a config", async () => {
-		await fs.writeFile("/repo/rogen.json", "{}");
-		await fs.writeFile("/repo/src/rogen.jsonc", "{}");
+		await fs.writeFile("/repo/default.rogen.json", "{}");
+		await fs.writeFile("/repo/src/default.rogen.jsonc", "{}");
 
 		const found = await from("/repo/src/Inventory").findEnclosing();
 
 		expect(found).toEqual({
 			directory: "/repo/src",
-			fileNames: ["rogen.jsonc"],
+			fileNames: ["default.rogen.jsonc"],
 		});
 	});
 
 	it("should not count the working directory", async () => {
-		await fs.writeFile("/repo/rogen.json", "{}");
+		await fs.writeFile("/repo/default.rogen.json", "{}");
 
 		expect(await from("/repo").findEnclosing()).toBeUndefined();
 	});
@@ -567,13 +714,13 @@ describe("ConfigDiscovery.findEnclosing", () => {
 	});
 
 	it("should go on past a parent that can't be read", async () => {
-		await fs.writeFile("/rogen.json", "{}");
+		await fs.writeFile("/default.rogen.json", "{}");
 
 		const found = await from("/missing/child").findEnclosing();
 
 		expect(found).toEqual({
 			directory: "/",
-			fileNames: ["rogen.json"],
+			fileNames: ["default.rogen.json"],
 		});
 	});
 });

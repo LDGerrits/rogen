@@ -1,0 +1,15 @@
+{
+	"steps": [
+		[
+			"build",
+			"lobby"
+		],
+		[
+			"build",
+			"lobby.rogen.json"
+		]
+	],
+	"output": [
+		"build"
+	]
+}

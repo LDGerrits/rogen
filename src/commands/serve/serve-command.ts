@@ -2,7 +2,10 @@ import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { UsageError, onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { ConfigArguments } from "../../domain/config/config-service.js";
+import {
+	ProjectArgument,
+	singleProjectError,
+} from "../../domain/config/config-service.js";
 import {
 	ServerExitEvent,
 	ServeService,
@@ -38,7 +41,7 @@ const AddressOption = {
 	type: "string",
 	placeholder: "address",
 	description:
-		"The address to listen on, for one project. Rojo's own flag; a project's serveAddress sets it in rogen.json.",
+		"The address to listen on, for one project. Rojo's own flag; a project's serveAddress sets it in default.rogen.json.",
 } as const satisfies OptionDescriptor;
 
 const PortOption = {
@@ -46,7 +49,7 @@ const PortOption = {
 	type: "string",
 	placeholder: "port",
 	description:
-		"The port to listen on, for one project. Rojo's own flag; a project's servePort sets it in rogen.json.",
+		"The port to listen on, for one project. Rojo's own flag; a project's servePort sets it in default.rogen.json.",
 } as const satisfies OptionDescriptor;
 
 const AllowedHostsOption = {
@@ -116,8 +119,8 @@ registerCommand(
 					summary:
 						"Builds, serves with Rojo, and rebuilds on changes",
 					description:
-						"Builds, serves the project files with Rojo, and rebuilds on every change.",
-					args: ConfigArguments,
+						"Builds the project file, serves it with Rojo, and rebuilds on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that.",
+					args: ProjectArgument,
 					passthrough: {
 						name: "server args",
 						description:
@@ -127,14 +130,14 @@ registerCommand(
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
-						"0": "another rogen serve already serves every project, or a server adopted from one stopped",
+						"0": "another rogen serve already serves the project, or a server adopted from one stopped",
 						"128+N":
 							"a signal stopped it: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
 					examples: [
 						"rogen serve",
 						"rogen serve places/lobby --port 34873",
-						"rogen serve . test",
+						"rogen serve dist",
 					],
 				},
 			});
@@ -144,6 +147,12 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: ServeLine
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError(
+				"serve",
+				line.positionals,
+				"Serve a second place from a second terminal, as 'rogen serve <project> --port <port>'."
+			);
+			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
 			if (!line.options.json) accessor.get(LogService).reserveStdout();
 			const serverArgs = serverArgsOf(line);
@@ -171,10 +180,12 @@ registerCommand(
 							accessor.get(EnvironmentService).cwd,
 							plan.value
 						);
+				for (const note of plan.value.selection.notes)
+					accessor.get(LogService).warn(note);
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(
-						"Nothing to start: another rogen serve already serves every config, so nothing is built or watched here."
+						"Nothing to start: another rogen serve already serves this project, so nothing is built or watched here."
 					);
 					return ok(undefined);
 				}
@@ -237,7 +248,7 @@ registerCommand(
 					stopped.p,
 				]);
 				await session.stop();
-				if (!stop) log.shutdown(session.targets);
+				if (!stop) log.shutdown(session.target);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return stop ? ok(undefined) : this.stoppedBy(lifecycle);

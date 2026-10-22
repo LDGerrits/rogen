@@ -1,0 +1,1 @@
+{ "name":"Game", "tree":{"$className":"DataModel"}, "rogen": { "sourcePaths":["src"], "routes":{"Shared":"ReplicatedStorage/Shared","*":"ReplicatedStorage/Shared"} } }

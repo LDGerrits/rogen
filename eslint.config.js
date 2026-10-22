@@ -18,10 +18,9 @@ const modules = {
 		build: ["build", "build-service"],
 		config: [
 			"config",
+			"config-differences",
 			"config-service",
 			"declared-keys",
-			"place-finder",
-			"place-ports",
 			"resolved-config",
 		],
 		init: ["init-service"],

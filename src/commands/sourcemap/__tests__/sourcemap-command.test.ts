@@ -25,12 +25,13 @@ describe("sourcemap command", () => {
 				routes: { "*": "ReplicatedStorage" },
 				...overrides,
 			},
-			abs(folder, "rogen.json")
+			abs(folder, "default.rogen.json")
 		);
 
 	const start = (
 		config: MockConfigService,
-		options: CommandLine["options"] = {}
+		options: CommandLine["options"] = {},
+		positionals: string[] = []
 	) => {
 		const log = new MockLogService();
 		const running = commandHarness({
@@ -38,7 +39,7 @@ describe("sourcemap command", () => {
 			log,
 			config,
 			processes,
-		}).run("sourcemap", { positionals: [], options });
+		}).run("sourcemap", { positionals, options });
 		return { log, running };
 	};
 
@@ -149,54 +150,15 @@ describe("sourcemap command", () => {
 		);
 	});
 
-	it("should write a sourcemap.json beside each place and leave out a root that lists them", async () => {
-		const config = new MockConfigService([
-			buildable("", { hasPlaces: true }),
-			buildable("places/lobby", {
-				isPlace: true,
-				rootFile: abs("rogen.json"),
-			}),
-			buildable("places/arena", {
-				isPlace: true,
-				rootFile: abs("rogen.json"),
-			}),
-		]);
-		await fs.writeFile(abs("places/lobby/src/A.luau"), "");
-		await fs.writeFile(abs("places/arena/src/A.luau"), "");
-		const { log, running } = start(config);
-		const [first] = await spawnedCount(1);
-		first.exit({ code: 0, signal: null });
-		const [, second] = await spawnedCount(2);
-		second.exit({ code: 0, signal: null });
-
-		expect((await running).isOk()).toBe(true);
-		expect(processes.spawned.map(({ args }) => args)).toEqual([
-			["sourcemap", "default.project.json", "--output", "sourcemap.json"],
-			["sourcemap", "default.project.json", "--output", "sourcemap.json"],
-		]);
-		expect(processes.spawned.map(({ options }) => options.cwd)).toEqual([
-			abs("places/lobby"),
-			abs("places/arena"),
-		]);
-		expect(log.texts("success")).toEqual(
-			expect.arrayContaining([
-				path.join("places", "lobby", "sourcemap.json") + " · wrote",
-				path.join("places", "arena", "sourcemap.json") + " · wrote",
-			])
-		);
-	});
-
-	it("should refuse -o when it selects several projects", async () => {
+	it("should refuse a second project, as Rojo's sourcemap does", async () => {
 		const { running } = start(
-			new MockConfigService([
-				buildable("places/lobby", { isPlace: true }),
-				buildable("places/arena", { isPlace: true }),
-			]),
-			{ output: "map.json" }
+			new MockConfigService([buildable("places/lobby")]),
+			{},
+			["places/lobby", "places/arena"]
 		);
 
 		expect(((await running) as ResultError<Error>).error.message).toContain(
-			"-o names one file, and this selects 2 projects"
+			"unexpected argument 'places/arena'"
 		);
 		expect(processes.spawned).toEqual([]);
 	});

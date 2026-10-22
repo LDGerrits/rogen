@@ -1,4 +1,12 @@
 {
-	"steps": [["where", "src/Common/Util.luau"], ["where", "ServerScriptService.Main"]],
+	"steps": [
+		[
+			"where",
+			"ServerScriptService.Main"
+		],
+		[
+			"where"
+		]
+	],
 	"rojo": false
 }

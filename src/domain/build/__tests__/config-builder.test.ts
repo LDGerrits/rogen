@@ -190,7 +190,7 @@ describe("ConfigBuilder", () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const unknownKey = warningDiagnostic(
 				"config.unknownField",
-				{ resource: abs("rogen.json") },
+				{ resource: abs("default.rogen.json") },
 				'"colour" is no key of a project file.'
 			);
 
@@ -586,9 +586,9 @@ describe("ConfigBuilder", () => {
 			]);
 		});
 
-		it("should check the sync path only when nothing is known of it", async () => {
+		it("should check the compiled path only when nothing is known of it", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
-			const config = configOf({ syncPath: abs("dist") });
+			const config = configOf({ compiledPath: abs("dist") });
 			const builder = builderOf(
 				fs,
 				await indexOf(fs, config.sourcePaths)

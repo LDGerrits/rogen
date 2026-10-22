@@ -1,4 +1,3 @@
-import path from "path";
 import { Result, err, ok } from "../../base/result.js";
 import { relativeTo, toNative } from "../../base/path.js";
 import {
@@ -6,8 +5,6 @@ import {
 	ConfigEntry,
 	ConfigService,
 } from "../../domain/config/config-service.js";
-import { CONFIG_FILE_NAMES } from "../../domain/config/config.js";
-import { configsOf } from "../../domain/config/resolved-config.js";
 import {
 	AbstractCommand,
 	registerCommand,
@@ -69,9 +66,9 @@ registerCommand(
 				id: "fmt-project",
 				metadata: {
 					summary:
-						"Formats rogen.json the way 'rojo fmt-project' does",
+						"Formats a .rogen.json the way 'rojo fmt-project' does",
 					description:
-						"Formats rogen.json as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
+						"Formats default.rogen.json, or the config you name, as 'rojo fmt-project' formats a project file, Rojo's keys first and Rogen's after. A file with comments is left alone.",
 					args: ConfigArguments,
 					options: FmtProjectOptions,
 					output: { document: FmtProjectOutput },
@@ -96,6 +93,7 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
 			const files: FormattedFile[] = [];
 			const failures: Diagnostic[] = [];
@@ -129,23 +127,8 @@ registerCommand(
 			entries: readonly ConfigEntry[],
 			fileSystemService: FileSystemService
 		): Promise<string[]> {
-			const files = new Set(
-				entries.flatMap((entry) => {
-					if (entry.status === "valid")
-						return configsOf(entry, entry.scope).map(
-							({ file }) => file
-						);
-					return entry.scope
-						? entry.scope.flatMap((folder) =>
-								CONFIG_FILE_NAMES.map((name) =>
-									path.join(folder, name)
-								)
-							)
-						: [entry.file];
-				})
-			);
 			const found = [];
-			for (const file of files)
+			for (const { file } of entries)
 				if (await fileSystemService.exists(file)) found.push(file);
 			return found;
 		}

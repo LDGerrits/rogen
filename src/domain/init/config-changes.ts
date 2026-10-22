@@ -8,18 +8,14 @@ import {
 	warningDiagnostic,
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { PER_PLACE_KEYS, defaultSourcePaths } from "../config/config.js";
+import { ROGEN_BLOCK, defaultSourcePaths } from "../config/config.js";
 import { DeclaredKeys } from "../config/declared-keys.js";
 import { Language, PlannedFile } from "../toolchain/toolchain.js";
 import { CodeFinder } from "./code-finder.js";
 import { ConfigEdit } from "./config-edit.js";
 import { InitDirectory } from "./init-directory.js";
 import { oneOf } from "./init-questions.js";
-import { KnownPlaces } from "./known-places.js";
-import { StarterPlaces } from "./starter-places.js";
 import { StartingRoutes } from "./starting-routes.js";
-import { WorkspaceFiles } from "./workspace-files.js";
-import { PlaceFinder } from "../config/place-finder.js";
 
 /** What a run changes about a project that has a config; every field is a change to make, so an empty request changes nothing. */
 export interface ChangeRequest {
@@ -32,15 +28,9 @@ export interface ChangeRequest {
 	readonly unsourcePaths?: readonly string[];
 	readonly darklua?: boolean;
 	/** Where Darklua writes, when it is added. */
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	/** Mounts to add, by path. */
 	readonly packages?: readonly string[];
-	/** Turn one place into several. */
-	readonly places?: boolean;
-	/** Add the places the editor workspace file lacks. */
-	readonly workspace?: boolean;
-	/** The place IDs a place is served for, none to clear them. */
-	readonly placeIds?: readonly number[];
 }
 
 /** What a request writes, for the plan builder to take. */
@@ -93,21 +83,15 @@ export class ConfigChanges {
 		private readonly edit: ConfigEdit,
 		private readonly language: Language,
 		/** The tree takes routes: its root is a DataModel. */
-		private readonly routed: boolean,
-		/** The config is a place's, which inherits the routes and has `src` for a source path. */
-		private readonly place = false
+		private readonly routed: boolean
 	) {}
 
 	/** The routes and source paths the config has, as the loader reads them. */
 	get sourcePaths(): string[] {
-		const { value } = this.edit;
-		return Array.isArray(value.sourcePaths)
-			? stringsOf(value.sourcePaths).map(normalizeDir)
-			: defaultSourcePaths(
-					this.place ||
-						(isObject(value.routes) &&
-							Object.keys(value.routes).length > 0)
-				);
+		const sourcePaths = this.edit.valueAt([ROGEN_BLOCK, "sourcePaths"]);
+		return Array.isArray(sourcePaths)
+			? stringsOf(sourcePaths).map(normalizeDir)
+			: defaultSourcePaths(Object.keys(this.routes).length > 0);
 	}
 
 	/** The keys of the routes the config has, without the one for unmatched files. */
@@ -118,19 +102,16 @@ export class ConfigChanges {
 	}
 
 	private get routes(): Record<string, unknown> {
-		const { routes } = this.edit.value;
+		const routes = this.edit.valueAt([ROGEN_BLOCK, "routes"]);
 		return isObject(routes) ? routes : {};
 	}
 
 	async apply(request: ChangeRequest): Promise<ChangePlan> {
-		if (this.place) return this.applyToPlace(request);
 		this.changeRoutes(request);
 		this.changeUnmatched(request);
 		await this.changeSourcePaths(request);
 		this.changeDarklua(request);
 		this.changePackages(request);
-		await this.changePlaces(request);
-		await this.changeWorkspace(request);
 		const config = this.edit.planned;
 		return {
 			...(config && { config }),
@@ -145,50 +126,6 @@ export class ConfigChanges {
 				usesDarklua: this.usesDarklua,
 			}),
 		};
-	}
-
-	private async applyToPlace(request: ChangeRequest): Promise<ChangePlan> {
-		const rootOnly: readonly [keyof ChangeRequest, string][] = [
-			["routes", "--route"],
-			["unroutes", "--no-route"],
-			["unmatched", "--unmatched"],
-			["darklua", "--darklua"],
-			["packages", "--package"],
-			["places", "--places"],
-		];
-		for (const [key, flag] of rootOnly)
-			if (request[key] !== undefined)
-				throw new UsageError(
-					`${flag} is for the project root, and ${this.directory.path} is a place.`,
-					"Run init in the folder of the root rogen.json."
-				);
-		await this.changeSourcePaths(request);
-		if (request.syncPath !== undefined)
-			this.edit.set(["syncPath"], normalizeDir(request.syncPath));
-		const { placeIds } = request;
-		if (placeIds !== undefined) {
-			if (placeIds.length > 0) this.edit.set(["servePlaceIds"], placeIds);
-			else if (this.edit.valueAt(["servePlaceIds"]) !== undefined)
-				this.edit.remove(["servePlaceIds"]);
-		}
-		const config = this.edit.planned;
-		return {
-			...(config && { config }),
-			files: this.files,
-			directories: this.directories,
-			notes: this.notes,
-			warnings: this.warnings,
-			setup: this.setup,
-			run: this.run,
-			edits: this.edits,
-		};
-	}
-
-	/** The files that put the places the root lists into its editor workspace file. */
-	async missingFromWorkspace(): Promise<readonly PlannedFile[]> {
-		const scratch = this.files.length;
-		await this.changeWorkspace({ workspace: true });
-		return this.files.splice(scratch);
 	}
 
 	private needRoutes(flag: string): void {
@@ -229,7 +166,11 @@ export class ConfigChanges {
 			const there = this.routeKeyFor(key);
 			if (there === undefined) {
 				this.edit.set(
-					["routes", lowercase ? DeclaredKeys.identityOf(key) : key],
+					[
+						ROGEN_BLOCK,
+						"routes",
+						lowercase ? DeclaredKeys.identityOf(key) : key,
+					],
 					target
 				);
 				continue;
@@ -252,7 +193,7 @@ export class ConfigChanges {
 					`routes.${there} goes to ${String(this.routes[there])}, not to the standard ${target}, so init leaves it as it is.`,
 					`Edit it in ${this.edit.fileName} to remove it.`
 				);
-			this.edit.remove(["routes", there]);
+			this.edit.remove([ROGEN_BLOCK, "routes", there]);
 		}
 	}
 
@@ -270,7 +211,7 @@ export class ConfigChanges {
 				);
 				return;
 			}
-			this.edit.set(["routes", fallback], target);
+			this.edit.set([ROGEN_BLOCK, "routes", fallback], target);
 			return;
 		}
 		if (!there) return;
@@ -279,7 +220,7 @@ export class ConfigChanges {
 				"--unmatched leave has no route to apply to.",
 				"Add a route with --route first, or keep the files going to the shared route."
 			);
-		this.edit.remove(["routes", fallback]);
+		this.edit.remove([ROGEN_BLOCK, "routes", fallback]);
 	}
 
 	private async changeSourcePaths({
@@ -327,12 +268,16 @@ export class ConfigChanges {
 				);
 		}
 		for (const entry of toAdd.filter((one) => !current.includes(one))) {
-			this.edit.set(["sourcePaths"], next, `added sourcePaths ${entry}`);
+			this.edit.set(
+				[ROGEN_BLOCK, "sourcePaths"],
+				next,
+				`added sourcePaths ${entry}`
+			);
 			this.directories.push(entry);
 		}
 		for (const entry of toRemove)
 			this.edit.set(
-				["sourcePaths"],
+				[ROGEN_BLOCK, "sourcePaths"],
 				next,
 				`removed sourcePaths ${entry}`
 			);
@@ -342,7 +287,7 @@ export class ConfigChanges {
 		if (darklua === undefined) return;
 		throw new UsageError(
 			"Darklua's second config file isn't something init writes yet.",
-			'Write the file that sets "syncPath" to the folder Darklua writes yourself.'
+			'Write the file that sets "compiledPath" to the folder Darklua writes yourself.'
 		);
 	}
 
@@ -388,86 +333,5 @@ export class ConfigChanges {
 				);
 			else this.edit.set(["tree", ...names], node, label);
 		}
-	}
-
-	private async changePlaces({ places }: ChangeRequest): Promise<void> {
-		if (places === undefined) return;
-		const { value } = this.edit;
-		if (!places)
-			throw new UsageError(
-				"--no-places would move the code of the places back into one project, which init doesn't do.",
-				"Move the code and edit placePaths in rogen.json yourself."
-			);
-		if (stringsOf(value.placePaths).length > 0) {
-			this.notes.push(
-				`${this.edit.fileName} lists places already: add one with 'rogen init places/<name>'.`
-			);
-			return;
-		}
-		this.needRoutes("--places");
-		const { compiler } = this.language;
-		if (compiler)
-			throw new UsageError(
-				`--places isn't set up for ${this.language.copy.label} on a project that exists.`,
-				"Start a new project with --places, or add a place with 'rogen init places/<name>'."
-			);
-		const own = PER_PLACE_KEYS.filter((key) => key in value);
-		if (own.length > 0)
-			throw new UsageError(
-				`${joinedWithAnd(own)} ${own.length === 1 ? "is" : "are"} set in ${this.edit.fileName}, and a config that lists places can't set ${own.length === 1 ? "it" : "them"}.`,
-				"Move them into the config of a place first."
-			);
-		const root = this.directory.path;
-		const sources = this.sourcePaths;
-		const starter = await new StarterPlaces(this.fileSystemService).plan(
-			root,
-			undefined,
-			sources
-		);
-		if (
-			await new PlaceFinder(this.fileSystemService).configIn(
-				path.join(root, starter.place)
-			)
-		)
-			throw new UsageError(
-				`${starter.place} has a config already, so it can't be the first place.`,
-				"Add the folder to placePaths yourself."
-			);
-		this.edit.set(
-			["placePaths"],
-			[...starter.placePaths],
-			`added placePaths ${starter.placePaths.join(", ")}`
-		);
-		this.files.push(...starter.files);
-		this.directories.push(...starter.directories);
-		this.notes.push(...starter.notes);
-		this.edits.push(
-			`${joinedWithAnd(sources)} stays the code every place shares. To keep it with the places, move it to places/shared/src and set "sourcePaths" in ${this.edit.fileName} to ["places/shared/src"].`,
-			"Add another place with 'rogen init places/lobby'."
-		);
-	}
-
-	/** The places under the root that its editor workspace file lacks. */
-	private async changeWorkspace({ workspace }: ChangeRequest): Promise<void> {
-		if (!workspace) return;
-		const placePaths = stringsOf(this.edit.value.placePaths);
-		if (placePaths.length === 0) return;
-		const root = this.directory.path;
-		const known = await KnownPlaces.of(
-			this.fileSystemService,
-			new PlaceFinder(this.fileSystemService),
-			root,
-			placePaths,
-			this.sourcePaths
-		);
-		const folders = known
-			.foldersWith(root, root)
-			.filter((folder) => folder !== "");
-		if (folders.length === 0) return;
-		const planned = await new WorkspaceFiles(
-			this.fileSystemService
-		).planAll(root, folders, folders);
-		this.files.push(...planned.files);
-		this.notes.push(...planned.notes);
 	}
 }

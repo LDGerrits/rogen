@@ -23,6 +23,7 @@ import {
 	WrittenBuild,
 } from "./build.js";
 import {
+	Asked,
 	BuildService,
 	ConfigLocations,
 	Diagnosis,
@@ -33,6 +34,7 @@ import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
+import { LocateTargets } from "./locate/locate-targets.js";
 import { AssembledFile, Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 import { WrittenRecords } from "./written-records.js";
@@ -91,10 +93,11 @@ export class CoreBuildService implements BuildService {
 	): Promise<BuildRun> {
 		const { set, unloaded } = BuildSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths);
-		const attempts = await this.attempt(
+		const built = await this.attempt(
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing
 		);
+		const attempts = write ? built : await this.failOrphaned(built);
 		const settled = await this.settle(
 			attempts,
 			unloaded.map(({ label }) => label),
@@ -103,7 +106,7 @@ export class CoreBuildService implements BuildService {
 		);
 		const builds = groupBy(
 			[...unloaded, ...settled],
-			(build) => build.rootFile
+			(build) => build.file
 		);
 		return new BuildRun(
 			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])
@@ -161,7 +164,7 @@ export class CoreBuildService implements BuildService {
 		});
 	}
 
-	/** The warning for each config whose project file differs from what a build would write: from a project file the locate already assembled, else from one more build of the same listing. */
+	/** Warns of each project file that differs from a build, reusing an assembly the locate made to skip a second build. */
 	private async staleOf(
 		configs: readonly ResolvedConfig[],
 		listing: IndexReader,
@@ -187,6 +190,12 @@ export class CoreBuildService implements BuildService {
 			if (diagnostic) stale.push(diagnostic);
 		}
 		return stale;
+	}
+
+	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {
+		return new LocateTargets(this.fileSystemService)
+			.classify(query)
+			.then(({ asked }) => asked);
 	}
 
 	async staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]> {
@@ -323,6 +332,26 @@ export class CoreBuildService implements BuildService {
 		);
 	}
 
+	/** A check fails an adopted project file whose config is gone, as a build does. */
+	private failOrphaned(attempts: readonly Attempt[]): Promise<Attempt[]> {
+		return Promise.all(
+			attempts.map(async (attempt) => {
+				if (attempt instanceof FailedBuild || !attempt.config.isAdopted)
+					return attempt;
+				const orphaned = await this.writer.orphaned(
+					attempt.config.projectFile
+				);
+				return orphaned
+					? new FailedBuild(
+							attempt.config,
+							orphaned.diagnostics,
+							attempt.findings
+						)
+					: attempt;
+			})
+		);
+	}
+
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
 		const stale = await new ProjectFileStaleness(
 			this.fileSystemService,
@@ -352,7 +381,7 @@ export class CoreBuildService implements BuildService {
 				continue;
 			}
 			const written = config.isAdopted
-				? ok(false)
+				? await this.checkAdopted(config)
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
 						projectFile,
@@ -377,6 +406,13 @@ export class CoreBuildService implements BuildService {
 			);
 		}
 		return builds;
+	}
+
+	private async checkAdopted(
+		config: ResolvedConfig
+	): Promise<Result<boolean, DiagnosticsError>> {
+		const orphaned = await this.writer.orphaned(config.projectFile);
+		return orphaned ? err(orphaned) : ok(false);
 	}
 
 	private static unwritten(

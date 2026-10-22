@@ -113,84 +113,6 @@ export class InitQuestions {
 		});
 	}
 
-	async placeListing(
-		glob: string,
-		folder: string
-	): Promise<string | undefined> {
-		const given = this.choices.placeListing;
-		if (given) return given === "glob" ? glob : folder;
-		if (!this.interactive) {
-			this.decide("placeListing", "glob", "--place-listing");
-			return glob;
-		}
-		const answer = await this.essential.select<"glob" | "folder">({
-			message: "How do you want to list this place?",
-			choices: [
-				{
-					value: "glob",
-					label: glob,
-					hint: "every folder there is a place",
-				},
-				{ value: "folder", label: folder, hint: "only this folder" },
-			],
-			initialValue: "glob",
-		});
-		return answer === undefined
-			? undefined
-			: answer === "glob"
-				? glob
-				: folder;
-	}
-
-	/** The place IDs the server of a place is for; none when the place isn't published yet. */
-	async placeIds(place: string): Promise<readonly number[] | undefined> {
-		const given = this.choices.placeIds;
-		if (given !== undefined)
-			return InitQuestions.distinct(
-				listOf(given, "--place-id").map((id) =>
-					InitQuestions.toPlaceId(id)
-				)
-			);
-		if (!this.interactive) {
-			this.decide("placeIds", [], "--place-id");
-			return [];
-		}
-		const answer = await this.promptService.text({
-			message: "Place ID",
-			description: `The published ${place} place's ID, so that a Studio on another place refuses to connect to its port. Leave empty if it isn't published yet. Separate several with commas.`,
-			validate: (value) => {
-				const bad = splitList(value).find(
-					(id) => !InitQuestions.isPlaceId(id)
-				);
-				return bad === undefined
-					? undefined
-					: `'${bad}' is not a place ID, a whole number above 0.`;
-			},
-		});
-		return answer === undefined
-			? undefined
-			: InitQuestions.distinct(
-					splitList(answer).map((id) => InitQuestions.toPlaceId(id))
-				);
-	}
-
-	private static distinct(ids: readonly number[]): number[] {
-		return [...new Set(ids)];
-	}
-
-	private static isPlaceId(value: string): boolean {
-		return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
-	}
-
-	private static toPlaceId(value: string): number {
-		if (!InitQuestions.isPlaceId(value))
-			throw new UsageError(
-				`'${value}' is not a place ID.`,
-				"A place ID is a whole number above 0, as Roblox shows it in the place's URL."
-			);
-		return Number(value);
-	}
-
 	/** The areas of a project that has a config to change, with what it has now; `undefined` when the user cancelled. */
 	async whatToChange(
 		current: string,
@@ -300,38 +222,6 @@ export class InitQuestions {
 			})),
 			initialValues: offered.map(({ path }) => path),
 		});
-	}
-
-	async changePlaces(
-		several: boolean
-	): Promise<"several" | "add" | undefined> {
-		if (several) return "add";
-		return this.essential.select<"several" | "add">({
-			message: "Places",
-			choices: [
-				{
-					value: "several",
-					label: "Turn this into several places",
-					hint: "adds placePaths and a first place, and moves no code",
-				},
-				{
-					value: "add",
-					label: "Add a place",
-					hint: "a folder with its own rogen.json",
-				},
-			],
-			initialValue: "several",
-		});
-	}
-
-	/** The folder of a place to add. */
-	async placeFolder(): Promise<string | undefined> {
-		const answer = await this.essential.text({
-			message: "Place folder",
-			description: "Relative to here, such as places/lobby.",
-			validate: required("a folder"),
-		});
-		return answer === undefined ? undefined : normalizeDir(answer);
 	}
 
 	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {
@@ -575,13 +465,13 @@ export class InitQuestions {
 		return answer === "lift" ? lift : { kind: "new" };
 	}
 
-	async syncPath(
+	async compiledPath(
 		{ workspace }: InitDirectory,
 		read: readonly string[]
 	): Promise<string | undefined> {
-		const placeholder = workspace.darklua.defaultSyncPath;
+		const placeholder = workspace.darklua.defaultCompiledPath;
 		const checked = (value: string): string | undefined => {
-			const missing = required("a sync path")(value);
+			const missing = required("a compiled path")(value);
 			if (missing) return missing;
 			const dir = normalizeDir(value);
 			const overlapped = read.find(
@@ -592,16 +482,16 @@ export class InitQuestions {
 				? `${dir} overlaps ${overlapped}. Darklua must write to a folder of its own.`
 				: undefined;
 		};
-		const given = this.choices.syncPath;
+		const given = this.choices.compiledPath;
 		if (given !== undefined) {
 			const problem = checked(given);
 			if (problem) throw new UsageError(problem);
 			return normalizeDir(given);
 		}
 		if (!this.interactive)
-			return this.decide("syncPath", placeholder, "--sync-path");
+			return this.decide("compiledPath", placeholder, "--compiled-path");
 		const answer = await this.promptService.text({
-			message: "Sync path",
+			message: "Compiled path",
 			description:
 				"The folder Darklua writes into. Rojo syncs from here.",
 			placeholder,

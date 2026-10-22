@@ -1,0 +1,11 @@
+// the game
+{
+	"rogen": {
+		/* where the code is */
+		"sourcePaths": ["src",],
+		"routes": {
+			"server": "ServerScriptService", // scripts
+			"*": "ReplicatedStorage",
+		},
+	},
+}

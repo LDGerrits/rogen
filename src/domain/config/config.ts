@@ -7,7 +7,17 @@ import {
 	projectFileName,
 } from "../rojo/rojo-project.js";
 
-/** What a `rogen.json` holds: a Rojo project file, plus the keys Rogen reads. */
+/** The key that holds Rogen's own keys; the top level is Rojo's. */
+export const ROGEN_BLOCK = "rogen";
+
+/** The keys Rogen adds to a Rojo project file, which sit in the `rogen` block. */
+export interface RogenKeys {
+	readonly sourcePaths?: string[];
+	readonly routes?: Record<string, string>;
+	readonly compiledPath?: string;
+}
+
+/** What a `.rogen.json` holds: a Rojo project file, plus a `rogen` block of the keys Rogen reads. */
 export interface RogenConfig {
 	readonly $schema?: string;
 	readonly name?: string;
@@ -23,32 +33,60 @@ export interface RogenConfig {
 	readonly globIgnorePaths?: string[];
 	readonly syncRules?: unknown[];
 	readonly syncbackRules?: Record<string, unknown>;
-	readonly sourcePaths?: string[];
-	readonly routes?: Record<string, string>;
-	readonly syncPath?: string;
-	readonly placePaths?: string[];
+	readonly rogen?: RogenKeys;
 }
 
 interface ConfigValues {
 	getValue<T>(section?: string | readonly string[]): T | undefined;
 }
 
-export function fieldOf<K extends keyof RogenConfig>(
+/** A key of the `rogen` block. */
+export function fieldOf<K extends keyof RogenKeys>(
 	values: ConfigValues,
 	key: K
-): RogenConfig[K] {
-	return values.getValue<RogenConfig[K]>(key);
+): RogenKeys[K] {
+	return values.getValue<RogenKeys[K]>(["rogen", key]);
 }
 
-export const CONFIG_FILE_NAMES: readonly string[] = [
+const CONFIG_FILE_PATTERN = /^(.+)\.rogen\.jsonc?$/;
+
+/** The stem of a config file's name: `dist` for `dist.rogen.json`. */
+export const configStem = (fileName: string): string | undefined =>
+	CONFIG_FILE_PATTERN.exec(path.basename(fileName))?.[1];
+
+export const isConfigFileName = (fileName: string): boolean =>
+	configStem(fileName) !== undefined;
+
+/** The stem of the project file a config writes when it is named `default`. */
+export const DEFAULT_PROJECT = "default";
+
+/** The name of the config file for the project file `stem`: `dist.rogen.json` for `dist`. */
+export const configFileName = (stem: string): string => `${stem}.rogen.json`;
+
+export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_PROJECT);
+
+/** The stem of a project file's name: `dist` for `dist.project.json`. */
+export const projectStem = (projectFile: string): string =>
+	path.basename(projectFile).replace(/\.project\.jsonc?$/, "");
+
+/** The name of the config that writes `projectFile`: `dist.rogen.json` for `dist.project.json`. */
+export const configFileNameOf = (projectFile: string): string =>
+	configFileName(projectStem(projectFile));
+
+/** A folder's default config, in either extension. */
+export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
+	DEFAULT_CONFIG_FILE,
+	`${DEFAULT_CONFIG_FILE}c`,
+];
+
+export const isDefaultConfigFileName = (fileName: string): boolean =>
+	DEFAULT_CONFIG_FILE_NAMES.includes(fileName);
+
+/** The names a folder's config had before configs were named for the project file they write. */
+export const LEGACY_CONFIG_FILE_NAMES: readonly string[] = [
 	"rogen.json",
 	"rogen.jsonc",
 ];
-
-export const DEFAULT_CONFIG_FILE = "rogen.json";
-
-export const isConfigFileName = (fileName: string): boolean =>
-	CONFIG_FILE_NAMES.includes(fileName);
 
 /** What `rogen syncback` writes beside a config while it runs: the project file Rojo reads, and the folder it writes new instances into. */
 export const SYNCBACK_FILES = {
@@ -71,9 +109,6 @@ export function defaultSourcePaths(routed: boolean): string[] {
 	return routed ? [DEFAULT_SOURCE_PATH] : [];
 }
 
-/** The stem of the project file a `rogen.json` writes. */
-export const DEFAULT_PROJECT = "default";
-
 export const DEFAULT_PROJECT_FILE = projectFileName(DEFAULT_PROJECT);
 
 /** The names Rojo looks for in a folder, in its order. */
@@ -82,34 +117,13 @@ export const DEFAULT_PROJECT_FILES = [
 	`${DEFAULT_PROJECT_FILE}c`,
 ];
 
-/** Whether a file is named as a Rojo project file is. A config that is one was given no `rogen.json`, and is its own output. */
+/** Whether a file is named as a Rojo project file is. A config that is one was given no `.rogen.json`, and is its own output. */
 export const isProjectFileConfig = (file: string): boolean =>
 	isProjectFileName(path.basename(file));
 
 /** Whether Rojo reads this project file without a `name`, as it names the project after the folder. */
 export const isDefaultProjectFile = (file: string): boolean =>
 	DEFAULT_PROJECT_FILES.includes(path.basename(file));
-
-export const ROOT_ONLY_KEYS: readonly string[] = ["placePaths"];
-
-/** What one place sets for itself: a config that lists places can't, so no place inherits it. */
-export const PER_PLACE_KEYS: readonly string[] = [
-	"servePort",
-	"servePlaceIds",
-	"blockedPlaceIds",
-	"placeId",
-	"gameId",
-];
-
-/** Keys a place never inherits from the config that lists it. */
-export const PLACE_OWN_KEYS: readonly string[] = [
-	"name",
-	"sourcePaths",
-	...PER_PLACE_KEYS,
-];
-
-/** Rojo's default port, given to the first place without a `servePort`. */
-export const FIRST_PLACE_PORT = 34872;
 
 const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
 
@@ -125,12 +139,11 @@ export function schemaUrlFor(version: string): string {
 	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
 }
 
-/** The keys Rogen adds to a Rojo project file, in the order `rogen fmt-project` writes them. */
-export const ROGEN_KEYS: readonly (keyof RogenConfig)[] = [
+/** The keys of the `rogen` block, in the order `rogen fmt-project` writes them. */
+export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
 	"routes",
-	"syncPath",
-	"placePaths",
+	"compiledPath",
 ];
 
 /** A config as `rogen fmt-project` writes it, so the first format changes nothing. */

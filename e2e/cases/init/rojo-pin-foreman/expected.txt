@@ -8,26 +8,28 @@ ran:
 written:
   AGENTS.md
   default.project.json
+  default.rogen.json
   foreman.toml
-  rogen.json
 
-foreman.toml:
-[tools]
-rojo = { github = "rojo-rbx/rojo", version = "7.7.1" }
-
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel"
   },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
   }
 }
+
+foreman.toml:
+[tools]
+rojo = { github = "rojo-rbx/rojo", version = "7.7.1" }

@@ -1,0 +1,17 @@
+{
+	"syncRules": [
+		{ "pattern": "src/**/*.module", "use": "moduleScript", "suffix": ".module" }
+	],
+	"globIgnorePaths": ["src/**/*.draft.luau"],
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Vendor": { "$path": "src/Vendor" }
+		}
+	},
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "*": "ReplicatedStorage/shared" },
+		"compiledPath": "out"
+	}
+}

@@ -40,9 +40,9 @@ describe("where command", () => {
 	});
 
 	it("should print where each path lands and why, relative to the working directory", async () => {
-		await writeConfig("rogen.json", {
-			routes: ROUTES,
+		await writeConfig("default.rogen.json", {
 			globIgnorePaths: ["**/*.spec.luau"],
+			rogen: { routes: ROUTES },
 		});
 		await write(
 			"src/Net/Http@client.luau",
@@ -70,7 +70,9 @@ describe("where command", () => {
 
 	describe("a project file that is out of date", () => {
 		beforeEach(async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 			await write("src/Util.luau");
 			await fs.writeFile("/repo/default.project.json", "{}");
 		});
@@ -110,7 +112,7 @@ describe("where command", () => {
 	});
 
 	it("should say a file that is no instance is not one", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { rogen: { routes: ROUTES } });
 		await write("src/Notes.md");
 
 		await run({ _: ["src/Notes.md"] });
@@ -120,8 +122,10 @@ describe("where command", () => {
 
 	describe("when an error elsewhere stops the build", () => {
 		beforeEach(async () => {
-			await writeConfig("rogen.json", {
-				routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+			await writeConfig("default.rogen.json", {
+				rogen: {
+					routes: { shared: "ReplicatedStorage/Shared", ...ROUTES },
+				},
 			});
 			await write(
 				"src/F/Shared/Good.luau",
@@ -162,7 +166,7 @@ describe("where command", () => {
 	});
 
 	it("should show the misspelt folder a named file lies in, but not under a directory's files", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { rogen: { routes: ROUTES } });
 		await write("src/F/Sever/A.luau");
 
 		await run({ _: ["src/F/Sever/A.luau"] });
@@ -175,9 +179,11 @@ describe("where command", () => {
 	});
 
 	it("should read an argument as a path when the working directory holds a folder named after its service", async () => {
-		await writeConfig("rogen.json", {
-			sourcePaths: ["."],
-			routes: { ...ROUTES, ReplicatedFirst: "ReplicatedFirst" },
+		await writeConfig("default.rogen.json", {
+			rogen: {
+				sourcePaths: ["."],
+				routes: { ...ROUTES, ReplicatedFirst: "ReplicatedFirst" },
+			},
 		});
 		await write("ReplicatedFirst/Boot.client.luau");
 
@@ -189,7 +195,7 @@ describe("where command", () => {
 	});
 
 	it("should print every file in the tree when given no path", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { rogen: { routes: ROUTES } });
 		await write("src/B.luau", "src/A/Server/C.luau");
 
 		await run({});
@@ -201,7 +207,7 @@ describe("where command", () => {
 	});
 
 	it("should say there are no files rather than print nothing", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES });
+		await writeConfig("default.rogen.json", { rogen: { routes: ROUTES } });
 		await fs.createDirectory("/repo/src");
 
 		const result = await run({});
@@ -211,7 +217,10 @@ describe("where command", () => {
 	});
 
 	it("should fail with the config's errors", async () => {
-		await writeConfig("rogen.json", { routes: ROUTES, extends: "base" });
+		await writeConfig("default.rogen.json", {
+			extends: "base",
+			rogen: { routes: ROUTES },
+		});
 
 		const result = await run({ _: ["src/A.luau"] });
 
@@ -234,7 +243,9 @@ describe("where command", () => {
 	])(
 		"should read a backslash as a separator, so %s answers as with slashes",
 		async (_, backslashed, slashed) => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 			await write("src/A.luau");
 
 			await run({ _: [slashed] });
@@ -246,11 +257,119 @@ describe("where command", () => {
 		}
 	);
 
+	describe("with several places", () => {
+		beforeEach(async () => {
+			for (const place of ["lobby", "arena"])
+				await writeConfig(`places/${place}/default.rogen.json`, {
+					name: place,
+					rogen: {
+						sourcePaths: ["../shared/src", "src"],
+						routes: ROUTES,
+					},
+				});
+			await write(
+				"places/shared/src/Common/Util.luau",
+				"places/lobby/src/Server/Only.luau",
+				"places/arena/src/Server/Main.luau"
+			);
+		});
+
+		it("should answer a file of a place from the root, by the config of that place", async () => {
+			const result = await run({
+				_: ["places/lobby/src/Server/Only.luau"],
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
+			]);
+		});
+
+		it("should answer files of two places, each by its own config, in the order given", async () => {
+			const result = await run({
+				_: [
+					"places/arena/src/Server/Main.luau",
+					"places/lobby/src/Server/Only.luau",
+				],
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"arena: places/arena/src/Server/Main.luau -> ServerScriptService/Main · route Server (folder)",
+				"lobby: places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
+			]);
+		});
+
+		it("should skip a file that no config covers with a note, and succeed", async () => {
+			const result = await run({
+				_: ["places/shared/src/Common/Util.luau"],
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([]);
+			expect(logService.texts("warn")).toEqual([
+				"places/shared/src/Common/Util.luau: no config covers this file; see where it lands through a place: rogen where places/lobby",
+			]);
+		});
+
+		it("should answer the files it can and skip the one it can't", async () => {
+			const result = await run({
+				_: [
+					"places/shared/src/Common/Util.luau",
+					"places/lobby/src/Server/Only.luau",
+				],
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
+			]);
+			expect(logService.texts("warn")).toHaveLength(1);
+		});
+
+		it("should list every file of a config named by its file", async () => {
+			const result = await run({
+				_: ["places/lobby/default.rogen.json"],
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
+				"places/shared/src/Common/Util.luau -> ReplicatedStorage/Shared/Common/Util · route * (fallback)",
+			]);
+		});
+
+		it("should fail at the root with no path, where no config is", async () => {
+			const result = await run({});
+
+			expect(result.isErr()).toBe(true);
+			expect((result as { error: Error }).error.message).toContain(
+				"No default.rogen.json or default.project.json in this folder"
+			);
+		});
+
+		it("should read the place's config for a bare instance from the place's folder", async () => {
+			const harness = commandHarness({ fs, cwd: "/repo/places/lobby" });
+
+			const result = await harness.run("where", {
+				positionals: ["ServerScriptService.Only"],
+				options: {},
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(harness.log.texts("print")).toEqual([
+				"src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
+			]);
+		});
+	});
+
 	describe("the require of a named file", () => {
 		const notes = () => logService.texts("note");
 
 		beforeEach(async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 		});
 
 		it("should print a module's require as a note under its line", async () => {
@@ -330,9 +449,9 @@ describe("where command", () => {
 			).locations;
 
 		beforeEach(async () => {
-			await writeConfig("rogen.json", {
-				routes: ROUTES,
+			await writeConfig("default.rogen.json", {
 				globIgnorePaths: ["**/*.spec.luau"],
+				rogen: { routes: ROUTES },
 			});
 			await write(
 				"src/Inventory/Server/Save.luau",
@@ -407,9 +526,9 @@ describe("where command", () => {
 		});
 
 		it("should print the errors of a config that doesn't load", async () => {
-			await writeConfig("rogen.json", {
-				routes: ROUTES,
+			await writeConfig("default.rogen.json", {
 				extends: "base",
+				rogen: { routes: ROUTES },
 			});
 
 			const result = await run({
@@ -424,7 +543,7 @@ describe("where command", () => {
 			expect(locations).toEqual([]);
 			expect(diagnostics).toMatchObject([
 				{
-					file: "/repo/rogen.json",
+					file: "/repo/default.rogen.json",
 					code: "config.removedField",
 				},
 			]);
@@ -450,7 +569,9 @@ describe("where command", () => {
 			fs.writeFile(`/repo/${file}`, JSON.stringify(value));
 
 		it("should write both forms Studio prints as file:line and leave the other text as it is", async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 			await write("src/Inventory/Server/Save.luau");
 
 			const result = await pipe(
@@ -478,7 +599,9 @@ describe("where command", () => {
 		});
 
 		it("should leave an instance no file places as it is", async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 			await write("src/Inventory/Server/Save.luau");
 
 			await pipe("ServerScriptService.Other.Thing:3: boom");
@@ -493,56 +616,64 @@ describe("where command", () => {
 			expect(text()).toBe("hello\nworld");
 		});
 
-		describe("at the root of several places", () => {
+		describe("of several places", () => {
 			beforeEach(async () => {
-				await writeJson("rogen.json", {
-					name: "Game",
-					placePaths: ["places/*"],
-					routes: ROUTES,
-				});
-				await writeJson("places/lobby/rogen.json", {});
-				await writeJson("places/arena/rogen.json", {});
+				for (const place of ["lobby", "arena"])
+					await writeJson(`places/${place}/default.rogen.json`, {
+						name: place,
+						rogen: {
+							sourcePaths: ["../shared/src", "src"],
+							routes: ROUTES,
+						},
+					});
 				await write(
-					"src/Common/Util.luau",
+					"places/shared/src/Common/Util.luau",
 					"places/lobby/src/Server/Only.luau",
 					"places/lobby/src/Server/Main.luau",
 					"places/arena/src/Server/Main.luau"
 				);
 			});
 
-			it("should rewrite what one file places and what the places share", async () => {
-				await pipe(
-					"ReplicatedStorage.Shared.Common.Util:2: a\nServerScriptService.Only:5: b"
-				);
+			const pipeIn = (cwd: string, text: string) => {
+				const harness = commandHarness({
+					fs,
+					cwd,
+					input: new MockInputService(text),
+				});
+				logService = harness.log;
+				return harness.run("where", {
+					positionals: ["-"],
+					options: {},
+				});
+			};
 
-				expect(text()).toBe(
-					"src/Common/Util.luau:2: a\nplaces/lobby/src/Server/Only.luau:5: b"
+			it("should print the text as it is, then fail, at the root, which no config is at", async () => {
+				const result = await pipe("ServerScriptService.Only:5: b");
+
+				expect(result.isErr()).toBe(true);
+				expect(text()).toBe("ServerScriptService.Only:5: b");
+				expect((result as { error: Error }).error.message).toContain(
+					"No default.rogen.json or default.project.json in this folder"
 				);
 			});
 
-			it("should leave what several files place as it is, and list it once on stderr", async () => {
-				const result = await pipe(
-					"ServerScriptService.Main:1: a\nScript 'ServerScriptService.Main', Line 2"
+			it("should rewrite what the place's own file places and what it shares from the place's folder", async () => {
+				const result = await pipeIn(
+					"/repo/places/lobby",
+					"ReplicatedStorage.Shared.Common.Util:2: a\nServerScriptService.Only:5: b"
 				);
 
 				expect(result.isOk()).toBe(true);
 				expect(text()).toBe(
-					"ServerScriptService.Main:1: a\nScript 'ServerScriptService.Main', Line 2"
-				);
-				expect(logService.texts("warn")).toEqual([
-					expect.stringContaining("ServerScriptService.Main"),
-				]);
-				expect(logService.texts("warn")[0]).toContain(
-					"places/arena/src/Server/Main.luau"
-				);
-				expect(logService.texts("warn")[0]).toContain(
-					"places/lobby/src/Server/Main.luau"
+					"../shared/src/Common/Util.luau:2: a\nsrc/Server/Only.luau:5: b"
 				);
 			});
 		});
 
 		it("should keep a Windows line ending and print nothing for empty input", async () => {
-			await writeConfig("rogen.json", { routes: ROUTES });
+			await writeConfig("default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
 			await write("src/Inventory/Server/Save.luau");
 
 			await pipe("a\r\nServerScriptService.Inventory.Save:1\r\n");

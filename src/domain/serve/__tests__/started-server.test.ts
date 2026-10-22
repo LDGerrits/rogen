@@ -36,7 +36,7 @@ describe("StartedServer", () => {
 	let connections: string[];
 	let server: StartedServer;
 
-	const config = mockConfig({ file: "/repo/rogen.json" });
+	const config = mockConfig({ file: "/repo/default.rogen.json" });
 	const target: ServeTarget = {
 		config,
 		project: "repo",
@@ -45,7 +45,7 @@ describe("StartedServer", () => {
 	const plan = new ServePlan(
 		new MockConfigSelection(),
 		{ server: SyncServer.ROJO, file: "/bin/rojo", version: "7.7.1" },
-		[target],
+		target,
 		["--port", "34872"]
 	);
 

@@ -44,8 +44,23 @@ describe("build command", () => {
 				routes: { "*": "ReplicatedStorage" },
 				...overrides,
 			},
-			abs(folder, "rogen.json")
+			abs(folder, "default.rogen.json")
 		);
+
+	it("should refuse a second project, as Rojo's build does, and write nothing", async () => {
+		await fs.writeFile(abs("src/A.luau"), "");
+
+		const result = await run(
+			new MockConfigService([buildable()]),
+			new MockLogService(),
+			{ positionals: ["a", "b"], options: {} }
+		);
+
+		expect((result as ResultError<Error>).error.message).toContain(
+			"unexpected argument 'b' found: build takes one [PROJECT]"
+		);
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+	});
 
 	it("should write the project file for a config", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
@@ -71,14 +86,89 @@ describe("build command", () => {
 		);
 	});
 
+	describe("with several configs in the folder", () => {
+		const config = ({
+			rogen,
+			...extra
+		}: { rogen?: Record<string, unknown>; [key: string]: unknown } = {}) =>
+			JSON.stringify({
+				name: "Game",
+				...extra,
+				rogen: {
+					sourcePaths: ["src"],
+					routes: { "*": "ReplicatedStorage" },
+					...rogen,
+				},
+			});
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("src/A.luau"), "");
+			await fs.writeFile(abs("default.rogen.json"), config());
+			await fs.writeFile(
+				abs("dist.rogen.json"),
+				config({ rogen: { compiledPath: "dist" } })
+			);
+		});
+
+		it("should write only the project file of the default with no argument", async () => {
+			const { run } = commandHarness({ fs });
+
+			const result = await run("build");
+
+			expect(result.isOk()).toBe(true);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+			expect(await fs.exists(abs("dist.project.json"))).toBe(false);
+		});
+
+		it("should write only the project file of the config named", async () => {
+			const { run } = commandHarness({ fs });
+
+			const result = await run("build", {
+				positionals: ["dist"],
+				options: {},
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(await fs.exists(abs("dist.project.json"))).toBe(true);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should build the named config though a sibling you did not name is broken", async () => {
+			await fs.writeFile(abs("release.rogen.json"), "{ broken");
+			const { run } = commandHarness({ fs });
+
+			const result = await run("build", {
+				positionals: ["dist"],
+				options: {},
+			});
+
+			expect(result.isOk()).toBe(true);
+			expect(await fs.exists(abs("dist.project.json"))).toBe(true);
+		});
+
+		it("should warn that a folder wins over the file of the same name", async () => {
+			await fs.writeFile(abs("dist/default.rogen.json"), config());
+			await fs.writeFile(abs("dist/src/B.luau"), "");
+			const { run, log } = commandHarness({ fs });
+
+			await run("build", { positionals: ["dist"], options: {} });
+
+			expect(log.texts("warn")).toContain(
+				'"dist" is a folder with a default config and also dist.rogen.json: using the folder. To use the file, name it: dist.rogen.json.'
+			);
+		});
+	});
+
 	it("should write nothing when the config fails to build", async () => {
 		await fs.writeFile(abs("bad/Combat/A.luau"), "");
 		await fs.writeFile(abs("bad/Combat/init.meta.json"), '{"id": 1}');
 		await fs.writeFile(
-			abs("rogen.json"),
+			abs("default.rogen.json"),
 			JSON.stringify({
-				routes: { "*": "ReplicatedStorage" },
-				sourcePaths: ["bad"],
+				rogen: {
+					sourcePaths: ["bad"],
+					routes: { "*": "ReplicatedStorage" },
+				},
 			})
 		);
 		const { run } = commandHarness({ fs });
@@ -219,7 +309,7 @@ describe("build command", () => {
 		const entry = brokenEntry([
 			errorDiagnostic(
 				"config.removedField",
-				{ resource: "/repo/rogen.json" },
+				{ resource: "/repo/default.rogen.json" },
 				"boom."
 			),
 		]);
@@ -229,8 +319,8 @@ describe("build command", () => {
 		expect(result.isErr() && result.error).toBeInstanceOf(ReportedError);
 		expect(logService.lines).toEqual([
 			"intro: rogen build · repo",
-			"error: rogen.json · not loaded",
-			"diagnosticError: /repo/rogen.json - error: boom. (config.removedField)",
+			"error: default.rogen.json · not loaded",
+			"diagnosticError: /repo/default.rogen.json - error: boom. (config.removedField)",
 			expect.stringMatching(/^outro: .*fail/),
 		]);
 	});
@@ -325,7 +415,7 @@ describe("build command", () => {
 				configs: [
 					{
 						config: "repo",
-						file: "/repo/rogen.json",
+						file: "/repo/default.rogen.json",
 						projectFile: "/repo/default.project.json",
 						outcome: "wrote",
 						diagnostics: [],
@@ -373,8 +463,8 @@ describe("build command", () => {
 					]
 				)
 			).toEqual([
-				["/repo/lobby/rogen.json", "notWritten"],
-				["/repo/arena/rogen.json", "notWritten"],
+				["/repo/lobby/default.rogen.json", "notWritten"],
+				["/repo/arena/default.rogen.json", "notWritten"],
 			]);
 			expect(document.configs[0].diagnostics).toEqual([
 				expect.objectContaining({
@@ -410,7 +500,7 @@ describe("build command", () => {
 			const entry = brokenEntry([
 				errorDiagnostic(
 					"config.removedField",
-					{ resource: "/repo/rogen.json" },
+					{ resource: "/repo/default.rogen.json" },
 					"boom."
 				),
 			]);
@@ -427,7 +517,7 @@ describe("build command", () => {
 				configs: [
 					{
 						config: "repo",
-						file: "/repo/rogen.json",
+						file: "/repo/default.rogen.json",
 						projectFile: null,
 						outcome: "notWritten",
 						diagnostics: [
@@ -442,7 +532,7 @@ describe("build command", () => {
 
 		it("should name the configs that blocked a config that was not written", async () => {
 			await fs.writeFile(abs("lobby/src/A.luau"), "");
-			const broken = brokenEntry([], "/repo/broken/rogen.json");
+			const broken = brokenEntry([], "/repo/broken/default.rogen.json");
 
 			const { document } = await buildJson(
 				new MockConfigService([buildable({}, "lobby"), broken])
@@ -594,7 +684,7 @@ describe("build command", () => {
 						errorDiagnostic(
 							"config.invalidSyntax",
 							{
-								resource: abs("rogen.json"),
+								resource: abs("default.rogen.json"),
 							},
 							"bad"
 						),
@@ -680,7 +770,7 @@ describe("build command", () => {
 						brokenEntry([
 							errorDiagnostic(
 								"config.invalidSyntax",
-								{ resource: abs("rogen.json") },
+								{ resource: abs("default.rogen.json") },
 								"bad"
 							),
 						]),
@@ -702,23 +792,6 @@ describe("build command", () => {
 
 				expect(document(log).rojo).toBeUndefined();
 			});
-		});
-
-		it("should write nothing when several projects leave Rojo none to run on", async () => {
-			await fs.writeFile(abs("a/src/A.luau"), "");
-			await fs.writeFile(abs("b/src/A.luau"), "");
-			const { running } = await withRojo(
-				{ output: "g.rbxl" },
-				new MockConfigService([buildable({}, "a"), buildable({}, "b")])
-			);
-
-			const result = await running;
-
-			expect((result as ResultError<Error>).error.message).toContain(
-				"runs on one project, and this selects 2"
-			);
-			expect(await fs.exists(abs("a/default.project.json"))).toBe(false);
-			expect(processes.spawned).toEqual([]);
 		});
 
 		it("should refuse -o and -p together", async () => {

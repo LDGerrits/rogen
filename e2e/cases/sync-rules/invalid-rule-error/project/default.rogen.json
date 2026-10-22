@@ -1,0 +1,14 @@
+{
+	"syncRules": [
+		{ "pattern": "*.md", "use": "text" },
+		{ "pattern": "*.txt", "use": "stone" }
+	],
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

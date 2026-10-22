@@ -6,6 +6,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { SUPPORTED_SERVICES } from "../roblox/supported-services.js";
 import { SYNC_RULE_USES } from "../rojo/sync-rules.js";
+import { ROGEN_BLOCK } from "./config.js";
 import { DeclaredKeys } from "./declared-keys.js";
 
 const NAME_PATTERN = DeclaredKeys.NAME.source;
@@ -66,7 +67,7 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 		description:
 			"The name of the game. default.project.json carries it only " +
 			"when it is set here; Rojo names the project after its folder " +
-			"otherwise.",
+			"otherwise. Every other config must set it.",
 	},
 	tree: {
 		...node,
@@ -149,7 +150,7 @@ const rojoFields: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
+const rogenFields: Readonly<Record<string, JSONSchema>> = {
 	sourcePaths: {
 		type: "array",
 		items: { type: "string" },
@@ -160,7 +161,7 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 			"declares routes; without routes nothing is scanned.",
 	},
 	routes: routesSchema,
-	syncPath: {
+	compiledPath: {
 		type: "string",
 		description:
 			"The folder Rojo syncs from, when that isn't your source " +
@@ -170,27 +171,23 @@ const rogenSchemas: Readonly<Record<string, JSONSchema>> = {
 	},
 };
 
-const wholeConfigSchemas: Readonly<Record<string, JSONSchema>> = {
-	placePaths: {
-		...strings,
-		description:
-			"Folder globs, relative to this file, of the places this config " +
-			"is shared by. Each matching folder is a place: it inherits this " +
-			"config, adds its own code, and gets its own project file in " +
-			"its folder. The config itself is never served; its places are.",
-	},
-};
-
 export const rojoKeys: readonly string[] = Object.keys(rojoFields);
-export const rogenKeys: readonly string[] = [
-	...Object.keys(rogenSchemas),
-	...Object.keys(wholeConfigSchemas),
-];
+export const rogenKeys: readonly string[] = Object.keys(rogenFields);
+
+const rogenBlock: JSONSchema = {
+	type: "object",
+	description:
+		"Rogen's own keys. Without this block the file is a plain Rojo project file.",
+	properties: rogenFields,
+};
 
 export const configSchema: JSONSchema = {
 	type: "object",
-	properties: { ...rojoFields, ...rogenSchemas, ...wholeConfigSchemas },
+	properties: { ...rojoFields, [ROGEN_BLOCK]: rogenBlock },
 };
+
+const advisedCompiledPath =
+	"It is called compiledPath now, inside the rogen block.";
 
 const removedFields: Readonly<Record<string, string>> = {
 	modes: "Write what a mode set in <name>.rogen.json as a complete file with the keys that differ.",
@@ -207,15 +204,18 @@ const removedFields: Readonly<Record<string, string>> = {
 	serveProject:
 		"rogen serve serves default.rogen.json, or the file you name.",
 	template:
-		'Write the tree inline: move the template\'s "tree" and its other keys into rogen.json.',
-	outFile: "Rogen writes default.project.json beside rogen.json.",
+		'Write the tree inline: move the template\'s "tree" and its other keys into default.rogen.json.',
+	outFile: "Rogen writes default.project.json beside default.rogen.json.",
 	exclude:
 		'"globIgnorePaths" keeps files out of routing, leaves out a mount of the tree that it ignores, and Rogen writes it for Rojo.',
+	placePaths:
+		"A place is a folder with its own complete default.rogen.json. Name the place: rogen serve places/lobby",
 	rootDirs: 'It is called "sourcePaths" now.',
-	syncDir: 'It is called "syncPath" now.',
+	syncDir: advisedCompiledPath,
+	syncPath: advisedCompiledPath,
 };
 
-/** Advice for a field Rogen once read and no longer does, in place of the unknown-key warning. */
+/** Advice for a field Rogen once read and no longer does, in place of the unknown-key error. */
 export function configRemovedFieldAdvice(
 	path: string,
 	location: DiagnosticLocation

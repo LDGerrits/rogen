@@ -1,0 +1,16 @@
+{
+	"name": "Inventory",
+	"servePort": 34900,
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared"
+		},
+		"compiledPath": "dist"
+	}
+}

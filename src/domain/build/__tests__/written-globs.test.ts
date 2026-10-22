@@ -1,11 +1,13 @@
-import { SyncLayout } from "../sync-layout.js";
+import { CompiledLayout } from "../compiled-layout.js";
 import { WrittenGlobs } from "../written-globs.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
-const globsOf = (syncPath?: string, mounts: readonly string[] = []) => {
-	const config = configOf({ syncPath: syncPath && abs(syncPath) });
+const globsOf = (compiledPath?: string, mounts: readonly string[] = []) => {
+	const config = configOf({
+		compiledPath: compiledPath && abs(compiledPath),
+	});
 	return new WrittenGlobs(
-		new SyncLayout(config, syncTools),
+		new CompiledLayout(config, syncTools),
 		mounts.map((mount) => abs(mount))
 	);
 };
@@ -17,13 +19,13 @@ describe("WrittenGlobs", () => {
 		]);
 	});
 
-	it("should move a ! glob under the sync path and keep it a negation", () => {
+	it("should move a ! glob under the compiled path and keep it a negation", () => {
 		expect(
 			globsOf("out", ["src/Vendor"]).of("!src/**/Keep.spec.luau")
 		).toEqual(["!out/**/Keep.spec.luau", "!src/**/Keep.spec.luau"]);
 	});
 
-	it("should move a glob under the sync path", () => {
+	it("should move a glob under the compiled path", () => {
 		expect(globsOf("out").of("src/**/*.draft.luau")).toEqual([
 			"out/**/*.draft.luau",
 		]);
@@ -60,8 +62,13 @@ describe("WrittenGlobs", () => {
 	});
 
 	it("should rebase a glob from the folder it was written in", () => {
-		const config = configOf({ file: abs("places/lobby/rogen.json") });
-		const globs = new WrittenGlobs(new SyncLayout(config, syncTools), []);
+		const config = configOf({
+			file: abs("places/lobby/default.rogen.json"),
+		});
+		const globs = new WrittenGlobs(
+			new CompiledLayout(config, syncTools),
+			[]
+		);
 
 		expect(globs.of("src/*.md", abs(""))).toEqual(["../../src/*.md"]);
 	});

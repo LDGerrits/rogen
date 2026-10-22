@@ -10,7 +10,7 @@ import { BuildTree } from "./build-tree.js";
 import { EntryReading, NameReadings } from "./name-readings.js";
 import { ScannedRoot, UnclaimedMeta } from "./root-scanner.js";
 import { RoutedFile } from "./router.js";
-import { SyncLayout } from "./sync-layout.js";
+import { CompiledLayout } from "./compiled-layout.js";
 import { InstanceClash } from "./instance-resolver.js";
 import { isPlayerScriptContainer } from "../roblox/roblox.js";
 
@@ -60,7 +60,7 @@ export interface PlayerClientScripts {
 
 interface PlacementParts {
 	readonly config: ResolvedConfig;
-	readonly layout: SyncLayout;
+	readonly layout: CompiledLayout;
 	readonly tree: BuildTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;
@@ -80,7 +80,7 @@ interface ScannedMetaFile {
 /** Where every scanned file lands, or why it lands nowhere; `where` stops here. */
 export class Placement {
 	readonly config: ResolvedConfig;
-	readonly layout: SyncLayout;
+	readonly layout: CompiledLayout;
 	readonly tree: BuildTree;
 	readonly roots: readonly ScannedRoot[];
 	readonly readings: NameReadings;

@@ -2,10 +2,10 @@ $ rogen init --non-interactive
 exit 0
 stdout:
   rogen init
-  Lifting default.project.json into rogen.json, since Rogen replaces default.project.json on every build.
-  Left alone: test.project.json. Rogen writes only default.project.json here, so keep a file that holds a subset of the tree by hand.
+  Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.
+  Left alone: test.project.json. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.
   Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
-  Created rogen.json.
+  Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
   Initialised a git repository.
@@ -14,24 +14,27 @@ stdout:
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
-    Add your own routes under "routes" in rogen.json.
+    Rogen writes default.project.json now, so git can stop tracking it: git rm --cached default.project.json
+    Add your own routes under "routes" in default.rogen.json.
+    Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
   Wrote 3 files.
 stderr:
   default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen's routes will place it: src/Combat/Damage.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
 
 $ rogen build test
-exit 1
+exit 0
+stdout: (not shown)
 stderr:
-  error: "test" not found. Name a folder with a rogen.json, or a *.project.json path.
+  src - warning: 1 file here is mounted by nothing in the tree, and the config declares no routes, so Rojo never syncs it. Add "routes" to place them, or mount the folder with "$path". (scan.unmountedSource)
 
 written:
   .git/
   .gitignore
   AGENTS.md
   default.project.json
-  rogen.json
+  default.rogen.json
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "my-game",
@@ -43,14 +46,16 @@ rogen.json:
       }
     }
   },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
   }
 }
 

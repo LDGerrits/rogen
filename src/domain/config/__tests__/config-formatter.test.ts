@@ -2,8 +2,11 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { ConfigFormatter } from "../config-formatter.js";
 
 const TABBED = `{
-	"sourcePaths": ["src"],
-	"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+	"rogen": {
+		"compiledPath": "out",
+		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" },
+		"sourcePaths": ["src"]
+	},
 	"name": "Game",
 	"tree": { "ReplicatedStorage": { "$className": "ReplicatedStorage" }, "$className": "DataModel" },
 	"servePort": 34873
@@ -14,7 +17,8 @@ describe("ConfigFormatter", () => {
 	let fs: MemoryFileSystemService;
 	let formatter: ConfigFormatter;
 
-	const format = (file = "/repo/rogen.json") => formatter.format(file);
+	const format = (file = "/repo/default.rogen.json") =>
+		formatter.format(file);
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
@@ -22,13 +26,13 @@ describe("ConfigFormatter", () => {
 		formatter = new ConfigFormatter(fs);
 	});
 
-	it("should write Rojo's keys first and Rogen's after, with two-space indentation and no trailing newline", async () => {
-		await fs.writeFile("/repo/rogen.json", TABBED);
+	it("should write Rojo's keys first and the rogen block after with its keys in order, with two-space indentation and no trailing newline", async () => {
+		await fs.writeFile("/repo/default.rogen.json", TABBED);
 
 		const result = await format();
 
 		expect(result.unwrap()).toBe(true);
-		expect(await fs.readFile("/repo/rogen.json")).toBe(
+		expect(await fs.readFile("/repo/default.rogen.json")).toBe(
 			[
 				"{",
 				'  "name": "Game",',
@@ -39,12 +43,15 @@ describe("ConfigFormatter", () => {
 				"    }",
 				"  },",
 				'  "servePort": 34873,',
-				'  "sourcePaths": [',
-				'    "src"',
-				"  ],",
-				'  "routes": {',
-				'    "server": "ServerScriptService",',
-				'    "*": "ReplicatedStorage"',
+				'  "rogen": {',
+				'    "sourcePaths": [',
+				'      "src"',
+				"    ],",
+				'    "routes": {',
+				'      "server": "ServerScriptService",',
+				'      "*": "ReplicatedStorage"',
+				"    },",
+				'    "compiledPath": "out"',
 				"  }",
 				"}",
 			].join("\n")
@@ -52,28 +59,35 @@ describe("ConfigFormatter", () => {
 	});
 
 	it("should name a config after its folder when it has no name, as Rojo does a project file", async () => {
-		await fs.writeFile("/repo/rogen.json", '{"sourcePaths":["src"]}');
+		await fs.writeFile(
+			"/repo/default.rogen.json",
+			'{"rogen":{"sourcePaths":["src"]}}'
+		);
 
 		await format();
 
-		expect(JSON.parse(await fs.readFile("/repo/rogen.json"))).toEqual({
+		expect(
+			JSON.parse(await fs.readFile("/repo/default.rogen.json"))
+		).toEqual({
 			name: "repo",
-			sourcePaths: ["src"],
+			rogen: { sourcePaths: ["src"] },
 		});
 	});
 
 	it("should keep the name a config has", async () => {
-		await fs.writeFile("/repo/rogen.json", '{"name":"Game"}');
+		await fs.writeFile("/repo/default.rogen.json", '{"name":"Game"}');
 
 		await format();
 
-		expect(JSON.parse(await fs.readFile("/repo/rogen.json"))).toEqual({
+		expect(
+			JSON.parse(await fs.readFile("/repo/default.rogen.json"))
+		).toEqual({
 			name: "Game",
 		});
 	});
 
 	it("should leave a formatted file alone and say nothing changed", async () => {
-		await fs.writeFile("/repo/rogen.json", TABBED);
+		await fs.writeFile("/repo/default.rogen.json", TABBED);
 		await format();
 
 		const result = await format();
@@ -81,20 +95,20 @@ describe("ConfigFormatter", () => {
 		expect(result.unwrap()).toBe(false);
 	});
 
-	it("should refuse a rogen.jsonc and leave it as it is", async () => {
-		await fs.writeFile("/repo/rogen.jsonc", '{ "name": "Game" }');
+	it("should refuse a default.rogen.jsonc and leave it as it is", async () => {
+		await fs.writeFile("/repo/default.rogen.jsonc", '{ "name": "Game" }');
 
-		const result = await format("/repo/rogen.jsonc");
+		const result = await format("/repo/default.rogen.jsonc");
 
 		expect(result.isErr()).toBe(true);
 		const [diagnostic] = result.isErr() ? result.error : [];
 		expect(diagnostic).toMatchObject({
 			code: "format.commentsLost",
-			resource: "/repo/rogen.jsonc",
+			resource: "/repo/default.rogen.jsonc",
 			message:
-				"rogen.jsonc may hold comments, and formatting writes none. Rename it to rogen.json to format it, or format it in your editor.",
+				"default.rogen.jsonc may hold comments, and formatting writes none. Rename it to default.rogen.json to format it, or format it in your editor.",
 		});
-		expect(await fs.readFile("/repo/rogen.jsonc")).toBe(
+		expect(await fs.readFile("/repo/default.rogen.jsonc")).toBe(
 			'{ "name": "Game" }'
 		);
 	});
@@ -102,32 +116,32 @@ describe("ConfigFormatter", () => {
 	it.each([
 		['{ // the name\n "name": "Game" }', "comment"],
 		['{ "name": "Game", }', "trailing comma"],
-	])("should refuse a rogen.json with a %s", async (text) => {
-		await fs.writeFile("/repo/rogen.json", text);
+	])("should refuse a default.rogen.json with a %s", async (text) => {
+		await fs.writeFile("/repo/default.rogen.json", text);
 
 		const result = await format();
 
 		const [diagnostic] = result.isErr() ? result.error : [];
 		expect(diagnostic.code).toBe("format.commentsLost");
 		expect(diagnostic.message).toBe(
-			"rogen.json has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor."
+			"default.rogen.json has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor."
 		);
-		expect(await fs.readFile("/repo/rogen.json")).toBe(text);
+		expect(await fs.readFile("/repo/default.rogen.json")).toBe(text);
 	});
 
 	it("should format a file that starts with a byte order mark", async () => {
-		await fs.writeFile("/repo/rogen.json", `\uFEFF${TABBED}`);
+		await fs.writeFile("/repo/default.rogen.json", `\uFEFF${TABBED}`);
 
 		const result = await format();
 
 		expect(result.unwrap()).toBe(true);
-		expect(JSON.parse(await fs.readFile("/repo/rogen.json")).name).toBe(
-			"Game"
-		);
+		expect(
+			JSON.parse(await fs.readFile("/repo/default.rogen.json")).name
+		).toBe("Game");
 	});
 
 	it("should report a file that isn't JSON where it breaks", async () => {
-		await fs.writeFile("/repo/rogen.json", '{ "name": ');
+		await fs.writeFile("/repo/default.rogen.json", '{ "name": ');
 
 		const result = await format();
 

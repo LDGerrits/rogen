@@ -10,7 +10,7 @@ import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.
 import { ProjectText } from "../rojo/project-text.js";
 import { configSchema, rogenKeys } from "./config-schema.js";
 
-/** Writes a `rogen.json` the way `rojo fmt-project` writes a project file, and Rogen's keys after Rojo's. */
+/** Writes a `default.rogen.json` the way `rojo fmt-project` writes a project file, and Rogen's keys after Rojo's. */
 export class ConfigFormatter {
 	private readonly documents = new JsoncDocumentReader({
 		codePrefix: "config",

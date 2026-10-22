@@ -80,15 +80,17 @@ Features don't require each other; when two features need the same thing, it mov
 
 The routes `rogen init` writes are enough:
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```

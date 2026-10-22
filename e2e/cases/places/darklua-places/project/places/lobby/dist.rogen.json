@@ -1,0 +1,23 @@
+{
+	"name": "Lobby",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "../../Packages"
+			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"../shared/src",
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"*": "ReplicatedStorage/Shared"
+		},
+		"compiledPath": "dist"
+	}
+}

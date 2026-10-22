@@ -25,7 +25,6 @@ export interface RoundTrip {
 	readonly placeOfWritten?: string;
 }
 
-/** Saves the project `name` of `projectsDir` (Rojo's build tests unless told otherwise) as a `rogen.json`, builds it with Rogen, and builds the original and the written file with Rojo. */
 export function roundTrip(
 	cli: string,
 	name: string,
@@ -50,7 +49,7 @@ export function roundTrip(
 		};
 
 		const placeOfOriginal = placeOf("original.rbxmx");
-		fs.renameSync(file, path.join(project, "rogen.json"));
+		fs.renameSync(file, path.join(project, "default.rogen.json"));
 		const [command, args] = invocation(cli, ["build"]);
 		const rogen = spawnSync(command, [...args], {
 			cwd: project,
@@ -142,7 +141,6 @@ export interface KindRoundTrip {
 	/** The place each builds from the project it made, as text. */
 	readonly placeOfRojo?: string;
 	readonly placeOfRogen?: string;
-	/** The files both made that Rojo's template has, by name. */
 	readonly filesOfRojo: Record<string, string>;
 	readonly filesOfRogen: Record<string, string>;
 	readonly gitOfRojo: boolean;
@@ -179,14 +177,22 @@ export function kindRoundTrip(
 				? fs.readFileSync(path.join(dir, output), "utf8")
 				: undefined;
 		};
-		const filesOf = (project: string) =>
+		const filesOf = (project: string, ignoresWritten = false) =>
 			Object.fromEntries(
 				TEMPLATE_FILES.filter((file) =>
 					fs.existsSync(path.join(project, file))
-				).map((file) => [
-					file,
-					fs.readFileSync(path.join(project, file), "utf8"),
-				])
+				).map((file) => {
+					const text = fs.readFileSync(
+						path.join(project, file),
+						"utf8"
+					);
+					return [
+						file,
+						ignoresWritten
+							? text.replace("*.project.json\n", "")
+							: text,
+					];
+				})
 			);
 		const rojoDir = make("rojo");
 		const rogenDir = make("rogen");
@@ -208,7 +214,7 @@ export function kindRoundTrip(
 			placeOfRojo: placeOf(rojoDir, "rojo.rbxmx"),
 			placeOfRogen: placeOf(rogenDir, "rogen.rbxmx"),
 			filesOfRojo: filesOf(rojoDir),
-			filesOfRogen: filesOf(rogenDir),
+			filesOfRogen: filesOf(rogenDir, true),
 			gitOfRojo: fs.existsSync(path.join(rojoDir, ".git")),
 			gitOfRogen: fs.existsSync(path.join(rogenDir, ".git")),
 		};

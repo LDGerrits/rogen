@@ -1,29 +1,27 @@
-$ rogen build
+$ rogen build places/lobby
+exit 0
+stdout: (not shown)
+
+$ rogen build places/arena
 exit 0
 stdout: (not shown)
 
 written:
-  default.project.json
   places/arena/default.project.json
   places/lobby/default.project.json
-
-$ rojo sourcemap default.project.json
-Game: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
 
 $ rojo sourcemap places/arena/default.project.json
 arena: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      version: ModuleScript  <- out/src/shared/version.luau
+      version: ModuleScript  <- out/shared/src/shared/version.luau
   ServerScriptService: ServerScriptService
-    main: Script  <- out/places/arena/src/server/main.server.luau
+    main: Script  <- out/arena/src/server/main.server.luau
 
 $ rojo sourcemap places/lobby/default.project.json
 lobby: DataModel
   ReplicatedStorage: ReplicatedStorage
     shared: Folder
-      version: ModuleScript  <- out/src/shared/version.luau
+      version: ModuleScript  <- out/shared/src/shared/version.luau
   ServerScriptService: ServerScriptService
-    main: Script  <- out/places/lobby/src/server/main.server.luau
+    main: Script  <- out/lobby/src/server/main.server.luau

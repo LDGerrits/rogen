@@ -75,7 +75,7 @@ describe("BuildValidator rules", () => {
 
 				expect(warning).toMatchObject({
 					code: "route.folderTypo",
-					resource: abs("rogen.json"),
+					resource: abs("default.rogen.json"),
 					related: [
 						{
 							resource: abs("src/Inventory/Sever"),
@@ -316,7 +316,7 @@ describe("BuildValidator rules", () => {
 
 				expect(others).toEqual([]);
 				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-				expect(warning.resource).toBe(abs("rogen.json"));
+				expect(warning.resource).toBe(abs("default.rogen.json"));
 				expect(warning.message).toContain("2 names have");
 				expect(warning.message).toContain(
 					`${abs("src/Inventory/Save@sever.luau")} (did you mean "@server"?)`

@@ -1,0 +1,14 @@
+{
+	"globIgnorePaths": [
+		1
+	],
+	"rogen": {
+		"sourcePaths": [
+			"src",
+			5
+		],
+		"routes": {
+			"*": 5
+		}
+	}
+}

@@ -1,5 +1,18 @@
 {
-	"steps": [["where", "../../src/Common/Util.luau"], ["where", "src/Main.server.luau"]],
+	"steps": [
+		[
+			"where",
+			"../shared/src/Common/Util.luau"
+		],
+		[
+			"where",
+			"src/Main.server.luau"
+		],
+		[
+			"where",
+			"ServerScriptService.Main"
+		]
+	],
 	"cwd": "places/arena",
 	"rojo": false
 }

@@ -1,96 +1,81 @@
 import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import {
-	CONFIG_FILE_NAMES,
-	DEFAULT_SOURCE_PATH,
-	RogenConfig,
-	configFileContent,
-} from "../config/config.js";
-import { PlaceFinder } from "../config/place-finder.js";
-import { PlannedFile } from "../toolchain/toolchain.js";
-import { KnownPlaces } from "./known-places.js";
+import { DEFAULT_SOURCE_PATH } from "../config/config.js";
+import { Mount, PlannedFile } from "../toolchain/toolchain.js";
+import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { WorkspaceFiles } from "./workspace-files.js";
 
-/** Where the places of a new project start. */
-const PLACES_FOLDER = "places";
-const SHARED = "shared";
+/** Where the places of a project start: the folder that holds them, the code they share and the first one. */
+export const PLACES_FOLDER = "places";
+export const SHARED_FOLDER = "shared";
 const FIRST_PLACE = "game";
 
+/** The source paths of a place, as every place lists them: the shared code, then its own. */
+export const PLACE_SOURCE_PATHS: readonly string[] = [
+	`../${SHARED_FOLDER}/${DEFAULT_SOURCE_PATH}`,
+	DEFAULT_SOURCE_PATH,
+];
+
 export interface StartingPlaces {
-	/** The source path of the code the places share, which the root config lists. */
-	readonly sharedSourcePath: string;
 	/** The folder of the first place. */
 	readonly place: string;
-	readonly placePaths: readonly string[];
+	/** The source path of the code the places share. */
+	readonly sharedSourcePath: string;
 	/** The first place's source path, relative to the project. */
 	readonly placeSourcePath: string;
+	/** The editor workspace and, for roblox-ts, the tsconfig files. */
 	readonly files: readonly PlannedFile[];
 	readonly directories: readonly string[];
 	readonly notes: readonly string[];
 }
 
-/** The places a project of several starts with: the code they share, and the first place, as `rogen init places/<name>` plans a place. */
+/** The places a project of several starts with: the code they share, and the first place. */
 export class StarterPlaces {
-	private readonly finder: PlaceFinder;
 	private readonly workspaces: WorkspaceFiles;
 
-	constructor(private readonly files: FileReader) {
-		this.finder = new PlaceFinder(files);
+	constructor(files: FileReader) {
 		this.workspaces = new WorkspaceFiles(files);
 	}
 
-	/** `extend` adds what the first place needs beyond its config, given the folders of the place and of the shared code. */
 	async plan(
 		root: string,
-		extend?: (
-			place: string,
-			shared: string
-		) => { files: PlannedFile[]; config: Partial<RogenConfig> },
-		/** The source paths of a project that has code to share already, which stay where they are. */
-		existing?: readonly string[]
+		starter: RobloxTsStarter | undefined
 	): Promise<StartingPlaces> {
-		const sharedSourcePath =
-			existing?.[0] ??
-			path.posix.join(PLACES_FOLDER, SHARED, DEFAULT_SOURCE_PATH);
 		const place = path.posix.join(PLACES_FOLDER, FIRST_PLACE);
-		const placePaths = [path.posix.join(PLACES_FOLDER, "*")];
-		const known = await KnownPlaces.of(
-			this.files,
-			this.finder,
-			root,
-			placePaths,
-			existing ?? [sharedSourcePath]
-		);
-		const port = known.portFor(path.join(root, place));
-		const workspace = await this.workspaces.plan(
-			root,
-			known.foldersWith(root, path.join(root, place)),
-			place
-		);
+		const shared = path.posix.join(PLACES_FOLDER, SHARED_FOLDER);
+		const sharedSourcePath = path.posix.join(shared, DEFAULT_SOURCE_PATH);
 		const placeSourcePath = path.posix.join(place, DEFAULT_SOURCE_PATH);
-		const configFile = path.posix.join(place, CONFIG_FILE_NAMES[0]);
-		const extra = extend?.(place, sharedSourcePath);
+		const workspace = await this.workspaces.planAll(root, [place, shared]);
 		return {
-			sharedSourcePath,
 			place,
-			placePaths,
+			sharedSourcePath,
 			placeSourcePath,
 			files: [
-				{
-					fileName: configFile,
-					content: configFileContent({
-						...extra?.config,
-						servePort: port,
-					}),
-				},
-				...(extra?.files ?? []),
 				...workspace.files,
+				...(starter
+					? [
+							starter.sharedTsconfig(sharedSourcePath),
+							...starter.place(place, sharedSourcePath).files,
+						]
+					: []),
 			],
-			directories: [placeSourcePath],
-			notes: [
-				KnownPlaces.pinNote(FIRST_PLACE, port, configFile),
-				...workspace.notes,
-			],
+			directories: [sharedSourcePath, placeSourcePath],
+			notes: workspace.notes,
 		};
+	}
+
+	/** `mounts` of a project's root as a place at `place` reads them; `own` are the folders the place has itself, such as roblox-ts's `include`. All are optional, as a place is not compiled yet. */
+	static mountsFor(
+		place: string,
+		mounts: readonly Mount[],
+		own: readonly string[]
+	): Mount[] {
+		return mounts.map((mount) => ({
+			...mount,
+			optional: true,
+			path: own.includes(mount.path)
+				? mount.path
+				: path.posix.relative(place, mount.path),
+		}));
 	}
 }

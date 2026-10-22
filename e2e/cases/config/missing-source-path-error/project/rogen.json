@@ -1,6 +1,0 @@
-{
-	"sourcePaths": ["srcc"],
-	"routes": {
-		"*": "ReplicatedStorage/shared"
-	}
-}

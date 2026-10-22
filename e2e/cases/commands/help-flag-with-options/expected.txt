@@ -2,16 +2,17 @@ $ rogen build --output game.rbxl --help
 exit 0
 stdout:
   rogen-build
-  Writes default.project.json, and a file for each project, beside the rogen.json here or beside each
-  named one; with -o or -p, also builds a place, model or plugin with Rojo.
+  Writes the project file of default.rogen.json here, or of the config you name, beside it
+  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
+  Rojo.
   
   USAGE:
-      rogen build [OPTIONS] [PROJECT]...
+      rogen build [OPTIONS] [PROJECT]
   
   ARGS:
-      <PROJECT>...    A folder with a rogen.json, or a *.project.json path. The rogen.json of the
-                      working directory, or of the nearest folder above it that has one, when none is
-                      given.
+      <PROJECT>    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
+                   (dist for dist.rogen.json). The default.rogen.json of the working directory, or its
+                   default.project.json, when none is given.
   
   OPTIONS:
           --color <COLOR>      Whether to colour the output. [default: auto] [possible values: auto,
@@ -27,7 +28,7 @@ stdout:
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
-          --watch              Keep going: write the project files again whenever names or configs
+          --watch              Keep going: write the project file again whenever names or configs
                                change, and build with Rojo after each write when -o or -p is given.
                                With -o or -p, an edit inside a file under the source paths builds
                                again too. Press Ctrl+C to stop; --json prints one JSON object per
@@ -46,14 +47,13 @@ exit 0
 stdout:
   {
     "name": "build",
-    "summary": "Writes the project files; with -o or -p, builds with Rojo",
-    "description": "Writes default.project.json, and a file for each project, beside the rogen.json here or beside each named one; with -o or -p, also builds a place, model or plugin with Rojo.",
+    "summary": "Writes the project file; with -o or -p, builds with Rojo",
+    "description": "Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
     "args": [
       {
         "name": "project",
         "optional": true,
-        "variadic": true,
-        "description": "A folder with a rogen.json, or a *.project.json path. The rogen.json of the working directory, or of the nearest folder above it that has one, when none is given."
+        "description": "A folder, a .rogen.json file, a *.project.json path, or the name of a file here (dist for dist.rogen.json). The default.rogen.json of the working directory, or its default.project.json, when none is given."
       }
     ],
     "options": [
@@ -77,7 +77,7 @@ stdout:
       {
         "name": "watch",
         "type": "boolean",
-        "description": "Keep going: write the project files again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line."
+        "description": "Keep going: write the project file again whenever names or configs change, and build with Rojo after each write when -o or -p is given. With -o or -p, an edit inside a file under the source paths builds again too. Press Ctrl+C to stop; --json prints one JSON object per line."
       },
       {
         "name": "force",

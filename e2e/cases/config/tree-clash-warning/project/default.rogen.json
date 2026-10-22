@@ -1,0 +1,22 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": {
+			"Save": {
+				"$path": "hand/Save.server.luau"
+			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

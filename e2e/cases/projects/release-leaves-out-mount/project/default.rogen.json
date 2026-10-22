@@ -1,0 +1,26 @@
+{
+	"name": "Inventory",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			},
+			"DevPackages": {
+				"$path": "DevPackages"
+			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src",
+			"dev"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

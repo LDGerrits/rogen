@@ -1,0 +1,27 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": {
+			"$properties": {
+				"Gravity": 100
+			}
+		},
+		"ReplicatedStorage": {
+			"Packages": {
+				"$path": "Packages"
+			}
+		}
+	},
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

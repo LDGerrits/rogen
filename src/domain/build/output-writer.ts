@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
+import { configFileNameOf } from "../config/config.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -44,7 +45,26 @@ export class OutputWriter {
 		return ProjectText.of(projectFile);
 	}
 
-	/** Whether the file was written; unchanged bytes are left alone unless `rewrite`, which makes a watcher see the file again. A file edited by hand since Rogen wrote it is not written over, unless `force`: the edit is an error that says what it holds. `configFile` is the config the file is written from. */
+	/** Fails a project file Rogen wrote whose config is gone, so a deleted config isn't silently kept alive. */
+	async orphaned(projectFile: string): Promise<DiagnosticsError | undefined> {
+		const last = await this.records.lastWritten(projectFile);
+		if (last === undefined) return undefined;
+		const onDisk = await tryWithAsync(() =>
+			this.fileSystemService.readFile(projectFile)
+		);
+		if (onDisk.isErr() || WrittenRecords.hashOf(onDisk.value) !== last)
+			return undefined;
+		const config = configFileNameOf(projectFile);
+		return new DiagnosticsError([
+			errorDiagnostic(
+				"output.configMissing",
+				{ resource: projectFile },
+				`Rogen wrote this file from ${config}, which is not here now: the config was deleted or renamed. Restore ${config}, or change this file by hand to use it as a plain Rojo project.`
+			),
+		]);
+	}
+
+	/** Writes the file unless that would lose a hand edit, which `force` overrides; `rewrite` writes unchanged bytes so a watcher sees them. */
 	async write(
 		output: OutputFile,
 		tree: RojoProjectFile,

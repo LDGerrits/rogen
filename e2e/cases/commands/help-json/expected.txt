@@ -6,12 +6,11 @@ stdout:
     "commands": [
       {
         "name": "build",
-        "summary": "Writes the project files; with -o or -p, builds with Rojo",
+        "summary": "Writes the project file; with -o or -p, builds with Rojo",
         "args": [
           {
             "name": "project",
-            "optional": true,
-            "variadic": true
+            "optional": true
           }
         ],
         "options": [
@@ -64,7 +63,7 @@ stdout:
       },
       {
         "name": "fmt-project",
-        "summary": "Formats rogen.json the way 'rojo fmt-project' does",
+        "summary": "Formats a .rogen.json the way 'rojo fmt-project' does",
         "args": [
           {
             "name": "project",
@@ -124,7 +123,7 @@ stdout:
       },
       {
         "name": "init",
-        "summary": "Writes a starting rogen.json, or adds a place to one",
+        "summary": "Writes a starting default.rogen.json",
         "args": [
           {
             "name": "path",
@@ -183,7 +182,7 @@ stdout:
             "multiple": true
           },
           {
-            "name": "sync-path",
+            "name": "compiled-path",
             "type": "string"
           },
           {
@@ -250,19 +249,6 @@ stdout:
           {
             "name": "nested",
             "type": "boolean"
-          },
-          {
-            "name": "place-listing",
-            "type": "string",
-            "enum": [
-              "glob",
-              "folder"
-            ]
-          },
-          {
-            "name": "place-id",
-            "type": "string",
-            "multiple": true
           }
         ],
         "effects": [
@@ -271,7 +257,7 @@ stdout:
       },
       {
         "name": "list",
-        "summary": "Lists the configs, their projects and their ports",
+        "summary": "Lists the configs here, their files and their ports",
         "args": [
           {
             "name": "project",
@@ -311,8 +297,7 @@ stdout:
         "args": [
           {
             "name": "project",
-            "optional": true,
-            "variadic": true
+            "optional": true
           }
         ],
         "options": [
@@ -346,12 +331,11 @@ stdout:
       },
       {
         "name": "sourcemap",
-        "summary": "Writes the project files, then a sourcemap with Rojo",
+        "summary": "Writes the project file, then a sourcemap with Rojo",
         "args": [
           {
             "name": "project",
-            "optional": true,
-            "variadic": true
+            "optional": true
           }
         ],
         "options": [
@@ -389,8 +373,7 @@ stdout:
         "args": [
           {
             "name": "project",
-            "optional": true,
-            "variadic": true
+            "optional": true
           }
         ],
         "options": [
@@ -426,12 +409,11 @@ stdout:
       },
       {
         "name": "upload",
-        "summary": "Writes the project files, then uploads them with Rojo",
+        "summary": "Writes the project file, then uploads it with Rojo",
         "args": [
           {
             "name": "project",
-            "optional": true,
-            "variadic": true
+            "optional": true
           }
         ],
         "options": [
@@ -558,7 +540,7 @@ stdout:
         "name": "path",
         "optional": true,
         "variadic": true,
-        "description": "A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. Every file when none is given. The config here, or in the nearest folder above that has one, is read."
+        "description": "A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it, and one that no config covers is skipped with a note; a .rogen.json lists every file of that config. Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too."
       }
     ],
     "options": [
@@ -603,7 +585,7 @@ stdout:
         "name": "path",
         "optional": true,
         "variadic": true,
-        "description": "A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. Every file when none is given. The config here, or in the nearest folder above that has one, is read."
+        "description": "A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it, and one that no config covers is skipped with a note; a .rogen.json lists every file of that config. Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too."
       }
     ],
     "options": [
@@ -641,7 +623,7 @@ exit 0
 stdout:
   {
     "code": "route.strayAt",
-    "text": "route.strayAt\n\nWarning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.\n\n  rogen.json - warning: 2 names have an \"@\" that routes nowhere, so they are read as ordinary names: (route.strayAt)\n    src/Inventory/Load@SERVER.luau (did you mean \"@server\"?)\n    src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n\nRename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See The `@` Sign (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing#the--sign).",
+    "text": "route.strayAt\n\nWarning. A name, folder or marker file has an `@` that doesn't route, so the `@` stays in the instance name. Either it nearly spells a declared route key (a typo or a wrong case), or it spells one but isn't at the end of the name (`Report@server.bak.luau`). One warning lists every such name. An `@` that is nowhere near a route key, as in a package name like `@rbxts`, isn't reported.\n\n  default.rogen.json - warning: 2 names have an \"@\" that routes nowhere, so they are read as ordinary names: (route.strayAt)\n    src/Inventory/Load@SERVER.luau (did you mean \"@server\"?)\n    src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n\nRename the file to the spelling suggested, or move the `@key` to the end of the name. In `--json`, `fixes` holds the rename when exactly one key is closest. See The `@` Sign (https://rogen-playfully.vercel.app/docs/v2/core-concepts/routing#the--sign).",
     "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat"
   }
 

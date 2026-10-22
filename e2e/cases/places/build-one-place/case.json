@@ -1,4 +1,20 @@
 {
-	"steps": [["build", "places/lobby"], ["build", "places/arena", "places/lobby"]],
-	"output": ["build"]
+	"steps": [
+		[
+			"build",
+			"places/lobby"
+		],
+		[
+			"build",
+			"places/arena"
+		],
+		[
+			"build",
+			"places/arena",
+			"places/lobby"
+		]
+	],
+	"output": [
+		"build"
+	]
 }

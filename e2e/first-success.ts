@@ -10,13 +10,19 @@ import {
 	run,
 } from "./harness.js";
 
+export interface Step {
+	readonly run: readonly string[];
+	readonly in?: string;
+}
+
 /** A way to start a project, followed from an empty folder to a served place. */
 export interface Variant {
 	readonly name: string;
 	/** Flags after `init -y`. */
 	readonly flags: readonly string[];
 	/** What the printed steps run between `init` and `serve`: a compiler or processor as program and arguments, or a Rogen command as `rogen` and its arguments. */
-	readonly steps: readonly (readonly string[])[];
+	readonly steps: readonly (readonly string[] | Step)[];
+	readonly project?: readonly string[];
 	/** The variant downloads packages, so it runs only with ROGEN_E2E_NETWORK=1. */
 	readonly network?: boolean;
 	/** The project name Rojo reports once served. */
@@ -88,7 +94,7 @@ function printedSteps(stdout: string): string[] {
 		.slice(from + 1)
 		.map(
 			(line) =>
-				/(?:^|: )((?:rogen|darklua|npx|npm|rbxtsc) .*)$/.exec(
+				/(?:^|: )((?:cd \S+ && )?(?:rogen|darklua|npx|npm|rbxtsc) .*)$/.exec(
 					line.trim()
 				)?.[1] ??
 				/^Run '.*' to /.exec(line.trim())?.[0] ??
@@ -98,11 +104,11 @@ function printedSteps(stdout: string): string[] {
 }
 
 /** The line of the printed steps that tells the user to run `step`, or none: a Rogen command by its name, Darklua's `process`, and a compiler by `rbxtsc` or the package script that runs it. */
-function printedLine(step: readonly string[], printed: readonly string[]) {
-	const [program, first] = step;
+function printedLine(step: Step, printed: readonly string[]) {
+	const [program, first] = step.run;
 	const wanted =
 		program === "rogen" || program === "darklua"
-			? `${program} ${first}`
+			? `${step.in ? `cd ${step.in} && ` : ""}${program} ${first}`
 			: undefined;
 	return printed.find((line) =>
 		wanted
@@ -110,6 +116,9 @@ function printedLine(step: readonly string[], printed: readonly string[]) {
 			: /^(npx rbxtsc|rbxtsc|npm run (watch|build))/.test(line)
 	);
 }
+
+export const stepOf = (step: readonly string[] | Step): Step =>
+	Array.isArray(step) ? { run: step as readonly string[] } : (step as Step);
 
 function fail(step: string, result: { stdout: string; stderr: string }) {
 	return new Error(`${step} failed:\n${result.stdout}\n${result.stderr}`);
@@ -165,17 +174,23 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 		if (init.exitCode !== 0) throw fail("init", init);
 		commands.push("init");
 
-		for (const [program, ...args] of variant.steps) {
+		const steps = variant.steps.map(stepOf);
+		for (const {
+			run: [program, ...args],
+			in: folder,
+		} of steps) {
+			const cwd = folder ? path.join(dir, folder) : dir;
 			const step =
 				program === "rogen"
-					? await rogen(args)
-					: await run(program, args, dir, env, "", timeout);
+					? await run(...invocation(cli, args), cwd, env, "", timeout)
+					: await run(program, args, cwd, env, "", timeout);
 			if (step.exitCode !== 0)
 				throw fail(`${program} ${args.join(" ")}`, step);
 			if (program === "rogen") commands.push(args[0]);
 		}
 
-		const built = await rogen(["build"]);
+		const project = variant.project ?? [];
+		const built = await rogen(["build", ...project]);
 		if (built.exitCode !== 0) throw fail("build", built);
 
 		const port = await freePort(36000);
@@ -184,7 +199,7 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 			dir,
 			["--json", "--port", String(port)],
 			dir,
-			"serve",
+			["serve", ...project].join(" "),
 			env
 		);
 		try {
@@ -194,9 +209,9 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 			return {
 				commands,
 				printed,
-				unprinted: variant.steps
+				unprinted: steps
 					.filter((step) => !printedLine(step, printed))
-					.map((step) => step.join(" ")),
+					.map((step) => step.run.join(" ")),
 				serving: line,
 				pluginCalls: fake?.pluginCalls() ?? 0,
 			};

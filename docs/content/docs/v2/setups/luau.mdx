@@ -6,7 +6,7 @@ description: Set up Rogen in a Luau project.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-Luau is the simplest setup. There's no compiler, so Rojo syncs straight from your source and you don't need a sync path.
+Luau is the simplest setup. There's no compiler, so Rojo syncs straight from your source and you don't need a compiled path.
 
 <Steps>
 
@@ -30,17 +30,17 @@ Create this project?
   Agents    rules in AGENTS.md
   Rojo      pin Rojo 7.7.1 in rokit.toml, install the Studio plugin
   Git       .gitignore, git init
-  Files     rogen.json, .gitignore, src/Greeter/Shared/Greeting.luau, ...
+  Files     default.rogen.json, .gitignore, src/Greeter/Shared/Greeting.luau, ...
   Runs      rokit add rojo-rbx/rojo@7.7.1, rojo plugin install
   ● Yes   ○ Customise (ask every question)   ○ Cancel
 ```
 
 The summary lists every file it will write and every command it will run, so nothing happens that wasn't shown. Customise goes through every question, each with its answer preselected, and shows the plan again. A flag answers its line before the summary, and `-y`, `--json` or a run without a terminal skip the summary and take the same defaults.
 
-It writes `rogen.json`, builds `default.project.json` from it, writes a small sample game in `src/Greeter`, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
+It writes `default.rogen.json`, builds `default.project.json` from it, writes a small sample game in `src/Greeter`, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
 
 ```
-Created rogen.json.
+Created default.rogen.json.
 Created .gitignore.
 Created src/Greeter/Shared/Greeting.luau.
 Created src/Greeter/Server/Greeter.server.luau.
@@ -50,33 +50,36 @@ Created AGENTS.md.
 Created rokit.toml.
 Initialised a git repository.
 Ran rokit add rojo-rbx/rojo@7.7.1.
-Ran rojo plugin install.
 default.project.json · wrote
 Next steps
+  Run 'rogen plugin install' to install Rojo's Studio plugin.
   Run:
     rogen serve
   In Studio, press Connect in the Rojo plugin.
-  Add your own routes under "routes" in rogen.json.
+  Add your own routes under "routes" in default.rogen.json.
+  Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
 Wrote 8 files.
 ```
 
 The sample is Rogen's version of what `rojo init` writes: three hello-world scripts, in one feature folder. `Greeting.luau` is a module that the server and the client script both require, and the tree keeps Rojo's Baseplate, Lighting and SoundService, so the place is playable at once. Skip it with `rogen init --no-sample`; it is written only in a folder with no code.
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"tree": { "$className": "DataModel" },
-	"sourcePaths": ["src"],
-	"routes": {
-		"Server": "ServerScriptService",
-		"Client": "StarterPlayer/StarterPlayerScripts",
-		"Shared": "ReplicatedStorage/Shared",
-		"*": "ReplicatedStorage/Shared"
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
 	}
 }
 ```
 
-Run `rogen init` again whenever the project should change (a route, a source path, Darklua, places): see [Changing a project](/docs/v2/cli#changing-a-project). For several places, see [Several Places](/docs/v2/setups/places). Customise asks about your source paths, your routes and where files that match no route should go; Enter at the summary gives the config above. If it finds Wally or Pesde, it mounts their package folders (as optional, so nothing breaks before you install) in the `tree` of `rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release` project without the specs when it finds a test runner. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
+Run `rogen init` again whenever the project should change (a route, a source path, Darklua, places): see [Changing a project](/docs/v2/cli#changing-a-project). For several places, see [Several Places](/docs/v2/setups/places). Customise asks about your source paths, your routes and where files that match no route should go; Enter at the summary gives the config above. If it finds Wally or Pesde, it mounts their package folders (as optional, so nothing breaks before you install) in the `tree` of `default.rogen.json`. If you already have a hand-written `default.project.json`, it lifts that into `default.rogen.json` instead, so you don't lose anything, and turns the folders it mounted from `src` into routes, so the first build puts every script where Rojo had it. See [Coming from Rojo](/docs/v2/coming-from-rojo). It writes a `release.rogen.json` without the specs when it finds a test runner. The `.gitignore` it writes lists `*.project.json`, since Rogen writes those files: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 </Step>
 

@@ -6,7 +6,8 @@ import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import {
@@ -43,8 +44,7 @@ const OutputOption = {
 	short: "o",
 	type: "string",
 	placeholder: "output",
-	description:
-		"Write the sourcemap to this file instead of printing it. With several projects selected, each gets a sourcemap.json beside its project file and -o is refused.",
+	description: "Write the sourcemap to this file instead of printing it.",
 } as const satisfies OptionDescriptor;
 
 const IncludeNonScriptsOption = {
@@ -65,7 +65,7 @@ const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project files again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project file again whenever names or configs change, and write the sourcemap after each write. Each edit of a file under the source paths writes it again. Without -o it prints each sourcemap, which leaves no room for --json. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const SourcemapOptions = [
@@ -76,26 +76,13 @@ const SourcemapOptions = [
 	WatchOption,
 ] as const;
 
-/** What went wrong across the runs: the first failure that is no diagnostic, else every diagnostic. */
+/** What went wrong with the run: its error, else the diagnostics of its failure. */
 function failureOf(
-	runs: readonly (Result<RojoCommandRun, Error> | undefined)[]
+	ran: Result<RojoCommandRun, Error> | undefined
 ): Error | undefined {
-	const failures = runs.flatMap((ran) =>
-		ran === undefined
-			? []
-			: ran.isErr()
-				? [ran.error]
-				: (ran.value.failure ?? [])
-	);
-	const other = failures.find(
-		(failure) => !(failure instanceof DiagnosticsError)
-	);
-	if (other) return other;
-	return DiagnosticsError.of(
-		failures.flatMap((failure) =>
-			failure instanceof DiagnosticsError ? failure.diagnostics : []
-		)
-	);
+	if (ran === undefined) return undefined;
+	if (ran.isErr()) return ran.error;
+	return DiagnosticsError.of(ran.value.failure?.diagnostics ?? []);
 }
 
 registerCommand(
@@ -105,10 +92,10 @@ registerCommand(
 				id: "sourcemap",
 				metadata: {
 					summary:
-						"Writes the project files, then a sourcemap with Rojo",
+						"Writes the project file, then a sourcemap with Rojo",
 					description:
-						"Writes the project files, then has Rojo write a sourcemap of the project, printed unless -o names a file. A root with several places and no project named writes a sourcemap.json beside each place's project file.",
-					args: ConfigArguments,
+						"Writes the project file, then has Rojo write a sourcemap of the project, printed unless -o names a file.",
+					args: ProjectArgument,
 					options: SourcemapOptions,
 					output: {
 						document: sourcemapDocumentShape,
@@ -135,6 +122,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof SourcemapOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("sourcemap", line.positionals);
+			if (tooMany) return err(tooMany);
 			const { json, watch, output } = line.options;
 			const rojoService = accessor.get(RojoCommandService);
 			const cwd = accessor.get(EnvironmentService).cwd;
@@ -172,10 +161,11 @@ registerCommand(
 				.get(ConfigService)
 				.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
-			const planned = step.plans(selection.value);
+			const planned = step.plan(selection.value);
 			if (planned.isErr()) return planned;
-			const plans = planned.value;
+			const plan = planned.value;
 
 			const build = await accessor
 				.get(BuildService)
@@ -186,22 +176,19 @@ registerCommand(
 				accessor.get(EnvironmentService).tmpDir,
 				`rogen-sourcemap-${randomUUID()}.json`
 			);
-			const runs: (Result<RojoCommandRun, Error> | undefined)[] = [];
-			if (!failure)
-				for (const plan of plans) {
-					const ran = await rojoService.run(selection.value, {
-						command: step.command,
-						flags: plan.printed
-							? [...plan.flags, "--output", tmp]
-							: plan.flags,
-						cwd: plan.cwd,
-						project: plan.project,
-					});
-					runs.push(ran);
-					if (ran.isErr()) break;
-				}
-			const rojoFailure = failureOf(runs);
-			const printed = plans.some(({ printed }) => printed);
+			const ran =
+				failure || plan === undefined
+					? undefined
+					: await rojoService.run(selection.value, {
+							command: step.command,
+							flags: plan.printed
+								? [...plan.flags, "--output", tmp]
+								: plan.flags,
+							cwd: plan.cwd,
+							project: plan.project,
+						});
+			const rojoFailure = failureOf(ran);
+			const printed = plan?.printed === true;
 			let unread: Error | undefined;
 			if (printed) {
 				if (!rojoFailure && !failure) {
@@ -223,9 +210,7 @@ registerCommand(
 					logService,
 					sourcemapDocument(
 						build.builds,
-						plans.map((plan, index) =>
-							rojoEntry(plan.target, runs[index])
-						)
+						plan ? [rojoEntry(plan.target, ran)] : []
 					),
 					failure ?? rojoFailure
 				);
@@ -238,25 +223,24 @@ registerCommand(
 					])
 				);
 			else buildLog.report(build, selection.value.home, "sourcemap");
-			runs.forEach((ran, index) => {
-				if (!ran?.isOk()) return;
+			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;
 				(runFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,
 					messages.filter(
 						({ severity, stdout }) =>
-							(stdout !== undefined && !plans[index].printed) ||
+							(stdout !== undefined && !plan.printed) ||
 							severity === "warning" ||
 							severity === "error"
 					),
 					cwd
 				);
-				const { target } = plans[index];
+				const { target } = plan;
 				if (!runFailure && target.output !== undefined)
 					logService.success(
 						`${relativeTo(cwd, path.resolve(target.cwd, target.output))} · wrote`
 					);
-			});
+			}
 			const rojoProblem = rojoFailure ?? unread;
 			if (rojoProblem) return err(rojoProblem);
 			return failure ? this.reported(failure) : ok(undefined);

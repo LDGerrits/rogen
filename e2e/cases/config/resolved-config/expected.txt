@@ -5,9 +5,8 @@ stdout:
     "configs": [
       {
         "config": "Game",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "Game",
         "sourcePaths": [
           "<dir>/src"
@@ -22,7 +21,10 @@ stdout:
         "globIgnorePaths": [
           "<dir>/**/*.spec.luau"
         ],
-        "syncPath": "<dir>/dist",
+        "compiledPath": "<dir>/dist",
+        "compiledLayout": {
+          "<dir>/src": "<dir>/dist"
+        },
         "projectFile": "<dir>/default.project.json",
         "serving": null,
         "rojo": [

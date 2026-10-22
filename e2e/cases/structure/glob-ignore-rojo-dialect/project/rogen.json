@@ -1,7 +1,0 @@
-{
-	"globIgnorePaths": ["*.tmp.luau", "src/Deep/*.skip.luau", "src/Named/"],
-	"sourcePaths": ["src"],
-	"routes": {
-		"*": "ReplicatedStorage/shared"
-	}
-}

@@ -1,0 +1,151 @@
+$ rogen list
+exit 0
+stdout:
+  rogen list
+  default.rogen.json
+    source paths: src
+    routes:
+      server -> ServerScriptService
+      client -> StarterPlayer/StarterPlayerScripts
+      shared -> ReplicatedStorage/shared
+      * -> ReplicatedStorage/shared
+    compiled path: (none)
+    project file: default.project.json
+    rojo: rojo serve default.project.json
+  dist.rogen.json
+    source paths: src
+    routes: same as default.rogen.json
+    compiled path: dist
+      src -> dist
+    project file: dist.project.json (port 34900)
+    rojo: rojo serve dist.project.json --port 34900
+    differs from default.rogen.json: servePort, compiledPath
+  release.rogen.json
+    source paths: src
+    routes: same as default.rogen.json
+    compiled path: (none)
+    project file: release.project.json
+    rojo: rojo serve release.project.json
+    differs from default.rogen.json: name, globIgnorePaths
+  3 configs.
+
+$ rogen list dist
+exit 0
+stdout:
+  rogen list
+  dist.rogen.json
+    source paths: src
+    routes:
+      server -> ServerScriptService
+      client -> StarterPlayer/StarterPlayerScripts
+      shared -> ReplicatedStorage/shared
+      * -> ReplicatedStorage/shared
+    compiled path: dist
+      src -> dist
+    project file: dist.project.json (port 34900)
+    rojo: rojo serve dist.project.json --port 34900
+  1 config.
+
+$ rogen list --json
+exit 0
+stdout:
+  {
+    "configs": [
+      {
+        "config": "Inventory",
+        "file": "<dir>/default.rogen.json",
+        "status": "valid",
+        "projectName": "Inventory",
+        "sourcePaths": [
+          "<dir>/src"
+        ],
+        "commonRoot": "<dir>/src",
+        "routes": {
+          "server": "ServerScriptService",
+          "client": "StarterPlayer/StarterPlayerScripts",
+          "shared": "ReplicatedStorage/shared",
+          "*": "ReplicatedStorage/shared"
+        },
+        "globIgnorePaths": [],
+        "compiledPath": null,
+        "compiledLayout": {},
+        "projectFile": "<dir>/default.project.json",
+        "serving": null,
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/default.project.json"
+        ],
+        "diagnostics": []
+      },
+      {
+        "config": "Inventory",
+        "file": "<dir>/dist.rogen.json",
+        "status": "valid",
+        "differsFromDefault": [
+          "servePort",
+          "compiledPath"
+        ],
+        "projectName": "Inventory",
+        "sourcePaths": [
+          "<dir>/src"
+        ],
+        "commonRoot": "<dir>/src",
+        "routes": {
+          "server": "ServerScriptService",
+          "client": "StarterPlayer/StarterPlayerScripts",
+          "shared": "ReplicatedStorage/shared",
+          "*": "ReplicatedStorage/shared"
+        },
+        "globIgnorePaths": [],
+        "compiledPath": "<dir>/dist",
+        "compiledLayout": {
+          "<dir>/src": "<dir>/dist"
+        },
+        "projectFile": "<dir>/dist.project.json",
+        "serving": null,
+        "port": 34900,
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/dist.project.json",
+          "--port",
+          "34900"
+        ],
+        "diagnostics": []
+      },
+      {
+        "config": "Release",
+        "file": "<dir>/release.rogen.json",
+        "status": "valid",
+        "differsFromDefault": [
+          "name",
+          "globIgnorePaths"
+        ],
+        "projectName": "Release",
+        "sourcePaths": [
+          "<dir>/src"
+        ],
+        "commonRoot": "<dir>/src",
+        "routes": {
+          "server": "ServerScriptService",
+          "client": "StarterPlayer/StarterPlayerScripts",
+          "shared": "ReplicatedStorage/shared",
+          "*": "ReplicatedStorage/shared"
+        },
+        "globIgnorePaths": [
+          "<dir>/**/*.spec.luau"
+        ],
+        "compiledPath": null,
+        "compiledLayout": {},
+        "projectFile": "<dir>/release.project.json",
+        "serving": null,
+        "rojo": [
+          "rojo",
+          "serve",
+          "<dir>/release.project.json"
+        ],
+        "diagnostics": []
+      }
+    ]
+  }

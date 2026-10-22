@@ -119,7 +119,9 @@ const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
 				...run.map(indent),
 			]
 		: []),
-	...(run.includes("rogen serve") ? [STUDIO_STEP] : []),
+	...(run.some((line) => line.startsWith("rogen serve"))
+		? [STUDIO_STEP]
+		: []),
 	...edits,
 ];
 
@@ -275,7 +277,7 @@ export class InitLog implements InitReporter {
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
-				} Fix rogen.json and run rogen build.`
+				} Fix default.rogen.json and run rogen build.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}

@@ -1,3 +1,0 @@
-{
-	"sourcePaths": ["src"],
-	"routes": { "*": "ReplicatedStorage"

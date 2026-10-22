@@ -17,7 +17,7 @@ import {
 import { ServeAddress } from "./serve.js";
 
 export interface ServeRequest {
-	/** The configs to serve, by folder or project file path; the one here when none. */
+	/** The config to serve, by folder or project file path; the one here when none. */
 	readonly refs: readonly string[];
 	/** Passed to the server after the project file, untouched. */
 	readonly serverArgs: readonly string[];
@@ -52,26 +52,14 @@ export class ServePlan {
 	constructor(
 		readonly selection: ReloadableSelection,
 		readonly executable: ServerExecutable,
-		readonly targets: readonly ServeTarget[],
+		readonly target: ServeTarget,
 		readonly serverArgs: readonly string[],
 		readonly adopt = false
 	) {}
 
-	get alreadyServed(): ServedTarget[] {
-		return this.targets.filter(isServed);
-	}
-
-	get toStart(): ServeTarget[] {
-		return this.targets.filter(({ servedBy }) => servedBy === undefined);
-	}
-
-	get adopted(): ServedTarget[] {
-		return this.alreadyServed.filter(({ adopted }) => adopted);
-	}
-
-	/** Whether another serve already serves every target, so nothing is built or watched. */
+	/** Whether another serve already serves the target, so nothing is built or watched. */
 	get isIdle(): boolean {
-		return this.toStart.length === 0 && this.adopted.length === 0;
+		return isServed(this.target) && !this.target.adopted;
 	}
 }
 
@@ -150,7 +138,8 @@ export interface ServeSession extends Disposable {
 	/** Fired when a server stops before the session does, or an adopted one stops answering for its project. */
 	readonly onDidExit: Event<ServerExitEvent>;
 
-	readonly targets: readonly ServeTarget[];
+	/** The target a server of the session runs for; none until one starts. */
+	readonly target: ServeTarget | undefined;
 
 	/** Builds, then starts the servers. Fails with the build's errors, starting none, when the first build fails or throws. */
 	start(): Promise<Result<void, Error>>;
@@ -161,7 +150,7 @@ export interface ServeSession extends Disposable {
 export interface ServeService {
 	readonly _serviceBrand: undefined;
 
-	/** Fails when a config is broken, no server can run, two configs share a port, or something else holds one. */
+	/** Fails when the config is broken, no server can run, or something else holds the port. */
 	prepare(request: ServeRequest): Promise<Result<ServePlan, Error>>;
 
 	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */

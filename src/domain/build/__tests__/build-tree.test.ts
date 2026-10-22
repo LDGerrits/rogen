@@ -1,10 +1,10 @@
-import { SyncLayout } from "../sync-layout.js";
+import { CompiledLayout } from "../compiled-layout.js";
 import { BuildTree } from "../build-tree.js";
 import { abs, configOf, syncTools } from "./fixtures.js";
 
 const treeOf = (spec: Parameters<typeof configOf>[0] = {}) => {
 	const config = configOf(spec);
-	return new BuildTree(config, new SyncLayout(config, syncTools));
+	return new BuildTree(config, new CompiledLayout(config, syncTools));
 };
 
 const mounting = (target: string) => ({
@@ -32,7 +32,7 @@ describe("BuildTree", () => {
 
 	it("should mount a path of a config in another folder relative to that folder", () => {
 		const tree = treeOf({
-			file: abs("places/main/rogen.json"),
+			file: abs("places/main/default.rogen.json"),
 			project: mounting("Packages"),
 		});
 
@@ -106,7 +106,7 @@ describe("BuildTree", () => {
 			expect(rest).toEqual([]);
 			expect(error).toMatchObject({
 				code: "tree.mountsSourcePath",
-				resource: abs("rogen.json"),
+				resource: abs("default.rogen.json"),
 			});
 			expect(error.message).toContain(
 				`"ReplicatedStorage" mounts the source path ${abs("src")}`

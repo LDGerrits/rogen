@@ -13,7 +13,7 @@ import {
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
 import { SyncRule } from "../rojo/sync-rules.js";
-import { SyncLayout } from "./sync-layout.js";
+import { CompiledLayout } from "./compiled-layout.js";
 import { WrittenGlobs } from "./written-globs.js";
 
 export interface TreeMount {
@@ -91,7 +91,7 @@ export class BuildTree {
 			ResolvedConfig,
 			"file" | "project" | "projectDir"
 		>,
-		private readonly layout: SyncLayout
+		private readonly layout: CompiledLayout
 	) {
 		const { project } = config;
 		this.project = new RojoProject(

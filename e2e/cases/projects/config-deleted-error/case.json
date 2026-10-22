@@ -1,0 +1,20 @@
+{
+	"steps": [
+		[
+			"build"
+		],
+		[
+			"$",
+			"rm",
+			"default.rogen.json"
+		],
+		[
+			"build"
+		],
+		[
+			"build",
+			"default.project.json"
+		]
+	],
+	"rojo": false
+}

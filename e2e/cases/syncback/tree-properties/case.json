@@ -1,1 +1,1 @@
-{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"]], "show": ["rogen.json"]}
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"]], "show": ["default.rogen.json"]}

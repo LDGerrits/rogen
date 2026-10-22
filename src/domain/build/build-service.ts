@@ -4,6 +4,7 @@ import {
 	RenameFix,
 	diagnosticsAbout,
 	diagnosticsReaching,
+	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
@@ -128,7 +129,7 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
-	/** What a build of the config raises, without the sync path's: the errors that stopped the later phases, else the warnings. */
+	/** What a build of the config raises, without the compiled path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -161,6 +162,32 @@ export interface Diagnosis {
 	readonly stoppedBy: readonly Diagnostic[];
 }
 
+/** One `diagnose` for what several configs were each asked about. */
+export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
+	return {
+		diagnostics: uniqueDiagnostics(
+			parts.flatMap(({ diagnostics }) => diagnostics)
+		),
+		stoppedBy: uniqueDiagnostics(
+			parts.flatMap(({ stoppedBy }) => stoppedBy)
+		),
+	};
+}
+
+/** One `locate` for what several configs were each asked about, the configs in the order given. */
+export function mergeLocations(
+	parts: readonly Locations[],
+	asked: readonly Asked[]
+): Locations {
+	return {
+		everyFile: false,
+		asked,
+		configs: parts.flatMap((part) => part.configs),
+		errors: uniqueDiagnostics(parts.flatMap((part) => part.errors)),
+		stale: uniqueDiagnostics(parts.flatMap((part) => part.stale)),
+	};
+}
+
 /** Builds configs from the index and writes them; `build`, `rebuild` and `locate` place files the same way. */
 export interface BuildService {
 	readonly _serviceBrand: undefined;
@@ -168,7 +195,7 @@ export interface BuildService {
 	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. A project file edited by hand since Rogen wrote it is a failed write, unless `force`. */
 	build(selection: ConfigSelection, force?: boolean): Promise<BuildRun>;
 
-	/** Builds and writes the project at `projectFile` in a watch's `set`; the sync path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
+	/** Builds and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(
 		set: BuildSet,
 		projectFile: string,
@@ -182,6 +209,9 @@ export interface BuildService {
 		selection: ConfigSelection,
 		targets?: LocateQuery
 	): Promise<Result<Diagnosis, DiagnosticsError>>;
+
+	/** What each of `query.args` is, one entry each and in order: a path, resolved, or an instance. */
+	askedAbout(query: LocateQuery): Promise<readonly Asked[]>;
 
 	/** The project files on disk that differ from what a build would write, as the diagnostics `check` raises for them. Writes nothing. */
 	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;

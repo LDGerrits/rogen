@@ -16,7 +16,7 @@ describe("WhereLog", () => {
 		it("should hold the errors of the configs that didn't load beside the locations", () => {
 			const error = errorDiagnostic(
 				"config.invalidSyntax",
-				{ resource: "/repo/broken/rogen.json" },
+				{ resource: "/repo/broken/default.rogen.json" },
 				"bad."
 			);
 
@@ -26,7 +26,7 @@ describe("WhereLog", () => {
 				locations: [],
 				diagnostics: [
 					{
-						file: "/repo/broken/rogen.json",
+						file: "/repo/broken/default.rogen.json",
 						code: "config.invalidSyntax",
 					},
 				],

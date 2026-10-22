@@ -1,4 +1,0 @@
-{
-	"sourcePaths": ["mine"],
-	"routes": { "*": "ReplicatedStorage" }
-}

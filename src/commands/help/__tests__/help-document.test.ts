@@ -77,9 +77,7 @@ describe("rogen help --json", () => {
 			const build = commands.find(
 				({ name }: { name: string }) => name === "build"
 			);
-			expect(build.args).toEqual([
-				{ name: "project", optional: true, variadic: true },
-			]);
+			expect(build.args).toEqual([{ name: "project", optional: true }]);
 			expect(build.options).toContainEqual({
 				name: "output",
 				short: "o",
@@ -136,7 +134,7 @@ describe("rogen help --json", () => {
 			const build = document();
 			expect(build.name).toBe("build");
 			expect(build.args[0].description).toContain(
-				"A folder with a rogen.json"
+				"A folder, a .rogen.json file"
 			);
 			expect(build.options).toContainEqual(
 				expect.objectContaining({

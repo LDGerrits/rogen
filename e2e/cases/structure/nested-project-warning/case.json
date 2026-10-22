@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src/default.project.json"]] }
+{ "steps": [["build"], ["where"]] }

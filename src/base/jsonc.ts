@@ -69,6 +69,8 @@ export interface JsoncSpan {
 	readonly value: unknown;
 	readonly properties?: readonly {
 		readonly name: string;
+		/** The offset of the key, where the entry starts. */
+		readonly start: number;
 		readonly value: JsoncSpan;
 	}[];
 }
@@ -98,7 +100,13 @@ function toSpan(node: Node): JsoncSpan {
 		properties: (node.children ?? []).flatMap((property) => {
 			const [key, value] = property.children ?? [];
 			return key && value
-				? [{ name: String(key.value), value: toSpan(value) }]
+				? [
+						{
+							name: String(key.value),
+							start: property.offset,
+							value: toSpan(value),
+						},
+					]
 				: [];
 		}),
 	};

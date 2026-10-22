@@ -7,6 +7,7 @@ import {
 	ServerOutputEvent,
 	ServerExitEvent,
 	ServerReadyEvent,
+	isServed,
 } from "../../domain/serve/serve-service.js";
 import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
@@ -90,7 +91,7 @@ export interface ServeReporter {
 	connection(change: ServerConnectionEvent): void;
 	stopped(stop: ServerExitEvent): void;
 	changed(change: ServeChangeEvent): void;
-	shutdown(targets: readonly ServeTarget[]): void;
+	shutdown(target: ServeTarget | undefined): void;
 	error(error: Error): void;
 	abort(error: Error): void;
 	end(message: string): void;
@@ -119,7 +120,7 @@ export class ServeLog implements ServeReporter {
 		const { plan } = this;
 		const { selection } = plan;
 		this.watchLog.begin(selection.configs, selection.home);
-		for (const target of plan.alreadyServed) this.running(target);
+		if (isServed(plan.target)) this.running(plan.target);
 	}
 
 	update(update: WatchUpdate): void {
@@ -216,7 +217,7 @@ export class ServeJsonLog implements ServeReporter {
 	}
 
 	begin(): void {
-		for (const target of this.plan.alreadyServed) this.running(target);
+		if (isServed(this.plan.target)) this.running(this.plan.target);
 	}
 
 	update(update: WatchUpdate): void {
@@ -284,8 +285,8 @@ export class ServeJsonLog implements ServeReporter {
 		}
 	}
 
-	shutdown(targets: readonly ServeTarget[]): void {
-		for (const target of targets)
+	shutdown(target: ServeTarget | undefined): void {
+		if (target)
 			this.line({ stopped: this.stoppedJson(target, "shutdown") });
 	}
 

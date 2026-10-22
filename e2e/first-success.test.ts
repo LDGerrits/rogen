@@ -1,8 +1,10 @@
 import { describeWithRojo } from "../src/domain/rojo/__tests__/rojo-cli.js";
 import { NETWORK_TIMEOUT_MS, bundleCli } from "./harness.js";
-import { Variant, follow } from "./first-success.js";
+import { Variant, follow, stepOf } from "./first-success.js";
 
 const SOURCEMAP = ["rogen", "sourcemap", "-o", "sourcemap.json"] as const;
+
+const GAME = "places/game";
 
 const VARIANTS: readonly Variant[] = [
 	{ name: "Luau, one place", flags: [], steps: [], served: "project" },
@@ -10,13 +12,29 @@ const VARIANTS: readonly Variant[] = [
 		name: "Luau, several places",
 		flags: ["--places"],
 		steps: [],
+		project: [GAME],
 		served: "game",
 	},
 	{
 		name: "Luau with Darklua",
 		flags: ["--darklua"],
 		steps: [SOURCEMAP, ["darklua", "process", "src", "dist"]],
+		project: ["dist"],
 		served: "project",
+	},
+	{
+		name: "Luau with Darklua, several places",
+		flags: ["--places", "--darklua"],
+		steps: [
+			{ in: GAME, run: SOURCEMAP },
+			{
+				in: GAME,
+				run: ["darklua", "process", "../shared/src", "dist/shared/src"],
+			},
+			{ in: GAME, run: ["darklua", "process", "src", "dist/game/src"] },
+		],
+		project: [`${GAME}/dist.rogen.json`],
+		served: "game",
 	},
 	{
 		name: "roblox-ts, one place",
@@ -28,8 +46,9 @@ const VARIANTS: readonly Variant[] = [
 	{
 		name: "roblox-ts, several places",
 		flags: ["--language", "roblox-ts", "--places"],
-		steps: [["npx", "rbxtsc", "-p", "places/game"]],
+		steps: [["npx", "rbxtsc", "-p", GAME]],
 		network: true,
+		project: [GAME],
 		served: "game",
 	},
 	{
@@ -40,7 +59,19 @@ const VARIANTS: readonly Variant[] = [
 			["darklua", "process", "out", "dist"],
 		],
 		network: true,
+		project: ["dist"],
 		served: "project",
+	},
+	{
+		name: "roblox-ts with Darklua, several places",
+		flags: ["--language", "roblox-ts", "--places", "--darklua"],
+		steps: [
+			["npx", "rbxtsc", "-p", GAME],
+			{ in: GAME, run: ["darklua", "process", "out", "dist"] },
+		],
+		network: true,
+		project: [`${GAME}/dist.rogen.json`],
+		served: "game",
 	},
 ];
 
@@ -74,15 +105,18 @@ describeWithRojo("first success from an empty folder", () => {
 				expect(success.commands).toEqual([
 					"init",
 					...variant.steps
-						.filter(([program]) => program === "rogen")
-						.map(([, command]) => command),
+						.map(stepOf)
+						.filter(({ run: [program] }) => program === "rogen")
+						.map(({ run: [, command] }) => command),
 					"serve",
 				]);
 				expect(success.pluginCalls).toBe(
 					process.platform === "win32" ? 0 : 1
 				);
 				expect(success.unprinted).toEqual([]);
-				expect(success.printed).toContain("rogen serve");
+				expect(success.printed).toContain(
+					["rogen serve", ...(variant.project ?? [])].join(" ")
+				);
 				for (const line of success.printed)
 					expect(line).not.toMatch(/^rogen (?!serve|sourcemap)/);
 			},

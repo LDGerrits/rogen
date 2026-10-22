@@ -5,9 +5,8 @@ stdout:
     "configs": [
       {
         "config": "Game",
-        "file": "<dir>/game/rogen.json",
+        "file": "<dir>/game/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "Game",
         "sourcePaths": [
           "<dir>/game/src"
@@ -22,7 +21,10 @@ stdout:
         "globIgnorePaths": [
           "<dir>/game/**/*.spec.luau"
         ],
-        "syncPath": "<dir>/game/dist",
+        "compiledPath": "<dir>/game/dist",
+        "compiledLayout": {
+          "<dir>/game/src": "<dir>/game/dist"
+        },
         "projectFile": "<dir>/game/default.project.json",
         "serving": null,
         "rojo": [
@@ -34,9 +36,8 @@ stdout:
       },
       {
         "config": "lobby",
-        "file": "<dir>/lobby/rogen.json",
+        "file": "<dir>/lobby/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "lobby",
         "sourcePaths": [
           "<dir>/lobby/core",
@@ -50,7 +51,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "globIgnorePaths": [],
-        "syncPath": null,
+        "compiledPath": null,
+        "compiledLayout": {},
         "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
         "rojo": [
@@ -70,9 +72,8 @@ stdout:
     "configs": [
       {
         "config": "lobby",
-        "file": "<dir>/lobby/rogen.json",
+        "file": "<dir>/lobby/default.rogen.json",
         "status": "valid",
-        "served": true,
         "projectName": "lobby",
         "sourcePaths": [
           "<dir>/lobby/core",
@@ -86,7 +87,8 @@ stdout:
           "*": "ReplicatedStorage/shared"
         },
         "globIgnorePaths": [],
-        "syncPath": null,
+        "compiledPath": null,
+        "compiledLayout": {},
         "projectFile": "<dir>/lobby/default.project.json",
         "serving": null,
         "rojo": [

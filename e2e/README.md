@@ -20,7 +20,7 @@ e2e/cases/<area>/<case>/
 ```
 
 - `steps` defaults to `[["build"]]`. Each step is the argument list of one `rogen` run. A
-  project is a folder with its own `rogen.json`, so a case with several holds a
+  project is a folder with its own `default.rogen.json`, so a case with several holds a
   folder for each, and a step names the folders (`["build", "lobby", "match"]`).
 - `cwd` is a folder inside `project/` that every step runs from; the project root when omitted.
 - `links` maps a path inside `project/` to a symlink target, created at run time so
@@ -48,12 +48,12 @@ e2e/cases/<area>/<case>/
   This is how syncback cases say what an edit in Studio was, with no place file to
   keep in step with `project/` by hand. It builds `default.project.json` from the
   project root, so a case with `place` takes no `links` or `cwd`.
-- Files that a run created or changed are listed under `written:`. `rogen.json` and
-  `rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
+- Files that a run created or changed are listed under `written:`. `*.rogen.json` and
+  `*.rogen.jsonc` files are printed, and every `*.project.json` is passed to Rojo.
 
 `rojo-conformance.test.ts` is the other seam: Rojo's own build-test projects
 (`rojo-build-tests/`, copied from Rojo at the pinned version by
-`node scripts/vendor-rojo-tests.ts`) are each saved as a `rogen.json`, and
+`node scripts/vendor-rojo-tests.ts`) are each saved as a `default.rogen.json`, and
 the `default.project.json` Rogen writes must equal the original apart from
 `$schema`, with `rojo build` making the same place from both. A project Rogen
 can't write back yet is listed in the test with what it needs; its test is
@@ -64,7 +64,7 @@ build-test projects is built into `.rbxl`, `.rbxm` and `.rbxlx` and mapped with 
 files must be the same bytes. A plain Rojo project is edited in
 Studio in twelve ways, and `rogen syncback -y` must leave the same files as `rojo syncback`.
 Each of Rojo's syncback-test projects (`rojo-syncback-tests/`, vendored by the same script) is saved as a
-`rogen.json`; `rogen syncback -y` must leave the same files as `rojo syncback` apart from the project file, and
+`default.rogen.json`; `rogen syncback -y` must leave the same files as `rojo syncback` apart from the project file, and
 `rogen syncback -n` must change none.
 
 Rojo must be installed (`rokit install`). Without it the suite is skipped locally
@@ -92,14 +92,21 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `cases/routing` for how folders and names place a file, `cases/structure` for
   init folders, the tree, `globIgnorePaths` and a config without routes,
   `cases/data-files` for `.meta.json` and `.model.json`, `cases/links` for
-  symlinks, `cases/sync-path` for `syncPath` (roblox-ts and Darklua output),
-  and `cases/config` for `rogen.json` itself: its keys, the removed and unknown
+  symlinks, `cases/compiled-path` for `compiledPath` (roblox-ts and Darklua output),
+  and `cases/config` for the config file itself: its keys, the removed and unknown
   ones, `name`, the source paths and JSONC.
+- Which file a command picks and writes, in a folder with several configs
+  (`default.rogen.json`, `dist.rogen.json`, `release.rogen.json`), is checked by
+  `cases/projects`: the forms `[PROJECT]` takes (`name-argument`, `folder-wins-a-tie`,
+  `plain-project-beside-config`), the default alone for a bare command (`default-only`,
+  `no-default-error`), the "keep one" and renamed-config errors, a deleted config
+  (`config-deleted-error`), a stale file (`check-stale-project-warning`), `list`
+  (`list-folder`), and the second files of Darklua and release setups.
 - What a command does with its project argument, and what it prints, is
   checked by `cases/commands`: `build`, `check`, `list` and `where`, with
   several projects as folders (`build-several-projects`, `build-same-errors-error`),
   the forms `[PROJECT]` takes (`build-project-path`, `build-project-argument-error`,
-  `from-subfolder`), a stale `default.project.json` (`check-stale-project-file-warning`),
+  `from-subfolder`, which shows a bare command reading only its own folder), a stale `default.project.json` (`check-stale-project-file-warning`),
   `--json`, `--quiet`, `--verbose`, `--color`, help, and the unknown
   and removed commands and options.
 

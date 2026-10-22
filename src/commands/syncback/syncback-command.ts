@@ -3,7 +3,8 @@ import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 import {
-	ConfigArguments,
+	ProjectArgument,
+	singleProjectError,
 	ConfigService,
 } from "../../domain/config/config-service.js";
 import { RojoCommandService } from "../../domain/runner/rojo-command-service.js";
@@ -61,7 +62,7 @@ const SyncbackOptions = [
 		short: "n",
 		type: "boolean",
 		description:
-			"Plan the run and list it without changing a source file. The project files are still written.",
+			"Plan the run and list it without changing a source file. The project file is still written.",
 	},
 	{
 		name: "non-interactive",
@@ -92,8 +93,8 @@ registerCommand(
 					summary:
 						"Brings a place file's changes back into the source files",
 					description:
-						"Writes the project files, then has Rojo's syncback read a place or model file and write what changed into your source folders, as 'rojo syncback' does for a project file. A folder that routing makes one instance, such as src/Inventory/Server, is read by Rojo as it is; an instance the place added where no folder holds it is put where routing places a file for it, beside the files already there. It removes the files of instances the place no longer holds, so look first with --dry-run.",
-					args: ConfigArguments,
+						"Writes the project file, then has Rojo's syncback read a place or model file and write what changed into your source folders, as 'rojo syncback' does for a project file. A folder that routing makes one instance, such as src/Inventory/Server, is read by Rojo as it is; an instance the place added where no folder holds it is put where routing places a file for it, beside the files already there. It removes the files of instances the place no longer holds, so look first with --dry-run.",
+					args: ProjectArgument,
 					picker: [
 						{
 							message:
@@ -125,6 +126,8 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof SyncbackOptions>
 		): Promise<Result<void, Error>> {
+			const tooMany = singleProjectError("syncback", line.positionals);
+			if (tooMany) return err(tooMany);
 			const { input, json } = line.options;
 			if (input === undefined)
 				return err(
@@ -151,12 +154,11 @@ registerCommand(
 				.get(ConfigService)
 				.select(line.positionals);
 			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes) logService.warn(note);
 
-			const chosen = selection.value.requireValid().isErr()
+			const project = selection.value.requireValid().isErr()
 				? undefined
-				: rojoService.choose(selection.value, "syncback");
-			if (chosen?.isErr()) return chosen;
-			const project = chosen?.isOk() ? chosen.value : undefined;
+				: rojoService.choose(selection.value);
 
 			const buildService = accessor.get(BuildService);
 			let build = await buildService.build(selection.value);

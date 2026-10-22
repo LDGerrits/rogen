@@ -1,0 +1,20 @@
+$ rogen fmt-project places/lobby
+exit 0
+stdout:
+  formatted places/lobby/default.rogen.json
+
+written:
+  places/lobby/default.rogen.json
+
+places/lobby/default.rogen.json:
+{
+  "name": "Lobby",
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "*": "ReplicatedStorage"
+    }
+  }
+}

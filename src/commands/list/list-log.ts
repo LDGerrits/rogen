@@ -1,13 +1,18 @@
 import { ProjectError } from "../../base/errors.js";
 import { relativeTo, toNative } from "../../base/path.js";
-import { joinedWithAnd, plural, shellWord } from "../../base/strings.js";
+import path from "path";
+import { plural, shellWord } from "../../base/strings.js";
 import { unescapedGlob } from "../../base/glob.js";
 import {
 	ResolvedConfig,
-	ResolvedConfigFile,
-	placesIn,
+	compiledPathOf,
 } from "../../domain/config/resolved-config.js";
-import { configLabel } from "../../domain/config/config.js";
+import {
+	DEFAULT_CONFIG_FILE,
+	configLabel,
+	isDefaultConfigFileName,
+} from "../../domain/config/config.js";
+import { ConfigDifferences } from "../../domain/config/config-differences.js";
 import { ConfigEntry } from "../../domain/config/config-service.js";
 import { ServingNow } from "../../domain/serve/serve-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -38,7 +43,8 @@ const detailsShape = {
 	commonRoot: S.nullable(S.string),
 	routes: S.record(S.string),
 	globIgnorePaths: S.array(S.string),
-	syncPath: S.nullable(S.string),
+	compiledPath: S.nullable(S.string),
+	compiledLayout: S.record(S.string),
 	projectFile: S.string,
 	serving: S.nullable(servingShape),
 };
@@ -66,19 +72,8 @@ export const listDocumentShape = S.object({
 			config: S.string,
 			file: S.string,
 			status: S.enum("valid", "broken"),
-			served: S.boolean,
+			differsFromDefault: S.optional(S.array(S.string)),
 			...optionalDetails,
-			sharedCode: S.optional(S.array(S.string)),
-			places: S.optional(
-				S.array(
-					S.object({
-						place: S.string,
-						folder: S.string,
-						...detailsShape,
-						...serveShape,
-					})
-				)
-			),
 			diagnostics: S.array(diagnosticShape),
 		})
 	),
@@ -100,22 +95,17 @@ const servingLine = ({ server, host, port, clients }: ServingNow): string =>
 	}`;
 
 const portOf = (project: ResolvedConfig): number | undefined =>
-	project.placeServePort ?? project.project.servePort;
+	project.project.servePort;
 
-/** The Rojo command that serves the project, unless its config lists places and is never served. */
-const rojoServe = (
-	project: ResolvedConfig,
-	file: string
-): string[] | undefined => {
+/** The Rojo command that serves the project. */
+const rojoServe = (project: ResolvedConfig, file: string): string[] => {
 	const port = portOf(project);
-	return project.hasPlaces
-		? undefined
-		: [
-				"rojo",
-				"serve",
-				file,
-				...(port === undefined ? [] : ["--port", String(port)]),
-			];
+	return [
+		"rojo",
+		"serve",
+		file,
+		...(port === undefined ? [] : ["--port", String(port)]),
+	];
 };
 
 const listed = (values: readonly string[]): string =>
@@ -123,6 +113,15 @@ const listed = (values: readonly string[]): string =>
 
 const routeLines = ({ routes }: ResolvedConfig): string[] =>
 	[...routes].map(([key, target]) => `${key} -> ${target.toString()}`);
+
+/** Each source path with the folder of the compiled path that repeats it. */
+const compiledFolders = (config: ResolvedConfig): [string, string][] =>
+	config.compiledPath === undefined
+		? []
+		: config.sourcePaths.map((source) => [
+				source,
+				compiledPathOf(config, source),
+			]);
 
 interface ListedServing {
 	readonly server: string;
@@ -137,7 +136,8 @@ interface ConfigDetails {
 	readonly commonRoot: string | null;
 	readonly routes: Readonly<Record<string, string>>;
 	readonly globIgnorePaths: readonly string[];
-	readonly syncPath: string | null;
+	readonly compiledPath: string | null;
+	readonly compiledLayout: Readonly<Record<string, string>>;
 	readonly projectFile: string;
 	readonly serving: ListedServing | null;
 	readonly port?: number;
@@ -145,17 +145,11 @@ interface ConfigDetails {
 	readonly rojo?: readonly string[];
 }
 
-interface ListedPlace extends ConfigDetails {
-	readonly place: string;
-	readonly folder: string;
-}
-
 interface ListedConfig extends Partial<ConfigDetails> {
 	readonly config: string;
 	readonly file: string;
 	readonly status: ConfigEntry["status"];
-	readonly served: boolean;
-	readonly places?: readonly ListedPlace[];
+	readonly differsFromDefault?: readonly string[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
 
@@ -182,6 +176,30 @@ export class ListLog {
 		);
 	}
 
+	/** The keys each valid config other than the default has other values for than the default, by config file; none without a valid default beside it. */
+	static differences(
+		entries: readonly ConfigEntry[]
+	): ReadonlyMap<string, readonly string[]> {
+		const base = entries.find(
+			(entry) =>
+				entry.status === "valid" &&
+				isDefaultConfigFileName(path.basename(entry.file))
+		);
+		const differences = new Map<string, readonly string[]>();
+		if (base?.status !== "valid") return differences;
+		for (const entry of entries)
+			if (
+				entry.status === "valid" &&
+				entry !== base &&
+				!isDefaultConfigFileName(path.basename(entry.file))
+			)
+				differences.set(
+					entry.file,
+					ConfigDifferences.between(base.config, entry.config)
+				);
+		return differences;
+	}
+
 	print(
 		entries: readonly ConfigEntry[],
 		home?: string,
@@ -191,66 +209,44 @@ export class ListLog {
 		const { logService } = this;
 		new BuildLog(logService, this.cwd).begin("list", [], home);
 		const printed: { label: string; routes: readonly string[] }[] = [];
+		const differences = ListLog.differences(entries);
 		let configs = 0;
-		let places = 0;
 		for (const entry of entries) {
 			if (entry.status === "broken") {
 				logService.section(relativeTo(this.cwd, entry.file));
 				for (const error of entry.errors) logService.diagnostic(error);
 				continue;
 			}
-			if (entry.scope === undefined) {
-				configs++;
-				this.printConfig(
-					relativeTo(this.cwd, entry.file),
-					entry,
-					entry.config.hasPlaces
-						? placesIn(entry).map(({ config }) => config.label)
-						: [],
-					printed,
-					serving
-				);
-			}
-			for (const place of placesIn(entry, entry.scope)) {
-				places++;
-				this.printConfig(
-					`${relativeTo(this.cwd, place.config.projectDir)} (place)`,
-					place,
-					[],
-					printed,
-					serving
-				);
-			}
+			configs++;
+			this.printConfig(
+				relativeTo(this.cwd, entry.file),
+				entry.config,
+				printed,
+				serving,
+				differences.get(entry.file)
+			);
 			for (const problem of problems.get(entry.file) ?? [])
 				logService.diagnostic(problem);
 		}
 		if (ListLog.failure(entries) === undefined)
-			logService.outro(
-				`${joinedWithAnd([
-					...(configs > 0 || places === 0
-						? [plural(configs, "config")]
-						: []),
-					...(places > 0 ? [plural(places, "place")] : []),
-				])}.`
-			);
+			logService.outro(`${plural(configs, "config")}.`);
 	}
 
 	private printConfig(
 		title: string,
-		resolved: ResolvedConfigFile,
-		placeNames: readonly string[],
+		config: ResolvedConfig,
 		printed: { label: string; routes: readonly string[] }[],
-		serving: ServingByConfig
+		serving: ServingByConfig,
+		differs?: readonly string[]
 	): void {
 		const relative = (file: string) => relativeTo(this.cwd, file);
-		const { config } = resolved;
 		const routes = routeLines(config);
 		const sameAs = printed.find(
 			(other) =>
 				other.routes.length === routes.length &&
 				other.routes.every((line, index) => line === routes[index])
 		);
-		printed.push({ label: config.label, routes });
+		printed.push({ label: title, routes });
 		const notes = (project: ResolvedConfig): string => {
 			const { servePlaceIds: placeIds } = project.project;
 			const parts = [
@@ -263,9 +259,9 @@ export class ListLog {
 			];
 			return parts.length > 0 ? ` (${parts.join(", ")})` : "";
 		};
-		const rojo = (project: ResolvedConfig): string | undefined =>
+		const rojo = (project: ResolvedConfig): string =>
 			rojoServe(project, relative(project.projectFile))
-				?.map(shellWord)
+				.map(shellWord)
 				.join(" ");
 		const running = (project: ResolvedConfig): string => {
 			const now = serving.get(project.projectFile);
@@ -278,18 +274,22 @@ export class ListLog {
 				sameAs
 					? `routes: same as ${sameAs.label}`
 					: `routes:${routes.map((line) => `\n  ${line}`).join("")}`,
-				`sync path: ${listed(config.syncPath ? [relative(config.syncPath)] : [])}`,
-				...(placeNames.length > 0
-					? [`places: ${placeNames.join(", ")}`]
-					: []),
-				...(resolved.sharedFolders?.length
+				`compiled path: ${listed(config.compiledPath ? [relative(config.compiledPath)] : [])}${compiledFolders(
+					config
+				)
+					.map(
+						([source, folder]) =>
+							`\n  ${relative(source)} -> ${relative(folder)}`
+					)
+					.join("")}`,
+				`project file: ${relative(config.projectFile)}${notes(config)}`,
+				`rojo: ${rojo(config)}`,
+				...(running(config) ? [running(config)] : []),
+				...(differs
 					? [
-							`shared code: ${listed(resolved.sharedFolders.map(relative))}`,
+							`differs from ${DEFAULT_CONFIG_FILE}: ${listed(differs)}`,
 						]
 					: []),
-				`project file: ${relative(config.projectFile)}${notes(config)}`,
-				...(rojo(config) ? [`rojo: ${rojo(config)}`] : []),
-				...(running(config) ? [running(config)] : []),
 			].join("\n")
 		);
 	}
@@ -299,6 +299,7 @@ export class ListLog {
 		serving: ServingByConfig = new Map(),
 		problems: ProblemsByConfig = new Map()
 	): ListDocument {
+		const differences = ListLog.differences(entries);
 		return {
 			configs: entries.map((entry) => ({
 				config:
@@ -307,32 +308,11 @@ export class ListLog {
 						: configLabel(entry.file),
 				file: toNative(entry.file),
 				status: entry.status,
-				served:
-					entry.status === "valid" &&
-					(entry.scope !== undefined || !entry.config.hasPlaces),
-				...(entry.status === "valid" && entry.scope === undefined
+				...(differences.has(entry.file)
+					? { differsFromDefault: differences.get(entry.file) }
+					: {}),
+				...(entry.status === "valid"
 					? configDetails(entry.config, serving)
-					: {}),
-				...(entry.status === "valid" &&
-				entry.scope === undefined &&
-				entry.sharedFolders?.length
-					? {
-							sharedCode: entry.sharedFolders.map((folder) =>
-								toNative(folder)
-							),
-						}
-					: {}),
-				...(entry.status === "valid" &&
-				placesIn(entry, entry.scope).length > 0
-					? {
-							places: placesIn(entry, entry.scope).map(
-								(place) => ({
-									place: place.config.label,
-									folder: toNative(place.config.projectDir),
-									...configDetails(place.config, serving),
-								})
-							),
-						}
 					: {}),
 				diagnostics:
 					entry.status === "broken"
@@ -369,11 +349,19 @@ function configDetails(
 			[...config.routes].map(([key, target]) => [key, target.toString()])
 		),
 		globIgnorePaths: config.ignored.map(unescapedGlob),
-		syncPath: config.syncPath ? toNative(config.syncPath) : null,
+		compiledPath: config.compiledPath
+			? toNative(config.compiledPath)
+			: null,
+		compiledLayout: Object.fromEntries(
+			compiledFolders(config).map(([source, compiled]) => [
+				toNative(source),
+				toNative(compiled),
+			])
+		),
 		projectFile: toNative(config.projectFile),
 		serving: servingJson(serving.get(config.projectFile)),
 		...(portOf(config) !== undefined ? { port: portOf(config) } : {}),
 		...(placeIds.length > 0 ? { placeIds } : {}),
-		...(rojo ? { rojo } : {}),
+		rojo,
 	};
 }

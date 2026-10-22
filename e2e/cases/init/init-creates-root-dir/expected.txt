@@ -12,12 +12,12 @@ written:
   AGENTS.md
   README.md
   default.project.json
-  rogen.json
+  default.rogen.json
   src/Greeter/Client/Greeter.client.luau
   src/Greeter/Server/Greeter.server.luau
   src/Greeter/Shared/Greeting.luau
 
-rogen.json:
+default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -68,14 +68,16 @@ rogen.json:
       }
     }
   },
-  "sourcePaths": [
-    "src"
-  ],
-  "routes": {
-    "Server": "ServerScriptService",
-    "Client": "StarterPlayer/StarterPlayerScripts",
-    "Shared": "ReplicatedStorage/Shared",
-    "*": "ReplicatedStorage/Shared"
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
   }
 }
 

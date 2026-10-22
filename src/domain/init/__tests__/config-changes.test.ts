@@ -10,7 +10,9 @@ import { directory, directoryOf, DirectorySpec } from "./init-fixtures.js";
 
 const CONFIG = `{
 	// the routes of the game
-	"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts", "shared": "ReplicatedStorage/shared", "*": "ReplicatedStorage/shared" }
+	"rogen": {
+		"routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts", "shared": "ReplicatedStorage/shared", "*": "ReplicatedStorage/shared" }
+	}
 }
 `;
 
@@ -31,18 +33,16 @@ describe("ConfigChanges", () => {
 		options: {
 			language?: Language;
 			spec?: DirectorySpec;
-			place?: boolean;
 			routed?: boolean;
 		} = {}
 	) => {
-		const edit = ConfigEdit.of("rogen.json", text)!;
+		const edit = ConfigEdit.of("default.rogen.json", text)!;
 		const plan = await new ConfigChanges(
 			files,
 			directoryOf(options.spec),
 			edit,
 			options.language ?? new Luau(),
-			options.routed ?? true,
-			options.place
+			options.routed ?? true
 		).apply(request);
 		return { plan, edit };
 	};
@@ -63,7 +63,7 @@ describe("ConfigChanges", () => {
 		it("should spell a new route as the routes there are spelled", async () => {
 			const { plan } = await apply(
 				{ routes: ["serverStorage"] },
-				'{ "routes": { "Server": "ServerScriptService" } }'
+				'{ "rogen": { "routes": { "Server": "ServerScriptService" } } }'
 			);
 
 			expect(plan.config?.changes).toEqual([
@@ -81,7 +81,7 @@ describe("ConfigChanges", () => {
 		it("should not move a route that goes elsewhere", async () => {
 			const { plan } = await apply(
 				{ routes: ["server"] },
-				'{ "routes": { "server": "Elsewhere" } }'
+				'{ "rogen": { "routes": { "server": "Elsewhere" } } }'
 			);
 
 			expect(plan.config).toBeUndefined();
@@ -91,7 +91,7 @@ describe("ConfigChanges", () => {
 		it("should take a standard route off and leave routes of your own", async () => {
 			const { plan } = await apply(
 				{ unroutes: ["client"] },
-				'{ "routes": { "client": "StarterPlayer/StarterPlayerScripts", "tools": "ServerStorage/Tools" } }'
+				'{ "rogen": { "routes": { "client": "StarterPlayer/StarterPlayerScripts", "tools": "ServerStorage/Tools" } } }'
 			);
 
 			expect(plan.config?.changes).toEqual(["removed routes.client"]);
@@ -103,7 +103,7 @@ describe("ConfigChanges", () => {
 			await expect(
 				apply(
 					{ unroutes: ["client"] },
-					'{ "routes": { "client": "Elsewhere" } }'
+					'{ "rogen": { "routes": { "client": "Elsewhere" } } }'
 				)
 			).rejects.toThrow("goes to Elsewhere");
 		});
@@ -131,7 +131,7 @@ describe("ConfigChanges", () => {
 		it("should put them in the shared route", async () => {
 			const { plan } = await apply(
 				{ unmatched: "shared" },
-				'{ "routes": { "server": "ServerScriptService" } }'
+				'{ "rogen": { "routes": { "server": "ServerScriptService" } } }'
 			);
 
 			expect(plan.config?.changes).toEqual(["added routes.*"]);
@@ -143,7 +143,7 @@ describe("ConfigChanges", () => {
 		it("should leave a fallback of your own where it goes", async () => {
 			const { plan } = await apply(
 				{ unmatched: "shared" },
-				'{ "routes": { "server": "ServerScriptService", "*": "ReplicatedStorage/Custom" } }'
+				'{ "rogen": { "routes": { "server": "ServerScriptService", "*": "ReplicatedStorage/Custom" } } }'
 			);
 
 			expect(plan.config).toBeUndefined();
@@ -156,7 +156,7 @@ describe("ConfigChanges", () => {
 			await expect(
 				apply(
 					{ unmatched: "leave" },
-					'{ "routes": { "*": "ReplicatedStorage/shared" } }'
+					'{ "rogen": { "routes": { "*": "ReplicatedStorage/shared" } } }'
 				)
 			).rejects.toThrow("no route to apply to");
 		});
@@ -177,7 +177,7 @@ describe("ConfigChanges", () => {
 
 			const { plan } = await apply(
 				{ unsourcePaths: ["lib"] },
-				'{ "routes": {}, "sourcePaths": ["src", "lib"] }'
+				'{ "rogen": { "routes": {}, "sourcePaths": ["src", "lib"] } }'
 			);
 
 			expect(plan.config?.changes).toEqual(["removed sourcePaths lib"]);
@@ -255,121 +255,6 @@ describe("ConfigChanges", () => {
 			await expect(
 				apply({ packages: ["Nope"] }, CONFIG, { spec: wally })
 			).rejects.toThrow("not a folder to mount");
-		});
-	});
-
-	describe("places", () => {
-		it("should list places, plan the first one and keep the code where it is", async () => {
-			const { plan } = await apply({ places: true });
-
-			expect(plan.config?.changes).toEqual(["added placePaths places/*"]);
-			expect(plan.files.map(({ fileName }) => fileName)).toEqual([
-				"places/game/rogen.json",
-				"my-game.code-workspace",
-			]);
-			expect(plan.directories).toEqual(["places/game/src"]);
-			expect(plan.edits[0]).toContain(
-				"src stays the code every place shares"
-			);
-		});
-
-		it("should say a project that lists places has them", async () => {
-			const { plan } = await apply(
-				{ places: true },
-				'{ "placePaths": ["places/*"] }'
-			);
-
-			expect(plan.config).toBeUndefined();
-			expect(plan.notes[0]).toContain("lists places already");
-		});
-
-		it("should refuse for a compiled language", async () => {
-			await expect(
-				apply({ places: true }, CONFIG, {
-					language: new RobloxTs({}, true),
-				})
-			).rejects.toThrow("isn't set up for roblox-ts");
-		});
-
-		it("should refuse to turn several places back into one", async () => {
-			await expect(apply({ places: false })).rejects.toThrow(
-				"--no-places"
-			);
-		});
-
-		it("should refuse when the root serves a port that a place would own", async () => {
-			await expect(
-				apply({ places: true }, '{ "routes": {}, "servePort": 4000 }')
-			).rejects.toThrow("servePort");
-		});
-
-		it("should add the places a workspace file lacks", async () => {
-			await write("rogen.json", '{ "placePaths": ["places/*"] }');
-			await write("places/lobby/rogen.json", "{}");
-			await write(
-				"my-game.code-workspace",
-				'{ "folders": [{ "path": "." }] }'
-			);
-
-			const { plan } = await apply(
-				{ workspace: true },
-				'{ "placePaths": ["places/*"] }'
-			);
-
-			expect(plan.files).toEqual([
-				expect.objectContaining({
-					fileName: "my-game.code-workspace",
-					addition: "places/lobby",
-				}),
-			]);
-		});
-	});
-
-	describe("a place", () => {
-		const inPlace = { place: true };
-
-		it("should add and take off source paths of its own", async () => {
-			const { plan } = await apply(
-				{ sourcePaths: ["lib"], unsourcePaths: ["src"] },
-				'{ "servePort": 34872 }',
-				inPlace
-			);
-
-			expect(plan.config?.content).toContain('"sourcePaths": [');
-			expect(plan.config?.changes).toEqual([
-				"added sourcePaths lib",
-				"removed sourcePaths src",
-			]);
-		});
-
-		it("should set its sync path and place IDs", async () => {
-			const { plan } = await apply(
-				{ syncPath: "out/", placeIds: [123] },
-				"{}",
-				inPlace
-			);
-
-			expect(plan.config?.changes).toEqual([
-				"added syncPath",
-				"added servePlaceIds",
-			]);
-			expect(plan.config?.content).toContain('"syncPath": "out"');
-		});
-
-		it("should clear its place IDs", async () => {
-			const { plan } = await apply(
-				{ placeIds: [] },
-				'{ "servePlaceIds": [1] }',
-				inPlace
-			);
-
-			expect(plan.config?.changes).toEqual(["removed servePlaceIds"]);
-		});
-
-		it("should send the areas of the root to the root", async () => {
-			await expect(
-				apply({ routes: ["server"] }, "{}", inPlace)
-			).rejects.toThrow("--route is for the project root");
 		});
 	});
 });

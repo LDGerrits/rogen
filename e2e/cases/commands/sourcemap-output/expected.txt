@@ -16,7 +16,7 @@ stdout:
     "configs": [
       {
         "config": "Game",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []
@@ -46,7 +46,7 @@ stdout:
     "configs": [
       {
         "config": "Game",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []

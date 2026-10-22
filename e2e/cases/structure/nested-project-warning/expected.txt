@@ -4,9 +4,10 @@ stdout: (not shown)
 stderr:
   src/default.project.json - warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
 
-$ rogen where src/default.project.json
+$ rogen where
 exit 0
 stdout:
+  src/Load.luau -> ReplicatedStorage/shared/Load · route * (fallback)
   src/default.project.json -> ReplicatedStorage/shared/Arena · route * (fallback)
     warning: Rojo reads a default.project.json as the folder it lies in, but a source path never becomes an instance, so this project becomes ReplicatedStorage/shared/Arena on its own. Move it into a folder of its own. (scan.nestedProject)
 

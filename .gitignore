@@ -10,3 +10,4 @@ dist/
 /src/commands/help/help-texts.ts
 /src/domain/init/agent/agent-block.ts
 /src/domain/init/agent/hook-script.ts
+/src/domain/init/starter-templates.ts

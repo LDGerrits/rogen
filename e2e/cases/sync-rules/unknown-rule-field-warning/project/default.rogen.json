@@ -1,0 +1,13 @@
+{
+	"syncRules": [
+		{ "pattern": "*.md", "use": "text", "sufix": ".md" }
+	],
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

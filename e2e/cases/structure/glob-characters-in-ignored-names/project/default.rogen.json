@@ -1,0 +1,13 @@
+{
+	"globIgnorePaths": [
+		"**/*.spec.luau"
+	],
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"*": "ReplicatedStorage/shared"
+		}
+	}
+}

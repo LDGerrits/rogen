@@ -8,7 +8,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "./resolved-config.js";
-import { isConfigFileName } from "./config.js";
+import { isDefaultConfigFileName } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import { ManagedConfig } from "./managed-config.js";
 import {
@@ -39,20 +39,14 @@ export class CoreConfigSelection implements ReloadableSelection {
 		private readonly loader: ConfigLoader,
 		readonly home: string,
 		private readonly folder: PickedFolder | undefined,
-		private readonly scopes: ReadonlyMap<
-			string,
-			readonly string[]
-		> = new Map()
+		readonly notes: readonly string[] = []
 	) {
 		this._files = this.readFiles();
 		this.filePaths = new PathSet(this._files);
 	}
 
 	get entries(): readonly ConfigEntry[] {
-		return this.managed.map(({ entry, file }) => {
-			const scope = this.scopes.get(file);
-			return scope ? { ...entry, scope } : entry;
-		});
+		return this.managed.map(({ entry }) => entry);
 	}
 
 	get files(): ReadonlySet<string> {
@@ -72,7 +66,7 @@ export class CoreConfigSelection implements ReloadableSelection {
 		const posixFile = toPosix(file);
 		return (
 			this.folder !== undefined &&
-			isConfigFileName(path.posix.basename(posixFile)) &&
+			isDefaultConfigFileName(path.posix.basename(posixFile)) &&
 			new PathSet([this.folder.directory]).has(dirnamePosix(posixFile))
 		);
 	}

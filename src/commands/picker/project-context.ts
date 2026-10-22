@@ -1,7 +1,7 @@
 import path from "path";
 import { toPosix } from "../../base/path.js";
 import { tryWithAsync } from "../../base/result.js";
-import { CONFIG_FILE_NAMES } from "../../domain/config/config.js";
+import { DEFAULT_CONFIG_FILE_NAMES } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	FileReader,
@@ -44,7 +44,7 @@ export class ProjectContext implements PickerProject {
 	}
 
 	private async hasConfig(folder: string): Promise<boolean> {
-		for (const name of CONFIG_FILE_NAMES)
+		for (const name of DEFAULT_CONFIG_FILE_NAMES)
 			if (await this.fileReader.isFile(path.join(folder, name)))
 				return true;
 		return false;

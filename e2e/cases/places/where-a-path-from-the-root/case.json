@@ -1,0 +1,22 @@
+{
+	"steps": [
+		[
+			"where",
+			"places/lobby/src/Main.server.luau"
+		],
+		[
+			"where",
+			"places/arena/src/Rules.luau",
+			"places/lobby/src/Main.server.luau"
+		],
+		[
+			"where",
+			"places/shared/src/Common/Util.luau"
+		],
+		[
+			"where",
+			"places/arena/default.rogen.json"
+		]
+	],
+	"rojo": false
+}

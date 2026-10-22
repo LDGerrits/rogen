@@ -19,7 +19,7 @@ In an empty folder, one command sets up roblox-ts and Rogen together:
 rogen init --language roblox-ts
 ```
 
-`init` runs `npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild` first, which writes `package.json`, `tsconfig.json`, the compiler's settings and `node_modules` (it needs npm and the network, and takes about ten seconds). Git stays Rogen's step. `init` then replaces create-roblox-ts's sample with the Greeter sample in TypeScript, `src/Greeter/{server,client,shared}`, writes `rogen.json`, and lists `/node_modules`, `/out`, `/include` and `*.tsbuildinfo` in the `.gitignore` it creates. The next steps are `npm run watch`, which compiles as you edit, and `rogen serve`. If npm fails, `init` writes none of its own files and names the command to run yourself; with that done, `rogen init` sets Rogen up in the project as in the next step (without the sample). For several places, see [roblox-ts with Places](/docs/v2/setups/places#roblox-ts-with-places).
+`init` runs `npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild` first, which writes `package.json`, `tsconfig.json`, the compiler's settings and `node_modules` (it needs npm and the network, and takes about ten seconds). Git stays Rogen's step. `init` then replaces create-roblox-ts's sample with the Greeter sample in TypeScript, `src/Greeter/{server,client,shared}`, writes `default.rogen.json`, and lists `/node_modules`, `/out`, `/include` and `*.tsbuildinfo` in the `.gitignore` it creates. The next steps are `npm run watch`, which compiles as you edit, and `rogen serve`. If npm fails, `init` writes none of its own files and names the command to run yourself; with that done, `rogen init` sets Rogen up in the project as in the next step (without the sample). For several places, see [roblox-ts with Places](/docs/v2/setups/places#roblox-ts-with-places).
 
 A folder that already has a `package.json`, a `tsconfig.json` or code gets no scaffold: `init` sets Rogen up in it.
 
@@ -36,20 +36,25 @@ rogen init
 
 ```
 Syncing from out, where roblox-ts compiles to.
-Created rogen.json.
+Created default.rogen.json.
 Created .gitignore.
 Created AGENTS.md.
+Created rokit.toml.
 Initialised a git repository.
+Ran rokit add rojo-rbx/rojo@7.7.1.
 default.project.json · wrote
 Next steps
+  Run 'rogen plugin install' to install Rojo's Studio plugin.
   Run each in its own terminal:
     rbxtsc -w
     rogen serve
-  Add your own routes under "routes" in rogen.json.
-Wrote 3 files.
+  In Studio, press Connect in the Rojo plugin.
+  Add your own routes under "routes" in default.rogen.json.
+  Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
+Wrote 4 files.
 ```
 
-```json title="rogen.json"
+```json title="default.rogen.json"
 {
 	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"tree": {
@@ -64,18 +69,20 @@ Wrote 3 files.
 			}
 		}
 	},
-	"sourcePaths": ["src"],
-	"routes": {
-		"server": "ServerScriptService",
-		"client": "StarterPlayer/StarterPlayerScripts",
-		"shared": "ReplicatedStorage/shared",
-		"*": "ReplicatedStorage/shared"
-	},
-	"syncPath": "out"
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": {
+			"server": "ServerScriptService",
+			"client": "StarterPlayer/StarterPlayerScripts",
+			"shared": "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared"
+		},
+		"compiledPath": "out"
+	}
 }
 ```
 
-The `syncPath` comes from the `outDir` in `tsconfig.json` (or `out` if that isn't set), and the `tree` mounts `include` and `node_modules/@rbxts` the way roblox-ts projects expect. Rojo syncs from the sync path, so it serves your compiled code, while Rogen routes by the folders in `src`. Whether to ignore or commit the project files is yours to decide: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
+The `compiledPath` comes from the `outDir` in `tsconfig.json` (or `out` if that isn't set), and the `tree` mounts `include` and `node_modules/@rbxts` the way roblox-ts projects expect. Rojo syncs from the compiled path, so it serves your compiled code, while Rogen routes by the folders in `src`. The `.gitignore` it writes lists `*.project.json`, since Rogen writes those files: see [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
 </Step>
 
@@ -104,7 +111,7 @@ rbxtsc -w
 rogen serve
 ```
 
-`rogen serve` builds `default.project.json`, starts Rojo on it once the build succeeds, and rebuilds as you add, move and rename files. Rogen doesn't run `rbxtsc`. To start both with one command, use a task runner such as `concurrently`:
+`rogen serve` builds `default.project.json` from `default.rogen.json`, starts Rojo on it once the build succeeds, and rebuilds as you add, move and rename files. Rogen doesn't run `rbxtsc`. To start both with one command, use a task runner such as `concurrently`:
 
 ```json
 "scripts": {

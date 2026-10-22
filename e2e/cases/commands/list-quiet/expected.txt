@@ -1,10 +1,10 @@
 $ rogen list -q
 exit 0
 stdout:
-  rogen.json
+  default.rogen.json
     source paths: src
     routes:
       * -> ReplicatedStorage/shared
-    sync path: (none)
+    compiled path: (none)
     project file: default.project.json
     rojo: rojo serve default.project.json

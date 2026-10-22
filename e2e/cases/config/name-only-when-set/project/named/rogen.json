@@ -1,9 +1,0 @@
-{
-	"name": "Lobby",
-	"sourcePaths": [
-		"src"
-	],
-	"routes": {
-		"*": "ReplicatedStorage/shared"
-	}
-}

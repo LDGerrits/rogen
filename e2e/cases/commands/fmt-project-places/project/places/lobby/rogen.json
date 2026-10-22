@@ -1,5 +1,0 @@
-{
-	"sourcePaths": ["src"],
-	"routes": { "*": "ReplicatedStorage" },
-	"name": "Lobby"
-}

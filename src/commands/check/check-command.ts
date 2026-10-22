@@ -1,7 +1,12 @@
-import { relativeTo } from "../../base/path.js";
+import path from "path";
+import { relativeTo, samePath } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import {
+	BuildService,
+	Diagnosis,
+	mergeDiagnoses,
+} from "../../domain/build/build-service.js";
 
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
@@ -45,7 +50,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. The whole project, sync path warnings included, when none is given. The config here, or in the nearest folder above that has one, is read.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it, and one that no config covers is skipped with a note; a .rogen.json is checked whole. The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -70,19 +75,10 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof CheckOptions>
 		): Promise<Result<void, Error>> {
-			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
 
-			const selection = await configService.select([]);
-			if (selection.isErr()) return selection;
-			const found = await buildService.diagnose(
-				selection.value,
-				line.positionals.length > 0
-					? { args: line.positionals, cwd }
-					: undefined
-			);
+			const found = await this.diagnose(accessor, line.positionals);
 			if (found.isErr()) return found;
 
 			const failure = DiagnosticsError.of(found.value.diagnostics);
@@ -107,6 +103,58 @@ registerCommand(
 					`Checked as far as the build gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
 				);
 			return failure ? this.reported(failure) : ok(undefined);
+		}
+
+		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */
+		private async diagnose(
+			accessor: ServicesAccessor,
+			args: readonly string[]
+		): Promise<Result<Diagnosis, Error>> {
+			const configService = accessor.get(ConfigService);
+			const buildService = accessor.get(BuildService);
+			const { cwd } = accessor.get(EnvironmentService);
+			if (args.length === 0) {
+				const selection = await configService.select([]);
+				if (selection.isErr()) return selection;
+				return buildService.diagnose(selection.value);
+			}
+			const asked = await buildService.askedAbout({ args, cwd });
+			const covered = await configService.selectCovering(
+				asked.map((one) => ("path" in one ? one.path : undefined))
+			);
+			if (covered.isErr()) return covered;
+			const logService = accessor.get(LogService);
+			for (const index of covered.value.uncovered) {
+				const one = asked[index];
+				logService.warn(
+					`${"path" in one ? relativeTo(cwd, one.path) : args[index]}: no config covers this file; check it through a place: rogen check places/lobby`
+				);
+			}
+			const parts: Diagnosis[] = [];
+			for (const { selection, indexes, whole } of covered.value.groups) {
+				const found = await buildService.diagnose(
+					selection,
+					whole
+						? undefined
+						: { args: indexes.map((index) => args[index]), cwd }
+				);
+				if (found.isErr()) return found;
+				parts.push(found.value);
+				const folder = path.dirname(selection.entries[0].file);
+				if (
+					!whole &&
+					indexes.some((index) => {
+						const one = asked[index];
+						return "path" in one && samePath(one.path, folder);
+					})
+				)
+					parts.push({
+						diagnostics:
+							await buildService.staleProjectFiles(selection),
+						stoppedBy: [],
+					});
+			}
+			return ok(mergeDiagnoses(parts));
 		}
 	}
 );

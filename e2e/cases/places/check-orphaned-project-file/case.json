@@ -1,0 +1,9 @@
+{
+	"steps": [
+		["build", "dist"],
+		["$", "rm", "dist.rogen.json"],
+		["check", "dist.project.json"],
+		["build", "dist"]
+	],
+	"rojo": false
+}

@@ -1,36 +1,24 @@
 $ rogen build
-exit 0
-stdout:
-  rogen build · project · in ../..
-  ../../default.project.json · wrote
-  Built 1 project.
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>/src/Inventory). Run 'rogen init' to create one.
 
 $ rogen build ../..
 exit 0
 stdout:
-  rogen build · project · in ../..
-  ../../default.project.json · unchanged
+  rogen build · project
+  ../../default.project.json · wrote
   Built 1 project.
 
 $ rogen build ghost
 exit 1
 stderr:
-  error: "ghost" not found. Name a folder with a rogen.json, or a *.project.json path.
+  error: "ghost" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
 $ rogen list
-exit 0
-stdout:
-  rogen list · in ../..
-  ../../rogen.json
-    source paths: ..
-    routes:
-      Server -> ServerScriptService
-      Shared -> ReplicatedStorage/Shared
-      * -> ReplicatedStorage/Shared
-    sync path: (none)
-    project file: ../../default.project.json
-    rojo: rojo serve ../../default.project.json
-  1 config.
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>/src/Inventory). Run 'rogen init' to create one.
 
 $ rogen where Server/Save.luau
 exit 0
@@ -46,7 +34,7 @@ stdout:
     "configs": [
       {
         "config": "project",
-        "file": "<dir>/rogen.json",
+        "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []

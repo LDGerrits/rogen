@@ -18,10 +18,8 @@ import { ResolvedConfig } from "../../config/resolved-config.js";
 import { InstanceReference } from "../../roblox/roblox.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
-import { SyncRules } from "../../rojo/sync-rules.js";
 import { SyncTool } from "../../toolchain/toolchain.js";
 import {
-	Asked,
 	ConfigLocations,
 	FileLocation,
 	InstanceFix,
@@ -32,14 +30,8 @@ import {
 import { ConfigBuilder } from "../config-builder.js";
 import { MountedInstances } from "./mounted-instances.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
+import { LocateTargets, Targets } from "./locate-targets.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
-
-interface Targets {
-	readonly paths: readonly string[];
-	readonly folders: ReadonlySet<string>;
-	readonly instances: readonly InstanceReference[];
-	readonly asked: readonly Asked[];
-}
 
 /** The project file a build of a config would write, or none when it fails; examined over the listing as it is on disk. */
 export interface AssembledFile {
@@ -53,18 +45,24 @@ export type Located = Omit<Locations, "errors" | "stale"> & {
 
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
 export class Locator {
+	private readonly targets: LocateTargets;
+
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly listing: IndexReader,
 		private readonly tools: readonly SyncTool[]
-	) {}
+	) {
+		this.targets = new LocateTargets(fileSystemService);
+	}
 
 	/** Fails when a config can't be placed; its caller checked that the configs build together. */
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateQuery
 	): Promise<Result<Located, DiagnosticsError>> {
-		const targets = await this.classify(query ?? { args: [], cwd: "" });
+		const targets = await this.targets.classify(
+			query ?? { args: [], cwd: "" }
+		);
 		const located: ConfigLocations[] = [];
 		const built = new Map<ResolvedConfig, AssembledFile>();
 		for (const config of configs) {
@@ -84,43 +82,6 @@ export class Locator {
 			configs: located,
 			built,
 		});
-	}
-
-	private async withoutPosition(arg: string, cwd: string): Promise<string> {
-		const head = (/^(.+?):\d+(?::\d+)?(?:[:\s].*)?$/.exec(arg) ??
-			/^(.+):$/.exec(arg))?.[1];
-		if (head === undefined) return arg;
-		return new RojoFile(path.basename(head), SyncRules.DEFAULT).kind !==
-			undefined ||
-			(await this.fileSystemService.exists(path.resolve(cwd, head)))
-			? head
-			: arg;
-	}
-
-	private async classify({ args, cwd }: LocateQuery): Promise<Targets> {
-		const paths: string[] = [];
-		const folders = new Set<string>();
-		const instances: InstanceReference[] = [];
-		const asked: Asked[] = [];
-		for (const given of args) {
-			const reference = InstanceReference.parse(given);
-			if (
-				reference &&
-				!(await this.fileSystemService.exists(
-					path.resolve(cwd, reference.service)
-				))
-			) {
-				instances.push(reference);
-				asked.push({ instance: reference.text });
-			} else {
-				const arg = await this.withoutPosition(toPosix(given), cwd);
-				const resolved = path.resolve(cwd, arg);
-				paths.push(resolved);
-				asked.push({ path: toPosix(resolved) });
-				if (arg.endsWith("/")) folders.add(toPosix(resolved));
-			}
-		}
-		return { paths, folders, instances, asked };
 	}
 }
 

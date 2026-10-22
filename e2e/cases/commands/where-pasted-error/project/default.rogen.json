@@ -1,0 +1,13 @@
+{
+	"rogen": {
+		"sourcePaths": [
+			"src"
+		],
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared",
+			"*": "ReplicatedStorage/Shared"
+		}
+	}
+}

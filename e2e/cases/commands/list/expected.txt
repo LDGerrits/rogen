@@ -2,20 +2,21 @@ $ rogen list game lobby
 exit 0
 stdout:
   rogen list
-  game/rogen.json
+  game/default.rogen.json
     source paths: game/src
     routes:
       server -> ServerScriptService
       client -> StarterPlayer/StarterPlayerScripts
       shared -> ReplicatedStorage/shared
       * -> ReplicatedStorage/shared
-    sync path: game/dist
+    compiled path: game/dist
+      game/src -> game/dist
     project file: game/default.project.json
     rojo: rojo serve game/default.project.json
-  lobby/rogen.json
+  lobby/default.rogen.json
     source paths: lobby/core, lobby/places/lobby
-    routes: same as Game
-    sync path: (none)
+    routes: same as game/default.rogen.json
+    compiled path: (none)
     project file: lobby/default.project.json
     rojo: rojo serve lobby/default.project.json
   2 configs.

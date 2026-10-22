@@ -17,9 +17,6 @@ export interface InitChoices {
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
 	readonly nested?: boolean;
-	readonly placeListing?: "glob" | "folder";
-	/** Place IDs, or `none`. */
-	readonly placeIds?: readonly string[];
 	readonly agentRules?: boolean;
 	/** Whether to set Rojo up: pin it with the toolchain manager, or install Rokit and then pin it. */
 	readonly rojo?: boolean;
@@ -30,7 +27,7 @@ export interface InitChoices {
 	readonly darklua?: boolean;
 	readonly sourcePaths?: readonly string[];
 	readonly projectFile?: "lift" | "new";
-	readonly syncPath?: string;
+	readonly compiledPath?: string;
 	/** Folders to mount, or `none`. */
 	readonly packages?: readonly string[];
 	/** Route ids, or `none`. */
@@ -87,7 +84,7 @@ export interface SummaryRow {
 }
 
 /** What the plan does, which words the question that accepts it. */
-export type InitPurpose = "create" | "change" | "place";
+export type InitPurpose = "create" | "change";
 
 export interface InitPlan {
 	readonly directory: string;
@@ -135,7 +132,7 @@ export interface InitOptions {
 	readonly choices?: InitChoices;
 }
 
-/** Writes a starter `rogen.json` in two steps, so a caller can print between them. */
+/** Writes a starter `default.rogen.json` in two steps, so a caller can print between them. */
 export interface InitService {
 	readonly _serviceBrand: undefined;
 
