@@ -29,7 +29,7 @@ const InitOptions = [
 		short: "y",
 		type: "boolean",
 		description:
-			"Write the defaults without asking, as a run without a terminal, or under a coding agent or CI, does. --json implies it. A flag below answers its question either way.",
+			"Write the defaults without asking. A run without a terminal, or under a coding agent or CI, does so anyway. --json implies it. A flag below answers its question either way.",
 	},
 	JsonOption,
 	{
@@ -37,14 +37,14 @@ const InitOptions = [
 		short: "n",
 		type: "boolean",
 		description:
-			"Plan without writing or building: print the files it would write and the choices it took, then stop.",
+			"Plan without writing or building: print the files and choices, then stop.",
 	},
 	{
 		name: "kind",
 		type: "string",
 		values: ["place", "model", "plugin"],
 		description:
-			"What a new project is, as Rojo's init names it: a place (the default), or a model or a plugin, which starts with Rojo's template of that kind and no routes.",
+			"What a new project is, as Rojo's init names it: a place (the default), a model or a plugin. A model or a plugin starts with Rojo's template of that kind and no routes.",
 	},
 	{
 		name: "skip-git",
@@ -86,7 +86,7 @@ const InitOptions = [
 		type: "string",
 		values: ["lift", "new"],
 		description:
-			"With a default.project.json already here: lift its tree into default.rogen.json (the default), or start a new tree.",
+			"What to do with a default.project.json already here: lift its tree, or start a new one. Lifting writes the tree into default.rogen.json, and is the default.",
 	},
 	{
 		name: "package",
@@ -102,21 +102,21 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
+			"A route to start with; repeat for several, or none. The routes are server, client, shared, replicatedFirst, serverStorage and starterGui. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
 	},
 	{
 		name: "unmatched",
 		type: "string",
 		values: ["leave", "shared"],
 		description:
-			'Where files that match no route go: nowhere (the default), which Rogen warns about, naming the routing folders to move each into; or into the shared route, as a "*" route. A lifted project file that mounted a whole source path keeps "*", which places what that node held.',
+			'Where files that match no route go: nowhere (the default) or into the shared route. Left out, each file is warned about, naming the routing folders to move it into; in the shared route it goes in as a "*" route. A lifted project file that mounted a whole source path keeps "*", which places what that node held.',
 	},
 	{
 		name: "sample",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
+			"Whether a new place starts with the Greeter sample. It is three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
 	},
 	{
 		name: "places",

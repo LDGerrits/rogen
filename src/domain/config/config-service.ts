@@ -7,7 +7,7 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
 
 const PROJECT_DESCRIPTION =
-	"A folder, a .rogen.json file, a *.project.json path, or the name of a file here (dist for dist.rogen.json). The default.rogen.json of the working directory, or its default.project.json, when none is given.";
+	"A folder, a .rogen.json file, a *.project.json path, or the name of a file here. A name such as dist stands for dist.rogen.json. The default.rogen.json of the working directory, or its default.project.json, when none is given.";
 
 /** The `[PROJECT]` of a Rojo verb, which takes one. */
 export const ProjectArgument = [
