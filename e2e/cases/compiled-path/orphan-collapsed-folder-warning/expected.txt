@@ -1,0 +1,21 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+stderr:
+  dist/Inventory - warning: dist/Inventory/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+
+$ rogen check
+exit 1
+stdout:
+  dist/Inventory - warning: dist/Inventory/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Inventory: Folder
+        Old: ModuleScript  <- dist/Inventory/Old.luau
+        Save: ModuleScript  <- dist/Inventory/Save.luau

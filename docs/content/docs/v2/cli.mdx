@@ -394,6 +394,7 @@ rogen check
 
 - Run the compiler or processor before `rogen check` when `compiledPath` is set.
 - With [Darklua](/docs/v2/setups/darklua), a data file it turns into a module keeps `output.dataFileConverted` alive until the file is copied unchanged into the compiled path.
+- A file in the compiled path that no source makes, left over from a source you removed, fails `check` with [`compiled.orphan`](/docs/v2/diagnostics#compiled-orphan) until you delete it or compile from a clean folder.
 - `check` also fails when you commit project files and one is out of date ([`output.differs`](/docs/v2/diagnostics#output-differs)), so no `git diff` step is needed.
 - `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
 - A place file comes from `rojo build` on the project file; see [Place Files](/docs/v2/core-concepts/output#place-files).

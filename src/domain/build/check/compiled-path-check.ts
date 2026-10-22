@@ -7,7 +7,9 @@ import {
 } from "../../../platform/diagnostics/diagnostic.js";
 import {
 	FileReader,
+	FileType,
 	isDirectoryType,
+	isFileType,
 } from "../../../platform/fs/file-system-service.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { MetaReplacement } from "../../toolchain/toolchain.js";
@@ -15,6 +17,9 @@ import { Placement } from "../placement.js";
 import { CompiledLayout } from "../compiled-layout.js";
 
 const LISTED_PATHS = 3;
+
+/** A compiled file's path with `.luau` read as `.lua`, since a processor may write either. */
+const compiledKey = (file: string): string => file.replace(/\.luau$/, ".lua");
 
 interface EmittedTops {
 	readonly paths: readonly string[];
@@ -43,6 +48,7 @@ export class CompiledPathCheck {
 			...(await this.nothingEmitted(run)),
 			...(await this.metaNotSynced(run)),
 			...(await this.dataFileConverted(run)),
+			...(await this.orphanCompiledFiles(run)),
 		];
 	}
 
@@ -209,6 +215,81 @@ export class CompiledPathCheck {
 				`${converted.length} data ${many ? "files were" : "file was"} turned into ${many ? "Lua modules" : "a Lua module"} under "${shown(compiledPath) || "."}" (${listed}). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. ${note} Copy the data files unchanged into the compiled path after it runs, or require them as modules.`
 			),
 		];
+	}
+
+	private async orphanCompiledFiles({
+		placement: { config, layout },
+		emittedTops,
+	}: CompiledPathRun): Promise<Diagnostic[]> {
+		const orphans = new Map<string, string[]>();
+		for (const sourcePath of config.sourcePaths) {
+			if (!emittedTops.get(sourcePath)?.synced) continue;
+			const compiledDir = layout.emittedPath(sourcePath);
+			if (!(await this.fileSystemService.isDirectory(compiledDir)))
+				continue;
+			const made = await this.madeBy(sourcePath, layout);
+			for (const file of await this.filesUnder(compiledDir, true)) {
+				if (made.has(compiledKey(file))) continue;
+				const dir = path.dirname(file);
+				const listed = orphans.get(dir) ?? [];
+				if (!listed.includes(file)) orphans.set(dir, [...listed, file]);
+			}
+		}
+
+		return [...orphans].map(([dir, files]) => {
+			const shown = files.map((file) => layout.relativeToProject(file));
+			const many = files.length > 1;
+			return warningDiagnostic(
+				"compiled.orphan",
+				{ resource: dir },
+				`${listLimited(shown, LISTED_PATHS)} ${many ? "are" : "is"} in the compiled path and no source file makes ${many ? "them" : "it"}, so Rojo may still sync ${many ? "them" : "it"}. Delete ${many ? "them" : "it"}, or compile again from a clean folder.`
+			);
+		});
+	}
+
+	/** The compiled keys of everything the files under `sourcePath` can produce, by whatever name a tool gives them. */
+	private async madeBy(
+		sourcePath: string,
+		layout: CompiledLayout
+	): Promise<Set<string>> {
+		const made = new Set<string>();
+		for (const source of await this.filesUnder(sourcePath, false)) {
+			const emitted = layout.emittedPath(source);
+			made.add(compiledKey(emitted));
+			for (const { suffix } of layout.dataReplacements)
+				made.add(compiledKey(`${stemOf(emitted)}${suffix}`));
+			for (const { suffix } of layout.metaReplacements)
+				for (const metaSuffix of [
+					RojoFile.META_SUFFIX,
+					RojoFile.META_SUFFIX_JSONC,
+				])
+					if (emitted.endsWith(metaSuffix))
+						made.add(
+							compiledKey(
+								`${emitted.slice(0, -metaSuffix.length)}${suffix}`
+							)
+						);
+		}
+		return made;
+	}
+
+	/** Every file under `dir`, folders and hidden entries of a compiled folder skipped as asked; links are not followed. */
+	private async filesUnder(
+		dir: string,
+		skipHidden: boolean
+	): Promise<string[]> {
+		const files: string[] = [];
+		for (const [name, type] of await this.fileSystemService.readDirectory(
+			dir
+		)) {
+			if (skipHidden && name.startsWith(".")) continue;
+			const child = path.join(dir, name);
+			if ((type & FileType.SymbolicLink) !== 0) continue;
+			if (isDirectoryType(type))
+				files.push(...(await this.filesUnder(child, skipHidden)));
+			else if (isFileType(type)) files.push(child);
+		}
+		return files;
 	}
 
 	private async replacementAt<T extends { readonly suffix: string }>(
