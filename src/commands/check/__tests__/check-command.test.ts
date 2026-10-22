@@ -205,7 +205,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should narrow a grouped warning to the path it is asked about", async () => {
+		it("should give only the warnings about the path it is asked about", async () => {
 			await write("src/Save@sever.luau", "src/Load@sever.luau");
 
 			const error = failureOf(await run({ _: ["src/Save@sever.luau"] }));
@@ -564,7 +564,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should print one line per file a grouped warning is about", async () => {
+		it("should print one line per file a warning is about", async () => {
 			await write("src/Save@sever.luau", "src/Load@sever.luau");
 
 			await run({});
@@ -575,7 +575,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should not cap the files a grouped warning is about", async () => {
+		it("should not cap the warnings of one code", async () => {
 			const names = Array.from(
 				{ length: 12 },
 				(_, i) => `A${i}@sever.luau`
@@ -685,6 +685,102 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({ diagnostics: [] });
 		});
+
+		const LOWER_ROUTES = {
+			server: "ServerScriptService",
+			client: "StarterPlayer/StarterPlayerScripts",
+			shared: "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared",
+		};
+
+		it.each([
+			{
+				code: "scan.sourcePathNamedAfterKey",
+				config: { rogen: { sourcePaths: ["server", "src/client"] } },
+				files: ["server/Save.luau", "src/client/Hud.luau"],
+			},
+			{
+				code: "route.strayAt",
+				config: {},
+				files: ["src/Save@sever.luau", "src/Load@sever.luau"],
+			},
+			{
+				code: "route.dotRoute",
+				config: {},
+				files: ["src/Net.server/Remotes.luau", "src/Types.shared.luau"],
+			},
+			{
+				code: "route.folderTypo",
+				config: {},
+				files: ["src/A/Sever/X.luau", "src/B/Sevrer/Y.luau"],
+			},
+			{
+				code: "route.serverCodeShipped",
+				config: {},
+				files: [
+					"src/shared/server/Datastore.luau",
+					"src/shared/server/Secret.luau",
+				],
+			},
+			{
+				code: "tree.deadScript",
+				config: {},
+				files: [
+					"src/shared/Run.server.luau",
+					"src/shared/Hud.client.luau",
+				],
+			},
+			{
+				code: "tree.runContextTarget",
+				config: { emitLegacyScripts: false },
+				files: [
+					"src/Panel/init.client.luau",
+					"src/Menu/init.client.luau",
+				],
+			},
+			{
+				code: "tree.mountClash",
+				config: {
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { shared: { $path: "vendor" } },
+					},
+				},
+				files: [
+					"vendor/Combat/init.luau",
+					"src/Combat/Hit.luau",
+					"src/Combat/Miss.luau",
+				],
+			},
+		])(
+			"should give build's diagnostic objects for $code",
+			async ({ code, config, files }) => {
+				await writeConfig("default.rogen.json", {
+					...config,
+					rogen: {
+						routes: LOWER_ROUTES,
+						...(config as { rogen?: object }).rogen,
+					},
+				});
+				await write(...files);
+
+				await harness.run("build", {
+					positionals: [],
+					options: { json: true },
+				});
+				const built = JSON.parse(printed()[0]) as {
+					configs: { diagnostics: { code: string }[] }[];
+				};
+				logService.clear();
+				await run({ json: true });
+
+				const { diagnostics } = built.configs[0];
+				expect(
+					diagnostics.filter((diagnostic) => diagnostic.code === code)
+				).toHaveLength(2);
+				expect(document().diagnostics).toEqual(diagnostics);
+			}
+		);
 	});
 
 	describe("on GitHub Actions", () => {

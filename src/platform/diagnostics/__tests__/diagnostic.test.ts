@@ -56,7 +56,7 @@ describe("platform/diagnostics/diagnostic", () => {
 			).toBe(". - warning: it contributes nothing. (test.example)");
 		});
 
-		it("should put the code on the headline of a grouped message", () => {
+		it("should put the code on the headline of a message of several lines", () => {
 			const diagnostic: Diagnostic = {
 				severity: DiagnosticSeverity.Warning,
 				code: "test.group",
@@ -213,23 +213,23 @@ describe("platform/diagnostics/diagnostic", () => {
 		});
 
 		it("should give each related file as a native path with its message, and leave related out when there is none", () => {
-			const grouped = warningDiagnostic(
+			const clash = warningDiagnostic(
 				"test.example",
-				{ resource: "/repo/default.rogen.json" },
-				"1 name:",
+				{ resource: "/repo/src/B.luau" },
+				"clashes with A.",
 				[],
 				[
 					{
-						resource: "/repo/src/A@sever.luau",
-						message: "did you mean?",
+						resource: "/repo/src/A.luau",
+						message: "takes its place",
 					},
 				]
 			);
 
-			expect(diagnosticToJson(grouped).related).toEqual([
+			expect(diagnosticToJson(clash).related).toEqual([
 				{
-					file: path.normalize("/repo/src/A@sever.luau"),
-					message: "did you mean?",
+					file: path.normalize("/repo/src/A.luau"),
+					message: "takes its place",
 				},
 			]);
 			expect(
@@ -272,28 +272,12 @@ describe("platform/diagnostics/diagnostic", () => {
 			{ resource: "/repo/src/A.luau" },
 			"own"
 		);
-		const group = warningDiagnostic(
-			"x.group",
-			{ resource: "/repo/default.rogen.json" },
-			"2 files:\n  src/A.luau\n  src/B.luau",
-			[
-				{
-					rename: {
-						from: "/repo/src/A.luau",
-						to: "/repo/src/a.luau",
-					},
-				},
-				{
-					rename: {
-						from: "/repo/src/B.luau",
-						to: "/repo/src/b.luau",
-					},
-				},
-			],
-			[
-				{ resource: "/repo/src/A.luau", message: "A is odd" },
-				{ resource: "/repo/src/B.luau", message: "B is odd" },
-			]
+		const clash = warningDiagnostic(
+			"x.clash",
+			{ resource: "/repo/src/B.luau" },
+			"clashes with A",
+			[],
+			[{ resource: "/repo/src/A.luau", message: "takes its place" }]
 		);
 
 		it("should keep a diagnostic whose resource is the path", () => {
@@ -301,30 +285,11 @@ describe("platform/diagnostics/diagnostic", () => {
 			expect(diagnosticsAbout([own], "/repo/src/B.luau")).toEqual([]);
 		});
 
-		it("should narrow a grouped one to the entry that names the path, with its own fixes", () => {
-			expect(diagnosticsAbout([group], "/repo/src/B.luau")).toMatchObject(
-				[
-					{
-						code: "x.group",
-						resource: "/repo/src/B.luau",
-						message: "B is odd",
-						fixes: [
-							{
-								rename: {
-									from: "/repo/src/B.luau",
-									to: "/repo/src/b.luau",
-								},
-							},
-						],
-					},
-				]
-			);
-		});
-
-		it("should say nothing of the config a group is filed under", () => {
-			expect(
-				diagnosticsAbout([group], "/repo/default.rogen.json")
-			).toEqual([]);
+		it("should leave out one that names the path only as a related file", () => {
+			expect(diagnosticsAbout([clash], "/repo/src/A.luau")).toEqual([]);
+			expect(diagnosticsAbout([clash], "/repo/src/B.luau")).toEqual([
+				clash,
+			]);
 		});
 	});
 
@@ -361,26 +326,6 @@ describe("platform/diagnostics/diagnostic", () => {
 					"/repo/src/F/A.luau"
 				)
 			).toEqual([]);
-		});
-
-		it("should narrow a grouped one to the entries that reach the path", () => {
-			const group = warningDiagnostic(
-				"x.group",
-				{ resource: "/repo/default.rogen.json" },
-				"3 files",
-				[],
-				[
-					{ resource: "/repo/src/F/A.luau", message: "A" },
-					{ resource: "/repo/src/F/B.luau", message: "B" },
-					{ resource: "/repo/src/G/C.luau", message: "C" },
-				]
-			);
-
-			expect(
-				diagnosticsReaching([group], "/repo/src/F").map(
-					({ message }) => message
-				)
-			).toEqual(["A", "B"]);
 		});
 	});
 });

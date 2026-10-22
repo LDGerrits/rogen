@@ -128,6 +128,13 @@ describe("Placer", () => {
 					code: "tree.instanceClash",
 					resource: abs("src/Types.lua"),
 					message: `becomes "ReplicatedStorage/Types", as ${abs("src/Types.luau")} does, which takes its place. Rename one of them to keep both.`,
+					related: [
+						{
+							resource: abs("src/Types.luau"),
+							message:
+								'takes its place as "ReplicatedStorage/Types"',
+						},
+					],
 				},
 			]);
 		});
