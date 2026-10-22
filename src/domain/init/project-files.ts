@@ -70,6 +70,6 @@ export class ProjectFiles {
 			.includes("*.project.json");
 		return listed
 			? undefined
-			: "Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen build' to make them.";
+			: "Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen write' to make them.";
 	}
 }

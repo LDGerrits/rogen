@@ -142,7 +142,7 @@ describe("init for several places", () => {
 
 			expect(planned.nextSteps.run).toEqual(["rogen serve game"]);
 			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"rogen build game"
+				"rogen write game"
 			);
 		});
 
@@ -416,7 +416,7 @@ describe("init for several places", () => {
 			const result = await planned();
 
 			expect(result.nextSteps.edits.join("\n")).toContain(
-				"rogen build projects/game"
+				"rogen write projects/game"
 			);
 		});
 

@@ -315,7 +315,7 @@ export class CoreSyncbackService implements SyncbackService {
 		if (!built)
 			return err(
 				new UsageError(
-					`${project.label} does not build, so there is no project file to read; run 'rogen build' to see why.`
+					`${project.label} does not build, so there is no project file to read; run 'rogen write' to see why.`
 				)
 			);
 		const written = JSON.parse(ProjectText.of(built)) as RojoProjectFile;

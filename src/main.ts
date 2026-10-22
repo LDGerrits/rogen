@@ -82,6 +82,7 @@ import "./commands/sourcemap/sourcemap-command.js";
 import "./commands/syncback/syncback-command.js";
 import "./commands/upload/upload-command.js";
 import "./commands/where/where-command.js";
+import "./commands/write/write-command.js";
 
 /** Baked in by `scripts/bundle.ts`; undefined in a run from source. */
 declare const ROGEN_VERSION: string | undefined;

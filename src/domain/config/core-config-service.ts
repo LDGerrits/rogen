@@ -129,6 +129,14 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
+	configsHere(): Promise<string[]> {
+		return this.discovery.list(this.environmentService.cwd);
+	}
+
+	plainProjectsHere(): Promise<string[]> {
+		return this.discovery.plainProjects(this.environmentService.cwd);
+	}
+
 	async resolveNames(
 		args: readonly string[]
 	): Promise<Result<string[], Error>> {

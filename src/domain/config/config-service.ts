@@ -176,6 +176,10 @@ export interface ConfigService {
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;
+	/** Every config file of the working directory, absolute and sorted. */
+	configsHere(): Promise<string[]>;
+	/** The project files of the working directory that no config of that name writes, absolute and sorted. */
+	plainProjectsHere(): Promise<string[]>;
 	/** Each argument that names a config as a bare name is replaced by its file; a file, or a folder with a default, stays a path. */
 	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */

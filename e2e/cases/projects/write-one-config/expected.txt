@@ -1,0 +1,24 @@
+$ rogen write
+exit 0
+stdout:
+  rogen write
+  default.project.json · wrote
+  Wrote 1 of 1 project file.
+
+$ rogen write
+exit 0
+stdout:
+  rogen write
+  default.project.json · unchanged
+  Wrote 1 of 1 project file.
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Util: ModuleScript  <- src/shared/Util.luau
+  ServerScriptService: ServerScriptService
+    Save: ModuleScript  <- src/server/Save.luau

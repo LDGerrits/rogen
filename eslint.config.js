@@ -73,6 +73,7 @@ const modules = {
 		syncback: [],
 		upload: [],
 		where: [],
+		write: [],
 	},
 };
 

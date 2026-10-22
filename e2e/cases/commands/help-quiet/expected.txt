@@ -28,9 +28,10 @@ stdout:
       syncback       Brings a place file's changes back into the source files
       upload         Writes the project file, then uploads it with Rojo
       where          Prints where each file lands in the game, and why
+      write          Writes the project file of every config here
   
   EXAMPLES:
-      rogen build
+      rogen write
       rogen serve
       rogen help build
       rogen help route.strayAt

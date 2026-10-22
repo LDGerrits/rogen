@@ -138,7 +138,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.code).toBe("serve.noServer");
 		expect(diagnostic.message).toContain(
-			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them."
+			"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 		);
 	});
 

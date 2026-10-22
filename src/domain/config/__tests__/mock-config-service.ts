@@ -144,6 +144,14 @@ export class MockConfigService implements ConfigService {
 		return [];
 	}
 
+	async configsHere(): Promise<string[]> {
+		return this.entries.map(({ file }) => file);
+	}
+
+	async plainProjectsHere(): Promise<string[]> {
+		return [];
+	}
+
 	async resolveNames(
 		args: readonly string[]
 	): Promise<Result<string[], Error>> {

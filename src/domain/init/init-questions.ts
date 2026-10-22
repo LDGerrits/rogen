@@ -268,7 +268,7 @@ export class InitQuestions {
 
 		const answer = await this.essential.select<TreeChoice["kind"]>({
 			message: "Project file",
-			description: `${DEFAULT_PROJECT_FILE} exists, and Rogen replaces it on every build.`,
+			description: `${DEFAULT_PROJECT_FILE} exists, and Rogen replaces it whenever it writes the project file.`,
 			choices: [
 				{
 					value: "lift",
