@@ -24,7 +24,11 @@ import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { OutputConfigs, PROCESSED_OUTPUT } from "./output-configs.js";
+import {
+	OutputConfigs,
+	PROCESSED_OUTPUT,
+	RELEASE_OUTPUT,
+} from "./output-configs.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
@@ -333,6 +337,26 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return processed ? `rogen serve ${PROCESSED_OUTPUT}` : "rogen serve";
 	}
 
+	/** How to add a second place, which `init` starts but never adds. */
+	private static addPlaceStep(
+		places: StartingPlaces,
+		processed: string | undefined
+	): string {
+		const port = "from a second terminal with its own --port";
+		if (places.folder === "") {
+			const { outputPrefix } = places;
+			const lobby = (file: string) =>
+				file.replace(outputPrefix, "lobby.");
+			const dist = configFileName(`${outputPrefix}${PROCESSED_OUTPUT}`);
+			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
+			return processed
+				? `Add another place: copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
+				: `Add another place: copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
+		}
+		const lobby = `${PROJECTS_FOLDER}/lobby`;
+		return `Add another place: make ${lobby}/src, copy ${places.folder}/${DEFAULT_CONFIG_FILE} and ${places.folder}/tsconfig.json into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+	}
+
 	/** An error when the first place has a config already, which init never overwrites. */
 	private async placeTaken(
 		places: StartingPlaces
@@ -356,7 +380,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const given = this.questions.choices.projectFile;
 		if (kind !== "place") return `is for a place, not for a ${kind}.`;
 		const later =
-			"Start with one place, then add more with 'rogen init projects/<name>'.";
+			"Start with one place, then add more by hand, as the places guide shows.";
 		if (language.compiler && !scaffolded)
 			return `isn't set up for ${language.copy.label} yet. ${later}`;
 		if (this.directory.hasHandWrittenProject && given !== "new")
@@ -723,13 +747,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				`luau-lsp reads the sourcemap of one place at a time, ${places.place} here. To switch, change the name in the generatorCommand in .vscode/settings.json.`
 			);
-		if (places) {
-			const lobby =
-				places.folder === "" ? "lobby" : `${PROJECTS_FOLDER}/lobby`;
+		if (places)
 			builder.addEdit(
-				`Add another place with 'rogen init ${lobby}', and serve it from a second terminal with its own --port: 'rogen serve ${lobby} --port <port>'.`
+				ProjectSetup.addPlaceStep(
+					places,
+					darklua && compiledPath ? compiledPath : undefined
+				)
 			);
-		}
 		const processed = darklua && compiledPath ? compiledPath : undefined;
 		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
 			builder,

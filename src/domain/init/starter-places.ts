@@ -17,17 +17,7 @@ export const COMMON_FOLDER = "common";
 
 /** Where the places of a Luau project keep their code: the code they share, and each place's own below `src`. */
 const SOURCE_FOLDER = DEFAULT_SOURCE_PATH;
-export const FIRST_PLACE = "game";
-
-/** The source path of the code the places of a Luau project share. */
-export const ROOT_COMMON_SOURCE_PATH = path.posix.join(
-	SOURCE_FOLDER,
-	COMMON_FOLDER
-);
-
-/** The source path of the own code of a Luau place. */
-export const rootPlaceSourcePath = (place: string): string =>
-	path.posix.join(SOURCE_FOLDER, place);
+const FIRST_PLACE = "game";
 const SETTINGS_FILE = ".vscode/settings.json";
 
 /** The source paths of a place in `projects`, as every place lists them: the common code, then its own. */
@@ -96,8 +86,8 @@ export class StarterPlaces {
 	}
 
 	private async atRoot(root: string): Promise<StartingPlaces> {
-		const commonSourcePath = ROOT_COMMON_SOURCE_PATH;
-		const placeSourcePath = rootPlaceSourcePath(FIRST_PLACE);
+		const commonSourcePath = path.posix.join(SOURCE_FOLDER, COMMON_FOLDER);
+		const placeSourcePath = path.posix.join(SOURCE_FOLDER, FIRST_PLACE);
 		const command = StarterPlaces.sourcemapCommand(FIRST_PLACE);
 		const present = await this.files.exists(path.join(root, SETTINGS_FILE));
 		return {

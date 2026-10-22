@@ -51,21 +51,6 @@ describe("GreeterSample", () => {
 		expect(files[0].content).toContain('print(Greeting("game"))');
 	});
 
-	it("should name the feature, the script and the greeting of an added place for it", () => {
-		const files = sample.addedPlace("src/lobby", "lobby");
-
-		expect(files.map(({ fileName }) => fileName)).toEqual([
-			"src/lobby/Lobby/Server/Lobby.server.luau",
-		]);
-		expect(files[0].content).toContain('print(Greeting("lobby"))');
-	});
-
-	it("should name the module a place requires in the shared code", () => {
-		expect(sample.greeting("src/common")).toBe(
-			"src/common/Greeter/Shared/Greeting.luau"
-		);
-	});
-
 	it("should describe one place in the README, with the commands to build and serve it", () => {
 		const { content } = sample.readme("src", "rogen serve");
 
@@ -93,7 +78,6 @@ describe("GreeterSample", () => {
 		expect(content).toContain("```bash\nrogen serve game\n```");
 		expect(content).toContain("rogen sourcemap game --watch");
 		expect(content).toContain("luau-lsp analyze");
-		expect(content).toContain("rogen init lobby");
 		expect(content).toContain("rogen serve lobby --port");
 		expect(content).not.toContain("code-workspace");
 	});

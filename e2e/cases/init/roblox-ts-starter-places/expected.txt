@@ -26,32 +26,8 @@ stdout:
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in projects/game/default.rogen.json.
     Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build projects/game' so the editor's projects/game/default.project.json follows.
-    Add another place with 'rogen init projects/lobby', and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
+    Add another place: make projects/lobby/src, copy projects/game/default.rogen.json and projects/game/tsconfig.json into projects/lobby (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
   Wrote 9 files.
-
-$ rogen init projects/lobby --non-interactive
-exit 0
-stdout:
-  rogen init
-  Copied the routes, compiled path and tree of projects/game.
-  Created projects/lobby/default.rogen.json.
-  Created projects/lobby/tsconfig.json.
-  Created projects/lobby/src/.
-  projects/lobby/default.project.json · wrote
-  Next steps
-    Run each in its own terminal:
-      rbxtsc -w -p projects/lobby
-      rogen serve projects/lobby
-    In Studio, press Connect in the Rojo plugin.
-    Add rbxtsc -p projects/lobby and rbxtsc -w -p projects/lobby to the build and watch scripts in package.json, so 'npm run watch' compiles it too.
-    Put the code of lobby in projects/lobby/src. A second place is served from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
-  Wrote 2 files.
-
-$ rogen build projects/lobby
-exit 0
-stdout: (not shown)
-stderr:
-  projects/lobby/out - warning: the compiled path "out" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 ran:
   npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild
@@ -69,9 +45,6 @@ written:
   projects/game/default.rogen.json
   projects/game/src/Game/server/Game.server.ts
   projects/game/tsconfig.json
-  projects/lobby/default.project.json
-  projects/lobby/default.rogen.json
-  projects/lobby/tsconfig.json
 
 package.json:
 {"scripts":{"build":"rbxtsc -p projects/game","watch":"rbxtsc -w -p projects/game"}}
@@ -200,130 +173,6 @@ import { greeting } from "Greeter/shared/Greeting";
 print(greeting("game"));
 
 projects/game/tsconfig.json:
-{
-	"compilerOptions": {
-		"allowSyntheticDefaultImports": true,
-		"downlevelIteration": true,
-		"jsx": "react",
-		"jsxFactory": "React.createElement",
-		"jsxFragmentFactory": "React.Fragment",
-		"module": "commonjs",
-		"moduleResolution": "Node",
-		"noLib": true,
-		"resolveJsonModule": true,
-		"experimentalDecorators": true,
-		"forceConsistentCasingInFileNames": true,
-		"moduleDetection": "force",
-		"strict": true,
-		"target": "ESNext",
-		"incremental": true,
-		"typeRoots": [
-			"node_modules/@rbxts",
-			"../../node_modules/@rbxts"
-		],
-		"outDir": "out",
-		"rootDirs": [
-			"src",
-			"../common/src"
-		],
-		"baseUrl": ".",
-		"paths": {
-			"*": [
-				"src/*",
-				"../common/src/*"
-			]
-		},
-		"tsBuildInfoFile": "out/tsconfig.tsbuildinfo"
-	},
-	"include": [
-		"src",
-		"../common/src"
-	]
-}
-
-projects/lobby/default.rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "lobby",
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
-    "ReplicatedStorage": {
-      "rbxts_include": {
-        "node_modules": {
-          "$className": "Folder",
-          "@rbxts": {
-            "$path": {
-              "optional": "../../node_modules/@rbxts"
-            }
-          }
-        },
-        "$path": {
-          "optional": "include"
-        }
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
-    },
-    "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "../common/src",
-      "src"
-    ],
-    "routes": {
-      "server": "ServerScriptService",
-      "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared",
-      "*": "ReplicatedStorage/shared"
-    },
-    "compiledPath": "out"
-  }
-}
-
-projects/lobby/tsconfig.json:
 {
 	"compilerOptions": {
 		"allowSyntheticDefaultImports": true,

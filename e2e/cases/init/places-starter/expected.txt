@@ -20,7 +20,7 @@ stdout:
     Add your own routes under "routes" in game.rogen.json.
     Edit game.rogen.json and leave game.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build game' so the editor's game.project.json follows.
     luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
-    Add another place with 'rogen init lobby', and serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+    Add another place: copy game.rogen.json to lobby.rogen.json, change its "name" to lobby and its source path src/game to src/lobby, and make src/lobby. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
   Wrote 8 files.
 
 $ rogen build game
@@ -104,13 +104,7 @@ rogen build game -o "project.rbxlx"
 ```
 
 ## Adding a place
-To add a place, use:
-
-```bash
-rogen init lobby
-```
-
-It writes `lobby.rogen.json`, a copy of `game.rogen.json` that lists `src/common` and `src/lobby`, and starts the `src/lobby` folder. A second place is served from a second terminal, with its own `--port`:
+Copy `game.rogen.json` to `lobby.rogen.json`, change its `name` to `lobby` and its source path `src/game` to `src/lobby`, and make the `src/lobby` folder. A second place is served from a second terminal, with its own `--port`:
 
 ```bash
 rogen serve lobby --port <port>

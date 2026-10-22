@@ -741,7 +741,7 @@ Check that the file is writable and that no other program locks it.
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, or `rogen init <name>` found a `<name>.rogen.json` where it would add a place, and `init` never overwrites or changes one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
+Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites or changes one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
 
 ```
 default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo. (init.configExists)
@@ -751,7 +751,7 @@ Edit the config in place to change it, then run `rogen check`, or run `rogen ini
 
 ### `init.fileExists` [#init-fileexists]
 
-Error. A file `init` would write, such as a roblox-ts `tsconfig`, or the `src/<name>` folder of a place it adds to a Luau project, already exists, and `init` never overwrites one.
+Error. A file `init` would write, such as a roblox-ts `tsconfig`, already exists, and `init` never overwrites one.
 
 ```
 tsconfig.json - error: this file already exists, and init never overwrites one. Pick another name. (init.fileExists)

@@ -28,13 +28,7 @@ rogen build {{place}} -o "{{name}}.rbxlx"
 ```
 
 ## Adding a place
-To add a place, use:
-
-```bash
-rogen init lobby
-```
-
-It writes `lobby.rogen.json`, a copy of `{{place}}.rogen.json` that lists `{{source}}` and `src/lobby`, and starts the `src/lobby` folder. A second place is served from a second terminal, with its own `--port`:
+Copy `{{place}}.rogen.json` to `lobby.rogen.json`, change its `name` to `lobby` and its source path `src/{{place}}` to `src/lobby`, and make the `src/lobby` folder. A second place is served from a second terminal, with its own `--port`:
 
 ```bash
 rogen serve lobby --port <port>
