@@ -16,7 +16,7 @@ export function useConfigFixture(): void {
 	beforeEach(() => useFileSystem(new MemoryFileSystemService()));
 }
 
-export async function useFileSystem(
+async function useFileSystem(
 	next: MemoryFileSystemService,
 	home = "/repo"
 ): Promise<void> {

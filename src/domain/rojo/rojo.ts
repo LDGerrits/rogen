@@ -70,11 +70,6 @@ const SCRIPT_SUFFIX_OF_USE: Readonly<
 const COMPILER_EXTENSIONS: readonly string[] = [".ts", ".tsx"];
 
 export class RojoFile {
-	static readonly SCRIPT_EXTENSIONS: readonly string[] = [
-		".luau",
-		".lua",
-		...COMPILER_EXTENSIONS,
-	];
 	static readonly META_SUFFIX = ".meta.json";
 	/** Rojo reads this over `.meta.json` when a file has both. */
 	static readonly META_SUFFIX_JSONC = ".meta.jsonc";

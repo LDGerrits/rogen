@@ -10,7 +10,7 @@ export const SAMPLE_ROUTES = ["server", "client", "shared"] as const;
 const ROUTE_ORDER: readonly string[] = ["shared", "server", "client"];
 
 /** The suffix of the variant for several places. */
-export const PLACES_VARIANT = "-places";
+const PLACES_VARIANT = "-places";
 
 /** Where a variant keeps the code that `init` writes to the source paths it computes. */
 export const TEMPLATE_SOURCE_PATHS = {

@@ -2,7 +2,7 @@ import { normalizeDir } from "../../base/path.js";
 import { PlannedFile } from "../toolchain/toolchain.js";
 import { InitKind } from "./init-service.js";
 
-export const HOMEPAGE = "https://rogen-playfully.vercel.app/";
+const HOMEPAGE = "https://rogen-playfully.vercel.app/";
 
 const ROBLOX_LOCKS =
 	"# Roblox Studio lock files\n/*.rbxlx.lock\n/*.rbxl.lock\n";

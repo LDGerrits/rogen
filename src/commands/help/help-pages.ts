@@ -40,7 +40,7 @@ export type HelpTarget =
 	| { readonly kind: "codes"; readonly prefix?: string };
 
 /** The name of the page that lists every diagnostic code. */
-export const CODES_PAGE = "codes";
+const CODES_PAGE = "codes";
 
 const INDENT = "    ";
 const GAP = "    ";

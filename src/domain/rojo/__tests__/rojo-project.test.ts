@@ -4,7 +4,6 @@ import {
 	RojoProject,
 	RojoProjectFile,
 	projectFileName,
-	stemOfProjectFile,
 } from "../rojo-project.js";
 import { InstanceMap } from "../../roblox/roblox.js";
 
@@ -14,14 +13,6 @@ const folders: ContainerFactory = (instancePath) =>
 describe("project file names", () => {
 	it("should name the project file of a stem", () => {
 		expect(projectFileName("lobby")).toBe("lobby.project.json");
-	});
-
-	it("should take the stem back out of a project file's name", () => {
-		expect(stemOfProjectFile("lobby.project.json")).toBe("lobby");
-	});
-
-	it("should not read a stem out of a file that isn't a project file", () => {
-		expect(stemOfProjectFile("lobby.json")).toBeUndefined();
 	});
 });
 
@@ -311,17 +302,6 @@ describe("RojoProject", () => {
 			expect(RojoProject.parse("{}").unwrap().globIgnorePaths).toEqual(
 				[]
 			);
-		});
-	});
-
-	describe("servePlaceIds", () => {
-		it("should keep the place IDs that are whole numbers above 0", () => {
-			const project = RojoProject.parse(
-				'{ "servePlaceIds": [1818, "x", 0, -2, 1.5, 2020] }'
-			).unwrap();
-
-			expect(project.servePlaceIds).toEqual([1818, 2020]);
-			expect(RojoProject.parse("{}").unwrap().servePlaceIds).toEqual([]);
 		});
 	});
 

@@ -19,7 +19,7 @@ const ROKIT_INSTALLER =
 /** The managers, in the order a folder with none of their files picks one. */
 const MANAGERS = ["rokit", "aftman", "foreman"] as const;
 
-export type ToolManager = (typeof MANAGERS)[number];
+type ToolManager = (typeof MANAGERS)[number];
 
 const MINUTE_MS = 60_000;
 

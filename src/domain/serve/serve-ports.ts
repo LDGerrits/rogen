@@ -147,11 +147,6 @@ export class ServePorts {
 			: this.nameOfFile(config.file);
 	}
 
-	private serveCommand(config: ResolvedConfig): string {
-		const ref = this.refOf(config);
-		return ref === "." ? "rogen serve" : `rogen serve ${ref}`;
-	}
-
 	private nameOf(config: ResolvedConfig): string {
 		return this.nameOfFile(config.file);
 	}

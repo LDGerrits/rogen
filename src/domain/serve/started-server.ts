@@ -47,7 +47,7 @@ export class StartedServer extends AbstractDisposable {
 
 	constructor(
 		readonly target: ServeTarget,
-		private readonly plan: ServePlan,
+		plan: ServePlan,
 		rojoRunner: RojoRunner,
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,

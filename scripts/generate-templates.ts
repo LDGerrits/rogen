@@ -5,7 +5,7 @@ import {
 	placeholdersIn,
 } from "../src/domain/init/fill-template.js";
 
-export const TEMPLATES = path.resolve("templates");
+const TEMPLATES = path.resolve("templates");
 export const OUTPUT = path.resolve("src/domain/init/starter-templates.ts");
 
 const PLACES_SUFFIX = "-places";

@@ -71,9 +71,11 @@ describe("CoreConfigService places", () => {
 		await lobby();
 
 		expect(errors()).toEqual([]);
-		expect(resolved()?.project).toMatchObject({
+		expect(resolved()?.project.getFile()).toMatchObject({
 			servePort: 34873,
 			servePlaceIds: [1],
+			placeId: 2,
+			gameId: 3,
 		});
 	});
 

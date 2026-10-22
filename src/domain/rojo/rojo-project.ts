@@ -84,7 +84,6 @@ export interface ProjectFile {
 	readonly syncRules?: unknown;
 	readonly emitLegacyScripts?: unknown;
 	readonly servePort?: unknown;
-	readonly servePlaceIds?: unknown;
 	readonly serveAddress?: unknown;
 }
 
@@ -105,11 +104,6 @@ export const projectFileName = (stem: string): string =>
 export const isProjectFileName = (fileName: string): boolean =>
 	fileName.endsWith(PROJECT_SUFFIX) ||
 	fileName.endsWith(`${PROJECT_SUFFIX}c`);
-
-export const stemOfProjectFile = (fileName: string): string | undefined =>
-	fileName.endsWith(PROJECT_SUFFIX)
-		? fileName.slice(0, -PROJECT_SUFFIX.length)
-		: undefined;
 
 /** A Rojo project file being edited; the owner decides what an ancestor created on its behalf looks like. */
 export class RojoProject<T extends ProjectFile = RojoProjectFile> {
@@ -189,15 +183,6 @@ export class RojoProject<T extends ProjectFile = RojoProjectFile> {
 			servePort < 65536
 			? servePort
 			: undefined;
-	}
-
-	get servePlaceIds(): number[] {
-		const { servePlaceIds } = this.project;
-		return Array.isArray(servePlaceIds)
-			? servePlaceIds.filter(
-					(id): id is number => Number.isSafeInteger(id) && id > 0
-				)
-			: [];
 	}
 
 	get serveAddress(): string | undefined {

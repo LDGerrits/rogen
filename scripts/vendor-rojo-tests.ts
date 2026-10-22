@@ -16,7 +16,7 @@ const VENDORED: readonly { readonly source: string; readonly dir: string }[] = [
 	{ source: "rojo-test/build-tests/", dir: "e2e/rojo-build-tests" },
 	{ source: "rojo-test/syncback-tests/", dir: "e2e/rojo-syncback-tests" },
 ];
-export const VERSION_FILE = "VERSION";
+const VERSION_FILE = "VERSION";
 
 /** The Rojo version a `rokit.toml` pins. */
 export function pinnedRojoVersion(manifest: string): string {
@@ -31,7 +31,7 @@ async function fetchText(url: string): Promise<Buffer> {
 	return Buffer.from(await response.arrayBuffer());
 }
 
-export async function vendorRojoTests(
+async function vendorRojoTests(
 	version: string,
 	source: string,
 	outDir: string

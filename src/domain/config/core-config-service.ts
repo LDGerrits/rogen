@@ -32,7 +32,7 @@ export class CoreConfigService implements ConfigService {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly environmentService: EnvironmentService
+		environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
 			fileSystemService,

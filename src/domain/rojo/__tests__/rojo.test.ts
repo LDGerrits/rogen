@@ -298,17 +298,6 @@ describe("domain/rojo/rojo", () => {
 			});
 		});
 
-		describe("SCRIPT_EXTENSIONS", () => {
-			it("should list the extensions Rojo reads as scripts", () => {
-				expect([...RojoFile.SCRIPT_EXTENSIONS]).toEqual([
-					".luau",
-					".lua",
-					".ts",
-					".tsx",
-				]);
-			});
-		});
-
 		describe("scriptSuffixOf", () => {
 			it.each(["server", "client", "plugin"])(
 				"should read a trailing .%s",
