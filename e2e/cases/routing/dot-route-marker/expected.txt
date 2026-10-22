@@ -24,82 +24,106 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/src/Inventory/.server",
             "severity": "warning",
             "code": "route.dotRoute",
-            "message": "7 names write a route key after a dot, where only \"@\" routes, so they route nothing:\n  <dir>/src/Inventory/.server (write \"@server\")\n  <dir>/src/Tools/.SERVER (write \"@server\")\n  <dir>/src/.server (write \"@server\")\n  <dir>/src/Config.server.json (write \"Config@server.json\")\n  <dir>/src/Inventory/Types.shared.luau (write \"Types@shared.luau\")\n  <dir>/src/Net.shared (write \"Net@shared\")\n  <dir>/src/Start.Server.luau (write \"Start.server.luau\")",
+            "message": "write \"@server\"",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
-            "related": [
+            "fixes": [
               {
-                "file": "<dir>/src/Inventory/.server",
-                "message": "write \"@server\""
-              },
-              {
-                "file": "<dir>/src/Tools/.SERVER",
-                "message": "write \"@server\""
-              },
-              {
-                "file": "<dir>/src/.server",
-                "message": "write \"@server\""
-              },
-              {
-                "file": "<dir>/src/Config.server.json",
-                "message": "write \"Config@server.json\""
-              },
-              {
-                "file": "<dir>/src/Inventory/Types.shared.luau",
-                "message": "write \"Types@shared.luau\""
-              },
-              {
-                "file": "<dir>/src/Net.shared",
-                "message": "write \"Net@shared\""
-              },
-              {
-                "file": "<dir>/src/Start.Server.luau",
-                "message": "write \"Start.server.luau\""
+                "rename": {
+                  "from": "<dir>/src/Inventory/.server",
+                  "to": "<dir>/src/Inventory/@server"
+                }
               }
-            ],
+            ]
+          },
+          {
+            "file": "<dir>/src/Tools/.SERVER",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "write \"@server\"",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "fixes": [
+              {
+                "rename": {
+                  "from": "<dir>/src/Tools/.SERVER",
+                  "to": "<dir>/src/Tools/@server"
+                }
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/.server",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "write \"@server\"",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
             "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/.server",
                   "to": "<dir>/src/@server"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Config.server.json",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "write \"Config@server.json\"",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Config.server.json",
                   "to": "<dir>/src/Config@server.json"
                 }
-              },
-              {
-                "rename": {
-                  "from": "<dir>/src/Inventory/.server",
-                  "to": "<dir>/src/Inventory/@server"
-                }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Inventory/Types.shared.luau",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "write \"Types@shared.luau\"",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Inventory/Types.shared.luau",
                   "to": "<dir>/src/Inventory/Types@shared.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Net.shared",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "write \"Net@shared\"",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Net.shared",
                   "to": "<dir>/src/Net@shared"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Start.Server.luau",
+            "severity": "warning",
+            "code": "route.dotRoute",
+            "message": "write \"Start.server.luau\"",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-dotroute",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Start.Server.luau",
                   "to": "<dir>/src/Start.server.luau"
-                }
-              },
-              {
-                "rename": {
-                  "from": "<dir>/src/Tools/.SERVER",
-                  "to": "<dir>/src/Tools/@server"
                 }
               }
             ]

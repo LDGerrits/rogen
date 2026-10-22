@@ -48,7 +48,10 @@ describe("check command", () => {
 	const document = () =>
 		JSON.parse(
 			logService.entries.find(({ kind }) => kind === "print")?.text ?? ""
-		) as { diagnostics: { code: string; file: string }[] };
+		) as {
+			diagnostics: { code: string; file: string }[];
+			skipped?: { path: string; reason: string; config?: string }[];
+		};
 
 	beforeEach(async () => {
 		harness = commandHarness();
@@ -78,13 +81,55 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should say nothing of a file in no source path that is no typo of one", async () => {
+		it("should say a file in no source path, that is no typo of one, is read by no build, and pass", async () => {
 			await write("src/Inventory/Server/Save.luau");
-			await write("README.md");
+			await write("lib/x.luau");
 
-			const result = await run({ _: ["README.md"] });
+			const result = await run({ _: ["lib/x.luau"] });
 
 			expect(result.isOk()).toBe(true);
+			expect(logService.texts("warn")).toEqual([]);
+			expect(logService.texts("notice")).toEqual([
+				"note: lib/x.luau: in no source path of default.rogen.json, so no build reads it.",
+			]);
+		});
+
+		it("should list a file in no source path under skipped in the JSON document", async () => {
+			await write("src/Inventory/Server/Save.luau");
+			await write("lib/x.luau");
+
+			await run({ _: ["lib/x.luau"], json: true });
+
+			expect(document()).toEqual({
+				diagnostics: [],
+				skipped: [
+					{
+						path: "/repo/lib/x.luau",
+						reason: "outsideSourcePaths",
+						config: "/repo/default.rogen.json",
+					},
+				],
+			});
+		});
+
+		it("should leave skipped out of the JSON document when every path is read", async () => {
+			await write("src/Save.luau");
+
+			await run({ _: ["src/Save.luau"], json: true });
+
+			expect(document()).toEqual({ diagnostics: [] });
+		});
+
+		it("should not note a typo'd path that is warned about", async () => {
+			await write("src/Inventory/Server/Save.luau");
+			await write("scr/Inventory/Server/X.luau");
+
+			await run({ _: ["scr/Inventory/Server/X.luau"], json: true });
+
+			expect(document()).toMatchObject({
+				diagnostics: [{ code: "scan.outsideSourcePaths" }],
+			});
+			expect(document()).not.toHaveProperty("skipped");
 		});
 
 		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
@@ -160,7 +205,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should narrow a grouped warning to the path it is asked about", async () => {
+		it("should give only the warnings about the path it is asked about", async () => {
 			await write("src/Save@sever.luau", "src/Load@sever.luau");
 
 			const error = failureOf(await run({ _: ["src/Save@sever.luau"] }));
@@ -275,9 +320,44 @@ describe("check command", () => {
 			});
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.texts("warn")).toEqual([
-				"places/shared/src/Stray@sever.luau: no config covers this file; check it through a place: rogen check places/lobby",
+			expect(logService.texts("warn")).toEqual([]);
+			expect(logService.texts("notice")).toEqual([
+				"note: places/shared/src/Stray@sever.luau: no config at or above it reads it.",
 			]);
+		});
+
+		it("should name the named configs of the working folder as the way to check it", async () => {
+			await writeConfig("game.rogen.json", {
+				name: "game",
+				rogen: { routes: ROUTES },
+			});
+			await writeConfig("arena.rogen.json", {
+				name: "arena",
+				rogen: { routes: ROUTES },
+			});
+
+			await run({ _: ["places/shared/src/Stray@sever.luau"] });
+
+			expect(logService.texts("notice")).toEqual([
+				"note: places/shared/src/Stray@sever.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
+			]);
+		});
+
+		it("should list a file that no config covers under skipped in the JSON document", async () => {
+			await run({
+				_: ["places/shared/src/Stray@sever.luau"],
+				json: true,
+			});
+
+			expect(document()).toEqual({
+				diagnostics: [],
+				skipped: [
+					{
+						path: "/repo/places/shared/src/Stray@sever.luau",
+						reason: "noConfig",
+					},
+				],
+			});
 		});
 
 		it("should check the files that have a config and skip the rest", async () => {
@@ -291,7 +371,7 @@ describe("check command", () => {
 			expect(found(failureOf(result))).toEqual([
 				["route.strayAt", "places/lobby/src/Buy@sever.luau"],
 			]);
-			expect(logService.texts("warn")).toHaveLength(1);
+			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
 		it("should check a config named by its file whole", async () => {
@@ -428,7 +508,7 @@ describe("check command", () => {
 			const result = await run({ _: ["tools/Stray@sever.luau"] });
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.texts("warn")).toHaveLength(1);
+			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
 		it("should check a folder by every config that holds some of it", async () => {
@@ -454,6 +534,59 @@ describe("check command", () => {
 
 			expect(found(failureOf(result))).toEqual([
 				["route.strayAt", "src/lobby/Sell@sever.luau"],
+			]);
+		});
+
+		it("should check a config named by its bare name whole", async () => {
+			const byName = await run({ _: ["game"] });
+			const byFile = await run({ _: ["game.rogen.json"] });
+
+			expect(found(failureOf(byName))).toEqual(found(failureOf(byFile)));
+			expect(
+				new Set(found(failureOf(byName)).map(([, file]) => file))
+			).toEqual(
+				new Set([
+					"src/common/Stray@sever.luau",
+					"src/game/Buy@sever.luau",
+				])
+			);
+		});
+
+		it("should check a bare name that stands for a project file", async () => {
+			await fs.writeFile("/repo/arena.project.json", "{}");
+
+			const result = await run({ _: ["arena"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["config.unnamedProjectFile", "arena.project.json"],
+			]);
+			expect(logService.texts("notice")).toEqual([]);
+		});
+
+		it("should read a bare name that is a folder with a default as the build does", async () => {
+			await writeConfig("dist.rogen.json", {
+				name: "dist",
+				rogen: { routes: ROUTES },
+			});
+			await writeConfig("dist/default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
+			await write("dist/src/Stray@sever.luau");
+
+			const result = await run({ _: ["dist"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "dist/src/Stray@sever.luau"],
+			]);
+		});
+
+		it("should still check a file that no config is named for", async () => {
+			await write("src/game/New@sever.luau");
+
+			const result = await run({ _: ["src/game/New@sever.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "src/game/New@sever.luau"],
 			]);
 		});
 
@@ -484,7 +617,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should print one line per file a grouped warning is about", async () => {
+		it("should print one line per file a warning is about", async () => {
 			await write("src/Save@sever.luau", "src/Load@sever.luau");
 
 			await run({});
@@ -495,7 +628,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should not cap the files a grouped warning is about", async () => {
+		it("should not cap the warnings of one code", async () => {
 			const names = Array.from(
 				{ length: 12 },
 				(_, i) => `A${i}@sever.luau`
@@ -605,6 +738,102 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(document()).toEqual({ diagnostics: [] });
 		});
+
+		const LOWER_ROUTES = {
+			server: "ServerScriptService",
+			client: "StarterPlayer/StarterPlayerScripts",
+			shared: "ReplicatedStorage/shared",
+			"*": "ReplicatedStorage/shared",
+		};
+
+		it.each([
+			{
+				code: "scan.sourcePathNamedAfterKey",
+				config: { rogen: { sourcePaths: ["server", "src/client"] } },
+				files: ["server/Save.luau", "src/client/Hud.luau"],
+			},
+			{
+				code: "route.strayAt",
+				config: {},
+				files: ["src/Save@sever.luau", "src/Load@sever.luau"],
+			},
+			{
+				code: "route.dotRoute",
+				config: {},
+				files: ["src/Net.server/Remotes.luau", "src/Types.shared.luau"],
+			},
+			{
+				code: "route.folderTypo",
+				config: {},
+				files: ["src/A/Sever/X.luau", "src/B/Sevrer/Y.luau"],
+			},
+			{
+				code: "route.serverCodeShipped",
+				config: {},
+				files: [
+					"src/shared/server/Datastore.luau",
+					"src/shared/server/Secret.luau",
+				],
+			},
+			{
+				code: "tree.deadScript",
+				config: {},
+				files: [
+					"src/shared/Run.server.luau",
+					"src/shared/Hud.client.luau",
+				],
+			},
+			{
+				code: "tree.runContextTarget",
+				config: { emitLegacyScripts: false },
+				files: [
+					"src/Panel/init.client.luau",
+					"src/Menu/init.client.luau",
+				],
+			},
+			{
+				code: "tree.mountClash",
+				config: {
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { shared: { $path: "vendor" } },
+					},
+				},
+				files: [
+					"vendor/Combat/init.luau",
+					"src/Combat/Hit.luau",
+					"src/Combat/Miss.luau",
+				],
+			},
+		])(
+			"should give build's diagnostic objects for $code",
+			async ({ code, config, files }) => {
+				await writeConfig("default.rogen.json", {
+					...config,
+					rogen: {
+						routes: LOWER_ROUTES,
+						...(config as { rogen?: object }).rogen,
+					},
+				});
+				await write(...files);
+
+				await harness.run("build", {
+					positionals: [],
+					options: { json: true },
+				});
+				const built = JSON.parse(printed()[0]) as {
+					configs: { diagnostics: { code: string }[] }[];
+				};
+				logService.clear();
+				await run({ json: true });
+
+				const { diagnostics } = built.configs[0];
+				expect(
+					diagnostics.filter((diagnostic) => diagnostic.code === code)
+				).toHaveLength(2);
+				expect(document().diagnostics).toEqual(diagnostics);
+			}
+		);
 	});
 
 	describe("on GitHub Actions", () => {

@@ -210,49 +210,36 @@ describe("BuildValidator rules", () => {
 				);
 			});
 
-			it("should warn once for every source path at the project root, with the move-them fix", async () => {
-				const [warning] = await named(["server", "client"]);
-
-				expect(warning).toMatchObject({
-					severity: DiagnosticSeverity.Warning,
-					resource: abs("default.rogen.json"),
-					related: [
-						{
-							resource: abs("server"),
-							message: 'named after the "server" route',
-						},
-						{
-							resource: abs("client"),
-							message: 'named after the "client" route',
-						},
-					],
-				});
-				expect(warning.message.split("\n")).toEqual([
-					"2 source paths are named after a route key, but routing starts below a source path, so their names route nothing:",
-					'  server ("server" route)',
-					'  client ("client" route)',
-					'Move them into one folder, such as src/server and src/client, and use "sourcePaths": ["src"].',
+			it("should warn at every source path at the project root, with the move-it fix", async () => {
+				expect(await named(["server", "client"])).toMatchObject([
+					{
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("server"),
+						message:
+							'named after the "server" route: move it into a folder, such as src/server, and use "sourcePaths": ["src"]',
+					},
+					{
+						resource: abs("client"),
+						message:
+							'named after the "client" route: move it into a folder, such as src/client, and use "sourcePaths": ["src"]',
+					},
 				]);
 			});
 
 			it("should say to use the parent when the source path sits inside the project", async () => {
 				const [warning] = await named(["src/server"]);
 
-				expect(warning.message.split("\n")).toEqual([
-					"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
-					'  src/server ("server" route)',
-					'Use "src" as the source path instead, so "server" is read as a key.',
-				]);
+				expect(warning.message).toBe(
+					'named after the "server" route: use "src" as the source path instead, so "server" is read as a key'
+				);
 			});
 
-			it("should fall back to moving the source path into one folder when its parent is outside the project", async () => {
+			it("should fall back to moving the source path into a folder when its parent is outside the project", async () => {
 				const [warning] = await named(["../outside/server"]);
 
-				expect(warning.message.split("\n")).toEqual([
-					"1 source path is named after a route key, but routing starts below a source path, so its name routes nothing:",
-					'  ../outside/server ("server" route)',
-					'Move it into one folder, such as src/../outside/server, and use "sourcePaths": ["src"].',
-				]);
+				expect(warning.message).toBe(
+					'named after the "server" route: move it into a folder, such as src/../outside/server, and use "sourcePaths": ["src"]'
+				);
 			});
 
 			it("should not warn when the source path holds a folder named after a key", async () => {
@@ -264,7 +251,7 @@ describe("BuildValidator rules", () => {
 
 				const [warning] = await named(["Server"]);
 
-				expect(warning.message).toContain('Server ("server" route)');
+				expect(warning.message).toContain('the "server" route');
 			});
 
 			it("should not stop the build from placing the files", async () => {
@@ -288,7 +275,7 @@ describe("BuildValidator rules", () => {
 					.unwrap()
 					.warnings.filter(({ code }) => code === "tree.deadScript");
 
-			it("should warn once for a LocalScript in a server service and a Script in a replicating one", async () => {
+			it("should warn at a LocalScript in a server service and a Script in a replicating one", async () => {
 				await write(
 					"src/server/Hud.client.luau",
 					"src/shared/Secret.server.luau",
@@ -298,16 +285,17 @@ describe("BuildValidator rules", () => {
 					"src/Types.luau"
 				);
 
-				const [warning, ...others] = await dead();
-
-				expect(others).toEqual([]);
-				expect(warning.message).toContain("2 scripts will never run");
-				expect(warning.message).toContain(
-					`${abs("src/server/Hud.client.luau")} -> ServerScriptService/Hud (a LocalScript, placed by the "server" route)`
-				);
-				expect(warning.message).toContain(
-					`${abs("src/shared/Secret.server.luau")} -> ReplicatedStorage/shared/Secret (a Script, placed by the "shared" route)`
-				);
+				expect(await dead()).toMatchObject([
+					{
+						resource: at("src/server/Hud.client.luau"),
+						message:
+							"a LocalScript never runs in ServerScriptService",
+					},
+					{
+						resource: at("src/shared/Secret.server.luau"),
+						message: "a Script never runs in ReplicatedStorage",
+					},
+				]);
 			});
 
 			const metaWith = (runContext: string) =>
@@ -344,7 +332,7 @@ describe("BuildValidator rules", () => {
 				);
 				await fs.writeFile(abs("src/shared/B.meta.json"), "{ nope");
 
-				expect((await dead())[0].message).toContain("2 scripts");
+				expect(await dead()).toHaveLength(2);
 			});
 
 			const legacyOff = {
@@ -363,13 +351,13 @@ describe("BuildValidator rules", () => {
 					"src/shared/Rules.server.luau"
 				);
 
-				const [warning, ...others] = await dead(legacyOff);
-
-				expect(others).toEqual([]);
-				expect(warning.message).toContain("1 script will never run");
-				expect(warning.message).toContain(
-					`${abs("src/server/Hud.client.luau")} -> ServerScriptService/Hud (a Script with RunContext Client, placed by the "server" route)`
-				);
+				expect(await dead(legacyOff)).toMatchObject([
+					{
+						resource: at("src/server/Hud.client.luau"),
+						message:
+							"a Script with RunContext Client never runs in ServerScriptService",
+					},
+				]);
 			});
 
 			it("should warn about a Script in ServerScriptService whose meta sets RunContext Client", async () => {
@@ -402,31 +390,15 @@ describe("BuildValidator rules", () => {
 			it("should warn about an init folder's script", async () => {
 				await write("src/shared/Net/init.server.luau");
 
-				expect((await dead())[0].message).toContain("1 script will");
+				expect(await dead()).toMatchObject([
+					{ resource: at("src/shared/Net/init.server.luau") },
+				]);
 			});
 
 			it("should not warn about a ModuleScript", async () => {
 				await write("src/server/Save@server.luau");
 
 				expect(await dead()).toEqual([]);
-			});
-
-			it("should name every script in related, and list them all", async () => {
-				await write(
-					...Array.from(
-						{ length: 12 },
-						(_, index) => `src/shared/Save${index}.server.luau`
-					)
-				);
-
-				const [warning] = await dead();
-
-				expect(warning.message).not.toContain("more like it");
-				expect(warning.related).toHaveLength(12);
-				expect(warning.related?.[0]).toEqual({
-					resource: at("src/shared/Save0.server.luau"),
-					message: "a Script never runs in ReplicatedStorage",
-				});
 			});
 		});
 
@@ -560,41 +532,28 @@ describe("BuildValidator rules", () => {
 						({ code }) => code === "route.serverCodeShipped"
 					);
 
-			it("should warn once, naming each file, the route it sits under, the one that governs it and the marker that keeps it", async () => {
+			const resources = async () =>
+				(await shipped()).map(({ resource }) => resource);
+
+			it("should warn at each file, naming the instance, the route that governs it and the marker that keeps it", async () => {
 				await write(
 					"src/ReplicatedFirst/server/Datastore.luau",
 					"src/ReplicatedFirst/(server)/Save.luau",
 					"src/server/Net/Fine.luau"
 				);
 
-				const [warning, ...others] = await shipped();
-
-				expect(others).toEqual([]);
-				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-				expect(warning.resource).toBe(abs("default.rogen.json"));
-				expect(warning.message).toBe(
-					[
-						'2 files under a "server" route ship to clients, because "ReplicatedFirst" governs them:',
-						`  ${abs("src/ReplicatedFirst/(server)/Save.luau")} -> ReplicatedFirst/Save`,
-						`  ${abs("src/ReplicatedFirst/server/Datastore.luau")} -> ReplicatedFirst/server/Datastore`,
-						'Move them out of the "ReplicatedFirst" route\'s files if they\'re server code, or keep them there with a "@ReplicatedFirst" marker file in their folder.',
-					].join("\n")
-				);
-			});
-
-			it("should carry the way out in the message of each file it lists", async () => {
-				await write("src/ReplicatedFirst/server/Datastore.luau");
-
-				const [warning] = await shipped();
-
-				expect(warning.related).toEqual([
-					{
+				expect(await shipped()).toEqual([
+					expect.objectContaining({
+						severity: DiagnosticSeverity.Warning,
+						resource: abs("src/ReplicatedFirst/(server)/Save.luau"),
+						message:
+							'ships to clients as ReplicatedFirst/Save: move it out of the "ReplicatedFirst" route\'s files if it\'s server code, or keep it there with a "@ReplicatedFirst" marker file in its folder',
+					}),
+					expect.objectContaining({
 						resource: abs(
 							"src/ReplicatedFirst/server/Datastore.luau"
 						),
-						message:
-							'ships to clients as ReplicatedFirst/server/Datastore: move it out of the "ReplicatedFirst" route\'s files if it\'s server code, or keep it there with a "@ReplicatedFirst" marker file in its folder',
-					},
+					}),
 				]);
 			});
 
@@ -604,7 +563,7 @@ describe("BuildValidator rules", () => {
 					"src/ReplicatedFirst/server/Rig.rbxm"
 				);
 
-				expect((await shipped())[0].message).toContain("2 files");
+				expect(await shipped()).toHaveLength(2);
 			});
 
 			it("should not warn about files a sign restating the governing route covers, at or below the folder", async () => {
@@ -619,13 +578,9 @@ describe("BuildValidator rules", () => {
 					"src/ReplicatedFirst/Net/server/Other.luau"
 				);
 
-				const [warning, ...others] = await shipped();
-
-				expect(others).toEqual([]);
-				expect(warning.message).toContain("1 file ");
-				expect(warning.message).toContain(
-					abs("src/ReplicatedFirst/Net/server/Other.luau")
-				);
+				expect(await resources()).toEqual([
+					abs("src/ReplicatedFirst/Net/server/Other.luau"),
+				]);
 			});
 
 			it("should warn about the files beside an init script whose Rojo suffix an outer route outranks", async () => {
@@ -634,26 +589,25 @@ describe("BuildValidator rules", () => {
 					"src/ReplicatedFirst/Store/Data.luau"
 				);
 
-				const [warning, ...others] = await shipped();
-
-				expect(others).toEqual([]);
-				expect(warning.message).toContain("1 file ");
-				expect(warning.message).toContain(
-					abs("src/ReplicatedFirst/Store/Data.luau")
-				);
+				expect(await resources()).toEqual([
+					abs("src/ReplicatedFirst/Store/Data.luau"),
+				]);
 			});
 
-			it("should name a marker per route when several govern the files", async () => {
+			it("should name the marker of the route that governs each file", async () => {
 				await write(
 					"src/ReplicatedFirst/server/A.luau",
 					"src/client/server/B.luau"
 				);
 
-				const [warning] = await shipped();
-
-				expect(warning.message).toContain(
-					'or keep them there with a marker file that restates their route ("@ReplicatedFirst" or "@client") in their folder.'
+				const messages = (await shipped()).map(
+					({ message }) => message
 				);
+
+				expect(messages).toEqual([
+					expect.stringContaining('a "@ReplicatedFirst" marker file'),
+					expect.stringContaining('a "@client" marker file'),
+				]);
 			});
 
 			it("should still warn about a server folder below the one a marker covers", async () => {
@@ -662,11 +616,9 @@ describe("BuildValidator rules", () => {
 					"src/ReplicatedFirst/server/Deep/server/Leak.luau"
 				);
 
-				const [warning] = await shipped();
-
-				expect(warning.message).toContain(
-					abs("src/ReplicatedFirst/server/Deep/server/Leak.luau")
-				);
+				expect(await resources()).toEqual([
+					abs("src/ReplicatedFirst/server/Deep/server/Leak.luau"),
+				]);
 			});
 
 			it("should not warn when the governing route is server-only too", async () => {
@@ -685,22 +637,6 @@ describe("BuildValidator rules", () => {
 				await write("src/ReplicatedFirst/client/Hud.luau");
 
 				expect(await shipped()).toEqual([]);
-			});
-
-			it("should name every file in related, and list them all", async () => {
-				await write(
-					...Array.from(
-						{ length: 12 },
-						(_, index) =>
-							`src/ReplicatedFirst/server/Save${index}.luau`
-					)
-				);
-
-				const [warning] = await shipped();
-
-				expect(warning.message).toContain("12 files");
-				expect(warning.message).not.toContain("more like it");
-				expect(warning.related).toHaveLength(12);
 			});
 		});
 	});

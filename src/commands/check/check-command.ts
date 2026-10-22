@@ -6,6 +6,7 @@ import {
 	BuildService,
 	Diagnosis,
 	mergeDiagnoses,
+	uniqueSkipped,
 } from "../../domain/build/build-service.js";
 
 import { ConfigService } from "../../domain/config/config-service.js";
@@ -27,13 +28,22 @@ import {
 	diagnosticToJson,
 	diagnosticsJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+import {
+	SkippedPath,
+	skippedJson,
+	skippedNote,
+	skippedPathShape,
+} from "../../platform/diagnostics/skipped-path.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 
 const CheckOptions = [JsonOption] as const;
 
+const ASKING = { command: "check", lead: "Check it" };
+
 const CheckOutput = OutputShape.object({
 	diagnostics: OutputShape.array(diagnosticShape),
 	stoppedBy: OutputShape.optional(OutputShape.array(diagnosticShape)),
+	skipped: OutputShape.optional(OutputShape.array(skippedPathShape)),
 });
 
 registerCommand(
@@ -50,7 +60,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it. One that no config covers is skipped with a note; a .rogen.json is checked whole. The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it. A path that no build reads, in no source path of its config or covered by no config, is skipped with a note on stderr and listed under skipped in the JSON document; a .rogen.json is checked whole, and so is a name that is not a path on disk but names a config as build reads it (game for game.rogen.json, else game.project.json). The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -81,6 +91,15 @@ registerCommand(
 			const found = await this.diagnose(accessor, line.positionals);
 			if (found.isErr()) return found;
 
+			const { skipped } = found.value;
+			const named = skipped.some(({ reason }) => reason === "noConfig")
+				? (await accessor.get(ConfigService).namedConfigs()).map(
+						(file) => relativeTo(cwd, file)
+					)
+				: [];
+			for (const one of skipped)
+				logService.notice(skippedNote(one, cwd, ASKING, named));
+
 			const failure = DiagnosticsError.of(found.value.diagnostics);
 			const stoppedBy = uniqueDiagnostics(found.value.stoppedBy);
 			if (line.options.json)
@@ -91,6 +110,7 @@ registerCommand(
 						...(stoppedBy.length > 0 && {
 							stoppedBy: stoppedBy.map(diagnosticToJson),
 						}),
+						...skippedJson(skipped),
 					},
 					failure
 				);
@@ -108,28 +128,24 @@ registerCommand(
 		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */
 		private async diagnose(
 			accessor: ServicesAccessor,
-			args: readonly string[]
+			given: readonly string[]
 		): Promise<Result<Diagnosis, Error>> {
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const { cwd } = accessor.get(EnvironmentService);
-			if (args.length === 0) {
+			if (given.length === 0) {
 				const selection = await configService.select([]);
 				if (selection.isErr()) return selection;
 				return buildService.diagnose(selection.value);
 			}
+			const resolved = await configService.resolveNames(given);
+			if (resolved.isErr()) return resolved;
+			const args = resolved.value;
 			const asked = await buildService.askedAbout({ args, cwd });
 			const covered = await configService.selectCovering(
 				asked.map((one) => ("path" in one ? one.path : undefined))
 			);
 			if (covered.isErr()) return covered;
-			const logService = accessor.get(LogService);
-			for (const index of covered.value.uncovered) {
-				const one = asked[index];
-				logService.warn(
-					`${"path" in one ? relativeTo(cwd, one.path) : args[index]}: no config covers this file; check it through a place: rogen check places/lobby`
-				);
-			}
 			const parts: Diagnosis[] = [];
 			for (const { selection, indexes, whole } of covered.value.groups) {
 				const found = await buildService.diagnose(
@@ -152,9 +168,24 @@ registerCommand(
 						diagnostics:
 							await buildService.staleProjectFiles(selection),
 						stoppedBy: [],
+						skipped: [],
 					});
 			}
-			return ok(mergeDiagnoses(parts));
+			const merged = mergeDiagnoses(parts);
+			return ok({
+				...merged,
+				skipped: uniqueSkipped([
+					...covered.value.uncovered.flatMap(
+						(index): SkippedPath[] => {
+							const one = asked[index];
+							return "path" in one
+								? [{ path: one.path, reason: "noConfig" }]
+								: [];
+						}
+					),
+					...merged.skipped,
+				]),
+			});
 		}
 	}
 );

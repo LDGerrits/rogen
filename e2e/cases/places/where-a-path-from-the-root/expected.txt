@@ -15,7 +15,7 @@ stdout:
 $ rogen where places/shared/src/Common/Util.luau
 exit 0
 stderr:
-  warning: places/shared/src/Common/Util.luau: no config covers this file; see where it lands through a place: rogen where places/lobby
+  note: places/shared/src/Common/Util.luau: no config at or above it reads it.
 
 $ rogen where places/arena/default.rogen.json
 exit 0

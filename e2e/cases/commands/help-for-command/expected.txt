@@ -151,10 +151,13 @@ stdout:
                    Line 12, written as file:line; an instance that more than one file places stays as
                    it is and is listed on stderr. A path is answered by the default config of the
                    nearest folder at or above it; with none, by every .rogen.json at or above it whose
-                   source paths cover it, each answer headed by its config's name when they differ.
-                   One that no config covers is skipped with a note; a .rogen.json lists every file of
-                   that config. Every file of the default config of the working directory when none is
-                   given, and an instance or '-' reads that config too.
+                   source paths cover it, each answer headed by its config's name when they differ. A
+                   path that no build reads, in no source path of its config or covered by no config,
+                   gets a note on stderr and is listed under skipped in the JSON document; a
+                   .rogen.json lists every file of that config, and so does a name that is not a path
+                   on disk but names a config as build reads it (game for game.rogen.json, else
+                   game.project.json). Every file of the default config of the working directory when
+                   none is given, and an instance or '-' reads that config too.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,

@@ -28,128 +28,177 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/src/Save01@sever.luau",
             "severity": "warning",
             "code": "route.strayAt",
-            "message": "12 names have an \"@\" that routes nowhere, so they are read as ordinary names:\n  <dir>/src/Save01@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save02@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save03@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save04@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save05@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save06@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save07@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save08@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save09@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save10@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save11@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Save12@sever.luau (did you mean \"@server\"?)",
+            "message": "did you mean \"@server\"?",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
-            "related": [
-              {
-                "file": "<dir>/src/Save01@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save02@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save03@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save04@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save05@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save06@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save07@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save08@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save09@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save10@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save11@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Save12@sever.luau",
-                "message": "did you mean \"@server\"?"
-              }
-            ],
             "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save01@sever.luau",
                   "to": "<dir>/src/Save01@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save02@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save02@sever.luau",
                   "to": "<dir>/src/Save02@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save03@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save03@sever.luau",
                   "to": "<dir>/src/Save03@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save04@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save04@sever.luau",
                   "to": "<dir>/src/Save04@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save05@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save05@sever.luau",
                   "to": "<dir>/src/Save05@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save06@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save06@sever.luau",
                   "to": "<dir>/src/Save06@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save07@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save07@sever.luau",
                   "to": "<dir>/src/Save07@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save08@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save08@sever.luau",
                   "to": "<dir>/src/Save08@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save09@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save09@sever.luau",
                   "to": "<dir>/src/Save09@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save10@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save10@sever.luau",
                   "to": "<dir>/src/Save10@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save11@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save11@sever.luau",
                   "to": "<dir>/src/Save11@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Save12@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Save12@sever.luau",

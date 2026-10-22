@@ -36,7 +36,7 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 - To change the setup (a route, source path, package mount, Darklua), edit the `.rogen.json` in place, so its comments stay, then run `rogen check`. `rogen init` starts a project, in the folder it is given as `rojo init` does; it never changes a config that exists.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
-- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a file of any place, shared code in `src/common` included. A file no config holds, such as roblox-ts `projects/common`, is skipped with a note, so check it through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
+- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a file of any place, shared code in `src/common` included. A file no config holds, such as roblox-ts `projects/common`, is skipped with a note on stderr (`no config at or above it reads it`), and so is a file in the config's folder but in none of its source paths (`in no source path of default.rogen.json, so no build reads it`); `--json` lists both under `skipped`. Check shared code through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
 - Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen build lobby`, `rogen build dist`).
 - After adding a feature folder, run `rogen build`: `default.project.json` is as fresh as its last build.
 - Leave `rogen build --watch` to the user: it never exits.
@@ -48,57 +48,128 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 
 The block asks an agent to run `rogen check <paths>` after it adds, moves or renames files. That depends on the agent remembering, and a clean result still costs a tool call.
 
-[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused. The script below collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. The agent gets the report as its next prompt and continues its turn.
+[`rogen check`](/docs/v2/cli#check-path) prints the diagnostics about the paths it is given, and nothing else, and exits 1 when there are any. A hook that runs when the agent is about to end its turn can use that to report only what the agent's own changes caused. The script below collects the changed files from git (modified, renamed and untracked, but not deleted), runs `rogen check` on them, and reports each line it hasn't reported earlier in the session. It is a Node script with no dependencies, so it runs wherever Rogen does, Windows included. It runs the Rogen in the project's `node_modules/.bin`, else the one on the `PATH`. The agent gets the report as its next prompt and continues its turn.
 
 It is one script for every agent that has a hook for the end of a turn. They agree on the payload (a JSON object on stdin with the session id and the working directory) and on the reply (`{"decision": "block", "reason": …}` on stdout, which becomes the next prompt). Only Cursor differs, and takes `cursor` as the script's first argument to reply with `followup_message`.
 
 `Stop` and not `PostToolUse`, because `PostToolUse` only sees `Write` and `Edit`, so a move done with `mv` or `git mv` in Bash is invisible, and it would report half-finished states, such as `dev/Service.luau` written before its `prod/` partner. A turn's end checks the end state once.
 
-```bash title=".agents/hooks/rogen-check.sh"
-#!/usr/bin/env bash
-# Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.
-# Pass "cursor" as the first argument for Cursor, which replies with followup_message.
-command -v jq >/dev/null || { echo "rogen-check.sh needs jq." >&2; exit 1; }
-payload=$(cat)
-session=$(jq -r '.session_id // .sessionId // .conversation_id // "agent"' <<<"$payload")
-cd "${CLAUDE_PROJECT_DIR:-$(jq -r '.cwd // "."' <<<"$payload")}" || exit 0
+```js title=".agents/hooks/rogen-check.mjs"
+// Agent Stop hook: report new Rogen diagnostics about changed files before the agent ends its turn.
+// Pass "cursor" as the first argument for Cursor, which replies with followup_message.
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
-changed=()
-while IFS= read -r -d '' file; do changed+=("$file"); done < <(
-	git diff -z --name-only --relative --diff-filter=d HEAD 2>/dev/null
-	git ls-files -z --others --exclude-standard 2>/dev/null
-)
-((${#changed[@]})) || exit 0
+const git = (...args) => {
+	const run = spawnSync("git", args, { encoding: "utf8" });
+	return run.status === 0 ? run.stdout : "";
+};
 
-seen="$(git rev-parse --git-dir)/rogen-hook-$session"
-touch "$seen"
-report=$(rogen check "${changed[@]}" 2>/dev/null | grep -vxF -f "$seen")
-[[ -z $report ]] && exit 0
-message=$(printf 'Rogen warns about files you changed. Fix each, or tell the user why it stays:\n%s' "$report")
-reply='{decision: "block", reason: $message}'
-[[ ${1:-} == cursor ]] && reply='{followup_message: $message}'
-reply=$(jq -n --arg message "$message" "$reply") || exit 1
-printf '%s\n' "$report" >>"$seen"
-printf '%s\n' "$reply"
+let payload = {};
+try {
+	payload = JSON.parse(fs.readFileSync(0, "utf8"));
+} catch {}
+const session = String(
+	payload.session_id ??
+		payload.sessionId ??
+		payload.conversation_id ??
+		"agent",
+).replace(/[^\w.-]/g, "_");
+try {
+	process.chdir(process.env.CLAUDE_PROJECT_DIR || payload.cwd || ".");
+} catch {
+	process.exit(0);
+}
+
+const changed = [
+	...git(
+		"diff",
+		"-z",
+		"--name-only",
+		"--relative",
+		"--diff-filter=d",
+		"HEAD",
+	).split("\0"),
+	...git("ls-files", "-z", "--others", "--exclude-standard").split("\0"),
+].filter(Boolean);
+if (!changed.length) process.exit(0);
+
+const seenFile = path.resolve(
+	git("rev-parse", "--git-dir").trim(),
+	`rogen-hook-${session}`,
+);
+const seen = fs.existsSync(seenFile)
+	? fs.readFileSync(seenFile, "utf8").split("\n")
+	: [];
+
+const windows = process.platform === "win32";
+const names = windows ? ["rogen.cmd", "rogen.exe"] : ["rogen"];
+const locate = (dirs) =>
+	dirs
+		.flatMap((dir) => names.map((name) => path.join(dir, name)))
+		.find((file) => fs.existsSync(file));
+const rogen = locate([
+	path.resolve("node_modules/.bin"),
+	path.join(git("rev-parse", "--show-toplevel").trim(), "node_modules/.bin"),
+	...(process.env.PATH ?? "").split(path.delimiter).filter(Boolean),
+]);
+if (!rogen) {
+	const NONE = "# found no rogen";
+	if (!seen.includes(NONE)) {
+		console.error(
+			"Rogen's hook found no rogen; install it in the project or globally",
+		);
+		fs.appendFileSync(seenFile, `${NONE}\n`);
+	}
+	process.exit(0);
+}
+
+const run = (command, args) =>
+	windows && command.endsWith(".cmd")
+		? spawnSync([command, ...args].map((part) => `"${part}"`).join(" "), {
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+				shell: true,
+			})
+		: spawnSync(command, args, {
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			});
+const check = run(rogen, ["check", ...changed]);
+const report = (check.stdout ?? "")
+	.split(/\r?\n/)
+	.filter((line) => line && !seen.includes(line));
+if (!report.length) process.exit(0);
+
+const message = `Rogen warns about files you changed. Fix each, or tell the user why it stays:\n${report.join("\n")}`;
+fs.appendFileSync(seenFile, `${report.join("\n")}\n`);
+console.log(
+	JSON.stringify(
+		process.argv[2] === "cursor"
+			? { followup_message: message }
+			: { decision: "block", reason: message },
+	),
+);
 ```
 
-Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal adds it only with `--agent-hook`, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
+Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `node`, so it needs no executable bit. A run without a terminal adds it only with `--agent-hook`, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
 
 | Agent | Found by | Hook file | Event | Entry |
 |---|---|---|---|---|
-| Claude Code | `.claude`, `CLAUDE.md` | `.claude/settings.json` | `Stop` | `bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh` |
-| Codex | `.codex` | `.codex/hooks.json` | `Stop` | `bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh` |
-| Gemini CLI | `.gemini`, `GEMINI.md` | `.gemini/settings.json` | `AfterAgent` | `bash "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.sh` |
-| Cursor | `.cursor` | `.cursor/hooks.json` | `stop` | `bash .agents/hooks/rogen-check.sh cursor` |
-| Copilot | `.github/copilot-instructions.md`, `.github/hooks` | `.github/hooks/rogen.json` | `agentStop` | `bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh` |
+| Claude Code | `.claude`, `CLAUDE.md` | `.claude/settings.json` | `Stop` | `node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
+| Codex | `.codex` | `.codex/hooks.json` | `Stop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
+| Gemini CLI | `.gemini`, `GEMINI.md` | `.gemini/settings.json` | `AfterAgent` | `node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs` |
+| Cursor | `.cursor` | `.cursor/hooks.json` | `stop` | `node .agents/hooks/rogen-check.mjs cursor` |
+| Copilot | `.github/copilot-instructions.md`, `.github/hooks` | `.github/hooks/rogen.json` | `agentStop` | `node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs` |
 
-To do it by hand, put the script at `.agents/hooks/rogen-check.sh` and add the entry in the agent's own format. Claude Code, Codex and Gemini CLI take a group of command hooks; Cursor and Copilot take the command itself, in a file that starts with `"version": 1`:
+To do it by hand, put the script at `.agents/hooks/rogen-check.mjs` and add the entry in the agent's own format. Claude Code, Codex and Gemini CLI take a group of command hooks; Cursor and Copilot take the command itself, in a file that starts with `"version": 1`:
 
 ```json title=".claude/settings.json"
 {
 	"hooks": {
 		"Stop": [
-			{ "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.agents/hooks/rogen-check.sh" }] }
+			{ "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR\"/.agents/hooks/rogen-check.mjs" }] }
 		]
 	}
 }
@@ -107,7 +178,7 @@ To do it by hand, put the script at `.agents/hooks/rogen-check.sh` and add the e
 ```json title=".cursor/hooks.json"
 {
 	"version": 1,
-	"hooks": { "stop": [{ "command": "bash .agents/hooks/rogen-check.sh cursor" }] }
+	"hooks": { "stop": [{ "command": "node .agents/hooks/rogen-check.mjs cursor" }] }
 }
 ```
 
@@ -129,10 +200,10 @@ With the hook in place, the "run `rogen check` …" rule in the block is optiona
 ### Limits
 
 - **Your own changes count too.** The hook can't tell the agent's changes from your uncommitted ones, so a warning in a file you're editing is reported once per session.
-- **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`). The script runs on bash 3.2, the one macOS ships.
+- **It needs Node, git and a Rogen.** Node is there wherever Rogen is. With no `rogen` in `node_modules/.bin` or on the `PATH`, the hook prints `Rogen's hook found no rogen; install it in the project or globally` on stderr once per session and lets the turn end, so it never blocks the agent. Install Rogen in the project (`npm i -D @ldgerrits/rogen`) and the next turn is checked.
 - **An agent with no hook for the end of a turn** can still run `rogen check <paths>` and read its exit code, as `lint-staged` does: `"*": "rogen check"`.
 - **Cursor and Copilot have caps and quirks.** Cursor limits automatic follow-ups (`loop_limit`, 5 by default), and its `stop` hook has been reported not to fire in the CLI or to ignore its reply on Windows. Copilot ends the turn after 8 blocks in a row. The script reports each line once, so neither limit is reached by it.
-- **It checks from the folder the agent started in.** The changed files are those below it. `rogen check` finds each file's nearest `default.rogen.json` or `default.project.json`, so a place's file is checked from the repo root. Where there is none, as in root-level places, it takes the named `.rogen.json` files whose source paths hold the file, so a file in `src/common` is checked against every place and reported once. A file no config holds, such as the shared code of a roblox-ts project, is skipped, and the hook hides the note.
+- **It checks from the folder the agent started in.** The changed files are those below it. `rogen check` finds each file's nearest `default.rogen.json` or `default.project.json`, so a place's file is checked from the repo root. Where there is none, as in root-level places, it takes the named `.rogen.json` files whose source paths hold the file, so a file in `src/common` is checked against every place and reported once. A file no build reads, such as the shared code of a roblox-ts project or a `README.md`, is skipped, and the hook hides the note.
 
 ## Install the skill
 

@@ -3,7 +3,6 @@ import { ignoringAllOf, ignoringGlob } from "../../../base/glob.js";
 import { toPosix } from "../../../base/path.js";
 import {
 	Diagnostic,
-	DiagnosticRelated,
 	warningDiagnostic,
 } from "../../../platform/diagnostics/diagnostic.js";
 import {
@@ -18,54 +17,32 @@ import { Placement } from "../placement.js";
 export class MountClashes {
 	constructor(private readonly fileReader: FileReader) {}
 
-	/** One warning for each mount that a route puts files beside a name of. */
+	/** One warning for each placed file that sits beside a name a mount holds. */
 	async diagnostics(placement: Placement): Promise<Diagnostic[]> {
 		const { config } = placement;
 		const found: Diagnostic[] = [];
 		for (const mount of placement.tree.mounts.all) {
 			const held = await this.namesIn(mount.path, placement);
 			if (held.size === 0) continue;
-			const clashing = placement.files.flatMap(
-				({ entry, instancePath }) => {
-					const name = instancePath[mount.node.length];
-					return name !== undefined &&
-						held.has(name) &&
-						mount.node.every(
-							(part, at) => instancePath[at] === part
-						)
-						? [{ source: entry.source, instancePath, name }]
-						: [];
-				}
-			);
-			if (clashing.length === 0) continue;
 			const shown = toPosix(
 				path.relative(path.dirname(config.file), mount.path)
 			);
 			const where = `the mount of ${shown} at "${instanceKey(mount.node)}"`;
-			const names = [...new Set(clashing.map(({ name }) => name))];
-			const many = clashing.length > 1;
-			const related: DiagnosticRelated[] = clashing.map(
-				({ source, name }) => ({
-					resource: source,
-					message: `makes a "${name}" next to the "${name}" that ${where} holds`,
-				})
-			);
-			found.push(
-				warningDiagnostic(
-					"tree.mountClash",
-					{ resource: config.file },
-					[
-						`${clashing.length} ${many ? "files sit" : "file sits"} next to ${names.length > 1 ? "instances" : "an instance"} of the same name that ${where} holds, so Rojo builds two of ${names.length > 1 ? "each" : "it"}:`,
-						...clashing.map(
-							({ source, instancePath, name }) =>
-								`  ${source} -> ${instanceKey(instancePath)} (next to "${name}")`
-						),
-						`Rename one of ${many ? "each pair" : "them"}, or route outside the mounted folder.`,
-					].join("\n"),
-					[],
-					related
+			for (const { entry, instancePath } of placement.files) {
+				const name = instancePath[mount.node.length];
+				if (
+					name !== undefined &&
+					held.has(name) &&
+					mount.node.every((part, at) => instancePath[at] === part)
 				)
-			);
+					found.push(
+						warningDiagnostic(
+							"tree.mountClash",
+							{ resource: entry.source },
+							`makes a "${name}" next to the "${name}" that ${where} holds`
+						)
+					);
+			}
 		}
 		return found;
 	}

@@ -216,12 +216,11 @@ registerCommand(
 				);
 			const buildLog = new BuildLog(logService, cwd);
 			if (printed)
-				buildLog.diagnostics(
-					build.builds.flatMap((one) => [
-						...one.warnings,
-						...one.errors,
-					])
-				);
+				for (const one of build.builds)
+					buildLog.diagnostics(
+						[...one.warnings, ...one.errors],
+						one.file
+					);
 			else buildLog.report(build, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;
