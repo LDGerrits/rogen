@@ -741,13 +741,13 @@ Check that the file is writable and that no other program locks it.
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites or changes one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
+Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites or changes one. `init` starts projects, so it stops here and writes nothing, whatever the flags.
 
 ```
-default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo. (init.configExists)
+default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
 ```
 
-Edit the config in place to change it, then run `rogen check`, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
+Edit the config in place to change it, then run `rogen check`. To add the agent rules or the agent hook later, see [Working with agents](/docs/v2/agents#add-it-to-an-existing-repo); to set Rojo up, see [Installation](/docs/v2/installation). See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 
@@ -807,11 +807,11 @@ Run `rogen where` on the files to see where they land. To keep them out of the g
 Error. `rogen serve` found no Rojo: it is not pinned in a `rokit.toml`, `aftman.toml` or `foreman.toml` in the folder or above, and not on the PATH. `serve` only starts Rojo, so a pinned Argon doesn't count. When Argon is pinned, the message says so.
 
 ```
-default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Run 'rogen init --rojo' to set Rojo up. (serve.noServer)
-default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them. Run 'rogen init --rojo' to set Rojo up. (serve.noServer)
+default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
+default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
 ```
 
-Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. `rogen init --rojo` does all of this: Rogen installs Rojo only after a Yes in a terminal or `--rojo`. To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
+Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. Rogen installs Rojo only when `rogen init` starts a project and is told to (a Yes in a terminal, or `--rojo`); see [Installation](/docs/v2/installation). To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
 
 ### `serve.notInstalled` [#serve-notinstalled]
 
@@ -828,7 +828,7 @@ Run the manager's install command: `rokit install`, `aftman install` or `foreman
 Error. Rogen runs `<tool> --version` before it builds, and that failed, so Rojo can't start. The message ends with the first line Rojo printed. A toolchain shim on the PATH whose project doesn't pin the tool fails this way, and then the message adds the command that pins it.
 
 ```
-default.rogen.json - error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. Run 'rogen init --rojo' to set Rojo up. (serve.serverFailed)
+default.rogen.json - error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.serverFailed)
 ```
 
 Pin the tool, or fix the install the quoted line points at. Running `rojo --version` yourself shows the full output. See [CLI](/docs/v2/cli#serve).
