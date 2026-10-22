@@ -118,34 +118,23 @@ describe("where command", () => {
 			await fs.writeFile("/repo/default.project.json", "{}");
 		});
 
-		it("should be said after the answers", async () => {
+		it("should not be said with a path", async () => {
 			const result = await run({ _: ["src/Util.luau"] });
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
 				"src/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
 			]);
-			expect(logService.texts("diagnosticWarning")).toEqual([
-				expect.stringContaining("output.differs"),
-			]);
+			expect(logService.texts("diagnosticWarning")).toEqual([]);
 		});
 
-		it("should be a warning in the JSON document", async () => {
-			await run({ _: ["src/Util.luau"], json: true });
+		it("should not be said with no path", async () => {
+			await run({ _: [] });
 
-			expect(JSON.parse(printed().join("\n")).diagnostics).toMatchObject([
-				{
-					severity: "warning",
-					code: "output.differs",
-					file: "/repo/default.project.json",
-					fixes: [{ run: { command: "rogen build", cwd: "/repo" } }],
-				},
-			]);
+			expect(logService.texts("diagnosticWarning")).toEqual([]);
 		});
 
-		it("should not be said once the file is written", async () => {
-			await fs.delete("/repo/default.project.json");
-
+		it("should not be in the JSON document", async () => {
 			await run({ _: ["src/Util.luau"], json: true });
 
 			expect(JSON.parse(printed().join("\n")).diagnostics).toEqual([]);

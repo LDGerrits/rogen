@@ -15,7 +15,6 @@ import {
 	fixShape,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
 	SkippedPath,
 	SkippedPathJson,
@@ -233,15 +232,13 @@ function entryOf(answer: Answer): WhereEntry {
 	};
 }
 
-/** `stale` is the project files that differ from what a build would write: warnings about the answer as a whole, after the errors. */
 export function whereDocument(
 	answers: WhereAnswers,
-	stale: readonly Diagnostic[] = [],
 	skipped: readonly SkippedPath[] = []
 ): WhereDocument {
 	return {
 		locations: answers.bySource().flat().map(entryOf),
-		diagnostics: [...answers.errors, ...stale].map(diagnosticToJson),
+		diagnostics: answers.errors.map(diagnosticToJson),
 		...skippedJson(skipped),
 	};
 }

@@ -36,7 +36,7 @@ import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
-import { AssembledFile, Locator } from "./locate/locator.js";
+import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 interface WriteOptions {
@@ -121,7 +121,6 @@ export class CoreBuildService implements BuildService {
 			)
 		);
 
-		const staleness = targets?.staleness === true;
 		const listing = await this.indexService.list(set.indexedPaths);
 		const located = await new Locator(
 			this.fileSystemService,
@@ -132,39 +131,7 @@ export class CoreBuildService implements BuildService {
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
-		const { built, ...found } = located.value;
-		return ok({
-			...found,
-			errors,
-			stale: staleness
-				? await this.staleOf(set.configs, listing, built)
-				: [],
-		});
-	}
-
-	/** Warns of each project file that differs from a build, reusing an assembly the locate made to skip a second build. */
-	private async staleOf(
-		configs: readonly ResolvedConfig[],
-		listing: IndexReader,
-		built: ReadonlyMap<ResolvedConfig, AssembledFile>
-	): Promise<Diagnostic[]> {
-		const staleness = new ProjectFileStaleness(this.fileSystemService);
-		const builder = new ConfigBuilder(
-			this.fileSystemService,
-			listing,
-			this.syncTools
-		);
-		const stale: Diagnostic[] = [];
-		for (const config of configs) {
-			const known = built.get(config);
-			const diagnostic = await staleness.diagnostic(config, () =>
-				known
-					? Promise.resolve(known.file)
-					: builder.projectFileOf(config)
-			);
-			if (diagnostic) stale.push(diagnostic);
-		}
-		return stale;
+		return ok({ ...located.value, errors });
 	}
 
 	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {

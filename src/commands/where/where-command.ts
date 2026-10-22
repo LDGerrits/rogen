@@ -103,15 +103,13 @@ registerCommand(
 
 			const answers = new WhereAnswers(locations);
 			const failure = DiagnosticsError.of(answers.errors);
-			const { stale } = locations;
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					whereDocument(answers, stale, skipped),
+					whereDocument(answers, skipped),
 					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
-			for (const diagnostic of stale) logService.diagnostic(diagnostic);
 			return failure ? err(failure) : ok(undefined);
 		}
 
@@ -129,7 +127,6 @@ registerCommand(
 				const located = await buildService.locate(selection.value, {
 					args,
 					cwd,
-					staleness: true,
 				});
 				return located.map((locations) => ({ locations, skipped: [] }));
 			}
@@ -143,7 +140,6 @@ registerCommand(
 				const located = await buildService.locate(selection, {
 					args: whole ? [] : indexes.map((index) => args[index]),
 					cwd,
-					staleness: true,
 				});
 				if (located.isErr()) return located;
 				parts.push(located.value);
