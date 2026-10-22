@@ -17,13 +17,13 @@ A key routes a file in four ways:
 - Marker file: an empty `@server` routes its directory and everything below, and the directory keeps its name. A dot-file like `.server` routes nothing and warns.
 - Rojo's `.server` and `.client` at the end of a script name set its class (Script, LocalScript), and also route when a key of that name is declared. No other key routes through a dot, and nothing but a script does: `Types.shared.luau` is named `Types.shared` and `Config.server.json` is `Config.server`, and both warn; write `Types@shared.luau` and `Config@server.json`.
 
-`-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file falls to `*`, and `rogen where` says `route * (fallback)`.
+`-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file is unrouted, or falls to `*` in a config that declares it, and `rogen where` says `route * (fallback)`.
 
 Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns. An `@` that nearly spells a route (`Save@sever.luau`) warns with the closest key; other `@` names, such as packages, stay silent.
 
 The governing route is the first one found walking down from the source path. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name. A nested `@key` naming another route is an error (`server/Util@client.luau`), and one restating the governing route is fine. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients (a `Shared/Server/@shared` marker says the folder is meant to), and when a Script or LocalScript lands where it never runs.
 
-`*` is the fallback for files no route matched. Without it those files are left out, with a warning.
+A file no route matches is left out, with a warning that names the routing folders of its feature to move it into. A config may declare `*` as the fallback for such files; `init` writes none unless given `--unmatched shared`.
 
 A file's instance path is its route's target, then its folders without the routing folder, then its name as Rojo reads it (`Save.server.luau` is `Save`). A name that starts with `^` (`^Animate.client.luau`, or a folder `^Hud/`) lands directly at the target instead, dropping every folder in between; quote it in a shell. `^init.luau` is an error: hoist the folder.
 

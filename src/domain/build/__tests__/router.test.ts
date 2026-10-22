@@ -751,7 +751,32 @@ describe("Router", () => {
 					abs("src/A.luau"),
 					abs("src/Inventory/B.luau"),
 				]);
-				expect(warnings[0].message).toContain('"*"');
+			});
+
+			it("should name the routing folders of the file's feature to move it into", async () => {
+				await write(
+					"src/A.luau",
+					"src/Shop/Secrets.luau",
+					"src/Shop/Data/Prices.luau"
+				);
+
+				const warnings = (
+					await route({
+						routes: {
+							Server: "ServerScriptService",
+							Client: "StarterPlayer/StarterPlayerScripts",
+							Shared: "ReplicatedStorage/Shared",
+						},
+					})
+				)
+					.unwrap()
+					.warnings.filter(({ code }) => code === "route.unrouted");
+
+				expect(warnings.map(({ message }) => message)).toEqual([
+					`matched no route, so it is left out. Move it into ${abs("src/Server")}, Client or Shared.`,
+					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared.`,
+					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared.`,
+				]);
 			});
 
 			it("should warn about every unrouted file", async () => {

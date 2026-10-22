@@ -194,8 +194,8 @@ stdout:
             "name": "unmatched",
             "type": "string",
             "enum": [
-              "shared",
-              "leave"
+              "leave",
+              "shared"
             ]
           },
           {

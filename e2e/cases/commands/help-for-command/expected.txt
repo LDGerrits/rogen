@@ -118,9 +118,12 @@ stdout:
           --source-path <PATH>             A folder with your scripts, relative to here; repeat for
                                            several. src when not given, or where the code is.
                                            (repeatable)
-          --unmatched <UNMATCHED>          Where files that match no route go: into the shared route
-                                           (the default), or nowhere, which Rogen warns about.
-                                           [possible values: shared, leave]
+          --unmatched <UNMATCHED>          Where files that match no route go: nowhere (the default),
+                                           which Rogen warns about, naming the routing folders to move
+                                           each into; or into the shared route, as a "*" route. A
+                                           lifted project file that mounted a whole source path keeps
+                                           "*", which places what that node held. [possible values:
+                                           leave, shared]
       -v, --verbose                        Print debug output; -vv, trace output. (repeatable)
       -V, --version                        Print the version.
   

@@ -74,7 +74,7 @@ stdout:
       },
       {
         "question": "unmatched",
-        "value": "shared",
+        "value": "leave",
         "flag": "--unmatched"
       },
       {
@@ -185,8 +185,7 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

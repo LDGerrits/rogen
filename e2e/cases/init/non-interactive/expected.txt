@@ -1,10 +1,14 @@
 $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
+stderr:
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared. (route.unrouted)
 
 $ rogen build
 exit 0
 stdout: (not shown)
+stderr:
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared. (route.unrouted)
 
 written:
   .git/
@@ -25,18 +29,13 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Inventory: Folder
-        Types: ModuleScript  <- src/Inventory/Types.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Save: Script  <- src/Inventory/Save.server.luau

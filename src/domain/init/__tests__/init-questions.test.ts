@@ -688,7 +688,34 @@ describe("InitQuestions askProject", () => {
 					"mount:shared",
 					"client",
 				]);
-				expect(result?.fallback).toBe(true);
+				expect(result?.fallback).toBe(false);
+			});
+
+			it("should keep the fallback when the project file mounted a whole source path, which only the fallback places", async () => {
+				const prompts = new MockPromptService({});
+				let initial: string | undefined;
+				const original = prompts.select.bind(prompts);
+				prompts.select = ((options: Parameters<typeof original>[0]) => {
+					if (options.message === "Files that match no route")
+						initial = options.initialValue as string;
+					return original(options);
+				}) as typeof prompts.select;
+				const project = JSON.stringify({
+					tree: {
+						$className: "DataModel",
+						ReplicatedStorage: { Common: { $path: "src" } },
+					},
+				});
+
+				const unattended = (
+					await askLifting(new MockPromptService([], false), {
+						project,
+					})
+				).unwrap();
+				await askLifting(prompts, { project });
+
+				expect(unattended?.fallback).toBe(true);
+				expect(initial).toBe("shared");
 			});
 
 			it("should accept a standard route id for the derived route that replaced it", async () => {
@@ -755,15 +782,15 @@ describe("InitQuestions askProject", () => {
 			});
 
 			expect(choices.routes).toEqual(["server", "starterGui"]);
-			expect(choices.fallback).toBe(true);
+			expect(choices.fallback).toBe(false);
 		});
 
-		it("should let files that match no route be left out", async () => {
+		it("should let files that match no route go to the shared route", async () => {
 			const choices = await asked(luau, {
-				"Files that match no route": "leave",
+				"Files that match no route": "shared",
 			});
 
-			expect(choices.fallback).toBe(false);
+			expect(choices.fallback).toBe(true);
 		});
 
 		it("should say what the fallback options do, per language", async () => {

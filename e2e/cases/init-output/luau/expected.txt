@@ -2,7 +2,7 @@ $ rogen init
 exit 0
 stdout:
   rogen init
-  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -15,10 +15,14 @@ stdout:
     Add your own routes under "routes" in default.rogen.json.
     Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
   Wrote 3 files.
+stderr:
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared. (route.unrouted)
 
 $ rogen build
 exit 0
 stdout: (not shown)
+stderr:
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared. (route.unrouted)
 
 written:
   .git/
@@ -39,18 +43,13 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      Inventory: Folder
-        Types: ModuleScript  <- src/Inventory/Types.luau
   ServerScriptService: ServerScriptService
     Inventory: Folder
       Save: Script  <- src/Inventory/Save.server.luau

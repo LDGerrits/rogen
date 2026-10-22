@@ -163,6 +163,7 @@ describe("TreePlan", () => {
 						...choices,
 						tree: project,
 						routes: ticked(starting.tickedByDefault),
+						fallback: starting.fallbackByDefault,
 					},
 					existingFiles: new Set(["default.project.json"]),
 				}).unwrap();
@@ -175,7 +176,6 @@ describe("TreePlan", () => {
 					Server: "ServerScriptService/Server",
 					Shared: "ReplicatedStorage/Shared",
 					Client: "StarterPlayer/StarterPlayerScripts/Client",
-					"*": "ReplicatedStorage/Shared",
 				});
 			});
 

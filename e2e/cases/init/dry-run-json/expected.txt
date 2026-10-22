@@ -79,7 +79,7 @@ stdout:
       },
       {
         "question": "unmatched",
-        "value": "shared",
+        "value": "leave",
         "flag": "--unmatched"
       },
       {

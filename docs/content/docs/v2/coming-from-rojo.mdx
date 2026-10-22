@@ -25,8 +25,7 @@ Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and 
 		"routes": {
 			"Server": "ServerScriptService",
 			"Client": "StarterPlayer/StarterPlayerScripts",
-			"Shared": "ReplicatedStorage/Shared",
-			"*": "ReplicatedStorage/Shared"
+			"Shared": "ReplicatedStorage/Shared"
 		}
 	}
 }
@@ -82,21 +81,20 @@ rogen init
 		"routes": {
 			"Shared": "ReplicatedStorage/Shared",
 			"Server": "ServerScriptService/Server",
-			"Client": "StarterPlayer/StarterPlayerScripts/Client",
-			"*": "ReplicatedStorage/Shared"
+			"Client": "StarterPlayer/StarterPlayerScripts/Client"
 		}
 	}
 }
 ```
 
 - A mount of a folder directly in a source path (`src/server`) becomes a route named after the folder, to the node's path. The key matches with its first letter in either case, so `server/` and `Server/` both route.
-- A mount of a source path itself (`"ReplicatedStorage/Common": { "$path": "src" }`) becomes the `*` route, which takes files that match no route. Otherwise `*` goes where the `shared` folder went.
+- A mount of a source path itself (`"ReplicatedStorage/Common": { "$path": "src" }`) becomes the `*` route, which takes files that match no route, as the mount held them. Otherwise `init` writes no `*`, as Rojo synced no file outside a `$path`; `--unmatched shared` sends such files where the `shared` folder went.
 - A mount no route can make stays a `$path` mount in the tree, which builds exactly as Rojo built it, and `init` says why: a mount deeper down (`src/server/Admin`), a folder name that is no route name (`my-lib`, `2fast`, `Game Code`), a folder mounted twice, or a name another mount took. A folder with its own `default.project.json` mounts as the nested project it is. Rogen skips what the tree mounts, so the folder is only there. Move such a folder up into a source path, or give it a marker such as `Admin@server`, when you want routing to place it.
 - A mount whose folder holds an `init` file (`init.server.luau`, as `rojo init` writes for `src/server`, or `init.meta.json`) stays a `$path` mount in the tree. Rojo reads such a folder as one instance, a Script or whatever its init file makes, and a route can't make that. Rogen leaves the folder to Rojo, as it does for any `$path` into a source path.
 - What a mount carried besides its `$path` (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` and child nodes) stays on its node in the `tree`, where the route lands, and the file builds the instances it did. A node no route can land on gets the warning [`init.settingsDropped`](/docs/v2/diagnostics#init-settingsdropped) and is left out.
 - A project file whose root is not a DataModel, such as the `$path: "src"` that `rojo init --kind model` and `--kind plugin` write, is lifted as it is, with no `routes` and no `sourcePaths`: there is no service to route to, so Rojo keeps reading the folder.
 
-- Files in a source folder that no node mounted (`src/Loose.luau`) were ignored by Rojo, and routes place them. `init` lists them with [`init.unmountedFiles`](/docs/v2/diagnostics#init-unmountedfiles); list them under `globIgnorePaths` to leave them out as Rojo did, or `--unmatched leave` to stop the `*` route taking them.
+- Files in a source folder that no node mounted (`src/Loose.luau`) were ignored by Rojo. A route that matches one places it, such as the `.server` suffix of `src/scratch/x.server.luau`; the others stay out, each with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning. `init` lists them with [`init.unmountedFiles`](/docs/v2/diagnostics#init-unmountedfiles); list them under `globIgnorePaths` to leave them all out, silently, as Rojo did.
 
 - Any other `*.project.json` in the folder (`test.project.json`, `place.project.json`) is not lifted and stays as you wrote it. `init` lists them as left alone, and `rogen build test.project.json` runs one as a plain Rojo project. To have Rogen write one, make it a complete `test.rogen.json`; see [More Files](/docs/v2/configuration#more-files). The `*.project.json` line `init` adds to `.gitignore` covers these files too, so add `!test.project.json` to keep one tracked.
 

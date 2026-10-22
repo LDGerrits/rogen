@@ -1,6 +1,8 @@
 $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
+stderr:
+  src/A.luau - warning: matched no route, so it is left out. Move it into src/Server, Client or Shared. (route.unrouted)
 
 written:
   .git/
@@ -22,14 +24,10 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }
 
 $ rojo sourcemap default.project.json
 project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    Shared: Folder
-      A: ModuleScript  <- src/A.luau

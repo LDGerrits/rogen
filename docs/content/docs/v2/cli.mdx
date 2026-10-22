@@ -297,7 +297,7 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--project-file lift\|new` | With a hand-written `default.project.json`: lift its tree (the default) or start a new one. |
 | `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. |
 | `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. When a lifted project file already mounts a folder under one of these names, `server` means that route, which is also called `mount:server`. |
-| `--unmatched shared\|leave` | Where files that match no route go. |
+| `--unmatched leave\|shared` | Where files that match no route go: nowhere by default, each with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning, or to the shared route as a `*` route. A lifted project file that mounted a whole source path keeps that mount as `*`. |
 | `--[no-]agent-rules` | Rogen's rules for coding agents. Added by default. |
 | `--[no-]agent-hook` | The hook that reports warnings to the coding agents found. Not added by default. |
 | `--[no-]sample` | The Greeter sample of a new place. Written by default in a folder with no code. |

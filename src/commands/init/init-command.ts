@@ -107,9 +107,9 @@ const InitOptions = [
 	{
 		name: "unmatched",
 		type: "string",
-		values: ["shared", "leave"],
+		values: ["leave", "shared"],
 		description:
-			"Where files that match no route go: into the shared route (the default), or nowhere, which Rogen warns about.",
+			'Where files that match no route go: nowhere (the default), which Rogen warns about, naming the routing folders to move each into; or into the shared route, as a "*" route. A lifted project file that mounted a whole source path keeps "*", which places what that node held.',
 	},
 	{
 		name: "sample",
