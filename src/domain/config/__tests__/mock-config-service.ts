@@ -144,6 +144,12 @@ export class MockConfigService implements ConfigService {
 		return [];
 	}
 
+	async resolveNames(
+		args: readonly string[]
+	): Promise<Result<string[], Error>> {
+		return ok([...args]);
+	}
+
 	async coversOf(target: string): Promise<ConfigCover[]> {
 		return this.covers(target);
 	}

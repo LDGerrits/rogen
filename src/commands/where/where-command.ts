@@ -58,7 +58,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it, each answer headed by its config's name when they differ. A path that no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document; a .rogen.json lists every file of that config. Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it, each answer headed by its config's name when they differ. A path that no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document; a .rogen.json lists every file of that config, and so does a name that is not a path on disk but names a config as build reads it (game for game.rogen.json, else game.project.json). Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -116,20 +116,23 @@ registerCommand(
 		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */
 		private async locate(
 			accessor: ServicesAccessor,
-			args: readonly string[]
+			given: readonly string[]
 		): Promise<Result<Located, Error>> {
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const { cwd } = accessor.get(EnvironmentService);
-			if (args.length === 0) {
+			if (given.length === 0) {
 				const selection = await configService.select([]);
 				if (selection.isErr()) return selection;
 				const located = await buildService.locate(selection.value, {
-					args,
+					args: given,
 					cwd,
 				});
 				return located.map((locations) => ({ locations, skipped: [] }));
 			}
+			const resolved = await configService.resolveNames(given);
+			if (resolved.isErr()) return resolved;
+			const args = resolved.value;
 			const asked = await buildService.askedAbout({ args, cwd });
 			const covered = await configService.selectCovering(
 				asked.map((one) => ("path" in one ? one.path : undefined))
