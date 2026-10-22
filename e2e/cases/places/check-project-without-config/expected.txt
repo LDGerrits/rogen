@@ -1,0 +1,16 @@
+$ rogen build dist
+exit 0
+stdout: (not shown)
+
+$ rm dist.rogen.json
+exit 0
+
+$ rogen check dist.project.json
+exit 0
+
+$ rogen build dist
+exit 0
+stdout: (not shown)
+
+written:
+  dist.project.json

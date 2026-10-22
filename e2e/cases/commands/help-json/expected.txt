@@ -31,10 +31,6 @@ stdout:
           {
             "name": "watch",
             "type": "boolean"
-          },
-          {
-            "name": "force",
-            "type": "boolean"
           }
         ],
         "effects": [
@@ -143,10 +139,6 @@ stdout:
           {
             "name": "dry-run",
             "short": "n",
-            "type": "boolean"
-          },
-          {
-            "name": "customise",
             "type": "boolean"
           },
           {

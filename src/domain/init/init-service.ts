@@ -37,8 +37,6 @@ export interface InitChoices {
 	readonly sample?: boolean;
 	/** Whether a new project is several places under `places/`, rather than one. */
 	readonly places?: boolean;
-	/** Asks every question at once in a terminal, with no summary of the plan first. */
-	readonly customise?: boolean;
 }
 
 /** A choice a run that couldn't ask took for itself, and the flag that makes it another. */

@@ -37,11 +37,9 @@ import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
 import { AssembledFile, Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
-import { WrittenRecords } from "./written-records.js";
 
 interface WriteOptions {
 	readonly rewrite?: boolean;
-	readonly force?: boolean;
 }
 
 type Attempt = BuiltConfig | FailedBuild;
@@ -71,14 +69,13 @@ export class CoreBuildService implements BuildService {
 	constructor(
 		private readonly fileSystemService: FileSystemService,
 		private readonly indexService: IndexService,
-		private readonly syncTools: readonly SyncTool[],
-		private readonly records: WrittenRecords = new WrittenRecords()
+		private readonly syncTools: readonly SyncTool[]
 	) {
-		this.writer = new OutputWriter(fileSystemService, records);
+		this.writer = new OutputWriter(fileSystemService);
 	}
 
-	build(selection: ConfigSelection, force = false): Promise<BuildRun> {
-		return this.buildAll(selection, true, force);
+	build(selection: ConfigSelection): Promise<BuildRun> {
+		return this.buildAll(selection, true);
 	}
 
 	/** Builds every selected config as `build` does, and writes nothing. */
@@ -88,8 +85,7 @@ export class CoreBuildService implements BuildService {
 
 	private async buildAll(
 		selection: ConfigSelection,
-		write: boolean,
-		force = false
+		write: boolean
 	): Promise<BuildRun> {
 		const { set, unloaded } = BuildSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths);
@@ -97,12 +93,10 @@ export class CoreBuildService implements BuildService {
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing
 		);
-		const attempts = write ? built : await this.failOrphaned(built);
 		const settled = await this.settle(
-			attempts,
+			built,
 			unloaded.map(({ label }) => label),
-			write,
-			{ force }
+			write
 		);
 		const builds = groupBy(
 			[...unloaded, ...settled],
@@ -170,10 +164,7 @@ export class CoreBuildService implements BuildService {
 		listing: IndexReader,
 		built: ReadonlyMap<ResolvedConfig, AssembledFile>
 	): Promise<Diagnostic[]> {
-		const staleness = new ProjectFileStaleness(
-			this.fileSystemService,
-			this.records
-		);
+		const staleness = new ProjectFileStaleness(this.fileSystemService);
 		const builder = new ConfigBuilder(
 			this.fileSystemService,
 			listing,
@@ -332,30 +323,9 @@ export class CoreBuildService implements BuildService {
 		);
 	}
 
-	/** A check fails an adopted project file whose config is gone, as a build does. */
-	private failOrphaned(attempts: readonly Attempt[]): Promise<Attempt[]> {
-		return Promise.all(
-			attempts.map(async (attempt) => {
-				if (attempt instanceof FailedBuild || !attempt.config.isAdopted)
-					return attempt;
-				const orphaned = await this.writer.orphaned(
-					attempt.config.projectFile
-				);
-				return orphaned
-					? new FailedBuild(
-							attempt.config,
-							orphaned.diagnostics,
-							attempt.findings
-						)
-					: attempt;
-			})
-		);
-	}
-
 	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
 		const stale = await new ProjectFileStaleness(
-			this.fileSystemService,
-			this.records
+			this.fileSystemService
 		).diagnostic(attempt.config, async () => attempt.projectFile);
 		if (!stale) return attempt;
 		return {
@@ -381,11 +351,10 @@ export class CoreBuildService implements BuildService {
 				continue;
 			}
 			const written = config.isAdopted
-				? await this.checkAdopted(config)
+				? ok(false)
 				: await this.writer.write(
 						new OutputFile(config.projectFile),
 						projectFile,
-						config.file,
 						options
 					);
 			if (written.isErr()) failed = config.label;
@@ -406,13 +375,6 @@ export class CoreBuildService implements BuildService {
 			);
 		}
 		return builds;
-	}
-
-	private async checkAdopted(
-		config: ResolvedConfig
-	): Promise<Result<boolean, DiagnosticsError>> {
-		const orphaned = await this.writer.orphaned(config.projectFile);
-		return orphaned ? err(orphaned) : ok(false);
 	}
 
 	private static unwritten(

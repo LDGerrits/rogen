@@ -12,6 +12,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
+	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -51,7 +52,7 @@ describe("init command", () => {
 		});
 		return harness.run("init", {
 			positionals,
-			options: { customise: true, ...options },
+			options,
 		});
 	};
 
@@ -126,7 +127,7 @@ describe("init command", () => {
 					run: ["rbxtsc -w", "rogen serve"],
 					edits: [
 						'Add your own routes under "routes" in default.rogen.json.',
-						"Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
+						"Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
 					],
 				},
 			});
@@ -241,7 +242,7 @@ describe("init command", () => {
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				"info: Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
+				"info: Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
 				"outro: Wrote 7 files.",
 			]);
 		});
@@ -282,7 +283,7 @@ describe("init command", () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				new MockPromptService([["agents"], true]),
+				new MockPromptService([["agents"], "yes"]),
 				logService
 			);
 
@@ -911,13 +912,21 @@ describe("init command", () => {
 		});
 
 		it("should write the answers", async () => {
-			const prompts = new MockPromptService({
-				Language: "luau",
-				"Does Darklua process your code before Rojo syncs it?": true,
-				"Source paths": "src, lib",
-				"Compiled path": "out",
-				Routes: [],
-			});
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				"luau",
+				true,
+				"one",
+				"src, lib",
+				"out",
+				[],
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
 
 			await runInit(prompts);
 

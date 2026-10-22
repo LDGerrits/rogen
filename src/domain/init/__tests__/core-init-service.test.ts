@@ -14,7 +14,13 @@ import {
 	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
-import { PromptService } from "../../../platform/prompt/prompt-service.js";
+import {
+	ConfirmPromptOptions,
+	MultiSelectPromptOptions,
+	PromptService,
+	SelectPromptOptions,
+	TextPromptOptions,
+} from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
@@ -24,6 +30,66 @@ const WHAT_TO_CHANGE = "What do you want to change?";
 const directory = path.resolve("/mock/my-game");
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
+
+const SUMMARY_QUESTIONS = [
+	"Create this project?",
+	"Make these changes?",
+	"Add this place?",
+];
+
+class CustomiseFirst implements PromptService {
+	declare readonly _serviceBrand: undefined;
+	readonly isInteractive = true;
+	private readonly answers = new Map<string, unknown>();
+	private summaries = 0;
+
+	constructor(private readonly inner: PromptService) {}
+
+	private async once<T>(
+		message: string,
+		ask: () => Promise<T | undefined>
+	): Promise<T | undefined> {
+		if (this.answers.has(message)) return this.answers.get(message) as T;
+		const answer = await ask();
+		this.answers.set(message, answer);
+		return answer;
+	}
+
+	async select<T extends string>(
+		options: SelectPromptOptions<T>
+	): Promise<T | undefined> {
+		if (SUMMARY_QUESTIONS.includes(options.message))
+			return (this.summaries++ === 0 ? "customise" : "yes") as T;
+		return this.once(options.message, () => this.inner.select(options));
+	}
+
+	autocomplete<T extends string>(
+		options: SelectPromptOptions<T>
+	): Promise<T | undefined> {
+		return this.once(options.message, () =>
+			this.inner.autocomplete(options)
+		);
+	}
+
+	text(options: TextPromptOptions): Promise<string | undefined> {
+		return this.once(options.message, () => this.inner.text(options));
+	}
+
+	confirm(options: ConfirmPromptOptions): Promise<boolean | undefined> {
+		return this.once(options.message, () => this.inner.confirm(options));
+	}
+
+	multiSelect<T extends string>(
+		options: MultiSelectPromptOptions<T>
+	): Promise<readonly T[] | undefined> {
+		return this.once(options.message, () =>
+			this.inner.multiSelect(options)
+		);
+	}
+}
+
+const askingEach = (prompts: PromptService): PromptService =>
+	new CustomiseFirst(prompts);
 
 describe("CoreInitService", () => {
 	let fileSystem: MemoryFileSystemService;
@@ -50,12 +116,6 @@ describe("CoreInitService", () => {
 			new CoreConfigService(fileSystem, environmentService),
 			processes
 		);
-		const plan = service.plan.bind(service);
-		service.plan = (options = {}) =>
-			plan({
-				...options,
-				choices: { customise: true, ...options.choices },
-			});
 		return service;
 	};
 
@@ -243,7 +303,7 @@ describe("CoreInitService", () => {
 
 			const plan = (
 				await serviceFor(
-					new MockPromptService([["agents"], true])
+					askingEach(new MockPromptService([["agents"], true]))
 				).plan()
 			).unwrap();
 
@@ -316,7 +376,9 @@ describe("CoreInitService", () => {
 			plan?.files.map(({ fileName }) => fileName);
 		const planned = async (prompts = answersEverything()) =>
 			(
-				await serviceFor(prompts).plan({ choices: { sample: false } })
+				await serviceFor(askingEach(prompts)).plan({
+					choices: { sample: false },
+				})
 			).unwrap();
 		const fileOf = (
 			plan: { files: readonly PlannedFile[] } | undefined,
@@ -569,7 +631,7 @@ describe("CoreInitService", () => {
 
 			const plan = (
 				await serviceFor(
-					new MockPromptService([["agents"], true])
+					askingEach(new MockPromptService([["agents"], true]))
 				).plan()
 			).unwrap();
 
@@ -836,7 +898,9 @@ describe("CoreInitService", () => {
 			);
 			const prompts = new MockPromptService({});
 
-			const plan = (await serviceFor(prompts).plan()).unwrap();
+			const plan = (
+				await serviceFor(askingEach(prompts)).plan()
+			).unwrap();
 
 			expect(prompts.asked).toContain(pinQuestion("rokit"));
 			expect(names(plan)).not.toContain("rokit.toml");
@@ -876,7 +940,9 @@ describe("CoreInitService", () => {
 				[pinQuestion("rokit")]: false,
 			});
 
-			const plan = (await serviceFor(declined).plan()).unwrap();
+			const plan = (
+				await serviceFor(askingEach(declined)).plan()
+			).unwrap();
 
 			expect(plan?.commands).toEqual([]);
 			expect(names(plan)).not.toContain("rokit.toml");
@@ -918,7 +984,9 @@ describe("CoreInitService", () => {
 		it("should ask before installing Rokit, and show what it runs", async () => {
 			const prompts = new MockPromptService({ [INSTALL_QUESTION]: true });
 
-			const plan = (await serviceFor(prompts).plan()).unwrap();
+			const plan = (
+				await serviceFor(askingEach(prompts)).plan()
+			).unwrap();
 
 			expect(prompts.asked).toContain(INSTALL_QUESTION);
 			expect(plan?.commands).toHaveLength(3);
@@ -972,7 +1040,9 @@ describe("CoreInitService", () => {
 				[INSTALL_QUESTION]: false,
 			});
 
-			const plan = (await serviceFor(declined).plan()).unwrap();
+			const plan = (
+				await serviceFor(askingEach(declined)).plan()
+			).unwrap();
 
 			expect(plan?.commands).toEqual([]);
 			expect(declined.asked).not.toContain(PLUGIN_QUESTION);
@@ -981,11 +1051,13 @@ describe("CoreInitService", () => {
 		it("should install the plugin after the pin when asked, else name the command", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 			const yes = (
-				await serviceFor(new MockPromptService({})).plan()
+				await serviceFor(askingEach(new MockPromptService({}))).plan()
 			).unwrap();
 			const no = (
 				await serviceFor(
-					new MockPromptService({ [PLUGIN_QUESTION]: false })
+					askingEach(
+						new MockPromptService({ [PLUGIN_QUESTION]: false })
+					)
 				).plan()
 			).unwrap();
 
@@ -1333,7 +1405,7 @@ describe("CoreInitService", () => {
 			const planWith = async (answers: PromptScript) => {
 				await write("default.rogen.json", "{}");
 				const prompts = new MockPromptService(answers);
-				const result = await serviceFor(prompts).plan();
+				const result = await serviceFor(askingEach(prompts)).plan();
 				return { prompts, result };
 			};
 
@@ -1403,8 +1475,7 @@ describe("CoreInitService", () => {
 
 	describe("the summary of a new project", () => {
 		const CREATE = "Create this project?";
-		const review = (prompts: PromptService) =>
-			serviceFor(prompts).plan({ choices: { customise: false } });
+		const review = (prompts: PromptService) => serviceFor(prompts).plan();
 
 		it("should ask the language and the layout of an empty folder, then show the summary only", async () => {
 			const prompts = new MockPromptService({
@@ -1525,9 +1596,7 @@ describe("CoreInitService", () => {
 			});
 			const service = serviceFor(prompts);
 
-			const plan = (
-				await service.plan({ choices: { customise: false } })
-			).unwrap()!;
+			const plan = (await service.plan()).unwrap()!;
 			const written: string[] = [];
 			await service.write(
 				plan,
@@ -1553,7 +1622,7 @@ describe("CoreInitService", () => {
 
 			const plan = (
 				await serviceFor(prompts).plan({
-					choices: { customise: false, agentRules: true },
+					choices: { agentRules: true },
 				})
 			).unwrap();
 
