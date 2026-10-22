@@ -35,8 +35,7 @@ describe("serve command", () => {
 
 	const serve = async (
 		positionals: string[] = [],
-		options: CommandLine["options"] = {},
-		passthrough?: string[]
+		options: CommandLine["options"] = {}
 	) => {
 		const harness = commandHarness({
 			fs: memFs,
@@ -49,7 +48,6 @@ describe("serve command", () => {
 		running = harness.run("serve", {
 			positionals,
 			options,
-			...(passthrough && { passthrough }),
 		});
 		await settle();
 		return running;
@@ -612,28 +610,12 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should pass the words after -- to the server", async () => {
-		void serve([], {}, ["--port", "40000"]);
-		await settle();
-
-		expect(processes.spawned[0].args).toEqual([
-			"serve",
-			"default.project.json",
-			"--port",
-			"40000",
-		]);
-	});
-
-	it("should pass --address, --port and --allowed-hosts to the server before the words after --", async () => {
-		void serve(
-			[],
-			{
-				address: "0.0.0.0",
-				port: "40000",
-				"allowed-hosts": ["studio.local", "pc.lan"],
-			},
-			["--log-level", "x"]
-		);
+	it("should pass --address, --port and --allowed-hosts to the server", async () => {
+		void serve([], {
+			address: "0.0.0.0",
+			port: "40000",
+			"allowed-hosts": ["studio.local", "pc.lan"],
+		});
 		await settle();
 
 		expect(processes.spawned[0].args).toEqual([
@@ -647,20 +629,7 @@ describe("serve command", () => {
 			"studio.local",
 			"--allowed-hosts",
 			"pc.lan",
-			"--log-level",
-			"x",
 		]);
-	});
-
-	it("should refuse a flag given both as an option and after --, starting nothing", async () => {
-		const error = await failureOf(
-			serve([], { port: "40000" }, ["--port=40001"])
-		);
-
-		expect(error.message).toBe(
-			"--port is given twice, as an option and after '--'. Give it once."
-		);
-		expect(processes.spawned).toEqual([]);
 	});
 
 	it("should refuse a second project, as Rojo's serve does, starting none", async () => {

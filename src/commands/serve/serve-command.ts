@@ -1,6 +1,6 @@
 import { DeferredPromise } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
-import { UsageError, onUnexpectedError } from "../../base/errors.js";
+import { onUnexpectedError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
 	ProjectArgument,
@@ -41,7 +41,7 @@ const AddressOption = {
 	type: "string",
 	placeholder: "address",
 	description:
-		"The address to listen on, for one project. Rojo's own flag; a project's serveAddress sets it in default.rogen.json.",
+		"The address to listen on. Rojo's own flag; it overrides the project's serveAddress.",
 } as const satisfies OptionDescriptor;
 
 const PortOption = {
@@ -49,7 +49,7 @@ const PortOption = {
 	type: "string",
 	placeholder: "port",
 	description:
-		"The port to listen on, for one project. Rojo's own flag; a project's servePort sets it in default.rogen.json.",
+		"The port to listen on. Rojo's own flag; it overrides the project's servePort.",
 } as const satisfies OptionDescriptor;
 
 const AllowedHostsOption = {
@@ -58,7 +58,7 @@ const AllowedHostsOption = {
 	placeholder: "allowed_hosts",
 	multiple: true,
 	description:
-		"A host, besides the address, that may reach every server. Rojo's own flag, from Rojo 7.7.0.",
+		"A host, besides the address, that may reach the server. Rojo's own flag, from Rojo 7.7.0.",
 } as const satisfies OptionDescriptor;
 
 const ServeOptions = [
@@ -76,29 +76,16 @@ type ServeLine = CommandLine<typeof ServeOptions>;
 
 const ServerFlags = [AddressOption, PortOption, AllowedHostsOption] as const;
 
-/** What the server gets: Rojo's flags given to serve, then the words after `--`. */
-function serverArgsOf(line: ServeLine): Result<string[], UsageError> {
-	const passthrough = line.passthrough ?? [];
+/** What the server gets: the flags given to serve, in Rojo's own spelling. */
+function serverArgsOf(line: ServeLine): string[] {
 	const given: string[] = [];
 	for (const { name } of ServerFlags) {
 		const value = line.options[name];
 		if (value === undefined) continue;
-		const flag = `--${name}`;
-		if (
-			passthrough.some(
-				(arg) => arg === flag || arg.startsWith(`${flag}=`)
-			)
-		)
-			return err(
-				new UsageError(
-					`${flag} is given twice, as an option and after '--'.`,
-					"Give it once."
-				)
-			);
 		for (const one of typeof value === "string" ? [value] : value)
-			given.push(flag, one);
+			given.push(`--${name}`, one);
 	}
-	return ok([...given, ...passthrough]);
+	return given;
 }
 
 registerCommand(
@@ -113,11 +100,6 @@ registerCommand(
 					description:
 						"Builds the project file, serves it with Rojo, and rebuilds on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that.",
 					args: ProjectArgument,
-					passthrough: {
-						name: "server args",
-						description:
-							"Passed to every server untouched, after the flags above.",
-					},
 					options: ServeOptions,
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
@@ -147,8 +129,6 @@ registerCommand(
 			if (tooMany) return err(tooMany);
 			const serveService = accessor.get(ServeService);
 			if (!line.options.json) accessor.get(LogService).reserveStdout();
-			const serverArgs = serverArgsOf(line);
-			if (serverArgs.isErr()) return serverArgs;
 
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
@@ -158,7 +138,7 @@ registerCommand(
 				const plan = await serveService.prepare({
 					signal: stopChecks.signal,
 					refs: line.positionals,
-					serverArgs: serverArgs.value,
+					serverArgs: serverArgsOf(line),
 				});
 				if (shutdown.isSettled)
 					return this.stoppedBy(accessor.get(LifecycleService));

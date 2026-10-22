@@ -172,17 +172,10 @@ function formatCommandHelp(
 	const {
 		description,
 		args = [],
-		passthrough,
 		options = [],
 		examples = [],
 	} = command.metadata;
-	const usage = [
-		"rogen",
-		command.id,
-		"[OPTIONS]",
-		...usageArgs(command),
-		passthrough && `[-- <${capitalised(passthrough.name)}>...]`,
-	]
+	const usage = ["rogen", command.id, "[OPTIONS]", ...usageArgs(command)]
 		.filter(Boolean)
 		.join(" ");
 	const subcommands = args.flatMap((arg) => arg.subcommands ?? []);
@@ -191,17 +184,9 @@ function formatCommandHelp(
 		["USAGE", [`${INDENT}${usage}`]],
 		[
 			"ARGS",
-			formatColumns([
-				...args.filter((arg) => !arg.subcommands).map(formatArgument),
-				...(passthrough
-					? [
-							[
-								`-- <${capitalised(passthrough.name)}>...`,
-								passthrough.description,
-							] as [string, string],
-						]
-					: []),
-			]),
+			formatColumns(
+				args.filter((arg) => !arg.subcommands).map(formatArgument)
+			),
 		],
 		[
 			"OPTIONS",

@@ -24,7 +24,7 @@ export class CoreCommandService implements CommandService {
 		const command = this.registry.getCommand(commandId);
 
 		if (!command) return err(unknownCommand(commandId, this.registry));
-		if (line.passthrough?.length && !command.metadata.passthrough) {
+		if (line.passthrough?.length) {
 			return err(
 				new UsageError(
 					`${commandId} takes nothing after '--'.`,

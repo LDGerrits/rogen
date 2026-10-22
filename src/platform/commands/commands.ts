@@ -100,11 +100,6 @@ interface CommandMetadata<
 		}[];
 	}[];
 	readonly options?: O;
-	/** What the words after `--` are for; a command without it takes none. */
-	readonly passthrough?: {
-		readonly name: string;
-		readonly description: string;
-	};
 	readonly examples?: readonly string[];
 	/** What an exit code means for this command where that differs from the general table, by the code as typed (`0`, `1`, `128+N`). */
 	readonly exitCodes?: Readonly<Record<string, string>>;

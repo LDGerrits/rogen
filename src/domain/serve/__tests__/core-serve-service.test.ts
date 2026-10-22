@@ -483,7 +483,7 @@ describe("CoreServeService", () => {
 			).toEqual({
 				run: {
 					command:
-						"rogen serve . --port 34873 -- --address 0.0.0.0 --allowed-hosts 'my pc'",
+						"rogen serve . --port 34873 --address 0.0.0.0 --allowed-hosts 'my pc'",
 					cwd: "/repo",
 				},
 			});

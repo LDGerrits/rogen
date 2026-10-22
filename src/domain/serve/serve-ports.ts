@@ -21,7 +21,7 @@ const FREE_PORT_SEARCH = 20;
 export class ServePorts {
 	private readonly host: string | undefined;
 	private readonly port: Result<number | undefined, UsageError>;
-	/** The server flags a command offered for another port passes on. */
+	/** The flags other than the port that a command offered for another port repeats. */
 	private readonly otherArgs: readonly string[];
 
 	constructor(
@@ -41,7 +41,7 @@ export class ServePorts {
 		return this.port.isErr() ? this.port.error : undefined;
 	}
 
-	/** The address the server will listen on: the flags after `--`, then the project file, then the server's own defaults. */
+	/** The address the server will listen on: the flags given to serve, then the project file, then the server's own defaults. */
 	targetOf(config: ResolvedConfig): ServeTarget {
 		const { server } = this;
 		const { project } = config;
@@ -124,7 +124,7 @@ export class ServePorts {
 		const rest =
 			this.otherArgs.length === 0
 				? ""
-				: ` -- ${this.otherArgs.map(shellWord).join(" ")}`;
+				: ` ${this.otherArgs.map(shellWord).join(" ")}`;
 		const serve = `rogen serve ${this.refOf(config)} --port`;
 		const command = `${serve} ${free ?? "<port>"}${rest}`;
 		return errorDiagnostic(
