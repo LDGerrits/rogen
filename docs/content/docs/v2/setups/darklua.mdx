@@ -22,17 +22,23 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 <Step>
 ### Create the Config
 
-Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, writes Darklua's pin into your toolchain file (you run `rokit install` to get it), and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
+Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, writes Darklua's pin into your toolchain file next to Rojo's (you run `rokit install` to get it) unless a toolchain file already pins it or `darklua --version` already runs, and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
 
 `init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A config repeats what it needs and reads no other file, so a change to `routes` or `tree` goes into both.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
-    `init` writes `default.rogen.json` and, beside it, a `dist.rogen.json` that sets `"compiledPath": "dist"`:
+    `init` writes `default.rogen.json` and, beside it, a `dist.rogen.json` that repeats its `tree` and sets `"compiledPath": "dist"`:
 
     ```json title="dist.rogen.json"
     {
     	"name": "Game",
+    	"tree": {
+    		"$className": "DataModel",
+    		"Lighting": { "$path": "place/Lighting" },
+    		"SoundService": { "$path": "place/SoundService" },
+    		"Workspace": { "$path": "place/Workspace" }
+    	},
     	"rogen": {
     		"sourcePaths": ["src"],
     		"routes": {
@@ -44,6 +50,8 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
     	}
     }
     ```
+
+    The `name` is the project folder's name (`Game` here). With `--no-sample` the `tree` is `"$className": "DataModel"` only.
   </Tab>
   <Tab value="roblox-ts">
     `rbxtsc` compiles `src` into `out`, which `default.rogen.json` sets as its `compiledPath`, and Darklua processes `out` into the compiled path of `dist.rogen.json`. `init` writes both, and `dist.rogen.json` repeats the `tree` of `default.rogen.json`:

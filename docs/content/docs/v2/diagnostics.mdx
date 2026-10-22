@@ -268,8 +268,7 @@ Rename it to the key, or declare it as written if it's meant to route. `SHARED/`
 Warning. A file sits in a plain folder named after a server route, such as `Server/` or `(Server)/`, that an outer route outranks, so the outer route, which replicates to clients, places it. Server code under `Shared/` ships to every client.
 
 ```
-default.rogen.json - warning: 1 file under a server-only route ships to clients, because an outer route governs it: (route.serverCodeShipped)
-  src/Shared/(Server)/Datastore.luau (ships to clients as ReplicatedStorage/shared/Datastore: move it out of the "shared" route's files if it's server code, or keep it there with a "@shared" marker file in its folder)
+src/Shared/(Server)/Datastore.luau - warning: ships to clients as ReplicatedStorage/Shared/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
 ```
 
 Move the file out of the replicating route's folder, for example from `Shared/Server/` to `Server/`. If the folder is meant to replicate, put a marker file that restates the governing route in it, such as `Shared/Server/@shared`: it covers every file below it. `Secret@shared.luau` covers just that file. A route written with `@`, like `Shared/Data@server.luau`, is the [`route.ignoredAt`](#route-ignoredat) error instead. See [Server Code Under a Replicating Route](/docs/v2/core-concepts/routing#server-code-under-a-replicating-route).
