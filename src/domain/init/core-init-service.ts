@@ -18,6 +18,7 @@ import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
+	InitChoices,
 	InitOptions,
 	InitPlan,
 	InitPurpose,
@@ -26,7 +27,6 @@ import {
 	PresentItem,
 } from "./init-service.js";
 import { InitAdditions } from "./init-additions.js";
-import { ProjectChanger } from "./project-changer.js";
 import { ReviewMode, ReviewPrompts } from "./review-prompts.js";
 import { InitSummary } from "./init-summary.js";
 import { Setup } from "./setup.js";
@@ -34,6 +34,20 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
+
+const NEW_PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
+	["language", "--language"],
+	["kind", "--kind"],
+	["skipGit", "--skip-git"],
+	["projectFile", "--project-file"],
+	["sample", "--sample"],
+	["routes", "--route"],
+	["unmatched", "--unmatched"],
+	["sourcePaths", "--source-path"],
+	["compiledPath", "--compiled-path"],
+	["darklua", "--darklua"],
+	["packages", "--package"],
+];
 
 const PURPOSE_QUESTIONS: Readonly<Record<InitPurpose, string>> = {
 	create: "Create this project?",
@@ -259,57 +273,21 @@ export class CoreInitService implements InitService {
 				"There is no hook to add.",
 				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
 			);
-		if (!directory.hasConfigs) {
-			for (const [key, flag] of [
-				["unroutes", "--no-route"],
-				["unsourcePaths", "--no-source-path"],
-			] as const)
-				if (choices[key] !== undefined)
-					throw new UsageError(
-						`${flag} is for a project that has a default.rogen.json, and there is none here.`
-					);
+		if (!directory.hasConfigs)
 			return this.planWith(directory, questions, [
 				new ProjectSetup(directory, questions, this.fileSystemService),
 				agents,
 				tools,
 			]);
-		}
-		ProjectChanger.rejectNewProjectFlags(
-			questions,
-			directory.configFiles[0]
-		);
-		const changer = await ProjectChanger.of(
-			this.fileSystemService,
-			directory,
-			questions
-		);
+		this.rejectNewProjectFlags(choices, directory.configFiles[0]);
 		const additions = new InitAdditions(
 			questions,
 			agentFile.value,
 			hooks.value,
 			tools,
 			ToolchainSetup.pinnedIn(manifests),
-			directory.path,
-			changer
+			directory.path
 		);
-		if (ProjectChanger.hasFlags(questions)) {
-			if (!changer)
-				throw new UsageError(
-					`${directory.configFiles[0]} can't be read as JSON, so init can't change it.`,
-					"Fix it, then run init again."
-				);
-			const asked = additions.requested();
-			return this.planWith(
-				directory,
-				questions,
-				[
-					changer.setup(() => changer.fromFlags()),
-					...(asked ?? []),
-					...additions.toolsForChanges(),
-				],
-				{ present: additions.presentAsked(), purpose: "change" }
-			);
-		}
 		const requested = additions.requested();
 		if (requested)
 			return this.planWith(directory, questions, requested, {
@@ -335,6 +313,19 @@ export class CoreInitService implements InitService {
 			present: additions.presentAsked(),
 			purpose: "change",
 		});
+	}
+
+	/** A flag that answers a question of a new project is an error where a config exists, since `init` doesn't change one. */
+	private rejectNewProjectFlags(
+		choices: InitChoices,
+		configFile: string
+	): void {
+		for (const [key, flag] of NEW_PROJECT_FLAGS)
+			if (choices[key] !== undefined)
+				throw new UsageError(
+					`${flag} is for a new project, and ${configFile} exists.`,
+					"init doesn't change a config. Edit the .rogen.json, then run 'rogen check'."
+				);
 	}
 
 	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */

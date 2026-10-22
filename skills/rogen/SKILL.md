@@ -10,7 +10,7 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 
 - Edit code and `.rogen.json` files, never a `*.project.json` that Rogen writes (`X.rogen.json` writes `X.project.json`): change the `.rogen.json`, whose `tree` holds what names can't express.
 - After editing a `.rogen.json`, run `rogen list` in its folder: it shows how the other `.rogen.json` files there (`dist`, `release`) differ from `default`. Each file is complete and none reads another, so keep them in step.
-- To change the setup (a route, source path, package mount, Darklua, places, the workspace file), run `rogen init -y` with the flag for it, such as `--route`, `--no-route`, `--source-path`, `--darklua`, `--places` or `rogen init places/<name>`, and check `rogen init --help`, rather than editing a `.rogen.json`: init keeps its comments, lists what it changed and builds. Edit a `.rogen.json` yourself only for what init has no flag for.
+- To change the setup (a route, source path, package mount, Darklua, the workspace file), edit the `.rogen.json` in place, so its comments stay, then run `rogen check`. `rogen init` starts a project, or adds a place with `rogen init places/<name>`; it never changes a config that exists.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a place's file; a file in `places/shared` has no config and is skipped with a note, so check it through a place (`rogen check places/lobby`).

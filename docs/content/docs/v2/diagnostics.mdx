@@ -761,13 +761,13 @@ Check that the file is writable and that no other program locks it.
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
+Error. The folder already has a `default.rogen.json` or `default.rogen.jsonc`, and `init` never overwrites or changes one. `init` stops here when it has nothing to add and nothing to report, because Rogen's rules, the hook and the Rojo pin are none of them offered and none of them is there already. When they are there, `init` says so and exits 0. In a terminal, `init` offers the agent instructions and the agent hook beside an existing config, and `--agent-rules`, `--agent-hook`, `--rojo` or `--studio-plugin` ask for them without one.
 
 ```
-default.rogen.json - error: this config already exists, and init never overwrites one. To add Rogen's agent rules, the agent hook or the Rojo pin to it, run init with --agent-rules, --agent-hook or --rojo. (init.configExists)
+default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo. (init.configExists)
 ```
 
-Edit the config to change it, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
+Edit the config in place to change it, then run `rogen check`, or run `rogen init` in a terminal, or with one of those flags, to add the agent files. See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 
@@ -819,16 +819,6 @@ default.project.json - warning: 2 files in the source paths are mounted by no no
 ```
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).
-
-### `init.sourcePathRemoved` [#init-sourcepathremoved]
-
-Warning. `init --no-source-path` (or a source path unticked in the menu) took a folder off the source paths of a `default.rogen.json` that has scripts in it. Rogen builds only the source paths, so those scripts leave the game.
-
-```
-default.rogen.json - warning: lib is no longer a source path, so Rogen no longer builds these 2 files in it: Util.luau, Other.server.luau. (init.sourcePathRemoved)
-```
-
-The config changed, not the files. To build them again, put the folder back with `rogen init --source-path lib`.
 
 ## Serve
 

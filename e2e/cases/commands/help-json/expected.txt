@@ -177,11 +177,6 @@ stdout:
             "multiple": true
           },
           {
-            "name": "no-source-path",
-            "type": "string",
-            "multiple": true
-          },
-          {
             "name": "compiled-path",
             "type": "string"
           },
@@ -200,11 +195,6 @@ stdout:
           },
           {
             "name": "route",
-            "type": "string",
-            "multiple": true
-          },
-          {
-            "name": "no-route",
             "type": "string",
             "multiple": true
           },

@@ -1,32 +1,5 @@
-$ rogen init -y --route serverStorage --no-route client
-exit 0
-stdout:
-  rogen init
-  default.rogen.json: added routes.serverStorage.
-  default.rogen.json: removed routes.client.
-  default.project.json · wrote
-  Wrote 1 file.
-
-written:
-  default.project.json
-  default.rogen.json
-
-default.rogen.json:
-{
-	// the routes of the game
-	"tree": { "$className": "DataModel" },
-	"rogen": {
-		"routes": {
-			"server": "ServerScriptService",
-			"shared": "ReplicatedStorage/shared",
-			"mine": "ReplicatedStorage/Mine",
-			"serverStorage": "ServerStorage"
-		}
-	}
-}
-
-$ rojo sourcemap default.project.json
-project: DataModel
-  ReplicatedStorage: ReplicatedStorage
-    shared: Folder
-      Util: ModuleScript  <- src/shared/Util.luau
+$ rogen init -y --route serverStorage
+exit 2
+stdout: (not shown)
+stderr:
+  error: --route is for a new project, and default.rogen.json exists. init doesn't change a config. Edit the .rogen.json, then run 'rogen check'.

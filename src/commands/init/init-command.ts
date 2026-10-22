@@ -70,7 +70,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given. On a project that has a default.rogen.json, init does not change Darklua: the second config file that serves the processed code is written by hand.",
+			"Whether Darklua processes your code before Rojo syncs it. Found from a Darklua config when not given.",
 	},
 	{
 		name: "source-path",
@@ -78,15 +78,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is. On a project that has a default.rogen.json, adds the folder to its source paths.",
-	},
-	{
-		name: "no-source-path",
-		type: "string",
-		multiple: true,
-		placeholder: "path",
-		description:
-			"On a project that has a default.rogen.json: takes a folder off its source paths. The files in it are no longer built, which init lists.",
+			"A folder with your scripts, relative to here; repeat for several. src when not given, or where the code is.",
 	},
 	{
 		name: "compiled-path",
@@ -108,7 +100,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "path",
 		description:
-			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given. On a project that has a default.rogen.json, mounts the folder if the tree doesn't.",
+			"A package folder to mount as it is; repeat for several, or none for no mounts. The installed ones when not given.",
 	},
 	{
 		name: "route",
@@ -116,15 +108,7 @@ const InitOptions = [
 		multiple: true,
 		placeholder: "id",
 		description:
-			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. On a project that has a default.rogen.json, adds the route. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
-	},
-	{
-		name: "no-route",
-		type: "string",
-		multiple: true,
-		placeholder: "id",
-		description:
-			"On a project that has a default.rogen.json: takes a standard route off, when it still has its standard value. Routes of your own are never changed.",
+			"A route to start with: server, client, shared, replicatedFirst, serverStorage or starterGui; repeat for several, or none. The first three when not given. When a lifted project file mounts a folder of that name, the name stands for the route derived from it, which `Took the defaults` and `--json` write as mount:server.",
 	},
 	{
 		name: "unmatched",
@@ -202,8 +186,6 @@ function choicesOf(
 		compiledPath: options["compiled-path"],
 		packages: options.package,
 		routes: options.route,
-		unroutes: options["no-route"],
-		unsourcePaths: options["no-source-path"],
 		unmatched: options.unmatched as InitChoices["unmatched"],
 		sample: options.sample,
 		places: options.places,
@@ -219,7 +201,7 @@ registerCommand(
 				metadata: {
 					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a places folder that has one.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a places folder that has one. It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

@@ -294,18 +294,9 @@ describe("CoreInitService", () => {
 			return values;
 		};
 
-		it("should offer the areas of the config, and agents until the rules are there", async () => {
-			expect(await areasListed([])).toEqual(
-				expect.arrayContaining([
-					"routes",
-					"unmatched",
-					"sourcePaths",
-					"agents",
-				])
-			);
-			expect(await areasListed([])).not.toContain("darklua");
-			expect(await areasListed(["AGENTS.md"])).toContain("agents");
-			expect(await areasListed(["AGENTS.md"])).not.toContain("packages");
+		it("should offer only the additions beside a config, never its routes or paths", async () => {
+			expect(await areasListed([])).toEqual(["agents"]);
+			expect(await areasListed(["AGENTS.md"])).toEqual(["agents"]);
 		});
 
 		it("should offer the agents once their rules are there only where an agent is in use for the hook", async () => {
@@ -1381,24 +1372,33 @@ describe("CoreInitService", () => {
 						code: "init.configExists",
 						resource: path.join(directory, "default.rogen.json"),
 						message:
-							"this config already exists, and init never overwrites one. To change it, run init in a terminal and pick what, or pass a flag: --route, --source-path, --darklua, --package, --agent-rules, --agent-hook or --rojo.",
+							"this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo.",
 					},
 				]);
 			});
 		});
 	});
 
-	describe("changing a project that has a config", () => {
-		it("should refuse a flag that takes something off in a folder with no config", async () => {
-			await expect(
-				serviceFor().plan({
-					ask: false,
-					choices: { unroutes: ["server"] },
-				})
-			).resolves.toMatchObject({
-				error: { message: expect.stringContaining("--no-route") },
-			});
-		});
+	describe("a flag that answers a question of a new project, beside a config", () => {
+		it.each([
+			["--route", { routes: ["server"] }],
+			["--source-path", { sourcePaths: ["lib"] }],
+			["--package", { packages: ["Packages"] }],
+			["--compiled-path", { compiledPath: "out" }],
+			["--darklua", { darklua: true }],
+			["--unmatched", { unmatched: "leave" as const }],
+		])(
+			"should refuse %s and point to editing the config",
+			async (flag, choices) => {
+				await write("default.rogen.json", "{}");
+
+				const result = await serviceFor().plan({ ask: false, choices });
+
+				expect(result.isErr() && result.error.message).toBe(
+					`${flag} is for a new project, and default.rogen.json exists. init doesn't change a config. Edit the .rogen.json, then run 'rogen check'.`
+				);
+			}
+		);
 	});
 
 	describe("the summary of a new project", () => {
@@ -1501,11 +1501,10 @@ describe("CoreInitService", () => {
 			});
 		});
 
-		it("should show the summary and the changes of a second run", async () => {
+		it("should show the summary of the additions of a second run", async () => {
 			await write("default.rogen.json", "{}");
 			const prompts = new MockPromptService({
-				[WHAT_TO_CHANGE]: ["unmatched"],
-				"Files that match no route": "shared",
+				[WHAT_TO_CHANGE]: ["agents"],
 				"Make these changes?": "yes",
 			});
 
@@ -1513,7 +1512,7 @@ describe("CoreInitService", () => {
 
 			expect(plan?.purpose).toBe("change");
 			expect(prompts.prompts.at(-1)?.description).toContain(
-				"Changes   default.rogen.json: added routes.*"
+				"Files     AGENTS.md"
 			);
 		});
 
@@ -1554,12 +1553,14 @@ describe("CoreInitService", () => {
 
 			const plan = (
 				await serviceFor(prompts).plan({
-					choices: { customise: false, unmatched: "shared" },
+					choices: { customise: false, agentRules: true },
 				})
 			).unwrap();
 
 			expect(prompts.asked).toEqual([]);
-			expect(plan?.files).toHaveLength(1);
+			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
+				"AGENTS.md",
+			]);
 		});
 	});
 

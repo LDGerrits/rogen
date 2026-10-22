@@ -82,8 +82,6 @@ export interface PlannedFile {
 	readonly content: string;
 	/** Set when the file already exists: names what `content` adds to it. */
 	readonly addition?: string;
-	/** Set when `content` changes a config: each change as `added routes.ServerStorage`. */
-	readonly changes?: readonly string[];
 }
 
 /** A folder placed in the game as it is, never scanned or routed. */

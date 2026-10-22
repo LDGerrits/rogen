@@ -24,7 +24,6 @@ import {
 
 export class InitPlanBuilder {
 	private readonly configFiles: { file: PlannedFile; built: boolean }[] = [];
-	private edited: PlannedFile | undefined;
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private claudeImport: PlannedFile | undefined;
@@ -64,11 +63,6 @@ export class InitPlanBuilder {
 			file: { fileName, content: configFileContent(config, written) },
 			built,
 		});
-	}
-
-	/** The config of the folder with changes made to it, which is built after it is written. */
-	editConfig(file: PlannedFile): void {
-		this.edited = file;
 	}
 
 	/** `claudeImport`: also write the `CLAUDE.md` that points Claude Code at the agent file. */
@@ -152,13 +146,9 @@ export class InitPlanBuilder {
 
 	build(): Result<InitPlan, Diagnostic[]> {
 		const written = this.configFiles.map(({ file }) => file);
-		const files = this.edited ? [...written, this.edited] : written;
-		const built = [
-			...this.configFiles
-				.filter(({ built }) => built)
-				.map(({ file }) => file),
-			...(this.edited ? [this.edited] : []),
-		];
+		const built = this.configFiles
+			.filter(({ built }) => built)
+			.map(({ file }) => file);
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
 		);
@@ -174,7 +164,7 @@ export class InitPlanBuilder {
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
 			files: [
-				...files,
+				...written,
 				...this.templateFiles,
 				...(this.agentFile ? [this.agentFile] : []),
 				...(this.claudeImport ? [this.claudeImport] : []),
