@@ -1,7 +1,7 @@
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
-import { toPosix } from "../../base/path.js";
+import { toPosix, toShellWord } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
 import {
@@ -69,6 +69,7 @@ export const initDocumentShape = S.object({
 	warnings: S.optional(S.array(diagnosticShape)),
 	nextSteps: S.optional(
 		S.object({
+			directory: S.optional(S.string),
 			setup: S.array(S.string),
 			run: S.array(S.string),
 			edits: S.array(S.string),
@@ -99,7 +100,13 @@ const indent = (line: string) => `  ${line}`;
 
 const STUDIO_STEP = "In Studio, press Connect in the Rojo plugin.";
 
-const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
+const stepLines = ({ directory, setup, run, edits }: NextSteps): string[] => [
+	...(directory !== undefined
+		? [
+				"In each terminal, start in the project folder:",
+				indent(`cd ${toShellWord(directory)}`),
+			]
+		: []),
 	...setup,
 	...(run.length > 0
 		? [
