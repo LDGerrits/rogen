@@ -1,10 +1,10 @@
 {
 	"steps": [
-		["build", "."],
-		["build", "default.project.json"],
-		["build", "lobby"],
-		["build", "lobby/default.project.json"],
-		["build", "lobby/default.rogen.json"]
+		["write", "."],
+		["write", "default.project.json"],
+		["write", "lobby"],
+		["write", "lobby/default.project.json"],
+		["write", "lobby/default.rogen.json"]
 	],
-	"output": ["build"]
+	"output": ["write"]
 }

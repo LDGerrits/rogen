@@ -1,4 +1,4 @@
 {
-	"steps": [["build"], ["check"], ["init", "-y", "--skip-git"]],
+	"steps": [["write"], ["check"], ["init", "-y", "--skip-git"]],
 	"rojo": false
 }

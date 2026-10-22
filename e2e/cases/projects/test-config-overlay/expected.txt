@@ -1,4 +1,4 @@
-$ rogen build test
+$ rogen write test
 exit 0
 stdout: (not shown)
 

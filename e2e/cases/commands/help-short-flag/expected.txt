@@ -3,8 +3,8 @@ exit 0
 stdout:
   rogen-build
   Writes the project file of default.rogen.json here, or of the config you name, beside it
-  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
-  Rojo.
+  (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo,
+  as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.
   
   USAGE:
       rogen build [OPTIONS] [PROJECT]
@@ -17,10 +17,10 @@ stdout:
                                always, never]
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
-      -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
+      -o, --output <OUTPUT>    Build the project into this place or model file with Rojo (.rbxl,
                                .rbxlx, .rbxm or .rbxmx).
-      -p, --plugin <PLUGIN>    Also build the project into Roblox's plugins folder with Rojo, under
-                               this file name.
+      -p, --plugin <PLUGIN>    Build the project into Roblox's plugins folder with Rojo, under this
+                               file name.
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
@@ -33,11 +33,10 @@ stdout:
       2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
-      rogen build
-      rogen build places/lobby
       rogen build -o game.rbxl
-      rogen build --watch
-      rogen build --watch -o game.rbxl
-      rogen build --json
+      rogen build places/lobby -o lobby.rbxl
+      rogen build -p Tool.rbxm
+      rogen build -o game.rbxl --watch
+      rogen build -o game.rbxl --json
   
   Run with --help for details.

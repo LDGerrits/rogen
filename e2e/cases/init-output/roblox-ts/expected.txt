@@ -18,7 +18,7 @@ stdout:
     Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
   Wrote 3 files.
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 

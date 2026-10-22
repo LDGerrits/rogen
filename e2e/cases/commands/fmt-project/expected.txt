@@ -6,7 +6,7 @@ stdout:
 $ rogen fmt-project
 exit 0
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 

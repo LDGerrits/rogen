@@ -1,7 +1,7 @@
 {
 	"steps": [
 		[
-			"build"
+			"write"
 		],
 		[
 			"$",
@@ -9,10 +9,10 @@
 			"default.rogen.json"
 		],
 		[
-			"build"
+			"write"
 		],
 		[
-			"build",
+			"write",
 			"default.project.json"
 		]
 	],

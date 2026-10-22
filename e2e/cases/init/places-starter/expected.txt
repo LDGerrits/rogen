@@ -27,7 +27,7 @@ stdout:
     Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Rogen errors until the copy has its own "name" and source path. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
   Wrote 12 files.
 
-$ rogen build game
+$ rogen write game
 exit 0
 stdout: (not shown)
 

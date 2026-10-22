@@ -1,4 +1,4 @@
 {
-	"steps": [["init", "newproj", "--non-interactive"], ["build", "newproj"]],
+	"steps": [["init", "newproj", "--non-interactive"], ["write", "newproj"]],
 	"output": ["init"]
 }

@@ -140,7 +140,7 @@ describe("rogen help --json", () => {
 					description: expect.stringContaining("place or model file"),
 				})
 			);
-			expect(build.examples).toContain("rogen build --json");
+			expect(build.examples).toContain("rogen build -o game.rbxl --json");
 			expect(build.failure).toBe(
 				"{diagnostics:[Diagnostic]}|{error:Error}"
 			);

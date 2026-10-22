@@ -1,5 +1,4 @@
 import "../check-command.js";
-import "../../build/build-command.js";
 import "../../write/write-command.js";
 import {
 	CommandHarness,
@@ -735,7 +734,7 @@ describe("check command", () => {
 
 		it("should pass when the project file is what a build would write", async () => {
 			await write("src/Clean.luau");
-			await harness.run("build");
+			await harness.run("write");
 			expect(await fs.exists("/repo/default.project.json")).toBe(true);
 
 			const result = await run({});
@@ -872,7 +871,7 @@ describe("check command", () => {
 				});
 				await write(...files);
 
-				await harness.run("build", {
+				await harness.run("write", {
 					positionals: [],
 					options: { json: true },
 				});

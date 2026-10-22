@@ -1,4 +1,4 @@
-$ rogen build --verbose
+$ rogen write --verbose
 exit 0
 stdout: (not shown)
 stderr:

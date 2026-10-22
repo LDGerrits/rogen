@@ -1,18 +1,26 @@
-$ rogen build places/lobby
+$ rogen write places/lobby
 exit 0
 stdout:
-  rogen build · Lobby
+  rogen write
   places/lobby/default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build places/arena
+$ rogen write places/arena
 exit 0
 stdout:
-  rogen build · Arena
+  rogen write
   places/arena/default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build places/arena places/lobby
+$ rogen write places/arena places/lobby
+exit 0
+stdout:
+  rogen write
+  places/arena/default.project.json · unchanged
+  places/lobby/default.project.json · unchanged
+  Wrote 2 of 2 project files.
+
+$ rogen build places/arena places/lobby -o game.rbxl
 exit 2
 stderr:
   error: unexpected argument 'places/lobby' found: build takes one [PROJECT]. Usage: rogen build [OPTIONS] [PROJECT]

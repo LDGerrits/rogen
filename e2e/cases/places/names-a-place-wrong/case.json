@@ -1,14 +1,14 @@
 {
 	"steps": [
 		[
-			"build"
+			"write"
 		],
 		[
-			"build",
+			"write",
 			"places/shared"
 		],
 		[
-			"build",
+			"write",
 			"places/lobbby"
 		],
 		[

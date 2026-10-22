@@ -213,7 +213,7 @@ export async function runCase(cli: string, name: string): Promise<string> {
 
 		const before = snapshot(dir);
 		const sections: string[] = [];
-		for (const args of spec.steps ?? [["build"]]) {
+		for (const args of spec.steps ?? [["write"]]) {
 			const [first, program, ...programArgs] = args;
 			const external = first === EXTERNAL_STEP;
 			const result = await run(
@@ -340,7 +340,7 @@ async function makePlace(
 	});
 	fs.copyFileSync(path.resolve("rokit.toml"), path.join(base, "rokit.toml"));
 	const steps: [string, readonly string[], string][] = [
-		[...invocation(cli, ["build"]), base],
+		[...invocation(cli, ["write"]), base],
 		["rojo", ["build", "default.project.json", "-o", "base.rbxl"], base],
 		[
 			"lune",
@@ -657,7 +657,7 @@ export class RunningRogen {
 		dir: string,
 		args: readonly string[] = [],
 		cwd: string = dir,
-		command = "build --watch",
+		command = "write --watch",
 		env?: Readonly<Record<string, string>>
 	) {
 		const [file, commandArgs] = invocation(cli, [

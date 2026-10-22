@@ -1,9 +1,9 @@
-$ rogen build dist
+$ rogen write dist
 exit 1
 stderr:
   error: <dir> holds both dist.rogen.json and dist.rogen.jsonc. Keep one of them: both write the same project file.
 
-$ rogen build dist.rogen.jsonc
+$ rogen write dist.rogen.jsonc
 exit 1
 stderr:
   error: <dir> holds both dist.rogen.json and dist.rogen.jsonc. Keep one of them: both write the same project file.

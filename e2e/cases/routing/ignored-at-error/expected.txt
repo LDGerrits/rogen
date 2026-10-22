@@ -1,4 +1,4 @@
-$ rogen build
+$ rogen write
 exit 1
 stdout: (not shown)
 stderr:
@@ -10,7 +10,7 @@ stderr:
   src/server/Ui@client - error: "@client" does nothing here, because the "server" route already governs this folder. Remove it, or move the folder out of the "server" route's files. (route.ignoredAt)
   src/server/Util@client.luau - error: "@client" does nothing here, because the "server" route already governs this file. Remove it, or move the file out of the "server" route's files. (route.ignoredAt)
 
-$ rogen build --json
+$ rogen write --json
 exit 1
 stdout:
   {

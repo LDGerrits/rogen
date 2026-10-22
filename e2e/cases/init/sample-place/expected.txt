@@ -8,7 +8,7 @@ stdout: (not shown)
 stderr:
   rogen build · project
   default.project.json · unchanged
-  Built 1 project.
+  Built place.rbxl.
 
 $ lune run dump-place place.rbxl place.txt
 exit 0

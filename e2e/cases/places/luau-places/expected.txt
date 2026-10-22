@@ -1,8 +1,8 @@
-$ rogen build places/lobby
+$ rogen write places/lobby
 exit 0
 stdout: (not shown)
 
-$ rogen build places/arena
+$ rogen write places/arena
 exit 0
 stdout: (not shown)
 

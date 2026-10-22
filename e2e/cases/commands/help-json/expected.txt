@@ -6,7 +6,7 @@ stdout:
     "commands": [
       {
         "name": "build",
-        "summary": "Writes the project file; with -o or -p, builds with Rojo",
+        "summary": "Writes the project file, then builds with Rojo",
         "args": [
           {
             "name": "project",

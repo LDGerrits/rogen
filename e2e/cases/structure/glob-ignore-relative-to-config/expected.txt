@@ -1,4 +1,4 @@
-$ rogen build lobby
+$ rogen write lobby
 exit 0
 stdout: (not shown)
 

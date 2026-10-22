@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src"]] }
+{ "steps": [["write"], ["where", "src"]] }

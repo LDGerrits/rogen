@@ -33,7 +33,7 @@ place/game/...                  Rojo's Baseplate and lighting, mounted by the tr
 README.md
 ```
 
-`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game -o game.rbxl`), or run `rogen write` to write every place's project file. `--no-sample` leaves the two source folders empty and writes no `place/game`.
+`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen serve` or `rogen build -o game.rbxl` there is Rojo's "not found" error: name the place (`rogen build game -o game.rbxl`), or run `rogen write` to write every place's project file. `--no-sample` leaves the two source folders empty and writes no `place/game`.
 
 The place's config lists the shared folder and its own, in full, and sets its own `name`:
 

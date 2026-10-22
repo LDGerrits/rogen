@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src/F/init.luau", "src/F/init.server.luau"]] }
+{ "steps": [["write"], ["where", "src/F/init.luau", "src/F/init.server.luau"]] }

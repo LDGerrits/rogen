@@ -1,4 +1,4 @@
-$ rogen build --quiet
+$ rogen write --quiet
 exit 0
 
 written:

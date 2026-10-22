@@ -1,6 +1,6 @@
 {
 	"steps": [
-		["build"],
+		["write"],
 		["where", "src/Combat/Moves"]
 	]
 }

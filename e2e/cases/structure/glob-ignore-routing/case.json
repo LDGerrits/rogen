@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "src/A.luau", "src/A.spec.luau"]], "show": ["default.project.json"] }
+{ "steps": [["write"], ["where", "src/A.luau", "src/A.spec.luau"]], "show": ["default.project.json"] }

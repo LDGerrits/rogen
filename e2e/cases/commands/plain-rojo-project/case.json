@@ -1,10 +1,10 @@
 {
 	"steps": [
 		["check"],
-		["build"],
-		["build", "."],
+		["write"],
+		["write", "."],
 		["check", "./"],
 		["where", "src"]
 	],
-	"output": ["build"]
+	"output": ["write"]
 }

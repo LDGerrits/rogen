@@ -468,6 +468,48 @@ describe("BuildLog report, closing line", () => {
 		expect(closing(1)).toBe("outro: Built 1 project with 1 warning.");
 		expect(closing(2)).toBe("outro: Built 1 project with 2 warnings.");
 	});
+
+	it("should name what Rojo built in place of the count", () => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				new WrittenBuild(
+					mockConfig(),
+					"wrote",
+					{ warnings: [], syncWarnings: [] },
+					summaryOf(),
+					[]
+				),
+			]),
+			undefined,
+			"build",
+			true,
+			{ name: "game.rbxl", failed: false }
+		);
+
+		expect(logService.lines.at(-1)).toBe("outro: Built game.rbxl.");
+	});
+
+	it("should claim nothing when Rojo failed", () => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				new WrittenBuild(
+					mockConfig(),
+					"wrote",
+					{ warnings: [], syncWarnings: [] },
+					summaryOf(),
+					[]
+				),
+			]),
+			undefined,
+			"build",
+			true,
+			{ name: "game.rbxl", failed: true }
+		);
+
+		expect(logService.lines.at(-1)).toBe("outro: build failed.");
+	});
 });
 
 describe("BuildLog.diagnostics", () => {

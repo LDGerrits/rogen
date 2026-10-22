@@ -16,7 +16,7 @@ stdout:
       -V, --version          Print the version.
   
   SUBCOMMANDS:
-      build          Writes the project file; with -o or -p, builds with Rojo
+      build          Writes the project file, then builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does

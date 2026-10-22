@@ -6,7 +6,7 @@ stdout:
 stderr:
   rogen build · Game
   default.project.json · wrote
-  Built 1 project.
+  Built game.rbxlx.
 
 written:
   default.project.json

@@ -62,8 +62,8 @@ Every path in a config is relative to the config's file, and no config reads ano
 Rogen picks a file the way Rojo does.
 
 - **No argument** means the default of the current folder: `default.rogen.json`, or a plain `default.project.json` when no config is there. Nothing else is read, and Rogen does not search the folders above. In a folder with neither, the error says so and names the folder's other `.rogen.json` files if it has any. A subfolder of a project, or the root of a repository that holds only [places](/docs/v2/setups/places), gets the same "not found" error that `rojo serve` gives.
-- **A folder** means its default: `rogen build places/lobby`.
-- **A path** means that file: `rogen build dist.rogen.json`. A path to `dist.project.json` means the `dist.rogen.json` beside it, and when there is none, Rogen runs the plain project file as it is.
+- **A folder** means its default: `rogen serve places/lobby`.
+- **A path** means that file: `rogen serve dist.rogen.json`. A path to `dist.project.json` means the `dist.rogen.json` beside it, and when there is none, Rogen runs the plain project file as it is.
 - **A bare name** such as `dist` means `dist.rogen.json` in the current folder, else a plain `dist.project.json`, unless a folder `dist` holds a default.
 - **`serve`, `build`, `sourcemap` and `upload` take one project.** A second is a usage error, as in Rojo. To serve two places, use two terminals, the second with `--port`.
 
@@ -71,7 +71,7 @@ Rogen picks a file the way Rojo does.
 
 A plain Rojo project runs under Rogen's commands as it is: `check`, `build`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` work on a folder with only a `default.project.json`, and Rogen writes nothing to the file. A `.project.jsonc` is read too, since Rojo reads it. Beside a `default.rogen.json`, the config wins.
 
-A command writes **only the project file of the config it runs**. `rogen serve dist` writes `dist.project.json` and serves it, `rogen build release -o game.rbxl` writes `release.project.json` and builds from it, and nothing else is written. A file is rewritten only when its bytes differ. A config you didn't name can be broken without blocking you. The file Rogen writes is overwritten by every build, so edit the `X.rogen.json`; an `X.project.json` with no `X.rogen.json` beside it is a plain Rojo project and is left as it is.
+A Rojo command writes **only the project file of the config it runs**. `rogen serve dist` writes `dist.project.json` and serves it, `rogen build release -o game.rbxl` writes `release.project.json` and builds from it, and nothing else is written. `rogen write` is the exception: it writes the project file of every config of the folder. A file is rewritten only when its bytes differ. A config you didn't name can be broken without blocking you. The file Rogen writes is overwritten by every write, so edit the `X.rogen.json`; an `X.project.json` with no `X.rogen.json` beside it is a plain Rojo project and is left as it is.
 
 ---
 

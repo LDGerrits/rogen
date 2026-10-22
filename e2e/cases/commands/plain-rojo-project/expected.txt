@@ -1,19 +1,19 @@
 $ rogen check
 exit 0
 
-$ rogen build
+$ rogen write
 exit 0
 stdout:
-  rogen build · plain
-  default.project.json · unchanged
-  Built 1 project.
+  rogen write
+  default.project.json · plain project, not written
+  Wrote 0 of 0 project files.
 
-$ rogen build .
+$ rogen write .
 exit 0
 stdout:
-  rogen build · plain
-  default.project.json · unchanged
-  Built 1 project.
+  rogen write
+  default.project.json · plain project, not written
+  Wrote 0 of 0 project files.
 
 $ rogen check ./
 exit 0

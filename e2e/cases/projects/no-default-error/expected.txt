@@ -1,4 +1,4 @@
-$ rogen build
+$ rogen build -o game.rbxl
 exit 1
 stderr:
   error: No default.rogen.json or default.project.json in this folder (<dir>). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen write' to write them all.
@@ -6,9 +6,14 @@ stderr:
 $ rogen check
 exit 0
 
-$ rogen build dist
+$ rogen build dist -o dist.rbxl
 exit 0
 stdout: (not shown)
+stderr:
+  rogen build · Inventory
+  dist.project.json · wrote
+  Built dist.rbxl.
 
 written:
   dist.project.json
+  dist.rbxl

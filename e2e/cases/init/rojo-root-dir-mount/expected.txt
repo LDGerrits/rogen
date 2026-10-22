@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 

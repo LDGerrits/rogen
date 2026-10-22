@@ -1,7 +1,10 @@
 {
 	"steps": [
+		["write", "ok"],
+		["write", "broken"],
+		["build", "ok", "-o", "game.rbxl"],
+		["build", "broken", "-o", "game.rbxl"],
 		["build", "ok"],
-		["build", "broken"],
 		["build", "ok", "--nope"],
 		["check", "ok"],
 		["check", "warn"],

@@ -1,10 +1,10 @@
 {
 	"steps": [
 		[
-			"build"
+			"write"
 		],
 		[
-			"build",
+			"write",
 			".."
 		]
 	],
