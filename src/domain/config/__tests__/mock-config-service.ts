@@ -144,14 +144,13 @@ export class MockConfigService implements ConfigService {
 		return this.select();
 	}
 
-	async coverOf(target: string): Promise<ConfigCover | undefined> {
+	async coversOf(target: string): Promise<ConfigCover[]> {
 		return this.covers(target);
 	}
 
-	covers: (target: string) => ConfigCover | undefined = () => ({
-		file: this.entries[0].file,
-		whole: false,
-	});
+	covers: (target: string) => ConfigCover[] = () => [
+		{ file: this.entries[0].file, whole: false },
+	];
 
 	async selectCovering(
 		targets: readonly (string | undefined)[]
@@ -159,22 +158,21 @@ export class MockConfigService implements ConfigService {
 		const groups = new Map<string, { indexes: number[]; whole: boolean }>();
 		const uncovered: number[] = [];
 		for (const [index, target] of targets.entries()) {
-			const cover =
+			const covers =
 				target === undefined
-					? { file: this.entries[0].file, whole: false }
+					? [{ file: this.entries[0].file, whole: false }]
 					: this.covers(target);
-			if (!cover) {
-				uncovered.push(index);
-				continue;
+			if (covers.length === 0) uncovered.push(index);
+			for (const cover of covers) {
+				const group = groups.get(cover.file) ?? {
+					indexes: [],
+					whole: false,
+				};
+				groups.set(cover.file, {
+					indexes: [...group.indexes, index],
+					whole: group.whole || cover.whole,
+				});
 			}
-			const group = groups.get(cover.file) ?? {
-				indexes: [],
-				whole: false,
-			};
-			groups.set(cover.file, {
-				indexes: [...group.indexes, index],
-				whole: group.whole || cover.whole,
-			});
 		}
 		return ok({
 			groups: [...groups].map(([file, { indexes, whole }]) => ({

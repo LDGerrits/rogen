@@ -350,6 +350,24 @@ export class ConfigDiscovery {
 		}
 	}
 
+	/** Every named config in the folder of `target` and in each folder above it, nearest folder first: the candidates for a path no default config answers for. */
+	async namedConfigsAbove(target: string): Promise<string[]> {
+		let directory = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
+		const found: string[] = [];
+		for (;;) {
+			found.push(
+				...(await this.list(directory)).filter(
+					(file) => !isDefaultConfigFileName(path.basename(file))
+				)
+			);
+			const parent = path.dirname(directory);
+			if (parent === directory) return found;
+			directory = parent;
+		}
+	}
+
 	/** The nearest folder above `from`, the working directory unless given, with a default config. */
 	async findEnclosing(
 		from = this.environmentService.cwd

@@ -89,30 +89,32 @@ export class CoreConfigService implements ConfigService {
 		const found = new Map<string, { indexes: number[]; whole: boolean }>();
 		const uncovered: number[] = [];
 		for (const [index, target] of targets.entries()) {
-			let cover: ConfigCover | undefined;
+			let covers: ConfigCover[];
 			if (target === undefined) {
 				const here = await this.select([]);
 				if (here.isErr()) return here;
-				cover = { file: here.value.entries[0].file, whole: false };
-				selections.set(cover.file, here.value);
-			} else cover = await this.coverOf(target);
-			if (!cover) {
+				covers = [{ file: here.value.entries[0].file, whole: false }];
+				selections.set(covers[0].file, here.value);
+			} else covers = await this.coversOf(target);
+			if (covers.length === 0) {
 				uncovered.push(index);
 				continue;
 			}
-			if (!selections.has(cover.file)) {
-				const selection = await this.select([cover.file]);
-				if (selection.isErr()) return selection;
-				selections.set(cover.file, selection.value);
+			for (const cover of covers) {
+				if (!selections.has(cover.file)) {
+					const selection = await this.select([cover.file]);
+					if (selection.isErr()) return selection;
+					selections.set(cover.file, selection.value);
+				}
+				const group = found.get(cover.file) ?? {
+					indexes: [],
+					whole: false,
+				};
+				found.set(cover.file, {
+					indexes: [...group.indexes, index],
+					whole: group.whole || cover.whole,
+				});
 			}
-			const group = found.get(cover.file) ?? {
-				indexes: [],
-				whole: false,
-			};
-			found.set(cover.file, {
-				indexes: [...group.indexes, index],
-				whole: group.whole || cover.whole,
-			});
 		}
 		return ok({
 			groups: [...found].map(([file, { indexes, whole }]) => ({
@@ -124,11 +126,44 @@ export class CoreConfigService implements ConfigService {
 		});
 	}
 
-	async coverOf(target: string): Promise<ConfigCover | undefined> {
+	async coversOf(target: string): Promise<ConfigCover[]> {
+		const cover = await this.defaultCover(target);
+		return cover ? [cover] : this.namedCovers(target);
+	}
+
+	private async defaultCover(
+		target: string
+	): Promise<ConfigCover | undefined> {
 		const cover = await this.discovery.coverOf(target);
 		if (!cover || cover.whole || !isProjectFileConfig(cover.file))
 			return cover;
 		return (await this.configAbove(cover.file)) ?? cover;
+	}
+
+	/** With no default config to answer, the named configs at and above `target` whose source paths cover it; one that is broken is kept, since its source paths can't be told. */
+	private async namedCovers(target: string): Promise<ConfigCover[]> {
+		const covers: ConfigCover[] = [];
+		for (const file of await this.discovery.namedConfigsAbove(target)) {
+			const { config } = buildableFile(await this.read(file)) ?? {};
+			if (config && !(await this.covers(config.sourcePaths, target)))
+				continue;
+			covers.push({ file, whole: false });
+		}
+		return covers;
+	}
+
+	/** Whether a path lies in a source path, or, for a folder, holds one. */
+	private async covers(
+		sourcePaths: readonly string[],
+		target: string
+	): Promise<boolean> {
+		const isFolder = await this.fileSystemService.isDirectory(target);
+		const folder = isFolder ? target : path.dirname(target);
+		return (
+			coversFolder(sourcePaths, folder) ||
+			(isFolder &&
+				sourcePaths.some((sourcePath) => isInside(sourcePath, folder)))
+		);
 	}
 
 	/** A plain project file inside the source paths of a `.rogen.json` above it belongs to that config. */
@@ -145,13 +180,7 @@ export class CoreConfigService implements ConfigService {
 			directory = path.dirname(above.file);
 			if (isProjectFileConfig(above.file)) continue;
 			const { config } = buildableFile(await this.read(above.file)) ?? {};
-			if (
-				config?.sourcePaths.some(
-					(sourcePath) =>
-						samePath(folder, sourcePath) ||
-						isInside(folder, sourcePath)
-				)
-			)
+			if (config && coversFolder(config.sourcePaths, folder))
 				return above;
 		}
 	}
@@ -167,4 +196,12 @@ export class CoreConfigService implements ConfigService {
 	registerFileCheck(check: ConfigFileCheck): Disposable {
 		return this.loader.registerFileCheck(check);
 	}
+}
+
+/** Whether `folder` is a source path or lies inside one. */
+function coversFolder(sourcePaths: readonly string[], folder: string): boolean {
+	return sourcePaths.some(
+		(sourcePath) =>
+			samePath(folder, sourcePath) || isInside(folder, sourcePath)
+	);
 }

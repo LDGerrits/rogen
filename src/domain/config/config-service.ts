@@ -138,7 +138,7 @@ export interface CoveredTargets {
 	/** One per config, in the order its first target was given. */
 	readonly groups: readonly {
 		readonly selection: ReloadableSelection;
-		/** The targets this config answers for, by position. */
+		/** The targets this config answers for, by position; a target several configs cover is in each of their groups. */
 		readonly indexes: readonly number[];
 		/** A target is a `.rogen.json`, so the config is answered whole. */
 		readonly whole: boolean;
@@ -169,9 +169,9 @@ export interface ConfigService {
 	selectFolder(): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
-	/** The config that answers for `target`, so a command run from the root can take a path of any place. */
-	coverOf(target: string): Promise<ConfigCover | undefined>;
-	/** Loads the config that answers for each target, one selection per config, so a command can take paths of several places. */
+	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
+	coversOf(target: string): Promise<ConfigCover[]>;
+	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. */
 	selectCovering(
 		targets: readonly (string | undefined)[]
 	): Promise<Result<CoveredTargets, Error>>;
