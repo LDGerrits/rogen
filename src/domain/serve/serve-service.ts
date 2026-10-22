@@ -125,7 +125,7 @@ export interface ServeSession extends Disposable {
 	/** The target a server of the session runs for; none until one starts. */
 	readonly target: ServeTarget | undefined;
 
-	/** Builds, then starts the servers. Fails with the build's errors, starting none, when the first build fails or throws. */
+	/** Builds, then starts the servers once a build succeeds, and keeps watching until then. Fails when the first build throws or a file it wrote can't be served by the Rojo that runs. */
 	start(): Promise<Result<void, Error>>;
 	/** Ends every server and its processes, then stops the watch. Safe to call twice. */
 	stop(): Promise<void>;
