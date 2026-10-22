@@ -1,0 +1,4 @@
+{
+	"source": ["src"],
+	"aliases": { "Hello": "src/Hello.luau" }
+}

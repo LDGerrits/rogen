@@ -4,6 +4,7 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitChoices, InitPlan } from "../init-service.js";
 
@@ -32,7 +33,9 @@ describe("init for several places", () => {
 			new MockPromptService([], false),
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			processes
+			processes,
+			undefined,
+			new CoreConfigService(fileSystem, environmentService)
 		);
 	};
 

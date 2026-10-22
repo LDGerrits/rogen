@@ -1,4 +1,6 @@
 import path from "path";
+import { Disposable, toDisposable } from "../../base/disposable.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -20,7 +22,11 @@ import {
 	isProjectFileConfig,
 	projectStem,
 } from "./config.js";
-import { ConfigCover, EnclosingConfigs } from "./config-service.js";
+import {
+	ConfigCover,
+	ConfigFolderCheck,
+	EnclosingConfigs,
+} from "./config-service.js";
 
 export interface DiscoveredConfigs {
 	/** The working directory. */
@@ -50,10 +56,24 @@ const isBareName = (ref: string): boolean =>
 
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
+	private readonly folderChecks = new Set<ConfigFolderCheck>();
+
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {}
+
+	registerFolderCheck(check: ConfigFolderCheck): Disposable {
+		this.folderChecks.add(check);
+		return toDisposable(() => this.folderChecks.delete(check));
+	}
+
+	async staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
+		const found: Diagnostic[] = [];
+		for (const check of this.folderChecks)
+			found.push(...(await check(folder, this.fileSystemService)));
+		return found;
+	}
 
 	/** The config files `refs` names, else the default of the working directory, as Rojo finds its project file. */
 	async discover(
@@ -250,6 +270,16 @@ export class ConfigDiscovery {
 		directory: string,
 		named: string | undefined
 	): Promise<ProjectError> {
+		const stale = await this.staleConfigsIn(directory);
+		if (stale.length > 0)
+			return new ProjectError(
+				stale
+					.map(
+						(found) =>
+							`${path.basename(found.resource)} in ${directory}: ${found.message}`
+					)
+					.join("\n")
+			);
 		for (const name of LEGACY_CONFIG_FILE_NAMES)
 			if (await this.fileSystemService.isFile(path.join(directory, name)))
 				return new ProjectError(
