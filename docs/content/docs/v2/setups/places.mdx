@@ -60,14 +60,13 @@ Every path is relative to the file, and the later source path wins a clash, so a
 <Step>
 ### Add a Place
 
-Copy the config, change its `name` and its own source path, and make the folder:
+Name it:
 
 ```bash
-cp game.rogen.json lobby.rogen.json
-mkdir src/lobby
+rogen init lobby
 ```
 
-In `lobby.rogen.json`, set `"name": "lobby"` and `"sourcePaths": ["src/common", "src/lobby"]`. The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't.
+It writes `lobby.rogen.json`, a copy of the first place's config with its own `name` and `"sourcePaths": ["src/common", "src/lobby"]`, builds `lobby.project.json`, and creates `src/lobby` with a `Lobby` script that greets with the shared module (`--no-sample` leaves the folder empty). In a Darklua project it also writes `lobby.dist.rogen.json` (and `lobby.release.rogen.json` when the first place has one), and the next steps print `darklua process src/lobby dist/lobby --watch`, the one command the new code needs. `init` finds the project by its layout: `src/common` and a root-level config that lists it. The other keys are yours to change: `servePlaceIds`, and anything the lobby mounts that the first place doesn't. It never overwrites a `lobby.rogen.json` or a `src/lobby`, and leaves `.vscode/settings.json` alone: the next steps give the setting that makes luau-lsp read the lobby (see [Open the Editor](#open-the-editor)). A name that isn't directly below the root, such as `rogen init tools/lobby`, starts a separate project there.
 
 ```
 game.rogen.json

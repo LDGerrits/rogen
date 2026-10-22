@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--places"],
+		["init", "tools/lobby", "--non-interactive", "--skip-git"]
+	],
+	"rojo": false,
+	"output": ["init"]
+}

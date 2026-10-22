@@ -182,6 +182,6 @@ Run each in its own terminal:
   rogen serve game.dist.rogen.json
 ```
 
-In roblox-ts they run from the place's folder, as `cd projects/game && darklua process out dist --watch`.
+In Luau the places share the root's `dist`, so `rogen init lobby` adds `lobby.dist.rogen.json` and needs only `darklua process src/lobby dist/lobby --watch` for the new code. In roblox-ts they run from the place's folder, as `cd projects/game && darklua process out dist --watch`.
 
 Another place is a second terminal set with its own `--port`.

@@ -1,0 +1,9 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--places", "--darklua"],
+		["init", "lobby", "--non-interactive", "--no-sample"]
+	],
+	"rojo": false,
+	"show": ["lobby.rogen.json", "lobby.dist.rogen.json"],
+	"output": ["init"]
+}

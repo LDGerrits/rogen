@@ -723,12 +723,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				`luau-lsp reads the sourcemap of one place at a time, ${places.place} here. To switch, change the name in the generatorCommand in .vscode/settings.json.`
 			);
-		if (places)
+		if (places) {
+			const lobby =
+				places.folder === "" ? "lobby" : `${PROJECTS_FOLDER}/lobby`;
 			builder.addEdit(
-				places.folder === ""
-					? `Add another place: copy ${places.configFile} to lobby.rogen.json, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.`
-					: `Add another place with 'rogen init ${PROJECTS_FOLDER}/lobby', and serve it from a second terminal with its own --port: 'rogen serve ${PROJECTS_FOLDER}/lobby --port <port>'.`
+				`Add another place with 'rogen init ${lobby}', and serve it from a second terminal with its own --port: 'rogen serve ${lobby} --port <port>'.`
 			);
+		}
 		const processed = darklua && compiledPath ? compiledPath : undefined;
 		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
 			builder,

@@ -1,0 +1,15 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--places"],
+		["init", "lobby", "--non-interactive"],
+		["list"],
+		["build", "lobby"],
+		["sourcemap", "lobby", "-o", "sourcemap.json"]
+	],
+	"show": [
+		"lobby.rogen.json",
+		"src/lobby/Lobby/Server/Lobby.server.luau",
+		".vscode/settings.json"
+	],
+	"output": ["init"]
+}
