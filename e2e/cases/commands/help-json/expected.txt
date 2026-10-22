@@ -142,10 +142,6 @@ stdout:
             "type": "boolean"
           },
           {
-            "name": "customise",
-            "type": "boolean"
-          },
-          {
             "name": "kind",
             "type": "string",
             "enum": [

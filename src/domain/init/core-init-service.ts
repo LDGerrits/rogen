@@ -107,8 +107,8 @@ export class CoreInitService implements InitService {
 	private async review(
 		options: InitOptions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const { ask = true, choices = {} } = options;
-		if (!(ask && this.promptService.isInteractive) || choices.customise)
+		const { ask = true } = options;
+		if (!(ask && this.promptService.isInteractive))
 			return this.planWithin(options, {
 				quick: this.promptService,
 				essential: this.promptService,

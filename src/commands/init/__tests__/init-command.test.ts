@@ -12,6 +12,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { PromptService } from "../../../platform/prompt/prompt-service.js";
 import {
+	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
@@ -51,7 +52,7 @@ describe("init command", () => {
 		});
 		return harness.run("init", {
 			positionals,
-			options: { customise: true, ...options },
+			options,
 		});
 	};
 
@@ -282,7 +283,7 @@ describe("init command", () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(
-				new MockPromptService([["agents"], true]),
+				new MockPromptService([["agents"], "yes"]),
 				logService
 			);
 
@@ -911,13 +912,21 @@ describe("init command", () => {
 		});
 
 		it("should write the answers", async () => {
-			const prompts = new MockPromptService({
-				Language: "luau",
-				"Does Darklua process your code before Rojo syncs it?": true,
-				"Source paths": "src, lib",
-				"Compiled path": "out",
-				Routes: [],
-			});
+			const prompts = new MockPromptService([
+				"luau",
+				"one",
+				"customise",
+				"luau",
+				true,
+				"one",
+				"src, lib",
+				"out",
+				[],
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				ACCEPT_DEFAULT,
+				"yes",
+			]);
 
 			await runInit(prompts);
 
