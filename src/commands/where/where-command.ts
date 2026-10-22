@@ -79,15 +79,13 @@ registerCommand(
 
 			const answers = new WhereAnswers(located.value);
 			const failure = DiagnosticsError.of(answers.errors);
-			const { stale } = located.value;
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					whereDocument(answers, stale),
+					whereDocument(answers),
 					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
-			for (const diagnostic of stale) logService.diagnostic(diagnostic);
 			return failure ? err(failure) : ok(undefined);
 		}
 
@@ -102,11 +100,7 @@ registerCommand(
 			if (args.length === 0) {
 				const selection = await configService.select([]);
 				if (selection.isErr()) return selection;
-				return buildService.locate(selection.value, {
-					args,
-					cwd,
-					staleness: true,
-				});
+				return buildService.locate(selection.value, { args, cwd });
 			}
 			const asked = await buildService.askedAbout({ args, cwd });
 			const covered = await configService.selectCovering(
@@ -125,7 +119,6 @@ registerCommand(
 				const located = await buildService.locate(selection, {
 					args: whole ? [] : indexes.map((index) => args[index]),
 					cwd,
-					staleness: true,
 				});
 				if (located.isErr()) return located;
 				parts.push(located.value);
