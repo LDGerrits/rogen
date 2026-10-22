@@ -121,7 +121,7 @@ rogen serve arena --port <port>
 
 A `servePort` in the place's file does the same, and Rogen writes none. If the port is held by a server Rogen started for another file, in any folder, the error names that file and says to stop it or give this one a port. Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port. Give each place its `servePlaceIds` and Rojo refuses the connection from any other place: see [Several places](/docs/v2/studio#several-places).
 
-`lobby.project.json` is as fresh as the last `rogen build lobby`. Serving writes only the named file, so after adding a feature folder, run `rogen build lobby` before the editor needs it.
+Serving writes only the named file, so `lobby.project.json` is as fresh as the last `rogen build lobby`: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
 
 </Step>
 
@@ -194,7 +194,7 @@ rbxtsc needs a project file beside the `tsconfig.json`, so run `rogen build proj
 
 ## More Files in a Place
 
-A place that needs a second output has its own second file, as a single project does. A Darklua place has a `dist` config and a place with tests a `release` config: `game.dist.rogen.json` and `game.release.rogen.json` beside `game.rogen.json` for a root-level place, `dist.rogen.json` and `release.rogen.json` in the folder of a place in `projects/`. Each is a complete file: it repeats `name`, `routes` and `tree`, and adds what differs, and it lists the source paths again. `rogen build game.release -o game.rbxl` builds that place's release, and `rogen serve game.dist.rogen.json` serves its Darklua output. See the [Darklua guide](/docs/v2/setups/darklua#darklua-with-places).
+A place that needs a second project has its own second config, as a single project does (see [More Files](/docs/v2/configuration#more-files)). A Darklua place has a `dist` config and a place with tests a `release` config: `game.dist.rogen.json` and `game.release.rogen.json` beside `game.rogen.json` for a root-level place, `dist.rogen.json` and `release.rogen.json` in the folder of a place in `projects/`. Each lists the source paths again. `rogen build game.release -o game.rbxl` builds that place's release, and `rogen serve game.dist.rogen.json` serves its Darklua output. See the [Darklua guide](/docs/v2/setups/darklua#darklua-with-places).
 
 <Callout type="info">
 	A place file is an ordinary config. `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are Rojo keys that go at its top level, like `name`.

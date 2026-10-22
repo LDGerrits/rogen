@@ -18,7 +18,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 - **Tree**: The instance tree in a `.rogen.json`, as in any Rojo project file, that Rogen merges its generated nodes into. See [Configuration](/docs/v2/configuration#tree).
 
 - **Project file**: A Rojo project file Rogen writes beside the `.rogen.json` it comes from: `X.rogen.json` writes `X.project.json`. Rogen owns it. See [Output and Sync](/docs/v2/core-concepts/output#output).
-- **Project**: A `.rogen.json` and the `.project.json` it writes. `default.rogen.json` is a folder's default; a second output, such as `dist.rogen.json` for Darklua, is a second complete file that repeats `name`, `routes` and `tree`, and nothing is inherited. A plain `default.project.json` with no config beside it counts as a default too. See [Configuration](/docs/v2/configuration).
+- **Project**: A `.rogen.json` and the `.project.json` it writes. `default.rogen.json` is a folder's default; a second project, such as `dist.rogen.json` for Darklua, is a second complete file that repeats `name`, `routes` and `tree`, and nothing is inherited. A plain `default.project.json` with no config beside it counts as a default too. See [Configuration](/docs/v2/configuration).
 
 - **Place**: One Roblox place of a repo that builds several: a complete config of its own that lists its source paths in full and sets its own `name`: a `lobby.rogen.json` at the root, or a folder, usually in `projects/`, with a `default.rogen.json`. Serve it by naming it, `rogen serve lobby` or `rogen serve projects/lobby`; a second place at once is a second terminal with `--port`. See [Places](/docs/v2/setups/places).
 
