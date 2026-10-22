@@ -154,7 +154,7 @@ rogen sourcemap lobby -o sourcemap.json && luau-lsp analyze --definitions=@roblo
 note: projects/common/src/Net/Types.ts: no config at or above it reads it.
 ```
 
-Bare `rogen check`, `rogen where <instance>` and `rogen where -` read the current folder, as the Rojo commands do, so name a place's config or run them inside a place's folder; the error lists the configs the folder holds.
+Bare `rogen check` checks every `.rogen.json` of the current folder, so it covers all root-level places at once. `rogen where <instance>` and `rogen where -` read the current folder, as the Rojo commands do, so name a place's config or run them inside a place's folder; the error lists the configs the folder holds.
 
 </Step>
 

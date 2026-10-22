@@ -1,0 +1,4 @@
+{
+	"steps": [["check"], ["write", "lobby"], ["check"]],
+	"rojo": false
+}

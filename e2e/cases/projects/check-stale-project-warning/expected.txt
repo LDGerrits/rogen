@@ -2,6 +2,7 @@ $ rogen check
 exit 1
 stdout:
   default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
+  dist.project.json - warning: this file differs from what 'rogen write dist.rogen.json' would write: its sources changed since it was written. Run 'rogen write dist.rogen.json' to write it again; what it holds comes from dist.rogen.json, so change that to change it. (output.differs)
 
 $ rogen check dist.rogen.json
 exit 1
