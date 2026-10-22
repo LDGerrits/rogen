@@ -192,10 +192,10 @@ Remove the extra slash, or name the folder. See [Targets](/docs/v2/core-concepts
 Warning. No route matches the file and there's no `*` route, so it's left out of the project file.
 
 ```
-src/Util.luau - warning: matched no route, so it is left out. Add a "*" route, or move it into a routing folder. (route.unrouted)
+src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared. (route.unrouted)
 ```
 
-Move the file into a routing folder, give it an `@key` suffix, or declare a `"*"` route. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
+The message names the routing folders of the file's feature: the folder directly in the source path that holds it, or the source path for a file at its top. Move the file into one, give it an `@key` suffix, or declare a `"*"` route if every such file belongs in one place. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
 
 ### `route.strayAt` [#route-strayat]
 
@@ -668,7 +668,7 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check` and `rogen where` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check`, with no path, found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
 default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
@@ -792,10 +792,10 @@ Add the settings to the node in the `tree` of `default.rogen.json`. Settings of 
 
 ### `init.unmountedFiles` [#init-unmountedfiles]
 
-Warning. `init` lifted a `default.project.json` and found files in the source paths that no node of it mounts. Rojo ignored them. Rogen places every file below a source path by its routes, so they now join the game.
+Warning. `init` lifted a `default.project.json` and found files in the source paths that no node of it mounts. Rojo ignored them. Rogen places every file below a source path that a route matches, so those join the game; with no `*` route, the others are left out with [`route.unrouted`](#route-unrouted).
 
 ```
-default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
 ```
 
 Run `rogen where` on the files to see where they land. To keep them out of the game, list them under `globIgnorePaths` in `default.rogen.json`, or delete them. See [Coming From Rojo](/docs/v2/coming-from-rojo).

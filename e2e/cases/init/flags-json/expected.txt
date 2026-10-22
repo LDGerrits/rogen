@@ -13,7 +13,7 @@ stdout:
         "outcome": "wrote"
       },
       {
-        "file": "<dir>/.agents/hooks/rogen-check.sh",
+        "file": "<dir>/.agents/hooks/rogen-check.mjs",
         "outcome": "wrote"
       },
       {
@@ -41,7 +41,7 @@ stdout:
       },
       {
         "question": "unmatched",
-        "value": "shared",
+        "value": "leave",
         "flag": "--unmatched"
       },
       {
@@ -62,7 +62,7 @@ stdout:
     "notes": [],
     "nextSteps": {
       "setup": [
-        "The hook needs bash, git and jq; on Windows, winget install jqlang.jq."
+        "The hook runs the Rogen in node_modules/.bin, else the one on the PATH; install Rogen in the project or globally."
       ],
       "run": [
         "rogen serve"
@@ -75,7 +75,7 @@ stdout:
   }
 
 written:
-  .agents/hooks/rogen-check.sh
+  .agents/hooks/rogen-check.mjs
   .claude/settings.json
   .git/
   .gitignore
@@ -92,8 +92,7 @@ default.rogen.json:
       "lib"
     ],
     "routes": {
-      "Server": "ServerScriptService",
-      "*": "ReplicatedStorage/Shared"
+      "Server": "ServerScriptService"
     }
   }
 }

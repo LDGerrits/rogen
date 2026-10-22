@@ -7,7 +7,7 @@ stdout:
   Kept ReplicatedStorage/MyLib in the tree as a $path mount, since no route can make it: my-lib is not a valid route name.
   Kept ReplicatedStorage/Pkg in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
   Kept ServerScriptService/Admin in the tree as a $path mount, since no route can make it: only a folder directly in a source path becomes a route.
-  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route client, --unmatched leave, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -22,12 +22,14 @@ stdout:
     Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
   Wrote 3 files.
 stderr:
-  default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen's routes will place them: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+  default.project.json - warning: 2 files in the source paths are mounted by no node, so Rojo ignored them, and Rogen places each one a route matches: src/Loose.luau, src/scratch/x.server.luau. Check where with 'rogen where <path>', and list them under "globIgnorePaths" to leave them out as Rojo did. (init.unmountedFiles)
+  src/Loose.luau - warning: matched no route, so it is left out. Move it into src/Shared, Server or Client. (route.unrouted)
 
 $ rogen where src
 exit 0
 stdout:
-  src/Loose.luau -> ReplicatedStorage/Shared/Loose · route * (fallback)
+  src/Loose.luau -> unrouted · no route matches it
+    warning: matched no route, so it is left out. Move it into src/Shared, Server or Client. (route.unrouted)
   src/lib/pkg -> ReplicatedStorage/Pkg · mounted, which Rojo reads
   src/my-lib -> ReplicatedStorage/MyLib · mounted, which Rojo reads
   src/scratch/x.server.luau -> ServerScriptService/Server/scratch/x · route Server (suffix)
@@ -62,8 +64,7 @@ default.rogen.json:
     "routes": {
       "Shared": "ReplicatedStorage/Shared",
       "Server": "ServerScriptService/Server",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "*": "ReplicatedStorage/Shared"
+      "Client": "StarterPlayer/StarterPlayerScripts"
     }
   }
 }
@@ -76,7 +77,6 @@ lift: DataModel
     Pkg: Folder  <- src/lib/pkg/default.project.json
       P: ModuleScript  <- src/lib/pkg/P.luau
     Shared: Folder
-      Loose: ModuleScript  <- src/Loose.luau
       S: ModuleScript  <- src/shared/S.luau
   ServerScriptService: ServerScriptService
     Admin: Folder

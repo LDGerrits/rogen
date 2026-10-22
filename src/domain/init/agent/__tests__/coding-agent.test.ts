@@ -40,7 +40,7 @@ describe("hook targets", () => {
 							{
 								type: "command",
 								command:
-									'bash "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.sh',
+									'node "$CLAUDE_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
 							},
 						],
 					},
@@ -54,7 +54,7 @@ describe("hook targets", () => {
 		expect(registered("Codex").hooks.Stop[0].hooks[0]).toEqual({
 			type: "command",
 			command:
-				'bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh',
+				'node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs',
 		});
 	});
 
@@ -62,7 +62,7 @@ describe("hook targets", () => {
 		expect(target("Gemini CLI").settingsFile).toBe(".gemini/settings.json");
 		expect(registered("Gemini CLI").hooks.AfterAgent[0].hooks[0]).toEqual({
 			type: "command",
-			command: 'bash "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.sh',
+			command: 'node "$GEMINI_PROJECT_DIR"/.agents/hooks/rogen-check.mjs',
 		});
 	});
 
@@ -71,7 +71,9 @@ describe("hook targets", () => {
 		expect(registered("Cursor")).toEqual({
 			version: 1,
 			hooks: {
-				stop: [{ command: "bash .agents/hooks/rogen-check.sh cursor" }],
+				stop: [
+					{ command: "node .agents/hooks/rogen-check.mjs cursor" },
+				],
 			},
 		});
 	});
@@ -84,7 +86,7 @@ describe("hook targets", () => {
 				agentStop: [
 					{
 						type: "command",
-						bash: 'bash "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.sh',
+						bash: 'node "$(git rev-parse --show-toplevel)"/.agents/hooks/rogen-check.mjs',
 					},
 				],
 			},
@@ -104,8 +106,8 @@ describe("hook targets", () => {
 	});
 
 	it("should have every command run the script the docs hold", () => {
-		expect(HOOK_SCRIPT_FILE).toBe(".agents/hooks/rogen-check.sh");
-		expect(hookScript).toMatch(/^#!\/usr\/bin\/env bash\n/);
+		expect(HOOK_SCRIPT_FILE).toBe(".agents/hooks/rogen-check.mjs");
+		expect(hookScript).toMatch(/^\/\/ Agent Stop hook/);
 		for (const { hook } of CODING_AGENTS)
 			expect(withHook(undefined, hook)).toMatchObject({
 				kind: "added",
@@ -189,15 +191,16 @@ describe("registerHook", () => {
 		expect(added('{\n\t"model": "opus"\n}').endsWith("}")).toBe(true);
 	});
 
-	it("should leave settings that already name the script", () => {
-		const settings = JSON.stringify({
-			hooks: {
-				Stop: [entry('"$DIR"/.agents/hooks/rogen-check.sh')],
-			},
-		});
+	it.each(["rogen-check.mjs", "rogen-check.sh"])(
+		"should leave settings that name %s, which an older init wrote",
+		(script) => {
+			const settings = JSON.stringify({
+				hooks: { Stop: [entry(`"$DIR"/.agents/hooks/${script}`)] },
+			});
 
-		expect(withHook(settings, SPEC)).toEqual({ kind: "present" });
-	});
+			expect(withHook(settings, SPEC)).toEqual({ kind: "present" });
+		}
+	);
 
 	it("should add to the event it is given, not another", () => {
 		const settings = JSON.stringify({

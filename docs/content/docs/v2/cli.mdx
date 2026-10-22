@@ -139,7 +139,7 @@ Servers start only after the first build succeeds. If it fails, nothing starts, 
 
 ### `where [path…]`
 
-Shows where each file lands in the game and why, without writing anything. When a project file on disk differs from what `rogen build` would write, it adds an [`output.differs`](/docs/v2/diagnostics#output-differs) warning after the answers, since Rojo and Studio would show a game other than the one it describes:
+Shows where each file lands in the game and why, without writing anything. It answers from the sources, so it says nothing about whether a project file on disk is out of date; `rogen check` does ([`output.differs`](/docs/v2/diagnostics#output-differs)):
 
 ```
 $ rogen where src/Net src/Combat/Server/Hit.luau
@@ -280,7 +280,7 @@ A first `init` also adds Rogen's [rules for coding agents](/docs/v2/agents) to `
 
 With Darklua, the same step pins `seaofvoices/darklua` (0.19.0) beside Rojo in the same file when no toolchain file pins it and `darklua --version` doesn't run, so one `rokit install` gets both and the printed `darklua process src dist --watch` works as soon as it runs; the next steps list it with `rogen serve`, one command per terminal.
 
-Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.sh` and registers it in each agent's hook file. A run that can't ask adds it only with `--agent-hook`, and `jq` is the one tool it needs besides `bash` and `git`.
+Where it finds a coding agent (Claude Code, Codex, Gemini CLI, Cursor or Copilot, each by a folder or file it leaves in the project), a terminal run also offers an [agent hook](/docs/v2/agents#check-changed-files-automatically) that reports Rogen warnings about the files a turn changed: it writes `.agents/hooks/rogen-check.mjs` and registers it in each agent's hook file. A run that can't ask adds it only with `--agent-hook`, and the script is Node, so it needs only Node and git.
 
 #### Choices as flags
 
@@ -297,7 +297,7 @@ Every question has a flag, so a program that can't answer prompts can still choo
 | `--project-file lift\|new` | With a hand-written `default.project.json`: lift its tree (the default) or start a new one. |
 | `--package <path>` | A package folder to mount as it is. Repeat for several, or `none`. |
 | `--route <id>` | A starting route: `server`, `client`, `shared`, `replicatedFirst`, `serverStorage` or `starterGui`. Repeat for several, or `none`. When a lifted project file already mounts a folder under one of these names, `server` means that route, which is also called `mount:server`. |
-| `--unmatched shared\|leave` | Where files that match no route go. |
+| `--unmatched leave\|shared` | Where files that match no route go: nowhere by default, each with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning, or to the shared route as a `*` route. A lifted project file that mounted a whole source path keeps that mount as `*`. |
 | `--[no-]agent-rules` | Rogen's rules for coding agents. Added by default. |
 | `--[no-]agent-hook` | The hook that reports warnings to the coding agents found. Not added by default. |
 | `--[no-]sample` | The Greeter sample of a new place. Written by default in a folder with no code. |
@@ -631,7 +631,7 @@ An object with a `diagnostics` array: the entries described above, one per diagn
 
 ### `where --json`
 
-An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of a config that didn't load (the exit code is then 1), then the `output.differs` warnings of project files that are out of date, and is empty otherwise. `locations` has one entry per path, each with `config`, `status` and `source`, plus:
+An object with a `locations` array and a `diagnostics` array. `diagnostics` holds the errors of a config that didn't load (the exit code is then 1), and is empty otherwise. `locations` has one entry per path, each with `config`, `status` and `source`, plus:
 
 | `status` | Fields |
 |---|---|

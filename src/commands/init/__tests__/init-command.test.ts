@@ -206,7 +206,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
@@ -311,11 +311,11 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual(
 				expect.arrayContaining([
-					"success: Created .agents/hooks/rogen-check.sh.",
+					"success: Created .agents/hooks/rogen-check.mjs.",
 					"success: Created .claude/settings.json.",
 				])
 			);
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
 		it("should say it added the hook to a file that exists, and list it as appended", async () => {
@@ -337,7 +337,7 @@ describe("init command", () => {
 
 			await runInit();
 
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(false);
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(false);
 		});
 	});
 
@@ -359,7 +359,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
@@ -494,7 +494,7 @@ describe("init command", () => {
 				{ "agent-hook": true }
 			);
 
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
+			expect(await exists(".agents/hooks/rogen-check.mjs")).toBe(true);
 		});
 
 		it("should refuse a hook when no coding agent is missing it", async () => {
