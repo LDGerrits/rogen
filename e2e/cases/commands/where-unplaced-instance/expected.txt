@@ -11,7 +11,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "instance": "ServerScriptService.Shop.Buy",
         "status": "noFile",
         "folders": [
@@ -20,7 +20,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "instance": "ServerScriptService.Stray.Buy",
         "status": "noFile",
         "fixes": [

@@ -325,8 +325,8 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				"arena: places/arena/src/Server/Main.luau -> ServerScriptService/Main · route Server (folder)",
-				"lobby: places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
+				"places/arena/default.rogen.json: places/arena/src/Server/Main.luau -> ServerScriptService/Main · route Server (folder)",
+				"places/lobby/default.rogen.json: places/lobby/src/Server/Only.luau -> ServerScriptService/Only · route Server (folder)",
 			]);
 		});
 
@@ -497,8 +497,8 @@ describe("where command", () => {
 			await run({ _: ["src/common/Util.luau"] });
 
 			expect(printed()).toEqual([
-				"game: src/common/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
-				"lobby: src/common/Util.luau -> ReplicatedFirst/Util · route * (fallback)",
+				"game.rogen.json: src/common/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+				"lobby.rogen.json: src/common/Util.luau -> ReplicatedFirst/Util · route * (fallback)",
 			]);
 		});
 
@@ -511,8 +511,8 @@ describe("where command", () => {
 			expect(
 				locations.map(({ config, source }) => [config, source])
 			).toEqual([
-				["game", "/repo/src/common/Util.luau"],
-				["lobby", "/repo/src/common/Util.luau"],
+				["game.rogen.json", "/repo/src/common/Util.luau"],
+				["lobby.rogen.json", "/repo/src/common/Util.luau"],
 			]);
 		});
 
@@ -644,7 +644,7 @@ describe("where command", () => {
 			expect(printed()).not.toEqual([]);
 			expect(document()).toEqual([
 				{
-					config: "repo",
+					config: "default.rogen.json",
 					source: "/repo/src/Inventory/Server/Save.luau",
 					status: "placed",
 					exists: true,
@@ -656,7 +656,7 @@ describe("where command", () => {
 					diagnostics: [],
 				},
 				{
-					config: "repo",
+					config: "default.rogen.json",
 					source: "/repo/src/Net/Http.spec.luau",
 					status: "ignored",
 					exists: true,
@@ -664,7 +664,7 @@ describe("where command", () => {
 					diagnostics: [],
 				},
 				{
-					config: "repo",
+					config: "default.rogen.json",
 					source: "/repo/src/Nowhere.luau",
 					status: "placed",
 					exists: false,

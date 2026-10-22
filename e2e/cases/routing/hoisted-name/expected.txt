@@ -16,7 +16,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Player/^Animate.client.luau",
         "status": "placed",
         "exists": true,

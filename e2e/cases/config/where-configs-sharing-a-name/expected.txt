@@ -1,0 +1,46 @@
+$ rogen where default release src/A/X.luau
+exit 0
+stdout:
+  default.rogen.json: src/A/X.luau -> ReplicatedStorage/Shared/A/X · route * (fallback)
+  release.rogen.json: src/A/X.luau -> ServerStorage/Shared/A/X · route * (fallback)
+
+$ rogen where default release src/A/X.luau --json
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "default.rogen.json",
+        "source": "<dir>/src/A/X.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "Shared",
+          "A",
+          "X"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.A.X",
+        "route": "*",
+        "routeMatch": "fallback",
+        "diagnostics": []
+      },
+      {
+        "config": "release.rogen.json",
+        "source": "<dir>/src/A/X.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ServerStorage",
+          "Shared",
+          "A",
+          "X"
+        ],
+        "require": "game:GetService(\"ServerStorage\").Shared.A.X",
+        "route": "*",
+        "routeMatch": "fallback",
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }
