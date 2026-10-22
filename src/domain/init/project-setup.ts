@@ -360,9 +360,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				path.posix.dirname(gameFolder),
 				"lobby"
 			);
+			const edited =
+				'Rogen errors until the copy has its own "name" and source path.';
 			const copy = game
-				? `copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby, its source path ${places.placeSourcePath} to src/lobby and each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}.`
-				: `copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby.`;
+				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
+				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
 			return processed
 				? `Add another place: ${copy} Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
 				: `Add another place: ${copy} Serve it ${port}: 'rogen serve lobby --port <port>'.`;

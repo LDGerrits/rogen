@@ -164,7 +164,11 @@ describe("CoreInitService", () => {
 			);
 		};
 
-		it.each(["default.rogen.json", "default.rogen.jsonc"])(
+		it.each([
+			"default.rogen.json",
+			"default.rogen.jsonc",
+			"game.rogen.json",
+		])(
 			"should fail with init.configExists for %s, naming where to look",
 			async (name) => {
 				await write(name, "{}");

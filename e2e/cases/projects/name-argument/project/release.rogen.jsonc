@@ -1,6 +1,7 @@
 // comments are fine in a jsonc config
 {
 	"name": "Inventory",
+	"globIgnorePaths": ["**/*.spec.luau"],
 	"rogen": {
 		"sourcePaths": [
 			"src"
