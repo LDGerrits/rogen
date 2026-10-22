@@ -140,10 +140,6 @@ export class MockConfigService implements ConfigService {
 		return ok(new MockConfigSelection(this.entries, this.home));
 	}
 
-	async selectFolder(): Promise<Result<ReloadableSelection, Error>> {
-		return this.select();
-	}
-
 	async coversOf(target: string): Promise<ConfigCover[]> {
 		return this.covers(target);
 	}

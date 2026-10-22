@@ -7,9 +7,6 @@
 		[
 			"build",
 			"dist.rogen.jsonc"
-		],
-		[
-			"list"
 		]
 	],
 	"rojo": false

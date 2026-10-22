@@ -73,7 +73,7 @@ Rogen picks a file the way Rojo does.
 
 `rogen check <path>` and `rogen where <path>` are the exception: they take paths, and find each path's own config: the nearest default above it, else the named `.rogen.json` files at or above it whose source paths hold it. See [`check`](/docs/v2/cli#check-path).
 
-A plain Rojo project runs under Rogen's commands as it is: `check`, `build`, `list`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` work on a folder with only a `default.project.json`, and Rogen writes nothing to the file. A `.project.jsonc` is read too, since Rojo reads it. Beside a `default.rogen.json`, the config wins.
+A plain Rojo project runs under Rogen's commands as it is: `check`, `build`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` work on a folder with only a `default.project.json`, and Rogen writes nothing to the file. A `.project.jsonc` is read too, since Rojo reads it. Beside a `default.rogen.json`, the config wins.
 
 A command writes **only the project file of the config it runs**. `rogen serve dist` writes `dist.project.json` and serves it, `rogen build release -o game.rbxl` writes `release.project.json` and builds from it, and nothing else is written. A file is rewritten only when its bytes differ. A config you didn't name can be broken without blocking you. The file Rogen writes is overwritten by every build, so edit the `X.rogen.json`; an `X.project.json` with no `X.rogen.json` beside it is a plain Rojo project and is left as it is.
 
@@ -166,7 +166,7 @@ A second output is a second complete file. `X.rogen.json` writes `X.project.json
 - A file other than `default` must set `name`.
 - `release` lists `"DevPackages/**"` in `globIgnorePaths`, which drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files).
 - A bare `rogen serve` serves `default.rogen.json`, even when `dist.rogen.json` sits beside it. With Darklua that is unprocessed source, as a bare `rojo serve` would serve: serve the processed code with `rogen serve dist`. `init` prints the run line that fits your setup.
-- The files repeat each other and can drift. `rogen list` in the folder prints, for each file other than `default`, the keys in which it differs from `default`. It is information, not a warning: after you edit one file, run it to see which siblings to bring in step.
+- The files repeat each other and can drift: after you change a route, a source path or the tree in one, make the same change in the siblings that should follow it.
 - A `test.project.json` you wrote by hand stays as it is. `rogen build test.project.json` runs it as a plain Rojo project when no `test.rogen.json` sits beside it.
 
 **A test or subset file.** A second file is complete, so a smaller one is its own tree: give it its own `sourcePaths`, its mounts under `tree`, and `globIgnorePaths` for the mounts and specs it leaves out.

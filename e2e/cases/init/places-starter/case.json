@@ -11,10 +11,6 @@
 			"game"
 		],
 		[
-			"list",
-			"game"
-		],
-		[
 			"sourcemap",
 			"game",
 			"-o",

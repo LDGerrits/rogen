@@ -137,21 +137,28 @@ stdout:
       rogen init --non-interactive
       rogen init game
 
-$ rogen help list
+$ rogen help where
 exit 0
 stdout:
-  rogen-list
-  Lists every config file of this folder, or the one you name, with its source paths, routes, compiled
-  path and project file, and which are served. A config other than default.rogen.json also lists the
-  keys that differ from it; with --json, each fully resolved.
+  rogen-where
+  Prints where each file lands in the game, and why, with its warnings.
   
   USAGE:
-      rogen list [OPTIONS] [PROJECT]...
+      rogen where [OPTIONS] [PATH]...
   
   ARGS:
-      <PROJECT>...    A folder, a .rogen.json file, a *.project.json path, or the name of a file here
-                      (dist for dist.rogen.json). The default.rogen.json of the working directory, or
-                      its default.project.json, when none is given.
+      <PATH>...    A file, or a directory for the files in it; a file that doesn't exist yet is placed
+                   as if it did. A :line or :line:col after a file, as a linter prints it, is ignored.
+                   An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the
+                   files behind it. '-' alone reads text on stdin and prints it with each instance
+                   path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name',
+                   Line 12, written as file:line; an instance that more than one file places stays as
+                   it is and is listed on stderr. A path is answered by the default config of the
+                   nearest folder at or above it; with none, by every .rogen.json at or above it whose
+                   source paths cover it, each answer headed by its config's name when they differ.
+                   One that no config covers is skipped with a note; a .rogen.json lists every file of
+                   that config. Every file of the default config of the working directory when none is
+                   given, and an instance or '-' reads that config too.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
@@ -162,9 +169,15 @@ stdout:
       -v, --verbose          Print debug output; -vv, trace output. (repeatable)
       -V, --version          Print the version.
   
+  EXIT CODES:
+      0    every path answered, one that no file places included
+      1    no path was given, or the config has errors
+  
   EXAMPLES:
-      rogen list
-      rogen list --json
+      rogen where src/Inventory/Server/Save.luau
+      rogen where ServerScriptService.Inventory.Save:12
+      rogen where src --json
+      pbpaste | rogen where -
 
 $ rogen build --help
 exit 0

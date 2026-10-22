@@ -17,9 +17,7 @@ import {
 	ServeRequest,
 	ServeService,
 	ServeSession,
-	ServingNow,
 } from "./serve-service.js";
-import { ServedProjectFiles } from "./served-project-files.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
@@ -28,7 +26,6 @@ export class CoreServeService implements ServeService {
 
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
-	private readonly served: ServedProjectFiles;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -47,7 +44,6 @@ export class CoreServeService implements ServeService {
 			environmentService.tmpDir,
 			environmentService.pid
 		);
-		this.served = new ServedProjectFiles(this.records, this.probe);
 	}
 
 	private portsFor(
@@ -118,22 +114,5 @@ export class CoreServeService implements ServeService {
 				this.compatibility
 			)
 		);
-	}
-
-	async servedBy(
-		projectFiles: readonly string[]
-	): Promise<ReadonlyMap<string, ServingNow>> {
-		const found = new Map<string, ServingNow>();
-		for (const [file, record] of await this.served.serving(projectFiles)) {
-			const server = SyncServer.byId(record.server);
-			if (server)
-				found.set(file, {
-					server,
-					host: record.host,
-					port: record.port,
-					clients: record.clients,
-				});
-		}
-		return found;
 	}
 }

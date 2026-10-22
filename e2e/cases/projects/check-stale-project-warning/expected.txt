@@ -3,29 +3,7 @@ exit 1
 stdout:
   default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 
-$ rogen list
-exit 0
+$ rogen check dist.rogen.json
+exit 1
 stdout:
-  rogen list
-  default.rogen.json
-    source paths: src
-    routes:
-      server -> ServerScriptService
-      client -> StarterPlayer/StarterPlayerScripts
-      shared -> ReplicatedStorage/shared
-      * -> ReplicatedStorage/shared
-    compiled path: (none)
-    project file: default.project.json
-    rojo: rojo serve default.project.json
-  dist.rogen.json
-    source paths: src
-    routes: same as default.rogen.json
-    compiled path: dist
-      src -> dist
-    project file: dist.project.json
-    rojo: rojo serve dist.project.json
-    differs from default.rogen.json: compiledPath
-  2 configs.
-stderr:
-  default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
   dist.project.json - warning: this file differs from what 'rogen build dist.rogen.json' would write: its sources changed since it was written. Run 'rogen build dist.rogen.json' to write it again; what it holds comes from dist.rogen.json, so change that to change it. (output.differs)

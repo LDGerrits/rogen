@@ -31,7 +31,6 @@ import {
 	Locations,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
-import { MissingSourcePaths } from "./check/missing-source-paths.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
@@ -199,19 +198,6 @@ export class CoreBuildService implements BuildService {
 		if (!written.includes(true)) return [];
 		const { diagnostics } = await this.check(selection);
 		return diagnostics.filter(({ code }) => code === "output.differs");
-	}
-
-	async missingSourcePaths(config: ResolvedConfig): Promise<Diagnostic[]> {
-		const checked = await Promise.all(
-			config.sourcePaths.map(async (sourcePath) => ({
-				sourcePath,
-				exists: await this.fileSystemService.isDirectory(sourcePath),
-			}))
-		);
-		return new MissingSourcePaths(
-			checked,
-			config.projectFile
-		).diagnostics();
 	}
 
 	async diagnose(

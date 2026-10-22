@@ -2,30 +2,6 @@ $ rogen build release
 exit 0
 stdout: (not shown)
 
-$ rogen list
-exit 0
-stdout:
-  rogen list
-  default.rogen.json
-    source paths: src
-    routes:
-      server -> ServerScriptService
-      client -> StarterPlayer/StarterPlayerScripts
-      shared -> ReplicatedStorage/shared
-      * -> ReplicatedStorage/shared
-    compiled path: (none)
-    project file: default.project.json
-    rojo: rojo serve default.project.json
-  release.rogen.json
-    source paths: src
-    routes: same as default.rogen.json
-    compiled path: dist
-      src -> dist
-    project file: release.project.json
-    rojo: rojo serve release.project.json
-    differs from default.rogen.json: compiledPath
-  2 configs.
-
 written:
   release.project.json
 

@@ -60,35 +60,13 @@ describe("ServerRecords", () => {
 		});
 	});
 
-	describe("all", () => {
-		it("should list every record, and skip the ones it can't read", async () => {
-			await records.write(address, info, built);
-			await records.write(new ServeAddress("127.0.0.1", 34873), info, {
-				...built,
-				projectFile: "/repo/lobby.project.json",
-			});
-			await fs.writeFile("/tmp/rogen-serve/34874.json", "{");
-			await fs.writeFile("/tmp/rogen-serve/34875.json", '{"port":1}');
-
-			const listed = await records.all();
-
-			expect(listed.map(({ port }) => port).sort()).toEqual([
-				34872, 34873,
-			]);
-		});
-
-		it("should list nothing when no serve ever recorded one", async () => {
-			expect(await records.all()).toEqual([]);
-		});
-	});
-
 	describe("remove", () => {
 		it("should forget a record", async () => {
 			await records.write(address, info, built);
 
 			await records.remove(address);
 
-			expect(await records.all()).toEqual([]);
+			expect(await records.recordOf(address, info)).toBeUndefined();
 		});
 	});
 });

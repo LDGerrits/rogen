@@ -5,13 +5,11 @@ export const recordFile = (
 	{
 		session = "s1",
 		configFile,
-		clients,
 		owner,
 		pid,
 	}: {
 		session?: string;
 		configFile?: string;
-		clients?: number;
 		owner?: number;
 		pid?: number;
 	} = {}
@@ -22,7 +20,6 @@ export const recordFile = (
 			host: "127.0.0.1",
 			port,
 			server: "rojo",
-			clients,
 			session,
 			project,
 			projectFile,

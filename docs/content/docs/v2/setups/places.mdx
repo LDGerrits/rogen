@@ -179,7 +179,7 @@ The place's `tsconfig.json` lists both source folders in `rootDirs` and in `path
 }
 ```
 
-The `compiledPath` is `out`, and the compiled folder repeats the layout of the source paths under their common folder: `out/common/src/…` and `out/game/src/…`, which is what the tsconfig writes. `rogen list` prints it. Common code is compiled once per place. `projects/common/tsconfig.json` is there so the editor resolves types and `@rbxts` packages in common files, since no place's tsconfig sits above them. `init` points the `build` and `watch` scripts of `package.json` at the first place, so `npm run watch` compiles it, and lists `projects/*/out` and `projects/*/include` in the `.gitignore` it creates.
+The `compiledPath` is `out`, and the compiled folder repeats the layout of the source paths under their common folder: `out/common/src/…` and `out/game/src/…`, which is what the tsconfig writes. Common code is compiled once per place. `projects/common/tsconfig.json` is there so the editor resolves types and `@rbxts` packages in common files, since no place's tsconfig sits above them. `init` points the `build` and `watch` scripts of `package.json` at the first place, so `npm run watch` compiles it, and lists `projects/*/out` and `projects/*/include` in the `.gitignore` it creates.
 
 rbxtsc needs a project file beside the `tsconfig.json`, so run `rogen build projects/game` before the compiler. A place added later needs the same files and the same two scripts (see [Add a Place](#add-a-place)). Run the watch of each place in a terminal of its own.
 

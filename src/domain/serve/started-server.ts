@@ -1,6 +1,6 @@
 import path from "path";
 import { RunOnceScheduler } from "../../base/async.js";
-import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
+import { ErrorUtils } from "../../base/errors.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import {
@@ -38,7 +38,6 @@ export class StartedServer extends AbstractDisposable {
 	private exited = false;
 	private stoppedOnPurpose = false;
 	private recordWrite: Promise<void> | undefined;
-	private answeredWith: ServerInfo | undefined;
 	private connected = 0;
 	private readonly ready: RunOnceScheduler;
 	private readyDelay = READY_POLL_MS.first;
@@ -76,7 +75,6 @@ export class StartedServer extends AbstractDisposable {
 					0,
 					this.connected + (opened ? 1 : -1)
 				);
-				this.updateRecord().catch(onUnexpectedError);
 				this.listener.connection({
 					target,
 					opened,
@@ -116,23 +114,6 @@ export class StartedServer extends AbstractDisposable {
 		this[Symbol.dispose]();
 	}
 
-	private updateRecord(): Promise<void> {
-		if (
-			!this.recordWrite ||
-			!this.answeredWith ||
-			this.stoppedOnPurpose ||
-			this.exited
-		)
-			return Promise.resolve();
-		const info = this.answeredWith;
-		this.recordWrite = this.recordWrite.then(() =>
-			this.stoppedOnPurpose || this.exited
-				? undefined
-				: this.writeRecord(info)
-		);
-		return this.recordWrite;
-	}
-
 	private writeRecord(info: ServerInfo): Promise<void> {
 		const { target } = this;
 		return this.records
@@ -140,9 +121,6 @@ export class StartedServer extends AbstractDisposable {
 				projectFile: target.config.projectFile,
 				configFile: target.config.file,
 				pid: this.child.pid,
-				clients: info.server.reportsConnections(info.version)
-					? this.connected
-					: undefined,
 			})
 			.catch((error) =>
 				this.listener.failed(ErrorUtils.fromUnknown(error))
@@ -165,7 +143,6 @@ export class StartedServer extends AbstractDisposable {
 					state.kind === "serving" &&
 					state.info.project === target.project
 				) {
-					this.answeredWith = state.info;
 					this.recordWrite = this.writeRecord(state.info);
 					this.listener.served({ target, info: state.info });
 					return;

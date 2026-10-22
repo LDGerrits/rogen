@@ -56,14 +56,6 @@ class CustomiseFirst implements PromptService {
 		return this.once(options.message, () => this.inner.select(options));
 	}
 
-	autocomplete<T extends string>(
-		options: SelectPromptOptions<T>
-	): Promise<T | undefined> {
-		return this.once(options.message, () =>
-			this.inner.autocomplete(options)
-		);
-	}
-
 	text(options: TextPromptOptions): Promise<string | undefined> {
 		return this.once(options.message, () => this.inner.text(options));
 	}

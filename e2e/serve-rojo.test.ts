@@ -522,7 +522,7 @@ describeWithRojo("end to end serve", () => {
 		}
 	}, 40_000);
 	describe("as Studio connects", () => {
-		it("should tell when a plugin connects and when it goes away, and show it in list", async () => {
+		it("should tell when a plugin connects and when it goes away", async () => {
 			const serving = serve.start(["--json"]);
 			await eventually(() => {
 				expect(serving.stdout).toContain('"serving"');
@@ -544,26 +544,6 @@ describeWithRojo("end to end serve", () => {
 					expect(serving.stdout).toContain(
 						`{"connected":{"config":"Game","server":"rojo","project":"Game","port":${serve.port},"clients":1}}`
 					);
-				}, 20_000);
-				const listed = () => {
-					const [list, listArgs] = invocation(serve.cli, [
-						"list",
-						"--json",
-					]);
-					return JSON.parse(
-						spawnSync(list, listArgs, {
-							cwd: serve.dir,
-							encoding: "utf8",
-						}).stdout
-					).configs[0].serving;
-				};
-				await eventually(() => {
-					expect(listed()).toEqual({
-						server: "rojo",
-						host: "127.0.0.1",
-						port: serve.port,
-						clients: 1,
-					});
 				}, 20_000);
 			} finally {
 				studio.kill("SIGKILL");

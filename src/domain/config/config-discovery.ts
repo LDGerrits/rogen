@@ -87,34 +87,6 @@ export class ConfigDiscovery {
 		});
 	}
 
-	/** Every config file of the working directory from one directory read, since `list` needs no default. */
-	async discoverFolder(): Promise<Result<DiscoveredConfigs, Error>> {
-		const cwd = this.environmentService.cwd;
-		const files = await this.list(cwd);
-		const twin = ConfigDiscovery.twinStem(files);
-		if (twin !== undefined)
-			return err(
-				keepOne(
-					cwd,
-					files
-						.filter((file) => configStem(file) === twin)
-						.map((file) => path.basename(file))
-				)
-			);
-		if (files.length === 0) return this.discoverHere();
-		return ok({
-			home: cwd,
-			files,
-			noneNamed: false,
-			notes: [],
-		});
-	}
-
-	private static twinStem(files: readonly string[]): string | undefined {
-		const stems = files.map((file) => configStem(file));
-		return stems.find((stem, index) => stems.indexOf(stem) !== index);
-	}
-
 	private async discoverNamed(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {

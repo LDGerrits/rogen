@@ -4,7 +4,7 @@
 		["build"],
 		["build", "../.."],
 		["build", "ghost"],
-		["list"],
+		["check"],
 		["where", "Server/Save.luau"],
 		["build", "../../default.project.json", "--json"]
 	],

@@ -4,7 +4,6 @@
 		["build"],
 		["build", "."],
 		["check", "./"],
-		["list"],
 		["where", "src"]
 	],
 	"output": ["build"]

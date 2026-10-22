@@ -144,7 +144,7 @@ To keep the swap out of the default build, give the build that wants it a config
 }
 ```
 
-`rogen build mock` writes `mock.project.json` and nothing else. A config doesn't inherit from another, so the second one states its own routes, and `rogen list` shows how it differs from `default.rogen.json`. The same goes for files that only one build has: a source path that one config lists and another doesn't, or a [`globIgnorePaths`](#leaving-out-files) entry in one config, leaves them out of the other. Two files in one source path that give one instance are a [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) warning, and the last one wins.
+`rogen build mock` writes `mock.project.json` and nothing else. A config doesn't inherit from another, so the second one states its own routes. The same goes for files that only one build has: a source path that one config lists and another doesn't, or a [`globIgnorePaths`](#leaving-out-files) entry in one config, leaves them out of the other. Two files in one source path that give one instance are a [`tree.instanceClash`](/docs/v2/diagnostics#tree-instanceclash) warning, and the last one wins.
 
 <Callout type="info" title="Rogen only reads names">
 	The tree depends only on file and folder names, so editing a script's contents never changes the output.

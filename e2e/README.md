@@ -100,10 +100,9 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `cases/projects`: the forms `[PROJECT]` takes (`name-argument`, `folder-wins-a-tie`,
   `plain-project-beside-config`), the default alone for a bare command (`default-only`,
   `no-default-error`), the "keep one" and renamed-config errors, a deleted config
-  (`config-deleted-plain-project`), a stale file (`check-stale-project-warning`), `list`
-  (`list-folder`), and the second files of Darklua and release setups.
+  (`config-deleted-plain-project`), a stale file (`check-stale-project-warning`), and the second files of Darklua and release setups.
 - What a command does with its project argument, and what it prints, is
-  checked by `cases/commands`: `build`, `check`, `list` and `where`, with
+  checked by `cases/commands`: `build`, `check` and `where`, with
   several projects as folders (`build-several-projects`, `build-same-errors-error`),
   the forms `[PROJECT]` takes (`build-project-path`, `build-project-argument-error`,
   `from-subfolder`, which shows a bare command reading only its own folder), a stale `default.project.json` (`check-stale-project-file-warning`),

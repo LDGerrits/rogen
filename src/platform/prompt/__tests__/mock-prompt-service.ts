@@ -41,8 +41,6 @@ afterEach(() => {
 export interface AskedPrompt extends PromptDetails {
 	readonly message: string;
 	readonly placeholder?: string;
-	/** For a prompt that offers choices, their values in order. */
-	readonly offered?: readonly string[];
 }
 
 export class MockPromptService implements PromptService {
@@ -93,12 +91,6 @@ export class MockPromptService implements PromptService {
 		return this.next<T>(options, options.initialValue);
 	}
 
-	async autocomplete<T extends string>(
-		options: SelectPromptOptions<T>
-	): Promise<T | undefined> {
-		return this.next<T>(options, options.initialValue);
-	}
-
 	async multiSelect<T extends string>(
 		options: MultiSelectPromptOptions<T>
 	): Promise<readonly T[] | undefined> {
@@ -106,25 +98,16 @@ export class MockPromptService implements PromptService {
 	}
 
 	private next<T>(
-		options: AskedPrompt & {
-			readonly choices?: readonly { readonly value: string }[];
-		},
+		options: AskedPrompt,
 		initial: T | undefined
 	): T | undefined {
 		const { message, placeholder, description, hint } = options;
-		const offered = options.choices?.map(({ value }) => value);
 		if (this.byQuestion && this.asked.includes(message))
 			throw new Error(
 				`"${message}" was asked again; script the answers as a list.`
 			);
 		this.asked.push(message);
-		this.prompts.push({
-			message,
-			placeholder,
-			description,
-			hint,
-			offered,
-		});
+		this.prompts.push({ message, placeholder, description, hint });
 		const answer = this.byQuestion
 			? this.answerFor(message, initial)
 			: this.answers.shift();

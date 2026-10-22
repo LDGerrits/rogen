@@ -27,22 +27,6 @@ $ rogen build game
 exit 0
 stdout: (not shown)
 
-$ rogen list game
-exit 0
-stdout:
-  rogen list
-  game.rogen.json
-    source paths: src/common, src/game
-    routes:
-      Server -> ServerScriptService
-      Client -> StarterPlayer/StarterPlayerScripts
-      Shared -> ReplicatedStorage/Shared
-      * -> ReplicatedStorage/Shared
-    compiled path: (none)
-    project file: game.project.json
-    rojo: rojo serve game.project.json
-  1 config.
-
 $ rogen sourcemap game -o sourcemap.json
 exit 0
 stdout:

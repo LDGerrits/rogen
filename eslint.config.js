@@ -18,7 +18,6 @@ const modules = {
 		build: ["build", "build-service"],
 		config: [
 			"config",
-			"config-differences",
 			"config-service",
 			"declared-keys",
 			"resolved-config",
@@ -67,8 +66,6 @@ const modules = {
 		"fmt-project": [],
 		help: [],
 		init: [],
-		list: [],
-		picker: ["command-picker", "project-context"],
 		plugin: [],
 		serve: [],
 		sourcemap: [],

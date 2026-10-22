@@ -52,10 +52,6 @@ export class CoreConfigService implements ConfigService {
 		return this.open(await this.discovery.discover(refs));
 	}
 
-	async selectFolder(): Promise<Result<ReloadableSelection, Error>> {
-		return this.open(await this.discovery.discoverFolder());
-	}
-
 	private async open(
 		discovered: Result<DiscoveredConfigs, Error>
 	): Promise<Result<ReloadableSelection, Error>> {

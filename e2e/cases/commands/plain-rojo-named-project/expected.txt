@@ -5,18 +5,6 @@ stdout:
   test.project.json · unchanged
   Built 1 project.
 
-$ rogen list test.project.json
-exit 0
-stdout:
-  rogen list
-  test.project.json
-    source paths: (none)
-    routes:
-    compiled path: (none)
-    project file: test.project.json
-    rojo: rojo serve test.project.json
-  1 config.
-
 $ rogen sourcemap test.project.json
 exit 0
 stdout:

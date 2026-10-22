@@ -1,9 +1,9 @@
-$ rogen list
+$ rogen check
 exit 1
 stderr:
   error: No default.rogen.json or default.project.json in this folder (<dir>). Run 'rogen init' to create one.
 
-$ rogen list --json
+$ rogen check --json
 exit 1
 stdout:
   {

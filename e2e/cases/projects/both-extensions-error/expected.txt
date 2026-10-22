@@ -7,8 +7,3 @@ $ rogen build dist.rogen.jsonc
 exit 2
 stderr:
   error: <dir> holds both dist.rogen.json and dist.rogen.jsonc; keep one.
-
-$ rogen list
-exit 2
-stderr:
-  error: <dir> holds both dist.rogen.json and dist.rogen.jsonc; keep one.

@@ -15,7 +15,7 @@ exit 1
 stderr:
   error: "ghost" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
-$ rogen list
+$ rogen check
 exit 1
 stderr:
   error: No default.rogen.json or default.project.json in this folder (<dir>/src/Inventory). Run 'rogen init' to create one.

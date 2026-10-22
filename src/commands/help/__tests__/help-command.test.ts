@@ -13,7 +13,6 @@ import "../../fmt-project/fmt-project-command.js";
 import "../doc-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
-import "../../list/list-command.js";
 import "../../plugin/plugin-command.js";
 import "../../serve/serve-command.js";
 import "../../sourcemap/sourcemap-command.js";
@@ -272,7 +271,7 @@ describe("help command", () => {
 		});
 
 		it("should leave out a section that has nothing to list", async () => {
-			await help("list");
+			await help("where");
 
 			expect(printed()).not.toContain("SUBCOMMANDS:");
 		});

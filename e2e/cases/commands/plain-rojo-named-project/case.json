@@ -1,1 +1,1 @@
-{ "steps": [["build", "test.project.json"], ["list", "test.project.json"], ["sourcemap", "test.project.json"], ["fmt-project", "test.project.json"]], "output": ["build"] }
+{ "steps": [["build", "test.project.json"], ["sourcemap", "test.project.json"], ["fmt-project", "test.project.json"]], "output": ["build"] }

@@ -8,7 +8,6 @@ interface ServedBuild {
 	readonly projectFile: string;
 	/** The config the project file was written from. */
 	readonly configFile?: string;
-	readonly clients?: number;
 	/** The process that leads the server. */
 	readonly pid?: number;
 }
@@ -34,7 +33,6 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		(value.session !== undefined && typeof value.session !== "string") ||
 		(value.configFile !== undefined &&
 			typeof value.configFile !== "string") ||
-		(value.clients !== undefined && typeof value.clients !== "number") ||
 		(value.owner !== undefined && typeof value.owner !== "number") ||
 		(value.pid !== undefined && typeof value.pid !== "number")
 	)
@@ -47,7 +45,6 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		session: value.session,
 		projectFile: value.projectFile,
 		configFile: value.configFile,
-		clients: value.clients,
 		owner: value.owner,
 		pid: value.pid,
 	};
@@ -77,23 +74,6 @@ export class ServerRecords {
 			: undefined;
 	}
 
-	/** Every readable record, including those of servers that no longer run. */
-	async all(): Promise<ServerRecord[]> {
-		let entries: [string, unknown][];
-		try {
-			entries = await this.fileSystemService.readDirectory(this.dir);
-		} catch {
-			return [];
-		}
-		const read = await Promise.all(
-			entries
-				.map(([name]) => name)
-				.filter((name) => name.endsWith(".json"))
-				.map((name) => this.read(path.join(this.dir, name)))
-		);
-		return read.filter((record) => record !== undefined);
-	}
-
 	async write(
 		address: ServeAddress,
 		info: ServerInfo,
@@ -109,7 +89,6 @@ export class ServerRecords {
 				project: info.project,
 				projectFile: built.projectFile,
 				configFile: built.configFile,
-				clients: built.clients,
 				owner: this.owner,
 				pid: built.pid,
 			})

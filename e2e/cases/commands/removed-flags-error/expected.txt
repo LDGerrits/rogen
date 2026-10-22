@@ -48,11 +48,6 @@ exit 2
 stderr:
   error: Unknown option '-c'. Run 'rogen help build' to see what build accepts.
 
-$ rogen list --all
-exit 2
-stderr:
-  error: Unknown option '--all'. Run 'rogen help list' to see what list accepts.
-
 $ rogen where --all
 exit 2
 stderr:

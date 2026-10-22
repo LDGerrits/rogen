@@ -354,51 +354,6 @@ describe("ConfigDiscovery", () => {
 		});
 	});
 
-	describe("every config of the folder", () => {
-		it("should list each config file, with no default needed", async () => {
-			await fs.writeFile("/repo/dist.rogen.json", "{}");
-			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
-			await fs.writeFile("/repo/README.md", "");
-
-			const found = (await discovery.discoverFolder()).unwrap();
-
-			expect(found).toEqual({
-				home: "/repo",
-				files: ["/repo/dist.rogen.json", "/repo/release.rogen.jsonc"],
-				noneNamed: false,
-				notes: [],
-			});
-		});
-
-		it("should fall back to the default project file when there is no config", async () => {
-			await fs.writeFile("/repo/default.project.json", "{}");
-
-			const found = (await discovery.discoverFolder()).unwrap();
-
-			expect(found.files).toEqual(["/repo/default.project.json"]);
-		});
-
-		it("should fail like a bare command when there is nothing", async () => {
-			const result = await discovery.discoverFolder();
-
-			expect(errorOf(result).message).toContain(
-				"No default.rogen.json or default.project.json in this folder"
-			);
-		});
-
-		it("should fail when a stem has both extensions", async () => {
-			await fs.writeFile("/repo/default.rogen.json", "{}");
-			await fs.writeFile("/repo/dist.rogen.json", "{}");
-			await fs.writeFile("/repo/dist.rogen.jsonc", "{}");
-
-			const result = await discovery.discoverFolder();
-
-			expect(errorOf(result).message).toBe(
-				"/repo holds both dist.rogen.json and dist.rogen.jsonc; keep one."
-			);
-		});
-	});
-
 	describe("with configs named", () => {
 		beforeEach(async () => {
 			await fs.createDirectory("/repo/places/lobby");

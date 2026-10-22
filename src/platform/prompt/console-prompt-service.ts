@@ -1,11 +1,9 @@
 import {
-	AutocompletePrompt,
 	ConfirmPrompt,
 	MultiSelectPrompt,
 	Prompt,
 	SelectPrompt,
 	TextPrompt,
-	getColumns,
 	isCancel,
 	wrapTextWithPrefix,
 } from "@clack/core";
@@ -232,81 +230,6 @@ export class ConsolePromptService implements PromptService {
 			},
 		}).prompt();
 		return isCancel(answer) ? undefined : (answer as T);
-	}
-
-	async autocomplete<T extends string>(
-		options: SelectPromptOptions<T>
-	): Promise<T | undefined> {
-		const { output } = this.streams;
-		const { style } = this;
-		const dim = (text: string) => style("dim", text);
-		const width = Math.max(
-			...options.choices.map(({ label }) => label.length)
-		);
-		const row = ({ label, hint }: PromptChoice<T>, active: boolean) => {
-			const room = Math.max(0, getColumns(output) - width - 8);
-			const shown =
-				hint === undefined
-					? ""
-					: `  ${dim(hint.length > room ? `${hint.slice(0, Math.max(0, room - 1))}…` : hint)}`;
-			const name = label.padEnd(width);
-			return active
-				? `${style("green", S_RADIO_ACTIVE)} ${name}${shown}`
-				: `${dim(S_RADIO_INACTIVE)} ${dim(name)}${shown}`;
-		};
-		const answer = await new AutocompletePrompt<PromptChoice<T>>({
-			...this.streams,
-			options: [...options.choices],
-			initialValue: options.initialValue && [options.initialValue],
-			filter: (search, { label, value, hint }) => {
-				const needle = search.toLowerCase();
-				return [label, value, hint ?? ""].some((text) =>
-					text.toLowerCase().includes(needle)
-				);
-			},
-			render() {
-				const matches = this.filteredOptions;
-				const typed = this.userInput;
-				const count =
-					matches.length === options.choices.length
-						? ""
-						: dim(
-								` (${matches.length} match${matches.length === 1 ? "" : "es"})`
-							);
-				const rows =
-					matches.length === 0
-						? [style("yellow", "No matches found")]
-						: limitOptions({
-								output,
-								cursor: this.cursor,
-								options: matches,
-								style: (choice, active) => row(choice, active),
-							});
-				const chosen = options.choices.find(
-					({ value }) => value === this.value
-				);
-				return drawFrame(
-					output,
-					{
-						state: this.state,
-						message: options.message,
-						details: options,
-						body: [
-							`${dim("Search:")} ${this.isNavigating ? dim(typed) : this.userInputWithCursor}${count}`,
-							...rows,
-						],
-						answer: chosen?.label ?? "",
-						footer: [
-							`${style("cyan", S_BAR)}  ${dim("↑/↓ select · enter confirm · type to filter")}`,
-							style("cyan", S_BAR_END),
-						],
-					},
-					style
-				);
-			},
-		}).prompt();
-		if (isCancel(answer)) return undefined;
-		return (Array.isArray(answer) ? answer[0] : answer) as T | undefined;
 	}
 
 	async multiSelect<T extends string>(

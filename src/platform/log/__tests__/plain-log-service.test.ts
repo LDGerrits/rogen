@@ -101,7 +101,7 @@ describe("PlainLogService", () => {
 	it("should indent what a step holds and nothing else", () => {
 		const logService = new PlainLogService();
 
-		logService.intro("rogen list");
+		logService.intro("rogen build");
 		logService.info("Not building: a.rogen.json.");
 		logService.step("default.rogen.json");
 		logService.success("Wrote default.project.json.");
@@ -112,7 +112,7 @@ describe("PlainLogService", () => {
 		logService.outro("1 config.");
 
 		expect(out).toEqual([
-			"rogen list",
+			"rogen build",
 			"Not building: a.rogen.json.",
 			"default.rogen.json",
 			"  Wrote default.project.json.",
