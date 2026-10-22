@@ -10,6 +10,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { IndexReader, IndexService } from "../../platform/fs/index-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { SyncTool } from "../toolchain/toolchain.js";
 import {
@@ -61,9 +62,19 @@ export class CoreBuildService implements BuildService {
 		return this.buildAll(selection, true);
 	}
 
-	/** Builds every selected config as `build` does, and writes nothing. */
 	check(selection: ConfigSelection): Promise<BuildRun> {
 		return this.buildAll(selection, false);
+	}
+
+	async projectFileOf(
+		project: ResolvedConfig
+	): Promise<RojoProjectFile | undefined> {
+		const listing = await this.indexService.list([...project.indexedPaths]);
+		return new ConfigBuilder(
+			this.fileSystemService,
+			listing,
+			this.syncTools
+		).projectFileOf(project);
 	}
 
 	private async buildAll(

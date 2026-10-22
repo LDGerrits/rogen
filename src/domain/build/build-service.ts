@@ -12,6 +12,7 @@ import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
+import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ConfigSelection } from "../config/config-service.js";
 import {
 	InstanceReference,
@@ -238,6 +239,14 @@ export interface BuildService {
 
 	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
 	build(selection: ConfigSelection): Promise<BuildRun>;
+
+	/** Builds every selected config as `build` does, and writes nothing. */
+	check(selection: ConfigSelection): Promise<BuildRun>;
+
+	/** The project file a build of `project` would write, or none when the build fails. Writes nothing. */
+	projectFileOf(
+		project: ResolvedConfig
+	): Promise<RojoProjectFile | undefined>;
 
 	/** Builds and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(
