@@ -248,7 +248,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json"
 			);
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34872 is held by another process (Rojo serving repo), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34873'."
+				"Port 34872 is held by another process (Rojo serving repo), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'."
 			);
 		});
 
@@ -288,7 +288,7 @@ describe("CoreServeService", () => {
 			})) as DiagnosticsError;
 
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34872 is taken by Rojo serving repo, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port 34873'."
+				"Port 34872 is taken by Rojo serving repo, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port <port>'."
 			);
 		});
 
@@ -319,7 +319,7 @@ describe("CoreServeService", () => {
 			})) as DiagnosticsError;
 
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34872 is taken by Rojo serving Lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port 34873'."
+				"Port 34872 is taken by Rojo serving Lobby, which rogen serve started for places/lobby/default.rogen.json, so places/arena/default.rogen.json can't be served there. Stop it, set a servePort in places/arena/default.rogen.json, or run 'rogen serve places/arena --port <port>'."
 			);
 		});
 
@@ -450,7 +450,7 @@ describe("CoreServeService", () => {
 			expect(diagnostic.code).toBe("serve.portTaken");
 			expect(diagnostic.resource).toBe("/repo/default.rogen.json");
 			expect(diagnostic.message).toBe(
-				"Port 34872 is held by another process (Rojo serving Other), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34874'."
+				"Port 34872 is held by another process (Rojo serving Other), so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'."
 			);
 			expect(diagnostic.fixes).toEqual([
 				{
@@ -506,7 +506,7 @@ describe("CoreServeService", () => {
 				"/repo/default.rogen.json"
 			);
 			expect(error.diagnostics[0].message).toBe(
-				"Port 34900 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34901'."
+				"Port 34900 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'."
 			);
 		});
 
@@ -1045,7 +1045,7 @@ describe("CoreServeService", () => {
 
 				expect(spawnedProjects()).toEqual(["default.project.json"]);
 				expect(changes).toEqual([
-					"refused repo: Port 34901 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34902'.",
+					"refused repo: Port 34901 is held by another process, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port <port>'.",
 				]);
 			});
 
@@ -1061,7 +1061,7 @@ describe("CoreServeService", () => {
 				]);
 				expect(changes).toEqual([
 					"retired repo (removed)",
-					"refused Lobby: Port 34900 is held by another process, so default.rogen.jsonc can't be served there. Stop it, set a servePort in default.rogen.jsonc, or run 'rogen serve . --port 34901'.",
+					"refused Lobby: Port 34900 is held by another process, so default.rogen.jsonc can't be served there. Stop it, set a servePort in default.rogen.jsonc, or run 'rogen serve . --port <port>'.",
 				]);
 			});
 

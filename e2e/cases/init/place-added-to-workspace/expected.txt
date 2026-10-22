@@ -11,7 +11,7 @@ stdout:
     Run:
       rogen serve places/lobby
     In Studio, press Connect in the Rojo plugin.
-    Put the code of lobby in places/lobby/src. A second place is served from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
+    Put the code of lobby in places/lobby/src. A second place is served from a second terminal with its own --port: 'rogen serve places/lobby --port <port>'.
   Wrote 2 files.
 
 $ rogen build places/lobby

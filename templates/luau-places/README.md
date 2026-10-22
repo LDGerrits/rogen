@@ -31,10 +31,10 @@ To add a place, use:
 rogen init places/lobby
 ```
 
-A second place is served from a second terminal, on a port of its own:
+A second place is served from a second terminal, with its own `--port`:
 
 ```bash
-rogen serve places/lobby --port 34873
+rogen serve places/lobby --port <port>
 ```
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).

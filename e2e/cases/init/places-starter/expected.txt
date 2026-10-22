@@ -22,7 +22,7 @@ stdout:
     Add your own routes under "routes" in places/game/default.rogen.json.
     Edit places/game/default.rogen.json and leave places/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build places/game' so the editor's places/game/default.project.json follows.
     Open the workspace with 'code project.code-workspace', as VS Code does not open a workspace file by itself. Each place is a workspace folder, so luau-lsp reads each place's own sourcemap.
-    Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
+    Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own --port: 'rogen serve places/lobby --port <port>'.
   Wrote 9 files.
 
 $ rogen build places/game
@@ -92,10 +92,10 @@ To add a place, use:
 rogen init places/lobby
 ```
 
-A second place is served from a second terminal, on a port of its own:
+A second place is served from a second terminal, with its own `--port`:
 
 ```bash
-rogen serve places/lobby --port 34873
+rogen serve places/lobby --port <port>
 ```
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).

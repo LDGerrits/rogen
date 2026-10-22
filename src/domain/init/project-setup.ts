@@ -731,7 +731,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		if (places)
 			builder.addEdit(
-				`Add another place with 'rogen init ${PLACES_FOLDER}/lobby', and serve it from a second terminal with its own port: 'rogen serve ${PLACES_FOLDER}/lobby --port 34873'.`
+				`Add another place with 'rogen init ${PLACES_FOLDER}/lobby', and serve it from a second terminal with its own --port: 'rogen serve ${PLACES_FOLDER}/lobby --port <port>'.`
 			);
 		const processed = darklua && compiledPath ? compiledPath : undefined;
 		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
