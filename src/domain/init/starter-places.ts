@@ -1,6 +1,6 @@
 import path from "path";
 import { FileReader } from "../../platform/fs/file-system-service.js";
-import { DEFAULT_SOURCE_PATH } from "../config/config.js";
+import { DEFAULT_SOURCE_PATH, RogenConfig } from "../config/config.js";
 import { Mount, PlannedFile } from "../toolchain/toolchain.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { WorkspaceFiles } from "./workspace-files.js";
@@ -67,6 +67,11 @@ export class StarterPlaces {
 				({ addition }) => addition === undefined
 			)?.fileName,
 		};
+	}
+
+	/** The config of the shared code: the places' routes, so the editor resolves instance-path requires inside it. It is never served. */
+	static sharedConfig(routes: Record<string, string>): RogenConfig {
+		return { tree: { $className: "DataModel" }, rogen: { routes } };
 	}
 
 	/** `mounts` of a project's root as a place at `place` reads them; `own` are the folders the place has itself, such as roblox-ts's `include`. All are optional, as a place is not compiled yet. */

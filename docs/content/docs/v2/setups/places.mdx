@@ -23,7 +23,9 @@ rogen init --places
 
 ```
 places/
-  shared/src/Greeter/...        shared by every place, no config
+  shared/
+    default.rogen.json          only the routes, never served (Luau)
+    src/Greeter/...             shared by every place
   game/
     default.rogen.json          complete: name, source paths, routes
     src/Game/Server/Game.server.luau
@@ -31,7 +33,7 @@ places/
 README.md
 ```
 
-`init` builds `places/game/default.project.json` beside the config. Nothing at the root is a config, so a bare `rogen build` there is Rojo's "not found" error: name a place, or run the command inside its folder. `--no-sample` leaves the two source folders empty.
+`init` builds `places/game/default.project.json` beside the config, and `places/shared/default.project.json` beside the shared config. Nothing at the root is a config, so a bare `rogen build` there is Rojo's "not found" error: name a place, or run the command inside its folder. `--no-sample` leaves the two source folders empty.
 
 The place's config lists the shared folder and its own, in full, and sets its own `name`:
 
@@ -121,10 +123,10 @@ Open the `.code-workspace` that `init` wrote, once, with `code <folder>.code-wor
 
 The root is not listed because it has no project file: listed, luau-lsp would say it is unable to find `default.project.json` for the sourcemap. Rojo writes the sourcemap's paths relative to the project file's folder, so the root cannot borrow a place's. To see the files at the root in the explorer, add `{ "path": "." }` to the workspace together with a `.vscode/settings.json` that holds `{ "luau-lsp.sourcemap.enabled": false }`. That combination should stop the message and leave each place's sourcemap alone, but it is untested.
 
-`check` and `where` take a path and find its config themselves, so `rogen check places/lobby/src/Lobby/Server/LobbyService.luau` works from the root. A file in `places/shared` has no config above it. Rogen prints a note and skips it; check it through a place:
+`check` and `where` take a path and find its config themselves, so `rogen check places/lobby/src/Lobby/Server/LobbyService.luau` works from the root. In Luau, `places/shared` has a config of its own (see [Shared Luau Code](#shared-luau-code)), so these cover its files too. A path that no config covers, such as a file in the shared code of a roblox-ts project, gets a note and is skipped; check it through a place:
 
 ```
-warning: places/shared/src/Net/Types.luau: no config covers this file; check it through a place: rogen check places/lobby
+warning: places/shared/src/Net/Types.ts: no config covers this file; check it through a place: rogen check places/lobby
 ```
 
 Bare `rogen check`, `rogen where <instance>` and `rogen where -` read the current folder, as the Rojo commands do, so run them inside a place or name one (`rogen check places/lobby`).
@@ -135,9 +137,20 @@ Bare `rogen check`, `rogen where <instance>` and `rogen where -` read the curren
 
 ## Shared Luau Code
 
-Shared code has no config and no project file, as in `roblox-ts/demo-multiplace-game`. luau-lsp attaches a file to the workspace folder that contains it and trusts only that folder's sourcemap. In a Luau shared folder with no project file, requires by instance path (`script.Parent.Types`, `game.ReplicatedStorage.Shared.Types`) show false errors in the editor. String requires (`require("./Types")`) still resolve, and so do the requires in a place's own files that reach shared code. Adding the root, `places` or `shared` to the workspace doesn't change that.
+luau-lsp attaches a file to the workspace folder that contains it and trusts only that folder's sourcemap. In a shared folder with no project file, requires by instance path (`script.Parent.Types`, `game.ReplicatedStorage.Shared.Types`) show false errors in the editor, and adding the root, `places` or `shared` to the workspace doesn't change that.
 
-To get editor types for shared Luau code, add `places/shared/default.rogen.json`. It is a config like any other: it lists `src`, and its `routes` should match the places'. Then `check` and `where` cover the shared files too.
+For Luau, `init` writes `places/shared/default.rogen.json` so the editor resolves instance-path requires inside shared code. It holds only the routes of the places and the `DataModel` class, and its own `src` is the default source path. It is never served, and it has no `name` or port. Run `rogen build places/shared` after you add a feature folder under it, so its `default.project.json` follows. `check` and `where` cover the shared files too. You can delete the file with no effect on the places.
+
+```json
+{
+	"tree": { "$className": "DataModel" },
+	"rogen": {
+		"routes": { "Server": "ServerScriptService", "Shared": "ReplicatedStorage/Shared" }
+	}
+}
+```
+
+roblox-ts needs no such file: `places/shared/tsconfig.json` serves the editor, and rbxtsc never compiles the shared folder by itself.
 
 ## roblox-ts with Places
 

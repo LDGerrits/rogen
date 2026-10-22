@@ -22,7 +22,7 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Place**: One Roblox place of a repo that builds several: a folder, usually in `places/`, with its own complete `default.rogen.json` that lists its source paths in full and sets its own `name`. Serve it by naming it, `rogen serve places/lobby`; a second place at once is a second terminal with `--port`. See [Places](/docs/v2/setups/places).
 
-- **Shared code**: A plain folder inside `places/` (`places/shared/src`) with no config, that each place lists in its `sourcePaths`. See [Places](/docs/v2/setups/places).
+- **Shared code**: A plain folder inside `places/` (`places/shared/src`) that each place lists in its `sourcePaths`. For Luau it has a `default.rogen.json` of routes only, for the editor; it is never served. See [Places](/docs/v2/setups/places).
 
 - **Build**: One complete run that turns the source paths into the named project file. See [CLI](/docs/v2/cli#build-project).
 

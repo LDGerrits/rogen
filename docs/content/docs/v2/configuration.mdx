@@ -191,7 +191,7 @@ When you delete a `.rogen.json`, Rogen does not delete the `.project.json` it wr
 
 ## Places
 
-A repository with several places gives each place a folder with its own complete `default.rogen.json`, which lists its source paths in full (`["../shared/src", "src"]`) and sets its own `name`. Code the places share is a plain folder, `places/shared`, with no config. `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are ordinary Rojo keys in each place's file, and Rogen writes no port. Name a place to run a command on it: `rogen serve places/lobby`. The [Several Places guide](/docs/v2/setups/places) walks through it.
+A repository with several places gives each place a folder with its own complete `default.rogen.json`, which lists its source paths in full (`["../shared/src", "src"]`) and sets its own `name`. Code the places share is the folder `places/shared`; for Luau `init` writes a `default.rogen.json` there that holds only the routes, so the editor resolves instance-path requires, and it is never served. `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are ordinary Rojo keys in each place's file, and Rogen writes no port. Name a place to run a command on it: `rogen serve places/lobby`. The [Several Places guide](/docs/v2/setups/places) walks through it.
 
 ---
 

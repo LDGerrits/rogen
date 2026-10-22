@@ -5,6 +5,7 @@ import { Variant, follow, stepOf } from "./first-success.js";
 const SOURCEMAP = ["rogen", "sourcemap", "-o", "sourcemap.json"] as const;
 
 const GAME = "places/game";
+const SHARED = "places/shared";
 
 const VARIANTS: readonly Variant[] = [
 	{ name: "Luau, one place", flags: [], steps: [], served: "project" },
@@ -14,6 +15,7 @@ const VARIANTS: readonly Variant[] = [
 		steps: [],
 		project: [GAME],
 		served: "game",
+		mapped: [SHARED],
 	},
 	{
 		name: "Luau with Darklua",
@@ -114,6 +116,10 @@ describeWithRojo("first success from an empty folder", () => {
 					process.platform === "win32" ? 0 : 1
 				);
 				expect(success.unprinted).toEqual([]);
+				for (const folder of variant.mapped ?? [])
+					expect(success.mappedPaths[folder]).toContain(
+						"ReplicatedStorage/Shared/Greeter/Greeting"
+					);
 				expect(success.printed).toContain(
 					["rogen serve", ...(variant.project ?? [])].join(" ")
 				);

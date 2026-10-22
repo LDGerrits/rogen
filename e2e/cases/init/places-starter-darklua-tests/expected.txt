@@ -7,6 +7,7 @@ stdout:
   Created places/game/default.rogen.json.
   Created places/game/dist.rogen.json.
   Created places/game/release.rogen.json.
+  Created places/shared/default.rogen.json.
   Created places/game/.darklua.json.
   Created places/shared/src/Greeter/Shared/Greeting.luau.
   Created places/shared/src/Greeter/Server/Greeter.server.luau.
@@ -16,6 +17,7 @@ stdout:
   Created project.code-workspace.
   Created AGENTS.md.
   places/game/default.project.json · wrote
+  places/shared/default.project.json · wrote
   Next steps
     Run each in its own terminal:
       cd places/game && darklua process ../shared/src dist/shared/src --watch
@@ -27,7 +29,7 @@ stdout:
     Open the workspace with 'code project.code-workspace', as VS Code does not open a workspace file by itself. Each place is a workspace folder, so luau-lsp reads each place's own sourcemap.
     Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
     Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: cd places/game && rogen sourcemap --watch -o sourcemap.json
-  Wrote 11 files.
+  Wrote 12 files.
 
 $ rogen init places/lobby --non-interactive
 exit 0
@@ -64,6 +66,8 @@ written:
   places/lobby/default.rogen.json
   places/lobby/dist.rogen.json
   places/lobby/release.rogen.json
+  places/shared/default.project.json
+  places/shared/default.rogen.json
   places/shared/src/Greeter/Client/Greeter.client.luau
   places/shared/src/Greeter/Server/Greeter.server.luau
   places/shared/src/Greeter/Shared/Greeting.luau
@@ -489,5 +493,21 @@ places/lobby/release.rogen.json:
       "*": "ReplicatedStorage/Shared"
     },
     "compiledPath": "dist"
+  }
+}
+
+places/shared/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "rogen": {
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
   }
 }
