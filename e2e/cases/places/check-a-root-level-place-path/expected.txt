@@ -45,4 +45,4 @@ stderr:
 $ rogen check
 exit 1
 stderr:
-  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds game.rogen.json, lobby.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json.
+  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds game.rogen.json, lobby.rogen.json. Name one of them, or run 'rogen write' to write them all.

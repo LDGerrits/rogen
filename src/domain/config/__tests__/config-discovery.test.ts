@@ -81,7 +81,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result).message).toBe(
-				"No default.rogen.json or default.project.json in this folder (/repo). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen init' to create default.rogen.json."
+				"No default.rogen.json or default.project.json in this folder (/repo). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen write' to write them all."
 			);
 		});
 
@@ -370,7 +370,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["pkg"]);
 
 			expect(errorOf(result).message).toBe(
-				"No default.rogen.json or default.project.json in \"pkg\" (/repo/pkg). It holds dist.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json."
+				'No default.rogen.json or default.project.json in "pkg" (/repo/pkg). It holds dist.rogen.json. Name one of them.'
 			);
 		});
 	});
@@ -786,5 +786,40 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		await fs.writeFile("/repo/game.rogen.jsonc", "{}");
 
 		expect(errorOf(await named("game"))).toBeInstanceOf(ProjectError);
+	});
+});
+
+describe("ConfigDiscovery.plainProjects", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo");
+	});
+
+	const plain = () =>
+		new ConfigDiscovery(
+			fs,
+			new MockEnvironmentService("/repo")
+		).plainProjects("/repo");
+
+	it("should list the project files that no config of that name writes", async () => {
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/game.project.json", "{}");
+		await fs.writeFile("/repo/lobby.rogen.jsonc", "{}");
+		await fs.writeFile("/repo/lobby.project.json", "{}");
+		await fs.writeFile("/repo/legacy.project.json", "{}");
+		await fs.writeFile("/repo/arena.project.jsonc", "{}");
+
+		expect(await plain()).toEqual([
+			"/repo/arena.project.jsonc",
+			"/repo/legacy.project.json",
+		]);
+	});
+
+	it("should not list the file syncback writes while it runs", async () => {
+		await fs.writeFile("/repo/rogen-syncback.project.json", "{}");
+
+		expect(await plain()).toEqual([]);
 	});
 });

@@ -31,7 +31,7 @@ The move is one step: rename your project file and add a `rogen` block.
 git mv default.project.json default.rogen.json
 ```
 
-Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and the rest) keeps its meaning at the top level. With no `rogen` block, `rogen build` writes the file back as `default.project.json`, tree untouched, and only warns ([`scan.unmountedSource`](/docs/v2/diagnostics#scan-unmountedsource)) when `src` holds files the tree doesn't mount, saying to add `routes` to place them or to mount the folder with `$path`. Add the block when you want Rogen to place files by their folders:
+Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and the rest) keeps its meaning at the top level. With no `rogen` block, `rogen write` writes the file back as `default.project.json`, tree untouched, and only warns ([`scan.unmountedSource`](/docs/v2/diagnostics#scan-unmountedsource)) when `src` holds files the tree doesn't mount, saying to add `routes` to place them or to mount the folder with `$path`. Add the block when you want Rogen to place files by their folders:
 
 ```json title="default.rogen.json"
 {
@@ -49,10 +49,10 @@ Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and 
 
 A node you keep in the `tree` wins over a generated one on a clash, with a warning, and a `$path` into a source path stays Rojo's own: Rogen skips that folder. Rojo's `fmt-project` can't read the file, so run `rogen fmt-project` to format it as Rojo formats a project file. Rojo writes the numbers of `$properties` and `$attributes` as floats (`0.0`), by the type of each; Rogen keeps them as you wrote them, and it won't format a file with comments, where Rojo drops them. Rogen reads `default.rogen.jsonc` too, since Rojo 7.7 allows comments in a project file.
 
-Run `rogen build`: Rogen now owns `default.project.json` and rewrites it. Your repository still tracks the file you renamed, so decide what to do with it:
+Run `rogen write`: Rogen now owns `default.project.json` and rewrites it. Your repository still tracks the file you renamed, so decide what to do with it:
 
-- **Stop tracking it.** `git rm --cached default.project.json`, and keep `*.project.json` in `.gitignore` (`init` adds the line). A clone then runs `rogen build` before the editor or a compiler needs the file.
-- **Keep it tracked.** Commit what `rogen build` writes, and add `!default.project.json` below `*.project.json` if you ignore the pattern. People without Rogen can then run `rojo serve` on it as they did. Rerun `rogen build` before each commit: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
+- **Stop tracking it.** `git rm --cached default.project.json`, and keep `*.project.json` in `.gitignore` (`init` adds the line). A clone then runs `rogen write` before the editor or a compiler needs the file.
+- **Keep it tracked.** Commit what `rogen write` writes, and add `!default.project.json` below `*.project.json` if you ignore the pattern. People without Rogen can then run `rojo serve` on it as they did. Rerun `rogen write` before each commit: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
 
 ## Let `init` Read Your Folders
 
@@ -191,6 +191,6 @@ Rogen replaces the project file you wrote, and Rojo's commands that read it keep
 - **`rojo upload`** uploads it. `rogen upload` writes the project file first and then runs it, with Rojo's flags as Rojo spells them: see [`upload`](/docs/v2/cli#upload-project).
 - **`rojo plugin install`** installs Rojo's Studio plugin. `rogen plugin install` has the Rojo your project pins do it, so the plugin matches the server `rogen serve` starts: see [`plugin`](/docs/v2/cli#plugin-install-and-plugin-uninstall).
 - **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds a node per file and per mounted folder, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next build. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from, the properties and attributes of your `tree`'s nodes into the `tree`: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.
-- **`rojo fmt-project`** formats a project file. `rogen fmt-project` formats a `.rogen.json` the same way, byte for byte on Rojo's own build tests: floats as `1.0`, a nameless file named for its folder, and the keys of a sync rule in Rojo's order. The project files `rogen build` writes are in that format, and keep no `$schema`; a plain Rojo project that Rogen runs on is not rewritten.
+- **`rojo fmt-project`** formats a project file. `rogen fmt-project` formats a `.rogen.json` the same way, byte for byte on Rojo's own build tests: floats as `1.0`, a nameless file named for its folder, and the keys of a sync rule in Rojo's order. The project files `rogen write` writes are in that format, and keep no `$schema`; a plain Rojo project that Rogen runs on is not rewritten.
 
 What a script sees of these commands matches `rojo`: stdout carries Rojo's own lines, Rogen's go to stderr, `-o=game.rbxl` works, `-v` reaches Rojo, a project that can't be found exits 1 and Rojo's argument errors exit 2, and `serve` exits 130 after Ctrl+C.

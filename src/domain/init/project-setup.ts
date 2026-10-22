@@ -373,7 +373,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`${places.folder}/tsconfig.json`,
 			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
 		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
 	/** An error when the first place has a config already, which init never overwrites. */
@@ -763,7 +763,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since every build overwrites it. After you add a feature folder, run 'rogen build${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
+			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
 		);
 		if (places?.settings)
 			builder.addEdit(

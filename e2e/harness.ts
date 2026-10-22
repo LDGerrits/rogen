@@ -26,6 +26,7 @@ import "../src/commands/sourcemap/sourcemap-command.js";
 import "../src/commands/syncback/syncback-command.js";
 import "../src/commands/upload/upload-command.js";
 import "../src/commands/where/where-command.js";
+import "../src/commands/write/write-command.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -96,7 +97,7 @@ function childEnv(extra: Readonly<Record<string, string>> = {}) {
 }
 
 /** The output of these is the same frame in nearly every case, so it is left out of a transcript unless the case lists the command under `output`. The unit tests of the command own its wording. */
-const FRAMED_COMMANDS = ["build", "init"] as const;
+const FRAMED_COMMANDS = ["build", "init", "write"] as const;
 
 type FramedCommand = (typeof FRAMED_COMMANDS)[number];
 

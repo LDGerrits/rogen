@@ -19,6 +19,7 @@ import "../../sourcemap/sourcemap-command.js";
 import "../../syncback/syncback-command.js";
 import "../../upload/upload-command.js";
 import "../../where/where-command.js";
+import "../../write/write-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
 import { Result, ResultError, ok } from "../../../base/result.js";

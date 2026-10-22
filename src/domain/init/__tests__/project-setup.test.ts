@@ -768,7 +768,7 @@ describe("ProjectSetup plan, second config files", () => {
 	it("should say to edit the config, and to build after adding a feature folder", async () => {
 		expect((await plan(luau)).nextSteps.edits).toContainEqual(
 			expect.stringContaining(
-				"After you add a feature folder, run 'rogen build'"
+				"After you add a feature folder, run 'rogen write'"
 			)
 		);
 	});

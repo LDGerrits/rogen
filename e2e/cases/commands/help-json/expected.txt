@@ -411,6 +411,31 @@ stdout:
           }
         ],
         "effects": []
+      },
+      {
+        "name": "write",
+        "summary": "Writes the project file of every config here",
+        "args": [
+          {
+            "name": "project",
+            "optional": true,
+            "variadic": true
+          }
+        ],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          },
+          {
+            "name": "watch",
+            "type": "boolean"
+          }
+        ],
+        "effects": [
+          "writesFiles",
+          "longRunning"
+        ]
       }
     ],
     "globalOptions": [

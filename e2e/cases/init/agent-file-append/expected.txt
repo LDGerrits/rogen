@@ -29,9 +29,9 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints.
 - `rogen check` works from the repo root for a file of any place, shared code in `src/common` included.
 - `rogen check` skips, with a note on stderr, a file no config holds (roblox-ts `projects/common`) and a file in none of its config's source paths; `--json` lists both under `skipped`. Check shared code through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
-- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen build lobby`, `rogen build dist`).
-- After adding a feature folder, run `rogen build`: `default.project.json` is as fresh as its last build.
-- Leave `rogen build --watch` to the user: it never exits.
+- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen write lobby`, `rogen write dist`).
+- After adding a feature folder, run `rogen write`: the project files are as fresh as the last write.
+- Leave `rogen write --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background.
 - `rogen serve` exits 0 at once if another already serves the project, and non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and runs until that server stops.
 - When the `serving` line has `"reportsConnections": true`, wait for the `connected` line before you count on Studio having your edits; if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions).

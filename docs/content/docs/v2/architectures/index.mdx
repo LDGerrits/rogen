@@ -283,7 +283,7 @@ return table.freeze({ name = name, lint = lint })
 Build and write the sourcemap first, so it matches the tree. In CI, a crossed boundary fails the job:
 
 ```bash
-rogen build
+rogen write
 rojo sourcemap default.project.json --output sourcemap.json
 lute lint --no-default-lints src
 ```

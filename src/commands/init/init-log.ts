@@ -228,7 +228,7 @@ export class InitLog implements InitReporter {
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
-				} Fix default.rogen.json and run rogen build.`
+				} Fix default.rogen.json and run rogen write.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}

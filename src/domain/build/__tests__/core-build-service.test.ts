@@ -194,6 +194,30 @@ describe("CoreBuildService", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
+		it("should write the configs that load beside one that doesn't, when they are independent", async () => {
+			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
+
+			const result = (
+				await buildServiceOfFs().build(
+					new MockConfigSelection([
+						loadable(abs("default.rogen.json")),
+						brokenEntry([], abs("broken/default.rogen.json")),
+						loadable(abs("lobby/default.rogen.json"), {
+							sourcePaths: [abs("lobby/src")],
+						}),
+					]),
+					{ independent: true }
+				)
+			).builds;
+
+			expect(outcomesOf(result)).toEqual([
+				[abs("default.rogen.json"), "wrote"],
+				[abs("broken/default.rogen.json"), "notLoaded"],
+				[abs("lobby/default.rogen.json"), "failed"],
+			]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
+		});
+
 		it("should keep the selection order when a config that doesn't load comes first", async () => {
 			const result = (
 				await buildServiceOfFs().build(
@@ -471,7 +495,7 @@ describe("CoreBuildService", () => {
 						severity: DiagnosticSeverity.Warning,
 						code: "output.differs",
 						resource: abs("default.project.json"),
-						message: expect.stringContaining("rogen build"),
+						message: expect.stringContaining("rogen write"),
 					},
 				]);
 				expect(await fs.readFile(abs("default.project.json"))).toBe(
@@ -491,12 +515,12 @@ describe("CoreBuildService", () => {
 						code: "output.differs",
 						resource: abs("dist.project.json"),
 						message: expect.stringContaining(
-							"Run 'rogen build dist.rogen.json' to write it again; what it holds comes from dist.rogen.json"
+							"Run 'rogen write dist.rogen.json' to write it again; what it holds comes from dist.rogen.json"
 						),
 						fixes: [
 							{
 								run: {
-									command: "rogen build dist.rogen.json",
+									command: "rogen write dist.rogen.json",
 									cwd: abs(),
 								},
 							},
@@ -513,12 +537,12 @@ describe("CoreBuildService", () => {
 				expect(checked.warnings).toMatchObject([
 					{
 						message: expect.stringContaining(
-							"its sources changed since it was written. Run 'rogen build'"
+							"its sources changed since it was written. Run 'rogen write'"
 						),
 						fixes: [
 							{
 								run: {
-									command: "rogen build",
+									command: "rogen write",
 									cwd: abs("."),
 								},
 							},

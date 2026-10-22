@@ -1,0 +1,70 @@
+$ rogen write
+exit 1
+stdout:
+  rogen write
+  game.project.json · wrote
+  Wrote 1 of 2 project files.
+stderr:
+  error: lobby.rogen.json · not loaded
+  lobby.rogen.json:3:1 - error: invalid JSONC: expected a property name. (config.invalidSyntax)
+  lobby.rogen.json:3:1 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  lobby.rogen.json:3:1 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+
+$ rogen write --json
+exit 1
+stdout:
+  {
+    "changed": false,
+    "configs": [
+      {
+        "config": "Game",
+        "file": "<dir>/game.rogen.json",
+        "projectFile": "<dir>/game.project.json",
+        "outcome": "unchanged",
+        "diagnostics": []
+      },
+      {
+        "config": "project",
+        "file": "<dir>/lobby.rogen.json",
+        "projectFile": null,
+        "outcome": "notWritten",
+        "diagnostics": [
+          {
+            "file": "<dir>/lobby.rogen.json",
+            "line": 3,
+            "column": 1,
+            "severity": "error",
+            "code": "config.invalidSyntax",
+            "message": "invalid JSONC: expected a property name.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+          },
+          {
+            "file": "<dir>/lobby.rogen.json",
+            "line": 3,
+            "column": 1,
+            "severity": "error",
+            "code": "config.invalidSyntax",
+            "message": "invalid JSONC: expected a value.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+          },
+          {
+            "file": "<dir>/lobby.rogen.json",
+            "line": 3,
+            "column": 1,
+            "severity": "error",
+            "code": "config.invalidSyntax",
+            "message": "invalid JSONC: expected '}'.",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#config-invalidsyntax"
+          }
+        ]
+      }
+    ]
+  }
+
+written:
+  game.project.json
+
+$ rojo sourcemap game.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Save: ModuleScript  <- src/server/Save.luau

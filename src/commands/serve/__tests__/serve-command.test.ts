@@ -530,7 +530,7 @@ describe("serve command", () => {
 				expect.objectContaining({
 					code: "serve.noServer",
 					message: expect.stringContaining(
-						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them."
+						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 					),
 				}),
 			],

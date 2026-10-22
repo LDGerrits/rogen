@@ -46,7 +46,7 @@ The two differ by a `globIgnorePaths` entry, so each is its own config file: `de
 }
 ```
 
-`rogen init` writes `release.rogen.json` when it finds a test runner. `rogen build` writes `default.project.json` with the specs, and `rogen build release` writes `release.project.json` without them. When you change a route, change it in both files.
+`rogen init` writes `release.rogen.json` when it finds a test runner. `rogen write` writes `default.project.json` with the specs and `release.project.json` without them; `rogen write release` writes only the second. When you change a route, change it in both files.
 
 </Step>
 
@@ -80,10 +80,10 @@ A game you ship should not have `LoadStringEnabled`, which Jest needs. Put it in
 <Step>
 ### Run Them
 
-Build, then point jest-roblox at the project file with the specs. `default.project.json` is the one it looks for when it isn't told otherwise, and `rogen build` is what keeps it fresh:
+Build, then point jest-roblox at the project file with the specs. `default.project.json` is the one it looks for when it isn't told otherwise, and `rogen write` is what keeps it fresh:
 
 ```bash
-rogen build
+rogen write
 jest-roblox
 ```
 

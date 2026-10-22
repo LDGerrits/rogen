@@ -9,7 +9,7 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { projectFileName } from "../rojo/rojo-project.js";
+import { isProjectFileName, projectFileName } from "../rojo/rojo-project.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_CONFIG_FILE_NAMES,
@@ -20,6 +20,7 @@ import {
 	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
+	isSyncbackFileName,
 	projectStem,
 } from "./config.js";
 import {
@@ -298,7 +299,9 @@ export class ConfigDiscovery {
 		return new ProjectError(
 			`No ${DEFAULT_CONFIG_FILE} or ${DEFAULT_PROJECT}.project.json in ${where} (${directory}).${holds}`,
 			others.length > 0
-				? `Name one of them, or run 'rogen init' to create ${DEFAULT_CONFIG_FILE}.`
+				? named === undefined
+					? "Name one of them, or run 'rogen write' to write them all."
+					: "Name one of them."
 				: "Run 'rogen init' to create one."
 		);
 	}
@@ -320,6 +323,27 @@ export class ConfigDiscovery {
 			: configFileNames(listing.value).map((name) =>
 					path.join(directory, name)
 				);
+	}
+
+	/** The project files of a folder that no config writes, absolute and sorted. */
+	async plainProjects(directory: string): Promise<string[]> {
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(directory)
+		);
+		if (listing.isErr()) return [];
+		const written = new Set(
+			(await this.list(directory)).map((file) => configStem(file))
+		);
+		return listing.value
+			.filter(
+				([name, type]) =>
+					isFileType(type) &&
+					isProjectFileName(name) &&
+					!isSyncbackFileName(name) &&
+					!written.has(projectStem(name))
+			)
+			.map(([name]) => path.join(directory, name))
+			.sort();
 	}
 
 	/** The Rojo project file of a folder with no config: Rogen reads it as a config whose output is itself, and writes nothing. */

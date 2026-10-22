@@ -248,8 +248,11 @@ export function mergeLocations(
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
-	build(selection: ConfigSelection): Promise<BuildRun>;
+	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. With `independent`, a config that fails or doesn't load leaves the others to be written. */
+	build(
+		selection: ConfigSelection,
+		options?: { readonly independent?: boolean }
+	): Promise<BuildRun>;
 
 	/** Builds every selected config as `build` does, and writes nothing. */
 	check(selection: ConfigSelection): Promise<BuildRun>;

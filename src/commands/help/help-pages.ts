@@ -28,7 +28,7 @@ const EXIT_CODES = `Exit codes: ${Object.entries(ExitCodes)
 	.join(", ")}. 'check' also exits 1 on a warning.`;
 
 const ROOT_EXAMPLES = [
-	"rogen build",
+	"rogen write",
 	"rogen serve",
 	"rogen help build",
 	"rogen help route.strayAt",

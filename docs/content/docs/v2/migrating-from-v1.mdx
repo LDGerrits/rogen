@@ -62,7 +62,7 @@ v2 has fewer ways to route by name, so most projects have files to rename. The [
 ### Build and Compare
 
 ```bash
-rogen build
+rogen write
 ```
 
 Read the warnings. Files that used an old suffix no longer route, so each is left out of the game with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning until you rename or move it. You can list them all with:
@@ -124,7 +124,7 @@ v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 }
 ```
 
-`rogen build` writes `default.project.json` with the overlay, and `rogen build release` writes `release.project.json` without it. Each command writes only the file you name. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+`rogen write` writes `default.project.json` with the overlay and `release.project.json` without it; `rogen write release` writes only the second. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 <Callout type="warn" title="Old tag names ship">
 	v1 dropped `TeleportDev.luau` when `dev` was off. In v2 it's an ordinary file that ships in every build, and a dot suffix such as `Teleport.dev.luau` is part of the name, so move these files before your first v2 release.
