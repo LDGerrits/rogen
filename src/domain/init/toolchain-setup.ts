@@ -130,7 +130,12 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 			manager: { id, manifest, installed: found !== undefined },
 			darklua: () =>
 				(darklua ??= (async () => {
-					if (manifests.some((one) => one.nameOf(Darklua.REPOSITORY)))
+					if (
+						manifests.some((one) =>
+							one.nameOf(Darklua.REPOSITORY)
+						) ||
+						manifest?.uses(DARKLUA_PIN.name)
+					)
 						return true;
 					const file = await locator.find("darklua");
 					if (!file) return false;
@@ -191,7 +196,7 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 			}),
 		});
 		builder.addSummary(
-			"Rojo",
+			tools.includes(ROJO_PIN) ? "Rojo" : "Darklua",
 			`pin ${joinedWithAnd(tools.map(({ label, version }) => `${label} ${version}`))} in ${file}`
 		);
 		const { label, page } = MANAGER_COPY[id];

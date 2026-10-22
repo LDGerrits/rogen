@@ -736,6 +736,29 @@ describe("CoreInitService", () => {
 			expect(pinned?.nextSteps.setup).toEqual([]);
 		});
 
+		it("should not add a second darklua key when the file names another tool darklua", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			await write(
+				"rokit.toml",
+				'[tools]\ndarklua = "someone/fork@1.0.0"\n'
+			);
+
+			const plan = await planWithDarklua();
+
+			expect(fileOf(plan, "rokit.toml")).toBeUndefined();
+		});
+
+		it("should say Darklua alone is pinned when Rojo runs", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+
+			const plan = await planWithDarklua();
+
+			expect(plan?.summary).toContainEqual({
+				area: "Darklua",
+				text: "pin Darklua 0.19.0 in rokit.toml",
+			});
+		});
+
 		it("should pin nothing when the project does not use Darklua", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 
