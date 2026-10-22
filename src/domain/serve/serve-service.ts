@@ -84,10 +84,8 @@ export type ServerExitEvent = {
 	| {
 			/** Why the stop is a failure: the server couldn't start, or exited with an error. */
 			readonly failure: Diagnostic;
-			/** The code the run exits with: the server's own, or 1 when it has none. */
-			readonly exitCode: number;
 	  }
-	| { readonly failure?: undefined; readonly exitCode?: undefined }
+	| { readonly failure?: undefined }
 );
 
 /** How the servers changed with the configs after the session started them. */

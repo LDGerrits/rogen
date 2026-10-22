@@ -1,4 +1,4 @@
 $ rogen build
-exit 2
+exit 1
 stderr:
-  error: <dir> holds both default.rogen.json and default.rogen.jsonc; keep one.
+  error: <dir> holds both default.rogen.json and default.rogen.jsonc. Keep one of them: both write the same project file.

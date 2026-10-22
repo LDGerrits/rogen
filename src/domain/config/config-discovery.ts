@@ -48,8 +48,11 @@ const notFound = (ref: string): ProjectError =>
 		`Name a folder with a ${DEFAULT_CONFIG_FILE}, a .rogen.json file, or a *.project.json path.`
 	);
 
-const keepOne = (directory: string, names: readonly string[]): UsageError =>
-	new UsageError(`${directory} holds both ${names.join(" and ")}; keep one.`);
+const keepOne = (directory: string, names: readonly string[]): ProjectError =>
+	new ProjectError(
+		`${directory} holds both ${names.join(" and ")}.`,
+		"Keep one of them: both write the same project file."
+	);
 
 const isBareName = (ref: string): boolean =>
 	ref !== "" && ref !== "." && ref !== ".." && ref === path.basename(ref);

@@ -8,7 +8,8 @@ import {
 import { errorDiagnostic } from "../../diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../diagnostics/diagnostics-error.js";
 import { MockLogService } from "../../log/__tests__/mock-log-service.js";
-import { CommandFailure, exitCodeOf } from "../command-failure.js";
+import { Result, err, ok } from "../../../base/result.js";
+import { CommandFailure, exitCode, exitCodeOf } from "../command-failure.js";
 import { ExitCodeError, ReportedError } from "../commands.js";
 
 describe("CommandFailure", () => {
@@ -22,12 +23,12 @@ describe("CommandFailure", () => {
 	const printed = () =>
 		logService.texts("print").map((text) => JSON.parse(text));
 
-	describe("finish", () => {
-		it("should report the failure and answer with its exit code", () => {
+	describe("report", () => {
+		it("should print the message of each failure", () => {
 			const failure = new CommandFailure(logService, false);
 
-			expect(failure.finish(new UsageError("bad flag"))).toBe(2);
-			expect(failure.finish(new Error("no config"), "build")).toBe(1);
+			failure.report(new UsageError("bad flag"));
+			failure.report(new Error("no config"), "build");
 			expect(logService.texts("error")).toEqual([
 				"bad flag",
 				"no config",
@@ -35,13 +36,13 @@ describe("CommandFailure", () => {
 		});
 	});
 
-	describe("finish, as told to the user", () => {
+	describe("report, as told to the user", () => {
 		it("should print nothing for a failure already reported in full", () => {
-			new CommandFailure(logService, false).finish(
+			new CommandFailure(logService, false).report(
 				new ReportedError(new DiagnosticsError([problem])),
 				"build"
 			);
-			new CommandFailure(logService, true).finish(
+			new CommandFailure(logService, true).report(
 				new ReportedError(new Error("x")),
 				"build"
 			);
@@ -52,7 +53,7 @@ describe("CommandFailure", () => {
 		it("should print each diagnostic of a failure, then close the frame", () => {
 			logService.intro("rogen build");
 
-			new CommandFailure(logService, false).finish(
+			new CommandFailure(logService, false).report(
 				new DiagnosticsError([problem]),
 				"build"
 			);
@@ -66,7 +67,7 @@ describe("CommandFailure", () => {
 		it("should print another failure as an error, then close the frame", () => {
 			logService.intro("rogen build");
 
-			new CommandFailure(logService, false).finish(
+			new CommandFailure(logService, false).report(
 				new Error("no config"),
 				"build"
 			);
@@ -80,7 +81,7 @@ describe("CommandFailure", () => {
 		it("should close the frame with the message of a cancelled run", () => {
 			logService.intro("rogen init");
 
-			new CommandFailure(logService, false).finish(
+			new CommandFailure(logService, false).report(
 				new CancelledError("init cancelled."),
 				"init"
 			);
@@ -91,7 +92,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the diagnostics of a failure as a JSON document", () => {
-			new CommandFailure(logService, true).finish(
+			new CommandFailure(logService, true).report(
 				new DiagnosticsError([problem]),
 				"build"
 			);
@@ -103,7 +104,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the message of another failure as a JSON document", () => {
-			new CommandFailure(logService, true).finish(
+			new CommandFailure(logService, true).report(
 				new Error("no config"),
 				"build"
 			);
@@ -120,7 +121,7 @@ describe("CommandFailure", () => {
 		});
 
 		it("should print the failure inside an exit code as the document it is", () => {
-			new CommandFailure(logService, true).finish(
+			new CommandFailure(logService, true).report(
 				new ExitCodeError(3, new DiagnosticsError([problem])),
 				"serve"
 			);
@@ -133,7 +134,7 @@ describe("CommandFailure", () => {
 		it("should print only the error for a failure before any command ran", () => {
 			logService.intro("rogen");
 
-			new CommandFailure(logService, false).finish(
+			new CommandFailure(logService, false).report(
 				new Error("unknown option")
 			);
 
@@ -212,5 +213,26 @@ describe("exitCodeOf", () => {
 		expect(exitCodeOf(new Error("write failed"))).toBe(1);
 		expect(exitCodeOf(new CancelledError("init cancelled."))).toBe(1);
 		expect(exitCodeOf(new ReportedError(new DiagnosticsError([])))).toBe(1);
+	});
+});
+
+describe("exitCode", () => {
+	it("should be 0 for a run that finished", () => {
+		expect(exitCode(ok(undefined))).toBe(0);
+	});
+
+	it("should be 2 for a run that named no command", () => {
+		expect(exitCode(ok(undefined), { bare: true })).toBe(2);
+	});
+
+	it("should be the code of the failure for a run that failed", () => {
+		const failed = (error: Error): Result<void, Error> => err(error);
+
+		expect(exitCode(failed(new UsageError("x")))).toBe(2);
+		expect(exitCode(failed(new ProjectError("x")))).toBe(1);
+		expect(exitCode(failed(new Error("x")))).toBe(1);
+		expect(
+			exitCode(failed(new ExitCodeError(130, new Error("Stopped."))))
+		).toBe(130);
 	});
 });

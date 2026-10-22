@@ -3,7 +3,7 @@ import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "../config-discovery.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ProjectError, UsageError } from "../../../base/errors.js";
+import { ProjectError } from "../../../base/errors.js";
 import { Result, ResultError } from "../../../base/result.js";
 
 function errorOf(result: Result<unknown, Error>): Error {
@@ -184,9 +184,9 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover([]);
 
-			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
-				"/repo holds both default.rogen.json and default.rogen.jsonc; keep one."
+				"/repo holds both default.rogen.json and default.rogen.jsonc. Keep one of them: both write the same project file."
 			);
 		});
 
@@ -318,9 +318,9 @@ describe("ConfigDiscovery", () => {
 			]) {
 				const result = await discovery.discover([ref]);
 
-				expect(errorOf(result)).toBeInstanceOf(UsageError);
+				expect(errorOf(result)).toBeInstanceOf(ProjectError);
 				expect(errorOf(result).message).toBe(
-					"/repo holds both dist.rogen.json and dist.rogen.jsonc; keep one."
+					"/repo holds both dist.rogen.json and dist.rogen.jsonc. Keep one of them: both write the same project file."
 				);
 			}
 		});
@@ -785,6 +785,6 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");
 		await fs.writeFile("/repo/game.rogen.jsonc", "{}");
 
-		expect(errorOf(await named("game"))).toBeInstanceOf(UsageError);
+		expect(errorOf(await named("game"))).toBeInstanceOf(ProjectError);
 	});
 });

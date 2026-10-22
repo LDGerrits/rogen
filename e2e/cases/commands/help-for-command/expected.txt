@@ -31,6 +31,11 @@ stdout:
                                after an edit inside a file under the source paths. Press Ctrl+C to
                                stop; --json prints one JSON object per line.
   
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
+  
   EXAMPLES:
       rogen build
       rogen build places/lobby
@@ -131,6 +136,11 @@ stdout:
       -v, --verbose                        Print debug output; -vv, trace output. (repeatable)
       -V, --version                        Print the version.
   
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
+  
   EXAMPLES:
       rogen init
       rogen init --non-interactive
@@ -174,7 +184,8 @@ stdout:
   
   EXIT CODES:
       0    every path answered, one that no file places included
-      1    no path was given, or the config has errors
+      1    the config has errors
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
       rogen where src/Inventory/Server/Save.luau
@@ -214,6 +225,11 @@ stdout:
                                change. With -o or -p, build with Rojo after each write, and again
                                after an edit inside a file under the source paths. Press Ctrl+C to
                                stop; --json prints one JSON object per line.
+  
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
       rogen build

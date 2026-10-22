@@ -6,13 +6,32 @@ import {
 	CommandService,
 	registerCommand,
 } from "../../platform/commands/commands.js";
-import { CommandLine } from "../../platform/environment/args.js";
+import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
+import {
+	diagnosticShape,
+	errorShape,
+	failureToJson,
+} from "../../platform/diagnostics/diagnostic-json.js";
 import { LogService } from "../../platform/log/log-service.js";
+import { OutputShape as S } from "../../platform/output/output-shape.js";
 import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
 
-const PluginOptions = [] as const;
+const PluginOptions = [JsonOption] as const;
+
+const pluginDocumentShape = S.object({
+	action: S.enum("install", "uninstall"),
+	outcome: S.enum("done", "failed"),
+	messages: S.array(
+		S.object({
+			severity: S.enum("error", "warning", "info"),
+			text: S.string,
+		})
+	),
+	diagnostics: S.optional(S.array(diagnosticShape)),
+	error: S.optional(errorShape),
+});
 
 const SUBCOMMANDS = [
 	{ name: "install", description: "Installs Rojo's Studio plugin." },
@@ -40,6 +59,7 @@ registerCommand(
 						},
 					],
 					options: PluginOptions,
+					output: { document: pluginDocumentShape },
 					effects: ["writesFiles", "runsProcesses"],
 					examples: [
 						"rogen plugin install",
@@ -66,12 +86,34 @@ registerCommand(
 					)
 				);
 			const logService = accessor.get(LogService);
-			logService.reserveStdout();
+			if (!line.options.json) logService.reserveStdout();
 			const cwd = accessor.get(EnvironmentService).cwd;
 
 			const ran = await accessor
 				.get(RojoCommandService)
 				.runBare({ args: ["plugin", action], cwd });
+			if (line.options.json) {
+				const failed = ran.isErr() ? ran.error : ran.value.failure;
+				return this.printJson(
+					logService,
+					{
+						action,
+						outcome: failed ? "failed" : "done",
+						messages: ran.isErr()
+							? []
+							: ran.value.messages
+									.filter(
+										({ severity }) => severity !== "debug"
+									)
+									.map(({ severity, text }) => ({
+										severity,
+										text,
+									})),
+						...(failed && failureToJson(failed)),
+					},
+					failed
+				);
+			}
 			if (ran.isErr()) return ran;
 			const { messages, failure } = ran.value;
 			(failure ? reportRojoBesideFailure : reportRojo)(

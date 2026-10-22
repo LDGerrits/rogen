@@ -1,0 +1,29 @@
+{
+	"steps": [
+		["build", "ok"],
+		["build", "broken"],
+		["build", "ok", "--nope"],
+		["check", "ok"],
+		["check", "warn"],
+		["check", "--nope"],
+		["where", "ok"],
+		["where", "broken"],
+		["where", "--nope"],
+		["serve", "broken"],
+		["serve", "ok", "--port", "abc"],
+		["syncback", "broken", "-i", "game.rbxl", "-y"],
+		["syncback", "ok"],
+		["upload", "broken", "--asset_id", "1"],
+		["upload", "ok"],
+		["init", "fresh", "--non-interactive", "--skip-git", "--no-sample"],
+		["init", "broken", "--non-interactive", "--skip-git", "--no-sample"],
+		["init", "a", "b"],
+		["plugin", "install"],
+		["plugin", "uninstall"],
+		["plugin"]
+	],
+	"rojo": false,
+	"tools": {
+		"rojo": "case \"$1\" in --version) echo 'rojo 7.7.1';; plugin) [ \"$2\" = uninstall ] && { echo 'Your platform is not currently supported' >&2; exit 1; };; esac; exit 0"
+	}
+}

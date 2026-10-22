@@ -57,8 +57,8 @@ export const ErrorUtils = {
 /** What each exit code of a run means. */
 export const ExitCodes = {
 	0: "done (warnings included)",
-	1: "the project has errors",
-	2: "the command line is wrong",
+	1: "the project has a problem: an error, or Rojo failing",
+	2: "the command line is wrong, or a terminal is needed and there is none",
 } as const;
 
 /** What went wrong in a word a program can branch on, each with the exit code its run ends with. */

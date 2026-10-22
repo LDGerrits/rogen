@@ -90,7 +90,7 @@ It runs on one project, as `upload` does: in a repo of places, name the place. R
 
 ### `plugin install` and `plugin uninstall`
 
-Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with the Rojo your toolchain file pins in this folder or above, else the one on the PATH, so the plugin matches the server `rogen serve` starts. Installing again overwrites the plugin. It reads no project, so it runs in any folder. On a platform Rojo can't install a plugin on, Rojo's error is shown and the exit code is 1. `rogen plugin help` prints this command's help, as `rojo plugin help` does for Rojo's.
+Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with the Rojo your toolchain file pins in this folder or above, else the one on the PATH, so the plugin matches the server `rogen serve` starts. Installing again overwrites the plugin. It reads no project, so it runs in any folder. On a platform Rojo can't install a plugin on, Rojo's error is shown and the exit code is 1. `--json` prints `{ "action", "outcome": "done"|"failed", "messages" }`, and the failure beside them when Rojo failed. `rogen plugin help` prints this command's help, as `rojo plugin help` does for Rojo's.
 
 ### `serve [project] [--port <port>] [--address <address>] [--allowed-hosts <host>…]` [#serve]
 
@@ -133,7 +133,7 @@ Servers start only after a build succeeds. If the first one fails, the errors pr
 
 **Server output.** Rogen reads what the server prints and shows its warnings and errors as its own lines, each on one line, named after the server, with paths relative to the folder you ran `serve` in. The rest is dropped: the server's banner, since Rogen's `Serving` line says where it listens, its info logs, its debug detail, a message it repeats, and what Rogen's own port checks and project file writes make it say. A line Rogen doesn't recognise, such as a crash, is shown as it is, so nothing that explains a failure is lost. `--verbose` shows the dropped lines too, as debug lines.
 
-**Exit code.** After Ctrl+C, SIGTERM or SIGHUP, `serve` stops its servers and exits with 128 plus the signal's number (130, 143 and 129), as the shell reports a `rojo serve` that the signal stopped. When a server stops on its own, `serve` stops too and exits with the server's code; a non-zero code also reports [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
+**Exit code.** After Ctrl+C, SIGTERM or SIGHUP, `serve` stops its servers and exits with 128 plus the signal's number (130, 143 and 129), as the shell reports a `rojo serve` that the signal stopped. When a server stops on its own, `serve` stops too and exits 1; a non-zero code of the server also reports [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
 
 `serve` accepts `--json`. See [`serve --json`](#serve---json) for its lines.
 
@@ -325,7 +325,7 @@ Opens the documentation in your browser, and prints its address. Without a termi
 
 ### `help [name]`
 
-Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and descriptions and prose are wrapped at 100 columns, as Rojo wraps its help. `rogen help build` and `rogen build --help` print the same, in full. `rogen build -h` prints the short form, as Rojo's help does: each argument and option with the first sentence of its description, and the closing line "Run with --help for details." `EXIT CODES:` and `EXAMPLES:` print in both. `help --json` keeps every description in full. `rogen --version` prints the installed version.
+Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`. The root help lists each command with a one-line summary, and descriptions and prose are wrapped at 100 columns, as Rojo wraps its help. `rogen help build` and `rogen build --help` print the same, in full. `rogen build -h` prints the short form, as Rojo's help does: each argument and option with the first sentence of its description, and the closing line "Run with --help for details." `EXIT CODES:` and `EXAMPLES:` print in both. `help --json` keeps every description in full. `rogen --version` prints the installed version; with `--json` it prints `{ "version": "..." }`.
 
 `rogen help codes` lists every [diagnostic](/docs/v2/diagnostics) code on a line with its severity and meaning. `rogen help <code>` explains one, such as `rogen help route.strayAt`. The code may be typed in any case, or without its prefix when one code ends in it: `rogen help strayat` prints `route.strayAt`.
 
@@ -354,13 +354,15 @@ Anything you want every time belongs in the `.rogen.json`. `where` and `check` t
 
 ## Exit codes
 
+Every command ends with 0, 1 or 2, chosen in one place, and `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message. `rogen help` and each command's `EXIT CODES:` print the same table.
+
 | Code | Meaning |
 |---|---|
-| `0` | The command did its job, warnings included. `serve` exits 0 when another `rogen serve` already serves the project; a `serve` that a signal stops exits 128 plus its number (Ctrl+C is 130). |
-| `1` | The project is wrong: a project that can't be found (a path that isn't there, a folder with no project), an invalid config, build errors, a failed write, a cancelled `init`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
-| `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`--verbose` with `--quiet`, words after `--`, a second `[PROJECT]` on a command that takes one), or a help topic that doesn't exist. A Rojo that refuses the arguments Rogen passes on (`upload --asset_id abc`) exits 2, as Rojo does. |
+| `0` | Done, warnings included. `serve` exits 0 when another `rogen serve` already serves the project. |
+| `1` | The project has a problem: a config that can't be found or loaded, an error diagnostic, two configs that would write one project file, a failed write, a cancelled `init`, or Rojo failing (`rojo.commandFailed`). `check` also exits 1 on any warning. For `serve`, also no server to start, a taken port, or a server that stops on its own. |
+| `2` | The command line is wrong: an unknown command, option or option value, a missing required argument (`--asset_id`, `--input`), a combination that isn't allowed (`--verbose` with `--quiet`, words after `--`, a second `[PROJECT]` on a command that takes one), a help topic that doesn't exist, or a run that needs a terminal and has none (`syncback` without `-y`). A bare `rogen` prints the help and exits 2. A Rojo that refuses the arguments Rogen passes on (`upload --asset_id abc`) exits 2, as Rojo does. |
 
-When a server stops on its own, `serve` exits with the server's code. `--json` keeps the same codes, so a script can tell "fix the call" from "fix the project" without reading the message.
+A long command that Ctrl+C (130), SIGHUP (129) or SIGTERM (143) ends keeps the code the shell reports for a process a signal stopped, as `rojo serve` does. That is the shell's convention, not a Rogen code.
 
 ## Continuous integration
 
