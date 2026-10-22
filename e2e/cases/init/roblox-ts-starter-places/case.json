@@ -1,20 +1,20 @@
 {
 	"steps": [
 		["init", "--non-interactive", "--skip-git", "--language", "roblox-ts", "--places"],
-		["init", "places/lobby", "--non-interactive"],
-		["build", "places/lobby"]
+		["init", "projects/lobby", "--non-interactive"],
+		["build", "projects/lobby"]
 	],
 	"rojo": false,
 	"show": [
 		".gitignore",
 		"package.json",
-		"places/game/default.rogen.json",
-		"places/game/tsconfig.json",
-		"places/lobby/default.rogen.json",
-		"places/lobby/tsconfig.json",
-		"places/shared/tsconfig.json",
-		"places/shared/src/Greeter/shared/Greeting.ts",
-		"places/game/src/Game/server/Game.server.ts"
+		"projects/game/default.rogen.json",
+		"projects/game/tsconfig.json",
+		"projects/lobby/default.rogen.json",
+		"projects/lobby/tsconfig.json",
+		"projects/common/tsconfig.json",
+		"projects/common/src/Greeter/shared/Greeting.ts",
+		"projects/game/src/Game/server/Game.server.ts"
 	],
 	"output": ["init"],
 	"tools": {

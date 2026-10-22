@@ -1,15 +1,34 @@
 {
 	"steps": [
-		["init", "--non-interactive", "--skip-git", "--places"],
-		["build", "places/game"],
-		["list", "places/game"]
+		[
+			"init",
+			"--non-interactive",
+			"--skip-git",
+			"--places"
+		],
+		[
+			"build",
+			"game"
+		],
+		[
+			"list",
+			"game"
+		],
+		[
+			"sourcemap",
+			"game",
+			"-o",
+			"sourcemap.json"
+		]
 	],
 	"show": [
 		"README.md",
-		"project.code-workspace",
-		"places/game/default.rogen.json",
-		"places/game/src/Game/Server/Game.server.luau",
-		"places/shared/src/Greeter/Shared/Greeting.luau"
+		".vscode/settings.json",
+		"game.rogen.json",
+		"src/game/Game/Server/Game.server.luau",
+		"src/common/Greeter/Shared/Greeting.luau"
 	],
-	"output": ["init"]
+	"output": [
+		"init"
+	]
 }

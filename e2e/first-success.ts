@@ -13,6 +13,8 @@ import {
 export interface Step {
 	readonly run: readonly string[];
 	readonly in?: string;
+	/** The editor runs it while it is open, so `init` does not print it. */
+	readonly editor?: boolean;
 }
 
 /** A way to start a project, followed from an empty folder to a served place. */
@@ -27,7 +29,7 @@ export interface Variant {
 	readonly network?: boolean;
 	/** The project name Rojo reports once served. */
 	readonly served: string;
-	/** Folders built beside the served one, whose sourcemap the editor reads. */
+	/** Places whose sourcemap the editor reads, from `rogen sourcemap <place>`. */
 	readonly mapped?: readonly string[];
 }
 
@@ -40,7 +42,7 @@ export interface Success {
 	readonly unprinted: readonly string[];
 	/** The `serving` line of `serve --json`. */
 	readonly serving: Readonly<Record<string, unknown>>;
-	/** The instance paths of the sourcemap of each `mapped` folder, as `ReplicatedStorage/Shared/Greeter`. */
+	/** The instance paths of the sourcemap of each `mapped` place, as `ReplicatedStorage/Shared/Greeter`. */
 	readonly mappedPaths: Readonly<Record<string, readonly string[]>>;
 	/** The Studio plugin installs the fake Rojo saw. */
 	readonly pluginCalls: number;
@@ -209,19 +211,10 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 		if (built.exitCode !== 0) throw fail("build", built);
 
 		const mappedPaths: Record<string, readonly string[]> = {};
-		for (const folder of variant.mapped ?? []) {
-			const mapped = await rogen(["build", folder]);
-			if (mapped.exitCode !== 0) throw fail(`build ${folder}`, mapped);
-			const map = await run(
-				"rojo",
-				["sourcemap", `${folder}/default.project.json`],
-				dir,
-				env,
-				"",
-				timeout
-			);
-			if (map.exitCode !== 0) throw fail(`sourcemap ${folder}`, map);
-			mappedPaths[folder] = pathsOf(
+		for (const place of variant.mapped ?? []) {
+			const map = await rogen(["sourcemap", place]);
+			if (map.exitCode !== 0) throw fail(`sourcemap ${place}`, map);
+			mappedPaths[place] = pathsOf(
 				(JSON.parse(map.stdout) as MapNode).children ?? []
 			);
 		}
@@ -243,7 +236,9 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 				commands,
 				printed,
 				unprinted: steps
-					.filter((step) => !printedLine(step, printed))
+					.filter(
+						(step) => !step.editor && !printedLine(step, printed)
+					)
 					.map((step) => step.run.join(" ")),
 				serving: line,
 				mappedPaths,

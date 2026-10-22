@@ -1,0 +1,19 @@
+{
+	"steps": [
+		[
+			"init",
+			"projects/lobby",
+			"--non-interactive"
+		],
+		[
+			"build",
+			"projects/lobby"
+		]
+	],
+	"output": [
+		"init"
+	],
+	"show": [
+		"projects/lobby/default.rogen.json"
+	]
+}
