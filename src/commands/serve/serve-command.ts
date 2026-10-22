@@ -61,13 +61,6 @@ const AllowedHostsOption = {
 		"A host, besides the address, that may reach every server. Rojo's own flag, from Rojo 7.7.0.",
 } as const satisfies OptionDescriptor;
 
-const AdoptOption = {
-	name: "adopt",
-	type: "boolean",
-	description:
-		"Take over a server no rogen serve started that serves this project: build and watch for it, start none. Without it, that server holds the port.",
-} as const satisfies OptionDescriptor;
-
 const ServeOptions = [
 	{
 		...JsonOption,
@@ -77,7 +70,6 @@ const ServeOptions = [
 	AddressOption,
 	PortOption,
 	AllowedHostsOption,
-	AdoptOption,
 ] as const;
 
 type ServeLine = CommandLine<typeof ServeOptions>;
@@ -130,7 +122,7 @@ registerCommand(
 					output: { lines: serveLineShape },
 					effects: ["writesFiles", "runsProcesses"],
 					exitCodes: {
-						"0": "another rogen serve already serves the project, or a server adopted from one stopped",
+						"0": "another rogen serve already serves the project",
 						"128+N":
 							"a signal stopped it: 130 for Ctrl+C, 143 for SIGTERM, 129 for SIGHUP",
 					},
@@ -167,7 +159,6 @@ registerCommand(
 					signal: stopChecks.signal,
 					refs: line.positionals,
 					serverArgs: serverArgs.value,
-					adopt: line.options.adopt === true,
 				});
 				if (shutdown.isSettled)
 					return this.stoppedBy(accessor.get(LifecycleService));

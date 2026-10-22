@@ -317,10 +317,6 @@ stdout:
             "name": "allowed-hosts",
             "type": "string",
             "multiple": true
-          },
-          {
-            "name": "adopt",
-            "type": "boolean"
           }
         ],
         "effects": [

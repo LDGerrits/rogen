@@ -376,7 +376,7 @@ describeWithRojo("end to end serve", () => {
 
 			await eventually(() => {
 				expect(serving.output).toContain(
-					`Port ${serve.port + 1} is taken by Rojo serving Other, so default.rogen.json can't be served there.`
+					`Port ${serve.port + 1} is held by another process (Rojo serving Other), so default.rogen.json can't be served there.`
 				);
 			}, 20_000);
 			expect(await rojoProject(serve.port)).toBe("Game");
@@ -434,46 +434,7 @@ describeWithRojo("end to end serve", () => {
 		).toBeUndefined();
 	}, 40_000);
 
-	it("should build for a Rojo it didn't start, and stop once that Rojo stops", async () => {
-		const [build, buildArgs] = invocation(serve.cli, ["build"]);
-		expect(spawnSync(build, buildArgs, { cwd: serve.dir }).status).toBe(0);
-		const rojo = spawn("rojo", ["serve", "default.project.json"], {
-			cwd: serve.dir,
-			stdio: "ignore",
-		});
-		try {
-			await eventually(async () => {
-				expect(await rojoProject(serve.port)).toBe("Game");
-			}, 20_000);
-
-			const serving = serve.start(["--json", "--adopt"]);
-			await eventually(() => {
-				expect(serving.stdout).toContain('"adopted":true');
-			}, 20_000);
-			writeProjectFile(serve.dir, "src/B.luau");
-			await eventually(() => {
-				expect(
-					fs.readFileSync(
-						path.join(serve.dir, "default.project.json"),
-						"utf8"
-					)
-				).toContain("src/B.luau");
-			});
-			rojo.kill("SIGINT");
-
-			expect(await serving.exited).toBe(0);
-			expect(serving.stdout).toContain(
-				'{"stopped":{"config":"Game","server":"rojo","reason":"exited","adopted":true}}'
-			);
-			expect(
-				outputProblem(["serve", "--json"], serving.stdout)
-			).toBeUndefined();
-		} finally {
-			rojo.kill("SIGINT");
-		}
-	}, 40_000);
-
-	it("should refuse a Rojo it didn't start that serves another folder's project of the same name", async () => {
+	it("should refuse a Rojo it didn't start, naming it as another process", async () => {
 		const other = createProject(projectFiles(serve.port));
 		const [build, buildArgs] = invocation(serve.cli, ["build"]);
 		expect(spawnSync(build, buildArgs, { cwd: other.dir }).status).toBe(0);
@@ -490,9 +451,8 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await refused.exited).toBe(1);
 			expect(refused.output).toContain(
-				`Port ${serve.port} is taken by Rojo serving Game, which no rogen serve started`
+				`Port ${serve.port} is held by another process (Rojo serving Game), so default.rogen.json can't be served there.`
 			);
-			expect(refused.output).toContain("--adopt");
 		} finally {
 			rojo.kill("SIGINT");
 			other.dispose();
@@ -534,7 +494,6 @@ describeWithRojo("end to end serve", () => {
 		expect(second.output).toContain(
 			`Port ${serve.port} is taken by Rojo serving Game, which rogen serve started for default.rogen.json, so dist.rogen.json can't be served there. Stop it, set a servePort in dist.rogen.json, or run 'rogen serve dist.rogen.json --port`
 		);
-		expect(second.output).not.toContain("--adopt");
 		expect(await rojoProject(serve.port)).toBe("Game");
 	}, 40_000);
 
@@ -555,7 +514,7 @@ describeWithRojo("end to end serve", () => {
 
 			expect(await serving.exited).toBe(1);
 			expect(serving.output).toContain(
-				`Port ${serve.port} is taken by Rojo serving Other, so default.rogen.json can't be served there.`
+				`Port ${serve.port} is held by another process (Rojo serving Other), so default.rogen.json can't be served there.`
 			);
 		} finally {
 			rojo.kill("SIGINT");

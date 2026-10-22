@@ -48,7 +48,6 @@ export const serveLineShape = S.union(
 			session: S.optional(S.string),
 			reportsConnections: S.boolean,
 			alreadyRunning: S.optional(S.boolean),
-			adopted: S.optional(S.boolean),
 		}),
 	}),
 	S.object({
@@ -76,7 +75,6 @@ export const serveLineShape = S.union(
 			reason: S.enum("exited", "removed", "moved", "shutdown"),
 			code: S.optional(S.nullable(S.integer)),
 			signal: S.optional(S.nullable(S.string)),
-			adopted: S.optional(S.boolean),
 		}),
 	})
 );
@@ -175,7 +173,7 @@ export class ServeLog implements ServeReporter {
 				return;
 			case "retired":
 				this.logService.info(
-					`${target.adopted ? "Stopped building for" : "Stopped serving"} ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
+					`Stopped serving ${label}${change.reason === "moved" ? ` at ${target.address}` : ""}: ${RETIRED_BECAUSE[change.reason]}.`
 				);
 		}
 	}
@@ -198,9 +196,7 @@ export class ServeLog implements ServeReporter {
 		const { servedBy: info } = target;
 		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address}${info.session ? ` (session ${info.session})` : ""}.`;
 		this.logService.info(
-			target.adopted
-				? `${target.config.label} is already served: ${served} Rogen builds for it, and stops when it does.`
-				: `${target.config.label} is already served by another rogen serve: ${served}`
+			`${target.config.label} is already served by another rogen serve: ${served}`
 		);
 	}
 }
@@ -260,7 +256,8 @@ export class ServeJsonLog implements ServeReporter {
 	stopped({ target, exit, failure }: ServerExitEvent): void {
 		this.line({
 			stopped: this.stoppedJson(target, "exited", {
-				...(exit && { code: exit.code, signal: exit.signal }),
+				code: exit.code,
+				signal: exit.signal,
 			}),
 		});
 		if (failure) this.line(diagnosticsJson([failure]));
@@ -316,7 +313,6 @@ export class ServeJsonLog implements ServeReporter {
 			...this.serverFields(target),
 			reason,
 			...extra,
-			...(target.adopted && { adopted: true }),
 		};
 	}
 
@@ -346,7 +342,6 @@ export class ServeJsonLog implements ServeReporter {
 			reportsConnections:
 				!alreadyRunning && info.server.reportsConnections(info.version),
 			...(alreadyRunning && { alreadyRunning }),
-			...(target.adopted && { adopted: true }),
 		};
 	}
 
