@@ -12,7 +12,6 @@ import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
-import { PlaceInit } from "./place-init.js";
 import { AgentReader } from "./agent-reader.js";
 import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
@@ -161,15 +160,6 @@ export class CoreInitService implements InitService {
 			choices,
 			prompts.essential
 		);
-		if (place !== undefined) {
-			const added = await new PlaceInit(
-				this.fileSystemService,
-				questions,
-				cwd,
-				(await this.toolchainService.detect(cwd)).languageFor("luau")
-			).plan(folder);
-			if (added.isErr() || added.value) return added;
-		}
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
 		const nested = await this.checkNested(directory.value, questions);

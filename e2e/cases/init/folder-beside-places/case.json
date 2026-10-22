@@ -1,8 +1,8 @@
 {
 	"steps": [
 		["init", "--non-interactive", "--skip-git", "--places"],
-		["init", "tools/lobby", "--non-interactive", "--skip-git"]
+		["init", "lobby", "--non-interactive", "--skip-git"]
 	],
-	"rojo": false,
+	"show": ["lobby/default.rogen.json"],
 	"output": ["init"]
 }

@@ -1,8 +1,6 @@
 {
 	"steps": [
-		["init", "--non-interactive", "--skip-git", "--language", "roblox-ts", "--places"],
-		["init", "projects/lobby", "--non-interactive"],
-		["build", "projects/lobby"]
+		["init", "--non-interactive", "--skip-git", "--language", "roblox-ts", "--places"]
 	],
 	"rojo": false,
 	"show": [
@@ -10,8 +8,6 @@
 		"package.json",
 		"projects/game/default.rogen.json",
 		"projects/game/tsconfig.json",
-		"projects/lobby/default.rogen.json",
-		"projects/lobby/tsconfig.json",
 		"projects/common/tsconfig.json",
 		"projects/common/src/Greeter/shared/Greeting.ts",
 		"projects/game/src/Game/server/Game.server.ts"

@@ -20,23 +20,23 @@ stdout:
     Add your own routes under "routes" in game.rogen.json.
     Edit game.rogen.json and leave game.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build game' so the editor's game.project.json follows.
     luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
-    Add another place with 'rogen init lobby', and serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+    Add another place: copy game.rogen.json to lobby.rogen.json, change its "name" to lobby and its source path src/game to src/lobby, and make src/lobby. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
   Wrote 8 files.
 
-$ rogen init tools/lobby --non-interactive --skip-git
+$ rogen init lobby --non-interactive --skip-git
 exit 0
 stdout:
   rogen init
-  No default.rogen.json is at or above tools/lobby, so init starts a project there.
+  No default.rogen.json is at or above lobby, so init starts a project there.
   Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.
   Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
-  Created tools/lobby/default.rogen.json.
-  Created tools/lobby/src/Greeter/Shared/Greeting.luau.
-  Created tools/lobby/src/Greeter/Server/Greeter.server.luau.
-  Created tools/lobby/src/Greeter/Client/Greeter.client.luau.
-  Created tools/lobby/README.md.
-  Created tools/lobby/AGENTS.md.
-  tools/lobby/default.project.json · wrote
+  Created lobby/default.rogen.json.
+  Created lobby/src/Greeter/Shared/Greeting.luau.
+  Created lobby/src/Greeter/Server/Greeter.server.luau.
+  Created lobby/src/Greeter/Client/Greeter.client.luau.
+  Created lobby/README.md.
+  Created lobby/AGENTS.md.
+  lobby/default.project.json · wrote
   Next steps
     Run:
       rogen serve
@@ -51,17 +51,17 @@ written:
   README.md
   game.project.json
   game.rogen.json
+  lobby/AGENTS.md
+  lobby/README.md
+  lobby/default.project.json
+  lobby/default.rogen.json
+  lobby/src/Greeter/Client/Greeter.client.luau
+  lobby/src/Greeter/Server/Greeter.server.luau
+  lobby/src/Greeter/Shared/Greeting.luau
   src/common/Greeter/Client/Greeter.client.luau
   src/common/Greeter/Server/Greeter.server.luau
   src/common/Greeter/Shared/Greeting.luau
   src/game/Game/Server/Game.server.luau
-  tools/lobby/AGENTS.md
-  tools/lobby/README.md
-  tools/lobby/default.project.json
-  tools/lobby/default.rogen.json
-  tools/lobby/src/Greeter/Client/Greeter.client.luau
-  tools/lobby/src/Greeter/Server/Greeter.server.luau
-  tools/lobby/src/Greeter/Shared/Greeting.luau
 
 game.rogen.json:
 {
@@ -129,7 +129,7 @@ game.rogen.json:
   }
 }
 
-tools/lobby/default.rogen.json:
+lobby/default.rogen.json:
 {
   "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
@@ -192,3 +192,41 @@ tools/lobby/default.rogen.json:
     }
   }
 }
+
+$ rojo sourcemap game.project.json
+game: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/common/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Game: Folder
+      Game: Script  <- src/game/Game/Server/Game.server.luau
+    Greeter: Folder
+      Greeter: Script  <- src/common/Greeter/Server/Greeter.server.luau
+  SoundService: SoundService
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/common/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace
+    Baseplate: Part
+
+$ rojo sourcemap lobby/default.project.json
+lobby: DataModel
+  Lighting: Lighting
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+  SoundService: SoundService
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace
+    Baseplate: Part

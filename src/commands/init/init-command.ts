@@ -123,7 +123,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new project is several places. Luau: the code they share in src/common, a first place in src/game, a game.rogen.json at the root for it, and editor settings for luau-lsp; more places by 'rogen init <name>'. roblox-ts: the code they share in projects/common and a first place in projects/game with its own default.rogen.json, more by 'rogen init projects/<name>'. One place when not given, or several where a projects folder exists for roblox-ts.",
+			"Whether a new project is several places. Luau: the code they share in src/common, a first place in src/game, a game.rogen.json at the root for it, and editor settings for luau-lsp; more places by copying that file. roblox-ts: the code they share in projects/common and a first place in projects/game with its own default.rogen.json and tsconfig.json, more by copying that folder. One place when not given, or several where a projects folder exists for roblox-ts.",
 	},
 	{
 		name: "agent-rules",
@@ -194,12 +194,12 @@ registerCommand(
 				metadata: {
 					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder is a new place of a project that has places: below a projects folder that has one (roblox-ts), or directly below a folder with src/common and the config of a place (Luau). It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",
 							description:
-								"The folder to start in, made when it is not there. In a project that has places, a new name is added as a place instead, copying the routes of the first place and listing the common code: a folder of projects/ with its own default.rogen.json (roblox-ts), or in a Luau project with src/common, a <name>.rogen.json directly below the root and a src/<name> folder with a starter script (--no-sample leaves it empty).",
+								"The folder to start the project in, made when it is not there.",
 							isOptional: true,
 						},
 					],
@@ -215,8 +215,6 @@ registerCommand(
 						"rogen init",
 						"rogen init --non-interactive",
 						"rogen init game",
-						"rogen init lobby",
-						"rogen init projects/lobby",
 					],
 				},
 			});

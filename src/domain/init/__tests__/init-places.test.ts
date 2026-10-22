@@ -6,7 +6,6 @@ import { MockPromptService } from "../../../platform/prompt/__tests__/mock-promp
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreInitService } from "../core-init-service.js";
-import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { InitChoices, InitPlan } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -148,11 +147,11 @@ describe("init for several places", () => {
 			);
 		});
 
-		it("should say how to add a place, which is init with its name", async () => {
+		it("should say how to add a place, which is a copy of the config", async () => {
 			const planned = await plan();
 
 			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"rogen init lobby"
+				"copy game.rogen.json to lobby.rogen.json"
 			);
 			expect(planned.nextSteps.edits.join("\n")).toContain(
 				"rogen serve lobby --port"
@@ -222,6 +221,21 @@ describe("init for several places", () => {
 					"darklua process src/game dist/game --watch",
 					"rogen serve game.dist.rogen.json",
 				]);
+			});
+
+			it("should say how to add a place with its dist and release configs", async () => {
+				const result = await planned();
+
+				const edits = result.nextSteps.edits.join("\n");
+				expect(edits).toContain(
+					"Do the same for game.dist.rogen.json, and for game.release.rogen.json if there is one"
+				);
+				expect(edits).toContain(
+					"darklua process src/lobby dist/lobby --watch"
+				);
+				expect(edits).toContain(
+					"rogen serve lobby.dist.rogen.json --port"
+				);
 			});
 
 			it("should write the Darklua config at the root, and ignore the processed folder there", async () => {
@@ -347,15 +361,24 @@ describe("init for several places", () => {
 			]);
 		});
 
-		it("should build the place by its folder and say how to add one", async () => {
+		it("should build the place by its folder", async () => {
 			const result = await planned();
 
 			expect(result.nextSteps.edits.join("\n")).toContain(
-				"rogen init projects/lobby"
-			);
-			expect(result.nextSteps.edits.join("\n")).toContain(
 				"rogen build projects/game"
 			);
+		});
+
+		it("should say how to add a place, which is a copy of its folder", async () => {
+			const result = await planned();
+
+			const edits = result.nextSteps.edits.join("\n");
+			expect(edits).toContain(
+				"copy projects/game/default.rogen.json and projects/game/tsconfig.json into projects/lobby"
+			);
+			expect(edits).toContain("rbxtsc -w -p projects/lobby");
+			expect(edits).toContain("rogen serve projects/lobby --port");
+			expect(edits).not.toContain("rogen init");
 		});
 
 		it("should write the dist output and the Darklua config in the place's folder", async () => {
@@ -378,156 +401,15 @@ describe("init for several places", () => {
 		});
 	});
 
-	describe("a place added to projects", () => {
-		const first = {
-			$schema: "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-			name: "game",
-			tree: { $className: "DataModel" },
-			rogen: {
-				sourcePaths: ["../common/src", "src"],
-				routes: { Server: "ServerScriptService" },
-			},
-		};
-
-		beforeEach(async () => {
+	describe("a folder named beside the places of a project", () => {
+		it("should start a project in a folder of projects, as Rojo's init does", async () => {
 			await put(
 				"projects/game/default.rogen.json",
-				JSON.stringify(first)
+				JSON.stringify({ name: "game" })
 			);
 			await fileSystem.createDirectory(
 				path.join(directory, "projects/common")
 			);
-		});
-
-		it("should copy the routes, the tree and the common source path of the first place", async () => {
-			const planned = await plan({}, "projects/lobby");
-
-			expect(planned.directory).toBe(directory);
-			expect(planned.configs).toEqual([
-				"projects/lobby/default.rogen.json",
-			]);
-			expect(
-				jsonOf(planned, "projects/lobby/default.rogen.json")
-			).toEqual({
-				...first,
-				name: "lobby",
-			});
-			expect(planned.directories).toEqual(["projects/lobby/src"]);
-		});
-
-		it("should neither copy the common code nor list it as a place", async () => {
-			await put("projects/common/default.rogen.json", "{}");
-
-			const planned = await plan({}, "projects/lobby");
-
-			expect(planned.notes.join("\n")).toContain("projects/game");
-			expect(planned.notes.join("\n")).not.toContain("projects/common");
-		});
-
-		it("should write no port and leave a workspace file alone", async () => {
-			await put("my-game.code-workspace", '{ "folders": [] }');
-
-			const planned = await plan({}, "projects/lobby");
-
-			expect(
-				fileOf(planned, "projects/lobby/default.rogen.json")?.content
-			).not.toMatch(/servePort/);
-			expect(names(planned)).toEqual([
-				"projects/lobby/default.rogen.json",
-			]);
-		});
-
-		it("should leave the common code out when there is none", async () => {
-			await fileSystem.delete(
-				path.join(directory, "projects/common"),
-				true
-			);
-
-			const planned = await plan({}, "projects/lobby");
-
-			expect(
-				jsonOf(planned, "projects/lobby/default.rogen.json").rogen
-					.sourcePaths
-			).toEqual(["src"]);
-		});
-
-		it("should skip a model whose config does not parse", async () => {
-			await put("projects/arena/default.rogen.json", "{ broken");
-
-			const planned = await plan({}, "projects/lobby");
-
-			expect(
-				jsonOf(planned, "projects/lobby/default.rogen.json").rogen
-					.routes
-			).toHaveProperty("Server");
-		});
-
-		it("should serve it by its folder and say a second place takes a port", async () => {
-			const planned = await plan({}, "projects/lobby");
-
-			expect(planned.nextSteps.run).toEqual([
-				"rogen serve projects/lobby",
-			]);
-			expect(planned.nextSteps.edits.join("\n")).toContain("--port");
-		});
-
-		it("should copy the Darklua and release files of the first place", async () => {
-			await put(
-				"projects/game/dist.rogen.json",
-				JSON.stringify({ rogen: { compiledPath: "dist" } })
-			);
-			await put(
-				"projects/game/release.rogen.json",
-				JSON.stringify({
-					rogen: { compiledPath: "dist" },
-					globIgnorePaths: ["**/*.spec.luau"],
-				})
-			);
-			await put("projects/game/.darklua.json", "{}");
-
-			const planned = await plan({}, "projects/lobby");
-
-			expect(names(planned)).toEqual(
-				expect.arrayContaining([
-					"projects/lobby/default.rogen.json",
-					"projects/lobby/dist.rogen.json",
-					"projects/lobby/release.rogen.json",
-					"projects/lobby/.darklua.json",
-				])
-			);
-			expect(
-				jsonOf(planned, "projects/lobby/release.rogen.json")
-			).toMatchObject({
-				name: "lobby",
-				globIgnorePaths: ["**/*.spec.luau"],
-				rogen: { compiledPath: "dist" },
-			});
-			expect(planned.nextSteps.run).toEqual([
-				"cd projects/lobby && darklua process ../common/src dist/common/src --watch",
-				"cd projects/lobby && darklua process src dist/lobby/src --watch",
-				"rogen serve projects/lobby/dist.rogen.json",
-			]);
-		});
-
-		it("should copy the tsconfig of a roblox-ts place and compile it", async () => {
-			await put(
-				"projects/game/tsconfig.json",
-				'{"compilerOptions":{"outDir":"out"}}'
-			);
-
-			const planned = await plan({}, "projects/lobby");
-
-			expect(
-				fileOf(planned, "projects/lobby/tsconfig.json")?.content
-			).toBe('{"compilerOptions":{"outDir":"out"}}');
-			expect(planned.nextSteps.run).toEqual([
-				"rbxtsc -w -p projects/lobby",
-				"rogen serve projects/lobby",
-			]);
-		});
-
-		it("should start an ordinary project when no place has a config to copy", async () => {
-			await fileSystem.delete(path.join(directory, "projects"), true);
 
 			const planned = await plan({ places: false }, "projects/lobby");
 
@@ -537,184 +419,23 @@ describe("init for several places", () => {
 			expect(names(planned)).toContain("default.rogen.json");
 		});
 
-		it("should not treat a places folder as one", async () => {
-			await put("places/game/default.rogen.json", JSON.stringify(first));
-
-			const planned = await plan({ places: false }, "places/lobby");
-
-			expect(planned.directory).toBe(
-				path.join(directory, "places/lobby")
-			);
-		});
-	});
-	describe("a place added to a Luau project", () => {
-		const first = {
-			$schema: "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-			name: "game",
-			tree: { $className: "DataModel" },
-			rogen: {
-				sourcePaths: ["src/common", "src/game"],
-				routes: { Server: "ServerScriptService" },
-			},
-		};
-
-		beforeEach(async () => {
-			await put("game.rogen.json", JSON.stringify(first));
+		it("should start a project in a new folder of a Luau project with places", async () => {
 			await put(
-				"src/common/Greeter/Shared/Greeting.luau",
-				"return function() end"
-			);
-		});
-
-		const failure = async (place: string) => {
-			const result = await serviceFor().plan({
-				ask: false,
-				place,
-				choices: { skipGit: true },
-			});
-			return result.isErr() && result.error instanceof DiagnosticsError
-				? result.error.diagnostics
-				: undefined;
-		};
-
-		it("should copy the config of the first place and list the common code and its own", async () => {
-			const planned = await plan({}, "lobby");
-
-			expect(planned.directory).toBe(directory);
-			expect(planned.configs).toEqual(["lobby.rogen.json"]);
-			expect(jsonOf(planned, "lobby.rogen.json")).toEqual({
-				...first,
-				name: "lobby",
-				rogen: {
-					...first.rogen,
-					sourcePaths: ["src/common", "src/lobby"],
-				},
-			});
-			expect(planned.directories).toEqual(["src/lobby"]);
-			expect(planned.notes.join("\n")).toContain("game.rogen.json");
-		});
-
-		it("should seed the folder with a script that greets with the shared module", async () => {
-			const planned = await plan({}, "lobby");
-
-			expect(names(planned)).toContain(
-				"src/lobby/Lobby/Server/Lobby.server.luau"
-			);
-			expect(
-				fileOf(planned, "src/lobby/Lobby/Server/Lobby.server.luau")
-					?.content
-			).toContain('print(Greeting("lobby"))');
-		});
-
-		it("should leave the folder empty with --no-sample", async () => {
-			const planned = await plan({ sample: false }, "lobby");
-
-			expect(names(planned)).toEqual(["lobby.rogen.json"]);
-		});
-
-		it("should leave the folder empty when the shared code lacks the module", async () => {
-			await fileSystem.delete(
-				path.join(directory, "src/common/Greeter"),
-				true
-			);
-
-			const planned = await plan({}, "lobby");
-
-			expect(names(planned)).toEqual(["lobby.rogen.json"]);
-		});
-
-		it("should serve and build it by name, and say how to read it in the editor", async () => {
-			const planned = await plan({}, "lobby");
-
-			expect(planned.nextSteps.run).toEqual(["rogen serve lobby"]);
-			expect(planned.nextSteps.edits.join("\n")).toContain(
-				'"rogen sourcemap lobby --watch -o sourcemap.json"'
-			);
-			expect(planned.nextSteps.edits.join("\n")).toContain(".vscode");
-		});
-
-		it("should write neither the editor settings nor a port", async () => {
-			const planned = await plan({}, "lobby");
-
-			expect(names(planned)).not.toContain(".vscode/settings.json");
-			expect(fileOf(planned, "lobby.rogen.json")?.content).not.toMatch(
-				/servePort/
-			);
-		});
-
-		it("should copy the dist and release configs and process only its own code", async () => {
-			await put(
-				"game.dist.rogen.json",
+				"game.rogen.json",
 				JSON.stringify({
-					...first,
-					rogen: { ...first.rogen, compiledPath: "dist" },
+					name: "game",
+					rogen: { sourcePaths: ["src/common", "src/game"] },
 				})
 			);
-			await put(
-				"game.release.rogen.json",
-				JSON.stringify({
-					...first,
-					rogen: { ...first.rogen, compiledPath: "dist" },
-					globIgnorePaths: ["**/*.spec.luau"],
-				})
-			);
-			await put(".darklua.json", "{}");
-
-			const planned = await plan({}, "lobby");
-
-			expect(names(planned)).toEqual(
-				expect.arrayContaining([
-					"lobby.rogen.json",
-					"lobby.dist.rogen.json",
-					"lobby.release.rogen.json",
-				])
-			);
-			expect(names(planned)).not.toContain(".darklua.json");
-			expect(jsonOf(planned, "lobby.release.rogen.json")).toMatchObject({
-				name: "lobby",
-				globIgnorePaths: ["**/*.spec.luau"],
-				rogen: {
-					sourcePaths: ["src/common", "src/lobby"],
-					compiledPath: "dist",
-				},
-			});
-			expect(planned.nextSteps.run).toEqual([
-				"darklua process src/lobby dist/lobby --watch",
-				"rogen serve lobby.dist.rogen.json",
-			]);
-		});
-
-		it("should refuse a config that exists", async () => {
-			await put("lobby.rogen.json", "{}");
-
-			expect(await failure("lobby")).toMatchObject([
-				{ code: "init.configExists" },
-			]);
-		});
-
-		it("should refuse a code folder that exists", async () => {
-			await put("src/lobby/Main.luau");
-
-			expect(await failure("lobby")).toMatchObject([
-				{ code: "init.fileExists" },
-			]);
-		});
-
-		it("should copy the place and not its dist config, which sorts first", async () => {
-			await put(
-				"game.dist.rogen.json",
-				JSON.stringify({
-					...first,
-					rogen: { ...first.rogen, compiledPath: "dist" },
-				})
+			await fileSystem.createDirectory(
+				path.join(directory, "src/common")
 			);
 
-			const planned = await plan({}, "lobby");
+			const planned = await plan({ places: false }, "lobby");
 
-			expect(planned.notes.join("\n")).toContain("game.rogen.json");
-			expect(
-				jsonOf(planned, "lobby.rogen.json").rogen
-			).not.toHaveProperty("compiledPath");
+			expect(planned.directory).toBe(path.join(directory, "lobby"));
+			expect(names(planned)).toContain("default.rogen.json");
+			expect(names(planned)).not.toContain("lobby.rogen.json");
 		});
 	});
 });
