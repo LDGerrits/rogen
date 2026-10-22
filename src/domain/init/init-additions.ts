@@ -5,7 +5,6 @@ import { AgentHooks } from "./agent/agent-hooks.js";
 import { AgentSetup } from "./agent-setup.js";
 import { PresentItem } from "./init-service.js";
 import { InitQuestions } from "./init-questions.js";
-import { ProjectChanger } from "./project-changer.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { AnsweredSetup, Setup } from "./setup.js";
 
@@ -18,9 +17,7 @@ export class InitAdditions {
 		/** The toolchain file that pins Rojo already, if one does. */
 		private readonly pinnedIn: string | undefined,
 		/** The folder the files of the additions are named from. */
-		private readonly directory: string,
-		/** Changes the config of the folder, when it can be read. */
-		private readonly changer?: ProjectChanger
+		private readonly directory: string
 	) {}
 
 	/** What the project has of the additions, as `only` asks (all of them when it is not given). */
@@ -94,24 +91,15 @@ export class InitAdditions {
 		];
 	}
 
-	/** The tools a change that turns Darklua on needs pinned. */
-	toolsForChanges(): Setup<unknown>[] {
-		const { darklua, rojo, plugin } = this.questions.choices;
-		return darklua === true && rojo !== true && plugin !== true
-			? [this.tools]
-			: [];
-	}
-
 	/** What a run with no flags does: the safe additions it can make without asking in a run that can't ask, else what the user picks from the areas that have something to change. `nothing` when there is none. */
 	async choose(): Promise<Setup<unknown>[] | "nothing" | undefined> {
-		const { questions, agentFile, hooks, tools, changer } = this;
+		const { questions, agentFile, hooks, tools } = this;
 		const agents = new AgentSetup(agentFile, hooks, questions);
 		const { choices } = questions;
 		const wantsRules = !agentFile.hasBlock && choices.agentRules !== false;
 		const wantsHook = hooks.offered && choices.agentHook !== false;
 		const wantsTools = choices.rojo !== false;
 		const areas = [
-			...(changer ? await changer.areas() : []),
 			...(wantsRules || wantsHook
 				? [
 						{
@@ -149,7 +137,6 @@ export class InitAdditions {
 		}
 		if (areas.length === 0) return "nothing";
 		const rows: [string, string][] = [
-			...(changer?.describe() ?? []),
 			[
 				"Agents",
 				agentFile.hasBlock
@@ -173,19 +160,9 @@ export class InitAdditions {
 			areas
 		);
 		if (picked === undefined) return undefined;
-		const request =
-			changer && picked.some((id) => !["agents", "tools"].includes(id))
-				? await changer.ask(picked)
-				: {};
-		if (request === undefined) return undefined;
-		const changing = Object.keys(request).length > 0 && changer;
 		return [
-			...(changing ? [changer.setup(async () => request)] : []),
 			...(picked.includes("agents") ? [agents] : []),
-			...(picked.includes("tools") ||
-			("darklua" in request && request.darklua === true)
-				? [tools]
-				: []),
+			...(picked.includes("tools") ? [tools] : []),
 		];
 	}
 }

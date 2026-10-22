@@ -950,7 +950,7 @@ describe("InitQuestions addAgentHook", () => {
 	});
 });
 
-describe("InitQuestions changing a project", () => {
+describe("InitQuestions choosing what to add to a project", () => {
 	const askedWith = (answers: PromptScript) => {
 		const prompts = new MockPromptService(answers);
 		return { prompts, questions: new InitQuestions(prompts, true) };
@@ -977,66 +977,5 @@ describe("InitQuestions changing a project", () => {
 		const { questions } = askedWith([CANCEL]);
 
 		expect(await questions.whatToChange("", areas)).toBeUndefined();
-	});
-
-	it("should tell the routes to add from the routes to take off", async () => {
-		const { questions } = askedWith([["server", "shared"]]);
-		const options = [
-			{ id: "server", key: "Server", target: "ServerScriptService" },
-			{ id: "client", key: "Client", target: "StarterPlayer" },
-			{ id: "shared", key: "Shared", target: "ReplicatedStorage" },
-		];
-
-		expect(
-			await questions.changeRoutes(options, ["server", "client"])
-		).toEqual({ add: ["shared"], remove: ["client"] });
-	});
-
-	it("should offer the source paths as they are, and tell the folders added from those removed", async () => {
-		const { prompts, questions } = askedWith(["src, lib"]);
-
-		const changed = await questions.changeSourcePaths(
-			["src", "old"],
-			directoryOf(),
-			async () => []
-		);
-
-		expect(prompts.prompts[0].placeholder).toBe("src, old");
-		expect(changed).toEqual({ add: ["lib"], remove: ["old"] });
-	});
-
-	it("should ask before taking off a folder that has scripts, and keep it when the answer is No", async () => {
-		const { prompts, questions } = askedWith(["src", false]);
-
-		const changed = await questions.changeSourcePaths(
-			["src", "old"],
-			directoryOf(),
-			async () => ["Main.luau"]
-		);
-
-		expect(prompts.asked).toEqual(["Source paths", "Stop building old?"]);
-		expect(changed).toEqual({ add: [], remove: [] });
-	});
-
-	it("should take a folder off when the answer is Yes", async () => {
-		const { questions } = askedWith(["src", true]);
-
-		expect(
-			await questions.changeSourcePaths(
-				["src", "old"],
-				directoryOf(),
-				async () => ["Main.luau"]
-			)
-		).toEqual({ add: [], remove: ["old"] });
-	});
-
-	it("should tick every package folder found", async () => {
-		const { questions } = askedWith([ACCEPT_DEFAULT]);
-
-		expect(
-			await questions.changePackages([
-				{ path: "Packages", landing: "ReplicatedStorage/Packages" },
-			])
-		).toEqual(["Packages"]);
 	});
 });

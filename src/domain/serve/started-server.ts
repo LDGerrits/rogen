@@ -32,18 +32,8 @@ interface StartedServerListener {
 	failed(error: Error): void;
 }
 
-/** A server the session serves a config with, started by it or adopted. */
-export interface RunningServer {
-	readonly target: ServeTarget;
-	/** Ends what the session holds of it: its process if it started one, else only its watching. */
-	terminate(): Promise<void>;
-	/** Terminates it and drops its record and everything it holds. */
-	retire(): Promise<void>;
-	unrecord(): Promise<void>;
-	[Symbol.dispose](): void;
-}
-
-export class StartedServer extends AbstractDisposable implements RunningServer {
+/** A server the session started to serve a config with. */
+export class StartedServer extends AbstractDisposable {
 	private readonly child: RojoProcess;
 	private exited = false;
 	private stoppedOnPurpose = false;
@@ -119,6 +109,7 @@ export class StartedServer extends AbstractDisposable implements RunningServer {
 		await this.child.terminate();
 	}
 
+	/** Terminates it and drops its record and everything it holds. */
 	async retire(): Promise<void> {
 		await this.terminate();
 		await this.unrecord();

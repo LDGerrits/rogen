@@ -1,6 +1,5 @@
 import { jest } from "@jest/globals";
 import path from "path";
-import { parse } from "../../../base/jsonc.js";
 import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
@@ -746,33 +745,21 @@ describe("init command", () => {
 			const CONFIG =
 				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"rogen": { "routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" } }\n}\n';
 
-			const readConfig = async () =>
-				parse(await read("default.rogen.json")).unwrap() as {
-					rogen: { routes: Record<string, string> };
-					serveProject?: string;
-					projects?: unknown;
-				};
-
 			beforeEach(async () => {
 				await write("default.rogen.json", CONFIG);
 				await write("src/keep.luau");
 			});
 
-			it("should list the changes in --json, and write nothing in a dry run", async () => {
-				const log = new MockLogService();
+			it("should refuse a flag that would change the config, and leave it alone", async () => {
+				const result = await runInit(
+					new MockPromptService([], false),
+					new MockLogService(),
+					{ "source-path": ["lib"] }
+				);
 
-				await runInit(new MockPromptService([], false), log, {
-					json: true,
-					"dry-run": true,
-					"source-path": ["lib"],
-				});
-
-				expect(JSON.parse(log.entries[0].text).files).toEqual([
-					expect.objectContaining({
-						outcome: "wouldWrite",
-						changes: ["added sourcePaths lib"],
-					}),
-				]);
+				expect(errorMessage(result)).toContain(
+					"--source-path is for a new project, and default.rogen.json exists."
+				);
 				expect(await read("default.rogen.json")).toBe(CONFIG);
 			});
 
@@ -788,18 +775,16 @@ describe("init command", () => {
 				);
 			});
 
-			it("should ask what to change in a terminal and apply the picks", async () => {
+			it("should offer only the additions in a terminal, and leave the config as it is", async () => {
 				const prompts = new MockPromptService({
-					[WHAT_TO_CHANGE]: ["unmatched"],
-					"Files that match no route": "shared",
+					[WHAT_TO_CHANGE]: ["agents"],
 				});
 
 				const result = await runInit(prompts);
 
 				expect(result.isOk()).toBe(true);
-				expect((await readConfig()).rogen.routes["*"]).toBe(
-					"ReplicatedStorage/Shared"
-				);
+				expect(await read("default.rogen.json")).toBe(CONFIG);
+				expect(await exists("AGENTS.md")).toBe(true);
 			});
 		});
 

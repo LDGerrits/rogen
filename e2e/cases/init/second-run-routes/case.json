@@ -1,5 +1,4 @@
 {
-	"steps": [["init", "-y", "--route", "serverStorage", "--no-route", "client"]],
-	"output": ["init"],
+	"steps": [["init", "-y", "--route", "serverStorage"]],
 	"show": ["default.rogen.json"]
 }
