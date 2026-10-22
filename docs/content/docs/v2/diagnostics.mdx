@@ -668,33 +668,13 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported, and neither is one that was edited by hand, which is [`output.editedByHand`](#output-editedbyhand).
+Warning. `rogen check`, `rogen where` and `rogen list` found a `default.project.json` on disk that differs from what `rogen build` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
 default.project.json - warning: this file differs from what 'rogen build' would write: its sources changed since it was written. Run 'rogen build' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 ```
 
 Run `rogen build`: the `--json` diagnostic carries it as a `run` fix, with `rogen build <project>` for the file of a project other than `default`. If the file is committed, commit the result; if it is ignored in git, a stale copy is harmless. See [Output](/docs/v2/core-concepts/output#output).
-
-### `output.editedByHand` [#output-editedbyhand]
-
-Warning, or error. `rogen check`, `rogen where` and `rogen list` warn, and `rogen build` fails, when a project file was changed by hand since Rogen wrote it and writing it again would lose the change. Rogen remembers a hash of each file it writes in the user's cache folder, since the file itself can't carry a mark (Rojo rejects keys it doesn't know). A file whose hash is not the last one written, and that holds a node, property or key the new file would not, is an edit by hand. A file that reads the same as what would be written, as after `rojo fmt-project`, is not.
-
-```
-default.project.json - error: this file was edited by hand, and a build would lose ServerStorage. To keep the edit, add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of default.rogen.json, since default.rogen.json is what writes this file, and then write it again. To drop the edit instead, run 'rogen build --force'. (output.editedByHand)
-```
-
-Put what the message names into the `.rogen.json`: the `tree` of a config holds the nodes names can't express, and its other keys sit beside it. Then `rogen build` writes the file with the edit. `rogen build --force` writes the file over the edit instead. No fix is offered that does either, since the move is yours to check and the force loses the edit. A machine that never wrote the file, or a cache that was cleared, has no hash, so the first build there writes the file as it always did. A file pulled from git that was written from another version of the `.rogen.json` has a hash this machine never saw and can look edited if it holds something this machine would not write: `rogen build --force` writes it. `build --watch` and `serve` stop on it too, since they cannot take `--force`: stop them, run it, and start them again. See [Output](/docs/v2/core-concepts/output#output).
-
-### `output.configMissing` [#output-configmissing]
-
-Error. `rogen build`, `rogen serve` and the commands that build first found a project file that Rogen wrote and that is as Rogen wrote it, but the `.rogen.json` beside it that wrote it is gone, so the config was deleted or renamed. Rogen writes `X.project.json` only from `X.rogen.json`, and it will not run a leftover as if it were a plain Rojo project.
-
-```
-default.project.json - error: Rogen wrote this file from default.rogen.json, which is not here now: the config was deleted or renamed. Restore default.rogen.json, or change this file by hand to use it as a plain Rojo project. (output.configMissing)
-```
-
-Restore or rename the config. To go back to a plain Rojo project, change the project file by hand: a file that differs from what Rogen wrote is yours.
 
 ### `output.nothingEmitted` [#output-nothingemitted]
 

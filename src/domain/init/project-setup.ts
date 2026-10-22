@@ -712,7 +712,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			DEFAULT_PROJECT_FILE
 		);
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since Rogen writes it. After you add a feature folder, run 'rogen build${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
+			`Edit ${configFile} and leave ${projectFile} alone, since every build overwrites it. After you add a feature folder, run 'rogen build${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
 		);
 		if (places)
 			builder.addEdit(

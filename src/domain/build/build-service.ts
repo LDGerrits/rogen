@@ -192,8 +192,8 @@ export function mergeLocations(
 export interface BuildService {
 	readonly _serviceBrand: undefined;
 
-	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. A project file edited by hand since Rogen wrote it is a failed write, unless `force`. */
-	build(selection: ConfigSelection, force?: boolean): Promise<BuildRun>;
+	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. */
+	build(selection: ConfigSelection): Promise<BuildRun>;
 
 	/** Builds and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
 	rebuild(

@@ -21,7 +21,7 @@ stdout:
     Add /dist to .gitignore so the processed code isn't committed.
     Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen build' to make them.
     Add your own routes under "routes" in default.rogen.json.
-    Edit default.rogen.json and leave default.project.json alone, since Rogen writes it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
+    Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
     Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
   Wrote 7 files.
 

@@ -5,7 +5,6 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputFile } from "../build.js";
 import { OutputWriter } from "../output-writer.js";
-import { WrittenRecords } from "../written-records.js";
 
 const stagingPattern = (file: string) => new OutputFile(file).stagingPattern;
 
@@ -25,10 +24,8 @@ describe("OutputWriter", () => {
 	let writer: OutputWriter;
 	let store: DisposableStore;
 
-	const configFile = path.resolve("/repo", "default.rogen.json");
-
-	const write = (tree: RojoProjectFile, options?: { force?: boolean }) =>
-		writer.write(new OutputFile(projectFile), tree, configFile, options);
+	const write = (tree: RojoProjectFile) =>
+		writer.write(new OutputFile(projectFile), tree);
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
@@ -65,7 +62,6 @@ describe("OutputWriter", () => {
 			const result = await writer.write(
 				new OutputFile(projectFile),
 				treeOf(),
-				configFile,
 				{ rewrite: true }
 			);
 
@@ -175,109 +171,18 @@ describe("OutputWriter", () => {
 			);
 		});
 
-		describe("a file edited by hand", () => {
-			const edited = async (extra: object = {}) => {
-				await write(treeOf());
-				const file = JSON.parse(await fs.readFile(projectFile));
-				file.tree.ServerStorage = { Assets: { $className: "Folder" } };
-				await fs.writeFile(
-					projectFile,
-					JSON.stringify({ ...file, ...extra }, null, 2)
-				);
-			};
+		it("should write over a file Rogen wrote that was edited since", async () => {
+			await write(treeOf());
+			const file = JSON.parse(await fs.readFile(projectFile));
+			file.tree.ServerStorage = { $className: "ServerStorage" };
+			await fs.writeFile(projectFile, JSON.stringify(file));
 
-			it("should be refused, naming what the write would lose and where it belongs", async () => {
-				await edited();
+			const result = await write(treeOf());
 
-				const result = await write(named("other"));
-
-				expect(result.isErr()).toBe(true);
-				const diagnostic = result.isErr()
-					? result.error.diagnostics[0]
-					: undefined;
-				expect(diagnostic).toMatchObject({
-					code: "output.editedByHand",
-					resource: projectFile,
-				});
-				expect(diagnostic?.message).toContain("ServerStorage");
-				expect(diagnostic?.message).toContain(
-					'add {"ServerStorage":{"Assets":{"$className":"Folder"}}} to the "tree" of default.rogen.json'
-				);
-				expect(diagnostic?.message).toContain("rogen build --force");
-				expect(
-					JSON.parse(await fs.readFile(projectFile)).tree
-				).toHaveProperty("ServerStorage");
-			});
-
-			it("should be written over with force", async () => {
-				await edited();
-
-				const result = await write(treeOf(), { force: true });
-
-				expect(result.unwrap()).toBe(true);
-				expect(await fs.readFile(projectFile)).toBe(
-					OutputWriter.textOf(treeOf())
-				);
-			});
-
-			it("should be written over when nothing of it is lost, as after fmt-project", async () => {
-				await write(treeOf());
-				const file = JSON.parse(await fs.readFile(projectFile));
-				await fs.writeFile(
-					projectFile,
-					JSON.stringify({ name: "project", ...file })
-				);
-
-				const result = await write(treeOf());
-
-				expect(result.unwrap()).toBe(true);
-			});
-
-			it("should be refused when it no longer reads as a project file", async () => {
-				await write(treeOf());
-				await fs.writeFile(projectFile, "{ not json");
-
-				const result = await write(treeOf());
-
-				expect(
-					result.isErr() ? result.error.diagnostics[0].message : ""
-				).toContain("no longer reads as a project file");
-			});
-
-			it("should be refused for a key of the file too", async () => {
-				await edited({ servePort: 34999 });
-
-				const result = await write(treeOf());
-
-				expect(
-					result.isErr() ? result.error.diagnostics[0].message : ""
-				).toContain('set "servePort":34999 in default.rogen.json');
-			});
-
-			it("should not be told from the first write of a file Rogen never wrote", async () => {
-				await fs.writeFile(
-					projectFile,
-					'{ "name": "by hand", "tree": { "Extra": {} } }'
-				);
-
-				const result = await write(treeOf());
-
-				expect(result.unwrap()).toBe(true);
-			});
-
-			it("should be told again by a writer that shares the records after a restart", async () => {
-				const records = new WrittenRecords(fs, "/cache/written");
-				writer = new OutputWriter(fs, records);
-				await edited();
-				writer = new OutputWriter(
-					fs,
-					new WrittenRecords(fs, "/cache/written")
-				);
-
-				const result = await write(named("other"));
-
-				expect(result.isErr()).toBe(true);
-			});
+			expect(result.unwrap()).toBe(true);
+			expect(await fs.readFile(projectFile)).toBe(
+				OutputWriter.textOf(treeOf())
+			);
 		});
 
 		it("should return a diagnostic when the file cannot be written", async () => {

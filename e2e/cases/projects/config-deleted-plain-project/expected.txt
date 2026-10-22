@@ -1,0 +1,17 @@
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rm default.rogen.json
+exit 0
+
+$ rogen build
+exit 0
+stdout: (not shown)
+
+$ rogen build default.project.json
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json

@@ -389,73 +389,28 @@ describe("CoreBuildService", () => {
 				);
 			});
 
-			it("should fail when Rogen wrote the file and the config that wrote it is gone", async () => {
+			it("should leave a file Rogen wrote earlier as it is, with its config gone", async () => {
 				const service = buildServiceOfFs();
 				await service.build(selectionOf(configOf()));
+				const written = await fs.readFile(abs("default.project.json"));
 
 				const [build] = (await service.build(selectionOf(adopted())))
 					.builds;
 
-				expect(build.outcome).toBe("failed");
-				expect(build.errors).toMatchObject([
-					{
-						code: "output.configMissing",
-						resource: abs("default.project.json"),
-						message: expect.stringContaining(
-							"the config was deleted or renamed"
-						),
-					},
-				]);
+				expect(build.outcome).toBe("unchanged");
+				expect(await fs.readFile(abs("default.project.json"))).toBe(
+					written
+				);
 			});
 
-			it("should fail a check when Rogen wrote the file and the config that wrote it is gone", async () => {
+			it("should pass a check with its config gone", async () => {
 				const service = buildServiceOfFs();
 				await service.build(selectionOf(configOf()));
 
 				const [checked] = (await service.check(selectionOf(adopted())))
 					.builds;
 
-				expect(checked.errors).toMatchObject([
-					{
-						code: "output.configMissing",
-						resource: abs("default.project.json"),
-					},
-				]);
-			});
-
-			it("should name the config a non-default file was written from", async () => {
-				const service = buildServiceOfFs();
-				await service.build(
-					selectionOf(configOf({ file: abs("dist.rogen.json") }))
-				);
-
-				const [build] = (
-					await service.build(
-						selectionOf(
-							configOf({ file: abs("dist.project.json") })
-						)
-					)
-				).builds;
-
-				expect(build.errors).toMatchObject([
-					{
-						code: "output.configMissing",
-						message: expect.stringContaining(
-							"from dist.rogen.json"
-						),
-					},
-				]);
-			});
-
-			it("should take a file Rogen wrote and the user changed since as the user's", async () => {
-				const service = buildServiceOfFs();
-				await service.build(selectionOf(configOf()));
-				await fs.writeFile(abs("default.project.json"), "{}");
-
-				const [build] = (await service.build(selectionOf(adopted())))
-					.builds;
-
-				expect(build.outcome).toBe("unchanged");
+				expect(checked.errors).toEqual([]);
 			});
 
 			it("should not call it stale", async () => {
@@ -470,7 +425,9 @@ describe("CoreBuildService", () => {
 		});
 
 		describe("a project file edited by hand", () => {
-			const edit = async () => {
+			it("should be written over by a build", async () => {
+				const service = buildServiceOfFs();
+				await service.build(selectionOf(configOf()));
 				const file = JSON.parse(
 					await fs.readFile(abs("default.project.json"))
 				);
@@ -479,36 +436,9 @@ describe("CoreBuildService", () => {
 					abs("default.project.json"),
 					JSON.stringify(file)
 				);
-			};
 
-			it("should be refused by a build, which names what it would lose and leaves the file", async () => {
-				const service = buildServiceOfFs();
-				await service.build(selectionOf(configOf()));
-				await edit();
-
-				const [failed] = (await service.build(selectionOf(configOf())))
+				const [built] = (await service.build(selectionOf(configOf())))
 					.builds;
-
-				expect(failed.outcome).toBe("failed");
-				expect(failed.errors).toMatchObject([
-					{
-						code: "output.editedByHand",
-						message: expect.stringContaining("would lose Extra"),
-					},
-				]);
-				expect(
-					await fs.readFile(abs("default.project.json"))
-				).toContain("Extra");
-			});
-
-			it("should be written over by a forced build", async () => {
-				const service = buildServiceOfFs();
-				await service.build(selectionOf(configOf()));
-				await edit();
-
-				const [built] = (
-					await service.build(selectionOf(configOf()), true)
-				).builds;
 
 				expect(built.outcome).toBe("wrote");
 				expect(
@@ -516,31 +446,17 @@ describe("CoreBuildService", () => {
 				).not.toContain("Extra");
 			});
 
-			it("should be a warning of check that offers no fix, where a stale file offers a build", async () => {
-				const service = buildServiceOfFs();
-				await service.build(selectionOf(configOf()));
-				await edit();
-
-				const [checked] = (await service.check(selectionOf(configOf())))
-					.builds;
-
-				expect(checked.warnings).toMatchObject([
-					{ code: "output.editedByHand" },
-				]);
-				expect(checked.warnings[0].fixes).toBeUndefined();
-			});
-
-			it("should not be told from a file written before any record", async () => {
+			it("should be a stale file to check, as any other that differs", async () => {
 				await fs.writeFile(
 					abs("default.project.json"),
 					'{"tree":{"Extra":{}}}'
 				);
 
-				const [built] = (
-					await buildServiceOfFs().build(selectionOf(configOf()))
-				).builds;
+				const [checked] = await checkOf(configOf());
 
-				expect(built.outcome).toBe("wrote");
+				expect(checked.warnings).toMatchObject([
+					{ code: "output.differs" },
+				]);
 			});
 		});
 

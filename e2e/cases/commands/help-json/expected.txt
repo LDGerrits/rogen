@@ -31,10 +31,6 @@ stdout:
           {
             "name": "watch",
             "type": "boolean"
-          },
-          {
-            "name": "force",
-            "type": "boolean"
           }
         ],
         "effects": [
