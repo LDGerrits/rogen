@@ -28,7 +28,6 @@ const withDryRun = [
 	.map(({ id }) => id)
 	.sort();
 
-/** Every file under `dir` with its text, and every folder. */
 async function snapshot(
 	fs: MemoryFileSystemService,
 	dir: string
@@ -55,7 +54,6 @@ const rojoProcesses = () => {
 	return processes;
 };
 
-/** Runs `command` as a dry run over a folder that holds a stale project file, and returns the folder before and after. */
 async function dryRunOf(command: string) {
 	const fs = new MemoryFileSystemService();
 	await fs.createDirectory(cwd);
@@ -67,6 +65,7 @@ async function dryRunOf(command: string) {
 		input: "game.rbxl",
 	};
 	const before = await snapshot(fs, cwd);
+	const spawned = processes.nextSpawned();
 	const running = commandHarness({
 		cwd,
 		fs,
@@ -86,9 +85,7 @@ async function dryRunOf(command: string) {
 		}),
 	}).run(command, { positionals: [], options });
 	if (command === "syncback") {
-		for (let i = 0; i < 100 && processes.spawned.length === 0; i++)
-			await new Promise((resolve) => setImmediate(resolve));
-		processes.spawned[0].exit({ code: 0, signal: null });
+		(await spawned).exit({ code: 0, signal: null });
 	}
 	await running;
 	return { before, after: await snapshot(fs, cwd) };

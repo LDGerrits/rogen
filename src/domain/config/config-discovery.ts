@@ -209,7 +209,7 @@ export class ConfigDiscovery {
 			: ok(present[0]);
 	}
 
-	/** What a bare `ref` stands for in the working directory, as `build` reads it; nothing for a name that is not bare. */
+	/** The file a bare `ref` names here, as `build` reads it. */
 	async fileNamedHere(
 		ref: string
 	): Promise<Result<string | undefined, Error>> {

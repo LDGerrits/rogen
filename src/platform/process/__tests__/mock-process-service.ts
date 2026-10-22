@@ -76,6 +76,7 @@ export class MockProcessService implements ProcessService {
 	readonly running = new Set<number>();
 	readonly terminatedTrees: number[] = [];
 	private nextPid = 1000;
+	private readonly spawnWaiters: ((child: MockChildProcess) => void)[] = [];
 	readonly execs: {
 		file: string;
 		args: readonly string[];
@@ -116,6 +117,11 @@ export class MockProcessService implements ProcessService {
 		this.running.delete(pid);
 	}
 
+	/** Resolves with the next process spawned. */
+	nextSpawned(): Promise<MockChildProcess> {
+		return new Promise((resolve) => this.spawnWaiters.push(resolve));
+	}
+
 	spawn(
 		file: string,
 		args: readonly string[],
@@ -123,6 +129,7 @@ export class MockProcessService implements ProcessService {
 	): MockChildProcess {
 		const child = new MockChildProcess(file, args, options, this.nextPid++);
 		this.spawned.push(child);
+		for (const resolve of this.spawnWaiters.splice(0)) resolve(child);
 		return child;
 	}
 }

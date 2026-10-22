@@ -33,7 +33,7 @@ import { LocateTargets, Targets } from "./locate-targets.js";
 import { PlannedFilesIndex } from "./planned-files-index.js";
 
 /** What `locate` found. */
-export type Located = Omit<Locations, "errors">;
+export type Located = Omit<Locations, "errors" | "skipped">;
 
 /** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
 export class Locator {

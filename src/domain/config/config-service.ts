@@ -169,7 +169,7 @@ export interface ConfigService {
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;
-	/** Each argument that is not on disk but names a config as `build` reads a bare name, `game` for `game.rogen.json` else `game.project.json`, is replaced by that file; the rest stay as they are. */
+	/** Each argument that names a config as a bare name is replaced by its file; a file, or a folder with a default, stays a path. */
 	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;

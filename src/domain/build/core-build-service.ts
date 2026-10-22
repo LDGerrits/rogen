@@ -30,6 +30,7 @@ import {
 	LocateQuery,
 	Locations,
 	outsideEveryConfig,
+	skippedByEveryConfig,
 	skippedOutside,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
@@ -141,7 +142,11 @@ export class CoreBuildService implements BuildService {
 			return err(
 				new DiagnosticsError([...errors, ...located.error.diagnostics])
 			);
-		return ok({ ...located.value, errors });
+		return ok({
+			...located.value,
+			errors,
+			skipped: skippedByEveryConfig(located.value.configs),
+		});
 	}
 
 	askedAbout(query: LocateQuery): Promise<readonly Asked[]> {

@@ -134,7 +134,7 @@ export class CoreConfigService implements ConfigService {
 		const { cwd } = this.environmentService;
 		const resolved: string[] = [];
 		for (const arg of args) {
-			if (await this.fileSystemService.exists(path.resolve(cwd, arg))) {
+			if (await this.isPath(path.resolve(cwd, arg))) {
 				resolved.push(arg);
 				continue;
 			}
@@ -143,6 +143,15 @@ export class CoreConfigService implements ConfigService {
 			resolved.push(file.value ?? arg);
 		}
 		return ok(resolved);
+	}
+
+	private async isPath(target: string): Promise<boolean> {
+		if (!(await this.fileSystemService.exists(target))) return false;
+		if (!(await this.fileSystemService.isDirectory(target))) return true;
+		return (
+			(await this.discovery.defaultConfigs(target)).length > 0 ||
+			(await this.discovery.adoptable(target)) !== undefined
+		);
 	}
 
 	async coversOf(target: string): Promise<ConfigCover[]> {
