@@ -51,8 +51,8 @@ stdout:
   rogen-init
   Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a
   folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config
-  that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin.
-  To change a config, edit the .rogen.json and run 'rogen check'.
+  that exists: where one is, it fails and writes nothing. To change a config, edit the .rogen.json and
+  run 'rogen check'.
   
   USAGE:
       rogen init [OPTIONS] [PATH]
@@ -62,11 +62,9 @@ stdout:
   
   OPTIONS:
           --[no-]agent-hook                Whether to add the hook that reports Rogen warnings to the
-                                           coding agents found. Not added when not given. On a folder
-                                           that has a config, asks for this addition.
+                                           coding agents found. Not added when not given.
           --[no-]agent-rules               Whether to add Rogen's rules for coding agents to the agent
-                                           file. Added when not given. On a folder that has a config,
-                                           asks for this addition.
+                                           file. Added when not given.
           --color <COLOR>                  Whether to colour the output. [default: auto] [possible
                                            values: auto, always, never]
           --compiled-path <PATH>           With Darklua: the folder it writes into, and Rojo syncs
@@ -85,9 +83,6 @@ stdout:
                                            when not given. For roblox-ts in a folder with no code,
                                            package.json or tsconfig.json, init first runs 'npm create
                                            roblox-ts', which needs npm and the network.
-          --nested                         Start a project in a folder below another
-                                           default.rogen.json, which a run that can't ask refuses
-                                           otherwise.
       -y, --non-interactive                Write the defaults without asking, as a run without a
                                            terminal, or under a coding agent or CI, does. --json
                                            implies it. A flag below answers its question either way.
@@ -111,7 +106,7 @@ stdout:
                                            toolchain manager found (Rokit, Aftman or Foreman), or
                                            install Rokit first and pin it. A run that can't ask pins
                                            with a manager it finds, and installs Rokit only with this
-                                           flag. On a folder that has a config, sets Rojo up there.
+                                           flag.
           --route <ID>                     A route to start with: server, client, shared,
                                            replicatedFirst, serverStorage or starterGui; repeat for
                                            several, or none. The first three when not given. When a

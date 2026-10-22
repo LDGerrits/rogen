@@ -81,7 +81,7 @@ stdout:
     "notes": [],
     "nextSteps": {
       "setup": [
-        "Rojo isn't installed, and rogen serve needs it. Run 'rogen init --rojo' to install Rokit and Rojo, or install Rokit yourself (curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash), then run 'rokit init' and 'rokit add rojo-rbx/rojo@7.7.1' here."
+        "Rojo isn't installed, and rogen serve needs it. Install Rokit (curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash), then run 'rokit init' and 'rokit add rojo-rbx/rojo@7.7.1' here."
       ],
       "run": [
         "rogen serve"

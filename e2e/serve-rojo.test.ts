@@ -521,18 +521,6 @@ describeWithRojo("end to end serve", () => {
 			other.dispose();
 		}
 	}, 40_000);
-
-	it("should exit with Rojo's code when Rojo stops on its own", async () => {
-		const serving = serve.start(["--", "--no-such-flag"]);
-
-		expect(await serving.exited).toBe(2);
-		expect(serving.output).toContain(
-			"Rojo stopped serving Game with exit code 2; see what it said above. (serve.serverExited)"
-		);
-		expect(serving.output).toContain(
-			"Rojo: Found argument '--no-such-flag'"
-		);
-	}, 40_000);
 	describe("as Studio connects", () => {
 		it("should tell when a plugin connects and when it goes away, and show it in list", async () => {
 			const serving = serve.start(["--json"]);

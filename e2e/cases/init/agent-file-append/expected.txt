@@ -2,10 +2,6 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 
-$ rogen init --non-interactive
-exit 0
-stdout: (not shown)
-
 written:
   .git/
   .gitignore

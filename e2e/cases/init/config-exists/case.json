@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init"],
+		["init", "-y", "--agent-rules", "--rojo"],
+		["init", "--json"]
+	],
+	"output": ["init"]
+}

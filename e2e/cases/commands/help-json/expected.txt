@@ -227,10 +227,6 @@ stdout:
             "name": "studio-plugin",
             "type": "boolean",
             "negatable": true
-          },
-          {
-            "name": "nested",
-            "type": "boolean"
           }
         ],
         "effects": [

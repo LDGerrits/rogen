@@ -1,0 +1,4 @@
+{
+	"steps": [["init", "-y", "--skip-git", "--no-sample", "tools"], ["build"]],
+	"output": ["init"]
+}
