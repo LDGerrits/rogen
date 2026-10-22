@@ -12,7 +12,7 @@ The folders inside a feature decide where its code runs: `Server` goes to Server
 rogen where {{source}}/Greeter/Shared/Greeting.luau
 ```
 
-`rogen check` and `rogen where` with no path find no `default.rogen.json` here, so name the place: `rogen check {{place}}.rogen.json`, `rogen where {{place}}.rogen.json`.
+`rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. With no path they find no `default.rogen.json` here, so name the place: `rogen check {{place}}.rogen.json`, `rogen where {{place}}.rogen.json`.
 
 ## Getting Started
 To serve the {{place}} place and connect to it from Roblox Studio, use:
