@@ -101,6 +101,49 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
+	it.each([
+		["a run", { "non-interactive": true }],
+		["a dry run", { "dry-run": true }],
+	])(
+		"should refuse a project with a compiled path in %s, and write and run nothing",
+		async (_, flags) => {
+			const log = new MockLogService();
+			const running = commandHarness({
+				fs,
+				log,
+				config: new MockConfigService([
+					mockEntry(
+						{
+							name: "repo",
+							sourcePaths: [abs("src")],
+							routes: { "*": "ReplicatedStorage" },
+							compiledPath: abs("dist"),
+						},
+						abs("default.rogen.json")
+					),
+				]),
+				processes,
+				prompt: new MockPromptService([], false),
+			}).run("syncback", {
+				positionals: [],
+				options: { input: "game.rbxl", ...flags },
+			});
+
+			const { error } = (await running) as ResultError<DiagnosticsError>;
+
+			expect(error.diagnostics).toMatchObject([
+				{
+					code: "syncback.compiledPath",
+					message: expect.stringContaining(
+						"reads compiled code from"
+					),
+				},
+			]);
+			expect(processes.spawned).toEqual([]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		}
+	);
+
 	/** What the test's Rojo does to the mirror it runs on: Loot added, Combat removed. */
 	const editMirror = async () => {
 		await fs.writeFile(

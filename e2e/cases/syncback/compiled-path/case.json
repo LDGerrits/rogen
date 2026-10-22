@@ -1,1 +1,1 @@
-{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y", "--list"]], "show": ["src/Combat/Server/Combat.luau", "dist/Combat/Server/Combat.luau", "dist/Combat/Server/Loot.luau"]}
+{"place": "place.rbxl", "steps": [["syncback", "-i", "place.rbxl", "-y"], ["syncback", "-i", "place.rbxl", "--dry-run"]]}

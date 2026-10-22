@@ -12,6 +12,7 @@ import { SyncbackService } from "../../domain/syncback/syncback-service.js";
 import {
 	SyncbackPlan,
 	SyncbackResult,
+	compiledPathRefusal,
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
@@ -146,6 +147,8 @@ registerCommand(
 			const project = selection.value.requireValid().isErr()
 				? undefined
 				: rojoService.choose(selection.value);
+			const refusal = project && compiledPathRefusal(project);
+			if (refusal) return err(refusal);
 
 			const buildService = accessor.get(BuildService);
 			let build = dryRun
