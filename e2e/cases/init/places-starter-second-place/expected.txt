@@ -5,6 +5,7 @@ stdout:
   Wrote the Greeter sample: the feature in places/shared/src, which every place shares, and Game in places/game/src. Pass --no-sample for empty source folders.
   Took the defaults: --kind place, --language luau, --no-darklua, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
   Created places/game/default.rogen.json.
+  Created places/shared/default.rogen.json.
   Created places/shared/src/Greeter/Shared/Greeting.luau.
   Created places/shared/src/Greeter/Server/Greeter.server.luau.
   Created places/shared/src/Greeter/Client/Greeter.client.luau.
@@ -13,6 +14,7 @@ stdout:
   Created project.code-workspace.
   Created AGENTS.md.
   places/game/default.project.json · wrote
+  places/shared/default.project.json · wrote
   Next steps
     Run:
       rogen serve places/game
@@ -21,7 +23,7 @@ stdout:
     Edit places/game/default.rogen.json and leave places/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build places/game' so the editor's places/game/default.project.json follows.
     Open the workspace with 'code project.code-workspace', as VS Code does not open a workspace file by itself. Each place is a workspace folder, so luau-lsp reads each place's own sourcemap.
     Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own port: 'rogen serve places/lobby --port 34873'.
-  Wrote 8 files.
+  Wrote 9 files.
 
 $ rogen init places/lobby --non-interactive
 exit 0
@@ -51,6 +53,8 @@ written:
   places/game/src/Game/Server/Game.server.luau
   places/lobby/default.project.json
   places/lobby/default.rogen.json
+  places/shared/default.project.json
+  places/shared/default.rogen.json
   places/shared/src/Greeter/Client/Greeter.client.luau
   places/shared/src/Greeter/Server/Greeter.server.luau
   places/shared/src/Greeter/Shared/Greeting.luau
@@ -188,6 +192,22 @@ places/lobby/default.rogen.json:
   }
 }
 
+places/shared/default.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "tree": {
+    "$className": "DataModel"
+  },
+  "rogen": {
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
 project.code-workspace:
 {
 	"folders": [
@@ -240,3 +260,17 @@ lobby: DataModel
         Greeter: LocalScript  <- ../shared/src/Greeter/Client/Greeter.client.luau
   Workspace: Workspace
     Baseplate: Part
+
+$ rojo sourcemap places/shared/default.project.json
+shared: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Greeter: Folder
+      Greeter: Script  <- src/Greeter/Server/Greeter.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/Greeter/Client/Greeter.client.luau

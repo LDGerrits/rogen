@@ -78,9 +78,6 @@ describe("init for several places", () => {
 				])
 			);
 			expect(names(planned)).not.toContain("default.rogen.json");
-			expect(names(planned)).not.toContain(
-				"places/shared/default.rogen.json"
-			);
 			const config = jsonOf(planned, "places/game/default.rogen.json");
 			expect(config.name).toBe("game");
 			expect(config.rogen.sourcePaths).toEqual(["../shared/src", "src"]);
@@ -88,10 +85,28 @@ describe("init for several places", () => {
 			expect(config).not.toHaveProperty("servePort");
 		});
 
+		it("should give the shared code a config of the places' routes and nothing else", async () => {
+			const planned = await plan();
+
+			const shared = jsonOf(planned, "places/shared/default.rogen.json");
+			expect(shared).toEqual({
+				$schema: jsonOf(planned, "places/game/default.rogen.json")
+					.$schema,
+				tree: { $className: "DataModel" },
+				rogen: {
+					routes: jsonOf(planned, "places/game/default.rogen.json")
+						.rogen.routes,
+				},
+			});
+		});
+
 		it("should build the place and serve it by its folder", async () => {
 			const planned = await plan();
 
-			expect(planned.configs).toEqual(["places/game/default.rogen.json"]);
+			expect(planned.configs).toEqual([
+				"places/game/default.rogen.json",
+				"places/shared/default.rogen.json",
+			]);
 			expect(planned.nextSteps.run).toEqual(["rogen serve places/game"]);
 			expect(planned.nextSteps.edits.join("\n")).toContain(
 				"rogen serve places/lobby --port"
@@ -181,6 +196,29 @@ describe("init for several places", () => {
 				});
 			});
 
+			it("should write only the default config for the shared code, and a release file for the place", async () => {
+				const result = await planned();
+
+				expect(
+					names(result).filter((name) =>
+						name.startsWith("places/shared/")
+					)
+				).toEqual(
+					expect.arrayContaining(["places/shared/default.rogen.json"])
+				);
+				expect(
+					names(result).filter((name) =>
+						/places\/shared\/[^/]*\.rogen\.json$/.test(name)
+					)
+				).toEqual(["places/shared/default.rogen.json"]);
+				expect(names(result)).toContain(
+					"places/game/release.rogen.json"
+				);
+				expect(
+					jsonOf(result, "places/shared/default.rogen.json").rogen
+				).not.toHaveProperty("compiledPath");
+			});
+
 			it("should process each source path into the layout dist reads, and serve the file", async () => {
 				const result = await planned();
 
@@ -225,6 +263,19 @@ describe("init for several places", () => {
 					rootDirs: ["src", "../shared/src"],
 				});
 				expect(names(planned)).not.toContain("tsconfig.json");
+			});
+
+			it("should write no rogen config for the shared code", async () => {
+				const planned = await plan({ language: "roblox-ts" });
+
+				expect(
+					names(planned).filter((name) =>
+						name.startsWith("places/shared/")
+					)
+				).not.toContain("places/shared/default.rogen.json");
+				expect(planned.configs).toEqual([
+					"places/game/default.rogen.json",
+				]);
 			});
 
 			it("should read the compiled folder and mount the place's include and the root's packages", async () => {
@@ -301,6 +352,19 @@ describe("init for several places", () => {
 				},
 			});
 			expect(planned.directories).toEqual(["places/lobby/src"]);
+		});
+
+		it("should neither copy the shared config nor list it as a place", async () => {
+			const planned = await plan({}, "places/lobby");
+
+			expect(names(planned)).not.toContain(
+				"places/lobby/places/shared/default.rogen.json"
+			);
+			expect(planned.configs).toEqual([
+				"places/lobby/default.rogen.json",
+			]);
+			expect(planned.notes.join("\n")).toContain("places/game");
+			expect(planned.notes.join("\n")).not.toContain("places/shared");
 		});
 
 		it("should write no port", async () => {

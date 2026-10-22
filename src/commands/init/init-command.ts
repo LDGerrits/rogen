@@ -123,7 +123,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new project is several places: the code they share in places/shared, and a first place in places/game with its own default.rogen.json, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
+			"Whether a new project is several places: the code they share in places/shared (for Luau with a default.rogen.json of the routes, so the editor resolves requires in it; never served), and a first place in places/game with its own default.rogen.json, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
 	},
 	{
 		name: "agent-rules",

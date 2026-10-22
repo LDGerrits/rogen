@@ -27,6 +27,8 @@ export interface Variant {
 	readonly network?: boolean;
 	/** The project name Rojo reports once served. */
 	readonly served: string;
+	/** Folders built beside the served one, whose sourcemap the editor reads. */
+	readonly mapped?: readonly string[];
 }
 
 export interface Success {
@@ -38,11 +40,24 @@ export interface Success {
 	readonly unprinted: readonly string[];
 	/** The `serving` line of `serve --json`. */
 	readonly serving: Readonly<Record<string, unknown>>;
+	/** The instance paths of the sourcemap of each `mapped` folder, as `ReplicatedStorage/Shared/Greeter`. */
+	readonly mappedPaths: Readonly<Record<string, readonly string[]>>;
 	/** The Studio plugin installs the fake Rojo saw. */
 	readonly pluginCalls: number;
 }
 
 const WINDOWS = process.platform === "win32";
+
+interface MapNode {
+	readonly name: string;
+	readonly children?: readonly MapNode[];
+}
+
+const pathsOf = (nodes: readonly MapNode[], parent = ""): string[] =>
+	nodes.flatMap((node) => {
+		const own = parent ? `${parent}/${node.name}` : node.name;
+		return [own, ...pathsOf(node.children ?? [], own)];
+	});
 
 /** Fake Rokit and Rojo in front of the real PATH: `rokit add` pins into rokit.toml as Rokit does, and `rojo plugin install` only logs, so no run writes to the machine's Studio. Everything else runs the real Rojo. */
 function fakeToolchain(parent: string): {
@@ -193,6 +208,24 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 		const built = await rogen(["build", ...project]);
 		if (built.exitCode !== 0) throw fail("build", built);
 
+		const mappedPaths: Record<string, readonly string[]> = {};
+		for (const folder of variant.mapped ?? []) {
+			const mapped = await rogen(["build", folder]);
+			if (mapped.exitCode !== 0) throw fail(`build ${folder}`, mapped);
+			const map = await run(
+				"rojo",
+				["sourcemap", `${folder}/default.project.json`],
+				dir,
+				env,
+				"",
+				timeout
+			);
+			if (map.exitCode !== 0) throw fail(`sourcemap ${folder}`, map);
+			mappedPaths[folder] = pathsOf(
+				(JSON.parse(map.stdout) as MapNode).children ?? []
+			);
+		}
+
 		const port = await freePort(36000);
 		const serving = new RunningRogen(
 			cli,
@@ -213,6 +246,7 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 					.filter((step) => !printedLine(step, printed))
 					.map((step) => step.run.join(" ")),
 				serving: line,
+				mappedPaths,
 				pluginCalls: fake?.pluginCalls() ?? 0,
 			};
 		} finally {

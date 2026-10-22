@@ -37,6 +37,7 @@ import { RouteId, StartingRoutes } from "./starting-routes.js";
 import {
 	PLACE_SOURCE_PATHS,
 	PLACES_FOLDER,
+	SHARED_FOLDER,
 	StarterPlaces,
 	StartingPlaces,
 } from "./starter-places.js";
@@ -542,6 +543,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				written,
 				path.posix.join(folder, configFileName(stem)),
 				false
+			);
+		if (places && routes && !compiler)
+			builder.setConfig(
+				StarterPlaces.sharedConfig(routes),
+				undefined,
+				path.posix.join(
+					PLACES_FOLDER,
+					SHARED_FOLDER,
+					DEFAULT_CONFIG_FILE
+				)
 			);
 		this.summarise(builder, choices, routes);
 		for (const sourcePath of places?.directories ?? sourcePaths)
