@@ -167,6 +167,8 @@ export interface ConfigService {
 	): Promise<Result<ReloadableSelection, Error>>;
 	/** The nearest folder above `from`, the working directory unless given, that has a default config. */
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
+	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
+	namedConfigs(): Promise<string[]>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
 	coversOf(target: string): Promise<ConfigCover[]>;
 	/** Loads the configs that answer for each target, one selection per config, so a command can take paths of several places. */

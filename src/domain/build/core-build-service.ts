@@ -29,6 +29,8 @@ import {
 	Diagnosis,
 	LocateQuery,
 	Locations,
+	outsideEveryConfig,
+	skippedOutside,
 } from "./build-service.js";
 import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
@@ -42,23 +44,6 @@ interface WriteOptions {
 }
 
 type Attempt = BuiltConfig | FailedBuild;
-
-/** The files asked about that no selected config reads: outside the source paths of every one. */
-function outsideEveryConfig(configs: readonly ConfigLocations[]): string[] {
-	const [first, ...others] = configs;
-	if (!first) return [];
-	return first.files
-		.filter(({ status }) => status === "outside")
-		.map(({ source }) => source)
-		.filter((source) =>
-			others.every(({ files }) =>
-				files.some(
-					(file) =>
-						file.source === source && file.status === "outside"
-				)
-			)
-		);
-}
 
 export class CoreBuildService implements BuildService {
 	declare readonly _serviceBrand: undefined;
@@ -176,6 +161,7 @@ export class CoreBuildService implements BuildService {
 			return ok({
 				diagnostics: diagnosticsPerFile(diagnostics),
 				stoppedBy: [],
+				skipped: [],
 			});
 		}
 		const located = await this.locate(selection, targets);
@@ -187,12 +173,20 @@ export class CoreBuildService implements BuildService {
 			const outside = new OutsideSourcePaths(
 				configs.flatMap(({ config }) => config.sourcePaths)
 			);
+			const misspelt = outsideEveryConfig(configs).map((source) => ({
+				source,
+				warnings: outside.about(source),
+			}));
 			return {
+				skipped: skippedOutside(
+					misspelt
+						.filter(({ warnings }) => warnings.length === 0)
+						.map(({ source }) => source),
+					configs
+				),
 				diagnostics: uniqueDiagnostics([
 					...errors,
-					...outsideEveryConfig(configs).flatMap((source) =>
-						outside.about(source)
-					),
+					...misspelt.flatMap(({ warnings }) => warnings),
 					...configs.flatMap((config) =>
 						about(config).flatMap((target) =>
 							diagnosticsReaching(config.diagnostics, target)
