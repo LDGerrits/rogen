@@ -5,7 +5,23 @@ description: Move a hand-written Rojo project to Rogen without changing where an
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Rogen covers everything `rojo` does. A `default.rogen.json` is a project file with a `rogen` block, so Rojo's keys keep their meaning, and a folder with only a `default.project.json`, or a project file you name (`rogen build test.project.json`), runs under Rogen's commands as it is. Rogen picks a file the way Rojo does: a bare command reads the current folder only, and `serve`, `build`, `sourcemap` and `upload` take one project. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config. `init` takes `--kind place|model|plugin`, `--skip-git` and a folder to start in, as `rojo init` does, and a model or a plugin starts with Rojo's template. A new place starts with Rogen's version of Rojo's sample (three hello-world scripts in a `Greeter` feature folder with `Shared`, `Server` and `Client` folders, and the Baseplate, Lighting and SoundService as Rojo files in `place`, which the tree mounts), or with `--no-sample` an empty `src`. What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently), and a test builds Rojo's own projects, the templates `rojo init` writes and the mounts `rogen init` keeps as they are with both, and compares the places.
+Rogen covers everything `rojo` does. A `default.rogen.json` is a project file with a `rogen` block, so Rojo's keys keep their meaning.
+
+What changes for a Rojo user:
+
+- **The project file is Rogen's.** You edit `default.rogen.json`, and every build rewrites `default.project.json` from it. See [The Move](#the-move).
+- **Files are placed by folder and name.** What differs once Rogen routes your files is [one table](#where-rogen-reads-a-layout-differently).
+- **Nothing has to move first.** A folder with only a `default.project.json`, or a project file you name (`rogen build test.project.json`), runs under Rogen's commands as it is. See [Rojo's Other Commands](#rojos-other-commands).
+
+Three differences from `rojo` remain on purpose:
+
+- `syncback` without `-y` and without a terminal exits 2. Rojo asks, reads nothing, and exits 0 having written nothing.
+- `syncback --list` leaves out the colour codes Rojo prints.
+- `serve` calls every client of the server's websocket Studio, since Rojo's log doesn't name the client.
+
+Rogen picks a file the way Rojo does: a bare command reads the current folder only, and `serve`, `build`, `sourcemap` and `upload` take one project. `build -o`, `serve`, `sourcemap`, `upload`, `plugin` and `syncback` take Rojo's flags, and `fmt-project` formats the config.
+
+`init` takes `--kind place|model|plugin`, `--skip-git` and a folder to start in, as `rojo init` does, and a model or a plugin starts with Rojo's template. A new place starts with Rogen's version of Rojo's sample (three hello-world scripts in a `Greeter` feature folder with `Shared`, `Server` and `Client` folders, and the Baseplate, Lighting and SoundService as Rojo files in `place`, which the tree mounts), or with `--no-sample` an empty `src`.
 
 ## The Move
 
@@ -36,7 +52,7 @@ A node you keep in the `tree` wins over a generated one on a clash, with a warni
 Run `rogen build`: Rogen now owns `default.project.json` and rewrites it. Your repository still tracks the file you renamed, so decide what to do with it:
 
 - **Stop tracking it.** `git rm --cached default.project.json`, and keep `*.project.json` in `.gitignore` (`init` adds the line). A clone then runs `rogen build` before the editor or a compiler needs the file.
-- **Keep it tracked.** Commit what `rogen build` writes, and add `!default.project.json` below `*.project.json` if you ignore the pattern. People without Rogen can then run `rojo serve` on it as they did. Rerun `rogen build` before each commit, since the file is only as fresh as its last build.
+- **Keep it tracked.** Commit what `rogen build` writes, and add `!default.project.json` below `*.project.json` if you ignore the pattern. People without Rogen can then run `rojo serve` on it as they did. Rerun `rogen build` before each commit: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
 
 ## Let `init` Read Your Folders
 
@@ -148,7 +164,7 @@ Once you have moved to feature folders, the way back is the file Rogen wrote. `d
 
 ## Where Rogen Reads a Layout Differently
 
-In a folder Rogen routes, these differ from what Rojo does with the same files. Everything outside `routes` and `sourcePaths` is Rojo's, and the repository's conformance tests compare the project files Rogen writes with Rojo's own build.
+In a folder Rogen routes, these differ from what Rojo does with the same files. Everything outside `routes` and `sourcePaths` is Rojo's.
 
 | Rojo | Rogen | What to do |
 | --- | --- | --- |
@@ -177,4 +193,4 @@ Rogen replaces the project file you wrote, and Rojo's commands that read it keep
 - **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds a node per file and per mounted folder, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next build. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from, the properties and attributes of your `tree`'s nodes into the `tree`: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.
 - **`rojo fmt-project`** formats a project file. `rogen fmt-project` formats a `.rogen.json` the same way, byte for byte on Rojo's own build tests: floats as `1.0`, a nameless file named for its folder, and the keys of a sync rule in Rojo's order. The project files `rogen build` writes are in that format, and keep no `$schema`; a plain Rojo project that Rogen runs on is not rewritten.
 
-What a script sees of these commands matches `rojo`: stdout carries Rojo's own lines, Rogen's go to stderr, `-o=game.rbxl` works, `-v` reaches Rojo, a project that can't be found exits 1 and Rojo's argument errors exit 2, and `serve` exits 130 after Ctrl+C. Three differences remain on purpose: `syncback` without `-y` and without a terminal exits 2 (Rojo asks, reads nothing, exits 0 having written nothing), `syncback --list` leaves out the colour codes Rojo prints, and `serve` calls every client of the server's websocket Studio, since Rojo's log doesn't name the client.
+What a script sees of these commands matches `rojo`: stdout carries Rojo's own lines, Rogen's go to stderr, `-o=game.rbxl` works, `-v` reaches Rojo, a project that can't be found exits 1 and Rojo's argument errors exit 2, and `serve` exits 130 after Ctrl+C.
