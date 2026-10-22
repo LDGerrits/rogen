@@ -285,12 +285,14 @@ export function parseArgs(
 				: []
 		);
 		const { runs, names, consumesWord } = commandOf(values, positionals);
-		const helpTokens = tokens.filter(
-			(token) => token.kind === "option" && token.name === "help"
+		const helpRawNames = tokens.flatMap((token) =>
+			token.kind === "option" && token.name === "help"
+				? [token.rawName]
+				: []
 		);
 		const shortHelp =
-			helpTokens.length > 0 &&
-			helpTokens.every((token) => token.rawName === "-h");
+			helpRawNames.length > 0 &&
+			helpRawNames.every((rawName) => rawName === "-h");
 
 		if (commands.includes(names)) {
 			const problem = findOptionProblem(
