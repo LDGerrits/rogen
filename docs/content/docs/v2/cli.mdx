@@ -139,7 +139,7 @@ Servers start only after the first build succeeds. If it fails, nothing starts, 
 
 ### `where [path…]`
 
-Shows where each file lands in the game and why, without writing anything. It answers from the sources, so it says nothing about whether a project file on disk is out of date; `rogen check` does ([`output.differs`](/docs/v2/diagnostics#output-differs)):
+Shows where each file lands in the game and why, without writing anything. It answers from the sources, so it says nothing about whether a project file on disk is out of date; `rogen check` does ([`output.differs`](/docs/v2/diagnostics#output-differs)). The examples below come from a config with a `Server` route and a `"*": "ReplicatedStorage/Shared"` route, which places the files that match no other; `init` writes no `*`, and without it such a file is `unrouted`:
 
 ```
 $ rogen where src/Net src/Combat/Server/Hit.luau

@@ -137,6 +137,12 @@ src/Shared/(Server)/Datastore.luau  ->  ReplicatedStorage/Shared/Datastore
 Rogen warns when such a folder's route points at `ServerScriptService` or `ServerStorage` but the file lands somewhere that replicates:
 
 ```
+src/Shared/Server/Datastore.luau - warning: ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder (route.serverCodeShipped)
+```
+
+`check` prints one line per file, as above. `build` groups the files under the config's name:
+
+```
 default.rogen.json - warning: 1 file under a server-only route ships to clients, because an outer route governs it: (route.serverCodeShipped)
   src/Shared/Server/Datastore.luau (ships to clients as ReplicatedStorage/Shared/Server/Datastore: move it out of the "Shared" route's files if it's server code, or keep it there with a "@Shared" marker file in its folder)
 ```

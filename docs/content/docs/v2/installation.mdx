@@ -99,7 +99,7 @@ Rogen tells you when a newer stable release is out, with one line on stderr afte
 
 ## Quick Start
 
-In an empty folder, three steps take you to a game in Studio:
+In an empty folder, four steps take you to a game in Studio:
 
 <Steps>
   <Step>
@@ -109,7 +109,19 @@ In an empty folder, three steps take you to a game in Studio:
     rogen init
     ```
 
-    Answer the one or two questions it asks (the language in an empty folder, one place or several), then press Enter at the summary. It writes the project and a small sample game, pins Rojo with your toolchain manager and installs Rojo's Studio plugin.
+    Answer the one or two questions it asks (the language in an empty folder, one place or several), then press Enter at the summary. It writes the project and a small sample game, and pins Rojo in your toolchain file. It installs nothing itself.
+
+  </Step>
+
+  <Step>
+    ### Install Rojo
+
+    ```bash
+    rokit install
+    rogen plugin install
+    ```
+
+    Use `aftman install` or `foreman install` if that is your manager. The second command installs Rojo's Studio plugin.
 
   </Step>
 

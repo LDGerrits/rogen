@@ -15,7 +15,7 @@ The move is one step: rename your project file and add a `rogen` block.
 git mv default.project.json default.rogen.json
 ```
 
-Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and the rest) keeps its meaning at the top level. With no `rogen` block, `rogen build` writes the file back as `default.project.json`, tree untouched, and only warns, naming `rogen init`, when `src` holds files the tree doesn't mount. Add the block when you want Rogen to place files by their folders:
+Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and the rest) keeps its meaning at the top level. With no `rogen` block, `rogen build` writes the file back as `default.project.json`, tree untouched, and only warns ([`scan.unmountedSource`](/docs/v2/diagnostics#scan-unmountedsource)) when `src` holds files the tree doesn't mount, saying to add `routes` to place them or to mount the folder with `$path`. Add the block when you want Rogen to place files by their folders:
 
 ```json title="default.rogen.json"
 {
@@ -98,6 +98,8 @@ rogen init
 
 - Any other `*.project.json` in the folder (`test.project.json`, `place.project.json`) is not lifted and stays as you wrote it. `init` lists them as left alone, and `rogen build test.project.json` runs one as a plain Rojo project. To have Rogen write one, make it a complete `test.rogen.json`; see [More Files](/docs/v2/configuration#more-files). The `*.project.json` line `init` adds to `.gitignore` covers these files too, so add `!test.project.json` to keep one tracked.
 
+`init` builds `default.project.json` at once, and `git diff default.project.json` then shows a full rewrite even when nothing moved: Rogen writes the file in Rojo's format, marks each `$path` as `optional`, and writes a node for each file a folder mount doesn't cover. Compare the instances with `rogen where` (next step), not the diff.
+
 In a terminal, the **Routes** question offers these routes ticked, with the hint `from default.project.json`, beside the standard ones. With `--non-interactive` or `--json`, `init` takes them.
 
 </Step>
@@ -111,7 +113,7 @@ In a terminal, the **Routes** question offers these routes ticked, with the hint
 rogen where src
 ```
 
-`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on. `git diff default.project.json` won't show it, because Rogen writes a node for each file a folder mount doesn't cover, so the file differs even when nothing moved.
+`where` lists every file with the instance it lands at, which should be the node Rojo gave it: `src/server/Main.server.luau` at `ServerScriptService/Server/Main`, and so on.
 
 </Step>
 
@@ -159,7 +161,7 @@ In a folder Rogen routes, these differ from what Rojo does with the same files. 
 | `(Group)/`, `^Hoist.luau` and `Foo@server.luau` are names. | They are routing sigils. | Rename the file, or put it where the tree mounts it. |
 | A glob in `globIgnorePaths` that ends in `/**` and names a mounted folder empties the Folder. | The mount is left out of the written file. | None needed; documented in [Configuration](/docs/v2/configuration#fields). |
 | A glob starting with `/` or `./` matches nothing. | It is read from the config's folder. | Write globs as Rojo reads them. |
-| The project file you wrote. | A folder every file of which routing places under one node is one `$path` mount; any other file is a node of its own. Each `$path` is marked `optional`. | `git diff` of the file shows nothing useful; use `rogen where`. A file added to a mounted folder reaches plain `rojo serve` and `rojo sourcemap` at once; any other waits for the next `rogen build`. |
+| The project file you wrote. | A folder every file of which routing places under one node is one `$path` mount; any other file is a node of its own. Each `$path` is marked `optional`. | A file added to a mounted folder reaches plain `rojo serve` and `rojo sourcemap` at once; any other waits for the next `rogen build`. |
 
 ## Rojo's Other Commands
 
