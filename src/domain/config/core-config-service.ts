@@ -128,6 +128,23 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
+	async resolveNames(
+		args: readonly string[]
+	): Promise<Result<string[], Error>> {
+		const { cwd } = this.environmentService;
+		const resolved: string[] = [];
+		for (const arg of args) {
+			if (await this.fileSystemService.exists(path.resolve(cwd, arg))) {
+				resolved.push(arg);
+				continue;
+			}
+			const file = await this.discovery.fileNamedHere(arg);
+			if (file.isErr()) return file;
+			resolved.push(file.value ?? arg);
+		}
+		return ok(resolved);
+	}
+
 	async coversOf(target: string): Promise<ConfigCover[]> {
 		const cover = await this.defaultCover(target);
 		return cover ? [cover] : this.namedCovers(target);

@@ -537,6 +537,59 @@ describe("check command", () => {
 			]);
 		});
 
+		it("should check a config named by its bare name whole", async () => {
+			const byName = await run({ _: ["game"] });
+			const byFile = await run({ _: ["game.rogen.json"] });
+
+			expect(found(failureOf(byName))).toEqual(found(failureOf(byFile)));
+			expect(
+				new Set(found(failureOf(byName)).map(([, file]) => file))
+			).toEqual(
+				new Set([
+					"src/common/Stray@sever.luau",
+					"src/game/Buy@sever.luau",
+				])
+			);
+		});
+
+		it("should check a bare name that stands for a project file", async () => {
+			await fs.writeFile("/repo/arena.project.json", "{}");
+
+			const result = await run({ _: ["arena"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["config.unnamedProjectFile", "arena.project.json"],
+			]);
+			expect(logService.texts("notice")).toEqual([]);
+		});
+
+		it("should read a bare name that is a folder with a default as the build does", async () => {
+			await writeConfig("dist.rogen.json", {
+				name: "dist",
+				rogen: { routes: ROUTES },
+			});
+			await writeConfig("dist/default.rogen.json", {
+				rogen: { routes: ROUTES },
+			});
+			await write("dist/src/Stray@sever.luau");
+
+			const result = await run({ _: ["dist"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "dist/src/Stray@sever.luau"],
+			]);
+		});
+
+		it("should still check a file that no config is named for", async () => {
+			await write("src/game/New@sever.luau");
+
+			const result = await run({ _: ["src/game/New@sever.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "src/game/New@sever.luau"],
+			]);
+		});
+
 		it("should name the configs a bare check can't choose between", async () => {
 			const result = await run({});
 

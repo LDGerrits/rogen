@@ -449,6 +449,33 @@ describe("where command", () => {
 			]);
 		});
 
+		it("should list every file of a config named by its bare name", async () => {
+			const byName = await run({ _: ["game"] });
+			const named = printed();
+			logService.clear();
+			const byFile = await run({ _: ["game.rogen.json"] });
+
+			expect(byName.isOk()).toBe(true);
+			expect(byFile.isOk()).toBe(true);
+			expect(named).toEqual(printed());
+			expect(named).toEqual(
+				expect.arrayContaining([
+					expect.stringContaining("src/common/Util.luau"),
+					expect.stringContaining("src/game/Server/Main.luau"),
+				])
+			);
+			expect(named.join("\n")).not.toContain("src/lobby");
+		});
+
+		it("should still place a file that no config is named for", async () => {
+			const result = await run({ _: ["src/game/Server/New.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/game/Server/New.luau -> ServerScriptService/New · route Server (folder) · the file does not exist yet",
+			]);
+		});
+
 		it("should print a shared file once when every config places it alike", async () => {
 			const result = await run({ _: ["src/common/Util.luau"] });
 
