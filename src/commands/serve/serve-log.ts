@@ -14,7 +14,7 @@ import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { watchLineShapes } from "../build/build-document.js";
-import { reportServerMessage } from "../build/report-rojo.js";
+import { reportServerOutput } from "../build/report-rojo.js";
 import { WatchJsonLog, WatchLog } from "../build/watch-log.js";
 import {
 	diagnosticShape,
@@ -132,11 +132,7 @@ export class ServeLog implements ServeReporter {
 	}
 
 	said(said: ServerOutputEvent): void {
-		if (said.message.stdout !== undefined) {
-			this.logService.print(said.message.stdout);
-			return;
-		}
-		reportServerMessage(
+		reportServerOutput(
 			this.logService,
 			this.plan.executable.server.name,
 			said.message,

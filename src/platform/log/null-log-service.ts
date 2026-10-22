@@ -4,6 +4,8 @@ import { LogLevel, LogService } from "./log-service.js";
 export class NullLogService implements LogService {
 	declare readonly _serviceBrand: undefined;
 
+	readonly framed = false;
+
 	setLevel(_level: LogLevel): void {}
 	reserveStdout(): void {}
 	error(_message: string | Error, ..._args: unknown[]): void {}

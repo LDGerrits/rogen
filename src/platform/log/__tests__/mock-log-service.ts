@@ -10,6 +10,8 @@ export class MockLogService extends AbstractLogService {
 
 	readonly entries: LoggedEntry[] = [];
 
+	drawsFrame = false;
+
 	get reserved(): boolean {
 		return this.stdoutReserved;
 	}

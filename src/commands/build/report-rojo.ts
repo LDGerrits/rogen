@@ -19,15 +19,27 @@ export function reportServerMessage(
 	else logService.info(said);
 }
 
-/** What Rojo said while it ran: a line it printed on stdout comes out on stdout as it printed it, so a program that reads Rojo's output reads Rogen's. */
+/** A line `name` printed on stdout comes out on stdout as it printed it, so a program that reads its output reads Rogen's; in a frame it is an `info` line, or `debug` when Rogen drops it as noise, so the frame stays whole. */
+export function reportServerOutput(
+	logService: LogService,
+	name: string,
+	message: ServerMessage,
+	cwd: string
+): void {
+	if (!logService.framed && message.stdout !== undefined)
+		logService.print(message.stdout);
+	else if (message.text !== "")
+		reportServerMessage(logService, name, message, cwd);
+}
+
+/** What Rojo said while it ran. */
 export function reportRojo(
 	logService: LogService,
 	messages: readonly ServerMessage[],
 	cwd: string
 ): void {
 	for (const message of messages) {
-		if (message.stdout !== undefined) logService.print(message.stdout);
-		else reportServerMessage(logService, "Rojo", message, cwd);
+		reportServerOutput(logService, "Rojo", message, cwd);
 	}
 }
 
