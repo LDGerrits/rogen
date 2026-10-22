@@ -4,6 +4,7 @@ import {
 	Target,
 	WHERE_SCRIPTS_RUN,
 	containerClassName,
+	isPlayerScriptContainer,
 	requireExpression,
 	scriptFate,
 	whyNotRequirable,
@@ -162,7 +163,9 @@ describe("domain/roblox/roblox", () => {
 			"should say whether %s holds player scripts: %s",
 			(text, expected) => {
 				expect(
-					Target.parse(text, location).unwrap().isPlayerScripts
+					isPlayerScriptContainer(
+						Target.parse(text, location).unwrap().instancePath
+					)
 				).toBe(expected);
 			}
 		);

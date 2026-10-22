@@ -29,7 +29,7 @@ export class CoreServeService implements ServeService {
 
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly fileSystemService: FileSystemService,
+		fileSystemService: FileSystemService,
 		private readonly rojoRunner: RojoRunner,
 		requestService: RequestService,
 		private readonly watchService: WatchService,

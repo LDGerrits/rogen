@@ -16,7 +16,7 @@ import { TreeChoice } from "./tree-plan.js";
 const NONE = "none";
 
 /** `value` is one of `known`, else a usage error naming them, the closest first. */
-export function oneOf(
+function oneOf(
 	value: string,
 	known: readonly string[],
 	what: string,
@@ -32,10 +32,7 @@ export function oneOf(
 }
 
 /** The values of a list flag that takes `none`, which stands for no value at all. */
-export function listOf(
-	given: readonly string[],
-	flag: string
-): readonly string[] {
+function listOf(given: readonly string[], flag: string): readonly string[] {
 	if (!given.includes(NONE)) return given;
 	if (given.length > 1)
 		throw new UsageError(

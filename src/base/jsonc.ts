@@ -257,19 +257,3 @@ export function setJsoncValue(
 		modify(text, [...at], value, { formattingOptions: formattingOf(text) })
 	);
 }
-
-/** `text` with `value` put in the array at `at` before `index`, or last when the array is shorter. */
-export function insertJsoncItem(
-	text: string,
-	at: readonly string[],
-	index: number,
-	value: unknown
-): string {
-	return applyEdits(
-		text,
-		modify(text, [...at, index], value, {
-			formattingOptions: formattingOf(text),
-			isArrayInsertion: true,
-		})
-	);
-}

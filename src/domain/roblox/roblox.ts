@@ -143,10 +143,6 @@ export class Target {
 		return [this.service, ...this.folders];
 	}
 
-	get isPlayerScripts(): boolean {
-		return isPlayerScriptContainer(this.instancePath);
-	}
-
 	toString(): string {
 		return instanceKey(this.instancePath);
 	}

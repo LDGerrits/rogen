@@ -40,7 +40,7 @@ type OptionValues<O extends readonly OptionDescriptor[]> = {
 	readonly [D in O[number] as D["name"]]?: OptionValue<D>;
 };
 
-export const COLOR_CHOICES = ["auto", "always", "never"] as const;
+const COLOR_CHOICES = ["auto", "always", "never"] as const;
 
 export const ColorOption = {
 	name: "color",

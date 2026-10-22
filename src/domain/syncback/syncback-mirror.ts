@@ -110,11 +110,6 @@ export class SyncbackMirror {
 		check(file.tree);
 	}
 
-	/** The mirror folder of the instance at `node`, relative to the mirror's root. */
-	static folderOf(node: readonly string[]): string {
-		return node.join("/");
-	}
-
 	/** The written sync rules, each for the mirror files whose target it matched: Rogen's own rules name single files, so each is turned into one rule per file. */
 	rulesFor(
 		files: readonly { readonly mirror: string; readonly target: string }[],

@@ -12,7 +12,7 @@ import { Setup } from "../setup.js";
 
 export const directory = path.resolve("/mock/my-game");
 
-export interface LayoutSpec {
+interface LayoutSpec {
 	readonly codeFolders?: readonly string[];
 	readonly hasSrc?: boolean;
 }

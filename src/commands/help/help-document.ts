@@ -140,7 +140,7 @@ const SECTION_OPENING =
 	/^(Error|Warning)(?:, or error)?[.,]\s+(.*?[.!?])(?:\s|$)/s;
 
 /** A diagnostic code with its severity and the first sentence of what it means, read from its help text. */
-export function codeBrief(code: string) {
+function codeBrief(code: string) {
 	const [, paragraph = ""] = helpTexts.diagnostics[code].split("\n\n");
 	const [, severity, summary] = SECTION_OPENING.exec(paragraph) ?? [];
 	return {

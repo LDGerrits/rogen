@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-export const PAGE = path.resolve("docs/content/docs/v2/agents.mdx");
+const PAGE = path.resolve("docs/content/docs/v2/agents.mdx");
 export const OUTPUT = path.resolve("src/domain/init/agent/hook-script.ts");
 
 /** The Stop hook script of the agents page, as the module that embeds it holds it. */

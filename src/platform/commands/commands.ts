@@ -63,7 +63,7 @@ export interface Command {
 }
 
 /** What a run of a command can do beyond printing; a command that does none of them is read-only. `longRunning` is not declared here, since a command says it with `longRunning` and `longRunningWith`. */
-export type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
+type CommandEffect = "writesFiles" | "runsProcesses" | "opensBrowser";
 
 interface CommandMetadata<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],

@@ -68,10 +68,6 @@ export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_PROJECT);
 export const projectStem = (projectFile: string): string =>
 	path.basename(projectFile).replace(/\.project\.jsonc?$/, "");
 
-/** The name of the config that writes `projectFile`: `dist.rogen.json` for `dist.project.json`. */
-export const configFileNameOf = (projectFile: string): string =>
-	configFileName(projectStem(projectFile));
-
 /** A folder's default config, in either extension. */
 export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
 	DEFAULT_CONFIG_FILE,
@@ -132,7 +128,7 @@ export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 ];
 
 /** A config as `rogen fmt-project` writes it, so the first format changes nothing. */
-export function configText(
+function configText(
 	config: Record<string, unknown>,
 	written?: WrittenTree
 ): string {

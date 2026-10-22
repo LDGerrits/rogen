@@ -2,7 +2,7 @@ import { isGlobsetMatch } from "../../base/glob.js";
 import path from "path";
 import { isObject } from "../../base/objects.js";
 
-export const SYNC_RULE_USES = [
+const SYNC_RULE_USES = [
 	"serverScript",
 	"clientScript",
 	"pluginScript",

@@ -21,7 +21,7 @@ const FIRST_PLACE = "game";
 const SETTINGS_FILE = ".vscode/settings.json";
 
 /** The source paths of a place in `projects`, as every place lists them: the common code, then its own. */
-export const PROJECT_SOURCE_PATHS: readonly string[] = [
+const PROJECT_SOURCE_PATHS: readonly string[] = [
 	`../${COMMON_FOLDER}/${DEFAULT_SOURCE_PATH}`,
 	DEFAULT_SOURCE_PATH,
 ];

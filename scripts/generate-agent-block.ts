@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-export const SKILL = path.resolve("skills/rogen/SKILL.md");
+const SKILL = path.resolve("skills/rogen/SKILL.md");
 export const OUTPUT = path.resolve("src/domain/init/agent/agent-block.ts");
 
 /** The skill's block with its markers, as the module that embeds it holds it. */
