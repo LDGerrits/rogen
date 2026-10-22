@@ -32,11 +32,6 @@ export class PlannedFilesIndex implements IndexReader {
 		}
 	}
 
-	/** Whether every path asked about already exists, so the index holds what `index` does. */
-	get addsNothing(): boolean {
-		return this.added.size === 0;
-	}
-
 	isPlanned(target: string): boolean {
 		return (
 			this.added
