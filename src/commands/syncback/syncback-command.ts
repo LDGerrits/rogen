@@ -156,11 +156,9 @@ registerCommand(
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			const chosen = selection.value.requireValid().isErr()
+			const project = selection.value.requireValid().isErr()
 				? undefined
-				: rojoService.choose(selection.value, "syncback");
-			if (chosen?.isErr()) return chosen;
-			const project = chosen?.isOk() ? chosen.value : undefined;
+				: rojoService.choose(selection.value);
 
 			const buildService = accessor.get(BuildService);
 			let build = await buildService.build(selection.value);

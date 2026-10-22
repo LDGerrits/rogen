@@ -397,7 +397,7 @@ Anything you want every time belongs in the `.rogen.json`. `where`, `check` and 
 
 | Code | Meaning |
 |---|---|
-| `0` | The command did its job, warnings included. `serve` exits 0 when another `rogen serve` already serves every project, or when a server it adopted stops; a `serve` that a signal stops exits 128 plus its number (Ctrl+C is 130). |
+| `0` | The command did its job, warnings included. `serve` exits 0 when another `rogen serve` already serves the project, or when a server it adopted stops; a `serve` that a signal stops exits 128 plus its number (Ctrl+C is 130). |
 | `1` | The project is wrong: a project that can't be found (a path that isn't there, a folder with no project), an invalid config, build errors, a failed write, a cancelled `init`, or any diagnostic `check` prints. For `serve`, also no server to start or a taken port. |
 | `2` | The command line is wrong: an unknown command, option or option value, a combination that isn't allowed (`--verbose` with `--quiet`, words after `--` on a command other than `serve`, a second `[PROJECT]` on a command that takes one), or a help topic that doesn't exist. A Rojo that refuses the arguments Rogen passes on (`upload --asset_id abc`) exits 2, as Rojo does. |
 

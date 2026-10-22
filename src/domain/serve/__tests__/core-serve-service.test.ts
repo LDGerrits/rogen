@@ -69,11 +69,10 @@ describe("CoreServeService", () => {
 		return result.error;
 	};
 
-	const served = (servePlan: ServePlan) =>
-		servePlan.targets.map(({ config, address }) => [
-			config.label,
-			address.toString(),
-		]);
+	const served = ({ target }: ServePlan) => [
+		target.config.label,
+		target.address.toString(),
+	];
 
 	const serviceAt = (cwd: string, compatibility?: RojoCompatibility) => {
 		configService = new CoreConfigService(
@@ -120,35 +119,29 @@ describe("CoreServeService", () => {
 		it("should serve the one config on Rojo's default port", async () => {
 			const servePlan = await plan();
 
-			expect(served(servePlan)).toEqual([["repo", "127.0.0.1:34872"]]);
+			expect(served(servePlan)).toEqual(["repo", "127.0.0.1:34872"]);
 			expect(servePlan.executable).toEqual({
 				server: SyncServer.ROJO,
 				file: "/bin/rojo",
 				version: "7.7.1",
 			});
-			expect(servePlan.toStart).toHaveLength(1);
+			expect(servePlan.target.servedBy).toBeUndefined();
 		});
 
-		it("should serve each place on the port its default.rogen.json sets", async () => {
+		it("should serve a place on the port and address its default.rogen.json sets", async () => {
 			await memFs.writeFile(
 				"/repo/lobby/default.rogen.json",
-				place({ servePort: 34900, name: "Lobby" })
-			);
-			await memFs.writeFile(
-				"/repo/shop/default.rogen.json",
-				place({ servePort: 34901, serveAddress: "0.0.0.0" })
+				place({
+					servePort: 34900,
+					serveAddress: "0.0.0.0",
+					name: "Lobby",
+				})
 			);
 
-			const servePlan = await plan({ refs: ["lobby", "shop"] });
+			const servePlan = await plan({ refs: ["lobby"] });
 
-			expect(served(servePlan)).toEqual([
-				["Lobby", "127.0.0.1:34900"],
-				["shop", "0.0.0.0:34901"],
-			]);
-			expect(servePlan.targets.map(({ project }) => project)).toEqual([
-				"Lobby",
-				"shop",
-			]);
+			expect(served(servePlan)).toEqual(["Lobby", "0.0.0.0:34900"]);
+			expect(servePlan.target.project).toBe("Lobby");
 		});
 
 		it("should serve only the named configs", async () => {
@@ -156,7 +149,7 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan({ refs: ["."] });
 
-			expect(served(servePlan)).toEqual([["repo", "127.0.0.1:34872"]]);
+			expect(served(servePlan)).toEqual(["repo", "127.0.0.1:34872"]);
 			expect(servePlan.selection.entries.map(({ file }) => file)).toEqual(
 				["/repo/default.rogen.json"]
 			);
@@ -165,7 +158,7 @@ describe("CoreServeService", () => {
 		it("should fail when a named config is broken, before looking for a server", async () => {
 			await memFs.writeFile("/repo/lobby/default.rogen.json", "{ nope");
 
-			const error = await errorOf({ refs: [".", "lobby"] });
+			const error = await errorOf({ refs: ["lobby"] });
 
 			expect(error).toBeInstanceOf(DiagnosticsError);
 			expect(processes.execs).toEqual([]);
@@ -189,7 +182,7 @@ describe("CoreServeService", () => {
 				serverArgs: ["--port", "40000", "--address", "0.0.0.0"],
 			});
 
-			expect(served(servePlan)).toEqual([["repo", "0.0.0.0:40000"]]);
+			expect(served(servePlan)).toEqual(["repo", "0.0.0.0:40000"]);
 			expect(requests.requested[0]).toBe(
 				"http://127.0.0.1:40000/api/rojo"
 			);
@@ -222,39 +215,6 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should serve every project at an address given to several, each on its own port", async () => {
-			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
-			await memFs.writeFile(
-				"/repo/shop/default.rogen.json",
-				place({ servePort: 40001 })
-			);
-
-			const servePlan = await plan({
-				refs: ["lobby", "shop"],
-				serverArgs: ["--address=0.0.0.0"],
-			});
-
-			expect(served(servePlan)).toEqual([
-				["lobby", "0.0.0.0:34872"],
-				["shop", "0.0.0.0:40001"],
-			]);
-		});
-
-		it("should give each project its own port when none is given", async () => {
-			await memFs.writeFile("/repo/lobby/default.rogen.json", place());
-			await memFs.writeFile(
-				"/repo/shop/default.rogen.json",
-				place({ servePort: 40001 })
-			);
-
-			const servePlan = await plan({ refs: ["lobby", "shop"] });
-
-			expect(served(servePlan)).toEqual([
-				["lobby", "127.0.0.1:34872"],
-				["shop", "127.0.0.1:40001"],
-			]);
-		});
-
 		it("should find a config a server already serves, and start nothing for it", async () => {
 			await memFs.writeFile(
 				...recordFile(34872, "repo", "/repo/default.project.json")
@@ -266,17 +226,13 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(
-				servePlan.alreadyServed.map(({ servedBy: running }) => running)
-			).toEqual([
-				{
-					server: SyncServer.ROJO,
-					project: "repo",
-					version: "7.7.1",
-					session: "s1",
-				},
-			]);
-			expect(servePlan.toStart).toEqual([]);
+			expect(servePlan.target.servedBy).toEqual({
+				server: SyncServer.ROJO,
+				project: "repo",
+				version: "7.7.1",
+				session: "s1",
+			});
+			expect(servePlan.isIdle).toBe(true);
 		});
 
 		it("should refuse a server no serve started that serves a project of the same name", async () => {
@@ -296,32 +252,6 @@ describe("CoreServeService", () => {
 			);
 		});
 
-		it("should take a server another serve recorded for the config, though another config has the same name", async () => {
-			await memFs.writeFile(
-				"/repo/lobby/default.rogen.json",
-				place({ name: "repo", servePort: 34900 })
-			);
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json")
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const servePlan = await plan({ refs: [".", "lobby"] });
-
-			expect(
-				servePlan.alreadyServed.map(({ config, adopted }) => [
-					config.file,
-					adopted,
-				])
-			).toEqual([["/repo/default.rogen.json", undefined]]);
-			expect(servePlan.toStart.map(({ config }) => config.file)).toEqual([
-				"/repo/lobby/default.rogen.json",
-			]);
-		});
-
 		it("should adopt a server no serve started when asked to", async () => {
 			requests.answer(
 				"http://127.0.0.1:34872/api/rojo",
@@ -330,27 +260,8 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan({ adopt: true });
 
-			expect(servePlan.adopted.map(({ config }) => config.label)).toEqual(
-				["repo"]
-			);
+			expect(servePlan.target.adopted).toBe(true);
 			expect(servePlan.isIdle).toBe(false);
-		});
-
-		it("should adopt a server no serve started when asked to, though another config has the project name", async () => {
-			await memFs.writeFile(
-				"/repo/lobby/default.rogen.json",
-				place({ name: "repo", servePort: 34900 })
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const servePlan = await plan({ refs: [".", "lobby"], adopt: true });
-
-			expect(servePlan.adopted.map(({ config }) => config.file)).toEqual([
-				"/repo/default.rogen.json",
-			]);
 		});
 
 		it("should not adopt a server of another project name, though asked to", async () => {
@@ -449,7 +360,7 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(servePlan.alreadyServed).toHaveLength(1);
+			expect(servePlan.target.servedBy).toBeDefined();
 		});
 
 		it("should leave a server alone whose serve still runs", async () => {
@@ -467,8 +378,8 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(servePlan.alreadyServed).toHaveLength(1);
-			expect(servePlan.toStart).toEqual([]);
+			expect(servePlan.target.servedBy).toBeDefined();
+			expect(servePlan.target.adopted).toBeUndefined();
 		});
 
 		it("should adopt a server whose serve ended when the process that leads it is gone too", async () => {
@@ -485,9 +396,7 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(servePlan.adopted.map(({ config }) => config.label)).toEqual(
-				["repo"]
-			);
+			expect(servePlan.target.adopted).toBe(true);
 		});
 
 		it("should adopt a server whose serve ended, and whose leading process the record doesn't name", async () => {
@@ -501,7 +410,7 @@ describe("CoreServeService", () => {
 				rojoInfo("repo")
 			);
 
-			expect((await plan()).adopted).toHaveLength(1);
+			expect((await plan()).target.adopted).toBe(true);
 		});
 
 		it("should start over a server whose serve ended, and name what it leaves", async () => {
@@ -519,10 +428,8 @@ describe("CoreServeService", () => {
 
 			const servePlan = await plan();
 
-			expect(servePlan.alreadyServed).toEqual([]);
-			expect(servePlan.toStart.map(({ orphan }) => orphan?.pid)).toEqual([
-				5001,
-			]);
+			expect(servePlan.target.servedBy).toBeUndefined();
+			expect(servePlan.target.orphan?.pid).toBe(5001);
 			expect(servePlan.isIdle).toBe(false);
 		});
 
@@ -542,7 +449,7 @@ describe("CoreServeService", () => {
 				rojoInfo("repo")
 			);
 
-			expect((await plan({ adopt: true })).alreadyServed).toHaveLength(1);
+			expect((await plan({ adopt: true })).target.servedBy).toBeDefined();
 		});
 
 		it("should refuse a port another project's server holds, offering a free one", async () => {
@@ -1074,12 +981,10 @@ describe("CoreServeService", () => {
 		});
 
 		describe("as its configs change", () => {
-			const both = { refs: [".", "lobby"] };
-
-			const lobby = (servePort = 34900, extra = {}) =>
+			const portOf = (servePort: number, extra = {}) =>
 				memFs.writeFile(
-					"/repo/lobby/default.rogen.json",
-					place({ name: "Lobby", servePort, ...extra })
+					"/repo/default.rogen.json",
+					config({ servePort, ...extra })
 				);
 
 			const replaceWithLobby = async (servePort = 34900, extra = {}) => {
@@ -1156,19 +1061,15 @@ describe("CoreServeService", () => {
 			});
 
 			it("should keep a server where it is when its config moves it to a port another program holds", async () => {
-				await lobby();
-				await start(both);
+				await start();
 				occupy(34901);
 
-				await lobby(34901);
+				await portOf(34901);
 				await settle();
 
-				expect(spawnedProjects()).toEqual([
-					"default.project.json",
-					"lobby/default.project.json",
-				]);
+				expect(spawnedProjects()).toEqual(["default.project.json"]);
 				expect(changes).toEqual([
-					"refused Lobby: Port 34901 is taken by another program, so lobby/default.rogen.json can't be served there. Stop it, set a servePort in lobby/default.rogen.json, or run 'rogen serve lobby --port 34902'.",
+					"refused repo: Port 34901 is taken by another program, so default.rogen.json can't be served there. Stop it, set a servePort in default.rogen.json, or run 'rogen serve . --port 34902'.",
 				]);
 			});
 
@@ -1218,52 +1119,42 @@ describe("CoreServeService", () => {
 				]);
 				expect(changes).toEqual(["retired repo (removed)"]);
 				expect(stops).toEqual([]);
-				expect(session.targets).toEqual([]);
+				expect(session.target).toBeUndefined();
 			});
 
 			it("should restart a server whose config moves it to another port", async () => {
-				await lobby();
-				await start(both);
+				await start();
 
-				await lobby(34901);
+				await portOf(34901);
 				await settle();
 
 				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
 					"default.project.json",
-					"lobby/default.project.json (ended)",
-					"lobby/default.project.json",
 				]);
-				expect(changes).toEqual(["retired Lobby (moved)"]);
-				expect(
-					session.targets.map(({ address }) => address.toString())
-				).toEqual(["127.0.0.1:34872", "127.0.0.1:34901"]);
+				expect(changes).toEqual(["retired repo (moved)"]);
+				expect(session.target?.address.toString()).toBe(
+					"127.0.0.1:34901"
+				);
 				expect(stops).toEqual([]);
 			});
 
 			it("should start the server of a config another serve served once that server is gone", async () => {
 				await memFs.writeFile(
-					...recordFile(
-						34900,
-						"Lobby",
-						"/repo/lobby/default.project.json"
-					)
+					...recordFile(34872, "repo", "/repo/default.project.json")
 				);
 				requests.answer(
-					"http://127.0.0.1:34900/api/rojo",
-					rojoInfo("Lobby")
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
 				);
-				await lobby();
-				await start(both);
-				expect(spawnedProjects()).toEqual(["default.project.json"]);
+				await start();
+				expect(spawnedProjects()).toEqual([]);
 
-				requests.responses.delete("http://127.0.0.1:34900/api/rojo");
+				requests.responses.delete("http://127.0.0.1:34872/api/rojo");
 				await memFs.writeFile("/repo/src/B.luau", "");
 				await settle();
 
-				expect(spawnedProjects()).toEqual([
-					"default.project.json",
-					"lobby/default.project.json",
-				]);
+				expect(spawnedProjects()).toEqual(["default.project.json"]);
 			});
 
 			it("should refuse a config again when it comes back after it was removed", async () => {
@@ -1301,23 +1192,21 @@ describe("CoreServeService", () => {
 			});
 
 			it("should restart a server whose config moves only its host, without asking the port it holds", async () => {
-				await lobby();
-				await start(both);
+				await start();
 				requests.answer(
-					"http://127.0.0.1:34900/api/rojo",
-					rojoInfo("Lobby")
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
 				);
 				await settle();
 
-				await lobby(34900, { serveAddress: "0.0.0.0" });
+				await portOf(34872, { serveAddress: "0.0.0.0" });
 				await settle();
 
 				expect(spawnedProjects()).toEqual([
+					"default.project.json (ended)",
 					"default.project.json",
-					"lobby/default.project.json (ended)",
-					"lobby/default.project.json",
 				]);
-				expect(changes).toEqual(["retired Lobby (moved)"]);
+				expect(changes).toEqual(["retired repo (moved)"]);
 			});
 
 			it("should take a refused config as served once its own project's server holds its port", async () => {
@@ -1342,56 +1231,50 @@ describe("CoreServeService", () => {
 
 			it("should refuse a config another serve served once another project's server holds its port", async () => {
 				await memFs.writeFile(
-					...recordFile(
-						34900,
-						"Lobby",
-						"/repo/lobby/default.project.json"
-					)
+					...recordFile(34872, "repo", "/repo/default.project.json")
 				);
 				requests.answer(
-					"http://127.0.0.1:34900/api/rojo",
-					rojoInfo("Lobby")
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
 				);
-				await lobby();
-				await start(both);
+				await start();
 
 				requests.answer(
-					"http://127.0.0.1:34900/api/rojo",
+					"http://127.0.0.1:34872/api/rojo",
 					rojoInfo("Other")
 				);
 				await memFs.writeFile("/repo/src/B.luau", "");
 				await settle();
 				requests.answer(
-					"http://127.0.0.1:34900/api/rojo",
-					rojoInfo("Lobby")
+					"http://127.0.0.1:34872/api/rojo",
+					rojoInfo("repo")
 				);
 				await memFs.writeFile("/repo/src/C.luau", "");
 				await settle();
 
 				expect(changes.map((change) => change.split(":")[0])).toEqual([
-					"refused Lobby",
-					"servedElsewhere Lobby",
+					"refused repo",
+					"servedElsewhere repo",
 				]);
 			});
 
-			it("should leave the servers alone on a rebuild that changes no config", async () => {
-				await lobby();
-				await start(both);
+			it("should leave the server alone on a rebuild that changes no config", async () => {
+				await start();
 
 				await memFs.writeFile("/repo/src/B.luau", "");
 				await settle();
 
-				expect(spawnedProjects()).toEqual([
-					"default.project.json",
-					"lobby/default.project.json",
-				]);
+				expect(spawnedProjects()).toEqual(["default.project.json"]);
 				expect(changes).toEqual([]);
 			});
 
 			it("should serve only the named configs, not one added beside them", async () => {
 				await start({ refs: ["."] });
 
-				await lobby();
+				await memFs.writeFile(
+					"/repo/lobby/default.rogen.json",
+					place({ name: "Lobby", servePort: 34900 })
+				);
 				await settle();
 
 				expect(spawnedProjects()).toEqual(["default.project.json"]);
@@ -1408,9 +1291,7 @@ describe("CoreServeService", () => {
 
 			expect(processes.spawned).toEqual([]);
 			expect(await memFs.exists("/repo/default.project.json")).toBe(true);
-			expect(session.targets.map(({ config }) => config.label)).toEqual([
-				"repo",
-			]);
+			expect(session.target?.config.label).toBe("repo");
 
 			requests.responses.delete("http://127.0.0.1:34872/api/rojo");
 			await polls(2);

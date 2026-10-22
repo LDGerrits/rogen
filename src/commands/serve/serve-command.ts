@@ -185,7 +185,7 @@ registerCommand(
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(
-						"Nothing to start: another rogen serve already serves every config, so nothing is built or watched here."
+						"Nothing to start: another rogen serve already serves this project, so nothing is built or watched here."
 					);
 					return ok(undefined);
 				}
@@ -248,7 +248,7 @@ registerCommand(
 					stopped.p,
 				]);
 				await session.stop();
-				if (!stop) log.shutdown(session.targets);
+				if (!stop) log.shutdown(session.target);
 				if (!stop?.failure) {
 					log.end("Stopped serving.");
 					return stop ? ok(undefined) : this.stoppedBy(lifecycle);

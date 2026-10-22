@@ -265,7 +265,7 @@ describe("list command", () => {
 				"routes:\n  Server -> ServerScriptService\n  * -> Workspace"
 			);
 			expect(under("arena/default.rogen.json").at(-1)).toContain(
-				"routes: same as lobby"
+				"routes: same as lobby/default.rogen.json"
 			);
 		});
 

@@ -1,4 +1,5 @@
-import { relativeTo } from "../../base/path.js";
+import path from "path";
+import { relativeTo, samePath } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -139,6 +140,19 @@ registerCommand(
 				);
 				if (found.isErr()) return found;
 				parts.push(found.value);
+				const folder = path.dirname(selection.entries[0].file);
+				if (
+					!whole &&
+					indexes.some((index) => {
+						const one = asked[index];
+						return "path" in one && samePath(one.path, folder);
+					})
+				)
+					parts.push({
+						diagnostics:
+							await buildService.staleProjectFiles(selection),
+						stoppedBy: [],
+					});
 			}
 			return ok(mergeDiagnoses(parts));
 		}

@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["where", "src/pkg/init.luau"],
+		["check", "src/pkg/init.luau"]
+	],
+	"rojo": false
+}

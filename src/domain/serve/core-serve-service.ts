@@ -1,6 +1,5 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
@@ -18,7 +17,6 @@ import {
 	ServeRequest,
 	ServeService,
 	ServeSession,
-	ServeTarget,
 	ServingNow,
 } from "./serve-service.js";
 import { ServedProjectFiles } from "./served-project-files.js";
@@ -74,10 +72,10 @@ export class CoreServeService implements ServeService {
 		const selection = selected.value;
 		const configs = selection.requireValid();
 		if (configs.isErr()) return configs;
-		const served = configs.value;
+		const [config] = configs.value;
 		const executable = await this.rojoRunner.find(
 			selection.home,
-			served[0]?.file ?? selection.home,
+			config.file,
 			request.signal
 		);
 		if (executable.isErr()) return executable;
@@ -97,22 +95,13 @@ export class CoreServeService implements ServeService {
 			request.adopt === true
 		);
 		if (ports.portError) return err(ports.portError);
-		const targets: ServeTarget[] = [];
-		for (const config of served) targets.push(ports.targetOf(config));
-
-		const checked: ServeTarget[] = [];
-		const taken: Diagnostic[] = [];
-		for (const target of targets) {
-			const result = await ports.check(target, targets);
-			if (result.isOk()) checked.push(result.value);
-			else taken.push(result.error);
-		}
-		if (taken.length > 0) return err(new DiagnosticsError(taken));
+		const checked = await ports.check(ports.targetOf(config));
+		if (checked.isErr()) return err(new DiagnosticsError([checked.error]));
 		return ok(
 			new ServePlan(
 				selection,
 				executable.value,
-				checked,
+				checked.value,
 				request.serverArgs,
 				request.adopt === true
 			)

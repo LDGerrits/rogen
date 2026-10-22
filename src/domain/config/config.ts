@@ -65,6 +65,14 @@ export const configFileName = (stem: string): string => `${stem}.rogen.json`;
 
 export const DEFAULT_CONFIG_FILE = configFileName(DEFAULT_PROJECT);
 
+/** The stem of a project file's name: `dist` for `dist.project.json`. */
+export const projectStem = (projectFile: string): string =>
+	path.basename(projectFile).replace(/\.project\.jsonc?$/, "");
+
+/** The name of the config that writes `projectFile`: `dist.rogen.json` for `dist.project.json`. */
+export const configFileNameOf = (projectFile: string): string =>
+	configFileName(projectStem(projectFile));
+
 /** A folder's default config, in either extension. */
 export const DEFAULT_CONFIG_FILE_NAMES: readonly string[] = [
 	DEFAULT_CONFIG_FILE,

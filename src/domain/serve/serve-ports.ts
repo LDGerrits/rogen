@@ -72,10 +72,7 @@ export class ServePorts {
 	}
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
-	async check(
-		target: ServeTarget,
-		others: readonly ServeTarget[]
-	): Promise<Result<ServeTarget, Diagnostic>> {
+	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
 		const state = await this.probe.probe(target.address, this.server);
 		if (state.kind === "free") return ok(target);
 		const holder = state.kind === "serving" ? state.info : undefined;
@@ -92,7 +89,7 @@ export class ServePorts {
 					? ok({ ...target, servedBy: holder, adopted: true })
 					: err(this.unknownServer(target, holder));
 		}
-		return err(await this.portTaken(target, holder, recorded, others));
+		return err(await this.portTaken(target, holder, recorded));
 	}
 
 	/** Whether the `rogen serve` that started the recorded server has ended; a record without an owner can't tell. */
@@ -117,15 +114,14 @@ export class ServePorts {
 	private async portTaken(
 		target: ServeTarget,
 		holder: ServerInfo | undefined,
-		recorded: ServerRecord | undefined,
-		targets: readonly ServeTarget[]
+		recorded: ServerRecord | undefined
 	): Promise<Diagnostic> {
 		const { config, address } = target;
 		const by = holder
 			? `${holder.server.name} serving ${holder.project}${recorded ? `, which rogen serve started for ${this.nameOfFile(recorded.configFile ?? recorded.projectFile)}` : ""}`
 			: "another program";
 		const free = address.isLocal
-			? await this.freePortAfter(address, targets)
+			? await this.freePortAfter(address)
 			: undefined;
 		const rest =
 			this.otherArgs.length === 0
@@ -177,14 +173,11 @@ export class ServePorts {
 	}
 
 	private async freePortAfter(
-		address: ServeAddress,
-		targets: readonly ServeTarget[]
+		address: ServeAddress
 	): Promise<number | undefined> {
-		const planned = new Set(targets.map((target) => target.address.port));
 		for (let offset = 1; offset <= FREE_PORT_SEARCH; offset++) {
 			const port = address.port + offset;
 			if (port > 65535) return undefined;
-			if (planned.has(port)) continue;
 			const state = await this.probe.probe(
 				new ServeAddress(address.host, port),
 				this.server

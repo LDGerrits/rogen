@@ -794,23 +794,6 @@ describe("build command", () => {
 			});
 		});
 
-		it("should write nothing when several projects leave Rojo none to run on", async () => {
-			await fs.writeFile(abs("a/src/A.luau"), "");
-			await fs.writeFile(abs("b/src/A.luau"), "");
-			const { running } = await withRojo(
-				{ output: "g.rbxl" },
-				new MockConfigService([buildable({}, "a"), buildable({}, "b")])
-			);
-
-			const result = await running;
-
-			expect((result as ResultError<Error>).error.message).toContain(
-				"runs on one project, and this selects 2"
-			);
-			expect(await fs.exists(abs("a/default.project.json"))).toBe(false);
-			expect(processes.spawned).toEqual([]);
-		});
-
 		it("should refuse -o and -p together", async () => {
 			const { running } = await withRojo({ output: "a", plugin: "b" });
 

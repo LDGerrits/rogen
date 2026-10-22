@@ -408,6 +408,21 @@ describe("CoreBuildService", () => {
 				]);
 			});
 
+			it("should fail a check when Rogen wrote the file and the config that wrote it is gone", async () => {
+				const service = buildServiceOfFs();
+				await service.build(selectionOf(configOf()));
+
+				const [checked] = (await service.check(selectionOf(adopted())))
+					.builds;
+
+				expect(checked.errors).toMatchObject([
+					{
+						code: "output.configMissing",
+						resource: abs("default.project.json"),
+					},
+				]);
+			});
+
 			it("should name the config a non-default file was written from", async () => {
 				const service = buildServiceOfFs();
 				await service.build(

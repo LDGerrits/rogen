@@ -246,7 +246,7 @@ export class ListLog {
 				other.routes.length === routes.length &&
 				other.routes.every((line, index) => line === routes[index])
 		);
-		printed.push({ label: config.label, routes });
+		printed.push({ label: title, routes });
 		const notes = (project: ResolvedConfig): string => {
 			const { servePlaceIds: placeIds } = project.project;
 			const parts = [

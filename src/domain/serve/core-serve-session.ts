@@ -123,8 +123,8 @@ export class CoreServeSession
 		);
 	}
 
-	get targets(): readonly ServeTarget[] {
-		return [...this.servers.values()].map(({ target }) => target);
+	get target(): ServeTarget | undefined {
+		return [...this.servers.values()][0]?.target;
 	}
 
 	async start(): Promise<Result<void, Error>> {
@@ -151,18 +151,17 @@ export class CoreServeSession
 			this._onDidError.fire(refusal);
 			return err(refusal);
 		}
-		for (const target of this.plan.toStart) {
+		const { target } = this.plan;
+		if (!isServed(target)) {
 			await this.endOrphanOf(target);
 			if (this.stopping) return ok(undefined);
 			this.launch(target);
-		}
-		for (const target of this.plan.alreadyServed)
-			if (target.adopted) this.adopt(target);
-			else
-				this.declined.set(target.config.id, {
-					kind: "elsewhere",
-					address: target.address.toString(),
-				});
+		} else if (target.adopted) this.adopt(target);
+		else
+			this.declined.set(target.config.id, {
+				kind: "elsewhere",
+				address: target.address.toString(),
+			});
 		this.launched = true;
 		return ok(undefined);
 	}
@@ -225,9 +224,6 @@ export class CoreServeSession
 		if (started?.target.address.toString() === address) return;
 		if (!this.writtenConfigs.has(config.id)) return;
 
-		const others = this.targets.filter(
-			(other) => other.config.id !== config.id
-		);
 		const prior = this.declined.get(config.id);
 		const declinedHere =
 			prior?.address === address ? prior.kind : undefined;
@@ -237,7 +233,7 @@ export class CoreServeSession
 		const checked =
 			started instanceof StartedServer && samePort
 				? ok(target)
-				: await this.ports.check(target, others);
+				: await this.ports.check(target);
 		if (this.stopping) return;
 		await this.settle(target, started, declinedHere, checked);
 	}

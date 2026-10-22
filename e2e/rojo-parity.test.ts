@@ -95,7 +95,6 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 		fs.rmSync(parent, { recursive: true, force: true });
 	});
 
-	/** Two copies of Rojo's build test `name`: `rojo` holds its project file, `rogen` holds it as a `default.rogen.json`. */
 	const copies = (name: string) => {
 		const dir = fs.mkdtempSync(path.join(parent, `${name}-`));
 		const [byRojo, byRogen] = ["rojo", "rogen"].map((side) => {
@@ -175,7 +174,6 @@ describeWithRojo("Rogen and Rojo on the same project", () => {
 			.readdirSync(SYNCBACK_PROJECTS_DIR, { withFileTypes: true })
 			.filter((entry) => entry.isDirectory())
 			.map((entry) => entry.name);
-		/** The project file each side keeps, which Rogen writes from its default.rogen.json. */
 		const PROJECT_FILES = ["default.project.json", "default.rogen.json"];
 
 		const inputOf = (name: string) => {

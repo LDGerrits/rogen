@@ -8,7 +8,7 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import {
 	ReloadableSelection,
-	buildableConfig,
+	buildableFile,
 } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { BuildSet, OutputFile } from "../../build/build.js";
@@ -252,7 +252,7 @@ describe("CoreWatchSession", () => {
 				new Set(notice.errors.map(({ code }) => code))
 		).toEqual(new Set(["config.invalidSyntax"]));
 		expect(updates[1].reports).toEqual([]);
-		expect(buildableConfig(selection.entries[0])).toBeDefined();
+		expect(buildableFile(selection.entries[0])?.config).toBeDefined();
 	});
 
 	it("should report every diagnostic of a rebuild, new or not", async () => {
