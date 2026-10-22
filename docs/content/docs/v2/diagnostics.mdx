@@ -811,7 +811,7 @@ default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain
 default.rogen.json - error: No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.noServer)
 ```
 
-Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. Rogen installs Rojo only when `rogen init` starts a project and is told to (a Yes in a terminal, or `--rojo`); see [Installation](/docs/v2/installation). To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
+Pin Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`, or `aftman add` in an Aftman project; Foreman has no add command, so add it to `foreman.toml` by hand), then install its Studio plugin with `rogen plugin install`. Rogen never installs Rojo: `rogen init` in a new project writes the pin into your toolchain file, and you run the manager's `install`; see [Installation](/docs/v2/installation). To serve with Argon, run `rogen build --watch` and `argon serve` instead: see [Studio](/docs/v2/studio#serve-with-argon). See [CLI](/docs/v2/cli#serve).
 
 ### `serve.notInstalled` [#serve-notinstalled]
 
