@@ -1,13 +1,8 @@
 import { isObject } from "../../../base/objects.js";
 
-export const HOOK_SCRIPT_FILE = ".agents/hooks/rogen-check.sh";
+export const HOOK_SCRIPT_FILE = ".agents/hooks/rogen-check.mjs";
 
-const SCRIPT_NAMED = new RegExp(
-	HOOK_SCRIPT_FILE.slice(HOOK_SCRIPT_FILE.lastIndexOf("/") + 1).replace(
-		".",
-		"\\."
-	)
-);
+const SCRIPT_NAMED = /rogen-check\.(mjs|sh)/;
 
 type HookRegistration =
 	| { readonly kind: "added"; readonly text: string }
@@ -80,7 +75,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".claude", "CLAUDE.md"],
 		hook: {
 			event: "Stop",
-			entry: group(`bash "$CLAUDE_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`),
+			entry: group(`node "$CLAUDE_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`),
 		},
 	},
 	{
@@ -92,7 +87,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		hook: {
 			event: "Stop",
 			entry: group(
-				`bash "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`
+				`node "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`
 			),
 		},
 	},
@@ -102,7 +97,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".gemini", "GEMINI.md"],
 		hook: {
 			event: "AfterAgent",
-			entry: group(`bash "$GEMINI_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`),
+			entry: group(`node "$GEMINI_PROJECT_DIR"/${HOOK_SCRIPT_FILE}`),
 		},
 	},
 	{
@@ -111,7 +106,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 		signs: [".cursor"],
 		hook: {
 			event: "stop",
-			entry: { command: `bash ${HOOK_SCRIPT_FILE} cursor` },
+			entry: { command: `node ${HOOK_SCRIPT_FILE} cursor` },
 			version: 1,
 		},
 	},
@@ -123,7 +118,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 			event: "agentStop",
 			entry: {
 				type: "command",
-				bash: `bash "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`,
+				bash: `node "$(git rev-parse --show-toplevel)"/${HOOK_SCRIPT_FILE}`,
 			},
 			version: 1,
 		},

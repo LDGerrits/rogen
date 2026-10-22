@@ -15,6 +15,12 @@ import {
 	fixShape,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
+import {
+	SkippedPath,
+	SkippedPathJson,
+	skippedJson,
+	skippedPathShape,
+} from "../../platform/diagnostics/skipped-path.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
 const S = OutputShape;
@@ -80,6 +86,7 @@ export const whereDocumentShape = S.object({
 		)
 	),
 	diagnostics: S.array(diagnosticShape),
+	skipped: S.optional(S.array(skippedPathShape)),
 });
 
 interface FileEntryBase {
@@ -142,6 +149,7 @@ type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
 	readonly diagnostics: readonly DiagnosticJson[];
+	readonly skipped?: readonly SkippedPathJson[];
 }
 
 function fieldsOf(location: FileLocation): LocationFields {
@@ -224,9 +232,13 @@ function entryOf(answer: Answer): WhereEntry {
 	};
 }
 
-export function whereDocument(answers: WhereAnswers): WhereDocument {
+export function whereDocument(
+	answers: WhereAnswers,
+	skipped: readonly SkippedPath[] = []
+): WhereDocument {
 	return {
 		locations: answers.bySource().flat().map(entryOf),
 		diagnostics: answers.errors.map(diagnosticToJson),
+		...skippedJson(skipped),
 	};
 }

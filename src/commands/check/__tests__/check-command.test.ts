@@ -48,7 +48,10 @@ describe("check command", () => {
 	const document = () =>
 		JSON.parse(
 			logService.entries.find(({ kind }) => kind === "print")?.text ?? ""
-		) as { diagnostics: { code: string; file: string }[] };
+		) as {
+			diagnostics: { code: string; file: string }[];
+			skipped?: { path: string; reason: string; config?: string }[];
+		};
 
 	beforeEach(async () => {
 		harness = commandHarness();
@@ -78,13 +81,55 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should say nothing of a file in no source path that is no typo of one", async () => {
+		it("should say a file in no source path, that is no typo of one, is read by no build, and pass", async () => {
 			await write("src/Inventory/Server/Save.luau");
-			await write("README.md");
+			await write("lib/x.luau");
 
-			const result = await run({ _: ["README.md"] });
+			const result = await run({ _: ["lib/x.luau"] });
 
 			expect(result.isOk()).toBe(true);
+			expect(logService.texts("warn")).toEqual([]);
+			expect(logService.texts("notice")).toEqual([
+				"note: lib/x.luau: in no source path of default.rogen.json, so no build reads it.",
+			]);
+		});
+
+		it("should list a file in no source path under skipped in the JSON document", async () => {
+			await write("src/Inventory/Server/Save.luau");
+			await write("lib/x.luau");
+
+			await run({ _: ["lib/x.luau"], json: true });
+
+			expect(document()).toEqual({
+				diagnostics: [],
+				skipped: [
+					{
+						path: "/repo/lib/x.luau",
+						reason: "outsideSourcePaths",
+						config: "/repo/default.rogen.json",
+					},
+				],
+			});
+		});
+
+		it("should leave skipped out of the JSON document when every path is read", async () => {
+			await write("src/Save.luau");
+
+			await run({ _: ["src/Save.luau"], json: true });
+
+			expect(document()).toEqual({ diagnostics: [] });
+		});
+
+		it("should not note a typo'd path that is warned about", async () => {
+			await write("src/Inventory/Server/Save.luau");
+			await write("scr/Inventory/Server/X.luau");
+
+			await run({ _: ["scr/Inventory/Server/X.luau"], json: true });
+
+			expect(document()).toMatchObject({
+				diagnostics: [{ code: "scan.outsideSourcePaths" }],
+			});
+			expect(document()).not.toHaveProperty("skipped");
 		});
 
 		it("should pass a file that an error elsewhere does not concern, and say how far the check got", async () => {
@@ -275,9 +320,44 @@ describe("check command", () => {
 			});
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.texts("warn")).toEqual([
-				"places/shared/src/Stray@sever.luau: no config covers this file; check it through a place: rogen check places/lobby",
+			expect(logService.texts("warn")).toEqual([]);
+			expect(logService.texts("notice")).toEqual([
+				"note: places/shared/src/Stray@sever.luau: no config at or above it reads it.",
 			]);
+		});
+
+		it("should name the named configs of the working folder as the way to check it", async () => {
+			await writeConfig("game.rogen.json", {
+				name: "game",
+				rogen: { routes: ROUTES },
+			});
+			await writeConfig("arena.rogen.json", {
+				name: "arena",
+				rogen: { routes: ROUTES },
+			});
+
+			await run({ _: ["places/shared/src/Stray@sever.luau"] });
+
+			expect(logService.texts("notice")).toEqual([
+				"note: places/shared/src/Stray@sever.luau: no config at or above it reads it. Check it through one: rogen check arena.rogen.json or game.rogen.json.",
+			]);
+		});
+
+		it("should list a file that no config covers under skipped in the JSON document", async () => {
+			await run({
+				_: ["places/shared/src/Stray@sever.luau"],
+				json: true,
+			});
+
+			expect(document()).toEqual({
+				diagnostics: [],
+				skipped: [
+					{
+						path: "/repo/places/shared/src/Stray@sever.luau",
+						reason: "noConfig",
+					},
+				],
+			});
 		});
 
 		it("should check the files that have a config and skip the rest", async () => {
@@ -291,7 +371,7 @@ describe("check command", () => {
 			expect(found(failureOf(result))).toEqual([
 				["route.strayAt", "places/lobby/src/Buy@sever.luau"],
 			]);
-			expect(logService.texts("warn")).toHaveLength(1);
+			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
 		it("should check a config named by its file whole", async () => {
@@ -428,7 +508,7 @@ describe("check command", () => {
 			const result = await run({ _: ["tools/Stray@sever.luau"] });
 
 			expect(result.isOk()).toBe(true);
-			expect(logService.texts("warn")).toHaveLength(1);
+			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
 		it("should check a folder by every config that holds some of it", async () => {

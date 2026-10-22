@@ -23,6 +23,8 @@ stdout:
     require(game:GetService("ServerScriptService").Combat.Moves.Sweep)
   src/Empty -> empty · no file in it places
   README.md -> outside the source paths
+stderr:
+  note: README.md: in no source path of default.rogen.json, so no build reads it.
 
 $ rogen where src/Net/Http.mock@client.luau
 exit 0

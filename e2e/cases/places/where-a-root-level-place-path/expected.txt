@@ -62,7 +62,7 @@ stdout:
 $ rogen where README.md
 exit 0
 stderr:
-  warning: README.md: no config covers this file; see where it lands through a place: rogen where places/lobby
+  note: README.md: no config at or above it reads it. See where it lands through one: rogen where game.rogen.json or lobby.rogen.json.
 
 $ rogen where
 exit 1
