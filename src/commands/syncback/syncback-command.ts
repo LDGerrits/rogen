@@ -67,6 +67,7 @@ const SyncbackOptions = [
 	{
 		name: "non-interactive",
 		short: "y",
+		aliases: ["yes"],
 		type: "boolean",
 		description:
 			"Write and remove without asking. A run without a terminal, or under a coding agent or CI, needs it, or --dry-run.",
@@ -83,6 +84,9 @@ const counts = (plan: SyncbackPlan): string => {
 		.filter((part) => part !== undefined)
 		.join(", ");
 };
+
+/** A name that is a place or model file, not a project. */
+const PLACE_FILE = /\.rbxlx?$|\.rbxmx?$/i;
 
 registerCommand(
 	class SyncbackCommand extends AbstractCommand<typeof SyncbackOptions> {
@@ -117,12 +121,18 @@ registerCommand(
 			const tooMany = singleProjectError("syncback", line.positionals);
 			if (tooMany) return err(tooMany);
 			const { input, json } = line.options;
-			if (input === undefined)
+			if (input === undefined) {
+				const placeFile = line.positionals.find((positional) =>
+					PLACE_FILE.test(positional)
+				);
 				return err(
 					new UsageError(
-						"--input names the place or model file to bring changes from, and Rojo needs it."
+						"--input names the place or model file to bring changes from, and Rojo needs it.",
+						placeFile &&
+							`'${placeFile}' is a place or model file, not a project: pass it as --input ${placeFile}.`
 					)
 				);
+			}
 			const dryRun = line.options["dry-run"] === true;
 			const yes = line.options["non-interactive"] === true;
 			const promptService = accessor.get(PromptService);

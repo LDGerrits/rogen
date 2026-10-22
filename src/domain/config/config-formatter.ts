@@ -7,6 +7,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { JsoncDocumentReader } from "../../platform/jsonc/jsonc-document-reader.js";
+import { hasComments } from "../../base/jsonc.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { configStructure } from "./config-structure.js";
 import { ROGEN_KEYS } from "./config.js";
@@ -20,7 +21,7 @@ export class ConfigFormatter {
 
 	constructor(private readonly fileSystemService: FileSystemService) {}
 
-	/** Whether the file changed. A file with comments is left as it is, since the formatted text has none. */
+	/** Whether the file changed. A file with comments fails, since the formatted text has none; a trailing comma is dropped. */
 	async format(file: string): Promise<Result<boolean, Diagnostic[]>> {
 		const read = await tryWithAsync(() =>
 			this.fileSystemService.readFile(file)
@@ -46,12 +47,12 @@ export class ConfigFormatter {
 			]);
 		const document = this.documents.read(text, file, configStructure);
 		if (document.isErr()) return err(document.error);
-		if (!ConfigFormatter.isStrict(text))
+		if (hasComments(text))
 			return err([
 				errorDiagnostic(
 					"format.commentsLost",
 					{ resource: file },
-					`${name} has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor.`
+					`${name} has comments, and formatting writes none. Remove them first, or format it in your editor.`
 				),
 			]);
 
@@ -75,14 +76,5 @@ export class ConfigFormatter {
 				),
 			]);
 		return ok(true);
-	}
-
-	private static isStrict(text: string): boolean {
-		try {
-			JSON.parse(text.replace(/^\uFEFF/, ""));
-			return true;
-		} catch {
-			return false;
-		}
 	}
 }

@@ -38,7 +38,7 @@ export class SyncSteps {
 	): void {
 		const { darklua, language } = this;
 		const inFolder = (command: string) =>
-			folder ? `cd ${folder} && ${command}` : command;
+			folder ? `cd ${folder}\n${command}` : command;
 		builder.addRun(
 			...(language.compiler
 				? [this.compileCommand ?? language.compiler.compileCommand]
@@ -52,7 +52,7 @@ export class SyncSteps {
 		);
 		if (darklua && !language.compiler && !luauLsp) {
 			builder.addEdit(
-				`Darklua reads sourcemap.json. Keep it current from ${DEFAULT_PROJECT_FILE} in a terminal of its own: ${inFolder(darklua.sourcemapCommand())}`
+				`Darklua reads sourcemap.json. Keep it current from ${DEFAULT_PROJECT_FILE} in a terminal of its own${folder ? `, started in ${folder}` : ""}: ${darklua.sourcemapCommand()}`
 			);
 		}
 	}

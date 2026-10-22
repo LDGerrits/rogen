@@ -2,7 +2,7 @@ $ rogen init --non-interactive --skip-git --places
 exit 0
 stdout:
   rogen init
-  Wrote the Greeter sample: the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
+  The Greeter sample is the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
   Took the defaults: --kind place, --language luau, --no-darklua, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Created game.rogen.json.
   Created src/common/Greeter/Shared/Greeting.luau.

@@ -50,4 +50,38 @@ describe("domain/config/config-keys", () => {
 			expect(check("$schema")).toEqual([]);
 		});
 	});
+
+	describe("ConfigKeys.checkBlock", () => {
+		const location = {
+			resource: "/repo/default.rogen.json",
+			position: { line: 3, column: 5 },
+		};
+
+		it.each(["outDir", "outputPath"])(
+			"should offer compiledPath for %s, the usual try for it",
+			(key) => {
+				const [diagnostic] = ConfigKeys.checkBlock(
+					[key],
+					() => location
+				);
+
+				expect(diagnostic).toMatchObject({
+					code: "config.unknownField",
+					message: `"${key}" is not one of Rogen's keys. Did you mean "compiledPath"?`,
+					fixes: [
+						{ replace: { from: `"${key}"`, to: '"compiledPath"' } },
+					],
+				});
+			}
+		);
+
+		it("should not offer compiledPath when the block has it already", () => {
+			const diagnostics = ConfigKeys.checkBlock(
+				["compiledPath", "outDir"],
+				() => location
+			);
+
+			expect(diagnostics[0].message).not.toContain("compiledPath");
+		});
+	});
 });

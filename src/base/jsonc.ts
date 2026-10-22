@@ -7,6 +7,7 @@ import {
 	modify,
 	parseTree,
 	printParseErrorCode,
+	visit,
 } from "jsonc-parser";
 import { Result, err, ok } from "./result.js";
 
@@ -110,6 +111,21 @@ function toSpan(node: Node): JsoncSpan {
 				: [];
 		}),
 	};
+}
+
+/** Whether the text holds a line or block comment outside its strings. */
+export function hasComments(text: string): boolean {
+	let found = false;
+	visit(
+		text,
+		{
+			onComment: () => {
+				found = true;
+			},
+		},
+		{ allowTrailingComma: true }
+	);
+	return found;
 }
 
 export function parseJsonc(text: string): JsoncDocument {

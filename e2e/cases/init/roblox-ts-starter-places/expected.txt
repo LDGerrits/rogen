@@ -4,7 +4,7 @@ stdout:
   rogen init
   Starts from create-roblox-ts, which writes package.json and the compiler's settings.
   Syncing from out, where roblox-ts compiles to.
-  Wrote the Greeter sample: the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
+  The Greeter sample is the feature in projects/common/src, which every place shares, Game in projects/game/src, and Rojo's sample Baseplate and lighting in projects/game/place. Pass --no-sample for empty source folders.
   Took the defaults: --kind place, --no-darklua, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Ran npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild.
   Created projects/game/default.rogen.json.

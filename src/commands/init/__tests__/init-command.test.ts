@@ -205,7 +205,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
 				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
@@ -362,7 +362,7 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
 				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
@@ -858,5 +858,17 @@ describe("init command", () => {
 			"success: Created lobby/default.rogen.json."
 		);
 		expect(await exists("lobby/default.project.json")).toBe(true);
+	});
+
+	it("should name the sample where the user finds it from here, not from the new folder", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {}, [
+			"lobby",
+		]);
+
+		expect(logService.lines).toContain(
+			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place, which the tree mounts. Pass --no-sample for an empty lobby/src and no lobby/place."
+		);
 	});
 });

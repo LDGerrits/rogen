@@ -192,7 +192,7 @@ Remove the extra slash, or name the folder. See [Targets](/docs/v2/core-concepts
 Warning. No route matches the file and there's no `*` route, so it's left out of the project file.
 
 ```
-src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared. (route.unrouted)
+src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 ```
 
 The message names the routing folders of the file's feature: the folder directly in the source path that holds it, or the source path for a file at its top. Move the file into one, give it an `@key` suffix, or declare a `"*"` route if every such file belongs in one place. See [Files That Match No Route](/docs/v2/core-concepts/routing#files-that-match-no-route).
@@ -559,7 +559,7 @@ later - warning: this source path does not exist or is not a folder, so it contr
 srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 ```
 
-Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the `.rogen.json` that lists it. A running `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
+A config with no `sourcePaths` has the default `src`, and the error then says to create it, or to set `sourcePaths` to where your code is. Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the `.rogen.json` that lists it. A running `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
 
 ### `scan.unmountedSource` [#scan-unmountedsource]
 
@@ -718,10 +718,10 @@ Copy the data files unchanged into the compiled path after the processor runs, o
 
 ### `format.commentsLost` [#format-commentslost]
 
-Error. `rogen fmt-project` won't write a config that holds comments or trailing commas, since the formatted text has none. A `.rogen.jsonc` is always refused, because it is meant to hold comments. Nothing is written.
+Error. `rogen fmt-project` won't write a config that holds comments, since the formatted text has none. A `.rogen.jsonc` is always refused, because it is meant to hold comments. Nothing is written.
 
 ```
-default.rogen.json - error: default.rogen.json has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor. (format.commentsLost)
+default.rogen.json - error: default.rogen.json has comments, and formatting writes none. Remove them first, or format it in your editor. (format.commentsLost)
 ```
 
 Remove the comments if you don't need them, or format the file in your editor. See [`rogen fmt-project`](/docs/v2/cli#fmt-project-project).

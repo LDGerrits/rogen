@@ -58,11 +58,6 @@ exit 2
 stderr:
   error: Unknown option '--no-input'. Run 'rogen help init' to see what init accepts.
 
-$ rogen init --yes
-exit 2
-stderr:
-  error: '--yes' is gone. Use --non-interactive.
-
 $ rogen build --deny-warnings
 exit 2
 stderr:

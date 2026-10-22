@@ -98,14 +98,17 @@ const codeShape = S.object({
 
 const codesShape = S.object({ codes: S.array(codeBriefShape) });
 
+const topicShape = S.object({ topic: S.string, text: S.string });
+
 const versionShape = S.object({ version: S.string });
 
-/** The document of `help --json`: the commands, one command in full, one diagnostic code, the list of codes, or with `--version` the version alone. */
+/** The document of `help --json`: the commands, one command in full, one diagnostic code, the list of codes, one topic, or with `--version` the version alone. */
 export const helpDocumentShape = S.union(
 	overviewShape,
 	detailShape,
 	codeShape,
 	codesShape,
+	topicShape,
 	versionShape
 );
 
@@ -217,6 +220,11 @@ export const HelpDocument = {
 				.filter((code) => code.toLowerCase().startsWith(start))
 				.map(codeBrief),
 		};
+	},
+
+	/** One topic of `rogen doc`, as that command prints it. */
+	topic(name: string, text: string) {
+		return { topic: name.toLowerCase(), text };
 	},
 
 	/** What a diagnostic code means, and where the docs explain it. */

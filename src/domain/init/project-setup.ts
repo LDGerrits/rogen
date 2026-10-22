@@ -401,7 +401,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const later =
 			"Start with one place, then add more by hand, as the places guide shows.";
 		if (language.compiler && !scaffolded)
-			return `isn't set up for ${language.copy.label} yet. ${later}`;
+			return `starts a new ${language.copy.label} project with places, and this folder already has one. ${later}`;
 		if (this.directory.hasHandWrittenProject && given !== "new")
 			return `starts a new tree, and ${DEFAULT_PROJECT_FILE} is here. Pass --project-file new, or leave --places out to lift it.`;
 		return undefined;
@@ -639,12 +639,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Syncing from ${compiledPath}, where ${compiler.name} compiles to.`
 			);
 		}
-		if (choices.sample)
+		if (choices.sample) {
+			const here = (...parts: string[]) =>
+				builder.fromHere(path.posix.join(...parts));
 			builder.addNote(
 				places
-					? `Wrote the Greeter sample: the feature in ${places.commonSourcePath}, which every place shares, Game in ${places.placeSourcePath}, and Rojo's sample Baseplate and lighting in ${path.posix.join(places.folder, places.gameFolder)}. Pass --no-sample for empty source folders.`
-					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, and Rojo's sample Baseplate and lighting in ${SAMPLE_GAME_FOLDER}, which the tree mounts. Pass --no-sample for an empty ${sourcePaths[0]} and no ${SAMPLE_GAME_FOLDER}.`
+					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}. Pass --no-sample for empty source folders.`
+					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}, which the tree mounts. Pass --no-sample for an empty ${here(sourcePaths[0])} and no ${here(SAMPLE_GAME_FOLDER)}.`
 			);
+		}
 		this.planNextSteps(builder, choices, tree);
 	}
 

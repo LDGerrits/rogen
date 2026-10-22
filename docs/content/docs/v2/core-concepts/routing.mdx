@@ -169,7 +169,7 @@ src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 A file that no route matches is **unrouted**: Rogen leaves it out and warns about each one, naming the routing folders of its feature to move it into:
 
 ```
-src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared. (route.unrouted)
+src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 ```
 
 Rogen can't read Luau, so it can't tell server code from shared code; the folder is the only statement of where a file belongs. It never picks a destination for you, so code can't end up on the client by accident. That is why `rogen init` writes no route for these files. A config with no `routes` at all routes nothing: no source path is scanned.
