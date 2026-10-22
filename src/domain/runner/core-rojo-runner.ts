@@ -61,7 +61,8 @@ export class CoreRojoRunner implements RojoRunner {
 					...flags,
 				],
 				{ cwd, env: RojoServer.LOG_ENV }
-			)
+			),
+			this.logLevel <= LogLevel.Error
 		);
 	}
 
