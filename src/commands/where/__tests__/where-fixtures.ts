@@ -27,6 +27,7 @@ export const answersOf = (
 		everyFile,
 		asked,
 		errors,
+		skipped: [],
 		configs: configs.map(
 			([label, files, instances = [], diagnostics = []]) => ({
 				config: mockConfig({

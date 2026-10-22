@@ -1,0 +1,4 @@
+{
+	"steps": [["check", "dist"], ["where", "dist"], ["check", "dist", "--json"]],
+	"rojo": false
+}

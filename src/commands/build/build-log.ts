@@ -44,11 +44,11 @@ const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
 	},
 	"route.serverCodeShipped": {
 		headline: (count) =>
-			`${count} ${either(count, "file", "files")} under a server-only route ${either(count, "ships", "ship")} to clients, because an outer route governs ${either(count, "it", "them")}:`,
+			`${plural(count, "file")} under a server-only route ${either(count, "ships", "ship")} to clients, because an outer route governs ${either(count, "it", "them")}:`,
 	},
 	"tree.deadScript": {
 		headline: (count) =>
-			`${count} ${either(count, "script", "scripts")} will never run where ${either(count, "it lands", "they land")}:`,
+			`${plural(count, "script")} will never run where ${either(count, "it lands", "they land")}:`,
 		tail: () => WHERE_SCRIPTS_RUN,
 	},
 	"tree.runContextTarget": {

@@ -158,10 +158,10 @@ stdout:
                    it, each answer headed by its config's name when they differ. A path that no build
                    reads, in no source path of its config or covered by no config, gets a note on
                    stderr and is listed under skipped in the JSON document; a .rogen.json lists every
-                   file of that config, and so does a name that is not a path on disk but names a
-                   config as build reads it (game for game.rogen.json, else game.project.json). Every
-                   file of the default config of the working directory when none is given, and an
-                   instance or '-' reads that config too.
+                   file of that config, and so does a name that is neither a file nor a folder holding
+                   a default config but names a config as build reads it (game for game.rogen.json,
+                   else game.project.json). Every file of the default config of the working directory
+                   when none is given, and an instance or '-' reads that config too.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,

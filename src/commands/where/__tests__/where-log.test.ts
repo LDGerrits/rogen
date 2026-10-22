@@ -141,6 +141,7 @@ describe("WhereLog", () => {
 						everyFile: false,
 						asked: [],
 						errors: [],
+						skipped: [],
 						configs: [
 							{
 								config: mockConfig({}),
@@ -635,6 +636,7 @@ describe("WhereLog", () => {
 					everyFile: true,
 					asked: [],
 					errors: [],
+					skipped: [],
 					configs: [
 						{
 							config: mockConfig({

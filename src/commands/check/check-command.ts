@@ -9,6 +9,7 @@ import {
 	uniqueSkipped,
 } from "../../domain/build/build-service.js";
 
+import { AskedPaths, skippedNotes } from "../../domain/build/asked-paths.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -29,9 +30,7 @@ import {
 	diagnosticsJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import {
-	SkippedPath,
 	skippedJson,
-	skippedNote,
 	skippedPathShape,
 } from "../../platform/diagnostics/skipped-path.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
@@ -60,7 +59,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file or a directory. A directory gives the files in it, and a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it. A path that no build reads, in no source path of its config or covered by no config, is skipped with a note on stderr and listed under skipped in the JSON document; a .rogen.json is checked whole, and so is a name that is not a path on disk but names a config as build reads it (game for game.rogen.json, else game.project.json). The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
+								"A file or a directory. A directory gives the files in it, and a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it. A path that no build reads, in no source path of its config or covered by no config, is skipped with a note on stderr and listed under skipped in the JSON document; a .rogen.json is checked whole, and so is a name that is neither a file nor a folder holding a default config but names a config as build reads it (game for game.rogen.json, else game.project.json). The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -92,13 +91,13 @@ registerCommand(
 			if (found.isErr()) return found;
 
 			const { skipped } = found.value;
-			const named = skipped.some(({ reason }) => reason === "noConfig")
-				? (await accessor.get(ConfigService).namedConfigs()).map(
-						(file) => relativeTo(cwd, file)
-					)
-				: [];
-			for (const one of skipped)
-				logService.notice(skippedNote(one, cwd, ASKING, named));
+			for (const note of await skippedNotes(
+				accessor.get(ConfigService),
+				skipped,
+				cwd,
+				ASKING
+			))
+				logService.notice(note);
 
 			const failure = DiagnosticsError.of(found.value.diagnostics);
 			const stoppedBy = uniqueDiagnostics(found.value.stoppedBy);
@@ -138,21 +137,21 @@ registerCommand(
 				if (selection.isErr()) return selection;
 				return buildService.diagnose(selection.value);
 			}
-			const resolved = await configService.resolveNames(given);
-			if (resolved.isErr()) return resolved;
-			const args = resolved.value;
-			const asked = await buildService.askedAbout({ args, cwd });
-			const covered = await configService.selectCovering(
-				asked.map((one) => ("path" in one ? one.path : undefined))
+			const asking = await AskedPaths.of(
+				configService,
+				buildService,
+				cwd,
+				given
 			);
-			if (covered.isErr()) return covered;
+			if (asking.isErr()) return asking;
+			const { asked, groups } = asking.value;
 			const parts: Diagnosis[] = [];
-			for (const { selection, indexes, whole } of covered.value.groups) {
+			for (const { selection, indexes, whole } of groups) {
 				const found = await buildService.diagnose(
 					selection,
 					whole
 						? undefined
-						: { args: indexes.map((index) => args[index]), cwd }
+						: { args: asking.value.argsAt(indexes), cwd }
 				);
 				if (found.isErr()) return found;
 				parts.push(found.value);
@@ -175,14 +174,7 @@ registerCommand(
 			return ok({
 				...merged,
 				skipped: uniqueSkipped([
-					...covered.value.uncovered.flatMap(
-						(index): SkippedPath[] => {
-							const one = asked[index];
-							return "path" in one
-								? [{ path: one.path, reason: "noConfig" }]
-								: [];
-						}
-					),
+					...asking.value.uncovered,
 					...merged.skipped,
 				]),
 			});

@@ -147,6 +147,8 @@ export interface Locations {
 	readonly configs: readonly ConfigLocations[];
 	/** Why the configs that didn't load did not answer. */
 	readonly errors: readonly Diagnostic[];
+	/** The paths asked about that no config's source paths hold. */
+	readonly skipped: readonly SkippedPath[];
 }
 
 /** What `locate` is asked about; `cwd` resolves relative paths and tells a path from an instance. */
@@ -196,6 +198,13 @@ export function skippedOutside(
 	);
 }
 
+/** The files asked about that every config leaves out, once for each config that covers its folder. */
+export function skippedByEveryConfig(
+	configs: readonly ConfigLocations[]
+): SkippedPath[] {
+	return skippedOutside(outsideEveryConfig(configs), configs);
+}
+
 /** One `diagnose` for what several configs were each asked about. */
 export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
 	return {
@@ -225,11 +234,13 @@ export function mergeLocations(
 	parts: readonly Locations[],
 	asked: readonly Asked[]
 ): Locations {
+	const configs = parts.flatMap((part) => part.configs);
 	return {
 		everyFile: false,
 		asked,
-		configs: parts.flatMap((part) => part.configs),
+		configs,
 		errors: uniqueDiagnostics(parts.flatMap((part) => part.errors)),
+		skipped: skippedByEveryConfig(configs),
 	};
 }
 
