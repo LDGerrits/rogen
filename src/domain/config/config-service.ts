@@ -2,6 +2,7 @@ import { Disposable } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
@@ -153,6 +154,12 @@ export interface FailedConfigFile {
 	readonly value: unknown;
 }
 
+/** Looks in a folder for the config files of another version of Rogen, which it doesn't read. */
+export type ConfigFolderCheck = (
+	folder: string,
+	files: FileReader
+) => Promise<readonly Diagnostic[]>;
+
 export type ConfigFileCheck = (
 	failed: FailedConfigFile
 ) => readonly Diagnostic[];
@@ -183,6 +190,8 @@ export interface ConfigService {
 	format(file: string): Promise<Result<boolean, Diagnostic[]>>;
 	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;
+	/** What the registered folder checks found in `folder`: configs it can't read. */
+	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]>;
 }
 
 export const ConfigService =

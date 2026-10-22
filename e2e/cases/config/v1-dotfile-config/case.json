@@ -1,0 +1,4 @@
+{
+	"steps": [["build"], ["check"], ["init", "-y", "--skip-git"]],
+	"rojo": false
+}
