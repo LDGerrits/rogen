@@ -1,0 +1,7 @@
+{
+	"steps": [
+		["where", "default", "release", "src/A/X.luau"],
+		["where", "default", "release", "src/A/X.luau", "--json"]
+	],
+	"rojo": false
+}
