@@ -61,7 +61,6 @@ written:
 
 game.dist.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",
@@ -128,7 +127,6 @@ game.dist.rogen.json:
 
 game.release.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",
@@ -198,7 +196,6 @@ game.release.rogen.json:
 
 game.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",

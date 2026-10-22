@@ -11,7 +11,6 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
   <Tab value="Luau">
     ```json title="default.rogen.json"
     {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"globIgnorePaths": ["**/*.spec.luau"],
     	"rogen": {
     		"sourcePaths": ["src"],
@@ -28,7 +27,6 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
   <Tab value="roblox-ts">
     ```json title="default.rogen.json"
     {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"tree": {
     		"$className": "DataModel",
     		"ReplicatedStorage": {
@@ -93,7 +91,6 @@ Rojo's keys, at the top level. Rogen passes each to the project file as it is, e
 
 | Field | What Rogen does with it |
 |---|---|
-| `$schema` | The published JSON schema, for editor validation and completion. It covers Rojo's keys and Rogen's, underlines a route key that isn't letters and digits and a route target that doesn't start with a service, and offers the common targets as completions. Rogen leaves it out of the project file. |
 | `name` | The project's name. `default.project.json` carries it only when you set one here; Rojo names the project after its folder otherwise. Every other config must set one, since Rojo can't read its project file without ([`config.unnamedProjectFile`](/docs/v2/diagnostics#config-unnamedprojectfile)). |
 | `tree` | The instance tree Rogen merges its generated nodes into. See [Tree](#tree). |
 | `globIgnorePaths` | Globs, relative to the config, of files Rojo ignores. Rogen keeps them out of routing too. See [Ignoring Files](#ignoring-files). |

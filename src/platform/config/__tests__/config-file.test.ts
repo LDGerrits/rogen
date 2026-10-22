@@ -1,5 +1,5 @@
 import { ConfigFileFailure, ConfigFileReader } from "../config-file.js";
-import { JSONSchema } from "../../../base/json-schema.js";
+import { JsonStructure } from "../../../base/json-structure.js";
 import { Result, ResultError } from "../../../base/result.js";
 import {
 	Diagnostic,
@@ -9,7 +9,7 @@ import { MemoryFileSystemService } from "../../fs/memory-file-system-service.js"
 
 const FILE = "/repo/a.json";
 
-const SCHEMA: JSONSchema = {
+const STRUCTURE: JsonStructure = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
@@ -47,7 +47,7 @@ describe("platform/config/config-file", () => {
 
 		beforeEach(async () => {
 			fs = new MemoryFileSystemService();
-			reader = new ConfigFileReader(fs, SCHEMA);
+			reader = new ConfigFileReader(fs, STRUCTURE);
 			await fs.createDirectory("/repo");
 		});
 

@@ -192,7 +192,7 @@ describe("CoreConfigService", () => {
 				});
 			});
 
-			it("should hold the tree and Rojo's keys, without Rogen's or the schema", async () => {
+			it("should hold the tree and Rojo's keys, without Rogen's or a $schema", async () => {
 				await write("/repo/default.rogen.json", {
 					$schema: "https://example.com/rogen.json",
 					name: "Dungeon",

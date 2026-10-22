@@ -52,7 +52,7 @@ Give the field the type the message names. `null` is never a value in a `.rogen.
 
 ### `config.unknownField` [#config-unknownfield]
 
-Error. The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1. Rojo refuses a project file with a key it doesn't know, so Rogen leaves the written file as it was. The top level of the file is Rojo's schema and the `rogen` block holds Rogen's three keys, so an unknown key in either gets this error; one inside the block gets a suggestion when a name is close. A `$` key of a node in the `tree` that is not one of Rojo's fields, such as `$clasName`, gets the same error, unless it holds an object, which Rojo reads as a child.
+Error. The config has a key that is neither one of Rojo's nor one of Rogen's, often a typo or a key from Rogen 1. Rojo refuses a project file with a key it doesn't know, so Rogen leaves the written file as it was. The top level of the file is Rojo's project format and the `rogen` block holds Rogen's three keys, so an unknown key in either gets this error; one inside the block gets a suggestion when a name is close. A `$` key of a node in the `tree` that is not one of Rojo's fields, such as `$clasName`, gets the same error, unless it holds an object, which Rojo reads as a child.
 
 ```
 default.rogen.json:4:2 - error: "exlude" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)

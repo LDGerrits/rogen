@@ -34,7 +34,6 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel"
   },

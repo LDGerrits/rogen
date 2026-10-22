@@ -131,7 +131,6 @@ describe("ProjectSetup plan", () => {
 		);
 
 		expect(Object.keys(JSON.parse(files[0].content))).toEqual([
-			"$schema",
 			"tree",
 			"rogen",
 		]);

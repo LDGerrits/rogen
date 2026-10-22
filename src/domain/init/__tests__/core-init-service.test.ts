@@ -1033,7 +1033,6 @@ describe("CoreInitService", () => {
 				"AGENTS.md",
 			]);
 			expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
-				$schema: expect.any(String),
 				tree: { $path: "src" },
 			});
 			expect(plan?.nextSteps.run).toEqual([

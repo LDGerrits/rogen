@@ -4,7 +4,7 @@ import "../init-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { CancelledError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
-import { configSchema } from "../../../domain/config/config-schema.js";
+import { configStructure } from "../../../domain/config/config-structure.js";
 import { ConfigFileReader } from "../../../platform/config/config-file.js";
 import { NativeEnvironmentService } from "../../../platform/environment/native-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
@@ -669,7 +669,7 @@ describe("init command", () => {
 	});
 
 	describe("written files", () => {
-		it("should write strict JSON that parses under the config schema", async () => {
+		it("should write strict JSON that parses under the config structure", async () => {
 			await write(".darklua.json");
 			await write("wally.toml");
 			await memFs.createDirectory(path.join(cwd, "Packages"));
@@ -680,7 +680,7 @@ describe("init command", () => {
 			expect(() => JSON.parse(text)).not.toThrow();
 			expect(
 				(
-					await new ConfigFileReader(memFs, configSchema).read(
+					await new ConfigFileReader(memFs, configStructure).read(
 						path.join(cwd, "default.rogen.json")
 					)
 				).isOk()

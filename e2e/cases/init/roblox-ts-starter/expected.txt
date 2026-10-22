@@ -100,7 +100,6 @@ For more help, check out [the Rogen documentation](https://rogen-playfully.verce
 
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "project",
   "tree": {
     "$className": "DataModel",

@@ -1,9 +1,9 @@
-import { JSONSchema } from "../../../base/json-schema.js";
+import { JsonStructure } from "../../../base/json-structure.js";
 import { JsoncDocumentReader } from "../jsonc-document-reader.js";
 
 const FILE = "/repo/a.json";
 
-const schema: JSONSchema = {
+const structure: JsonStructure = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
@@ -19,7 +19,7 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 			codePrefix: "thing",
 			noun: "a thing",
 		});
-		const read = (text: string, against = schema) =>
+		const read = (text: string, against = structure) =>
 			reader.read(text, FILE, against);
 		const failures = (text: string) => {
 			const result = read(text);
@@ -28,7 +28,7 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 		};
 
 		describe("read", () => {
-			it("should return the root and value of a document that fits the schema", () => {
+			it("should return the root and value of a document that fits the structure", () => {
 				const document = read('{ "name": "a" } // note').unwrap();
 
 				expect(document.value).toEqual({ name: "a" });
@@ -73,7 +73,7 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 				]);
 			});
 
-			it("should reject a field the schema doesn't list when it forbids others", () => {
+			it("should reject a field the structure doesn't list when it forbids others", () => {
 				const [diagnostic] = failures('{ "other": 1 }');
 
 				expect(diagnostic).toMatchObject({
@@ -97,9 +97,9 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 			});
 
 			it("should suggest a nested field at its path", () => {
-				const nested: JSONSchema = {
+				const nested: JsonStructure = {
 					type: "object",
-					properties: { inner: schema },
+					properties: { inner: structure },
 				};
 				const result = read('{ "inner": { "lsit": [] } }', nested);
 
@@ -118,8 +118,8 @@ describe("platform/jsonc/jsonc-document-reader", () => {
 				).toBe(true);
 			});
 
-			it("should let fields through when the schema doesn't forbid others", () => {
-				const open: JSONSchema = {
+			it("should let fields through when the structure doesn't forbid others", () => {
+				const open: JsonStructure = {
 					type: "object",
 					properties: { name: { type: "string" } },
 				};

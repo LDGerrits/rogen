@@ -54,7 +54,6 @@ describe("TreePlan", () => {
 			});
 
 			expect(configOf(files)).toEqual({
-				$schema: expect.stringContaining("rogen.json"),
 				name: "mine",
 				tree: { $className: "DataModel", Workspace: { Map: {} } },
 				servePort: 34872,
@@ -382,7 +381,6 @@ describe("TreePlan", () => {
 				const files = await planDerived({ $path: "src" });
 
 				expect(configOf(files)).toEqual({
-					$schema: expect.stringContaining("rogen.json"),
 					name: "my-game",
 					tree: { $path: "src" },
 				});

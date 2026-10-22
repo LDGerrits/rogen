@@ -87,7 +87,6 @@ projects/common/tsconfig.json:
 
 projects/game/default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",

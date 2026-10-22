@@ -64,7 +64,6 @@ written:
 
 game.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",
@@ -130,7 +129,6 @@ game.rogen.json:
 
 lobby/default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel",
     "Lighting": {

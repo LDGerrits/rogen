@@ -62,7 +62,6 @@
 		"lint": "eslint .",
 		"generate": "tsx scripts/generate.ts",
 		"generate:templates": "tsx scripts/generate.ts",
-		"generate:schema": "tsx scripts/generate-schema.ts",
 		"generate:services": "tsx scripts/generate-services.ts",
 		"lint:fix": "eslint . --fix",
 		"release:local": "npm run bundle && node scripts/make-binary.ts releases/rogen",

@@ -1,18 +1,13 @@
-import fs from "fs";
 import path from "path";
 import { mockConfig } from "./mock-config-service.js";
 import { DeclaredKeys } from "../declared-keys.js";
-import { rogenKeys } from "../config-schema.js";
 import {
-	ROGEN_KEYS,
-	SCHEMA_URL,
 	configLabel,
 	fieldOf,
 	isConfigFileName,
 	isDefaultProjectFile,
 	isProjectFileConfig,
 	sourcePathOverlap,
-	schemaUrlFor,
 } from "../config.js";
 
 describe("domain/config/config", () => {
@@ -70,12 +65,6 @@ describe("domain/config/config", () => {
 			"dist.project.json",
 		])("should not accept %s", (name) => {
 			expect(isConfigFileName(name)).toBe(false);
-		});
-	});
-
-	describe("ROGEN_KEYS", () => {
-		it("should be the keys the schema holds for Rogen, in its order", () => {
-			expect(ROGEN_KEYS).toEqual(rogenKeys);
 		});
 	});
 
@@ -137,33 +126,6 @@ describe("domain/config/config", () => {
 			expect(
 				sourcePathOverlap([abs("core"), abs("lobby")], 0)
 			).toBeUndefined();
-		});
-	});
-
-	describe("schemaUrlFor", () => {
-		it("should point a stable release at its major", () => {
-			expect(schemaUrlFor("2.1.0")).toBe(
-				"https://ldgerrits.github.io/rogen/schema/2/rogen.json"
-			);
-		});
-
-		it("should point a new major's pre-release at its major", () => {
-			expect(schemaUrlFor("2.0.0-beta.1")).toBe(
-				"https://ldgerrits.github.io/rogen/schema/2/rogen.json"
-			);
-		});
-
-		it("should point a later pre-release at its exact version", () => {
-			expect(schemaUrlFor("2.1.0-beta.1")).toBe(
-				"https://ldgerrits.github.io/rogen/schema/2.1.0-beta.1/rogen.json"
-			);
-		});
-
-		it("should match the URL init writes for the package version", () => {
-			const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
-				version: string;
-			};
-			expect(SCHEMA_URL).toBe(schemaUrlFor(pkg.version));
 		});
 	});
 
