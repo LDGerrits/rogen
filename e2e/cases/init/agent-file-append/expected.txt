@@ -28,7 +28,7 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 - To change the setup (a route, source path, package mount, Darklua), edit the `.rogen.json` in place, so its comments stay, then run `rogen check`. `rogen init` starts a project, or adds a place with `rogen init <name>` in a Luau project with places, or `rogen init projects/<name>` in a roblox-ts one; it never changes a config that exists.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
-- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a file in a place's folder; a file in the common code has no config of its own and is skipped with a note, so check it through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
+- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a file of any place, shared code in `src/common` included. A file no config holds, such as roblox-ts `projects/common`, is skipped with a note, so check it through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
 - Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen build lobby`, `rogen build dist`).
 - After adding a feature folder, run `rogen build`: `default.project.json` is as fresh as its last build.
 - Leave `rogen build --watch` to the user: it never exits.

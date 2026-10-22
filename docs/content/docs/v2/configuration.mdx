@@ -71,7 +71,7 @@ Rogen picks a file the way Rojo does.
 - **A bare name** such as `dist` means `dist.rogen.json` in the current folder, else a plain `dist.project.json`, unless a folder `dist` holds a default.
 - **`serve`, `build`, `sourcemap` and `upload` take one project.** A second is a usage error, as in Rojo. To serve two places, use two terminals, the second with `--port`.
 
-`rogen check <path>` and `rogen where <path>` are the exception: they take paths, and find each path's own config, the nearest default above it. See [`check`](/docs/v2/cli#check-path).
+`rogen check <path>` and `rogen where <path>` are the exception: they take paths, and find each path's own config: the nearest default above it, else the named `.rogen.json` files at or above it whose source paths hold it. See [`check`](/docs/v2/cli#check-path).
 
 A plain Rojo project runs under Rogen's commands as it is: `check`, `build`, `list`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` work on a folder with only a `default.project.json`, and Rogen writes nothing to the file. A `.project.jsonc` is read too, since Rojo reads it. Beside a `default.rogen.json`, the config wins.
 

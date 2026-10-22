@@ -139,13 +139,13 @@ rogen sourcemap game -o sourcemap.json && luau-lsp analyze --definitions=@roblox
 rogen sourcemap lobby -o sourcemap.json && luau-lsp analyze --definitions=@roblox=<types.d.luau> --sourcemap=sourcemap.json src/common src/lobby
 ```
 
-`rogen check` and `rogen where` find a file's config in the folders at and above it, so they skip a file of a root-level place with a note. Name the place's config: `rogen check game.rogen.json` checks the place whole, and `rogen where game.rogen.json` lists every file it places. A folder-per-place project is covered from the root by path, as `rogen check projects/lobby/src/Lobby/Server/LobbyService.ts`; a path that no config covers, such as a file in `projects/common`, gets a note and is skipped, so check it through a place:
+`rogen check` and `rogen where` find a file's config in the folders at and above it: its default config, else the root-level `.rogen.json` files whose source paths hold it. `rogen check src/game/Main.server.luau` checks the file against `game`, and `rogen check src/common/Net.luau` against every place, printing a shared diagnostic once; `rogen where src/common/Net.luau` prints one answer, or one for each place when they place it differently. To check a place whole, name its config: `rogen check game.rogen.json` and `rogen where game.rogen.json`. A folder-per-place project is covered from the root by path, as `rogen check projects/lobby/src/Lobby/Server/LobbyService.ts`; a path that no config covers, such as a file in `projects/common`, gets a note and is skipped, so check it through a place:
 
 ```
 warning: projects/common/src/Net/Types.ts: no config covers this file; check it through a place: rogen check places/lobby
 ```
 
-Bare `rogen check`, `rogen where <instance>` and `rogen where -` read the current folder, as the Rojo commands do, so name a place's config or run them inside a place's folder.
+Bare `rogen check`, `rogen where <instance>` and `rogen where -` read the current folder, as the Rojo commands do, so name a place's config or run them inside a place's folder; the error lists the configs the folder holds.
 
 </Step>
 
