@@ -210,6 +210,28 @@ describe("BuildLog report", () => {
 		]);
 	});
 
+	it("should report a config that only a check built as checked, and close with a check", () => {
+		const logService = new MockLogService();
+
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				builtOf(summaryOf(), "notWritten", configNamed("a"), []),
+			]),
+			undefined,
+			"syncback",
+			false
+		);
+
+		expect(
+			logService.entries
+				.filter(({ kind }) => kind !== "intro")
+				.map(({ kind, text }) => `${kind}: ${text}`)
+		).toEqual([
+			"success: a/default.project.json · checked",
+			"outro: Checked 1 project.",
+		]);
+	});
+
 	it("should name every config that failed", () => {
 		expect(
 			report([

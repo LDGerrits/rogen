@@ -145,6 +145,23 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 	});
 
+	it("should write no project file in a dry run, and leave a stale one as it was", async () => {
+		const first = start({ input: "game.rbxl", "dry-run": true });
+		const [rojo] = await rojoRuns(1);
+		rojo.exit({ code: 0, signal: null });
+		await first.running;
+		expect(await fs.exists(abs("default.project.json"))).toBe(false);
+
+		await fs.writeFile(abs("default.project.json"), "{}\n");
+		processes.spawned.length = 0;
+		const second = start({ input: "game.rbxl", "dry-run": true });
+		const [again] = await rojoRuns(1);
+		again.exit({ code: 0, signal: null });
+		await second.running;
+
+		expect(await fs.readFile(abs("default.project.json"))).toBe("{}\n");
+	});
+
 	it("should write, in one run of Rojo, when it is told to", async () => {
 		const { running, log } = start({
 			input: "game.rbxl",

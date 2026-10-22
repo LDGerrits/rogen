@@ -121,7 +121,13 @@ export class BuildLog {
 		);
 	}
 
-	report(run: BuildRun, home?: string, command = "build"): void {
+	/** With `writes` false, the run only checked: a config that built is reported as checked, not as an error. */
+	report(
+		run: BuildRun,
+		home?: string,
+		command = "build",
+		writes = true
+	): void {
 		this.begin(
 			command,
 			run.builds.map(({ label }) => label),
@@ -130,8 +136,12 @@ export class BuildLog {
 		for (const { build, warnings, errors } of run.shares) {
 			if (run.builds.length > 1) this.heading(build.label);
 			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
+				checked:
+					!writes &&
+					build.outcome === "notWritten" &&
+					build.blockedBy.length === 0,
 				notes: [
-					build.outcome === "notWritten"
+					build.outcome === "notWritten" && build.blockedBy.length > 0
 						? `${joinedWithAnd(build.blockedBy)} failed`
 						: undefined,
 					BuildLog.sameAs("errors", errors.sameAs),
@@ -140,7 +150,7 @@ export class BuildLog {
 			});
 		}
 		if (run.failed) this.logService.closeFrame("build failed.");
-		else this.end(run.builds.length, run.warningCount);
+		else this.end(run.builds.length, run.warningCount, writes);
 	}
 
 	private heading(label: string): void {
@@ -152,8 +162,10 @@ export class BuildLog {
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
+			checked = false,
 		}: {
 			readonly notes?: readonly (string | undefined)[];
+			readonly checked?: boolean;
 		} = {}
 	): void {
 		const note =
@@ -178,7 +190,8 @@ export class BuildLog {
 				this.details(build.summary);
 				break;
 			case "notWritten":
-				this.logService.error(line("not written"));
+				if (checked) this.logService.success(line("checked"));
+				else this.logService.error(line("not written"));
 				this.details(build.summary);
 				break;
 			case "failed":
@@ -199,8 +212,8 @@ export class BuildLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(projects: number, warnings: number): void {
-		const built = `Built ${plural(projects, "project")}`;
+	private end(projects: number, warnings: number, writes: boolean): void {
+		const built = `${writes ? "Built" : "Checked"} ${plural(projects, "project")}`;
 		this.logService.outro(
 			warnings === 0
 				? `${built}.`

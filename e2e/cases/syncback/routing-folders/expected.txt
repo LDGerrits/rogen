@@ -2,13 +2,14 @@ $ rogen syncback -i place.rbxl --dry-run --json
 exit 0
 stdout:
   {
-    "changed": true,
+    "changed": false,
     "configs": [
       {
         "config": "Game",
         "file": "<dir>/default.rogen.json",
         "projectFile": "<dir>/default.project.json",
-        "outcome": "wrote",
+        "outcome": "notWritten",
+        "blockedBy": [],
         "diagnostics": []
       }
     ],
@@ -52,8 +53,8 @@ stdout:
   Removing src/Combat/Server/Hit.luau
 stderr:
   rogen syncback · Game
-  default.project.json · unchanged
-  Built 1 project.
+  default.project.json · checked
+  Checked 1 project.
   Syncback would change 5 files (4 to write, 1 to remove).
 
 $ rogen syncback -i place.rbxl -y --list

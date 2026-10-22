@@ -311,25 +311,14 @@ export class CoreSyncbackService implements SyncbackService {
 			return err(
 				new Error(`${project.label} was not found among the projects.`)
 			);
-		const text = await tryWithAsync(() =>
-			this.fileSystemService.readFile(project.projectFile)
-		);
-		if (text.isErr())
+		const built = await this.buildService.projectFileOf(project);
+		if (!built)
 			return err(
 				new UsageError(
-					`${project.projectFile} could not be read; run 'rogen build' to write it.`
+					`${project.label} does not build, so there is no project file to read; run 'rogen build' to see why.`
 				)
 			);
-		let written: RojoProjectFile;
-		try {
-			written = JSON.parse(text.value) as RojoProjectFile;
-		} catch {
-			return err(
-				new UsageError(
-					`${project.projectFile} is not valid JSON; run 'rogen build' to write it again.`
-				)
-			);
-		}
+		const written = JSON.parse(ProjectText.of(built)) as RojoProjectFile;
 		const placed = here.files.filter(
 			(file): file is PlacedLocation => file.status === "placed"
 		);
