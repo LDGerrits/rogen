@@ -105,57 +105,6 @@ export class InitQuestions {
 		});
 	}
 
-	/** Whether to set Rojo up; with no `manager` there is none on the machine, so a Yes installs Rokit first. A run that can't ask pins with a manager it finds and installs nothing otherwise. */
-	async rojo(
-		manager: string | undefined,
-		installer: string,
-		tools: readonly string[]
-	): Promise<boolean | undefined> {
-		const { rojo } = this.choices;
-		if (rojo !== undefined) return rojo;
-		if (!this.interactive) {
-			if (manager !== undefined)
-				return this.decide("rojo", true, "--rojo");
-			this.decide("rojo", "not installed", "--rojo");
-			return false;
-		}
-		return this.promptService.confirm(
-			manager !== undefined
-				? {
-						message: `Pin ${joinedWithAnd(tools)} with ${manager}?`,
-						description:
-							"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
-						initialValue: true,
-					}
-				: {
-						message: this.installMessage(tools),
-						description: `Runs Rokit's installer (${installer}), then pins ${joinedWithAnd(tools)} in a rokit.toml here.`,
-						initialValue: true,
-					}
-		);
-	}
-
-	private installMessage(tools: readonly string[]): string {
-		const names = joinedWithAnd(tools.map((tool) => tool.split(" ")[0]));
-		return tools.length === 1 && names === "Rojo"
-			? "Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?"
-			: `${names} ${tools.length === 1 ? "isn't" : "aren't"} installed, and the project needs ${tools.length === 1 ? "it" : "them"}. Install Rokit and ${tools.length === 1 ? "pin it" : "pin them"} now?`;
-	}
-
-	/** Whether to install Rojo's Studio plugin, which a run that can't ask leaves to the user. */
-	async studioPlugin(): Promise<boolean | undefined> {
-		const { plugin } = this.choices;
-		if (plugin !== undefined) return plugin;
-		if (!this.interactive)
-			return this.decide("plugin", false, "--studio-plugin");
-		return this.promptService.confirm({
-			message: "Install Rojo's Studio plugin?",
-			description:
-				"Studio needs it to connect to rogen serve. It is installed into Studio's plugins folder.",
-			initialValue: true,
-		});
-	}
-
 	async addAgentHook(
 		agents: readonly string[]
 	): Promise<boolean | undefined> {

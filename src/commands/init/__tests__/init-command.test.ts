@@ -509,77 +509,27 @@ describe("init command", () => {
 			expect(await exists("default.rogen.json")).toBe(false);
 		});
 
-		it("should set Rojo up when asked to, though it can't ask", async () => {
+		it("should write Rojo's pin and run no program", async () => {
 			const processes = new MockProcessService();
 			processes.installed.set("rokit", "/bin/rokit");
-			processes.outputs.set("/bin/rokit", {
-				code: 0,
-				stdout: "",
-				stderr: "",
-			});
 			const logService = new MockLogService();
 
 			await runInit(
 				new MockPromptService([], false),
 				logService,
-				{ rojo: true },
+				{},
 				[],
 				processes
 			);
 
-			expect(await read("rokit.toml")).toBe("[tools]\n");
+			expect(await read("rokit.toml")).toBe(
+				'[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\n'
+			);
 			expect(
 				processes.execs.filter(({ file }) => file === "/bin/rokit")
-			).toMatchObject([{ args: ["add", "rojo-rbx/rojo@7.7.1"], cwd }]);
-		});
-
-		it("should warn with what to run, and still finish, when the command fails", async () => {
-			const processes = new MockProcessService();
-			processes.installed.set("rokit", "/bin/rokit");
-			processes.outputs.set("/bin/rokit", {
-				code: 1,
-				stdout: "",
-				stderr: "ERROR No network\n",
-			});
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				logService,
-				{ rojo: true, "studio-plugin": true },
-				[],
-				processes
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(await exists("default.rogen.json")).toBe(true);
-			expect(
-				logService.entries.filter(({ kind }) => kind === "warn")
-			).toMatchObject([
-				{
-					text: "rokit add rojo-rbx/rojo@7.7.1 failed (ERROR No network). Run these yourself: rokit add rojo-rbx/rojo@7.7.1, then rojo plugin install.",
-				},
-			]);
-		});
-
-		it("should say what it would run in a dry run, and run nothing", async () => {
-			const processes = new MockProcessService();
-			processes.installed.set("rokit", "/bin/rokit");
-			const logService = new MockLogService();
-
-			await runInit(
-				new MockPromptService([], false),
-				logService,
-				{ rojo: true, "dry-run": true },
-				[],
-				processes
-			);
-
-			expect(processes.execs).toEqual([]);
-			expect(logService.entries).toContainEqual(
-				expect.objectContaining({
-					text: "Would run rokit add rojo-rbx/rojo@7.7.1.",
-				})
+			).toEqual([]);
+			expect(logService.entries.map(({ text }) => text)).toContain(
+				"Run 'rokit install' to install Rojo."
 			);
 		});
 

@@ -202,7 +202,7 @@ export class CoreInitService implements InitService {
 						processService: this.processService,
 					}
 				),
-			questions
+			() => questions.usesDarklua
 		);
 		const { choices } = questions;
 		if (choices.agentHook === true && !hooks.value.inUse)

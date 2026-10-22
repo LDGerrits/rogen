@@ -17,10 +17,6 @@ export interface InitChoices {
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
 	readonly agentRules?: boolean;
-	/** Whether to set Rojo up: pin it with the toolchain manager, or install Rokit and then pin it. */
-	readonly rojo?: boolean;
-	/** Whether to install Rojo's Studio plugin, once Rojo is set up. */
-	readonly plugin?: boolean;
 	readonly agentHook?: boolean;
 	readonly language?: string;
 	readonly darklua?: boolean;
@@ -45,11 +41,11 @@ export interface InitDecision {
 	readonly flag: string;
 }
 
-/** A program that `init` runs once it has written the files, such as the toolchain manager that installs Rojo. */
+/** A program that `init` runs once it has written the files, such as the tool that installs a compiler's packages. */
 export interface PlannedCommand {
 	/** The command line as a person types it. */
 	readonly command: string;
-	/** The program, looked for on the PATH and in Rokit's bin folder when it runs, since an installer has just put it there. */
+	/** The program, looked for on the PATH and in Rokit's bin folder when it runs. */
 	readonly file: string;
 	readonly args: readonly string[];
 	/** How long it may run, in milliseconds. */

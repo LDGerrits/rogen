@@ -217,16 +217,6 @@ stdout:
             "name": "agent-hook",
             "type": "boolean",
             "negatable": true
-          },
-          {
-            "name": "rojo",
-            "type": "boolean",
-            "negatable": true
-          },
-          {
-            "name": "studio-plugin",
-            "type": "boolean",
-            "negatable": true
           }
         ],
         "effects": [

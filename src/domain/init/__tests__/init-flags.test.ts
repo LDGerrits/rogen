@@ -401,26 +401,16 @@ describe("the yes or no questions", () => {
 		expect(await questions({ agentHook: true }).addAgentHook(["x"])).toBe(
 			true
 		);
-		expect(await questions({ rojo: true }).rojo("rokit", "", [])).toBe(
-			true
-		);
-		expect(await questions({ plugin: true }).studioPlugin()).toBe(true);
 	});
 
 	it("should write down the default it took, with its flag", async () => {
 		const asked = questions({});
 		await asked.addAgentInstructions("A.md");
 		await asked.addAgentHook(["x"]);
-		await asked.rojo("rokit", "", []);
-		await asked.rojo(undefined, "", []);
-		await asked.studioPlugin();
 
 		expect(asked.decided).toEqual([
 			{ question: "agentRules", value: true, flag: "--agent-rules" },
 			{ question: "agentHook", value: false, flag: "--agent-hook" },
-			{ question: "rojo", value: true, flag: "--rojo" },
-			{ question: "rojo", value: "not installed", flag: "--rojo" },
-			{ question: "plugin", value: false, flag: "--studio-plugin" },
 		]);
 	});
 });

@@ -11,6 +11,10 @@ stdout:
       {
         "file": "<dir>/AGENTS.md",
         "outcome": "wrote"
+      },
+      {
+        "file": "<dir>/rokit.toml",
+        "outcome": "wrote"
       }
     ],
     "directories": [
@@ -62,11 +66,6 @@ stdout:
         "question": "agentRules",
         "value": true,
         "flag": "--agent-rules"
-      },
-      {
-        "question": "rojo",
-        "value": "not installed",
-        "flag": "--rojo"
       }
     ],
     "built": [
@@ -81,7 +80,8 @@ stdout:
     "notes": [],
     "nextSteps": {
       "setup": [
-        "Rojo isn't installed, and rogen serve needs it. Install Rokit (curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash), then run 'rokit init' and 'rokit add rojo-rbx/rojo@7.7.1' here."
+        "Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.",
+        "Run 'rogen plugin install' to install Rojo's Studio plugin."
       ],
       "run": [
         "rogen serve"
@@ -97,6 +97,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  rokit.toml
 
 default.rogen.json:
 {

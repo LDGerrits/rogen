@@ -16,10 +16,12 @@ stdout:
   Created projects/common/tsconfig.json.
   Created projects/game/tsconfig.json.
   Created AGENTS.md.
+  Created rokit.toml.
   Ran npm pkg set "scripts.build=rbxtsc -p projects/game" "scripts.watch=rbxtsc -w -p projects/game".
   projects/game/default.project.json · wrote
   Next steps
-    Rojo isn't installed, and rogen serve needs it. Install Rokit (curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash), then run 'rokit init' and 'rokit add rojo-rbx/rojo@7.7.1' here.
+    Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.
+    Run 'rogen plugin install' to install Rojo's Studio plugin.
     Run each in its own terminal:
       npm run watch
       rogen serve projects/game
@@ -27,7 +29,7 @@ stdout:
     Add your own routes under "routes" in projects/game/default.rogen.json.
     Edit projects/game/default.rogen.json and leave projects/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build projects/game' so the editor's projects/game/default.project.json follows.
     Add another place: make projects/lobby/src, copy projects/game/default.rogen.json and projects/game/tsconfig.json into projects/lobby (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build projects/lobby' for its project file, add 'rbxtsc -p projects/lobby' and 'rbxtsc -w -p projects/lobby' to the build and watch scripts in package.json, and serve it from a second terminal with its own --port: 'rogen serve projects/lobby --port <port>'.
-  Wrote 9 files.
+  Wrote 10 files.
 
 ran:
   npm create roblox-ts@latest -- game --dir . --yes --git=false --skipBuild
@@ -45,6 +47,7 @@ written:
   projects/game/default.rogen.json
   projects/game/src/Game/server/Game.server.ts
   projects/game/tsconfig.json
+  rokit.toml
 
 package.json:
 {"scripts":{"build":"rbxtsc -p projects/game","watch":"rbxtsc -w -p projects/game"}}

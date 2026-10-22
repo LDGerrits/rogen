@@ -6,7 +6,7 @@ stdout:
 stderr:
   default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
 
-$ rogen init -y --agent-rules --rojo
+$ rogen init -y --agent-rules
 exit 1
 stdout:
   rogen init

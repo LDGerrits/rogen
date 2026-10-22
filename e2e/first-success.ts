@@ -44,11 +44,7 @@ export interface Success {
 	readonly serving: Readonly<Record<string, unknown>>;
 	/** The instance paths of the sourcemap of each `mapped` place, as `ReplicatedStorage/Shared/Greeter`. */
 	readonly mappedPaths: Readonly<Record<string, readonly string[]>>;
-	/** The Studio plugin installs the fake Rojo saw. */
-	readonly pluginCalls: number;
 }
-
-const WINDOWS = process.platform === "win32";
 
 interface MapNode {
 	readonly name: string;
@@ -60,47 +56,6 @@ const pathsOf = (nodes: readonly MapNode[], parent = ""): string[] =>
 		const own = parent ? `${parent}/${node.name}` : node.name;
 		return [own, ...pathsOf(node.children ?? [], own)];
 	});
-
-/** Fake Rokit and Rojo in front of the real PATH: `rokit add` pins into rokit.toml as Rokit does, and `rojo plugin install` only logs, so no run writes to the machine's Studio. Everything else runs the real Rojo. */
-function fakeToolchain(parent: string): {
-	env: Record<string, string>;
-	pluginCalls(): number;
-} {
-	const bin = path.join(parent, "bin");
-	const log = path.join(parent, "plugin.log");
-	fs.mkdirSync(bin);
-	fs.writeFileSync(
-		path.join(bin, "rokit"),
-		`#!/bin/sh
-if [ "$1" = add ]; then
-  tool=\${2%@*}; name=\${tool##*/}
-  grep -q '^\\[tools\\]' rokit.toml 2>/dev/null || echo '[tools]' >> rokit.toml
-  echo "$name = \\"$2\\"" >> rokit.toml
-fi
-`,
-		{ mode: 0o755 }
-	);
-	fs.writeFileSync(
-		path.join(bin, "rojo"),
-		`#!/bin/sh
-if [ "$1" = plugin ]; then echo "$*" >> "$ROGEN_E2E_PLUGIN_LOG"; exit 0; fi
-PATH="$ROGEN_E2E_REAL_PATH" exec rojo "$@"
-`,
-		{ mode: 0o755 }
-	);
-	const real = process.env.PATH ?? "";
-	return {
-		env: {
-			PATH: [bin, real].join(path.delimiter),
-			ROGEN_E2E_REAL_PATH: real,
-			ROGEN_E2E_PLUGIN_LOG: log,
-		},
-		pluginCalls: () =>
-			fs.existsSync(log)
-				? fs.readFileSync(log, "utf8").trimEnd().split("\n").length
-				: 0,
-	};
-}
 
 /** The commands `init` prints under Next steps, each as the line shows. */
 function printedSteps(stdout: string): string[] {
@@ -170,24 +125,17 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 	const dir = path.join(parent, "project");
 	fs.mkdirSync(dir);
 	try {
-		const fake = WINDOWS ? undefined : fakeToolchain(parent);
-		const env = fake?.env ?? {};
-		if (!fake)
-			fs.copyFileSync(
-				path.resolve("rokit.toml"),
-				path.join(dir, "rokit.toml")
-			);
+		const env: Record<string, string> = {};
+		fs.copyFileSync(
+			path.resolve("rokit.toml"),
+			path.join(dir, "rokit.toml")
+		);
 		const timeout = variant.network ? NETWORK_TIMEOUT_MS : 30_000;
 		const rogen = (args: readonly string[]) =>
 			run(...invocation(cli, args), dir, env, "", timeout);
 		const commands: string[] = [];
 
-		const init = await rogen([
-			"init",
-			"-y",
-			...(fake ? ["--studio-plugin"] : []),
-			...variant.flags,
-		]);
+		const init = await rogen(["init", "-y", ...variant.flags]);
 		if (init.exitCode !== 0) throw fail("init", init);
 		commands.push("init");
 
@@ -242,7 +190,6 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 					.map((step) => step.run.join(" ")),
 				serving: line,
 				mappedPaths,
-				pluginCalls: fake?.pluginCalls() ?? 0,
 			};
 		} finally {
 			await serving.stop();

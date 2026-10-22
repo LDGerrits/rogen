@@ -2,7 +2,6 @@
 	"steps": [["init", "--non-interactive", "--skip-git", "--no-sample"]],
 	"rojo": false,
 	"output": ["init"],
-	"tools": {
-		"rokit": "if [ \"$1\" = add ]; then printf '#!/bin/sh\\necho \"rojo $*\" >> \"$ROGEN_E2E_CALLS\"\\n' > \"$(dirname \"$0\")/rojo\"; chmod +x \"$(dirname \"$0\")/rojo\"; fi"
-	}
+	"show": ["rokit.toml"],
+	"tools": { "rokit": "" }
 }

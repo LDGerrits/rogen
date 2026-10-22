@@ -2,9 +2,6 @@ $ rogen init --non-interactive --skip-git --no-sample
 exit 0
 stdout: (not shown)
 
-ran:
-  foreman install
-
 written:
   AGENTS.md
   default.project.json

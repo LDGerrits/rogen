@@ -102,11 +102,6 @@ stdout:
                                            into default.rogen.json (the default), or start a new tree.
                                            [possible values: lift, new]
       -q, --quiet                          Only print errors.
-          --[no-]rojo                      Whether to set Rojo up when it isn't ready: pin it with the
-                                           toolchain manager found (Rokit, Aftman or Foreman), or
-                                           install Rokit first and pin it. A run that can't ask pins
-                                           with a manager it finds, and installs Rokit only with this
-                                           flag.
           --route <ID>                     A route to start with: server, client, shared,
                                            replicatedFirst, serverStorage or starterGui; repeat for
                                            several, or none. The first three when not given. When a
@@ -123,9 +118,6 @@ stdout:
           --source-path <PATH>             A folder with your scripts, relative to here; repeat for
                                            several. src when not given, or where the code is.
                                            (repeatable)
-          --[no-]studio-plugin             Whether to install Rojo's Studio plugin, once Rojo is set
-                                           up. Not installed by a run that can't ask, which prints the
-                                           command instead.
           --unmatched <UNMATCHED>          Where files that match no route go: into the shared route
                                            (the default), or nowhere, which Rogen warns about.
                                            [possible values: shared, leave]

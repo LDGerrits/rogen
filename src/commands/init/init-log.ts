@@ -79,7 +79,6 @@ export const initDocumentShape = S.object({
 /** A choice as the flags that make it, so the line can be copied: `--no-darklua`, `--route server --route client`. */
 function flagsOf({ question, value, flag }: InitDecision): string[] {
 	if (question === "skipGit") return value === true ? [flag] : [];
-	if (question === "rojo" && typeof value === "string") return [];
 	if (typeof value === "boolean")
 		return [value ? flag : flag.replace("--", "--no-")];
 	if (typeof value === "string") return [`${flag} ${value}`];

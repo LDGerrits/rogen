@@ -1,0 +1,7 @@
+{
+	"steps": [["init", "--non-interactive", "--skip-git", "--no-sample"]],
+	"rojo": false,
+	"output": ["init"],
+	"show": ["rokit.toml"],
+	"tools": { "rokit": "" }
+}

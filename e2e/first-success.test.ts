@@ -111,9 +111,6 @@ describeWithRojo("first success from an empty folder", () => {
 						.map(({ run: [, command] }) => command),
 					"serve",
 				]);
-				expect(success.pluginCalls).toBe(
-					process.platform === "win32" ? 0 : 1
-				);
 				expect(success.unprinted).toEqual([]);
 				for (const folder of variant.mapped ?? [])
 					expect(success.mappedPaths[folder]).toContain(

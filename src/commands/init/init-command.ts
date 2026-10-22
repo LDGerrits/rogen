@@ -139,20 +139,6 @@ const InitOptions = [
 		description:
 			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given.",
 	},
-	{
-		name: "rojo",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag.",
-	},
-	{
-		name: "studio-plugin",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether to install Rojo's Studio plugin, once Rojo is set up. Not installed by a run that can't ask, which prints the command instead.",
-	},
 ] as const;
 
 /** The flags, as the choices `init` is not to ask about. Their values were checked against `values` when the line was parsed. */
@@ -163,8 +149,6 @@ function choicesOf(
 		kind: options.kind as InitChoices["kind"],
 		skipGit: options["skip-git"],
 		agentRules: options["agent-rules"],
-		rojo: options.rojo,
-		plugin: options["studio-plugin"],
 		agentHook: options["agent-hook"],
 		language: options.language,
 		darklua: options.darklua,
@@ -201,8 +185,6 @@ registerCommand(
 					effects: ["writesFiles"],
 					formerOptions: {
 						"--yes": "Use --non-interactive.",
-						"--rojo-pin": "Use --rojo.",
-						"--no-rojo-pin": "Use --no-rojo.",
 					},
 					examples: [
 						"rogen init",

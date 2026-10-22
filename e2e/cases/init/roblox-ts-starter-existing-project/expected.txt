@@ -6,6 +6,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  rokit.toml
 
 default.rogen.json:
 {
