@@ -190,7 +190,7 @@ v1 sent unmatched files to `ReplicatedStorage`, which could leak server code to 
 
 ### Modes and Profiles
 
-A v1 mode changed which files a build had and where Rojo read them. In v2 it is a second complete file beside `default.rogen.json`: `dist.rogen.json` writes `dist.project.json`. The file repeats `name`, `routes` and `tree` and changes the keys that differ. Nothing is inherited, so a change to the routes is made in each file, and `rogen list` shows how every file differs from `default`.
+A v1 mode changed which files a build had and where Rojo read them. In v2 it is a second complete file beside `default.rogen.json`: `dist.rogen.json` writes `dist.project.json`. The file repeats `name`, `routes` and `tree` and changes the keys that differ. Nothing is inherited, so a change to the routes is made in each file.
 
 ```json title="dist.rogen.json"
 {

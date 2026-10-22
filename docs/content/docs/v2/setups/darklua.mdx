@@ -24,7 +24,7 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 
 Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, pins Darklua with your toolchain manager, and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
 
-`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A config repeats what it needs and reads no other file, so a change to `routes` or `tree` goes into both. `rogen list` shows how `dist.rogen.json` differs from `default.rogen.json`.
+`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A config repeats what it needs and reads no other file, so a change to `routes` or `tree` goes into both.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">

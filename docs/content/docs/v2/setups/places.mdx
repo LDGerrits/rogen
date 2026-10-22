@@ -185,7 +185,7 @@ rbxtsc needs a project file beside the `tsconfig.json`, so run `rogen build proj
 
 ## More Files in a Place
 
-A place that needs a second output has its own second file, as a single project does. A Darklua place has a `dist` config and a place with tests a `release` config: `game.dist.rogen.json` and `game.release.rogen.json` beside `game.rogen.json` for a root-level place, `dist.rogen.json` and `release.rogen.json` in the folder of a place in `projects/`. Each is a complete file: it repeats `name`, `routes` and `tree`, and adds what differs, and it lists the source paths again. `rogen list` shows how each differs from the default. `rogen build game.release -o game.rbxl` builds that place's release, and `rogen serve game.dist.rogen.json` serves its Darklua output. See the [Darklua guide](/docs/v2/setups/darklua#darklua-with-places).
+A place that needs a second output has its own second file, as a single project does. A Darklua place has a `dist` config and a place with tests a `release` config: `game.dist.rogen.json` and `game.release.rogen.json` beside `game.rogen.json` for a root-level place, `dist.rogen.json` and `release.rogen.json` in the folder of a place in `projects/`. Each is a complete file: it repeats `name`, `routes` and `tree`, and adds what differs, and it lists the source paths again. `rogen build game.release -o game.rbxl` builds that place's release, and `rogen serve game.dist.rogen.json` serves its Darklua output. See the [Darklua guide](/docs/v2/setups/darklua#darklua-with-places).
 
 <Callout type="info">
 	A place file is an ordinary config. `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are Rojo keys that go at its top level, like `name`.
