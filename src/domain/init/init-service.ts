@@ -4,6 +4,8 @@ import { createServiceIdentifier } from "../../platform/instantiation/instantiat
 import { PlannedFile } from "../toolchain/toolchain.js";
 
 export interface NextSteps {
+	/** The folder `init` set up, relative to the one it ran in, which every step runs from; left out when that is the same folder. */
+	readonly directory?: string;
 	readonly setup: readonly string[];
 	readonly run: readonly string[];
 	readonly edits: readonly string[];

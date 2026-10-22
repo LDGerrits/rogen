@@ -1,0 +1,6 @@
+{
+	"steps": [
+		["init", "game", "--non-interactive", "--skip-git", "--places", "--darklua"]
+	],
+	"output": ["init"]
+}
