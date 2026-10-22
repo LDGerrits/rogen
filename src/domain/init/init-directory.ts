@@ -9,7 +9,6 @@ import {
 	DEFAULT_PROJECT_FILE,
 	DEFAULT_SOURCE_PATH,
 	isConfigFileName,
-	isDefaultConfigFileName,
 	sourcePathOverlap,
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
@@ -41,7 +40,7 @@ export class InitDirectory {
 	}
 
 	get configFiles(): string[] {
-		return [...this.entries].filter(isDefaultConfigFileName).sort();
+		return [...this.entries].filter(isConfigFileName).sort();
 	}
 
 	/** The `*.project.json` files here other than `except`, which init does not lift. */
@@ -67,7 +66,7 @@ export class InitDirectory {
 					? errorDiagnostic(
 							"init.configExists",
 							{ resource: path.join(this.path, fileName) },
-							`this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules or the agent hook to this project, see ${DOCS_URL}/agents; to set Rojo up, see ${DOCS_URL}/installation.`
+							`this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, see ${DOCS_URL}/agents; to set Rojo up, see ${DOCS_URL}/installation.`
 						)
 					: errorDiagnostic(
 							"init.fileExists",

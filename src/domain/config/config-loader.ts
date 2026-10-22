@@ -1,5 +1,6 @@
 import { Disposable, toDisposable } from "../../base/disposable.js";
-import { Result, err } from "../../base/result.js";
+import path from "path";
+import { Result, err, tryWithAsync } from "../../base/result.js";
 import {
 	ConfigFile,
 	ConfigFileReader,
@@ -8,9 +9,17 @@ import {
 	Diagnostic,
 	DiagnosticLocation,
 } from "../../platform/diagnostics/diagnostic.js";
-import { FileReader } from "../../platform/fs/file-system-service.js";
+import {
+	FileReader,
+	isFileType,
+} from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
-import { ROGEN_BLOCK } from "./config.js";
+import {
+	ROGEN_BLOCK,
+	isConfigFileName,
+	isProjectFileConfig,
+} from "./config.js";
+import { FolderConfig, folderClashes } from "./folder-clashes.js";
 import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
@@ -27,7 +36,7 @@ export class ConfigLoader {
 	private readonly reader: ConfigFileReader;
 	private readonly fileChecks = new Set<ConfigFileCheck>();
 
-	constructor(fileSystemService: FileReader) {
+	constructor(private readonly fileSystemService: FileReader) {
 		this.reader = new ConfigFileReader(fileSystemService, configStructure);
 	}
 
@@ -36,8 +45,41 @@ export class ConfigLoader {
 		return toDisposable(() => this.fileChecks.delete(check));
 	}
 
-	/** Never throws for a problem the user can cause. */
+	/** Never throws for a problem the user can cause. A config that copies another of its folder fails, and is reloaded when that one changes. */
 	async load(file: string): Promise<LoadedConfig> {
+		const loaded = await this.loadFile(file);
+		if (loaded.resolved.isErr() || isProjectFileConfig(file)) return loaded;
+		const siblings = await this.siblingsOf(file);
+		const clashes = folderClashes(
+			{ config: loaded.resolved.value.config, value: loaded.value },
+			siblings
+		);
+		const files = [...loaded.files, ...siblings.map((s) => s.config.file)];
+		return clashes.length > 0
+			? { files, value: loaded.value, resolved: err(clashes) }
+			: { ...loaded, files };
+	}
+
+	/** The configs beside `file` that load. */
+	private async siblingsOf(file: string): Promise<FolderConfig[]> {
+		const folder = path.dirname(file);
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(folder)
+		);
+		if (listing.isErr()) return [];
+		const siblings: FolderConfig[] = [];
+		for (const [name, type] of listing.value) {
+			const other = path.join(folder, name);
+			if (!isFileType(type) || !isConfigFileName(name) || other === file)
+				continue;
+			const { resolved, value } = await this.loadFile(other);
+			if (resolved.isOk())
+				siblings.push({ config: resolved.value.config, value });
+		}
+		return siblings;
+	}
+
+	private async loadFile(file: string): Promise<LoadedConfig> {
 		const loaded = await this.reader.read(file);
 		if (loaded.isErr()) {
 			const failure = loaded.error;
