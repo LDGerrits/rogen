@@ -7,10 +7,10 @@ stdout:
 $ rogen where places/arena/src/Rules.luau places/lobby/src/Main.server.luau
 exit 0
 stdout:
-  Arena: places/arena/src/Rules.luau -> ReplicatedStorage/Shared/Rules · route * (fallback)
-    Arena: require(game:GetService("ReplicatedStorage").Shared.Rules)
-  Lobby: places/lobby/src/Main.server.luau -> ServerScriptService/Main · route server (suffix)
-    Lobby: no require by this path: a script runs on its own and is not a module
+  places/arena/default.rogen.json: places/arena/src/Rules.luau -> ReplicatedStorage/Shared/Rules · route * (fallback)
+    places/arena/default.rogen.json: require(game:GetService("ReplicatedStorage").Shared.Rules)
+  places/lobby/default.rogen.json: places/lobby/src/Main.server.luau -> ServerScriptService/Main · route server (suffix)
+    places/lobby/default.rogen.json: no require by this path: a script runs on its own and is not a module
 
 $ rogen where places/shared/src/Common/Util.luau
 exit 0

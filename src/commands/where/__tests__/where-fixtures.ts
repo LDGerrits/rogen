@@ -32,7 +32,7 @@ export const answersOf = (
 			([label, files, instances = [], diagnostics = []]) => ({
 				config: mockConfig({
 					name: label,
-					file: `/repo/${label}/default.rogen.json`,
+					file: `/repo/${label}.rogen.json`,
 					...spec,
 				}),
 				files,
@@ -47,7 +47,7 @@ export const reportOf = (...args: Parameters<typeof answersOf>) =>
 	new WhereLog("/repo", answersOf(...args));
 
 export const documentOf = (...args: Parameters<typeof answersOf>) =>
-	whereDocument(answersOf(...args));
+	whereDocument(answersOf(...args), "/repo");
 
 export const lineOf = (location: FileLocation) =>
 	reportOf([["default", [location]]]).lines()[0];

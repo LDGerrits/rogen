@@ -169,6 +169,8 @@ stdout:
                      every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a
                      config named as build reads it (game for game.rogen.json), lists every file of
                      that config.
+                   - Several configs: each answer names its config file, and so does config in the
+                     JSON.
                    - Skipped: a path no build reads gets a note on stderr, and is listed under skipped
                      in the JSON document.
                    - No path, an instance or '-': every file of the working directory's default

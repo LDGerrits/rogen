@@ -4,7 +4,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Combat/Server/Moves/Punch.luau",
         "status": "placed",
         "exists": true,
@@ -20,7 +20,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
         "exists": true,
@@ -35,7 +35,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Inventory/Server/Save.luau",
         "status": "placed",
         "exists": true,
@@ -50,7 +50,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Net/Http.mock@client.luau",
         "status": "placed",
         "exists": true,
@@ -65,7 +65,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Net/Http@client.luau",
         "status": "placed",
         "exists": true,
@@ -80,7 +80,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Net/Types.lua",
         "status": "replaced",
         "exists": true,
@@ -102,7 +102,7 @@ stdout:
         ]
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Net/Types.luau",
         "status": "placed",
         "exists": true,
@@ -118,7 +118,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Specs",
         "status": "ignored",
         "exists": true,
@@ -135,7 +135,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Net/Http.mock@client.luau",
         "status": "placed",
         "exists": true,
@@ -159,7 +159,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/Combat/Server/Moves/init.luau",
         "status": "placed",
         "exists": true,
@@ -174,7 +174,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "instance": "ReplicatedStorage/Shared/Nope",
         "status": "noFile",
         "folders": [

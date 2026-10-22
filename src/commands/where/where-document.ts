@@ -1,5 +1,5 @@
 import { unescapedGlob } from "../../base/glob.js";
-import { toNative } from "../../base/path.js";
+import { relativeTo, toNative } from "../../base/path.js";
 import {
 	FileLocation,
 	requireExpressionOf,
@@ -205,12 +205,12 @@ function fieldsOf(location: FileLocation): LocationFields {
 	}
 }
 
-function entryOf(answer: Answer): WhereEntry {
+function entryOf(answer: Answer, cwd: string): WhereEntry {
 	if (answer.kind === "file") {
 		const { location } = answer;
 		const { status, ...fields } = fieldsOf(location);
 		return {
-			config: answer.label,
+			config: relativeTo(cwd, answer.config),
 			source: toNative(location.source),
 			status,
 			exists: location.exists,
@@ -219,7 +219,7 @@ function entryOf(answer: Answer): WhereEntry {
 		} as WhereFileEntry;
 	}
 	return {
-		config: answer.label,
+		config: relativeTo(cwd, answer.config),
 		instance: answer.instance,
 		status: "noFile",
 		...(answer.folders.length > 0 && {
@@ -234,10 +234,14 @@ function entryOf(answer: Answer): WhereEntry {
 
 export function whereDocument(
 	answers: WhereAnswers,
+	cwd: string,
 	skipped: readonly SkippedPath[] = []
 ): WhereDocument {
 	return {
-		locations: answers.bySource().flat().map(entryOf),
+		locations: answers
+			.bySource()
+			.flat()
+			.map((answer) => entryOf(answer, cwd)),
 		diagnostics: answers.errors.map(diagnosticToJson),
 		...skippedJson(skipped),
 	};
