@@ -119,7 +119,9 @@ registerCommand(
 							? HelpDocument.codes(found.prefix)
 							: HelpDocument.code(found.code)
 				);
-			logService.print(pages.textOf(found));
+			logService.print(
+				pages.textOf(found, line.shortHelp ? "short" : "long")
+			);
 			return ok(undefined);
 		}
 	}

@@ -34,6 +34,7 @@ import {
 } from "../../../platform/environment/args.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { Registry } from "../../../platform/registry/registry.js";
+import { firstSentence } from "../help-pages.js";
 import { helpTexts } from "../help-texts.js";
 
 const flagText = (option: OptionDescriptor) =>
@@ -276,12 +277,11 @@ describe("help command", () => {
 			expect(printed()).not.toContain("SUBCOMMANDS:");
 		});
 
-		it("should print the same for 'help build', 'build --help' and 'build -h'", async () => {
+		it("should print the same for 'help build' and 'build --help'", async () => {
 			const texts: string[] = [];
 			for (const argv of [
 				["help", "build"],
 				["build", "--help"],
-				["build", "-h"],
 			]) {
 				info.mockClear();
 				const { command, line } = parseCommandLine(...argv).unwrap();
@@ -290,7 +290,88 @@ describe("help command", () => {
 			}
 
 			expect(texts[1]).toBe(texts[0]);
-			expect(texts[2]).toBe(texts[0]);
+		});
+	});
+
+	describe("-h and --help", () => {
+		const helpFor = async (...argv: string[]) => {
+			info.mockClear();
+			const { command, line } = parseCommandLine(...argv).unwrap();
+			await harness.run(command, line);
+			return printed();
+		};
+
+		it("should print the first sentence of each description for -h and all of it for --help", async () => {
+			const short = await helpFor("init", "-h");
+			const long = await helpFor("init", "--help");
+
+			expect(short.split("\n").length).toBeLessThan(
+				long.split("\n").length
+			);
+			expect(short).toContain("places");
+			expect(short).toContain(
+				firstSentence(
+					registry
+						.getCommand("init")
+						?.metadata.options?.find(
+							({ name }) => name === "places"
+						)?.description ?? ""
+				)
+			);
+			expect(long).toBe(await helpFor("help", "init"));
+		});
+
+		it("should end the short help with a pointer to --help, and the long help without", async () => {
+			expect(await helpFor("where", "-h")).toMatch(
+				/\n\nRun with --help for details\.$/
+			);
+			expect(await helpFor("where", "--help")).not.toContain(
+				"Run with --help"
+			);
+		});
+
+		it("should print EXIT CODES and EXAMPLES in both", async () => {
+			for (const flag of ["-h", "--help"]) {
+				const text = await helpFor("where", flag);
+				expect(text).toContain("EXIT CODES:");
+				expect(text).toContain("EXAMPLES:");
+			}
+		});
+
+		it("should fit 'where -h' in one screen", async () => {
+			expect(
+				(await helpFor("where", "-h")).split("\n").length
+			).toBeLessThanOrEqual(30);
+		});
+
+		it("should print the long help when --help is given as well as -h", async () => {
+			expect(await helpFor("init", "-h", "--help")).toBe(
+				await helpFor("init", "--help")
+			);
+		});
+
+		it("should open every option's description with a sentence that stands alone", () => {
+			const described = [
+				...GlobalOptions,
+				...[...registry.getCommands().values()].flatMap((command) => [
+					...(command.metadata.options ?? []),
+					...(command.metadata.args ?? []).flatMap((arg) => [
+						arg,
+						...(arg.subcommands ?? []),
+					]),
+				]),
+			];
+
+			const unfit = described
+				.map(({ name, description }) => ({
+					name,
+					first: firstSentence(description),
+				}))
+				.filter(
+					({ first }) => !first.endsWith(".") || first.length >= 100
+				);
+
+			expect(unfit).toEqual([]);
 		});
 	});
 

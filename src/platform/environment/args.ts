@@ -90,6 +90,8 @@ export interface CommandLine<
 	readonly positionals: readonly string[];
 	/** Everything after the first `--`, as typed, which no command takes. */
 	readonly passthrough?: readonly string[];
+	/** Whether help was asked for with `-h` alone, which prints the short form. */
+	readonly shortHelp?: true;
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }
 
@@ -283,6 +285,14 @@ export function parseArgs(
 				: []
 		);
 		const { runs, names, consumesWord } = commandOf(values, positionals);
+		const helpRawNames = tokens.flatMap((token) =>
+			token.kind === "option" && token.name === "help"
+				? [token.rawName]
+				: []
+		);
+		const shortHelp =
+			helpRawNames.length > 0 &&
+			helpRawNames.every((rawName) => rawName === "-h");
 
 		if (commands.includes(names)) {
 			const problem = findOptionProblem(
@@ -306,6 +316,7 @@ export function parseArgs(
 				positionals: consumesWord
 					? positionals.slice(1)
 					: positionals.slice(0, 1),
+				...(shortHelp && { shortHelp: true as const }),
 				...(terminator && {
 					passthrough: typed.slice(terminator.index + 1),
 				}),
