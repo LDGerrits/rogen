@@ -31,6 +31,11 @@ stdout:
                                after an edit inside a file under the source paths. Press Ctrl+C to
                                stop; --json prints one JSON object per line.
   
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
+  
   EXAMPLES:
       rogen build
       rogen build places/lobby
@@ -92,8 +97,8 @@ stdout:
     ],
     "exitCodes": {
       "0": "done (warnings included)",
-      "1": "the project has errors",
-      "2": "the command line is wrong"
+      "1": "the project has a problem: an error, or Rojo failing",
+      "2": "the command line is wrong, or a terminal is needed and there is none"
     },
     "output": {
       "document": "{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}",
@@ -131,6 +136,11 @@ stdout:
       -q, --quiet            Only print errors.
       -v, --verbose          Print debug output; -vv, trace output. (repeatable)
       -V, --version          Print the version.
+  
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
       rogen help where

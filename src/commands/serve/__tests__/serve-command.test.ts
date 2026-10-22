@@ -13,10 +13,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import {
-	ExitCodeError,
-	ReportedError,
-} from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../platform/commands/commands.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -214,7 +211,7 @@ describe("serve command", () => {
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 	});
 
-	it("should exit with the server's code when it stops on its own", async () => {
+	it("should exit 1 when the server stops on its own with an error", async () => {
 		const result = serve();
 		await settle();
 
@@ -222,8 +219,7 @@ describe("serve command", () => {
 		const error = await failureOf(result);
 
 		expect(error).toBeInstanceOf(ReportedError);
-		expect((error as ReportedError).cause).toBeInstanceOf(ExitCodeError);
-		expect(exitCodeOf(error)).toBe(3);
+		expect(exitCodeOf(error)).toBe(1);
 		expect(logService.lines.slice(-2)).toEqual([
 			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)",
 			"outro: serve failed.",

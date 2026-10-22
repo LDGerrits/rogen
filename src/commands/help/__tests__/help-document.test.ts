@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { UsageError } from "../../../base/errors.js";
+import { ExitCodes, UsageError } from "../../../base/errors.js";
 import { ResultError } from "../../../base/result.js";
 import {
 	CommandRegistry,
@@ -184,6 +184,7 @@ describe("rogen help --json", () => {
 				expect.objectContaining({ "2": expect.any(String) })
 			);
 			expect(document().exitCodes["0"]).toBe("done (warnings included)");
+			expect(document().exitCodes["1"]).toBe(ExitCodes[1]);
 		});
 
 		it("should resolve the name in any case", async () => {

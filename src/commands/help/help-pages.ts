@@ -231,7 +231,9 @@ function formatCommandHelp(
 		],
 		[
 			"EXIT CODES",
-			formatColumns(Object.entries(command.metadata.exitCodes ?? {})),
+			formatColumns(
+				Object.entries({ ...ExitCodes, ...command.metadata.exitCodes })
+			),
 		],
 		["EXAMPLES", examples.map((line) => `${INDENT}${line}`)],
 	]);
