@@ -93,8 +93,17 @@ describe("help command", () => {
 			expect(
 				printed().trimEnd().split("\n\n").at(-1)?.replace(/\n/g, " ")
 			).toBe(
-				"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong. 'check' also exits 1 on a warning."
+				"Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2 the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a warning."
 			);
+		});
+
+		it("should print the version as a JSON document for --version --json", async () => {
+			await harness.run("help", {
+				positionals: [],
+				options: { version: true, json: true },
+			});
+
+			expect(JSON.parse(printed())).toEqual({ version: "2.3.4" });
 		});
 
 		it("should print the version for --version, whatever the command", async () => {
@@ -358,6 +367,16 @@ describe("help command", () => {
 				expect(text).toContain("EXIT CODES:");
 				expect(text).toContain("EXAMPLES:");
 			}
+		});
+
+		it("should list the general exit codes in every command's help, with what the command says differently", async () => {
+			const fmt = await helpFor("fmt-project", "--help");
+			const check = await helpFor("check", "--help");
+
+			for (const code of ["0", "1", "2"])
+				expect(fmt).toMatch(new RegExp(`\\n {4}${code} {4}`));
+			expect(check).toContain("no diagnostics");
+			expect(check).not.toContain("done (warnings included)");
 		});
 
 		it("should fit 'where -h' in one screen", async () => {

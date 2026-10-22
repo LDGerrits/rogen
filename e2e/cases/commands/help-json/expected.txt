@@ -235,7 +235,12 @@ stdout:
             ]
           }
         ],
-        "options": [],
+        "options": [
+          {
+            "name": "json",
+            "type": "boolean"
+          }
+        ],
         "effects": [
           "writesFiles",
           "runsProcesses"
@@ -442,9 +447,9 @@ stdout:
       }
     ],
     "exitCodes": {
-      "0": "done (warnings included; check exits 1 on any)",
-      "1": "the project has errors",
-      "2": "the command line is wrong"
+      "0": "done (warnings included)",
+      "1": "the project has a problem: an error, or Rojo failing",
+      "2": "the command line is wrong, or a terminal is needed and there is none"
     },
     "errorKinds": {
       "usage": {
@@ -506,7 +511,7 @@ stdout:
     "exitCodes": {
       "0": "every path answered, one that no file places included",
       "1": "the config has errors",
-      "2": "the command line is wrong"
+      "2": "the command line is wrong, or a terminal is needed and there is none"
     },
     "output": {
       "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\",instancePath:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"mounted\",instancePath?:[string],mount:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"inProject\",project:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic],skipped?:[SkippedPath]}"
@@ -552,7 +557,7 @@ stdout:
     "exitCodes": {
       "0": "every path answered, one that no file places included",
       "1": "the config has errors",
-      "2": "the command line is wrong"
+      "2": "the command line is wrong, or a terminal is needed and there is none"
     },
     "output": {
       "document": "{locations:[{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"placed\",instancePath:[string],require?:string,alsoAt?:[[string]],route:string,routeMatch:string,hoisted?:bool}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"replaced\",by:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"extensionCase\",rename:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"blocked\",blockedBy:{file:string,code:string}}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"displaced\",instancePath:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"mounted\",instancePath?:[string],mount:[string]}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"ignored\",pattern:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"inProject\",project:string}|{config:string,source:string,exists:bool,diagnostics:[Diagnostic],status:\"unrouted\"|\"skipped\"|\"outside\"|\"notInstance\"|\"missing\"|\"empty\"}|{config:string,instance:string,status:\"noFile\",folders?:[string],fixes?:[Fix],diagnostics:[Diagnostic]}],diagnostics:[Diagnostic],skipped?:[SkippedPath]}"

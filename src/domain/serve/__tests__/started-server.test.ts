@@ -309,7 +309,6 @@ describe("StartedServer", () => {
 		expect(stops).toHaveLength(1);
 		expect(stops[0]).toMatchObject({
 			interrupted: false,
-			exitCode: 3,
 			failure: {
 				code: "serve.serverExited",
 				message:
@@ -330,14 +329,12 @@ describe("StartedServer", () => {
 		expect(stops).toHaveLength(1);
 		expect(stops[0]).toMatchObject({ interrupted: true });
 		expect(stops[0].failure).toBeUndefined();
-		expect(stops[0].exitCode).toBeUndefined();
 	});
 
 	it("should name the signal when a signal ended it", () => {
 		start().exit({ code: null, signal: "SIGKILL" });
 
 		expect(stops[0]).toMatchObject({
-			exitCode: 1,
 			failure: {
 				message: expect.stringContaining(
 					"stopped serving repo with signal SIGKILL"
@@ -352,7 +349,6 @@ describe("StartedServer", () => {
 		expect(stops).toHaveLength(1);
 		expect(stops[0]).toMatchObject({ interrupted: false });
 		expect(stops[0].failure).toBeUndefined();
-		expect(stops[0].exitCode).toBeUndefined();
 	});
 
 	it("should fail when a signal from someone else ended it", () => {
@@ -360,7 +356,6 @@ describe("StartedServer", () => {
 
 		expect(stops[0]).toMatchObject({
 			interrupted: false,
-			exitCode: 1,
 			failure: { code: "serve.serverExited" },
 		});
 	});
@@ -369,10 +364,9 @@ describe("StartedServer", () => {
 		start().exit({ code: 0xc0000005, signal: null });
 
 		expect(stops[0].failure?.message).toContain("exit code 0xC0000005");
-		expect(stops[0].exitCode).toBe(0xc0000005);
 	});
 
-	it("should fail with exit code 1 when it couldn't start", () => {
+	it("should fail when it couldn't start", () => {
 		start().exit({
 			code: null,
 			signal: null,
@@ -380,7 +374,6 @@ describe("StartedServer", () => {
 		});
 
 		expect(stops[0]).toMatchObject({
-			exitCode: 1,
 			failure: {
 				message: "Rojo couldn't start to serve repo: spawn rojo ENOENT",
 			},

@@ -38,8 +38,9 @@ stdout:
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
   help <code>' to explain a diagnostic code.
   
-  Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
-  'check' also exits 1 on a warning.
+  Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2
+  the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a
+  warning.
 
 $ rogen --help
 exit 0
@@ -81,8 +82,9 @@ stdout:
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
   help <code>' to explain a diagnostic code.
   
-  Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
-  'check' also exits 1 on a warning.
+  Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2
+  the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a
+  warning.
 
 $ rogen
 exit 2
@@ -124,5 +126,6 @@ stdout:
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
   help <code>' to explain a diagnostic code.
   
-  Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
-  'check' also exits 1 on a warning.
+  Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2
+  the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a
+  warning.

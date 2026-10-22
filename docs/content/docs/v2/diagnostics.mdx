@@ -844,7 +844,7 @@ Stop what holds the port, give the config its own `servePort` in its `.rogen.jso
 
 ### `serve.serverExited` [#serve-serverexited]
 
-Error. A server stopped on its own with a non-zero exit code, or couldn't be started. `rogen serve` then stops and exits with the server's code (1 when it has none).
+Error. A server stopped on its own with a non-zero exit code, or couldn't be started. `rogen serve` then stops and exits 1.
 
 ```
 default.rogen.json - error: Rojo stopped serving default with exit code 1; see what it said above. (serve.serverExited)
@@ -905,6 +905,16 @@ default.project.json - error: Rojo 7.6.1 has no 'syncback' command; Rojo 7.7.0 a
 Pin a newer Rojo with your toolchain manager (`rokit add rojo-rbx/rojo`), or update the one on the PATH.
 
 ## Syncback
+
+### `syncback.compiledPath` [#syncback-compiledpath]
+
+Error. The project reads compiled code from its `compiledPath`, so syncback would write into the folder a tool such as Darklua or `rbxtsc` writes, and the next compile would delete the edits. Nothing was written, in a dry run too; there is no flag to override it.
+
+```
+default.rogen.json - error: the project reads compiled code from dist; syncback would write into it and the next compile would delete the edits. Bring the changes into the source files by hand, or run syncback on a project that has no compiledPath. (syncback.compiledPath)
+```
+
+Bring the changes into the source files by hand, or run `rogen syncback` on a project that has no `compiledPath`. See [CLI](/docs/v2/cli#syncback).
 
 ### `syncback.removedFromProjectFile` [#syncback-removedfromprojectfile]
 

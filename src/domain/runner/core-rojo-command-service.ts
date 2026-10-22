@@ -1,5 +1,5 @@
 import path from "path";
-import { UsageError } from "../../base/errors.js";
+import { ToolError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
 import { errorDiagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
@@ -122,7 +122,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 			...(ran.failure && {
 				failure: ran.refusedArguments
 					? new UsageError(ran.failure)
-					: new Error(ran.failure),
+					: new ToolError(ran.failure),
 			}),
 		});
 	}

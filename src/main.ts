@@ -1,12 +1,16 @@
 import path from "path";
 import { DisposableStore } from "./base/disposable.js";
 import { UsageError, setUnexpectedErrorHandler } from "./base/errors.js";
+import { err } from "./base/result.js";
 import {
 	CommandRegistry,
 	CommandService,
 	Extensions,
 } from "./platform/commands/commands.js";
-import { CommandFailure } from "./platform/commands/command-failure.js";
+import {
+	CommandFailure,
+	exitCode,
+} from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import {
 	ColorOption,
@@ -167,18 +171,18 @@ class RogenMain {
 		const failure = new CommandFailure(logService, json);
 
 		if (argsResult.isErr()) {
-			process.exitCode = failure.finish(argsResult.error);
+			failure.report(argsResult.error);
+			process.exitCode = exitCode(argsResult);
 			return;
 		}
 		const { command, line, bare } = argsResult.value;
 		if (cwd === undefined && command !== HELP_COMMAND) {
-			process.exitCode = failure.finish(
-				new UsageError(
-					"The current folder no longer exists.",
-					"cd to one that does, then run rogen again."
-				),
-				command
+			const gone = new UsageError(
+				"The current folder no longer exists.",
+				"cd to one that does, then run rogen again."
 			);
+			failure.report(gone, command);
+			process.exitCode = exitCode(err(gone));
 			return;
 		}
 
@@ -212,11 +216,8 @@ class RogenMain {
 				throw error;
 			});
 
-		process.exitCode = result.isErr()
-			? failure.finish(result.error, command)
-			: bare
-				? 2
-				: 0;
+		if (result.isErr()) failure.report(result.error, command);
+		process.exitCode = exitCode(result, { bare });
 		if (!notice.printedFirst) await notice.print();
 	}
 
@@ -279,6 +280,7 @@ class RogenMain {
 		);
 		services.set(ConfigService, configService);
 		disposables.add(configService.registerFileCheck(LegacyConfig.check));
+		disposables.add(configService.registerFolderCheck(LegacyConfig.find));
 		const toolchainService = new CoreToolchainService(fileSystemService);
 		services.set(ToolchainService, toolchainService);
 		const buildService = new CoreBuildService(
@@ -300,7 +302,8 @@ class RogenMain {
 				environmentService,
 				toolchainService,
 				processService,
-				toolLocator
+				toolLocator,
+				configService
 			)
 		);
 		const watchService = new CoreWatchService(

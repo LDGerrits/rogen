@@ -3,7 +3,7 @@ import { AbstractDisposable } from "../../base/disposable.js";
 import { ErrorUtils, onUnexpectedError } from "../../base/errors.js";
 import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
-import { Diagnostic, isError } from "../../platform/diagnostics/diagnostic.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { isWritten } from "../build/build.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -134,10 +134,6 @@ export class CoreServeSession
 		const first = await this.firstUpdate.p;
 		if (!first || this.stopping) return ok(undefined);
 		if (first instanceof Error) return err(first);
-		const errors = first.reports.flatMap(({ build }) =>
-			build.diagnostics.filter(isError)
-		);
-		if (errors.length > 0) return err(new DiagnosticsError(errors));
 		const incompatible = await this.compatibility.problemsIn(
 			this.plan.executable,
 			first.reports.flatMap(({ build }) =>
@@ -150,6 +146,10 @@ export class CoreServeSession
 			return err(refusal);
 		}
 		const { target } = this.plan;
+		if (!this.writtenConfigs.has(target.config.id)) {
+			this.launched = true;
+			return ok(undefined);
+		}
 		if (!isServed(target)) {
 			await this.endOrphanOf(target);
 			if (this.stopping) return ok(undefined);

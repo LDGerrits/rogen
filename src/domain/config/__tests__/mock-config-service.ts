@@ -207,6 +207,10 @@ export class MockConfigService implements ConfigService {
 		return ok(false);
 	}
 
+	async staleConfigsIn(): Promise<readonly Diagnostic[]> {
+		return [];
+	}
+
 	registerFileCheck(_check: ConfigFileCheck): Disposable {
 		return { [Symbol.dispose]: () => {} };
 	}

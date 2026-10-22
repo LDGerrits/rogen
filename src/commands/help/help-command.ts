@@ -68,6 +68,8 @@ registerCommand(
 
 			if (line.options.version) {
 				const version = await productService.readVersion();
+				if (line.options.json)
+					return this.printJson(logService, { version });
 				logService.print(`rogen ${version}`);
 				return ok(undefined);
 			}

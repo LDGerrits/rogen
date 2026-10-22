@@ -100,13 +100,16 @@ const codesShape = S.object({ codes: S.array(codeBriefShape) });
 
 const topicShape = S.object({ topic: S.string, text: S.string });
 
-/** The document of `help --json`: the commands, one command in full, one diagnostic code, the list of codes, or one topic. */
+const versionShape = S.object({ version: S.string });
+
+/** The document of `help --json`: the commands, one command in full, one diagnostic code, the list of codes, one topic, or with `--version` the version alone. */
 export const helpDocumentShape = S.union(
 	overviewShape,
 	detailShape,
 	codeShape,
 	codesShape,
-	topicShape
+	topicShape,
+	versionShape
 );
 
 const optionBrief = ({
@@ -175,10 +178,7 @@ export const HelpDocument = {
 				effects: effectsOf(command),
 			})),
 			globalOptions: GlobalOptions.map(optionBrief),
-			exitCodes: {
-				...ExitCodes,
-				0: "done (warnings included; check exits 1 on any)",
-			},
+			exitCodes: ExitCodes,
 			errorKinds: ErrorKinds,
 		};
 	},

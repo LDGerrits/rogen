@@ -229,6 +229,10 @@ The block is loaded in every session, so it holds only what an agent gets wrong 
 2. **`rogen doc <topic>`**, between 400 and 2,400 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.
 
+## Exit codes
+
+Every command ends with `0` (done, warnings included), `1` (the project has a problem, or Rojo failed; `rogen check` also exits 1 on any warning) or `2` (the command line is wrong, or a terminal is needed and there is none), with the same meaning under `--json`. A command that Ctrl+C or SIGTERM ends exits 130 or 143, as the shell reports it. [The table](/docs/v2/cli#exit-codes) is in the reference.
+
 ## When a terminal counts as an agent's
 
 Rogen asks nothing when it thinks a program is on the other end: with `CI`, `AGENT` or `AI_AGENT` set, or a variable an agent's harness sets for its commands (`CLAUDECODE` for Claude Code, `CODEX_SANDBOX` for Codex, `CURSOR_AGENT`, `GEMINI_CLI`, …), a real terminal counts as non-interactive. `init` takes its defaults, and `syncback` writes nothing without `-y` (or lists what it would do with `--dry-run`) and exits 2, so an agent that runs it by hand in a terminal needs the flag too. The full list of variables is under [Output](/docs/v2/cli#output).

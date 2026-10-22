@@ -225,12 +225,7 @@ registerCommand(
 					return stop ? ok(undefined) : this.stoppedBy(lifecycle);
 				}
 				log.end("serve failed.");
-				return this.reported(
-					new ExitCodeError(
-						stop.exitCode,
-						new DiagnosticsError([stop.failure])
-					)
-				);
+				return this.reported(new DiagnosticsError([stop.failure]));
 			} finally {
 				await session.stop();
 				store[Symbol.dispose]();
