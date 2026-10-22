@@ -9,7 +9,6 @@ import {
 	InitPlan,
 	InitWritten,
 	NextSteps,
-	PresentItem,
 } from "../../domain/init/init-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ReportedError } from "../../platform/commands/commands.js";
@@ -45,15 +44,6 @@ export const initDocumentShape = S.object({
 		})
 	),
 	directories: S.array(S.string),
-	present: S.optional(
-		S.array(
-			S.object({
-				item: S.enum("agentRules", "agentHook", "rojo"),
-				file: S.string,
-				state: S.enum("present"),
-			})
-		)
-	),
 	git: S.optional(S.enum("initialised", "wouldInitialise", "failed")),
 	commands: S.optional(
 		S.array(
@@ -89,7 +79,6 @@ export const initDocumentShape = S.object({
 /** A choice as the flags that make it, so the line can be copied: `--no-darklua`, `--route server --route client`. */
 function flagsOf({ question, value, flag }: InitDecision): string[] {
 	if (question === "skipGit") return value === true ? [flag] : [];
-	if (question === "rojo" && typeof value === "string") return [];
 	if (typeof value === "boolean")
 		return [value ? flag : flag.replace("--", "--no-")];
 	if (typeof value === "string") return [`${flag} ${value}`];
@@ -128,23 +117,6 @@ const foundBy = (build: ConfigBuild): Diagnostic[] => [
 	...build.warnings,
 	...build.errors,
 ];
-
-/** A run that wrote nothing because the project has what it would add. */
-const nothingToAdd = (plan: InitPlan) =>
-	plan.files.length === 0 &&
-	plan.commands.length === 0 &&
-	plan.scaffold === undefined;
-
-const presentOf = (plan: InitPlan) =>
-	plan.present.length > 0
-		? {
-				present: plan.present.map(({ item, file }) => ({
-					item,
-					file: path.join(plan.directory, file),
-					state: "present" as const,
-				})),
-			}
-		: {};
 
 const warningsOf = (plan: InitPlan) =>
 	plan.warnings.length > 0
@@ -187,21 +159,10 @@ export class InitLog implements InitReporter {
 		for (const note of plan.notes) this.logService.info(note);
 		for (const warning of plan.warnings)
 			this.logService.diagnostic(warning);
-		for (const item of plan.present)
-			this.logService.info(this.alreadyThere(item));
 		if (plan.decided.length > 0)
 			this.logService.info(
 				`Took the defaults: ${plan.decided.flatMap(flagsOf).join(", ")}.`
 			);
-	}
-
-	private alreadyThere({ item, file }: PresentItem): string {
-		const shown = this.shown(file);
-		return item === "agentRules"
-			? `${shown} already has Rogen's rules.`
-			: item === "agentHook"
-				? `The hook is already in ${shown}.`
-				: `Rojo is already pinned in ${shown}.`;
 	}
 
 	written(written: InitWritten): void {
@@ -252,9 +213,7 @@ export class InitLog implements InitReporter {
 
 	planned(plan: InitPlan): Result<void, Error> {
 		this.logService.outro(
-			nothingToAdd(plan)
-				? "Nothing to add."
-				: `Would write ${plural(plan.files.length, "file")}. Nothing was written.`
+			`Would write ${plural(plan.files.length, "file")}. Nothing was written.`
 		);
 		return ok(undefined);
 	}
@@ -276,9 +235,7 @@ export class InitLog implements InitReporter {
 		const steps = stepLines(plan.nextSteps);
 		if (steps.length > 0) this.logService.step("Next steps");
 		for (const line of steps) this.logService.info(line);
-		this.logService.outro(
-			nothingToAdd(plan) ? "Nothing to add." : `Wrote ${files}.`
-		);
+		this.logService.outro(`Wrote ${files}.`);
 		return ok(undefined);
 	}
 }
@@ -295,11 +252,6 @@ interface InitDocument {
 	readonly dryRun?: true;
 	readonly files: readonly InitFile[];
 	readonly directories: readonly string[];
-	readonly present?: readonly {
-		readonly item: PresentItem["item"];
-		readonly file: string;
-		readonly state: "present";
-	}[];
 	readonly git?: "initialised" | "wouldInitialise" | "failed";
 	readonly commands?: readonly {
 		readonly command: string;
@@ -384,7 +336,6 @@ export class InitJsonLog implements InitReporter {
 	planned(plan: InitPlan): Result<void, Error> {
 		return this.print({
 			...this.writtenSoFar(),
-			...presentOf(plan),
 			notes: plan.notes,
 			...warningsOf(plan),
 			nextSteps: plan.nextSteps,
@@ -399,7 +350,6 @@ export class InitJsonLog implements InitReporter {
 				...written,
 				changed: written.changed || built.changed,
 				built: built.configs,
-				...presentOf(plan),
 				notes: plan.notes,
 				...warningsOf(plan),
 				nextSteps: plan.nextSteps,

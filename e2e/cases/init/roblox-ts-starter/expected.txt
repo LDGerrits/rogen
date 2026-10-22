@@ -14,17 +14,19 @@ stdout:
   Created src/Greeter/client/Greeter.client.ts.
   Created README.md.
   Created AGENTS.md.
+  Created rokit.toml.
   Initialised a git repository.
   default.project.json · wrote
   Next steps
-    Rojo isn't installed, and rogen serve needs it. Run 'rogen init --rojo' to install Rokit and Rojo, or install Rokit yourself (curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash), then run 'rokit init' and 'rokit add rojo-rbx/rojo@7.7.1' here.
+    Install Rokit with 'curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash' (https://github.com/rojo-rbx/rokit), then run 'rokit install' here.
+    Run 'rogen plugin install' to install Rojo's Studio plugin.
     Run each in its own terminal:
       npm run watch
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in default.rogen.json.
     Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
-  Wrote 7 files.
+  Wrote 8 files.
 
 $ rogen where src/Greeter/server/Greeter.server.ts
 exit 0
@@ -42,6 +44,7 @@ written:
   default.project.json
   default.rogen.json
   package.json
+  rokit.toml
   src/Greeter/client/Greeter.client.ts
   src/Greeter/server/Greeter.server.ts
   src/Greeter/shared/Greeting.ts
@@ -100,7 +103,6 @@ For more help, check out [the Rogen documentation](https://rogen-playfully.verce
 
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "project",
   "tree": {
     "$className": "DataModel",

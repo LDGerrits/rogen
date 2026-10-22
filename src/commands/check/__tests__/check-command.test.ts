@@ -379,6 +379,94 @@ describe("check command", () => {
 		});
 	});
 
+	describe("with root-level places", () => {
+		beforeEach(async () => {
+			for (const place of ["game", "lobby"])
+				await writeConfig(`${place}.rogen.json`, {
+					name: place,
+					rogen: {
+						sourcePaths: ["src/common", `src/${place}`],
+						routes: ROUTES,
+					},
+				});
+			await write(
+				"src/common/Stray@sever.luau",
+				"src/game/Buy@sever.luau",
+				"src/lobby/Clean.luau"
+			);
+		});
+
+		it("should check a file of a place by the config that holds it", async () => {
+			const result = await run({ _: ["src/game/Buy@sever.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "src/game/Buy@sever.luau"],
+			]);
+		});
+
+		it("should check a shared file by every config that holds it, and report it once", async () => {
+			const result = await run({ _: ["src/common/Stray@sever.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "src/common/Stray@sever.luau"],
+			]);
+		});
+
+		it("should check a file that does not exist yet", async () => {
+			await write("src/common/New@sever.luau");
+
+			const result = await run({ _: ["src/common/New@sever.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "src/common/New@sever.luau"],
+			]);
+		});
+
+		it("should skip a file that no config holds with a note, and pass", async () => {
+			await write("tools/Stray@sever.luau");
+
+			const result = await run({ _: ["tools/Stray@sever.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(logService.texts("warn")).toHaveLength(1);
+		});
+
+		it("should check a folder by every config that holds some of it", async () => {
+			const result = await run({ _: ["src"] });
+
+			expect(
+				new Set(found(failureOf(result)).map(([, file]) => file))
+			).toEqual(
+				new Set([
+					"src/common/Stray@sever.luau",
+					"src/game/Buy@sever.luau",
+				])
+			);
+		});
+
+		it("should leave a nearer default config to answer, as for any file", async () => {
+			await writeConfig("src/lobby/default.rogen.json", {
+				rogen: { sourcePaths: ["."], routes: ROUTES },
+			});
+			await write("src/lobby/Sell@sever.luau");
+
+			const result = await run({ _: ["src/lobby/Sell@sever.luau"] });
+
+			expect(found(failureOf(result))).toEqual([
+				["route.strayAt", "src/lobby/Sell@sever.luau"],
+			]);
+		});
+
+		it("should name the configs a bare check can't choose between", async () => {
+			const result = await run({});
+
+			expect(result.isErr()).toBe(true);
+			expect((result as { error: Error }).error.message).toContain(
+				"It holds game.rogen.json, lobby.rogen.json."
+			);
+		});
+	});
+
 	describe("without paths", () => {
 		beforeEach(async () => {
 			await writeConfig("default.rogen.json", {

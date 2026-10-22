@@ -2,78 +2,47 @@ $ rogen init --non-interactive --skip-git --places --darklua
 exit 0
 stdout:
   rogen init
-  Wrote the Greeter sample: the feature in places/shared/src, which every place shares, and Game in places/game/src. Pass --no-sample for empty source folders.
+  Wrote the Greeter sample: the feature in src/common, which every place shares, and Game in src/game. Pass --no-sample for empty source folders.
   Took the defaults: --kind place, --language luau, --compiled-path dist, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
-  Created places/game/default.rogen.json.
-  Created places/game/dist.rogen.json.
-  Created places/game/release.rogen.json.
-  Created places/shared/default.rogen.json.
-  Created places/game/.darklua.json.
-  Created places/shared/src/Greeter/Shared/Greeting.luau.
-  Created places/shared/src/Greeter/Server/Greeter.server.luau.
-  Created places/shared/src/Greeter/Client/Greeter.client.luau.
-  Created places/game/src/Game/Server/Game.server.luau.
+  Created game.rogen.json.
+  Created game.dist.rogen.json.
+  Created game.release.rogen.json.
+  Created .darklua.json.
+  Created src/common/Greeter/Shared/Greeting.luau.
+  Created src/common/Greeter/Server/Greeter.server.luau.
+  Created src/common/Greeter/Client/Greeter.client.luau.
+  Created src/game/Game/Server/Game.server.luau.
   Created README.md.
-  Created project.code-workspace.
+  Created .vscode/settings.json.
   Created AGENTS.md.
-  places/game/default.project.json · wrote
-  places/shared/default.project.json · wrote
+  game.project.json · wrote
   Next steps
     Run each in its own terminal:
-      cd places/game && darklua process ../shared/src dist/shared/src --watch
-      cd places/game && darklua process src dist/game/src --watch
-      rogen serve places/game/dist.rogen.json
+      darklua process src/common dist/common --watch
+      darklua process src/game dist/game --watch
+      rogen serve game.dist.rogen.json
     In Studio, press Connect in the Rojo plugin.
-    Add your own routes under "routes" in places/game/default.rogen.json.
-    Edit places/game/default.rogen.json and leave places/game/default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build places/game' so the editor's places/game/default.project.json follows.
-    Open the workspace with 'code project.code-workspace', as VS Code does not open a workspace file by itself. Each place is a workspace folder, so luau-lsp reads each place's own sourcemap.
-    Add another place with 'rogen init places/lobby', and serve it from a second terminal with its own --port: 'rogen serve places/lobby --port <port>'.
-    Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: cd places/game && rogen sourcemap --watch -o sourcemap.json
-  Wrote 12 files.
-
-$ rogen init places/lobby --non-interactive
-exit 0
-stdout:
-  rogen init
-  Copied the routes and tree of places/game.
-  Created places/lobby/default.rogen.json.
-  Created places/lobby/dist.rogen.json.
-  Created places/lobby/release.rogen.json.
-  Created places/lobby/.darklua.json.
-  Added places/lobby to project.code-workspace.
-  Created places/lobby/src/.
-  places/lobby/default.project.json · wrote
-  Next steps
-    Run each in its own terminal:
-      cd places/lobby && darklua process ../shared/src dist/shared/src --watch
-      cd places/lobby && darklua process src dist/lobby/src --watch
-      rogen serve places/lobby/dist.rogen.json
-    In Studio, press Connect in the Rojo plugin.
-    Put the code of lobby in places/lobby/src. A second place is served from a second terminal with its own --port: 'rogen serve places/lobby/dist.rogen.json --port <port>'.
-  Wrote 5 files.
+    Add your own routes under "routes" in game.rogen.json.
+    Edit game.rogen.json and leave game.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build game' so the editor's game.project.json follows.
+    luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
+    Add another place: copy game.rogen.json to lobby.rogen.json, change its "name" to lobby and its source path src/game to src/lobby, and make src/lobby. Do the same for game.dist.rogen.json, and for game.release.rogen.json if there is one, and run 'darklua process src/lobby dist/lobby --watch' beside the other darklua commands. Serve it from a second terminal with its own --port: 'rogen serve lobby.dist.rogen.json --port <port>'.
+  Wrote 11 files.
 
 written:
+  .darklua.json
+  .vscode/settings.json
   AGENTS.md
   README.md
-  places/game/.darklua.json
-  places/game/default.project.json
-  places/game/default.rogen.json
-  places/game/dist.rogen.json
-  places/game/release.rogen.json
-  places/game/src/Game/Server/Game.server.luau
-  places/lobby/.darklua.json
-  places/lobby/default.project.json
-  places/lobby/default.rogen.json
-  places/lobby/dist.rogen.json
-  places/lobby/release.rogen.json
-  places/shared/default.project.json
-  places/shared/default.rogen.json
-  places/shared/src/Greeter/Client/Greeter.client.luau
-  places/shared/src/Greeter/Server/Greeter.server.luau
-  places/shared/src/Greeter/Shared/Greeting.luau
-  project.code-workspace
+  game.dist.rogen.json
+  game.project.json
+  game.release.rogen.json
+  game.rogen.json
+  src/common/Greeter/Client/Greeter.client.luau
+  src/common/Greeter/Server/Greeter.server.luau
+  src/common/Greeter/Shared/Greeting.luau
+  src/game/Game/Server/Game.server.luau
 
-places/game/.darklua.json:
+.darklua.json:
 {
 	"rules": [
 		{
@@ -90,9 +59,8 @@ places/game/.darklua.json:
 	]
 }
 
-places/game/default.rogen.json:
+game.dist.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",
@@ -144,74 +112,8 @@ places/game/default.rogen.json:
   },
   "rogen": {
     "sourcePaths": [
-      "../shared/src",
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
-    }
-  }
-}
-
-places/game/dist.rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "game",
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
-    },
-    "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "../shared/src",
-      "src"
+      "src/common",
+      "src/game"
     ],
     "routes": {
       "Server": "ServerScriptService",
@@ -223,9 +125,8 @@ places/game/dist.rogen.json:
   }
 }
 
-places/game/release.rogen.json:
+game.release.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "game",
   "tree": {
     "$className": "DataModel",
@@ -280,8 +181,8 @@ places/game/release.rogen.json:
   ],
   "rogen": {
     "sourcePaths": [
-      "../shared/src",
-      "src"
+      "src/common",
+      "src/game"
     ],
     "routes": {
       "Server": "ServerScriptService",
@@ -293,10 +194,9 @@ places/game/release.rogen.json:
   }
 }
 
-places/lobby/default.rogen.json:
+game.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "lobby",
+  "name": "game",
   "tree": {
     "$className": "DataModel",
     "Lighting": {
@@ -347,162 +247,9 @@ places/lobby/default.rogen.json:
   },
   "rogen": {
     "sourcePaths": [
-      "../shared/src",
-      "src"
+      "src/common",
+      "src/game"
     ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
-    }
-  }
-}
-
-places/lobby/dist.rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "lobby",
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
-    },
-    "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
-    }
-  },
-  "rogen": {
-    "sourcePaths": [
-      "../shared/src",
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
-    },
-    "compiledPath": "dist"
-  }
-}
-
-places/lobby/release.rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "name": "lobby",
-  "tree": {
-    "$className": "DataModel",
-    "Lighting": {
-      "$properties": {
-        "Ambient": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "Brightness": 2.0,
-        "GlobalShadows": true,
-        "Outlines": false,
-        "Technology": "Voxel"
-      }
-    },
-    "SoundService": {
-      "$properties": {
-        "RespectFilteringEnabled": true
-      }
-    },
-    "Workspace": {
-      "Baseplate": {
-        "$className": "Part",
-        "$properties": {
-          "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
-          "Position": [
-            0.0,
-            -10.0,
-            0.0
-          ],
-          "Size": [
-            512.0,
-            20.0,
-            512.0
-          ]
-        }
-      },
-      "$properties": {
-        "FilteringEnabled": true
-      }
-    }
-  },
-  "globIgnorePaths": [
-    "**/*.spec.luau"
-  ],
-  "rogen": {
-    "sourcePaths": [
-      "../shared/src",
-      "src"
-    ],
-    "routes": {
-      "Server": "ServerScriptService",
-      "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
-    },
-    "compiledPath": "dist"
-  }
-}
-
-places/shared/default.rogen.json:
-{
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
-  "tree": {
-    "$className": "DataModel"
-  },
-  "rogen": {
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",

@@ -354,51 +354,6 @@ describe("ConfigDiscovery", () => {
 		});
 	});
 
-	describe("every config of the folder", () => {
-		it("should list each config file, with no default needed", async () => {
-			await fs.writeFile("/repo/dist.rogen.json", "{}");
-			await fs.writeFile("/repo/release.rogen.jsonc", "{}");
-			await fs.writeFile("/repo/README.md", "");
-
-			const found = (await discovery.discoverFolder()).unwrap();
-
-			expect(found).toEqual({
-				home: "/repo",
-				files: ["/repo/dist.rogen.json", "/repo/release.rogen.jsonc"],
-				noneNamed: false,
-				notes: [],
-			});
-		});
-
-		it("should fall back to the default project file when there is no config", async () => {
-			await fs.writeFile("/repo/default.project.json", "{}");
-
-			const found = (await discovery.discoverFolder()).unwrap();
-
-			expect(found.files).toEqual(["/repo/default.project.json"]);
-		});
-
-		it("should fail like a bare command when there is nothing", async () => {
-			const result = await discovery.discoverFolder();
-
-			expect(errorOf(result).message).toContain(
-				"No default.rogen.json or default.project.json in this folder"
-			);
-		});
-
-		it("should fail when a stem has both extensions", async () => {
-			await fs.writeFile("/repo/default.rogen.json", "{}");
-			await fs.writeFile("/repo/dist.rogen.json", "{}");
-			await fs.writeFile("/repo/dist.rogen.jsonc", "{}");
-
-			const result = await discovery.discoverFolder();
-
-			expect(errorOf(result).message).toBe(
-				"/repo holds both dist.rogen.json and dist.rogen.jsonc; keep one."
-			);
-		});
-	});
-
 	describe("with configs named", () => {
 		beforeEach(async () => {
 			await fs.createDirectory("/repo/places/lobby");
@@ -673,6 +628,48 @@ describe("ConfigDiscovery.coverOf", () => {
 			file: "/repo/default.rogen.json",
 			whole: false,
 		});
+	});
+});
+
+describe("ConfigDiscovery.namedConfigsAbove", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo/src/game");
+		await fs.createDirectory("/repo/tools");
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/lobby.rogen.jsonc", "{}");
+		await fs.writeFile("/repo/default.rogen.json", "{}");
+		await fs.writeFile("/repo/src/game/extra.rogen.json", "{}");
+		await fs.writeFile("/repo/tools/tool.rogen.json", "{}");
+		await fs.writeFile("/repo/src/game/Main.luau", "");
+	});
+
+	const above = (target: string) =>
+		new ConfigDiscovery(
+			fs,
+			new MockEnvironmentService("/repo")
+		).namedConfigsAbove(target);
+
+	it("should list the named configs of the folder and of each folder above, nearest first, and no default", async () => {
+		expect(await above("/repo/src/game/Main.luau")).toEqual([
+			"/repo/src/game/extra.rogen.json",
+			"/repo/game.rogen.json",
+			"/repo/lobby.rogen.jsonc",
+		]);
+	});
+
+	it("should start at a folder itself", async () => {
+		expect(await above("/repo/tools")).toEqual([
+			"/repo/tools/tool.rogen.json",
+			"/repo/game.rogen.json",
+			"/repo/lobby.rogen.jsonc",
+		]);
+	});
+
+	it("should list none when no folder above holds one", async () => {
+		expect(await above("/elsewhere/A.luau")).toEqual([]);
 	});
 });
 

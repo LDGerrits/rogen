@@ -22,9 +22,9 @@ This guide assumes Darklua reads `src` and writes `dist`. With roblox-ts, it rea
 <Step>
 ### Create the Config
 
-Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, pins Darklua with your toolchain manager, and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
+Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua processes your code. With `--darklua` and no `.darklua.json`, it writes one, writes Darklua's pin into your toolchain file (you run `rokit install` to get it), and lists the compiled path in the `.gitignore` it creates. It never edits a `.gitignore` that exists: if that one doesn't list the compiled path, `init` tells you the line to add.
 
-`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A config repeats what it needs and reads no other file, so a change to `routes` or `tree` goes into both. `rogen list` shows how `dist.rogen.json` differs from `default.rogen.json`.
+`init` writes `dist.rogen.json` for a new project only. To add Darklua to one you already set up, copy `default.rogen.json` to `dist.rogen.json`, give it a `name` (a file other than `default` needs one) and add `"compiledPath": "dist"` to its `rogen` block, then write `.darklua.json` yourself. A config repeats what it needs and reads no other file, so a change to `routes` or `tree` goes into both.
 
 <Tabs items={["Luau", "roblox-ts"]} groupId="language" persist>
   <Tab value="Luau">
@@ -32,7 +32,6 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 
     ```json title="dist.rogen.json"
     {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"name": "Game",
     	"rogen": {
     		"sourcePaths": ["src"],
@@ -52,7 +51,6 @@ Run `rogen init`. It spots your `.darklua.json` and asks whether Darklua process
 
     ```json title="dist.rogen.json"
     {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"name": "Game",
     	"tree": {
     		"$className": "DataModel",
@@ -160,26 +158,30 @@ rogen build release -o game.rbxl
 
 ## Darklua with Places
 
-A repository with [several places](/docs/v2/setups/places) gives each place its own `dist.rogen.json` and its own `.darklua.json`, since Darklua reads its config and `sourcemap.json` from the folder it runs in. Shared code is compiled once per place, into the place's own compiled path, which repeats the layout of its source paths (`dist/shared/src` and `dist/game/src`):
+A repository with [several places](/docs/v2/setups/places) gives each place its own dist config: `game.dist.rogen.json` beside `game.rogen.json` for Luau, with one `.darklua.json` at the root, or `projects/game/dist.rogen.json` and its own `.darklua.json` for a place in `projects/`, since Darklua reads its config from the folder it runs in. Common code is compiled once per place, into the place's own compiled path, which repeats the layout of its source paths (`dist/common` and `dist/game` in Luau):
 
-```json title="places/game/dist.rogen.json"
+```json title="game.dist.rogen.json"
 {
 	"name": "game",
 	"rogen": {
-		"sourcePaths": ["../shared/src", "src"],
+		"sourcePaths": ["src/common", "src/game"],
 		"routes": { "Server": "ServerScriptService", "*": "ReplicatedStorage/Shared" },
 		"compiledPath": "dist"
 	}
 }
 ```
 
-So a place has two `darklua process` commands, one for the shared folder and one for its own source, both run from the place's folder. `init --places --darklua` prints them:
+So a place has two `darklua process` commands, one for the common folder and one for its own source. `init --places --darklua` prints them:
 
 ```
 Run each in its own terminal:
-  cd places/game && darklua process ../shared/src dist/shared/src --watch
-  cd places/game && darklua process src dist/game/src --watch
-  rogen serve places/game/dist.rogen.json
+  darklua process src/common dist/common --watch
+  darklua process src/game dist/game --watch
+  rogen serve game.dist.rogen.json
 ```
+
+In roblox-ts they run from the place's folder, as `cd projects/game && darklua process out dist --watch`.
+
+A Luau place added later copies `game.dist.rogen.json` (and `game.release.rogen.json`) to `lobby.dist.rogen.json`, with `name` and the source path `src/game` changed as in its own config, and needs only `darklua process src/lobby dist/lobby --watch`, since the common code is processed already. A roblox-ts place copies its folder, `dist.rogen.json`, `release.rogen.json` and `.darklua.json` included (see [roblox-ts with Places](/docs/v2/setups/places#roblox-ts-with-places)).
 
 Another place is a second terminal set with its own `--port`.

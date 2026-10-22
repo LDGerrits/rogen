@@ -117,34 +117,6 @@ stdout:
     }
   }
 
-$ rogen init --json
-exit 0
-stdout:
-  {
-    "changed": false,
-    "files": [],
-    "directories": [],
-    "built": [],
-    "present": [
-      {
-        "item": "agentRules",
-        "file": "<dir>/AGENTS.md",
-        "state": "present"
-      },
-      {
-        "item": "rojo",
-        "file": "<dir>/rokit.toml",
-        "state": "present"
-      }
-    ],
-    "notes": [],
-    "nextSteps": {
-      "setup": [],
-      "run": [],
-      "edits": []
-    }
-  }
-
 written:
   .git/
   .gitignore
@@ -158,7 +130,6 @@ written:
 
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel",
     "Lighting": {

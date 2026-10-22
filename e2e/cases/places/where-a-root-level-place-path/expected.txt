@@ -1,0 +1,70 @@
+$ rogen where src/game/Server/Match.server.luau
+exit 0
+stdout:
+  src/game/Server/Match.server.luau -> ServerScriptService/Match · route server (folder)
+    no require by this path: a script runs on its own and is not a module
+
+$ rogen where src/common/Util.luau
+exit 0
+stdout:
+  src/common/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)
+    require(game:GetService("ReplicatedStorage").Shared.Util)
+
+$ rogen where src/common/Hud.client.luau src/lobby/Server/Queue.server.luau
+exit 0
+stdout:
+  Game: src/common/Hud.client.luau -> StarterPlayer/StarterPlayerScripts/Hud · route client (suffix)
+  Lobby: src/common/Hud.client.luau -> StarterGui/Hud · route client (suffix)
+    Game: no require by this path: a script runs on its own and is not a module
+    Lobby: no require by this path: a script runs on its own and is not a module
+  Lobby: src/lobby/Server/Queue.server.luau -> ServerScriptService/Queue · route server (folder)
+    Lobby: no require by this path: a script runs on its own and is not a module
+
+$ rogen where src/common/Util.luau --json
+exit 0
+stdout:
+  {
+    "locations": [
+      {
+        "config": "Game",
+        "source": "<dir>/src/common/Util.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "Shared",
+          "Util"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.Util",
+        "route": "*",
+        "routeMatch": "fallback",
+        "diagnostics": []
+      },
+      {
+        "config": "Lobby",
+        "source": "<dir>/src/common/Util.luau",
+        "status": "placed",
+        "exists": true,
+        "instancePath": [
+          "ReplicatedStorage",
+          "Shared",
+          "Util"
+        ],
+        "require": "game:GetService(\"ReplicatedStorage\").Shared.Util",
+        "route": "*",
+        "routeMatch": "fallback",
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  }
+
+$ rogen where README.md
+exit 0
+stderr:
+  warning: README.md: no config covers this file; see where it lands through a place: rogen where places/lobby
+
+$ rogen where
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds game.rogen.json, lobby.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json.

@@ -363,6 +363,90 @@ describe("where command", () => {
 		});
 	});
 
+	describe("with root-level places", () => {
+		beforeEach(async () => {
+			for (const place of ["game", "lobby"])
+				await writeConfig(`${place}.rogen.json`, {
+					name: place,
+					rogen: {
+						sourcePaths: ["src/common", `src/${place}`],
+						routes: ROUTES,
+					},
+				});
+			await write(
+				"src/common/Util.luau",
+				"src/game/Server/Main.luau",
+				"src/lobby/Server/Main.luau"
+			);
+		});
+
+		it("should answer a file of a place by the config that holds it", async () => {
+			const result = await run({ _: ["src/game/Server/Main.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/game/Server/Main.luau -> ServerScriptService/Main · route Server (folder)",
+			]);
+		});
+
+		it("should print a shared file once when every config places it alike", async () => {
+			const result = await run({ _: ["src/common/Util.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([
+				"src/common/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+			]);
+		});
+
+		it("should head a shared file's line with each config that places it apart", async () => {
+			await writeConfig("lobby.rogen.json", {
+				name: "lobby",
+				rogen: {
+					sourcePaths: ["src/common", "src/lobby"],
+					routes: { "*": "ReplicatedFirst" },
+				},
+			});
+
+			await run({ _: ["src/common/Util.luau"] });
+
+			expect(printed()).toEqual([
+				"game: src/common/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)",
+				"lobby: src/common/Util.luau -> ReplicatedFirst/Util · route * (fallback)",
+			]);
+		});
+
+		it("should give one entry per config for a shared file in the JSON document", async () => {
+			await run({ _: ["src/common/Util.luau"], json: true });
+
+			const { locations } = JSON.parse(printed().join("\n")) as {
+				locations: { config: string; source: string }[];
+			};
+			expect(
+				locations.map(({ config, source }) => [config, source])
+			).toEqual([
+				["game", "/repo/src/common/Util.luau"],
+				["lobby", "/repo/src/common/Util.luau"],
+			]);
+		});
+
+		it("should skip a file that no config holds with a note, and succeed", async () => {
+			const result = await run({ _: ["tools/Run.luau"] });
+
+			expect(result.isOk()).toBe(true);
+			expect(printed()).toEqual([]);
+			expect(logService.texts("warn")).toHaveLength(1);
+		});
+
+		it("should name the configs a bare where can't choose between", async () => {
+			const result = await run({});
+
+			expect(result.isErr()).toBe(true);
+			expect((result as { error: Error }).error.message).toContain(
+				"It holds game.rogen.json, lobby.rogen.json."
+			);
+		});
+	});
+
 	describe("the require of a named file", () => {
 		const notes = () => logService.texts("note");
 

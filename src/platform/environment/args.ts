@@ -88,7 +88,7 @@ export interface CommandLine<
 	O extends readonly OptionDescriptor[] = readonly OptionDescriptor[],
 > {
 	readonly positionals: readonly string[];
-	/** Everything after the first `--`, as typed; only a command that declares `passthrough` gets any. */
+	/** Everything after the first `--`, as typed, which no command takes. */
 	readonly passthrough?: readonly string[];
 	readonly options: OptionValues<O> & OptionValues<typeof GlobalOptions>;
 }

@@ -10,6 +10,7 @@ import { ServerExecutable } from "./rojo-runner.js";
 
 const BROKEN = RojoVersion.of("7.7.0");
 const FIXED = RojoVersion.of("7.7.1");
+const SYNC_RULES_SINCE = RojoVersion.of("7.5.0");
 const NEGATION_SINCE = RojoVersion.of("7.7.0");
 const NOTHING = { syncRules: [], patterns: [], ignored: [] };
 
@@ -26,8 +27,7 @@ export class RojoCompatibility {
 	): Promise<Diagnostic[]> {
 		const version = RojoVersion.parse(executable.version);
 		if (!version) return [];
-		const { name } = executable.server;
-		const noRules = version.isBefore(executable.server.syncRulesSince);
+		const noRules = version.isBefore(SYNC_RULES_SINCE);
 		const brokenOnWindows = this.windows && isBroken(version);
 		const noNegation = version.isBefore(NEGATION_SINCE);
 		if (!noRules && !brokenOnWindows && !noNegation) return [];
@@ -39,7 +39,7 @@ export class RojoCompatibility {
 					errorDiagnostic(
 						"rojo.syncRulesUnsupported",
 						{ resource: file },
-						`${name} ${version} does not read "syncRules" before ${executable.server.syncRulesSince}, and this file has ${project.syncRules.length}. Change your ${name} pin to ${executable.server.syncRulesSince} or later, or update the ${name} on the PATH.`
+						`Rojo ${version} does not read "syncRules" before ${SYNC_RULES_SINCE}, and this file has ${project.syncRules.length}. Change your Rojo pin to ${SYNC_RULES_SINCE} or later, or update the Rojo on the PATH.`
 					)
 				);
 			const negated = noNegation
@@ -50,7 +50,7 @@ export class RojoCompatibility {
 					errorDiagnostic(
 						"rojo.negationUnsupported",
 						{ resource: file },
-						`${name} ${version} reads no "!" glob before ${NEGATION_SINCE}, so it ignores what this file's ${negated.length} re-include${negated.length === 1 ? "s" : ""}: ${negated.map((glob) => `"${glob}"`).join(", ")}. Change your ${name} pin to ${NEGATION_SINCE} or later, or update the ${name} on the PATH.`
+						`Rojo ${version} reads no "!" glob before ${NEGATION_SINCE}, so it ignores what this file's ${negated.length} re-include${negated.length === 1 ? "s" : ""}: ${negated.map((glob) => `"${glob}"`).join(", ")}. Change your Rojo pin to ${NEGATION_SINCE} or later, or update the Rojo on the PATH.`
 					)
 				);
 			const outside = brokenOnWindows
@@ -63,7 +63,7 @@ export class RojoCompatibility {
 					errorDiagnostic(
 						"rojo.windowsRules",
 						{ resource: file },
-						`${name} ${version} on Windows applies no sync rule or ignore glob that starts with "../", and this file has ${outside.length}: ${outside.map((pattern) => `"${pattern}"`).join(", ")}. ${name} ${FIXED} fixed it: change your ${name} pin, or update the ${name} on the PATH.`
+						`Rojo ${version} on Windows applies no sync rule or ignore glob that starts with "../", and this file has ${outside.length}: ${outside.map((pattern) => `"${pattern}"`).join(", ")}. Rojo ${FIXED} fixed it: change your Rojo pin, or update the Rojo on the PATH.`
 					)
 				);
 		}

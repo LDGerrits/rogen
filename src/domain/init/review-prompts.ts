@@ -87,17 +87,6 @@ export class ReviewPrompts {
 							initialValue: initial ?? options.initialValue,
 						})
 				),
-			autocomplete: <T extends string>(options: SelectPromptOptions<T>) =>
-				this.answer<T>(
-					options.message,
-					essential,
-					(options.initialValue ?? options.choices[0].value) as T,
-					(initial) =>
-						this.real.autocomplete({
-							...options,
-							initialValue: initial ?? options.initialValue,
-						})
-				),
 			multiSelect: <T extends string>(
 				options: MultiSelectPromptOptions<T>
 			) =>

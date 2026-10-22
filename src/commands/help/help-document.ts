@@ -77,9 +77,6 @@ const detailShape = S.object({
 	description: S.string,
 	args: S.array(S.object({ ...argFields, description: S.string })),
 	options: S.array(S.object({ ...optionFields, description: S.string })),
-	passthrough: S.optional(
-		S.object({ name: S.string, description: S.string })
-	),
 	effects: S.array(S.enum(...EFFECTS)),
 	examples: S.array(S.string),
 	exitCodes: S.record(S.string),
@@ -185,12 +182,7 @@ export const HelpDocument = {
 
 	/** One command in full: its arguments and options with their prose, examples and the shape of what it prints. */
 	command(command: Command) {
-		const {
-			options = [],
-			examples = [],
-			output,
-			passthrough,
-		} = command.metadata;
+		const { options = [], examples = [], output } = command.metadata;
 		const shapes = output
 			? OutputNotation.shapesOf(output, failureShape)
 			: {};
@@ -206,7 +198,6 @@ export const HelpDocument = {
 				...optionBrief(option),
 				description: option.description,
 			})),
-			...(passthrough && { passthrough }),
 			effects: effectsOf(command),
 			examples,
 			exitCodes: { ...ExitCodes, ...command.metadata.exitCodes },

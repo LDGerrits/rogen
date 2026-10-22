@@ -1,7 +1,4 @@
 {
-	"steps": [
-		["init", "--json"],
-		["init", "--json"]
-	],
+	"steps": [["init", "--json"]],
 	"rojo": false
 }

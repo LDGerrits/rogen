@@ -1,5 +1,5 @@
 import path from "path";
-import { JSONSchema } from "../../base/json-schema.js";
+import { JsonStructure } from "../../base/json-structure.js";
 import { joinPosix, stemOf } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -293,7 +293,7 @@ export interface RojoMetaFields {
 
 const BYTE_ORDER_MARK = "\uFEFF";
 
-const META_SCHEMA: JSONSchema = {
+const META_STRUCTURE: JsonStructure = {
 	type: "object",
 	// Rojo ignores fields it doesn't know, such as `$schema`.
 	properties: {
@@ -326,13 +326,13 @@ export class RojoMeta {
 					"starts with a byte order mark, which Rojo can't read, so it refuses the project. Save the file as UTF-8 without one."
 				),
 			]);
-		const document = RojoMeta.documents.read(text, file, META_SCHEMA);
+		const document = RojoMeta.documents.read(text, file, META_STRUCTURE);
 		if (document.isErr()) return err(document.error);
 
 		const { root, value } = document.value;
 		const unreadable = unreadableMetaValues(root, file);
 		if (unreadable.length > 0) return err(unreadable);
-		const known = Object.keys(META_SCHEMA.properties ?? {});
+		const known = Object.keys(META_STRUCTURE.properties ?? {});
 		return ok({
 			fields: Object.fromEntries(
 				known

@@ -1,16 +1,21 @@
 {
 	"steps": [
-		["init", "--non-interactive", "--skip-git", "--places", "--darklua"],
-		["init", "places/lobby", "--non-interactive"]
+		[
+			"init",
+			"--non-interactive",
+			"--skip-git",
+			"--places",
+			"--darklua"
+		]
 	],
 	"rojo": false,
 	"show": [
 		".gitignore",
-		"places/game/.darklua.json",
-		"places/game/dist.rogen.json",
-		"places/game/release.rogen.json",
-		"places/lobby/dist.rogen.json",
-		"places/lobby/release.rogen.json"
+		".darklua.json",
+		"game.dist.rogen.json",
+		"game.release.rogen.json"
 	],
-	"output": ["init"]
+	"output": [
+		"init"
+	]
 }

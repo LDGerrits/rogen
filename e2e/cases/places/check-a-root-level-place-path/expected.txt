@@ -1,0 +1,48 @@
+$ rogen check src/game/Server/Match@sever.luau
+exit 1
+stdout:
+  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check src/common/Stray@sever.luau
+exit 1
+stdout:
+  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check src/common/Stray@sever.luau --json
+exit 1
+stdout:
+  {
+    "diagnostics": [
+      {
+        "file": "<dir>/src/common/Stray@sever.luau",
+        "severity": "warning",
+        "code": "route.strayAt",
+        "message": "did you mean \"@server\"?",
+        "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+        "fixes": [
+          {
+            "rename": {
+              "from": "<dir>/src/common/Stray@sever.luau",
+              "to": "<dir>/src/common/Stray@server.luau"
+            }
+          }
+        ]
+      }
+    ]
+  }
+
+$ rogen check src
+exit 1
+stdout:
+  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check README.md
+exit 0
+stderr:
+  warning: README.md: no config covers this file; check it through a place: rogen check places/lobby
+
+$ rogen check
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds game.rogen.json, lobby.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json.

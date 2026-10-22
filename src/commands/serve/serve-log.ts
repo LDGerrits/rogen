@@ -9,7 +9,7 @@ import {
 	ServerReadyEvent,
 	isServed,
 } from "../../domain/serve/serve-service.js";
-import { ServerInfo, SyncServer } from "../../domain/runner/sync-server.js";
+import { RojoServer, ServerInfo } from "../../domain/runner/rojo-server.js";
 import { WatchUpdate } from "../../domain/watch/watch-service.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
@@ -79,7 +79,7 @@ export const serveLineShape = S.union(
 	})
 );
 
-const serverOf = (info: ServerInfo) => `${info.server.name} ${info.version}`;
+const serverOf = (info: ServerInfo) => `Rojo ${info.version}`;
 
 export interface ServeReporter {
 	begin(): void;
@@ -94,9 +94,6 @@ export interface ServeReporter {
 	abort(error: Error): void;
 	end(message: string): void;
 }
-
-const serverFor = (target: ServeTarget, plan: ServePlan): SyncServer =>
-	target.servedBy?.server ?? plan.executable.server;
 
 const RETIRED_BECAUSE = {
 	removed: "its config is gone",
@@ -132,12 +129,7 @@ export class ServeLog implements ServeReporter {
 	}
 
 	said(said: ServerOutputEvent): void {
-		reportServerOutput(
-			this.logService,
-			this.plan.executable.server.name,
-			said.message,
-			this.cwd
-		);
+		reportServerOutput(this.logService, said.message, this.cwd);
 	}
 
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
@@ -153,7 +145,7 @@ export class ServeLog implements ServeReporter {
 		if (failure) this.logService.diagnostic(failure);
 		else if (!interrupted)
 			this.logService.info(
-				`${serverFor(target, this.plan).name} stopped serving ${target.config.label}.`
+				`Rojo stopped serving ${target.config.label}.`
 			);
 	}
 
@@ -221,12 +213,9 @@ export class ServeJsonLog implements ServeReporter {
 	}
 
 	said(said: ServerOutputEvent): void {
-		const { plan } = this;
 		const { target, message } = said;
 		if (message.severity === "debug") {
-			this.logService.debug(
-				`${plan.executable.server.name}: ${message.text}`
-			);
+			this.logService.debug(`Rojo: ${message.text}`);
 			return;
 		}
 		this.line({
@@ -318,7 +307,7 @@ export class ServeJsonLog implements ServeReporter {
 	} {
 		return {
 			config: target.config.label,
-			server: serverFor(target, this.plan).id,
+			server: RojoServer.COMMAND,
 		};
 	}
 
@@ -329,14 +318,14 @@ export class ServeJsonLog implements ServeReporter {
 	): Record<string, unknown> {
 		return {
 			config: target.config.label,
-			server: info.server.id,
+			server: RojoServer.COMMAND,
 			version: info.version,
 			project: info.project,
 			host: target.address.host,
 			port: target.address.port,
 			...(info.session && { session: info.session }),
 			reportsConnections:
-				!alreadyRunning && info.server.reportsConnections(info.version),
+				!alreadyRunning && RojoServer.reportsConnections(info.version),
 			...(alreadyRunning && { alreadyRunning }),
 		};
 	}

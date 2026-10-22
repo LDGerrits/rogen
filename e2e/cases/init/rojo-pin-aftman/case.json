@@ -1,5 +1,6 @@
 {
 	"steps": [["init", "--non-interactive", "--skip-git", "--no-sample"]],
 	"rojo": false,
+	"show": ["aftman.toml"],
 	"tools": { "aftman": "" }
 }

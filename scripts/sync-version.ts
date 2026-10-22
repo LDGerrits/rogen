@@ -14,11 +14,6 @@ export interface VersionedFile {
 
 export const VERSIONED_FILES: readonly VersionedFile[] = [
 	{
-		path: "src/domain/config/config.ts",
-		pattern: /(schemaUrlFor\(")([^"]+)("\))/g,
-		stableOnly: false,
-	},
-	{
 		path: "docs/content/docs/v2/installation.mdx",
 		pattern: /(ldgerrits\/rogen@)([^"]+)(")/g,
 		stableOnly: true,

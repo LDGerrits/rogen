@@ -1,9 +1,0 @@
-$ rogen list
-exit 1
-stdout:
-  rogen list
-  default.rogen.json
-  list failed.
-stderr:
-  default.rogen.json:4:39 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  error: 1 config has errors.

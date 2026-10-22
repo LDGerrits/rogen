@@ -12,10 +12,15 @@ You can install Rogen with **Rokit** or **npm**.
 <Callout type="info">
 	Rogen only writes the project file. The syncing is done by
 	[Rojo](https://github.com/rojo-rbx/rojo), so you'll need it too, with its
-	Studio plugin. `rogen init` sets both up: it pins Rojo with the toolchain
-	manager it finds (Rokit, Aftman or Foreman), or offers to install Rokit
-	first, and offers to install the plugin. It installs nothing without a Yes
-	or `--rojo`. `rogen serve` starts the Rojo your project pins, else the one
+	Studio plugin. `rogen init` in a new project writes Rojo's pin into your
+	toolchain file (`rokit.toml`, `aftman.toml` or `foreman.toml`, else a new
+	`rokit.toml`) and installs nothing: run `rokit install` (or `aftman
+	install`, `foreman install`), then `rogen plugin install`. With no manager
+	on the machine, `init` prints the Rokit installer's command for you to run.
+	In a project that has a config, `init` does not run: pin Rojo with your
+	manager (`rokit add rojo-rbx/rojo`, or `aftman add rojo-rbx/rojo`; Foreman
+	has no add command, so add it to `foreman.toml`), install it, and run
+	`rogen plugin install`. `rogen serve` starts the Rojo your project pins, else the one
 	on the PATH, and checks its version first: sync rules need Rojo 7.5.0 or
 	newer. To use Argon instead, see [Studio](/docs/v2/studio#serve-with-argon).
 </Callout>

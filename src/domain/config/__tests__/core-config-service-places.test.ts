@@ -226,7 +226,7 @@ describe("CoreConfigService selectCovering", () => {
 	});
 });
 
-describe("CoreConfigService coverOf", () => {
+describe("CoreConfigService coversOf", () => {
 	useConfigFixture();
 
 	beforeEach(async () => {
@@ -243,17 +243,15 @@ describe("CoreConfigService coverOf", () => {
 	});
 
 	it("should skip a plain project file inside the source paths of a config above it", async () => {
-		expect(await service.coverOf("/repo/src/pkg/init.luau")).toEqual({
-			file: "/repo/default.rogen.json",
-			whole: false,
-		});
+		expect(await service.coversOf("/repo/src/pkg/init.luau")).toEqual([
+			{ file: "/repo/default.rogen.json", whole: false },
+		]);
 	});
 
 	it("should keep a plain project file outside every source path above it", async () => {
-		expect(await service.coverOf("/repo/tools/run.luau")).toEqual({
-			file: "/repo/tools/default.project.json",
-			whole: false,
-		});
+		expect(await service.coversOf("/repo/tools/run.luau")).toEqual([
+			{ file: "/repo/tools/default.project.json", whole: false },
+		]);
 	});
 
 	it("should group a path under the nested project with the config above it", async () => {
@@ -270,18 +268,103 @@ describe("CoreConfigService coverOf", () => {
 		await write("/repo/dist.rogen.json", { name: "Dist" });
 		await write("/repo/dist.project.json", { name: "Dist" });
 
-		expect(await service.coverOf("/repo/dist.project.json")).toEqual({
-			file: "/repo/dist.rogen.json",
-			whole: true,
-		});
+		expect(await service.coversOf("/repo/dist.project.json")).toEqual([
+			{ file: "/repo/dist.rogen.json", whole: true },
+		]);
 	});
 
 	it("should cover an existing project file path with no config beside it as itself, whole", async () => {
 		await write("/repo/gone.project.json", { name: "Gone" });
 
-		expect(await service.coverOf("/repo/gone.project.json")).toEqual({
-			file: "/repo/gone.project.json",
-			whole: true,
+		expect(await service.coversOf("/repo/gone.project.json")).toEqual([
+			{ file: "/repo/gone.project.json", whole: true },
+		]);
+	});
+});
+
+describe("CoreConfigService coversOf named configs", () => {
+	useConfigFixture();
+
+	const place = (name: string, sourcePaths: string[]) =>
+		write(`/repo/${name}.rogen.json`, {
+			name,
+			rogen: { sourcePaths, routes: ROUTES },
 		});
+
+	beforeEach(async () => {
+		for (const folder of ["common", "game", "lobby"])
+			await fs.createDirectory(`/repo/src/${folder}`);
+		await place("game", ["src/common", "src/game"]);
+		await place("lobby", ["src/common", "src/lobby"]);
+		await start();
+	});
+
+	const filesOf = async (target: string) =>
+		(await service.coversOf(target)).map(({ file }) => file);
+
+	it("should take the one named config whose source paths hold the file", async () => {
+		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
+			"/repo/game.rogen.json",
+		]);
+	});
+
+	it("should take every named config that holds a shared file, whether or not it exists yet", async () => {
+		expect(await filesOf("/repo/src/common/New/Util.luau")).toEqual([
+			"/repo/game.rogen.json",
+			"/repo/lobby.rogen.json",
+		]);
+	});
+
+	it("should take every config that has a source path inside a folder", async () => {
+		expect(await filesOf("/repo/src")).toEqual([
+			"/repo/game.rogen.json",
+			"/repo/lobby.rogen.json",
+		]);
+		expect(await filesOf("/repo/src/lobby")).toEqual([
+			"/repo/lobby.rogen.json",
+		]);
+	});
+
+	it("should cover nothing for a file in no source path", async () => {
+		expect(await filesOf("/repo/README.md")).toEqual([]);
+		expect(await filesOf("/repo/src/other/A.luau")).toEqual([]);
+	});
+
+	it("should prefer a default config at or above the file to the named ones", async () => {
+		await write("/repo/src/game/default.rogen.json", { name: "Inner" });
+
+		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
+			"/repo/src/game/default.rogen.json",
+		]);
+	});
+
+	it("should keep a config that is broken, since its source paths can't be told", async () => {
+		await write("/repo/lobby.rogen.json", { rogen: { routes: 3 } });
+
+		expect(await filesOf("/repo/src/game/Main.luau")).toEqual([
+			"/repo/game.rogen.json",
+			"/repo/lobby.rogen.json",
+		]);
+	});
+
+	it("should put a target in the group of each config that covers it", async () => {
+		const covered = (
+			await service.selectCovering([
+				"/repo/src/common/Util.luau",
+				"/repo/src/lobby/Main.luau",
+				"/repo/README.md",
+			])
+		).unwrap();
+
+		expect(
+			covered.groups.map(({ selection, indexes }) => [
+				selection.entries[0].file,
+				indexes,
+			])
+		).toEqual([
+			["/repo/game.rogen.json", [0]],
+			["/repo/lobby.rogen.json", [0, 1]],
+		]);
+		expect(covered.uncovered).toEqual([2]);
 	});
 });

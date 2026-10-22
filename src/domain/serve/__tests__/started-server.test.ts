@@ -8,7 +8,6 @@ import {
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
-import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ServeAddress } from "../serve.js";
 import {
@@ -44,7 +43,7 @@ describe("StartedServer", () => {
 	};
 	const plan = new ServePlan(
 		new MockConfigSelection(),
-		{ server: SyncServer.ROJO, file: "/bin/rojo", version: "7.7.1" },
+		{ file: "/bin/rojo", version: "7.7.1" },
 		target,
 		["--port", "34872"]
 	);
@@ -130,16 +129,14 @@ describe("StartedServer", () => {
 	describe("as Studio plugins connect", () => {
 		const websocket = (what: string) =>
 			`[DEBUG librojo::web::api] WebSocket subscription ${what}\n`;
-		const answer = async (version = "7.7.1") => {
+		const answer = async () => {
 			requests.answer(ROJO_URL, {
 				projectName: "repo",
-				serverVersion: version,
+				serverVersion: "7.7.1",
 				sessionId: "s1",
 			});
 			await jest.advanceTimersByTimeAsync(250);
 		};
-		const clientsRecorded = async () =>
-			(await records.recordOf(target.address, served[0].info))?.clients;
 
 		it("should count the connections it is told of, and tell its listener each one", async () => {
 			const child = start();
@@ -153,17 +150,6 @@ describe("StartedServer", () => {
 			expect(connections).toEqual(["opened 1", "opened 2", "closed 1"]);
 		});
 
-		it("should keep the count in its record, from none when it answers", async () => {
-			const child = start();
-			await answer();
-			expect(await clientsRecorded()).toBe(0);
-
-			child.print(websocket("established for session s1"));
-			await jest.advanceTimersByTimeAsync(100);
-
-			expect(await clientsRecorded()).toBe(1);
-		});
-
 		it("should not count below none", async () => {
 			const child = start();
 			await answer();
@@ -172,7 +158,6 @@ describe("StartedServer", () => {
 			await jest.advanceTimersByTimeAsync(100);
 
 			expect(connections).toEqual(["closed 0"]);
-			expect(await clientsRecorded()).toBe(0);
 		});
 
 		it("should count a plugin that connected before it was seen to answer", async () => {
@@ -182,14 +167,7 @@ describe("StartedServer", () => {
 
 			await answer();
 
-			expect(await clientsRecorded()).toBe(1);
-		});
-
-		it("should record no count for a version that doesn't say who connects", async () => {
-			start();
-			await answer("7.6.1");
-
-			expect(await clientsRecorded()).toBeUndefined();
+			expect(connections).toEqual(["opened 1"]);
 		});
 
 		it("should tell nothing of connections that end because it is stopping", async () => {

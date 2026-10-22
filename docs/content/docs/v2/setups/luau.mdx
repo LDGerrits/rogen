@@ -28,14 +28,13 @@ Create this project?
             ReplicatedStorage/Shared
   Darklua   no
   Agents    rules in AGENTS.md
-  Rojo      pin Rojo 7.7.1 in rokit.toml, install the Studio plugin
+  Rojo      pin Rojo 7.7.1 in rokit.toml
   Git       .gitignore, git init
   Files     default.rogen.json, .gitignore, src/Greeter/Shared/Greeting.luau, ...
-  Runs      rokit add rojo-rbx/rojo@7.7.1, rojo plugin install
   ● Yes   ○ Customise (ask every question)   ○ Cancel
 ```
 
-The summary lists every file it will write and every command it will run, so nothing happens that wasn't shown. Customise goes through every question, each with its answer preselected, and shows the plan again. A flag answers its line before the summary, and `-y`, `--json` or a run without a terminal skip the summary and take the same defaults.
+The summary lists every file it will write and every command it will run, so nothing happens that wasn't shown. `init` writes the pin for Rojo in `rokit.toml` and installs nothing: run `rokit install` yourself. Customise goes through every question, each with its answer preselected, and shows the plan again. A flag answers its line before the summary, and `-y`, `--json` or a run without a terminal skip the summary and take the same defaults.
 
 It writes `default.rogen.json`, builds `default.project.json` from it, writes a small sample game in `src/Greeter`, adds an `AGENTS.md` that tells coding agents how the project is laid out and a `.gitignore` when there is none, starts a git repository when the folder is in none, and tells you what to do next:
 
@@ -49,9 +48,9 @@ Created README.md.
 Created AGENTS.md.
 Created rokit.toml.
 Initialised a git repository.
-Ran rokit add rojo-rbx/rojo@7.7.1.
 default.project.json · wrote
 Next steps
+  Run 'rokit install' to install Rojo.
   Run 'rogen plugin install' to install Rojo's Studio plugin.
   Run:
     rogen serve
@@ -65,7 +64,6 @@ The sample is Rogen's version of what `rojo init` writes: three hello-world scri
 
 ```json title="default.rogen.json"
 {
-	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
 	"tree": { "$className": "DataModel" },
 	"rogen": {
 		"sourcePaths": ["src"],

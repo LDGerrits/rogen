@@ -3,7 +3,7 @@ exit 1
 stderr:
   error: rogen.json in <dir> is not read any more: a config is named for the project file it writes. Rename it to default.rogen.json.
 
-$ rogen list
+$ rogen check
 exit 1
 stderr:
   error: rogen.json in <dir> is not read any more: a config is named for the project file it writes. Rename it to default.rogen.json.

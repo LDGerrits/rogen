@@ -3,7 +3,7 @@ exit 2
 stderr:
   error: <dir> holds both default.rogen.json and default.rogen.jsonc; keep one.
 
-$ rogen list
+$ rogen check
 exit 2
 stderr:
   error: <dir> holds both default.rogen.json and default.rogen.jsonc; keep one.

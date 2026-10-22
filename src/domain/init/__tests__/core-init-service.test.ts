@@ -11,7 +11,6 @@ import {
 	ACCEPT_DEFAULT,
 	CANCEL,
 	MockPromptService,
-	PromptScript,
 } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import {
@@ -22,20 +21,14 @@ import {
 	TextPromptOptions,
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
-const WHAT_TO_CHANGE = "What do you want to change?";
 const directory = path.resolve("/mock/my-game");
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
 
-const SUMMARY_QUESTIONS = [
-	"Create this project?",
-	"Make these changes?",
-	"Add this place?",
-];
+const SUMMARY_QUESTIONS = ["Create this project?"];
 
 class CustomiseFirst implements PromptService {
 	declare readonly _serviceBrand: undefined;
@@ -61,14 +54,6 @@ class CustomiseFirst implements PromptService {
 		if (SUMMARY_QUESTIONS.includes(options.message))
 			return (this.summaries++ === 0 ? "customise" : "yes") as T;
 		return this.once(options.message, () => this.inner.select(options));
-	}
-
-	autocomplete<T extends string>(
-		options: SelectPromptOptions<T>
-	): Promise<T | undefined> {
-		return this.once(options.message, () =>
-			this.inner.autocomplete(options)
-		);
 	}
 
 	text(options: TextPromptOptions): Promise<string | undefined> {
@@ -113,7 +98,6 @@ describe("CoreInitService", () => {
 			promptService,
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			new CoreConfigService(fileSystem, environmentService),
 			processes
 		);
 		return service;
@@ -157,67 +141,82 @@ describe("CoreInitService", () => {
 		});
 	});
 
-	describe("in a folder below a config", () => {
-		const nested = path.join(directory, "src", "Inventory");
+	describe("in a folder that has a config", () => {
+		const refused = async (
+			promptService: PromptService,
+			options: Parameters<CoreInitService["plan"]>[0] = {}
+		) => {
+			const result = await serviceFor(promptService).plan(options);
+			return (
+				result.isErr() &&
+				result.error instanceof DiagnosticsError &&
+				result.error.diagnostics
+			);
+		};
 
-		beforeEach(async () => {
-			await fileSystem.createDirectory(path.join(directory, "src"));
-			await fileSystem.createDirectory(nested);
+		it.each(["default.rogen.json", "default.rogen.jsonc"])(
+			"should fail with init.configExists for %s, naming where to look",
+			async (name) => {
+				await write(name, "{}");
+
+				expect(
+					await refused(new MockPromptService([]), { ask: false })
+				).toMatchObject([
+					{
+						code: "init.configExists",
+						resource: path.join(directory, name),
+						message: expect.stringContaining(
+							"https://rogen-playfully.vercel.app/docs/v2/agents"
+						),
+					},
+				]);
+			}
+		);
+
+		it("should ask nothing and plan nothing, whatever the flags ask for", async () => {
 			await write("default.rogen.json", "{}");
-		});
-
-		it("should refuse, naming the folder that has the config, when it may not ask", async () => {
-			const result = await serviceFor(undefined, nested).plan();
-
-			const message = (result as ResultError<Error>).error.message;
-			expect(message).toContain(
-				`${directory} already has default.rogen.json`
-			);
-			expect(message).toContain("run rogen from there: cd");
-		});
-
-		it("should refuse in a terminal that is told not to ask", async () => {
-			const result = await serviceFor(
-				new MockPromptService([], true),
-				nested
-			).plan({ ask: false });
-
-			expect(result.isErr()).toBe(true);
-		});
-
-		it("should ask first in a terminal, and go on when the user says yes", async () => {
-			const prompts = new MockPromptService({
-				[`${directory} already has default.rogen.json. Start a separate project here anyway?`]: true,
-			});
-
-			const result = await serviceFor(prompts, nested).plan();
-
-			expect(prompts.asked[0]).toContain("default.rogen.json");
-			expect(
-				result.unwrap()?.files.map(({ fileName }) => fileName)
-			).toContain("default.rogen.json");
-		});
-
-		it("should resolve to nothing when the user says no", async () => {
-			const prompts = new MockPromptService([false]);
-
-			const result = await serviceFor(prompts, nested).plan();
-
-			expect(result.unwrap()).toBeUndefined();
-		});
-
-		it("should not ask or refuse once the folder has a config of its own", async () => {
-			await fileSystem.writeFile(
-				path.join(nested, "default.rogen.json"),
-				"{}"
-			);
 			const prompts = new MockPromptService([]);
 
-			const result = await serviceFor(prompts, nested).plan({
+			const diagnostics = await refused(prompts, {
+				choices: { agentRules: true, agentHook: true },
+			});
+
+			expect(diagnostics).toMatchObject([{ code: "init.configExists" }]);
+			expect(prompts.asked).toEqual([]);
+		});
+
+		it("should fail for a named folder that has one", async () => {
+			await fileSystem.createDirectory(path.join(directory, "lobby"));
+			await write("lobby/default.rogen.json", "{}");
+
+			expect(
+				await refused(new MockPromptService([]), { place: "lobby" })
+			).toMatchObject([
+				{
+					code: "init.configExists",
+					resource: path.join(
+						directory,
+						"lobby",
+						"default.rogen.json"
+					),
+				},
+			]);
+		});
+
+		it("should start a project in a folder below a config, asking nothing about it", async () => {
+			const below = path.join(directory, "src", "Inventory");
+			await fileSystem.createDirectory(below);
+			await write("default.rogen.json", "{}");
+			const prompts = new MockPromptService([]);
+
+			const result = await serviceFor(prompts, below).plan({
 				ask: false,
 			});
 
-			expect(result.isOk()).toBe(true);
+			expect(prompts.asked).toEqual([]);
+			expect(
+				result.unwrap()?.files.map(({ fileName }) => fileName)
+			).toContain("default.rogen.json");
 		});
 	});
 
@@ -296,74 +295,6 @@ describe("CoreInitService", () => {
 			expect(plan?.nextSteps.edits[0]).toBe(
 				"Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules."
 			);
-		});
-
-		it("should offer it beside a config, and write only it", async () => {
-			await write("default.rogen.json", "{}");
-
-			const plan = (
-				await serviceFor(
-					askingEach(new MockPromptService([["agents"], true]))
-				).plan()
-			).unwrap();
-
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"AGENTS.md",
-			]);
-			expect(plan?.configs).toEqual([]);
-		});
-
-		it("should not add the hook beside a config when it can't ask", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", agentBlock);
-			await write(".claude/keep", "");
-
-			const plan = (await serviceFor().plan()).unwrap();
-
-			expect(plan?.files).toEqual([]);
-			expect(plan?.present).toEqual([
-				{ item: "agentRules", file: "AGENTS.md" },
-			]);
-		});
-
-		it("should add it beside a config when it can't ask, as Enter would", async () => {
-			await write("default.rogen.jsonc", "{}");
-
-			const plan = (await serviceFor().plan()).unwrap();
-
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"AGENTS.md",
-			]);
-		});
-	});
-
-	describe("what to change", () => {
-		const areasListed = async (existing: string[]) => {
-			await write("default.rogen.json", "{}");
-			for (const file of existing) await write(file);
-			const prompts = new MockPromptService([CANCEL]);
-			let values: string[] = [];
-			const original = prompts.multiSelect.bind(prompts);
-			prompts.multiSelect = ((
-				options: Parameters<typeof original>[0]
-			) => {
-				values = options.choices.map(({ value }) => value);
-				return original(options);
-			}) as typeof prompts.multiSelect;
-			await serviceFor(prompts).plan();
-			return values;
-		};
-
-		it("should offer only the additions beside a config, never its routes or paths", async () => {
-			expect(await areasListed([])).toEqual(["agents"]);
-			expect(await areasListed(["AGENTS.md"])).toEqual(["agents"]);
-		});
-
-		it("should offer the agents once their rules are there only where an agent is in use for the hook", async () => {
-			await write("AGENTS.md", agentBlock);
-
-			expect(await areasListed([])).not.toContain("agents");
-			expect(await areasListed([".claude/keep"])).toContain("agents");
 		});
 	});
 
@@ -624,20 +555,6 @@ describe("CoreInitService", () => {
 			]);
 		});
 
-		it("should list it beside default.rogen.json, and write only it", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", agentBlock);
-			await write(".claude/keep", "");
-
-			const plan = (
-				await serviceFor(
-					askingEach(new MockPromptService([["agents"], true]))
-				).plan()
-			).unwrap();
-
-			expect(names(plan)).toEqual([SCRIPT, CLAUDE]);
-		});
-
 		it("should fail rather than write over a file it can't read", async () => {
 			await write(CLAUDE, "{}");
 			jest.spyOn(fileSystem, "readFile").mockRejectedValueOnce(
@@ -667,9 +584,6 @@ describe("CoreInitService", () => {
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
 		) => plan?.files.find(({ fileName }) => fileName === name);
-		const commandsOf = (
-			plan: { commands: readonly { command: string }[] } | undefined
-		) => plan?.commands.map(({ command }) => command);
 
 		it("should write the config that converts path requires, where there is none", async () => {
 			const plan = await planWithDarklua();
@@ -776,17 +690,19 @@ describe("CoreInitService", () => {
 			expect(plan?.nextSteps.edits.join("\n")).not.toContain("sourcemap");
 		});
 
-		it("should pin it beside Rojo, and install both with the manager", async () => {
+		it("should pin it beside Rojo in one file, and name one command to install both", async () => {
 			processes.installed.delete("rojo");
 			processes.installed.set("rokit", "/bin/rokit");
 
 			const plan = await planWithDarklua();
 
-			expect(fileOf(plan, "rokit.toml")?.content).toBe("[tools]\n");
-			expect(commandsOf(plan)).toEqual([
-				"rokit add rojo-rbx/rojo@7.7.1",
-				`rokit add ${DARKLUA_PIN}`,
-			]);
+			expect(fileOf(plan, "rokit.toml")?.content).toBe(
+				`[tools]\nrojo = "rojo-rbx/rojo@7.7.1"\ndarklua = "${DARKLUA_PIN}"\n`
+			);
+			expect(plan?.commands).toEqual([]);
+			expect(plan?.nextSteps.setup[0]).toBe(
+				"Run 'rokit install' to install Rojo and Darklua."
+			);
 		});
 
 		it("should pin only Darklua when Rojo runs", async () => {
@@ -794,7 +710,12 @@ describe("CoreInitService", () => {
 
 			const plan = await planWithDarklua();
 
-			expect(commandsOf(plan)).toEqual([`rokit add ${DARKLUA_PIN}`]);
+			expect(fileOf(plan, "rokit.toml")?.content).toBe(
+				`[tools]\ndarklua = "${DARKLUA_PIN}"\n`
+			);
+			expect(plan?.nextSteps.setup).toEqual([
+				"Run 'rokit install' to install Darklua.",
+			]);
 		});
 
 		it("should pin nothing when Darklua runs or a toolchain file pins it", async () => {
@@ -810,8 +731,32 @@ describe("CoreInitService", () => {
 			await write("rokit.toml", `[tools]\ndarklua = "${DARKLUA_PIN}"\n`);
 			const pinned = await planWithDarklua();
 
-			expect(running?.commands).toEqual([]);
-			expect(pinned?.commands).toEqual([]);
+			expect(names(running)).not.toContain("rokit.toml");
+			expect(fileOf(pinned, "rokit.toml")).toBeUndefined();
+			expect(pinned?.nextSteps.setup).toEqual([]);
+		});
+
+		it("should not add a second darklua key when the file names another tool darklua", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			await write(
+				"rokit.toml",
+				'[tools]\ndarklua = "someone/fork@1.0.0"\n'
+			);
+
+			const plan = await planWithDarklua();
+
+			expect(fileOf(plan, "rokit.toml")).toBeUndefined();
+		});
+
+		it("should say Darklua alone is pinned when Rojo runs", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+
+			const plan = await planWithDarklua();
+
+			expect(plan?.summary).toContainEqual({
+				area: "Darklua",
+				text: "pin Darklua 0.19.0 in rokit.toml",
+			});
 		});
 
 		it("should pin nothing when the project does not use Darklua", async () => {
@@ -819,10 +764,10 @@ describe("CoreInitService", () => {
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(plan?.commands).toEqual([]);
+			expect(names(plan)).not.toContain("rokit.toml");
 		});
 
-		it("should write Foreman's lines for both, then install", async () => {
+		it("should write Foreman's lines for both, and name foreman install", async () => {
 			processes.installed.delete("rojo");
 			processes.installed.set("foreman", "/bin/foreman");
 
@@ -831,26 +776,22 @@ describe("CoreInitService", () => {
 			expect(fileOf(plan, "foreman.toml")?.content).toBe(
 				'[tools]\nrojo = { github = "rojo-rbx/rojo", version = "7.7.1" }\ndarklua = { github = "seaofvoices/darklua", version = "0.19.0" }\n'
 			);
-			expect(commandsOf(plan)).toEqual(["foreman install"]);
+			expect(plan?.nextSteps.setup[0]).toBe(
+				"Run 'foreman install' to install Rojo and Darklua."
+			);
 		});
 	});
 
 	describe("Rojo", () => {
 		const PIN = "rojo-rbx/rojo@7.7.1";
-		const pinQuestion = (manager: string) =>
-			`Pin Rojo 7.7.1 with ${manager}?`;
-		const INSTALL_QUESTION =
-			"Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?";
-		const PLUGIN_QUESTION = "Install Rojo's Studio plugin?";
+		const PLUGIN_LINE =
+			"Run 'rogen plugin install' to install Rojo's Studio plugin.";
 		const names = (plan: { files: readonly PlannedFile[] } | undefined) =>
 			plan?.files.map(({ fileName }) => fileName);
 		const fileOf = (
 			plan: { files: readonly PlannedFile[] } | undefined,
 			name: string
 		) => plan?.files.find(({ fileName }) => fileName === name);
-		const commandsOf = (
-			plan: { commands: readonly { command: string }[] } | undefined
-		) => plan?.commands.map(({ command }) => command);
 
 		beforeEach(() => {
 			processes.installed.delete("rojo");
@@ -860,66 +801,67 @@ describe("CoreInitService", () => {
 			processes.installed.set("rojo", "/bin/rojo");
 			processes.outputs.set("/bin/rojo", ROJO_VERSION);
 			processes.installed.set("rokit", "/bin/rokit");
-			const prompts = new MockPromptService({});
 
-			const plan = (await serviceFor(prompts).plan()).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(prompts.asked).not.toContain(pinQuestion("rokit"));
-			expect(plan?.commands).toEqual([]);
+			expect(plan?.nextSteps.setup).toEqual([]);
 			expect(names(plan)).not.toContain("rokit.toml");
+			expect(plan?.summary).toContainEqual({
+				area: "Rojo",
+				text: "ready",
+			});
 		});
 
-		it("should pin it with the manager found, writing the file it needs", async () => {
+		it("should write the pin into a new file of the manager found, and name its install command", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 
 			const plan = (await serviceFor().plan()).unwrap();
 
 			expect(fileOf(plan, "rokit.toml")).toEqual({
 				fileName: "rokit.toml",
-				content: "[tools]\n",
+				content: `[tools]\nrojo = "${PIN}"\n`,
 			});
-			expect(commandsOf(plan)).toEqual([`rokit add ${PIN}`]);
-			expect(plan?.commands[0]).toMatchObject({
-				file: "rokit",
-				args: ["add", PIN],
-			});
-			expect(plan?.decided).toContainEqual({
-				question: "rojo",
-				value: true,
-				flag: "--rojo",
+			expect(plan?.commands).toEqual([]);
+			expect(plan?.nextSteps.setup).toEqual([
+				"Run 'rokit install' to install Rojo.",
+				PLUGIN_LINE,
+			]);
+			expect(plan?.summary).toContainEqual({
+				area: "Rojo",
+				text: "pin Rojo 7.7.1 in rokit.toml",
 			});
 		});
 
-		it("should add to the Rokit file that is there, which it leaves as it is", async () => {
+		it("should add to the Rokit file that is there, keeping what it has", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 			await write(
 				"rokit.toml",
 				'[tools]\nwally = "UpliftGames/wally@0.3.2"\n'
 			);
-			const prompts = new MockPromptService({});
 
-			const plan = (
-				await serviceFor(askingEach(prompts)).plan()
-			).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(prompts.asked).toContain(pinQuestion("rokit"));
-			expect(names(plan)).not.toContain("rokit.toml");
-			expect(commandsOf(plan)).toEqual([
-				`rokit add ${PIN}`,
-				"rojo plugin install",
-			]);
+			expect(fileOf(plan, "rokit.toml")).toEqual({
+				fileName: "rokit.toml",
+				content: `[tools]\nwally = "UpliftGames/wally@0.3.2"\nrojo = "${PIN}"\n`,
+				addition: "Rojo's pin",
+			});
 		});
 
-		it("should use Aftman for an aftman.toml here, and for Aftman alone", async () => {
+		it("should use Aftman for Aftman alone", async () => {
 			processes.installed.set("aftman", "/bin/aftman");
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(fileOf(plan, "aftman.toml")?.content).toBe("[tools]\n");
-			expect(commandsOf(plan)).toEqual([`aftman add ${PIN}`]);
+			expect(fileOf(plan, "aftman.toml")?.content).toBe(
+				`[tools]\nrojo = "${PIN}"\n`
+			);
+			expect(plan?.nextSteps.setup[0]).toBe(
+				"Run 'aftman install' to install Rojo."
+			);
 		});
 
-		it("should write Foreman's line itself and have it install", async () => {
+		it("should write Foreman's line itself and name foreman install", async () => {
 			processes.installed.set("foreman", "/bin/foreman");
 			await write("foreman.toml", "[tools]\n");
 
@@ -931,213 +873,80 @@ describe("CoreInitService", () => {
 					'[tools]\nrojo = { github = "rojo-rbx/rojo", version = "7.7.1" }\n',
 				addition: "Rojo's pin",
 			});
-			expect(commandsOf(plan)).toEqual(["foreman install"]);
+			expect(plan?.nextSteps.setup[0]).toBe(
+				"Run 'foreman install' to install Rojo."
+			);
 		});
 
-		it("should run nothing when the pin is declined, and say how to set it up", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-			const declined = new MockPromptService({
-				[pinQuestion("rokit")]: false,
-			});
-
-			const plan = (
-				await serviceFor(askingEach(declined)).plan()
-			).unwrap();
-
-			expect(plan?.commands).toEqual([]);
-			expect(names(plan)).not.toContain("rokit.toml");
-			expect(plan?.nextSteps.setup).toEqual([
-				"Rojo isn't pinned, and rogen serve needs it. Run 'rogen init --rojo' to pin it with rokit.",
-			]);
-		});
-
-		it("should install nothing when there is no manager and it can't ask", async () => {
+		it("should write rokit.toml and print Rokit's installer when no manager is installed", async () => {
 			const plan = (await serviceFor().plan()).unwrap();
 
+			expect(fileOf(plan, "rokit.toml")?.content).toBe(
+				`[tools]\nrojo = "${PIN}"\n`
+			);
 			expect(plan?.commands).toEqual([]);
-			expect(plan?.decided).toContainEqual({
-				question: "rojo",
-				value: "not installed",
-				flag: "--rojo",
-			});
 			expect(plan?.nextSteps.setup[0]).toMatch(
-				/^Rojo isn't installed, and rogen serve needs it\. Run 'rogen init --rojo' to install Rokit and Rojo, or install Rokit yourself \(.+\)/
+				/^Install Rokit with '.*rojo-rbx\/rokit\/main\/scripts\/install.*' \(https:\/\/github\.com\/rojo-rbx\/rokit\), then run 'rokit install' here\.$/
 			);
+			expect(plan?.nextSteps.setup[1]).toBe(PLUGIN_LINE);
 		});
 
-		it("should install Rokit and then pin Rojo with it, when told to", async () => {
-			const plan = (
-				await serviceFor().plan({ ask: false, choices: { rojo: true } })
-			).unwrap();
-
-			expect(plan?.commands.map(({ file }) => file)).toEqual([
-				expect.stringMatching(/^(bash|powershell)$/),
-				"rokit",
-			]);
-			expect(plan?.commands[0].command).toContain(
-				"rojo-rbx/rokit/main/scripts/install"
-			);
-			expect(commandsOf(plan)?.[1]).toBe(`rokit add ${PIN}`);
-			expect(fileOf(plan, "rokit.toml")?.content).toBe("[tools]\n");
-		});
-
-		it("should ask before installing Rokit, and show what it runs", async () => {
-			const prompts = new MockPromptService({ [INSTALL_QUESTION]: true });
-
-			const plan = (
-				await serviceFor(askingEach(prompts)).plan()
-			).unwrap();
-
-			expect(prompts.asked).toContain(INSTALL_QUESTION);
-			expect(plan?.commands).toHaveLength(3);
-			expect(plan?.commands.at(-1)).toMatchObject({
-				file: "rojo",
-				args: ["plugin", "install"],
-			});
-		});
-
-		it("should install the Rokit installer so that a failed download fails the step", async () => {
-			const plan = (
-				await serviceFor().plan({ ask: false, choices: { rojo: true } })
-			).unwrap();
-
-			const [installer] = plan?.commands ?? [];
-			expect(installer.args.at(-1)).toMatch(
-				/^(set -o pipefail; curl |Invoke-RestMethod )/
-			);
-		});
-
-		it("should pin nothing when the folder's manager is not installed", async () => {
+		it("should still add the pin to the folder's manager file when that manager is not installed", async () => {
 			await write("aftman.toml", "[tools]\n");
-			const prompts = new MockPromptService({});
 
-			const plan = (await serviceFor(prompts).plan()).unwrap();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(plan?.commands).toEqual([]);
-			expect(names(plan)).not.toContain("rokit.toml");
-			expect(plan?.nextSteps.setup).toEqual([
-				"Rojo isn't pinned in aftman.toml, and aftman isn't installed. Install it, then run 'rogen init --rojo'.",
-			]);
-		});
-
-		it("should ask only about the plugin beside a config, when only the plugin is asked for", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService({});
-
-			const plan = (
-				await serviceFor(prompts).plan({
-					choices: { plugin: true },
-				})
-			).unwrap();
-
-			expect(prompts.asked).not.toContain(pinQuestion("rokit"));
-			expect(commandsOf(plan)).toEqual(["rojo plugin install"]);
-		});
-
-		it("should install nothing when the install is declined", async () => {
-			const declined = new MockPromptService({
-				[INSTALL_QUESTION]: false,
+			expect(fileOf(plan, "aftman.toml")).toMatchObject({
+				content: `[tools]\nrojo = "${PIN}"\n`,
+				addition: "Rojo's pin",
 			});
-
-			const plan = (
-				await serviceFor(askingEach(declined)).plan()
-			).unwrap();
-
-			expect(plan?.commands).toEqual([]);
-			expect(declined.asked).not.toContain(PLUGIN_QUESTION);
+			expect(names(plan)).not.toContain("rokit.toml");
+			expect(plan?.nextSteps.setup[0]).toBe(
+				"Install Aftman (https://github.com/LPGhatguy/aftman), then run 'aftman install' here."
+			);
 		});
 
-		it("should install the plugin after the pin when asked, else name the command", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-			const yes = (
-				await serviceFor(askingEach(new MockPromptService({}))).plan()
-			).unwrap();
-			const no = (
-				await serviceFor(
-					askingEach(
-						new MockPromptService({ [PLUGIN_QUESTION]: false })
-					)
-				).plan()
-			).unwrap();
-
-			expect(commandsOf(yes)).toEqual([
-				`rokit add ${PIN}`,
-				"rojo plugin install",
-			]);
-			expect(commandsOf(no)).toEqual([`rokit add ${PIN}`]);
-			expect(no?.nextSteps.setup).toEqual([
-				"Run 'rogen plugin install' to install Rojo's Studio plugin.",
-			]);
-		});
-
-		it("should leave the plugin to the user in a run that can't ask, and say it took that", async () => {
+		it("should run nothing, and decide nothing about it, in a run that can't ask", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(commandsOf(plan)).toEqual([`rokit add ${PIN}`]);
-			expect(plan?.decided).toContainEqual({
-				question: "plugin",
-				value: false,
-				flag: "--studio-plugin",
-			});
+			expect(plan?.commands).toEqual([]);
+			expect(
+				plan?.decided.filter(({ flag }) => /rojo|studio/.test(flag))
+			).toEqual([]);
 		});
 
-		it("should not offer it once Rojo is pinned, here or above", async () => {
+		it("should ask nothing about it in a terminal", async () => {
+			processes.installed.set("rokit", "/bin/rokit");
+			const prompts = new MockPromptService({});
+
+			await serviceFor(askingEach(prompts)).plan();
+
+			expect(prompts.asked.join("\n")).not.toMatch(/Pin|Install|Rokit/);
+		});
+
+		it("should not pin it once Rojo is pinned, here or above", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 			await write("rokit.toml", "[tools]\n");
 			await fileSystem.writeFile(
 				path.resolve("/mock/aftman.toml"),
 				`[tools]\nrojo = "${PIN}"\n`
 			);
-			const prompts = new MockPromptService({});
 
-			await serviceFor(prompts).plan();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(prompts.asked).not.toContain(pinQuestion("rokit"));
+			expect(fileOf(plan, "rokit.toml")).toBeUndefined();
+			expect(plan?.nextSteps.setup).toEqual([]);
 		});
 
-		it("should not offer it when the file uses the name rojo for another tool", async () => {
+		it("should not pin it when the file uses the name rojo for another tool", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 			await write("rokit.toml", '[tools]\nrojo = "someone/fork@1.0.0"\n');
-			const prompts = new MockPromptService({});
 
-			await serviceFor(prompts).plan();
+			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(prompts.asked).not.toContain(pinQuestion("rokit"));
-		});
-
-		it("should offer it beside a config, and add only it", async () => {
-			processes.installed.set("rokit", "/bin/rokit");
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", agentBlock);
-			const prompts = new MockPromptService({
-				[WHAT_TO_CHANGE]: ["tools"],
-			});
-
-			const plan = (await serviceFor(prompts).plan()).unwrap();
-
-			expect(names(plan)).toEqual(["rokit.toml"]);
-			expect(commandsOf(plan)).toEqual([
-				`rokit add ${PIN}`,
-				"rojo plugin install",
-			]);
-		});
-
-		it("should install the plugin on its own beside a config, when told to", async () => {
-			processes.installed.set("rojo", "/bin/rojo");
-			processes.outputs.set("/bin/rojo", ROJO_VERSION);
-			await write("default.rogen.json", "{}");
-
-			const plan = (
-				await serviceFor().plan({
-					ask: false,
-					choices: { plugin: true },
-				})
-			).unwrap();
-
-			expect(commandsOf(plan)).toEqual(["rojo plugin install"]);
+			expect(fileOf(plan, "rokit.toml")).toBeUndefined();
 		});
 	});
 
@@ -1163,7 +972,6 @@ describe("CoreInitService", () => {
 				"AGENTS.md",
 			]);
 			expect(JSON.parse(files(plan)["default.rogen.json"])).toEqual({
-				$schema: expect.any(String),
 				tree: { $path: "src" },
 			});
 			expect(plan?.nextSteps.run).toEqual([
@@ -1302,29 +1110,16 @@ describe("CoreInitService", () => {
 				])
 			);
 		});
-
-		it("should refuse the flags of a new project beside a config", async () => {
-			await write("default.rogen.json", "{}");
-
-			const result = await serviceFor().plan({
-				choices: { kind: "model" },
-			});
-
-			expect((result as ResultError<Error>).error.message).toContain(
-				"--kind"
-			);
-		});
 	});
 
 	describe("a folder named on the command line", () => {
-		it("should start a project there when no config is at or above it, and make the folder", async () => {
+		it("should start a project there, and make the folder", async () => {
 			const plan = (
 				await serviceFor().plan({ place: "newproj" })
 			).unwrap();
 
 			expect(plan?.directory).toBe(path.join(directory, "newproj"));
 			expect(plan?.configs).toEqual(["newproj/default.rogen.json"]);
-			expect(plan?.notes[0]).toContain("starts a project there");
 			expect(
 				await fileSystem.exists(path.join(directory, "newproj"))
 			).toBe(false);
@@ -1400,77 +1195,6 @@ describe("CoreInitService", () => {
 					result.error.diagnostics
 			).toMatchObject([{ code: "init.projectUnreadable" }]);
 		});
-
-		describe("beside an existing default.rogen.json", () => {
-			const planWith = async (answers: PromptScript) => {
-				await write("default.rogen.json", "{}");
-				const prompts = new MockPromptService(answers);
-				const result = await serviceFor(askingEach(prompts)).plan();
-				return { prompts, result };
-			};
-
-			it("should ask what to change, with nothing ticked, and write nothing when nothing is picked", async () => {
-				const { prompts, result } = await planWith({
-					[WHAT_TO_CHANGE]: ACCEPT_DEFAULT,
-				});
-
-				expect(prompts.asked).toEqual([WHAT_TO_CHANGE]);
-				expect(result.unwrap()?.files).toEqual([]);
-			});
-
-			it("should plan nothing when the user cancels what to change", async () => {
-				const { prompts, result } = await planWith([CANCEL]);
-
-				expect(prompts.asked).toEqual([WHAT_TO_CHANGE]);
-				expect(result.unwrap()).toBeUndefined();
-			});
-
-			it("should fail naming the config when there is nothing left to add or to report", async () => {
-				await write("default.rogen.json", "{}");
-
-				const result = await serviceFor(new MockPromptService([])).plan(
-					{
-						ask: false,
-						choices: { agentRules: false },
-					}
-				);
-
-				expect(
-					result.isErr() &&
-						result.error instanceof DiagnosticsError &&
-						result.error.diagnostics
-				).toMatchObject([
-					{
-						code: "init.configExists",
-						resource: path.join(directory, "default.rogen.json"),
-						message:
-							"this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo.",
-					},
-				]);
-			});
-		});
-	});
-
-	describe("a flag that answers a question of a new project, beside a config", () => {
-		it.each([
-			["--route", { routes: ["server"] }],
-			["--source-path", { sourcePaths: ["lib"] }],
-			["--package", { packages: ["Packages"] }],
-			["--compiled-path", { compiledPath: "out" }],
-			["--darklua", { darklua: true }],
-			["--unmatched", { unmatched: "leave" as const }],
-		])(
-			"should refuse %s and point to editing the config",
-			async (flag, choices) => {
-				await write("default.rogen.json", "{}");
-
-				const result = await serviceFor().plan({ ask: false, choices });
-
-				expect(result.isErr() && result.error.message).toBe(
-					`${flag} is for a new project, and default.rogen.json exists. init doesn't change a config. Edit the .rogen.json, then run 'rogen check'.`
-				);
-			}
-		);
 	});
 
 	describe("the summary of a new project", () => {
@@ -1572,21 +1296,6 @@ describe("CoreInitService", () => {
 			});
 		});
 
-		it("should show the summary of the additions of a second run", async () => {
-			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService({
-				[WHAT_TO_CHANGE]: ["agents"],
-				"Make these changes?": "yes",
-			});
-
-			const plan = (await review(prompts)).unwrap();
-
-			expect(plan?.purpose).toBe("change");
-			expect(prompts.prompts.at(-1)?.description).toContain(
-				"Files     AGENTS.md"
-			);
-		});
-
 		it("should list every file and command of the plan, as a dry run would write them", async () => {
 			processes.installed.set("rokit", "/bin/rokit");
 			processes.installed.delete("rojo");
@@ -1611,25 +1320,9 @@ describe("CoreInitService", () => {
 				.at(-1)
 				?.description?.replace(/\n\s{10}/g, " ");
 
+			expect(written).toContain("rokit.toml");
 			expect(written.length).toBeGreaterThan(5);
 			for (const item of written) expect(shown).toContain(item);
-			expect(plan.commands.length).toBeGreaterThan(0);
-		});
-
-		it("should show nothing and ask nothing more when flags answered everything", async () => {
-			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService({});
-
-			const plan = (
-				await serviceFor(prompts).plan({
-					choices: { agentRules: true },
-				})
-			).unwrap();
-
-			expect(prompts.asked).toEqual([]);
-			expect(plan?.files.map(({ fileName }) => fileName)).toEqual([
-				"AGENTS.md",
-			]);
 		});
 	});
 

@@ -19,7 +19,6 @@ export interface RogenKeys {
 
 /** What a `.rogen.json` holds: a Rojo project file, plus a `rogen` block of the keys Rogen reads. */
 export interface RogenConfig {
-	readonly $schema?: string;
 	readonly name?: string;
 	readonly tree?: RojoNode;
 	readonly servePort?: number;
@@ -125,20 +124,6 @@ export const isProjectFileConfig = (file: string): boolean =>
 export const isDefaultProjectFile = (file: string): boolean =>
 	DEFAULT_PROJECT_FILES.includes(path.basename(file));
 
-const SCHEMA_BASE_URL = "https://ldgerrits.github.io/rogen/schema";
-
-export const SCHEMA_URL = schemaUrlFor("2.0.0-beta.1");
-
-/** A release's schema channel: its major, or the exact version of a pre-release that is not x.0.0-. */
-export function schemaChannel(version: string): string {
-	const exact = version.includes("-") && !/^\d+\.0\.0-/.test(version);
-	return exact ? version : version.split(".")[0];
-}
-
-export function schemaUrlFor(version: string): string {
-	return `${SCHEMA_BASE_URL}/${schemaChannel(version)}/rogen.json`;
-}
-
 /** The keys of the `rogen` block, in the order `rogen fmt-project` writes them. */
 export const ROGEN_KEYS: readonly (keyof RogenKeys)[] = [
 	"sourcePaths",
@@ -159,7 +144,7 @@ export function configFileContent(
 	config: RogenConfig,
 	written?: WrittenTree
 ): string {
-	return configText({ $schema: SCHEMA_URL, ...config }, written);
+	return configText({ ...config }, written);
 }
 
 type SourcePathOverlap =

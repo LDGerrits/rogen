@@ -24,7 +24,11 @@ import { DerivedRoutes } from "./derived-routes.js";
 import { GreeterSample, SAMPLE_ROUTES } from "./greeter-sample.js";
 import { InitDirectory } from "./init-directory.js";
 import { InitPlanBuilder } from "./init-plan-builder.js";
-import { OutputConfigs, PROCESSED_OUTPUT } from "./output-configs.js";
+import {
+	OutputConfigs,
+	PROCESSED_OUTPUT,
+	RELEASE_OUTPUT,
+} from "./output-configs.js";
 import { InitQuestions } from "./init-questions.js";
 import { InitKind, PlannedCommand, PlannedScaffold } from "./init-service.js";
 import { ProjectFiles } from "./project-files.js";
@@ -35,9 +39,7 @@ import { Setup } from "./setup.js";
 import { RobloxTsStarter } from "./roblox-ts-starter.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import {
-	PLACE_SOURCE_PATHS,
-	PLACES_FOLDER,
-	SHARED_FOLDER,
+	PROJECTS_FOLDER,
 	StarterPlaces,
 	StartingPlaces,
 } from "./starter-places.js";
@@ -157,13 +159,13 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			: undefined;
 		if (places && questions.choices.sourcePaths !== undefined)
 			throw new UsageError(
-				`--source-path would change nothing, since every place lists ${PLACE_SOURCE_PATHS.join(" and ")}.`
+				`--source-path would change nothing, since every place lists ${places.sourcePaths.join(" and ")}.`
 			);
-		const taken = places ? await this.placeTaken(places.place) : undefined;
+		const taken = places ? await this.placeTaken(places) : undefined;
 		if (taken) return err([taken]);
 
 		const sourcePaths = places
-			? [...PLACE_SOURCE_PATHS]
+			? [...places.sourcePaths]
 			: (await this.startsUnrouted(kind))
 				? []
 				: await questions.sourcePaths(directory, language);
@@ -191,7 +193,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (mounted === undefined) return ok(undefined);
 		const mounts = places
 			? StarterPlaces.mountsFor(
-					places.place,
+					places,
 					mounted,
 					RobloxTsStarter.OWN_FOLDERS
 				)
@@ -240,11 +242,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const sampleFiles = sample
 			? [
 					...sampleOf.feature(
-						places?.sharedSourcePath ?? sourcePaths[0]
+						places?.commonSourcePath ?? sourcePaths[0]
 					),
 					...(places ? sampleOf.place(places.placeSourcePath) : []),
 					sampleOf.readme(
-						places?.sharedSourcePath ?? sourcePaths[0],
+						places?.commonSourcePath ?? sourcePaths[0],
 						ProjectSetup.serveCommand(places, processed),
 						places?.place
 					),
@@ -254,11 +256,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const skipGit = questions.skipGit();
 		const darkluaConfig =
 			darklua &&
-			(places || directory.workspace.darkluaConfig === undefined)
+			(places?.folder || directory.workspace.darkluaConfig === undefined)
 				? [
 						{
 							fileName: path.posix.join(
-								places?.place ?? "",
+								places?.folder ?? "",
 								darklua.configFiles[0]
 							),
 							content: darklua.configFor(language),
@@ -285,14 +287,16 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			...(starter && {
 				scaffold: {
 					tool: starter.scaffold(places !== undefined),
-					after: places ? [starter.scripts(places.place)] : [],
+					after: places ? [starter.scripts(places.folder)] : [],
 				},
 			}),
-			luauLsp: await this.files.luauLspIsSetUp(),
+			luauLsp:
+				places?.settings === true ||
+				(await this.files.luauLspIsSetUp()),
 			projectFilesHint: await this.files.projectFilesHint(),
 			...(processed &&
 				!skipGit &&
-				!places && {
+				!places?.folder && {
 					gitignoreHint: await this.files.gitignoreHint(processed),
 				}),
 			templateFiles: await this.absent([
@@ -301,8 +305,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 						kind,
 						path.basename(directory.path),
 						processed &&
-							(places
-								? `${PLACES_FOLDER}/*/${processed}`
+							(places?.folder
+								? `${PROJECTS_FOLDER}/*/${processed}`
 								: processed),
 						starter
 							? RobloxTsStarter.ignored(places !== undefined)
@@ -323,19 +327,46 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		places: StartingPlaces | undefined,
 		processed: string | undefined
 	): string {
-		if (places)
-			return `rogen serve ${processed ? path.posix.join(places.place, configFileName(PROCESSED_OUTPUT)) : places.place}`;
+		if (places) {
+			if (!processed) return `rogen serve ${places.place}`;
+			const output = configFileName(
+				`${places.outputPrefix}${PROCESSED_OUTPUT}`
+			);
+			return `rogen serve ${path.posix.join(places.folder, output)}`;
+		}
 		return processed ? `rogen serve ${PROCESSED_OUTPUT}` : "rogen serve";
 	}
 
+	/** How to add a second place, which `init` starts but never adds. */
+	private static addPlaceStep(
+		places: StartingPlaces,
+		processed: string | undefined
+	): string {
+		const port = "from a second terminal with its own --port";
+		if (places.folder === "") {
+			const { outputPrefix } = places;
+			const lobby = (file: string) =>
+				file.replace(outputPrefix, "lobby.");
+			const dist = configFileName(`${outputPrefix}${PROCESSED_OUTPUT}`);
+			const release = configFileName(`${outputPrefix}${RELEASE_OUTPUT}`);
+			return processed
+				? `Add another place: copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
+				: `Add another place: copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby. Serve it ${port}: 'rogen serve lobby --port <port>'.`;
+		}
+		const lobby = `${PROJECTS_FOLDER}/lobby`;
+		return `Add another place: make ${lobby}/src, copy ${places.folder}/${DEFAULT_CONFIG_FILE} and ${places.folder}/tsconfig.json into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+	}
+
 	/** An error when the first place has a config already, which init never overwrites. */
-	private async placeTaken(place: string): Promise<Diagnostic | undefined> {
-		const file = path.join(this.directory.path, place, DEFAULT_CONFIG_FILE);
+	private async placeTaken(
+		places: StartingPlaces
+	): Promise<Diagnostic | undefined> {
+		const file = path.join(this.directory.path, places.configFile);
 		return (await this.fileSystemService.exists(file))
 			? errorDiagnostic(
 					"init.configExists",
 					{ resource: file },
-					"this config already exists, and init never overwrites one. Add a place with 'rogen init places/<name>' instead."
+					"this config already exists, and init never overwrites one."
 				)
 			: undefined;
 	}
@@ -349,7 +380,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const given = this.questions.choices.projectFile;
 		if (kind !== "place") return `is for a place, not for a ${kind}.`;
 		const later =
-			"Start with one place, then add more with 'rogen init places/<name>'.";
+			"Start with one place, then add more by hand, as the places guide shows.";
 		if (language.compiler && !scaffolded)
 			return `isn't set up for ${language.copy.label} yet. ${later}`;
 		if (this.directory.hasHandWrittenProject && given !== "new")
@@ -364,7 +395,8 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		scaffolded: boolean
 	): Promise<boolean | undefined> {
 		const problem = this.noPlacesBecause(kind, language, scaffolded);
-		if (problem === undefined) return this.questions.places(this.directory);
+		if (problem === undefined)
+			return this.questions.places(this.directory, language);
 		if (this.questions.choices.places === true)
 			throw new UsageError(`--places ${problem}`);
 		return false;
@@ -503,8 +535,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		});
 		const { compiler } = language;
 		const defaultCompiledPath = darklua ? compiler?.outDir : compiledPath;
-		const folder = places?.place ?? "";
-		const name = path.basename(folder || this.directory.path);
+		const name = path.basename(places?.place ?? this.directory.path);
 		const config: RogenConfig = {
 			...((choices.scaffold || places) && { name }),
 			...tree.fields,
@@ -527,7 +558,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		builder.setConfig(
 			config,
 			written,
-			path.posix.join(folder, DEFAULT_CONFIG_FILE)
+			places?.configFile ?? DEFAULT_CONFIG_FILE
 		);
 		const processed = darklua && compiledPath ? compiledPath : undefined;
 		for (const { stem, config: output } of OutputConfigs.of(config, {
@@ -541,18 +572,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.setConfig(
 				output,
 				written,
-				path.posix.join(folder, configFileName(stem)),
-				false
-			);
-		if (places && routes && !compiler)
-			builder.setConfig(
-				StarterPlaces.sharedConfig(routes),
-				undefined,
 				path.posix.join(
-					PLACES_FOLDER,
-					SHARED_FOLDER,
-					DEFAULT_CONFIG_FILE
-				)
+					places?.folder ?? "",
+					configFileName(`${places?.outputPrefix ?? ""}${stem}`)
+				),
+				false
 			);
 		this.summarise(builder, choices, routes);
 		for (const sourcePath of places?.directories ?? sourcePaths)
@@ -599,7 +623,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		if (choices.sample)
 			builder.addNote(
 				places
-					? `Wrote the Greeter sample: the feature in ${places.sharedSourcePath}, which every place shares, and Game in ${places.placeSourcePath}. Pass --no-sample for empty source folders.`
+					? `Wrote the Greeter sample: the feature in ${places.commonSourcePath}, which every place shares, and Game in ${places.placeSourcePath}. Pass --no-sample for empty source folders.`
 					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty ${sourcePaths[0]}.`
 			);
 		this.planNextSteps(builder, choices, tree);
@@ -710,41 +734,38 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			builder.addEdit(
 				`Rogen writes ${chosen.from} now, so git can stop tracking it: git rm --cached ${chosen.from}`
 			);
-		const configFile = path.posix.join(
-			places?.place ?? "",
-			DEFAULT_CONFIG_FILE
-		);
+		const configFile = places?.configFile ?? DEFAULT_CONFIG_FILE;
 		if (takesRoutes(chosen))
 			builder.addEdit(
 				`Add your own routes under "routes" in ${configFile}.`
 			);
-		const projectFile = path.posix.join(
-			places?.place ?? "",
-			DEFAULT_PROJECT_FILE
-		);
+		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
 			`Edit ${configFile} and leave ${projectFile} alone, since every build overwrites it. After you add a feature folder, run 'rogen build${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
 		);
-		if (places?.workspace)
+		if (places?.settings)
 			builder.addEdit(
-				`Open the workspace with 'code ${places.workspace}', as VS Code does not open a workspace file by itself. Each place is a workspace folder${compiler ? "" : ", so luau-lsp reads each place's own sourcemap"}.`
+				`luau-lsp reads the sourcemap of one place at a time, ${places.place} here. To switch, change the name in the generatorCommand in .vscode/settings.json.`
 			);
 		if (places)
 			builder.addEdit(
-				`Add another place with 'rogen init ${PLACES_FOLDER}/lobby', and serve it from a second terminal with its own --port: 'rogen serve ${PLACES_FOLDER}/lobby --port <port>'.`
+				ProjectSetup.addPlaceStep(
+					places,
+					darklua && compiledPath ? compiledPath : undefined
+				)
 			);
 		const processed = darklua && compiledPath ? compiledPath : undefined;
 		new SyncSteps(language, darklua, scaffold && "npm run watch").plan(
 			builder,
-			places
-				? path.join(this.directory.path, places.place)
+			places?.folder
+				? path.join(this.directory.path, places.folder)
 				: this.directory.path,
 			{
 				processed: compiler ? [compiler.outDir] : sourcePaths,
 				compiledPath,
 				luauLsp: luauLsp === true,
 				serve: ProjectSetup.serveCommand(places, processed),
-				...(places && { folder: places.place }),
+				...(places?.folder && { folder: places.folder }),
 			}
 		);
 	}

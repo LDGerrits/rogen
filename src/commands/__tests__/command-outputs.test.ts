@@ -13,7 +13,6 @@ import "../fmt-project/fmt-project-command.js";
 import "../help/doc-command.js";
 import "../help/help-command.js";
 import "../init/init-command.js";
-import "../list/list-command.js";
 import "../serve/serve-command.js";
 import "../where/where-command.js";
 
@@ -33,7 +32,6 @@ describe("the output of the commands", () => {
 			"fmt-project",
 			"help",
 			"init",
-			"list",
 			"serve",
 			"where",
 		]);

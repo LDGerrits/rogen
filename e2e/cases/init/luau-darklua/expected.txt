@@ -29,7 +29,6 @@ written:
 
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel"
   },
@@ -48,7 +47,6 @@ default.rogen.json:
 
 dist.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "name": "project",
   "tree": {
     "$className": "DataModel"

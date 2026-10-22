@@ -1,0 +1,15 @@
+{
+	"steps": [
+		["where", "src/game/Server/Match.server.luau"],
+		["where", "src/common/Util.luau"],
+		[
+			"where",
+			"src/common/Hud.client.luau",
+			"src/lobby/Server/Queue.server.luau"
+		],
+		["where", "src/common/Util.luau", "--json"],
+		["where", "README.md"],
+		["where"]
+	],
+	"rojo": false
+}

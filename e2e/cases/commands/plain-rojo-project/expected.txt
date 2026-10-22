@@ -18,18 +18,6 @@ stdout:
 $ rogen check ./
 exit 0
 
-$ rogen list
-exit 0
-stdout:
-  rogen list
-  default.project.json
-    source paths: (none)
-    routes:
-    compiled path: (none)
-    project file: default.project.json
-    rojo: rojo serve default.project.json
-  1 config.
-
 $ rogen where src
 exit 0
 stdout:

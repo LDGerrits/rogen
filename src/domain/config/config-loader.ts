@@ -11,7 +11,7 @@ import {
 import { FileReader } from "../../platform/fs/file-system-service.js";
 import { ConfigKeys } from "./config-keys.js";
 import { ROGEN_BLOCK } from "./config.js";
-import { configSchema } from "./config-schema.js";
+import { configStructure } from "./config-structure.js";
 import { ConfigFileCheck } from "./config-service.js";
 import { ResolvedConfigFile } from "./resolved-config.js";
 import { ConfigValidator } from "./config-validator.js";
@@ -28,7 +28,7 @@ export class ConfigLoader {
 	private readonly fileChecks = new Set<ConfigFileCheck>();
 
 	constructor(fileSystemService: FileReader) {
-		this.reader = new ConfigFileReader(fileSystemService, configSchema);
+		this.reader = new ConfigFileReader(fileSystemService, configStructure);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

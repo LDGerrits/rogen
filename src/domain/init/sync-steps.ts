@@ -32,7 +32,7 @@ export class SyncSteps {
 			readonly luauLsp: boolean;
 			/** The command that serves the project. */
 			readonly serve?: string;
-			/** Where Darklua runs when that is not the project's root, such as `places/game`. */
+			/** Where Darklua runs when that is not the project's root, such as `projects/game`. */
 			readonly folder?: string;
 		}
 	): void {

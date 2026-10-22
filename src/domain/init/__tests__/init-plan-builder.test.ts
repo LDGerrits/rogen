@@ -1,4 +1,3 @@
-import { SCHEMA_URL } from "../../config/config.js";
 import { AgentFile } from "../agent/agent-file.js";
 import { InitPlanBuilder } from "../init-plan-builder.js";
 import { directory, directoryOf } from "./init-fixtures.js";
@@ -24,19 +23,6 @@ describe("domain/init/init-plan-builder", () => {
 
 		it("should write no config for a run that only adds agent files", () => {
 			expect(builderFor().build().unwrap().configs).toEqual([]);
-		});
-
-		it("should point the config at the schema, before the fields it was given", () => {
-			const builder = builderFor();
-			builder.setConfig({ rogen: { sourcePaths: ["src"] } });
-
-			const [file] = builder.build().unwrap().files;
-
-			expect(Object.keys(JSON.parse(file.content))).toEqual([
-				"$schema",
-				"rogen",
-			]);
-			expect(JSON.parse(file.content).$schema).toBe(SCHEMA_URL);
 		});
 
 		it("should say a one-time edit once, however many setups need it", () => {

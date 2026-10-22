@@ -1,0 +1,52 @@
+$ rogen init -y --skip-git --no-sample tools
+exit 0
+stdout:
+  rogen init
+  Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Created tools/default.rogen.json.
+  Created tools/AGENTS.md.
+  Created tools/src/.
+  tools/default.project.json · wrote
+  Next steps
+    Run:
+      rogen serve
+    In Studio, press Connect in the Rojo plugin.
+    Add your own routes under "routes" in default.rogen.json.
+    Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
+  Wrote 2 files.
+
+$ rogen build
+exit 0
+stdout: (not shown)
+
+written:
+  default.project.json
+  tools/AGENTS.md
+  tools/default.project.json
+  tools/default.rogen.json
+
+tools/default.rogen.json:
+{
+  "tree": {
+    "$className": "DataModel"
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Hello: ModuleScript  <- src/Hello.luau
+
+$ rojo sourcemap tools/default.project.json
+tools: DataModel

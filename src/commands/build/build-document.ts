@@ -4,7 +4,7 @@ import { Result } from "../../base/result.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
-import { ServerMessage } from "../../domain/runner/sync-server.js";
+import { ServerMessage } from "../../domain/runner/rojo-server.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	DiagnosticJson,

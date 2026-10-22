@@ -71,7 +71,7 @@ describe("StarterProject", () => {
 	});
 
 	describe("toConfig", () => {
-		it("should give the keys of the file without its schema", () => {
+		it("should give the keys of the file without its $schema", () => {
 			const project = parsed({
 				$schema: "https://example.com/project.json",
 				name: "x",

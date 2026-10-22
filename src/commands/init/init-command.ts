@@ -123,41 +123,21 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new project is several places: the code they share in places/shared (for Luau with a default.rogen.json of the routes, so the editor resolves requires in it; never served), and a first place in places/game with its own default.rogen.json, more by 'rogen init places/<name>'. One place when not given, or several where a places folder exists.",
+			"Whether a new project is several places. Luau: the code they share in src/common, a first place in src/game, a game.rogen.json at the root for it, and editor settings for luau-lsp; more places by copying that file. roblox-ts: the code they share in projects/common and a first place in projects/game with its own default.rogen.json and tsconfig.json, more by copying that folder. One place when not given, or several where a projects folder exists for roblox-ts.",
 	},
 	{
 		name: "agent-rules",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given. On a folder that has a config, asks for this addition.",
+			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given.",
 	},
 	{
 		name: "agent-hook",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. On a folder that has a config, asks for this addition.",
-	},
-	{
-		name: "rojo",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag. On a folder that has a config, sets Rojo up there.",
-	},
-	{
-		name: "studio-plugin",
-		type: "boolean",
-		negatable: true,
-		description:
-			"Whether to install Rojo's Studio plugin, once Rojo is set up. Not installed by a run that can't ask, which prints the command instead.",
-	},
-	{
-		name: "nested",
-		type: "boolean",
-		description:
-			"Start a project in a folder below another default.rogen.json, which a run that can't ask refuses otherwise.",
+			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given.",
 	},
 ] as const;
 
@@ -168,10 +148,7 @@ function choicesOf(
 	return {
 		kind: options.kind as InitChoices["kind"],
 		skipGit: options["skip-git"],
-		nested: options.nested,
 		agentRules: options["agent-rules"],
-		rojo: options.rojo,
-		plugin: options["studio-plugin"],
 		agentHook: options["agent-hook"],
 		language: options.language,
 		darklua: options.darklua,
@@ -194,12 +171,12 @@ registerCommand(
 				metadata: {
 					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, or adds a place when the folder lies in a places folder that has one. It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it fails and writes nothing. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",
 							description:
-								"The folder to start in, made when it is not there. In a places folder with a place already, it is added as a place instead: its own default.rogen.json with the routes and compiled path of the first place, listing the shared code, and an entry in the .code-workspace when there is one.",
+								"The folder to start the project in, made when it is not there.",
 							isOptional: true,
 						},
 					],
@@ -208,14 +185,11 @@ registerCommand(
 					effects: ["writesFiles"],
 					formerOptions: {
 						"--yes": "Use --non-interactive.",
-						"--rojo-pin": "Use --rojo.",
-						"--no-rojo-pin": "Use --no-rojo.",
 					},
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",
 						"rogen init game",
-						"rogen init places/lobby",
 					],
 				},
 			});

@@ -2,7 +2,6 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ToolLocator } from "../../toolchain/tool-locator.js";
-import { SyncServer } from "../sync-server.js";
 import { ServerFinder } from "../server-finder.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
@@ -39,7 +38,6 @@ describe("ServerFinder", () => {
 		const tool = (await find()).unwrap();
 
 		expect(tool).toEqual({
-			server: SyncServer.ROJO,
 			file: "/bin/rojo7",
 			version: "7.7.1",
 		});
@@ -110,7 +108,7 @@ describe("ServerFinder", () => {
 		expect(diagnostic.code).toBe("serve.noServer");
 		expect(diagnostic.resource).toBe("/repo/game/default.rogen.json");
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. Run 'rogen init --rojo' to set Rojo up."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Run 'rokit add rojo-rbx/rojo', then 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -126,7 +124,7 @@ describe("ServerFinder", () => {
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", ROJO_VERSION);
 
-		expect((await find()).unwrap().server).toBe(SyncServer.ROJO);
+		expect((await find()).unwrap().file).toBe("/bin/rojo");
 	});
 
 	it("should say that rogen serve only starts Rojo when only Argon is pinned", async () => {
@@ -154,7 +152,7 @@ describe("ServerFinder", () => {
 		const diagnostic = await diagnosticOf();
 
 		expect(diagnostic.message).toBe(
-			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. Run 'rogen init --rojo' to set Rojo up."
+			"No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. Pin rojo-rbx/rojo in foreman.toml, install it, then run 'rogen plugin install' to install its Studio plugin. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rogen plugin install", cwd: "/repo/game" } },
@@ -173,7 +171,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.code).toBe("serve.serverFailed");
 		expect(diagnostic.message).toBe(
-			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. Run 'rogen init --rojo' to set Rojo up."
+			"'rojo --version' failed, so Rojo can't start: ERROR Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toEqual([
 			{ run: { command: "rokit add rojo-rbx/rojo", cwd: "/repo/game" } },
@@ -191,7 +189,7 @@ describe("ServerFinder", () => {
 
 		expect(diagnostic.resource).toBe("/repo/game/rokit.toml");
 		expect(diagnostic.message).toBe(
-			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT. Run 'rogen init --rojo' to set Rojo up."
+			"'rojo --version' failed, so Rojo can't start: spawn /bin/rojo ENOENT. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation."
 		);
 		expect(diagnostic.fixes).toBeUndefined();
 	});

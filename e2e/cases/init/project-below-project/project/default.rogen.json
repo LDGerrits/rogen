@@ -1,0 +1,6 @@
+{
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "*": "ReplicatedStorage" }
+	}
+}

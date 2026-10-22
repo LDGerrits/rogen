@@ -9,7 +9,7 @@ describe("e2e harness", () => {
 
 		it("should show the output of a command that is what a case is about", () => {
 			expect(showsStdout(["where", "src"], {})).toBe(true);
-			expect(showsStdout(["list"], {})).toBe(true);
+			expect(showsStdout(["sourcemap"], {})).toBe(true);
 			expect(showsStdout(["check"], {})).toBe(true);
 		});
 
@@ -32,11 +32,11 @@ describe("e2e harness", () => {
 		it("should print the exit code and both streams", () => {
 			expect(
 				formatStep(
-					["rogen", "list"],
+					["rogen", "check"],
 					{ ...result, stderr: "oops\n" },
 					true
 				)
-			).toBe("$ rogen list\nexit 0\nstdout:\n  hello\nstderr:\n  oops");
+			).toBe("$ rogen check\nexit 0\nstdout:\n  hello\nstderr:\n  oops");
 		});
 
 		it("should say that output was left out, and still print the errors", () => {

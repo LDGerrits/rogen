@@ -39,19 +39,6 @@ registerCommand(
 							subcommands: SUBCOMMANDS,
 						},
 					],
-					picker: [
-						{
-							message: "Install or remove the plugin?",
-							choices: SUBCOMMANDS.map(
-								({ name, description }) => ({
-									value: name,
-									label: name,
-									hint: description,
-								})
-							),
-							into: "positional",
-						},
-					],
 					options: PluginOptions,
 					effects: ["writesFiles", "runsProcesses"],
 					examples: [

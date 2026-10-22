@@ -16,10 +16,11 @@ export const PLACES_VARIANT = "-places";
 export const TEMPLATE_SOURCE_PATHS = {
 	/** The variant for one place. */
 	one: "src",
-	/** The shared code of the variant for several. */
-	shared: "places/shared/src",
-	/** The first place of the variant for several. */
-	place: "places/game/src",
+	/** The first place of the variant for several, by language. */
+	place: {
+		luau: "src/game",
+		"roblox-ts": "projects/game/src",
+	} as Readonly<Record<string, string>>,
 } as const;
 
 const FEATURE = "Greeter";
@@ -30,6 +31,7 @@ const README = "README.md";
 export class GreeterSample {
 	private readonly variant: string;
 	private readonly placesVariant: string;
+	private readonly placeSource: string;
 
 	constructor(
 		language: Language,
@@ -38,6 +40,7 @@ export class GreeterSample {
 	) {
 		this.variant = language.id;
 		this.placesVariant = `${language.id}${PLACES_VARIANT}`;
+		this.placeSource = TEMPLATE_SOURCE_PATHS.place[language.id];
 	}
 
 	/** The feature in `sourcePath`, shared by every place that reads it. */
@@ -53,7 +56,7 @@ export class GreeterSample {
 	place(sourcePath: string): PlannedFile[] {
 		return this.mapped(
 			this.placesVariant,
-			`${TEMPLATE_SOURCE_PATHS.place}/${PLACE_FEATURE}`,
+			`${this.placeSource}/${PLACE_FEATURE}`,
 			path.posix.join(sourcePath, PLACE_FEATURE)
 		);
 	}

@@ -4,8 +4,7 @@ import { Variant, follow, stepOf } from "./first-success.js";
 
 const SOURCEMAP = ["rogen", "sourcemap", "-o", "sourcemap.json"] as const;
 
-const GAME = "places/game";
-const SHARED = "places/shared";
+const GAME = "projects/game";
 
 const VARIANTS: readonly Variant[] = [
 	{ name: "Luau, one place", flags: [], steps: [], served: "project" },
@@ -13,9 +12,9 @@ const VARIANTS: readonly Variant[] = [
 		name: "Luau, several places",
 		flags: ["--places"],
 		steps: [],
-		project: [GAME],
+		project: ["game"],
 		served: "game",
-		mapped: [SHARED],
+		mapped: ["game"],
 	},
 	{
 		name: "Luau with Darklua",
@@ -28,14 +27,14 @@ const VARIANTS: readonly Variant[] = [
 		name: "Luau with Darklua, several places",
 		flags: ["--places", "--darklua"],
 		steps: [
-			{ in: GAME, run: SOURCEMAP },
 			{
-				in: GAME,
-				run: ["darklua", "process", "../shared/src", "dist/shared/src"],
+				run: ["rogen", "sourcemap", "game", "-o", "sourcemap.json"],
+				editor: true,
 			},
-			{ in: GAME, run: ["darklua", "process", "src", "dist/game/src"] },
+			{ run: ["darklua", "process", "src/common", "dist/common"] },
+			{ run: ["darklua", "process", "src/game", "dist/game"] },
 		],
-		project: [`${GAME}/dist.rogen.json`],
+		project: ["game.dist.rogen.json"],
 		served: "game",
 	},
 	{
@@ -112,9 +111,6 @@ describeWithRojo("first success from an empty folder", () => {
 						.map(({ run: [, command] }) => command),
 					"serve",
 				]);
-				expect(success.pluginCalls).toBe(
-					process.platform === "win32" ? 0 : 1
-				);
 				expect(success.unprinted).toEqual([]);
 				for (const folder of variant.mapped ?? [])
 					expect(success.mappedPaths[folder]).toContain(

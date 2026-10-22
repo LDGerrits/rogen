@@ -1,5 +1,5 @@
 import { failureReason } from "../../base/errors.js";
-import { JSONSchema } from "../../base/json-schema.js";
+import { JsonStructure } from "../../base/json-structure.js";
 import { JsoncNode, parse, parseJsoncSpans } from "../../base/jsonc.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import {
@@ -46,7 +46,7 @@ export class ConfigFileReader {
 
 	constructor(
 		private readonly fileReader: FileReader,
-		private readonly schema: JSONSchema
+		private readonly structure: JsonStructure
 	) {
 		this.documents = new JsoncDocumentReader({
 			codePrefix: "config",
@@ -79,7 +79,7 @@ export class ConfigFileReader {
 		text: string,
 		file: string
 	): Result<ConfigFile, ConfigFileFailure> {
-		const document = this.documents.read(text, file, this.schema);
+		const document = this.documents.read(text, file, this.structure);
 		if (document.isErr()) {
 			const parsed = parse(text);
 			return err({

@@ -10,16 +10,14 @@ import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
-import { SyncServer } from "../runner/sync-server.js";
+import { ServeFlags } from "../runner/serve-flags.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
 	ServeRequest,
 	ServeService,
 	ServeSession,
-	ServingNow,
 } from "./serve-service.js";
-import { ServedProjectFiles } from "./served-project-files.js";
 import { ServerProbe } from "./server-probe.js";
 import { ServerRecords } from "./server-records.js";
 
@@ -28,7 +26,6 @@ export class CoreServeService implements ServeService {
 
 	private readonly probe: ServerProbe;
 	private readonly records: ServerRecords;
-	private readonly served: ServedProjectFiles;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -47,17 +44,12 @@ export class CoreServeService implements ServeService {
 			environmentService.tmpDir,
 			environmentService.pid
 		);
-		this.served = new ServedProjectFiles(this.records, this.probe);
 	}
 
-	private portsFor(
-		server: SyncServer,
-		serverArgs: readonly string[]
-	): ServePorts {
+	private portsFor(serverArgs: readonly string[]): ServePorts {
 		return new ServePorts(
 			this.probe,
 			this.records,
-			server,
 			serverArgs,
 			this.environmentService.cwd,
 			this.rojoRunner
@@ -77,20 +69,17 @@ export class CoreServeService implements ServeService {
 			request.signal
 		);
 		if (executable.isErr()) return executable;
-		const { server, version } = executable.value;
-		const tooNew = server.flagTooNewIn(request.serverArgs, version);
+		const { version } = executable.value;
+		const tooNew = ServeFlags.tooNewIn(request.serverArgs, version);
 		if (tooNew)
 			return err(
 				new UsageError(
-					`${tooNew.flag} needs ${server.name} ${tooNew.since} or later, and the ${server.name} that runs here is ${version}.`,
-					`Change your ${server.name} pin to ${tooNew.since} or later, or update the ${server.name} on the PATH, or leave the flag out.`
+					`${tooNew.flag} needs Rojo ${tooNew.since} or later, and the Rojo that runs here is ${version}.`,
+					`Change your Rojo pin to ${tooNew.since} or later, or update the Rojo on the PATH, or leave the flag out.`
 				)
 			);
 
-		const ports = this.portsFor(
-			executable.value.server,
-			request.serverArgs
-		);
+		const ports = this.portsFor(request.serverArgs);
 		if (ports.portError) return err(ports.portError);
 		const checked = await ports.check(ports.targetOf(config));
 		if (checked.isErr()) return err(new DiagnosticsError([checked.error]));
@@ -114,26 +103,9 @@ export class CoreServeService implements ServeService {
 				this.rojoRunner,
 				this.probe,
 				this.records,
-				this.portsFor(plan.executable.server, plan.serverArgs),
+				this.portsFor(plan.serverArgs),
 				this.compatibility
 			)
 		);
-	}
-
-	async servedBy(
-		projectFiles: readonly string[]
-	): Promise<ReadonlyMap<string, ServingNow>> {
-		const found = new Map<string, ServingNow>();
-		for (const [file, record] of await this.served.serving(projectFiles)) {
-			const server = SyncServer.byId(record.server);
-			if (server)
-				found.set(file, {
-					server,
-					host: record.host,
-					port: record.port,
-					clients: record.clients,
-				});
-		}
-		return found;
 	}
 }

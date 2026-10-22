@@ -5,7 +5,6 @@ import { NativeEnvironmentService } from "../../../platform/environment/native-e
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { CoreInitService } from "../core-init-service.js";
@@ -54,19 +53,19 @@ describe("RobloxTsStarter", () => {
 		]);
 		expect(RobloxTsStarter.ignored(true)).toEqual([
 			...RobloxTsStarter.ignored(false),
-			"places/*/out",
-			"places/*/include",
+			"projects/*/out",
+			"projects/*/include",
 		]);
 	});
 
 	it("should point the build and watch scripts at the place", () => {
-		expect(new RobloxTsStarter().scripts("places/game")).toMatchObject({
+		expect(new RobloxTsStarter().scripts("projects/game")).toMatchObject({
 			file: "npm",
 			args: [
 				"pkg",
 				"set",
-				"scripts.build=rbxtsc -p places/game",
-				"scripts.watch=rbxtsc -w -p places/game",
+				"scripts.build=rbxtsc -p projects/game",
+				"scripts.watch=rbxtsc -w -p projects/game",
 			],
 		});
 	});
@@ -79,12 +78,12 @@ describe("RobloxTsStarter", () => {
 		]);
 	});
 
-	it("should have the tsconfig of the shared code check it for the editor alone", () => {
-		const { fileName, content } = new RobloxTsStarter().sharedTsconfig(
-			"places/shared/src"
+	it("should have the tsconfig of the common code check it for the editor alone", () => {
+		const { fileName, content } = new RobloxTsStarter().commonTsconfig(
+			"projects/common/src"
 		);
 
-		expect(fileName).toBe("places/shared/tsconfig.json");
+		expect(fileName).toBe("projects/common/tsconfig.json");
 		const tsconfig = JSON.parse(content);
 		expect(tsconfig.compilerOptions).toMatchObject({
 			rootDir: "src",
@@ -97,31 +96,31 @@ describe("RobloxTsStarter", () => {
 
 	describe("place", () => {
 		const place = new RobloxTsStarter().place(
-			"places/game",
-			"places/shared/src"
+			"projects/game",
+			"projects/common/src"
 		);
 
-		it("should compile its own code with the shared code into its own out folder", () => {
+		it("should compile its own code with the common code into its own out folder", () => {
 			const [file] = place.files;
 
-			expect(file.fileName).toBe("places/game/tsconfig.json");
+			expect(file.fileName).toBe("projects/game/tsconfig.json");
 			const tsconfig = JSON.parse(file.content);
 			expect(tsconfig.compilerOptions).toMatchObject({
 				outDir: "out",
-				rootDirs: ["src", "../shared/src"],
+				rootDirs: ["src", "../common/src"],
 				baseUrl: ".",
-				paths: { "*": ["src/*", "../shared/src/*"] },
+				paths: { "*": ["src/*", "../common/src/*"] },
 				typeRoots: ["node_modules/@rbxts", "../../node_modules/@rbxts"],
 				tsBuildInfoFile: "out/tsconfig.tsbuildinfo",
 			});
 			expect(tsconfig.compilerOptions).not.toHaveProperty("rootDir");
 			expect(tsconfig).not.toHaveProperty("extends");
-			expect(tsconfig.include).toEqual(["src", "../shared/src"]);
+			expect(tsconfig.include).toEqual(["src", "../common/src"]);
 		});
 
-		it("should reach the shared code of the root from any folder", () => {
+		it("should reach the common code of the root from any folder", () => {
 			const [file] = new RobloxTsStarter().place(
-				"places/arena",
+				"projects/arena",
 				"src"
 			).files;
 
@@ -158,7 +157,6 @@ describe("a new roblox-ts project", () => {
 			new MockPromptService([], false),
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			new CoreConfigService(fileSystem, environmentService),
 			processes
 		);
 	};

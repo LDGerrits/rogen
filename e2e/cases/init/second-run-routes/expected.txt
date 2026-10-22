@@ -1,5 +1,0 @@
-$ rogen init -y --route serverStorage
-exit 2
-stdout: (not shown)
-stderr:
-  error: --route is for a new project, and default.rogen.json exists. init doesn't change a config. Edit the .rogen.json, then run 'rogen check'.

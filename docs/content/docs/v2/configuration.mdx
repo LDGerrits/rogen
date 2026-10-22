@@ -11,7 +11,6 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
   <Tab value="Luau">
     ```json title="default.rogen.json"
     {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"globIgnorePaths": ["**/*.spec.luau"],
     	"rogen": {
     		"sourcePaths": ["src"],
@@ -28,7 +27,6 @@ A folder's **config** is `default.rogen.json` (or `default.rogen.jsonc`), a Rojo
   <Tab value="roblox-ts">
     ```json title="default.rogen.json"
     {
-    	"$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
     	"tree": {
     		"$className": "DataModel",
     		"ReplicatedStorage": {
@@ -71,9 +69,9 @@ Rogen picks a file the way Rojo does.
 - **A bare name** such as `dist` means `dist.rogen.json` in the current folder, else a plain `dist.project.json`, unless a folder `dist` holds a default.
 - **`serve`, `build`, `sourcemap` and `upload` take one project.** A second is a usage error, as in Rojo. To serve two places, use two terminals, the second with `--port`.
 
-`rogen check <path>` and `rogen where <path>` are the exception: they take paths, and find each path's own config, the nearest default above it. See [`check`](/docs/v2/cli#check-path).
+`rogen check <path>` and `rogen where <path>` are the exception: they take paths, and find each path's own config: the nearest default above it, else the named `.rogen.json` files at or above it whose source paths hold it. See [`check`](/docs/v2/cli#check-path).
 
-A plain Rojo project runs under Rogen's commands as it is: `check`, `build`, `list`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` work on a folder with only a `default.project.json`, and Rogen writes nothing to the file. A `.project.jsonc` is read too, since Rojo reads it. Beside a `default.rogen.json`, the config wins.
+A plain Rojo project runs under Rogen's commands as it is: `check`, `build`, `where`, `sourcemap`, `serve`, `upload` and `fmt-project` work on a folder with only a `default.project.json`, and Rogen writes nothing to the file. A `.project.jsonc` is read too, since Rojo reads it. Beside a `default.rogen.json`, the config wins.
 
 A command writes **only the project file of the config it runs**. `rogen serve dist` writes `dist.project.json` and serves it, `rogen build release -o game.rbxl` writes `release.project.json` and builds from it, and nothing else is written. A file is rewritten only when its bytes differ. A config you didn't name can be broken without blocking you. The file Rogen writes is overwritten by every build, so edit the `X.rogen.json`; an `X.project.json` with no `X.rogen.json` beside it is a plain Rojo project and is left as it is.
 
@@ -93,7 +91,6 @@ Rojo's keys, at the top level. Rogen passes each to the project file as it is, e
 
 | Field | What Rogen does with it |
 |---|---|
-| `$schema` | The published JSON schema, for editor validation and completion. It covers Rojo's keys and Rogen's, underlines a route key that isn't letters and digits and a route target that doesn't start with a service, and offers the common targets as completions. Rogen leaves it out of the project file. |
 | `name` | The project's name. `default.project.json` carries it only when you set one here; Rojo names the project after its folder otherwise. Every other config must set one, since Rojo can't read its project file without ([`config.unnamedProjectFile`](/docs/v2/diagnostics#config-unnamedprojectfile)). |
 | `tree` | The instance tree Rogen merges its generated nodes into. See [Tree](#tree). |
 | `globIgnorePaths` | Globs, relative to the config, of files Rojo ignores. Rogen keeps them out of routing too. See [Ignoring Files](#ignoring-files). |
@@ -166,7 +163,7 @@ A second output is a second complete file. `X.rogen.json` writes `X.project.json
 - A file other than `default` must set `name`.
 - `release` lists `"DevPackages/**"` in `globIgnorePaths`, which drops the `DevPackages` mount from `release.project.json`. See [Ignoring Files](#ignoring-files).
 - A bare `rogen serve` serves `default.rogen.json`, even when `dist.rogen.json` sits beside it. With Darklua that is unprocessed source, as a bare `rojo serve` would serve: serve the processed code with `rogen serve dist`. `init` prints the run line that fits your setup.
-- The files repeat each other and can drift. `rogen list` in the folder prints, for each file other than `default`, the keys in which it differs from `default`. It is information, not a warning: after you edit one file, run it to see which siblings to bring in step.
+- The files repeat each other and can drift: after you change a route, a source path or the tree in one, make the same change in the siblings that should follow it.
 - A `test.project.json` you wrote by hand stays as it is. `rogen build test.project.json` runs it as a plain Rojo project when no `test.rogen.json` sits beside it.
 
 **A test or subset file.** A second file is complete, so a smaller one is its own tree: give it its own `sourcePaths`, its mounts under `tree`, and `globIgnorePaths` for the mounts and specs it leaves out.
@@ -191,7 +188,7 @@ When you delete a `.rogen.json`, Rogen does not delete the `.project.json` it wr
 
 ## Places
 
-A repository with several places gives each place a folder with its own complete `default.rogen.json`, which lists its source paths in full (`["../shared/src", "src"]`) and sets its own `name`. Code the places share is the folder `places/shared`; for Luau `init` writes a `default.rogen.json` there that holds only the routes, so the editor resolves instance-path requires, and it is never served. `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are ordinary Rojo keys in each place's file, and Rogen writes no port. Name a place to run a command on it: `rogen serve places/lobby`. The [Several Places guide](/docs/v2/setups/places) walks through it.
+A repository with several places gives each place its own complete config, which lists its source paths in full and sets its own `name`: `lobby.rogen.json` at the root with `["src/common", "src/lobby"]` in Luau (what `init --places` writes), or a folder with its own `default.rogen.json` and `["../common/src", "src"]` for a place in `projects/`. Code the places share is a plain folder with no config of its own (`src/common`, `projects/common`). `servePort`, `servePlaceIds`, `blockedPlaceIds`, `placeId` and `gameId` are ordinary Rojo keys in each place's file, and Rogen writes no port. Name a place to run a command on it: `rogen serve lobby`, or `rogen serve projects/lobby`. The [Several Places guide](/docs/v2/setups/places) walks through it.
 
 ---
 

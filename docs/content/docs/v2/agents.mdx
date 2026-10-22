@@ -24,7 +24,7 @@ An agent that runs `init` itself can't answer prompts: `rogen init --dry-run --j
 
 ## Add it to an existing repo
 
-Paste the block into `AGENTS.md`, or run `rogen init` again and pick **Agents** (or `rogen init -y --agent-rules`):
+`rogen init` only starts projects, and never changes a folder that has a config. To add the rules to a project that has one, paste the block into `AGENTS.md` (or `CLAUDE.md`):
 
 ````md title="AGENTS.md"
 ## Rogen
@@ -32,15 +32,15 @@ Paste the block into `AGENTS.md`, or run `rogen init` again and pick **Agents** 
 Rogen writes the Rojo project file from the folders and names under each `.rogen.json`'s `rogen.sourcePaths`. Folders decide where code runs, so the disk path is not the instance path.
 
 - Edit code and `.rogen.json` files, never a `*.project.json` that Rogen writes (`X.rogen.json` writes `X.project.json`): change the `.rogen.json`, whose `tree` holds what names can't express.
-- After editing a `.rogen.json`, run `rogen list` in its folder: it shows how the other `.rogen.json` files there (`dist`, `release`) differ from `default`. Each file is complete and none reads another, so keep them in step.
-- To change the setup (a route, source path, package mount, Darklua, the workspace file), edit the `.rogen.json` in place, so its comments stay, then run `rogen check`. `rogen init` starts a project, or adds a place with `rogen init places/<name>`; it never changes a config that exists.
+- Each `.rogen.json` is complete and none reads another: when a change to `default.rogen.json` (routes, source paths, tree) should apply to the files beside it (`dist`, `release`, other places), make it in each.
+- To change the setup (a route, source path, package mount, Darklua), edit the `.rogen.json` in place, so its comments stay, then run `rogen check`. `rogen init` starts a project, in the folder it is given as `rojo init` does; it never changes a config that exists.
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
-- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a place's file; a file in the shared code of a roblox-ts project has no config and is skipped with a note, so check it through a place (`rogen check places/lobby`).
-- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve places/lobby`, `rogen build dist`).
+- After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a file of any place, shared code in `src/common` included. A file no config holds, such as roblox-ts `projects/common`, is skipped with a note, so check it through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
+- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen build lobby`, `rogen build dist`).
 - After adding a feature folder, run `rogen build`: `default.project.json` is as fresh as its last build.
 - Leave `rogen build --watch` to the user: it never exits.
-- To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions). `rogen list --json` shows the same later as `serving.clients`, without the process that printed it.
+- To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions).
 - Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help <code> --json` explains one diagnostic code, and `rogen help codes <module> --json` lists the codes of one module, such as `route`, offline.
 ````
 
@@ -82,7 +82,7 @@ printf '%s\n' "$report" >>"$seen"
 printf '%s\n' "$reply"
 ```
 
-Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names, and a later `init` lists it under **Agent hook**. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal adds it only with `--agent-hook`, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
+Where it finds an agent, `rogen init` can write the script and register it: a terminal run asks whether to add the hook to the agents it names. An agent is found by a sign in the project, and its hook file is created, or has the entry added to the event's list when it exists. It runs the script through `bash`, so it needs no executable bit. A run without a terminal adds it only with `--agent-hook`, and `init` leaves alone an agent that names the script already, and a file that isn't plain JSON, which it says when it writes the hook for other agents.
 
 | Agent | Found by | Hook file | Event | Entry |
 |---|---|---|---|---|
@@ -132,7 +132,7 @@ With the hook in place, the "run `rogen check` …" rule in the block is optiona
 - **It needs bash, git and jq.** On Windows, Claude Code runs hooks in Git Bash, which has bash and git but not jq (`winget install jqlang.jq`). The script runs on bash 3.2, the one macOS ships.
 - **An agent with no hook for the end of a turn** can still run `rogen check <paths>` and read its exit code, as `lint-staged` does: `"*": "rogen check"`.
 - **Cursor and Copilot have caps and quirks.** Cursor limits automatic follow-ups (`loop_limit`, 5 by default), and its `stop` hook has been reported not to fire in the CLI or to ignore its reply on Windows. Copilot ends the turn after 8 blocks in a row. The script reports each line once, so neither limit is reached by it.
-- **It checks from the folder the agent started in.** The changed files are those below it. `rogen check` finds each file's nearest `default.rogen.json` or `default.project.json`, so a place's file is checked from the repo root. A file with no config above it, such as the shared code of a roblox-ts project, is skipped, and the hook hides the note.
+- **It checks from the folder the agent started in.** The changed files are those below it. `rogen check` finds each file's nearest `default.rogen.json` or `default.project.json`, so a place's file is checked from the repo root. Where there is none, as in root-level places, it takes the named `.rogen.json` files whose source paths hold the file, so a file in `src/common` is checked against every place and reported once. A file no config holds, such as the shared code of a roblox-ts project, is skipped, and the hook hides the note.
 
 ## Install the skill
 

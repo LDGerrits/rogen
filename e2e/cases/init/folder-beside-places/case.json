@@ -1,0 +1,8 @@
+{
+	"steps": [
+		["init", "--non-interactive", "--skip-git", "--places"],
+		["init", "lobby", "--non-interactive", "--skip-git"]
+	],
+	"show": ["lobby/default.rogen.json"],
+	"output": ["init"]
+}

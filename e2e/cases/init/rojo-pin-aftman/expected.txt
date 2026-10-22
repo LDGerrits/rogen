@@ -2,18 +2,18 @@ $ rogen init --non-interactive --skip-git --no-sample
 exit 0
 stdout: (not shown)
 
-ran:
-  aftman add rojo-rbx/rojo@7.7.1
-
 written:
   AGENTS.md
   aftman.toml
   default.project.json
   default.rogen.json
 
+aftman.toml:
+[tools]
+rojo = "rojo-rbx/rojo@7.7.1"
+
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel"
   },

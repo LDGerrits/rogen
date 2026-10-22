@@ -1,4 +1,4 @@
-import { JSONSchema } from "../../base/json-schema.js";
+import { JsonStructure } from "../../base/json-structure.js";
 import { JsoncNode, parseJsonc } from "../../base/jsonc.js";
 import { Result, err, ok } from "../../base/result.js";
 import { closestMatch } from "../../base/strings.js";
@@ -29,14 +29,14 @@ const KIND_NAMES: Record<JsoncNode["kind"], string> = {
 	null: "null",
 };
 
-/** Parses JSONC into a JSON object checked against a schema; every problem is a diagnostic. */
+/** Parses JSONC into a JSON object checked against a structure; every problem is a diagnostic. */
 export class JsoncDocumentReader {
 	constructor(private readonly kind: JsoncDocumentKind) {}
 
 	read(
 		text: string,
 		file: string,
-		schema: JSONSchema
+		structure: JsonStructure
 	): Result<JsoncObject, Diagnostic[]> {
 		const { root, value, errors } = parseJsonc(text);
 
@@ -62,7 +62,7 @@ export class JsoncDocumentReader {
 			]);
 		}
 
-		const problems = this.validate(root, schema, file, "");
+		const problems = this.validate(root, structure, file, "");
 		return problems.length > 0
 			? err(problems)
 			: ok({ root, value: value as Record<string, unknown> });
@@ -82,7 +82,7 @@ export class JsoncDocumentReader {
 
 	private validate(
 		node: JsoncNode,
-		schema: JSONSchema,
+		structure: JsonStructure,
 		file: string,
 		path: string
 	): Diagnostic[] {
@@ -91,7 +91,8 @@ export class JsoncDocumentReader {
 			position: { line: at.line, column: at.column },
 		});
 
-		const expected = schema.type === undefined ? [] : [schema.type].flat();
+		const expected =
+			structure.type === undefined ? [] : [structure.type].flat();
 		if (expected.length > 0 && !expected.includes(node.kind)) {
 			return [
 				this.error(
@@ -102,8 +103,8 @@ export class JsoncDocumentReader {
 			];
 		}
 
-		if (node.kind === "array" && schema.items) {
-			const items = schema.items;
+		if (node.kind === "array" && structure.items) {
+			const items = structure.items;
 			return node.items.flatMap((item, index) =>
 				this.validate(item, items, file, `${path}[${index}]`)
 			);
@@ -115,19 +116,22 @@ export class JsoncDocumentReader {
 			const propertyPath = path
 				? `${path}.${property.name}`
 				: property.name;
-			const known = Object.hasOwn(schema.properties ?? {}, property.name)
-				? schema.properties?.[property.name]
+			const known = Object.hasOwn(
+				structure.properties ?? {},
+				property.name
+			)
+				? structure.properties?.[property.name]
 				: undefined;
 			if (known) {
 				return this.validate(property.value, known, file, propertyPath);
 			}
-			if (schema.additionalProperties === false) {
+			if (structure.additionalProperties === false) {
 				const present = new Set(
 					node.properties.map(({ name }) => name)
 				);
 				const suggestion = closestMatch(
 					property.name,
-					Object.keys(schema.properties ?? {}).filter(
+					Object.keys(structure.properties ?? {}).filter(
 						(name) => !present.has(name)
 					)
 				);
@@ -143,10 +147,10 @@ export class JsoncDocumentReader {
 					),
 				];
 			}
-			if (typeof schema.additionalProperties === "object") {
+			if (typeof structure.additionalProperties === "object") {
 				return this.validate(
 					property.value,
-					schema.additionalProperties,
+					structure.additionalProperties,
 					file,
 					propertyPath
 				);

@@ -9,11 +9,7 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 import { ReloadableSelection } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
 import { ServerExecutable } from "../runner/rojo-runner.js";
-import {
-	ServerInfo,
-	ServerMessage,
-	SyncServer,
-} from "../runner/sync-server.js";
+import { ServerInfo, ServerMessage } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
 export interface ServeRequest {
@@ -62,13 +58,6 @@ export class ServePlan {
 export interface ServerReadyEvent {
 	readonly target: ServeTarget;
 	readonly info: ServerInfo;
-}
-
-export interface ServingNow {
-	readonly server: SyncServer;
-	readonly host: string;
-	readonly port: number;
-	readonly clients?: number;
 }
 
 /** A Studio plugin connected to a server the session started, or left it. */
@@ -150,11 +139,6 @@ export interface ServeService {
 
 	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError>;
-
-	/** For each of `projectFiles` that a running serve serves, the server it serves it with, as that serve recorded it, when the server still answers. */
-	servedBy(
-		projectFiles: readonly string[]
-	): Promise<ReadonlyMap<string, ServingNow>>;
 }
 
 export const ServeService =

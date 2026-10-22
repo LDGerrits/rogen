@@ -13,7 +13,6 @@ import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
 import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
-import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
@@ -121,7 +120,6 @@ describe("CoreServeService", () => {
 
 			expect(served(servePlan)).toEqual(["repo", "127.0.0.1:34872"]);
 			expect(servePlan.executable).toEqual({
-				server: SyncServer.ROJO,
 				file: "/bin/rojo",
 				version: "7.7.1",
 			});
@@ -227,7 +225,6 @@ describe("CoreServeService", () => {
 			const servePlan = await plan();
 
 			expect(servePlan.target.servedBy).toEqual({
-				server: SyncServer.ROJO,
 				project: "repo",
 				version: "7.7.1",
 				session: "s1",
@@ -483,7 +480,7 @@ describe("CoreServeService", () => {
 			).toEqual({
 				run: {
 					command:
-						"rogen serve . --port 34873 -- --address 0.0.0.0 --allowed-hosts 'my pc'",
+						"rogen serve . --port 34873 --address 0.0.0.0 --allowed-hosts 'my pc'",
 					cwd: "/repo",
 				},
 			});
@@ -554,37 +551,6 @@ describe("CoreServeService", () => {
 
 			expect(error).toBeInstanceOf(DiagnosticsError);
 			expect(processes.execs).toEqual([]);
-		});
-	});
-
-	describe("servedBy", () => {
-		it("should say which server serves each project file, and how many Studio plugins it has", async () => {
-			await memFs.writeFile(
-				...recordFile(34872, "repo", "/repo/default.project.json", {
-					clients: 2,
-				})
-			);
-			requests.answer(
-				"http://127.0.0.1:34872/api/rojo",
-				rojoInfo("repo")
-			);
-
-			const served = await service.servedBy([
-				"/repo/default.project.json",
-				"/repo/lobby/default.project.json",
-			]);
-
-			expect([...served]).toEqual([
-				[
-					"/repo/default.project.json",
-					{
-						server: SyncServer.ROJO,
-						host: "127.0.0.1",
-						port: 34872,
-						clients: 2,
-					},
-				],
-			]);
 		});
 	});
 
@@ -805,8 +771,6 @@ describe("CoreServeService", () => {
 			).toEqual({
 				host: "127.0.0.1",
 				port: 34872,
-				server: "rojo",
-				clients: 0,
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",

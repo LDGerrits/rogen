@@ -3,13 +3,13 @@ import { containsPath, normalizeDir } from "../../base/path.js";
 import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
-import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { RouteId, StartingRoutes } from "./starting-routes.js";
 import { InitChoices, InitDecision, InitKind } from "./init-service.js";
+import { COMMON_FOLDER, PROJECTS_FOLDER } from "./starter-places.js";
 import { TreeChoice } from "./tree-plan.js";
 
 /** What a list flag says to take none of. */
@@ -42,13 +42,6 @@ export function listOf(
 			`'${NONE}' can't be combined with other values of ${flag}.`
 		);
 	return [];
-}
-
-/** An area a run can add to a project that has a config. */
-export interface ChangeArea {
-	readonly id: string;
-	readonly label: string;
-	readonly hint: string;
 }
 
 const required = (what: string) => (value: string) =>
@@ -99,37 +92,6 @@ export class InitQuestions {
 		return false;
 	}
 
-	async startNestedProject({
-		directory,
-		fileNames,
-	}: EnclosingConfigs): Promise<boolean | undefined> {
-		if (this.choices.nested) return true;
-		if (!this.interactive) return false;
-		return this.essential.confirm({
-			message: `${directory} already has ${fileNames.join(", ")}. Start a separate project here anyway?`,
-			description:
-				"This folder may already be part of that project, and a project here would then be built twice.",
-			initialValue: false,
-		});
-	}
-
-	/** The areas of a project that has a config to add to, with what it has now; `undefined` when the user cancelled. */
-	async whatToChange(
-		current: string,
-		areas: readonly ChangeArea[]
-	): Promise<readonly string[] | undefined> {
-		return this.essential.multiSelect({
-			message: "What do you want to change?",
-			description: current,
-			choices: areas.map(({ id, label, hint }) => ({
-				value: id,
-				label,
-				hint,
-			})),
-			initialValues: [],
-		});
-	}
-
 	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {
 		if (this.choices.agentRules !== undefined)
 			return this.choices.agentRules;
@@ -139,57 +101,6 @@ export class InitQuestions {
 			message: `Add Rogen's rules for coding agents to ${fileName}?`,
 			description:
 				"About 10 lines, read by every agent that opens this repo.",
-			initialValue: true,
-		});
-	}
-
-	/** Whether to set Rojo up; with no `manager` there is none on the machine, so a Yes installs Rokit first. A run that can't ask pins with a manager it finds and installs nothing otherwise. */
-	async rojo(
-		manager: string | undefined,
-		installer: string,
-		tools: readonly string[]
-	): Promise<boolean | undefined> {
-		const { rojo } = this.choices;
-		if (rojo !== undefined) return rojo;
-		if (!this.interactive) {
-			if (manager !== undefined)
-				return this.decide("rojo", true, "--rojo");
-			this.decide("rojo", "not installed", "--rojo");
-			return false;
-		}
-		return this.promptService.confirm(
-			manager !== undefined
-				? {
-						message: `Pin ${joinedWithAnd(tools)} with ${manager}?`,
-						description:
-							"Rogen runs the Rojo that the toolchain file pins, so everyone who clones the repo gets the same one.",
-						initialValue: true,
-					}
-				: {
-						message: this.installMessage(tools),
-						description: `Runs Rokit's installer (${installer}), then pins ${joinedWithAnd(tools)} in a rokit.toml here.`,
-						initialValue: true,
-					}
-		);
-	}
-
-	private installMessage(tools: readonly string[]): string {
-		const names = joinedWithAnd(tools.map((tool) => tool.split(" ")[0]));
-		return tools.length === 1 && names === "Rojo"
-			? "Rojo isn't installed, and rogen serve needs it. Install Rokit and Rojo now?"
-			: `${names} ${tools.length === 1 ? "isn't" : "aren't"} installed, and the project needs ${tools.length === 1 ? "it" : "them"}. Install Rokit and ${tools.length === 1 ? "pin it" : "pin them"} now?`;
-	}
-
-	/** Whether to install Rojo's Studio plugin, which a run that can't ask leaves to the user. */
-	async studioPlugin(): Promise<boolean | undefined> {
-		const { plugin } = this.choices;
-		if (plugin !== undefined) return plugin;
-		if (!this.interactive)
-			return this.decide("plugin", false, "--studio-plugin");
-		return this.promptService.confirm({
-			message: "Install Rojo's Studio plugin?",
-			description:
-				"Studio needs it to connect to rogen serve. It is installed into Studio's plugins folder.",
 			initialValue: true,
 		});
 	}
@@ -215,14 +126,20 @@ export class InitQuestions {
 		return true;
 	}
 
-	/** Whether a new project is several places; a `places` folder here makes it the default. */
-	async places(directory: InitDirectory): Promise<boolean | undefined> {
+	/** Whether a new project is several places; a `projects` folder here makes it the default for a compiled language. */
+	async places(
+		directory: InitDirectory,
+		language: Language
+	): Promise<boolean | undefined> {
 		const given = this.choices.places;
 		if (given !== undefined) return given;
 		if (this.choices.sourcePaths !== undefined) return false;
 		const several =
-			directory.has("places") &&
-			directory.layout.codeFolders.every((folder) => folder === "places");
+			language.compiler !== undefined &&
+			directory.has(PROJECTS_FOLDER) &&
+			directory.layout.codeFolders.every(
+				(folder) => folder === PROJECTS_FOLDER
+			);
 		if (!this.interactive)
 			return this.decide("places", several, "--places");
 		const answer = await this.essential.select<"one" | "several">({
@@ -236,7 +153,9 @@ export class InitQuestions {
 				{
 					value: "several",
 					label: "Several places",
-					hint: "places/shared holds the shared code, places/game the first place",
+					hint: language.compiler
+						? `${PROJECTS_FOLDER}/${COMMON_FOLDER} holds the shared code, ${PROJECTS_FOLDER}/game the first place`
+						: `src/${COMMON_FOLDER} holds the shared code, src/game the first place`,
 				},
 			],
 			initialValue: several ? "several" : "one",

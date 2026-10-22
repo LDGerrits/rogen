@@ -6,10 +6,10 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  rokit.toml
 
 default.rogen.json:
 {
-  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {

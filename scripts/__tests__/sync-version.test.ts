@@ -3,7 +3,6 @@ import os from "os";
 import path from "path";
 import { VERSIONED_FILES, syncVersion } from "../sync-version.js";
 
-const SCHEMA_FILE = "src/domain/config/config.ts";
 const INSTALL_FILE = "docs/content/docs/v2/installation.mdx";
 const REPO_ROOT = path.resolve(import.meta.dirname, "../..");
 
@@ -22,10 +21,6 @@ describe("scripts/sync-version", () => {
 
 		beforeEach(() => {
 			root = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-version-"));
-			write(
-				SCHEMA_FILE,
-				'export const SCHEMA_URL = schemaUrlFor("2.0.0");\n'
-			);
 			write(INSTALL_FILE, 'rogen = "ldgerrits/rogen@2.0.0"\n');
 		});
 
@@ -34,21 +29,14 @@ describe("scripts/sync-version", () => {
 		});
 
 		it("should move every file to a stable release", () => {
-			expect(syncVersion(root, "2.1.0")).toEqual([
-				SCHEMA_FILE,
-				INSTALL_FILE,
-			]);
-			expect(read(SCHEMA_FILE)).toBe(
-				'export const SCHEMA_URL = schemaUrlFor("2.1.0");\n'
-			);
+			expect(syncVersion(root, "2.1.0")).toEqual([INSTALL_FILE]);
 			expect(read(INSTALL_FILE)).toBe(
 				'rogen = "ldgerrits/rogen@2.1.0"\n'
 			);
 		});
 
 		it("should keep the install docs on the stable release for a pre-release", () => {
-			expect(syncVersion(root, "2.1.0-beta.1")).toEqual([SCHEMA_FILE]);
-			expect(read(SCHEMA_FILE)).toContain('schemaUrlFor("2.1.0-beta.1")');
+			expect(syncVersion(root, "2.1.0-beta.1")).toEqual([]);
 			expect(read(INSTALL_FILE)).toContain("ldgerrits/rogen@2.0.0");
 		});
 
@@ -66,8 +54,8 @@ describe("scripts/sync-version", () => {
 		});
 
 		it("should throw when a file no longer names a version", () => {
-			write(SCHEMA_FILE, "export const SCHEMA_URL = URL;\n");
-			expect(() => syncVersion(root, "2.1.0")).toThrow(SCHEMA_FILE);
+			write(INSTALL_FILE, "rokit add ldgerrits/rogen\n");
+			expect(() => syncVersion(root, "2.1.0")).toThrow(INSTALL_FILE);
 		});
 
 		it("should throw for a pre-release when a file it leaves alone no longer names a version", () => {

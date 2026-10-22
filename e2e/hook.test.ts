@@ -164,6 +164,36 @@ const available = has("bash") && has("git") && has("jq");
 		]);
 	});
 
+	it("should report a warning in the shared code of root-level places once", () => {
+		fs.rmSync(path.join(dir, "project/default.rogen.json"));
+		for (const place of ["game", "lobby"])
+			write(
+				`${place}.rogen.json`,
+				JSON.stringify({
+					name: place,
+					rogen: {
+						sourcePaths: ["src/common", `src/${place}`],
+						routes: {
+							Server: "ServerScriptService",
+							"*": "ReplicatedStorage/Shared",
+						},
+					},
+				})
+			);
+		git("add", "-A");
+		git("commit", "-qm", "places");
+
+		write("src/common/Buy@sever.luau");
+		const { reply, report } = stop();
+
+		expect(reply?.decision).toBe("block");
+		expect(report).toEqual([
+			expect.stringMatching(
+				/^src\/common\/Buy@sever\.luau - warning: .*\(route\.strayAt\)$/
+			),
+		]);
+	});
+
 	it("should report again in another session", () => {
 		write("src/Buy@sever.luau");
 		stop({ session_id: "s1" });

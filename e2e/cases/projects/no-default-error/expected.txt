@@ -3,28 +3,10 @@ exit 1
 stderr:
   error: No default.rogen.json or default.project.json in this folder (<dir>). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen init' to create default.rogen.json.
 
-$ rogen list
-exit 0
-stdout:
-  rogen list
-  dist.rogen.json
-    source paths: src
-    routes:
-      server -> ServerScriptService
-      client -> StarterPlayer/StarterPlayerScripts
-      shared -> ReplicatedStorage/shared
-      * -> ReplicatedStorage/shared
-    compiled path: dist
-      src -> dist
-    project file: dist.project.json
-    rojo: rojo serve dist.project.json
-  release.rogen.jsonc
-    source paths: src
-    routes: same as dist.rogen.json
-    compiled path: (none)
-    project file: release.project.json
-    rojo: rojo serve release.project.json
-  2 configs.
+$ rogen check
+exit 1
+stderr:
+  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen init' to create default.rogen.json.
 
 $ rogen build dist
 exit 0

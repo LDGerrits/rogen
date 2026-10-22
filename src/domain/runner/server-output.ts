@@ -2,7 +2,7 @@ import { stripVTControlCharacters } from "util";
 import { RunOnceScheduler } from "../../base/async.js";
 import { AbstractDisposable } from "../../base/disposable.js";
 import { Emitter, Event } from "../../base/event.js";
-import { ServerMessage, SyncServer } from "./sync-server.js";
+import { RojoServer, ServerMessage } from "./rojo-server.js";
 
 const RECORD_QUIET_MS = 50;
 
@@ -44,7 +44,7 @@ export class ServerOutput extends AbstractDisposable {
 	private readonly quiet: RunOnceScheduler;
 	private last: { readonly key: string; readonly at: number } | undefined;
 
-	constructor(private readonly server: SyncServer) {
+	constructor() {
 		super();
 		this.quiet = this._register(
 			new RunOnceScheduler(() => this.flush(), RECORD_QUIET_MS)
@@ -63,7 +63,7 @@ export class ServerOutput extends AbstractDisposable {
 	}
 
 	private read(line: string, stream?: "stdout" | "stderr"): void {
-		const logged = this.server.logRecordOf(line);
+		const logged = RojoServer.logRecordOf(line);
 		if (stream === "stdout" && !logged) {
 			this.flush();
 			this.say("info", line.trim(), false, line);
@@ -119,7 +119,7 @@ export class ServerOutput extends AbstractDisposable {
 	): void {
 		const text = RUST_NOISE.test(said)
 			? undefined
-			: this.server.tidied(said);
+			: RojoServer.tidied(said);
 		if (stdout !== undefined) {
 			this._onDidMessage.fire({
 				severity: text && severity !== "debug" ? severity : "debug",
@@ -129,7 +129,7 @@ export class ServerOutput extends AbstractDisposable {
 			return;
 		}
 		if (said === "") return;
-		const change = isLogRecord ? this.server.connectionIn(said) : undefined;
+		const change = isLogRecord ? RojoServer.connectionIn(said) : undefined;
 		if (change) this._onDidConnection.fire(change);
 		if (severity === "debug" || !text) {
 			this._onDidMessage.fire({ severity: "debug", text: said });

@@ -16,7 +16,6 @@ import "../../fmt-project/fmt-project-command.js";
 import "../doc-command.js";
 import "../help-command.js";
 import "../../init/init-command.js";
-import "../../list/list-command.js";
 import "../../serve/serve-command.js";
 import "../../where/where-command.js";
 import { helpTexts } from "../help-texts.js";
@@ -106,7 +105,6 @@ describe("rogen help --json", () => {
 				"fmt-project": ["writesFiles"],
 				doc: ["opensBrowser"],
 				check: [],
-				list: [],
 				where: [],
 				help: [],
 			});
@@ -163,7 +161,7 @@ describe("rogen help --json", () => {
 			await help("check");
 			const check = document().shapes.Diagnostic;
 			print.mockClear();
-			await help("list");
+			await help("where");
 
 			expect(document().shapes.Diagnostic).toBe(check);
 		});

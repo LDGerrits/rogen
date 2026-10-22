@@ -1,16 +1,5 @@
 {
-	"steps": [
-		[
-			"init",
-			"--non-interactive"
-		],
-		[
-			"init",
-			"--non-interactive"
-		]
-	],
-	"show": [
-		"AGENTS.md"
-	],
+	"steps": [["init", "--non-interactive"]],
+	"show": ["AGENTS.md"],
 	"rojo": false
 }

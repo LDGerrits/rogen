@@ -4,14 +4,13 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreRojoRunner } from "../core-rojo-runner.js";
 import { ServerExecutable } from "../rojo-runner.js";
-import { ServerMessage, SyncServer } from "../sync-server.js";
+import { ServerMessage } from "../rojo-server.js";
 
 describe("CoreRojoRunner", () => {
 	let processes: MockProcessService;
 	let runner: CoreRojoRunner;
 
 	const executable: ServerExecutable = {
-		server: SyncServer.ROJO,
 		file: "/bin/rojo",
 		version: "7.7.1",
 	};

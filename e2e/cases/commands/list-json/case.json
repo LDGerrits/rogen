@@ -1,7 +1,0 @@
-{
-	"steps": [
-		["list", "game", "lobby", "--json"],
-		["list", "lobby", "--json"]
-	],
-	"rojo": false
-}

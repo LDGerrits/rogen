@@ -50,7 +50,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it, and one that no config covers is skipped with a note; a .rogen.json is checked whole. The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. A file is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it. One that no config covers is skipped with a note; a .rogen.json is checked whole. The whole project, compiled path warnings included, when none is given: the default config of the working directory.",
 							isOptional: true,
 							isVariadic: true,
 						},

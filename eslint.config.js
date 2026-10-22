@@ -18,7 +18,6 @@ const modules = {
 		build: ["build", "build-service"],
 		config: [
 			"config",
-			"config-differences",
 			"config-service",
 			"declared-keys",
 			"resolved-config",
@@ -30,9 +29,10 @@ const modules = {
 			"rojo-command-service",
 			"rojo-compatibility",
 			"rojo-runner",
+			"rojo-server",
 			"rojo-version",
+			"serve-flags",
 			"server-finder",
-			"sync-server",
 		],
 		rojo: [
 			"project-text",
@@ -67,8 +67,6 @@ const modules = {
 		"fmt-project": [],
 		help: [],
 		init: [],
-		list: [],
-		picker: ["command-picker", "project-context"],
 		plugin: [],
 		serve: [],
 		sourcemap: [],

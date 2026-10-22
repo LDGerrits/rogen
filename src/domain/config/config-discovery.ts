@@ -87,34 +87,6 @@ export class ConfigDiscovery {
 		});
 	}
 
-	/** Every config file of the working directory from one directory read, since `list` needs no default. */
-	async discoverFolder(): Promise<Result<DiscoveredConfigs, Error>> {
-		const cwd = this.environmentService.cwd;
-		const files = await this.list(cwd);
-		const twin = ConfigDiscovery.twinStem(files);
-		if (twin !== undefined)
-			return err(
-				keepOne(
-					cwd,
-					files
-						.filter((file) => configStem(file) === twin)
-						.map((file) => path.basename(file))
-				)
-			);
-		if (files.length === 0) return this.discoverHere();
-		return ok({
-			home: cwd,
-			files,
-			noneNamed: false,
-			notes: [],
-		});
-	}
-
-	private static twinStem(files: readonly string[]): string | undefined {
-		const stems = files.map((file) => configStem(file));
-		return stems.find((stem, index) => stems.indexOf(stem) !== index);
-	}
-
 	private async discoverNamed(
 		refs: readonly string[]
 	): Promise<Result<DiscoveredConfigs, Error>> {
@@ -346,6 +318,24 @@ export class ConfigDiscovery {
 			if (file) return { file, whole: false };
 			const parent = path.dirname(directory);
 			if (parent === directory) return undefined;
+			directory = parent;
+		}
+	}
+
+	/** Every named config in the folder of `target` and in each folder above it, nearest folder first: the candidates for a path no default config answers for. */
+	async namedConfigsAbove(target: string): Promise<string[]> {
+		let directory = (await this.fileSystemService.isDirectory(target))
+			? target
+			: path.dirname(target);
+		const found: string[] = [];
+		for (;;) {
+			found.push(
+				...(await this.list(directory)).filter(
+					(file) => !isDefaultConfigFileName(path.basename(file))
+				)
+			);
+			const parent = path.dirname(directory);
+			if (parent === directory) return found;
 			directory = parent;
 		}
 	}
