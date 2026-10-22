@@ -10,17 +10,17 @@ const script = fs
 	.readFileSync(path.join(ROOT, "docs/content/docs/v2/agents.mdx"), "utf8")
 	.replace(/\r\n/g, "\n")
 	.match(
-		/```bash title="\.agents\/hooks\/rogen-check\.sh"\n([\s\S]*?)\n```/
+		/```js title="\.agents\/hooks\/rogen-check\.mjs"\n([\s\S]*?)\n```/
 	)?.[1];
 
-const has = (tool: string) =>
-	spawnSync(tool, ["--version"], { stdio: "ignore" }).status === 0;
-const available = has("bash") && has("git") && has("jq");
+const gitPath = spawnSync("which", ["git"], { encoding: "utf8" }).stdout.trim();
+const available = gitPath !== "";
 
 (available ? describe : describe.skip)("agent Stop hook", () => {
 	let bundle: ReturnType<typeof bundleCli>;
 	let dir: string;
 	let bin: string;
+	let gitOnly: string;
 
 	const git = (...args: string[]) =>
 		execFileSync(
@@ -41,8 +41,8 @@ const available = has("bash") && has("git") && has("jq");
 		env: Record<string, string | undefined> = {}
 	) => {
 		const result = spawnSync(
-			"bash",
-			[path.join(dir, "rogen-check.sh"), ...args],
+			process.execPath,
+			[path.join(dir, "rogen-check.mjs"), ...args],
 			{
 				input: JSON.stringify(payload),
 				encoding: "utf8",
@@ -69,6 +69,16 @@ const available = has("bash") && has("git") && has("jq");
 		};
 	};
 
+	const wrapRogen = (wrapper: string) => {
+		const [command, args] = invocation(bundle.cli, []);
+		fs.mkdirSync(path.dirname(wrapper), { recursive: true });
+		fs.writeFileSync(
+			wrapper,
+			`#!/bin/sh\nexec "${command}" ${args.map((arg) => `"${arg}"`).join(" ")} "$@"\n`
+		);
+		fs.chmodSync(wrapper, 0o755);
+	};
+
 	beforeAll(() => {
 		bundle = bundleCli();
 	});
@@ -81,14 +91,11 @@ const available = has("bash") && has("git") && has("jq");
 		dir = fs.mkdtempSync(path.join(os.tmpdir(), "rogen-hook-"));
 		bin = path.join(dir, "bin");
 		fs.mkdirSync(bin);
-		fs.writeFileSync(path.join(dir, "rogen-check.sh"), script!);
-		const wrapper = path.join(bin, "rogen");
-		const [command, args] = invocation(bundle.cli, []);
-		fs.writeFileSync(
-			wrapper,
-			`#!/bin/sh\nexec "${command}" ${args.map((arg) => `"${arg}"`).join(" ")} "$@"\n`
-		);
-		fs.chmodSync(wrapper, 0o755);
+		fs.writeFileSync(path.join(dir, "rogen-check.mjs"), script!);
+		wrapRogen(path.join(bin, "rogen"));
+		gitOnly = path.join(dir, "git-only");
+		fs.mkdirSync(gitOnly);
+		fs.symlinkSync(gitPath, path.join(gitOnly, "git"));
 
 		fs.mkdirSync(path.join(dir, "project"));
 		execFileSync("git", ["init", "-q"], {
@@ -107,6 +114,7 @@ const available = has("bash") && has("git") && has("jq");
 				},
 			})
 		);
+		write(".gitignore", "node_modules\n");
 		write("src/Old@sevre.luau");
 		write("src/Save.luau");
 		git("add", "-A");
@@ -118,7 +126,7 @@ const available = has("bash") && has("git") && has("jq");
 	});
 
 	it("should be in the agents docs", () => {
-		expect(script).toMatch(/^#!\/usr\/bin\/env bash\n/);
+		expect(script).toBeDefined();
 	});
 
 	it("should say nothing about a clean file, or the warning that was there before", () => {
@@ -275,25 +283,58 @@ const available = has("bash") && has("git") && has("jq");
 		]);
 	});
 
-	it("should not count a report as given when the reply could not be made", () => {
+	it("should run the project's own rogen before the one on the PATH", () => {
 		write("src/Buy@sever.luau");
-		const broken = path.join(dir, "broken");
-		fs.mkdirSync(broken);
-		const realJq = execFileSync("which", ["jq"], {
-			encoding: "utf8",
-		}).trim();
-		fs.writeFileSync(
-			path.join(broken, "jq"),
-			`#!/bin/sh\n[ "$1" = "-n" ] && exit 1\nexec "${realJq}" "$@"\n`
-		);
-		fs.chmodSync(path.join(broken, "jq"), 0o755);
+		const stub = path.join(dir, "stub");
+		fs.mkdirSync(stub);
+		fs.writeFileSync(path.join(stub, "rogen"), "#!/bin/sh\necho wrong\n");
+		fs.chmodSync(path.join(stub, "rogen"), 0o755);
+		wrapRogen(path.join(dir, "project/node_modules/.bin/rogen"));
 
-		const failed = stop({ session_id: "s" }, [], {
-			PATH: `${broken}${path.delimiter}${bin}${path.delimiter}${process.env.PATH}`,
+		const { report } = stop({ session_id: "s" }, [], {
+			PATH: `${stub}${path.delimiter}${process.env.PATH}`,
 		});
 
-		expect(failed.exit).toBe(1);
+		expect(report).toEqual([expect.stringContaining("route.strayAt")]);
+	});
+
+	it("should run the project's rogen when none is on the PATH", () => {
+		write("src/Buy@sever.luau");
+		wrapRogen(path.join(dir, "project/node_modules/.bin/rogen"));
+
+		const { reply } = stop({ session_id: "s" }, [], { PATH: gitOnly });
+
+		expect(reply?.decision).toBe("block");
+	});
+
+	it("should say once per session that it found no rogen, and never block", () => {
+		write("src/Buy@sever.luau");
+
+		const first = stop({ session_id: "s" }, [], { PATH: gitOnly });
+		const again = stop({ session_id: "s" }, [], { PATH: gitOnly });
+		const other = stop({ session_id: "t" }, [], { PATH: gitOnly });
+
+		expect(first).toMatchObject({ exit: 0, reply: undefined });
+		expect(first.stderr).toBe(
+			"Rogen's hook found no rogen; install it in the project or globally\n"
+		);
+		expect(again).toMatchObject({ exit: 0, reply: undefined, stderr: "" });
+		expect(other.stderr).toBe(first.stderr);
+	});
+
+	it("should still report once rogen is installed after it said it found none", () => {
+		write("src/Buy@sever.luau");
+		stop({ session_id: "s" }, [], { PATH: gitOnly });
+
 		expect(stop({ session_id: "s" }).reply?.decision).toBe("block");
+	});
+
+	it("should say nothing about a missing rogen when no file changed", () => {
+		expect(stop({ session_id: "s" }, [], { PATH: gitOnly })).toMatchObject({
+			exit: 0,
+			stderr: "",
+			reply: undefined,
+		});
 	});
 
 	it("should do nothing without a config in the project dir", () => {

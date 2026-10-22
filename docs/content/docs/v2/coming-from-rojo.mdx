@@ -139,7 +139,7 @@ After `init`, `rogen serve` replaces `rojo serve`: it builds `default.project.js
 `init` changes three things, and each is undone on its own. Nothing outside them is touched.
 
 - **The project file.** Rogen replaced `default.project.json`, and the one you wrote is in git: `git checkout default.project.json` restores it. `init` moved its keys into `default.rogen.json`, so remove `default.rogen.json` too, and Rogen no longer writes anything.
-- **The files `init` added.** `AGENTS.md`, `.gitignore` when there was none, and `CLAUDE.md` when `.claude/` was there are new files; remove the ones you don't want. A hook it registered is an entry in the agent's own settings file, and `.agents/hooks/rogen-check.sh`.
+- **The files `init` added.** `AGENTS.md`, `.gitignore` when there was none, and `CLAUDE.md` when `.claude/` was there are new files; remove the ones you don't want. A hook it registered is an entry in the agent's own settings file, and `.agents/hooks/rogen-check.mjs`.
 - **Your source.** Routing never renames or moves a file, so a source folder you haven't reorganised is as it was.
 
 Once you have moved to feature folders, the way back is the file Rogen wrote. `default.project.json` is a complete Rojo project, so commit it (add `!default.project.json` if `.gitignore` lists `*.project.json`), delete the `.rogen.json` files, and `rojo serve` and `rojo build` run on it as they are. It lists a `$path` for each folder routing placed whole and for each file it placed apart, so a file you add later reaches it only when its folder is mounted whole, or when you add its node; rerun `rogen build` before you commit it.
