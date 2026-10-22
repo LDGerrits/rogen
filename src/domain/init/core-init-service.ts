@@ -165,9 +165,10 @@ export class CoreInitService implements InitService {
 			const added = await new PlaceInit(
 				this.fileSystemService,
 				questions,
-				cwd
+				cwd,
+				(await this.toolchainService.detect(cwd)).languageFor("luau")
 			).plan(folder);
-			if (added) return ok(added);
+			if (added.isErr() || added.value) return added;
 		}
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;

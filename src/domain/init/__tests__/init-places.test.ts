@@ -6,6 +6,7 @@ import { MockPromptService } from "../../../platform/prompt/__tests__/mock-promp
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreInitService } from "../core-init-service.js";
+import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { InitChoices, InitPlan } from "../init-service.js";
 
 const directory = path.resolve("/mock/my-game");
@@ -147,11 +148,11 @@ describe("init for several places", () => {
 			);
 		});
 
-		it("should say how to add a place, which is a copy of the config", async () => {
+		it("should say how to add a place, which is init with its name", async () => {
 			const planned = await plan();
 
 			expect(planned.nextSteps.edits.join("\n")).toContain(
-				"copy game.rogen.json to lobby.rogen.json"
+				"rogen init lobby"
 			);
 			expect(planned.nextSteps.edits.join("\n")).toContain(
 				"rogen serve lobby --port"
@@ -544,6 +545,176 @@ describe("init for several places", () => {
 			expect(planned.directory).toBe(
 				path.join(directory, "places/lobby")
 			);
+		});
+	});
+	describe("a place added to a Luau project", () => {
+		const first = {
+			$schema: "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+			name: "game",
+			tree: { $className: "DataModel" },
+			rogen: {
+				sourcePaths: ["src/common", "src/game"],
+				routes: { Server: "ServerScriptService" },
+			},
+		};
+
+		beforeEach(async () => {
+			await put("game.rogen.json", JSON.stringify(first));
+			await put(
+				"src/common/Greeter/Shared/Greeting.luau",
+				"return function() end"
+			);
+		});
+
+		const failure = async (place: string) => {
+			const result = await serviceFor().plan({
+				ask: false,
+				place,
+				choices: { skipGit: true },
+			});
+			return result.isErr() && result.error instanceof DiagnosticsError
+				? result.error.diagnostics
+				: undefined;
+		};
+
+		it("should copy the config of the first place and list the common code and its own", async () => {
+			const planned = await plan({}, "lobby");
+
+			expect(planned.directory).toBe(directory);
+			expect(planned.configs).toEqual(["lobby.rogen.json"]);
+			expect(jsonOf(planned, "lobby.rogen.json")).toEqual({
+				...first,
+				name: "lobby",
+				rogen: {
+					...first.rogen,
+					sourcePaths: ["src/common", "src/lobby"],
+				},
+			});
+			expect(planned.directories).toEqual(["src/lobby"]);
+			expect(planned.notes.join("\n")).toContain("game.rogen.json");
+		});
+
+		it("should seed the folder with a script that greets with the shared module", async () => {
+			const planned = await plan({}, "lobby");
+
+			expect(names(planned)).toContain(
+				"src/lobby/Lobby/Server/Lobby.server.luau"
+			);
+			expect(
+				fileOf(planned, "src/lobby/Lobby/Server/Lobby.server.luau")
+					?.content
+			).toContain('print(Greeting("lobby"))');
+		});
+
+		it("should leave the folder empty with --no-sample", async () => {
+			const planned = await plan({ sample: false }, "lobby");
+
+			expect(names(planned)).toEqual(["lobby.rogen.json"]);
+		});
+
+		it("should leave the folder empty when the shared code lacks the module", async () => {
+			await fileSystem.delete(
+				path.join(directory, "src/common/Greeter"),
+				true
+			);
+
+			const planned = await plan({}, "lobby");
+
+			expect(names(planned)).toEqual(["lobby.rogen.json"]);
+		});
+
+		it("should serve and build it by name, and say how to read it in the editor", async () => {
+			const planned = await plan({}, "lobby");
+
+			expect(planned.nextSteps.run).toEqual(["rogen serve lobby"]);
+			expect(planned.nextSteps.edits.join("\n")).toContain(
+				'"rogen sourcemap lobby --watch -o sourcemap.json"'
+			);
+			expect(planned.nextSteps.edits.join("\n")).toContain(".vscode");
+		});
+
+		it("should write neither the editor settings nor a port", async () => {
+			const planned = await plan({}, "lobby");
+
+			expect(names(planned)).not.toContain(".vscode/settings.json");
+			expect(fileOf(planned, "lobby.rogen.json")?.content).not.toMatch(
+				/servePort/
+			);
+		});
+
+		it("should copy the dist and release configs and process only its own code", async () => {
+			await put(
+				"game.dist.rogen.json",
+				JSON.stringify({
+					...first,
+					rogen: { ...first.rogen, compiledPath: "dist" },
+				})
+			);
+			await put(
+				"game.release.rogen.json",
+				JSON.stringify({
+					...first,
+					rogen: { ...first.rogen, compiledPath: "dist" },
+					globIgnorePaths: ["**/*.spec.luau"],
+				})
+			);
+			await put(".darklua.json", "{}");
+
+			const planned = await plan({}, "lobby");
+
+			expect(names(planned)).toEqual(
+				expect.arrayContaining([
+					"lobby.rogen.json",
+					"lobby.dist.rogen.json",
+					"lobby.release.rogen.json",
+				])
+			);
+			expect(names(planned)).not.toContain(".darklua.json");
+			expect(jsonOf(planned, "lobby.release.rogen.json")).toMatchObject({
+				name: "lobby",
+				globIgnorePaths: ["**/*.spec.luau"],
+				rogen: {
+					sourcePaths: ["src/common", "src/lobby"],
+					compiledPath: "dist",
+				},
+			});
+			expect(planned.nextSteps.run).toEqual([
+				"darklua process src/lobby dist/lobby --watch",
+				"rogen serve lobby.dist.rogen.json",
+			]);
+		});
+
+		it("should refuse a config that exists", async () => {
+			await put("lobby.rogen.json", "{}");
+
+			expect(await failure("lobby")).toMatchObject([
+				{ code: "init.configExists" },
+			]);
+		});
+
+		it("should refuse a code folder that exists", async () => {
+			await put("src/lobby/Main.luau");
+
+			expect(await failure("lobby")).toMatchObject([
+				{ code: "init.fileExists" },
+			]);
+		});
+
+		it("should copy the place and not its dist config, which sorts first", async () => {
+			await put(
+				"game.dist.rogen.json",
+				JSON.stringify({
+					...first,
+					rogen: { ...first.rogen, compiledPath: "dist" },
+				})
+			);
+
+			const planned = await plan({}, "lobby");
+
+			expect(planned.notes.join("\n")).toContain("game.rogen.json");
+			expect(
+				jsonOf(planned, "lobby.rogen.json").rogen
+			).not.toHaveProperty("compiledPath");
 		});
 	});
 });

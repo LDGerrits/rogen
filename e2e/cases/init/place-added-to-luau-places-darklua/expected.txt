@@ -1,0 +1,328 @@
+$ rogen init --non-interactive --skip-git --places --darklua
+exit 0
+stdout:
+  rogen init
+  Wrote the Greeter sample: the feature in src/common, which every place shares, and Game in src/game. Pass --no-sample for empty source folders.
+  Took the defaults: --kind place, --language luau, --compiled-path dist, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.
+  Created game.rogen.json.
+  Created game.dist.rogen.json.
+  Created .darklua.json.
+  Created src/common/Greeter/Shared/Greeting.luau.
+  Created src/common/Greeter/Server/Greeter.server.luau.
+  Created src/common/Greeter/Client/Greeter.client.luau.
+  Created src/game/Game/Server/Game.server.luau.
+  Created README.md.
+  Created .vscode/settings.json.
+  Created AGENTS.md.
+  game.project.json · wrote
+  Next steps
+    Run each in its own terminal:
+      darklua process src/common dist/common --watch
+      darklua process src/game dist/game --watch
+      rogen serve game.dist.rogen.json
+    In Studio, press Connect in the Rojo plugin.
+    Add your own routes under "routes" in game.rogen.json.
+    Edit game.rogen.json and leave game.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build game' so the editor's game.project.json follows.
+    luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
+    Add another place with 'rogen init lobby', and serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+  Wrote 10 files.
+
+$ rogen init lobby --non-interactive --no-sample
+exit 0
+stdout:
+  rogen init
+  Copied the routes and tree of game.rogen.json.
+  Created lobby.rogen.json.
+  Created lobby.dist.rogen.json.
+  Created src/lobby/.
+  lobby.project.json · wrote
+  Next steps
+    Run each in its own terminal:
+      darklua process src/lobby dist/lobby --watch
+      rogen serve lobby.dist.rogen.json
+    In Studio, press Connect in the Rojo plugin.
+    Put the code of lobby in src/lobby. A second place is served from a second terminal with its own --port: 'rogen serve lobby.dist.rogen.json --port <port>'.
+    luau-lsp reads the sourcemap of one place at a time. To read lobby, set the generatorCommand in .vscode/settings.json to "rogen sourcemap lobby --watch -o sourcemap.json".
+  Wrote 2 files.
+
+written:
+  .darklua.json
+  .vscode/settings.json
+  AGENTS.md
+  README.md
+  game.dist.rogen.json
+  game.project.json
+  game.rogen.json
+  lobby.dist.rogen.json
+  lobby.project.json
+  lobby.rogen.json
+  src/common/Greeter/Client/Greeter.client.luau
+  src/common/Greeter/Server/Greeter.server.luau
+  src/common/Greeter/Shared/Greeting.luau
+  src/game/Game/Server/Game.server.luau
+
+game.dist.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src/common",
+      "src/game"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    },
+    "compiledPath": "dist"
+  }
+}
+
+game.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src/common",
+      "src/game"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
+lobby.dist.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "lobby",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src/common",
+      "src/lobby"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    },
+    "compiledPath": "dist"
+  }
+}
+
+lobby.rogen.json:
+{
+  "$schema": "https://ldgerrits.github.io/rogen/schema/2/rogen.json",
+  "name": "lobby",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "Brightness": 2.0,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "Technology": "Voxel"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Locked": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      },
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src/common",
+      "src/lobby"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared",
+      "*": "ReplicatedStorage/Shared"
+    }
+  }
+}
