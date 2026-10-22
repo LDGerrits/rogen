@@ -141,7 +141,7 @@ function withShortValues(
 	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
 }
 
-/** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. */
+/** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. Help gets only the name, so `rogen plugin install --help` is help on `plugin`. */
 function commandOf(
 	values: { version?: unknown; help?: unknown },
 	positionals: readonly string[]
@@ -303,7 +303,9 @@ export function parseArgs(
 			command: runs,
 			bare: positionals.length === 0 && !values.version && !values.help,
 			line: {
-				positionals: consumesWord ? positionals.slice(1) : positionals,
+				positionals: consumesWord
+					? positionals.slice(1)
+					: positionals.slice(0, 1),
 				...(terminator && {
 					passthrough: typed.slice(terminator.index + 1),
 				}),
