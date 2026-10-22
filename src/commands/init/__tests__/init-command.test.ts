@@ -860,6 +860,67 @@ describe("init command", () => {
 		expect(await exists("lobby/default.project.json")).toBe(true);
 	});
 
+	it("should start the next steps by changing into the folder", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {}, [
+			"lobby",
+		]);
+
+		const lines = logService.lines;
+		const step = lines.indexOf("step: Next steps");
+		expect(lines.slice(step + 1, step + 4)).toEqual([
+			"info: In each terminal, start in the project folder:",
+			"info:   cd lobby",
+			"info: Run:",
+		]);
+	});
+
+	it("should quote a folder that a shell would split", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {}, [
+			"my game",
+		]);
+
+		expect(logService.lines).toContain("info:   cd 'my game'");
+	});
+
+	it("should not change folder when it ran in the project's own", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService);
+
+		expect(logService.lines.join("\n")).not.toContain("cd ");
+	});
+
+	it("should name the folder in --json, with the commands left as they are", async () => {
+		const logService = new MockLogService();
+
+		await runInit(
+			new MockPromptService([], false),
+			logService,
+			{ json: true },
+			["lobby"]
+		);
+
+		const { nextSteps } = JSON.parse(logService.entries[0].text);
+		expect(nextSteps.directory).toBe("lobby");
+		expect(nextSteps.run).toEqual(["rogen serve"]);
+	});
+
+	it("should leave the folder out of --json when it ran in the project's own", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {
+			json: true,
+		});
+
+		expect(
+			JSON.parse(logService.entries[0].text).nextSteps
+		).not.toHaveProperty("directory");
+	});
+
 	it("should name the sample where the user finds it from here, not from the new folder", async () => {
 		const logService = new MockLogService();
 

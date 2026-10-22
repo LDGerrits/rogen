@@ -37,6 +37,18 @@ export function toNative(
 		: filePath.replace(/\//g, platform.sep);
 }
 
+/** `filePath` as one word of the shell on `platform`, in that platform's separators and quoted when the shell would split or expand it. */
+export function toShellWord(
+	filePath: string,
+	platform: typeof path.posix = path
+): string {
+	const native = toNative(filePath, platform);
+	const windows = platform.sep !== POSIX_SEP;
+	const plain = windows ? /^[\w@%+=:,./\\-]+$/ : /^[\w@%+=:,./-]+$/;
+	if (plain.test(native)) return native;
+	return windows ? `"${native}"` : `'${native.replace(/'/g, `'\\''`)}'`;
+}
+
 export function joinPosix(...segments: string[]): string {
 	return toPosix(path.join(...segments));
 }
