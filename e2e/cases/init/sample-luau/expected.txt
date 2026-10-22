@@ -102,8 +102,7 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

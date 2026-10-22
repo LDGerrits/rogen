@@ -689,7 +689,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		return warningDiagnostic(
 			"init.unmountedFiles",
 			{ resource: from },
-			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen's routes will place ${files.length === 1 ? "it" : "them"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
+			`${files.length === 1 ? "1 file" : `${files.length} files`} in the source paths ${files.length === 1 ? "is" : "are"} mounted by no node, so Rojo ignored ${files.length === 1 ? "it" : "them"}, and Rogen places ${files.length === 1 ? "it if a route matches it" : "each one a route matches"}: ${shown}${more > 0 ? ` and ${more} more` : ""}. Check where with 'rogen where <path>', and list ${files.length === 1 ? "it" : "them"} under "globIgnorePaths" to leave ${files.length === 1 ? "it" : "them"} out as Rojo did.`
 		);
 	}
 

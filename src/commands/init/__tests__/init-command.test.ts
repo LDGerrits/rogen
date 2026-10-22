@@ -206,7 +206,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
@@ -359,7 +359,7 @@ describe("init command", () => {
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
 				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
-				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched shared, --sample, --agent-rules.",
+				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",

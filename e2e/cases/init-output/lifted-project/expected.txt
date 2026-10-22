@@ -4,7 +4,7 @@ stdout:
   rogen init
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.
   Left out ReplicatedStorage/Shared, ServerScriptService/Server and StarterPlayer/StarterPlayerScripts/Client, since they point into src and Rogen generates that code now.
-  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route mount:client, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route mount:shared, --route mount:server, --route mount:client, --unmatched leave, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -53,8 +53,7 @@ default.rogen.json:
     "routes": {
       "Shared": "ReplicatedStorage/Shared",
       "Server": "ServerScriptService/Server",
-      "Client": "StarterPlayer/StarterPlayerScripts/Client",
-      "*": "ReplicatedStorage/Shared"
+      "Client": "StarterPlayer/StarterPlayerScripts/Client"
     }
   }
 }

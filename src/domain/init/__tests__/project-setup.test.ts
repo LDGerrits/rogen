@@ -41,7 +41,7 @@ describe("ProjectSetup plan, unmounted files", () => {
 			}).unwrap()
 		);
 
-	it("should warn, by code, of files Rojo ignored and routes will place", async () => {
+	it("should warn, by code, of files Rojo ignored that a route may place", async () => {
 		const planned = await lift(["src/Loose.luau", "src/x/Y.luau"]);
 
 		expect(planned.warnings).toMatchObject([
@@ -339,7 +339,6 @@ describe("ProjectSetup plan", () => {
 				Server: "ServerScriptService",
 				ReplicatedFirst: "ReplicatedFirst",
 				StarterGui: "StarterGui",
-				"*": "ReplicatedStorage/Shared",
 			});
 		});
 
@@ -359,15 +358,15 @@ describe("ProjectSetup plan", () => {
 				replicatedFirst: "ReplicatedFirst",
 				serverStorage: "ServerStorage",
 				starterGui: "StarterGui",
-				"*": "ReplicatedStorage/shared",
 			});
 		});
 
-		it("should omit * when files that match no route are left out", async () => {
-			expect(await routesOf({ fallback: false })).toEqual({
+		it("should write * when files that match no route go to the shared route", async () => {
+			expect(await routesOf({ fallback: true })).toEqual({
 				Server: "ServerScriptService",
 				Client: "StarterPlayer/StarterPlayerScripts",
 				Shared: "ReplicatedStorage/Shared",
+				"*": "ReplicatedStorage/Shared",
 			});
 		});
 

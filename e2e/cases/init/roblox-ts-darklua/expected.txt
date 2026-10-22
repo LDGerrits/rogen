@@ -41,8 +41,7 @@ default.rogen.json:
     "routes": {
       "server": "ServerScriptService",
       "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared",
-      "*": "ReplicatedStorage/shared"
+      "shared": "ReplicatedStorage/shared"
     },
     "compiledPath": "out"
   }
@@ -76,8 +75,7 @@ dist.rogen.json:
     "routes": {
       "server": "ServerScriptService",
       "client": "StarterPlayer/StarterPlayerScripts",
-      "shared": "ReplicatedStorage/shared",
-      "*": "ReplicatedStorage/shared"
+      "shared": "ReplicatedStorage/shared"
     },
     "compiledPath": "dist"
   }

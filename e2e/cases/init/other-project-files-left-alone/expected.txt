@@ -4,7 +4,7 @@ stdout:
   rogen init
   Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.
   Left alone: test.project.json. Rojo runs a plain project file as it is, and Rogen writes only the project files its .rogen.json files name.
-  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route server, --route client, --route shared, --unmatched shared, --agent-rules.
+  Took the defaults: --kind place, --language luau, --no-darklua, --source-path src, --project-file lift, --route server, --route client, --route shared, --unmatched leave, --agent-rules.
   Created default.rogen.json.
   Created .gitignore.
   Created AGENTS.md.
@@ -19,7 +19,7 @@ stdout:
     Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
   Wrote 3 files.
 stderr:
-  default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen's routes will place it: src/Combat/Damage.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
+  default.project.json - warning: 1 file in the source paths is mounted by no node, so Rojo ignored it, and Rogen places it if a route matches it: src/Combat/Damage.server.luau. Check where with 'rogen where <path>', and list it under "globIgnorePaths" to leave it out as Rojo did. (init.unmountedFiles)
 
 $ rogen build test
 exit 0
@@ -52,8 +52,7 @@ default.rogen.json:
     "routes": {
       "Server": "ServerScriptService",
       "Client": "StarterPlayer/StarterPlayerScripts",
-      "Shared": "ReplicatedStorage/Shared",
-      "*": "ReplicatedStorage/Shared"
+      "Shared": "ReplicatedStorage/Shared"
     }
   }
 }

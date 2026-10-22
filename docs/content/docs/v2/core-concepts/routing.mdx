@@ -16,8 +16,7 @@ A **route** sends files to a **target**, a path that starts at a Roblox **servic
     		"routes": {
     			"Server": "ServerScriptService",
     			"Client": "StarterPlayer/StarterPlayerScripts",
-    			"Shared": "ReplicatedStorage/Shared",
-    			"*": "ReplicatedStorage/Shared"
+    			"Shared": "ReplicatedStorage/Shared"
     		}
     	}
     }
@@ -30,8 +29,7 @@ A **route** sends files to a **target**, a path that starts at a Roblox **servic
     		"routes": {
     			"server": "ServerScriptService",
     			"client": "StarterPlayer/StarterPlayerScripts",
-    			"shared": "ReplicatedStorage/shared",
-    			"*": "ReplicatedStorage/shared"
+    			"shared": "ReplicatedStorage/shared"
     		}
     	}
     }
@@ -163,13 +161,19 @@ src/Shared/Secret.server.luau         ->  a Script in ReplicatedStorage
 
 ## Files That Match No Route
 
-The `*` route is the **fallback route**. It catches every file no other route matched:
+A file that no route matches is **unrouted**: Rogen leaves it out and warns about each one, naming the routing folders of its feature to move it into:
+
+```
+src/Shop/Secrets.luau - warning: matched no route, so it is left out. Move it into src/Shop/Server, Client or Shared. (route.unrouted)
+```
+
+Rogen can't read Luau, so it can't tell server code from shared code; the folder is the only statement of where a file belongs. It never picks a destination for you, so code can't end up on the client by accident. That is why `rogen init` writes no route for these files. A config with no `routes` at all routes nothing: no source path is scanned.
+
+The `*` route is the **fallback route**. Declare it to send every file no other route matched to one target instead, such as a layer that runs everywhere (see [Layered](/docs/v2/architectures/layered)). `rogen init --unmatched shared` writes it:
 
 ```json
 "*": "ReplicatedStorage/Shared"
 ```
-
-Without it, those files are **unrouted**: Rogen leaves them out and warns about each one. It never picks a destination for you, so code can't end up on the client by accident. A config with no `routes` at all routes nothing: no source path is scanned.
 
 <Callout type="info" title="Why declare both shared and *">
 	`*` only catches leftovers. You still need the `shared` key for `shared/` to act as a routing folder and for `@shared` to route, otherwise both keep their names in the game.

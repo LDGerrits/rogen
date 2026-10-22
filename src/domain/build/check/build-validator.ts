@@ -2,7 +2,11 @@ import path from "path";
 import { compareStrings } from "../../../base/collections.js";
 import { isObject } from "../../../base/objects.js";
 import { isInside, joinPosix, toPosix } from "../../../base/path.js";
-import { capitalized, joinedWithAnd } from "../../../base/strings.js";
+import {
+	capitalized,
+	joinedWithAnd,
+	joinedWithOr,
+} from "../../../base/strings.js";
 import {
 	Diagnostic,
 	DiagnosticFix,
@@ -359,15 +363,27 @@ export class BuildValidator {
 	}
 
 	private unrouted(): Diagnostic[] {
+		const [first, ...rest] = this.config.keys.routeKeys;
 		return this.placement.leftOut
 			.withStatus("unrouted")
 			.map(([resource]) =>
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
-					'matched no route, so it is left out. Add a "*" route, or move it into a routing folder.'
+					`matched no route, so it is left out. Move it into ${joinedWithOr([path.join(this.featureFolderOf(resource), first), ...rest])}.`
 				)
 			);
+	}
+
+	/** The folder directly in a source path that holds `source`, or the source path for a file at its top. */
+	private featureFolderOf(source: string): string {
+		const sourcePath =
+			this.config.sourcePaths.find((dir) => isInside(source, dir)) ??
+			path.dirname(source);
+		const [top, ...below] = path
+			.relative(sourcePath, source)
+			.split(path.sep);
+		return below.length > 0 ? path.join(sourcePath, top) : sourcePath;
 	}
 
 	private shipped(): { file: RoutedFile; ignored: string[] }[] {
