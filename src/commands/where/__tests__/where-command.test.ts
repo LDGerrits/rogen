@@ -95,7 +95,7 @@ describe("where command", () => {
 				{
 					path: "/repo/lib/x.luau",
 					reason: "outsideSourcePaths",
-					config: "/repo/default.rogen.json",
+					config: "default.rogen.json",
 				},
 			]);
 		});

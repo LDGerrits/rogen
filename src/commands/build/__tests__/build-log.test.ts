@@ -2,6 +2,7 @@ import path from "path";
 import {
 	BuildRun,
 	BuildSummary,
+	CheckedBuild,
 	ConfigBuild,
 	FailedBuild,
 	UnwrittenBuild,
@@ -21,6 +22,8 @@ import { BuildLog } from "../build-log.js";
 
 const cwd = path.resolve("/repo");
 
+const matchFile = path.join(cwd, "match", "default.rogen.json");
+
 const debugLines = (dir: string, summary: BuildSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
@@ -37,14 +40,16 @@ const failed = failedOf();
 
 const builtOf = (
 	summary: BuildSummary,
-	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
+	outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten" = "wrote",
 	config: ResolvedConfig = mockConfig(),
-	blockedBy: readonly string[] = ["match"]
+	blockedBy: readonly string[] = [matchFile]
 ): ConfigBuild => {
 	const findings = { warnings: [], syncWarnings: [] };
-	return outcome === "notWritten"
-		? new UnwrittenBuild(config, findings, summary, [], blockedBy)
-		: new WrittenBuild(config, outcome, findings, summary, []);
+	if (outcome === "notWritten")
+		return new UnwrittenBuild(config, findings, summary, [], blockedBy);
+	if (outcome === "wouldWrite")
+		return new CheckedBuild(config, findings, summary, []);
+	return new WrittenBuild(config, outcome, findings, summary, []);
 };
 
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
@@ -201,7 +206,7 @@ describe("BuildLog report", () => {
 		expect(
 			report([
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					"match",
+					matchFile,
 				]),
 				failedOf([], configNamed("match")),
 			])
@@ -211,12 +216,12 @@ describe("BuildLog report", () => {
 		]);
 	});
 
-	it("should report a config that only a check built as checked, and close with a check", () => {
+	it("should report a config that only a check built as one that would be written, and close with a check", () => {
 		const logService = new MockLogService();
 
 		new BuildLog(logService, cwd).report(
 			new BuildRun([
-				builtOf(summaryOf(), "notWritten", configNamed("a"), []),
+				builtOf(summaryOf(), "wouldWrite", configNamed("a")),
 			]),
 			undefined,
 			"syncback",
@@ -228,7 +233,7 @@ describe("BuildLog report", () => {
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`)
 		).toEqual([
-			"success: a/default.project.json · checked",
+			"success: a/default.project.json · would write",
 			"outro: Checked 1 project.",
 		]);
 	});
@@ -238,8 +243,8 @@ describe("BuildLog report", () => {
 			report([
 				failedOf([], configNamed("arena")),
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					"arena",
-					"match",
+					path.join(cwd, "arena", "default.rogen.json"),
+					matchFile,
 				]),
 				failedOf([], configNamed("match")),
 			])[1]

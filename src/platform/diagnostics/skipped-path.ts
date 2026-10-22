@@ -1,4 +1,4 @@
-import { toNative } from "../../base/path.js";
+import { relativeTo, toNative } from "../../base/path.js";
 import { OutputShape } from "../output/output-shape.js";
 
 /** A path given to `check` or `where` that no build reads. */
@@ -7,7 +7,7 @@ export interface SkippedPath {
 	readonly path: string;
 	/** `outsideSourcePaths`: a config covers its folder but no source path holds it. `noConfig`: no config at or above it. */
 	readonly reason: "outsideSourcePaths" | "noConfig";
-	/** For `outsideSourcePaths`: the absolute POSIX path of the config that covers its folder. */
+	/** For `outsideSourcePaths`: the absolute POSIX path of the config that covers its folder (in a document, relative to the working folder). */
 	readonly config?: string;
 }
 
@@ -26,23 +26,25 @@ export const skippedPathShape = OutputShape.named(
 	})
 );
 
-export function skippedPathToJson({
-	path,
-	reason,
-	config,
-}: SkippedPath): SkippedPathJson {
+export function skippedPathToJson(
+	{ path, reason, config }: SkippedPath,
+	cwd: string
+): SkippedPathJson {
 	return {
 		path: toNative(path),
 		reason,
-		...(config && { config: toNative(config) }),
+		...(config && { config: relativeTo(cwd, config) }),
 	};
 }
 
 /** For a document: `skipped`, and only when something was. */
-export function skippedJson(skipped: readonly SkippedPath[]): {
+export function skippedJson(
+	skipped: readonly SkippedPath[],
+	cwd: string
+): {
 	readonly skipped?: SkippedPathJson[];
 } {
 	return skipped.length > 0
-		? { skipped: skipped.map(skippedPathToJson) }
+		? { skipped: skipped.map((one) => skippedPathToJson(one, cwd)) }
 		: {};
 }

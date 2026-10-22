@@ -1,5 +1,5 @@
 import path from "path";
-import { toNative } from "../../base/path.js";
+import { relativeTo, toNative } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -21,9 +21,8 @@ export const buildEntryShape = S.named(
 	"BuildEntry",
 	S.object({
 		config: S.string,
-		file: S.string,
 		projectFile: S.nullable(S.string),
-		outcome: S.enum("wrote", "unchanged", "notWritten"),
+		outcome: S.enum("wrote", "unchanged", "wouldWrite", "notWritten"),
 		blockedBy: S.optional(S.array(S.string)),
 		diagnostics: S.array(diagnosticShape),
 	})
@@ -65,7 +64,7 @@ export const watchLineShapes = {
 	notice: S.object({
 		notice: S.object({
 			kind: S.enum("added", "removed", "broken", "recovered"),
-			file: S.string,
+			config: S.string,
 			keptLastValid: S.optional(S.boolean),
 			diagnostics: S.optional(S.array(diagnosticShape)),
 		}),
@@ -82,10 +81,10 @@ export const buildLineShape = S.union(
 );
 
 export interface BuildEntry {
+	/** The config file's path relative to the working folder. */
 	readonly config: string;
-	readonly file: string;
 	readonly projectFile: string | null;
-	readonly outcome: "wrote" | "unchanged" | "notWritten";
+	readonly outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten";
 	readonly blockedBy?: readonly string[];
 	readonly diagnostics: readonly DiagnosticJson[];
 }
@@ -122,16 +121,19 @@ interface BuildDocument {
 
 export function buildEntry(
 	build: ConfigBuild,
+	cwd: string,
 	diagnostics: readonly Diagnostic[] = build.diagnostics
 ): BuildEntry {
 	const loaded = build.outcome !== "notLoaded";
 	return {
-		config: build.label,
-		file: toNative(build.file),
+		config: relativeTo(cwd, build.file),
 		projectFile: loaded ? toNative(build.config.projectFile) : null,
-		outcome: isWritten(build) ? build.outcome : "notWritten",
+		outcome:
+			isWritten(build) || build.outcome === "wouldWrite"
+				? build.outcome
+				: "notWritten",
 		...(build.outcome === "notWritten" && {
-			blockedBy: build.blockedBy,
+			blockedBy: build.blockedBy.map((file) => relativeTo(cwd, file)),
 		}),
 		diagnostics: diagnostics.map(diagnosticToJson),
 	};
@@ -172,11 +174,12 @@ export function rojoEntry(
 
 export function buildDocument(
 	builds: readonly ConfigBuild[],
+	cwd: string,
 	diagnosticsOf: (build: ConfigBuild) => readonly Diagnostic[] = (build) =>
 		build.diagnostics
 ): BuildDocument {
 	const configs = builds.map((build) =>
-		buildEntry(build, diagnosticsOf(build))
+		buildEntry(build, cwd, diagnosticsOf(build))
 	);
 	return {
 		changed: configs.some(({ outcome }) => outcome === "wrote"),

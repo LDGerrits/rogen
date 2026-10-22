@@ -155,7 +155,7 @@ describe("CoreBuildService", () => {
 					expect.objectContaining({ code: "meta.invalidSyntax" }),
 				]),
 			});
-			expect(result[0]).toMatchObject({ blockedBy: [result[1].label] });
+			expect(result[0]).toMatchObject({ blockedBy: [result[1].file] });
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
@@ -186,7 +186,9 @@ describe("CoreBuildService", () => {
 				[abs("default.rogen.json"), "notWritten"],
 				[abs("broken/default.rogen.json"), "notLoaded"],
 			]);
-			expect(result[0]).toMatchObject({ blockedBy: ["broken"] });
+			expect(result[0]).toMatchObject({
+				blockedBy: [abs("broken/default.rogen.json")],
+			});
 			expect(result[1]).toMatchObject({
 				label: "broken",
 				errors: [{ code: "config.invalidSyntax" }],
@@ -247,7 +249,10 @@ describe("CoreBuildService", () => {
 			).builds;
 
 			expect(result[0]).toMatchObject({
-				blockedBy: ["broken", "lobby"],
+				blockedBy: [
+					abs("broken/default.rogen.json"),
+					abs("lobby/default.rogen.json"),
+				],
 			});
 		});
 
@@ -273,7 +278,7 @@ describe("CoreBuildService", () => {
 			expect(result[1]).toMatchObject({
 				errors: [{ code: "output.writeFailed" }],
 			});
-			expect(result[2]).toMatchObject({ blockedBy: [result[1].label] });
+			expect(result[2]).toMatchObject({ blockedBy: [result[1].file] });
 			expect(await fs.exists(abs("arena/default.project.json"))).toBe(
 				false
 			);
@@ -342,9 +347,8 @@ describe("CoreBuildService", () => {
 		it("should build every config and write none", async () => {
 			const result = await checkOf(configOf());
 
-			expect(result).toMatchObject([
-				{ outcome: "notWritten", blockedBy: [] },
-			]);
+			expect(result).toMatchObject([{ outcome: "wouldWrite" }]);
+			expect(result[0]).not.toHaveProperty("blockedBy");
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 

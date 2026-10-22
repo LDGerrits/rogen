@@ -11,7 +11,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
-import { toNative } from "../../base/path.js";
 import {
 	diagnosticToJson,
 	errorToJson,
@@ -239,7 +238,10 @@ export class PrintedWatchLog extends WatchLog {
 }
 
 export class WatchJsonLog implements WatchReporter {
-	constructor(private readonly logService: LogService) {}
+	constructor(
+		private readonly logService: LogService,
+		private readonly cwd: string
+	) {}
 
 	begin(): void {}
 
@@ -248,7 +250,7 @@ export class WatchJsonLog implements WatchReporter {
 	update(update: WatchUpdate): void {
 		update.notices.forEach((notice) => this.notice(notice));
 		for (const { build } of update.reports)
-			this.line({ build: buildEntry(build) });
+			this.line({ build: buildEntry(build, this.cwd) });
 	}
 
 	error(error: Error): void {
@@ -267,7 +269,7 @@ export class WatchJsonLog implements WatchReporter {
 		this.line({
 			notice: {
 				kind: notice.kind,
-				file: toNative(notice.file),
+				config: relativeTo(this.cwd, notice.file),
 				...(notice.kind === "broken" && {
 					keptLastValid: notice.keptLastValid,
 					diagnostics: notice.errors.map(diagnosticToJson),

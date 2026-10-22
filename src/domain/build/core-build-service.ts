@@ -16,6 +16,7 @@ import { SyncTool } from "../toolchain/toolchain.js";
 import {
 	BuildRun,
 	BuildSet,
+	CheckedBuild,
 	FailedBuild,
 	LoadedBuild,
 	OutputFile,
@@ -94,7 +95,7 @@ export class CoreBuildService implements BuildService {
 		);
 		const settled = await this.settle(
 			built,
-			unloaded.map(({ label }) => label),
+			unloaded.map(({ file }) => file),
 			write,
 			{ independent }
 		);
@@ -269,7 +270,7 @@ export class CoreBuildService implements BuildService {
 		const failed = [
 			...unloaded,
 			...attempts.flatMap((attempt) =>
-				attempt instanceof FailedBuild ? [attempt.config.label] : []
+				attempt instanceof FailedBuild ? [attempt.config.file] : []
 			),
 		];
 		if (write && options.independent)
@@ -283,14 +284,19 @@ export class CoreBuildService implements BuildService {
 		if (failed.length === 0 && write)
 			return this.writeInOrder(built, options);
 		return Promise.all(
-			attempts.map(async (attempt) =>
-				attempt instanceof FailedBuild
-					? attempt
-					: CoreBuildService.unwritten(
-							write ? attempt : await this.withStaleness(attempt),
-							failed
+			attempts.map(async (attempt) => {
+				if (attempt instanceof FailedBuild) return attempt;
+				if (write) return CoreBuildService.unwritten(attempt, failed);
+				const checked = await this.withStaleness(attempt);
+				return failed.length === 0
+					? new CheckedBuild(
+							checked.config,
+							checked.findings,
+							checked.summary,
+							checked.readFiles
 						)
-			)
+					: CoreBuildService.unwritten(checked, failed);
+			})
 		);
 	}
 
@@ -328,7 +334,7 @@ export class CoreBuildService implements BuildService {
 						projectFile,
 						options
 					);
-			if (written.isErr()) failed = config.label;
+			if (written.isErr()) failed = config.file;
 			builds.push(
 				written.isErr()
 					? new FailedBuild(

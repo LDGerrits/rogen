@@ -5,7 +5,7 @@ stdout:
   Writing src/Net
 stderr:
   rogen syncback · Game
-  default.project.json · checked
+  default.project.json · would write
   Checked 1 project.
   Syncback would change 1 file (1 to write).
 

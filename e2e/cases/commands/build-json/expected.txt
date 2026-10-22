@@ -5,8 +5,7 @@ stdout:
     "changed": true,
     "configs": [
       {
-        "config": "lobby",
-        "file": "<dir>/lobby/default.rogen.json",
+        "config": "lobby/default.rogen.json",
         "projectFile": "<dir>/lobby/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
@@ -21,8 +20,7 @@ stdout:
     "changed": true,
     "configs": [
       {
-        "config": "match",
-        "file": "<dir>/match/default.rogen.json",
+        "config": "match/default.rogen.json",
         "projectFile": "<dir>/match/default.project.json",
         "outcome": "wrote",
         "diagnostics": [

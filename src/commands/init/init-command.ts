@@ -220,7 +220,12 @@ registerCommand(
 			if (!plan) return err(new CancelledError("init cancelled."));
 
 			const reporter: InitReporter = line.options.json
-				? new InitJsonLog(logService, plan.directory, dryRun)
+				? new InitJsonLog(
+						logService,
+						accessor.get(EnvironmentService).cwd,
+						plan.directory,
+						dryRun
+					)
 				: log;
 			reporter.begin(plan);
 			const written = await initService.write(

@@ -255,8 +255,7 @@ describe("serve command", () => {
 		expect(printed()).toEqual([
 			{
 				build: {
-					config: "repo",
-					file: "/repo/default.rogen.json",
+					config: "default.rogen.json",
 					projectFile: "/repo/default.project.json",
 					outcome: "wrote",
 					diagnostics: [],
@@ -264,8 +263,7 @@ describe("serve command", () => {
 			},
 			{
 				serving: {
-					config: "repo",
-					server: "rojo",
+					config: "default.rogen.json",
 					version: "7.7.1",
 					project: "repo",
 					host: "127.0.0.1",
@@ -327,8 +325,7 @@ describe("serve command", () => {
 			expect(printed().slice(2)).toEqual([
 				{
 					connected: {
-						config: "repo",
-						server: "rojo",
+						config: "default.rogen.json",
 						project: "repo",
 						port: 34872,
 						clients: 1,
@@ -336,8 +333,7 @@ describe("serve command", () => {
 				},
 				{
 					disconnected: {
-						config: "repo",
-						server: "rojo",
+						config: "default.rogen.json",
 						project: "repo",
 						port: 34872,
 						clients: 0,
@@ -367,8 +363,7 @@ describe("serve command", () => {
 		expect(printed().filter((line) => "output" in line)).toHaveLength(1);
 		expect(printed().at(-1)).toEqual({
 			output: {
-				config: "repo",
-				server: "rojo",
+				config: "default.rogen.json",
 				severity: "error",
 				message: "It broke",
 			},
@@ -383,7 +378,7 @@ describe("serve command", () => {
 		await result;
 
 		expect(printed().at(-1)).toEqual({
-			stopped: { config: "repo", server: "rojo", reason: "shutdown" },
+			stopped: { config: "default.rogen.json", reason: "shutdown" },
 		});
 	});
 
@@ -438,7 +433,7 @@ describe("serve command", () => {
 				printed()
 					.filter((line) => "stopped" in line)
 					.map(({ stopped }) => stopped)
-			).toEqual([{ config: "repo", server: "rojo", reason: "removed" }]);
+			).toEqual([{ config: "default.rogen.json", reason: "removed" }]);
 		});
 
 		it("should say a server moved when its config gives it another port", async () => {
@@ -469,8 +464,8 @@ describe("serve command", () => {
 					.filter((line) => "stopped" in line)
 					.map(({ stopped }) => [stopped.config, stopped.reason])
 			).toEqual([
-				["repo", "moved"],
-				["repo", "shutdown"],
+				["default.rogen.json", "moved"],
+				["default.rogen.json", "shutdown"],
 			]);
 		});
 
@@ -486,8 +481,7 @@ describe("serve command", () => {
 
 			expect(printed().at(-1)).toEqual({
 				refused: {
-					config: "repo",
-					server: "rojo",
+					config: "default.rogen.json",
 					diagnostics: [
 						expect.objectContaining({ code: "serve.portTaken" }),
 					],
@@ -509,7 +503,7 @@ describe("serve command", () => {
 		expect(printed()).toContainEqual({
 			notice: expect.objectContaining({
 				kind: "broken",
-				file: "/repo/default.rogen.json",
+				config: "default.rogen.json",
 				keptLastValid: true,
 				diagnostics: [expect.objectContaining({ severity: "error" })],
 			}),
@@ -585,8 +579,7 @@ describe("serve command", () => {
 		expect(printed().slice(1)).toEqual([
 			{
 				stopped: {
-					config: "repo",
-					server: "rojo",
+					config: "default.rogen.json",
 					reason: "exited",
 					code: 1,
 					signal: null,

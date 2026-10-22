@@ -116,7 +116,7 @@ registerCommand(
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					buildDocument(run.builds),
+					buildDocument(run.builds, cwd),
 					failure
 				);
 			new WriteLog(logService, cwd).report(run, home, plain);

@@ -169,7 +169,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					{
-						...buildDocument(run.builds),
+						...buildDocument(run.builds, cwd),
 						rojo: rojoEntry(
 							{
 								command: "build",

@@ -199,6 +199,34 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
 	});
 
+	it("should say wouldWrite for the config and the syncback of a dry run, by the config file", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"dry-run": true,
+			json: true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		const document = log.json();
+		expect(document.configs).toEqual([
+			{
+				config: "default.rogen.json",
+				projectFile: abs("default.project.json"),
+				outcome: "wouldWrite",
+				diagnostics: [],
+			},
+		]);
+		expect(document.syncback).toMatchObject({
+			outcome: "wouldWrite",
+			config: "default.rogen.json",
+		});
+		expect(document.syncback).not.toHaveProperty("project");
+		expect(document.changed).toBe(false);
+	});
+
 	it("should write no project file in a dry run, and leave a stale one as it was", async () => {
 		const first = start({ input: "game.rbxl", "dry-run": true });
 		const [rojo] = await rojoRuns(1);

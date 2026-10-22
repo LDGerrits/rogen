@@ -454,8 +454,7 @@ describe("build command", () => {
 				changed: true,
 				configs: [
 					{
-						config: "repo",
-						file: "/repo/default.rogen.json",
+						config: "default.rogen.json",
 						projectFile: "/repo/default.project.json",
 						outcome: "wrote",
 						diagnostics: [],
@@ -504,14 +503,14 @@ describe("build command", () => {
 
 			expect(
 				document.configs.map(
-					({ file, outcome }: Record<string, string>) => [
-						file,
+					({ config, outcome }: Record<string, string>) => [
+						config,
 						outcome,
 					]
 				)
 			).toEqual([
-				["/repo/lobby/default.rogen.json", "notWritten"],
-				["/repo/arena/default.rogen.json", "notWritten"],
+				["lobby/default.rogen.json", "notWritten"],
+				["arena/default.rogen.json", "notWritten"],
 			]);
 			expect(document.configs[0].diagnostics).toEqual([
 				expect.objectContaining({
@@ -563,8 +562,7 @@ describe("build command", () => {
 				changed: false,
 				configs: [
 					{
-						config: "repo",
-						file: "/repo/default.rogen.json",
+						config: "default.rogen.json",
 						projectFile: null,
 						outcome: "notWritten",
 						diagnostics: [
@@ -594,11 +592,10 @@ describe("build command", () => {
 
 			expect(document.configs[0]).toMatchObject({
 				outcome: "notWritten",
-				blockedBy: ["broken"],
+				blockedBy: ["broken/default.rogen.json"],
 			});
 			expect(Object.keys(document.configs[0])).toEqual([
 				"config",
-				"file",
 				"projectFile",
 				"outcome",
 				"blockedBy",

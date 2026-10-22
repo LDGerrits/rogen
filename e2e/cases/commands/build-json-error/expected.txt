@@ -5,8 +5,7 @@ stdout:
     "changed": false,
     "configs": [
       {
-        "config": "project",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": null,
         "outcome": "notWritten",
         "diagnostics": [

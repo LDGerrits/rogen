@@ -12,8 +12,7 @@ stdout:
     "changed": false,
     "configs": [
       {
-        "config": "broken",
-        "file": "<dir>/broken/default.rogen.json",
+        "config": "broken/default.rogen.json",
         "projectFile": null,
         "outcome": "notWritten",
         "diagnostics": [
