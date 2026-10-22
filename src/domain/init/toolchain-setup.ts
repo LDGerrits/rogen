@@ -6,7 +6,7 @@ import { Result, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { ServerFinder } from "../runner/server-finder.js";
-import { SyncServer } from "../runner/sync-server.js";
+import { RojoServer } from "../runner/rojo-server.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
 import { Darklua } from "../toolchain/toolchain.js";
@@ -14,8 +14,6 @@ import { InitPlanBuilder } from "./init-plan-builder.js";
 import { InitQuestions } from "./init-questions.js";
 import { PlannedCommand } from "./init-service.js";
 import { Setup } from "./setup.js";
-
-const ROJO_NAME = "rojo";
 
 const ROKIT_INSTALLER =
 	"https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install";
@@ -36,10 +34,10 @@ export interface ToolPin {
 }
 
 const ROJO_PIN: ToolPin = {
-	name: ROJO_NAME,
-	label: SyncServer.ROJO.name,
-	repository: SyncServer.ROJO.repository,
-	version: SyncServer.ROJO.pinned.toString(),
+	name: RojoServer.COMMAND,
+	label: "Rojo",
+	repository: RojoServer.REPOSITORY,
+	version: RojoServer.PINNED.toString(),
 };
 
 const DARKLUA_PIN: ToolPin = {
@@ -123,7 +121,7 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 	/** Whether a toolchain file in `manifests` already pins Rojo. */
 	static isPinned(manifests: readonly ToolManifest[]): boolean {
 		return manifests.some((manifest) =>
-			manifest.nameOf(SyncServer.ROJO.repository)
+			manifest.nameOf(RojoServer.REPOSITORY)
 		);
 	}
 
@@ -144,7 +142,7 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 		);
 		const rojoReady =
 			ToolchainSetup.isPinned(manifests) ||
-			manifest?.uses(ROJO_NAME) === true ||
+			manifest?.uses(RojoServer.COMMAND) === true ||
 			(await finder.find(existing, existing)).isOk();
 		const own = manifest?.managerId as ToolManager | undefined;
 		let manager: ToolState["manager"];
@@ -270,11 +268,11 @@ export class ToolchainSetup implements Setup<ToolchainChoice> {
 		);
 		if (plugin)
 			builder.addCommand(
-				run(ROJO_NAME, ["plugin", "install"], MINUTE_MS)
+				run(RojoServer.COMMAND, ["plugin", "install"], MINUTE_MS)
 			);
 		else if (install)
 			builder.addSetup(
-				`Run '${SyncServer.ROJO.pluginCommand}' to install Rojo's Studio plugin.`
+				`Run '${RojoServer.PLUGIN_COMMAND}' to install Rojo's Studio plugin.`
 			);
 	}
 

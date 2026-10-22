@@ -6,7 +6,7 @@ import {
 } from "../../platform/process/process-service.js";
 import { RojoProcess } from "./rojo-runner.js";
 import { ServerOutput } from "./server-output.js";
-import { ServerMessage, SyncServer } from "./sync-server.js";
+import { ServerMessage } from "./rojo-server.js";
 
 export class StartedRojo extends AbstractDisposable implements RojoProcess {
 	private readonly _onDidMessage = this._register(
@@ -29,13 +29,10 @@ export class StartedRojo extends AbstractDisposable implements RojoProcess {
 		return this.child.pid;
 	}
 
-	constructor(
-		private readonly child: ChildProcess,
-		server: SyncServer
-	) {
+	constructor(private readonly child: ChildProcess) {
 		super();
 		this._register(child);
-		const output = this._register(new ServerOutput(server));
+		const output = this._register(new ServerOutput());
 		this._register(
 			child.onDidOutput(({ line, stream }) =>
 				output.readLine(line, stream)

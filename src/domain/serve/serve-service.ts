@@ -9,7 +9,7 @@ import { ResolvedConfig } from "../config/resolved-config.js";
 import { ReloadableSelection } from "../config/config-service.js";
 import { WatchUpdate } from "../watch/watch-service.js";
 import { ServerExecutable } from "../runner/rojo-runner.js";
-import { ServerInfo, ServerMessage } from "../runner/sync-server.js";
+import { ServerInfo, ServerMessage } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
 export interface ServeRequest {

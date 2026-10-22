@@ -1,13 +1,10 @@
 import { ServePlan, ServeTarget } from "../../../domain/serve/serve-service.js";
-import {
-	ServerMessage,
-	SyncServer,
-} from "../../../domain/runner/sync-server.js";
+import { ServerMessage } from "../../../domain/runner/rojo-server.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { LogLevel } from "../../../platform/log/log-service.js";
 import { ServeLog } from "../serve-log.js";
 
-const plan = { executable: { server: SyncServer.ROJO } } as ServePlan;
+const plan = {} as ServePlan;
 const target = {} as ServeTarget;
 
 const banner: ServerMessage = {

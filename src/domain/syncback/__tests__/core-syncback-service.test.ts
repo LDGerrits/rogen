@@ -17,7 +17,7 @@ import {
 	RojoCommandRun,
 	RojoCommandService,
 } from "../../runner/rojo-command-service.js";
-import { ServerMessage } from "../../runner/sync-server.js";
+import { ServerMessage } from "../../runner/rojo-server.js";
 import { CoreSyncbackService } from "../core-syncback-service.js";
 import { SyncbackRequest } from "../syncback.js";
 import { ROUTES } from "./layout-fixtures.js";

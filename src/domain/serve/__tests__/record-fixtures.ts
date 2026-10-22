@@ -19,7 +19,6 @@ export const recordFile = (
 		JSON.stringify({
 			host: "127.0.0.1",
 			port,
-			server: "rojo",
 			session,
 			project,
 			projectFile,

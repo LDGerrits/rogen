@@ -10,7 +10,7 @@ import { WatchService } from "../watch/watch-service.js";
 import { CoreServeSession } from "./core-serve-session.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
-import { SyncServer } from "../runner/sync-server.js";
+import { ServeFlags } from "../runner/serve-flags.js";
 import { ServePorts } from "./serve-ports.js";
 import {
 	ServePlan,
@@ -46,14 +46,10 @@ export class CoreServeService implements ServeService {
 		);
 	}
 
-	private portsFor(
-		server: SyncServer,
-		serverArgs: readonly string[]
-	): ServePorts {
+	private portsFor(serverArgs: readonly string[]): ServePorts {
 		return new ServePorts(
 			this.probe,
 			this.records,
-			server,
 			serverArgs,
 			this.environmentService.cwd,
 			this.rojoRunner
@@ -73,20 +69,17 @@ export class CoreServeService implements ServeService {
 			request.signal
 		);
 		if (executable.isErr()) return executable;
-		const { server, version } = executable.value;
-		const tooNew = server.flagTooNewIn(request.serverArgs, version);
+		const { version } = executable.value;
+		const tooNew = ServeFlags.tooNewIn(request.serverArgs, version);
 		if (tooNew)
 			return err(
 				new UsageError(
-					`${tooNew.flag} needs ${server.name} ${tooNew.since} or later, and the ${server.name} that runs here is ${version}.`,
-					`Change your ${server.name} pin to ${tooNew.since} or later, or update the ${server.name} on the PATH, or leave the flag out.`
+					`${tooNew.flag} needs Rojo ${tooNew.since} or later, and the Rojo that runs here is ${version}.`,
+					`Change your Rojo pin to ${tooNew.since} or later, or update the Rojo on the PATH, or leave the flag out.`
 				)
 			);
 
-		const ports = this.portsFor(
-			executable.value.server,
-			request.serverArgs
-		);
+		const ports = this.portsFor(request.serverArgs);
 		if (ports.portError) return err(ports.portError);
 		const checked = await ports.check(ports.targetOf(config));
 		if (checked.isErr()) return err(new DiagnosticsError([checked.error]));
@@ -110,7 +103,7 @@ export class CoreServeService implements ServeService {
 				this.rojoRunner,
 				this.probe,
 				this.records,
-				this.portsFor(plan.executable.server, plan.serverArgs),
+				this.portsFor(plan.serverArgs),
 				this.compatibility
 			)
 		);

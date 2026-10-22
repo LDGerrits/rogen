@@ -7,8 +7,8 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ProcessService } from "../../platform/process/process-service.js";
-import { SyncServer } from "./sync-server.js";
 import { ServerExecutable } from "./rojo-runner.js";
+import { RojoServer } from "./rojo-server.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
@@ -18,7 +18,6 @@ import { DOCS_URL } from "../../platform/product/product-service.js";
 const VERSION_TIMEOUT_MS = 60_000;
 
 interface Candidate {
-	readonly server: SyncServer;
 	readonly command: string;
 	readonly manifest?: ToolManifest;
 }
@@ -45,16 +44,15 @@ export class ServerFinder {
 		signal?: AbortSignal
 	): Promise<Result<ServerExecutable, DiagnosticsError>> {
 		const manifests = await this.toolchainService.readManifests(directory);
-		const server = SyncServer.ROJO;
 		let pinned: PinnedCandidate | undefined;
 		for (const manifest of manifests) {
-			const command = manifest.nameOf(server.repository);
+			const command = manifest.nameOf(RojoServer.REPOSITORY);
 			if (command) {
-				pinned = { server, command, manifest };
+				pinned = { command, manifest };
 				break;
 			}
 		}
-		const candidate: Candidate = pinned ?? { server, command: server.id };
+		const candidate: Candidate = pinned ?? { command: RojoServer.COMMAND };
 
 		const file = await this.locator.find(candidate.command);
 		if (!file) {
@@ -76,7 +74,7 @@ export class ServerFinder {
 			signal
 		);
 		if (version.isErr()) return version;
-		return ok({ server, file, version: version.value });
+		return ok({ file, version: version.value });
 	}
 
 	private async versionOf(
@@ -102,28 +100,26 @@ export class ServerFinder {
 			if (version) return ok(version[0]);
 		}
 
-		const { server, command, manifest } = candidate;
-		const pin = manifest
-			? undefined
-			: this.pinFix(server, directory, manifests);
+		const { command, manifest } = candidate;
+		const pin = manifest ? undefined : this.pinFix(directory, manifests);
 		return err(
 			new DiagnosticsError([
 				errorDiagnostic(
 					"serve.serverFailed",
 					{ resource: manifest?.file ?? resource },
-					`'${command} --version' failed, so ${server.name} can't start${printed ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If ${server.name} isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
+					`'${command} --version' failed, so Rojo can't start${printed ? `: ${printed}${/[.!?]$/.test(printed) ? "" : "."}` : "."}${pin ? ` If Rojo isn't pinned yet, run '${pin.run.command}'.` : ""} ${SET_UP}`,
 					pin ? [pin] : []
 				),
 			])
 		);
 	}
 
-	private notInstalled({ server, command, manifest }: PinnedCandidate) {
+	private notInstalled({ command, manifest }: PinnedCandidate) {
 		const { file } = manifest;
 		return errorDiagnostic(
 			"serve.notInstalled",
 			{ resource: file },
-			`${path.basename(file)} pins ${server.name} as ${command}, but it isn't installed. Run '${manifest.installCommand}'.`,
+			`${path.basename(file)} pins Rojo as ${command}, but it isn't installed. Run '${manifest.installCommand}'.`,
 			[
 				{
 					run: {
@@ -140,14 +136,13 @@ export class ServerFinder {
 		manifests: readonly ToolManifest[],
 		resource: string
 	) {
-		const server = SyncServer.ROJO;
-		const pin = this.pinFix(server, directory, manifests);
+		const pin = this.pinFix(directory, manifests);
 		const plugin = {
-			run: { command: server.pluginCommand, cwd: directory },
+			run: { command: RojoServer.PLUGIN_COMMAND, cwd: directory },
 		};
 		const steps = pin
-			? `Run '${pin.run.command}', then '${server.pluginCommand}' to install its Studio plugin.`
-			: `Pin ${server.repository} in ${path.basename(manifests[0].file)}, install it, then run '${server.pluginCommand}' to install its Studio plugin.`;
+			? `Run '${pin.run.command}', then '${RojoServer.PLUGIN_COMMAND}' to install its Studio plugin.`
+			: `Pin ${RojoServer.REPOSITORY} in ${path.basename(manifests[0].file)}, install it, then run '${RojoServer.PLUGIN_COMMAND}' to install its Studio plugin.`;
 		const argon = manifests.some((manifest) =>
 			manifest.nameOf(ARGON_REPOSITORY)
 		)
@@ -156,20 +151,19 @@ export class ServerFinder {
 		return errorDiagnostic(
 			"serve.noServer",
 			{ resource: manifests[0]?.file ?? resource },
-			`No ${server.name} to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon} ${SET_UP}`,
+			`No Rojo to serve with: none is pinned in a toolchain file here or above, or on the PATH. ${steps}${argon} ${SET_UP}`,
 			pin ? [pin, plugin] : [plugin]
 		);
 	}
 
 	private pinFix(
-		server: SyncServer,
 		directory: string,
 		manifests: readonly ToolManifest[]
 	): Extract<DiagnosticFix, { run: unknown }> | undefined {
 		const [nearest] = manifests;
 		const command = nearest
-			? nearest.addCommand(server.repository)
-			: `rokit add ${server.repository}`;
+			? nearest.addCommand(RojoServer.REPOSITORY)
+			: `rokit add ${RojoServer.REPOSITORY}`;
 		return command === undefined
 			? undefined
 			: {

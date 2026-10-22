@@ -19,7 +19,7 @@ import {
 import { RojoCompatibility } from "./rojo-compatibility.js";
 import { RojoVersion } from "./rojo-version.js";
 import { RojoRunner, ServerExecutable } from "./rojo-runner.js";
-import { ServerMessage } from "./sync-server.js";
+import { RojoServer, ServerMessage } from "./rojo-server.js";
 
 export class CoreRojoCommandService implements RojoCommandService {
 	declare readonly _serviceBrand: undefined;
@@ -95,8 +95,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 		const version = RojoVersion.parse(executable.version);
 		const since = RojoVersion.parse(request.since);
 		if (!version || !since || !version.isBefore(since)) return undefined;
-		const { name } = executable.server;
-		return `${name} ${version} has no '${request.command}' command; ${name} ${since} added it. Change your ${name} pin to ${since} or later, or update the ${name} on the PATH.`;
+		return `Rojo ${version} has no '${request.command}' command; Rojo ${since} added it. Change your Rojo pin to ${since} or later, or update the Rojo on the PATH.`;
 	}
 
 	async runBare(
@@ -172,7 +171,7 @@ export class CoreRojoCommandService implements RojoCommandService {
 			: `exit code ${exit.code === null ? exit.signal : exitCodeText(exit.code)}`;
 		return {
 			messages,
-			failure: `'${executable.server.id} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`,
+			failure: `'${RojoServer.COMMAND} ${described}' failed (${how})${said.length > 0 ? `: ${said.join(" ")}` : "."}`,
 			refusedArguments: exit.code === 2,
 		};
 	}

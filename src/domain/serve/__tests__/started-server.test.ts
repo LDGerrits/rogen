@@ -8,7 +8,6 @@ import {
 } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
-import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ServeAddress } from "../serve.js";
 import {
@@ -44,7 +43,7 @@ describe("StartedServer", () => {
 	};
 	const plan = new ServePlan(
 		new MockConfigSelection(),
-		{ server: SyncServer.ROJO, file: "/bin/rojo", version: "7.7.1" },
+		{ file: "/bin/rojo", version: "7.7.1" },
 		target,
 		["--port", "34872"]
 	);

@@ -2,7 +2,6 @@ import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { ToolLocator } from "../../toolchain/tool-locator.js";
-import { SyncServer } from "../sync-server.js";
 import { ServerFinder } from "../server-finder.js";
 
 const ROJO_VERSION = { code: 0, stdout: "Rojo 7.7.1\n", stderr: "" };
@@ -39,7 +38,6 @@ describe("ServerFinder", () => {
 		const tool = (await find()).unwrap();
 
 		expect(tool).toEqual({
-			server: SyncServer.ROJO,
 			file: "/bin/rojo7",
 			version: "7.7.1",
 		});
@@ -126,7 +124,7 @@ describe("ServerFinder", () => {
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", ROJO_VERSION);
 
-		expect((await find()).unwrap().server).toBe(SyncServer.ROJO);
+		expect((await find()).unwrap().file).toBe("/bin/rojo");
 	});
 
 	it("should say that rogen serve only starts Rojo when only Argon is pinned", async () => {

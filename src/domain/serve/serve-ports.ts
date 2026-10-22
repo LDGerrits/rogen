@@ -10,7 +10,8 @@ import {
 import { DEFAULT_PROJECT } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoRunner } from "../runner/rojo-runner.js";
-import { ServerInfo, SyncServer } from "../runner/sync-server.js";
+import { RojoServer, ServerInfo } from "../runner/rojo-server.js";
+import { ServeFlags } from "../runner/serve-flags.js";
 import { ServeAddress } from "./serve.js";
 import { ServeTarget } from "./serve-service.js";
 import { ServerProbe } from "./server-probe.js";
@@ -27,14 +28,13 @@ export class ServePorts {
 	constructor(
 		private readonly probe: ServerProbe,
 		private readonly records: ServerRecords,
-		private readonly server: SyncServer,
 		serverArgs: readonly string[],
 		private readonly cwd: string,
 		private readonly runner: RojoRunner
 	) {
-		this.host = server.hostIn(serverArgs);
-		this.port = server.portIn(serverArgs);
-		this.otherArgs = server.withoutPort(serverArgs);
+		this.host = ServeFlags.hostIn(serverArgs);
+		this.port = ServeFlags.portIn(serverArgs);
+		this.otherArgs = ServeFlags.withoutPort(serverArgs);
 	}
 
 	get portError(): UsageError | undefined {
@@ -43,16 +43,15 @@ export class ServePorts {
 
 	/** The address the server will listen on: the flags given to serve, then the project file, then the server's own defaults. */
 	targetOf(config: ResolvedConfig): ServeTarget {
-		const { server } = this;
 		const { project } = config;
 		return {
 			config,
 			project: config.projectName,
 			address: new ServeAddress(
-				this.host ?? project?.serveAddress ?? server.defaultHost,
+				this.host ?? project?.serveAddress ?? RojoServer.DEFAULT_HOST,
 				this.port.unwrapOr(undefined) ??
 					project?.servePort ??
-					server.defaultPort
+					RojoServer.DEFAULT_PORT
 			),
 		};
 	}
@@ -72,7 +71,7 @@ export class ServePorts {
 
 	/** `target` once its port is free, or with `servedBy` set when its project is already served there; else why it can't be served. */
 	async check(target: ServeTarget): Promise<Result<ServeTarget, Diagnostic>> {
-		const state = await this.probe.probe(target.address, this.server);
+		const state = await this.probe.probe(target.address);
 		if (state.kind === "free") return ok(target);
 		const holder = state.kind === "serving" ? state.info : undefined;
 		const recorded =
@@ -116,8 +115,8 @@ export class ServePorts {
 		const { config, address } = target;
 		const by =
 			holder && recorded
-				? `taken by ${holder.server.name} serving ${holder.project}, which rogen serve started for ${this.nameOfFile(recorded.configFile ?? recorded.projectFile)}`
-				: `held by another process${holder ? ` (${holder.server.name} serving ${holder.project})` : ""}`;
+				? `taken by Rojo serving ${holder.project}, which rogen serve started for ${this.nameOfFile(recorded.configFile ?? recorded.projectFile)}`
+				: `held by another process${holder ? ` (Rojo serving ${holder.project})` : ""}`;
 		const free = address.isLocal
 			? await this.freePortAfter(address)
 			: undefined;
@@ -169,8 +168,7 @@ export class ServePorts {
 			const port = address.port + offset;
 			if (port > 65535) return undefined;
 			const state = await this.probe.probe(
-				new ServeAddress(address.host, port),
-				this.server
+				new ServeAddress(address.host, port)
 			);
 			if (state.kind === "free") return port;
 		}

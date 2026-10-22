@@ -3,7 +3,7 @@ import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.j
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ConfigSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { ServerMessage } from "./sync-server.js";
+import { ServerMessage } from "./rojo-server.js";
 
 export interface RojoCommandRequest {
 	/** The Rojo command, such as `build`. */

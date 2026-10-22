@@ -1,7 +1,7 @@
 import path from "path";
 import { isObject } from "../../base/objects.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
-import { ServerInfo } from "../runner/sync-server.js";
+import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
 interface ServedBuild {
@@ -15,7 +15,6 @@ interface ServedBuild {
 export interface ServerRecord extends ServedBuild {
 	readonly host: string;
 	readonly port: number;
-	readonly server: string;
 	readonly project: string;
 	readonly session?: string;
 	/** The `rogen serve` process that started the server. */
@@ -27,7 +26,6 @@ function recordIn(value: unknown): ServerRecord | undefined {
 		!isObject(value) ||
 		typeof value.host !== "string" ||
 		typeof value.port !== "number" ||
-		typeof value.server !== "string" ||
 		typeof value.project !== "string" ||
 		typeof value.projectFile !== "string" ||
 		(value.session !== undefined && typeof value.session !== "string") ||
@@ -40,7 +38,6 @@ function recordIn(value: unknown): ServerRecord | undefined {
 	return {
 		host: value.host,
 		port: value.port,
-		server: value.server,
 		project: value.project,
 		session: value.session,
 		projectFile: value.projectFile,
@@ -84,7 +81,6 @@ export class ServerRecords {
 			JSON.stringify({
 				host: address.host,
 				port: address.port,
-				server: info.server.id,
 				session: info.session,
 				project: info.project,
 				projectFile: built.projectFile,

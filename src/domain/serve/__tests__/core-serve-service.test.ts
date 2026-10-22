@@ -13,7 +13,6 @@ import { CoreBuildService } from "../../build/core-build-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
 import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
-import { SyncServer } from "../../runner/sync-server.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { CoreWatchService } from "../../watch/core-watch-service.js";
 import { CoreServeService } from "../core-serve-service.js";
@@ -121,7 +120,6 @@ describe("CoreServeService", () => {
 
 			expect(served(servePlan)).toEqual(["repo", "127.0.0.1:34872"]);
 			expect(servePlan.executable).toEqual({
-				server: SyncServer.ROJO,
 				file: "/bin/rojo",
 				version: "7.7.1",
 			});
@@ -227,7 +225,6 @@ describe("CoreServeService", () => {
 			const servePlan = await plan();
 
 			expect(servePlan.target.servedBy).toEqual({
-				server: SyncServer.ROJO,
 				project: "repo",
 				version: "7.7.1",
 				session: "s1",
@@ -774,7 +771,6 @@ describe("CoreServeService", () => {
 			).toEqual({
 				host: "127.0.0.1",
 				port: 34872,
-				server: "rojo",
 				session: "s1",
 				project: "repo",
 				projectFile: "/repo/default.project.json",

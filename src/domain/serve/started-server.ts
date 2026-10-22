@@ -8,7 +8,8 @@ import {
 	exitCodeText,
 } from "../../platform/process/process-service.js";
 import { RojoProcess, RojoRunner } from "../runner/rojo-runner.js";
-import { ServerInfo } from "../runner/sync-server.js";
+import { ServerInfo } from "../runner/rojo-server.js";
+import { ServeFlags } from "../runner/serve-flags.js";
 import {
 	ServePlan,
 	ServeTarget,
@@ -59,8 +60,7 @@ export class StartedServer extends AbstractDisposable {
 				executable,
 				"serve",
 				path.relative(selection.home, target.config.projectFile),
-				executable.server.portIn(serverArgs).unwrapOr(undefined) ===
-					undefined
+				ServeFlags.portIn(serverArgs).unwrapOr(undefined) === undefined
 					? [...serverArgs, "--port", String(target.address.port)]
 					: serverArgs,
 				selection.home
@@ -136,7 +136,7 @@ export class StartedServer extends AbstractDisposable {
 	private askReady(): void {
 		const { target } = this;
 		this.probe
-			.probe(target.address, this.plan.executable.server)
+			.probe(target.address)
 			.then((state) => {
 				if (this.stoppedOnPurpose || this.exited) return;
 				if (
@@ -164,7 +164,6 @@ export class StartedServer extends AbstractDisposable {
 			return;
 		this.toldSlow = true;
 		const { target } = this;
-		const { server } = this.plan.executable;
 		const where = `port ${target.address.port}`;
 		this.listener.said({
 			target,
@@ -172,28 +171,27 @@ export class StartedServer extends AbstractDisposable {
 				severity: "warning",
 				text:
 					state.kind === "free"
-						? `${server.name} hasn't answered on ${where} yet; still waiting.`
-						: `${where} is answered by something other than ${server.name} serving ${target.project}, so ${target.config.label} may not be served there. Stop what holds it, or give it another port.`,
+						? `Rojo hasn't answered on ${where} yet; still waiting.`
+						: `${where} is answered by something other than Rojo serving ${target.project}, so ${target.config.label} may not be served there. Stop what holds it, or give it another port.`,
 			},
 		});
 	}
 
 	private stopOf(exit: ProcessExit, said: boolean): ServerExitEvent {
 		const interrupted = exit.interrupted === true;
-		const { server } = this.plan.executable;
 		const { label, file } = this.target.config;
 		const failure =
 			exit.error !== undefined
 				? errorDiagnostic(
 						"serve.serverExited",
 						{ resource: file },
-						`${server.name} couldn't start to serve ${label}: ${exit.error.message}`
+						`Rojo couldn't start to serve ${label}: ${exit.error.message}`
 					)
 				: !interrupted && exit.code !== 0
 					? errorDiagnostic(
 							"serve.serverExited",
 							{ resource: file },
-							`${server.name} stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}${said ? "; see what it said above." : ", without saying why."}`
+							`Rojo stopped serving ${label} with ${exit.code === null ? `signal ${exit.signal}` : `exit code ${exitCodeText(exit.code)}`}${said ? "; see what it said above." : ", without saying why."}`
 						)
 					: undefined;
 		const stop = { target: this.target, exit, interrupted };

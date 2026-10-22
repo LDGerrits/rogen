@@ -28,7 +28,7 @@ import { RojoProjectFile } from "../rojo/rojo-project.js";
 import { ProjectText } from "../rojo/project-text.js";
 import { SyncRules } from "../rojo/sync-rules.js";
 import { RojoCommandService } from "../runner/rojo-command-service.js";
-import { ServerMessage } from "../runner/sync-server.js";
+import { ServerMessage } from "../runner/rojo-server.js";
 import { AddedInstance, AddedPath, addedInstances } from "./added-instances.js";
 import { ReverseRouter, instanceNameOf } from "./reverse-router.js";
 import {

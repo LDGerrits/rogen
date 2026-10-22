@@ -1,5 +1,5 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ServerInfo, SyncServer } from "../../runner/sync-server.js";
+import { ServerInfo } from "../../runner/rojo-server.js";
 import { ServeAddress } from "../serve.js";
 import { ServerRecords } from "../server-records.js";
 
@@ -9,7 +9,6 @@ describe("ServerRecords", () => {
 
 	const address = new ServeAddress("127.0.0.1", 34872);
 	const info: ServerInfo = {
-		server: SyncServer.ROJO,
 		project: "Game",
 		version: "7.7.1",
 		session: "s1",
@@ -28,7 +27,6 @@ describe("ServerRecords", () => {
 			expect(await records.recordOf(address, info)).toEqual({
 				host: "127.0.0.1",
 				port: 34872,
-				server: "rojo",
 				project: "Game",
 				session: "s1",
 				owner: 4242,

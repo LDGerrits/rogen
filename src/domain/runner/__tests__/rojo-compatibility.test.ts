@@ -1,9 +1,7 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { RojoCompatibility } from "../rojo-compatibility.js";
-import { SyncServer } from "../sync-server.js";
 
 const rojo = (version: string) => ({
-	server: SyncServer.ROJO,
 	file: "/bin/rojo",
 	version,
 });

@@ -29,9 +29,10 @@ const modules = {
 			"rojo-command-service",
 			"rojo-compatibility",
 			"rojo-runner",
+			"rojo-server",
 			"rojo-version",
+			"serve-flags",
 			"server-finder",
-			"sync-server",
 		],
 		rojo: [
 			"project-text",

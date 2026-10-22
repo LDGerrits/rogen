@@ -1,5 +1,5 @@
 import { jest } from "@jest/globals";
-import { ServerMessage, SyncServer } from "../sync-server.js";
+import { ServerMessage } from "../rojo-server.js";
 import { ServerOutput } from "../server-output.js";
 
 describe("ServerOutput", () => {
@@ -13,8 +13,8 @@ describe("ServerOutput", () => {
 		for (const line of lines) output.readLine(line);
 	};
 
-	const reading = (server: SyncServer) => {
-		output = new ServerOutput(server);
+	const reading = () => {
+		output = new ServerOutput();
 		said = [];
 		dropped = [];
 		output.onDidMessage((message) =>
@@ -36,7 +36,7 @@ describe("ServerOutput", () => {
 
 	describe("with Rojo", () => {
 		beforeEach(() => {
-			reading(SyncServer.ROJO);
+			reading();
 		});
 
 		describe("streams", () => {

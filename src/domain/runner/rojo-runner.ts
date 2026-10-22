@@ -4,10 +4,9 @@ import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ProcessExit } from "../../platform/process/process-service.js";
-import { ServerMessage, SyncServer } from "./sync-server.js";
+import { ServerMessage } from "./rojo-server.js";
 
 export interface ServerExecutable {
-	readonly server: SyncServer;
 	readonly file: string;
 	readonly version: string;
 }

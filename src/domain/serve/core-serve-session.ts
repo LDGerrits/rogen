@@ -270,10 +270,7 @@ export class CoreServeSession
 		target: ServeTarget,
 		kind: "refused" | "elsewhere"
 	): Promise<boolean> {
-		const state = await this.probe.probe(
-			target.address,
-			this.plan.executable.server
-		);
+		const state = await this.probe.probe(target.address);
 		const ownProject =
 			state.kind === "serving" && state.info.project === target.project;
 		if (kind === "refused") return state.kind !== "free" && !ownProject;
@@ -304,11 +301,10 @@ export class CoreServeSession
 	private async endOrphanOf(target: ServeTarget): Promise<void> {
 		const { orphan } = target;
 		if (!orphan?.pid) return;
-		const { server } = this.plan.executable;
-		const state = await this.probe.probe(target.address, server);
+		const state = await this.probe.probe(target.address);
 		if (state.kind !== "serving" || state.info.session !== orphan.session)
 			return;
-		const left = `the ${server.name} (process ${orphan.pid}) that a rogen serve (process ${orphan.owner}) left running`;
+		const left = `the Rojo (process ${orphan.pid}) that a rogen serve (process ${orphan.owner}) left running`;
 		let text = `Ended ${left} when it stopped without ending it.`;
 		try {
 			await this.rojoRunner.terminateTree(orphan.pid);

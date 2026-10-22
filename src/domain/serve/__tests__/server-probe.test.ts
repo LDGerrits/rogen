@@ -1,5 +1,4 @@
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
-import { SyncServer } from "../../runner/sync-server.js";
 import { ServeAddress } from "../serve.js";
 import { ServerProbe } from "../server-probe.js";
 
@@ -13,12 +12,9 @@ describe("ServerProbe", () => {
 	});
 
 	it("should find a port nothing listens on free", async () => {
-		expect(
-			await probe.probe(
-				new ServeAddress("127.0.0.1", 34872),
-				SyncServer.ROJO
-			)
-		).toEqual({ kind: "free" });
+		expect(await probe.probe(new ServeAddress("127.0.0.1", 34872))).toEqual(
+			{ kind: "free" }
+		);
 		expect(requests.requested).toEqual(["http://127.0.0.1:34872/api/rojo"]);
 	});
 
@@ -29,20 +25,16 @@ describe("ServerProbe", () => {
 			sessionId: "s",
 		});
 
-		expect(
-			await probe.probe(
-				new ServeAddress("127.0.0.1", 34872),
-				SyncServer.ROJO
-			)
-		).toEqual({
-			kind: "serving",
-			info: {
-				server: SyncServer.ROJO,
-				project: "Game",
-				version: "7.7.1",
-				session: "s",
-			},
-		});
+		expect(await probe.probe(new ServeAddress("127.0.0.1", 34872))).toEqual(
+			{
+				kind: "serving",
+				info: {
+					project: "Game",
+					version: "7.7.1",
+					session: "s",
+				},
+			}
+		);
 	});
 
 	it("should find a port that answers as no sync server taken", async () => {
@@ -52,34 +44,25 @@ describe("ServerProbe", () => {
 			body: new Uint8Array(),
 		});
 
-		expect(
-			await probe.probe(
-				new ServeAddress("127.0.0.1", 8000),
-				SyncServer.ROJO
-			)
-		).toEqual({ kind: "taken" });
+		expect(await probe.probe(new ServeAddress("127.0.0.1", 8000))).toEqual({
+			kind: "taken",
+		});
 	});
 
 	it("should find a port that answers with something else taken", async () => {
 		requests.answer("http://127.0.0.1:8000/api/rojo", { hello: "world" });
 
-		expect(
-			await probe.probe(
-				new ServeAddress("127.0.0.1", 8000),
-				SyncServer.ROJO
-			)
-		).toEqual({ kind: "taken" });
+		expect(await probe.probe(new ServeAddress("127.0.0.1", 8000))).toEqual({
+			kind: "taken",
+		});
 	});
 
 	it("should find a port that does not answer in time taken", async () => {
 		requests.responses.set("http://127.0.0.1:8000/api/rojo", "timeout");
 
-		expect(
-			await probe.probe(
-				new ServeAddress("127.0.0.1", 8000),
-				SyncServer.ROJO
-			)
-		).toEqual({ kind: "taken" });
+		expect(await probe.probe(new ServeAddress("127.0.0.1", 8000))).toEqual({
+			kind: "taken",
+		});
 	});
 
 	it("should try IPv6 loopback for localhost", async () => {
@@ -88,10 +71,7 @@ describe("ServerProbe", () => {
 			serverVersion: "7.7.1",
 		});
 
-		const state = await probe.probe(
-			new ServeAddress("localhost", 8000),
-			SyncServer.ROJO
-		);
+		const state = await probe.probe(new ServeAddress("localhost", 8000));
 
 		expect(state.kind).toBe("serving");
 		expect(requests.requested.slice(0, 1)).toEqual([
