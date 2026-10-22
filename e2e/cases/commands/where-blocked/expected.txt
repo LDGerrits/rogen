@@ -11,7 +11,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/src/F/Shared/Good.luau",
         "status": "blocked",
         "exists": true,

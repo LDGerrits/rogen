@@ -50,7 +50,7 @@ describe("WhereLog", () => {
 				})
 			).toEqual([
 				{
-					config: "default",
+					config: "default.rogen.json",
 					source: "/repo/src/Net/Http@client.luau",
 					exists: true,
 					status: "placed",
@@ -181,7 +181,7 @@ describe("WhereLog", () => {
 		])("should give the fields %j carries", (location, fields) => {
 			expect(jsonOf(location)).toEqual([
 				{
-					config: "default",
+					config: "default.rogen.json",
 					source: location.source,
 					status: location.status,
 					exists: location.exists,
@@ -308,8 +308,8 @@ describe("WhereLog", () => {
 			expect(
 				report.locations.map(({ config, status }) => [config, status])
 			).toEqual([
-				["default", "outside"],
-				["lobby", "placed"],
+				["default.rogen.json", "outside"],
+				["lobby.rogen.json", "placed"],
 			]);
 		});
 
@@ -322,8 +322,25 @@ describe("WhereLog", () => {
 			);
 
 			expect(report.locations.map(({ config }) => config)).toEqual([
-				"default",
-				"lobby",
+				"default.rogen.json",
+				"lobby.rogen.json",
+			]);
+		});
+
+		it("should name each config by its file, relative to the working folder", () => {
+			const report = documentOf(
+				["default", "release"].map((label) => [
+					label,
+					[{ status: "outside", source: "/repo/a", exists: true }],
+				]),
+				false,
+				[],
+				{ name: "Game" }
+			);
+
+			expect(report.locations.map(({ config }) => config)).toEqual([
+				"default.rogen.json",
+				"release.rogen.json",
 			]);
 		});
 

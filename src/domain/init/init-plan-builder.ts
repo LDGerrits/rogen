@@ -180,6 +180,7 @@ export class InitPlanBuilder {
 				liftedFrom: this.liftedFrom,
 			}),
 			nextSteps: {
+				...(this.fromHere("") && { directory: this.fromHere("") }),
 				setup: [...this.setup],
 				run: [...this.run],
 				edits: [

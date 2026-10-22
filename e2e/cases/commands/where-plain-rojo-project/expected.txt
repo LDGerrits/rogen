@@ -24,7 +24,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "plain",
+        "config": "default.project.json",
         "source": "<dir>/src/shared/Hello.luau",
         "status": "mounted",
         "exists": true,

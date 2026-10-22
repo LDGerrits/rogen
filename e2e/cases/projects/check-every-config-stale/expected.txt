@@ -1,0 +1,14 @@
+$ rogen check
+exit 1
+stdout:
+  lobby.project.json - warning: this file differs from what 'rogen write lobby.rogen.json' would write: its sources changed since it was written. Run 'rogen write lobby.rogen.json' to write it again; what it holds comes from lobby.rogen.json, so change that to change it. (output.differs)
+
+$ rogen write lobby
+exit 0
+stdout: (not shown)
+
+$ rogen check
+exit 0
+
+written:
+  lobby.project.json

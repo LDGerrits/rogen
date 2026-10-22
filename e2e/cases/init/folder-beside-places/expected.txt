@@ -45,6 +45,8 @@ stdout:
   Created lobby/AGENTS.md.
   lobby/default.project.json · wrote
   Next steps
+    In each terminal, start in the project folder:
+      cd lobby
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.

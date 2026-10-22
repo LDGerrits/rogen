@@ -130,6 +130,25 @@ describe("WhereAnswers", () => {
 		).toHaveLength(1);
 	});
 
+	it("should answer once per config file when configs share a name", () => {
+		const hit = placed("/repo/src/Hit.luau", "Hit");
+
+		const [answers] = answersOf(
+			[
+				["default", [hit]],
+				["release", [hit]],
+			],
+			false,
+			[],
+			{ name: "Game" }
+		).bySource();
+
+		expect(answers.map(({ config }) => config)).toEqual([
+			"/repo/default.rogen.json",
+			"/repo/release.rogen.json",
+		]);
+	});
+
 	it("should keep a file asked about twice where it was first asked", () => {
 		expect(
 			sources(
