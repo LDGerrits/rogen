@@ -113,21 +113,21 @@ export class Target {
 	): Result<Target, Diagnostic[]> {
 		const [service, ...folders] = text.split("/");
 		if (!isSupportedService(service)) {
-			const suggestion = Target.serviceFor(service);
+			const { message, replacement } = Target.explainService(
+				text,
+				service,
+				folders
+			);
 			return err([
 				errorDiagnostic(
 					"roblox.unsupportedService",
 					location,
-					suggestion
-						? `"${service}" is not a supported service. Did you mean "${[suggestion, ...folders].join("/")}"?`
-						: `"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`,
-					suggestion
+					message,
+					replacement
 						? replaceFixes(
 								location,
 								JSON.stringify(text),
-								JSON.stringify(
-									[suggestion, ...folders].join("/")
-								)
+								JSON.stringify(replacement)
 							)
 						: []
 				),
@@ -146,6 +146,42 @@ export class Target {
 			]);
 		}
 		return ok(new Target(service, folders));
+	}
+
+	private static explainService(
+		text: string,
+		service: string,
+		folders: readonly string[]
+	): { message: string; replacement?: string } {
+		const [head, ...afterDot] = service.split(".");
+		if (afterDot.length > 0 && isSupportedService(head)) {
+			const replacement = [head, ...afterDot, ...folders].join("/");
+			return {
+				message: `"${service}" is not a supported service; separate folders with "/", as in "${replacement}".`,
+				replacement,
+			};
+		}
+		if (text.startsWith("/")) {
+			const rest = text.replace(/^\/+/, "");
+			const replacement = isSupportedService(rest.split("/")[0])
+				? rest
+				: undefined;
+			return {
+				message: `"${text}" is not a supported service; a target starts with the service, not with "/".${replacement ? ` Did you mean "${replacement}"?` : ""}`,
+				replacement,
+			};
+		}
+		const suggestion = Target.serviceFor(service);
+		if (suggestion) {
+			const replacement = [suggestion, ...folders].join("/");
+			return {
+				message: `"${service}" is not a supported service. Did you mean "${replacement}"?`,
+				replacement,
+			};
+		}
+		return {
+			message: `"${service}" is not a supported service; a target must start with a service Rojo can write to, such as ServerScriptService or ReplicatedStorage.`,
+		};
 	}
 
 	private static serviceFor(name: string): string | undefined {

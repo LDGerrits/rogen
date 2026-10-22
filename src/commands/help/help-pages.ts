@@ -37,7 +37,8 @@ const ROOT_EXAMPLES = [
 export type HelpTarget =
 	| { readonly kind: "command"; readonly command: Command }
 	| { readonly kind: "code"; readonly code: string }
-	| { readonly kind: "codes"; readonly prefix?: string };
+	| { readonly kind: "codes"; readonly prefix?: string }
+	| { readonly kind: "topic"; readonly name: string };
 
 /** The name of the page that lists every diagnostic code. */
 const CODES_PAGE = "codes";
@@ -49,8 +50,14 @@ const GAP = "    ";
 /** The width help is wrapped to, as Rojo's is. */
 const WIDTH = 100;
 
-/** `text` broken at spaces into lines of at most `width`, a longer word on a line of its own. */
+/** `text` broken at spaces into lines of at most `width`, a longer word on a line of its own; a line break in `text` stays, and a bullet's later lines are indented under its text. */
 function wrapped(text: string, width: number): string[] {
+	if (text.includes("\n"))
+		return text.split("\n").flatMap((line) => wrapped(line, width));
+	if (text.startsWith("- "))
+		return wrapped(text.slice(2), width - 2).map((line, index) =>
+			index === 0 ? `- ${line}` : `  ${line}`
+		);
 	const lines: string[] = [];
 	let line = "";
 	for (const word of text.split(" ")) {
@@ -256,12 +263,13 @@ export class HelpPages {
 		const name = target.toLowerCase();
 		const command = this.commands.get(name);
 		if (command) return { kind: "command", command };
-		return DocTopics.has(name) ? undefined : named;
+		return DocTopics.has(name) ? { kind: "topic", name } : named;
 	}
 
 	textOf(target: HelpTarget, form: HelpForm = "long"): string {
 		if (target.kind === "command")
 			return formatCommandHelp(target.command, GlobalOptions, form);
+		if (target.kind === "topic") return DocTopics.textOf(target.name) ?? "";
 		if (target.kind === "codes") {
 			const { codes } = HelpDocument.codes(target.prefix);
 			const codeWidth = Math.max(...codes.map(({ code }) => code.length));
@@ -290,11 +298,6 @@ export class HelpPages {
 	}
 
 	unknown(target: string): UsageError {
-		if (DocTopics.has(target))
-			return new UsageError(
-				`"${target}" is a topic, not a command.`,
-				`Run 'rogen doc ${target.toLowerCase()}'.`
-			);
 		const codes = Object.keys(helpTexts.diagnostics);
 		const named = new Map<string, string>();
 		const add = (name: string, standsFor: string) => {

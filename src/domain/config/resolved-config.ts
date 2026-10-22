@@ -87,6 +87,17 @@ export class ResolvedConfig {
 				);
 	}
 
+	/** Whether the only source path is the default one, which a config without `sourcePaths` has. */
+	get usesDefaultSourcePath(): boolean {
+		return (
+			this.sourcePaths.length === 1 &&
+			samePath(
+				this.sourcePaths[0],
+				path.join(this.projectDir, DEFAULT_SOURCE_PATH)
+			)
+		);
+	}
+
 	/** Whether the config is a Rojo project file Rogen was not given a config for: it is its own output and is never written. */
 	get isAdopted(): boolean {
 		return samePath(this.file, this.projectFile);

@@ -64,12 +64,8 @@ describeWithRojo("end to end serve", () => {
 			);
 		}, 20_000);
 		expect(await rojoProject(serve.port)).toBe("Game");
-		await eventually(() => {
-			expect(serving.stdout).toContain("Rojo server listening:");
-		}, 20_000);
-
-		expect(serving.stdout).toContain(`Port:    ${serve.port}`);
-		expect(serving.stdout).not.toContain("Serving Game");
+		expect(serving.stdout).not.toContain("Rojo server listening:");
+		expect(serving.stdout).not.toContain(`Port:    ${serve.port}`);
 		expect(await serving.stop()).toBe(130);
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 40_000);

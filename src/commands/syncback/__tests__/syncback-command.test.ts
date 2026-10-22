@@ -78,6 +78,17 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
+	it.each(["a.rbxl", "dir/a.RBXLX", "a.rbxm", "a.rbxmx"])(
+		"should say to pass the place file %s as --input when it is given as the project",
+		async (file) => {
+			const { running } = start({}, undefined, [file]);
+
+			expect(((await running) as ResultError<Error>).error.message).toBe(
+				`--input names the place or model file to bring changes from, and Rojo needs it. '${file}' is a place or model file, not a project: pass it as --input ${file}.`
+			);
+		}
+	);
+
 	it("should refuse a second project, as Rojo's syncback does, and run nothing", async () => {
 		const { running } = start(
 			{ input: "game.rbxl", "non-interactive": true },

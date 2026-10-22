@@ -104,7 +104,7 @@ const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
 	...(run.length > 0
 		? [
 				run.length === 1 ? "Run:" : "Run each in its own terminal:",
-				...run.map(indent),
+				...run.flatMap((step) => step.split("\n").map(indent)),
 			]
 		: []),
 	...(run.some((line) => line.startsWith("rogen serve"))

@@ -39,6 +39,12 @@ const removedFields: Readonly<Record<string, string>> = {
 	syncPath: advisedCompiledPath,
 };
 
+/** The names people try for a Rogen key first. */
+const triedNames: Readonly<Record<string, string>> = {
+	outDir: "compiledPath",
+	outputPath: "compiledPath",
+};
+
 /** Advice for a field Rogen once read and no longer does, in place of the unknown-key error. */
 function configRemovedFieldAdvice(
 	path: string,
@@ -128,10 +134,14 @@ export class ConfigKeys {
 				errors.push(found);
 				continue;
 			}
-			const suggestion = closestMatch(
-				key,
-				known.filter((other) => !keys.includes(other))
-			);
+			const open = known.filter((other) => !keys.includes(other));
+			const tried = Object.hasOwn(triedNames, key)
+				? triedNames[key]
+				: undefined;
+			const suggestion =
+				tried !== undefined && open.includes(tried)
+					? tried
+					: closestMatch(key, open);
 			errors.push(
 				errorDiagnostic(
 					"config.unknownField",

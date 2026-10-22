@@ -119,6 +119,28 @@ describe("ConfigBuilder", () => {
 			expect(result.isErr()).toBe(true);
 		});
 
+		it("should not tell a config on the default source path to check a spelling", async () => {
+			await fs.writeFile(abs("src"), "");
+
+			const result = await buildOf(configOf());
+
+			expect(
+				result.isErr() && result.error.diagnostics[0].message
+			).toContain(
+				'Create src, or set "sourcePaths" to where your code is.'
+			);
+		});
+
+		it("should tell a config with its own source path to check the spelling", async () => {
+			const result = await buildOf(
+				configOf({ sourcePaths: [abs("srcc")] })
+			);
+
+			expect(
+				result.isErr() && result.error.diagnostics[0].message
+			).toContain('Check the spelling in "sourcePaths".');
+		});
+
 		it("should build a config with no source paths at all", async () => {
 			const result = await buildOf(configOf({ sourcePaths: [] }));
 

@@ -145,7 +145,11 @@ export class ConfigBuilder {
 		config: ResolvedConfig,
 		placement: Placement
 	): MissingSourcePaths {
-		return new MissingSourcePaths(placement.roots, config.projectFile);
+		return new MissingSourcePaths(
+			placement.roots,
+			config.projectFile,
+			config.usesDefaultSourcePath
+		);
 	}
 
 	/** The project file a build of `config` would write, or none when it fails. */

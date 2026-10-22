@@ -10,6 +10,8 @@ import {
 export interface OptionDescriptor {
 	readonly name: string;
 	readonly short?: string;
+	/** Other long names the option answers to, which help leaves out. */
+	readonly aliases?: readonly string[];
 	readonly type: "string" | "boolean";
 	readonly multiple?: boolean;
 	/** For a flag: whether `--no-<name>` is accepted and means false, as against not given. */
@@ -139,6 +141,23 @@ function withShortValues(
 				letter === short?.[1] && type === "string"
 		);
 		return short && option ? `--${option.name}=${short[2]}` : arg;
+	});
+	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
+}
+
+/** `--alias` and `--alias=value` as the option they name; past `--` the line is left alone. */
+function withAliases(
+	args: readonly string[],
+	options: readonly OptionDescriptor[]
+): string[] {
+	const end = args.indexOf("--");
+	const own = end === -1 ? args : args.slice(0, end);
+	const rewritten = own.map((arg) => {
+		const alias = /^--([^=]+)(=.*)?$/s.exec(arg);
+		const option = options.find(({ aliases }) =>
+			aliases?.includes(alias?.[1] ?? "")
+		);
+		return alias && option ? `--${option.name}${alias[2] ?? ""}` : arg;
 	});
 	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
 }
@@ -273,7 +292,18 @@ export function parseArgs(
 					)
 				)
 				.sort();
-		const typed = withShortValues(args, allOptions);
+		const named = tokenize(withShortValues(args, allOptions), allOptions)
+			.tokens?.find((token) => token.kind === "positional")
+			?.value.toLowerCase();
+		const typed = withShortValues(
+			withAliases(
+				args,
+				named !== undefined && commands.includes(named)
+					? optionsFor(named)
+					: []
+			),
+			allOptions
+		);
 		const { values, tokens = [] } = tokenize(typed, allOptions);
 		const terminator = tokens.find(
 			(token) => token.kind === "option-terminator"

@@ -119,7 +119,7 @@ stdout:
       }
     ],
     "notes": [
-      "Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place."
+      "The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place."
     ],
     "nextSteps": {
       "setup": [],

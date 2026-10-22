@@ -114,9 +114,9 @@ describe("ConfigFormatter", () => {
 	});
 
 	it.each([
-		['{ // the name\n "name": "Game" }', "comment"],
-		['{ "name": "Game", }', "trailing comma"],
-	])("should refuse a default.rogen.json with a %s", async (text) => {
+		'{ // the name\n "name": "Game" }',
+		'{ /* the name */ "name": "Game" }',
+	])("should refuse a default.rogen.json with comments", async (text) => {
 		await fs.writeFile("/repo/default.rogen.json", text);
 
 		const result = await format();
@@ -124,9 +124,34 @@ describe("ConfigFormatter", () => {
 		const [diagnostic] = result.isErr() ? result.error : [];
 		expect(diagnostic.code).toBe("format.commentsLost");
 		expect(diagnostic.message).toBe(
-			"default.rogen.json has comments or trailing commas, and formatting writes none. Remove them first, or format it in your editor."
+			"default.rogen.json has comments, and formatting writes none. Remove them first, or format it in your editor."
 		);
 		expect(await fs.readFile("/repo/default.rogen.json")).toBe(text);
+	});
+
+	it("should format a default.rogen.json with a trailing comma", async () => {
+		await fs.writeFile(
+			"/repo/default.rogen.json",
+			'{ "name": "Game", "tree": { "$className": "DataModel", }, }'
+		);
+
+		const result = await format();
+
+		expect(result.unwrap()).toBe(true);
+		expect(
+			JSON.parse(await fs.readFile("/repo/default.rogen.json"))
+		).toEqual({ name: "Game", tree: { $className: "DataModel" } });
+	});
+
+	it("should not take a // inside a string for a comment", async () => {
+		await fs.writeFile(
+			"/repo/default.rogen.json",
+			'{ "name": "Game", "tree": { "$className": "DataModel", "$path": "http://x" } }'
+		);
+
+		const result = await format();
+
+		expect(result.isOk()).toBe(true);
 	});
 
 	it("should format a file that starts with a byte order mark", async () => {

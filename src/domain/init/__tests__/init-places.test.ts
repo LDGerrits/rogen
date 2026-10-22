@@ -209,6 +209,20 @@ describe("init for several places", () => {
 			expect(result.isErr()).toBe(true);
 		});
 
+		it("should say only a new roblox-ts project starts with places when the folder already is one", async () => {
+			await put("tsconfig.json", "{}");
+			await put("package.json", '{"devDependencies":{"roblox-ts":"1"}}');
+
+			const result = await serviceFor().plan({
+				ask: false,
+				choices: { places: true, language: "roblox-ts", skipGit: true },
+			});
+
+			expect(result.isErr() && result.error.message).toContain(
+				"--places starts a new roblox-ts project with places, and this folder already has one."
+			);
+		});
+
 		it("should refuse a source path, which every place lists in full", async () => {
 			const result = await serviceFor().plan({
 				ask: false,
@@ -440,7 +454,7 @@ describe("init for several places", () => {
 			);
 			expect(result.nextSteps.run).toEqual([
 				"npm run watch",
-				"cd projects/game && darklua process out dist --watch",
+				"cd projects/game\ndarklua process out dist --watch",
 				"rogen serve projects/game/dist.rogen.json",
 			]);
 			expect(fileOf(result, ".gitignore")?.content).toContain(

@@ -43,6 +43,7 @@ export class ServerOutput extends AbstractDisposable {
 	private pending: PendingRecord | undefined;
 	private readonly quiet: RunOnceScheduler;
 	private last: { readonly key: string; readonly at: number } | undefined;
+	private inBanner = false;
 
 	constructor() {
 		super();
@@ -121,6 +122,13 @@ export class ServerOutput extends AbstractDisposable {
 			? undefined
 			: RojoServer.tidied(said);
 		if (stdout !== undefined) {
+			const banner = RojoServer.tidied(said) === undefined;
+			if (banner || (this.inBanner && said === "")) {
+				this.inBanner = true;
+				this._onDidMessage.fire({ severity: "debug", text: said });
+				return;
+			}
+			this.inBanner = false;
 			this._onDidMessage.fire({
 				severity: text && severity !== "debug" ? severity : "debug",
 				text: text ?? said,

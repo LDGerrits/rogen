@@ -84,7 +84,8 @@ export class BuildValidator {
 	private missingSourcePath(): Diagnostic[] {
 		return new MissingSourcePaths(
 			this.placement.roots,
-			this.config.projectFile
+			this.config.projectFile,
+			this.config.usesDefaultSourcePath
 		).warnings();
 	}
 
@@ -294,7 +295,7 @@ export class BuildValidator {
 				warningDiagnostic(
 					"route.unrouted",
 					{ resource },
-					`matched no route, so it is left out. Move it into ${joinedWithOr([path.join(this.featureFolderOf(resource), first), ...rest])}.`
+					`matched no route, so it is left out. Move it into ${joinedWithOr([path.join(this.featureFolderOf(resource), first), ...rest])}, end its name with a route's @ marker (${joinedWithOr([first, ...rest].map((key) => `@${key}`))}), or declare a "*" route.`
 				)
 			);
 	}
