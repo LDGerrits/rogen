@@ -31,6 +31,6 @@ Each JSON diagnostic has `file`, `line` and `column` (when it has a position), `
 
 `rogen where` is `write`'s dry run: it computes the same tree and writes nothing, so it shows where a file lands, and why a file is left out (replaced, ignored, displaced or mounted), before you build. It prints the warnings a build would raise about each path under its line, except the compiled path's. With nothing in the source paths it says so, and a missing path named with a trailing separator says to name a file in it.
 
-`rogen check <paths>` is `where`'s verdict: it prints only the diagnostics about the paths (a clean path prints nothing), writes nothing and exits 1 on any; with no path it reports the whole project, the compiled path's warnings included, and a `default.project.json` on disk that differs from what `build` would write.
+`rogen check <paths>` is `where`'s verdict: it prints only the diagnostics about the paths (a clean path prints nothing), writes nothing and exits 1 on any; with no path it reports every `.rogen.json` of the folder whole, the compiled path's warnings included, and each project file on disk that differs from what `write` would write.
 
 `rogen write` is safe beside a running `rogen write --watch` or `rogen serve`: it writes only bytes that changed.

@@ -54,7 +54,7 @@ registerCommand(
 					summary:
 						"Prints the diagnostics, and exits 1 when there are any",
 					description:
-						"Prints the diagnostics about the given paths, or about the whole project, and exits 1 when there are any.",
+						"Prints the diagnostics about the given paths, or about every config of the working directory, and exits 1 when there are any.",
 					args: [
 						{
 							name: "path",
@@ -62,7 +62,7 @@ registerCommand(
 								"A file or a directory. A directory gives the files in it, and a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file is ignored.",
 								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. Naming a .rogen.json, or a config as build reads it (game for game.rogen.json), checks that config whole.",
 								"- Skipped: a path no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document.",
-								"- No path: the whole project of the working directory's default config, compiled path warnings included.",
+								"- No path: every .rogen.json of the working directory, whole, compiled path warnings included; with none, the plain project file there.",
 							].join("\n"),
 							isOptional: true,
 							isVariadic: true,
@@ -73,7 +73,7 @@ registerCommand(
 					effects: [],
 					exitCodes: {
 						"0": "no diagnostics",
-						"1": "any diagnostic, a warning included; with no path, a project file that is out of date counts too",
+						"1": "any diagnostic, a warning included; with no path, the project file of any config that is out of date counts too",
 					},
 					examples: [
 						"rogen check src/Inventory/Server/Save.luau",
@@ -137,7 +137,9 @@ registerCommand(
 			const buildService = accessor.get(BuildService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
-				const selection = await configService.select([]);
+				const selection = await configService.select(
+					await configService.configsHere()
+				);
 				if (selection.isErr()) return selection;
 				return buildService.diagnose(selection.value);
 			}

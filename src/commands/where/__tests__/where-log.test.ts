@@ -265,8 +265,8 @@ describe("WhereLog", () => {
 					["lobby", [placed("a", "B")]],
 				]).lines()
 			).toEqual([
-				"default: a -> ReplicatedStorage/A · route * (fallback)",
-				"lobby: a -> ReplicatedStorage/B · route * (fallback)",
+				"default.rogen.json: a -> ReplicatedStorage/A · route * (fallback)",
+				"lobby.rogen.json: a -> ReplicatedStorage/B · route * (fallback)",
 			]);
 		});
 
@@ -276,7 +276,9 @@ describe("WhereLog", () => {
 					["default", [outside("a")]],
 					["lobby", [placed("a", "A")]],
 				]).lines()
-			).toEqual(["lobby: a -> ReplicatedStorage/A · route * (fallback)"]);
+			).toEqual([
+				"lobby.rogen.json: a -> ReplicatedStorage/A · route * (fallback)",
+			]);
 		});
 
 		it("should print a path every config places the same way once, unheaded, beside one only some place", () => {
@@ -288,7 +290,7 @@ describe("WhereLog", () => {
 				]).lines()
 			).toEqual([
 				"a -> ReplicatedStorage/A · route * (fallback)",
-				"lobby: b -> ReplicatedStorage/B · route * (fallback)",
+				"lobby.rogen.json: b -> ReplicatedStorage/B · route * (fallback)",
 			]);
 		});
 
@@ -298,7 +300,7 @@ describe("WhereLog", () => {
 					["default", [outside("a")]],
 					["lobby", [missing("a")]],
 				]).lines()
-			).toEqual(["lobby: a -> does not exist"]);
+			).toEqual(["lobby.rogen.json: a -> does not exist"]);
 		});
 
 		it("should prefix a line that only some configs have", () => {
@@ -309,7 +311,7 @@ describe("WhereLog", () => {
 				]).lines()
 			).toEqual([
 				"a -> outside the source paths",
-				"lobby: b -> does not exist",
+				"lobby.rogen.json: b -> does not exist",
 			]);
 		});
 
@@ -329,8 +331,8 @@ describe("WhereLog", () => {
 					true
 				).lines()
 			).toEqual([
-				"lobby: a -> outside the source paths",
-				"default: b -> does not exist",
+				"lobby.rogen.json: a -> outside the source paths",
+				"default.rogen.json: b -> does not exist",
 			]);
 		});
 	});
@@ -520,8 +522,8 @@ describe("WhereLog", () => {
 					["lobby", placed(["ReplicatedFirst", "Util"])]
 				)
 			).toEqual([
-				'  default: require(game:GetService("ReplicatedStorage").Util)',
-				'  lobby: require(game:GetService("ReplicatedFirst").Util)',
+				'  default.rogen.json: require(game:GetService("ReplicatedStorage").Util)',
+				'  lobby.rogen.json: require(game:GetService("ReplicatedFirst").Util)',
 			]);
 		});
 	});
@@ -770,12 +772,12 @@ describe("WhereLog", () => {
 			expect(agree.lines()).toHaveLength(2);
 			expect(differ.lines()).toEqual([
 				"src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
-				"  default: warning: matched no route. (route.unrouted)",
+				"  default.rogen.json: warning: matched no route. (route.unrouted)",
 			]);
 			expect(apart.lines()).toEqual([
-				"default: src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
+				"default.rogen.json: src/U.luau -> ReplicatedStorage/Save · route * (fallback)",
 				"  warning: matched no route. (route.unrouted)",
-				"lobby: src/U.luau -> unrouted · no route matches it",
+				"lobby.rogen.json: src/U.luau -> unrouted · no route matches it",
 				"  warning: matched no route. (route.unrouted)",
 			]);
 		});

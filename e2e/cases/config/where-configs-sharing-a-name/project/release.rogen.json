@@ -1,0 +1,7 @@
+{
+	"name": "Game",
+	"rogen": {
+		"sourcePaths": ["src"],
+		"routes": { "*": "ServerStorage/Shared" }
+	}
+}

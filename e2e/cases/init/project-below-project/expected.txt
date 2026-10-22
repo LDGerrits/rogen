@@ -8,6 +8,8 @@ stdout:
   Created tools/src/.
   tools/default.project.json · wrote
   Next steps
+    In each terminal, start in the project folder:
+      cd tools
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.

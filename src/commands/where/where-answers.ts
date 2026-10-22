@@ -12,7 +12,8 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 
 interface FileAnswer {
 	readonly kind: "file";
-	readonly label: string;
+	/** The config file that answered. */
+	readonly config: string;
 	readonly location: FileLocation;
 	readonly instance?: string;
 	readonly diagnostics: readonly Diagnostic[];
@@ -20,7 +21,7 @@ interface FileAnswer {
 
 interface InstanceAnswer {
 	readonly kind: "instance";
-	readonly label: string;
+	readonly config: string;
 	readonly instance: string;
 	readonly folders: readonly string[];
 	readonly fixes: readonly InstanceFix[];
@@ -64,8 +65,8 @@ export class WhereAnswers {
 		}
 		return sources.map((source) =>
 			(bySource.get(source) ?? []).filter(
-				({ label }, at, all) =>
-					all.findIndex((other) => other.label === label) === at
+				({ config }, at, all) =>
+					all.findIndex((other) => other.config === config) === at
 			)
 		);
 	}
@@ -98,10 +99,10 @@ function answersOf({
 	instances,
 	diagnostics,
 }: ConfigLocations): Answer[] {
-	const { label } = config;
+	const { file } = config;
 	const answer = (location: FileLocation, instance?: string): FileAnswer => ({
 		kind: "file",
-		label,
+		config: file,
 		location,
 		...(instance !== undefined && { instance }),
 		diagnostics: diagnosticsOf(location, diagnostics),
@@ -115,7 +116,7 @@ function answersOf({
 					: [
 							{
 								kind: "instance",
-								label,
+								config: file,
 								instance: reference.text,
 								folders,
 								fixes,
