@@ -949,33 +949,3 @@ describe("InitQuestions addAgentHook", () => {
 		expect(await unasked.addAgentHook(["Claude Code"])).toBe(false);
 	});
 });
-
-describe("InitQuestions choosing what to add to a project", () => {
-	const askedWith = (answers: PromptScript) => {
-		const prompts = new MockPromptService(answers);
-		return { prompts, questions: new InitQuestions(prompts, true) };
-	};
-	const areas = [
-		{ id: "routes", label: "Routes", hint: "add or take off" },
-		{ id: "darklua", label: "Darklua", hint: "process the code" },
-	];
-
-	it("should offer the areas with nothing ticked, and name the state in the description", async () => {
-		const { prompts, questions } = askedWith([["darklua"]]);
-
-		const picked = await questions.whatToChange("Routes  Server", areas);
-
-		expect(picked).toEqual(["darklua"]);
-		expect(prompts.prompts[0]).toMatchObject({
-			message: "What do you want to change?",
-			description: "Routes  Server",
-			offered: ["routes", "darklua"],
-		});
-	});
-
-	it("should answer nothing when the user cancels the areas", async () => {
-		const { questions } = askedWith([CANCEL]);
-
-		expect(await questions.whatToChange("", areas)).toBeUndefined();
-	});
-});

@@ -322,7 +322,6 @@ class RogenMain {
 				promptService,
 				environmentService,
 				toolchainService,
-				configService,
 				processService,
 				toolLocator
 			)

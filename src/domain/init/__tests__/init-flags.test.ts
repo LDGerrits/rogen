@@ -423,16 +423,4 @@ describe("the yes or no questions", () => {
 			{ question: "plugin", value: false, flag: "--studio-plugin" },
 		]);
 	});
-
-	it("should start a nested project only when told to", async () => {
-		const enclosing = {
-			directory: "/mock",
-			fileNames: ["default.rogen.json"],
-		};
-
-		expect(await questions({}).startNestedProject(enclosing)).toBe(false);
-		expect(
-			await questions({ nested: true }).startNestedProject(enclosing)
-		).toBe(true);
-	});
 });

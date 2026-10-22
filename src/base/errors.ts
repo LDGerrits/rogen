@@ -107,7 +107,7 @@ export class UsageError extends KindedError {
 	readonly kind = "usage";
 }
 
-/** The project can't be run on as it is: no config where one is needed, a nested project the user hasn't confirmed. */
+/** The project can't be run on as it is, such as no config where one is needed. */
 export class ProjectError extends KindedError {
 	override readonly name = "ProjectError";
 	readonly kind = "project";

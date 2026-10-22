@@ -12,6 +12,7 @@ import { ServerExecutable } from "./rojo-runner.js";
 import { ToolManifest } from "../toolchain/tool-manifest.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
+import { DOCS_URL } from "../../platform/product/product-service.js";
 
 /** A toolchain manager may download the tool before `--version` answers. */
 const VERSION_TIMEOUT_MS = 60_000;
@@ -26,7 +27,7 @@ interface PinnedCandidate extends Candidate {
 	readonly manifest: ToolManifest;
 }
 
-const SET_UP = "Run 'rogen init --rojo' to set Rojo up.";
+const SET_UP = `To set Rojo up by hand, see ${DOCS_URL}/installation.`;
 
 const ARGON_REPOSITORY = "argon-rbx/argon";
 

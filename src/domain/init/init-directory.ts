@@ -14,6 +14,7 @@ import {
 } from "../config/config.js";
 import { DetectedWorkspace, Language } from "../toolchain/toolchain.js";
 import { DirectoryLayout } from "./code-finder.js";
+import { DOCS_URL } from "../../platform/product/product-service.js";
 
 const PROJECT_FILE_SUFFIX = ".project.json";
 
@@ -66,7 +67,7 @@ export class InitDirectory {
 					? errorDiagnostic(
 							"init.configExists",
 							{ resource: path.join(this.path, fileName) },
-							"this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules, the agent hook or Rojo, pass --agent-rules, --agent-hook or --rojo."
+							`this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'. To add the agent rules or the agent hook to this project, see ${DOCS_URL}/agents; to set Rojo up, see ${DOCS_URL}/installation.`
 						)
 					: errorDiagnostic(
 							"init.fileExists",

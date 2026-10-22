@@ -3,7 +3,6 @@ import { containsPath, normalizeDir } from "../../base/path.js";
 import { joinedClosestFirst, joinedWithAnd } from "../../base/strings.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
 import { DEFAULT_CONFIG_FILE, DEFAULT_PROJECT_FILE } from "../config/config.js";
-import { EnclosingConfigs } from "../config/config-service.js";
 import { Language, Mount, MountCandidate } from "../toolchain/toolchain.js";
 import { HOOK_SCRIPT_FILE } from "./agent/coding-agent.js";
 import { InitDirectory } from "./init-directory.js";
@@ -43,13 +42,6 @@ export function listOf(
 			`'${NONE}' can't be combined with other values of ${flag}.`
 		);
 	return [];
-}
-
-/** An area a run can add to a project that has a config. */
-export interface ChangeArea {
-	readonly id: string;
-	readonly label: string;
-	readonly hint: string;
 }
 
 const required = (what: string) => (value: string) =>
@@ -98,37 +90,6 @@ export class InitQuestions {
 		if (given !== undefined) return given;
 		if (!this.interactive) this.decide("skipGit", false, "--skip-git");
 		return false;
-	}
-
-	async startNestedProject({
-		directory,
-		fileNames,
-	}: EnclosingConfigs): Promise<boolean | undefined> {
-		if (this.choices.nested) return true;
-		if (!this.interactive) return false;
-		return this.essential.confirm({
-			message: `${directory} already has ${fileNames.join(", ")}. Start a separate project here anyway?`,
-			description:
-				"This folder may already be part of that project, and a project here would then be built twice.",
-			initialValue: false,
-		});
-	}
-
-	/** The areas of a project that has a config to add to, with what it has now; `undefined` when the user cancelled. */
-	async whatToChange(
-		current: string,
-		areas: readonly ChangeArea[]
-	): Promise<readonly string[] | undefined> {
-		return this.essential.multiSelect({
-			message: "What do you want to change?",
-			description: current,
-			choices: areas.map(({ id, label, hint }) => ({
-				value: id,
-				label,
-				hint,
-			})),
-			initialValues: [],
-		});
 	}
 
 	async addAgentInstructions(fileName: string): Promise<boolean | undefined> {

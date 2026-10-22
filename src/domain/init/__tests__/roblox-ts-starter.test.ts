@@ -5,7 +5,6 @@ import { NativeEnvironmentService } from "../../../platform/environment/native-e
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockPromptService } from "../../../platform/prompt/__tests__/mock-prompt-service.js";
-import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreToolchainService } from "../../toolchain/core-toolchain-service.js";
 import { workspaceOf } from "../../toolchain/__tests__/workspaces.js";
 import { CoreInitService } from "../core-init-service.js";
@@ -158,7 +157,6 @@ describe("a new roblox-ts project", () => {
 			new MockPromptService([], false),
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			new CoreConfigService(fileSystem, environmentService),
 			processes
 		);
 	};

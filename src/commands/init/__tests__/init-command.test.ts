@@ -29,8 +29,6 @@ const readyProcesses = () => {
 	return processes;
 };
 
-const WHAT_TO_CHANGE = "What do you want to change?";
-
 describe("init command", () => {
 	const cwd = path.resolve("/mock/my-game");
 	let memFs: MemoryFileSystemService;
@@ -133,26 +131,6 @@ describe("init command", () => {
 			});
 		});
 
-		it("should list what the project has already as present", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", "<!-- rogen -->\n");
-
-			const { result, logService } = await runJson();
-
-			expect(result.isOk()).toBe(true);
-			expect(JSON.parse(logService.entries[0].text)).toMatchObject({
-				changed: false,
-				files: [],
-				present: [
-					{
-						item: "agentRules",
-						file: path.join(cwd, "AGENTS.md"),
-						state: "present",
-					},
-				],
-			});
-		});
-
 		it("should name the files it wrote before a write failed", async () => {
 			await write("tsconfig.json", "{}");
 			const writeFile = memFs.writeFile.bind(memFs);
@@ -246,24 +224,6 @@ describe("init command", () => {
 				"outro: Wrote 7 files.",
 			]);
 		});
-
-		it("should say only what is there when the config already exists", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", "<!-- rogen -->\n");
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				logService
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(logService.lines).toEqual([
-				"intro: rogen init",
-				"info: AGENTS.md already has Rogen's rules.",
-				"outro: Nothing to add.",
-			]);
-		});
 	});
 
 	describe("first build", () => {
@@ -276,22 +236,6 @@ describe("init command", () => {
 				(await readJson("default.project.json")).tree
 					.ServerScriptService.Inventory
 			).toBeDefined();
-		});
-
-		it("should build nothing when it wrote no config", async () => {
-			await write("default.rogen.json", "{}");
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([["agents"], "yes"]),
-				logService
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(await exists("default.project.json")).toBe(false);
-			expect(logService.lines).not.toContainEqual(
-				expect.stringContaining("project.json")
-			);
 		});
 
 		it("should leave out the warning that the compiler has not run yet", async () => {
@@ -504,25 +448,6 @@ describe("init command", () => {
 			expect(JSON.parse(logService.entries[0].text).directories).toEqual(
 				[]
 			);
-		});
-
-		it("should say what a folder that has a config has, and write nothing", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", "<!-- rogen -->\n");
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				logService,
-				{ "dry-run": true }
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(logService.lines).toEqual([
-				"intro: rogen init",
-				"info: AGENTS.md already has Rogen's rules.",
-				"outro: Nothing to add.",
-			]);
 		});
 	});
 
@@ -741,115 +666,6 @@ describe("init command", () => {
 				expect(await exists("default.rogen.json")).toBe(false);
 			});
 		});
-
-		describe("on a project that has a config", () => {
-			const CONFIG =
-				'{\n\t// my routes\n\t"tree": { "$className": "DataModel" },\n\t"rogen": { "routes": { "server": "ServerScriptService", "client": "StarterPlayer/StarterPlayerScripts" } }\n}\n';
-
-			beforeEach(async () => {
-				await write("default.rogen.json", CONFIG);
-				await write("src/keep.luau");
-			});
-
-			it("should refuse a flag that would change the config, and leave it alone", async () => {
-				const result = await runInit(
-					new MockPromptService([], false),
-					new MockLogService(),
-					{ "source-path": ["lib"] }
-				);
-
-				expect(errorMessage(result)).toContain(
-					"--source-path is for a new project, and default.rogen.json exists."
-				);
-				expect(await read("default.rogen.json")).toBe(CONFIG);
-			});
-
-			it("should refuse a flag for a new project, and say why", async () => {
-				const result = await runInit(
-					new MockPromptService([], false),
-					new MockLogService(),
-					{ sample: false }
-				);
-
-				expect(errorMessage(result)).toContain(
-					"--sample is for a new project, and default.rogen.json exists."
-				);
-			});
-
-			it("should offer only the additions in a terminal, and leave the config as it is", async () => {
-				const prompts = new MockPromptService({
-					[WHAT_TO_CHANGE]: ["agents"],
-				});
-
-				const result = await runInit(prompts);
-
-				expect(result.isOk()).toBe(true);
-				expect(await read("default.rogen.json")).toBe(CONFIG);
-				expect(await exists("AGENTS.md")).toBe(true);
-			});
-		});
-
-		it("should add only what the flags ask to a folder that has a config", async () => {
-			await write("default.rogen.json", "{}");
-			await write(".claude/keep");
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				new MockLogService(),
-				{ "agent-hook": true }
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(await exists(".agents/hooks/rogen-check.sh")).toBe(true);
-			expect(await exists("AGENTS.md")).toBe(false);
-		});
-
-		it("should do nothing, and succeed, when what a flag asks for is already there", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", "<!-- rogen -->\n");
-			await write(
-				"rokit.toml",
-				'[tools]\nrojo = "rojo-rbx/rojo@7.5.0"\n'
-			);
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				logService,
-				{ json: true, "agent-rules": true, rojo: true }
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(JSON.parse(logService.entries[0].text)).toMatchObject({
-				changed: false,
-				files: [],
-			});
-		});
-
-		it("should start a project below another one only with --nested", async () => {
-			await memFs.createDirectory(path.join(cwd, "game"));
-			await memFs.writeFile(path.join(cwd, "default.rogen.json"), "{}");
-			const inner = path.join(cwd, "game");
-			const innerRun = (options: CommandLine["options"]) => {
-				const harness = commandHarness({
-					cwd: inner,
-					fs: memFs,
-					log: new MockLogService(),
-					prompt: new MockPromptService([], false),
-					environment: new NativeEnvironmentService(options, inner),
-				});
-				return harness.run("init", { positionals: [], options });
-			};
-
-			const refused = await innerRun({});
-			const allowed = await innerRun({ nested: true });
-
-			expect(errorMessage(refused)).toContain("run rogen init --nested");
-			expect(allowed.isOk()).toBe(true);
-			expect(
-				await memFs.exists(path.join(inner, "default.rogen.json"))
-			).toBe(true);
-		});
 	});
 
 	describe("written files", () => {
@@ -935,19 +751,6 @@ describe("init command", () => {
 			expect(config).not.toHaveProperty("projects");
 		});
 
-		it("should not head next steps when adding the agent rules leaves none", async () => {
-			await write("default.rogen.json", "{}");
-			const log = new MockLogService();
-
-			await runInit(
-				new MockPromptService({ [WHAT_TO_CHANGE]: ["agents"] }),
-				log
-			);
-
-			expect(await exists("AGENTS.md")).toBe(true);
-			expect(log.lines).not.toContain("step: Next steps");
-		});
-
 		it("should write nothing when cancelled", async () => {
 			const result = await runInit(new MockPromptService([CANCEL]));
 
@@ -991,45 +794,6 @@ describe("init command", () => {
 	});
 
 	describe("existing files", () => {
-		it("should report what is there and leave the config alone when nothing is left to add", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", "<!-- rogen -->\n");
-
-			const result = await runInit();
-
-			expect(result.isOk()).toBe(true);
-			expect(await read("default.rogen.json")).toBe("{}");
-		});
-
-		it("should report the hook and the rules as there when a second run asks for them", async () => {
-			await write("default.rogen.json", "{}");
-			await write("AGENTS.md", "<!-- rogen -->\n");
-			const logService = new MockLogService();
-
-			const result = await runInit(
-				new MockPromptService([], false),
-				logService,
-				{ "agent-rules": true }
-			);
-
-			expect(result.isOk()).toBe(true);
-			expect(logService.lines).toEqual([
-				"intro: rogen init",
-				"info: AGENTS.md already has Rogen's rules.",
-				"outro: Nothing to add.",
-			]);
-		});
-
-		it("should add the agent rules beside a config when it can't ask, and leave the config alone", async () => {
-			await write("default.rogen.json", "{}");
-
-			const result = await runInit();
-
-			expect(result.isOk()).toBe(true);
-			expect(await read("default.rogen.json")).toBe("{}");
-			expect(await exists("AGENTS.md")).toBe(true);
-		});
-
 		it("should lift a hand-written default.project.json into default.rogen.json", async () => {
 			await write("default.project.json", '{"name":"hand-written"}');
 			const logService = new MockLogService();
@@ -1087,7 +851,17 @@ describe("init command", () => {
 		expect(await exists("default.rogen.json")).toBe(false);
 	});
 
-	it("should start a project in a folder when no config is at or above it", async () => {
+	it("should fail on a folder that has a config, and write nothing", async () => {
+		await write("default.rogen.json", "{}");
+
+		const result = await runInit(new MockPromptService([], false));
+
+		expect(result.isErr()).toBe(true);
+		expect(await read("default.rogen.json")).toBe("{}");
+		expect(await exists("AGENTS.md")).toBe(false);
+	});
+
+	it("should start a project in a folder", async () => {
 		const logService = new MockLogService();
 
 		const result = await runInit(
@@ -1100,9 +874,6 @@ describe("init command", () => {
 		expect(result.isOk()).toBe(true);
 		expect(await exists("lobby/default.rogen.json")).toBe(true);
 		expect(await exists("default.rogen.json")).toBe(false);
-		expect(logService.lines).toContain(
-			"info: No default.rogen.json is at or above lobby, so init starts a project there."
-		);
 		expect(logService.lines).toContain(
 			"success: Created lobby/default.rogen.json."
 		);

@@ -16,7 +16,6 @@ export type InitKind = "place" | "model" | "plugin";
 export interface InitChoices {
 	readonly kind?: InitKind;
 	readonly skipGit?: boolean;
-	readonly nested?: boolean;
 	readonly agentRules?: boolean;
 	/** Whether to set Rojo up: pin it with the toolchain manager, or install Rokit and then pin it. */
 	readonly rojo?: boolean;
@@ -46,13 +45,6 @@ export interface InitDecision {
 	readonly flag: string;
 }
 
-/** An addition the project has already, which init reports instead of adding again. */
-export interface PresentItem {
-	readonly item: "agentRules" | "agentHook" | "rojo";
-	/** Relative to the plan's directory. */
-	readonly file: string;
-}
-
 /** A program that `init` runs once it has written the files, such as the toolchain manager that installs Rojo. */
 export interface PlannedCommand {
 	/** The command line as a person types it. */
@@ -77,12 +69,8 @@ export interface SummaryRow {
 	readonly text: string;
 }
 
-/** What the plan does, which words the question that accepts it. */
-export type InitPurpose = "create" | "change";
-
 export interface InitPlan {
 	readonly directory: string;
-	readonly purpose: InitPurpose;
 	/** What the plan sets up, by area, which the summary shows beside the files and commands. */
 	readonly summary: readonly SummaryRow[];
 	/** Runs before any file is written; a failure writes nothing. */
@@ -101,7 +89,6 @@ export interface InitPlan {
 	readonly nextSteps: NextSteps;
 	readonly asked: boolean;
 	readonly decided: readonly InitDecision[];
-	readonly present: readonly PresentItem[];
 	/** Whether `init` runs `git init` in `directory`, which it does in a new project that no work tree holds. */
 	readonly gitInit: boolean;
 }

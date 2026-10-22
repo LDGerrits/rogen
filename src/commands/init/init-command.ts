@@ -130,21 +130,21 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given. On a folder that has a config, asks for this addition.",
+			"Whether to add Rogen's rules for coding agents to the agent file. Added when not given.",
 	},
 	{
 		name: "agent-hook",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given. On a folder that has a config, asks for this addition.",
+			"Whether to add the hook that reports Rogen warnings to the coding agents found. Not added when not given.",
 	},
 	{
 		name: "rojo",
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag. On a folder that has a config, sets Rojo up there.",
+			"Whether to set Rojo up when it isn't ready: pin it with the toolchain manager found (Rokit, Aftman or Foreman), or install Rokit first and pin it. A run that can't ask pins with a manager it finds, and installs Rokit only with this flag.",
 	},
 	{
 		name: "studio-plugin",
@@ -152,12 +152,6 @@ const InitOptions = [
 		negatable: true,
 		description:
 			"Whether to install Rojo's Studio plugin, once Rojo is set up. Not installed by a run that can't ask, which prints the command instead.",
-	},
-	{
-		name: "nested",
-		type: "boolean",
-		description:
-			"Start a project in a folder below another default.rogen.json, which a run that can't ask refuses otherwise.",
 	},
 ] as const;
 
@@ -168,7 +162,6 @@ function choicesOf(
 	return {
 		kind: options.kind as InitChoices["kind"],
 		skipGit: options["skip-git"],
-		nested: options.nested,
 		agentRules: options["agent-rules"],
 		rojo: options.rojo,
 		plugin: options["studio-plugin"],
@@ -194,7 +187,7 @@ registerCommand(
 				metadata: {
 					summary: "Writes a starting default.rogen.json",
 					description:
-						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it only adds the agent rules, the agent hook, Rojo and the Studio plugin. To change a config, edit the .rogen.json and run 'rogen check'.",
+						"Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config that exists: where one is, it fails and writes nothing. To change a config, edit the .rogen.json and run 'rogen check'.",
 					args: [
 						{
 							name: "path",

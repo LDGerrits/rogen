@@ -17,8 +17,6 @@ import {
 	InitPlan,
 	PlannedCommand,
 	PlannedScaffold,
-	InitPurpose,
-	PresentItem,
 	SummaryRow,
 } from "./init-service.js";
 
@@ -38,11 +36,9 @@ export class InitPlanBuilder {
 	private readonly setup = new Set<string>();
 	private readonly run: string[] = [];
 	private readonly edits: string[] = [];
-	private readonly present: PresentItem[] = [];
 	private readonly commands: PlannedCommand[] = [];
 	private scaffold: PlannedScaffold | undefined;
 	private readonly summary: SummaryRow[] = [];
-	private purpose: InitPurpose = "create";
 
 	constructor(
 		private readonly directory: InitDirectory,
@@ -91,10 +87,6 @@ export class InitPlanBuilder {
 		this.summary.push({ area, text });
 	}
 
-	setPurpose(purpose: InitPurpose): void {
-		this.purpose = purpose;
-	}
-
 	/** The tool that writes the project's own files first. */
 	setScaffold(scaffold: PlannedScaffold): void {
 		this.scaffold = scaffold;
@@ -108,10 +100,6 @@ export class InitPlanBuilder {
 	/** Asks for a `git init` in the folder, which the plan drops where a work tree holds it already. */
 	requestGitInit(): void {
 		this.gitInit = true;
-	}
-
-	addPresent(...items: readonly PresentItem[]): void {
-		this.present.push(...items);
 	}
 
 	addDirectory(directory: string): void {
@@ -156,11 +144,9 @@ export class InitPlanBuilder {
 
 		return ok({
 			directory: this.directory.path,
-			purpose: this.purpose,
 			summary: [...this.summary],
 			asked: this.asked,
 			decided: this.decided,
-			present: [...this.present],
 			gitInit: this.gitInit,
 			...(this.scaffold && { scaffold: this.scaffold }),
 			files: [

@@ -1,12 +1,11 @@
 import path from "path";
-import { ErrorUtils, ProjectError, UsageError } from "../../base/errors.js";
+import { ErrorUtils, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
@@ -17,15 +16,11 @@ import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
 import {
-	InitChoices,
 	InitOptions,
 	InitPlan,
-	InitPurpose,
 	InitService,
 	InitWritten,
-	PresentItem,
 } from "./init-service.js";
-import { InitAdditions } from "./init-additions.js";
 import { ReviewMode, ReviewPrompts } from "./review-prompts.js";
 import { InitSummary } from "./init-summary.js";
 import { Setup } from "./setup.js";
@@ -33,25 +28,6 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
-
-const NEW_PROJECT_FLAGS: readonly (readonly [keyof InitChoices, string])[] = [
-	["language", "--language"],
-	["kind", "--kind"],
-	["skipGit", "--skip-git"],
-	["projectFile", "--project-file"],
-	["sample", "--sample"],
-	["routes", "--route"],
-	["unmatched", "--unmatched"],
-	["sourcePaths", "--source-path"],
-	["compiledPath", "--compiled-path"],
-	["darklua", "--darklua"],
-	["packages", "--package"],
-];
-
-const PURPOSE_QUESTIONS: Readonly<Record<InitPurpose, string>> = {
-	create: "Create this project?",
-	change: "Make these changes?",
-};
 
 /** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
 interface RunPrompts {
@@ -72,7 +48,6 @@ export class CoreInitService implements InitService {
 		private readonly promptService: PromptService,
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
-		private readonly configService: ConfigService,
 		private readonly processService: ProcessService,
 		private readonly locator: ToolLocator = new ToolLocator(processService)
 	) {
@@ -131,7 +106,7 @@ export class CoreInitService implements InitService {
 	): Promise<"yes" | "customise" | "cancel" | undefined> {
 		return this.promptService
 			.select<"yes" | "customise" | "cancel">({
-				message: PURPOSE_QUESTIONS[plan.purpose],
+				message: "Create this project?",
 				description: InitSummary.lines(plan).join("\n"),
 				choices: [
 					{ value: "yes", label: "Yes" },
@@ -162,42 +137,13 @@ export class CoreInitService implements InitService {
 		);
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
-		const nested = await this.checkNested(directory.value, questions);
-		if (nested.isErr() || nested.value === "cancelled")
-			return nested.map(() => undefined);
-		const planned = await this.planIn(directory.value, questions);
-		return place === undefined || planned.isErr() || !planned.value
-			? planned
-			: ok({
-					...planned.value,
-					notes: [
-						`No default.rogen.json is at or above ${place}, so init starts a project there.`,
-						...planned.value.notes,
-					],
-				});
-	}
-
-	/** A run that can't ask refuses to start a project below a config. */
-	private async checkNested(
-		directory: InitDirectory,
-		questions: InitQuestions
-	): Promise<Result<"go" | "cancelled", Error>> {
-		if (directory.hasConfigs) return ok("go");
-		const enclosing = await this.configService.findEnclosing(
-			directory.path
-		);
-		if (!enclosing) return ok("go");
-		const answer = await questions.startNestedProject(enclosing);
-		if (answer === undefined) return ok("cancelled");
-		if (answer) return ok("go");
-		if (questions.interactive) return ok("cancelled");
-		return err(
-			new ProjectError(
-				`${enclosing.directory} already has ${enclosing.fileNames.join(", ")}, so this folder may already be part of that project.`,
-				`To use that project, run rogen from there: cd ${enclosing.directory}. ` +
-					`To start a separate project here anyway, run rogen init --nested.`
-			)
-		);
+		if (directory.value.hasConfigs)
+			return err(
+				new DiagnosticsError(
+					directory.value.checkFree(directory.value.configFiles)
+				)
+			);
+		return this.planIn(directory.value, questions);
 	}
 
 	/** `mayBeNew`: the folder was named, and is made if it is not there. */
@@ -264,59 +210,11 @@ export class CoreInitService implements InitService {
 				"There is no hook to add.",
 				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
 			);
-		if (!directory.hasConfigs)
-			return this.planWith(directory, questions, [
-				new ProjectSetup(directory, questions, this.fileSystemService),
-				agents,
-				tools,
-			]);
-		this.rejectNewProjectFlags(choices, directory.configFiles[0]);
-		const additions = new InitAdditions(
-			questions,
-			agentFile.value,
-			hooks.value,
+		return this.planWith(directory, questions, [
+			new ProjectSetup(directory, questions, this.fileSystemService),
+			agents,
 			tools,
-			ToolchainSetup.pinnedIn(manifests),
-			directory.path
-		);
-		const requested = additions.requested();
-		if (requested)
-			return this.planWith(directory, questions, requested, {
-				present: additions.presentAsked(),
-				purpose: "change",
-			});
-		const chosen = await additions.choose();
-		if (chosen === undefined) return ok(undefined);
-		if (chosen === "nothing") {
-			const present = additions.present();
-			return present.length > 0
-				? this.planWith(directory, questions, [], {
-						present,
-						purpose: "change",
-					})
-				: err(
-						new DiagnosticsError(
-							directory.checkFree(directory.configFiles)
-						)
-					);
-		}
-		return this.planWith(directory, questions, chosen, {
-			present: additions.presentAsked(),
-			purpose: "change",
-		});
-	}
-
-	/** A flag that answers a question of a new project is an error where a config exists, since `init` doesn't change one. */
-	private rejectNewProjectFlags(
-		choices: InitChoices,
-		configFile: string
-	): void {
-		for (const [key, flag] of NEW_PROJECT_FLAGS)
-			if (choices[key] !== undefined)
-				throw new UsageError(
-					`${flag} is for a new project, and ${configFile} exists.`,
-					"init doesn't change a config. Edit the .rogen.json, then run 'rogen check'."
-				);
+		]);
 	}
 
 	/** The folder itself, else the nearest one above it that is there, where a program can run before the folder is made. */
@@ -333,12 +231,7 @@ export class CoreInitService implements InitService {
 	private async planWith(
 		directory: InitDirectory,
 		questions: InitQuestions,
-		setups: readonly Setup<unknown>[],
-		extras: {
-			present?: readonly PresentItem[];
-			notes?: readonly string[];
-			purpose?: InitPurpose;
-		} = {}
+		setups: readonly Setup<unknown>[]
 	): Promise<Result<InitPlan | undefined, Error>> {
 		const answered: { setup: Setup<unknown>; choices: unknown }[] = [];
 		for (const setup of setups) {
@@ -355,9 +248,6 @@ export class CoreInitService implements InitService {
 			this.environmentService.cwd
 		);
 		for (const { setup, choices } of answered) setup.plan(choices, builder);
-		builder.setPurpose(extras.purpose ?? "create");
-		for (const note of extras.notes ?? []) builder.addNote(note);
-		builder.addPresent(...(extras.present ?? []));
 		const plan = builder.build();
 		if (plan.isErr()) return err(new DiagnosticsError(plan.error));
 		return ok(
