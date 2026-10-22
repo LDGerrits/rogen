@@ -1,8 +1,8 @@
-$ rogen build lobby
+$ rogen write lobby
 exit 1
 stdout:
-  rogen build · project
-  build failed.
+  rogen write
+  Wrote 0 of 1 project file.
 stderr:
   error: lobby.rogen.json · not loaded
   lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are both named "Game" but read other source paths, so Studio and Rojo would list two games under one name. Change "name" in the copy. (config.duplicateName)

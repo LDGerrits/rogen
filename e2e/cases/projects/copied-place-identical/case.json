@@ -1,4 +1,4 @@
 {
-	"steps": [["build", "lobby"], ["write"]],
-	"output": ["build", "write"]
+	"steps": [["write", "lobby"], ["write"]],
+	"output": ["write"]
 }
