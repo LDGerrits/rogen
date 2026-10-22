@@ -27,6 +27,8 @@ export interface StartingPlaces {
 	readonly files: readonly PlannedFile[];
 	readonly directories: readonly string[];
 	readonly notes: readonly string[];
+	/** The workspace file made for the places, when there was none. */
+	readonly workspace?: string;
 }
 
 /** The places a project of several starts with: the code they share, and the first place. */
@@ -61,6 +63,9 @@ export class StarterPlaces {
 			],
 			directories: [sharedSourcePath, placeSourcePath],
 			notes: workspace.notes,
+			workspace: workspace.files.find(
+				({ addition }) => addition === undefined
+			)?.fileName,
 		};
 	}
 

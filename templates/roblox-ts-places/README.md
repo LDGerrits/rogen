@@ -10,7 +10,7 @@ The folders inside a feature decide where its code runs: `server` goes to Server
 rogen where {{source}}/Greeter/shared/Greeting.ts
 ```
 
-Open `{{name}}.code-workspace` rather than the folder, so the editor runs a language server for each place.
+Open `{{name}}.code-workspace` once (`code {{name}}.code-workspace`) rather than the folder. Each place is a folder of it, and the root is not listed because it has no project file.
 
 ## Getting Started
 To compile the TypeScript, and keep compiling it as you edit, use this in a terminal of its own:

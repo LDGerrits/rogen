@@ -714,6 +714,10 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		builder.addEdit(
 			`Edit ${configFile} and leave ${projectFile} alone, since every build overwrites it. After you add a feature folder, run 'rogen build${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
 		);
+		if (places?.workspace)
+			builder.addEdit(
+				`Open the workspace with 'code ${places.workspace}', as VS Code does not open a workspace file by itself. Each place is a workspace folder${compiler ? "" : ", so luau-lsp reads each place's own sourcemap"}.`
+			);
 		if (places)
 			builder.addEdit(
 				`Add another place with 'rogen init ${PLACES_FOLDER}/lobby', and serve it from a second terminal with its own port: 'rogen serve ${PLACES_FOLDER}/lobby --port 34873'.`
