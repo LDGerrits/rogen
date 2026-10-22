@@ -1149,6 +1149,10 @@ describe("CoreInitService", () => {
 				"src/Greeter/Shared/Greeting.luau",
 				"src/Greeter/Server/Greeter.server.luau",
 				"src/Greeter/Client/Greeter.client.luau",
+				"place/Lighting/init.meta.json",
+				"place/SoundService/init.meta.json",
+				"place/Workspace/Baseplate.model.json",
+				"place/Workspace/init.meta.json",
 				"README.md",
 				"AGENTS.md",
 			]);

@@ -334,7 +334,8 @@ export class CoreSyncbackService implements SyncbackService {
 			(file): file is PlacedLocation => file.status === "placed"
 		);
 		const mirror = await SyncbackMirror.of({
-			written,
+			// Rojo crashes on a project file not named default.project.json that names no project.
+			written: { ...written, name: written.name ?? project.projectName },
 			dir,
 			root: MIRROR,
 			placed,

@@ -30,6 +30,22 @@ stdout:
         "outcome": "wouldWrite"
       },
       {
+        "file": "<dir>/place/Lighting/init.meta.json",
+        "outcome": "wouldWrite"
+      },
+      {
+        "file": "<dir>/place/SoundService/init.meta.json",
+        "outcome": "wouldWrite"
+      },
+      {
+        "file": "<dir>/place/Workspace/Baseplate.model.json",
+        "outcome": "wouldWrite"
+      },
+      {
+        "file": "<dir>/place/Workspace/init.meta.json",
+        "outcome": "wouldWrite"
+      },
+      {
         "file": "<dir>/README.md",
         "outcome": "wouldWrite"
       },
@@ -99,7 +115,7 @@ stdout:
       }
     ],
     "notes": [
-      "Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src."
+      "Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place."
     ],
     "nextSteps": {
       "setup": [],

@@ -10,6 +10,7 @@ import { MountedPath, RemovedMount } from "../rojo/rojo-project.js";
 import { Mount } from "../toolchain/toolchain.js";
 import { DerivedRoutes } from "./derived-routes.js";
 import { InitKind } from "./init-service.js";
+import { SampleGame } from "./sample-game.js";
 import { StarterProject } from "./starter-project.js";
 
 export type TreeChoice =
@@ -18,8 +19,8 @@ export type TreeChoice =
 export type ProjectTree =
 	| {
 			readonly kind: "new";
-			/** Whether the tree holds the sample game, which the Greeter sample comes with. */
-			readonly game?: boolean;
+			/** The sample game the tree mounts, which the Greeter sample comes with. */
+			readonly game?: SampleGame;
 	  }
 	| {
 			readonly kind: "template";

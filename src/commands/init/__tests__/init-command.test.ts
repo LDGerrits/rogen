@@ -205,13 +205,17 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
+				"info: Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
 				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
 				"success: Created src/Greeter/Shared/Greeting.luau.",
 				"success: Created src/Greeter/Server/Greeter.server.luau.",
 				"success: Created src/Greeter/Client/Greeter.client.luau.",
+				"success: Created place/Lighting/init.meta.json.",
+				"success: Created place/SoundService/init.meta.json.",
+				"success: Created place/Workspace/Baseplate.model.json.",
+				"success: Created place/Workspace/init.meta.json.",
 				"success: Created README.md.",
 				"success: Created AGENTS.md.",
 				"success: default.project.json · wrote",
@@ -221,7 +225,7 @@ describe("init command", () => {
 				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: Add your own routes under "routes" in default.rogen.json.',
 				"info: Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
-				"outro: Wrote 7 files.",
+				"outro: Wrote 11 files.",
 			]);
 		});
 	});
@@ -358,17 +362,21 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Wrote the Greeter sample in src/Greeter, with the Baseplate of Rojo's sample in the tree. Pass --no-sample for an empty src.",
+				"info: Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
 				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
 				"success: Would create src/Greeter/Shared/Greeting.luau.",
 				"success: Would create src/Greeter/Server/Greeter.server.luau.",
 				"success: Would create src/Greeter/Client/Greeter.client.luau.",
+				"success: Would create place/Lighting/init.meta.json.",
+				"success: Would create place/SoundService/init.meta.json.",
+				"success: Would create place/Workspace/Baseplate.model.json.",
+				"success: Would create place/Workspace/init.meta.json.",
 				"success: Would create README.md.",
 				"success: Would create AGENTS.md.",
 				"success: Would create src/.",
-				"outro: Would write 7 files. Nothing was written.",
+				"outro: Would write 11 files. Nothing was written.",
 			]);
 		});
 
@@ -414,6 +422,28 @@ describe("init command", () => {
 							cwd,
 							"src/Greeter/Client/Greeter.client.luau"
 						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, "place/Lighting/init.meta.json"),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"place/SoundService/init.meta.json"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(
+							cwd,
+							"place/Workspace/Baseplate.model.json"
+						),
+						outcome: "wouldWrite",
+					},
+					{
+						file: path.join(cwd, "place/Workspace/init.meta.json"),
 						outcome: "wouldWrite",
 					},
 					{

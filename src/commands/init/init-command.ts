@@ -116,7 +116,7 @@ const InitOptions = [
 		type: "boolean",
 		negatable: true,
 		description:
-			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and a README. Written when not given, in a folder with no code. --no-sample leaves src empty.",
+			"Whether a new place starts with the Greeter sample: three hello-world scripts in src/Greeter, Rojo's Baseplate and lighting in place, which the tree mounts, and a README. Written when not given, in a folder with no code. --no-sample leaves src empty and writes no place.",
 	},
 	{
 		name: "places",
