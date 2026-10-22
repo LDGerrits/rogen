@@ -109,6 +109,38 @@ describeWithRojo("end to end serve", () => {
 		expect(await rojoProject(serve.port)).toBeUndefined();
 	}, 60_000);
 
+	it("should wait through a broken first build and serve once it is fixed, printing the errors once", async () => {
+		writeProjectFile(serve.dir, "src/X/@server");
+		writeProjectFile(serve.dir, "src/X/@client");
+		writeProjectFile(
+			serve.dir,
+			"default.rogen.json",
+			config(serve.port, {
+				rogen: {
+					routes: {
+						server: "ServerScriptService",
+						client: "StarterPlayer/StarterPlayerScripts",
+					},
+				},
+			})
+		);
+		const serving = serve.start();
+		await eventually(() => {
+			expect(serving.output).toContain("route.markerClash");
+		}, 20_000);
+		expect(serving.output).not.toContain("Serving Game");
+		expect(await rojoProject(serve.port)).toBeUndefined();
+
+		fs.rmSync(path.join(serve.dir, "src/X/@client"));
+
+		await eventually(() => {
+			expect(serving.output).toContain("Serving Game");
+		}, 20_000);
+		expect(await rojoProject(serve.port)).toBe("Game");
+		expect(serving.output.split("route.markerClash")).toHaveLength(2);
+		expect(await serving.stop()).toBe(130);
+	}, 40_000);
+
 	it("should serve a meta file created beside a script", async () => {
 		const serving = serve.start();
 		await eventually(() => {
