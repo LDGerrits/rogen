@@ -15,7 +15,6 @@ import {
 	fixShape,
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
-import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
 const S = OutputShape;
@@ -225,13 +224,9 @@ function entryOf(answer: Answer): WhereEntry {
 	};
 }
 
-/** `stale` is the project files that differ from what a build would write: warnings about the answer as a whole, after the errors. */
-export function whereDocument(
-	answers: WhereAnswers,
-	stale: readonly Diagnostic[] = []
-): WhereDocument {
+export function whereDocument(answers: WhereAnswers): WhereDocument {
 	return {
 		locations: answers.bySource().flat().map(entryOf),
-		diagnostics: [...answers.errors, ...stale].map(diagnosticToJson),
+		diagnostics: answers.errors.map(diagnosticToJson),
 	};
 }
