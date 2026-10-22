@@ -107,7 +107,7 @@ rogen serve places/lobby
 Or run `rogen serve` inside the place's folder. Rojo takes one project, and so does Rogen, so a second place is a second terminal, with `--port` as it is with Rojo:
 
 ```bash
-rogen serve places/arena --port 34873
+rogen serve places/arena --port <port>
 ```
 
 A `servePort` in the place's file does the same, and Rogen writes none. If the port is held by a server Rogen started for another file, in any folder, the error names that file and says to stop it or give this one a port. Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port. Give each place its `servePlaceIds` and Rojo refuses the connection from any other place: see [Several places](/docs/v2/studio#several-places).

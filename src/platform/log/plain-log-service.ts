@@ -10,6 +10,8 @@ const indented = (text: string) =>
 export class PlainLogService extends AbstractLogService {
 	declare readonly _serviceBrand: undefined;
 
+	protected readonly drawsFrame = false;
+
 	private inStep = false;
 
 	protected write(kind: LogKind, text: string): void {

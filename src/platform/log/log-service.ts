@@ -13,6 +13,9 @@ export enum LogLevel {
 export interface LogService {
 	readonly _serviceBrand: undefined;
 
+	/** Whether a frame is open and drawn, as on a terminal; text that `print` writes now would break it. */
+	readonly framed: boolean;
+
 	setLevel(level: LogLevel): void;
 
 	/** For a run whose stdout a program reads: from here on, Rogen's own lines (frame, steps, info, success) go to stderr where stdout is not a terminal, and only `print` and `note` write to stdout. */

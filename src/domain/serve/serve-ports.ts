@@ -125,11 +125,12 @@ export class ServePorts {
 			this.otherArgs.length === 0
 				? ""
 				: ` -- ${this.otherArgs.map(shellWord).join(" ")}`;
-		const command = `rogen serve ${this.refOf(config)} --port ${free ?? "<port>"}${rest}`;
+		const serve = `rogen serve ${this.refOf(config)} --port`;
+		const command = `${serve} ${free ?? "<port>"}${rest}`;
 		return errorDiagnostic(
 			"serve.portTaken",
 			{ resource: config.file },
-			`Port ${address.port} is ${by}, so ${this.nameOf(config)} can't be served there. Stop it, set a servePort in ${this.nameOf(config)}, or run '${command}'.`,
+			`Port ${address.port} is ${by}, so ${this.nameOf(config)} can't be served there. Stop it, set a servePort in ${this.nameOf(config)}, or run '${serve} <port>${rest}'.`,
 			free === undefined
 				? []
 				: [

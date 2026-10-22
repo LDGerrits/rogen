@@ -139,7 +139,7 @@ export class PlaceInit {
 								`Add rbxtsc -p ${place} and rbxtsc -w -p ${place} to the build and watch scripts in package.json, so 'npm run watch' compiles it too.`,
 							]
 						: []),
-					`Put the code of ${path.basename(folder)} in ${source}. A second place is served from a second terminal with its own port: 'rogen serve ${serve} --port 34873'.`,
+					`Put the code of ${path.basename(folder)} in ${source}. A second place is served from a second terminal with its own --port: 'rogen serve ${serve} --port <port>'.`,
 				],
 			},
 			asked: this.questions.interactive,

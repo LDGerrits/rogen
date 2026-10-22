@@ -32,12 +32,17 @@ export abstract class AbstractLogService implements LogService {
 	protected level: LogLevel = LogLevel.Info;
 	protected stdoutReserved = false;
 	private frameOpen = false;
+	protected abstract readonly drawsFrame: boolean;
 
 	/** Diagnostics print relative to `cwd`; annotations are written when `annotationsIn` names the folder their paths are relative to. */
 	constructor(
 		private readonly cwd?: string,
 		private readonly annotationsIn?: string
 	) {}
+
+	get framed(): boolean {
+		return this.drawsFrame && this.frameOpen;
+	}
 
 	setLevel(level: LogLevel): void {
 		this.level = level;

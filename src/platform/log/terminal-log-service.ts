@@ -14,6 +14,8 @@ const nested = (text: string, symbol?: string) =>
 export class TerminalLogService extends AbstractLogService {
 	declare readonly _serviceBrand: undefined;
 
+	protected readonly drawsFrame = true;
+
 	protected write(kind: LogKind, text: string): void {
 		switch (kind) {
 			case "print":
