@@ -16,6 +16,12 @@ import {
 	fixToJson,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import {
+	SkippedPath,
+	SkippedPathJson,
+	skippedJson,
+	skippedPathShape,
+} from "../../platform/diagnostics/skipped-path.js";
 import { Answer, WhereAnswers } from "./where-answers.js";
 
 const S = OutputShape;
@@ -81,6 +87,7 @@ export const whereDocumentShape = S.object({
 		)
 	),
 	diagnostics: S.array(diagnosticShape),
+	skipped: S.optional(S.array(skippedPathShape)),
 });
 
 interface FileEntryBase {
@@ -143,6 +150,7 @@ type WhereEntry = WhereFileEntry | WhereInstanceEntry;
 interface WhereDocument {
 	readonly locations: readonly WhereEntry[];
 	readonly diagnostics: readonly DiagnosticJson[];
+	readonly skipped?: readonly SkippedPathJson[];
 }
 
 function fieldsOf(location: FileLocation): LocationFields {
@@ -228,10 +236,12 @@ function entryOf(answer: Answer): WhereEntry {
 /** `stale` is the project files that differ from what a build would write: warnings about the answer as a whole, after the errors. */
 export function whereDocument(
 	answers: WhereAnswers,
-	stale: readonly Diagnostic[] = []
+	stale: readonly Diagnostic[] = [],
+	skipped: readonly SkippedPath[] = []
 ): WhereDocument {
 	return {
 		locations: answers.bySource().flat().map(entryOf),
 		diagnostics: [...answers.errors, ...stale].map(diagnosticToJson),
+		...skippedJson(skipped),
 	};
 }

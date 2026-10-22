@@ -5,6 +5,9 @@ import {
 	BuildService,
 	Locations,
 	mergeLocations,
+	outsideEveryConfig,
+	skippedOutside,
+	uniqueSkipped,
 } from "../../domain/build/build-service.js";
 
 import { ConfigService } from "../../domain/config/config-service.js";
@@ -13,6 +16,10 @@ import {
 	registerCommand,
 } from "../../platform/commands/commands.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import {
+	SkippedPath,
+	skippedNote,
+} from "../../platform/diagnostics/skipped-path.js";
 import { CommandLine, JsonOption } from "../../platform/environment/args.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
@@ -29,6 +36,14 @@ import {
 
 const WhereOptions = [JsonOption] as const;
 
+const ASKING = { command: "where", lead: "See where it lands" };
+
+interface Located {
+	readonly locations: Locations;
+	/** The paths asked about that no build reads. */
+	readonly skipped: readonly SkippedPath[];
+}
+
 registerCommand(
 	class WhereCommand extends AbstractCommand<typeof WhereOptions> {
 		constructor() {
@@ -43,7 +58,7 @@ registerCommand(
 						{
 							name: "path",
 							description:
-								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it, each answer headed by its config's name when they differ. One that no config covers is skipped with a note; a .rogen.json lists every file of that config. Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too.",
+								"A file, or a directory for the files in it; a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it, each answer headed by its config's name when they differ. A path that no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document; a .rogen.json lists every file of that config. Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too.",
 							isOptional: true,
 							isVariadic: true,
 						},
@@ -74,16 +89,25 @@ registerCommand(
 			const cwd = accessor.get(EnvironmentService).cwd;
 			const logService = accessor.get(LogService);
 
-			const located = await this.locate(accessor, line.positionals);
-			if (located.isErr()) return located;
+			const found = await this.locate(accessor, line.positionals);
+			if (found.isErr()) return found;
+			const { locations, skipped } = found.value;
 
-			const answers = new WhereAnswers(located.value);
+			const named = skipped.some(({ reason }) => reason === "noConfig")
+				? (await accessor.get(ConfigService).namedConfigs()).map(
+						(file) => relativeTo(cwd, file)
+					)
+				: [];
+			for (const one of skipped)
+				logService.notice(skippedNote(one, cwd, ASKING, named));
+
+			const answers = new WhereAnswers(locations);
 			const failure = DiagnosticsError.of(answers.errors);
-			const { stale } = located.value;
+			const { stale } = locations;
 			if (line.options.json)
 				return this.printJson(
 					logService,
-					whereDocument(answers, stale),
+					whereDocument(answers, stale, skipped),
 					failure
 				);
 			new WhereLog(cwd, answers).print(logService);
@@ -95,31 +119,25 @@ registerCommand(
 		private async locate(
 			accessor: ServicesAccessor,
 			args: readonly string[]
-		): Promise<Result<Locations, Error>> {
+		): Promise<Result<Located, Error>> {
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (args.length === 0) {
 				const selection = await configService.select([]);
 				if (selection.isErr()) return selection;
-				return buildService.locate(selection.value, {
+				const located = await buildService.locate(selection.value, {
 					args,
 					cwd,
 					staleness: true,
 				});
+				return located.map((locations) => ({ locations, skipped: [] }));
 			}
 			const asked = await buildService.askedAbout({ args, cwd });
 			const covered = await configService.selectCovering(
 				asked.map((one) => ("path" in one ? one.path : undefined))
 			);
 			if (covered.isErr()) return covered;
-			const logService = accessor.get(LogService);
-			for (const index of covered.value.uncovered) {
-				const one = asked[index];
-				logService.warn(
-					`${"path" in one ? relativeTo(cwd, one.path) : args[index]}: no config covers this file; see where it lands through a place: rogen where places/lobby`
-				);
-			}
 			const parts: Locations[] = [];
 			for (const { selection, indexes, whole } of covered.value.groups) {
 				const located = await buildService.locate(selection, {
@@ -130,13 +148,26 @@ registerCommand(
 				if (located.isErr()) return located;
 				parts.push(located.value);
 			}
-			const skipped = new Set(covered.value.uncovered);
-			return ok(
-				mergeLocations(
-					parts,
-					asked.filter((_, index) => !skipped.has(index))
-				)
+			const uncovered = new Set(covered.value.uncovered);
+			const locations = mergeLocations(
+				parts,
+				asked.filter((_, index) => !uncovered.has(index))
 			);
+			return ok({
+				locations,
+				skipped: uniqueSkipped([
+					...[...uncovered].flatMap((index): SkippedPath[] => {
+						const one = asked[index];
+						return "path" in one
+							? [{ path: one.path, reason: "noConfig" }]
+							: [];
+					}),
+					...skippedOutside(
+						outsideEveryConfig(locations.configs),
+						locations.configs
+					),
+				]),
+			});
 		}
 
 		private async rewriteInput(
