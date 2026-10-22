@@ -773,9 +773,9 @@ describe("Router", () => {
 					.warnings.filter(({ code }) => code === "route.unrouted");
 
 				expect(warnings.map(({ message }) => message)).toEqual([
-					`matched no route, so it is left out. Move it into ${abs("src/Server")}, Client or Shared.`,
-					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared.`,
-					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared.`,
+					`matched no route, so it is left out. Move it into ${abs("src/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
+					`matched no route, so it is left out. Move it into ${abs("src/Shop/Server")}, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route.`,
 				]);
 			});
 

@@ -86,7 +86,7 @@ src/
   lobby/
 ```
 
-For roblox-ts, copy the folder of a place: make `projects/lobby/src`, copy `projects/game/default.rogen.json`, `projects/game/tsconfig.json` and `projects/game/place` into `projects/lobby` (with `dist.rogen.json`, `release.rogen.json` and `.darklua.json` when the place has them), and set the `name` in each config to `lobby`. Nothing else in them depends on the folder: the source paths, `compiledPath`, the `place` the tree mounts and `tsconfig.json` are relative to it. Run `rogen build projects/lobby` for its project file, and add `rbxtsc -p projects/lobby` and `rbxtsc -w -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
+For roblox-ts, copy the folder of a place: make `projects/lobby/src`, copy `projects/game/default.rogen.json`, `projects/game/tsconfig.json` and `projects/game/place` into `projects/lobby` (with `dist.rogen.json`, `release.rogen.json` and `.darklua.json` when the place has them), and set the `name` in each config to `lobby`. Nothing else in them depends on the folder: the source paths, `compiledPath`, the `place` the tree mounts and `tsconfig.json` are relative to it. Run `rogen write projects/lobby` for its project file, and add `rbxtsc -p projects/lobby` and `rbxtsc -w -p projects/lobby` to the `build` and `watch` scripts in `package.json`.
 
 </Step>
 

@@ -124,7 +124,7 @@ stdout:
       rogen help [OPTIONS] [NAME] [PREFIX]
   
   ARGS:
-      <NAME>      A command, a diagnostic code such as route.strayAt, or 'codes' for the list of every
+      <NAME>      A command, a topic such as routing, a diagnostic code, or 'codes' to list every
                   code.
       <PREFIX>    With 'codes': only the codes that start with it, such as route or route.stray.
   

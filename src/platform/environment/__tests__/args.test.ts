@@ -33,6 +33,13 @@ const buildOptions: OptionDescriptor[] = [
 	{ name: "hook", type: "boolean", negatable: true, description: "" },
 	{ name: "dry", type: "boolean", description: "" },
 	{
+		name: "assume",
+		short: "y",
+		aliases: ["yes"],
+		type: "boolean",
+		description: "",
+	},
+	{
 		name: "listing",
 		type: "string",
 		values: ["glob", "folder", "file"],
@@ -50,8 +57,8 @@ const commands = ["build", "watch", "help", "init"];
 const formerOptionsFor = (command: string): Record<string, string> =>
 	command === "init"
 		? {
-				"--yes": "Use --non-interactive.",
-				"-y": "Use --non-interactive.",
+				"--force": "Use --assume.",
+				"-f": "Use --assume.",
 			}
 		: {};
 
@@ -145,24 +152,41 @@ describe("parseArgs", () => {
 	});
 
 	it("should say a former option is gone, and what replaces it", () => {
-		const long = parse(["init", "--yes"]);
-		const short = parse(["init", "-y"]);
+		const long = parse(["init", "--force"]);
+		const short = parse(["init", "-f"]);
 
 		expect(long.isErr() && long.error).toMatchObject({
-			reason: "'--yes' is gone.",
-			hint: "Use --non-interactive.",
+			reason: "'--force' is gone.",
+			hint: "Use --assume.",
 		});
 		expect(short.isErr() && short.error).toMatchObject({
-			reason: "'-y' is gone.",
+			reason: "'-f' is gone.",
 		});
 	});
 
 	it("should call a former option unknown on another command", () => {
-		const result = parse(["build", "--yes"]);
+		const result = parse(["build", "--force"]);
+
+		expect(result.isErr() && result.error.message).toContain(
+			"Unknown option '--force'."
+		);
+	});
+
+	it("should leave an alias unknown on a command that has no such option", () => {
+		const result = parse(["init", "--yes"]);
 
 		expect(result.isErr() && result.error.message).toContain(
 			"Unknown option '--yes'."
 		);
+	});
+
+	it("should read an alias as the option it names", () => {
+		expect(values(["build", "--yes"]).assume).toBe(true);
+		expect(values(["build", "-y"]).assume).toBe(true);
+		expect(values(["build", "--yes", "--", "--yes"]).assume).toBe(true);
+		expect(
+			parse(["build", "--yes", "--", "--yes"]).unwrap().line.passthrough
+		).toEqual(["--yes"]);
 	});
 
 	it("should mark a line with no command, --help or --version as bare", () => {

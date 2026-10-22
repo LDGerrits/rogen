@@ -34,7 +34,7 @@ registerCommand(
 						{
 							name: "name",
 							description:
-								"A command, a diagnostic code such as route.strayAt, or 'codes' for the list of every code.",
+								"A command, a topic such as routing, a diagnostic code, or 'codes' to list every code.",
 							isOptional: true,
 						},
 						{
@@ -119,7 +119,12 @@ registerCommand(
 						? HelpDocument.command(found.command)
 						: found.kind === "codes"
 							? HelpDocument.codes(found.prefix)
-							: HelpDocument.code(found.code)
+							: found.kind === "topic"
+								? HelpDocument.topic(
+										found.name,
+										pages.textOf(found)
+									)
+								: HelpDocument.code(found.code)
 				);
 			logService.print(
 				pages.textOf(found, line.shortHelp ? "short" : "long")

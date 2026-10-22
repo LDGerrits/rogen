@@ -65,10 +65,10 @@ v2 has fewer ways to route by name, so most projects have files to rename. The [
 rogen write
 ```
 
-Read the warnings. Files that used an old suffix no longer route, so they fall through to the `*` route. You can find them with:
+Read the warnings. Files that used an old suffix no longer route, so each is left out of the game with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning until you rename or move it. You can list them all with:
 
 ```bash
-rogen where | grep fallback
+rogen check
 ```
 
 Then compare the result in Studio with your v1 build, and delete `.rogen.json.v1` once they match.

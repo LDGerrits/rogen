@@ -116,7 +116,7 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should print the server's banner on stdout as the server printed it, and the rest on stderr", async () => {
+	it("should drop the server's banner, since the Serving line says where it listens", async () => {
 		void serve();
 		await settle();
 
@@ -133,13 +133,7 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.reserved).toBe(true);
-		expect(logService.texts("print")).toEqual([
-			"Rojo server listening:",
-			"  Address: localhost",
-			"  Port:    34872",
-			"",
-			"Visit http://localhost:34872/ in your browser for more information.",
-		]);
+		expect(logService.texts("print")).toEqual([]);
 	});
 
 	it("should show what the server says as its own lines, besides its banner", async () => {

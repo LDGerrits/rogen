@@ -53,8 +53,14 @@ registerCommand(
 					args: [
 						{
 							name: "path",
-							description:
-								"A file, a directory, a Studio instance path, or '-' for text on stdin. A directory gives the files in it, and a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file, as a linter prints it, is ignored. An instance as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it. '-' alone reads text on stdin and prints it with each instance path Studio printed, as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as file:line; an instance that more than one file places stays as it is and is listed on stderr. A path is answered by the default config of the nearest folder at or above it; with none, by every .rogen.json at or above it whose source paths cover it, each answer headed by its config's name when they differ. A path that no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document; a .rogen.json lists every file of that config, and so does a name that is neither a file nor a folder holding a default config but names a config as build reads it (game for game.rogen.json, else game.project.json). Every file of the default config of the working directory when none is given, and an instance or '-' reads that config too.",
+							description: [
+								"A file, a directory, a Studio instance path, or '-' for text on stdin. A directory gives the files in it, and a file that doesn't exist yet is placed as if it did. A :line or :line:col after a file is ignored.",
+								"- Instance: a path as Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it.",
+								"- '-': reads text on stdin and prints it with each Studio instance path (Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12) written as file:line; an instance that several files place stays as it is, and is listed on stderr.",
+								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a config named as build reads it (game for game.rogen.json), lists every file of that config.",
+								"- Skipped: a path no build reads gets a note on stderr, and is listed under skipped in the JSON document.",
+								"- No path, an instance or '-': every file of the working directory's default config.",
+							].join("\n"),
 							isOptional: true,
 							isVariadic: true,
 						},

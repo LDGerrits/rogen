@@ -57,8 +57,8 @@ describe("ServerOutput", () => {
 				output.onDidMessage((message) => all.push(message));
 
 				output.readLine("error: it broke", "stderr");
-				output.readLine("Rojo server listening:", "stdout");
-				output.readLine("  Address: localhost", "stdout");
+				output.readLine("Built a", "stdout");
+				output.readLine("  into b", "stdout");
 				output.readLine("", "stdout");
 				jest.advanceTimersByTime(100);
 
@@ -66,15 +66,34 @@ describe("ServerOutput", () => {
 					all.flatMap(({ stdout }) =>
 						stdout === undefined ? [] : [stdout]
 					)
-				).toEqual([
-					"Rojo server listening:",
-					"  Address: localhost",
-					"",
-				]);
+				).toEqual(["Built a", "  into b", ""]);
 				expect(said).toContainEqual({
 					severity: "error",
 					text: "it broke",
 				});
+			});
+
+			it("should drop the banner and the blank lines around it from stdout, and keep what follows", () => {
+				const all: ServerMessage[] = [];
+				output.onDidMessage((message) => all.push(message));
+
+				for (const line of [
+					"Rojo server listening:",
+					"  Address: localhost",
+					"  Port:    34872",
+					"",
+					"Visit http://localhost:34872/ in your browser for more information.",
+					"",
+					"Built a",
+					"",
+				])
+					output.readLine(line, "stdout");
+
+				expect(
+					all.flatMap(({ stdout }) =>
+						stdout === undefined ? [] : [stdout]
+					)
+				).toEqual(["Built a", ""]);
 			});
 
 			it("should not take a line of stderr, or a log record, as stdout", () => {
