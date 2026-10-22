@@ -2,9 +2,8 @@ $ rogen build
 exit 0
 stdout: (not shown)
 stderr:
-  default.rogen.json - warning: 1 file under a "server" route ships to clients, because "client" governs it: (route.serverCodeShipped)
-    src/Inventory/Ui/server/Nested.luau -> StarterPlayer/StarterPlayerScripts/Inventory/Ui/server/Nested
-  Move it out of the "client" route's files if it's server code, or keep it there with a "@client" marker file in its folder.
+  default.rogen.json - warning: 1 file under a server-only route ships to clients, because an outer route governs it: (route.serverCodeShipped)
+    src/Inventory/Ui/server/Nested.luau (ships to clients as StarterPlayer/StarterPlayerScripts/Inventory/Ui/server/Nested: move it out of the "client" route's files if it's server code, or keep it there with a "@client" marker file in its folder)
 
 written:
   default.project.json

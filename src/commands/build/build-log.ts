@@ -1,5 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
+import { WHERE_SCRIPTS_RUN } from "../../domain/roblox/roblox.js";
 import {
 	BuildRun,
 	BuildSummary,
@@ -13,20 +14,100 @@ import { LogService } from "../../platform/log/log-service.js";
 
 const LISTED_PER_CODE = 10;
 
-function withListCapped(diagnostic: Diagnostic): Diagnostic {
-	const count = diagnostic.related?.length ?? 0;
-	if (count <= LISTED_PER_CODE) return diagnostic;
-	const [headline, ...lines] = diagnostic.message.split("\n");
-	const unlisted = count - LISTED_PER_CODE;
+/** What heads a run of warnings with one code, and what follows the files it lists. */
+interface DiagnosticGroup {
+	readonly headline: (count: number) => string;
+	readonly tail?: (count: number) => string;
+}
+
+const either = (count: number, one: string, many: string) =>
+	count === 1 ? one : many;
+
+const GROUPS: Readonly<Record<string, DiagnosticGroup>> = {
+	"scan.sourcePathNamedAfterKey": {
+		headline: (count) =>
+			`${count} source ${either(count, "path is", "paths are")} named after a route key, but routing starts below a source path, so ${either(count, "its name routes", "their names route")} nothing:`,
+	},
+	"route.strayAt": {
+		headline: (count) =>
+			`${count} ${either(count, "name has", "names have")} an "@" that routes nowhere, so ${either(count, "it is read as an ordinary name", "they are read as ordinary names")}:`,
+	},
+	"route.dotRoute": {
+		headline: (count) =>
+			`${count} ${either(count, "name writes", "names write")} a route key after a dot, where only "@" routes, so ${either(count, "it routes", "they route")} nothing:`,
+	},
+	"route.folderTypo": {
+		headline: (count) =>
+			`${count} ${either(count, "folder is", "folders are")} one edit from a declared route key, so ${either(count, "it is read as an ordinary folder", "they are read as ordinary folders")}:`,
+		tail: () =>
+			"Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.",
+	},
+	"route.serverCodeShipped": {
+		headline: (count) =>
+			`${count} ${either(count, "file", "files")} under a server-only route ${either(count, "ships", "ship")} to clients, because an outer route governs ${either(count, "it", "them")}:`,
+	},
+	"tree.deadScript": {
+		headline: (count) =>
+			`${count} ${either(count, "script", "scripts")} will never run where ${either(count, "it lands", "they land")}:`,
+		tail: () => WHERE_SCRIPTS_RUN,
+	},
+	"tree.runContextTarget": {
+		headline: (count) =>
+			`emitLegacyScripts: false makes ${either(count, "an init script", "init scripts")} in StarterPlayerScripts or StarterCharacterScripts ${either(count, "a Script", "Scripts")} with RunContext Client, because Rojo reads init scripts without sync rules:`,
+		tail: () =>
+			"Route the folder to another service, or remove emitLegacyScripts from the config.",
+	},
+	"tree.mountClash": {
+		headline: (count) =>
+			`${count} ${either(count, "file sits", "files sit")} next to an instance of the same name that a mount of the tree holds, so Rojo builds two of ${either(count, "it", "each")}:`,
+		tail: (count) =>
+			`Rename one of ${either(count, "them", "each pair")}, or route outside the mounted folder.`,
+	},
+};
+
+/** One diagnostic, filed under `file`, that heads and lists `run`, a run of diagnostics with the code of `group`. */
+function block(
+	run: readonly Diagnostic[],
+	group: DiagnosticGroup,
+	file: string
+): Diagnostic {
+	const [{ severity, code }] = run;
+	const unlisted = run.length - LISTED_PER_CODE;
 	return {
-		...diagnostic,
+		severity,
+		code,
+		resource: file,
 		message: [
-			headline,
-			...lines.slice(0, LISTED_PER_CODE),
-			`  ${unlistedNote(unlisted)}`,
-			...lines.slice(count),
+			group.headline(run.length),
+			...run
+				.slice(0, LISTED_PER_CODE)
+				.map(({ resource, message }) => `  ${resource} (${message})`),
+			...(unlisted > 0 ? [`  ${unlistedNote(unlisted)}`] : []),
+			...(group.tail ? [group.tail(run.length)] : []),
 		].join("\n"),
 	};
+}
+
+/** The diagnostics as printed: each run of consecutive ones with a code in `GROUPS` becomes one block. */
+function grouped(
+	diagnostics: readonly Diagnostic[],
+	file: string
+): Diagnostic[] {
+	const printed: Diagnostic[] = [];
+	for (let start = 0; start < diagnostics.length;) {
+		const { code } = diagnostics[start];
+		let end = start + 1;
+		while (end < diagnostics.length && diagnostics[end].code === code)
+			end++;
+		const group = GROUPS[code];
+		printed.push(
+			...(group
+				? [block(diagnostics.slice(start, end), group, file)]
+				: diagnostics.slice(start, end))
+		);
+		start = end;
+	}
+	return printed;
 }
 
 const noted = (diagnostic: Diagnostic, note: string): Diagnostic => ({
@@ -44,15 +125,15 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	const seen = new Map<string, number>();
 	return diagnostics.flatMap((diagnostic) => {
 		if (diagnostic.severity !== DiagnosticSeverity.Warning)
-			return [withListCapped(diagnostic)];
+			return [diagnostic];
 		const { code } = diagnostic;
 		const position = (seen.get(code) ?? 0) + 1;
 		seen.set(code, position);
 		if (position > LISTED_PER_CODE) return [];
 		const unlisted = (totals.get(code) ?? 0) - LISTED_PER_CODE;
 		return position === LISTED_PER_CODE && unlisted > 0
-			? [noted(withListCapped(diagnostic), unlistedNote(unlisted))]
-			: [withListCapped(diagnostic)];
+			? [noted(diagnostic, unlistedNote(unlisted))]
+			: [diagnostic];
 	});
 }
 
@@ -189,13 +270,14 @@ export class BuildLog {
 				this.logService.error(line("not loaded"));
 				break;
 		}
-		this.diagnostics(diagnostics);
+		this.diagnostics(diagnostics, build.file);
 	}
 
-	diagnostics(diagnostics: readonly Diagnostic[]): void {
+	/** Prints what the build of the config at `file` found, filing a grouped block under it. */
+	diagnostics(diagnostics: readonly Diagnostic[], file: string): void {
 		for (const diagnostic of diagnostics)
 			this.logService.annotate(diagnostic);
-		for (const diagnostic of capped(diagnostics))
+		for (const diagnostic of capped(grouped(diagnostics, file)))
 			this.logService.diagnostic(diagnostic);
 	}
 

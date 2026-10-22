@@ -21,42 +21,49 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": [
           {
-            "file": "<dir>/default.rogen.json",
+            "file": "<dir>/src/@sever",
             "severity": "warning",
             "code": "route.strayAt",
-            "message": "4 names have an \"@\" that routes nowhere, so they are read as ordinary names:\n  <dir>/src/@sever (did you mean \"@server\"?)\n  <dir>/src/Inventory/Report@server.bak.luau (\"@server\" must end the name)\n  <dir>/src/Inventory/Save@sever.luau (did you mean \"@server\"?)\n  <dir>/src/Queue@clent (did you mean \"@client\"?)",
+            "message": "did you mean \"@server\"?",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
-            "related": [
-              {
-                "file": "<dir>/src/@sever",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Inventory/Report@server.bak.luau",
-                "message": "\"@server\" must end the name"
-              },
-              {
-                "file": "<dir>/src/Inventory/Save@sever.luau",
-                "message": "did you mean \"@server\"?"
-              },
-              {
-                "file": "<dir>/src/Queue@clent",
-                "message": "did you mean \"@client\"?"
-              }
-            ],
             "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/@sever",
                   "to": "<dir>/src/@server"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Inventory/Report@server.bak.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "\"@server\" must end the name",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat"
+          },
+          {
+            "file": "<dir>/src/Inventory/Save@sever.luau",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@server\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Inventory/Save@sever.luau",
                   "to": "<dir>/src/Inventory/Save@server.luau"
                 }
-              },
+              }
+            ]
+          },
+          {
+            "file": "<dir>/src/Queue@clent",
+            "severity": "warning",
+            "code": "route.strayAt",
+            "message": "did you mean \"@client\"?",
+            "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-strayat",
+            "fixes": [
               {
                 "rename": {
                   "from": "<dir>/src/Queue@clent",

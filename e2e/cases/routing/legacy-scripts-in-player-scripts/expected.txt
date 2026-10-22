@@ -3,7 +3,7 @@ exit 0
 stdout: (not shown)
 stderr:
   default.rogen.json - warning: emitLegacyScripts: false makes an init script in StarterPlayerScripts or StarterCharacterScripts a Script with RunContext Client, because Rojo reads init scripts without sync rules: (tree.runContextTarget)
-    src/Panel/init.client.luau -> StarterPlayer/StarterPlayerScripts/Panel
+    src/Panel/init.client.luau (an init script that sync rules can't keep a LocalScript)
   Route the folder to another service, or remove emitLegacyScripts from the config.
 
 written:

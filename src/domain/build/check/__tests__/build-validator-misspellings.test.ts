@@ -1,5 +1,6 @@
 import { toPosix } from "../../../../base/path.js";
 import {
+	Diagnostic,
 	DiagnosticSeverity,
 	isRenameFix,
 } from "../../../../platform/diagnostics/diagnostic.js";
@@ -14,6 +15,10 @@ import {
 
 describe("BuildValidator rules", () => {
 	const at = (...segments: string[]) => toPosix(abs(...segments));
+	const listed = (warnings: readonly Diagnostic[]) =>
+		warnings.map(({ resource, message }) => [resource, message]);
+	const fixesOf = (warnings: readonly Diagnostic[]) =>
+		warnings.flatMap(({ fixes = [] }) => fixes);
 	const ROUTES = {
 		ReplicatedFirst: "ReplicatedFirst",
 		server: "ServerScriptService",
@@ -75,13 +80,8 @@ describe("BuildValidator rules", () => {
 
 				expect(warning).toMatchObject({
 					code: "route.folderTypo",
-					resource: abs("default.rogen.json"),
-					related: [
-						{
-							resource: abs("src/Inventory/Sever"),
-							message: 'did you mean "Server"?',
-						},
-					],
+					resource: abs("src/Inventory/Sever"),
+					message: 'did you mean "Server"?',
 					fixes: [
 						{
 							rename: {
@@ -103,9 +103,7 @@ describe("BuildValidator rules", () => {
 					},
 				});
 
-				expect(warning.related?.[0].message).toBe(
-					'did you mean "Sever"?'
-				);
+				expect(warning.message).toBe('did you mean "Sever"?');
 			});
 
 			it("should keep the folder's own first-letter case in the rename", async () => {
@@ -195,16 +193,17 @@ describe("BuildValidator rules", () => {
 			it("should read the name with its parentheses off", async () => {
 				await write("src/(Sever)/A.luau", "src/^Sever/B.luau");
 
-				const [warning] = await folderTypos({
+				const warnings = await folderTypos({
 					routes: {
 						Server: "ServerScriptService",
 						"*": "ReplicatedStorage",
 					},
 				});
 
-				expect(
-					warning.related?.map(({ resource }) => resource)
-				).toEqual([abs("src/(Sever)"), abs("src/^Sever")]);
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("src/(Sever)"),
+					abs("src/^Sever"),
+				]);
 			});
 		});
 
@@ -305,26 +304,23 @@ describe("BuildValidator rules", () => {
 					.unwrap()
 					.warnings.filter(({ code }) => code === "route.strayAt");
 
-			it("should warn once for every file and folder, naming the closest route", async () => {
+			it("should warn at every file and folder, naming the closest route", async () => {
 				await write(
 					"src/Inventory/Save@sever.luau",
 					"src/Queue@clent/Load.luau",
 					"src/Inventory/Fine@server.luau"
 				);
 
-				const [warning, ...others] = await strayWarnings();
+				const warnings = await strayWarnings();
 
-				expect(others).toEqual([]);
-				expect(warning.severity).toBe(DiagnosticSeverity.Warning);
-				expect(warning.resource).toBe(abs("default.rogen.json"));
-				expect(warning.message).toContain("2 names have");
-				expect(warning.message).toContain(
-					`${abs("src/Inventory/Save@sever.luau")} (did you mean "@server"?)`
-				);
-				expect(warning.message).toContain(
-					`${abs("src/Queue@clent")} (did you mean "@client"?)`
-				);
-				expect(warning.message).not.toContain("Fine@server");
+				expect(warnings[0].severity).toBe(DiagnosticSeverity.Warning);
+				expect(listed(warnings)).toEqual([
+					[
+						at("src/Inventory/Save@sever.luau"),
+						'did you mean "@server"?',
+					],
+					[at("src/Queue@clent"), 'did you mean "@client"?'],
+				]);
 			});
 
 			it("should say when a declared route isn't at the end of the name", async () => {
@@ -335,25 +331,6 @@ describe("BuildValidator rules", () => {
 				expect(warning.message).toContain(
 					'"@server" must end the name'
 				);
-			});
-
-			it("should list every name in related and the message", async () => {
-				await write(
-					...Array.from(
-						{ length: 12 },
-						(_, index) => `src/Save${index}@sever.luau`
-					)
-				);
-
-				const [warning] = await strayWarnings();
-
-				expect(warning.message).toContain("12 names have");
-				expect(warning.message).not.toContain("more like it");
-				expect(warning.related).toHaveLength(12);
-				expect(warning.related?.[0]).toEqual({
-					resource: at("src/Save0@sever.luau"),
-					message: 'did you mean "@server"?',
-				});
 			});
 
 			it("should not warn for a route that restates the outer one", async () => {
@@ -368,21 +345,25 @@ describe("BuildValidator rules", () => {
 					"src/(Queue@clent)/Load.luau"
 				);
 
-				const [warning] = await strayWarnings();
+				const warnings = await strayWarnings();
 
-				expect(warning.fixes).toEqual([
-					{
-						rename: {
-							from: at("src/(Queue@clent)"),
-							to: at("src/(Queue@client)"),
+				expect(warnings.map(({ fixes }) => fixes)).toEqual([
+					[
+						{
+							rename: {
+								from: at("src/(Queue@clent)"),
+								to: at("src/(Queue@client)"),
+							},
 						},
-					},
-					{
-						rename: {
-							from: at("src/Inventory/Save@sever.luau"),
-							to: at("src/Inventory/Save@server.luau"),
+					],
+					[
+						{
+							rename: {
+								from: at("src/Inventory/Save@sever.luau"),
+								to: at("src/Inventory/Save@server.luau"),
+							},
 						},
-					},
+					],
 				]);
 			});
 
@@ -405,19 +386,6 @@ describe("BuildValidator rules", () => {
 
 				expect(warning.fixes).toBeUndefined();
 			});
-
-			it("should fix every name, not only those the message lists", async () => {
-				await write(
-					...Array.from(
-						{ length: 12 },
-						(_, index) => `src/Save${index}@sever.luau`
-					)
-				);
-
-				const [warning] = await strayWarnings();
-
-				expect(warning.fixes).toHaveLength(12);
-			});
 		});
 
 		describe("route keys after a dot", () => {
@@ -427,7 +395,7 @@ describe("BuildValidator rules", () => {
 					.unwrap()
 					.warnings.filter((warning) => warning.code === code);
 
-			it("should warn once for a dot-file and dot parts that spell a route, naming each @ form", async () => {
+			it("should warn at a dot-file and each name with a dot part that spells a route, naming each @ form", async () => {
 				await write(
 					"src/Inventory/.server",
 					"src/Inventory/Save.luau",
@@ -437,25 +405,32 @@ describe("BuildValidator rules", () => {
 					"src/Boot.server.luau"
 				);
 
-				const [warning, ...others] = await warningsOf("route.dotRoute");
+				const warnings = await warningsOf("route.dotRoute");
 
-				expect(others).toEqual([]);
-				expect(warning.message).toContain("4 names write a route key");
-				expect(warning.message).toContain(
-					`${at("src/Inventory/.server")} (write "@server")`
+				expect(listed(warnings)).toEqual(
+					expect.arrayContaining([
+						[at("src/Inventory/.server"), 'write "@server"'],
+						[
+							at("src/Inventory/Types.shared.luau"),
+							'write "Types@shared.luau"',
+						],
+						[at("src/Net.shared"), 'write "Net@shared"'],
+						[at("src/Net.server"), 'write "Net@server"'],
+					])
 				);
-				expect(warning.message).toContain(
-					`${at("src/Inventory/Types.shared.luau")} (write "Types@shared.luau")`
-				);
-				expect(warning.message).toContain(`(write "Net@shared")`);
-				expect(warning.message).toContain(`(write "Net@server")`);
-				expect(warning.message).not.toContain("Boot");
-				expect(warning.fixes).toContainEqual({
-					rename: {
-						from: at("src/Net.server"),
-						to: at("src/Net@server"),
+				expect(warnings).toHaveLength(4);
+				expect(
+					warnings.find(
+						({ resource }) => resource === at("src/Net.server")
+					)?.fixes
+				).toEqual([
+					{
+						rename: {
+							from: at("src/Net.server"),
+							to: at("src/Net@server"),
+						},
 					},
-				});
+				]);
 			});
 
 			it("should warn about Rojo's .server and .client on a data file or model, which has no script class", async () => {
@@ -466,13 +441,16 @@ describe("BuildValidator rules", () => {
 					"src/Boot.client.luau"
 				);
 
-				const [warning] = await warningsOf("route.dotRoute");
+				const warnings = await warningsOf("route.dotRoute");
 
-				expect(warning.message).toContain("3 names write a route key");
-				expect(warning.message).toContain(`(write "Data@server.json")`);
-				expect(warning.message).toContain(`(write "Hud@client.rbxmx")`);
-				expect(warning.message).not.toContain("Boot");
-				expect(warning.fixes).toContainEqual({
+				expect(warnings.map(({ message }) => message)).toEqual(
+					expect.arrayContaining([
+						'write "Data@server.json"',
+						'write "Hud@client.rbxmx"',
+					])
+				);
+				expect(warnings).toHaveLength(3);
+				expect(fixesOf(warnings)).toContainEqual({
 					rename: {
 						from: at("src/Gun.server.model.json"),
 						to: at("src/Gun@server.model.json"),
@@ -493,9 +471,8 @@ describe("BuildValidator rules", () => {
 					"src/Lib.SHARED.luau"
 				);
 
-				const [warning, ...others] = await warningsOf("route.dotRoute");
 				const renamed = Object.fromEntries(
-					(warning.fixes ?? [])
+					fixesOf(await warningsOf("route.dotRoute"))
 						.filter(isRenameFix)
 						.map(({ rename: { from, to } }) => [
 							from.slice(at("src").length + 1),
@@ -503,7 +480,6 @@ describe("BuildValidator rules", () => {
 						])
 				);
 
-				expect(others).toEqual([]);
 				expect(renamed).toEqual({
 					".SERVER": "@server",
 					"C/.SERVER": "C/@server",
@@ -539,7 +515,7 @@ describe("BuildValidator rules", () => {
 					"src/Odd/Net.server/B.luau"
 				);
 
-				const [warning] = (
+				const warnings = (
 					await route({
 						routes: {
 							...SHARED,
@@ -550,11 +526,20 @@ describe("BuildValidator rules", () => {
 					.unwrap()
 					.warnings.filter(({ code }) => code === "route.dotRoute");
 
-				expect(warning.message).toContain(
-					`${at("src/Odd/Shared/Ui.client")} (the "Shared" route governs it, so "@client" would do nothing; move it out of that route's files to route it)`
+				expect(warnings).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({
+							resource: at("src/Odd/Shared/Ui.client"),
+							message:
+								'the "Shared" route governs it, so "@client" would do nothing; move it out of that route\'s files to route it',
+						}),
+						expect.objectContaining({
+							resource: at("src/Odd/Net.server"),
+							message: 'write "Net@server"',
+						}),
+					])
 				);
-				expect(warning.message).toContain(`(write "Net@server")`);
-				expect(warning.fixes).toEqual([
+				expect(fixesOf(warnings)).toEqual([
 					{
 						rename: {
 							from: at("src/Odd/Net.server"),
@@ -569,7 +554,7 @@ describe("BuildValidator rules", () => {
 
 				const [warning] = await warningsOf("route.dotRoute");
 
-				expect(warning.message).toContain(`(write "Ui@client")`);
+				expect(warning.message).toBe('write "Ui@client"');
 				expect(warning.fixes).toEqual([
 					{
 						rename: {
@@ -583,13 +568,12 @@ describe("BuildValidator rules", () => {
 			it("should warn about a dot-folder that spells a route, which is no routing folder", async () => {
 				await write("src/.server/A.luau", "src/.Server/B.luau");
 
-				const [warning] = await warningsOf("route.dotRoute");
+				const warnings = await warningsOf("route.dotRoute");
 				const paths = (await route({ routes: SHARED }))
 					.unwrap()
 					.routed.map(({ instancePath }) => instancePath.join("/"));
 
-				expect(warning.message).toContain("2 names write a route key");
-				expect(warning.fixes).toEqual([
+				expect(fixesOf(warnings)).toEqual([
 					{
 						rename: {
 							from: at("src/.Server"),
@@ -644,9 +628,10 @@ describe("BuildValidator rules", () => {
 					.warnings;
 
 				expect(
-					warnings.find(({ code }) => code === "route.strayAt")
-						?.message
-				).toContain(`${at("src/Ui/@sever")} (did you mean "@server"?)`);
+					listed(
+						warnings.filter(({ code }) => code === "route.strayAt")
+					)
+				).toEqual([[at("src/Ui/@sever"), 'did you mean "@server"?']]);
 			});
 		});
 	});

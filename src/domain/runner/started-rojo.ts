@@ -29,14 +29,19 @@ export class StartedRojo extends AbstractDisposable implements RojoProcess {
 		return this.child.pid;
 	}
 
-	constructor(private readonly child: ChildProcess) {
+	/** `quiet` drops what it prints on stdout, where it says what it did; its errors come on stderr. */
+	constructor(
+		private readonly child: ChildProcess,
+		quiet = false
+	) {
 		super();
 		this._register(child);
 		const output = this._register(new ServerOutput());
 		this._register(
-			child.onDidOutput(({ line, stream }) =>
-				output.readLine(line, stream)
-			)
+			child.onDidOutput(({ line, stream }) => {
+				if (!quiet || stream !== "stdout")
+					output.readLine(line, stream);
+			})
 		);
 		this._register(
 			output.onDidMessage((message) => this._onDidMessage.fire(message))

@@ -231,7 +231,7 @@ $ rogen check src/Inventory/Save@sever.luau src/Inventory/Clean.luau
 src/Inventory/Save@sever.luau - warning: did you mean "@Server"? (route.strayAt)
 ```
 
-Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A diagnostic about a group of files is cut down to the entry about your path. A path that doesn't exist yet is checked as if it did, and the compiled path's warnings are left out, as in `where`. A diagnostic is about a path when it names the path, something inside it, or a folder the path lies in: a misspelt folder (`route.folderTypo`) is reported for every file in it and for the folder above it. Whatever paths you give, a config that doesn't load fails the check, because it stops the build before any file is placed.
+Each line is `file:line:col - severity: message (code)`, printed on stdout, so `rogen check > report.txt` and `rogen check | grep strayAt` work, and `--quiet` keeps them. A clean path prints nothing. A path that doesn't exist yet is checked as if it did, and the compiled path's warnings are left out, as in `where`. A diagnostic is about a path when it names the path, something inside it, or a folder the path lies in: a misspelt folder (`route.folderTypo`) is reported for every file in it and for the folder above it. Whatever paths you give, a config that doesn't load fails the check, because it stops the build before any file is placed.
 
 An error that stops the build because of another file does not fail the check of a path it isn't about. The check passes, and says how far it got: `Checked as far as the build gets: it stops on src/F/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.` On stderr, so a hook stays green for the files it was given; with `--json` the document gains `"stoppedBy"`, the same diagnostics as `"diagnostics"` has.
 
@@ -350,7 +350,7 @@ Anything you want every time belongs in the `.rogen.json`. `where` and `check` t
 | `-h, --help` | Prints help. |
 | `-V, --version` | Prints the version. |
 | `-v, --verbose` | Prints debug output; `-vv` also prints trace output. Rojo gets `-v` or `-vv` too, so its debug lines come back with Rogen's. |
-| `-q, --quiet` | Prints errors only, plus anything you explicitly asked for and anything that makes the run fail. |
+| `-q, --quiet` | Prints errors only, plus anything you explicitly asked for and anything that makes the run fail. Rojo's own progress lines (`Building project`, `Built project to`) are dropped too; its errors stay. |
 
 ## Exit codes
 
@@ -387,7 +387,7 @@ When GitHub Actions runs `build` or `check` (`GITHUB_ACTIONS` is `true`), each d
 ::warning file=src/Save@sever.luau,title=route.strayAt::did you mean "@Server"?
 ```
 
-`title` is the diagnostic's [code](/docs/v2/diagnostics), and `file`, `line` and `col` are there when the diagnostic has them, with the path relative to `GITHUB_WORKSPACE`. A warning about several files, such as `route.strayAt`, makes one annotation for each file it names, all of them, where the text lists ten. The text output is unchanged, `--json` never carries workflow commands, and a run that is not on GitHub Actions writes none. GitHub shows only a limited number of annotations per step, so the log still holds the full list. Nothing needs to be turned on:
+`title` is the diagnostic's [code](/docs/v2/diagnostics), and `file`, `line` and `col` are there when the diagnostic has them, with the path relative to `GITHUB_WORKSPACE`. Each diagnostic makes one annotation, all of them, where the text of a build lists ten files of a code. The text output is unchanged, `--json` never carries workflow commands, and a run that is not on GitHub Actions writes none. GitHub shows only a limited number of annotations per step, so the log still holds the full list. Nothing needs to be turned on:
 
 ```yaml
 - run: rogen check
@@ -440,15 +440,13 @@ The commands that write files, `build`, `fmt-project` and `init`, say so the sam
 
 Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (its project name) and `file` (the absolute path of its `.rogen.json`). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
 
-A warning about several files, such as `route.strayAt` or `tree.deadScript`, is filed under the config and lists every file it is about in `related`, each with what it says about that file. The list is complete, while the text output stops at ten lines.
+A diagnostic is about one file, its `file`, in every command: a warning such as `route.strayAt` that fires for several files is one diagnostic for each, the same objects `rogen check --json` gives. A program that wants every warning about the files it just changed filters on `file`, instead of reading `message`. A diagnostic that involves a second file names it in `related`, with that file's part in it, such as the file that takes the place of a `tree.instanceClash`:
 
 ```json
 "related": [
-	{ "file": "/repo/src/Inventory/Save@sever.luau", "message": "did you mean \"@Server\"?" }
+	{ "file": "/repo/src/Inventory/Types.luau", "message": "takes its place as \"ReplicatedStorage/shared/Inventory/Types\"" }
 ]
 ```
-
-A diagnostic is about a file when its `file` is that file or `related[].file` includes it. A program that wants every warning about the files it just changed filters on that, instead of reading `message`.
 
 If a command fails before it has anything else to report, you get `{ "diagnostics": [...] }`, or `{ "error": {...} }` for anything that isn't a diagnostic, never both.
 
@@ -647,7 +645,7 @@ An object with a `locations` array and a `diagnostics` array. `diagnostics` hold
 
 Every entry with a `source` has `exists`, after `status`: `true` when the path is there now, `false` when `where` placed it as it would be once created, in a folder that exists or one that doesn't. A `noFile` entry has none.
 
-Every entry also has `diagnostics`, last: the diagnostics about its path (the ones whose `file` is the path, or whose `related` lists it), empty for a clean path. A grouped diagnostic is narrowed to the path: its `message` is the `related` message about this path and `fixes` holds only the renames of this path. A `noFile` entry has none.
+Every entry also has `diagnostics`, last: the diagnostics whose `file` is its path, empty for a clean path. A `noFile` entry has none.
 
 `require` is the Luau expression that reaches the module, such as `game:GetService("ReplicatedStorage").Shared.Inventory.Types`, with `["Foo Bar"]` for a name that isn't an identifier or is a reserved word. It is there only for a placed Luau module. A Script has none, nor does a roblox-ts source, which you import by relative path, nor anything under `StarterPlayerScripts`, `StarterCharacterScripts`, `StarterGui` or `StarterPack`, because Roblox clones those into the player at runtime and the edit-time path names the template. `rogen where <file> --verbose` prints it in text.
 

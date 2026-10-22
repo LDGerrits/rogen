@@ -375,8 +375,7 @@ describe("TreeAssembler", () => {
 				const [warning] = warnings.filter(
 					({ code }) => code === "tree.runContextTarget"
 				);
-				expect(warning.message).toContain("src/Hud/init.client.luau");
-				expect(warning.message).toContain("emitLegacyScripts");
+				expect(warning.resource).toContain("src/Hud/init.client.luau");
 				expect(projectFile.syncRules).toEqual([
 					ruleOf("src/Hud/Child.client.luau"),
 				]);

@@ -70,9 +70,8 @@ export interface Diagnostic extends DiagnosticLocation {
 	readonly severity: DiagnosticSeverity;
 	/** Stable identifier such as `config.unknownField`; tests assert on it. */
 	readonly code: string;
-	/** A grouped diagnostic lists its related entries on the lines of `message` after the first, one each, in this order. */
 	readonly message: string;
-	/** Every file a grouped diagnostic is about, complete: a presenter caps what it prints. */
+	/** The other files the problem involves, each with its part in it. */
 	readonly related?: readonly DiagnosticRelated[];
 	/** Given only when they are the one answer; the rendered line leaves them out. */
 	readonly fixes?: readonly DiagnosticFix[];
@@ -218,78 +217,25 @@ export function newDiagnostics(
 	return after.filter((diagnostic) => !seen.has(diagnosticKey(diagnostic)));
 }
 
-type Ungrouped = Omit<Diagnostic, "related">;
-
-/** The entries a grouped diagnostic lists, and the diagnostic without them; a diagnostic that groups nothing has no entries and stands for itself. */
-function groupOf(diagnostic: Diagnostic): {
-	readonly rest: Ungrouped;
-	readonly entries: readonly DiagnosticRelated[];
-} {
-	const { related = [], ...rest } = diagnostic;
-	return { rest, entries: related };
-}
-
-function narrowedTo(
-	diagnostic: Ungrouped,
-	{ resource, message }: DiagnosticRelated
-): Diagnostic {
-	return {
-		...diagnostic,
-		resource,
-		position: undefined,
-		message,
-		fixes: diagnostic.fixes?.filter(
-			(fix) =>
-				isRenameFix(fix) &&
-				toPosix(fix.rename.from) === toPosix(resource)
-		),
-	};
-}
-
-/** The diagnostics about `source`, each narrowed to it. */
+/** The diagnostics about `source`. */
 export function diagnosticsAbout(
 	diagnostics: readonly Diagnostic[],
 	source: string
 ): Diagnostic[] {
 	const target = toPosix(source);
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { rest, entries } = groupOf(diagnostic);
-		if (entries.length === 0)
-			return toPosix(rest.resource) === target ? [rest] : [];
-		return entries
-			.filter(({ resource }) => toPosix(resource) === target)
-			.map((entry) => narrowedTo(rest, { ...entry, resource: source }));
-	});
+	return diagnostics.filter(({ resource }) => toPosix(resource) === target);
 }
 
-/** The diagnostics about `target`, inside it, or about a folder it lies in; a grouped one is cut to the entries that do. */
+/** The diagnostics about `target`, inside it, or about a folder it lies in. */
 export function diagnosticsReaching(
 	diagnostics: readonly Diagnostic[],
 	target: string
 ): Diagnostic[] {
 	const posixTarget = toPosix(target);
-	const reaches = (resource: string) => {
+	return diagnostics.filter(({ resource }) => {
 		const posix = toPosix(resource);
 		return (
 			containsPath(posixTarget, posix) || containsPath(posix, posixTarget)
 		);
-	};
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { rest, entries } = groupOf(diagnostic);
-		if (entries.length === 0) return reaches(rest.resource) ? [rest] : [];
-		return entries
-			.filter(({ resource }) => reaches(resource))
-			.map((entry) => narrowedTo(rest, entry));
-	});
-}
-
-export function diagnosticsPerFile(
-	diagnostics: readonly Diagnostic[]
-): Diagnostic[] {
-	return diagnostics.flatMap((diagnostic): Diagnostic[] => {
-		const { rest, entries } = groupOf(diagnostic);
-		return entries.length > 0
-			? entries.map((entry) => narrowedTo(rest, entry))
-			: [rest];
 	});
 }

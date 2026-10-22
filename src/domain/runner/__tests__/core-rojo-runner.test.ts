@@ -99,6 +99,50 @@ describe("CoreRojoRunner", () => {
 			]);
 		});
 
+		describe("when only errors are asked for", () => {
+			let said: ServerMessage[];
+
+			beforeEach(() => {
+				runner = new CoreRojoRunner(
+					new CoreToolchainService(new MemoryFileSystemService()),
+					processes,
+					LogLevel.Error
+				);
+				said = [];
+				runner
+					.start(executable, "build", "a.json", [], "/repo")
+					.onDidMessage((message) => said.push(message));
+			});
+
+			it("should drop what it prints on stdout", () => {
+				processes.spawned[0].print("Building project 'a'\n");
+				processes.spawned[0].exit({ code: 0, signal: null });
+
+				expect(said).toEqual([]);
+			});
+
+			it("should pass on what it prints on stderr", () => {
+				processes.spawned[0].print("Building project 'a'\n");
+				processes.spawned[0].printError("error: no such project\n");
+				processes.spawned[0].exit({ code: 1, signal: null });
+
+				expect(said).toEqual([
+					{ severity: "error", text: "no such project" },
+				]);
+			});
+		});
+
+		it("should keep what it prints on stdout at the default level", () => {
+			const said: ServerMessage[] = [];
+			runner
+				.start(executable, "build", "a.json", [], "/repo")
+				.onDidMessage((message) => said.push(message));
+
+			processes.spawned[0].print("Building project 'a'\n");
+
+			expect(said).toHaveLength(1);
+		});
+
 		it("should tell when it exits, after the messages it left unsaid", () => {
 			const events: string[] = [];
 			const rojo = runner.start(

@@ -175,7 +175,7 @@ export class WatchLog implements WatchReporter {
 				this.logService.info(`${name} removed. No longer building it.`);
 				return;
 			case "broken":
-				this.buildLog.diagnostics(notice.errors);
+				this.buildLog.diagnostics(notice.errors, notice.file);
 				this.logService.error(
 					notice.keptLastValid
 						? `Still building from the last valid ${name}.`
@@ -233,9 +233,8 @@ export class PrintedWatchLog extends WatchLog {
 
 	override update({ notices, reports }: WatchUpdate): void {
 		for (const notice of notices) this.notice(notice);
-		this.buildLog.diagnostics(
-			reports.flatMap(({ unreported }) => unreported)
-		);
+		for (const { build, unreported } of reports)
+			this.buildLog.diagnostics(unreported, build.file);
 	}
 }
 
