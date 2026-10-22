@@ -10,7 +10,7 @@ import {
 
 const feature = {
 	"luau/src/Greeter/Shared/Greeting.luau": "return 1\n",
-	"luau-places/places/shared/src/Greeter/Shared/Greeting.luau": "return 1\n",
+	"luau-places/src/common/Greeter/Shared/Greeting.luau": "return 1\n",
 };
 
 describe("scripts/generate-templates", () => {
@@ -42,7 +42,7 @@ describe("scripts/generate-templates", () => {
 		expect(() =>
 			renderTemplatesModule({
 				...feature,
-				"luau-places/places/shared/src/Greeter/Shared/Greeting.luau":
+				"luau-places/src/common/Greeter/Shared/Greeting.luau":
 					"return 2\n",
 			})
 		).toThrow("luau and luau-places");

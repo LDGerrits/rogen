@@ -10,9 +10,8 @@ export const OUTPUT = path.resolve("src/domain/init/starter-templates.ts");
 
 const PLACES_SUFFIX = "-places";
 
-/** Where the Greeter feature sits in a variant for one place and in a variant for several. */
-const SHARED_FEATURE = "src/Greeter/";
-const PLACES_FEATURE = "places/shared/src/Greeter/";
+/** The folder of the Greeter feature, wherever a variant puts it. */
+const FEATURE = "/Greeter/";
 
 function listed(dir: string, prefix = ""): string[] {
 	return fs
@@ -41,14 +40,18 @@ export function readTemplates(dir: string): Record<string, string> {
 
 function featureOf(
 	files: Readonly<Record<string, string>>,
-	variant: string,
-	root: string
+	variant: string
 ): Record<string, string> {
-	const prefix = `${variant}/${root}`;
+	const prefix = `${variant}/`;
 	return Object.fromEntries(
 		Object.entries(files)
 			.filter(([file]) => file.startsWith(prefix))
-			.map(([file, content]) => [file.slice(prefix.length), content])
+			.flatMap(([file, content]) => {
+				const at = file.indexOf(FEATURE, prefix.length);
+				return at < 0
+					? []
+					: [[file.slice(at + FEATURE.length), content]];
+			})
 	);
 }
 
@@ -71,8 +74,8 @@ function checkFeatures(files: Readonly<Record<string, string>>): void {
 		if (!several.endsWith(PLACES_SUFFIX)) continue;
 		const single = several.slice(0, -PLACES_SUFFIX.length);
 		if (
-			JSON.stringify(featureOf(files, single, SHARED_FEATURE)) !==
-			JSON.stringify(featureOf(files, several, PLACES_FEATURE))
+			JSON.stringify(featureOf(files, single)) !==
+			JSON.stringify(featureOf(files, several))
 		)
 			throw new Error(
 				`The Greeter feature of ${single} and ${several} must be the same.`

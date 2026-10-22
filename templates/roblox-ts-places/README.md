@@ -10,8 +10,6 @@ The folders inside a feature decide where its code runs: `server` goes to Server
 rogen where {{source}}/Greeter/shared/Greeting.ts
 ```
 
-Open `{{name}}.code-workspace` once (`code {{name}}.code-workspace`) rather than the folder. Each place is a folder of it, and the root is not listed because it has no project file.
-
 ## Getting Started
 To compile the TypeScript, and keep compiling it as you edit, use this in a terminal of its own:
 
@@ -34,13 +32,13 @@ rogen build {{place}} -o "{{name}}.rbxlx"
 To add a place, use:
 
 ```bash
-rogen init places/lobby
+rogen init projects/lobby
 ```
 
 A second place is served from a second terminal, with its own `--port`:
 
 ```bash
-rogen serve places/lobby --port <port>
+rogen serve projects/lobby --port <port>
 ```
 
 For more help, check out [the Rogen documentation](https://rogen-playfully.vercel.app/).

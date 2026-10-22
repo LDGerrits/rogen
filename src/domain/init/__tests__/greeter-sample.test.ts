@@ -43,10 +43,10 @@ describe("GreeterSample", () => {
 	});
 
 	it("should put the script of a place in its own feature", () => {
-		const files = sample.place("places/game/src");
+		const files = sample.place("src/game");
 
 		expect(files.map(({ fileName }) => fileName)).toEqual([
-			"places/game/src/Game/Server/Game.server.luau",
+			"src/game/Game/Server/Game.server.luau",
 		]);
 		expect(files[0].content).toContain('print(Greeting("game"))');
 	});
@@ -62,21 +62,24 @@ describe("GreeterSample", () => {
 		expect(content).toContain("rogen serve");
 	});
 
-	it("should describe several places in the README, with the workspace file and how to add one", () => {
+	it("should describe several places in the README, with the editor and how to add one", () => {
 		const { content } = sample.readme(
-			"places/shared/src",
-			"rogen serve places/game",
-			"places/game"
+			"src/common",
+			"rogen serve game",
+			"game"
 		);
 
 		expect(content).toContain(
-			"rogen where places/shared/src/Greeter/Shared/Greeting.luau"
+			"rogen where src/common/Greeter/Shared/Greeting.luau"
 		);
-		expect(content).toContain("`game.code-workspace`");
-		expect(content).toContain('rogen build places/game -o "game.rbxlx"');
-		expect(content).toContain("rogen init places/lobby");
-		expect(content).toContain("```bash\nrogen serve places/game\n```");
-		expect(content).toContain("rogen serve places/lobby --port");
+		expect(content).toContain("`game.rogen.json`");
+		expect(content).toContain("`src/game`");
+		expect(content).toContain('rogen build game -o "game.rbxlx"');
+		expect(content).toContain("```bash\nrogen serve game\n```");
+		expect(content).toContain("rogen sourcemap game --watch");
+		expect(content).toContain("luau-lsp analyze");
+		expect(content).toContain("rogen serve lobby --port");
+		expect(content).not.toContain("code-workspace");
 	});
 
 	it("should print the command that serves the project", () => {
@@ -125,7 +128,7 @@ describe("GreeterSample", () => {
 
 		it("should print no Luau", () => {
 			expect(
-				typescript.place("places/game/src")[0].content
+				typescript.place("projects/game/src")[0].content
 			).not.toContain("local ");
 		});
 	});
@@ -136,8 +139,7 @@ describe("GreeterSample", () => {
 		it("should keep each variant's code where its template has it", () => {
 			expect(TEMPLATE_SOURCE_PATHS).toEqual({
 				one: DEFAULT_SOURCE_PATH,
-				shared: "places/shared/src",
-				place: "places/game/src",
+				place: { luau: "src/game", "roblox-ts": "projects/game/src" },
 			});
 		});
 
@@ -162,7 +164,7 @@ describe("GreeterSample", () => {
 				const sample = new GreeterSample(language, "game");
 				const scripts = [
 					...sample.feature("src"),
-					...sample.place("places/game/src"),
+					...sample.place("src/game"),
 				];
 
 				expect(scripts).toHaveLength(4);
@@ -179,13 +181,9 @@ describe("GreeterSample", () => {
 				const sample = new GreeterSample(language, "game");
 				const files = [
 					...sample.feature("lib"),
-					...sample.place("places/game/src"),
+					...sample.place("src/game"),
 					sample.readme("lib", "rogen serve"),
-					sample.readme(
-						"places/shared/src",
-						"rogen serve places/game",
-						"places/game"
-					),
+					sample.readme("src/common", "rogen serve game", "game"),
 				];
 
 				for (const { content } of files)
