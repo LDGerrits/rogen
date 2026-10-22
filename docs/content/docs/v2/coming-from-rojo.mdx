@@ -49,10 +49,10 @@ Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and 
 
 A node you keep in the `tree` wins over a generated one on a clash, with a warning, and a `$path` into a source path stays Rojo's own: Rogen skips that folder. Rojo's `fmt-project` can't read the file, so run `rogen fmt-project` to format it as Rojo formats a project file. Rojo writes the numbers of `$properties` and `$attributes` as floats (`0.0`), by the type of each; Rogen keeps them as you wrote them, and it won't format a file with comments, where Rojo drops them. Rogen reads `default.rogen.jsonc` too, since Rojo 7.7 allows comments in a project file.
 
-Run `rogen build`: Rogen now owns `default.project.json` and rewrites it. Your repository still tracks the file you renamed, so decide what to do with it:
+Run `rogen write`: Rogen now owns `default.project.json` and rewrites it. Your repository still tracks the file you renamed, so decide what to do with it:
 
-- **Stop tracking it.** `git rm --cached default.project.json`, and keep `*.project.json` in `.gitignore` (`init` adds the line). A clone then runs `rogen build` before the editor or a compiler needs the file.
-- **Keep it tracked.** Commit what `rogen build` writes, and add `!default.project.json` below `*.project.json` if you ignore the pattern. People without Rogen can then run `rojo serve` on it as they did. Rerun `rogen build` before each commit: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
+- **Stop tracking it.** `git rm --cached default.project.json`, and keep `*.project.json` in `.gitignore` (`init` adds the line). A clone then runs `rogen write` before the editor or a compiler needs the file.
+- **Keep it tracked.** Commit what `rogen write` writes, and add `!default.project.json` below `*.project.json` if you ignore the pattern. People without Rogen can then run `rojo serve` on it as they did. Rerun `rogen build` before each commit: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
 
 ## Let `init` Read Your Folders
 

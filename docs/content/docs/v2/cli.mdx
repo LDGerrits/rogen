@@ -15,15 +15,34 @@ The first word is always the command. A bare `rogen` prints the root help and ex
 - the path to a `.rogen.json` file (`rogen serve places/lobby/dist.rogen.json`), or to a `*.project.json` file, which means the `.rogen.json` beside it, and when there is none, the plain Rojo project as it is;
 - the name of a file in the current folder, so `rogen serve dist` is `dist.rogen.json` (else a plain `dist.project.json`), unless a folder `dist` holds a default, which wins.
 
-With none, a command reads the `default.rogen.json` of the working directory, or its `default.project.json` when it has no config, and nothing else. It does not look in the folders above, as `rojo serve` does not. A bare command in a folder with neither is an error, "No default.rogen.json or default.project.json in this folder", which names the folder's other `.rogen.json` files when it has any. A repo of [places](/docs/v2/setups/places) has no config at its root, so name the place: `rogen serve places/lobby`. The text output says which config it read (`rogen build · my-game`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
+With none, a command reads the `default.rogen.json` of the working directory, or its `default.project.json` when it has no config, and nothing else. It does not look in the folders above, as `rojo serve` does not. A bare command in a folder with neither is an error, "No default.rogen.json or default.project.json in this folder", which names the folder's other `.rogen.json` files when it has any, and suggests `rogen write` to write them all. A repo of [places](/docs/v2/setups/places) has no config at its root, so name the place: `rogen serve places/lobby`. The text output says which config it read (`rogen build · my-game`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen build lobby`.
 
 `fmt-project` takes several projects, and `check` and `where` take paths, which [find their own config](#where-path).
 
 ## Commands
 
+### `write [project…]`
+
+Writes the project file of every `.rogen.json` of the working directory: `default.rogen.json` writes `default.project.json`, `game.rogen.json` writes `game.project.json`. Name projects as `build` does (a folder, a file, a bare name) to write only those; unlike `build`, `write` takes any number of them. Run it in a fresh clone, and after you add a feature folder or an `@key` file, so the editor's project files follow. A project file whose bytes wouldn't change isn't written, so running it again is cheap. The `*.project.json` that Rogen writes is overwritten by every write that changes it, so edit the `.rogen.json`, not the project file.
+
+```
+$ rogen write
+┌  rogen write
+│  ✔ game.project.json · wrote
+│  ✔ lobby.project.json · unchanged
+│  plain.project.json · plain project, not written
+└  Wrote 2 of 2 project files.
+```
+
+A `.rogen.json` that doesn't load, or doesn't build, doesn't stop the others: the rest are written, the run says `Wrote 1 of 2 project files.` and exits 1. A `*.project.json` with no `.rogen.json` of its name is a plain Rojo project: it is listed, and Rogen writes nothing to it. A folder with no `default.rogen.json` is no error for `write`; one with no config at all is, and `rogen init` creates one. `--json` prints the document of [`build --json`](#build---json).
+
+#### `write --watch`
+
+Writes, then writes again whenever files or a config change, the way [`build --watch`](#build---watch) does without Rojo. With several configs it watches all of them. A config reloads when its `.rogen.json` changes, and a broken one keeps its last valid version. Press Ctrl+C to stop; `--json` prints one JSON object per line, as `build --watch --json` does.
+
 ### `build [project]`
 
-Writes the project file of the `default.rogen.json` here, or of the project you name, beside it: `rogen build dist` writes `dist.project.json`. That file is the only one it writes, as `rojo build` reads only the file you give it, so `default.project.json` is as fresh as the last build of the default. Run `rogen build` after you add a feature folder or an `@key` file, so the editor's `default.project.json` follows, and in a fresh clone before the editor or a compiler needs it. A project file whose bytes wouldn't change isn't written, so building again is cheap. A broken `.rogen.json` you didn't name doesn't stop the build. The `*.project.json` that Rogen writes is overwritten by every build that changes it, so edit the `.rogen.json`, not the project file. A `*.project.json` with no `.rogen.json` beside it is a plain Rojo project: it is built as it is, and Rogen writes nothing to it.
+Writes the project file of the `default.rogen.json` here, or of the project you name, beside it: `rogen build dist` writes `dist.project.json`. That file is the only one it writes, as `rojo build` reads only the file you give it, so `default.project.json` is as fresh as the last write of the default. Run [`rogen write`](#write-project) after you add a feature folder or an `@key` file, so the editor's project files follow, and in a fresh clone before the editor or a compiler needs them. A project file whose bytes wouldn't change isn't written, so building again is cheap. A broken `.rogen.json` you didn't name doesn't stop the build. The `*.project.json` that Rogen writes is overwritten by every build that changes it, so edit the `.rogen.json`, not the project file. A `*.project.json` with no `.rogen.json` beside it is a plain Rojo project: it is built as it is, and Rogen writes nothing to it.
 
 Each warning and error ends with its [code](/docs/v2/diagnostics), and the closing line counts the warnings: `Built 1 project with 4 warnings.`
 
@@ -235,7 +254,7 @@ Each line is `file:line:col - severity: message (code)`, printed on stdout, so `
 
 An error that stops the build because of another file does not fail the check of a path it isn't about. The check passes, and says how far it got: `Checked as far as the build gets: it stops on src/F/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.` On stderr, so a hook stays green for the files it was given; with `--json` the document gains `"stoppedBy"`, the same diagnostics as `"diagnostics"` has.
 
-With no path, `check` reports every diagnostic of the default config of the working directory, the compiled path's included, and a warning when `default.project.json` on disk differs from what `build` would write ([`output.differs`](/docs/v2/diagnostics#output-differs)): what `build` would do, without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing source path, an empty compiled path) names the config or folder it is about.
+With no path, `check` reports every diagnostic of the default config of the working directory, the compiled path's included, and a warning when `default.project.json` on disk differs from what `write` would write ([`output.differs`](/docs/v2/diagnostics#output-differs)): what `write` would do, without the write, which a read-only checkout needs. Its lines have the same shape as with paths: a warning about several files prints one line per file, none left out, and one that isn't about a file (a missing source path, an empty compiled path) names the config or folder it is about.
 
 `check --json` prints `{ "diagnostics": [...] }` with the entries described under [JSON output](#json-output). `check` accepts `--json`. It has no `--changed`: git stays outside Rogen, so whoever calls `check` passes the paths.
 
@@ -338,10 +357,10 @@ Anything you want every time belongs in the `.rogen.json`. `where` and `check` t
 | Flag | Effect |
 |---|---|
 | `--color <auto\|always\|never>` | Whether to colour the output: `auto` (the default) draws in a terminal; `never` prints plain lines, as `NO_COLOR` does; `always` draws even when output is piped. `--json` is always plain. |
-| `--json` | Prints one JSON document for `build`, `sourcemap`, `upload`, `where`, `check`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
+| `--json` | Prints one JSON document for `write`, `build`, `sourcemap`, `upload`, `where`, `check`, `init`, `fmt-project`, `doc` and `help`, and one JSON object per line for `serve`, `build --watch`, `write --watch` and `sourcemap --watch`. On `init` it implies `--non-interactive`. |
 | `-o, --output <file>` | `build`: also builds the project into this place or model file with Rojo. `sourcemap`: writes the sourcemap there instead of printing it. |
 | `-p, --plugin <name>` | `build` only: also builds the project into Roblox's plugins folder with Rojo. |
-| `--watch` | `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write and each edit of a file when `-o` or `-p` (`build`) asks for it, or always for `sourcemap`. |
+| `--watch` | `write`, `build` and `sourcemap`: keeps the project files current, and runs Rojo after each write and each edit of a file when `-o` or `-p` (`build`) asks for it, or always for `sourcemap`. |
 | `--include-non-scripts`, `--absolute` | `sourcemap` only: Rojo's flags of the same name. |
 | `--asset_id`, `--api_key`, `--universe_id`, `--cookie` | `upload` only: Rojo's flags of the same name, with its underscores. |
 | `--non-interactive` | `init` only: writes the defaults without asking. |
@@ -378,7 +397,7 @@ rogen check
 - `check` also fails when you commit project files and one is out of date ([`output.differs`](/docs/v2/diagnostics#output-differs)), so no `git diff` step is needed.
 - `where` answers a question without judging the project, so it exits 0. To judge only some paths, such as the files a pull request changes, run `rogen check <paths>`, which exits 1 on any diagnostic about them.
 - A place file comes from `rojo build` on the project file; see [Place Files](/docs/v2/core-concepts/output#place-files).
-- A clone has no project files when `*.project.json` is gitignored, as `init` writes it: run `rogen build` (or `rogen build <project>`) before the editor, a compiler or Rojo needs them.
+- A clone has no project files when `*.project.json` is gitignored, as `init` writes it: run `rogen write` before the editor, a compiler or Rojo needs them.
 - Whether to [commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files) is yours to decide.
 
 ### Annotations on GitHub
@@ -438,7 +457,7 @@ A `serve` error whose fix is a command has a `run` fix instead: the command, and
 ]
 ```
 
-The commands that write files, `build`, `fmt-project` and `init`, say so the same way: a top-level `changed` comes first, `true` when the run wrote anything, and each file has an `outcome` of `wrote`, `unchanged`, `failed` or `notWritten`. A program asks the same question of all three.
+The commands that write files, `write`, `build`, `fmt-project` and `init`, say so the same way: a top-level `changed` comes first, `true` when the run wrote anything, and each file has an `outcome` of `wrote`, `unchanged`, `failed` or `notWritten`. A program asks the same question of all three.
 
 Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (its project name) and `file` (the absolute path of its `.rogen.json`). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
 

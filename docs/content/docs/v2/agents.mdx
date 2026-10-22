@@ -37,9 +37,9 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 - Put a new file where the repo keeps files like it. Server-only code never goes under a shared route.
 - Run `rogen where <path>` to see where a file lands, before or after it exists.
 - After adding, moving or renaming files, run `rogen check <paths>` and fix what it prints. From the repo root it works for a file of any place, shared code in `src/common` included. A file no config holds, such as roblox-ts `projects/common`, is skipped with a note on stderr (`no config at or above it reads it`), and so is a file in the config's folder but in none of its source paths (`in no source path of default.rogen.json, so no build reads it`); `--json` lists both under `skipped`. Check shared code through a place (`rogen check projects/lobby`, or `rogen check lobby.rogen.json`).
-- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen build lobby`, `rogen build dist`).
-- After adding a feature folder, run `rogen build`: `default.project.json` is as fresh as its last build.
-- Leave `rogen build --watch` to the user: it never exits.
+- Every other command reads only the current folder. Run it where the `.rogen.json` is, or name it (`rogen serve projects/lobby`, `rogen write lobby`, `rogen write dist`).
+- After adding a feature folder, run `rogen write`: the project files are as fresh as the last write.
+- Leave `rogen write --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once if another `rogen serve` already serves the project, or non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and keeps running until that server stops. When that line has `"reportsConnections": true`, a `connected` line follows once Studio connects: wait for it before you count on Studio having your edits, and if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions).
 - Before placing files or writing requires, read `rogen doc routing`. Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document). `rogen help <code> --json` explains one diagnostic code, and `rogen help codes <module> --json` lists the codes of one module, such as `route`, offline.
 ````

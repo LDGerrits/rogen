@@ -17,5 +17,5 @@ The project file carries `name` only when the config sets one; Rojo names the pr
 
 Ownership:
 
-- `rogen build` overwrites the project file of the config it builds: put changes in the `.rogen.json`. `*.project.json` is gitignored by `init`; `!name.project.json` keeps one.
+- `rogen write` overwrites the project file of each config it writes, and so does every command that builds one: put changes in the `.rogen.json`. `*.project.json` is gitignored by `init`; `!name.project.json` keeps one.
 - The `compiledPath` is compiler output: edit the sources in the source paths.

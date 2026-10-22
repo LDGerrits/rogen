@@ -33,7 +33,7 @@ place/game/...                  Rojo's Baseplate and lighting, mounted by the tr
 README.md
 ```
 
-`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game`). `--no-sample` leaves the two source folders empty and writes no `place/game`.
+`init` builds `game.project.json` beside the config. Nothing at the root is a `default.rogen.json`, so a bare `rogen build` there is Rojo's "not found" error: name the place (`rogen build game -o game.rbxl`), or run `rogen write` to write every place's project file. `--no-sample` leaves the two source folders empty and writes no `place/game`.
 
 The place's config lists the shared folder and its own, in full, and sets its own `name`:
 
@@ -121,7 +121,7 @@ rogen serve arena --port <port>
 
 A `servePort` in the place's file does the same, and Rogen writes none. If the port is held by a server Rogen started for another file, in any folder, the error names that file and says to stop it or give this one a port. Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port. Give each place its `servePlaceIds` and Rojo refuses the connection from any other place: see [Several places](/docs/v2/studio#several-places).
 
-Serving writes only the named file, so `lobby.project.json` is as fresh as the last `rogen build lobby`: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
+Serving writes only the named file, so `lobby.project.json` is as fresh as the last `rogen write lobby`: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
 
 </Step>
 
@@ -174,7 +174,7 @@ projects/game/src/Game/server/Game.server.ts
 projects/game/place/...                    Rojo's Baseplate and lighting, mounted by the tree
 ```
 
-Name a place by its folder: `rogen serve projects/game`, `rogen build projects/game`.
+Name a place by its folder: `rogen serve projects/game`, `rogen write projects/game`.
 
 The place's `tsconfig.json` lists both source folders in `rootDirs` and in `paths`, so `import { greeting } from "Greeter/shared/Greeting"` works from either. Its `typeRoots` names its own `node_modules/@rbxts` and the root's, `../../node_modules/@rbxts`. rbxtsc writes its runtime into the `include` beside the `tsconfig.json` it reads, so the place's `tree` mounts `include` as `rbxts_include`, and the root's `node_modules/@rbxts` inside it:
 
@@ -190,7 +190,7 @@ The place's `tsconfig.json` lists both source folders in `rootDirs` and in `path
 
 The `compiledPath` is `out`, and the compiled folder repeats the layout of the source paths under their common folder: `out/common/src/…` and `out/game/src/…`, which is what the tsconfig writes. Common code is compiled once per place. `projects/common/tsconfig.json` is there so the editor resolves types and `@rbxts` packages in common files, since no place's tsconfig sits above them. `init` points the `build` and `watch` scripts of `package.json` at the first place, so `npm run watch` compiles it, and lists `projects/*/out` and `projects/*/include` in the `.gitignore` it creates.
 
-rbxtsc needs a project file beside the `tsconfig.json`, so run `rogen build projects/game` before the compiler. A place added later needs the same files and the same two scripts (see [Add a Place](#add-a-place)). Run the watch of each place in a terminal of its own.
+rbxtsc needs a project file beside the `tsconfig.json`, so run `rogen write projects/game` before the compiler. A place added later needs the same files and the same two scripts (see [Add a Place](#add-a-place)). Run the watch of each place in a terminal of its own.
 
 ## More Files in a Place
 

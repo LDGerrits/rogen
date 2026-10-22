@@ -104,7 +104,7 @@ A key on neither list is an error, since Rojo rejects a project file with a key 
 
 ## Project Files Are as Fresh as Their Last Build
 
-`default.project.json` is what the editor and your compiler read, and Rogen writes it only when a command builds that config. See [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build) for when to run `rogen build`.
+`default.project.json` is what the editor and your compiler read, and Rogen writes it only when a command builds that config. See [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build) for when to run `rogen write`.
 
 `rogen init` adds `*.project.json` to the `.gitignore` it creates. See [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
@@ -286,6 +286,6 @@ Errors stop the build. Warnings don't, and the build still exits with 0. [`rogen
 - scripts placed where they'll never run,
 - an empty compiled path or a missing source path,
 - instances that clash with the tree,
-- a `default.project.json` that differs from what `build` would write, in `rogen check`.
+- a `default.project.json` that differs from what `write` would make, in `rogen check`.
 
 [Diagnostics](/docs/v2/diagnostics) explains every code, with an example and the fix.
