@@ -6,12 +6,12 @@ stdout:
 $ rogen check places/shared/src/Stray@sever.luau
 exit 0
 stderr:
-  warning: places/shared/src/Stray@sever.luau: no config covers this file; check it through a place: rogen check places/lobby
+  note: places/shared/src/Stray@sever.luau: no config at or above it reads it.
 
 $ rogen check places/shared/src/Stray@sever.luau places/lobby/src/Main.server.luau
 exit 0
 stderr:
-  warning: places/shared/src/Stray@sever.luau: no config covers this file; check it through a place: rogen check places/lobby
+  note: places/shared/src/Stray@sever.luau: no config at or above it reads it.
 
 $ rogen check places/lobby/default.rogen.json
 exit 1

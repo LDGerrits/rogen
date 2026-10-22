@@ -1,3 +1,4 @@
+import { toPosix } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import {
 	Diagnostic,
@@ -7,6 +8,7 @@ import {
 	uniqueDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { SkippedPath } from "../../platform/diagnostics/skipped-path.js";
 import { IndexReader } from "../../platform/fs/index-service.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
@@ -156,6 +158,41 @@ export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
 	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
 	readonly stoppedBy: readonly Diagnostic[];
+	/** The paths asked about that no build reads and that no diagnostic is about. */
+	readonly skipped: readonly SkippedPath[];
+}
+
+/** The files asked about that no selected config reads: outside the source paths of every one. */
+export function outsideEveryConfig(
+	configs: readonly ConfigLocations[]
+): string[] {
+	const [first, ...others] = configs;
+	if (!first) return [];
+	return first.files
+		.filter(({ status }) => status === "outside")
+		.map(({ source }) => source)
+		.filter((source) =>
+			others.every(({ files }) =>
+				files.some(
+					(file) =>
+						file.source === source && file.status === "outside"
+				)
+			)
+		);
+}
+
+/** Each of `sources`, outside every config, once for each config that covers its folder. */
+export function skippedOutside(
+	sources: readonly string[],
+	configs: readonly ConfigLocations[]
+): SkippedPath[] {
+	return sources.flatMap((path) =>
+		configs.map(({ config }) => ({
+			path,
+			reason: "outsideSourcePaths" as const,
+			config: toPosix(config.file),
+		}))
+	);
 }
 
 /** One `diagnose` for what several configs were each asked about. */
@@ -167,7 +204,19 @@ export function mergeDiagnoses(parts: readonly Diagnosis[]): Diagnosis {
 		stoppedBy: uniqueDiagnostics(
 			parts.flatMap(({ stoppedBy }) => stoppedBy)
 		),
+		skipped: uniqueSkipped(parts.flatMap(({ skipped }) => skipped)),
 	};
+}
+
+/** `skipped` without the repeats. */
+export function uniqueSkipped(skipped: readonly SkippedPath[]): SkippedPath[] {
+	const seen = new Set<string>();
+	return skipped.filter(({ path, reason, config }) => {
+		const key = `${reason}\0${path}\0${config ?? ""}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
 }
 
 /** One `locate` for what several configs were each asked about, the configs in the order given. */

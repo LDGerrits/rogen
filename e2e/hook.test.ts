@@ -135,6 +135,13 @@ const available = gitPath !== "";
 		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
 	});
 
+	it("should block nothing for a changed file that no build reads", () => {
+		write("README.md", "# Project\n");
+		write("lib/x.luau");
+
+		expect(stop()).toMatchObject({ exit: 0, reply: undefined });
+	});
+
 	it("should report each new warning once, one line each, and only what is new after a fix", () => {
 		write("src/Clean.luau");
 		stop();

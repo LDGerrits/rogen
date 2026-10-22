@@ -8,7 +8,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ConfigFormatter } from "./config-formatter.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery, DiscoveredConfigs } from "./config-discovery.js";
-import { isProjectFileConfig } from "./config.js";
+import { isDefaultConfigFileName, isProjectFileConfig } from "./config.js";
 import { ConfigLoader } from "./config-loader.js";
 import {
 	ConfigEntry,
@@ -32,7 +32,7 @@ export class CoreConfigService implements ConfigService {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		environmentService: EnvironmentService
+		private readonly environmentService: EnvironmentService
 	) {
 		this.discovery = new ConfigDiscovery(
 			fileSystemService,
@@ -120,6 +120,12 @@ export class CoreConfigService implements ConfigService {
 			})),
 			uncovered,
 		});
+	}
+
+	async namedConfigs(): Promise<string[]> {
+		return (await this.discovery.list(this.environmentService.cwd)).filter(
+			(file) => !isDefaultConfigFileName(path.basename(file))
+		);
 	}
 
 	async coversOf(target: string): Promise<ConfigCover[]> {
