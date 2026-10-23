@@ -411,7 +411,7 @@ describe("watch", () => {
 
 			expect(logService.entries[0]).toEqual({
 				kind: "intro",
-				text: "rogen write --watch · lobby",
+				text: "rogen write --watch · lobby/default.rogen.json",
 			});
 		});
 

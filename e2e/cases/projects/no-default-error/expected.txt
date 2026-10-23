@@ -10,7 +10,7 @@ $ rogen build dist -o dist.rbxl
 exit 0
 stdout: (not shown)
 stderr:
-  rogen build · Inventory
+  rogen build · dist.rogen.json
   dist.project.json · wrote
   Built dist.rbxl.
 

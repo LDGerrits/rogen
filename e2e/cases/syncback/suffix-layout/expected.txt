@@ -7,7 +7,7 @@ stdout:
   Writing src/Inventory/Save@server.luau
   Writing src/Quest/Main@server.luau
 stderr:
-  rogen syncback · Game
+  rogen syncback · default.rogen.json
   default.project.json · wrote
   Built 1 project.
   Syncback wrote 5 changes.

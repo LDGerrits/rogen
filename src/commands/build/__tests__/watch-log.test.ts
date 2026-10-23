@@ -391,7 +391,7 @@ describe("WatchLog.update", () => {
 				["diagnosticWarning", expect.stringContaining(": shared")],
 				[
 					"success",
-					"lobby/default.project.json · wrote · same warnings as repo",
+					"lobby/default.project.json · wrote · same warnings as default.rogen.json",
 				],
 			]);
 		});

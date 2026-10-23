@@ -109,10 +109,10 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.lines).toEqual([
-			"intro: rogen serve · repo",
+			"intro: rogen serve · default.rogen.json",
 			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial build$/),
 			"success: default.project.json · wrote",
-			"success: Serving repo with Rojo 7.7.1 at 127.0.0.1:34872.",
+			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo).",
 		]);
 	});
 
@@ -236,8 +236,8 @@ describe("serve command", () => {
 		expect(processes.spawned).toEqual([]);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 		expect(logService.lines).toEqual([
-			"intro: rogen serve · repo",
-			"info: repo is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
+			"intro: rogen serve · default.rogen.json",
+			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
 			"outro: Nothing to start: another rogen serve already serves this project, so nothing is built or watched here.",
 		]);
 	});
@@ -305,12 +305,14 @@ describe("serve command", () => {
 			await settle();
 
 			expect(
-				logService.lines.filter((line) => line.includes("Studio"))
+				logService.lines.filter((line) =>
+					line.startsWith("info: Studio")
+				)
 			).toEqual([
-				"info: Studio connected to repo.",
-				"info: Studio connected to repo (2 connected).",
-				"info: Studio disconnected from repo, 1 still connected.",
-				"info: Studio disconnected from repo.",
+				"info: Studio connected to default.rogen.json.",
+				"info: Studio connected to default.rogen.json (2 connected).",
+				"info: Studio disconnected from default.rogen.json, 1 still connected.",
+				"info: Studio disconnected from default.rogen.json.",
 			]);
 		});
 
@@ -443,7 +445,7 @@ describe("serve command", () => {
 			await writeConfig(34901);
 
 			expect(logService.lines).toContainEqual(
-				"info: Stopped serving repo at 127.0.0.1:34872: its address changed."
+				"info: Stopped serving default.rogen.json at 127.0.0.1:34872: its address changed."
 			);
 			expect(processes.spawned.map(({ args }) => args)).toEqual([
 				["serve", "default.project.json", "--port", "34872"],
@@ -656,7 +658,9 @@ describe("serve command", () => {
 			true
 		);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
-		expect(logService.lines[0]).toBe("intro: rogen serve · lobby");
+		expect(logService.lines[0]).toBe(
+			"intro: rogen serve · lobby/default.rogen.json"
+		);
 	});
 
 	it("should serve a second place on its own port from a second serve", async () => {
@@ -742,7 +746,7 @@ describe("serve command", () => {
 
 		expect(processes.spawned).toHaveLength(1);
 		expect(logService.lines.at(-1)).toBe(
-			"success: Serving repo with Rojo 7.7.1 at 127.0.0.1:34872."
+			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo)."
 		);
 	});
 

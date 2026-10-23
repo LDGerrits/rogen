@@ -4,7 +4,7 @@ stdout:
   Building project 'Inventory'
   Built project to game.rbxl
 stderr:
-  rogen build · Inventory
+  rogen build · default.rogen.json
   default.project.json · wrote
   Built game.rbxl.
 
@@ -14,7 +14,7 @@ stdout:
   Building project 'Inventory'
   Built project to dist.rbxl
 stderr:
-  rogen build · Inventory
+  rogen build · dist.rogen.json
   dist.project.json · wrote
   Built dist.rbxl.
 

@@ -13,7 +13,7 @@ exit 0
 stdout:
   Created sourcemap at sourcemap.json
 stderr:
-  rogen sourcemap · project
+  rogen sourcemap · default.rogen.json
   default.project.json · unchanged
   Built 1 project.
   sourcemap.json · wrote

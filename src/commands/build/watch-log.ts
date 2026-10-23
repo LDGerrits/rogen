@@ -121,7 +121,7 @@ export class WatchLog implements WatchReporter {
 	begin(configs: readonly ResolvedConfig[], home?: string): void {
 		this.buildLog.begin(
 			this.command,
-			configs.map(({ label }) => label),
+			configs.map(({ file }) => configPath(this.cwd, file)),
 			home
 		);
 	}
@@ -190,7 +190,6 @@ export class WatchLog implements WatchReporter {
 		sharedWarnings: SharedDiagnostics
 	): void {
 		const warnings = sharedWarnings.take(
-			build.label,
 			build.file,
 			unreported.filter((diagnostic) => !isError(diagnostic))
 		);
@@ -202,7 +201,7 @@ export class WatchLog implements WatchReporter {
 					repeatedFailure
 						? "same errors as before"
 						: counted(repeated, "as before"),
-					BuildLog.sameAs("warnings", warnings.sameAs),
+					this.buildLog.sameAs("warnings", warnings.sameAs),
 					counted(fixed, "fixed"),
 				],
 			}

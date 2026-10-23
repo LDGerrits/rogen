@@ -4,7 +4,7 @@ stdout:
   Writing src/Net/init.luau
   Writing src/Net
 stderr:
-  rogen syncback · Game
+  rogen syncback · default.rogen.json
   default.project.json · would write
   default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
   Checked 1 project with 1 warning.

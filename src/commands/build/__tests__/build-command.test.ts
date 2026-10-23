@@ -248,10 +248,10 @@ describe("build command", () => {
 		);
 
 		expect(logService.lines).toEqual([
-			"intro: rogen build · lobby, arena",
-			"step: lobby",
+			"intro: rogen build · lobby/default.rogen.json, arena/default.rogen.json",
+			"step: lobby/default.rogen.json",
 			"success: lobby/default.project.json · wrote",
-			"step: arena",
+			"step: arena/default.rogen.json",
 			"success: arena/default.project.json · wrote",
 			expect.stringMatching(/^outro: /),
 		]);
@@ -291,7 +291,7 @@ describe("build command", () => {
 		);
 
 		expect(logService.texts("error")).toEqual([
-			"lobby/default.project.json · not written · bad failed",
+			"lobby/default.project.json · not written · bad/default.rogen.json failed",
 			"bad/default.project.json · not written",
 		]);
 	});
@@ -358,7 +358,7 @@ describe("build command", () => {
 
 		expect(result.isErr() && result.error).toBeInstanceOf(ReportedError);
 		expect(logService.lines).toEqual([
-			"intro: rogen build · repo",
+			"intro: rogen build · default.rogen.json",
 			"error: default.rogen.json · not loaded",
 			"diagnosticError: /repo/default.rogen.json - error: boom. (config.removedField)",
 			expect.stringMatching(/^outro: .*fail/),

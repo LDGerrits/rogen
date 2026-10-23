@@ -3,7 +3,7 @@ exit 0
 stdout:
   Created sourcemap at sourcemap.json
 stderr:
-  rogen sourcemap · Game
+  rogen sourcemap · default.rogen.json
   default.project.json · wrote
   default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
     src/A.server.luau (a Script never runs in ReplicatedStorage)
