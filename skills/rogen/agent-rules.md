@@ -1,25 +1,26 @@
 <!-- rogen -->
 ## Rogen
 
-This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) and places code by its folder and file names. A file's path on disk is not its path in the game.
+This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) from folder and file names, so a file's path on disk is not its path in the game.
 
 ### Placing code
 
-- Name a new file like its neighbours: the same folders, the same `@` suffixes, the same casing. Then run `rogen where <path>` to see where it lands and the `require` that reaches it; it works before the file exists.
-- Where there is nothing to copy, the route keys in `rogen.routes` decide: `Server`, `Client`, `Shared` in Luau, lowercase in roblox-ts. A folder named after a key sends everything in it to that route (`Shop/Server/`), and an `@key` suffix sends one file or folder (`Save@Server.luau`).
-- The outermost route wins: `Shared/Server/Save.luau` still ships to clients. Put server-only code under a server route.
-- roblox-ts code imports by relative path.
+- Name new files like their neighbours: same folders, `@` suffixes and casing. Run `rogen where <path>` to see where a file lands and how to require it.
+- A folder or `@` suffix named after a key in `rogen.routes` routes its contents: `Shop/Server/`, `Save@Server.luau`.
+- The outermost route wins, so `Shared/Server/Save.luau` ships to clients. Keep server-only code under a server route.
+- In roblox-ts, import by relative path.
 
 ### Changing the setup
 
 - Edit the `*.rogen.json`, never the generated `*.project.json`.
-- Configs share nothing. A change to `routes`, `sourcePaths` or `tree` goes into every `*.rogen.json` it applies to.
-- Read `rogen doc routing` before you add a route or use a naming pattern the repo doesn't use yet.
+- Configs share nothing: apply a change to `routes`, `sourcePaths` or `tree` to every `*.rogen.json` it concerns.
+- Read `rogen doc routing` before adding a route or a new naming pattern.
 
 ### Commands
 
-- After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints; it says when to run `rogen write`. In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
-- Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
-- To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
-- `rogen doc <topic>` prints `routing`, `config`, `layout` or `output` for the installed Rogen. `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
+- After changing files or a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints, including when it says to run `rogen write`.
+- In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
+- Run other commands in the folder of the `*.rogen.json`, or name it: `rogen write projects/game`.
+- To sync to Studio, run `rogen serve --json` in the background and leave it running. `rogen help serve` explains its output.
+- `rogen doc <topic>` covers `routing`, `config`, `layout` and `output`; `rogen help <command> --json` lists a command's flags and JSON output.
 <!-- /rogen -->
