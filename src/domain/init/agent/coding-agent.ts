@@ -54,6 +54,7 @@ export function withHook(
 
 /** The file Claude Code reads its hooks from, which marks it among the agents. */
 export const CLAUDE_SETTINGS_FILE = ".claude/settings.json";
+export const GEMINI_SETTINGS_FILE = ".gemini/settings.json";
 
 export interface CodingAgent {
 	readonly name: string;
@@ -93,7 +94,7 @@ export const CODING_AGENTS: readonly CodingAgent[] = [
 	},
 	{
 		name: "Gemini CLI",
-		settingsFile: ".gemini/settings.json",
+		settingsFile: GEMINI_SETTINGS_FILE,
 		signs: [".gemini", "GEMINI.md"],
 		hook: {
 			event: "AfterAgent",

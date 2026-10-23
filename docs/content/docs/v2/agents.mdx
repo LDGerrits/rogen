@@ -20,11 +20,13 @@ Left to itself, an agent assumes the path on disk is the instance path. It edits
 
 Run [`rogen init`](/docs/v2/cli#init-path). A first `init` adds the block below to your `AGENTS.md`, or to `CLAUDE.md` when that's the only one, and creates `AGENTS.md` when there's neither. In a terminal it asks first. Every agent that reads the file gets the rules, with nothing to install.
 
+Claude Code reads `CLAUDE.md` instead of `AGENTS.md` when there is one, and Gemini CLI reads only `GEMINI.md`. So `init` appends `@AGENTS.md`, which imports it, to each of those that doesn't import it already, and writes a `CLAUDE.md` or `GEMINI.md` holding only the import where the project has the agent's folder (`.claude`, `.gemini`) but not its file.
+
 An agent that runs `init` itself can't answer prompts: `rogen init --dry-run --json` shows what it would write and which choices it would take, and a flag answers each question (see [Choices as flags](/docs/v2/cli#choices-as-flags)).
 
 ## Add it to an existing repo
 
-`rogen init` only starts projects, and never changes a folder that has a config. To add the rules to a project that has one, paste the block into `AGENTS.md` (or `CLAUDE.md`):
+In a project that has a config, `rogen init --agent-rules` adds the block and the imports, and `rogen init --agent-hook` the [hook](#check-changed-files-automatically); either leaves the configs alone. Or paste the block into `AGENTS.md` yourself, markers included:
 
 ````md title="AGENTS.md"
 ## Rogen
@@ -50,8 +52,12 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 - Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
 - After you add, move or rename a folder, run `rogen write`: Rojo, luau-lsp and `rbxtsc` see only the folders the project file lists. `rogen serve` writes on its own.
 - To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
-- `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
+- `rogen doc <topic>` prints `routing`, `config`, `layout` or `output` for the installed Rogen. `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
 ````
+## Keeping it current
+
+Rogen owns what is between the `<!-- rogen -->` markers. When `rogen write` or `rogen serve` finds a block that differs from the installed version's, in the `AGENTS.md`, `CLAUDE.md` or `GEMINI.md` of the folder or a folder above it up to the repository root, it replaces it and says so on stderr. Upgrading Rogen updates the rules agents read with it. Your text around the block is kept byte for byte, and a file without the block is never touched: to stop the updates, delete the block.
+
 
 ## Check changed files automatically
 

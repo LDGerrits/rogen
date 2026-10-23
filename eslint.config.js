@@ -68,6 +68,7 @@ const modules = {
 		where: [],
 		write: [
 			"outcome-log",
+			"refresh-agent-rules",
 			"report-rojo",
 			"rojo-entry",
 			"rojo-step",

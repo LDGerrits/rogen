@@ -776,13 +776,13 @@ Check that the file is writable and that no other program locks it.
 
 ### `init.configExists` [#init-configexists]
 
-Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, `default` or named, and `init` never overwrites or changes one. `init` starts projects, so it stops here and writes nothing, whatever the flags.
+Error. The folder already has a `.rogen.json` or `.rogen.jsonc`, `default` or named, and `init` never overwrites or changes one. `init` starts projects, so it stops here and writes nothing, unless `--agent-rules` or `--agent-hook` is all that is given.
 
 ```
-default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
+default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, run 'rogen init --agent-rules' or 'rogen init --agent-hook'; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
 ```
 
-Edit the config in place to change it, then run `rogen check`. For a new place, copy a config and edit the copy ([Several Places](/docs/v2/setups/places)). To add the agent rules or the agent hook later, see [Working with agents](/docs/v2/agents#add-it-to-an-existing-repo); to set Rojo up, see [Installation](/docs/v2/installation). See [CLI](/docs/v2/cli).
+Edit the config in place to change it, then run `rogen check`. For a new place, copy a config and edit the copy ([Several Places](/docs/v2/setups/places)). To add the agent rules or the agent hook later, run `rogen init --agent-rules` or `rogen init --agent-hook` ([Working with agents](/docs/v2/agents#add-it-to-an-existing-repo)); to set Rojo up, see [Installation](/docs/v2/installation). See [CLI](/docs/v2/cli).
 
 ### `init.fileExists` [#init-fileexists]
 

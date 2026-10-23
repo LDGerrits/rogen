@@ -18,7 +18,7 @@ A Rojo project keeps its layout: each folder the project file mounted from `src`
 
 ## Add the agent rules to a repo that has Rogen
 
-`rogen init` stops where a `*.rogen.json` exists. Append [agent-rules.md](agent-rules.md) to the repo's `AGENTS.md`, or to `CLAUDE.md` when that is the only one, with its `<!-- rogen -->` markers.
+Run `rogen init --agent-rules` in the folder of the `*.rogen.json`. It adds the rules to `AGENTS.md`, imports them into a `CLAUDE.md` or `GEMINI.md` that is there, and changes no config. Ask the user whether to add the hook too (`--agent-hook`). `rogen write` keeps the rules current after that.
 
 ## Reorganise into feature folders
 

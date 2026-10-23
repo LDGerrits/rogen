@@ -180,7 +180,7 @@ describe("CoreInitService", () => {
 						code: "init.configExists",
 						resource: path.join(directory, name),
 						message: expect.stringContaining(
-							"https://rogen-playfully.vercel.app/docs/v2/agents"
+							"rogen init --agent-rules"
 						),
 					},
 				]);
@@ -207,16 +207,29 @@ describe("CoreInitService", () => {
 			]);
 		});
 
-		it("should ask nothing and plan nothing, whatever the flags ask for", async () => {
+		it("should plan only the agent rules where a config exists and --agent-rules is all that is given", async () => {
 			await write("default.rogen.json", "{}");
-			const prompts = new MockPromptService([]);
 
-			const diagnostics = await refused(prompts, {
-				choices: { agentRules: true, agentHook: true },
+			const plan = (
+				await serviceFor(new MockPromptService([])).plan({
+					choices: { agentRules: true },
+				})
+			).unwrap();
+
+			expect(plan?.files).toEqual([
+				{ fileName: "AGENTS.md", content: agentBlock },
+			]);
+			expect(plan?.configs).toEqual([]);
+		});
+
+		it("should fail with init.configExists when a project flag comes with the agent flags", async () => {
+			await write("default.rogen.json", "{}");
+
+			const diagnostics = await refused(new MockPromptService([]), {
+				choices: { agentRules: true, language: "luau" },
 			});
 
 			expect(diagnostics).toMatchObject([{ code: "init.configExists" }]);
-			expect(prompts.asked).toEqual([]);
 		});
 
 		it("should fail for a named folder that has one", async () => {
@@ -320,15 +333,26 @@ describe("CoreInitService", () => {
 			);
 		});
 
-		it("should say to import AGENTS.md when CLAUDE.md doesn't", async () => {
+		it("should import AGENTS.md into a CLAUDE.md that doesn't", async () => {
 			await write("AGENTS.md", "");
 			await write("CLAUDE.md", "Use tabs.\n");
 
 			const plan = (await serviceFor().plan()).unwrap();
 
-			expect(plan?.nextSteps.edits[0]).toBe(
-				"Add @AGENTS.md to CLAUDE.md, so Claude Code reads Rogen's rules."
-			);
+			expect(
+				plan?.files.find(({ fileName }) => fileName === "CLAUDE.md")
+					?.content
+			).toBe("Use tabs.\n\n@AGENTS.md\n");
+		});
+
+		it("should write a GEMINI.md that imports AGENTS.md where Gemini CLI is in use", async () => {
+			await write(".gemini/keep", "");
+
+			const plan = (await serviceFor().plan()).unwrap();
+
+			expect(
+				plan?.files.find(({ fileName }) => fileName === "GEMINI.md")
+			).toEqual({ fileName: "GEMINI.md", content: "@AGENTS.md\n" });
 		});
 	});
 
@@ -418,6 +442,7 @@ describe("CoreInitService", () => {
 				".gitignore",
 				"AGENTS.md",
 				"CLAUDE.md",
+				"GEMINI.md",
 				SCRIPT,
 				CLAUDE,
 				CODEX,

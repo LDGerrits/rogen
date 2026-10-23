@@ -54,8 +54,9 @@ stdout:
   rogen-init
   Writes a starting default.rogen.json, detecting the workspace and asking in a terminal. With a
   folder, starts a project there, as 'rojo init' does. It starts projects and never changes a config
-  that exists: where one is, it fails and writes nothing. To change a config, edit the .rogen.json and
-  run 'rogen check'.
+  that exists: where one is, it fails and writes nothing, unless --agent-rules or --agent-hook is all
+  that is given, which add only the agent files. To change a config, edit the .rogen.json and run
+  'rogen check'.
   
   USAGE:
       rogen init [OPTIONS] [PATH]
@@ -65,9 +66,12 @@ stdout:
   
   OPTIONS:
           --[no-]agent-hook                Whether to add the hook that reports Rogen warnings to the
-                                           coding agents found. Not added when not given.
+                                           coding agents found. Not added when not given. Alone, in a
+                                           project that has a config, it adds it there.
           --[no-]agent-rules               Whether to add Rogen's rules for coding agents to the agent
-                                           file. Added when not given.
+                                           file. Added when not given, and imported into CLAUDE.md and
+                                           GEMINI.md. Alone, in a project that has a config, it adds
+                                           them there.
           --color <COLOR>                  Whether to colour the output. [default: auto] [possible
                                            values: auto, always, never]
           --compiled-path <PATH>           With Darklua: the folder it writes into, and Rojo syncs

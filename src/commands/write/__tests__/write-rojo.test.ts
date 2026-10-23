@@ -21,6 +21,7 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { DiskFileSystemService } from "../../../platform/fs/disk-file-system-service.js";
 import { FileSystemService } from "../../../platform/fs/file-system-service.js";
 import { IndexService } from "../../../platform/fs/index-service.js";
+import { InitService } from "../../../domain/init/init-service.js";
 import { ServiceCollection } from "../../../platform/instantiation/service-collection.js";
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { LogService } from "../../../platform/log/log-service.js";
@@ -50,6 +51,9 @@ describeWithRojo("write command against Rojo", () => {
 		services.set(IndexService, indexService);
 		services.set(WriteService, writeServiceOf(fileSystem, indexService));
 		services.set(LogService, logService);
+		services.set(InitService, {
+			refreshAgentRules: async () => [],
+		} as unknown as InitService);
 		return new CoreCommandService(
 			services,
 			logService,

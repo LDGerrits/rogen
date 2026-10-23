@@ -2,6 +2,7 @@ import path from "path";
 import { jest } from "@jest/globals";
 import "../../build/build-command.js";
 import "../write-command.js";
+import { agentBlock } from "../../../domain/init/agent/agent-block.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -30,6 +31,41 @@ describe("write command", () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 		await fs.writeFile(abs("src/A.luau"), "");
+	});
+
+	describe("agent rules", () => {
+		const OLD = "<!-- rogen -->\n## Rogen\n\nOld.\n<!-- /rogen -->\n";
+
+		beforeEach(async () => {
+			await fs.writeFile(abs("default.rogen.json"), config);
+			await fs.createDirectory(abs(".git"));
+		});
+
+		it("should bring an outdated Rogen block up to this version and say so", async () => {
+			await fs.writeFile(abs("AGENTS.md"), `# Team\n\n${OLD}`);
+			const { run, log } = commandHarness({ fs });
+
+			await run("write");
+
+			expect(await fs.readFile(abs("AGENTS.md"))).toBe(
+				`# Team\n\n${agentBlock}`
+			);
+			expect(log.lines).toContain(
+				"notice: Updated Rogen's rules in AGENTS.md to this version."
+			);
+		});
+
+		it("should update it silently under --json", async () => {
+			await fs.writeFile(abs("AGENTS.md"), OLD);
+			const { run, log } = commandHarness({ fs });
+
+			await run("write", { options: { json: true } });
+
+			expect(await fs.readFile(abs("AGENTS.md"))).toBe(agentBlock);
+			expect(
+				log.lines.filter((line) => line.startsWith("notice:"))
+			).toEqual([]);
+		});
 	});
 
 	describe("with no project", () => {
