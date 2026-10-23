@@ -230,7 +230,6 @@ export class CoreConfigService implements ConfigService {
 		return (await ManagedConfig.open(file, this.loader)).entry;
 	}
 
-	/** Runs `check` on a folder that has no config to read, to tell what it holds from a missing config. Dispose the result to remove it. */
 	registerFolderCheck(check: ConfigFolderCheck): Disposable {
 		return this.discovery.registerFolderCheck(check);
 	}

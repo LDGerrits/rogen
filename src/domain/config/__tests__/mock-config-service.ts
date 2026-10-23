@@ -9,6 +9,7 @@ import {
 	BrokenConfigEntry,
 	ConfigEntry,
 	ConfigFileCheck,
+	ConfigFolderCheck,
 	ConfigReload,
 	ReloadableSelection,
 	ConfigCover,
@@ -220,6 +221,10 @@ export class MockConfigService implements ConfigService {
 	}
 
 	registerFileCheck(_check: ConfigFileCheck): Disposable {
+		return { [Symbol.dispose]: () => {} };
+	}
+
+	registerFolderCheck(_check: ConfigFolderCheck): Disposable {
 		return { [Symbol.dispose]: () => {} };
 	}
 }

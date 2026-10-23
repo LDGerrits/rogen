@@ -172,8 +172,8 @@ stdout:
                      JSON.
                    - Skipped: a path no build reads gets a note on stderr, and is listed under skipped
                      in the JSON document.
-                   - No path, an instance or '-': every file of the working directory's default
-                     config.
+                   - No path: every file of every config of the working directory. An instance or '-':
+                     its default config.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,

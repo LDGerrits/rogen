@@ -1,4 +1,5 @@
 import { unescapedGlob } from "../../base/glob.js";
+import { configPath } from "../../platform/config/config-path.js";
 import path from "path";
 import { relativeTo, toPosix } from "../../base/path.js";
 import {
@@ -172,7 +173,7 @@ export class WhereLog {
 
 	/** The config that answered, by its file. */
 	private nameOf(answer: Answer): string {
-		return relativeTo(this.cwd, answer.config);
+		return configPath(this.cwd, answer.config);
 	}
 
 	private noted(answer: Answer): string[] {

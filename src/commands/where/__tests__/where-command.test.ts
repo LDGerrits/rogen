@@ -524,12 +524,17 @@ describe("where command", () => {
 			expect(logService.texts("notice")).toHaveLength(1);
 		});
 
-		it("should name the configs a bare where can't choose between", async () => {
+		it("should answer for every config of the folder with no path", async () => {
 			const result = await run({});
 
-			expect(result.isErr()).toBe(true);
-			expect((result as { error: Error }).error.message).toContain(
-				"It holds game.rogen.json, lobby.rogen.json."
+			expect(result.isOk()).toBe(true);
+			const lines = printed();
+			expect(lines.filter((l) => l.includes("src/game"))).toHaveLength(1);
+			expect(lines.filter((l) => l.includes("src/lobby"))).toHaveLength(
+				1
+			);
+			expect(lines.filter((l) => l.includes("src/common"))).toHaveLength(
+				1
 			);
 		});
 	});

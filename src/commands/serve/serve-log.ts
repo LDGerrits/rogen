@@ -1,4 +1,4 @@
-import { relativeTo } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
 import {
 	ServeChangeEvent,
 	ServePlan,
@@ -304,7 +304,7 @@ export class ServeJsonLog implements ServeReporter {
 	}
 
 	private serverFields(target: ServeTarget): { config: string } {
-		return { config: relativeTo(this.cwd, target.config.file) };
+		return { config: configPath(this.cwd, target.config.file) };
 	}
 
 	private servingJson(

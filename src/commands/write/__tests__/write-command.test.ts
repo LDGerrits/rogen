@@ -148,6 +148,7 @@ describe("write command", () => {
 						projectFile: abs("lobby.project.json"),
 					}),
 				],
+				plainProjects: [],
 			});
 		});
 	});
@@ -169,6 +170,35 @@ describe("write command", () => {
 			"info: plain.project.json · plain project, not written",
 			"outro: Wrote 1 of 1 project file.",
 		]);
+	});
+
+	it("should list a project file with no config in the --json document", async () => {
+		await fs.writeFile(abs("game.rogen.json"), config);
+		await fs.writeFile(abs("plain.project.json"), '{"name":"P","tree":{}}');
+		const { run, log } = commandHarness({ fs });
+
+		await run("write", { positionals: [], options: { json: true } });
+
+		expect(log.json()).toMatchObject({
+			changed: true,
+			plainProjects: ["plain.project.json"],
+		});
+	});
+
+	it("should list a folder's only plain project in the --json document", async () => {
+		await fs.writeFile(
+			abs("default.project.json"),
+			'{"name":"P","tree":{}}'
+		);
+		const { run, log } = commandHarness({ fs });
+
+		await run("write", { positionals: [], options: { json: true } });
+
+		expect(log.json()).toEqual({
+			changed: false,
+			configs: [],
+			plainProjects: ["default.project.json"],
+		});
 	});
 
 	it("should write nothing and succeed in a folder with only a plain project", async () => {

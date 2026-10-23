@@ -230,6 +230,10 @@ export class CompiledPathCheck {
 			const made = await this.madeBy(sourcePath, layout);
 			for (const file of await this.filesUnder(compiledDir, true)) {
 				if (made.has(compiledKey(file))) continue;
+				if (
+					!RojoFile.at(toPosix(file), config.syncRules).isSyncedByRojo
+				)
+					continue;
 				const dir = path.dirname(file);
 				const listed = orphans.get(dir) ?? [];
 				if (!listed.includes(file)) orphans.set(dir, [...listed, file]);

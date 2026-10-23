@@ -37,6 +37,8 @@ import {
 	SyncbackRequest,
 	SyncbackResult,
 	UnplacedInstance,
+	compiledPathRefusal,
+	placeFileAmong,
 } from "./syncback.js";
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
@@ -175,6 +177,14 @@ export class CoreSyncbackService implements SyncbackService {
 		private readonly buildService: BuildService,
 		private readonly rojoService: RojoCommandService
 	) {}
+
+	placeFileAmong(names: readonly string[]): string | undefined {
+		return placeFileAmong(names);
+	}
+
+	refusalFor(project: ResolvedConfig): DiagnosticsError | undefined {
+		return compiledPathRefusal(project);
+	}
 
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.planListed(request);

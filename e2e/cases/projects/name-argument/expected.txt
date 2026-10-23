@@ -31,7 +31,8 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": []
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 $ rogen write nope

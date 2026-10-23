@@ -65,6 +65,10 @@ stderr:
   note: README.md: no config at or above it reads it. See where it lands through one: rogen where game.rogen.json or lobby.rogen.json.
 
 $ rogen where
-exit 1
-stderr:
-  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds game.rogen.json, lobby.rogen.json. Name one of them, or run 'rogen write' to write them all.
+exit 0
+stdout:
+  game.rogen.json: src/common/Hud.client.luau -> StarterPlayer/StarterPlayerScripts/Hud · route client (suffix)
+  lobby.rogen.json: src/common/Hud.client.luau -> StarterGui/Hud · route client (suffix)
+  src/common/Util.luau -> ReplicatedStorage/Shared/Util · route * (fallback)
+  game.rogen.json: src/game/Server/Match.server.luau -> ServerScriptService/Match · route server (folder)
+  lobby.rogen.json: src/lobby/Server/Queue.server.luau -> ServerScriptService/Queue · route server (folder)

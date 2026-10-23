@@ -194,6 +194,8 @@ export interface ConfigService {
 	format(file: string): Promise<Result<boolean, Diagnostic[]>>;
 	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;
+	/** Runs `check` on a folder that has no config to read, to tell what it holds from a missing config. Dispose the result to remove it. */
+	registerFolderCheck(check: ConfigFolderCheck): Disposable;
 	/** What the registered folder checks found in `folder`: configs it can't read. */
 	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]>;
 }

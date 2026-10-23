@@ -1,5 +1,6 @@
 import path from "path";
-import { relativeTo, toNative } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
+import { toNative } from "../../base/path.js";
 import { Result } from "../../base/result.js";
 import { ConfigBuild, isWritten } from "../../domain/build/build.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
@@ -126,14 +127,14 @@ export function buildEntry(
 ): BuildEntry {
 	const loaded = build.outcome !== "notLoaded";
 	return {
-		config: relativeTo(cwd, build.file),
+		config: configPath(cwd, build.file),
 		projectFile: loaded ? toNative(build.config.projectFile) : null,
 		outcome:
 			isWritten(build) || build.outcome === "wouldWrite"
 				? build.outcome
 				: "notWritten",
 		...(build.outcome === "notWritten" && {
-			blockedBy: build.blockedBy.map((file) => relativeTo(cwd, file)),
+			blockedBy: build.blockedBy.map((file) => configPath(cwd, file)),
 		}),
 		diagnostics: diagnostics.map(diagnosticToJson),
 	};

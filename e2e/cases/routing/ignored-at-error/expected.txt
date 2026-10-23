@@ -65,7 +65,8 @@ stdout:
           }
         ]
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 $ rogen where src/server/Util@client.luau

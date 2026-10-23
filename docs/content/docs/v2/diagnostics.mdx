@@ -117,13 +117,13 @@ Edit the copy so it is the place or output it stands for, or delete it. A second
 
 ### `config.duplicateName` [#config-duplicatename]
 
-Error. Two configs of one folder have the same `name` and differ only in their source paths. They are two games that Studio and Rojo would list under one name: a place copied, given other source paths, and left with the old name. Both configs report it.
+Error. Two configs of one folder have the same `name` and no source path in common (paths compared once resolved). They are two games that Studio and Rojo would list under one name: a place copied, given other source paths, and left with the old name. Both configs report it.
 
 ```
-lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are both named "Game" but read other source paths, so Studio and Rojo would list two games under one name. Change "name" in the copy. (config.duplicateName)
+lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are both named "Game" but share no source path, so Studio and Rojo would list two games under one name. Change "name" in the copy. (config.duplicateName)
 ```
 
-Change the `name` of the copy. A config that shares the `name` and differs in its routes, tree, `compiledPath`, `globIgnorePaths` or another key besides the source paths is a second output of the game and passes. See [More Files](/docs/v2/configuration#more-files) and [Several Places](/docs/v2/setups/places).
+Change the `name` of the copy. A config that shares the `name` and at least one source path is a second output of the game and passes, whatever else it changes: routes, tree, `compiledPath` or `globIgnorePaths`. See [More Files](/docs/v2/configuration#more-files) and [Several Places](/docs/v2/setups/places).
 
 ### `config.compiledPathOverlapsSourcePath` [#config-compiledpathoverlapssourcepath]
 

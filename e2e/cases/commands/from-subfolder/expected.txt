@@ -38,7 +38,8 @@ stdout:
         "outcome": "unchanged",
         "diagnostics": []
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 written:

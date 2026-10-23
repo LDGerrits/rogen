@@ -1,4 +1,5 @@
 import { UsageError } from "../../base/errors.js";
+import { configPath } from "../../platform/config/config-path.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
@@ -60,7 +61,7 @@ registerCommand(
 								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a config named as build reads it (game for game.rogen.json), lists every file of that config.",
 								"- Several configs: each answer names its config file, and so does config in the JSON.",
 								"- Skipped: a path no build reads gets a note on stderr, and is listed under skipped in the JSON document.",
-								"- No path, an instance or '-': every file of the working directory's default config.",
+								"- No path: every file of every config of the working directory. An instance or '-': its default config.",
 							].join("\n"),
 							isOptional: true,
 							isVariadic: true,
@@ -125,7 +126,9 @@ registerCommand(
 			const buildService = accessor.get(BuildService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
-				const selection = await configService.select([]);
+				const selection = await configService.select(
+					await configService.configsHere()
+				);
 				if (selection.isErr()) return selection;
 				const located = await buildService.locate(selection.value, {
 					args: given,
@@ -268,7 +271,7 @@ function filesByInstance(
 				placing.set(reference.text, byFile);
 				const labels = byFile.get(source) ?? new Set();
 				byFile.set(source, labels);
-				labels.add(relativeTo(cwd, config.file));
+				labels.add(configPath(cwd, config.file));
 			}
 	return placing;
 }

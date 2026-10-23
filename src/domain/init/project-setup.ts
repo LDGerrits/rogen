@@ -361,7 +361,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				"lobby"
 			);
 			const edited =
-				'Rogen errors until the copy has its own "name" and source path.';
+				'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
 			const copy = game
 				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
 				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
