@@ -17,16 +17,30 @@ Run the linter before committing.
 <!-- rogen -->
 ## Rogen
 
-Rogen writes each Rojo project file from the folders and file names under its config's `rogen.sourcePaths` (`X.rogen.json` writes `X.project.json`). Folders decide where code runs, so the disk path is not the instance path.
+This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`), and places code by its folder and file names. A file's path on disk is not its path in the game.
 
-- Edit the code and the `.rogen.json`; each write replaces the `*.project.json`. Each `.rogen.json` is complete and reads no other, so make a change to `routes`, `sourcePaths` or `tree` in every config it applies to (`dist`, other places). Edit it in place to keep its comments.
-- The route keys are the names in `rogen.routes` (`Server`, `Client`, `Shared`). A folder named after a key, or an `@key` suffix (`Save@server.luau`), routes what it holds. The first route below the source path governs, so `Shared/Server/` ships to clients: keep server-only code under a server route.
-- Put a new file beside files like it. `rogen where <path>` prints where it lands, before or after it exists, and the Luau `require` that reaches it. roblox-ts imports by relative path.
-- After changing files or a `.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints. A file no config holds (roblox-ts `projects/common`) is skipped: check it through a place, `rogen check projects/game`.
-- Every other command reads only the current folder: run it where the `.rogen.json` is, or name the config (`rogen write lobby`, `rogen serve projects/lobby`).
-- Run `rogen write` after adding files and before `rbxtsc`. `rogen serve` and `rogen write --watch` rewrite on their own; `--watch` never exits, so leave it to the user. `rogen build -o <file>` builds a place or model file.
-- To sync to Studio, start `rogen serve --json` in the background. It exits 0 at once when another serve has the project. Otherwise it prints `serving` once Studio can connect; on write errors it waits for your fix, so keep it running. When `serving` has `"reportsConnections": true`, Studio has your edits after `connected`; if that never comes, ask the user to press Connect in Rojo's Studio plugin.
-- Read `rogen doc routing` before adding a route or a new kind of folder, or when `where` surprises you. `rogen help <command> --json` lists flags and the `--json` shape; `rogen help <code>` explains a diagnostic.
+### Placing code
+
+- Route keys are the names in a config's `rogen.routes`, such as `Server`, `Client` and `Shared`. A folder named after a key (`Shop/Server/`) sends everything in it to that route's target. A file or folder name ending in `@key` (`Save@server.luau`) does the same for itself.
+- The outermost route wins: `Shared/Server/Save.luau` still ships to clients. Put server-only code under a server route.
+- Put a new file next to similar files. Run `rogen where <path>` to see where it lands and the `require` that reaches it, even before the file exists.
+- In roblox-ts, import by relative path.
+
+### Changing the setup
+
+- Edit the `*.rogen.json`. Do not edit the generated `*.project.json`; every write replaces it.
+- Configs share nothing. When you change `routes`, `sourcePaths` or `tree`, change it in every `*.rogen.json` it applies to.
+- Read `rogen doc routing` before you add a route or a new kind of folder.
+
+### Commands
+
+- After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints. Check roblox-ts shared code (`projects/common`) through a place that uses it: `rogen check projects/game`.
+- Other commands use the `*.rogen.json` files in the current folder. Run them there, or name the config: `rogen write lobby`, `rogen serve projects/lobby`.
+- Run `rogen write` after adding files and before compiling with `rbxtsc`.
+- Leave `rogen write --watch` to the user; it never exits.
+- To build a place file, run `rogen build -o game.rbxl`.
+- To sync to Studio, run `rogen serve --json` in the background and keep it running. It rewrites on every change, and after a failed write it waits for your fix. If the project is already served, it says so and exits. With Rojo 7.7 or later, Studio has your edits once it prints a `connected` line; if none comes, ask the user to click Connect in the Rojo plugin.
+- For a command's flags and its `--json` output, run `rogen help <command> --json`.
 <!-- /rogen -->
 
 default.rogen.json:
