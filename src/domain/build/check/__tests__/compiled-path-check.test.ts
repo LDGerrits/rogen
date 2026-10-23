@@ -758,6 +758,32 @@ describe("CompiledPathCheck", () => {
 				expect(warning.message).toContain("dist/A/Old.luau");
 			});
 
+			it("should not warn about a file Rojo does not sync", async () => {
+				await write(
+					"src/A/Real.ts",
+					"dist/A/Real.luau",
+					"dist/A/Lib.d.ts",
+					"dist/tsconfig.tsbuildinfo",
+					"dist/A/notes.md"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should still warn about an orphan Rojo syncs beside files it does not", async () => {
+				await write(
+					"src/A/Real.ts",
+					"dist/A/Real.luau",
+					"dist/A/Lib.d.ts",
+					"dist/A/Old.luau"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain("dist/A/Old.luau");
+				expect(warning.message).not.toContain("Lib.d.ts");
+			});
+
 			it("should match the Lua modules a processor makes from data and meta files", async () => {
 				await write(
 					"src/A/Real.luau",

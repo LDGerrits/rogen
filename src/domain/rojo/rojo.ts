@@ -190,6 +190,14 @@ export class RojoFile {
 		return this.match && KIND_OF_USE[this.match.rule.use];
 	}
 
+	/** Whether Rojo reads the file at all: a sync rule that is not `ignore` takes it, or it is a meta file. A `.ts` or `.tsbuildinfo` file is read by no rule. */
+	get isSyncedByRojo(): boolean {
+		return (
+			this.isMeta ||
+			(this.match !== undefined && this.match.rule.use !== "ignore")
+		);
+	}
+
 	/** Whether Rojo reads the file as a nested project. */
 	get isProject(): boolean {
 		return this.match?.rule.use === "project";
