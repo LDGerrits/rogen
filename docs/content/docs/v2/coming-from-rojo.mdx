@@ -5,7 +5,7 @@ description: Move a hand-written Rojo project to Rogen without changing where an
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
 
-Rogen covers everything `rojo` does. A `default.rogen.json` is a project file with a `rogen` block, so Rojo's keys keep their meaning.
+Rogen covers what `rojo` does for a project: `init`, `build`, `serve`, `sourcemap`, `upload`, `plugin`, `syncback` and `fmt-project`. A `default.rogen.json` is a project file with a `rogen` block, so Rojo's keys keep their meaning.
 
 What changes for a Rojo user:
 
@@ -47,7 +47,7 @@ Every Rojo key (`name`, `tree`, `servePort`, `globIgnorePaths`, `syncRules` and 
 }
 ```
 
-A node you keep in the `tree` wins over a generated one on a clash, with a warning, and a `$path` into a source path stays Rojo's own: Rogen skips that folder. Rojo's `fmt-project` can't read the file, so run `rogen fmt-project` to format it as Rojo formats a project file. Rojo writes the numbers of `$properties` and `$attributes` as floats (`0.0`), by the type of each; Rogen keeps them as you wrote them, and it won't format a file with comments, where Rojo drops them. Rogen reads `default.rogen.jsonc` too, since Rojo 7.7 allows comments in a project file.
+A node you keep in the `tree` wins over a generated one on a clash, with a warning, and a `$path` into a source path stays Rojo's own: Rogen skips that folder. Rojo's `fmt-project` can't read the file, so run `rogen fmt-project` to format it as Rojo formats a project file. Rojo writes the numbers of `$properties` and `$attributes` as floats (`0.0`), by the type of each; Rogen keeps them as you wrote them, and it won't format a file with comments, where Rojo drops them. Rogen reads `default.rogen.jsonc` too, as Rojo 7.7 reads `default.project.jsonc`.
 
 Run `rogen write`: Rogen now owns `default.project.json` and rewrites it. Your repository still tracks the file you renamed, so decide what to do with it:
 
@@ -186,11 +186,11 @@ In a folder with a `default.project.json` and no `default.rogen.json`, Rogen's c
 Rogen replaces the project file you wrote, and Rojo's commands that read it keep working on the one Rogen writes. Your `default.rogen.json` is that file with a `rogen` block (`sourcePaths`, `routes` and `compiledPath`), so Rojo's own keys (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) work in it as they did.
 
 - **`rojo serve`** still serves the project file. `rogen serve` writes it first, starts the server for you and writes again as files change; see [Studio](/docs/v2/studio) for the plugin settings.
-- **`rojo build`** makes a place file from it, and needs `--output`. `rogen build -o game.rbxl` writes the project file and runs it for you, and needs `-o` or `-p` as well. `rogen write` writes the project file alone. See [Place Files](/docs/v2/core-concepts/output#place-files).
+- **`rojo build`** makes a place or model file from it, and needs `--output` or `--plugin`; its `--watch` rebuilds as files change. `rogen build -o game.rbxl` writes the project file and runs it for you, and needs `-o` or `-p` as well; `rogen build --watch` writes the project file and rebuilds as files change. `rogen write` writes the project file alone. See [Place Files](/docs/v2/core-concepts/output#place-files).
 - **`rojo sourcemap`** works on it as it does on any project file, for luau-lsp and other tools. `rogen sourcemap` writes the project file first and then runs it: see [`sourcemap`](/docs/v2/cli#sourcemap-project).
 - **`rojo upload`** uploads it. `rogen upload` writes the project file first and then runs it, with Rojo's flags as Rojo spells them: see [`upload`](/docs/v2/cli#upload-project).
 - **`rojo plugin install`** installs Rojo's Studio plugin. `rogen plugin install` has the Rojo your project pins do it, so the plugin matches the server `rogen serve` starts: see [`plugin`](/docs/v2/cli#plugin-install-and-plugin-uninstall).
 - **`rojo syncback`** reads the project file's tree to decide where Studio's changes go, and Rogen's file holds a node per file and per mounted folder, so Rojo can't add to it and can edit properties in the file it reads, which Rogen overwrites on its next write. `rogen syncback` runs it on a mirror of your files laid out as the game is, and writes each change back to the file it came from, the properties and attributes of your `tree`'s nodes into the `tree`: see [`syncback`](/docs/v2/cli#syncback). Every layout takes edits, additions and deletions, and a new instance is put where routing would place a file for it, written like the code around it.
-- **`rojo fmt-project`** formats a project file. `rogen fmt-project` formats a `.rogen.json` the same way, byte for byte on Rojo's own build tests: floats as `1.0`, a nameless file named for its folder, and the keys of a sync rule in Rojo's order. The project files `rogen write` writes are in that format, and keep no `$schema`; a plain Rojo project that Rogen runs on is not rewritten.
+- **`rojo fmt-project`** formats a project file. `rogen fmt-project` formats a `.rogen.json` the same way, byte for byte on Rojo's own build tests: floats as `1.0`, a nameless `default` file named for its folder, and the keys of a sync rule in Rojo's order. The project files `rogen write` writes are in that format, and keep no `$schema`; a plain Rojo project that Rogen runs on is not rewritten.
 
 What a script sees of these commands matches `rojo`: stdout carries Rojo's own lines, Rogen's go to stderr, `-o=game.rbxl` works, `-v` reaches Rojo, a project that can't be found exits 1 and Rojo's argument errors exit 2, and `serve` exits 130 after Ctrl+C.

@@ -52,7 +52,7 @@ const CookieOption = {
 	type: "string",
 	placeholder: "cookie",
 	description:
-		"The authentication cookie to upload with. Without it Rojo looks for one on this machine.",
+		"The authentication cookie to upload with. Without it, on Windows, Rojo uses the cookie Roblox Studio stored; elsewhere it needs this option.",
 } as const satisfies OptionDescriptor;
 
 const UploadOptions = [

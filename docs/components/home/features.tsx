@@ -43,7 +43,7 @@ export function Features() {
 						},
 						{
 							title: "A Rojo Project File",
-							desc: "A .rogen.json is a Rojo project file with a rogen block of three keys, so Rojo's own settings keep working.",
+							desc: "A .rogen.json takes Rojo's project-file keys plus a rogen block of three keys, and Rogen writes the .project.json Rojo reads from it.",
 							icon: <FaFileCode className="text-white" />,
 						},
 						{

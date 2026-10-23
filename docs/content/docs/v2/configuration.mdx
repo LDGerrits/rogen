@@ -89,12 +89,15 @@ Rojo's keys, at the top level. Rogen passes each to the project file as it is, e
 
 | Field | What Rogen does with it |
 |---|---|
-| `name` | The project's name. `default.project.json` carries it only when you set one here; Rojo names the project after its folder otherwise. Every other config must set one, since Rojo can't read its project file without ([`config.unnamedProjectFile`](/docs/v2/diagnostics#config-unnamedprojectfile)). |
+| `name` | The project's name. `default.project.json` carries it only when you set one here; Rojo names the project after its folder otherwise. Every other config must set one, since Rojo crashes on a project file other than `default.project.json` that has none ([`config.unnamedProjectFile`](/docs/v2/diagnostics#config-unnamedprojectfile)). |
 | `tree` | The instance tree Rogen merges its generated nodes into. See [Tree](#tree). |
 | `globIgnorePaths` | Globs, relative to the config, of files Rojo ignores. Rogen keeps them out of routing too. See [Ignoring Files](#ignoring-files). |
 | `syncRules` | How a file name becomes an instance, in front of Rojo's own rules. Rogen reads files by them too. See [Sync Rules](#sync-rules). |
-| `servePort`, `serveAddress`, `serveAllowedHosts` | Where `rojo serve` listens. See [`serve`](/docs/v2/cli#serve). |
-| `servePlaceIds`, `blockedPlaceIds`, `placeId`, `gameId` | Which places may connect, and the ones a place file is published to. See [Studio](/docs/v2/studio#place-ids). |
+| `servePort`, `serveAddress` | Where `rojo serve` listens. See [`serve`](/docs/v2/cli#serve). |
+| `serveAllowedHosts` | Extra host names `rojo serve` accepts in the `Host` and `Origin` headers. See [`serve`](/docs/v2/cli#serve). |
+| `servePlaceIds`, `blockedPlaceIds` | Which places the Rojo plugin may connect from. See [Studio](/docs/v2/studio#place-ids). |
+| `placeId`, `gameId` | The place and universe IDs Studio takes on when the plugin connects. |
+| `$schema` | Rojo's own key, which it reads and ignores. A config may carry it; Rogen leaves it out of the project files it writes. |
 | `emitLegacyScripts` | Whether Rojo makes `Script` and `LocalScript` instances for `.server` and `.client` files, rather than a run context. |
 | `syncbackRules` | Rojo's syncback rules. |
 
@@ -225,7 +228,7 @@ Name a place to run a command on it: `rogen serve lobby`, or `rogen serve projec
 
 A glob that covers all of a folder a `tree` `$path` mounts with `/**` (`"DevPackages/**"`) leaves the mount out of the project file, since Rojo would otherwise keep it as an empty `Folder`. That is the one place Rogen reads `globIgnorePaths` differently from Rojo. A glob that only names the folder or file (`"DevPackages"`, `"**/DevPackages"`) ignores nothing of the mount, in Rojo too, and so does a glob that ignores only some of its files (`**/*.spec.luau`): the mount stays, and Rojo ignores those files. See [Leaving Out Files](/docs/v2/core-concepts/project-layout#leaving-out-files).
 
-A glob that starts with `!` brings back what an earlier glob ignored, as in a `.gitignore`: the last glob that matches a path decides. `["**/*.spec.luau", "!**/Keep.spec.luau"]` ignores every spec but `Keep.spec.luau`. A folder an earlier glob names is skipped whole, so nothing inside it can be brought back; write `"Vendor/**"`, not `"Vendor"`, to bring back one of its files. Write `\\!` for a name that starts with `!`. Rojo reads `!` from 7.7.0, and Rogen stops `serve` with [`rojo.negationUnsupported`](/docs/v2/diagnostics#rojo-negationunsupported) for an older one.
+A glob that starts with `!` brings back what an earlier glob ignored, as in a `.gitignore`: the last glob that matches a path decides. `["**/*.spec.luau", "!**/Keep.spec.luau"]` ignores every spec but `Keep.spec.luau`. A folder an earlier glob names is skipped whole, so nothing inside it can be brought back; write `"Vendor/**"`, not `"Vendor"`, to bring back one of its files. A glob whose first character is a literal `!` starts with `\!`, written `"\\!name.luau"` in JSON; a `!` anywhere else needs no escape. Rojo reads `!` from 7.7.0, and Rogen stops `serve` with [`rojo.negationUnsupported`](/docs/v2/diagnostics#rojo-negationunsupported) for an older one.
 
 Rogen matches a glob the way Rojo does, so the two agree on what is ignored: `*` crosses folders (`*.tmp.luau` matches at any depth, and so does `src/*.luau`), and a glob that ends in `/` matches nothing. Rojo reads a glob that begins with `/` or `./` as matching nothing, so write the folder name first.
 
@@ -247,6 +250,7 @@ Rogen matches a glob the way Rojo does, so the two agree on what is ignored: `*`
 - `use` is what the file becomes: `serverScript`, `clientScript`, `pluginScript`, `moduleScript`, `legacyClientScript`, `legacyServerScript`, `runContextServerScript`, `runContextClientScript`, `project`, `jsonModel`, `json`, `toml`, `csv`, `text`, `rbxm`, `rbxmx`, `yaml` or `ignore`. A file that `ignore` takes is left out of the tree.
 - `suffix` is what Rojo cuts off the end of the file name to name the instance, extension included. Without it only the extension goes. A file whose name doesn't end with the suffix keeps its whole name, extension included, and Rogen warns ([`scan.syncRuleSuffix`](/docs/v2/diagnostics#scan-syncrulesuffix)). The meta file of `Combat.module` is `Combat.meta.json`, found by the cut name.
 - Rules never apply to folders or `init` files, and a file a rule of yours doesn't take is read by Rojo's rules.
+- A nested project (a folder with its own `default.project.json`, or a `*.project.json` file) does not inherit `syncRules` or `emitLegacyScripts`; it uses its own, or Rojo's defaults.
 
 Rogen writes the rules to each project file, moved with the files they take: a pattern that begins with a folder follows that folder under a `compiledPath`, and a pattern that begins with a wildcard stays as it is. A pattern Rogen can't move becomes one rule per file it takes. Where the `tree` mounts a folder under the old place of a moved pattern, Rogen also keeps the pattern as you wrote it, so Rojo reads that folder by it too (the same goes for `globIgnorePaths`). See [`config.invalidSyncRule`](/docs/v2/diagnostics#config-invalidsyncrule) for a rule Rojo can't read.
 

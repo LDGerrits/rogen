@@ -10,7 +10,7 @@ import { Callout } from "fumadocs-ui/components/callout";
 
 ## Two Axes
 
-You can split a Roblox codebase by **where code runs** (server, client, both) or by **what it's about** (inventory, combat, trading). Without Rogen, Rojo forces the first split onto your top-level folders. Every layout here flips that: features (or layers, then features) at the top, with `Server/`, `Client/` and `Shared/` inside.
+You can split a Roblox codebase by **where code runs** (server, client, both) or by **what it's about** (inventory, combat, trading). Without Rogen, the project file needs one `$path` for every feature and side, so most Rojo projects keep `server`, `client` and `shared` as their top-level folders. Every layout here flips that: features (or layers, then features) at the top, with `Server/`, `Client/` and `Shared/` inside.
 
 ## Comparison
 
@@ -280,7 +280,7 @@ end
 return table.freeze({ name = name, lint = lint })
 ```
 
-Build and write the sourcemap first, so it matches the tree. In CI, a crossed boundary fails the job:
+Build and write the sourcemap first, so it matches the tree, and write it beside the project file: Rojo records each file path relative to the project's folder. In CI, a crossed boundary fails the job:
 
 ```bash
 rogen write

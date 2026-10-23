@@ -46,7 +46,7 @@ Writes, then writes again whenever files or a config change, the way [`build --w
 
 ### `build [project]`
 
-`rogen build` means `rojo build`: it writes the project file, then builds a place, model or plugin from it with Rojo. Like `rojo build`, which requires `--output`, it requires `-o` or `-p`; without either it is a usage error (exit 2) that names `rogen write`, which writes the project files and builds nothing.
+`rogen build` means `rojo build`: it writes the project file, then builds a place, model or plugin from it with Rojo. Like `rojo build`, which requires `--output` or `--plugin`, it requires `-o` or `-p`; without either it is a usage error (exit 2) that names `rogen write`, which writes the project files and builds nothing.
 
 It writes the project file of the `default.rogen.json` here, or of the project you name, beside it: `rogen build dist -o dist.rbxl` writes `dist.project.json`. That file is the only one it writes, as `rojo build` reads only the file you give it, so `default.project.json` is as fresh as the last write of the default.
 
@@ -58,7 +58,7 @@ Each warning and error ends with its [code](/docs/v2/diagnostics). The closing l
 
 #### `build -o` and `-p`
 
-`rogen build -o game.rbxl` writes the project file, then runs Rojo's own `build` on the project and passes it `--output game.rbxl`: a place or model file, as `rojo build` makes. `-p Tool.rbxm` passes `--plugin`, which builds into Roblox's plugins folder. Give one of them, not both.
+`rogen build -o game.rbxl` writes the project file, then runs Rojo's own `build` on the project and passes it `--output game.rbxl`: a place or model file, as `rojo build` makes. `-p Tool.rbxm` passes `--plugin`, which builds into Roblox's plugins folder: Rojo does that on Windows and macOS only, takes a relative file name, and accepts `.rbxm` and `.rbxmx`. Give one of them, not both.
 
 The Rojo that runs is the one your toolchain file pins, as for [`serve`](#serve); when there is none, the run prints the same error as `serve` ([`serve.noServer`](/docs/v2/diagnostics#serve-noserver)) and exits 1.
 
@@ -66,7 +66,7 @@ Rojo builds the project you name (`rogen build release -o game.rbxl`), the defau
 
 #### `build --watch`
 
-Writes, then writes again whenever files or the config change, and runs Rojo's build after each. It needs `-o` or `-p`, as `build` does. Rojo's build runs again after each write and after each edit of a file under the source paths, so the file it built holds what you saved. Rogen runs Rojo's build itself each time and never passes `--watch` to it. To keep the project files current without building, run [`write --watch`](#write---watch).
+Writes, then writes again whenever files or the config change, and runs Rojo's build after each. It needs `-o` or `-p`, as `build` does. Rojo's build runs again after each write and after each edit of a file under the source paths, so the file it built holds what you saved. Rojo has a `build --watch` of its own, which Rogen does not use: Rogen writes the project file first, then runs a one-shot `rojo build` after each change, so every build reads the project file it just wrote. To keep the project files current without building, run [`write --watch`](#write---watch).
 
 A config reloads when its `.rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `build --watch` prints the error and keeps using the last valid version.
 
@@ -99,19 +99,19 @@ Writes the project file, then runs Rojo's own `sourcemap` on the project and pri
 
 In a repo of [places](/docs/v2/setups/places), name the place or run it from the place's folder. Darklua and luau-lsp look for `sourcemap.json` beside the project, so a place that uses Darklua keeps it with `cd places/lobby && rogen sourcemap --watch -o sourcemap.json`.
 
-`--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. Every edit of a file under the source paths writes it again, a model or a meta file included, as `rojo sourcemap --watch` does. Without `-o` it prints each sourcemap on standard output, one document per change, and nothing else there; Rogen's own lines go to standard error. `--json` needs `-o`, since a sourcemap that is printed has no room beside the JSON lines.
+`--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. Every edit of a file under the source paths writes it again, a script's contents included. `rojo sourcemap --watch` is lazier: it writes again only when an instance is added, removed, renamed or changes class, so it skips an edit inside a script or a meta file. Without `-o` it prints each sourcemap on standard output, one document per change, and nothing else there; Rogen's own lines go to standard error. `--json` needs `-o`, since a sourcemap that is printed has no room beside the JSON lines.
 
 ### `upload [project]`
 
 Writes the project file, then runs Rojo's own `upload` on the project, as `rojo upload` does: Rojo builds it and uploads it to Roblox. Like `build -o`, it runs the Rojo your toolchain file pins, on the default project unless you name another.
 
-Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the place or model to upload to, and Rogen refuses to run without it. `--api_key` and `--universe_id` upload with Open Cloud, to a place only, and `--cookie` gives the cookie to upload with. Without a key or a cookie Rojo looks for a cookie on this machine. Rogen stores none of them and leaves them out of its own output, but a flag is visible to other programs on the machine while Rojo runs.
+Rojo's flags are passed on, spelled as Rojo spells them: `--asset_id` names the place or model to upload to, and Rogen refuses to run without it. `--api_key` uploads with Open Cloud, to a place only, and needs `--universe_id`; `--cookie` gives the cookie to upload with, and Rojo ignores it beside a key. Without a key or a cookie Rojo looks for Studio's cookie in the Windows registry; on other platforms it needs `--cookie` or an API key. Rogen stores none of them and leaves them out of its own output, but a flag is visible to other programs on the machine while Rojo runs.
 
 In a repo of places, name the place (`rogen upload places/lobby --asset_id 123`). Nothing is written or uploaded when the project file has errors, and a failed Rojo exits 1 with what it said ([`rojo.commandFailed`](/docs/v2/diagnostics#rojo-commandfailed)). `--json` prints [one document](#upload---json).
 
 ### `syncback [project] --input <file>` [#syncback]
 
-Writes the project file (not in a dry run), then brings the changes of a place or model file back into your source folders, as `rojo syncback` does for a project file: scripts edited in Studio, scripts added there, and scripts deleted.
+Writes the project file (not in a dry run), then brings the changes of a place or model file back into your source folders, as `rojo syncback` does for a project file: scripts edited in Studio, scripts added there, and scripts deleted, and the other instances and properties Rojo can write.
 
 It is Rojo's own syncback, run once by Rogen on a mirror of your files: each file the write placed is copied to a folder laid out as the game is, named for its instance (`src/Inventory/Bag@server.luau` becomes `ServerScriptService/Inventory/Bag.luau`), and a project file made for the run mounts it. Rojo edits, adds and removes in the mirror as in any Rojo project, and Rogen writes each change back to the file it came from. So every layout behaves the same: routing folders, `@` names, `^` names, `(Group)` folders and markers.
 
@@ -131,10 +131,10 @@ A folder the config's own `tree` mounts (`Packages`) is copied into the mirror t
   - `--dry-run` plans and lists and writes nothing, the project file included (Rojo reads `rogen-syncback.project.json`, which a dry run removes, with its staging folder, when Rojo exits).
   - `--list` lists what a run writes. The list goes to stdout in Rojo's own form, `Writing <path>` and `Removing <path>` for each file and folder in the order Rojo lists them (the project file is your `.rogen.json`, where Rojo's own is the `.project.json`, and Rogen leaves out the colour codes Rojo adds), so a script that reads `rojo syncback --list` reads this. Rogen's other lines go to stderr.
   - Without a terminal and without `-y`, Rojo asks, reads nothing, prints "Aborting due to user input!" and exits 0 having written nothing; Rogen exits 2 and says what to pass, since an agent should hear that nothing was written.
-- **Changes to the nodes of your `tree` reach the `tree`.** What Rojo writes into the project file it ran on (`$properties`, `$attributes`, a node's value, a node it adds) is written into the `tree` of the `.rogen.json` you named, node for node, with its comments and formatting kept. A node routing made, such as a service the routes name, is not in the `tree`: its change is listed ([`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced)); add a node for it to the `tree`.
+- **Changes to the nodes of your `tree` reach the `tree`.** What Rojo writes into the project file it ran on (the `$properties` and `$attributes` of nodes that exist, a node's value) is written into the `tree` of the `.rogen.json` you named, node for node, with its comments and formatting kept. Rojo adds no node to a project file, and stops with an error when Studio no longer holds a node the file declares. A node routing made, such as a service the routes name, is not in the `tree`: its change is listed ([`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced)); add a node for it to the `tree`.
 - **Rojo's rules apply.**
   - `syncbackRules` of the config pass through to the file Rojo reads, and the sync rules are written for the mirror's files.
-  - Nothing syncback writes may match `globIgnorePaths` or the `ignorePaths` of `syncbackRules`: an edit there is skipped, and a new instance that would land there is left out ([`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced)).
+  - Rojo skips the paths that match the `ignorePaths` of `syncbackRules`. Its syncback does not read `globIgnorePaths`, so Rogen applies it itself. Nothing syncback writes may match either: an edit there is skipped, and a new instance that would land there is left out ([`syncback.unplaced`](/docs/v2/diagnostics#syncback-unplaced)).
   - The `legacyClientScript` rule Rogen writes for `.client` files under `emitLegacyScripts: false` is left out of the run, since Rojo's syncback stops on it; a new LocalScript there is written as `Name.client.luau`.
   - A project with a `compiledPath` is refused ([`syncback.compiledPath`](/docs/v2/diagnostics#syncback-compiledpath)), as the next compile would delete what syncback wrote there; bring Studio's changes into your sources by hand.
   - A plain project file with no `.rogen.json` beside it is given to Rojo as it is.
@@ -419,7 +419,7 @@ With a `path`, `init` starts a project there, as `rojo init` does: the folder is
 
 `init` never overwrites a file it writes. If a hand-written `default.project.json` is in the way, it's lifted into `default.rogen.json` first: its `tree` and other keys move across, without the nodes that point into the source paths, which become routes that put each folder where the file had it (see [Coming from Rojo](/docs/v2/coming-from-rojo)).
 
-A `default.project.json` in a folder inside a source path is a nested project, which makes that folder one instance, as in Rojo ([Nested Projects](/docs/v2/core-concepts/project-layout#nested-projects)). Other project files in the folder (`test.project.json`) are left alone: Rojo runs a plain project file as it is, and Rogen writes only the project files its `.rogen.json` files name.
+A `default.project.json` in a folder inside a source path is a nested project, which makes that folder one instance, as in Rojo ([Nested Projects](/docs/v2/core-concepts/project-layout#nested-projects)). Other project files in that folder (`test.project.json`) are left alone: Rojo runs a plain project file as it is, and Rogen writes only the project files its `.rogen.json` files name. Elsewhere in a source path, Rojo mounts any `*.project.json` as a nested project.
 
 Rogen writes `default.project.json` from then on, so the next steps print `git rm --cached default.project.json` to stop git tracking the lifted file.
 
@@ -473,7 +473,7 @@ Numbers in `$properties` and `$attributes` are written as Rojo writes them: a ba
 
 A `Font` gets its `cachedFaceId`, and the keys of a sync rule come in Rojo's order.
 
-A config with no `name` is named for its folder, as Rojo names a project file. The project files `build` writes are formatted the same way.
+A `default.rogen.json` with no `name` is named for its folder, as Rojo names a `default.project.json`. Any other config needs a `name`, since Rojo crashes on a project file of another name that has none. The project files `build` writes are formatted the same way.
 
 A file with comments fails, since the formatted text has none, and a `.rogen.jsonc` always does (a trailing comma is dropped): [`format.commentsLost`](/docs/v2/diagnostics#format-commentslost). The project files Rogen writes are already in this format.
 
@@ -485,11 +485,11 @@ Opens the documentation in your browser, and prints its address. Without a termi
 
 ### `help [name]`
 
-Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some, and `EXAMPLES:`.
+Prints usage, or a command's arguments, options and examples, in the layout Rojo's help uses: the command's name, its description, then `USAGE:`, `ARGS:`, `OPTIONS:` (the global options merged in, sorted by name), `SUBCOMMANDS:` where there are some. Rogen adds `EXIT CODES:` and `EXAMPLES:`, which Rojo's help has none of.
 
 The root help lists each command with a one-line summary, and descriptions and prose are wrapped at 100 columns, as Rojo wraps its help. `rogen help build` and `rogen build --help` print the same, in full.
 
-`rogen build -h` prints the short form, as Rojo's help does: each argument and option with the first sentence of its description, and the closing line "Run with --help for details." `EXIT CODES:` and `EXAMPLES:` print in both. `help --json` keeps every description in full.
+`rogen build -h` prints the short form, as Rojo's `-h` does: each argument and option with the first sentence of its description. Rogen adds the closing line "Run with --help for details." `EXIT CODES:` and `EXAMPLES:` print in both. `help --json` keeps every description in full.
 
 `rogen --version` prints the installed version; with `--json` it prints `{ "version": "..." }`.
 

@@ -237,7 +237,7 @@ Warning. A route key is written after a dot, where only `@` routes, so it routes
 
 What it names falls through to the route above it, or `*`. The key matches in any letter case, so `.SERVER/` and `Types.SHARED.luau` warn too.
 
-Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no script class, so `Config.server.json` is named `Config.server` and warns.
+Rojo's `.server` and `.client` at the end of a script still route and are never reported, but only in lower case (Rojo reads `Boot.Server.luau` as a ModuleScript named `Boot.Server`, so Rogen suggests `Boot.server.luau`), and only on a script: a data file or model has no `.server` or `.client` handling, so `Config.server.json` is a ModuleScript named `Config.server` and warns.
 
 ```
 default.rogen.json - warning: 2 names write a route key after a dot, where only "@" routes, so they route nothing: (route.dotRoute)
@@ -473,7 +473,7 @@ Write the value Rojo reads, or remove the property. See [Metadata Files](/docs/v
 
 ### `meta.unknownField` [#meta-unknownfield]
 
-Warning. A meta file has a field that is a slip from one Rojo reads, such as `classname` for `className`. Rojo ignores a field it doesn't know without a word, so the property never applies. A field that resembles none, such as `$schema`, is left alone.
+Warning. A meta file has a field that is a slip from one Rojo reads, such as `classname` for `className` in an `init.meta.json`. Rojo ignores a field it doesn't know without a word, so the property never applies. A field that resembles none, such as `$schema`, is left alone.
 
 ```
 src/Combat/init.meta.json:2:3 - warning: unknown field "classname"; Rojo ignores it. Did you mean "className"? (meta.unknownField)
@@ -931,7 +931,7 @@ Move to Rojo 7.7.1 or newer. See [CLI](/docs/v2/cli#serve).
 Error. Rojo exited with an error while Rogen ran it, such as `rojo build` for `rogen build -o`. The message gives how it exited and what Rojo said.
 
 ```
-default.project.json - error: 'rojo build' failed (exit code 1): Failed to write to game.rbxl. (rojo.commandFailed)
+default.project.json - error: 'rojo build' failed (exit code 1): failed to create file 'nodir/game.rbxl' Caused by: No such file or directory (os error 2). (rojo.commandFailed)
 ```
 
 Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the command again.
@@ -960,7 +960,7 @@ Bring the changes into the source files by hand, or run `rogen syncback` on a pr
 
 ### `syncback.removedFromProjectFile` [#syncback-removedfromprojectfile]
 
-Error. The place no longer holds an instance that a node of the config's own `tree` defines, which Rojo's syncback refuses to remove: it doesn't edit project files. Files Rogen placed are synced through a mirror and can always be removed; this is about the nodes you wrote yourself.
+Error. The place no longer holds an instance that a node of the config's own `tree` defines, which Rojo's syncback refuses to remove: it changes the properties of a project file's nodes, but never adds or removes one. Files Rogen placed are synced through a mirror and can always be removed; this is about the nodes you wrote yourself.
 
 ```
 default.rogen.json - error: the place no longer holds Workspace/Map, and the tree of the config defines it, which syncback cannot remove. Remove its node from the tree, then run syncback again. (syncback.removedFromProjectFile)
@@ -983,7 +983,7 @@ It is also how syncback lists what it can't write:
 - a property set on a folder that no one folder of the project is
 - a property set on a node that only routing made (the `tree` has none)
 - a copy of an init script edited differently from another copy of it, or deleted while another was edited (the edit is written)
-- a change Rojo itself can't sync back (a `.json` or `.toml` module)
+- a change Rojo itself can't sync back (a `.json` or `.toml` module, which Rojo skips; a changed `.yaml` or `.yml` module makes Rojo's syncback fail)
 
 The message says why.
 
