@@ -10,7 +10,7 @@ Check existing issues before opening a new one. If a new bug is found, open an i
 
 - A summary of the problem.
 - Steps to reproduce the bug.
-- Your `rogen.json` and folder structure, if applicable.
+- Your `.rogen.json` and folder structure, if applicable.
 - Expected behavior versus actual results.
 
 ### Suggesting Features

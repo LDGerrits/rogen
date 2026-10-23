@@ -1,6 +1,6 @@
 import { isObject } from "../../base/objects.js";
 import { parse, setJsoncValue } from "../../base/jsonc.js";
-import { RojoNode } from "../rojo/rojo-project.js";
+import { RojoNode, childNodes } from "../rojo/rojo-project.js";
 
 /** What Rojo's syncback changed at one node of the project file it ran on. */
 export interface TreeChange {
@@ -18,12 +18,6 @@ export interface TreeChange {
 }
 
 const isKey = (key: string) => key.startsWith("$") && key !== "$path";
-
-const children = (node: RojoNode): [string, RojoNode][] =>
-	Object.entries(node).filter(
-		(entry): entry is [string, RojoNode] =>
-			!entry[0].startsWith("$") && isObject(entry[1])
-	);
 
 /** Whether two values hold the same data, whatever order their keys are in. */
 const same = (a: unknown, b: unknown): boolean => {
@@ -46,7 +40,7 @@ const CLEARABLE = ["$properties", "$attributes"];
 
 const holdsPath = (node: RojoNode): boolean =>
 	node.$path !== undefined ||
-	children(node).some(([, child]) => holdsPath(child));
+	childNodes(node).some(([, child]) => holdsPath(child));
 
 /** The changes that turn `before` into `after`, node by node. A node Rojo left out is not a change, as it can't remove one a project file defines; `$path` is not one either, as it points into the mirror. */
 export function treeChanges(
@@ -60,8 +54,8 @@ export function treeChanges(
 		if (!same(before[key], after[key])) set[key] = after[key];
 	for (const key of CLEARABLE)
 		if (key in before && !(key in after)) remove.push(key);
-	const known = new Map(children(before));
-	const added = children(after)
+	const known = new Map(childNodes(before));
+	const added = childNodes(after)
 		.filter(([name]) => !known.has(name))
 		.map(([name, child]) => ({ name, node: child }));
 	const here: TreeChange[] =
@@ -70,7 +64,7 @@ export function treeChanges(
 			: [];
 	return [
 		...here,
-		...children(after).flatMap(([name, child]) => {
+		...childNodes(after).flatMap(([name, child]) => {
 			const old = known.get(name);
 			return old ? treeChanges(old, child, [...node, name]) : [];
 		}),

@@ -103,7 +103,7 @@ Check a thing once, where it lives, and leave it out of the other cases.
   (`config-deleted-plain-project`), a stale file (`check-stale-project-warning`), and the second files of Darklua and release setups.
 - What a command does with its project argument, and what it prints, is
   checked by `cases/commands`: `build`, `check` and `where`, with
-  several projects as folders (`build-several-projects`, `build-same-errors-error`),
+  several projects as folders (`build-one-project-at-a-time`, `build-different-errors-error`),
   the forms `[PROJECT]` takes (`build-project-path`, `build-project-argument-error`,
   `from-subfolder`, which shows a bare command reading only its own folder), a stale `default.project.json` (`check-stale-project-file-warning`),
   `--json`, `--quiet`, `--verbose`, `--color`, help, and the unknown
@@ -130,8 +130,8 @@ It prints the edits to the transcripts, grouped, with the number of transcripts 
 
 Read that list first, and open the diff of a transcript only for an edit you did not expect. `npm run test:e2e:diff` prints the list again for what is not yet committed.
 
-`watch.test.ts` and `serve-rojo.test.ts` cover the long-running `watch` and
-`serve` commands, which a transcript can't describe. The serve tests start the
+`watch.test.ts` and `serve-rojo.test.ts` cover the long-running `write --watch`,
+`build --watch` and `serve`, which a transcript can't describe. The serve tests start the
 pinned Rojo on a random port.
 
 ## On Windows

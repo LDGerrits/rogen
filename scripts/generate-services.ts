@@ -9,6 +9,7 @@ import {
 	renderServicesModule,
 	selectServices,
 } from "./services-module.js";
+import { pinnedRojoVersion } from "./vendor-rojo-tests.js";
 
 const OUTPUT = path.resolve("src/domain/roblox/supported-services.ts");
 
@@ -16,14 +17,6 @@ async function fetchOk(url: string): Promise<Response> {
 	const response = await fetch(url);
 	if (!response.ok) throw new Error(`${url}: ${response.status}`);
 	return response;
-}
-
-function pinnedRojoVersion(): string {
-	const match = /rojo-rbx\/rojo@(\S+?)"/.exec(
-		fs.readFileSync("rokit.toml", "utf8")
-	);
-	if (!match) throw new Error("rokit.toml does not pin Rojo.");
-	return match[1];
 }
 
 interface PinnedCrate {
@@ -71,7 +64,7 @@ async function readDatabase(pinned: PinnedCrate): Promise<ReflectionDatabase> {
 	}
 }
 
-const rojoVersion = pinnedRojoVersion();
+const rojoVersion = pinnedRojoVersion(fs.readFileSync("rokit.toml", "utf8"));
 const database = await bundledDatabase(rojoVersion);
 const services = selectServices(await readDatabase(database));
 fs.writeFileSync(OUTPUT, renderServicesModule(services, rojoVersion));

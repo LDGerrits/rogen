@@ -14,6 +14,19 @@ export const GLOB_PROJECTS_DIR = path.resolve("e2e/rojo-glob-tests");
 
 const readJson = (file: string) => JSON.parse(fs.readFileSync(file, "utf8"));
 
+/** The place `rojo build` makes of the project in `project`, written to `output` in `dir`, as text; `undefined` when Rojo failed. */
+function placeOf(dir: string, project: string, output: string) {
+	const result = runRojo(project, [
+		"build",
+		"default.project.json",
+		"-o",
+		path.join(dir, output),
+	]);
+	return result.status === 0
+		? fs.readFileSync(path.join(dir, output), "utf8")
+		: undefined;
+}
+
 export interface RoundTrip {
 	/** The project file as Rojo's test has it. */
 	readonly original: unknown;
@@ -36,19 +49,8 @@ export function roundTrip(
 		fs.cpSync(path.join(projectsDir, name), project, { recursive: true });
 		const file = path.join(project, "default.project.json");
 		const original = readJson(file);
-		const placeOf = (output: string) => {
-			const result = runRojo(project, [
-				"build",
-				"default.project.json",
-				"-o",
-				path.join(dir, output),
-			]);
-			return result.status === 0
-				? fs.readFileSync(path.join(dir, output), "utf8")
-				: undefined;
-		};
 
-		const placeOfOriginal = placeOf("original.rbxmx");
+		const placeOfOriginal = placeOf(dir, project, "original.rbxmx");
 		fs.renameSync(file, path.join(project, "default.rogen.json"));
 		const [command, args] = invocation(cli, ["write"]);
 		const rogen = spawnSync(command, [...args], {
@@ -64,7 +66,7 @@ export function roundTrip(
 			written,
 			rogen,
 			placeOfOriginal,
-			placeOfWritten: placeOf("written.rbxmx"),
+			placeOfWritten: placeOf(dir, project, "written.rbxmx"),
 		};
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });
@@ -104,18 +106,7 @@ export function initRoundTrip(
 			typeof source === "string"
 				? runRojo(project, ["init", "--kind", source, "--skip-git"])
 				: { status: 0 };
-		const placeOf = (output: string) => {
-			const result = runRojo(project, [
-				"build",
-				"default.project.json",
-				"-o",
-				path.join(dir, output),
-			]);
-			return result.status === 0
-				? fs.readFileSync(path.join(dir, output), "utf8")
-				: undefined;
-		};
-		const placeOfTemplate = placeOf("template.rbxmx");
+		const placeOfTemplate = placeOf(dir, project, "template.rbxmx");
 		const [command, args] = invocation(cli, ["init", "--non-interactive"]);
 		const rogenInit = spawnSync(command, [...args], {
 			cwd: project,
@@ -125,7 +116,7 @@ export function initRoundTrip(
 			rojoInit,
 			rogenInit,
 			placeOfTemplate,
-			placeOfInit: placeOf("init.rbxmx"),
+			placeOfInit: placeOf(dir, project, "init.rbxmx"),
 		};
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });
@@ -166,17 +157,6 @@ export function kindRoundTrip(
 			fs.mkdirSync(project, { recursive: true });
 			return project;
 		};
-		const placeOf = (project: string, output: string) => {
-			const result = runRojo(project, [
-				"build",
-				"default.project.json",
-				"-o",
-				path.join(dir, output),
-			]);
-			return result.status === 0
-				? fs.readFileSync(path.join(dir, output), "utf8")
-				: undefined;
-		};
 		const filesOf = (project: string, ignoresWritten = false) =>
 			Object.fromEntries(
 				TEMPLATE_FILES.filter((file) =>
@@ -211,8 +191,8 @@ export function kindRoundTrip(
 		return {
 			rojo,
 			rogen,
-			placeOfRojo: placeOf(rojoDir, "rojo.rbxmx"),
-			placeOfRogen: placeOf(rogenDir, "rogen.rbxmx"),
+			placeOfRojo: placeOf(dir, rojoDir, "rojo.rbxmx"),
+			placeOfRogen: placeOf(dir, rogenDir, "rogen.rbxmx"),
 			filesOfRojo: filesOf(rojoDir),
 			filesOfRogen: filesOf(rogenDir, true),
 			gitOfRojo: fs.existsSync(path.join(rojoDir, ".git")),
