@@ -98,7 +98,7 @@ registerCommand(
 					summary:
 						"Writes, serves with Rojo, and rewrites on changes",
 					description:
-						"Writes the project file, serves it with Rojo, and rewrites it on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that. A failed write keeps it running: fix the error and it writes again. With --json, a serving line says Studio can connect, and a connected line that a Studio plugin has connected and gets your edits (Rojo 7.7+). When none comes, press Connect in the Rojo plugin.",
+						"Writes the project file, serves it with Rojo, and rewrites it on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that. A failed write keeps it running: fix the error and it writes again. With --json, a serving line says Studio can connect, and a connected line that a Studio plugin has connected and gets your edits. When none comes, press Connect in the Rojo plugin.",
 					args: ProjectArgument,
 					options: ServeOptions,
 					output: { lines: serveLineShape },

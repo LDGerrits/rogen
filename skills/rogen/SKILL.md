@@ -1,36 +1,29 @@
 ---
 name: rogen
-description: Rogen places Roblox code by its folder and file names and generates the Rojo project file. Use when a repo has a *.rogen.json and you add, move or rename source files, write a require or import, edit a *.rogen.json, or build or serve the game; or to set up Rogen in a new project.
+description: Set up Rogen, which places Roblox code by its folder and file names and generates the Rojo project file. Use to start a Roblox project, move a Rojo project onto Rogen, reorganise code into feature folders, or when a repo has a *.rogen.json and its AGENTS.md or CLAUDE.md has no Rogen section.
 ---
 
-<!-- rogen -->
-## Rogen
+# Setting up Rogen
 
-This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside it (`game.rogen.json` → `game.project.json`) and places code by its folder and file names. A file's path on disk is not its path in the game.
+Rogen's [agent rules](agent-rules.md) belong in the repo's `AGENTS.md`, where every session reads them. This skill gets a repo there. Read the rules before you change any code.
 
-### Placing code
+## Start a project, or move a Rojo project onto Rogen
 
-- Route keys are the names in a config's `rogen.routes`, such as `Server`, `Client` and `Shared`. A folder named after a key (`Shop/Server/`) sends everything in it to that route's target; a name ending in `@` and a key (`Save@Server.luau`) sends that file or folder.
-- The outermost route wins: `Shared/Server/Save.luau` still ships to clients. Put server-only code under a server route.
-- Put a new file next to similar files, then run `rogen where <path>` to see where it lands and the `require` that reaches it. It works before the file exists.
-- roblox-ts code imports by relative path.
+1. Run `rogen init --dry-run --json` in the project folder, or `rogen init <folder> --dry-run --json` for a new one. It writes nothing.
+2. Read `decided`, each choice init made with the flag that changes it, and `notes`, what it takes from an existing `default.project.json`. Ask the user about each choice the repo doesn't settle: Luau or roblox-ts, one place or several (`--places`), and whether to add the hook that checks changed files when an agent's turn ends (`--agent-hook`).
+3. Run `rogen init` with those flags. It writes the `*.rogen.json` and adds the agent rules to `AGENTS.md`.
+4. Do what its `nextSteps` say, then run `rogen check` and fix what it prints.
 
-### Changing the setup
+A Rojo project keeps its layout: each folder the project file mounted from `src` becomes a route, so every script stays where it was in the game.
 
-- Edit the `*.rogen.json`, never the generated `*.project.json`.
-- Configs share nothing. A change to `routes`, `sourcePaths` or `tree` goes into every `*.rogen.json` it applies to.
-- Read `rogen doc routing` before you add a route or use a naming pattern the repo doesn't use yet.
+## Add the agent rules to a repo that has Rogen
 
-### Checking
+`rogen init` stops where a `*.rogen.json` exists. Append [agent-rules.md](agent-rules.md) to the repo's `AGENTS.md`, or to `CLAUDE.md` when that is the only one, with its `<!-- rogen -->` markers.
 
-- After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints. In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
-- Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
-- roblox-ts: run `rogen write` before `rbxtsc`, which reads the project file.
-- To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
-- `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
-<!-- /rogen -->
+## Reorganise into feature folders
 
-## Starting a project
+A project moved from Rojo has one folder per side (`src/server`, `src/client`). Grouping it by feature changes instance paths, so agree the feature names with the user first, then for each feature:
 
-- `rogen init [folder]` starts a project. It never changes a folder that already has a `*.rogen.json`.
-- Under an agent it asks nothing. Run `rogen init --dry-run --json` to see the files and choices it would make, then set each choice with its flag (`rogen help init`).
+1. `git mv` its files into `src/<Feature>/<route key>/`: `src/server/Shop.luau` → `src/Shop/Server/Shop.luau`.
+2. Run `rogen where` on each moved file and update every require of it to the expression it prints, `script.Parent` requires included.
+3. Run `rogen check src/<Feature>` and fix what it prints.

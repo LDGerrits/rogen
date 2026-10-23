@@ -9,9 +9,9 @@ const read = (file: string) =>
 const block = (skill: string) =>
 	skill.match(/<!-- rogen -->\n([\s\S]*?)\n<!-- \/rogen -->/)?.[1];
 
-describe("rogen skill", () => {
+describe("agent rules", () => {
 	it("should hold the agent block between its markers", () => {
-		expect(block(read("skills/rogen/SKILL.md"))).toMatch(/^## Rogen\n/);
+		expect(block(read("skills/rogen/agent-rules.md"))).toMatch(/^## Rogen\n/);
 	});
 
 	it("should match the AGENTS.md snippet in the agents docs exactly", () => {
@@ -20,6 +20,10 @@ describe("rogen skill", () => {
 			/````md title="AGENTS\.md"\n([\s\S]*?)\n````/
 		);
 
-		expect(snippet?.[1]).toBe(block(read("skills/rogen/SKILL.md")));
+		expect(snippet?.[1]).toBe(block(read("skills/rogen/agent-rules.md")));
+	});
+
+	it("should be what the setup skill tells an agent to add", () => {
+		expect(read("skills/rogen/SKILL.md")).toContain("](agent-rules.md)");
 	});
 });
