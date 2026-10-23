@@ -1,8 +1,26 @@
-$ rogen write lobby
-exit 1
+$ rogen check
+exit 0
+
+$ rogen write
+exit 0
 stdout:
   rogen write
-  Wrote 0 of 1 project file.
-stderr:
-  error: lobby.rogen.json · not loaded
-  lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are both named "Game" but share no source path, so Studio and Rojo would list two games under one name. Change "name" in the copy. (config.duplicateName)
+  game.project.json · wrote
+  lobby.project.json · wrote
+  Wrote 2 of 2 project files.
+
+written:
+  game.project.json
+  lobby.project.json
+
+$ rojo sourcemap game.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- src/game/Util.luau
+  Workspace: Workspace  <- place/game/Workspace/init.meta.json
+
+$ rojo sourcemap lobby.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- src/lobby/Util.luau
+  Workspace: Workspace  <- place/lobby/Workspace/init.meta.json

@@ -38,7 +38,7 @@ describe("configs of one folder", () => {
 		expect(selection.requireValid().isErr()).toBe(true);
 	});
 
-	it("should refuse a config copied with only its sources changed", async () => {
+	it("should pass a copy with its sources changed and the name kept", async () => {
 		await write(
 			"/repo/game.rogen.json",
 			config("Game", { sourcePaths: ["src/game"] })
@@ -48,14 +48,12 @@ describe("configs of one folder", () => {
 			config("Game", { sourcePaths: ["src/lobby"] })
 		);
 
-		await start({ names: ["lobby"] });
+		await start({ names: ["game", "lobby"] });
 
-		expect(codes(0)).toEqual(["config.duplicateName"]);
-		expect(errors(0)[0].message).toContain("game.rogen.json");
-		expect(errors(0)[0].message).toContain("lobby.rogen.json");
+		expect(selection.requireValid().isOk()).toBe(true);
 	});
 
-	it("should refuse a config copied with its sources and tree changed but not its name", async () => {
+	it("should pass a copy with its sources and tree changed and the name kept", async () => {
 		await write(
 			"/repo/game.rogen.json",
 			config(
@@ -73,7 +71,7 @@ describe("configs of one folder", () => {
 			"/repo/lobby.rogen.json",
 			config(
 				"Game",
-				{ sourcePaths: ["src/lobby", "src/other"] },
+				{ sourcePaths: ["./src/common", "src/lobby"] },
 				{
 					tree: {
 						$className: "DataModel",
@@ -83,22 +81,7 @@ describe("configs of one folder", () => {
 			)
 		);
 
-		await start({ names: ["lobby"] });
-
-		expect(codes(0)).toEqual(["config.duplicateName"]);
-	});
-
-	it("should pass a copy that shares one source path with the config it repeats", async () => {
-		await write(
-			"/repo/game.rogen.json",
-			config("Game", { sourcePaths: ["src/common", "src/game"] })
-		);
-		await write(
-			"/repo/lobby.rogen.json",
-			config("Game", { sourcePaths: ["./src/common", "src/lobby"] })
-		);
-
-		await start({ names: ["lobby"] });
+		await start({ names: ["game", "lobby"] });
 
 		expect(selection.requireValid().isOk()).toBe(true);
 	});
