@@ -1,7 +1,7 @@
 {
 	"name": "@ldgerrits/rogen",
 	"version": "2.0.0-beta.1",
-	"description": "A CLI tool that enables feature-based architecture for Roblox",
+	"description": "A superset of Rojo that generates Rojo project files",
 	"publishConfig": {
 		"access": "public"
 	},
