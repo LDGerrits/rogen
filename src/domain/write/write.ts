@@ -1,0 +1,344 @@
+import { toPosix } from "../../base/path.js";
+import {
+	Diagnostic,
+	diagnosticKey,
+} from "../../platform/diagnostics/diagnostic.js";
+import { Result } from "../../base/result.js";
+import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
+import { ResolvedConfig } from "../config/resolved-config.js";
+import { ConfigSelection, validConfigs } from "../config/config-service.js";
+
+type MatchForm = "folder" | "marker" | "suffix";
+
+/** How the governing route matched the file; `init` is the route suffix of an init script in one of its folders, `copy` an init script placed where its folder's other files route it, and `fallback` the `*` route. */
+export type RouteMatch = MatchForm | "init" | "copy" | "fallback";
+
+/** Why the scan left a path out; the path is the key it is stored under. */
+export type ScanLeftOut =
+	| { readonly status: "ignored"; readonly pattern: string }
+	/** The tree mounts it with a `$path` at `node`, so Rojo reads it and Rogen leaves it alone. */
+	| { readonly status: "mounted"; readonly node: readonly string[] }
+	/** It lies in a folder that holds a `default.project.json`, which Rojo reads as the whole folder. */
+	| { readonly status: "inProject"; readonly project: string }
+	/** A link that loops back to an ancestor or points at nothing. */
+	| { readonly status: "skipped" }
+	/** Rojo ignores it because of the letter case of its extension; `rename` is the file name that Rojo reads. */
+	| { readonly status: "extensionCase"; readonly rename: string };
+
+/** Why the write leaves a path out of the tree, in the words `where` reports it. */
+export type LeftOut =
+	| ScanLeftOut
+	| { readonly status: "unrouted" }
+	| { readonly status: "replaced"; readonly by: string }
+	/** The tree defines the node it would be, or a `$path` above it. */
+	| { readonly status: "displaced"; readonly node: readonly string[] };
+
+interface RootSummary {
+	readonly sourcePath: string;
+	readonly files: number;
+	readonly ignored: number;
+	readonly mounted: number;
+	readonly skippedLinks: number;
+}
+
+interface RouteSummary {
+	readonly key: string;
+	readonly target: string;
+	readonly files: number;
+}
+
+export interface WriteSummary {
+	readonly roots: readonly RootSummary[];
+	/** In the order the config declares them. */
+	readonly routes: readonly RouteSummary[];
+	readonly unrouted: number;
+	readonly replaced: number;
+	readonly displaced: number;
+}
+
+export function isWritten(outcome: ConfigOutcome): outcome is WrittenConfig {
+	return outcome.kind === "wrote" || outcome.kind === "unchanged";
+}
+
+/** What a run did for a config that loaded; narrow it on `kind`. */
+export type LoadedConfig =
+	WrittenConfig | CheckedConfig | UnwrittenConfig | FailedConfig;
+
+/** What a run did for one selected config; one that didn't load has no `config`. */
+export type ConfigOutcome = LoadedConfig | UnloadedConfig;
+
+abstract class AbstractConfigOutcome {
+	constructor(
+		readonly config: ResolvedConfig,
+		private readonly findings: WriteFindings,
+		/** Why it failed; none unless it did. */
+		readonly errors: readonly Diagnostic[] = []
+	) {}
+
+	get file(): string {
+		return this.config.file;
+	}
+
+	get warnings(): readonly Diagnostic[] {
+		return this.findings.warnings;
+	}
+
+	/** What the compiled path check found for this version of the config; `undefined` while unknown. */
+	get syncWarnings(): readonly Diagnostic[] | undefined {
+		return this.findings.syncWarnings;
+	}
+
+	/** Everything the write has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
+	get diagnostics(): readonly Diagnostic[] {
+		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
+	}
+}
+
+/** A config prepared and written, or found unchanged on disk. */
+export class WrittenConfig extends AbstractConfigOutcome {
+	constructor(
+		config: ResolvedConfig,
+		readonly kind: "wrote" | "unchanged",
+		findings: WriteFindings,
+		readonly summary: WriteSummary,
+		/** The files the write read; a change to one must rewrite it. */
+		readonly readFiles: readonly string[]
+	) {
+		super(config, findings);
+	}
+}
+
+/** A config that didn't load, so there was nothing to write; `errors` is why. */
+export class UnloadedConfig {
+	readonly kind = "notLoaded";
+
+	constructor(
+		readonly file: string,
+		readonly errors: readonly Diagnostic[]
+	) {}
+
+	get warnings(): readonly Diagnostic[] {
+		return [];
+	}
+
+	get syncWarnings(): undefined {
+		return undefined;
+	}
+
+	get diagnostics(): readonly Diagnostic[] {
+		return this.errors;
+	}
+}
+
+/** A config that prepared cleanly in a run that writes nothing, and that a run which writes would have written. */
+export class CheckedConfig extends AbstractConfigOutcome {
+	readonly kind = "wouldWrite";
+
+	constructor(
+		config: ResolvedConfig,
+		findings: WriteFindings,
+		readonly summary: WriteSummary,
+		readonly readFiles: readonly string[]
+	) {
+		super(config, findings);
+	}
+}
+
+/** A config that prepared cleanly, but whose run stopped before writing it because the configs whose files `blockedBy` lists failed or didn't load. */
+export class UnwrittenConfig extends AbstractConfigOutcome {
+	readonly kind = "notWritten";
+
+	constructor(
+		config: ResolvedConfig,
+		findings: WriteFindings,
+		readonly summary: WriteSummary,
+		readonly readFiles: readonly string[],
+		readonly blockedBy: readonly string[]
+	) {
+		super(config, findings);
+	}
+}
+
+/** A config whose phases, write or set check went wrong; `findings` is what its phases found before that. */
+export class FailedConfig extends AbstractConfigOutcome {
+	readonly kind = "failed";
+
+	constructor(
+		config: ResolvedConfig,
+		errors: readonly Diagnostic[],
+		findings: WriteFindings = { warnings: [], syncWarnings: undefined }
+	) {
+		super(config, findings, errors);
+	}
+
+	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier write of this version found. */
+	static before(
+		config: ResolvedConfig,
+		errors: readonly Diagnostic[],
+		syncWarnings?: readonly Diagnostic[]
+	): FailedConfig {
+		return new FailedConfig(config, errors, { warnings: [], syncWarnings });
+	}
+}
+
+export interface WriteFindings {
+	readonly warnings: readonly Diagnostic[];
+	readonly syncWarnings: readonly Diagnostic[] | undefined;
+}
+
+interface SharedPart {
+	readonly fresh: readonly Diagnostic[];
+	/** The files of the earlier configs that raised all of them, when the config added none; empty otherwise. */
+	readonly sameAs: readonly string[];
+}
+
+/** The diagnostics of one kind a run's configs raised, so a config that repeats one adds nothing for it. */
+export class SharedDiagnostics {
+	private readonly raisedBy = new Map<string, string>();
+
+	private constructor(private readonly sameAcrossConfigs: boolean) {}
+
+	static errors(): SharedDiagnostics {
+		return new SharedDiagnostics(false);
+	}
+
+	static warnings(): SharedDiagnostics {
+		return new SharedDiagnostics(true);
+	}
+
+	/** Splits `diagnostics` of the config at `configFile` into those no config raised yet and the config files that raised the rest. */
+	take(configFile: string, diagnostics: readonly Diagnostic[]): SharedPart {
+		const owners = new Set<string>();
+		const fresh = diagnostics.filter((diagnostic) => {
+			const key = diagnosticKey(
+				diagnostic,
+				this.sameAcrossConfigs ? configFile : undefined
+			);
+			const owner = this.raisedBy.get(key);
+			if (owner === undefined) this.raisedBy.set(key, configFile);
+			else if (owner !== configFile) owners.add(owner);
+			return owner === undefined;
+		});
+		return {
+			fresh,
+			sameAs:
+				diagnostics.length > 0 && fresh.length === 0 ? [...owners] : [],
+		};
+	}
+}
+
+interface OutcomeShare {
+	readonly outcome: ConfigOutcome;
+	readonly warnings: SharedPart;
+	readonly errors: SharedPart;
+}
+
+/** The outcomes of one run, one per selected config in order; a warning several configs share, or an error a config repeats, is said once, by the first. */
+export class WriteRun {
+	readonly shares: readonly OutcomeShare[];
+
+	constructor(readonly outcomes: readonly ConfigOutcome[]) {
+		const warnings = SharedDiagnostics.warnings();
+		const errors = SharedDiagnostics.errors();
+		this.shares = outcomes.map((outcome) => ({
+			outcome,
+			warnings: warnings.take(outcome.file, [
+				...outcome.warnings,
+				...(outcome.syncWarnings ?? []),
+			]),
+			errors: errors.take(outcome.file, outcome.errors),
+		}));
+	}
+
+	/** Whether a config failed or didn't load, which writes nothing. */
+	get failed(): boolean {
+		return this.outcomes.some(
+			({ kind }) => kind === "failed" || kind === "notLoaded"
+		);
+	}
+
+	/** Every error of every config, repeats included: what the run fails with. */
+	get errors(): Diagnostic[] {
+		return this.outcomes.flatMap(({ errors }) => errors);
+	}
+
+	/** The warnings the run says, one several configs share counted once: what the closing line says. */
+	get warningCount(): number {
+		return this.shares.reduce(
+			(count, { warnings }) => count + warnings.fresh.length,
+			0
+		);
+	}
+
+	/** Why the run fails: its errors. */
+	failure(): Error | undefined {
+		return this.errors.length > 0
+			? new DiagnosticsError(this.errors)
+			: undefined;
+	}
+
+	/** What the run says, config by config: its fresh warnings, then its fresh errors. */
+	get diagnostics(): Diagnostic[] {
+		return this.shares.flatMap(({ warnings, errors }) => [
+			...warnings.fresh,
+			...errors.fresh,
+		]);
+	}
+}
+
+/** The project file a config writes, and the staging files its writes go through. */
+export class OutputFile {
+	constructor(readonly path: string) {}
+
+	stagingFile(token: string): string {
+		return `${this.path}.${token}.tmp`;
+	}
+
+	/** Matches the staging file of any writer, in posix form. */
+	get stagingPattern(): RegExp {
+		const escaped = toPosix(this.path).replace(
+			/[.*+?^${}()|[\]\\]/g,
+			"\\$&"
+		);
+		return new RegExp(`^${escaped}\\.[^/]+\\.tmp$`);
+	}
+}
+
+export class WriteSet {
+	constructor(readonly configs: readonly ResolvedConfig[]) {}
+
+	/** The configs of `selection` when every one is valid now; otherwise every error. */
+	static of(selection: ConfigSelection): Result<WriteSet, DiagnosticsError> {
+		return selection.requireValid().map((configs) => new WriteSet(configs));
+	}
+
+	/** The configs of `selection` that load, as a set, and the others as outcomes that didn't. */
+	static partition(selection: ConfigSelection): {
+		readonly set: WriteSet;
+		readonly unloaded: readonly UnloadedConfig[];
+	} {
+		return {
+			set: new WriteSet(
+				selection.entries.flatMap((entry) =>
+					entry.status === "valid" ? validConfigs(entry) : []
+				)
+			),
+			unloaded: selection.entries.flatMap((entry) =>
+				entry.status === "broken"
+					? [new UnloadedConfig(entry.file, entry.errors)]
+					: []
+			),
+		};
+	}
+
+	configOf(projectFile: string): ResolvedConfig | undefined {
+		return this.configs.find(
+			(config) => config.projectFile === projectFile
+		);
+	}
+
+	/** Every folder of every config that one listing covers. */
+	get indexedPaths(): string[] {
+		return this.configs.flatMap(({ indexedPaths }) => indexedPaths);
+	}
+}

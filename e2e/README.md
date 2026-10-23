@@ -81,12 +81,13 @@ Check a thing once, where it lives, and leave it out of the other cases.
   `src/domain/init`. The other `cases/init/` cases check what `init` writes and
   that Rojo accepts it.
 - What `build` and `write` print (header, per-project lines, closing line) is checked by
-  `build-log.test.ts` and `build-command.test.ts` in
+  `outcome-log.test.ts` and `write-watch.test.ts` in
+  `src/commands/write/__tests__/`, and `build-command.test.ts` in
   `src/commands/build/__tests__/`. A case lists `build` under `output` only when
   a line of it is the point, such as the `same warnings as` note of several
   projects, the `-v` debug lines or the path forms `[PROJECT]` takes.
 - The wording of a warning or an error is checked by the domain test of its code,
-  such as `build-validator.test.ts`. A case shows it on stderr to prove that it
+  such as `write-validator.test.ts`. A case shows it on stderr to prove that it
   reaches the user.
 - The project file and the tree Rojo sees are checked by the case of the feature:
   `cases/routing` for how folders and names place a file, `cases/structure` for

@@ -3,7 +3,7 @@ import { DisposableStore } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 
 import {
 	ProjectArgument,
@@ -23,16 +23,34 @@ import {
 } from "../../platform/environment/args.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "./build-log.js";
-import { BuildWatch } from "./build-watch.js";
+import { OutputShape } from "../../platform/output/output-shape.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { buildRojoEntryShape, rojoEntry } from "../write/rojo-entry.js";
 import {
-	buildDocument,
-	buildDocumentShape,
-	buildLineShape,
-	rojoEntry,
-} from "./build-document.js";
+	configsDocument,
+	watchLineShapes,
+	writeEntryShape,
+} from "../write/write-document.js";
+import { WriteWatch } from "../write/write-watch.js";
 import { BuildStep } from "./build-step.js";
-import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
+
+const S = OutputShape;
+
+/** The document of `build --json`. */
+const buildDocumentShape = S.object({
+	changed: S.boolean,
+	configs: S.array(writeEntryShape),
+	rojo: S.optional(buildRojoEntryShape),
+});
+
+/** One line of `build --watch --json`. */
+const buildLineShape = S.union(
+	watchLineShapes.write,
+	S.object({ rojo: buildRojoEntryShape }),
+	watchLineShapes.notice,
+	watchLineShapes.error
+);
 
 const OutputOption = {
 	name: "output",
@@ -121,7 +139,7 @@ registerCommand(
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
 				try {
-					return await new BuildWatch(
+					return await new WriteWatch(
 						accessor,
 						line.positionals,
 						Boolean(line.options.json),
@@ -133,7 +151,7 @@ registerCommand(
 			}
 
 			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			const logService = accessor.get(LogService);
 			if (!line.options.json) logService.reserveStdout();
 
@@ -144,7 +162,7 @@ registerCommand(
 			const planned = step.plan(selection.value);
 			if (planned.isErr()) return planned;
 
-			const run = await buildService.build(selection.value);
+			const run = await writeService.write(selection.value);
 
 			const failure = run.failure();
 			const plan = planned.value;
@@ -169,7 +187,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					{
-						...buildDocument(run.builds, cwd),
+						...configsDocument(run.outcomes, cwd),
 						rojo: rojoEntry(
 							{
 								command: "build",
@@ -182,7 +200,7 @@ registerCommand(
 					},
 					failure ?? rojoFailure
 				);
-			new BuildLog(logService, cwd).report(
+			new OutcomeLog(logService, cwd).report(
 				run,
 				selection.value.home,
 				"build",

@@ -99,12 +99,12 @@ stdout:
       "2": "the command line is wrong, or a terminal is needed and there is none"
     },
     "output": {
-      "document": "{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}",
-      "lines": "{build:BuildEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",config:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}"
+      "document": "{changed:bool,configs:[WriteEntry],rojo?:RojoEntry}",
+      "lines": "{write:WriteEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",config:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}"
     },
     "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {
-      "BuildEntry": "{config:string,projectFile:string|null,outcome:\"wrote\"|\"unchanged\"|\"wouldWrite\"|\"notWritten\",blockedBy?:[string],diagnostics:[Diagnostic]}",
+      "WriteEntry": "{config:string,projectFile:string|null,outcome:\"wrote\"|\"unchanged\"|\"wouldWrite\"|\"notWritten\",blockedBy?:[string],diagnostics:[Diagnostic]}",
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
       "Fix": "{rename:{from:string,to:string}}|{replace:{file:string,line:int,column:int,from:string,to:string}}|{run:{command:string,cwd:string}}",
       "RojoEntry": "{command:\"build\",outcome:\"built\"|\"failed\"|\"notRun\",project:string|null,output?:string,plugin?:string,messages:[{severity:\"error\"|\"warning\"|\"info\",text:string}],diagnostics?:[Diagnostic],error?:Error}",

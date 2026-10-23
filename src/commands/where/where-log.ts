@@ -7,7 +7,7 @@ import {
 	InstanceFix,
 	requireExpressionOf,
 	requireNoteOf,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 import { diagnosticSummary } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";
@@ -66,7 +66,7 @@ function outcomeOf(location: FileLocation, cwd: string): string {
 				? location.by.resource === location.source
 					? `not placed · it has an error (${location.by.code})`
 					: `not placed · ${relative(location.by.resource)} has an error (${location.by.code})`
-				: `not placed · the build stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
+				: `not placed · the write stops on ${relative(location.by.resource)} (${location.by.code}); run 'rogen check'`;
 		case "outside":
 			return "outside the source paths";
 		case "notInstance":

@@ -53,7 +53,7 @@ export function Features() {
 						},
 						{
 							title: "Watch and Diagnostics",
-							desc: "Rogen rebuilds as you work, picks up config edits on the fly, and points every error at a file and line.",
+							desc: "Rogen writes again as you work, picks up config edits on the fly, and points every error at a file and line.",
 							icon: <FaSyncAlt className="text-white" />,
 						},
 					].map((feature, i) => (

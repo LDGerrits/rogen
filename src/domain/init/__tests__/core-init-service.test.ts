@@ -1218,7 +1218,7 @@ describe("CoreInitService", () => {
 				tree: { $className: "DataModel", Workspace: {} },
 			});
 			expect(plan?.notes).toEqual([
-				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.",
 			]);
 		});
 

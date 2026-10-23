@@ -19,7 +19,7 @@ describe("syncback command", () => {
 	let fs: MemoryFileSystemService;
 	let processes: MockProcessService;
 
-	const buildable = () =>
+	const validEntry = () =>
 		mockEntry(
 			{
 				name: "repo",
@@ -41,7 +41,7 @@ describe("syncback command", () => {
 		const running = commandHarness({
 			fs,
 			log,
-			config: new MockConfigService([buildable()]),
+			config: new MockConfigService([validEntry()]),
 			processes,
 			prompt,
 		}).run("syncback", { positionals, options });

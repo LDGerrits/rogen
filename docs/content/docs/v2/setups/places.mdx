@@ -104,7 +104,7 @@ src/common/Inventory/Server/InventoryService.luau   every place
 src/lobby/Lobby/Server/LobbyService.luau            the lobby only
 ```
 
-A route clash between shared and place code (the same route and name) is reported when that place is built or checked, not when shared code changes.
+A route clash between shared and place code (the same route and name) is reported when that place is written or checked, not when shared code changes.
 
 </Step>
 
@@ -125,7 +125,7 @@ rogen serve arena --port <port>
 
 A `servePort` in the place's file does the same, and Rogen writes none. If the port is held by a server Rogen started for another file, in any folder, the error names that file and says to stop it or give this one a port. Studio remembers a port per place, so a Studio opened on the wrong place can end up on another place's port. Give each place its `servePlaceIds` and Rojo refuses the connection from any other place: see [Several places](/docs/v2/studio#several-places).
 
-Serving writes only the named file, so `lobby.project.json` is as fresh as the last `rogen write lobby`: see [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build).
+Serving writes only the named file, so `lobby.project.json` is as fresh as the last `rogen write lobby`: see [The project file is as fresh as its last write](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-write).
 
 </Step>
 

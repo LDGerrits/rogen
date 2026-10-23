@@ -1,6 +1,6 @@
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { UsageError } from "../../../base/errors.js";
-import { buildableFile, singleProjectError } from "../config-service.js";
+import { validFile, singleProjectError } from "../config-service.js";
 import { brokenEntry, mockEntry } from "./mock-config-service.js";
 
 describe("domain/config/config-service", () => {
@@ -23,13 +23,13 @@ describe("domain/config/config-service", () => {
 		});
 	});
 
-	describe("buildableFile", () => {
+	describe("validFile", () => {
 		const error = errorDiagnostic("x.err", { resource: "/a" }, "bad.");
 
 		it("should be the config of a valid entry", () => {
 			const entry = mockEntry();
 
-			expect(buildableFile(entry)?.config).toBe(entry.config);
+			expect(validFile(entry)?.config).toBe(entry.config);
 		});
 
 		it("should be the last valid version of a broken entry", () => {
@@ -37,13 +37,11 @@ describe("domain/config/config-service", () => {
 				sourcePaths: ["/repo/a"],
 			});
 
-			expect(buildableFile(entry)?.config.sourcePaths).toEqual([
-				"/repo/a",
-			]);
+			expect(validFile(entry)?.config.sourcePaths).toEqual(["/repo/a"]);
 		});
 
 		it("should be undefined for a config that was never valid", () => {
-			expect(buildableFile(brokenEntry([error]))).toBeUndefined();
+			expect(validFile(brokenEntry([error]))).toBeUndefined();
 		});
 	});
 });

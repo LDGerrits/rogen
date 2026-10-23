@@ -1,42 +1,42 @@
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { BuildRun, isWritten } from "../../domain/build/build.js";
+import { WriteRun, isWritten } from "../../domain/write/write.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import { isPlain } from "./write-document.js";
 
 /** What `rogen write` says: a line for each config and each project file it left alone, then how many it wrote. */
 export class WriteLog {
-	private readonly buildLog: BuildLog;
+	private readonly outcomeLog: OutcomeLog;
 
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
 	) {
-		this.buildLog = new BuildLog(logService, cwd);
+		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
 
 	report(
-		run: BuildRun,
+		run: WriteRun,
 		home: string,
 		plainProjects: readonly string[]
 	): void {
-		this.buildLog.begin("write", [], home);
-		for (const { build, warnings, errors } of run.shares) {
+		this.outcomeLog.begin("write", [], home);
+		for (const { outcome, warnings, errors } of run.shares) {
 			const diagnostics = [...warnings.fresh, ...errors.fresh];
-			if (isPlain(build)) {
-				this.plain(build.file);
-				this.buildLog.diagnostics(diagnostics, build.file);
+			if (isPlain(outcome)) {
+				this.plain(outcome.file);
+				this.outcomeLog.diagnostics(diagnostics, outcome.file);
 			} else
-				this.buildLog.outcome(build, diagnostics, {
+				this.outcomeLog.outcome(outcome, diagnostics, {
 					notes: [
-						this.buildLog.sameAs("errors", errors.sameAs),
-						this.buildLog.sameAs("warnings", warnings.sameAs),
+						this.outcomeLog.sameAs("errors", errors.sameAs),
+						this.outcomeLog.sameAs("warnings", warnings.sameAs),
 					],
 				});
 		}
 		for (const file of plainProjects) this.plain(file);
-		const configs = run.builds.filter((build) => !isPlain(build));
+		const configs = run.outcomes.filter((outcome) => !isPlain(outcome));
 		const written = configs.filter(isWritten).length;
 		const count = `Wrote ${written} of ${plural(configs.length, "project file")}`;
 		if (run.failed) this.logService.closeFrame(`${count}.`);

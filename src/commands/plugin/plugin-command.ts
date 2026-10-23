@@ -16,7 +16,7 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape as S } from "../../platform/output/output-shape.js";
-import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
 
 const PluginOptions = [JsonOption] as const;
 

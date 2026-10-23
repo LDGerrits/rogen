@@ -2,8 +2,8 @@ import { Result, ok } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { IndexService } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet } from "../build/build.js";
-import { BuildService } from "../build/build-service.js";
+import { WriteSet } from "../write/write.js";
+import { WriteService } from "../write/write-service.js";
 import { ReloadableSelection } from "../config/config-service.js";
 import { CoreWatchSession } from "./core-watch-session.js";
 import { WatchOptions, WatchService, WatchSession } from "./watch-service.js";
@@ -14,14 +14,14 @@ export class CoreWatchService implements WatchService {
 	constructor(
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
-		private readonly buildService: BuildService
+		private readonly writeService: WriteService
 	) {}
 
 	watch(
 		selection: ReloadableSelection,
 		options?: WatchOptions
 	): Result<WatchSession, DiagnosticsError> {
-		const set = BuildSet.of(selection);
+		const set = WriteSet.of(selection);
 		if (set.isErr()) return set;
 
 		return ok(
@@ -30,7 +30,7 @@ export class CoreWatchService implements WatchService {
 				set.value,
 				this.watcher,
 				this.indexService,
-				this.buildService,
+				this.writeService,
 				options
 			)
 		);

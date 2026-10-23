@@ -11,7 +11,7 @@ Coding agents work best when the context they need is in one place and their cha
 2. **A small blast radius.** If features don't require each other, a diff that stays inside `Shop/` can only break the shop, and the file list tells you that before you read any code.
 3. **Boundaries a linter can check.** Rules like "features don't require each other" are rules about paths, so a linter can catch a crossed boundary before you review. See [Enforcing the Rules](/docs/v2/architectures#enforcing-the-rules).
 4. **Placement is declared.** Where a file ends up comes from a short `routes` map, not from conventions the agent has to infer.
-5. **No generated file to break.** Rogen rewrites the project file on every build, so there's nothing hand-maintained for an agent to corrupt.
+5. **No generated file to break.** Rogen rewrites the project file on every write, so there's nothing hand-maintained for an agent to corrupt.
 6. **It checks its own work.** `rogen where` shows where a file lands and why, and `rogen check` reports what is misplaced, with a non-zero exit.
 
 Left to itself, an agent assumes the path on disk is the instance path. It edits the generated project file, requires server code from shared code, or puts a `Server/` folder inside `Shared/` and ships it to every client. A short block of instructions prevents all of that.
@@ -46,7 +46,7 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 - To build a place or model file with Rojo, run `rogen build -o <file>`; `rogen build` needs `-o` or `-p`, so it is not how to write the project files.
 - Leave `rogen write --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background.
-- `rogen serve` exits 0 at once if another already serves the project, and non-zero with diagnostics if it can't serve or its config doesn't load; otherwise it prints a `serving` line once Studio can connect, and runs until that server stops. If the first build has errors, it prints them once and keeps watching: the `serving` line comes after you fix them, so don't restart it.
+- `rogen serve` exits 0 at once if another already serves the project, and non-zero with diagnostics if it can't serve or its config doesn't load; otherwise it prints a `serving` line once Studio can connect, and runs until that server stops. If the first write has errors, it prints them once and keeps watching: the `serving` line comes after you fix them, so don't restart it.
 - When the `serving` line has `"reportsConnections": true`, wait for the `connected` line before you count on Studio having your edits; if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions).
 - Before placing files or writing requires, read `rogen doc routing`.
 - Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document).

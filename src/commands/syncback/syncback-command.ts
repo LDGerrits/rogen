@@ -1,7 +1,7 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -30,7 +30,7 @@ import {
 } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import {
 	SyncbackOutcome,
 	syncbackDocument,
@@ -157,11 +157,11 @@ registerCommand(
 			const refusal = project && syncbacks.refusalFor(project);
 			if (refusal) return err(refusal);
 
-			const buildService = accessor.get(BuildService);
-			let build = dryRun
-				? await buildService.check(selection.value)
-				: await buildService.build(selection.value);
-			const failure = build.failure();
+			const writeService = accessor.get(WriteService);
+			let run = dryRun
+				? await writeService.check(selection.value)
+				: await writeService.write(selection.value);
+			const failure = run.failure();
 
 			const request =
 				project &&
@@ -202,14 +202,12 @@ registerCommand(
 					}
 				}
 				if (outcome.kind === "written") {
-					const rebuilt = await buildService.build(selection.value);
+					const rewritten = await writeService.write(selection.value);
 					if (
-						rebuilt.failure() ||
-						rebuilt.builds.some(
-							({ outcome }) => outcome === "wrote"
-						)
+						rewritten.failure() ||
+						rewritten.outcomes.some(({ kind }) => kind === "wrote")
 					)
-						build = rebuilt;
+						run = rewritten;
 				}
 			}
 			let stopped: Error | undefined;
@@ -219,14 +217,14 @@ registerCommand(
 				return this.printJson(
 					logService,
 					syncbackDocument(
-						build.builds,
+						run.outcomes,
 						cwd,
 						syncbackEntry(input, outcome, cwd)
 					),
 					failure ?? stopped
 				);
-			new BuildLog(logService, cwd).report(
-				build,
+			new OutcomeLog(logService, cwd).report(
+				run,
 				selection.value.home,
 				"syncback",
 				!dryRun

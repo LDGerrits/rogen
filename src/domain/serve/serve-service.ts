@@ -48,7 +48,7 @@ export class ServePlan {
 		readonly serverArgs: readonly string[]
 	) {}
 
-	/** Whether another serve already serves the target, so nothing is built or watched. */
+	/** Whether another serve already serves the target, so nothing is written or watched. */
 	get isIdle(): boolean {
 		return isServed(this.target);
 	}
@@ -123,7 +123,7 @@ export interface ServeSession extends Disposable {
 	/** The target a server of the session runs for; none until one starts. */
 	readonly target: ServeTarget | undefined;
 
-	/** Builds, then starts the servers once a build succeeds, and keeps watching until then. Fails when the first build throws or a file it wrote can't be served by the Rojo that runs. */
+	/** Writes, then starts the servers once a write succeeds, and keeps watching until then. Fails when the first write throws or a file it wrote can't be served by the Rojo that runs. */
 	start(): Promise<Result<void, Error>>;
 	/** Ends every server and its processes, then stops the watch. Safe to call twice. */
 	stop(): Promise<void>;
@@ -135,7 +135,7 @@ export interface ServeService {
 	/** Fails when the config is broken, no server can run, or something else holds the port. */
 	prepare(request: ServeRequest): Promise<Result<ServePlan, Error>>;
 
-	/** A session for `plan`. Fails as a watch would when the configs can't be built together. */
+	/** A session for `plan`. Fails as a watch would when the configs can't be written together. */
 	serve(plan: ServePlan): Result<ServeSession, DiagnosticsError>;
 }
 

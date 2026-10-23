@@ -1,7 +1,7 @@
 import path from "path";
 import { isGlobsetMatch } from "../../base/glob.js";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { PlacedLocation } from "../build/build-service.js";
+import { PlacedLocation } from "../write/write-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
 	RojoNode,
@@ -38,15 +38,15 @@ export interface MirrorEntry {
 }
 
 export interface SyncbackMirrorInputs {
-	/** The project file a build wrote, which every `$path` in is relative to `dir`. */
+	/** The project file a write wrote, which every `$path` in is relative to `dir`. */
 	readonly written: RojoProjectFile;
 	/** The config's folder, where the temporary project file goes. */
 	readonly dir: string;
 	/** Where the mirror goes, relative to `dir` and written with `/`. */
 	readonly root: string;
-	/** The files the build placed, which tell a node it made from a node of the user's tree. */
+	/** The files the write placed, which tell a node it made from a node of the user's tree. */
 	readonly placed: readonly PlacedLocation[];
-	/** The absolute folders the build's `$path`s point into: the source paths and the compiled path. */
+	/** The absolute folders the written `$path`s point into: the source paths and the compiled path. */
 	readonly reads: readonly string[];
 	/** How Rojo reads the file at an absolute path written with `/`. */
 	readonly fileAt: (target: string) => RojoFile;
@@ -64,12 +64,12 @@ function commonFolder(targets: readonly string[]): string {
 	return folder;
 }
 
-/** The project file Rojo's syncback runs on: the written one, with every node the build made from a file or a plain folder moved into a mirror folder laid out by instance path, so Rojo edits, adds and removes there as in a plain Rojo project. */
+/** The project file Rojo's syncback runs on: the written one, with every node the write made from a file or a plain folder moved into a mirror folder laid out by instance path, so Rojo edits, adds and removes there as in a plain Rojo project. */
 export class SyncbackMirror {
 	private constructor(
 		readonly file: RojoProjectFile,
 		readonly entries: readonly MirrorEntry[],
-		/** Mirror folders to make even when no file lands in them: plain folders the build made, and the folders nodes are mounted at; relative to the mirror's root. */
+		/** Mirror folders to make even when no file lands in them: plain folders the write made, and the folders nodes are mounted at; relative to the mirror's root. */
 		readonly folders: readonly string[],
 		/** The sync rules of the written file, which apply to the mirror once its files are known. */
 		private readonly rules: readonly SyncRule[]
@@ -184,7 +184,7 @@ class MirrorWalk {
 		this.folders.push(folder);
 	}
 
-	/** Moves the children of `node` that the build made into the mirror folder `folder`, and points every other child at a copy in the mirror, so Rojo writes nothing outside it; whether any moved. With no `folder`, every child stays a node. A `node` that already reads `folder` by its `$path` is `mounted`. */
+	/** Moves the children of `node` that the write made into the mirror folder `folder`, and points every other child at a copy in the mirror, so Rojo writes nothing outside it; whether any moved. With no `folder`, every child stays a node. A `node` that already reads `folder` by its `$path` is `mounted`. */
 	async children(
 		node: RojoNode,
 		instancePath: readonly string[],
@@ -243,7 +243,7 @@ class MirrorWalk {
 		);
 	}
 
-	/** Whether `node` is a plain folder whose every child the build made, so its folder can lie inside the one of its parent. */
+	/** Whether `node` is a plain folder whose every child the write made, so its folder can lie inside the one of its parent. */
 	private madeWhole(
 		node: RojoNode,
 		instancePath: readonly string[]
@@ -396,7 +396,7 @@ class MirrorWalk {
 		this.addFolder(folder);
 	}
 
-	/** The file or folder a node of the build points at, when the build made the node from it; none for a node of the user's own tree. */
+	/** The file or folder a written node points at, when the write made the node from it; none for a node of the user's own tree. */
 	private madeFrom(
 		node: RojoNode,
 		instancePath: readonly string[]

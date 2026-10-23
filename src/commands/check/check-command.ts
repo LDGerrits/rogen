@@ -3,13 +3,13 @@ import { relativeTo, samePath } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
-	BuildService,
+	WriteService,
 	Diagnosis,
 	mergeDiagnoses,
 	uniqueSkipped,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 
-import { AskedPaths, skippedNotes } from "../../domain/build/asked-paths.js";
+import { AskedPaths, skippedNotes } from "../../domain/write/asked-paths.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -61,7 +61,7 @@ registerCommand(
 							description: [
 								"A file or a directory. A directory gives the files in it, and a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file is ignored.",
 								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. Naming a .rogen.json, or a config as build reads it (game for game.rogen.json), checks that config whole.",
-								"- Skipped: a path no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document.",
+								"- Skipped: a path Rogen leaves out, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document.",
 								"- No path: every .rogen.json of the working directory, whole, compiled path warnings included; with none, the plain project file there.",
 							].join("\n"),
 							isOptional: true,
@@ -123,7 +123,7 @@ registerCommand(
 			}
 			if (stoppedBy.length > 0)
 				logService.warn(
-					`Checked as far as the build gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
+					`Checked as far as the write gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
 				);
 			return failure ? this.reported(failure) : ok(undefined);
 		}
@@ -134,18 +134,18 @@ registerCommand(
 			given: readonly string[]
 		): Promise<Result<Diagnosis, Error>> {
 			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
 				const selection = await configService.select(
 					await configService.configsHere()
 				);
 				if (selection.isErr()) return selection;
-				return buildService.diagnose(selection.value);
+				return writeService.diagnose(selection.value);
 			}
 			const asking = await AskedPaths.of(
 				configService,
-				buildService,
+				writeService,
 				cwd,
 				given
 			);
@@ -153,7 +153,7 @@ registerCommand(
 			const { asked, groups } = asking.value;
 			const parts: Diagnosis[] = [];
 			for (const { selection, indexes, whole } of groups) {
-				const found = await buildService.diagnose(
+				const found = await writeService.diagnose(
 					selection,
 					whole
 						? undefined
@@ -171,7 +171,7 @@ registerCommand(
 				)
 					parts.push({
 						diagnostics:
-							await buildService.staleProjectFiles(selection),
+							await writeService.staleProjectFiles(selection),
 						stoppedBy: [],
 						skipped: [],
 					});

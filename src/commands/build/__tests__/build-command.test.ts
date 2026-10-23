@@ -73,7 +73,7 @@ describe("build command", () => {
 		index?: IndexService
 	) => harness({ fs, log, config, index }).run("build", line);
 
-	const buildable = (overrides: ResolvedConfigSpec = {}, folder = "") =>
+	const validEntry = (overrides: ResolvedConfigSpec = {}, folder = "") =>
 		mockEntry(
 			{
 				name: folder || "repo",
@@ -88,7 +88,7 @@ describe("build command", () => {
 		await fs.writeFile(abs("src/A.luau"), "");
 
 		const result = await run(
-			new MockConfigService([buildable()]),
+			new MockConfigService([validEntry()]),
 			new MockLogService(),
 			{ positionals: ["a", "b"], options: toFile }
 		);
@@ -104,7 +104,7 @@ describe("build command", () => {
 		const logService = new MockLogService();
 
 		const result = await run(
-			new MockConfigService([buildable()]),
+			new MockConfigService([validEntry()]),
 			logService
 		);
 
@@ -241,8 +241,8 @@ describe("build command", () => {
 
 		await run(
 			new MockConfigService([
-				buildable({}, "lobby"),
-				buildable({}, "arena"),
+				validEntry({}, "lobby"),
+				validEntry({}, "arena"),
 			]),
 			logService
 		);
@@ -263,7 +263,7 @@ describe("build command", () => {
 
 		await run(
 			new MockConfigService([
-				buildable({ routes: { server: "ServerScriptService" } }),
+				validEntry({ routes: { server: "ServerScriptService" } }),
 			]),
 			logService
 		);
@@ -284,8 +284,8 @@ describe("build command", () => {
 
 		await run(
 			new MockConfigService([
-				buildable({}, "lobby"),
-				buildable({}, "bad"),
+				validEntry({}, "lobby"),
+				validEntry({}, "bad"),
 			]),
 			logService
 		);
@@ -298,7 +298,7 @@ describe("build command", () => {
 
 	describe("on GitHub Actions", () => {
 		const annotatedRun = async (
-			entries: ReturnType<typeof buildable>[],
+			entries: ReturnType<typeof validEntry>[],
 			line: CommandLine = { positionals: [], options: toFile }
 		) => {
 			const logService = new MockLogService("/repo", "/repo");
@@ -315,7 +315,7 @@ describe("build command", () => {
 				await fs.writeFile(abs(`src/F${i}@sever.luau`), "");
 
 			const { logService } = await annotatedRun([
-				buildable({
+				validEntry({
 					routes: {
 						"*": "ReplicatedStorage",
 						Server: "ServerScriptService",
@@ -336,7 +336,7 @@ describe("build command", () => {
 			await fs.writeFile(abs("src/Combat/A.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), '{"id": 1}');
 
-			const { logService } = await annotatedRun([buildable()]);
+			const { logService } = await annotatedRun([validEntry()]);
 
 			expect(logService.texts("annotation")).toEqual([
 				'::error file=src/Combat/init.meta.json,line=1,col=8,title=meta.wrongType::"id": expected a string, found a number.',
@@ -369,7 +369,7 @@ describe("build command", () => {
 		const withWarning = async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			return new MockConfigService([
-				buildable({ routes: { server: "ServerScriptService" } }),
+				validEntry({ routes: { server: "ServerScriptService" } }),
 			]);
 		};
 
@@ -429,8 +429,8 @@ describe("build command", () => {
 
 			const { document } = await buildJson(
 				new MockConfigService([
-					buildable({ routes, sourcePaths: [abs("src")] }, "lobby"),
-					buildable({ routes, sourcePaths: [abs("src")] }, "arena"),
+					validEntry({ routes, sourcePaths: [abs("src")] }, "lobby"),
+					validEntry({ routes, sourcePaths: [abs("src")] }, "arena"),
 				])
 			);
 
@@ -446,7 +446,7 @@ describe("build command", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
 			const { result, document } = await buildJson(
-				new MockConfigService([buildable()])
+				new MockConfigService([validEntry()])
 			);
 
 			expect(result.isOk()).toBe(true);
@@ -474,12 +474,12 @@ describe("build command", () => {
 		it("should say unchanged for a project file that was already up to date", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await run(
-				new MockConfigService([buildable()]),
+				new MockConfigService([validEntry()]),
 				new NullLogService()
 			);
 
 			const { document } = await buildJson(
-				new MockConfigService([buildable()])
+				new MockConfigService([validEntry()])
 			);
 
 			expect(document.configs[0].outcome).toBe("unchanged");
@@ -496,8 +496,8 @@ describe("build command", () => {
 
 			const { result, document } = await buildJson(
 				new MockConfigService([
-					buildable({}, "lobby"),
-					buildable({}, "arena"),
+					validEntry({}, "lobby"),
+					validEntry({}, "arena"),
 				])
 			);
 
@@ -534,7 +534,7 @@ describe("build command", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
 			const { logService } = await buildJson(
-				new MockConfigService([buildable()])
+				new MockConfigService([validEntry()])
 			);
 
 			expect(
@@ -587,7 +587,7 @@ describe("build command", () => {
 			const broken = brokenEntry([], "/repo/broken/default.rogen.json");
 
 			const { document } = await buildJson(
-				new MockConfigService([buildable({}, "lobby"), broken])
+				new MockConfigService([validEntry({}, "lobby"), broken])
 			);
 
 			expect(document.configs[0]).toMatchObject({
@@ -609,7 +609,7 @@ describe("build command", () => {
 
 		const withRojo = async (
 			options: CommandLine["options"],
-			config = new MockConfigService([buildable()])
+			config = new MockConfigService([validEntry()])
 		) => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const log = new MockLogService();
@@ -871,7 +871,7 @@ describe("build command", () => {
 			const { log, running } = await withRojo(
 				{ plugin: "Tool.rbxm" },
 				new MockConfigService([
-					buildable({ routes: { server: "ServerScriptService" } }),
+					validEntry({ routes: { server: "ServerScriptService" } }),
 				])
 			);
 			const rojo = await rojoStarted();

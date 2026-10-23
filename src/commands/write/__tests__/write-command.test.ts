@@ -92,7 +92,7 @@ describe("write command", () => {
 			expect(log.lines.at(-1)).toBe("outro: Wrote 1 of 2 project files.");
 		});
 
-		it("should write the other configs when one fails to build, and fail", async () => {
+		it("should write the other configs when one fails to write, and fail", async () => {
 			await fs.writeFile(abs("bad/Combat/A.luau"), "");
 			await fs.writeFile(abs("bad/Combat/init.meta.json"), '{"id": 1}');
 			await fs.writeFile(
@@ -129,7 +129,7 @@ describe("write command", () => {
 			expect(await fs.exists(abs("lobby.project.json"))).toBe(false);
 		});
 
-		it("should print the build document with --json", async () => {
+		it("should print the write document with --json", async () => {
 			const { run, log } = commandHarness({ fs });
 
 			await run("write", { positionals: [], options: { json: true } });

@@ -3,13 +3,13 @@ import { configPath } from "../../platform/config/config-path.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
-	BuildService,
+	WriteService,
 	Locations,
 	mergeLocations,
 	uniqueSkipped,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 
-import { AskedPaths, skippedNotes } from "../../domain/build/asked-paths.js";
+import { AskedPaths, skippedNotes } from "../../domain/write/asked-paths.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -37,7 +37,7 @@ const ASKING = { command: "where", lead: "See where it lands" };
 
 interface Located {
 	readonly locations: Locations;
-	/** The paths asked about that no build reads. */
+	/** The paths asked about that no write reads. */
 	readonly skipped: readonly SkippedPath[];
 }
 
@@ -60,7 +60,7 @@ registerCommand(
 								"- '-': reads text on stdin and prints it with each Studio instance path (Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12) written as file:line; an instance that several files place stays as it is, and is listed on stderr.",
 								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a config named as build reads it (game for game.rogen.json), lists every file of that config.",
 								"- Several configs: each answer names its config file, and so does config in the JSON.",
-								"- Skipped: a path no build reads gets a note on stderr, and is listed under skipped in the JSON document.",
+								"- Skipped: a path Rogen leaves out gets a note on stderr, and is listed under skipped in the JSON document.",
 								"- No path: every file of every config of the working directory. An instance or '-': its default config.",
 							].join("\n"),
 							isOptional: true,
@@ -123,14 +123,14 @@ registerCommand(
 			given: readonly string[]
 		): Promise<Result<Located, Error>> {
 			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
 				const selection = await configService.select(
 					await configService.configsHere()
 				);
 				if (selection.isErr()) return selection;
-				const located = await buildService.locate(selection.value, {
+				const located = await writeService.locate(selection.value, {
 					args: given,
 					cwd,
 				});
@@ -138,14 +138,14 @@ registerCommand(
 			}
 			const asking = await AskedPaths.of(
 				configService,
-				buildService,
+				writeService,
 				cwd,
 				given
 			);
 			if (asking.isErr()) return asking;
 			const parts: Locations[] = [];
 			for (const { selection, indexes, whole } of asking.value.groups) {
-				const located = await buildService.locate(selection, {
+				const located = await writeService.locate(selection, {
 					args: whole ? [] : asking.value.argsAt(indexes),
 					cwd,
 				});
@@ -226,7 +226,7 @@ registerCommand(
 				])
 			);
 			const located = await accessor
-				.get(BuildService)
+				.get(WriteService)
 				.locate(selection.value, { args: [...spans.values()], cwd });
 			if (located.isErr()) return located;
 			const logService = accessor.get(LogService);

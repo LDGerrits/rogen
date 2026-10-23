@@ -1,7 +1,7 @@
 import {
 	FileLocation,
 	InstanceLocation,
-} from "../../../domain/build/build-service.js";
+} from "../../../domain/write/write-service.js";
 import { mockConfig } from "../../../domain/config/__tests__/mock-config-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
 import {

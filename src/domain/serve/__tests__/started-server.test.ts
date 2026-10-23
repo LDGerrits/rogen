@@ -48,9 +48,9 @@ describe("StartedServer", () => {
 		["--port", "34872"]
 	);
 
-	const start = (built: ResolvedConfig = config) => {
+	const start = (project: ResolvedConfig = config) => {
 		server = new StartedServer(
-			{ ...target, config: built },
+			{ ...target, config: project },
 			plan,
 			new CoreRojoRunner(new CoreToolchainService(fileSystem), processes),
 			new ServerProbe(requests),

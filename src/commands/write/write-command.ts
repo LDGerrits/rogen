@@ -1,8 +1,8 @@
 import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { Result, ok } from "../../base/result.js";
-import { BuildRun } from "../../domain/build/build.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteRun } from "../../domain/write/write.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import { isDefaultConfigFileName } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
@@ -17,9 +17,12 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { buildLineShape } from "../build/build-document.js";
-import { BuildWatch } from "../build/build-watch.js";
-import { writeDocument, writeDocumentShape } from "./write-document.js";
+import { WriteWatch } from "../write/write-watch.js";
+import {
+	writeLineShape,
+	writeDocument,
+	writeDocumentShape,
+} from "./write-document.js";
 import { WriteLog } from "./write-log.js";
 
 const WatchOption = {
@@ -52,7 +55,7 @@ interface Targets {
 
 interface Written {
 	readonly home: string;
-	readonly run: BuildRun;
+	readonly run: WriteRun;
 }
 
 registerCommand(
@@ -68,7 +71,7 @@ registerCommand(
 					options: WriteOptions,
 					output: {
 						document: writeDocumentShape,
-						lines: buildLineShape,
+						lines: writeLineShape,
 					},
 					effects: ["writesFiles"],
 					unknownWordOffer: "To write a project file",
@@ -107,7 +110,7 @@ registerCommand(
 			const store = new DisposableStore();
 			const shutdown = this.untilShutdown(accessor, store);
 			try {
-				return await new BuildWatch(
+				return await new WriteWatch(
 					accessor,
 					this.watchedRefs(configs),
 					json,
@@ -141,7 +144,7 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** Builds `configs`, each on its own so one that fails does not stop the rest; nothing to build without configs. */
+		/** Writes `configs`, each on its own so one that fails does not stop the rest; nothing to write without configs. */
 		private async writeConfigs(
 			accessor: ServicesAccessor,
 			configs: readonly string[]
@@ -149,15 +152,15 @@ registerCommand(
 			if (configs.length === 0)
 				return ok({
 					home: accessor.get(EnvironmentService).cwd,
-					run: new BuildRun([]),
+					run: new WriteRun([]),
 				});
 			const selection = await accessor.get(ConfigService).select(configs);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes)
 				accessor.get(LogService).warn(note);
 			const run = await accessor
-				.get(BuildService)
-				.build(selection.value, { independent: true });
+				.get(WriteService)
+				.write(selection.value, { independent: true });
 			return ok({ home: selection.value.home, run });
 		}
 

@@ -50,7 +50,7 @@ stdout:
         "flag": "--skip-git"
       }
     ],
-    "built": [
+    "projects": [
       {
         "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",

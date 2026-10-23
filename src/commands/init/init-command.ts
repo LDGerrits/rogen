@@ -1,7 +1,7 @@
 import { CancelledError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildRun } from "../../domain/build/build.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteRun } from "../../domain/write/write.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	InitChoices,
@@ -38,7 +38,7 @@ const InitOptions = [
 		short: "n",
 		type: "boolean",
 		description:
-			"Plan without writing or building: print the files and choices, then stop.",
+			"Plan without writing: print the files and choices, then stop.",
 	},
 	{
 		name: "kind",
@@ -235,21 +235,21 @@ registerCommand(
 			);
 			if (written.isErr()) return reporter.failed(written.error);
 			if (dryRun) return reporter.planned(plan);
-			const built = await this.buildConfigs(accessor, plan);
-			if (built.isErr()) return reporter.failed(built.error);
-			return reporter.done(plan, built.value);
+			const run = await this.writeConfigs(accessor, plan);
+			if (run.isErr()) return reporter.failed(run.error);
+			return reporter.done(plan, run.value);
 		}
 
-		private async buildConfigs(
+		private async writeConfigs(
 			accessor: ServicesAccessor,
 			plan: InitPlan
-		): Promise<Result<BuildRun, Error>> {
-			if (plan.configs.length === 0) return ok(new BuildRun([]));
+		): Promise<Result<WriteRun, Error>> {
+			if (plan.configs.length === 0) return ok(new WriteRun([]));
 			const selection = await accessor
 				.get(ConfigService)
 				.select(plan.configs);
 			if (selection.isErr()) return selection;
-			return ok(await accessor.get(BuildService).build(selection.value));
+			return ok(await accessor.get(WriteService).write(selection.value));
 		}
 	}
 );

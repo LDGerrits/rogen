@@ -1,5 +1,5 @@
 import { configPath } from "../../platform/config/config-path.js";
-import { ConfigBuild } from "../../domain/build/build.js";
+import { ConfigOutcome } from "../../domain/write/write.js";
 import {
 	SyncbackChange,
 	SyncbackPlan,
@@ -14,7 +14,7 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { buildDocument, buildEntryShape } from "../build/build-document.js";
+import { configsDocument, writeEntryShape } from "../write/write-document.js";
 
 const S = OutputShape;
 
@@ -36,7 +36,7 @@ const syncbackEntryShape = S.named(
 /** The document of `syncback --json`. */
 export const syncbackDocumentShape = S.object({
 	changed: S.boolean,
-	configs: S.array(buildEntryShape),
+	configs: S.array(writeEntryShape),
 	syncback: syncbackEntryShape,
 });
 
@@ -95,14 +95,14 @@ export function syncbackEntry(
 }
 
 export function syncbackDocument(
-	builds: readonly ConfigBuild[],
+	outcomes: readonly ConfigOutcome[],
 	cwd: string,
 	syncback: SyncbackEntry
 ) {
-	const built = buildDocument(builds, cwd);
+	const written = configsDocument(outcomes, cwd);
 	return {
-		changed: built.changed || syncback.outcome === "written",
-		configs: built.configs,
+		changed: written.changed || syncback.outcome === "written",
+		configs: written.configs,
 		syncback,
 	};
 }

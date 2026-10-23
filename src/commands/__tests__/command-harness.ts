@@ -1,6 +1,6 @@
 import { Result } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
-import { CoreBuildService } from "../../domain/build/core-build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
+import { CoreWriteService } from "../../domain/write/core-write-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import { CoreConfigService } from "../../domain/config/core-config-service.js";
 import { CoreInitService } from "../../domain/init/core-init-service.js";
@@ -107,9 +107,9 @@ export function commandHarness(
 	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
 	const requests = options.requests ?? new MockRequestService();
-	const build = new CoreBuildService(fs, index, toolchain.syncTools);
+	const writeService = new CoreWriteService(fs, index, toolchain.syncTools);
 	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
-	const watch = new CoreWatchService(watcher, index, build);
+	const watch = new CoreWatchService(watcher, index, writeService);
 	const processes = options.processes ?? new MockProcessService();
 
 	const services = new ServiceCollection();
@@ -121,7 +121,7 @@ export function commandHarness(
 	services.set(ConfigService, config);
 	services.set(IndexService, index);
 	services.set(ToolchainService, toolchain);
-	services.set(BuildService, build);
+	services.set(WriteService, writeService);
 	services.set(
 		InitService,
 		new CoreInitService(
@@ -152,7 +152,7 @@ export function commandHarness(
 	services.set(RojoCommandService, rojoCommands);
 	services.set(
 		SyncbackService,
-		new CoreSyncbackService(fs, build, rojoCommands)
+		new CoreSyncbackService(fs, writeService, rojoCommands)
 	);
 	services.set(
 		ServeService,

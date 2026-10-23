@@ -1,7 +1,7 @@
 import { PathSet } from "../../base/path.js";
 import { safeStringify } from "../../base/json.js";
 import { ConfigLoader, LoadedConfig } from "./config-loader.js";
-import { ConfigEntry, buildableFile } from "./config-service.js";
+import { ConfigEntry, validFile } from "./config-service.js";
 
 /** One config file that loads and reloads itself, and keeps its last valid version while the file is broken. */
 export class ManagedConfig {
@@ -56,7 +56,7 @@ export class ManagedConfig {
 			...fields,
 			status: "broken",
 			errors: loaded.resolved.error,
-			lastValid: this._entry && buildableFile(this._entry),
+			lastValid: this._entry && validFile(this._entry),
 		};
 	}
 
@@ -68,16 +68,16 @@ export class ManagedConfig {
 			this.text = ManagedConfig.identityOf(loaded);
 	}
 
-	/** Whether the version that builds changed. A reload that loads equal keeps the previous entry. */
+	/** Whether the valid version changed. A reload that loads equal keeps the previous entry. */
 	async reload(): Promise<boolean> {
-		const before = { text: this.text, built: buildableFile(this.entry) };
+		const before = { text: this.text, valid: validFile(this.entry) };
 		await this.load();
-		const built = buildableFile(this.entry);
-		if (this.text === undefined || !built) return false;
+		const valid = validFile(this.entry);
+		if (this.text === undefined || !valid) return false;
 
 		if (before.text !== this.text) return true;
-		if (this._entry?.status === "valid" && before.built)
-			this._entry = { ...this._entry, ...before.built };
+		if (this._entry?.status === "valid" && before.valid)
+			this._entry = { ...this._entry, ...before.valid };
 		return false;
 	}
 }

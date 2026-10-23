@@ -61,7 +61,7 @@ describe("TreePlan", () => {
 				rogen: { sourcePaths: ["src"], routes: LUAU_ROUTES },
 			});
 			expect(files.notes).toEqual([
-				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.",
 			]);
 			expect(files.nextSteps.edits).not.toContainEqual(
 				expect.stringContaining("Remove the nodes")
@@ -110,7 +110,7 @@ describe("TreePlan", () => {
 				},
 			});
 			expect(files.notes).toEqual([
-				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.",
+				"Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.",
 				"Left out ReplicatedStorage/Shared, ServerScriptService/Server, StarterPlayer/StarterPlayerScripts/Client and Workspace/Map, since they point into src and Rogen generates that code now.",
 				"Kept what Workspace/Map set in the tree, on the node the route lands on.",
 			]);

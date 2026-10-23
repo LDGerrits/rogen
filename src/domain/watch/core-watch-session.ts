@@ -9,15 +9,15 @@ import { Result, ok, tryWithAsync } from "../../base/result.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet } from "../build/build.js";
-import { BuildService } from "../build/build-service.js";
+import { WriteSet } from "../write/write.js";
+import { WriteService } from "../write/write-service.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ChangeBatcher } from "./change-batcher.js";
 import { WatchedConfig } from "./watched-config.js";
 import { WatchPlan } from "./watch-plan.js";
 import {
-	RebuildReport,
+	RewriteReport,
 	WatchCause,
 	WatchOptions,
 	WatchSession,
@@ -25,7 +25,7 @@ import {
 	ChangeBurst,
 } from "./watch-service.js";
 
-/** A running watch; rebuilds of one config never overlap. */
+/** A running watch; rewrites of one config never overlap. */
 export class CoreWatchSession
 	extends AbstractDisposable
 	implements WatchSession
@@ -51,10 +51,10 @@ export class CoreWatchSession
 
 	constructor(
 		private readonly selection: ReloadableSelection,
-		private buildSet: BuildSet,
+		private writeSet: WriteSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
-		private readonly buildService: BuildService,
+		private readonly writeService: WriteService,
 		private readonly options: WatchOptions = {}
 	) {
 		super();
@@ -63,7 +63,7 @@ export class CoreWatchSession
 	}
 
 	get configs(): readonly ResolvedConfig[] {
-		return this.buildSet.configs;
+		return this.writeSet.configs;
 	}
 
 	async start(): Promise<Result<void, Error>> {
@@ -93,7 +93,7 @@ export class CoreWatchSession
 		this.announce(
 			{ kind: "initial" },
 			this.selection.configs.map(({ projectFile }) =>
-				this.queueRebuild(projectFile)
+				this.queueRewrite(projectFile)
 			)
 		);
 		this.started = true;
@@ -165,19 +165,19 @@ export class CoreWatchSession
 		);
 	}
 
-	private async rebuild(
+	private async rewrite(
 		watched: WatchedConfig,
 		projectFile: string,
-		rewrite: boolean
-	): Promise<RebuildReport | undefined> {
-		if (!this.buildSet.configOf(projectFile)) return undefined;
+		force: boolean
+	): Promise<RewriteReport | undefined> {
+		if (!this.writeSet.configOf(projectFile)) return undefined;
 		return watched.finished(
-			await this.buildService.rebuild(
-				this.buildSet,
+			await this.writeService.rewrite(
+				this.writeSet,
 				projectFile,
 				this.listing,
 				watched.latest,
-				rewrite
+				force
 			)
 		);
 	}
@@ -203,10 +203,10 @@ export class CoreWatchSession
 		void tracked.finally(() => this.pending.delete(tracked));
 	}
 
-	private queueRebuild(
+	private queueRewrite(
 		projectFile: string,
-		rewrite = false
-	): Promise<RebuildReport | undefined> {
+		force = false
+	): Promise<RewriteReport | undefined> {
 		let watched = this.watched.get(projectFile);
 		if (!watched) {
 			watched = new WatchedConfig();
@@ -214,7 +214,7 @@ export class CoreWatchSession
 		}
 		const config = watched;
 		const queued = config.queue(
-			this.guarded(() => this.rebuild(config, projectFile, rewrite))
+			this.guarded(() => this.rewrite(config, projectFile, force))
 		);
 		this.track(queued);
 		return queued;
@@ -226,7 +226,7 @@ export class CoreWatchSession
 
 	private announce(
 		cause: WatchCause,
-		results: readonly Promise<RebuildReport | undefined>[],
+		results: readonly Promise<RewriteReport | undefined>[],
 		changes: readonly FileChange[] = []
 	): void {
 		const at = new Date();
@@ -290,7 +290,7 @@ export class CoreWatchSession
 	}
 
 	private refreshSet(): void {
-		this.buildSet = new BuildSet(this.selection.configs);
+		this.writeSet = new WriteSet(this.selection.configs);
 	}
 
 	private forgetRemoved(): void {
@@ -376,7 +376,7 @@ export class CoreWatchSession
 				reloaded: reloaded.length > 0,
 			},
 			[...affected].map((file) =>
-				this.queueRebuild(file, metaChanged.has(file))
+				this.queueRewrite(file, metaChanged.has(file))
 			),
 			sourceChanges
 		);
@@ -391,7 +391,7 @@ export class CoreWatchSession
 		this.announce(
 			{ kind: "burst", ...burst },
 			this.selection.configs.map(({ projectFile }) =>
-				this.queueRebuild(projectFile)
+				this.queueRewrite(projectFile)
 			)
 		);
 	}

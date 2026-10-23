@@ -66,7 +66,7 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
-	it("should rebuild when a source file is added and removed", async () => {
+	it("should rewrite when a source file is added and removed", async () => {
 		start();
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
@@ -206,7 +206,7 @@ describeWithRojo("end to end watch", () => {
 			expect(() => JSON.parse(document)).not.toThrow();
 	}, 30_000);
 
-	it("should count the warnings a rebuild doesn't repeat", async () => {
+	it("should count the warnings a rewrite doesn't repeat", async () => {
 		writeProjectFile(project.dir, "src/Save@sever.luau");
 		const running = start();
 		await eventually(() => {
@@ -244,7 +244,7 @@ describeWithRojo("end to end watch", () => {
 		expect(session?.output).toContain("default.rogen.json changed");
 	}, 30_000);
 
-	it("should keep building from the last valid config while the config is invalid", async () => {
+	it("should keep writing from the last valid config while the config is invalid", async () => {
 		const running = start();
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
@@ -257,7 +257,7 @@ describeWithRojo("end to end watch", () => {
 		);
 		await eventually(() => {
 			expect(running.output).toContain(
-				"Still building from the last valid"
+				"Still writing from the last valid"
 			);
 		});
 		expect(
@@ -456,10 +456,10 @@ describeWithRojo("end to end watch", () => {
 		});
 	}, 30_000);
 
-	it("should print only JSON lines on stdout with --json, one per build", async () => {
+	it("should print only JSON lines on stdout with --json, one per write", async () => {
 		const watching = start(["--json"]);
 		await eventually(() => {
-			expect(watching.stdout).toContain('"build"');
+			expect(watching.stdout).toContain('"write"');
 		});
 
 		writeProjectFile(project.dir, "src/B.luau");
@@ -469,7 +469,7 @@ describeWithRojo("end to end watch", () => {
 				.trim()
 				.split("\n")
 				.map((line) => JSON.parse(line));
-			expect(lines.map((line) => line.build.outcome)).toEqual([
+			expect(lines.map((line) => line.write.outcome)).toEqual([
 				"wrote",
 				"wrote",
 			]);

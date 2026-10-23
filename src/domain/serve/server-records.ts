@@ -4,7 +4,7 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServerInfo } from "../runner/rojo-server.js";
 import { ServeAddress } from "./serve.js";
 
-interface ServedBuild {
+interface ServedProject {
 	readonly projectFile: string;
 	/** The config the project file was written from. */
 	readonly configFile?: string;
@@ -12,7 +12,7 @@ interface ServedBuild {
 	readonly pid?: number;
 }
 
-export interface ServerRecord extends ServedBuild {
+export interface ServerRecord extends ServedProject {
 	readonly host: string;
 	readonly port: number;
 	readonly project: string;
@@ -74,7 +74,7 @@ export class ServerRecords {
 	async write(
 		address: ServeAddress,
 		info: ServerInfo,
-		built: ServedBuild
+		served: ServedProject
 	): Promise<void> {
 		await this.fileSystemService.writeFile(
 			this.fileOf(address.port),
@@ -83,10 +83,10 @@ export class ServerRecords {
 				port: address.port,
 				session: info.session,
 				project: info.project,
-				projectFile: built.projectFile,
-				configFile: built.configFile,
+				projectFile: served.projectFile,
+				configFile: served.configFile,
 				owner: this.owner,
-				pid: built.pid,
+				pid: served.pid,
 			})
 		);
 	}

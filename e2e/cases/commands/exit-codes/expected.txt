@@ -24,7 +24,7 @@ stderr:
   error: broken/default.rogen.json · not loaded
   broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
   broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  build failed.
+  write failed.
 
 $ rogen build ok
 exit 2
@@ -83,7 +83,7 @@ stderr:
   error: broken/default.rogen.json · not loaded
   broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
   broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  build failed.
+  write failed.
 
 $ rogen syncback ok
 exit 2
@@ -97,7 +97,7 @@ stderr:
   error: broken/default.rogen.json · not loaded
   broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
   broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
-  build failed.
+  write failed.
 
 $ rogen upload ok
 exit 2

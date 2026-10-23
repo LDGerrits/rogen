@@ -1,6 +1,6 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -19,9 +19,9 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
-import { rojoEntry } from "../build/build-document.js";
-import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { rojoEntry } from "../write/rojo-entry.js";
 import { uploadDocument, uploadDocumentShape } from "./upload-document.js";
 
 const AssetIdOption = {
@@ -127,10 +127,10 @@ registerCommand(
 				? undefined
 				: rojoService.choose(selection.value);
 
-			const build = await accessor
-				.get(BuildService)
-				.build(selection.value);
-			const failure = build.failure();
+			const written = await accessor
+				.get(WriteService)
+				.write(selection.value);
+			const failure = written.failure();
 			const uploaded =
 				failure || project === undefined
 					? undefined
@@ -151,14 +151,14 @@ registerCommand(
 				return this.printJson(
 					logService,
 					uploadDocument(
-						build.builds,
+						written.outcomes,
 						cwd,
 						rojoEntry({ command: "upload", cwd }, uploaded)
 					),
 					failure ?? rojoFailure
 				);
-			new BuildLog(logService, cwd).report(
-				build,
+			new OutcomeLog(logService, cwd).report(
+				written,
 				selection.value.home,
 				"upload"
 			);

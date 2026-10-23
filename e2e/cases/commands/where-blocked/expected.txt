@@ -1,7 +1,7 @@
 $ rogen where src/F/Shared/Good.luau src/F/Shared/Bad@server.luau
 exit 0
 stdout:
-  src/F/Shared/Good.luau -> not placed · the build stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'
+  src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'
   src/F/Shared/Bad@server.luau -> not placed · it has an error (route.ignoredAt)
     error: "@server" does nothing here, because the "shared" route already governs this file. Remove it, or move the file out of the "shared" route's files. (route.ignoredAt)
 

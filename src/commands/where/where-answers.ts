@@ -7,7 +7,7 @@ import {
 	InstanceFix,
 	Locations,
 	diagnosticsOf,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 
 interface FileAnswer {

@@ -24,9 +24,11 @@ description: The terms Rogen's docs use, and where each one is explained.
 
 - **Shared code**: A plain folder (`src/common`, or `projects/common/src` in roblox-ts) that each place lists in its `sourcePaths`. It has no config of its own. See [Places](/docs/v2/setups/places).
 
-- **Build**: One complete run that turns the source paths into the named project file. See [CLI](/docs/v2/cli#build-project).
+- **Write**: `rogen write`: one complete run that turns the source paths into the project file of every config of the folder, or of the one named. See [CLI](/docs/v2/cli#write-project).
 
-- **Watch**: A long-running build that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#build---watch).
+- **Build**: `rogen build`, Rojo's verb: writes the named project's file, then runs Rojo's build on it. See [CLI](/docs/v2/cli#build-project).
+
+- **Watch**: A long-running write that rewrites its output when files change, and reloads when a config changes. See [CLI](/docs/v2/cli#build---watch).
 
 - **Toolchain**: The language (Luau or roblox-ts), an optional processor and the package manager a project uses. `init` detects it once. See [CLI](/docs/v2/cli#init-path).
 

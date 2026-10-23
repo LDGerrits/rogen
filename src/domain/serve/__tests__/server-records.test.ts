@@ -13,7 +13,7 @@ describe("ServerRecords", () => {
 		version: "7.7.1",
 		session: "s1",
 	};
-	const built = { projectFile: "/repo/default.project.json" };
+	const served = { projectFile: "/repo/default.project.json" };
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
@@ -22,7 +22,7 @@ describe("ServerRecords", () => {
 
 	describe("recordOf", () => {
 		it("should give back what a serve recorded for the server that answers", async () => {
-			await records.write(address, info, built);
+			await records.write(address, info, served);
 
 			expect(await records.recordOf(address, info)).toEqual({
 				host: "127.0.0.1",
@@ -30,12 +30,12 @@ describe("ServerRecords", () => {
 				project: "Game",
 				session: "s1",
 				owner: 4242,
-				...built,
+				...served,
 			});
 		});
 
 		it("should record which serve wrote it and the process that leads the server", async () => {
-			await records.write(address, info, { ...built, pid: 1001 });
+			await records.write(address, info, { ...served, pid: 1001 });
 
 			expect(await records.recordOf(address, info)).toEqual(
 				expect.objectContaining({ owner: 4242, pid: 1001 })
@@ -46,7 +46,7 @@ describe("ServerRecords", () => {
 			["another session", { ...info, session: "s2" }],
 			["another project", { ...info, project: "Other" }],
 		])("should give nothing for %s", async (_, answering) => {
-			await records.write(address, info, built);
+			await records.write(address, info, served);
 
 			expect(await records.recordOf(address, answering)).toBeUndefined();
 		});
@@ -60,7 +60,7 @@ describe("ServerRecords", () => {
 
 	describe("remove", () => {
 		it("should forget a record", async () => {
-			await records.write(address, info, built);
+			await records.write(address, info, served);
 
 			await records.remove(address);
 

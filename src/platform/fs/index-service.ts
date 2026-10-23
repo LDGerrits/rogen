@@ -31,7 +31,7 @@ export class Listing implements IndexReader {
 	}
 }
 
-/** Lists directories into memory so a build reads memory, not the disk. Holds nothing itself. */
+/** Lists directories into memory so a write reads memory, not the disk. Holds nothing itself. */
 export interface IndexService {
 	readonly _serviceBrand: undefined;
 

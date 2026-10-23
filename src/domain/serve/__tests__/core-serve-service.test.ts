@@ -8,8 +8,8 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { buildServiceOf } from "../../build/__tests__/fixtures.js";
-import { CoreBuildService } from "../../build/core-build-service.js";
+import { writeServiceOf } from "../../write/__tests__/fixtures.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
 import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
@@ -84,7 +84,7 @@ describe("CoreServeService", () => {
 			memFs,
 			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
 			requests,
-			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
+			new CoreWatchService(watcher, index, writeServiceOf(memFs, index)),
 			new MockEnvironmentService(cwd, undefined, false, "/home/me"),
 			compatibility
 		);
@@ -611,20 +611,20 @@ describe("CoreServeService", () => {
 			jest.useRealTimers();
 		});
 
-		it("should build, then start the server on the project file", async () => {
+		it("should write, then start the server on the project file", async () => {
 			expect(await memFs.exists("/repo/default.project.json")).toBe(
 				false
 			);
 			const spawn = processes.spawn.bind(processes);
-			const builtAtSpawn: Promise<boolean>[] = [];
+			const writtenAtSpawn: Promise<boolean>[] = [];
 			jest.spyOn(processes, "spawn").mockImplementation((...args) => {
-				builtAtSpawn.push(memFs.exists("/repo/default.project.json"));
+				writtenAtSpawn.push(memFs.exists("/repo/default.project.json"));
 				return spawn(...args);
 			});
 
 			expect((await start()).isOk()).toBe(true);
 
-			expect(await Promise.all(builtAtSpawn)).toEqual([true]);
+			expect(await Promise.all(writtenAtSpawn)).toEqual([true]);
 			expect(
 				processes.spawned.map(({ file, args, options }) => [
 					file,
@@ -731,7 +731,7 @@ describe("CoreServeService", () => {
 			).toEqual([["repo", "7.7.1"]]);
 		});
 
-		it("should keep watching when the first build fails, and start the server once a build succeeds", async () => {
+		it("should keep watching when the first write fails, and start the server once a write succeeds", async () => {
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
 				config({
@@ -750,7 +750,7 @@ describe("CoreServeService", () => {
 
 			const started = await start();
 			session.onDidUpdate(({ reports }) =>
-				updates.push(...reports.map(({ build }) => build.outcome))
+				updates.push(...reports.map(({ outcome }) => outcome.kind))
 			);
 
 			expect(started.isOk()).toBe(true);
@@ -889,8 +889,8 @@ describe("CoreServeService", () => {
 			expect(processes.spawned).toHaveLength(1);
 		});
 
-		it("should fail to start, starting nothing, when the first build throws", async () => {
-			jest.spyOn(CoreBuildService.prototype, "rebuild").mockRejectedValue(
+		it("should fail to start, starting nothing, when the first write throws", async () => {
+			jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValue(
 				new Error("disk on fire")
 			);
 
@@ -954,7 +954,7 @@ describe("CoreServeService", () => {
 					terminated ? `${args[1]} (ended)` : args[1]
 				);
 
-			it("should start a server for a config that takes the place of a removed one, once it is built", async () => {
+			it("should start a server for a config that takes the place of a removed one, once it is written", async () => {
 				await start();
 
 				await replaceWithLobby();
@@ -980,7 +980,7 @@ describe("CoreServeService", () => {
 				expect(changes).toEqual(["retired repo (removed)"]);
 			});
 
-			it("should start a config that takes a place with build errors only once it builds", async () => {
+			it("should start a config that takes a place with errors only once it is written", async () => {
 				await start();
 				await memFs.writeFile("/repo/src/X/@server", "");
 				await memFs.writeFile("/repo/src/X/@client", "");
@@ -1104,7 +1104,7 @@ describe("CoreServeService", () => {
 				).toHaveLength(2);
 			});
 
-			it("should probe a refused config's port once per rebuild, not look for a free one again", async () => {
+			it("should probe a refused config's port once per rewrite, not look for a free one again", async () => {
 				await start();
 				occupy(34900);
 				await replaceWithLobby();
@@ -1189,7 +1189,7 @@ describe("CoreServeService", () => {
 				]);
 			});
 
-			it("should leave the server alone on a rebuild that changes no config", async () => {
+			it("should leave the server alone on a rewrite that changes no config", async () => {
 				await start();
 
 				await memFs.writeFile("/repo/src/B.luau", "");

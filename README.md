@@ -29,7 +29,7 @@ src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inven
 - **A Rojo superset:** `default.rogen.json` is a Rojo project file with a `rogen` block added, so Rojo's keys and docs still apply. A plain Rojo project runs under Rogen's commands as it is, and the commands take Rojo's names and flags. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
 - **Several outputs and places:** `dist.rogen.json` writes `dist.project.json`, such as a Darklua build or a release without the specs. A repository with several places gives each place a folder and a `default.rogen.json` of its own.
 - **Shared code:** List several source paths. The later one wins a clash, so shared code can be overridden.
-- **Watch mode:** `rogen serve` rebuilds as files change, reloads when the config does, and starts Rojo.
+- **Watch mode:** `rogen serve` writes again as files change, reloads when the config does, and starts Rojo.
 - **Toolchains:** Luau, roblox-ts and Darklua. `rogen init` finds them and writes them into the config; Darklua's own `.darklua.json` stays yours.
 - **Made for agents:** `--json` on every command, `rogen help --json`, and `rogen init` adds the rules to your `AGENTS.md`. See [Working with agents](https://rogen-playfully.vercel.app/docs/v2/agents).
 
@@ -40,7 +40,7 @@ rogen init
 rogen serve
 ```
 
-`rogen init` writes a starting config and prints the commands your setup needs. `rogen serve` builds, starts Rojo and rebuilds on changes.
+`rogen init` writes a starting config and prints the commands your setup needs. `rogen serve` writes the project file, starts Rojo and writes again on changes.
 
 | Command                              | What it does                                                             |
 | ------------------------------------ | ------------------------------------------------------------------------ |

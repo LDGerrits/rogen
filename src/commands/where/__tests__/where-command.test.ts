@@ -76,7 +76,7 @@ describe("where command", () => {
 			await write("src/Util.luau", "lib/x.luau");
 		});
 
-		it("should keep its outside line and say no build reads it", async () => {
+		it("should keep its outside line and say Rogen leaves it out", async () => {
 			const result = await run({ _: ["lib/x.luau"] });
 
 			expect(result.isOk()).toBe(true);
@@ -84,7 +84,7 @@ describe("where command", () => {
 				"lib/x.luau -> outside the source paths",
 			]);
 			expect(logService.texts("notice")).toEqual([
-				"note: lib/x.luau: in no source path of default.rogen.json, so no build reads it.",
+				"note: lib/x.luau: in no source path of default.rogen.json, so Rogen leaves it out of the project file.",
 			]);
 		});
 
@@ -100,7 +100,7 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should not list a path some build reads", async () => {
+		it("should not list a path some write reads", async () => {
 			await run({ _: ["src/Util.luau"], json: true });
 
 			expect(JSON.parse(printed().join("\n"))).not.toHaveProperty(
@@ -168,7 +168,7 @@ describe("where command", () => {
 
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([
-				"src/F/Shared/Good.luau -> not placed · the build stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
+				"src/F/Shared/Good.luau -> not placed · the write stops on src/F/Shared/Bad@server.luau (route.ignoredAt); run 'rogen check'",
 			]);
 		});
 

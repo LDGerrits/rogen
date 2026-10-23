@@ -1,4 +1,4 @@
-import { PlacedLocation } from "../../build/build-service.js";
+import { PlacedLocation } from "../../write/write-service.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncRules } from "../../rojo/sync-rules.js";
@@ -35,7 +35,7 @@ const mirrorOf = (
 const optional = (target: string) => ({ optional: target });
 
 describe("SyncbackMirror", () => {
-	it("should move a node the build made from a file into the mirror, named for its instance", async () => {
+	it("should move a node the write made from a file into the mirror, named for its instance", async () => {
 		const mirror = await mirrorOf(
 			{
 				tree: {
@@ -213,7 +213,7 @@ describe("SyncbackMirror", () => {
 		]);
 	});
 
-	it("should move a folder the build mounted whole as one entry", async () => {
+	it("should move a folder the write mounted whole as one entry", async () => {
 		const mirror = await mirrorOf(
 			{
 				tree: {

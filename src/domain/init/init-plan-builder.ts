@@ -21,7 +21,10 @@ import {
 } from "./init-service.js";
 
 export class InitPlanBuilder {
-	private readonly configFiles: { file: PlannedFile; built: boolean }[] = [];
+	private readonly configFiles: {
+		file: PlannedFile;
+		writesProjectFile: boolean;
+	}[] = [];
 	private agentFile: PlannedFile | undefined;
 	private agentStep: string | undefined;
 	private claudeImport: PlannedFile | undefined;
@@ -48,16 +51,16 @@ export class InitPlanBuilder {
 		private readonly cwd: string = directory.path
 	) {}
 
-	/** The config `fileName` (relative to the plan's folder, `default.rogen.json` when not given). `written`: the tree of the project file the config was lifted from. `built`: whether `init` builds it once it is written, which only the default of a folder is. */
+	/** The config `fileName` (relative to the plan's folder, `default.rogen.json` when not given). `written`: the tree of the project file the config was lifted from. `writesProjectFile`: whether `init` writes its project file once the config is written, which only the default of a folder is. */
 	setConfig(
 		config: RogenConfig,
 		written?: WrittenTree,
 		fileName = DEFAULT_CONFIG_FILE,
-		built = true
+		writesProjectFile = true
 	): void {
 		this.configFiles.push({
 			file: { fileName, content: configFileContent(config, written) },
-			built,
+			writesProjectFile: writesProjectFile,
 		});
 	}
 
@@ -141,8 +144,8 @@ export class InitPlanBuilder {
 
 	build(): Result<InitPlan, Diagnostic[]> {
 		const written = this.configFiles.map(({ file }) => file);
-		const built = this.configFiles
-			.filter(({ built }) => built)
+		const toWrite = this.configFiles
+			.filter(({ writesProjectFile }) => writesProjectFile)
 			.map(({ file }) => file);
 		const taken = this.directory.checkFree(
 			written.map(({ fileName }) => fileName)
@@ -166,7 +169,7 @@ export class InitPlanBuilder {
 			],
 			directories: [...this.directories],
 			commands: [...this.commands],
-			configs: built.map(({ fileName }) =>
+			configs: toWrite.map(({ fileName }) =>
 				toPosix(
 					path.relative(
 						this.cwd,

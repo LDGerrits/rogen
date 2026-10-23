@@ -3,7 +3,7 @@ import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { toPosix, toShellWord } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
+import { WriteRun, ConfigOutcome } from "../../domain/write/write.js";
 import {
 	InitDecision,
 	InitPlan,
@@ -23,12 +23,12 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
+import { OutcomeLog } from "../write/outcome-log.js";
 import {
-	BuildEntry,
-	buildDocument,
-	buildEntryShape,
-} from "../build/build-document.js";
+	WriteEntry,
+	configsDocument,
+	writeEntryShape,
+} from "../write/write-document.js";
 
 const S = OutputShape;
 
@@ -64,7 +64,7 @@ export const initDocumentShape = S.object({
 		)
 	),
 	error: S.optional(errorShape),
-	built: S.optional(S.array(buildEntryShape)),
+	projects: S.optional(S.array(writeEntryShape)),
 	notes: S.optional(S.array(S.string)),
 	warnings: S.optional(S.array(diagnosticShape)),
 	nextSteps: S.optional(
@@ -120,9 +120,9 @@ const stepLines = ({ directory, setup, run, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
-const foundBy = (build: ConfigBuild): Diagnostic[] => [
-	...build.warnings,
-	...build.errors,
+const foundBy = (outcome: ConfigOutcome): Diagnostic[] => [
+	...outcome.warnings,
+	...outcome.errors,
 ];
 
 const warningsOf = (plan: InitPlan) =>
@@ -134,13 +134,13 @@ export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
 	failed(error: Error): Result<void, Error>;
-	done(plan: InitPlan, run: BuildRun): Result<void, Error>;
+	done(plan: InitPlan, run: WriteRun): Result<void, Error>;
 	/** The end of a dry run, which `written` told what it would write. */
 	planned(plan: InitPlan): Result<void, Error>;
 }
 
 export class InitLog implements InitReporter {
-	private readonly buildLog: BuildLog;
+	private readonly outcomeLog: OutcomeLog;
 	/** Where the plan's folder lies from the folder the user ran in, which its file names are shown after. */
 	private within = "";
 
@@ -149,7 +149,7 @@ export class InitLog implements InitReporter {
 		private readonly cwd: string,
 		private readonly dryRun = false
 	) {
-		this.buildLog = new BuildLog(logService, cwd);
+		this.outcomeLog = new OutcomeLog(logService, cwd);
 	}
 
 	private shown(name: string): string {
@@ -225,13 +225,13 @@ export class InitLog implements InitReporter {
 		return ok(undefined);
 	}
 
-	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
-		for (const build of run.builds)
-			this.buildLog.outcome(build, foundBy(build));
+	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
+		for (const outcome of run.outcomes)
+			this.outcomeLog.outcome(outcome, foundBy(outcome));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
-				`Wrote ${files}, but the build failed.${
+				`Wrote ${files}, but writing the project file failed.${
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
@@ -267,7 +267,7 @@ interface InitDocument {
 	}[];
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
-	readonly built?: readonly BuildEntry[];
+	readonly projects?: readonly WriteEntry[];
 	readonly notes?: readonly string[];
 	readonly warnings?: readonly DiagnosticJson[];
 	readonly nextSteps?: NextSteps;
@@ -350,14 +350,14 @@ export class InitJsonLog implements InitReporter {
 		});
 	}
 
-	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
-		const built = buildDocument(run.builds, this.cwd, foundBy);
+	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
+		const projects = configsDocument(run.outcomes, this.cwd, foundBy);
 		const written = this.writtenSoFar();
 		return this.print(
 			{
 				...written,
-				changed: written.changed || built.changed,
-				built: built.configs,
+				changed: written.changed || projects.changed,
+				projects: projects.configs,
 				notes: plan.notes,
 				...warningsOf(plan),
 				nextSteps: plan.nextSteps,

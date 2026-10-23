@@ -18,7 +18,7 @@ import {
 	ConfigService,
 	ConfigCover,
 	CoveredTargets,
-	buildableFile,
+	validFile,
 	EnclosingConfigs,
 } from "./config-service.js";
 import { CoreConfigSelection } from "./core-config-selection.js";
@@ -181,7 +181,7 @@ export class CoreConfigService implements ConfigService {
 	private async namedCovers(target: string): Promise<ConfigCover[]> {
 		const covers: ConfigCover[] = [];
 		for (const file of await this.discovery.namedConfigsAbove(target)) {
-			const { config } = buildableFile(await this.read(file)) ?? {};
+			const { config } = validFile(await this.read(file)) ?? {};
 			if (config && !(await this.covers(config.sourcePaths, target)))
 				continue;
 			covers.push({ file, whole: false });
@@ -216,7 +216,7 @@ export class CoreConfigService implements ConfigService {
 			if (!above) return undefined;
 			directory = path.dirname(above.file);
 			if (isProjectFileConfig(above.file)) continue;
-			const { config } = buildableFile(await this.read(above.file)) ?? {};
+			const { config } = validFile(await this.read(above.file)) ?? {};
 			if (config && coversFolder(config.sourcePaths, folder))
 				return above;
 		}

@@ -98,7 +98,7 @@ describe("serve command", () => {
 		jest.useRealTimers();
 	});
 
-	it("should build, serve, and say when the server answers", async () => {
+	it("should write, serve, and say when the server answers", async () => {
 		void serve();
 		await settle();
 		requests.answer(ROJO_URL, {
@@ -110,7 +110,7 @@ describe("serve command", () => {
 
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
-			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial build$/),
+			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial write$/),
 			"success: default.project.json · wrote",
 			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo).",
 		]);
@@ -238,7 +238,7 @@ describe("serve command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
 			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
-			"outro: Nothing to start: another rogen serve already serves this project, so nothing is built or watched here.",
+			"outro: Nothing to start: another rogen serve already serves this project, so nothing is written or watched here.",
 		]);
 	});
 
@@ -254,7 +254,7 @@ describe("serve command", () => {
 
 		expect(printed()).toEqual([
 			{
-				build: {
+				write: {
 					config: "default.rogen.json",
 					projectFile: "/repo/default.project.json",
 					outcome: "wrote",
@@ -634,7 +634,7 @@ describe("serve command", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it("should serve the named project, and build only that one", async () => {
+	it("should serve the named project, and write only that one", async () => {
 		await memFs.writeFile(
 			"/repo/lobby/default.rogen.json",
 			JSON.stringify({
@@ -703,7 +703,7 @@ describe("serve command", () => {
 		await memFs.writeFile("/repo/src/X/@client", "");
 	};
 
-	it("should print the build's errors once, start nothing and keep watching when the first build fails", async () => {
+	it("should print the write's errors once, start nothing and keep watching when the first write fails", async () => {
 		await clashing();
 
 		const result = serve();
@@ -730,7 +730,7 @@ describe("serve command", () => {
 		expect(processes.spawned).toEqual([]);
 	});
 
-	it("should serve once a later build succeeds", async () => {
+	it("should serve once a later write succeeds", async () => {
 		await clashing();
 		void serve();
 		await settle();
@@ -750,7 +750,7 @@ describe("serve command", () => {
 		);
 	});
 
-	it("should print the build's errors once as JSON lines and wait for a fix when the first build fails", async () => {
+	it("should print the write's errors once as JSON lines and wait for a fix when the first write fails", async () => {
 		await clashing();
 
 		void serve([], { json: true });

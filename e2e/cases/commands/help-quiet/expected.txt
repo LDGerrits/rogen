@@ -23,7 +23,7 @@ stdout:
       help           Prints usage, a command's details, or what a code means
       init           Writes a starting default.rogen.json
       plugin         Installs or removes Rojo's Studio plugin
-      serve          Builds, serves with Rojo, and rebuilds on changes
+      serve          Writes, serves with Rojo, and rewrites on changes
       sourcemap      Writes the project file, then a sourcemap with Rojo
       syncback       Brings a place file's changes back into the source files
       upload         Writes the project file, then uploads it with Rojo

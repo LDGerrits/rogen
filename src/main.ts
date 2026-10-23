@@ -48,8 +48,8 @@ import { CoreBrowserService } from "./platform/browser/core-browser-service.js";
 import { CoreReleaseService } from "./platform/release/core-release-service.js";
 import { DiskWatcher } from "./platform/watcher/disk-watcher.js";
 import { Watcher } from "./platform/watcher/watcher.js";
-import { BuildService } from "./domain/build/build-service.js";
-import { CoreBuildService } from "./domain/build/core-build-service.js";
+import { WriteService } from "./domain/write/write-service.js";
+import { CoreWriteService } from "./domain/write/core-write-service.js";
 import { ConfigService } from "./domain/config/config-service.js";
 import { CoreInitService } from "./domain/init/core-init-service.js";
 import { ToolLocator } from "./domain/toolchain/tool-locator.js";
@@ -284,12 +284,12 @@ class RogenMain {
 		disposables.add(configService.registerFolderCheck(LegacyConfig.find));
 		const toolchainService = new CoreToolchainService(fileSystemService);
 		services.set(ToolchainService, toolchainService);
-		const buildService = new CoreBuildService(
+		const writeService = new CoreWriteService(
 			fileSystemService,
 			indexService,
 			toolchainService.syncTools
 		);
-		services.set(BuildService, buildService);
+		services.set(WriteService, writeService);
 		const toolLocator = new ToolLocator(
 			processService,
 			fileSystemService,
@@ -310,7 +310,7 @@ class RogenMain {
 		const watchService = new CoreWatchService(
 			watcher,
 			indexService,
-			buildService
+			writeService
 		);
 		services.set(WatchService, watchService);
 		const rojoRunner = new CoreRojoRunner(
@@ -329,7 +329,7 @@ class RogenMain {
 			SyncbackService,
 			new CoreSyncbackService(
 				fileSystemService,
-				buildService,
+				writeService,
 				rojoCommandService
 			)
 		);

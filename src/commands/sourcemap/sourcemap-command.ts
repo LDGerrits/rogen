@@ -4,7 +4,7 @@ import { relativeTo } from "../../base/path.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -28,10 +28,10 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import { BuildLog } from "../build/build-log.js";
-import { rojoEntry } from "../build/build-document.js";
-import { BuildWatch } from "../build/build-watch.js";
-import { reportRojo, reportRojoBesideFailure } from "../build/report-rojo.js";
+import { OutcomeLog } from "../write/outcome-log.js";
+import { WriteWatch } from "../write/write-watch.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { rojoEntry } from "../write/rojo-entry.js";
 import {
 	sourcemapDocument,
 	sourcemapDocumentShape,
@@ -143,7 +143,7 @@ registerCommand(
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
 				try {
-					return await new BuildWatch(
+					return await new WriteWatch(
 						accessor,
 						line.positionals,
 						Boolean(json),
@@ -167,10 +167,10 @@ registerCommand(
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 
-			const build = await accessor
-				.get(BuildService)
-				.build(selection.value);
-			const failure = build.failure();
+			const written = await accessor
+				.get(WriteService)
+				.write(selection.value);
+			const failure = written.failure();
 
 			const tmp = path.join(
 				accessor.get(EnvironmentService).tmpDir,
@@ -209,7 +209,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					sourcemapDocument(
-						build.builds,
+						written.outcomes,
 						cwd,
 						rojoEntry(
 							plan?.target ?? {
@@ -222,14 +222,14 @@ registerCommand(
 					),
 					failure ?? rojoFailure
 				);
-			const buildLog = new BuildLog(logService, cwd);
+			const outcomeLog = new OutcomeLog(logService, cwd);
 			if (printed)
-				for (const one of build.builds)
-					buildLog.diagnostics(
+				for (const one of written.outcomes)
+					outcomeLog.diagnostics(
 						[...one.warnings, ...one.errors],
 						one.file
 					);
-			else buildLog.report(build, selection.value.home, "sourcemap");
+			else outcomeLog.report(written, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;
 				(runFailure ? reportRojoBesideFailure : reportRojo)(
