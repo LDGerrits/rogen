@@ -1,3 +1,4 @@
+import { compareStrings } from "../../base/collections.js";
 import { ExitCodes, UsageError } from "../../base/errors.js";
 import { closestMatch } from "../../base/strings.js";
 import { Command } from "../../platform/commands/commands.js";
@@ -73,8 +74,6 @@ function wrapped(text: string, width: number): string[] {
 const capitalised = (name: string) =>
 	name.toUpperCase().replace(/[\s-]+/g, "_");
 
-const compareNames = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
 type Argument = NonNullable<Command["metadata"]["args"]>[number];
 
 function usageArgs(command: Command): string[] {
@@ -143,7 +142,7 @@ function formatColumns(rows: [string, string][]): string[] {
 }
 
 const sortedOptions = (options: readonly OptionDescriptor[]) =>
-	[...options].sort((a, b) => compareNames(a.name, b.name));
+	[...options].sort((a, b) => compareStrings(a.name, b.name));
 
 function formatSections(
 	header: string,
@@ -164,7 +163,7 @@ function formatHelp(
 	globalOptions: readonly OptionDescriptor[]
 ): string {
 	const subcommands = [...commands.values()]
-		.sort((a, b) => compareNames(a.id, b.id))
+		.sort((a, b) => compareStrings(a.id, b.id))
 		.map((command): [string, string] => [
 			command.id,
 			command.metadata.summary,

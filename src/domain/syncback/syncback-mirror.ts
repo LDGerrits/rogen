@@ -1,6 +1,5 @@
 import path from "path";
 import { isGlobsetMatch } from "../../base/glob.js";
-import { isObject } from "../../base/objects.js";
 import { containsPosix, toPosix } from "../../base/path.js";
 import { PlacedLocation } from "../build/build-service.js";
 import { RojoFile } from "../rojo/rojo.js";
@@ -8,6 +7,7 @@ import {
 	RojoNode,
 	RojoProject,
 	RojoProjectFile,
+	childNodes,
 	isProjectFileName,
 	rojoPathTarget,
 } from "../rojo/rojo-project.js";
@@ -18,12 +18,6 @@ const SAFE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_ .-]*$/;
 
 /** The sync rule Rojo's syncback stops on: it can't write a script it reads as a legacy LocalScript. */
 const UNSYNCABLE_USE = "legacyClientScript";
-
-const childrenOf = (node: RojoNode): [string, RojoNode][] =>
-	Object.entries(node).filter(
-		(entry): entry is [string, RojoNode] =>
-			!entry[0].startsWith("$") && isObject(entry[1])
-	);
 
 const isPlainFolder = (node: RojoNode): boolean =>
 	node.$className === "Folder" &&
@@ -105,7 +99,7 @@ export class SyncbackMirror {
 						`syncback's project reads "${target}", outside its mirror ${root}.`
 					);
 			}
-			for (const [, child] of childrenOf(node)) check(child);
+			for (const [, child] of childNodes(node)) check(child);
 		};
 		check(file.tree);
 	}
@@ -198,7 +192,7 @@ class MirrorWalk {
 		mounted = false
 	): Promise<boolean> {
 		let moved = false;
-		const children = childrenOf(node);
+		const children = childNodes(node);
 		/** A node kept inside the folder its parent reads would be read twice, so it gets a folder of its own. */
 		const mounts =
 			folder !== undefined &&
@@ -256,7 +250,7 @@ class MirrorWalk {
 	): boolean {
 		return (
 			isPlainFolder(node) &&
-			childrenOf(node).every(([name, child]) =>
+			childNodes(node).every(([name, child]) =>
 				this.movable(name, child, instancePath)
 			)
 		);
@@ -412,7 +406,7 @@ class MirrorWalk {
 			Object.keys(node).some(
 				(key) => key !== "$path" && key !== "$ignoreUnknownInstances"
 			) ||
-			childrenOf(node).length > 0
+			childNodes(node).length > 0
 		)
 			return undefined;
 		const target = toPosix(

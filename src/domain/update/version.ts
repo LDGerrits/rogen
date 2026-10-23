@@ -1,3 +1,5 @@
+import { compareStrings } from "../../base/collections.js";
+
 export class Version {
 	private constructor(
 		private readonly numbers: readonly [number, number, number],
@@ -57,5 +59,5 @@ function compareIdentifiers(a: string, b: string): number {
 	if (isNumeric(a) && isNumeric(b)) return Number(a) - Number(b);
 	if (isNumeric(a)) return -1;
 	if (isNumeric(b)) return 1;
-	return a < b ? -1 : a > b ? 1 : 0;
+	return compareStrings(a, b);
 }
