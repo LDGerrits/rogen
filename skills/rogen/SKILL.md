@@ -23,7 +23,7 @@ Rogen writes the Rojo project file from the folders and names under each `.rogen
 - To build a place or model file with Rojo, run `rogen build -o <file>`; `rogen build` needs `-o` or `-p`, so it is not how to write the project files.
 - Leave `rogen write --watch` to the user: it never exits.
 - To sync to Studio, start `rogen serve --json` in the background.
-- `rogen serve` exits 0 at once if another already serves the project, and non-zero with diagnostics if it can't serve; otherwise it prints a `serving` line once Studio can connect, and runs until that server stops.
+- `rogen serve` exits 0 at once if another already serves the project, and non-zero with diagnostics if it can't serve or its config doesn't load; otherwise it prints a `serving` line once Studio can connect, and runs until that server stops. If the first build has errors, it prints them once and keeps watching: the `serving` line comes after you fix them, so don't restart it.
 - When the `serving` line has `"reportsConnections": true`, wait for the `connected` line before you count on Studio having your edits; if it doesn't come, ask the user to press Connect in the Studio plugin once (Rojo's Auto Reconnect setting does it in later sessions).
 - Before placing files or writing requires, read `rogen doc routing`.
 - Before guessing a flag or parsing output, run `rogen help --json` (every command) or `rogen help <command> --json` (its options and the shape of its `--json` document).

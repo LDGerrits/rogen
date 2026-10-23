@@ -717,6 +717,15 @@ describe("serve command", () => {
 		expect((await result).isOk()).toBe(true);
 	});
 
+	it("should exit 1 at once, starting nothing, when the config does not load", async () => {
+		await memFs.writeFile("/repo/default.rogen.json", "{ nope");
+
+		const error = await failureOf(serve());
+
+		expect(exitCodeOf(error)).toBe(1);
+		expect(processes.spawned).toEqual([]);
+	});
+
 	it("should serve once a later build succeeds", async () => {
 		await clashing();
 		void serve();
