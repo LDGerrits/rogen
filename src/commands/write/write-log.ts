@@ -22,13 +22,13 @@ export class WriteLog {
 		plainProjects: readonly string[]
 	): void {
 		this.outcomeLog.begin("write", [], home);
-		for (const { build, warnings, errors } of run.shares) {
+		for (const { outcome, warnings, errors } of run.shares) {
 			const diagnostics = [...warnings.fresh, ...errors.fresh];
-			if (isPlain(build)) {
-				this.plain(build.file);
-				this.outcomeLog.diagnostics(diagnostics, build.file);
+			if (isPlain(outcome)) {
+				this.plain(outcome.file);
+				this.outcomeLog.diagnostics(diagnostics, outcome.file);
 			} else
-				this.outcomeLog.outcome(build, diagnostics, {
+				this.outcomeLog.outcome(outcome, diagnostics, {
 					notes: [
 						this.outcomeLog.sameAs("errors", errors.sameAs),
 						this.outcomeLog.sameAs("warnings", warnings.sameAs),
@@ -36,7 +36,7 @@ export class WriteLog {
 				});
 		}
 		for (const file of plainProjects) this.plain(file);
-		const configs = run.outcomes.filter((build) => !isPlain(build));
+		const configs = run.outcomes.filter((outcome) => !isPlain(outcome));
 		const written = configs.filter(isWritten).length;
 		const count = `Wrote ${written} of ${plural(configs.length, "project file")}`;
 		if (run.failed) this.logService.closeFrame(`${count}.`);

@@ -18,17 +18,17 @@ describe("MetaReader", () => {
 				...overrides,
 			};
 			const index = await indexOf(fs, config.sourcePaths);
-			const built = await new MetaReader(fs).read(
+			const meta = await new MetaReader(fs).read(
 				placeFiles(index, configOf(config), syncTools).unwrap()
 			);
-			return built.map(({ folderMeta }) => folderMeta);
+			return meta.map(({ folderMeta }) => folderMeta);
 		};
 
 		beforeEach(() => {
 			fs = new MemoryFileSystemService();
 		});
 
-		it("should say a meta file that vanished while the build ran does not exist", async () => {
+		it("should say a meta file that vanished while the write ran does not exist", async () => {
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
 			jest.spyOn(fs, "readFile").mockRejectedValue(
 				fileSystemError(
@@ -113,7 +113,7 @@ describe("MetaReader", () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 
 			const index = await indexOf(fs, [abs("src")]);
-			const built = await new MetaReader(fs).read(
+			const meta = await new MetaReader(fs).read(
 				placeFiles(
 					index,
 					configOf({
@@ -124,7 +124,7 @@ describe("MetaReader", () => {
 				).unwrap()
 			);
 
-			expect(built.unwrap().warnings).toMatchObject([
+			expect(meta.unwrap().warnings).toMatchObject([
 				{
 					code: "meta.unknownField",
 					resource: abs("src/Combat/init.meta.json"),

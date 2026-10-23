@@ -167,10 +167,10 @@ registerCommand(
 			if (planned.isErr()) return planned;
 			const plan = planned.value;
 
-			const build = await accessor
+			const written = await accessor
 				.get(WriteService)
 				.write(selection.value);
-			const failure = build.failure();
+			const failure = written.failure();
 
 			const tmp = path.join(
 				accessor.get(EnvironmentService).tmpDir,
@@ -209,7 +209,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					sourcemapDocument(
-						build.outcomes,
+						written.outcomes,
 						cwd,
 						rojoEntry(
 							plan?.target ?? {
@@ -224,12 +224,12 @@ registerCommand(
 				);
 			const outcomeLog = new OutcomeLog(logService, cwd);
 			if (printed)
-				for (const one of build.outcomes)
+				for (const one of written.outcomes)
 					outcomeLog.diagnostics(
 						[...one.warnings, ...one.errors],
 						one.file
 					);
-			else outcomeLog.report(build, selection.value.home, "sourcemap");
+			else outcomeLog.report(written, selection.value.home, "sourcemap");
 			if (plan && ran?.isOk()) {
 				const { messages, failure: runFailure } = ran.value;
 				(runFailure ? reportRojoBesideFailure : reportRojo)(

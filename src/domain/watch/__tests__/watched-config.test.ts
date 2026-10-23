@@ -20,7 +20,7 @@ describe("WatchedConfig", () => {
 			readFiles
 		);
 
-	it("should know what its latest build read, whatever the form of a path", () => {
+	it("should know what its latest write read, whatever the form of a path", () => {
 		const watched = new WatchedConfig();
 		watched.finished(written(["C:\\repo\\src\\init.meta.json"]));
 
@@ -28,7 +28,7 @@ describe("WatchedConfig", () => {
 		expect(watched.reads("C:/repo/src/other.meta.json")).toBe(false);
 	});
 
-	it("should know what it reads only when no rebuild is queued and the latest did not fail", async () => {
+	it("should know what it reads only when no rewrite is queued and the latest did not fail", async () => {
 		const watched = new WatchedConfig();
 		const gate = new DeferredPromise<void>();
 		const queued = watched.queue(() => gate.p);
@@ -41,7 +41,7 @@ describe("WatchedConfig", () => {
 		expect(watched.readsKnown).toBe(true);
 	});
 
-	it("should run queued rebuilds one at a time, in order", async () => {
+	it("should run queued rewrites one at a time, in order", async () => {
 		const watched = new WatchedConfig();
 		const order: number[] = [];
 

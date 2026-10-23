@@ -43,7 +43,7 @@ function reservedKeys(
 	});
 }
 
-/** Reports on a finished build without re-deciding what its phases decided. */
+/** Reports on a finished placement without re-deciding what its phases decided. */
 export class WriteValidator {
 	private readonly placement: Placement;
 	private readonly config: ResolvedConfig;

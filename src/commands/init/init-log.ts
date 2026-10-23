@@ -120,9 +120,9 @@ const stepLines = ({ directory, setup, run, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
-const foundBy = (build: ConfigOutcome): Diagnostic[] => [
-	...build.warnings,
-	...build.errors,
+const foundBy = (outcome: ConfigOutcome): Diagnostic[] => [
+	...outcome.warnings,
+	...outcome.errors,
 ];
 
 const warningsOf = (plan: InitPlan) =>
@@ -226,8 +226,8 @@ export class InitLog implements InitReporter {
 	}
 
 	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
-		for (const build of run.outcomes)
-			this.outcomeLog.outcome(build, foundBy(build));
+		for (const outcome of run.outcomes)
+			this.outcomeLog.outcome(outcome, foundBy(outcome));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
@@ -351,13 +351,13 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
-		const built = configsDocument(run.outcomes, this.cwd, foundBy);
+		const projects = configsDocument(run.outcomes, this.cwd, foundBy);
 		const written = this.writtenSoFar();
 		return this.print(
 			{
 				...written,
-				changed: written.changed || built.changed,
-				built: built.configs,
+				changed: written.changed || projects.changed,
+				built: projects.configs,
 				notes: plan.notes,
 				...warningsOf(plan),
 				nextSteps: plan.nextSteps,

@@ -62,7 +62,7 @@ describe("OutputWriter", () => {
 			const result = await writer.write(
 				new OutputFile(projectFile),
 				treeOf(),
-				{ rewrite: true }
+				{ force: true }
 			);
 
 			expect(result.unwrap()).toBe(true);

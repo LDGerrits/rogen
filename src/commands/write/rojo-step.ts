@@ -20,6 +20,6 @@ export interface RojoPlan {
 /** The Rojo command a command runs after it has written the project files. */
 export interface RojoStep {
 	readonly command: RojoTarget["command"];
-	/** The run a selection asks for, or the reason it asks for none; none when its files are broken, which the build reports. */
+	/** The run a selection asks for, or the reason it asks for none; none when its files are broken, which the write reports. */
 	plan(selection: ConfigSelection): Result<RojoPlan | undefined, UsageError>;
 }

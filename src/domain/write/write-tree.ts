@@ -76,7 +76,7 @@ function generatedContainer(instancePath: readonly string[]): RojoNode {
 		: { $className };
 }
 
-/** The tree a build merges its generated nodes into: the config's own, with its `$path`s kept relative to the project dir. */
+/** The tree a write merges its routed nodes into: the config's own, with its `$path`s kept relative to the project dir. */
 export class WriteTree {
 	private readonly project: RojoProject;
 	/** The config's `globIgnorePaths` as Rojo reads them, relative to the project dir. */

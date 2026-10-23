@@ -13,7 +13,7 @@ import {
 	FolderMetaApplier,
 	FolderMetaOutcome,
 } from "./folder-meta.js";
-import { BuildMeta } from "./meta-reader.js";
+import { PlacementMeta } from "./meta-reader.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 import { WrittenSyncRules } from "./written-sync-rules.js";
@@ -22,7 +22,7 @@ import { InstanceMap, instanceKey } from "../roblox/roblox.js";
 export interface Assembly {
 	readonly placement: Placement;
 	readonly projectFile: RojoProjectFile;
-	readonly meta: BuildMeta;
+	readonly meta: PlacementMeta;
 	readonly metaOutcomes: readonly FolderMetaOutcome[];
 }
 
@@ -55,11 +55,11 @@ const needsRojoIgnore = (why: LeftOut): boolean =>
 	why.status !== "mounted" &&
 	why.status !== "inProject";
 
-/** Turns a placed build and the meta it read into its Rojo tree. */
+/** Turns a placement and the meta it read into its Rojo tree. */
 export class TreeAssembler {
 	constructor(
 		private readonly placement: Placement,
-		private readonly meta: BuildMeta
+		private readonly meta: PlacementMeta
 	) {}
 
 	assemble(): Result<Assembly, Diagnostic[]> {

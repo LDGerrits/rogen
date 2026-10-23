@@ -68,7 +68,7 @@ export class ResolvedConfig {
 		return this.projectName;
 	}
 
-	/** Tells this project from every other that is served or built: its config file. */
+	/** Tells this project from every other that is served or written: its config file. */
 	get id(): string {
 		return this.file;
 	}
@@ -103,7 +103,7 @@ export class ResolvedConfig {
 		return samePath(this.file, this.projectFile);
 	}
 
-	/** The folders a build lists to find files nothing mounts: its source paths, else the default folder. */
+	/** The folders a write lists to find files nothing mounts: its source paths, else the default folder. */
 	get indexedPaths(): readonly string[] {
 		return this.routes.size > 0
 			? this.sourcePaths

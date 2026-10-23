@@ -5,10 +5,10 @@ import {
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
 import { LoadedConfig } from "../write/write.js";
-import { RebuildReport } from "./watch-service.js";
+import { RewriteReport } from "./watch-service.js";
 
 export class WatchedConfig {
-	private readonly rebuilds = new Sequencer();
+	private readonly rewrites = new Sequencer();
 	private pending = 0;
 	private _latest: LoadedConfig | undefined;
 	private readFiles = new PathSet([]);
@@ -17,9 +17,9 @@ export class WatchedConfig {
 		return this.readFiles.has(file);
 	}
 
-	queue<T>(rebuild: () => Promise<T>): Promise<T> {
+	queue<T>(rewrite: () => Promise<T>): Promise<T> {
 		this.pending++;
-		const queued = this.rebuilds.queue(rebuild);
+		const queued = this.rewrites.queue(rewrite);
 		const done = () => {
 			this.pending--;
 		};
@@ -32,20 +32,20 @@ export class WatchedConfig {
 	}
 
 	get failing(): boolean {
-		return this.latest?.outcome === "failed";
+		return this.latest?.kind === "failed";
 	}
 
 	get readsKnown(): boolean {
 		return this.pending === 0 && !this.failing;
 	}
 
-	finished(build: LoadedConfig): RebuildReport {
+	finished(outcome: LoadedConfig): RewriteReport {
 		const before = this.latest?.diagnostics ?? [];
-		const unreported = newDiagnostics(before, build.diagnostics);
+		const unreported = newDiagnostics(before, outcome.diagnostics);
 		const fixed =
-			build.outcome === "failed"
+			outcome.kind === "failed"
 				? []
-				: newDiagnostics(build.diagnostics, before).filter(
+				: newDiagnostics(outcome.diagnostics, before).filter(
 						(gone) =>
 							!unreported.some(
 								({ code, resource }) =>
@@ -53,18 +53,18 @@ export class WatchedConfig {
 									resource === gone.resource
 							)
 					);
-		this._latest = build;
-		if (build.outcome !== "failed")
-			this.readFiles = new PathSet(build.readFiles);
+		this._latest = outcome;
+		if (outcome.kind !== "failed")
+			this.readFiles = new PathSet(outcome.readFiles);
 		return {
-			build,
+			outcome,
 			unreported,
-			repeated: build.diagnostics.filter(
+			repeated: outcome.diagnostics.filter(
 				(diagnostic) => !unreported.includes(diagnostic)
 			),
 			fixed,
 			repeatedFailure:
-				build.outcome === "failed" && !unreported.some(isError),
+				outcome.kind === "failed" && !unreported.some(isError),
 		};
 	}
 }

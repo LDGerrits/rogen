@@ -41,7 +41,7 @@ export interface SyncbackPlan {
 }
 
 export interface SyncbackResult extends SyncbackPlan {
-	/** What a build raises about the files syncback placed: one that lands elsewhere than the place had it. */
+	/** What a write raises about the files syncback placed: one that lands elsewhere than the place had it. */
 	readonly warnings: readonly Diagnostic[];
 }
 

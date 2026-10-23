@@ -10,14 +10,14 @@ import { ResolvedConfig } from "../../config/resolved-config.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { OutputWriter } from "../output-writer.js";
 
-/** Whether the project file on disk is what a build would write, which a command that writes nothing says by a warning. */
+/** Whether the project file on disk is what a write would write, which a command that writes nothing says by a warning. */
 export class ProjectFileStaleness {
 	constructor(private readonly fileSystemService: FileReader) {}
 
-	/** The warning for `config`'s project file when it is on disk and differs from what `built` gives: that it is out of date. None for a file that isn't there, one Rogen never writes, or a build that fails. `built` runs only for a file that is there. */
+	/** The warning for `config`'s project file when it is on disk and differs from what `expected` gives: that it is out of date. None for a file that isn't there, one Rogen never writes, or a write that fails. `expected` runs only for a file that is there. */
 	async diagnostic(
 		config: ResolvedConfig,
-		built: () => Promise<RojoProjectFile | undefined>
+		expected: () => Promise<RojoProjectFile | undefined>
 	): Promise<Diagnostic | undefined> {
 		const { projectFile } = config;
 		if (config.isAdopted) return undefined;
@@ -31,7 +31,7 @@ export class ProjectFileStaleness {
 				: undefined
 		);
 		if (onDisk.isErr() || onDisk.value === undefined) return undefined;
-		const file = await built();
+		const file = await expected();
 		if (!file || onDisk.value === OutputWriter.textOf(file))
 			return undefined;
 		return warningDiagnostic(

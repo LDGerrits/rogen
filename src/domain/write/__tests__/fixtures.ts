@@ -24,7 +24,7 @@ import {
 	ConfigLocations,
 	LocateQuery,
 } from "../write-service.js";
-import { BuiltConfig, ConfigBuilder } from "../config-builder.js";
+import { PreparedConfig, WritePipeline } from "../write-pipeline.js";
 import { CoreWriteService } from "../core-write-service.js";
 import { Placement } from "../placement.js";
 import { Placer } from "../placer.js";
@@ -40,11 +40,11 @@ export const placeFiles = (
 	tools: readonly SyncTool[]
 ) => new Placer(index, config, tools).place();
 
-export const builderOf = (
+export const pipelineOf = (
 	fs: FileSystemService,
 	index: IndexReader,
 	extraTools: readonly SyncTool[] = []
-) => new ConfigBuilder(fs, index, [...syncTools, ...extraTools]);
+) => new WritePipeline(fs, index, [...syncTools, ...extraTools]);
 
 export const writeServiceOf = (
 	fs: FileSystemService,
@@ -86,7 +86,7 @@ export function indexOf(
 	return new CoreIndexService(fs).list(sourcePaths);
 }
 
-/** Makes the source paths of a test config folders, since a build of a config none of them exists for fails. */
+/** Makes the source paths of a test config folders, since a write of a config none of them exists for fails. */
 async function withSourceFolders(
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig
@@ -96,17 +96,19 @@ async function withSourceFolders(
 			await fs.createDirectory(sourcePath);
 }
 
-export async function buildAndPlace(
+export async function prepareAndPlace(
 	fs: MemoryFileSystemService,
 	config: ResolvedConfig
-): Promise<Result<BuiltConfig & { placement: Placement }, DiagnosticsError>> {
+): Promise<
+	Result<PreparedConfig & { placement: Placement }, DiagnosticsError>
+> {
 	await withSourceFolders(fs, config);
 	const index = await indexOf(fs, config.sourcePaths);
-	const builder = builderOf(fs, index);
-	const built = await builder.build(config);
-	if (built.isErr()) return err(built.error);
-	const placement = (await builder.place(config)).unwrap();
-	return ok({ ...built.value, placement });
+	const pipeline = pipelineOf(fs, index);
+	const prepared = await pipeline.run(config);
+	if (prepared.isErr()) return err(prepared.error);
+	const placement = (await pipeline.place(config)).unwrap();
+	return ok({ ...prepared.value, placement });
 }
 
 export const placedLines = (files: readonly RoutedFile[]): string[] =>
@@ -128,7 +130,7 @@ export async function routeFiles(
 	sourcePaths: readonly string[] = [abs("src")]
 ) {
 	return (
-		await buildAndPlace(
+		await prepareAndPlace(
 			fs,
 			configOf({
 				routes: ROUTER_ROUTES,
@@ -161,10 +163,10 @@ export async function assembleResultOf(
 	const config = configOf(overrides);
 	await withSourceFolders(fs, config);
 	const index = await indexOf(fs, config.sourcePaths);
-	return builderOf(fs, index, extraTools).build(config);
+	return pipelineOf(fs, index, extraTools).run(config);
 }
 
-export const expectBuiltProject = (file: RojoProjectFile): void =>
+export const expectWrittenProject = (file: RojoProjectFile): void =>
 	expectRojoProject({ name: "project", ...file });
 
 export async function assembleFilesOf(
@@ -173,7 +175,7 @@ export async function assembleFilesOf(
 	extraTools: readonly SyncTool[] = []
 ) {
 	const output = (await assembleResultOf(fs, overrides, extraTools)).unwrap();
-	expectBuiltProject(output.projectFile);
+	expectWrittenProject(output.projectFile);
 	return {
 		projectFile: output.projectFile,
 		warnings: output.findings.warnings,

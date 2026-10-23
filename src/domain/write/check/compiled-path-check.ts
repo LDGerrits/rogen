@@ -32,7 +32,7 @@ interface CompiledPathRun {
 	readonly emittedTops: ReadonlyMap<string, EmittedTops>;
 }
 
-/** Checks what the compiled path holds against what the build expects there, which only changes when the compiler runs. */
+/** Checks what the compiled path holds against what the write expects there, which only changes when the compiler runs. */
 export class CompiledPathCheck {
 	constructor(private readonly fileSystemService: FileReader) {}
 

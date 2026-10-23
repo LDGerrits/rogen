@@ -26,7 +26,7 @@ export function placesInstance(
 	);
 }
 
-/** Answers where paths land in a placed build, so `where` reports what `build` does. */
+/** Answers where paths land in a placement, so `where` reports what `write` does. */
 export class PlacementLocator {
 	private readonly scanned: Map<string, FileLocation>;
 	private readonly initOf = new Map<string, string>();

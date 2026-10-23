@@ -144,7 +144,7 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** Builds `configs`, each on its own so one that fails does not stop the rest; nothing to build without configs. */
+		/** Writes `configs`, each on its own so one that fails does not stop the rest; nothing to write without configs. */
 		private async writeConfigs(
 			accessor: ServicesAccessor,
 			configs: readonly string[]

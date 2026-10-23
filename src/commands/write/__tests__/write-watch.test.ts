@@ -57,9 +57,9 @@ describe("watch", () => {
 			watcher,
 			processes,
 		});
-		const builds =
+		const withRojo =
 			options.output !== undefined || options.plugin !== undefined;
-		return harness.run(builds ? "build" : "write", {
+		return harness.run(withRojo ? "build" : "write", {
 			positionals: names,
 			options: { watch: true, ...options },
 		});
@@ -83,7 +83,7 @@ describe("watch", () => {
 			);
 	};
 
-	const built = async (folder = ""): Promise<string[]> => {
+	const placed = async (folder = ""): Promise<string[]> => {
 		const project = JSON.parse(
 			await memFs.readFile(`/repo/${folder}/default.project.json`)
 		);
@@ -123,7 +123,7 @@ describe("watch", () => {
 	});
 
 	describe("with --json", () => {
-		it("should print one JSON object per line for each build, and nothing else", async () => {
+		it("should print one JSON object per line for each write, and nothing else", async () => {
 			void startWatch([], { json: true });
 			await settle();
 			await memFs.writeFile("/repo/src/A.luau", "");
@@ -315,7 +315,7 @@ describe("watch", () => {
 			ready.complete();
 			await settle();
 
-			expect(await built()).toEqual(["A"]);
+			expect(await placed()).toEqual(["A"]);
 		});
 
 		it("should start nothing when asked to shut down while the configs load", async () => {
@@ -415,7 +415,7 @@ describe("watch", () => {
 			});
 		});
 
-		it("should print the initial build as one block with a result", async () => {
+		it("should print the initial write as one block with a result", async () => {
 			await writeProjects(["lobby"]);
 
 			await run(["lobby"]);
@@ -428,7 +428,7 @@ describe("watch", () => {
 			]);
 		});
 
-		it("should print a block for each rebuild", async () => {
+		it("should print a block for each rewrite", async () => {
 			await run();
 			logService.clear();
 
@@ -508,7 +508,7 @@ describe("watch", () => {
 			await memFs.writeFile("/repo/src/A.luau", "");
 			await settle();
 
-			expect(await built()).toEqual([]);
+			expect(await placed()).toEqual([]);
 		});
 
 		it("should return an error and stop the watcher when watching fails", async () => {

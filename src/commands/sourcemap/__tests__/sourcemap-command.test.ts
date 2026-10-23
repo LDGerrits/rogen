@@ -17,7 +17,7 @@ describe("sourcemap command", () => {
 	let fs: MemoryFileSystemService;
 	let processes: MockProcessService;
 
-	const buildable = (folder = "", overrides = {}) =>
+	const validEntry = (folder = "", overrides = {}) =>
 		mockEntry(
 			{
 				name: folder || "repo",
@@ -63,7 +63,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should leave stdout to the sourcemap and Rojo's lines", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]), {
+		const { log, running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 		});
 		const [rojo] = await spawnedCount(1);
@@ -74,7 +74,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should print the line Rojo prints about the file it wrote on stdout, as Rojo does", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]), {
+		const { log, running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 		});
 		const [rojo] = await spawnedCount(1);
@@ -86,7 +86,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should print what Rojo writes to a file of its own, and nothing else on stdout", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]));
+		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
 		const output = rojo.args[rojo.args.indexOf("--output") + 1];
 		await fs.writeFile(output, '{"name":"repo"}\n');
@@ -105,7 +105,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should fail when Rojo succeeds but leaves no sourcemap to print", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]));
+		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
 		rojo.exit({ code: 0, signal: null });
 
@@ -116,7 +116,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should pass -o, --include-non-scripts and --absolute to Rojo", async () => {
-		const { running } = start(new MockConfigService([buildable()]), {
+		const { running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 			"include-non-scripts": true,
 			absolute: true,
@@ -135,7 +135,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should say where it wrote the sourcemap and show Rojo's warnings", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]), {
+		const { log, running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 		});
 		const [rojo] = await spawnedCount(1);
@@ -152,7 +152,7 @@ describe("sourcemap command", () => {
 
 	it("should refuse a second project, as Rojo's sourcemap does", async () => {
 		const { running } = start(
-			new MockConfigService([buildable("places/lobby")]),
+			new MockConfigService([validEntry("places/lobby")]),
 			{},
 			["places/lobby", "places/arena"]
 		);
@@ -164,7 +164,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should ask for -o when --json would share the screen with the sourcemap", async () => {
-		const { running } = start(new MockConfigService([buildable()]), {
+		const { running } = start(new MockConfigService([validEntry()]), {
 			json: true,
 		});
 
@@ -175,7 +175,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should report the failure when Rojo fails", async () => {
-		const { running } = start(new MockConfigService([buildable()]), {
+		const { running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 		});
 		const [rojo] = await spawnedCount(1);
@@ -188,7 +188,7 @@ describe("sourcemap command", () => {
 	});
 
 	it("should print one document with --json and -o", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]), {
+		const { log, running } = start(new MockConfigService([validEntry()]), {
 			output: "map.json",
 			json: true,
 		});

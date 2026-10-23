@@ -11,7 +11,7 @@ export interface InstanceClash {
 }
 
 interface InstanceResolution {
-	/** Every instance path appears once per build; the last source path wins across roots. */
+	/** Every instance path appears once per write; the last source path wins across roots. */
 	readonly nodes: readonly RoutedFile[];
 	/** The files another file replaced. */
 	readonly leftOut: [string, LeftOut][];

@@ -69,7 +69,7 @@ describe("CompiledLayout", () => {
 		expect(layout.compiledPath).toBeUndefined();
 	});
 
-	it("should build in the project dir when there are no source paths", () => {
+	it("should write in the project dir when there are no source paths", () => {
 		const layout = new CompiledLayout(
 			configOf({ sourcePaths: [] }),
 			syncTools

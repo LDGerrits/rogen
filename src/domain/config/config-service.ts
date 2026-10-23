@@ -51,26 +51,24 @@ export interface BrokenConfigEntry extends ConfigEntryFields {
 	readonly status: "broken";
 	/** Never empty. */
 	readonly errors: readonly Diagnostic[];
-	/** The version a watch keeps building while the file is broken; undefined if it was never valid. */
+	/** The version a watch keeps writing while the file is broken; undefined if it was never valid. */
 	readonly lastValid: ResolvedConfigFile | undefined;
 }
 
 /** One config as it last loaded; a reload replaces it. */
 export type ConfigEntry = ValidConfigEntry | BrokenConfigEntry;
 
-export function buildableFile(
-	entry: ConfigEntry
-): ResolvedConfigFile | undefined {
+export function validFile(entry: ConfigEntry): ResolvedConfigFile | undefined {
 	return entry.status === "valid" ? entry : entry.lastValid;
 }
 
-function buildableConfig(entry: ConfigEntry): ResolvedConfig | undefined {
-	return buildableFile(entry)?.config;
+function validConfig(entry: ConfigEntry): ResolvedConfig | undefined {
+	return validFile(entry)?.config;
 }
 
-/** The config that builds for `entry`, if one does. */
-export function buildableConfigs(entry: ConfigEntry): ResolvedConfig[] {
-	const config = buildableConfig(entry);
+/** The valid config of `entry`, if it has one. */
+export function validConfigs(entry: ConfigEntry): ResolvedConfig[] {
+	const config = validConfig(entry);
 	return config ? [config] : [];
 }
 
@@ -79,7 +77,7 @@ export type ConfigNotice =
 			readonly kind: "broken";
 			readonly file: string;
 			readonly errors: readonly Diagnostic[];
-			/** Whether an earlier valid version still builds. */
+			/** Whether an earlier valid version is still written. */
 			readonly keptLastValid: boolean;
 	  }
 	| { readonly kind: "recovered"; readonly file: string }
@@ -94,7 +92,7 @@ export interface ConfigReload {
 
 export interface ConfigSelection {
 	readonly entries: readonly ConfigEntry[];
-	/** Every config that builds now; a broken entry gives its last valid version or none. */
+	/** Every config that is written now; a broken entry gives its last valid version or none. */
 	readonly configs: readonly ResolvedConfig[];
 	/** What picking had to say, such as a name matching both a folder and a file. */
 	readonly notes: readonly string[];

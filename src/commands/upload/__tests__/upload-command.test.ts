@@ -19,7 +19,7 @@ describe("upload command", () => {
 	let fs: MemoryFileSystemService;
 	let processes: MockProcessService;
 
-	const buildable = (folder = "", overrides = {}) =>
+	const validEntry = (folder = "", overrides = {}) =>
 		mockEntry(
 			{
 				name: folder || "repo",
@@ -65,7 +65,7 @@ describe("upload command", () => {
 	});
 
 	it("should write the project file, then upload it with Rojo's flags as Rojo spells them", async () => {
-		const { running } = start(new MockConfigService([buildable()]), {
+		const { running } = start(new MockConfigService([validEntry()]), {
 			asset_id: "123",
 			api_key: "key",
 			universe_id: "45",
@@ -92,7 +92,7 @@ describe("upload command", () => {
 	});
 
 	it("should ask for --asset_id before it writes anything", async () => {
-		const { running } = start(new MockConfigService([buildable()]), {});
+		const { running } = start(new MockConfigService([validEntry()]), {});
 
 		expect(((await running) as ResultError<Error>).error.message).toBe(
 			"--asset_id names the place or model to upload to, and Rojo needs it."
@@ -103,7 +103,7 @@ describe("upload command", () => {
 
 	it("should refuse a second project, as Rojo's upload does, before it writes anything", async () => {
 		const { running } = start(
-			new MockConfigService([buildable("places/lobby")]),
+			new MockConfigService([validEntry("places/lobby")]),
 			{ asset_id: "123" },
 			["places/lobby", "places/arena"]
 		);
@@ -137,7 +137,7 @@ describe("upload command", () => {
 	});
 
 	it("should show what Rojo said", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]));
+		const { log, running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
 		rojo.print("Uploaded to asset 123\n[WARN rojo] odd file\n");
 		rojo.exit({ code: 0, signal: null });
@@ -148,13 +148,13 @@ describe("upload command", () => {
 	});
 
 	it("should leave stdout to Rojo's lines, unless it prints a document", async () => {
-		const printed = start(new MockConfigService([buildable()]));
+		const printed = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
 		rojo.exit({ code: 0, signal: null });
 		await printed.running;
 		expect(printed.log.reserved).toBe(true);
 
-		const json = start(new MockConfigService([buildable()]), {
+		const json = start(new MockConfigService([validEntry()]), {
 			asset_id: "123",
 			json: true,
 		});
@@ -165,7 +165,7 @@ describe("upload command", () => {
 	});
 
 	it("should report the failure when Rojo fails", async () => {
-		const { running } = start(new MockConfigService([buildable()]));
+		const { running } = start(new MockConfigService([validEntry()]));
 		const [rojo] = await spawnedCount(1);
 		rojo.print("[ERROR rojo] --universe_id must be provided\n");
 		rojo.exit({ code: 1, signal: null });
@@ -176,7 +176,7 @@ describe("upload command", () => {
 	});
 
 	it("should print one document with --json, without the credentials", async () => {
-		const { log, running } = start(new MockConfigService([buildable()]), {
+		const { log, running } = start(new MockConfigService([validEntry()]), {
 			asset_id: "123",
 			api_key: "secret",
 			json: true,

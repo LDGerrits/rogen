@@ -235,12 +235,12 @@ registerCommand(
 			);
 			if (written.isErr()) return reporter.failed(written.error);
 			if (dryRun) return reporter.planned(plan);
-			const built = await this.buildConfigs(accessor, plan);
-			if (built.isErr()) return reporter.failed(built.error);
-			return reporter.done(plan, built.value);
+			const run = await this.writeConfigs(accessor, plan);
+			if (run.isErr()) return reporter.failed(run.error);
+			return reporter.done(plan, run.value);
 		}
 
-		private async buildConfigs(
+		private async writeConfigs(
 			accessor: ServicesAccessor,
 			plan: InitPlan
 		): Promise<Result<WriteRun, Error>> {

@@ -138,7 +138,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	});
 }
 
-function describeBuild(summary: WriteSummary, cwd: string): string[] {
+function describeSummary(summary: WriteSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
 		({ sourcePath, files, ignored, mounted, skippedLinks }) =>
 			[
@@ -212,7 +212,7 @@ export class OutcomeLog {
 		);
 	}
 
-	/** With `writes` false, the run only checked: a config that built is reported as one that would be written. */
+	/** With `writes` false, the run only checked: a config that prepared is reported as one that would be written. */
 	report(
 		run: WriteRun,
 		home?: string,
@@ -225,14 +225,14 @@ export class OutcomeLog {
 			run.outcomes.map(({ file }) => configPath(this.cwd, file)),
 			home
 		);
-		for (const { build, warnings, errors } of run.shares) {
+		for (const { outcome, warnings, errors } of run.shares) {
 			if (run.outcomes.length > 1)
-				this.heading(configPath(this.cwd, build.file));
-			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
+				this.heading(configPath(this.cwd, outcome.file));
+			this.outcome(outcome, [...warnings.fresh, ...errors.fresh], {
 				notes: [
-					build.outcome === "notWritten"
+					outcome.kind === "notWritten"
 						? `${joinedWithAnd(
-								build.blockedBy.map((file) =>
+								outcome.blockedBy.map((file) =>
 									configPath(this.cwd, file)
 								)
 							)} failed`
@@ -252,7 +252,7 @@ export class OutcomeLog {
 	}
 
 	outcome(
-		build: ConfigOutcome,
+		outcome: ConfigOutcome,
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
@@ -262,32 +262,32 @@ export class OutcomeLog {
 	): void {
 		const note =
 			notes.filter((part) => part !== undefined).join(" · ") || undefined;
-		const line = (outcome: string) =>
+		const line = (said: string) =>
 			[
 				relativeTo(
 					this.cwd,
-					build.outcome === "notLoaded"
-						? build.file
-						: build.config.projectFile
+					outcome.kind === "notLoaded"
+						? outcome.file
+						: outcome.config.projectFile
 				),
-				outcome,
+				said,
 				note,
 			]
 				.filter((part) => part !== undefined)
 				.join(" · ");
-		switch (build.outcome) {
+		switch (outcome.kind) {
 			case "wrote":
 			case "unchanged":
-				this.logService.success(line(build.outcome));
-				this.details(build.summary);
+				this.logService.success(line(outcome.kind));
+				this.details(outcome.summary);
 				break;
 			case "wouldWrite":
 				this.logService.success(line("would write"));
-				this.details(build.summary);
+				this.details(outcome.summary);
 				break;
 			case "notWritten":
 				this.logService.error(line("not written"));
-				this.details(build.summary);
+				this.details(outcome.summary);
 				break;
 			case "failed":
 				this.logService.error(line("not written"));
@@ -297,10 +297,10 @@ export class OutcomeLog {
 				this.logService.error(line("not loaded"));
 				break;
 		}
-		this.diagnostics(diagnostics, build.file);
+		this.diagnostics(diagnostics, outcome.file);
 	}
 
-	/** Prints what the build of the config at `file` found, filing a grouped block under it. */
+	/** Prints what the write of the config at `file` found, filing a grouped block under it. */
 	diagnostics(diagnostics: readonly Diagnostic[], file: string): void {
 		for (const diagnostic of diagnostics)
 			this.logService.annotate(diagnostic);
@@ -323,7 +323,7 @@ export class OutcomeLog {
 	}
 
 	private details(summary?: WriteSummary): void {
-		for (const line of summary ? describeBuild(summary, this.cwd) : [])
+		for (const line of summary ? describeSummary(summary, this.cwd) : [])
 			this.logService.debug(line);
 	}
 }

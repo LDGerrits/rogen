@@ -85,7 +85,7 @@ const metaApplied = (node: SourcemapNode, prefix = ""): string[] =>
 		})
 		.sort();
 
-describeWithRojo("build against Rojo reading the same directory", () => {
+describeWithRojo("write against Rojo reading the same directory", () => {
 	let dir: string;
 
 	beforeEach(() => {
@@ -118,10 +118,10 @@ describeWithRojo("build against Rojo reading the same directory", () => {
 			ignored: [],
 			...overrides,
 		});
-		const build = (
+		const outcome = (
 			await writeServiceOf(fileSystem, index).write(selectionOf(config))
 		).outcomes[0];
-		expect(build.outcome).toBe("wrote");
+		expect(outcome.kind).toBe("wrote");
 	};
 
 	it("should place every Rojo-native file as Rojo would", async () => {

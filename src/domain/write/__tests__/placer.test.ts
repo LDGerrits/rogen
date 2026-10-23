@@ -9,7 +9,7 @@ import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.j
 import { Placement } from "../placement.js";
 import {
 	abs,
-	buildAndPlace,
+	prepareAndPlace,
 	configOf,
 	placeFiles,
 	placedLines,
@@ -76,7 +76,7 @@ describe("Placer", () => {
 
 		const apply = async (sourcePaths: readonly string[] = [abs("src")]) =>
 			(
-				await buildAndPlace(
+				await prepareAndPlace(
 					fs,
 					configOf({
 						routes: SHARED_ROUTES,
@@ -223,7 +223,7 @@ describe("Placer", () => {
 
 		const route = async (overrides: ResolvedConfigSpec = {}) => {
 			const { placement } = (
-				await buildAndPlace(
+				await prepareAndPlace(
 					fs,
 					configOf({ routes: ROUTES, ...overrides })
 				)
@@ -429,7 +429,7 @@ describe("Placer", () => {
 		) => {
 			await writeFiles(fs, ...files);
 			return (
-				await buildAndPlace(
+				await prepareAndPlace(
 					fs,
 					configOf({
 						routes: SHARED_ROUTES,

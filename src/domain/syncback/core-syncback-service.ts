@@ -321,14 +321,14 @@ export class CoreSyncbackService implements SyncbackService {
 			return err(
 				new Error(`${project.label} was not found among the projects.`)
 			);
-		const built = await this.writeService.projectFileOf(project);
-		if (!built)
+		const fresh = await this.writeService.projectFileOf(project);
+		if (!fresh)
 			return err(
 				new UsageError(
 					`${project.label} does not build, so there is no project file to read; run 'rogen write' to see why.`
 				)
 			);
-		const written = JSON.parse(ProjectText.of(built)) as RojoProjectFile;
+		const written = JSON.parse(ProjectText.of(fresh)) as RojoProjectFile;
 		const placed = here.files.filter(
 			(file): file is PlacedLocation => file.status === "placed"
 		);
@@ -1139,7 +1139,7 @@ export class CoreSyncbackService implements SyncbackService {
 			: listed;
 	}
 
-	/** Builds again and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the build does not place. */
+	/** Writes again in memory and compares: a file syncback placed that lands elsewhere than the place had it is a warning. A compiled path holds what a tool wrote, which the write does not place. */
 	private async verify(
 		request: SyncbackRequest,
 		expected: readonly Expected[]

@@ -8,7 +8,7 @@ import { MemoryFileSystemService } from "../../../../platform/fs/memory-file-sys
 import { ResolvedConfigSpec } from "../../../config/__tests__/mock-config-service.js";
 import {
 	abs,
-	buildAndPlace,
+	prepareAndPlace,
 	configOf,
 	writeFiles,
 } from "../../__tests__/fixtures.js";
@@ -36,7 +36,7 @@ describe("WriteValidator rules", () => {
 			sourcePaths: readonly string[] = [abs("src")]
 		) =>
 			(
-				await buildAndPlace(
+				await prepareAndPlace(
 					fs,
 					configOf({
 						routes: ROUTES,

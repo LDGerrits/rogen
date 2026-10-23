@@ -26,7 +26,7 @@ import {
 	LocateQuery,
 	Locations,
 } from "../write-service.js";
-import { ConfigBuilder } from "../config-builder.js";
+import { WritePipeline } from "../write-pipeline.js";
 import { MountedInstances } from "./mounted-instances.js";
 import { PlacementLocator, placesInstance } from "./placement-locator.js";
 import { LocateTargets, Targets } from "./locate-targets.js";
@@ -35,7 +35,7 @@ import { PlannedFilesIndex } from "./planned-files-index.js";
 /** What `locate` found. */
 export type Located = Omit<Locations, "errors" | "skipped">;
 
-/** Answers `where` for a set of configs over one listing, placing files exactly as a build does. */
+/** Answers `where` for a set of configs over one listing, placing files exactly as a write does. */
 export class Locator {
 	private readonly targets: LocateTargets;
 
@@ -47,7 +47,7 @@ export class Locator {
 		this.targets = new LocateTargets(fileSystemService);
 	}
 
-	/** Fails when a config can't be placed; its caller checked that the configs build together. */
+	/** Fails when a config can't be placed; its caller checked that the configs are written together. */
 	async locate(
 		configs: readonly ResolvedConfig[],
 		query?: LocateQuery
@@ -374,7 +374,7 @@ class ConfigLocator {
 			[file],
 			(source) => RojoFile.at(source, this.config.syncRules)
 		);
-		const placement = await this.builderOf(index).place(this.config);
+		const placement = await this.pipelineOf(index).place(this.config);
 		return placement.isOk()
 			? new PlacementLocator(
 					placement.value,
@@ -396,8 +396,8 @@ class ConfigLocator {
 			DiagnosticsError
 		>
 	> {
-		const builder = this.builderOf(index);
-		const examined = await builder.examine(this.config);
+		const pipeline = this.pipelineOf(index);
+		const examined = await pipeline.examine(this.config);
 		return examined.map((result) => ({
 			locator: new PlacementLocator(result.placement, index, exists),
 			diagnostics:
@@ -405,8 +405,8 @@ class ConfigLocator {
 		}));
 	}
 
-	private builderOf(index: IndexReader): ConfigBuilder {
-		return new ConfigBuilder(this.fileSystemService, index, this.tools);
+	private pipelineOf(index: IndexReader): WritePipeline {
+		return new WritePipeline(this.fileSystemService, index, this.tools);
 	}
 
 	private async existsOnDisk(

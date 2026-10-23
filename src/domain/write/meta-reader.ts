@@ -22,7 +22,7 @@ import { FolderMeta } from "./folder-meta.js";
 import { Placement } from "./placement.js";
 import { RoutedFile } from "./router.js";
 
-export class BuildMeta {
+export class PlacementMeta {
 	constructor(
 		readonly folderMeta: readonly FolderMeta[],
 		private readonly runContexts: ReadonlyMap<string, unknown>,
@@ -58,7 +58,9 @@ export class MetaReader {
 	constructor(private readonly fileSystemService: FileReader) {}
 
 	/** Fails on a folder meta Rojo would refuse, and on a RunContext Rojo can't set on a ModuleScript. */
-	async read(placement: Placement): Promise<Result<BuildMeta, Diagnostic[]>> {
+	async read(
+		placement: Placement
+	): Promise<Result<PlacementMeta, Diagnostic[]>> {
 		const folders = await this.readFolderMetas(placement);
 		if (folders.isErr()) return folders;
 		const folderMeta = folders.value.metas;
@@ -120,7 +122,7 @@ export class MetaReader {
 			),
 		];
 		return ok(
-			new BuildMeta(
+			new PlacementMeta(
 				folderMeta,
 				runContexts,
 				siblings,

@@ -91,12 +91,12 @@ export class CoreServeSession
 		this._register(watch);
 		this._register(
 			watch.onDidUpdate((update) => {
-				for (const { build } of update.reports) {
-					if (!isWritten(build)) {
-						this.writtenConfigs.delete(build.config.id);
+				for (const { outcome } of update.reports) {
+					if (!isWritten(outcome)) {
+						this.writtenConfigs.delete(outcome.config.id);
 						continue;
 					}
-					this.writtenConfigs.add(build.config.id);
+					this.writtenConfigs.add(outcome.config.id);
 				}
 				if (!this.firstUpdate.isSettled)
 					this.firstUpdate.complete(update);
@@ -136,8 +136,8 @@ export class CoreServeSession
 		if (first instanceof Error) return err(first);
 		const incompatible = await this.compatibility.problemsIn(
 			this.plan.executable,
-			first.reports.flatMap(({ build }) =>
-				isWritten(build) ? [build.config.projectFile] : []
+			first.reports.flatMap(({ outcome }) =>
+				isWritten(outcome) ? [outcome.config.projectFile] : []
 			)
 		);
 		if (incompatible.length > 0) {
@@ -190,8 +190,8 @@ export class CoreServeSession
 	private async reportIncompatible(update: WatchUpdate): Promise<void> {
 		const problems = await this.compatibility.problemsIn(
 			this.plan.executable,
-			update.reports.flatMap(({ build }) =>
-				isWritten(build) ? [build.config.projectFile] : []
+			update.reports.flatMap(({ outcome }) =>
+				isWritten(outcome) ? [outcome.config.projectFile] : []
 			)
 		);
 		if (problems.length > 0)

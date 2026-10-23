@@ -796,7 +796,7 @@ describe("CoreSyncbackService", () => {
 		);
 	});
 
-	it("should plan from what a build would write, with no project file on disk", async () => {
+	it("should plan from what a write would write, with no project file on disk", async () => {
 		await writeFiles(fs, "src/A.luau");
 		config = configOf({ routes: ROUTES });
 		request = {

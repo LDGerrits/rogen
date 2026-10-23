@@ -2,7 +2,7 @@ import { relativeTo } from "../../base/path.js";
 import { configPath } from "../../platform/config/config-path.js";
 import { plural } from "../../base/strings.js";
 import {
-	RebuildReport,
+	RewriteReport,
 	WatchCause,
 	WatchUpdate,
 } from "../../domain/watch/watch-service.js";
@@ -187,15 +187,21 @@ export class WatchLog implements WatchReporter {
 	}
 
 	private report(
-		{ build, unreported, repeated, fixed, repeatedFailure }: RebuildReport,
+		{
+			outcome,
+			unreported,
+			repeated,
+			fixed,
+			repeatedFailure,
+		}: RewriteReport,
 		sharedWarnings: SharedDiagnostics
 	): void {
 		const warnings = sharedWarnings.take(
-			build.file,
+			outcome.file,
 			unreported.filter((diagnostic) => !isError(diagnostic))
 		);
 		this.outcomeLog.outcome(
-			build,
+			outcome,
 			[...warnings.fresh, ...unreported.filter(isError)],
 			{
 				notes: [
@@ -233,8 +239,8 @@ export class PrintedWatchLog extends WatchLog {
 
 	override update({ notices, reports }: WatchUpdate): void {
 		for (const notice of notices) this.notice(notice);
-		for (const { build, unreported } of reports)
-			this.outcomeLog.diagnostics(unreported, build.file);
+		for (const { outcome, unreported } of reports)
+			this.outcomeLog.diagnostics(unreported, outcome.file);
 	}
 }
 
@@ -250,8 +256,8 @@ export class WatchJsonLog implements WatchReporter {
 
 	update(update: WatchUpdate): void {
 		update.notices.forEach((notice) => this.notice(notice));
-		for (const { build } of update.reports)
-			this.line({ build: writeEntry(build, this.cwd) });
+		for (const { outcome } of update.reports)
+			this.line({ build: writeEntry(outcome, this.cwd) });
 	}
 
 	error(error: Error): void {

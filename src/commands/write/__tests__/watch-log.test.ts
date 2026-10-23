@@ -1,7 +1,7 @@
 import path from "path";
 import { mockEntry } from "../../../domain/config/__tests__/mock-config-service.js";
 import {
-	RebuildReport,
+	RewriteReport,
 	WatchUpdate,
 } from "../../../domain/watch/watch-service.js";
 import {
@@ -168,19 +168,19 @@ describe("WatchLog.update", () => {
 		});
 	});
 
-	describe("a rebuild", () => {
+	describe("a rewrite", () => {
 		const warning = (message: string) =>
 			warningDiagnostic("x.warn", { resource: "/repo/src" }, message);
 		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
 
 		const reportOf = (
-			build: LoadedConfig,
+			outcome: LoadedConfig,
 			unreported: readonly Diagnostic[],
 			repeatedFailure = false,
 			repeated: readonly Diagnostic[] = [],
 			fixed: readonly Diagnostic[] = []
-		): RebuildReport => ({
-			build,
+		): RewriteReport => ({
+			outcome,
 			unreported,
 			repeated,
 			fixed,
@@ -195,7 +195,7 @@ describe("WatchLog.update", () => {
 
 		it("should print only the diagnostics the session hadn't reported", () => {
 			const { log, logService } = session();
-			const built = new WrittenConfig(
+			const outcome = new WrittenConfig(
 				entry.config,
 				"unchanged",
 				{ warnings: [warning("a"), warning("b")], syncWarnings: [] },
@@ -210,7 +210,7 @@ describe("WatchLog.update", () => {
 			);
 
 			log.update(
-				updateOf({ reports: [reportOf(built, [warning("b")])] })
+				updateOf({ reports: [reportOf(outcome, [warning("b")])] })
 			);
 
 			expect(logService.texts("diagnosticWarning")).toEqual([
@@ -236,7 +236,7 @@ describe("WatchLog.update", () => {
 			]);
 		});
 
-		const built = (warnings: Diagnostic[]) =>
+		const writtenWith = (warnings: Diagnostic[]) =>
 			new WrittenConfig(
 				entry.config,
 				"wrote",
@@ -250,7 +250,7 @@ describe("WatchLog.update", () => {
 				},
 				[]
 			);
-		const resultLine = (reports: RebuildReport[]) => {
+		const resultLine = (reports: RewriteReport[]) => {
 			const { log, logService } = session();
 			log.update(updateOf({ reports }));
 			return logService.entries.find(({ kind }) => kind === "success")
@@ -261,12 +261,14 @@ describe("WatchLog.update", () => {
 			const standing = [warning("a"), warning("b"), warning("c")];
 
 			expect(
-				resultLine([reportOf(built(standing), [], false, standing)])
+				resultLine([
+					reportOf(writtenWith(standing), [], false, standing),
+				])
 			).toBe("default.project.json · wrote · 3 warnings as before");
 			expect(
 				resultLine([
 					reportOf(
-						built(standing.slice(0, 1)),
+						writtenWith(standing.slice(0, 1)),
 						[],
 						false,
 						standing.slice(0, 1)
@@ -275,7 +277,7 @@ describe("WatchLog.update", () => {
 			).toBe("default.project.json · wrote · 1 warning as before");
 		});
 
-		it("should count the warnings it leaves out of a failed build too", () => {
+		it("should count the warnings it leaves out of a failed write too", () => {
 			const error = errorDiagnostic(
 				"x.err",
 				{ resource: entry.file },
@@ -307,25 +309,28 @@ describe("WatchLog.update", () => {
 		it("should say nothing when it left nothing out, and print what is new beside the count", () => {
 			const fresh = warning("new");
 
-			expect(resultLine([reportOf(built([]), [])])).toBe(
+			expect(resultLine([reportOf(writtenWith([]), [])])).toBe(
 				"default.project.json · wrote"
 			);
 			expect(
 				resultLine([
-					reportOf(built([fresh, warning("old")]), [fresh], false, [
-						warning("old"),
-					]),
+					reportOf(
+						writtenWith([fresh, warning("old")]),
+						[fresh],
+						false,
+						[warning("old")]
+					),
 				])
 			).toBe("default.project.json · wrote · 1 warning as before");
 		});
 
-		it("should say how many diagnostics a rebuild fixed, after the ones left out", () => {
+		it("should say how many diagnostics a rewrite fixed, after the ones left out", () => {
 			const standing = warning("old");
 
 			expect(
 				resultLine([
 					reportOf(
-						built([standing]),
+						writtenWith([standing]),
 						[],
 						false,
 						[standing],
@@ -338,7 +343,7 @@ describe("WatchLog.update", () => {
 			expect(
 				resultLine([
 					reportOf(
-						built([]),
+						writtenWith([]),
 						[],
 						false,
 						[],
@@ -365,13 +370,13 @@ describe("WatchLog.update", () => {
 			log.update(
 				updateOf({
 					reports: [
-						reportOf(built([shared]), [shared]),
+						reportOf(writtenWith([shared]), [shared]),
 						reportOf(
 							new WrittenConfig(
 								lobby.config,
 								"wrote",
 								{ warnings: [shared], syncWarnings: [] },
-								built([]).summary,
+								writtenWith([]).summary,
 								[]
 							),
 							[shared]

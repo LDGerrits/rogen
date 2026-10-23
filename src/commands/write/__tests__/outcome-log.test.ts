@@ -27,7 +27,7 @@ const matchFile = path.join(cwd, "match", "default.rogen.json");
 const debugLines = (dir: string, summary: WriteSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
-	new OutcomeLog(logService, dir).outcome(builtOf(summary), []);
+	new OutcomeLog(logService, dir).outcome(writtenOf(summary), []);
 	return logService.texts("debug");
 };
 
@@ -38,7 +38,7 @@ const failedOf = (
 
 const failed = failedOf();
 
-const builtOf = (
+const writtenOf = (
 	summary: WriteSummary,
 	outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten" = "wrote",
 	config: ResolvedConfig = mockConfig(),
@@ -61,13 +61,13 @@ const summaryOf = (overrides: Partial<WriteSummary> = {}): WriteSummary => ({
 	...overrides,
 });
 
-const describeBuild = (summary: WriteSummary, dir: string) =>
+const describeSummary = (summary: WriteSummary, dir: string) =>
 	debugLines(dir, summary);
 
-describe("OutcomeLog build lines", () => {
+describe("OutcomeLog write lines", () => {
 	it("should name each source path relative to the working directory", () => {
 		expect(
-			describeBuild(
+			describeSummary(
 				summaryOf({
 					roots: [
 						{
@@ -96,7 +96,7 @@ describe("OutcomeLog build lines", () => {
 
 	it("should give each route its target and file count", () => {
 		expect(
-			describeBuild(
+			describeSummary(
 				summaryOf({
 					routes: [
 						{
@@ -116,9 +116,9 @@ describe("OutcomeLog build lines", () => {
 	});
 
 	it("should count what was left out only when something was", () => {
-		expect(describeBuild(summaryOf(), cwd)).toEqual([]);
+		expect(describeSummary(summaryOf(), cwd)).toEqual([]);
 		expect(
-			describeBuild(
+			describeSummary(
 				summaryOf({ unrouted: 2, replaced: 1, displaced: 3 }),
 				cwd
 			)
@@ -132,23 +132,23 @@ describe("OutcomeLog.outcome", () => {
 	const error = errorDiagnostic("x.err", { resource: "/repo/a" }, "bad.");
 
 	const lines = (
-		build: ConfigOutcome,
+		outcome: ConfigOutcome,
 		diagnostics: ConfigOutcome["diagnostics"] = [],
 		note?: string
 	) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).outcome(build, diagnostics, {
+		new OutcomeLog(logService, cwd).outcome(outcome, diagnostics, {
 			notes: [note],
 		});
 		return logService.entries.map(({ kind, text }) => [kind, text]);
 	};
 
 	it("should say a written config wrote or was unchanged", () => {
-		expect(lines(builtOf(summaryOf()))[0]).toEqual([
+		expect(lines(writtenOf(summaryOf()))[0]).toEqual([
 			"success",
 			"default.project.json · wrote",
 		]);
-		expect(lines(builtOf(summaryOf(), "unchanged"))[0]).toEqual([
+		expect(lines(writtenOf(summaryOf(), "unchanged"))[0]).toEqual([
 			"success",
 			"default.project.json · unchanged",
 		]);
@@ -159,7 +159,7 @@ describe("OutcomeLog.outcome", () => {
 			"error",
 			"default.project.json · not written",
 		]);
-		expect(lines(builtOf(summaryOf(), "notWritten"))[0]).toEqual([
+		expect(lines(writtenOf(summaryOf(), "notWritten"))[0]).toEqual([
 			"error",
 			"default.project.json · not written",
 		]);
@@ -173,7 +173,7 @@ describe("OutcomeLog.outcome", () => {
 	});
 
 	it("should end the line of a written config with the note", () => {
-		expect(lines(builtOf(summaryOf()), [], "first build")[0]).toEqual([
+		expect(lines(writtenOf(summaryOf()), [], "first build")[0]).toEqual([
 			"success",
 			"default.project.json · wrote · first build",
 		]);
@@ -194,9 +194,9 @@ describe("OutcomeLog report", () => {
 			file: path.join(cwd, label, "default.rogen.json"),
 		});
 
-	const report = (builds: readonly ConfigOutcome[]) => {
+	const report = (outcomes: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(new WriteRun(builds));
+		new OutcomeLog(logService, cwd).report(new WriteRun(outcomes));
 		return logService.entries
 			.filter(({ kind }) => kind === "error" || kind === "success")
 			.map(({ text }) => text);
@@ -205,7 +205,7 @@ describe("OutcomeLog report", () => {
 	it("should say a clean config wasn't written because another failed", () => {
 		expect(
 			report([
-				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
+				writtenOf(summaryOf(), "notWritten", configNamed("lobby"), [
 					matchFile,
 				]),
 				failedOf([], configNamed("match")),
@@ -216,12 +216,12 @@ describe("OutcomeLog report", () => {
 		]);
 	});
 
-	it("should report a config that only a check built as one that would be written, and close with a check", () => {
+	it("should report a config that only a check prepared as one that would be written, and close with a check", () => {
 		const logService = new MockLogService();
 
 		new OutcomeLog(logService, cwd).report(
 			new WriteRun([
-				builtOf(summaryOf(), "wouldWrite", configNamed("a")),
+				writtenOf(summaryOf(), "wouldWrite", configNamed("a")),
 			]),
 			undefined,
 			"syncback",
@@ -249,8 +249,8 @@ describe("OutcomeLog report", () => {
 			const logService = new MockLogService();
 			new OutcomeLog(logService, cwd).report(
 				new WriteRun([
-					builtOf(summaryOf(), "wrote", twin("lobby")),
-					builtOf(summaryOf(), "wrote", twin("arena")),
+					writtenOf(summaryOf(), "wrote", twin("lobby")),
+					writtenOf(summaryOf(), "wrote", twin("arena")),
 				])
 			);
 			return logService.entries;
@@ -277,7 +277,7 @@ describe("OutcomeLog report", () => {
 		expect(
 			report([
 				failedOf([], configNamed("arena")),
-				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
+				writtenOf(summaryOf(), "notWritten", configNamed("lobby"), [
 					path.join(cwd, "arena", "default.rogen.json"),
 					matchFile,
 				]),
@@ -289,9 +289,9 @@ describe("OutcomeLog report", () => {
 	});
 
 	describe("errors", () => {
-		const all = (builds: readonly ConfigOutcome[]) => {
+		const all = (outcomes: readonly ConfigOutcome[]) => {
 			const logService = new MockLogService();
-			new OutcomeLog(logService, cwd).report(new WriteRun(builds));
+			new OutcomeLog(logService, cwd).report(new WriteRun(outcomes));
 			return logService.entries
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`);
@@ -384,9 +384,9 @@ describe("OutcomeLog report, warnings", () => {
 			[]
 		);
 
-	const all = (builds: readonly ConfigOutcome[]) => {
+	const all = (outcomes: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new OutcomeLog(logService, cwd).report(new WriteRun(builds));
+		new OutcomeLog(logService, cwd).report(new WriteRun(outcomes));
 		return logService.entries
 			.filter(({ kind }) => kind !== "intro")
 			.map(({ kind, text }) => `${kind}: ${text}`);
@@ -458,14 +458,14 @@ describe("OutcomeLog report, warnings", () => {
 			{ resource: path.join(cwd, "src/B.luau") },
 			"bad."
 		);
-		const build = (label: string) =>
+		const failed = (label: string) =>
 			new FailedConfig(configNamed(label), [error], {
 				warnings: [aboutSrc(label)],
 				syncWarnings: [],
 			});
 
 		expect(
-			all([build("arena"), build("match")]).find((line) =>
+			all([failed("arena"), failed("match")]).find((line) =>
 				line.startsWith("error: match")
 			)
 		).toBe(

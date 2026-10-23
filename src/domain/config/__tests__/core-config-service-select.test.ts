@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import { ResultError } from "../../../base/result.js";
 import { DiagnosticsError } from "../../../platform/diagnostics/diagnostics-error.js";
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
-import { buildableFile } from "../config-service.js";
+import { validFile } from "../config-service.js";
 import {
 	useConfigFixture,
 	service,
@@ -43,7 +43,7 @@ describe("CoreConfigService", () => {
 				"/repo/default.project.json",
 			]);
 			expect(selection.followedFolder).toBeUndefined();
-			expect(buildableFile(selection.entries[0])?.config.isAdopted).toBe(
+			expect(validFile(selection.entries[0])?.config.isAdopted).toBe(
 				true
 			);
 		});
@@ -58,7 +58,7 @@ describe("CoreConfigService", () => {
 				true
 			);
 
-			const config = buildableFile(selection.entries[0])?.config;
+			const config = validFile(selection.entries[0])?.config;
 			expect(config?.isAdopted).toBe(true);
 			expect(config?.projectFile).toBe("/repo/test.project.json");
 			expect(selection.configs).toHaveLength(1);
@@ -117,9 +117,7 @@ describe("CoreConfigService", () => {
 			await start({ names: ["a", "b"] });
 
 			expect(
-				selection.entries.map(
-					(c) => buildableFile(c)?.config.sourcePaths
-				)
+				selection.entries.map((c) => validFile(c)?.config.sourcePaths)
 			).toEqual([["/repo/a/x"], ["/repo/b/y"]]);
 		});
 
@@ -222,7 +220,7 @@ describe("CoreConfigService", () => {
 
 			const entry = await service.read("/repo/other/default.rogen.json");
 
-			expect(buildableFile(entry)?.config.sourcePaths).toEqual([
+			expect(validFile(entry)?.config.sourcePaths).toEqual([
 				"/repo/other/lib",
 			]);
 			expect(entry.status).toBe("valid");

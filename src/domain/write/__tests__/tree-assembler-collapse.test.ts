@@ -164,7 +164,7 @@ describe("TreeAssembler", () => {
 				});
 			});
 
-			it("should not collapse a directory with a folder in it that nothing places, so a collapsed build and an uncollapsed one agree", async () => {
+			it("should not collapse a directory with a folder in it that nothing places, so a collapsed write and an uncollapsed one agree", async () => {
 				await write(
 					"src/Inventory/Save.luau",
 					"src/Inventory/Assets/.gitkeep",

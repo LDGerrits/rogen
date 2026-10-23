@@ -34,7 +34,7 @@ import {
 	skippedByEveryConfig,
 	skippedOutside,
 } from "./write-service.js";
-import { BuiltConfig, ConfigBuilder } from "./config-builder.js";
+import { PreparedConfig, WritePipeline } from "./write-pipeline.js";
 import { ProjectFileStaleness } from "./check/project-file-staleness.js";
 import { OutsideSourcePaths } from "./check/outside-source-paths.js";
 import { LocateTargets } from "./locate/locate-targets.js";
@@ -42,10 +42,10 @@ import { Locator } from "./locate/locator.js";
 import { OutputWriter } from "./output-writer.js";
 
 interface WriteOptions {
-	readonly rewrite?: boolean;
+	readonly force?: boolean;
 }
 
-type Attempt = BuiltConfig | FailedConfig;
+type Attempt = PreparedConfig | FailedConfig;
 
 export class CoreWriteService implements WriteService {
 	declare readonly _serviceBrand: undefined;
@@ -64,47 +64,47 @@ export class CoreWriteService implements WriteService {
 		selection: ConfigSelection,
 		options: { readonly independent?: boolean } = {}
 	): Promise<WriteRun> {
-		return this.buildAll(selection, true, options.independent);
+		return this.writeAll(selection, true, options.independent);
 	}
 
 	check(selection: ConfigSelection): Promise<WriteRun> {
-		return this.buildAll(selection, false);
+		return this.writeAll(selection, false);
 	}
 
 	async projectFileOf(
 		project: ResolvedConfig
 	): Promise<RojoProjectFile | undefined> {
 		const listing = await this.indexService.list([...project.indexedPaths]);
-		return new ConfigBuilder(
+		return new WritePipeline(
 			this.fileSystemService,
 			listing,
 			this.syncTools
 		).projectFileOf(project);
 	}
 
-	private async buildAll(
+	private async writeAll(
 		selection: ConfigSelection,
 		write: boolean,
 		independent = false
 	): Promise<WriteRun> {
 		const { set, unloaded } = WriteSet.partition(selection);
 		const listing = await this.indexService.list(set.indexedPaths);
-		const built = await this.attempt(
+		const attempts = await this.attempt(
 			set.configs.map((config) => ({ config, syncWarnings: undefined })),
 			listing
 		);
 		const settled = await this.settle(
-			built,
+			attempts,
 			unloaded.map(({ file }) => file),
 			write,
 			{ independent }
 		);
-		const builds = groupBy(
+		const outcomes = groupBy(
 			[...unloaded, ...settled],
-			(build) => build.file
+			(outcome) => outcome.file
 		);
 		return new WriteRun(
-			selection.entries.flatMap((entry) => builds.get(entry.file) ?? [])
+			selection.entries.flatMap((entry) => outcomes.get(entry.file) ?? [])
 		);
 	}
 
@@ -113,7 +113,7 @@ export class CoreWriteService implements WriteService {
 		projectFile: string,
 		listing: IndexReader,
 		previous?: LoadedConfig,
-		rewrite = false
+		force = false
 	): Promise<LoadedConfig> {
 		const config = set.configOf(projectFile);
 		if (!config) throw new Error(`${projectFile} is not in the set.`);
@@ -123,8 +123,8 @@ export class CoreWriteService implements WriteService {
 			[{ config, syncWarnings }],
 			listing
 		);
-		const [build] = await this.settle(attempts, [], true, { rewrite });
-		return build;
+		const [outcome] = await this.settle(attempts, [], true, { force });
+		return outcome;
 	}
 
 	async locate(
@@ -236,14 +236,14 @@ export class CoreWriteService implements WriteService {
 		}[],
 		listing: IndexReader
 	): Promise<Attempt[]> {
-		const builder = new ConfigBuilder(
+		const pipeline = new WritePipeline(
 			this.fileSystemService,
 			listing,
 			this.syncTools
 		);
 		const attempts: Attempt[] = [];
 		for (const { config, syncWarnings } of configs) {
-			const result = await builder.build(config, syncWarnings);
+			const result = await pipeline.run(config, syncWarnings);
 			attempts.push(
 				result.isOk()
 					? result.value
@@ -263,8 +263,8 @@ export class CoreWriteService implements WriteService {
 		write: boolean,
 		options: WriteOptions & { readonly independent?: boolean } = {}
 	): Promise<LoadedConfig[]> {
-		const built = attempts.filter(
-			(attempt): attempt is BuiltConfig =>
+		const prepared = attempts.filter(
+			(attempt): attempt is PreparedConfig =>
 				!(attempt instanceof FailedConfig)
 		);
 		const failed = [
@@ -279,10 +279,10 @@ export class CoreWriteService implements WriteService {
 					(attempt): attempt is FailedConfig =>
 						attempt instanceof FailedConfig
 				),
-				...(await this.writeInOrder(built, options)),
+				...(await this.writeInOrder(prepared, options)),
 			];
 		if (failed.length === 0 && write)
-			return this.writeInOrder(built, options);
+			return this.writeInOrder(prepared, options);
 		return Promise.all(
 			attempts.map(async (attempt) => {
 				if (attempt instanceof FailedConfig) return attempt;
@@ -300,7 +300,9 @@ export class CoreWriteService implements WriteService {
 		);
 	}
 
-	private async withStaleness(attempt: BuiltConfig): Promise<BuiltConfig> {
+	private async withStaleness(
+		attempt: PreparedConfig
+	): Promise<PreparedConfig> {
 		const stale = await new ProjectFileStaleness(
 			this.fileSystemService
 		).diagnostic(attempt.config, async () => attempt.projectFile);
@@ -315,16 +317,16 @@ export class CoreWriteService implements WriteService {
 	}
 
 	private async writeInOrder(
-		built: readonly BuiltConfig[],
+		prepared: readonly PreparedConfig[],
 		options: WriteOptions
 	): Promise<LoadedConfig[]> {
-		const builds: LoadedConfig[] = [];
+		const outcomes: LoadedConfig[] = [];
 		let failed: string | undefined;
-		for (const attempt of built) {
+		for (const attempt of prepared) {
 			const { config, projectFile, findings, summary, readFiles } =
 				attempt;
 			if (failed) {
-				builds.push(CoreWriteService.unwritten(attempt, [failed]));
+				outcomes.push(CoreWriteService.unwritten(attempt, [failed]));
 				continue;
 			}
 			const written = config.isAdopted
@@ -335,7 +337,7 @@ export class CoreWriteService implements WriteService {
 						options
 					);
 			if (written.isErr()) failed = config.file;
-			builds.push(
+			outcomes.push(
 				written.isErr()
 					? new FailedConfig(
 							config,
@@ -351,11 +353,11 @@ export class CoreWriteService implements WriteService {
 						)
 			);
 		}
-		return builds;
+		return outcomes;
 	}
 
 	private static unwritten(
-		{ config, findings, summary, readFiles }: BuiltConfig,
+		{ config, findings, summary, readFiles }: PreparedConfig,
 		blockedBy: readonly string[]
 	): UnwrittenConfig {
 		return new UnwrittenConfig(

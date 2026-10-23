@@ -37,7 +37,7 @@ const ASKING = { command: "where", lead: "See where it lands" };
 
 interface Located {
 	readonly locations: Locations;
-	/** The paths asked about that no build reads. */
+	/** The paths asked about that no write reads. */
 	readonly skipped: readonly SkippedPath[];
 }
 

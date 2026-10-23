@@ -1,7 +1,7 @@
 import { relativeTo, toNative } from "../../base/path.js";
 import { OutputShape } from "../output/output-shape.js";
 
-/** A path given to `check` or `where` that no build reads. */
+/** A path given to `check` or `where` that no write reads. */
 export interface SkippedPath {
 	/** An absolute POSIX path. */
 	readonly path: string;

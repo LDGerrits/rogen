@@ -9,7 +9,7 @@ import {
 	SyncTool,
 } from "../toolchain/toolchain.js";
 
-/** Where a build's files are synced from: the source paths themselves, or the `compiledPath` that tools write them into. */
+/** Where a write's files are synced from: the source paths themselves, or the `compiledPath` that tools write them into. */
 export class CompiledLayout {
 	readonly commonRoot: string;
 	readonly compiledPath: string | undefined;

@@ -23,7 +23,7 @@ import {
 	WatchReporter,
 } from "./watch-log.js";
 
-/** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo after each write when asked to. */
+/** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: writes, then rewrites whenever sources or configs change, and runs Rojo after each write when asked to. */
 export class WriteWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,
@@ -133,8 +133,8 @@ export class WriteWatch {
 				const id = plan.project.id;
 				if (
 					!update.reports.some(
-						({ build }) =>
-							isWritten(build) && build.config.id === id
+						({ outcome }) =>
+							isWritten(outcome) && outcome.config.id === id
 					) ||
 					waiting.has(id)
 				)

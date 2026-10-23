@@ -107,9 +107,9 @@ export function commandHarness(
 	const index = options.index ?? new CoreIndexService(fs);
 	const toolchain = new CoreToolchainService(fs);
 	const requests = options.requests ?? new MockRequestService();
-	const build = new CoreWriteService(fs, index, toolchain.syncTools);
+	const writeService = new CoreWriteService(fs, index, toolchain.syncTools);
 	const watcher = options.watcher ?? new MemoryWatcher(fs, log);
-	const watch = new CoreWatchService(watcher, index, build);
+	const watch = new CoreWatchService(watcher, index, writeService);
 	const processes = options.processes ?? new MockProcessService();
 
 	const services = new ServiceCollection();
@@ -121,7 +121,7 @@ export function commandHarness(
 	services.set(ConfigService, config);
 	services.set(IndexService, index);
 	services.set(ToolchainService, toolchain);
-	services.set(WriteService, build);
+	services.set(WriteService, writeService);
 	services.set(
 		InitService,
 		new CoreInitService(
@@ -152,7 +152,7 @@ export function commandHarness(
 	services.set(RojoCommandService, rojoCommands);
 	services.set(
 		SyncbackService,
-		new CoreSyncbackService(fs, build, rojoCommands)
+		new CoreSyncbackService(fs, writeService, rojoCommands)
 	);
 	services.set(
 		ServeService,

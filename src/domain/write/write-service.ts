@@ -56,11 +56,11 @@ interface UnplacedLocation extends Located {
 	readonly folder?: true;
 }
 
-/** The path can't be placed because the build of its config stops on an error; `by` is the first of them. */
+/** The path can't be placed because the write of its config stops on an error; `by` is the first of them. */
 interface BlockedLocation extends Located {
 	readonly status: "blocked";
 	readonly by: Diagnostic;
-	/** `by` is about the path itself, not about a file the build stops on instead. */
+	/** `by` is about the path itself, not about a file the write stops on instead. */
 	readonly own: boolean;
 }
 
@@ -79,7 +79,7 @@ export type FileLocation =
 	| UnplacedLocation
 	| BlockedLocation;
 
-/** What a build raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path. */
+/** What a write raises about `location`: for a file the user named, everything that reaches it; for any other, only what is about that path. */
 export function diagnosticsOf(
 	location: FileLocation,
 	diagnostics: readonly Diagnostic[]
@@ -132,7 +132,7 @@ export interface ConfigLocations {
 	readonly files: readonly FileLocation[];
 	readonly instances: readonly InstanceLocation[];
 	readonly queried: readonly string[];
-	/** What a build of the config raises, without the compiled path's: the errors that stopped the later phases, else the warnings. */
+	/** What a write of the config raises, without the compiled path's: the errors that stopped the later phases, else the warnings. */
 	readonly diagnostics: readonly Diagnostic[];
 }
 
@@ -159,9 +159,9 @@ export interface LocateQuery {
 
 export interface Diagnosis {
 	readonly diagnostics: readonly Diagnostic[];
-	/** Errors that stop a build but are not about the paths asked about, so the check went only as far as the build gets. */
+	/** Errors that stop a write but are not about the paths asked about, so the check went only as far as the write gets. */
 	readonly stoppedBy: readonly Diagnostic[];
-	/** The paths asked about that no build reads and that no diagnostic is about. */
+	/** The paths asked about that no write reads and that no diagnostic is about. */
 	readonly skipped: readonly SkippedPath[];
 }
 
@@ -244,34 +244,34 @@ export function mergeLocations(
 	};
 }
 
-/** Builds configs from the index and writes them; `build`, `rebuild` and `locate` place files the same way. */
+/** Prepares configs from the index and writes them; `write`, `rewrite` and `locate` place files the same way. */
 export interface WriteService {
 	readonly _serviceBrand: undefined;
 
-	/** Builds each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. With `independent`, a config that fails or doesn't load leaves the others to be written. */
+	/** Prepares each selected config that loads and writes them in order; a config that fails or doesn't load writes nothing, and a failed write leaves the rest unwritten. With `independent`, a config that fails or doesn't load leaves the others to be written. */
 	write(
 		selection: ConfigSelection,
 		options?: { readonly independent?: boolean }
 	): Promise<WriteRun>;
 
-	/** Builds every selected config as `write` does, and writes nothing. */
+	/** Prepares every selected config as `write` does, and writes nothing. */
 	check(selection: ConfigSelection): Promise<WriteRun>;
 
-	/** The project file a build of `project` would write, or none when the build fails. Writes nothing. */
+	/** The project file a write of `project` would write, or none when it fails. Writes nothing. */
 	projectFileOf(
 		project: ResolvedConfig
 	): Promise<RojoProjectFile | undefined>;
 
-	/** Builds and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `rewrite`, the file is written even when its bytes are what a build makes. */
+	/** Prepares and writes the project at `projectFile` in a watch's `set`; the compiled path is checked only when `previous` holds no answer for this version of the config. With `force`, the file is written even when its bytes are what a build makes. */
 	rewrite(
 		set: WriteSet,
 		projectFile: string,
 		listing: IndexReader,
 		previous?: LoadedConfig,
-		rewrite?: boolean
+		force?: boolean
 	): Promise<LoadedConfig>;
 
-	/** What a build raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config. Writes nothing; fails as `locate` does. */
+	/** What a write raises about each of `targets.args`, and why any config didn't load; with no arguments, about every config. Writes nothing; fails as `locate` does. */
 	diagnose(
 		selection: ConfigSelection,
 		targets?: LocateQuery
@@ -280,7 +280,7 @@ export interface WriteService {
 	/** What each of `query.args` is, one entry each and in order: a path, resolved, or an instance. */
 	askedAbout(query: LocateQuery): Promise<readonly Asked[]>;
 
-	/** The project files on disk that differ from what a build would write, as the diagnostics `check` raises for them. Writes nothing. */
+	/** The project files on disk that differ from what a write would write, as the diagnostics `check` raises for them. Writes nothing. */
 	staleProjectFiles(selection: ConfigSelection): Promise<Diagnostic[]>;
 
 	/** Where each argument lands in every config of `selection`: a path gives its file, a directory what's in it, an instance the files placed at or inside it; no arguments give every file. */

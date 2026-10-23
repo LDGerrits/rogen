@@ -31,7 +31,7 @@ const summary: WriteSummary = {
 	displaced: 0,
 };
 
-describe("domain/write/build", () => {
+describe("domain/write/write", () => {
 	describe("WriteRun", () => {
 		const lobby = configOf({
 			file: abs("lobby/default.rogen.json"),
@@ -107,7 +107,7 @@ describe("domain/write/build", () => {
 			expect(run.shares[1].errors.sameAs).toEqual([lobby.file]);
 		});
 
-		it("should not fail a run whose configs all built", () => {
+		it("should not fail a run whose configs all written", () => {
 			expect(new WriteRun([written(lobby, [shared])]).failed).toBe(false);
 		});
 
@@ -183,7 +183,7 @@ describe("domain/write/build", () => {
 			expect(set.isErr() && set.error.diagnostics).toEqual([failure]);
 		});
 
-		it("should split a selection into the configs that load and the builds that did not", () => {
+		it("should split a selection into the configs that load and the writes that did not", () => {
 			const selection = new MockConfigSelection([
 				{
 					status: "valid",

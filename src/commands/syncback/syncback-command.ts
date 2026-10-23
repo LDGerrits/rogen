@@ -158,10 +158,10 @@ registerCommand(
 			if (refusal) return err(refusal);
 
 			const writeService = accessor.get(WriteService);
-			let build = dryRun
+			let run = dryRun
 				? await writeService.check(selection.value)
 				: await writeService.write(selection.value);
-			const failure = build.failure();
+			const failure = run.failure();
 
 			const request =
 				project &&
@@ -202,14 +202,12 @@ registerCommand(
 					}
 				}
 				if (outcome.kind === "written") {
-					const rebuilt = await writeService.write(selection.value);
+					const rewritten = await writeService.write(selection.value);
 					if (
-						rebuilt.failure() ||
-						rebuilt.outcomes.some(
-							({ outcome }) => outcome === "wrote"
-						)
+						rewritten.failure() ||
+						rewritten.outcomes.some(({ kind }) => kind === "wrote")
 					)
-						build = rebuilt;
+						run = rewritten;
 				}
 			}
 			let stopped: Error | undefined;
@@ -219,14 +217,14 @@ registerCommand(
 				return this.printJson(
 					logService,
 					syncbackDocument(
-						build.outcomes,
+						run.outcomes,
 						cwd,
 						syncbackEntry(input, outcome, cwd)
 					),
 					failure ?? stopped
 				);
 			new OutcomeLog(logService, cwd).report(
-				build,
+				run,
 				selection.value.home,
 				"syncback",
 				!dryRun

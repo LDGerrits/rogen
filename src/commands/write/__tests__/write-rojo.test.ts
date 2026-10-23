@@ -35,7 +35,7 @@ describeWithRojo("write command against Rojo", () => {
 		fs.writeFileSync(path.join(dir, file), content);
 	};
 
-	const build = async (names: string[]) => {
+	const runWrite = async (names: string[]) => {
 		const line = { positionals: names, options: {} };
 		const environment = new NativeEnvironmentService(line.options, dir);
 		const fileSystem = new DiskFileSystemService();
@@ -83,7 +83,7 @@ describeWithRojo("write command against Rojo", () => {
 			})
 		);
 
-		const result = await build([]);
+		const result = await runWrite([]);
 
 		expect(result.isOk()).toBe(true);
 		expect(classes(sourcemap(dir, "default.project.json"))).toEqual(
@@ -107,8 +107,8 @@ describeWithRojo("write command against Rojo", () => {
 				JSON.stringify({ rogen: { sourcePaths: ["../src"], routes } })
 			);
 
-		expect((await build(["lobby"])).isOk()).toBe(true);
-		expect((await build(["arena"])).isOk()).toBe(true);
+		expect((await runWrite(["lobby"])).isOk()).toBe(true);
+		expect((await runWrite(["arena"])).isOk()).toBe(true);
 		for (const folder of ["lobby", "arena"])
 			expect(
 				classes(sourcemap(dir, `${folder}/default.project.json`))
@@ -143,7 +143,7 @@ describeWithRojo("write command against Rojo", () => {
 			})
 		);
 
-		const result = await build([]);
+		const result = await runWrite([]);
 
 		expect(result.isOk()).toBe(true);
 		const project = JSON.parse(

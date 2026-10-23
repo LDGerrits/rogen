@@ -915,7 +915,7 @@ describe("CoreWriteService.locate", () => {
 			]);
 		});
 
-		it("should report a file ignored inside it as ignored, as the build leaves it out", async () => {
+		it("should report a file ignored inside it as ignored, as the write leaves it out", async () => {
 			await write(...files);
 			const ignored = [abs("**/Punch.luau"), abs("**/Heavy")];
 

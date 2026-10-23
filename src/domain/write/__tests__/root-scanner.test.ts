@@ -10,7 +10,7 @@ import { ResolvedConfig } from "../../config/resolved-config.js";
 import { ScannedRoot } from "../root-scanner.js";
 import {
 	abs,
-	builderOf,
+	pipelineOf,
 	configOf,
 	placeFiles,
 	syncTools,
@@ -38,13 +38,13 @@ describe("RootScanner", () => {
 			};
 			const index = await newIndex().list(scanOptions.sourcePaths);
 			const config = configOf(scanOptions);
-			const builder = builderOf(fs, index);
-			const built = await builder.build(config);
+			const pipeline = pipelineOf(fs, index);
+			const prepared = await pipeline.run(config);
 			return {
-				roots: (await builder.place(config)).unwrap().roots,
-				warnings: built.isOk()
-					? built.value.findings.warnings
-					: built.error,
+				roots: (await pipeline.place(config)).unwrap().roots,
+				warnings: prepared.isOk()
+					? prepared.value.findings.warnings
+					: prepared.error,
 			};
 		};
 
@@ -76,7 +76,7 @@ describe("RootScanner", () => {
 				});
 
 				const [root] = (
-					await await builderOf(fs, index).place(config)
+					await await pipelineOf(fs, index).place(config)
 				).unwrap().roots;
 
 				expect(files(root)).toEqual(["script:Fine.luau"]);
@@ -102,7 +102,7 @@ describe("RootScanner", () => {
 				);
 
 				const [root] = (
-					await builderOf(fs, index).place(
+					await pipelineOf(fs, index).place(
 						configOf({ sourcePaths: [abs("src")], ignored: [] })
 					)
 				).unwrap().roots;
@@ -122,7 +122,7 @@ describe("RootScanner", () => {
 				});
 
 				const [root] = (
-					await await builderOf(fs, index).place(config)
+					await await pipelineOf(fs, index).place(config)
 				).unwrap().roots;
 
 				expect(files(root)).toEqual(["script:A.luau"]);
@@ -148,7 +148,7 @@ describe("RootScanner", () => {
 				const index = await newIndex().list([abs("src")]);
 
 				const [root] = (
-					await builderOf(fs, index).place(config())
+					await pipelineOf(fs, index).place(config())
 				).unwrap().roots;
 
 				expect(files(root)).toEqual(["script:A.luau"]);
@@ -160,12 +160,12 @@ describe("RootScanner", () => {
 				});
 			});
 
-			it("should be left out before they exist too, so the first build and the next place the same files", async () => {
+			it("should be left out before they exist too, so the first write and the next place the same files", async () => {
 				await write("src/A.luau");
 				const index = await newIndex().list([abs("src")]);
 
 				const [root] = (
-					await builderOf(fs, index).place(config())
+					await pipelineOf(fs, index).place(config())
 				).unwrap().roots;
 
 				expect([...root.leftOut.keys()].sort()).toEqual([
@@ -178,7 +178,7 @@ describe("RootScanner", () => {
 				const index = await newIndex().list([abs("src")]);
 
 				const [root] = (
-					await builderOf(fs, index).place(config())
+					await pipelineOf(fs, index).place(config())
 				).unwrap().roots;
 
 				expect(files(root)).toContain("data:other.project.json");
@@ -195,7 +195,7 @@ describe("RootScanner", () => {
 			});
 
 			const [root] = (
-				await await builderOf(fs, index).place(config)
+				await await pipelineOf(fs, index).place(config)
 			).unwrap().roots;
 
 			expect(

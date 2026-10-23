@@ -28,28 +28,28 @@ export type WatchCause =
 			readonly reloaded: boolean;
 	  };
 
-/** One config's rebuild in a round, with what it says that the previous rebuild didn't. */
-export interface RebuildReport {
-	/** `build.config` is the version that was built. */
-	readonly build: LoadedConfig;
-	/** The diagnostics of `build` its previous rebuild didn't have, in print order. */
+/** One config's rewrite in a round, with what it says that the previous rewrite didn't. */
+export interface RewriteReport {
+	/** `outcome.config` is the version that was written. */
+	readonly outcome: LoadedConfig;
+	/** The diagnostics of `outcome` its previous rewrite didn't have, in print order. */
 	readonly unreported: readonly Diagnostic[];
-	/** The diagnostics of `build` that the previous rebuild had too. */
+	/** The diagnostics of `outcome` that the previous rewrite had too. */
 	readonly repeated: readonly Diagnostic[];
-	/** The diagnostics of the previous rebuild that `build` no longer has. */
+	/** The diagnostics of the previous rewrite that `outcome` no longer has. */
 	readonly fixed: readonly Diagnostic[];
-	/** It failed with the same errors as the previous rebuild. */
+	/** It failed with the same errors as the previous rewrite. */
 	readonly repeatedFailure: boolean;
 }
 
-/** One round of rebuilds, fired once every rebuild in it has finished. */
+/** One round of rewrites, fired once every rewrite in it has finished. */
 export interface WatchUpdate {
 	readonly at: Date;
 	readonly cause: WatchCause;
 	readonly changes: readonly FileChange[];
 	/** What the config reloads of this round said: added, removed, broken or loading again. */
 	readonly notices: readonly ConfigNotice[];
-	readonly reports: readonly RebuildReport[];
+	readonly reports: readonly RewriteReport[];
 }
 
 /** What a watch is for, when the files are not all it serves. */
@@ -60,14 +60,14 @@ export interface WatchOptions {
 
 /** A running watch; the caller owns it and disposes it. */
 export interface WatchSession extends Disposable {
-	/** The configs it builds now. */
+	/** The configs it writes now. */
 	readonly configs: readonly ResolvedConfig[];
-	/** Fired once per round of rebuilds. */
+	/** Fired once per round of rewrites. */
 	readonly onDidUpdate: Event<WatchUpdate>;
 	/** A step failed unexpectedly; the watch goes on. */
 	readonly onDidError: Event<Error>;
 
-	/** Resolves once the watcher is live and the initial build is queued, so no change goes unseen. */
+	/** Resolves once the watcher is live and the initial write is queued, so no change goes unseen. */
 	start(): Promise<Result<void, Error>>;
 	/** Lets the work already started finish, then stops the watcher. Safe to call twice. */
 	stop(): Promise<void>;
@@ -76,7 +76,7 @@ export interface WatchSession extends Disposable {
 export interface WatchService {
 	readonly _serviceBrand: undefined;
 
-	/** Fails as a build would when a config is broken or the configs can't be built together. The caller starts, stops and disposes the session; one at a time, as sessions share the process's watcher. */
+	/** Fails as a write would when a config is broken or the configs can't be written together. The caller starts, stops and disposes the session; one at a time, as sessions share the process's watcher. */
 	watch(
 		selection: ReloadableSelection,
 		options?: WatchOptions

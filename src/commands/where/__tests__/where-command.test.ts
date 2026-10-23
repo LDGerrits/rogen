@@ -100,7 +100,7 @@ describe("where command", () => {
 			]);
 		});
 
-		it("should not list a path some build reads", async () => {
+		it("should not list a path some write reads", async () => {
 			await run({ _: ["src/Util.luau"], json: true });
 
 			expect(JSON.parse(printed().join("\n"))).not.toHaveProperty(

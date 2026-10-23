@@ -27,14 +27,14 @@ export const sourcemapLineShape = S.union(
 );
 
 export function sourcemapDocument(
-	builds: readonly ConfigOutcome[],
+	outcomes: readonly ConfigOutcome[],
 	cwd: string,
 	rojo: RojoEntry
 ) {
-	const built = configsDocument(builds, cwd);
+	const written = configsDocument(outcomes, cwd);
 	return {
-		changed: built.changed || rojo.outcome === "built",
-		configs: built.configs,
+		changed: written.changed || rojo.outcome === "built",
+		configs: written.configs,
 		rojo,
 	};
 }

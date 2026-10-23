@@ -127,10 +127,10 @@ registerCommand(
 				? undefined
 				: rojoService.choose(selection.value);
 
-			const build = await accessor
+			const written = await accessor
 				.get(WriteService)
 				.write(selection.value);
-			const failure = build.failure();
+			const failure = written.failure();
 			const uploaded =
 				failure || project === undefined
 					? undefined
@@ -151,14 +151,14 @@ registerCommand(
 				return this.printJson(
 					logService,
 					uploadDocument(
-						build.outcomes,
+						written.outcomes,
 						cwd,
 						rojoEntry({ command: "upload", cwd }, uploaded)
 					),
 					failure ?? rojoFailure
 				);
 			new OutcomeLog(logService, cwd).report(
-				build,
+				written,
 				selection.value.home,
 				"upload"
 			);

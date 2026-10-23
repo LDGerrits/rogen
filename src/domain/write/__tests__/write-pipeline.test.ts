@@ -9,32 +9,32 @@ import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.j
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
 	abs,
-	builderOf,
+	pipelineOf,
 	configOf,
-	expectBuiltProject,
+	expectWrittenProject,
 	indexOf,
 } from "./fixtures.js";
 
-describe("ConfigBuilder", () => {
+describe("WritePipeline", () => {
 	let fs: MemoryFileSystemService;
 
-	const buildOf = async (config: ResolvedConfig) => {
+	const prepare = async (config: ResolvedConfig) => {
 		const index = await indexOf(fs, config.indexedPaths);
-		return builderOf(fs, index).build(config);
+		return pipelineOf(fs, index).run(config);
 	};
 
 	beforeEach(() => {
 		fs = new MemoryFileSystemService();
 	});
 
-	describe("build", () => {
+	describe("run", () => {
 		it("should report the folder meta it read, and not a data file's", async () => {
 			await fs.writeFile(abs("src/Combat/Hit.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{}");
 			await fs.writeFile(abs("src/Notes.txt"), "");
 			await fs.writeFile(abs("src/Notes.meta.json"), "{}");
 
-			const result = await buildOf(configOf());
+			const result = await prepare(configOf());
 
 			expect(result.unwrap().readFiles).toEqual([
 				abs("src/Combat/init.meta.json"),
@@ -47,7 +47,7 @@ describe("ConfigBuilder", () => {
 			await fs.writeFile(abs("src/Hud.luau"), "");
 			await fs.writeFile(abs("src/Hud.meta.json"), "{}");
 
-			const result = await buildOf(configOf());
+			const result = await prepare(configOf());
 
 			expect(result.unwrap().readFiles).toEqual([
 				abs("src/Hud.meta.json"),
@@ -59,10 +59,10 @@ describe("ConfigBuilder", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf();
 
-			const result = await buildOf(config);
+			const result = await prepare(config);
 
 			expect(result.unwrap().findings.warnings).toEqual([]);
-			expectBuiltProject(result.unwrap().projectFile);
+			expectWrittenProject(result.unwrap().projectFile);
 			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
@@ -78,7 +78,7 @@ describe("ConfigBuilder", () => {
 				sourcePaths: [abs("core"), abs("lobby")],
 			});
 
-			const result = await buildOf(config);
+			const result = await prepare(config);
 
 			expect(result.unwrap().findings.warnings).toMatchObject([
 				{
@@ -94,7 +94,7 @@ describe("ConfigBuilder", () => {
 				sourcePaths: [abs("srcc"), abs("lobby")],
 			});
 
-			const result = await buildOf(config);
+			const result = await prepare(config);
 
 			expect(result.isErr()).toBe(true);
 			expect(result.isErr() && result.error.diagnostics).toMatchObject([
@@ -114,7 +114,7 @@ describe("ConfigBuilder", () => {
 		it("should fail when the only source path is a file", async () => {
 			await fs.writeFile(abs("src"), "");
 
-			const result = await buildOf(configOf());
+			const result = await prepare(configOf());
 
 			expect(result.isErr()).toBe(true);
 		});
@@ -122,7 +122,7 @@ describe("ConfigBuilder", () => {
 		it("should not tell a config on the default source path to check a spelling", async () => {
 			await fs.writeFile(abs("src"), "");
 
-			const result = await buildOf(configOf());
+			const result = await prepare(configOf());
 
 			expect(
 				result.isErr() && result.error.diagnostics[0].message
@@ -132,7 +132,7 @@ describe("ConfigBuilder", () => {
 		});
 
 		it("should tell a config with its own source path to check the spelling", async () => {
-			const result = await buildOf(
+			const result = await prepare(
 				configOf({ sourcePaths: [abs("srcc")] })
 			);
 
@@ -141,8 +141,8 @@ describe("ConfigBuilder", () => {
 			).toContain('Check the spelling in "sourcePaths".');
 		});
 
-		it("should build a config with no source paths at all", async () => {
-			const result = await buildOf(configOf({ sourcePaths: [] }));
+		it("should write a config with no source paths at all", async () => {
+			const result = await prepare(configOf({ sourcePaths: [] }));
 
 			expect(result.isOk()).toBe(true);
 		});
@@ -154,7 +154,7 @@ describe("ConfigBuilder", () => {
 				routes: { server: "ServerScriptService" },
 			});
 
-			const result = await buildOf(config);
+			const result = await prepare(config);
 
 			expect(
 				result.unwrap().findings.warnings.map((warning) => warning.code)
@@ -166,9 +166,9 @@ describe("ConfigBuilder", () => {
 			await fs.createSymbolicLink(abs("shared"), abs("src/Shared"));
 			const config = configOf();
 
-			const result = await buildOf(config);
+			const result = await prepare(config);
 
-			expectBuiltProject(result.unwrap().projectFile);
+			expectWrittenProject(result.unwrap().projectFile);
 			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
 				ReplicatedStorage: {
@@ -184,7 +184,7 @@ describe("ConfigBuilder", () => {
 			await fs.createSymbolicLink(abs("shared"), abs("src/Two"));
 			const config = configOf();
 
-			const result = await buildOf(config);
+			const result = await prepare(config);
 
 			expect(result.unwrap().projectFile.tree).toEqual({
 				$className: "DataModel",
@@ -199,16 +199,16 @@ describe("ConfigBuilder", () => {
 		it("should write the name the config sets, and none otherwise", async () => {
 			await fs.createDirectory(abs("src"));
 
-			const named = await buildOf(
+			const named = await prepare(
 				configOf({ project: { name: "lobby" } })
 			);
-			const unnamed = await buildOf(configOf({ name: "lobby" }));
+			const unnamed = await prepare(configOf({ name: "lobby" }));
 
 			expect(named.unwrap().projectFile.name).toBe("lobby");
 			expect(unnamed.unwrap().projectFile).not.toHaveProperty("name");
 		});
 
-		it("should put the warnings of the config before the ones the build raises", async () => {
+		it("should put the warnings of the config before the ones the write raises", async () => {
 			await fs.writeFile(abs("core/A.luau"), "");
 			const unknownKey = warningDiagnostic(
 				"config.unknownField",
@@ -216,7 +216,7 @@ describe("ConfigBuilder", () => {
 				'"colour" is no key of a project file.'
 			);
 
-			const result = await buildOf(
+			const result = await prepare(
 				configOf({
 					sourcePaths: [abs("core"), abs("lobby")],
 					warnings: [unknownKey],
@@ -243,43 +243,43 @@ describe("ConfigBuilder", () => {
 					...overrides,
 				});
 
-			it("should build its tree as written and scan nothing", async () => {
+			it("should write its tree as written and scan nothing", async () => {
 				await fs.writeFile(abs("vendor/Lib.luau"), "");
 
-				const built = (await buildOf(withoutRoutes())).unwrap();
+				const prepared = (await prepare(withoutRoutes())).unwrap();
 
-				expectBuiltProject(built.projectFile);
-				expect(built.projectFile.tree).toEqual(tree);
-				expect(built.summary).toMatchObject({
+				expectWrittenProject(prepared.projectFile);
+				expect(prepared.projectFile.tree).toEqual(tree);
+				expect(prepared.summary).toMatchObject({
 					roots: [],
 					routes: [],
 					unrouted: 0,
 				});
-				expect(built.findings.warnings).toEqual([]);
+				expect(prepared.findings.warnings).toEqual([]);
 			});
 
 			it("should warn once when the default source path holds files the tree does not mount", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/deep/B.luau"), "");
 
-				const built = (await buildOf(withoutRoutes())).unwrap();
+				const prepared = (await prepare(withoutRoutes())).unwrap();
 
-				expect(built.findings.warnings).toMatchObject([
+				expect(prepared.findings.warnings).toMatchObject([
 					{
 						severity: DiagnosticSeverity.Warning,
 						code: "scan.unmountedSource",
 						resource: abs("src"),
 					},
 				]);
-				expect(built.projectFile.tree).toEqual(tree);
+				expect(prepared.projectFile.tree).toEqual(tree);
 			});
 
 			it("should not warn about a config with routes", async () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 
-				const built = (await buildOf(configOf())).unwrap();
+				const prepared = (await prepare(configOf())).unwrap();
 
-				expect(built.findings.warnings).toEqual([]);
+				expect(prepared.findings.warnings).toEqual([]);
 			});
 		});
 
@@ -294,7 +294,7 @@ describe("ConfigBuilder", () => {
 						file.endsWith(".meta.json") ? "{}" : ""
 					);
 				const config = configOf(overrides);
-				return (await buildOf(config))
+				return (await prepare(config))
 					.unwrap()
 					.findings.warnings.filter(
 						({ code }) => code === "meta.unclaimed"
@@ -437,7 +437,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/Old.luau"), "");
 				await fs.writeFile(abs("lib/C.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({
 						sourcePaths: [abs("src"), abs("lib")],
 						ignored: [toPosix(abs("src/Old.luau"))],
@@ -466,7 +466,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/Vendor/Lib.luau"), "");
 				await fs.writeFile(abs("src/Save.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({
 						project: {
 							name: "game",
@@ -497,7 +497,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/B.luau"), "");
 				await fs.writeFile(abs("src/C.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({
 						routes: {
 							server: "ServerScriptService",
@@ -524,7 +524,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/Net/server/Remote.luau"), "");
 				await fs.writeFile(abs("src/Net/client/Hud.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({
 						routes: {
 							server: "ServerScriptService",
@@ -543,7 +543,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/B.client.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({ routes: { server: "ServerScriptService" } })
 				);
 
@@ -554,7 +554,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/A.lua"), "");
 				await fs.writeFile(abs("src/A.luau"), "");
 
-				const result = await buildOf(configOf());
+				const result = await prepare(configOf());
 
 				expect(result.unwrap().summary.replaced).toBe(1);
 			});
@@ -563,7 +563,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("src/B.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({
 						project: {
 							name: "repo",
@@ -586,7 +586,7 @@ describe("ConfigBuilder", () => {
 				await fs.writeFile(abs("src/A.luau"), "");
 				await fs.writeFile(abs("lib/A.luau"), "");
 
-				const result = await buildOf(
+				const result = await prepare(
 					configOf({ sourcePaths: [abs("src"), abs("lib")] })
 				);
 
@@ -598,10 +598,10 @@ describe("ConfigBuilder", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			await fs.writeFile(abs("src/init.meta.json"), "[]");
 
-			const result = await builderOf(
+			const result = await pipelineOf(
 				fs,
 				await indexOf(fs, [abs("src")])
-			).build(configOf());
+			).run(configOf());
 
 			expect(result.isErr() && result.error.diagnostics).toMatchObject([
 				{ code: "meta.notAnObject" },
@@ -611,13 +611,13 @@ describe("ConfigBuilder", () => {
 		it("should check the compiled path only when nothing is known of it", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 			const config = configOf({ compiledPath: abs("dist") });
-			const builder = builderOf(
+			const pipeline = pipelineOf(
 				fs,
 				await indexOf(fs, config.sourcePaths)
 			);
 
-			const checked = await builder.build(config);
-			const known = await builder.build(config, []);
+			const checked = await pipeline.run(config);
+			const known = await pipeline.run(config, []);
 
 			expect(checked.unwrap().findings.syncWarnings).toMatchObject([
 				{ code: "output.nothingEmitted" },

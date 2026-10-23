@@ -1,13 +1,13 @@
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { ResolvedConfigSpec } from "../../config/__tests__/mock-config-service.js";
-import { abs, buildAndPlace, configOf, writeFiles } from "./fixtures.js";
+import { abs, prepareAndPlace, configOf, writeFiles } from "./fixtures.js";
 
 describe("Placement", () => {
 	let fs: MemoryFileSystemService;
 
 	const placementOf = async (overrides: ResolvedConfigSpec = {}) =>
 		(
-			await buildAndPlace(
+			await prepareAndPlace(
 				fs,
 				configOf({
 					routes: { "*": "ReplicatedStorage" },

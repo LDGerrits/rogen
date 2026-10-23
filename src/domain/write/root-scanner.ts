@@ -22,7 +22,7 @@ import { PortableName } from "./portable-name.js";
 
 export interface ScannedFile {
 	readonly kind: RojoFileKind;
-	/** The file as Rojo reads it with the project's sync rules, read once for the whole build. */
+	/** The file as Rojo reads it with the project's sync rules, read once for the whole write. */
 	readonly file: RojoFile;
 	readonly sourcePath: string;
 	readonly relativePath: string;

@@ -563,7 +563,7 @@ describe("check command", () => {
 			expect(logService.texts("notice")).toEqual([]);
 		});
 
-		it("should read a bare name that is a folder with a default as the build does", async () => {
+		it("should read a bare name that is a folder with a default as the write does", async () => {
 			await writeConfig("dist.rogen.json", {
 				name: "dist",
 				rogen: { routes: ROUTES },
@@ -720,7 +720,7 @@ describe("check command", () => {
 			).toEqual(["output.nothingEmitted"]);
 		});
 
-		it("should warn that a written project file differs from what a build would write", async () => {
+		it("should warn that a written project file differs from what a write would write", async () => {
 			await write("src/Clean.luau");
 			await fs.writeFile("/repo/default.project.json", "{}");
 
@@ -732,7 +732,7 @@ describe("check command", () => {
 			expect(await fs.readFile("/repo/default.project.json")).toBe("{}");
 		});
 
-		it("should pass when the project file is what a build would write", async () => {
+		it("should pass when the project file is what a write would write", async () => {
 			await write("src/Clean.luau");
 			await harness.run("write");
 			expect(await fs.exists("/repo/default.project.json")).toBe(true);
@@ -860,7 +860,7 @@ describe("check command", () => {
 				],
 			},
 		])(
-			"should give build's diagnostic objects for $code",
+			"should give the write's diagnostic objects for $code",
 			async ({ code, config, files }) => {
 				await writeConfig("default.rogen.json", {
 					...config,
@@ -875,13 +875,13 @@ describe("check command", () => {
 					positionals: [],
 					options: { json: true },
 				});
-				const built = JSON.parse(printed()[0]) as {
+				const written = JSON.parse(printed()[0]) as {
 					configs: { diagnostics: { code: string }[] }[];
 				};
 				logService.clear();
 				await run({ json: true });
 
-				const { diagnostics } = built.configs[0];
+				const { diagnostics } = written.configs[0];
 				expect(
 					diagnostics.filter((diagnostic) => diagnostic.code === code)
 				).toHaveLength(2);

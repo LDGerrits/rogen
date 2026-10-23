@@ -95,14 +95,14 @@ export function syncbackEntry(
 }
 
 export function syncbackDocument(
-	builds: readonly ConfigOutcome[],
+	outcomes: readonly ConfigOutcome[],
 	cwd: string,
 	syncback: SyncbackEntry
 ) {
-	const built = configsDocument(builds, cwd);
+	const written = configsDocument(outcomes, cwd);
 	return {
-		changed: built.changed || syncback.outcome === "written",
-		configs: built.configs,
+		changed: written.changed || syncback.outcome === "written",
+		configs: written.configs,
 		syncback,
 	};
 }

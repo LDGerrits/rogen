@@ -29,7 +29,7 @@ describe("CoreWriteService", () => {
 		fs = new MemoryFileSystemService();
 	});
 
-	describe("build", () => {
+	describe("write", () => {
 		const lobby = (spec: ResolvedConfigSpec = {}) =>
 			configOf({
 				file: abs("lobby/default.rogen.json"),
@@ -54,10 +54,12 @@ describe("CoreWriteService", () => {
 				file
 			);
 
-		const outcomesOf = (builds: Awaited<ReturnType<typeof runOf>>) =>
-			builds.map((build) => [
-				build.outcome === "notLoaded" ? build.file : build.config.file,
-				build.outcome,
+		const outcomesOf = (outcomes: Awaited<ReturnType<typeof runOf>>) =>
+			outcomes.map((outcome) => [
+				outcome.kind === "notLoaded"
+					? outcome.file
+					: outcome.config.file,
+				outcome.kind,
 			]);
 
 		beforeEach(async () => {
@@ -66,13 +68,13 @@ describe("CoreWriteService", () => {
 		});
 
 		it("should write only the project file of the config it is given, beside that config", async () => {
-			const [build] = (
+			const [outcome] = (
 				await writeServiceOfFs().write(
 					selectionOf(configOf({ file: abs("dist.rogen.json") }))
 				)
 			).outcomes;
 
-			expect(build.outcome).toBe("wrote");
+			expect(outcome.kind).toBe("wrote");
 			expect(await fs.exists(abs("dist.project.json"))).toBe(true);
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
@@ -80,11 +82,11 @@ describe("CoreWriteService", () => {
 		it("should index the source paths it reads itself", async () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 
-			const [build] = (
+			const [outcome] = (
 				await writeServiceOfFs().write(selectionOf(configOf()))
 			).outcomes;
 
-			expect(build).toMatchObject({
+			expect(outcome).toMatchObject({
 				summary: { roots: [{ sourcePath: abs("src"), files: 1 }] },
 			});
 		});
@@ -98,12 +100,12 @@ describe("CoreWriteService", () => {
 				selectionOf(configOf(), lobby())
 			);
 
-			expect(outcomes.map(({ outcome }) => outcome)).toEqual([
+			expect(outcomes.map(({ kind }) => kind)).toEqual([
 				"failed",
 				"notWritten",
 			]);
 			expect(
-				outcomes[0].outcome === "failed" &&
+				outcomes[0].kind === "failed" &&
 					outcomes[0].errors.map(({ code }) => code)
 			).toEqual(["output.writeFailed"]);
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
@@ -135,13 +137,13 @@ describe("CoreWriteService", () => {
 
 			const result = await runOf(configs);
 
-			expect(result.map(({ outcome }) => outcome)).toEqual([
+			expect(result.map(({ kind }) => kind)).toEqual([
 				"unchanged",
 				"unchanged",
 			]);
 		});
 
-		it("should write nothing when any config fails to build", async () => {
+		it("should write nothing when any config fails to write", async () => {
 			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
 
 			const result = await runOf([configOf(), lobby()]);
@@ -299,10 +301,10 @@ describe("CoreWriteService", () => {
 				project: { tree },
 			});
 
-			const [build] = await runOf([config]);
+			const [outcome] = await runOf([config]);
 
-			expect(build).toMatchObject({
-				outcome: "wrote",
+			expect(outcome).toMatchObject({
+				kind: "wrote",
 				summary: { roots: [], routes: [], unrouted: 0 },
 				warnings: [
 					{ code: "scan.unmountedSource", resource: abs("src") },
@@ -318,10 +320,10 @@ describe("CoreWriteService", () => {
 		it("should not warn about a stale project file, which it is about to write", async () => {
 			await fs.writeFile(abs("default.project.json"), "{}");
 
-			const [build] = await runOf([configOf()]);
+			const [outcome] = await runOf([configOf()]);
 
-			expect(build.outcome).toBe("wrote");
-			expect(build.warnings).toEqual([]);
+			expect(outcome.kind).toBe("wrote");
+			expect(outcome.warnings).toEqual([]);
 		});
 
 		it("should keep the compiled path warnings of a config that was not written", async () => {
@@ -333,7 +335,7 @@ describe("CoreWriteService", () => {
 			]);
 
 			expect(result[0]).toMatchObject({
-				outcome: "notWritten",
+				kind: "notWritten",
 				syncWarnings: [{ code: "output.nothingEmitted" }],
 			});
 		});
@@ -347,23 +349,23 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 		});
 
-		it("should build every config and write none", async () => {
+		it("should write every config and write none", async () => {
 			const result = await checkOf(configOf());
 
-			expect(result).toMatchObject([{ outcome: "wouldWrite" }]);
+			expect(result).toMatchObject([{ kind: "wouldWrite" }]);
 			expect(result[0]).not.toHaveProperty("blockedBy");
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
-		it("should raise the diagnostics a build raises, the compiled path's included", async () => {
+		it("should raise the diagnostics a write raises, the compiled path's included", async () => {
 			const config = configOf({ compiledPath: abs("dist") });
 
 			const [checked] = await checkOf(config);
-			const [built] = (
+			const [outcome] = (
 				await writeServiceOfFs().write(selectionOf(config))
 			).outcomes;
 
-			expect(checked.diagnostics).toEqual(built.diagnostics);
+			expect(checked.diagnostics).toEqual(outcome.diagnostics);
 			expect(checked.diagnostics).toMatchObject([
 				{ code: "output.nothingEmitted" },
 			]);
@@ -374,7 +376,7 @@ describe("CoreWriteService", () => {
 
 			const [checked] = await checkOf(configOf());
 
-			expect(checked.outcome).toBe("failed");
+			expect(checked.kind).toBe("failed");
 		});
 
 		describe("staleProjectFiles", () => {
@@ -410,11 +412,11 @@ describe("CoreWriteService", () => {
 			it("should leave the file as it is and call it unchanged", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
 
-				const [build] = (
+				const [outcome] = (
 					await writeServiceOfFs().write(selectionOf(adopted()))
 				).outcomes;
 
-				expect(build.outcome).toBe("unchanged");
+				expect(outcome.kind).toBe("unchanged");
 				expect(await fs.readFile(abs("default.project.json"))).toBe(
 					"{}"
 				);
@@ -425,10 +427,10 @@ describe("CoreWriteService", () => {
 				await service.write(selectionOf(configOf()));
 				const written = await fs.readFile(abs("default.project.json"));
 
-				const [build] = (await service.write(selectionOf(adopted())))
+				const [outcome] = (await service.write(selectionOf(adopted())))
 					.outcomes;
 
-				expect(build.outcome).toBe("unchanged");
+				expect(outcome.kind).toBe("unchanged");
 				expect(await fs.readFile(abs("default.project.json"))).toBe(
 					written
 				);
@@ -456,7 +458,7 @@ describe("CoreWriteService", () => {
 		});
 
 		describe("a project file edited by hand", () => {
-			it("should be written over by a build", async () => {
+			it("should be written over by a write", async () => {
 				const service = writeServiceOfFs();
 				await service.write(selectionOf(configOf()));
 				const file = JSON.parse(
@@ -468,10 +470,10 @@ describe("CoreWriteService", () => {
 					JSON.stringify(file)
 				);
 
-				const [built] = (await service.write(selectionOf(configOf())))
+				const [outcome] = (await service.write(selectionOf(configOf())))
 					.outcomes;
 
-				expect(built.outcome).toBe("wrote");
+				expect(outcome.kind).toBe("wrote");
 				expect(
 					await fs.readFile(abs("default.project.json"))
 				).not.toContain("Extra");
@@ -492,7 +494,7 @@ describe("CoreWriteService", () => {
 		});
 
 		describe("a project file on disk", () => {
-			it("should warn when it differs from what a build would write", async () => {
+			it("should warn when it differs from what a write would write", async () => {
 				await fs.writeFile(abs("default.project.json"), "{}");
 
 				const [checked] = await checkOf(configOf());
@@ -510,7 +512,7 @@ describe("CoreWriteService", () => {
 				);
 			});
 
-			it("should name the config to build when it is not the default", async () => {
+			it("should name the config to write when it is not the default", async () => {
 				await fs.writeFile(abs("dist.project.json"), "{}");
 
 				const [checked] = await checkOf(
@@ -558,7 +560,7 @@ describe("CoreWriteService", () => {
 				]);
 			});
 
-			it("should not warn when it holds the bytes a build would write", async () => {
+			it("should not warn when it holds the bytes a write would write", async () => {
 				const config = configOf();
 				await writeServiceOfFs().write(selectionOf(config));
 
@@ -567,7 +569,7 @@ describe("CoreWriteService", () => {
 				expect(checked.warnings).toEqual([]);
 			});
 
-			it("should warn when a build has not written it since the sources changed", async () => {
+			it("should warn when a write has not written it since the sources changed", async () => {
 				const config = configOf();
 				await writeServiceOfFs().write(selectionOf(config));
 				await fs.writeFile(abs("src/B.luau"), "");
@@ -587,8 +589,8 @@ describe("CoreWriteService", () => {
 		});
 	});
 
-	describe("rebuild", () => {
-		const rebuildOf = async (
+	describe("rewrite", () => {
+		const rewriteOf = async (
 			set: WriteSet,
 			previous?: LoadedConfig
 		): Promise<LoadedConfig> =>
@@ -603,33 +605,33 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs("src/A.luau"), "");
 		});
 
-		it("should check the compiled path of a config it hasn't built before", async () => {
-			const build = await rebuildOf(
+		it("should check the compiled path of a config it hasn't written before", async () => {
+			const outcome = await rewriteOf(
 				new WriteSet([configOf({ compiledPath: abs("dist") })])
 			);
 
-			expect(build.syncWarnings).toMatchObject([
+			expect(outcome.syncWarnings).toMatchObject([
 				{ code: "output.nothingEmitted" },
 			]);
 		});
 
 		it("should keep what it knows of the compiled path while the config is the same", async () => {
 			const set = new WriteSet([configOf({ compiledPath: abs("dist") })]);
-			const first = await rebuildOf(set);
+			const first = await rewriteOf(set);
 			await fs.writeFile(abs("dist/A.luau"), "");
 
-			const again = await rebuildOf(set, first);
+			const again = await rewriteOf(set, first);
 
 			expect(again.syncWarnings).toBe(first.syncWarnings);
 		});
 
 		it("should check the compiled path again for a new version of the config", async () => {
-			const first = await rebuildOf(
+			const first = await rewriteOf(
 				new WriteSet([configOf({ compiledPath: abs("dist") })])
 			);
 			await fs.writeFile(abs("dist/A.luau"), "");
 
-			const again = await rebuildOf(
+			const again = await rewriteOf(
 				new WriteSet([configOf({ compiledPath: abs("dist") })]),
 				first
 			);
@@ -638,19 +640,19 @@ describe("CoreWriteService", () => {
 		});
 
 		it("should write the project file of the config", async () => {
-			const build = await rebuildOf(new WriteSet([configOf()]));
+			const outcome = await rewriteOf(new WriteSet([configOf()]));
 
-			expect(build.outcome).toBe("wrote");
+			expect(outcome.kind).toBe("wrote");
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
 		it("should say unchanged for a project file that is up to date", async () => {
 			const set = new WriteSet([configOf()]);
-			const first = await rebuildOf(set);
+			const first = await rewriteOf(set);
 
-			const again = await rebuildOf(set, first);
+			const again = await rewriteOf(set, first);
 
-			expect(again.outcome).toBe("unchanged");
+			expect(again.kind).toBe("unchanged");
 		});
 	});
 
@@ -827,7 +829,7 @@ describe("CoreWriteService", () => {
 			).toBe(true);
 		});
 
-		it("should keep the warnings a build raises about the files it was asked about", async () => {
+		it("should keep the warnings a write raises about the files it was asked about", async () => {
 			const result = (
 				await locate(
 					configOf({
@@ -989,7 +991,7 @@ describe("CoreWriteService", () => {
 			await fs.writeFile(abs(ignoredAt), "");
 		});
 
-		it("should tell the path it can't place that the build stops on the neighbour", async () => {
+		it("should tell the path it can't place that the write stops on the neighbour", async () => {
 			const result = (
 				await locateIn(writeServiceOfFs(), configOf({ routes }), {
 					args: ["src/F/Shared/Good.luau"],
@@ -1027,7 +1029,7 @@ describe("CoreWriteService", () => {
 			]);
 		});
 
-		it("should check a path as far as the build gets, and say what stops it", async () => {
+		it("should check a path as far as the write gets, and say what stops it", async () => {
 			const found = (
 				await writeServiceOfFs().diagnose(
 					selectionOf(configOf({ routes })),
@@ -1120,7 +1122,7 @@ describe("CoreWriteService", () => {
 			expect(await diagnose("src/I")).toEqual(file);
 		});
 
-		it("should say the build stops on a meta error that is not about the path", async () => {
+		it("should say the write stops on a meta error that is not about the path", async () => {
 			await fs.writeFile(abs("src/Combat/A.luau"), "");
 			await fs.writeFile(abs("src/Combat/init.meta.json"), "{ nope");
 			await fs.writeFile(abs("src/B.luau"), "");

@@ -229,7 +229,7 @@ describe("init command", () => {
 		});
 	});
 
-	describe("first build", () => {
+	describe("first write", () => {
 		it("should write the project file of the config it wrote", async () => {
 			await write("src/Inventory/Server/Save.luau");
 
@@ -344,7 +344,7 @@ describe("init command", () => {
 	});
 
 	describe("--dry-run", () => {
-		it("should write and build nothing, and say what it would", async () => {
+		it("should write nothing, and say what it would", async () => {
 			const logService = new MockLogService();
 
 			const result = await runInit(

@@ -6,7 +6,7 @@ import {
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { ConfigSelection, buildableConfigs } from "../config/config-service.js";
+import { ConfigSelection, validConfigs } from "../config/config-service.js";
 
 type MatchForm = "folder" | "marker" | "suffix";
 
@@ -25,7 +25,7 @@ export type ScanLeftOut =
 	/** Rojo ignores it because of the letter case of its extension; `rename` is the file name that Rojo reads. */
 	| { readonly status: "extensionCase"; readonly rename: string };
 
-/** Why the build leaves a path out of the tree, in the words `where` reports it. */
+/** Why the write leaves a path out of the tree, in the words `where` reports it. */
 export type LeftOut =
 	| ScanLeftOut
 	| { readonly status: "unrouted" }
@@ -56,11 +56,11 @@ export interface WriteSummary {
 	readonly displaced: number;
 }
 
-export function isWritten(build: ConfigOutcome): build is WrittenConfig {
-	return build.outcome === "wrote" || build.outcome === "unchanged";
+export function isWritten(outcome: ConfigOutcome): outcome is WrittenConfig {
+	return outcome.kind === "wrote" || outcome.kind === "unchanged";
 }
 
-/** What a run did for a config that loaded; narrow it on `outcome`. */
+/** What a run did for a config that loaded; narrow it on `kind`. */
 export type LoadedConfig =
 	WrittenConfig | CheckedConfig | UnwrittenConfig | FailedConfig;
 
@@ -88,29 +88,29 @@ abstract class AbstractConfigOutcome {
 		return this.findings.syncWarnings;
 	}
 
-	/** Everything the build has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
+	/** Everything the write has to say, in the order it is printed: warnings, compiled path warnings, then the errors that failed it. */
 	get diagnostics(): readonly Diagnostic[] {
 		return [...this.warnings, ...(this.syncWarnings ?? []), ...this.errors];
 	}
 }
 
-/** A config built and written, or found unchanged on disk. */
+/** A config prepared and written, or found unchanged on disk. */
 export class WrittenConfig extends AbstractConfigOutcome {
 	constructor(
 		config: ResolvedConfig,
-		readonly outcome: "wrote" | "unchanged",
+		readonly kind: "wrote" | "unchanged",
 		findings: WriteFindings,
 		readonly summary: WriteSummary,
-		/** The files the build read; a change to one must rebuild it. */
+		/** The files the write read; a change to one must rewrite it. */
 		readonly readFiles: readonly string[]
 	) {
 		super(config, findings);
 	}
 }
 
-/** A config that didn't load, so there was nothing to build; `errors` is why. */
+/** A config that didn't load, so there was nothing to write; `errors` is why. */
 export class UnloadedConfig {
-	readonly outcome = "notLoaded";
+	readonly kind = "notLoaded";
 
 	constructor(
 		readonly file: string,
@@ -130,9 +130,9 @@ export class UnloadedConfig {
 	}
 }
 
-/** A config that built cleanly in a run that writes nothing, and that a run which writes would have written. */
+/** A config that prepared cleanly in a run that writes nothing, and that a run which writes would have written. */
 export class CheckedConfig extends AbstractConfigOutcome {
-	readonly outcome = "wouldWrite";
+	readonly kind = "wouldWrite";
 
 	constructor(
 		config: ResolvedConfig,
@@ -144,9 +144,9 @@ export class CheckedConfig extends AbstractConfigOutcome {
 	}
 }
 
-/** A config that built cleanly, but whose run stopped before writing it because the configs whose files `blockedBy` lists failed or didn't load. */
+/** A config that prepared cleanly, but whose run stopped before writing it because the configs whose files `blockedBy` lists failed or didn't load. */
 export class UnwrittenConfig extends AbstractConfigOutcome {
-	readonly outcome = "notWritten";
+	readonly kind = "notWritten";
 
 	constructor(
 		config: ResolvedConfig,
@@ -159,9 +159,9 @@ export class UnwrittenConfig extends AbstractConfigOutcome {
 	}
 }
 
-/** A config whose build, write or set check went wrong; `findings` is what its build found before that. */
+/** A config whose phases, write or set check went wrong; `findings` is what its phases found before that. */
 export class FailedConfig extends AbstractConfigOutcome {
-	readonly outcome = "failed";
+	readonly kind = "failed";
 
 	constructor(
 		config: ResolvedConfig,
@@ -171,7 +171,7 @@ export class FailedConfig extends AbstractConfigOutcome {
 		super(config, findings, errors);
 	}
 
-	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier build of this version found. */
+	/** A config that failed before it had warnings of its own; `syncWarnings` is what an earlier write of this version found. */
 	static before(
 		config: ResolvedConfig,
 		errors: readonly Diagnostic[],
@@ -227,33 +227,33 @@ export class SharedDiagnostics {
 	}
 }
 
-interface BuildShare {
-	readonly build: ConfigOutcome;
+interface OutcomeShare {
+	readonly outcome: ConfigOutcome;
 	readonly warnings: SharedPart;
 	readonly errors: SharedPart;
 }
 
 /** The outcomes of one run, one per selected config in order; a warning several configs share, or an error a config repeats, is said once, by the first. */
 export class WriteRun {
-	readonly shares: readonly BuildShare[];
+	readonly shares: readonly OutcomeShare[];
 
 	constructor(readonly outcomes: readonly ConfigOutcome[]) {
 		const warnings = SharedDiagnostics.warnings();
 		const errors = SharedDiagnostics.errors();
-		this.shares = outcomes.map((build) => ({
-			build,
-			warnings: warnings.take(build.file, [
-				...build.warnings,
-				...(build.syncWarnings ?? []),
+		this.shares = outcomes.map((outcome) => ({
+			outcome,
+			warnings: warnings.take(outcome.file, [
+				...outcome.warnings,
+				...(outcome.syncWarnings ?? []),
 			]),
-			errors: errors.take(build.file, build.errors),
+			errors: errors.take(outcome.file, outcome.errors),
 		}));
 	}
 
 	/** Whether a config failed or didn't load, which writes nothing. */
 	get failed(): boolean {
 		return this.outcomes.some(
-			({ outcome }) => outcome === "failed" || outcome === "notLoaded"
+			({ kind }) => kind === "failed" || kind === "notLoaded"
 		);
 	}
 
@@ -312,7 +312,7 @@ export class WriteSet {
 		return selection.requireValid().map((configs) => new WriteSet(configs));
 	}
 
-	/** The configs of `selection` that load, as a set, and the others as builds that didn't. */
+	/** The configs of `selection` that load, as a set, and the others as outcomes that didn't. */
 	static partition(selection: ConfigSelection): {
 		readonly set: WriteSet;
 		readonly unloaded: readonly UnloadedConfig[];
@@ -320,7 +320,7 @@ export class WriteSet {
 		return {
 			set: new WriteSet(
 				selection.entries.flatMap((entry) =>
-					entry.status === "valid" ? buildableConfigs(entry) : []
+					entry.status === "valid" ? validConfigs(entry) : []
 				)
 			),
 			unloaded: selection.entries.flatMap((entry) =>

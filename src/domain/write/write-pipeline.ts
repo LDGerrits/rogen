@@ -18,13 +18,13 @@ import { CompiledPathCheck } from "./check/compiled-path-check.js";
 import { TreeAssembler } from "./tree-assembler.js";
 import { UnmountedSources } from "./check/unmounted-sources.js";
 
-/** One config built in memory, which the run goes on to write. */
-export interface BuiltConfig {
+/** One config prepared in memory, which the run goes on to write. */
+export interface PreparedConfig {
 	readonly config: ResolvedConfig;
 	readonly projectFile: RojoProjectFile;
 	readonly findings: WriteFindings;
 	readonly summary: WriteSummary;
-	/** The files the build read; a change to one must rebuild it. */
+	/** The files the write read; a change to one must rewrite it. */
 	readonly readFiles: readonly string[];
 }
 
@@ -42,8 +42,8 @@ type ExaminedConfig =
 			readonly errors: readonly Diagnostic[];
 	  };
 
-/** Builds one config from an index, phase by phase, so `build` and `locate` place files the same way. */
-export class ConfigBuilder {
+/** Runs the phases of a write on one config from an index, so `write` and `locate` place files the same way. */
+export class WritePipeline {
 	private readonly metaReader: MetaReader;
 	private readonly projectNames: NestedProjectNames;
 	private readonly compiledPathCheck: CompiledPathCheck;
@@ -72,19 +72,19 @@ export class ConfigBuilder {
 		).place();
 	}
 
-	/** Builds `config`: `examine`, then the compiled path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
-	async build(
+	/** Prepares `config`: `examine`, then the compiled path check, unless `syncWarnings` already says what is known of it. Fails when any phase does, or when no source path of the config exists. */
+	async run(
 		config: ResolvedConfig,
 		syncWarnings?: readonly Diagnostic[]
-	): Promise<Result<BuiltConfig, DiagnosticsError>> {
+	): Promise<Result<PreparedConfig, DiagnosticsError>> {
 		const examined = await this.examine(config);
 		if (examined.isErr()) return examined;
 		const examinedConfig = examined.value;
 		if (examinedConfig.kind === "stopped")
 			return err(new DiagnosticsError(examinedConfig.errors));
 		const { placement, projectFile, readFiles, warnings } = examinedConfig;
-		const missing = ConfigBuilder.missingOf(config, placement);
-		if (missing.stopsBuild)
+		const missing = WritePipeline.missingOf(config, placement);
+		if (missing.stopsWrite)
 			return err(new DiagnosticsError(missing.diagnostics()));
 		return ok({
 			config,
@@ -100,7 +100,7 @@ export class ConfigBuilder {
 		});
 	}
 
-	/** Runs every phase of `build` but the compiled path check. A meta or assembly error doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
+	/** Runs every phase of `run` but the compiled path check. A meta or assembly error doesn't fail it; the result is `stopped`. Fails only when the files can't be placed. */
 	async examine(
 		config: ResolvedConfig
 	): Promise<Result<ExaminedConfig, DiagnosticsError>> {
@@ -130,13 +130,13 @@ export class ConfigBuilder {
 		});
 	}
 
-	/** The project file `examined` assembled, when a build of `config` would write it: not when a phase stopped, or no source path exists. */
+	/** The project file `examined` assembled, when a write of `config` would write it: not when a phase stopped, or no source path exists. */
 	assembledFile(
 		config: ResolvedConfig,
 		examined: ExaminedConfig
 	): RojoProjectFile | undefined {
 		if (examined.kind !== "assembled") return undefined;
-		return ConfigBuilder.missingOf(config, examined.placement).stopsBuild
+		return WritePipeline.missingOf(config, examined.placement).stopsWrite
 			? undefined
 			: examined.projectFile;
 	}
@@ -152,7 +152,7 @@ export class ConfigBuilder {
 		);
 	}
 
-	/** The project file a build of `config` would write, or none when it fails. */
+	/** The project file a write of `config` would write, or none when it fails. */
 	async projectFileOf(
 		config: ResolvedConfig
 	): Promise<RojoProjectFile | undefined> {

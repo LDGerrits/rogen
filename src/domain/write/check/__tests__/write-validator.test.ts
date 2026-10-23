@@ -7,7 +7,7 @@ import { MetaReader } from "../../meta-reader.js";
 import { TreeAssembler } from "../../tree-assembler.js";
 import {
 	abs,
-	buildAndPlace,
+	prepareAndPlace,
 	configOf,
 	configOf as baseConfigOf,
 	indexOf,
@@ -46,7 +46,7 @@ describe("WriteValidator", () => {
 			]);
 		});
 
-		it("should report nothing for a build that raises no problems", async () => {
+		it("should report nothing for a write that raises no problems", async () => {
 			await writeFiles(fs, "src/Fine.luau");
 			const config = baseConfigOf();
 			const index = await indexOf(fs, config.sourcePaths);
@@ -80,7 +80,7 @@ describe("WriteValidator rules", () => {
 			sourcePaths: readonly string[] = [abs("src")]
 		) =>
 			(
-				await buildAndPlace(
+				await prepareAndPlace(
 					fs,
 					configOf({
 						routes: ROUTES,
@@ -254,7 +254,7 @@ describe("WriteValidator rules", () => {
 				expect(warning.message).toContain('the "server" route');
 			});
 
-			it("should not stop the build from placing the files", async () => {
+			it("should not stop the write from placing the files", async () => {
 				const result = (await route({}, [abs("server")])).unwrap();
 
 				expect(result.routed.map(({ route }) => route)).toEqual(["*"]);

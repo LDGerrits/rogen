@@ -20,16 +20,16 @@ export class MissingSourcePaths {
 	) {}
 
 	/** Whether the config lists source paths and none of them is a folder. */
-	get stopsBuild(): boolean {
+	get stopsWrite(): boolean {
 		return (
 			this.sourcePaths.length > 0 &&
 			this.sourcePaths.every(({ exists }) => !exists)
 		);
 	}
 
-	/** An error each when the build stops, else a warning each. */
+	/** An error each when the write stops, else a warning each. */
 	diagnostics(): Diagnostic[] {
-		return this.stopsBuild ? this.errors() : this.warnings();
+		return this.stopsWrite ? this.errors() : this.warnings();
 	}
 
 	/** A warning each, whatever the others are, for a report that does not stop. */

@@ -17,7 +17,7 @@ import {
 	CoveredTargets,
 	EnclosingConfigs,
 	ValidConfigEntry,
-	buildableConfigs,
+	validConfigs,
 } from "../config-service.js";
 
 export interface ResolvedConfigSpec {
@@ -99,7 +99,7 @@ export class MockConfigSelection implements ReloadableSelection {
 	}
 
 	get configs(): ResolvedConfig[] {
-		return this.entries.flatMap(buildableConfigs);
+		return this.entries.flatMap(validConfigs);
 	}
 
 	reads(file: string): boolean {
