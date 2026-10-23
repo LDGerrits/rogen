@@ -4,7 +4,7 @@ import { DeferredPromise, Sequencer } from "../../base/async.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, ok, tryWithAsync } from "../../base/result.js";
-import { isWritten } from "../../domain/build/build.js";
+import { isWritten } from "../../domain/write/write.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	RojoCommandRun,

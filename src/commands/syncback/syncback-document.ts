@@ -1,5 +1,5 @@
 import { configPath } from "../../platform/config/config-path.js";
-import { ConfigBuild } from "../../domain/build/build.js";
+import { ConfigOutcome } from "../../domain/write/write.js";
 import {
 	SyncbackChange,
 	SyncbackPlan,
@@ -95,7 +95,7 @@ export function syncbackEntry(
 }
 
 export function syncbackDocument(
-	builds: readonly ConfigBuild[],
+	builds: readonly ConfigOutcome[],
 	cwd: string,
 	syncback: SyncbackEntry
 ) {

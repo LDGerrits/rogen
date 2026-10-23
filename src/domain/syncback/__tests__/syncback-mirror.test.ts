@@ -1,4 +1,4 @@
-import { PlacedLocation } from "../../build/build-service.js";
+import { PlacedLocation } from "../../write/write-service.js";
 import { RojoFile } from "../../rojo/rojo.js";
 import { RojoProjectFile } from "../../rojo/rojo-project.js";
 import { SyncRules } from "../../rojo/sync-rules.js";

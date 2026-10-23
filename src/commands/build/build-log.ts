@@ -3,10 +3,10 @@ import { configPath } from "../../platform/config/config-path.js";
 import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
 import { WHERE_SCRIPTS_RUN } from "../../domain/roblox/roblox.js";
 import {
-	BuildRun,
-	BuildSummary,
-	ConfigBuild,
-} from "../../domain/build/build.js";
+	WriteRun,
+	WriteSummary,
+	ConfigOutcome,
+} from "../../domain/write/write.js";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -138,7 +138,7 @@ function capped(diagnostics: readonly Diagnostic[]): Diagnostic[] {
 	});
 }
 
-function describeBuild(summary: BuildSummary, cwd: string): string[] {
+function describeBuild(summary: WriteSummary, cwd: string): string[] {
 	const roots = summary.roots.map(
 		({ sourcePath, files, ignored, mounted, skippedLinks }) =>
 			[
@@ -214,7 +214,7 @@ export class BuildLog {
 
 	/** With `writes` false, the run only checked: a config that built is reported as one that would be written. */
 	report(
-		run: BuildRun,
+		run: WriteRun,
 		home?: string,
 		command = "build",
 		writes = true,
@@ -222,11 +222,11 @@ export class BuildLog {
 	): void {
 		this.begin(
 			command,
-			run.builds.map(({ file }) => configPath(this.cwd, file)),
+			run.outcomes.map(({ file }) => configPath(this.cwd, file)),
 			home
 		);
 		for (const { build, warnings, errors } of run.shares) {
-			if (run.builds.length > 1)
+			if (run.outcomes.length > 1)
 				this.heading(configPath(this.cwd, build.file));
 			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
 				notes: [
@@ -244,7 +244,7 @@ export class BuildLog {
 		}
 		if (run.failed || built?.failed)
 			this.logService.closeFrame("build failed.");
-		else this.end(run.builds.length, run.warningCount, writes, built);
+		else this.end(run.outcomes.length, run.warningCount, writes, built);
 	}
 
 	private heading(label: string): void {
@@ -252,7 +252,7 @@ export class BuildLog {
 	}
 
 	outcome(
-		build: ConfigBuild,
+		build: ConfigOutcome,
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
@@ -322,7 +322,7 @@ export class BuildLog {
 		);
 	}
 
-	private details(summary?: BuildSummary): void {
+	private details(summary?: WriteSummary): void {
 		for (const line of summary ? describeBuild(summary, this.cwd) : [])
 			this.logService.debug(line);
 	}

@@ -9,8 +9,8 @@ import { Result, ok, tryWithAsync } from "../../base/result.js";
 import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { IndexService, Listing } from "../../platform/fs/index-service.js";
 import { Watcher } from "../../platform/watcher/watcher.js";
-import { BuildSet } from "../build/build.js";
-import { BuildService } from "../build/build-service.js";
+import { WriteSet } from "../write/write.js";
+import { WriteService } from "../write/write-service.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ChangeBatcher } from "./change-batcher.js";
@@ -51,10 +51,10 @@ export class CoreWatchSession
 
 	constructor(
 		private readonly selection: ReloadableSelection,
-		private buildSet: BuildSet,
+		private writeSet: WriteSet,
 		private readonly watcher: Watcher,
 		private readonly indexService: IndexService,
-		private readonly buildService: BuildService,
+		private readonly writeService: WriteService,
 		private readonly options: WatchOptions = {}
 	) {
 		super();
@@ -63,7 +63,7 @@ export class CoreWatchSession
 	}
 
 	get configs(): readonly ResolvedConfig[] {
-		return this.buildSet.configs;
+		return this.writeSet.configs;
 	}
 
 	async start(): Promise<Result<void, Error>> {
@@ -170,10 +170,10 @@ export class CoreWatchSession
 		projectFile: string,
 		rewrite: boolean
 	): Promise<RebuildReport | undefined> {
-		if (!this.buildSet.configOf(projectFile)) return undefined;
+		if (!this.writeSet.configOf(projectFile)) return undefined;
 		return watched.finished(
-			await this.buildService.rebuild(
-				this.buildSet,
+			await this.writeService.rewrite(
+				this.writeSet,
 				projectFile,
 				this.listing,
 				watched.latest,
@@ -290,7 +290,7 @@ export class CoreWatchSession
 	}
 
 	private refreshSet(): void {
-		this.buildSet = new BuildSet(this.selection.configs);
+		this.writeSet = new WriteSet(this.selection.configs);
 	}
 
 	private forgetRemoved(): void {

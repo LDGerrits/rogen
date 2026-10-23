@@ -1,6 +1,6 @@
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { BuildRun, isWritten } from "../../domain/build/build.js";
+import { WriteRun, isWritten } from "../../domain/write/write.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
 import { isPlain } from "./write-document.js";
@@ -17,7 +17,7 @@ export class WriteLog {
 	}
 
 	report(
-		run: BuildRun,
+		run: WriteRun,
 		home: string,
 		plainProjects: readonly string[]
 	): void {
@@ -36,7 +36,7 @@ export class WriteLog {
 				});
 		}
 		for (const file of plainProjects) this.plain(file);
-		const configs = run.builds.filter((build) => !isPlain(build));
+		const configs = run.outcomes.filter((build) => !isPlain(build));
 		const written = configs.filter(isWritten).length;
 		const count = `Wrote ${written} of ${plural(configs.length, "project file")}`;
 		if (run.failed) this.logService.closeFrame(`${count}.`);

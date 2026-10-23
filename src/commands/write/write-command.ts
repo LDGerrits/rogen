@@ -1,8 +1,8 @@
 import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { Result, ok } from "../../base/result.js";
-import { BuildRun } from "../../domain/build/build.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteRun } from "../../domain/write/write.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import { isDefaultConfigFileName } from "../../domain/config/config.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
@@ -52,7 +52,7 @@ interface Targets {
 
 interface Written {
 	readonly home: string;
-	readonly run: BuildRun;
+	readonly run: WriteRun;
 }
 
 registerCommand(
@@ -149,15 +149,15 @@ registerCommand(
 			if (configs.length === 0)
 				return ok({
 					home: accessor.get(EnvironmentService).cwd,
-					run: new BuildRun([]),
+					run: new WriteRun([]),
 				});
 			const selection = await accessor.get(ConfigService).select(configs);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes)
 				accessor.get(LogService).warn(note);
 			const run = await accessor
-				.get(BuildService)
-				.build(selection.value, { independent: true });
+				.get(WriteService)
+				.write(selection.value, { independent: true });
 			return ok({ home: selection.value.home, run });
 		}
 

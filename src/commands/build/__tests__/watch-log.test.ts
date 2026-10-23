@@ -5,10 +5,10 @@ import {
 	WatchUpdate,
 } from "../../../domain/watch/watch-service.js";
 import {
-	LoadedBuild,
-	FailedBuild,
-	WrittenBuild,
-} from "../../../domain/build/build.js";
+	LoadedConfig,
+	FailedConfig,
+	WrittenConfig,
+} from "../../../domain/write/write.js";
 import {
 	Diagnostic,
 	errorDiagnostic,
@@ -174,7 +174,7 @@ describe("WatchLog.update", () => {
 		const entry = mockEntry({}, path.join(cwd, "default.rogen.json"));
 
 		const reportOf = (
-			build: LoadedBuild,
+			build: LoadedConfig,
 			unreported: readonly Diagnostic[],
 			repeatedFailure = false,
 			repeated: readonly Diagnostic[] = [],
@@ -195,7 +195,7 @@ describe("WatchLog.update", () => {
 
 		it("should print only the diagnostics the session hadn't reported", () => {
 			const { log, logService } = session();
-			const built = new WrittenBuild(
+			const built = new WrittenConfig(
 				entry.config,
 				"unchanged",
 				{ warnings: [warning("a"), warning("b")], syncWarnings: [] },
@@ -225,7 +225,7 @@ describe("WatchLog.update", () => {
 				{ resource: entry.file },
 				"bad."
 			);
-			const failed = new FailedBuild(entry.config, [error]);
+			const failed = new FailedConfig(entry.config, [error]);
 
 			log.update(updateOf({ reports: [reportOf(failed, [error])] }));
 			log.update(updateOf({ reports: [reportOf(failed, [], true)] }));
@@ -237,7 +237,7 @@ describe("WatchLog.update", () => {
 		});
 
 		const built = (warnings: Diagnostic[]) =>
-			new WrittenBuild(
+			new WrittenConfig(
 				entry.config,
 				"wrote",
 				{ warnings, syncWarnings: [] },
@@ -287,7 +287,7 @@ describe("WatchLog.update", () => {
 				updateOf({
 					reports: [
 						reportOf(
-							new FailedBuild(entry.config, [error], {
+							new FailedConfig(entry.config, [error], {
 								warnings: [warning("a"), warning("b")],
 								syncWarnings: [],
 							}),
@@ -367,7 +367,7 @@ describe("WatchLog.update", () => {
 					reports: [
 						reportOf(built([shared]), [shared]),
 						reportOf(
-							new WrittenBuild(
+							new WrittenConfig(
 								lobby.config,
 								"wrote",
 								{ warnings: [shared], syncWarnings: [] },

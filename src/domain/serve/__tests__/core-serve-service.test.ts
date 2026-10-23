@@ -8,8 +8,8 @@ import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import { buildServiceOf } from "../../build/__tests__/fixtures.js";
-import { CoreBuildService } from "../../build/core-build-service.js";
+import { writeServiceOf } from "../../write/__tests__/fixtures.js";
+import { CoreWriteService } from "../../write/core-write-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
 import { CoreRojoRunner } from "../../runner/core-rojo-runner.js";
 import { RojoCompatibility } from "../../runner/rojo-compatibility.js";
@@ -84,7 +84,7 @@ describe("CoreServeService", () => {
 			memFs,
 			new CoreRojoRunner(new CoreToolchainService(memFs), processes),
 			requests,
-			new CoreWatchService(watcher, index, buildServiceOf(memFs, index)),
+			new CoreWatchService(watcher, index, writeServiceOf(memFs, index)),
 			new MockEnvironmentService(cwd, undefined, false, "/home/me"),
 			compatibility
 		);
@@ -890,7 +890,7 @@ describe("CoreServeService", () => {
 		});
 
 		it("should fail to start, starting nothing, when the first build throws", async () => {
-			jest.spyOn(CoreBuildService.prototype, "rebuild").mockRejectedValue(
+			jest.spyOn(CoreWriteService.prototype, "rewrite").mockRejectedValue(
 				new Error("disk on fire")
 			);
 

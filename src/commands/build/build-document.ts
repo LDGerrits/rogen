@@ -2,7 +2,7 @@ import path from "path";
 import { configPath } from "../../platform/config/config-path.js";
 import { toNative } from "../../base/path.js";
 import { Result } from "../../base/result.js";
-import { ConfigBuild, isWritten } from "../../domain/build/build.js";
+import { ConfigOutcome, isWritten } from "../../domain/write/write.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { ServerMessage } from "../../domain/runner/rojo-server.js";
@@ -121,7 +121,7 @@ interface BuildDocument {
 }
 
 export function buildEntry(
-	build: ConfigBuild,
+	build: ConfigOutcome,
 	cwd: string,
 	diagnostics: readonly Diagnostic[] = build.diagnostics
 ): BuildEntry {
@@ -174,9 +174,9 @@ export function rojoEntry(
 }
 
 export function buildDocument(
-	builds: readonly ConfigBuild[],
+	builds: readonly ConfigOutcome[],
 	cwd: string,
-	diagnosticsOf: (build: ConfigBuild) => readonly Diagnostic[] = (build) =>
+	diagnosticsOf: (build: ConfigOutcome) => readonly Diagnostic[] = (build) =>
 		build.diagnostics
 ): BuildDocument {
 	const configs = builds.map((build) =>

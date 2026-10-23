@@ -11,7 +11,7 @@ import { FileChange, FileChangeType } from "../../platform/fs/file-changes.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
-import { SharedDiagnostics } from "../../domain/build/build.js";
+import { SharedDiagnostics } from "../../domain/write/write.js";
 import {
 	diagnosticToJson,
 	errorToJson,

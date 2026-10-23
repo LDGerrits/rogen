@@ -1,7 +1,7 @@
 import path from "path";
 import { isGlobsetMatch } from "../../base/glob.js";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { PlacedLocation } from "../build/build-service.js";
+import { PlacedLocation } from "../write/write-service.js";
 import { RojoFile } from "../rojo/rojo.js";
 import {
 	RojoNode,

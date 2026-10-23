@@ -7,7 +7,7 @@ import {
 	InstanceFix,
 	requireExpressionOf,
 	requireNoteOf,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 import { diagnosticSummary } from "../../platform/diagnostics/diagnostic.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { instanceKey } from "../../domain/roblox/roblox.js";

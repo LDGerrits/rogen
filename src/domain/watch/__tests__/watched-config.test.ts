@@ -1,6 +1,6 @@
 import { DeferredPromise } from "../../../base/async.js";
-import { WrittenBuild } from "../../build/build.js";
-import { configOf } from "../../build/__tests__/fixtures.js";
+import { WrittenConfig } from "../../write/write.js";
+import { configOf } from "../../write/__tests__/fixtures.js";
 import { WatchedConfig } from "../watched-config.js";
 
 describe("WatchedConfig", () => {
@@ -12,7 +12,7 @@ describe("WatchedConfig", () => {
 		displaced: 0,
 	};
 	const written = (readFiles: string[]) =>
-		new WrittenBuild(
+		new WrittenConfig(
 			configOf(),
 			"wrote",
 			{ warnings: [], syncWarnings: undefined },

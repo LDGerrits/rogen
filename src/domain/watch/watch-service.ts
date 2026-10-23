@@ -5,7 +5,7 @@ import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { FileChange } from "../../platform/fs/file-changes.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
-import { LoadedBuild } from "../build/build.js";
+import { LoadedConfig } from "../write/write.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { ConfigNotice, ReloadableSelection } from "../config/config-service.js";
 
@@ -31,7 +31,7 @@ export type WatchCause =
 /** One config's rebuild in a round, with what it says that the previous rebuild didn't. */
 export interface RebuildReport {
 	/** `build.config` is the version that was built. */
-	readonly build: LoadedBuild;
+	readonly build: LoadedConfig;
 	/** The diagnostics of `build` its previous rebuild didn't have, in print order. */
 	readonly unreported: readonly Diagnostic[];
 	/** The diagnostics of `build` that the previous rebuild had too. */

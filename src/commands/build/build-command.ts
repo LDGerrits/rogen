@@ -3,7 +3,7 @@ import { DisposableStore } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 
 import {
 	ProjectArgument,
@@ -133,7 +133,7 @@ registerCommand(
 			}
 
 			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			const logService = accessor.get(LogService);
 			if (!line.options.json) logService.reserveStdout();
 
@@ -144,7 +144,7 @@ registerCommand(
 			const planned = step.plan(selection.value);
 			if (planned.isErr()) return planned;
 
-			const run = await buildService.build(selection.value);
+			const run = await writeService.write(selection.value);
 
 			const failure = run.failure();
 			const plan = planned.value;
@@ -169,7 +169,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					{
-						...buildDocument(run.builds, cwd),
+						...buildDocument(run.outcomes, cwd),
 						rojo: rojoEntry(
 							{
 								command: "build",

@@ -1,6 +1,6 @@
 import path from "path";
 import { containsPosix, toPosix } from "../../base/path.js";
-import { FileLocation, PlacedLocation } from "../build/build-service.js";
+import { FileLocation, PlacedLocation } from "../write/write-service.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 
 /** How a placed file was routed, which a new file beside it repeats. */

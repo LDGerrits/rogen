@@ -3,7 +3,7 @@ import {
 	Asked,
 	FileLocation,
 	InstanceLocation,
-} from "../../../domain/build/build-service.js";
+} from "../../../domain/write/write-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
 
 const placed = (source: string, at: string): FileLocation => ({

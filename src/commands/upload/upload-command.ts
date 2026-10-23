@@ -1,6 +1,6 @@
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -128,8 +128,8 @@ registerCommand(
 				: rojoService.choose(selection.value);
 
 			const build = await accessor
-				.get(BuildService)
-				.build(selection.value);
+				.get(WriteService)
+				.write(selection.value);
 			const failure = build.failure();
 			const uploaded =
 				failure || project === undefined
@@ -151,7 +151,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					uploadDocument(
-						build.builds,
+						build.outcomes,
 						cwd,
 						rojoEntry({ command: "upload", cwd }, uploaded)
 					),

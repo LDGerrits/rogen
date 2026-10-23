@@ -11,10 +11,10 @@ import {
 	buildableFile,
 } from "../../config/config-service.js";
 import { CoreConfigService } from "../../config/core-config-service.js";
-import { BuildSet, OutputFile } from "../../build/build.js";
+import { WriteSet, OutputFile } from "../../write/write.js";
 import { WatchOptions, WatchUpdate } from "../watch-service.js";
 import { CoreWatchSession } from "../core-watch-session.js";
-import { buildServiceOf } from "../../build/__tests__/fixtures.js";
+import { writeServiceOf } from "../../write/__tests__/fixtures.js";
 
 const isDefaultStaging = (file: string): boolean =>
 	new OutputFile("/repo/default.project.json").stagingPattern.test(file);
@@ -77,10 +77,10 @@ describe("CoreWatchSession", () => {
 		const session = store.add(
 			new CoreWatchSession(
 				selection,
-				BuildSet.of(selection).unwrap(),
+				WriteSet.of(selection).unwrap(),
 				watcher,
 				indexService,
-				buildServiceOf(fs, indexService),
+				writeServiceOf(fs, indexService),
 				options
 			)
 		);
@@ -686,10 +686,10 @@ describe("CoreWatchSession", () => {
 			const session = store.add(
 				new CoreWatchSession(
 					selection,
-					BuildSet.of(selection).unwrap(),
+					WriteSet.of(selection).unwrap(),
 					watcher,
 					indexService,
-					buildServiceOf(fs, indexService)
+					writeServiceOf(fs, indexService)
 				)
 			);
 

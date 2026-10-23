@@ -6,10 +6,10 @@ import { CoreIndexService } from "../../../platform/fs/core-index-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import {
 	abs,
-	buildServiceOf,
+	writeServiceOf,
 	configOf,
 	writeFiles,
-} from "../../build/__tests__/fixtures.js";
+} from "../../write/__tests__/fixtures.js";
 import { selectionOf } from "../../config/__tests__/mock-config-service.js";
 import { ResolvedConfig } from "../../config/resolved-config.js";
 import {
@@ -83,7 +83,7 @@ describe("CoreSyncbackService", () => {
 		await writeFiles(fs, ...files);
 		config = configOf({ routes: ROUTES, ...spec });
 		const selection = selectionOf(config);
-		await buildServiceOf(fs, new CoreIndexService(fs)).build(selection);
+		await writeServiceOf(fs, new CoreIndexService(fs)).write(selection);
 		request = {
 			selection,
 			project: config,
@@ -101,7 +101,7 @@ describe("CoreSyncbackService", () => {
 		rojo = new FakeRojo(fs);
 		service = new CoreSyncbackService(
 			fs,
-			buildServiceOf(fs, new CoreIndexService(fs)),
+			writeServiceOf(fs, new CoreIndexService(fs)),
 			rojo
 		);
 	});

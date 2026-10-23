@@ -16,10 +16,10 @@ import {
 	isMissingPath,
 } from "../../platform/fs/file-system-service.js";
 import {
-	BuildService,
+	WriteService,
 	ConfigLocations,
 	PlacedLocation,
-} from "../build/build-service.js";
+} from "../write/write-service.js";
 import { SYNCBACK_FILES, isSyncbackFileName } from "../config/config.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { instanceKey } from "../roblox/roblox.js";
@@ -174,7 +174,7 @@ export class CoreSyncbackService implements SyncbackService {
 
 	constructor(
 		private readonly fileSystemService: FileSystemService,
-		private readonly buildService: BuildService,
+		private readonly writeService: WriteService,
 		private readonly rojoService: RojoCommandService
 	) {}
 
@@ -312,7 +312,7 @@ export class CoreSyncbackService implements SyncbackService {
 	): Promise<Result<Prepared, Error>> {
 		const { project } = request;
 		const dir = project.projectDir;
-		const located = await this.buildService.locate(request.selection);
+		const located = await this.writeService.locate(request.selection);
 		if (located.isErr()) return located;
 		const here = located.value.configs.find(
 			({ config }) => config.id === project.id
@@ -321,7 +321,7 @@ export class CoreSyncbackService implements SyncbackService {
 			return err(
 				new Error(`${project.label} was not found among the projects.`)
 			);
-		const built = await this.buildService.projectFileOf(project);
+		const built = await this.writeService.projectFileOf(project);
 		if (!built)
 			return err(
 				new UsageError(
@@ -1146,7 +1146,7 @@ export class CoreSyncbackService implements SyncbackService {
 	): Promise<Diagnostic[]> {
 		if (expected.length === 0 || request.project.compiledPath !== undefined)
 			return [];
-		const located = await this.buildService.locate(request.selection, {
+		const located = await this.writeService.locate(request.selection, {
 			args: expected.map(({ file }) => file),
 			cwd: request.cwd,
 		});

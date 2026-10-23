@@ -15,7 +15,7 @@ const layersAbove = {
 // The files other modules of a layer may import; everything else in a module is internal.
 const modules = {
 	domain: {
-		build: ["asked-paths", "build", "build-service"],
+		write: ["asked-paths", "write", "write-service"],
 		config: [
 			"config",
 			"config-service",
@@ -111,18 +111,18 @@ for (const [layer, layerModules] of Object.entries(modules)) {
 
 // The domain modules each domain module may import. A new edge is a design decision, made here.
 const domainDependencies = {
-	build: ["config", "roblox", "rojo", "toolchain"],
+	write: ["config", "roblox", "rojo", "toolchain"],
 	config: ["roblox", "rojo"],
 	init: ["config", "roblox", "rojo", "runner", "toolchain"],
 	legacy: ["config"],
 	roblox: [],
 	runner: ["config", "toolchain"],
 	rojo: ["roblox"],
-	serve: ["build", "config", "runner", "watch"],
-	syncback: ["build", "config", "roblox", "rojo", "runner"],
+	serve: ["write", "config", "runner", "watch"],
+	syncback: ["write", "config", "roblox", "rojo", "runner"],
 	toolchain: [],
 	update: ["toolchain"],
-	watch: ["build", "config"],
+	watch: ["write", "config"],
 };
 
 for (const name of Object.keys(modules.domain)) {

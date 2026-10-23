@@ -1,13 +1,13 @@
 import path from "path";
 import {
-	BuildRun,
-	BuildSummary,
-	CheckedBuild,
-	ConfigBuild,
-	FailedBuild,
-	UnwrittenBuild,
-	WrittenBuild,
-} from "../../../domain/build/build.js";
+	WriteRun,
+	WriteSummary,
+	CheckedConfig,
+	ConfigOutcome,
+	FailedConfig,
+	UnwrittenConfig,
+	WrittenConfig,
+} from "../../../domain/write/write.js";
 import { ResolvedConfig } from "../../../domain/config/resolved-config.js";
 import { WHERE_SCRIPTS_RUN } from "../../../domain/roblox/roblox.js";
 import {
@@ -24,7 +24,7 @@ const cwd = path.resolve("/repo");
 
 const matchFile = path.join(cwd, "match", "default.rogen.json");
 
-const debugLines = (dir: string, summary: BuildSummary): string[] => {
+const debugLines = (dir: string, summary: WriteSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
 	new BuildLog(logService, dir).outcome(builtOf(summary), []);
@@ -34,25 +34,25 @@ const debugLines = (dir: string, summary: BuildSummary): string[] => {
 const failedOf = (
 	errors: readonly Diagnostic[] = [],
 	config: ResolvedConfig = mockConfig()
-): ConfigBuild => new FailedBuild(config, errors);
+): ConfigOutcome => new FailedConfig(config, errors);
 
 const failed = failedOf();
 
 const builtOf = (
-	summary: BuildSummary,
+	summary: WriteSummary,
 	outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten" = "wrote",
 	config: ResolvedConfig = mockConfig(),
 	blockedBy: readonly string[] = [matchFile]
-): ConfigBuild => {
+): ConfigOutcome => {
 	const findings = { warnings: [], syncWarnings: [] };
 	if (outcome === "notWritten")
-		return new UnwrittenBuild(config, findings, summary, [], blockedBy);
+		return new UnwrittenConfig(config, findings, summary, [], blockedBy);
 	if (outcome === "wouldWrite")
-		return new CheckedBuild(config, findings, summary, []);
-	return new WrittenBuild(config, outcome, findings, summary, []);
+		return new CheckedConfig(config, findings, summary, []);
+	return new WrittenConfig(config, outcome, findings, summary, []);
 };
 
-const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
+const summaryOf = (overrides: Partial<WriteSummary> = {}): WriteSummary => ({
 	roots: [],
 	routes: [],
 	unrouted: 0,
@@ -61,7 +61,7 @@ const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
 	...overrides,
 });
 
-const describeBuild = (summary: BuildSummary, dir: string) =>
+const describeBuild = (summary: WriteSummary, dir: string) =>
 	debugLines(dir, summary);
 
 describe("BuildLog build lines", () => {
@@ -132,8 +132,8 @@ describe("BuildLog.outcome", () => {
 	const error = errorDiagnostic("x.err", { resource: "/repo/a" }, "bad.");
 
 	const lines = (
-		build: ConfigBuild,
-		diagnostics: ConfigBuild["diagnostics"] = [],
+		build: ConfigOutcome,
+		diagnostics: ConfigOutcome["diagnostics"] = [],
 		note?: string
 	) => {
 		const logService = new MockLogService();
@@ -194,9 +194,9 @@ describe("BuildLog report", () => {
 			file: path.join(cwd, label, "default.rogen.json"),
 		});
 
-	const report = (builds: readonly ConfigBuild[]) => {
+	const report = (builds: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(new BuildRun(builds));
+		new BuildLog(logService, cwd).report(new WriteRun(builds));
 		return logService.entries
 			.filter(({ kind }) => kind === "error" || kind === "success")
 			.map(({ text }) => text);
@@ -220,7 +220,7 @@ describe("BuildLog report", () => {
 		const logService = new MockLogService();
 
 		new BuildLog(logService, cwd).report(
-			new BuildRun([
+			new WriteRun([
 				builtOf(summaryOf(), "wouldWrite", configNamed("a")),
 			]),
 			undefined,
@@ -248,7 +248,7 @@ describe("BuildLog report", () => {
 		const entries = () => {
 			const logService = new MockLogService();
 			new BuildLog(logService, cwd).report(
-				new BuildRun([
+				new WriteRun([
 					builtOf(summaryOf(), "wrote", twin("lobby")),
 					builtOf(summaryOf(), "wrote", twin("arena")),
 				])
@@ -289,9 +289,9 @@ describe("BuildLog report", () => {
 	});
 
 	describe("errors", () => {
-		const all = (builds: readonly ConfigBuild[]) => {
+		const all = (builds: readonly ConfigOutcome[]) => {
 			const logService = new MockLogService();
-			new BuildLog(logService, cwd).report(new BuildRun(builds));
+			new BuildLog(logService, cwd).report(new WriteRun(builds));
 			return logService.entries
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`);
@@ -375,8 +375,8 @@ describe("BuildLog report, warnings", () => {
 		label: string,
 		warnings: readonly Diagnostic[],
 		syncWarnings: readonly Diagnostic[] = []
-	): ConfigBuild =>
-		new WrittenBuild(
+	): ConfigOutcome =>
+		new WrittenConfig(
 			configNamed(label),
 			"wrote",
 			{ warnings, syncWarnings },
@@ -384,9 +384,9 @@ describe("BuildLog report, warnings", () => {
 			[]
 		);
 
-	const all = (builds: readonly ConfigBuild[]) => {
+	const all = (builds: readonly ConfigOutcome[]) => {
 		const logService = new MockLogService();
-		new BuildLog(logService, cwd).report(new BuildRun(builds));
+		new BuildLog(logService, cwd).report(new WriteRun(builds));
 		return logService.entries
 			.filter(({ kind }) => kind !== "intro")
 			.map(({ kind, text }) => `${kind}: ${text}`);
@@ -459,7 +459,7 @@ describe("BuildLog report, warnings", () => {
 			"bad."
 		);
 		const build = (label: string) =>
-			new FailedBuild(configNamed(label), [error], {
+			new FailedConfig(configNamed(label), [error], {
 				warnings: [aboutSrc(label)],
 				syncWarnings: [],
 			});
@@ -478,8 +478,8 @@ describe("BuildLog report, closing line", () => {
 	const closing = (warnings: number) => {
 		const logService = new MockLogService();
 		new BuildLog(logService, cwd).report(
-			new BuildRun([
-				new WrittenBuild(
+			new WriteRun([
+				new WrittenConfig(
 					mockConfig(),
 					"wrote",
 					{
@@ -512,8 +512,8 @@ describe("BuildLog report, closing line", () => {
 	it("should name what Rojo built in place of the count", () => {
 		const logService = new MockLogService();
 		new BuildLog(logService, cwd).report(
-			new BuildRun([
-				new WrittenBuild(
+			new WriteRun([
+				new WrittenConfig(
 					mockConfig(),
 					"wrote",
 					{ warnings: [], syncWarnings: [] },
@@ -533,8 +533,8 @@ describe("BuildLog report, closing line", () => {
 	it("should claim nothing when Rojo failed", () => {
 		const logService = new MockLogService();
 		new BuildLog(logService, cwd).report(
-			new BuildRun([
-				new WrittenBuild(
+			new WriteRun([
+				new WrittenConfig(
 					mockConfig(),
 					"wrote",
 					{ warnings: [], syncWarnings: [] },
@@ -635,8 +635,8 @@ describe("BuildLog report, when quiet", () => {
 		const logService = new MockLogService();
 		logService.setLevel(LogLevel.Error);
 		new BuildLog(logService, cwd).report(
-			new BuildRun([
-				new WrittenBuild(
+			new WriteRun([
+				new WrittenConfig(
 					mockConfig(),
 					"wrote",
 					{

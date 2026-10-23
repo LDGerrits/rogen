@@ -4,7 +4,7 @@ import { relativeTo } from "../../base/path.js";
 import { DisposableStore } from "../../base/disposable.js";
 import { ErrorUtils } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -168,8 +168,8 @@ registerCommand(
 			const plan = planned.value;
 
 			const build = await accessor
-				.get(BuildService)
-				.build(selection.value);
+				.get(WriteService)
+				.write(selection.value);
 			const failure = build.failure();
 
 			const tmp = path.join(
@@ -209,7 +209,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					sourcemapDocument(
-						build.builds,
+						build.outcomes,
 						cwd,
 						rojoEntry(
 							plan?.target ?? {
@@ -224,7 +224,7 @@ registerCommand(
 				);
 			const buildLog = new BuildLog(logService, cwd);
 			if (printed)
-				for (const one of build.builds)
+				for (const one of build.outcomes)
 					buildLog.diagnostics(
 						[...one.warnings, ...one.errors],
 						one.file

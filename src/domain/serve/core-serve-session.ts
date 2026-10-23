@@ -5,7 +5,7 @@ import { Emitter, Event } from "../../base/event.js";
 import { Result, err, ok } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
-import { isWritten } from "../build/build.js";
+import { isWritten } from "../write/write.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
 import { RojoCompatibility } from "../runner/rojo-compatibility.js";
 import { RojoRunner } from "../runner/rojo-runner.js";

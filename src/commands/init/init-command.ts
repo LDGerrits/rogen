@@ -1,7 +1,7 @@
 import { CancelledError, UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildRun } from "../../domain/build/build.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteRun } from "../../domain/write/write.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	InitChoices,
@@ -243,13 +243,13 @@ registerCommand(
 		private async buildConfigs(
 			accessor: ServicesAccessor,
 			plan: InitPlan
-		): Promise<Result<BuildRun, Error>> {
-			if (plan.configs.length === 0) return ok(new BuildRun([]));
+		): Promise<Result<WriteRun, Error>> {
+			if (plan.configs.length === 0) return ok(new WriteRun([]));
 			const selection = await accessor
 				.get(ConfigService)
 				.select(plan.configs);
 			if (selection.isErr()) return selection;
-			return ok(await accessor.get(BuildService).build(selection.value));
+			return ok(await accessor.get(WriteService).write(selection.value));
 		}
 	}
 );

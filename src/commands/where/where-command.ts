@@ -3,13 +3,13 @@ import { configPath } from "../../platform/config/config-path.js";
 import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import {
-	BuildService,
+	WriteService,
 	Locations,
 	mergeLocations,
 	uniqueSkipped,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 
-import { AskedPaths, skippedNotes } from "../../domain/build/asked-paths.js";
+import { AskedPaths, skippedNotes } from "../../domain/write/asked-paths.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -123,14 +123,14 @@ registerCommand(
 			given: readonly string[]
 		): Promise<Result<Located, Error>> {
 			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
 				const selection = await configService.select(
 					await configService.configsHere()
 				);
 				if (selection.isErr()) return selection;
-				const located = await buildService.locate(selection.value, {
+				const located = await writeService.locate(selection.value, {
 					args: given,
 					cwd,
 				});
@@ -138,14 +138,14 @@ registerCommand(
 			}
 			const asking = await AskedPaths.of(
 				configService,
-				buildService,
+				writeService,
 				cwd,
 				given
 			);
 			if (asking.isErr()) return asking;
 			const parts: Locations[] = [];
 			for (const { selection, indexes, whole } of asking.value.groups) {
-				const located = await buildService.locate(selection, {
+				const located = await writeService.locate(selection, {
 					args: whole ? [] : asking.value.argsAt(indexes),
 					cwd,
 				});
@@ -226,7 +226,7 @@ registerCommand(
 				])
 			);
 			const located = await accessor
-				.get(BuildService)
+				.get(WriteService)
 				.locate(selection.value, { args: [...spans.values()], cwd });
 			if (located.isErr()) return located;
 			const logService = accessor.get(LogService);

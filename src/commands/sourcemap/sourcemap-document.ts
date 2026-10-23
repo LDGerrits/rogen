@@ -1,4 +1,4 @@
-import { ConfigBuild } from "../../domain/build/build.js";
+import { ConfigOutcome } from "../../domain/write/write.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import {
 	RojoEntry,
@@ -28,7 +28,7 @@ export const sourcemapLineShape = S.union(
 );
 
 export function sourcemapDocument(
-	builds: readonly ConfigBuild[],
+	builds: readonly ConfigOutcome[],
 	cwd: string,
 	rojo: RojoEntry
 ) {

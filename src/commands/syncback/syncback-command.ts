@@ -1,7 +1,7 @@
 import path from "path";
 import { UsageError } from "../../base/errors.js";
 import { Result, err, ok } from "../../base/result.js";
-import { BuildService } from "../../domain/build/build-service.js";
+import { WriteService } from "../../domain/write/write-service.js";
 import {
 	ProjectArgument,
 	singleProjectError,
@@ -157,10 +157,10 @@ registerCommand(
 			const refusal = project && syncbacks.refusalFor(project);
 			if (refusal) return err(refusal);
 
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			let build = dryRun
-				? await buildService.check(selection.value)
-				: await buildService.build(selection.value);
+				? await writeService.check(selection.value)
+				: await writeService.write(selection.value);
 			const failure = build.failure();
 
 			const request =
@@ -202,10 +202,10 @@ registerCommand(
 					}
 				}
 				if (outcome.kind === "written") {
-					const rebuilt = await buildService.build(selection.value);
+					const rebuilt = await writeService.write(selection.value);
 					if (
 						rebuilt.failure() ||
-						rebuilt.builds.some(
+						rebuilt.outcomes.some(
 							({ outcome }) => outcome === "wrote"
 						)
 					)
@@ -219,7 +219,7 @@ registerCommand(
 				return this.printJson(
 					logService,
 					syncbackDocument(
-						build.builds,
+						build.outcomes,
 						cwd,
 						syncbackEntry(input, outcome, cwd)
 					),

@@ -3,13 +3,13 @@ import { relativeTo, samePath } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
-	BuildService,
+	WriteService,
 	Diagnosis,
 	mergeDiagnoses,
 	uniqueSkipped,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 
-import { AskedPaths, skippedNotes } from "../../domain/build/asked-paths.js";
+import { AskedPaths, skippedNotes } from "../../domain/write/asked-paths.js";
 import { ConfigService } from "../../domain/config/config-service.js";
 import {
 	AbstractCommand,
@@ -134,18 +134,18 @@ registerCommand(
 			given: readonly string[]
 		): Promise<Result<Diagnosis, Error>> {
 			const configService = accessor.get(ConfigService);
-			const buildService = accessor.get(BuildService);
+			const writeService = accessor.get(WriteService);
 			const { cwd } = accessor.get(EnvironmentService);
 			if (given.length === 0) {
 				const selection = await configService.select(
 					await configService.configsHere()
 				);
 				if (selection.isErr()) return selection;
-				return buildService.diagnose(selection.value);
+				return writeService.diagnose(selection.value);
 			}
 			const asking = await AskedPaths.of(
 				configService,
-				buildService,
+				writeService,
 				cwd,
 				given
 			);
@@ -153,7 +153,7 @@ registerCommand(
 			const { asked, groups } = asking.value;
 			const parts: Diagnosis[] = [];
 			for (const { selection, indexes, whole } of groups) {
-				const found = await buildService.diagnose(
+				const found = await writeService.diagnose(
 					selection,
 					whole
 						? undefined
@@ -171,7 +171,7 @@ registerCommand(
 				)
 					parts.push({
 						diagnostics:
-							await buildService.staleProjectFiles(selection),
+							await writeService.staleProjectFiles(selection),
 						stoppedBy: [],
 						skipped: [],
 					});

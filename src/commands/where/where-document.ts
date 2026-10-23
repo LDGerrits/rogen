@@ -4,7 +4,7 @@ import { toNative } from "../../base/path.js";
 import {
 	FileLocation,
 	requireExpressionOf,
-} from "../../domain/build/build-service.js";
+} from "../../domain/write/write-service.js";
 import {
 	OptionalKey,
 	OutputShape,

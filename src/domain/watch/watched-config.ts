@@ -4,13 +4,13 @@ import {
 	isError,
 	newDiagnostics,
 } from "../../platform/diagnostics/diagnostic.js";
-import { LoadedBuild } from "../build/build.js";
+import { LoadedConfig } from "../write/write.js";
 import { RebuildReport } from "./watch-service.js";
 
 export class WatchedConfig {
 	private readonly rebuilds = new Sequencer();
 	private pending = 0;
-	private _latest: LoadedBuild | undefined;
+	private _latest: LoadedConfig | undefined;
 	private readFiles = new PathSet([]);
 
 	reads(file: string): boolean {
@@ -27,7 +27,7 @@ export class WatchedConfig {
 		return queued;
 	}
 
-	get latest(): LoadedBuild | undefined {
+	get latest(): LoadedConfig | undefined {
 		return this._latest;
 	}
 
@@ -39,7 +39,7 @@ export class WatchedConfig {
 		return this.pending === 0 && !this.failing;
 	}
 
-	finished(build: LoadedBuild): RebuildReport {
+	finished(build: LoadedConfig): RebuildReport {
 		const before = this.latest?.diagnostics ?? [];
 		const unreported = newDiagnostics(before, build.diagnostics);
 		const fixed =

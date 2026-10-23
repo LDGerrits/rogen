@@ -3,7 +3,7 @@ import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
 import { toPosix, toShellWord } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
+import { WriteRun, ConfigOutcome } from "../../domain/write/write.js";
 import {
 	InitDecision,
 	InitPlan,
@@ -120,7 +120,7 @@ const stepLines = ({ directory, setup, run, edits }: NextSteps): string[] => [
 	...edits,
 ];
 
-const foundBy = (build: ConfigBuild): Diagnostic[] => [
+const foundBy = (build: ConfigOutcome): Diagnostic[] => [
 	...build.warnings,
 	...build.errors,
 ];
@@ -134,7 +134,7 @@ export interface InitReporter {
 	begin(plan: InitPlan): void;
 	written(item: InitWritten): void;
 	failed(error: Error): Result<void, Error>;
-	done(plan: InitPlan, run: BuildRun): Result<void, Error>;
+	done(plan: InitPlan, run: WriteRun): Result<void, Error>;
 	/** The end of a dry run, which `written` told what it would write. */
 	planned(plan: InitPlan): Result<void, Error>;
 }
@@ -225,8 +225,8 @@ export class InitLog implements InitReporter {
 		return ok(undefined);
 	}
 
-	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
-		for (const build of run.builds)
+	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
+		for (const build of run.outcomes)
 			this.buildLog.outcome(build, foundBy(build));
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
@@ -350,8 +350,8 @@ export class InitJsonLog implements InitReporter {
 		});
 	}
 
-	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
-		const built = buildDocument(run.builds, this.cwd, foundBy);
+	done(plan: InitPlan, run: WriteRun): Result<void, Error> {
+		const built = buildDocument(run.outcomes, this.cwd, foundBy);
 		const written = this.writtenSoFar();
 		return this.print(
 			{

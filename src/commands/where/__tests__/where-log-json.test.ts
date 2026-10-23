@@ -2,7 +2,7 @@ import path from "path";
 import {
 	FileLocation,
 	InstanceLocation,
-} from "../../../domain/build/build-service.js";
+} from "../../../domain/write/write-service.js";
 import { InstanceReference } from "../../../domain/roblox/roblox.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { documentOf } from "./where-fixtures.js";

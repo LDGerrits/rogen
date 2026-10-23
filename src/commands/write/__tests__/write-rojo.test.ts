@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import "../write-command.js";
-import { BuildService } from "../../../domain/build/build-service.js";
+import { WriteService } from "../../../domain/write/write-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
 import {
@@ -25,7 +25,7 @@ import { ServiceCollection } from "../../../platform/instantiation/service-colle
 import { EnvironmentService } from "../../../platform/environment/environment-service.js";
 import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
-import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
+import { writeServiceOf } from "../../../domain/write/__tests__/fixtures.js";
 
 describeWithRojo("write command against Rojo", () => {
 	let dir: string;
@@ -48,7 +48,7 @@ describeWithRojo("write command against Rojo", () => {
 		services.set(FileSystemService, fileSystem);
 		const indexService = new CoreIndexService(fileSystem);
 		services.set(IndexService, indexService);
-		services.set(BuildService, buildServiceOf(fileSystem, indexService));
+		services.set(WriteService, writeServiceOf(fileSystem, indexService));
 		services.set(LogService, logService);
 		return new CoreCommandService(
 			services,
