@@ -30,8 +30,8 @@ export class WriteLog {
 			} else
 				this.buildLog.outcome(build, diagnostics, {
 					notes: [
-						BuildLog.sameAs("errors", errors.sameAs),
-						BuildLog.sameAs("warnings", warnings.sameAs),
+						this.buildLog.sameAs("errors", errors.sameAs),
+						this.buildLog.sameAs("warnings", warnings.sameAs),
 					],
 				});
 		}

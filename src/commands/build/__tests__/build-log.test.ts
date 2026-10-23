@@ -211,7 +211,7 @@ describe("BuildLog report", () => {
 				failedOf([], configNamed("match")),
 			])
 		).toEqual([
-			"lobby/default.project.json · not written · match failed",
+			"lobby/default.project.json · not written · match/default.rogen.json failed",
 			"match/default.project.json · not written",
 		]);
 	});
@@ -238,6 +238,41 @@ describe("BuildLog report", () => {
 		]);
 	});
 
+	describe("configs that share a name", () => {
+		const twin = (folder: string) =>
+			mockConfig({
+				name: "game",
+				file: path.join(cwd, folder, "default.rogen.json"),
+			});
+
+		const entries = () => {
+			const logService = new MockLogService();
+			new BuildLog(logService, cwd).report(
+				new BuildRun([
+					builtOf(summaryOf(), "wrote", twin("lobby")),
+					builtOf(summaryOf(), "wrote", twin("arena")),
+				])
+			);
+			return logService.entries;
+		};
+
+		it("should head the report with each config's file", () => {
+			const [intro] = entries();
+
+			expect(intro.text).toBe(
+				"rogen build · lobby/default.rogen.json, arena/default.rogen.json"
+			);
+		});
+
+		it("should head each config's lines with its file", () => {
+			expect(
+				entries()
+					.filter(({ kind }) => kind === "step")
+					.map(({ text }) => text)
+			).toEqual(["lobby/default.rogen.json", "arena/default.rogen.json"]);
+		});
+	});
+
 	it("should name every config that failed", () => {
 		expect(
 			report([
@@ -249,7 +284,7 @@ describe("BuildLog report", () => {
 				failedOf([], configNamed("match")),
 			])[1]
 		).toBe(
-			"lobby/default.project.json · not written · arena and match failed"
+			"lobby/default.project.json · not written · arena/default.rogen.json and match/default.rogen.json failed"
 		);
 	});
 
@@ -279,10 +314,10 @@ describe("BuildLog report", () => {
 					failedOf([other], configNamed("match")),
 				])
 			).toEqual([
-				"step: arena",
+				"step: arena/default.rogen.json",
 				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
-				"step: match",
+				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
@@ -296,11 +331,11 @@ describe("BuildLog report", () => {
 					failedOf([shared], configNamed("match")),
 				])
 			).toEqual([
-				"step: arena",
+				"step: arena/default.rogen.json",
 				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
-				"step: match",
-				"error: match/default.project.json · not written · same errors as arena",
+				"step: match/default.rogen.json",
+				"error: match/default.project.json · not written · same errors as arena/default.rogen.json",
 				"outro: build failed.",
 			]);
 		});
@@ -312,7 +347,7 @@ describe("BuildLog report", () => {
 					failedOf([shared, other], configNamed("match")),
 				]).slice(3)
 			).toEqual([
-				"step: match",
+				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
@@ -371,11 +406,11 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("match", [aboutSrc("match")]),
 			])
 		).toEqual([
-			"step: arena",
+			"step: arena/default.rogen.json",
 			"success: arena/default.project.json · wrote",
 			"diagnosticWarning: /repo/arena/default.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
-			"step: match",
-			"success: match/default.project.json · wrote · same warnings as arena",
+			"step: match/default.rogen.json",
+			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json",
 			"outro: Built 2 projects with 1 warning.",
 		]);
 	});
@@ -393,7 +428,7 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("match", [aboutSrc("match"), own]),
 			]).slice(3)
 		).toEqual([
-			"step: match",
+			"step: match/default.rogen.json",
 			"success: match/default.project.json · wrote",
 			"diagnosticWarning: /repo/match/default.rogen.json - warning: only here. (x.own)",
 			"outro: Built 2 projects with 2 warnings.",
@@ -413,7 +448,7 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("match", [], [shared]),
 			])[4]
 		).toBe(
-			"success: match/default.project.json · wrote · same warnings as arena"
+			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json"
 		);
 	});
 
@@ -434,7 +469,7 @@ describe("BuildLog report, warnings", () => {
 				line.startsWith("error: match")
 			)
 		).toBe(
-			"error: match/default.project.json · not written · same errors as arena · same warnings as arena"
+			"error: match/default.project.json · not written · same errors as arena/default.rogen.json · same warnings as arena/default.rogen.json"
 		);
 	});
 });

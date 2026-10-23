@@ -197,7 +197,7 @@ export interface BuildFindings {
 
 interface SharedPart {
 	readonly fresh: readonly Diagnostic[];
-	/** The earlier configs that raised all of them, when the config added none; empty otherwise. */
+	/** The files of the earlier configs that raised all of them, when the config added none; empty otherwise. */
 	readonly sameAs: readonly string[];
 }
 
@@ -215,12 +215,8 @@ export class SharedDiagnostics {
 		return new SharedDiagnostics(true);
 	}
 
-	/** Splits `diagnostics` of the config `label`, whose file is `configFile`, into those no config raised yet and the configs that raised the rest. */
-	take(
-		label: string,
-		configFile: string,
-		diagnostics: readonly Diagnostic[]
-	): SharedPart {
+	/** Splits `diagnostics` of the config at `configFile` into those no config raised yet and the config files that raised the rest. */
+	take(configFile: string, diagnostics: readonly Diagnostic[]): SharedPart {
 		const owners = new Set<string>();
 		const fresh = diagnostics.filter((diagnostic) => {
 			const key = diagnosticKey(
@@ -228,8 +224,8 @@ export class SharedDiagnostics {
 				this.sameAcrossConfigs ? configFile : undefined
 			);
 			const owner = this.raisedBy.get(key);
-			if (owner === undefined) this.raisedBy.set(key, label);
-			else if (owner !== label) owners.add(owner);
+			if (owner === undefined) this.raisedBy.set(key, configFile);
+			else if (owner !== configFile) owners.add(owner);
 			return owner === undefined;
 		});
 		return {
@@ -255,11 +251,11 @@ export class BuildRun {
 		const errors = SharedDiagnostics.errors();
 		this.shares = builds.map((build) => ({
 			build,
-			warnings: warnings.take(build.label, build.file, [
+			warnings: warnings.take(build.file, [
 				...build.warnings,
 				...(build.syncWarnings ?? []),
 			]),
-			errors: errors.take(build.label, build.file, build.errors),
+			errors: errors.take(build.file, build.errors),
 		}));
 	}
 

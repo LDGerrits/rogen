@@ -125,7 +125,7 @@ export class ServeLog implements ServeReporter {
 
 	serving({ target, info }: ServerReadyEvent): void {
 		this.logService.success(
-			`Serving ${target.config.label} with ${serverOf(info)} at ${target.address}.`
+			`Serving ${this.nameOf(target)} with ${serverOf(info)} at ${target.address} (Studio lists it as ${info.project}).`
 		);
 	}
 
@@ -134,7 +134,7 @@ export class ServeLog implements ServeReporter {
 	}
 
 	connection({ target, opened, clients }: ServerConnectionEvent): void {
-		const { label } = target.config;
+		const label = this.nameOf(target);
 		this.logService.info(
 			opened
 				? `Studio connected to ${label}${clients > 1 ? ` (${clients} connected)` : ""}.`
@@ -146,13 +146,13 @@ export class ServeLog implements ServeReporter {
 		if (failure) this.logService.diagnostic(failure);
 		else if (!interrupted)
 			this.logService.info(
-				`Rojo stopped serving ${target.config.label}.`
+				`Rojo stopped serving ${this.nameOf(target)}.`
 			);
 	}
 
 	changed(change: ServeChangeEvent): void {
 		const { target } = change;
-		const { label } = target.config;
+		const label = this.nameOf(target);
 		switch (change.kind) {
 			case "servedElsewhere":
 				this.running(change.target);
@@ -181,11 +181,15 @@ export class ServeLog implements ServeReporter {
 		this.watchLog.end(message);
 	}
 
+	private nameOf(target: ServeTarget): string {
+		return configPath(this.cwd, target.config.file);
+	}
+
 	private running(target: ServedTarget): void {
 		const { servedBy: info } = target;
 		const served = `${serverOf(info)} serves a project named ${info.project} at ${target.address}${info.session ? ` (session ${info.session})` : ""}.`;
 		this.logService.info(
-			`${target.config.label} is already served by another rogen serve: ${served}`
+			`${this.nameOf(target)} is already served by another rogen serve: ${served}`
 		);
 	}
 }

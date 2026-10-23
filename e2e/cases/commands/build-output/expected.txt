@@ -4,7 +4,7 @@ stdout:
   Building project 'Game'
   Built project to game.rbxlx
 stderr:
-  rogen build · Game
+  rogen build · default.rogen.json
   default.project.json · wrote
   Built game.rbxlx.
 

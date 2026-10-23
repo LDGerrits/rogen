@@ -4,7 +4,7 @@ stdout:
   Building project 'Game'
   Built project to game.rbxl
 stderr:
-  rogen build · Game
+  rogen build · default.rogen.json
   default.project.json · wrote
   default.rogen.json - warning: 1 script will never run where it lands: (tree.deadScript)
     src/A.server.luau (a Script never runs in ReplicatedStorage)

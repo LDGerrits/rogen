@@ -15,7 +15,7 @@ The first word is always the command. A bare `rogen` prints the root help and ex
 - the path to a `.rogen.json` file (`rogen serve places/lobby/dist.rogen.json`), or to a `*.project.json` file, which means the `.rogen.json` beside it, and when there is none, the plain Rojo project as it is;
 - the name of a file in the current folder, so `rogen serve dist` is `dist.rogen.json` (else a plain `dist.project.json`), unless a folder `dist` holds a default, which wins.
 
-With none, a command reads the `default.rogen.json` of the working directory, or its `default.project.json` when it has no config, and nothing else. It does not look in the folders above, as `rojo serve` does not. A bare command in a folder with neither is an error, "No default.rogen.json or default.project.json in this folder", which names the folder's other `.rogen.json` files when it has any, and suggests `rogen write` to write them all. A repo of [places](/docs/v2/setups/places) has no config at its root, so name the place: `rogen serve places/lobby`. The text output says which config it read (`rogen build · my-game`). Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen write lobby`.
+With none, a command reads the `default.rogen.json` of the working directory, or its `default.project.json` when it has no config, and nothing else. It does not look in the folders above, as `rojo serve` does not. A bare command in a folder with neither is an error, "No default.rogen.json or default.project.json in this folder", which names the folder's other `.rogen.json` files when it has any, and suggests `rogen write` to write them all. A repo of [places](/docs/v2/setups/places) has no config at its root, so name the place: `rogen serve places/lobby`. The text output says which config it read (`rogen build · default.rogen.json`), by the path the `config` of `--json` has relative to where you run, so two configs of one name stay apart. Paths stay relative to where you run. `--json` doesn't change, since its paths are absolute. `rogen lobby` is an error, not a shortcut, and Rogen will suggest `rogen write lobby`.
 
 `fmt-project` takes several projects, and `check` and `where` take paths, which [find their own config](#where-path).
 
@@ -59,7 +59,7 @@ Builds, then rebuilds whenever files or the config change. It needs `-o` or `-p`
 A config reloads when its `.rogen.json` changes, and CLI overrides carry over. If you save an invalid config, `build --watch` prints the error and keeps using the last valid version.
 
 ```
-┌  rogen build --watch · my-game
+┌  rogen build --watch · default.rogen.json
 │
 ◇  12:04:31 · 2 files changed
 │  ✔ default.project.json · wrote
@@ -118,10 +118,10 @@ Installs Rojo's Studio plugin into Studio's plugins folder, or removes it, with 
 Builds, starts Rojo on the project, and rebuilds it on changes as `build --watch` does. Run it instead of `build --watch` when you sync to Studio. It serves one project: the `default.rogen.json` here, or the one you name (`rogen serve dist`, `rogen serve places/lobby`).
 
 ```
-rogen serve · my-game
+rogen serve · default.rogen.json
 12:04:31 · initial build
   default.project.json · unchanged
-  Serving my-game with Rojo 7.7.1 at 127.0.0.1:34872.
+  Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as my-game).
 12:05:10 · 1 file changed
   default.project.json · wrote
 error: Rojo: Snapshot error: File is not a valid JSON model: src/Bad.model.json: JSONC parse error: Expected colon after the string or word in object property on line 2 column 1
@@ -150,7 +150,7 @@ Servers start only after a build succeeds. If the first one fails, the errors pr
 - **A `rogen serve` started the server for another file,** in this folder or another, such as a second place on the same port. `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), which names that file and says to stop it, set a `servePort`, or run the command with a free port.
 - **Anything else holds the port,** such as a `rojo serve` you ran yourself, an Argon server, one an editor extension started, or a second checkout of the same project. `serve` exits 1 with [`serve.portTaken`](/docs/v2/diagnostics#serve-porttaken), as Rojo does for a port in use: the port is held by another process, and the message says to stop it or give this one another port with `--port` or `servePort`.
 
-**Studio.** When the Rojo is 7.7 or later, Rogen starts it with `RUST_LOG=info,librojo::web=debug`, which makes it log each plugin that connects and leaves (the `info` is your own `RUST_LOG`, if you set one), and says so: `Studio connected to my-game.`, `Studio connected to my-game (2 connected).`, `Studio disconnected from my-game, 1 still connected.`. A connection that drops without a goodbye, such as Studio crashing, counts as leaving. Rojo's log doesn't say what the client is, so any client of the server's websocket counts, not only the plugin. More than one connection is normal: a playtest server holds its own. A `RUST_LOG` you set stays: Rogen adds its directive after yours. An older Rojo logs differently, so for it no such line is printed; the `serving` line of `--json` says which case it is with `reportsConnections`.
+**Studio.** When the Rojo is 7.7 or later, Rogen starts it with `RUST_LOG=info,librojo::web=debug`, which makes it log each plugin that connects and leaves (the `info` is your own `RUST_LOG`, if you set one), and says so: `Studio connected to default.rogen.json.`, `Studio connected to default.rogen.json (2 connected).`, `Studio disconnected from default.rogen.json, 1 still connected.`. A connection that drops without a goodbye, such as Studio crashing, counts as leaving. Rojo's log doesn't say what the client is, so any client of the server's websocket counts, not only the plugin. More than one connection is normal: a playtest server holds its own. A `RUST_LOG` you set stays: Rogen adds its directive after yours. An older Rojo logs differently, so for it no such line is printed; the `serving` line of `--json` says which case it is with `reportsConnections`.
 
 **Server output.** Rogen reads what the server prints and shows its warnings and errors as its own lines, each on one line, named after the server, with paths relative to the folder you ran `serve` in. The rest is dropped: the server's banner, since Rogen's `Serving` line says where it listens, its info logs, its debug detail, a message it repeats, and what Rogen's own port checks and project file writes make it say. A line Rogen doesn't recognise, such as a crash, is shown as it is, so nothing that explains a failure is lost. `--verbose` shows the dropped lines too, as debug lines.
 
@@ -726,7 +726,7 @@ In a terminal, Rogen draws a framed layout. It prints plain lines instead in pip
 
 Only `init` asks questions, and only when stdin and stdout are both terminals and nothing says a program is on the other end. A run that can't ask takes the defaults, as `--non-interactive` does, unless a flag answers the question. Rogen treats the run as CI or an agent when `CI`, `AGENT` or `AI_AGENT` is set (`0` and `false` don't count), or when an agent's harness sets its own variable for the commands it runs: `CLAUDECODE` (Claude Code), `CODEX_SANDBOX` or `CODEX_THREAD_ID` (Codex), `CURSOR_AGENT` (Cursor), `GEMINI_CLI` (Gemini CLI), `COPILOT_AGENT` (GitHub Copilot), `OPENCODE` (OpenCode) or `CLINE_ACTIVE` (Cline). What a command prints doesn't change otherwise.
 
-In the commands that run Rojo (`build -o`, `sourcemap`, `upload`, `syncback`, `plugin`, `serve`), stdout carries what Rojo's stdout carries, line for line and without a prefix (`Building project 'Game'`, `Created sourcemap at sourcemap.json`, the `syncback --list` lines, `serve`'s "Rojo server listening" block). Rogen's own lines (the frame, `default.project.json · wrote`, `Built 1 project.`, `Serving Game…`) go to stderr when stdout isn't a terminal, and `--json` prints its one document on stdout as before.
+In the commands that run Rojo (`build -o`, `sourcemap`, `upload`, `syncback`, `plugin`, `serve`), stdout carries what Rojo's stdout carries, line for line and without a prefix (`Building project 'Game'`, `Created sourcemap at sourcemap.json`, the `syncback --list` lines, `serve`'s "Rojo server listening" block). Rogen's own lines (the frame, `default.project.json · wrote`, `Built 1 project.`, `Serving default.rogen.json…`) go to stderr when stdout isn't a terminal, and `--json` prints its one document on stdout as before.
 
 Short options take their value after a space or after `=`: `-o game.rbxl` and `-o=game.rbxl` are the same.
 

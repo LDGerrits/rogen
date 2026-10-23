@@ -9,14 +9,14 @@ $ rogen build -o place.rbxl
 exit 0
 stdout: (not shown)
 stderr:
-  rogen build · project
+  rogen build · default.rogen.json
   default.project.json · unchanged
   Built place.rbxl.
 
 $ rogen syncback -i place.rbxl -y
 exit 0
 stderr:
-  rogen syncback · project
+  rogen syncback · default.rogen.json
   default.project.json · unchanged
   Built 1 project.
   Syncback wrote 1 change.

@@ -8,7 +8,7 @@ stdout:
   Writing src/Hud/Client/Bar.client.luau
   Removing src/Shop/Server/Kiosk/Item.luau
 stderr:
-  rogen syncback · Game
+  rogen syncback · default.rogen.json
   default.project.json · wrote
   Built 1 project.
   Syncback wrote 6 changes.

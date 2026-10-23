@@ -394,7 +394,9 @@ describeWithRojo("end to end watch", () => {
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
-		expect(running.output).toContain("rogen write --watch · project");
+		expect(running.output).toContain(
+			"rogen write --watch · ../default.rogen.json"
+		);
 
 		writeProjectFile(
 			project.dir,

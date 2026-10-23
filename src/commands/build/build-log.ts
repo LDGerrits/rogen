@@ -1,4 +1,5 @@
 import { relativeTo } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
 import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
 import { WHERE_SCRIPTS_RUN } from "../../domain/roblox/roblox.js";
 import {
@@ -189,12 +190,13 @@ export class BuildLog {
 		private readonly cwd: string
 	) {}
 
-	static sameAs(
+	/** The note that a config's `kind` are the ones the configs at `files` raised. */
+	sameAs(
 		kind: "errors" | "warnings",
-		labels: readonly string[]
+		files: readonly string[]
 	): string | undefined {
-		return labels.length > 0
-			? `same ${kind} as ${joinedWithAnd(labels)}`
+		return files.length > 0
+			? `same ${kind} as ${joinedWithAnd(files.map((file) => configPath(this.cwd, file)))}`
 			: undefined;
 	}
 
@@ -218,23 +220,25 @@ export class BuildLog {
 		writes = true,
 		built?: BuiltFile
 	): void {
-		const labelOf = (file: string) =>
-			run.builds.find((build) => build.file === file)?.label ??
-			relativeTo(this.cwd, file);
 		this.begin(
 			command,
-			run.builds.map(({ label }) => label),
+			run.builds.map(({ file }) => configPath(this.cwd, file)),
 			home
 		);
 		for (const { build, warnings, errors } of run.shares) {
-			if (run.builds.length > 1) this.heading(build.label);
+			if (run.builds.length > 1)
+				this.heading(configPath(this.cwd, build.file));
 			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
 				notes: [
 					build.outcome === "notWritten"
-						? `${joinedWithAnd(build.blockedBy.map(labelOf))} failed`
+						? `${joinedWithAnd(
+								build.blockedBy.map((file) =>
+									configPath(this.cwd, file)
+								)
+							)} failed`
 						: undefined,
-					BuildLog.sameAs("errors", errors.sameAs),
-					BuildLog.sameAs("warnings", warnings.sameAs),
+					this.sameAs("errors", errors.sameAs),
+					this.sameAs("warnings", warnings.sameAs),
 				],
 			});
 		}
