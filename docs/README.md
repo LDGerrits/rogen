@@ -1,13 +1,23 @@
-# docs
+# Rogen documentation
 
-Run development server:
+The site at https://rogen-playfully.vercel.app, built with [Next.js](https://nextjs.org) and [Fumadocs](https://fumadocs.dev).
+
+## Run it
+
+The site is a workspace of the repository. From the repository root:
 
 ```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+npm ci
+npm run dev --workspace docs
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+Then open http://localhost:3000. `npm run build --workspace docs` builds it, and `npm run types:check --workspace docs` checks the types.
+
+## Where things are
+
+- `content/docs/v2` is the current documentation, `content/docs/v1` the released 1.x line. Each folder's `meta.json` sets the order of its pages.
+- A heading takes an explicit anchor as `### Heading [#anchor]`. Other pages link to those, so keep them when you rename a heading.
+- `components/file-tree-preview.tsx` has the folder-tree pictures that MDX pages use, and `components/mdx.tsx` registers them.
+- `app/llms.txt`, `app/llms-full.txt` and `app/llms.mdx` serve the pages as plain text for agents.
+
+The reference pages describe the CLI, so change them with the code. `help/*.md` and `skills/` at the repository root feed `rogen help` and the agent skill.
