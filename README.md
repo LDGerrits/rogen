@@ -24,22 +24,32 @@ src/Inventory/InventoryTypes.luau             ->  ReplicatedStorage/Shared/Inven
 
 ## Features
 
-- **Feature Folders:** Keep a feature's client, server and shared code in one folder.
-- **Routes:** Declare where each kind of code goes, and route files with a folder, a marker file or an `@` suffix (`Save@server.luau`).
-- **A Rojo Superset:** `default.rogen.json` is a Rojo project file with a `rogen` block added, so Rojo's keys and documentation still apply, and a plain Rojo project with no `.rogen.json` runs under Rogen's commands as it is. Rogen's commands take Rojo's names and flags (`build -o`, `serve`, `sourcemap`, `upload`, `plugin`, `syncback`). `init` takes `--kind`, `--skip-git` and a folder, as `rojo init` does. Where routing reads a layout differently from Rojo, a [table](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo#where-rogen-reads-a-layout-differently) says so.
-- **Second Files and Places:** `dist.rogen.json` writes `dist.project.json` (a Darklua build, a release without the specs), and a repository with several places gives each place a folder and a `default.rogen.json` of its own.
-- **Shared Code:** List several source paths; the later one wins a clash, so shared code can be overridden.
-- **Watch Mode:** Rebuild as files change, and reload when the config does. `rogen serve` also starts Rojo.
-- **Toolchains:** Luau, roblox-ts and Darklua, which `rogen init` finds and writes into the config; Darklua's own `.darklua.json` stays yours.
+- **Feature folders:** A feature's server, client and shared code live in one folder, named after what it does in your game.
+- **Routes:** Declare where each kind of code goes. A file can also pick its place with a folder, a marker file or an `@` suffix (`Save@server.luau`).
+- **A Rojo superset:** `default.rogen.json` is a Rojo project file with a `rogen` block added, so Rojo's keys and docs still apply. A plain Rojo project runs under Rogen's commands as it is, and the commands take Rojo's names and flags. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
+- **Several outputs and places:** `dist.rogen.json` writes `dist.project.json`, such as a Darklua build or a release without the specs. A repository with several places gives each place a folder and a `default.rogen.json` of its own.
+- **Shared code:** List several source paths. The later one wins a clash, so shared code can be overridden.
+- **Watch mode:** `rogen serve` rebuilds as files change, reloads when the config does, and starts Rojo.
+- **Toolchains:** Luau, roblox-ts and Darklua. `rogen init` finds them and writes them into the config; Darklua's own `.darklua.json` stays yours.
+- **Made for agents:** `--json` on every command, `rogen help --json`, and `rogen init` adds the rules to your `AGENTS.md`. See [Working with agents](https://rogen-playfully.vercel.app/docs/v2/agents).
 
-## Getting Started
+## Getting started
 
 ```bash
 rogen init
 rogen serve
 ```
 
-`rogen init` writes a starting config and prints the commands your setup needs. `rogen where <file>` prints where a file lands and why. Read the [documentation](https://rogen-playfully.vercel.app) for routing and every setup.
+`rogen init` writes a starting config and prints the commands your setup needs. `rogen serve` builds, starts Rojo and rebuilds on changes.
+
+| Command                              | What it does                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| `rogen write`                        | Writes the project file of every config, such as `default.project.json`. |
+| `rogen build`, `sourcemap`, `upload` | Write the project file, then run Rojo's command of the same name.        |
+| `rogen where <file>`                 | Prints where a file lands in the game, and why.                          |
+| `rogen check`                        | Prints the diagnostics, and exits 1 when there are any.                  |
+
+Read the [documentation](https://rogen-playfully.vercel.app) for routing, the other commands and every setup.
 
 ## Support
 
