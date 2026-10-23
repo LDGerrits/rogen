@@ -19,26 +19,55 @@ With Rogen, a feature's server, client and shared code live in one folder.
 
 Rogen generates the Rojo project file. You run Rojo's commands through it, with the same flags.
 
+`default.rogen.json` is a Rojo project file with a `rogen` block. Its routes map each kind of folder to a service, so `src/Inventory/Server` ends up in `ServerScriptService/Inventory`:
+
+```json
+{
+	"name": "Game",
+	"tree": { "$className": "DataModel" },
+	"rogen": {
+		"routes": {
+			"Server": "ServerScriptService",
+			"Client": "StarterPlayer/StarterPlayerScripts",
+			"Shared": "ReplicatedStorage/Shared"
+		}
+	}
+}
+```
+
 ## Installation
 
 ```bash
 rokit add ldgerrits/rogen
 rogen init
 rokit install
-rogen plugin install
 ```
 
-`rogen init` pins Rojo in `rokit.toml`, and `rokit install` fetches it. Prefer npm? Run `npm i @ldgerrits/rogen` and use `npx rogen`.
+`rogen init` pins Rojo in `rokit.toml`, and `rokit install` fetches it. New to Rojo? Also run `rogen plugin install` to add its Studio plugin. Prefer npm? Run `npm i @ldgerrits/rogen` and use `npx rogen`.
 
 ## Usage
 
 ```bash
-rogen serve    # Serve with Rojo and update the project file on changes
-rogen build    # Update the project file, then run rojo build
-rogen check    # Print warnings and errors, and exit 1 on any
+rogen serve                # Serve with Rojo and update the project file on changes
+rogen build -o game.rbxl   # Update the project file, then build a place with Rojo
+rogen check                # Print warnings and errors, and exit 1 on any
 ```
 
 `sourcemap`, `upload`, `syncback` and `plugin` take Rojo's flags too. See the [documentation](https://rogen-playfully.vercel.app/docs/v2) for every command.
+
+## FAQ
+
+#### Do I still need Rojo?
+
+Yes. You run everything through Rogen, and Rogen uses Rojo to do it.
+
+#### Does Rogen work with Argon?
+
+Yes. Run `rogen write --watch` and serve with Argon.
+
+#### Can I use Rogen in an existing Rojo project?
+
+Yes. Run `rogen init` to move it to Rogen. See [Coming from Rojo](https://rogen-playfully.vercel.app/docs/v2/coming-from-rojo).
 
 ## Contributing
 
