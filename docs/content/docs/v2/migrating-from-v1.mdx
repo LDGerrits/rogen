@@ -97,7 +97,7 @@ Route marker files now take `@` too: v1's `.server` becomes `@server`. So do mod
 
 ### Tags
 
-v2 has no tags. A file that v1 built only while a tag was on now lives in an **overlay source path**, a folder of its own that only the config files wanting it list. A later source path wins a clash without a warning, and a file with no plain twin is simply added. Put the overlay in `default.rogen.json` if your everyday build wants it, and write a second complete file, `release.rogen.json`, that leaves it out. A second file repeats `name`, `routes` and `tree` and changes only what differs; it needs its own `name`, because Rojo can't open a project file without one:
+v2 has no tags. A file that v1 built only while a tag was on now lives in an **overlay source path**, a folder of its own that only the config files wanting it list. A later source path wins a clash without a warning, and a file with no plain twin is simply added. Put the overlay in `default.rogen.json` if your everyday build wants it, and write a second complete file, `release.rogen.json`, that leaves it out. A second file repeats `name`, `routes` and `tree` and changes only what differs; it needs its own `name`, because Rojo crashes on a project file other than `default.project.json` that has none:
 
 ```
 v1: src/Teleport/Teleport.luau, src/Teleport/TeleportDev.luau (tag dev)

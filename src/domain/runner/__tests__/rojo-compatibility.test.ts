@@ -12,46 +12,75 @@ describe("RojoCompatibility", () => {
 	const written = (project: object) =>
 		fs.writeFile("/repo/default.project.json", JSON.stringify(project));
 
-	const problems = (version: string, windows = true) =>
-		new RojoCompatibility(fs, windows).problemsIn(rojo(version), [
-			"/repo/default.project.json",
-		]);
+	const problems = (version: string, windows = true, command = "sourcemap") =>
+		new RojoCompatibility(fs, windows).problemsIn(
+			rojo(version),
+			["/repo/default.project.json"],
+			command
+		);
+
+	const outside = {
+		$className: "DataModel",
+		ReplicatedStorage: {
+			$className: "ReplicatedStorage",
+			Shared: { $path: "../shared/src" },
+		},
+	};
 
 	beforeEach(async () => {
 		fs = new MemoryFileSystemService();
 		await fs.createDirectory("/repo");
 	});
 
-	it("should refuse Rojo 7.7.0 on Windows for an ignore glob that starts with ../", async () => {
-		await written({ name: "game", globIgnorePaths: ["../../src/*.md"] });
+	it("should refuse Rojo 7.7.0 on Windows for a sourcemap of a $path outside the file's folder, with an ignore glob", async () => {
+		await written({
+			name: "game",
+			globIgnorePaths: ["**/*.draft.luau"],
+			tree: outside,
+		});
 
 		const [problem] = await problems("7.7.0");
 
 		expect(problem.code).toBe("rojo.windowsRules");
 		expect(problem.resource).toBe("/repo/default.project.json");
 		expect(problem.message).toBe(
-			'Rojo 7.7.0 on Windows applies no sync rule or ignore glob that starts with "../", and this file has 1: "../../src/*.md". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH.'
+			'Rojo 7.7.0 on Windows applies no sync rule or ignore glob to a file under a "$path" outside this file\'s folder, and this file has 1: "../shared/src". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH.'
 		);
 	});
 
-	it("should refuse it for a sync rule pattern that starts with ../", async () => {
+	it("should refuse it for a sync rule, whatever its pattern", async () => {
 		await written({
 			name: "game",
-			syncRules: [
-				{ pattern: "../../docs/*.md", use: "text" },
-				{ pattern: "notes/*.md", use: "text" },
-			],
+			syncRules: [{ pattern: "*.md", use: "text" }],
+			tree: { ...outside, Docs: { $path: { optional: "../docs" } } },
 		});
 
 		const [problem] = await problems("7.7.0");
 
-		expect(problem.message).toContain('has 1: "../../docs/*.md"');
+		expect(problem.message).toContain('has 2: "../shared/src", "../docs"');
 	});
+
+	it.each(["serve", "build", "upload"])(
+		"should not refuse Rojo 7.7.0 on Windows for %s, which it runs right",
+		async (command) => {
+			await written({
+				name: "game",
+				globIgnorePaths: ["**/*.draft.luau"],
+				tree: outside,
+			});
+
+			expect(await problems("7.7.0", true, command)).toEqual([]);
+		}
+	);
 
 	it.each(["7.7.1", "7.6.1", "7.5.0"])(
 		"should not refuse Rojo %s on Windows",
 		async (version) => {
-			await written({ name: "game", globIgnorePaths: ["../x"] });
+			await written({
+				name: "game",
+				globIgnorePaths: ["**/*.draft.luau"],
+				tree: outside,
+			});
 
 			expect(await problems(version)).toEqual([]);
 		}
@@ -115,17 +144,34 @@ describe("RojoCompatibility", () => {
 	});
 
 	it("should not refuse Rojo 7.7.0 anywhere but Windows", async () => {
-		await written({ name: "game", globIgnorePaths: ["../x"] });
+		await written({
+			name: "game",
+			globIgnorePaths: ["**/*.draft.luau"],
+			tree: outside,
+		});
 
 		expect(await problems("7.7.0", false)).toEqual([]);
 	});
 
-	it("should accept a file whose patterns stay in its folder", async () => {
+	it("should accept a file whose paths stay in its folder", async () => {
 		await written({
 			name: "game",
-			globIgnorePaths: ["src/**/*.draft.luau"],
-			syncRules: [{ pattern: "src/**/*.md", use: "text" }],
+			globIgnorePaths: ["**/*.draft.luau"],
+			syncRules: [{ pattern: "**/*.md", use: "text" }],
+			tree: {
+				$className: "DataModel",
+				ReplicatedStorage: {
+					$className: "ReplicatedStorage",
+					Shared: { $path: "src" },
+				},
+			},
 		});
+
+		expect(await problems("7.7.0")).toEqual([]);
+	});
+
+	it("should accept a $path outside the folder when the file has no sync rule or ignore glob", async () => {
+		await written({ name: "game", tree: outside });
 
 		expect(await problems("7.7.0")).toEqual([]);
 	});
@@ -135,7 +181,8 @@ describe("RojoCompatibility", () => {
 
 		const found = await new RojoCompatibility(fs, true).problemsIn(
 			rojo("7.7.0"),
-			["/repo/missing.project.json", "/repo/other.project.json"]
+			["/repo/missing.project.json", "/repo/other.project.json"],
+			"sourcemap"
 		);
 
 		expect(found).toEqual([]);

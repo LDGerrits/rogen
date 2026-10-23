@@ -15,8 +15,10 @@ Rojo's plugin can connect on its own, with **Auto Reconnect**. It is off by defa
 
 <Callout type="warn">
 	Rojo remembers a place by its place ID, and doesn't remember an unsaved local
-	file or a Baseplate template, so Auto Reconnect has nothing to go by for
-	them. Publish the place, or save it to Roblox, then connect once by hand.
+	file or one of Roblox's starter templates (Baseplate, Flat Terrain and the
+	like), so Auto Reconnect has nothing to go by for them. It also forgets a
+	place it hasn't synced in about five months. Publish the place, or save it
+	to Roblox, then connect once by hand.
 </Callout>
 
 Rojo also checks the **name of the project** against the one it synced last: a place reconnects only to a server that serves a project of the same name. That name is `name` in the config, which Rogen writes to the project file. Without one, Rojo names a `default.project.json` after its folder, and every other project file needs a `name`. Give the project a name, and keep it.
@@ -27,6 +29,7 @@ Rojo's plugin asks to confirm the first changes of each project in a session. It
 
 - **Initial**, the default: once per project per session.
 - **Unlisted PlaceId**: only when the place isn't in the project's `servePlaceIds`, which is the next section. A place you listed connects without asking.
+- **Large Changes**: only when a patch changes at least as many instances as the **Confirmation Threshold** setting, 5 by default.
 - **Never** and **Always**.
 
 ## Place IDs

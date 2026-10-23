@@ -44,13 +44,13 @@ A `default.project.json` in a source path itself has no folder to become, so Rog
 
 ## Data Files
 
-Scripts (`.luau`, `.lua`, `.ts`, `.tsx`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.jsonc`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Route suffixes go before the extension. `.d.ts` files are skipped.
+Scripts (`.luau`, `.lua`), models (`.rbxm`, `.rbxmx`) and data files (`.json`, `.jsonc`, `.toml`, `.csv`, `.txt`, `.yaml`, `.yml`) all become instances, just as in Rojo. Rogen also reads `.ts` and `.tsx` files as scripts, which Rojo itself ignores: it syncs their compiled `.luau`. Route suffixes go before the extension. `.d.ts` files are skipped.
 
 A folder is an instance because of the files in it. One with nothing that places (it is empty, or holds only a `.gitkeep` or a `README.md`) is left out of the project file, where Rojo reading the same directory would make it an empty Folder. To keep an empty Folder, declare it in the `tree` of the config.
 
 ## Metadata Files
 
-A `*.meta.json` file (or `*.meta.jsonc`, which Rojo applies after it) sets a class, properties or attributes that a file or folder can't express on its own.
+A `*.meta.json` file (or `*.meta.jsonc`, which Rojo applies after it) sets the properties or attributes that a file or folder can't express on its own. `init.meta.json` can also set a `className`, but only for a folder with no init script, since the script decides the class of a folder that has one.
 
 For a file, name the meta after the instance name Rojo gives it, without `.server`, `.client` or `.plugin`: `Save.server.luau` takes `Save.meta.json`. A dot is part of the name, so `Analytics.mock.luau` takes `Analytics.mock.meta.json`.
 

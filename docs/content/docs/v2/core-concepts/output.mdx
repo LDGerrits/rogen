@@ -13,7 +13,7 @@ A config named `X.rogen.json` writes `X.project.json` beside it, the way Rojo na
 
 The project file is a plain Rojo project file: Rogen's keys are gone, your `tree` has the routed nodes merged in, paths are relative to the file, and it is formatted as `rojo fmt-project` formats it.
 
-`default.project.json` carries `name` only when the config sets one. Rojo names the project after its folder otherwise. Every other project file carries a `name`, the config's or the file's stem, since Rojo can't open a project file without one.
+`default.project.json` carries `name` only when the config sets one. Rojo names the project after its folder otherwise. Every other project file carries a `name`, the config's or the file's stem, since Rojo crashes on a project file other than `default.project.json` that has none.
 
 Every other Rojo key in the config (`servePort`, `servePlaceIds`, `globIgnorePaths` and the rest) is copied across, so the tools that read the file see them.
 

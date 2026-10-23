@@ -70,6 +70,49 @@ describe("CoreRojoCommandService", () => {
 		expect(child.options.cwd).toBe("/repo");
 	});
 
+	describe("Rojo 7.7.0 on Windows", () => {
+		beforeEach(async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.7.0\n",
+				stderr: "",
+			});
+			service = new CoreRojoCommandService(
+				new CoreRojoRunner(new CoreToolchainService(fs), processes),
+				new RojoCompatibility(fs, true)
+			);
+			await fs.writeFile(
+				"/repo/default.project.json",
+				JSON.stringify({
+					name: "game",
+					globIgnorePaths: ["**/*.draft.luau"],
+					tree: {
+						$className: "Folder",
+						Shared: { $path: "../shared" },
+					},
+				})
+			);
+		});
+
+		it("should refuse a sourcemap of a file that mounts a folder outside its own", async () => {
+			const result = await service.run(selection(), {
+				command: "sourcemap",
+				flags: [],
+				cwd: "/repo",
+			});
+
+			expect(result.isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should run a build of it, which 7.7.0 reads right", async () => {
+			const running = run();
+			await finish(["Built project to a.rbxl"], 0);
+
+			expect((await running).isOk()).toBe(true);
+		});
+	});
+
 	it("should run on the project file the request names, when it is not the project's own", async () => {
 		const running = service.run(selection(), {
 			command: "syncback",
