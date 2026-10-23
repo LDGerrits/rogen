@@ -1,12 +1,9 @@
 import { relativeTo } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
-import { BuildRun, ConfigBuild, isWritten } from "../../domain/build/build.js";
+import { BuildRun, isWritten } from "../../domain/build/build.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { BuildLog } from "../build/build-log.js";
-
-/** A project file with no config of its name, which is its own output and is not written. */
-const isPlain = (build: ConfigBuild): boolean =>
-	build.outcome !== "notLoaded" && build.config.isAdopted;
+import { isPlain } from "./write-document.js";
 
 /** What `rogen write` says: a line for each config and each project file it left alone, then how many it wrote. */
 export class WriteLog {

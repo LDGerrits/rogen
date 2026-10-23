@@ -17,12 +17,9 @@ import {
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
-import {
-	buildDocument,
-	buildDocumentShape,
-	buildLineShape,
-} from "../build/build-document.js";
+import { buildLineShape } from "../build/build-document.js";
 import { BuildWatch } from "../build/build-watch.js";
+import { writeDocument, writeDocumentShape } from "./write-document.js";
 import { WriteLog } from "./write-log.js";
 
 const WatchOption = {
@@ -44,6 +41,20 @@ const WriteArguments = [
 	},
 ] as const;
 
+/** The refs of a selection that takes the working directory's default config. */
+const FOLDER_DEFAULT: readonly string[] = [];
+
+interface Targets {
+	readonly configs: readonly string[];
+	/** The project files with no config, which are left alone. */
+	readonly plain: readonly string[];
+}
+
+interface Written {
+	readonly home: string;
+	readonly run: BuildRun;
+}
+
 registerCommand(
 	class WriteCommand extends AbstractCommand<typeof WriteOptions> {
 		constructor() {
@@ -56,7 +67,7 @@ registerCommand(
 					args: WriteArguments,
 					options: WriteOptions,
 					output: {
-						document: buildDocumentShape,
+						document: writeDocumentShape,
 						lines: buildLineShape,
 					},
 					effects: ["writesFiles"],
@@ -77,80 +88,99 @@ registerCommand(
 			accessor: ServicesAccessor,
 			line: CommandLine<typeof WriteOptions>
 		): Promise<Result<void, Error>> {
-			const configService = accessor.get(ConfigService);
-			const targets = await this.targets(configService, line.positionals);
+			const targets = await this.targets(
+				accessor.get(ConfigService),
+				line.positionals
+			);
 			if (targets.isErr()) return targets;
-			const { refs, plain } = targets.value;
+			const json = Boolean(line.options.json);
+			return line.options.watch
+				? this.watch(accessor, targets.value.configs, json)
+				: this.writeOnce(accessor, targets.value, json);
+		}
 
-			if (line.options.watch) {
-				const store = new DisposableStore();
-				const shutdown = this.untilShutdown(accessor, store);
-				try {
-					return await new BuildWatch(
-						accessor,
-						this.watched(refs),
-						Boolean(line.options.json),
-						undefined,
-						"write"
-					).run(store, shutdown);
-				} finally {
-					store[Symbol.dispose]();
-				}
+		private async watch(
+			accessor: ServicesAccessor,
+			configs: readonly string[],
+			json: boolean
+		): Promise<Result<void, Error>> {
+			const store = new DisposableStore();
+			const shutdown = this.untilShutdown(accessor, store);
+			try {
+				return await new BuildWatch(
+					accessor,
+					this.watchedRefs(configs),
+					json,
+					undefined,
+					"write"
+				).run(store, shutdown);
+			} finally {
+				store[Symbol.dispose]();
 			}
+		}
 
+		private async writeOnce(
+			accessor: ServicesAccessor,
+			{ configs, plain }: Targets,
+			json: boolean
+		): Promise<Result<void, Error>> {
 			const logService = accessor.get(LogService);
 			const { cwd } = accessor.get(EnvironmentService);
-			let home = cwd;
-			let run = new BuildRun([]);
-			if (refs.length > 0) {
-				const selection = await configService.select(refs);
-				if (selection.isErr()) return selection;
-				for (const note of selection.value.notes) logService.warn(note);
-				home = selection.value.home;
-				run = await accessor
-					.get(BuildService)
-					.build(selection.value, { independent: true });
-			}
+			const written = await this.writeConfigs(accessor, configs);
+			if (written.isErr()) return written;
+			const { home, run } = written.value;
 
 			const failure = run.failure();
-			if (line.options.json)
+			if (json)
 				return this.printJson(
 					logService,
-					buildDocument(run.builds, cwd),
+					writeDocument(run, cwd, plain),
 					failure
 				);
 			new WriteLog(logService, cwd).report(run, home, plain);
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** A lone default config is watched as the default, so the watch follows the folder when its source paths come and go. */
-		private watched(refs: readonly string[]): readonly string[] {
-			return refs.length === 1 &&
-				isDefaultConfigFileName(path.basename(refs[0]))
-				? []
-				: refs;
+		/** Builds `configs`, each on its own so one that fails does not stop the rest; nothing to build without configs. */
+		private async writeConfigs(
+			accessor: ServicesAccessor,
+			configs: readonly string[]
+		): Promise<Result<Written, Error>> {
+			if (configs.length === 0)
+				return ok({
+					home: accessor.get(EnvironmentService).cwd,
+					run: new BuildRun([]),
+				});
+			const selection = await accessor.get(ConfigService).select(configs);
+			if (selection.isErr()) return selection;
+			for (const note of selection.value.notes)
+				accessor.get(LogService).warn(note);
+			const run = await accessor
+				.get(BuildService)
+				.build(selection.value, { independent: true });
+			return ok({ home: selection.value.home, run });
 		}
 
-		/** The configs to write: the ones named, else every one of the working directory, and the plain project files that are left alone. */
+		/** What a watch selects: the configs, except that a lone default is selected as the folder's default, so the watch follows the folder when its source paths come and go. */
+		private watchedRefs(configs: readonly string[]): readonly string[] {
+			return configs.length === 1 &&
+				isDefaultConfigFileName(path.basename(configs[0]))
+				? FOLDER_DEFAULT
+				: configs;
+		}
+
+		/** The configs to write: the ones named, else every one of the working directory, and the plain project files that are left alone. Fails when the folder holds neither. */
 		private async targets(
 			configService: ConfigService,
 			given: readonly string[]
-		): Promise<
-			Result<{ refs: readonly string[]; plain: readonly string[] }, Error>
-		> {
-			if (given.length > 0) return ok({ refs: given, plain: [] });
-			const refs = await configService.configsHere();
-			if (refs.length > 0)
-				return ok({
-					refs,
-					plain: await configService.plainProjectsHere(),
-				});
-			const here = await configService.select([]);
-			if (here.isErr()) return here;
-			return ok({
-				refs: [],
-				plain: await configService.plainProjectsHere(),
-			});
+		): Promise<Result<Targets, Error>> {
+			if (given.length > 0) return ok({ configs: given, plain: [] });
+			const configs = await configService.configsHere();
+			const plain = await configService.plainProjectsHere();
+			if (configs.length > 0 || plain.length > 0)
+				return ok({ configs, plain });
+			const nothing = await configService.select(FOLDER_DEFAULT);
+			return nothing.isErr() ? nothing : ok({ configs, plain });
 		}
 	}
 );

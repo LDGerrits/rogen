@@ -73,7 +73,8 @@ stdout:
           }
         ]
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 written:

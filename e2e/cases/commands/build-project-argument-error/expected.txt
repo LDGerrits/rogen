@@ -35,7 +35,8 @@ stdout:
         "outcome": "wrote",
         "diagnostics": []
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 written:
