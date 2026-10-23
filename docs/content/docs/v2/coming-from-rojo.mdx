@@ -1,6 +1,6 @@
 ---
 title: Coming from Rojo
-description: Move a hand-written Rojo project to Rogen without changing where anything lands.
+description: Move a hand-written Rojo project to Rogen, then reorganise it by feature on a branch.
 ---
 
 import { Steps, Step } from "fumadocs-ui/components/steps";
@@ -134,21 +134,32 @@ rogen where src
 </Step>
 
 <Step>
-### Move one feature
+### Reorganise on a branch
 
-Now you can move code into [feature folders](/docs/v2/architectures/feature-folders) a folder at a time. Move one feature, then ask where its files land:
+The project now builds as it did, and you can move code into [feature folders](/docs/v2/architectures/feature-folders). Do it on a branch, since moving a file changes its instance path.
+
+A file lands at its route's target followed by every folder above it, so a feature folder adds a segment, and a type folder you leave behind (`Services`, `Controllers`, `Utils`) drops one:
+
+```
+before   src/server/Services/InventoryService.luau   ->  ServerScriptService/Server/Services/InventoryService
+after    src/Inventory/Server/InventoryService.luau  ->  ServerScriptService/Server/Inventory/InventoryService
+```
+
+Every `require` that reached the file by instance path now points at nothing, and Rogen doesn't check requires, so a broken one shows up when the game runs. Move a feature, ask where its files land, and update the requires that reach them:
 
 ```bash
 rogen where src/Inventory
 ```
 
-`where` prints each file's instance path and the `require` that reaches it. When a folder's routes are right, move the next one.
+`where` prints each file's instance path and the `require` that reaches it. When the requires are right, move the next feature.
+
+Hiding a folder with `(Name)/`, or a file with a `^` prefix, drops folders from the path (see [Hoisted Names](/docs/v2/core-concepts/routing#hoisted-names)). It keeps a path only when the folder you add is the only difference, which a by-type layout rarely allows. Plan to update the requires.
 
 </Step>
 
 </Steps>
 
-Already-written requires keep working while you move, because a file's instance path only changes when its route does. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.
+Old folders and feature folders build together, so the project keeps building between moves. See [Routing](/docs/v2/core-concepts/routing) for the rest of the rules, and [Requires](/docs/v2/core-concepts/requires) for reaching code that runs somewhere else.
 
 After `init`, `rogen serve` replaces `rojo serve`: it writes `default.project.json`, starts the Rojo your project pins on it and writes again as files change, so you no longer start Rojo yourself. For luau-lsp, which wants a `sourcemap.json`, run `rogen sourcemap --watch -o sourcemap.json` beside it; it writes the project file first and keeps the sourcemap current as files come and go.
 
