@@ -1,6 +1,6 @@
 import { ConfigOutcome } from "../../domain/write/write.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { RojoEntry, rojoEntryShape } from "../write/report-rojo.js";
+import { RojoEntry, rojoEntryShape } from "../write/rojo-entry.js";
 import {
 	configsDocument,
 	watchLineShapes,

@@ -29,9 +29,9 @@ import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
-import { rojoEntry } from "../write/report-rojo.js";
 import { WriteWatch } from "../write/write-watch.js";
 import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { rojoEntry } from "../write/rojo-entry.js";
 import {
 	sourcemapDocument,
 	sourcemapDocumentShape,

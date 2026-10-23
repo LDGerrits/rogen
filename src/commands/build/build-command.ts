@@ -25,12 +25,8 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
 import { OutcomeLog } from "../write/outcome-log.js";
-import {
-	buildRojoEntryShape,
-	reportRojo,
-	reportRojoBesideFailure,
-	rojoEntry,
-} from "../write/report-rojo.js";
+import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { buildRojoEntryShape, rojoEntry } from "../write/rojo-entry.js";
 import {
 	configsDocument,
 	watchLineShape,

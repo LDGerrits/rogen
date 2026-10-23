@@ -20,8 +20,8 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { ServicesAccessor } from "../../platform/instantiation/instantiation.js";
 import { LogService } from "../../platform/log/log-service.js";
 import { OutcomeLog } from "../write/outcome-log.js";
-import { rojoEntry } from "../write/report-rojo.js";
 import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
+import { rojoEntry } from "../write/rojo-entry.js";
 import { uploadDocument, uploadDocumentShape } from "./upload-document.js";
 
 const AssetIdOption = {

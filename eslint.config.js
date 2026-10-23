@@ -69,6 +69,7 @@ const modules = {
 		write: [
 			"outcome-log",
 			"report-rojo",
+			"rojo-entry",
 			"rojo-step",
 			"watch-log",
 			"write-document",

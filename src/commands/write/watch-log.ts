@@ -18,9 +18,9 @@ import {
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { RojoCommandRun } from "../../domain/runner/rojo-command-service.js";
 import { Result } from "../../base/result.js";
-import { RojoTarget, rojoEntry } from "./report-rojo.js";
-import { writeEntry } from "./write-document.js";
 import { reportRojo, reportRojoBesideFailure } from "./report-rojo.js";
+import { RojoTarget, rojoEntry } from "./rojo-entry.js";
+import { writeEntry } from "./write-document.js";
 import { OutcomeLog } from "./outcome-log.js";
 
 interface WatchChange {

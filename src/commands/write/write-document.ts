@@ -13,7 +13,7 @@ import {
 	errorShape,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { buildRojoEntryShape } from "./report-rojo.js";
+import { buildRojoEntryShape } from "./rojo-entry.js";
 
 const S = OutputShape;
 
