@@ -460,9 +460,11 @@ A `serve` error whose fix is a command has a `run` fix instead: the command, and
 ]
 ```
 
-The commands that write files, `write`, `build`, `fmt-project` and `init`, say so the same way: a top-level `changed` comes first, `true` when the run wrote anything, and each file has an `outcome` of `wrote`, `unchanged`, `failed` or `notWritten`. A program asks the same question of all three.
+The commands that write files, `write`, `build`, `sourcemap`, `upload`, `syncback`, `fmt-project` and `init`, say so the same way: a top-level `changed` comes first, `true` when the run wrote anything, and each file has an `outcome` of `wrote`, `unchanged`, `failed` or `notWritten`, which means only that errors stopped the write. In a dry run (`init --dry-run`, `syncback --dry-run`) it is `wouldWrite`, for a file the run would have written. A program asks the same question of all of them.
 
-Every document is an object, and every entry says which config it is about, the same way. An entry that is a config has `config` (its project name) and `file` (the absolute path of its `.rogen.json`). An entry that belongs to a config, such as a location, has `config`. Identity comes first and `diagnostics` last.
+Every document is an object, and every entry says which config it is about, the same way: `config` is the path of the `.rogen.json`, relative to the folder you ran in (`default.rogen.json`, `places/lobby/default.rogen.json`, or `../default.rogen.json` from a subfolder). It is the same in every command, and a config has no other name in a document, so two configs of one name are two `config` values; a `skipped` path names the config that covers its folder the same way. Identity comes first and `diagnostics` last.
+
+Rojo's run is `rojo` in every command that runs one of Rojo's verbs after writing the project files: `build`, `sourcemap` and `upload`.
 
 A diagnostic is about one file, its `file`, in every command: a warning such as `route.strayAt` that fires for several files is one diagnostic for each, the same objects `rogen check --json` gives. A program that wants every warning about the files it just changed filters on `file`, instead of reading `message`. A diagnostic that involves a second file names it in `related`, with that file's part in it, such as the file that takes the place of a `tree.instanceClash`:
 
@@ -498,8 +500,7 @@ A failure that isn't a list of diagnostics prints `{ "error": { "kind", "message
 	"changed": true,
 	"configs": [
 		{
-			"config": "my-game",
-			"file": "/repo/default.rogen.json",
+			"config": "default.rogen.json",
 			"projectFile": "/repo/default.project.json",
 			"outcome": "wrote",
 			"diagnostics": []
@@ -508,7 +509,7 @@ A failure that isn't a list of diagnostics prints `{ "error": { "kind", "message
 }
 ```
 
-`outcome` is `wrote`, `unchanged` or `notWritten`. If any config fails, nothing is written.
+If any config fails, nothing is written: a config that built cleanly is `notWritten`, with `blockedBy`, the `config` of each that failed or didn't load.
 
 `build` adds `rojo`, the Rojo build that ran after the files were written (`write --json` has no `rojo`):
 
@@ -533,28 +534,25 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 	"changed": true,
 	"configs": [
 		{
-			"config": "my-game",
-			"file": "/repo/default.rogen.json",
+			"config": "default.rogen.json",
 			"projectFile": "/repo/default.project.json",
 			"outcome": "unchanged",
 			"diagnostics": []
 		}
 	],
-	"sourcemaps": [
-		{
-			"command": "sourcemap",
-			"outcome": "built",
-			"project": "/repo/default.project.json",
-			"output": "/repo/sourcemap.json",
-			"messages": [
-				{ "severity": "info", "text": "Created sourcemap at sourcemap.json" }
-			]
-		}
-	]
+	"rojo": {
+		"command": "sourcemap",
+		"outcome": "built",
+		"project": "/repo/default.project.json",
+		"output": "/repo/sourcemap.json",
+		"messages": [
+			{ "severity": "info", "text": "Created sourcemap at sourcemap.json" }
+		]
+	}
 }
 ```
 
-`configs` is as in [`build --json`](#build---json). `sourcemaps` has an entry for the Rojo run, shaped as [`rojo` in `build --json`](#build---json) with `command` `sourcemap`, and `outcome` `built` when Rojo wrote the file. `changed` is true when a project file was written or a sourcemap was. With `--watch`, it prints one JSON object per line as [`build --watch --json`](#build---watch) does.
+`configs` is as in [`build --json`](#build---json), and `rojo` is shaped as `rojo` in it, with `command` `sourcemap` and `outcome` `built` when Rojo wrote the file. `changed` is true when a project file was written or a sourcemap was. With `--watch`, it prints one JSON object per line as [`build --watch --json`](#build---watch) does.
 
 ### `upload --json`
 
@@ -563,8 +561,7 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 	"changed": false,
 	"configs": [
 		{
-			"config": "my-game",
-			"file": "/repo/default.rogen.json",
+			"config": "default.rogen.json",
 			"projectFile": "/repo/default.project.json",
 			"outcome": "unchanged",
 			"diagnostics": []
@@ -588,8 +585,7 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 	"changed": true,
 	"configs": [
 		{
-			"config": "my-game",
-			"file": "/repo/default.rogen.json",
+			"config": "default.rogen.json",
 			"projectFile": "/repo/default.project.json",
 			"outcome": "unchanged",
 			"diagnostics": []
@@ -597,7 +593,7 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 	],
 	"syncback": {
 		"outcome": "written",
-		"project": "my-game",
+		"config": "default.rogen.json",
 		"input": "game.rbxl",
 		"changes": [
 			{ "kind": "write", "file": "/repo/src/Quest/Server/Main.luau" },
@@ -608,7 +604,7 @@ A config that doesn't load is an entry like the others: `projectFile` is `null`,
 }
 ```
 
-`configs` is as in [`build --json`](#build---json). `syncback.outcome` is `written` when the run wrote, `planned` for `--dry-run` (whose `configs` are `notWritten`, as no file is), `failed` when it did not, with `diagnostics` or `error` as a failed run prints, and `notRun` when the project files had errors. `changes` are the files written and removed, at the places the new ones were put; `unplaced` has the `instance` and the `reason` of each instance left out. A file placed where the build puts it elsewhere is a diagnostic in `syncback.diagnostics`.
+`configs` is as in [`build --json`](#build---json). `syncback.outcome` is `written` when the run wrote, `wouldWrite` for `--dry-run` (whose `configs` are `wouldWrite` too), `failed` when it did not, with `diagnostics` or `error` as a failed run prints, and `notRun` when the project files had errors. `changes` are the files written and removed, at the places the new ones were put; `unplaced` has the `instance` and the `reason` of each instance left out. A file placed where the build puts it elsewhere is a diagnostic in `syncback.diagnostics`.
 
 ### `fmt-project --json`
 
@@ -632,22 +628,22 @@ One entry per config file it looked at. `outcome` is `wrote`, `unchanged` or `fa
 One JSON object per line on stdout, each keyed by what it reports, and nothing else: what the server says is an `output` line too.
 
 ```json
-{"build": {"config": "my-game", "file": "/repo/default.rogen.json", "projectFile": "/repo/default.project.json", "outcome": "wrote", "diagnostics": []}}
-{"serving": {"config": "my-game", "server": "rojo", "version": "7.7.1", "project": "my-game", "host": "127.0.0.1", "port": 34872, "session": "f7771777-…"}}
+{"build": {"config": "default.rogen.json", "projectFile": "/repo/default.project.json", "outcome": "wrote", "diagnostics": []}}
+{"serving": {"config": "default.rogen.json", "version": "7.7.1", "project": "my-game", "host": "127.0.0.1", "port": 34872, "session": "f7771777-…"}}
 ```
 
 | Key | When | Fields |
 |---|---|---|
 | `build` | each config, on every build | the entry [`build --json`](#build---json) lists |
-| `notice` | a config is added, removed, broken or recovered | `kind` (`added`, `removed`, `broken` or `recovered`), `file`; a broken config adds `keptLastValid` and `diagnostics` |
-| `serving` | a server answers, so Studio can connect | `config`, `server`, `version`, `project`, `host`, `port`, `session` (Rojo only), `reportsConnections` (whether `connected` and `disconnected` lines follow from this process: false for `alreadyRunning`, which exits at once); `alreadyRunning: true` when it was already serving before `serve` started |
-| `connected`, `disconnected` | a Studio plugin connected to a server this serve started, or left it | `config`, `server`, `project`, `port`, `clients`, how many are connected now. Only a server that reports them, which the `serving` line says with `reportsConnections` |
-| `output` | a server prints a warning, an error or a line Rogen doesn't recognise | `config`, `server`, `severity` (`error`, `warning` or `info` for an unrecognised line), `message` |
-| `refused` | a config to serve, added or edited while serving, can't be served because its port is taken. The server it already has, if any, goes on | `config`, `server`, `diagnostics` |
-| `stopped` | a server stops | `config`, `server`, `reason`: `exited` when it stopped on its own, with its `code` and `signal`; `removed` or `moved` when its config was deleted, or moved to another address (a `serving` line follows for the new server); `shutdown` when `serve` was asked to stop, as the last lines of a clean run |
+| `notice` | a config is added, removed, broken or recovered | `kind` (`added`, `removed`, `broken` or `recovered`), `config`; a broken config adds `keptLastValid` and `diagnostics` |
+| `serving` | a server answers, so Studio can connect | `config`, `version`, `project`, `host`, `port`, `session`, `reportsConnections` (whether `connected` and `disconnected` lines follow from this process: false for `alreadyRunning`, which exits at once); `alreadyRunning: true` when it was already serving before `serve` started |
+| `connected`, `disconnected` | a Studio plugin connected to a server this serve started, or left it | `config`, `project`, `port`, `clients`, how many are connected now. Only a server that reports them, which the `serving` line says with `reportsConnections` |
+| `output` | a server prints a warning, an error or a line Rogen doesn't recognise | `config`, `severity` (`error`, `warning` or `info` for an unrecognised line), `message` |
+| `refused` | a config to serve, added or edited while serving, can't be served because its port is taken. The server it already has, if any, goes on | `config`, `diagnostics` |
+| `stopped` | a server stops | `config`, `reason`: `exited` when it stopped on its own, with its `code` and `signal`; `removed` or `moved` when its config was deleted, or moved to another address (a `serving` line follows for the new server); `shutdown` when `serve` was asked to stop, as the last lines of a clean run |
 | `error` | an unexpected failure that `serve` survives | the message |
 
-`project` is the name in the project file, not the config's. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": {...} }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
+`project` is the name in the project file. When a run fails, the last line is `{ "diagnostics": [...] }` or `{ "error": {...} }`, as for other commands. A server that stops with a non-zero code adds a `diagnostics` line with [`serve.serverExited`](/docs/v2/diagnostics#serve-serverexited).
 
 ### `check --json`
 
@@ -691,8 +687,7 @@ Every entry also has `diagnostics`, last: the diagnostics whose `file` is its pa
 	],
 	"built": [
 		{
-			"config": "my-game",
-			"file": "/repo/default.rogen.json",
+			"config": "default.rogen.json",
 			"projectFile": "/repo/default.project.json",
 			"outcome": "wrote",
 			"diagnostics": []

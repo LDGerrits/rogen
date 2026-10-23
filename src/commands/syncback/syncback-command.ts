@@ -224,7 +224,8 @@ registerCommand(
 					logService,
 					syncbackDocument(
 						build.builds,
-						syncbackEntry(input, outcome)
+						cwd,
+						syncbackEntry(input, outcome, cwd)
 					),
 					failure ?? stopped
 				);

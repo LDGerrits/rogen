@@ -17,15 +17,13 @@ stdout:
     "changed": false,
     "configs": [
       {
-        "config": "Game",
-        "file": "<dir>/game.rogen.json",
+        "config": "game.rogen.json",
         "projectFile": "<dir>/game.project.json",
         "outcome": "unchanged",
         "diagnostics": []
       },
       {
-        "config": "project",
-        "file": "<dir>/lobby.rogen.json",
+        "config": "lobby.rogen.json",
         "projectFile": null,
         "outcome": "notWritten",
         "diagnostics": [

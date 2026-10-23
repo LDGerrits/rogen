@@ -111,8 +111,7 @@ stdout:
     ],
     "built": [
       {
-        "config": "project",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "wrote",
         "diagnostics": []

@@ -5,17 +5,15 @@ stdout:
     "changed": false,
     "configs": [
       {
-        "config": "Game",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
-        "outcome": "notWritten",
-        "blockedBy": [],
+        "outcome": "wouldWrite",
         "diagnostics": []
       }
     ],
     "syncback": {
-      "outcome": "planned",
-      "project": "Game",
+      "outcome": "wouldWrite",
+      "config": "default.rogen.json",
       "input": "place.rbxl",
       "changes": [
         {
@@ -53,7 +51,7 @@ stdout:
   Removing src/Combat/Server/Hit.luau
 stderr:
   rogen syncback · Game
-  default.project.json · checked
+  default.project.json · would write
   Checked 1 project.
   Syncback would change 5 files (4 to write, 1 to remove).
 

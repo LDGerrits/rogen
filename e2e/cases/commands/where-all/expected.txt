@@ -47,7 +47,7 @@ stdout:
       {
         "path": "<dir>/README.md",
         "reason": "outsideSourcePaths",
-        "config": "<dir>/default.rogen.json"
+        "config": "default.rogen.json"
       }
     ]
   }

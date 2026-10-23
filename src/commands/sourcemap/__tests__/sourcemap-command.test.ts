@@ -198,14 +198,13 @@ describe("sourcemap command", () => {
 
 		expect(log.json()).toMatchObject({
 			changed: true,
-			sourcemaps: [
-				{
-					command: "sourcemap",
-					output: abs("map.json"),
-					outcome: "built",
-					project: abs("default.project.json"),
-				},
-			],
+			rojo: {
+				command: "sourcemap",
+				output: abs("map.json"),
+				outcome: "built",
+				project: abs("default.project.json"),
+			},
 		});
+		expect(log.json()).not.toHaveProperty("sourcemaps");
 	});
 });

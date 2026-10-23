@@ -134,13 +134,13 @@ describe("watch", () => {
 			).toEqual([
 				{
 					build: expect.objectContaining({
-						config: "repo",
+						config: "default.rogen.json",
 						outcome: "wrote",
 					}),
 				},
 				{
 					build: expect.objectContaining({
-						config: "repo",
+						config: "default.rogen.json",
 						outcome: "wrote",
 					}),
 				},
@@ -163,7 +163,7 @@ describe("watch", () => {
 			).toContainEqual({
 				notice: {
 					kind: "broken",
-					file: "/repo/default.rogen.json",
+					config: "default.rogen.json",
 					keptLastValid: true,
 					diagnostics: [
 						expect.objectContaining({

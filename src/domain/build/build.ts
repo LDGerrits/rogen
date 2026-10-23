@@ -62,7 +62,8 @@ export function isWritten(build: ConfigBuild): build is WrittenBuild {
 }
 
 /** What a run did for a config that loaded; narrow it on `outcome`. */
-export type LoadedBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
+export type LoadedBuild =
+	WrittenBuild | CheckedBuild | UnwrittenBuild | FailedBuild;
 
 /** What a run did for one selected config; one that didn't load has no `config`. */
 export type ConfigBuild = LoadedBuild | UnloadedBuild;
@@ -138,7 +139,21 @@ export class UnloadedBuild {
 	}
 }
 
-/** A config that built cleanly, but whose run stopped before writing it because the configs named in `blockedBy` failed or didn't load. */
+/** A config that built cleanly in a run that writes nothing, and that a run which writes would have written. */
+export class CheckedBuild extends AbstractConfigBuild {
+	readonly outcome = "wouldWrite";
+
+	constructor(
+		config: ResolvedConfig,
+		findings: BuildFindings,
+		readonly summary: BuildSummary,
+		readonly readFiles: readonly string[]
+	) {
+		super(config, findings);
+	}
+}
+
+/** A config that built cleanly, but whose run stopped before writing it because the configs whose files `blockedBy` lists failed or didn't load. */
 export class UnwrittenBuild extends AbstractConfigBuild {
 	readonly outcome = "notWritten";
 

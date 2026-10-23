@@ -112,8 +112,7 @@ describe("init command", () => {
 				directories: [path.join(cwd, "src")],
 				built: [
 					{
-						config: "my-game",
-						file: path.join(cwd, "default.rogen.json"),
+						config: "default.rogen.json",
 						projectFile: path.join(cwd, "default.project.json"),
 						outcome: "wrote",
 						diagnostics: [],
@@ -294,8 +293,7 @@ describe("init command", () => {
 
 			expect(JSON.parse(logService.entries[0].text).built).toEqual([
 				{
-					config: "my-game",
-					file: path.join(cwd, "default.rogen.json"),
+					config: "default.rogen.json",
 					projectFile: path.join(cwd, "default.project.json"),
 					outcome: "wrote",
 					diagnostics: [],

@@ -87,7 +87,7 @@ export class BuildWatch {
 		}
 		const printing = planned?.printed ?? false;
 		const log: WatchReporter = this.json
-			? new WatchJsonLog(logService)
+			? new WatchJsonLog(logService, cwd)
 			: printing
 				? new PrintedWatchLog(logService, cwd)
 				: new WatchLog(

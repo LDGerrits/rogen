@@ -145,7 +145,11 @@ registerCommand(
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
-					? new ServeJsonLog(accessor.get(LogService), plan.value)
+					? new ServeJsonLog(
+							accessor.get(LogService),
+							accessor.get(EnvironmentService).cwd,
+							plan.value
+						)
 					: new ServeLog(
 							accessor.get(LogService),
 							accessor.get(EnvironmentService).cwd,

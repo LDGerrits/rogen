@@ -432,8 +432,7 @@ describeWithRojo("end to end serve", () => {
 		]);
 		expect(lines[1].serving).toEqual(
 			expect.objectContaining({
-				config: "Game",
-				server: "rojo",
+				config: "default.rogen.json",
 				version: "7.7.1",
 				project: "Game",
 				port: serve.port,
@@ -570,7 +569,7 @@ describeWithRojo("end to end serve", () => {
 			try {
 				await eventually(() => {
 					expect(serving.stdout).toContain(
-						`{"connected":{"config":"Game","server":"rojo","project":"Game","port":${serve.port},"clients":1}}`
+						`{"connected":{"config":"default.rogen.json","project":"Game","port":${serve.port},"clients":1}}`
 					);
 				}, 20_000);
 			} finally {
@@ -579,7 +578,7 @@ describeWithRojo("end to end serve", () => {
 
 			await eventually(() => {
 				expect(serving.stdout).toContain(
-					`{"disconnected":{"config":"Game","server":"rojo","project":"Game","port":${serve.port},"clients":0}}`
+					`{"disconnected":{"config":"default.rogen.json","project":"Game","port":${serve.port},"clients":0}}`
 				);
 			}, 20_000);
 		}, 60_000);

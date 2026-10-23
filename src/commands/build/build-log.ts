@@ -210,7 +210,7 @@ export class BuildLog {
 		);
 	}
 
-	/** With `writes` false, the run only checked: a config that built is reported as checked, not as an error. */
+	/** With `writes` false, the run only checked: a config that built is reported as one that would be written. */
 	report(
 		run: BuildRun,
 		home?: string,
@@ -218,6 +218,9 @@ export class BuildLog {
 		writes = true,
 		built?: BuiltFile
 	): void {
+		const labelOf = (file: string) =>
+			run.builds.find((build) => build.file === file)?.label ??
+			relativeTo(this.cwd, file);
 		this.begin(
 			command,
 			run.builds.map(({ label }) => label),
@@ -226,13 +229,9 @@ export class BuildLog {
 		for (const { build, warnings, errors } of run.shares) {
 			if (run.builds.length > 1) this.heading(build.label);
 			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
-				checked:
-					!writes &&
-					build.outcome === "notWritten" &&
-					build.blockedBy.length === 0,
 				notes: [
-					build.outcome === "notWritten" && build.blockedBy.length > 0
-						? `${joinedWithAnd(build.blockedBy)} failed`
+					build.outcome === "notWritten"
+						? `${joinedWithAnd(build.blockedBy.map(labelOf))} failed`
 						: undefined,
 					BuildLog.sameAs("errors", errors.sameAs),
 					BuildLog.sameAs("warnings", warnings.sameAs),
@@ -253,10 +252,8 @@ export class BuildLog {
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
-			checked = false,
 		}: {
 			readonly notes?: readonly (string | undefined)[];
-			readonly checked?: boolean;
 		} = {}
 	): void {
 		const note =
@@ -280,9 +277,12 @@ export class BuildLog {
 				this.logService.success(line(build.outcome));
 				this.details(build.summary);
 				break;
+			case "wouldWrite":
+				this.logService.success(line("would write"));
+				this.details(build.summary);
+				break;
 			case "notWritten":
-				if (checked) this.logService.success(line("checked"));
-				else this.logService.error(line("not written"));
+				this.logService.error(line("not written"));
 				this.details(build.summary);
 				break;
 			case "failed":

@@ -1,3 +1,4 @@
+import { relativeTo } from "../../base/path.js";
 import {
 	ServeChangeEvent,
 	ServePlan,
@@ -25,7 +26,7 @@ import {
 
 const S = OutputShape;
 
-const serverEventFields = { config: S.string, server: S.string };
+const serverEventFields = { config: S.string };
 
 const connectionFields = {
 	...serverEventFields,
@@ -195,9 +196,10 @@ export class ServeJsonLog implements ServeReporter {
 
 	constructor(
 		private readonly logService: LogService,
+		private readonly cwd: string,
 		private readonly plan: ServePlan
 	) {
-		this.watchLog = new WatchJsonLog(logService);
+		this.watchLog = new WatchJsonLog(logService, cwd);
 	}
 
 	begin(): void {
@@ -301,14 +303,8 @@ export class ServeJsonLog implements ServeReporter {
 		};
 	}
 
-	private serverFields(target: ServeTarget): {
-		config: string;
-		server: string;
-	} {
-		return {
-			config: target.config.label,
-			server: RojoServer.COMMAND,
-		};
+	private serverFields(target: ServeTarget): { config: string } {
+		return { config: relativeTo(this.cwd, target.config.file) };
 	}
 
 	private servingJson(
@@ -317,8 +313,7 @@ export class ServeJsonLog implements ServeReporter {
 		alreadyRunning: boolean
 	): Record<string, unknown> {
 		return {
-			config: target.config.label,
-			server: RojoServer.COMMAND,
+			...this.serverFields(target),
 			version: info.version,
 			project: info.project,
 			host: target.address.host,

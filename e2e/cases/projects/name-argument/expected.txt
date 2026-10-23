@@ -26,8 +26,7 @@ stdout:
     "changed": false,
     "configs": [
       {
-        "config": "Inventory",
-        "file": "<dir>/dist.rogen.json",
+        "config": "dist.rogen.json",
         "projectFile": "<dir>/dist.project.json",
         "outcome": "unchanged",
         "diagnostics": []

@@ -283,6 +283,7 @@ export class InitJsonLog implements InitReporter {
 
 	constructor(
 		private readonly logService: LogService,
+		private readonly cwd: string,
 		private readonly directory: string,
 		private readonly dryRun = false
 	) {}
@@ -350,7 +351,7 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
-		const built = buildDocument(run.builds, foundBy);
+		const built = buildDocument(run.builds, this.cwd, foundBy);
 		const written = this.writtenSoFar();
 		return this.print(
 			{

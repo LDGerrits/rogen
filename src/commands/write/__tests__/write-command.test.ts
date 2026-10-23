@@ -138,11 +138,12 @@ describe("write command", () => {
 				changed: true,
 				configs: [
 					expect.objectContaining({
-						config: "Game",
+						config: "game.rogen.json",
 						outcome: "wrote",
 						projectFile: abs("game.project.json"),
 					}),
 					expect.objectContaining({
+						config: "lobby.rogen.json",
 						outcome: "wrote",
 						projectFile: abs("lobby.project.json"),
 					}),

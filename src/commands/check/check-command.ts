@@ -113,7 +113,7 @@ registerCommand(
 						...(stoppedBy.length > 0 && {
 							stoppedBy: stoppedBy.map(diagnosticToJson),
 						}),
-						...skippedJson(skipped),
+						...skippedJson(skipped, cwd),
 					},
 					failure
 				);

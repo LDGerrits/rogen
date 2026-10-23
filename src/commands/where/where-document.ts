@@ -243,6 +243,6 @@ export function whereDocument(
 			.flat()
 			.map((answer) => entryOf(answer, cwd)),
 		diagnostics: answers.errors.map(diagnosticToJson),
-		...skippedJson(skipped),
+		...skippedJson(skipped, cwd),
 	};
 }

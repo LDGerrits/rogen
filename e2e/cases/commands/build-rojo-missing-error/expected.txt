@@ -13,8 +13,7 @@ stdout:
     "changed": false,
     "configs": [
       {
-        "config": "Game",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": []
