@@ -47,12 +47,59 @@ describe("AgentFile", () => {
 		expect(choose({ "AGENTS.md": "y\n" }).hasBlock).toBe(false);
 	});
 
-	it("should tell a CLAUDE.md beside AGENTS.md to import it", () => {
+	it("should append an import of AGENTS.md to a CLAUDE.md beside it", () => {
 		expect(
-			choose({ "AGENTS.md": "y\n", "CLAUDE.md": "z\n" }).nextStep
-		).toContain("@AGENTS.md");
+			choose({ "AGENTS.md": "y\n", "CLAUDE.md": "z\n" }).imports([])
+		).toEqual([
+			{
+				fileName: "CLAUDE.md",
+				content: "z\n\n@AGENTS.md\n",
+				addition: "an import of AGENTS.md",
+			},
+		]);
+	});
+
+	it("should append an import of AGENTS.md to a GEMINI.md, which Gemini CLI reads in its place", () => {
+		expect(choose({ "GEMINI.md": "g" }).imports([])).toEqual([
+			{
+				fileName: "GEMINI.md",
+				content: "g\n\n@AGENTS.md\n",
+				addition: "an import of AGENTS.md",
+			},
+		]);
+	});
+
+	it("should leave a file that imports AGENTS.md or holds the block alone", () => {
 		expect(
-			choose({ "AGENTS.md": "y\n", "CLAUDE.md": "@AGENTS.md\n" }).nextStep
-		).toBeUndefined();
+			choose({ "AGENTS.md": "y\n", "CLAUDE.md": "@AGENTS.md\n" }).imports(
+				[]
+			)
+		).toEqual([]);
+		expect(choose({ "CLAUDE.md": "z\n" }).imports([])).toEqual([]);
+		expect(
+			choose({ "AGENTS.md": "y\n", "CLAUDE.md": agentBlock }).imports([])
+		).toEqual([]);
+	});
+
+	it("should put the block in AGENTS.md when CLAUDE.md and GEMINI.md both exist", () => {
+		const file = choose({ "CLAUDE.md": "z\n", "GEMINI.md": "g\n" });
+
+		expect(file.fileName).toBe("AGENTS.md");
+		expect(file.imports([]).map(({ fileName }) => fileName)).toEqual([
+			"CLAUDE.md",
+			"GEMINI.md",
+		]);
+	});
+
+	it("should write an import for an agent in use that has no file of its own", () => {
+		expect(choose({ "AGENTS.md": "y\n" }).imports(["GEMINI.md"])).toEqual([
+			{ fileName: "GEMINI.md", content: "@AGENTS.md\n" },
+		]);
+	});
+
+	it("should import nothing when the block goes into a lone CLAUDE.md", () => {
+		expect(choose({ "CLAUDE.md": "z\n" }).imports(["GEMINI.md"])).toEqual(
+			[]
+		);
 	});
 });

@@ -1,5 +1,4 @@
-import path from "path";
-import { relativeTo, samePath } from "../../base/path.js";
+import { relativeTo } from "../../base/path.js";
 import { Result, ok } from "../../base/result.js";
 import { joinedWithAnd } from "../../base/strings.js";
 import {
@@ -128,7 +127,7 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** With paths, each is answered by the config that covers it, and one that nothing covers is said so and skipped. */
+		/** With paths, each is answered by the config that covers it, with that config's project file when it is stale, and one that nothing covers is said so and skipped. */
 		private async diagnose(
 			accessor: ServicesAccessor,
 			given: readonly string[]
@@ -150,7 +149,7 @@ registerCommand(
 				given
 			);
 			if (asking.isErr()) return asking;
-			const { asked, groups } = asking.value;
+			const { groups } = asking.value;
 			const parts: Diagnosis[] = [];
 			for (const { selection, indexes, whole } of groups) {
 				const found = await writeService.diagnose(
@@ -161,14 +160,7 @@ registerCommand(
 				);
 				if (found.isErr()) return found;
 				parts.push(found.value);
-				const folder = path.dirname(selection.entries[0].file);
-				if (
-					!whole &&
-					indexes.some((index) => {
-						const one = asked[index];
-						return "path" in one && samePath(one.path, folder);
-					})
-				)
+				if (!whole)
 					parts.push({
 						diagnostics:
 							await writeService.staleProjectFiles(selection),

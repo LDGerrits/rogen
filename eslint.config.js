@@ -68,6 +68,7 @@ const modules = {
 		where: [],
 		write: [
 			"outcome-log",
+			"refresh-agent-rules",
 			"report-rojo",
 			"rojo-entry",
 			"rojo-step",
@@ -305,6 +306,17 @@ export default defineConfig(
 	...tseslint.configs.recommended,
 	{
 		ignores: ["dist/", "node_modules/", "docs/"],
+	},
+	{
+		files: ["evals/**/*.mjs"],
+		languageOptions: {
+			globals: {
+				clearTimeout: "readonly",
+				console: "readonly",
+				process: "readonly",
+				setTimeout: "readonly",
+			},
+		},
 	},
 	{
 		files: ["src/**/*.ts", "src/**/*.js"],

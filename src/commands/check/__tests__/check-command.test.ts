@@ -408,14 +408,14 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should not report the stale project file for a file of the folder", async () => {
+		it("should report the stale project file of the config that holds a file it checks", async () => {
 			await fs.writeFile("/repo/places/arena/default.project.json", "{}");
 
 			const result = await run({
 				_: ["places/arena/src/Sell@sever.luau"],
 			});
 
-			expect(found(failureOf(result))).not.toContainEqual([
+			expect(found(failureOf(result))).toContainEqual([
 				"output.differs",
 				"places/arena/default.project.json",
 			]);

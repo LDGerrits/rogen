@@ -3,37 +3,40 @@ import { agentBlock } from "./agent-block.js";
 
 const AGENTS_MD = "AGENTS.md";
 const CLAUDE_MD = "CLAUDE.md";
+const GEMINI_MD = "GEMINI.md";
+const IMPORT = `@${AGENTS_MD}`;
 const MARKER = "<!-- rogen -->";
 
-/** The file a repo's coding agents read: `AGENTS.md`, else a lone `CLAUDE.md`, else a new `AGENTS.md`. */
-export class AgentFile {
-	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD] as const;
+/** The file of an agent that reads it in place of `AGENTS.md`. */
+export type OwnFile = typeof CLAUDE_MD | typeof GEMINI_MD;
 
-	/** The `CLAUDE.md` that points Claude Code at `AGENTS.md`, for a project that has Claude Code's folder and no file of its own for it. */
-	static readonly CLAUDE_IMPORT: PlannedFile = {
-		fileName: CLAUDE_MD,
-		content: `@${AGENTS_MD}\n`,
-	};
+/** Appended after a blank line, every byte before it kept. */
+function appended(text: string, addition: string): string {
+	const eol = text.includes("\r\n") ? "\r\n" : "\n";
+	const gap = text === "" ? "" : text.endsWith("\n") ? eol : `${eol}${eol}`;
+	return `${text}${gap}${addition.replaceAll("\n", eol)}`;
+}
+
+/** The file a repo's coding agents read: `AGENTS.md`, else a lone `CLAUDE.md`, else a new `AGENTS.md`. Claude Code and Gemini CLI read their own file in its place, so theirs import it. */
+export class AgentFile {
+	static readonly FILE_NAMES = [AGENTS_MD, CLAUDE_MD, GEMINI_MD] as const;
 
 	private constructor(
 		readonly fileName: string,
 		private readonly text: string | undefined,
-		private readonly claudeText: string | undefined
+		private readonly claudeText: string | undefined,
+		private readonly geminiText: string | undefined
 	) {}
 
 	static choose(textOf: (fileName: string) => string | undefined): AgentFile {
 		const agentsText = textOf(AGENTS_MD);
 		const claudeText = textOf(CLAUDE_MD);
-		if (agentsText !== undefined)
-			return new AgentFile(AGENTS_MD, agentsText, claudeText);
-		return claudeText !== undefined
-			? new AgentFile(CLAUDE_MD, claudeText, undefined)
-			: new AgentFile(AGENTS_MD, undefined, undefined);
-	}
-
-	/** Whether a `CLAUDE.md` is there, which Claude Code reads in place of `AGENTS.md`. */
-	get hasClaudeFile(): boolean {
-		return this.claudeText !== undefined;
+		const geminiText = textOf(GEMINI_MD);
+		return agentsText === undefined &&
+			claudeText !== undefined &&
+			geminiText === undefined
+			? new AgentFile(CLAUDE_MD, claudeText, undefined, undefined)
+			: new AgentFile(AGENTS_MD, agentsText, claudeText, geminiText);
 	}
 
 	/** The file that holds Rogen's rules: this one, else the `CLAUDE.md` beside it. */
@@ -44,29 +47,43 @@ export class AgentFile {
 	}
 
 	get hasBlock(): boolean {
-		return [this.text, this.claudeText].some(
+		return [this.text, this.claudeText, this.geminiText].some(
 			(text) => text?.includes(MARKER) ?? false
 		);
 	}
 
-	/** Appended after a blank line, every byte before it kept. */
 	get planned(): PlannedFile {
 		if (this.text === undefined)
 			return { fileName: this.fileName, content: agentBlock };
-		const eol = this.text.includes("\r\n") ? "\r\n" : "\n";
-		const gap = this.text.endsWith("\n") ? eol : `${eol}${eol}`;
 		return {
 			fileName: this.fileName,
-			content: `${this.text}${gap}${agentBlock.replaceAll("\n", eol)}`,
+			content: appended(this.text, agentBlock),
 			addition: "Rogen's rules",
 		};
 	}
 
-	/** Claude Code reads `CLAUDE.md`, not `AGENTS.md`, so a `CLAUDE.md` beside it must import it. */
-	get nextStep(): string | undefined {
-		return this.claudeText !== undefined &&
-			!this.claudeText.includes(`@${AGENTS_MD}`)
-			? `Add @${AGENTS_MD} to ${CLAUDE_MD}, so Claude Code reads Rogen's rules.`
-			: undefined;
+	/** The files that point Claude Code and Gemini CLI at `AGENTS.md` when the block goes there: an import appended to each of `CLAUDE.md` and `GEMINI.md` that has neither it nor the block, and a file holding only the import for each agent of `using` that has no file of its own. */
+	imports(using: readonly OwnFile[]): PlannedFile[] {
+		if (this.fileName !== AGENTS_MD) return [];
+		return (
+			[
+				[CLAUDE_MD, this.claudeText],
+				[GEMINI_MD, this.geminiText],
+			] as const
+		).flatMap(([fileName, text]): PlannedFile[] => {
+			if (text === undefined)
+				return using.includes(fileName)
+					? [{ fileName, content: `${IMPORT}\n` }]
+					: [];
+			return text.includes(IMPORT) || text.includes(MARKER)
+				? []
+				: [
+						{
+							fileName,
+							content: appended(text, `${IMPORT}\n`),
+							addition: `an import of ${AGENTS_MD}`,
+						},
+					];
+		});
 	}
 }

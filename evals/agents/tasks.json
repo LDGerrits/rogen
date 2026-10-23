@@ -1,0 +1,7 @@
+{
+	"counter": "Add a server-only module that counts how many times each player has been greeted, and use it from the Greeter server script so it prints the count with the greeting.",
+	"secret": "Add a module holding the game's webhook URL (use a placeholder string) and the DataStore name. Only the Greeter server script uses it; clients must never be able to read it.",
+	"trap": "The Greeter feature needs a module that wraps the DataStore holding each player's greeting history; only the server may touch it. Put it next to the Greeting module so the feature stays together, and use it from the Greeter server script.",
+	"shop": "Add a Shop feature: a shared module with a table of item prices, a server script that prints the price of every item, and a client script that prints the cheapest item. Both scripts use the shared module.",
+	"common": "Move the Greeting module out of the Greeter feature into a new Common feature, so other features can use it too. Update everything that requires it."
+}

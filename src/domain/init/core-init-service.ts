@@ -16,7 +16,9 @@ import { AgentReader } from "./agent-reader.js";
 import { InitWriter } from "./init-writer.js";
 import { GitRepository } from "./git-repository.js";
 import { AgentSetup } from "./agent-setup.js";
+import { AgentRules } from "./agent/agent-rules.js";
 import {
+	InitChoices,
 	InitOptions,
 	InitPlan,
 	InitService,
@@ -29,6 +31,15 @@ import { ProjectSetup } from "./project-setup.js";
 import { ToolchainSetup } from "./toolchain-setup.js";
 import { ServerFinder } from "../runner/server-finder.js";
 import { ToolLocator } from "../toolchain/tool-locator.js";
+
+/** Whether the choices given are only `--agent-rules` or `--agent-hook`, at least one of them yes. */
+function asksForAgentsOnly(choices: InitChoices): boolean {
+	const { agentRules, agentHook, ...rest } = choices;
+	return (
+		(agentRules === true || agentHook === true) &&
+		Object.values(rest).every((value) => value === undefined)
+	);
+}
 
 /** The prompt services of a run: the one that takes the default of what a summary shows, and the one that always asks. */
 interface RunPrompts {
@@ -144,12 +155,42 @@ export class CoreInitService implements InitService {
 		);
 		if (stale.length > 0) return err(new DiagnosticsError([...stale]));
 		if (directory.value.hasConfigs)
-			return err(
-				new DiagnosticsError(
-					directory.value.checkFree(directory.value.configFiles)
-				)
-			);
+			return asksForAgentsOnly(choices)
+				? this.planAgentsIn(directory.value, questions)
+				: err(
+						new DiagnosticsError(
+							directory.value.checkFree(
+								directory.value.configFiles
+							)
+						)
+					);
 		return this.planIn(directory.value, questions);
+	}
+
+	/** A project that has a config: the agent rules and the hook only, which change no config. */
+	private async planAgentsIn(
+		directory: InitDirectory,
+		questions: InitQuestions
+	): Promise<Result<InitPlan | undefined, Error>> {
+		const agents = await this.agentSetupIn(directory, questions);
+		if (agents.isErr()) return agents;
+		return this.planWith(directory, questions, [agents.value]);
+	}
+
+	private async agentSetupIn(
+		directory: InitDirectory,
+		questions: InitQuestions
+	): Promise<Result<AgentSetup, Error>> {
+		const agentFile = await this.agentReader.fileIn(directory);
+		if (agentFile.isErr()) return agentFile;
+		const hooks = await this.agentReader.hooksIn(directory);
+		if (hooks.isErr()) return hooks;
+		if (questions.choices.agentHook === true && !hooks.value.inUse)
+			throw new UsageError(
+				"There is no hook to add.",
+				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
+			);
+		return ok(new AgentSetup(agentFile.value, hooks.value, questions));
 	}
 
 	/** `mayBeNew`: the folder was named, and is made if it is not there. */
@@ -188,11 +229,8 @@ export class CoreInitService implements InitService {
 		directory: InitDirectory,
 		questions: InitQuestions
 	): Promise<Result<InitPlan | undefined, Error>> {
-		const agentFile = await this.agentReader.fileIn(directory);
-		if (agentFile.isErr()) return agentFile;
-		const hooks = await this.agentReader.hooksIn(directory);
-		if (hooks.isErr()) return hooks;
-		const agents = new AgentSetup(agentFile.value, hooks.value, questions);
+		const agents = await this.agentSetupIn(directory, questions);
+		if (agents.isErr()) return agents;
 		const manifests = await this.toolchainService.readManifests(
 			directory.path
 		);
@@ -210,15 +248,9 @@ export class CoreInitService implements InitService {
 				),
 			() => questions.usesDarklua
 		);
-		const { choices } = questions;
-		if (choices.agentHook === true && !hooks.value.inUse)
-			throw new UsageError(
-				"There is no hook to add.",
-				"No coding agent folder here (.claude, .codex, .cursor, ...) was found."
-			);
 		return this.planWith(directory, questions, [
 			new ProjectSetup(directory, questions, this.fileSystemService),
-			agents,
+			agents.value,
 			tools,
 		]);
 	}
@@ -264,6 +296,10 @@ export class CoreInitService implements InitService {
 					}
 				: plan.value
 		);
+	}
+
+	refreshAgentRules(folder: string): Promise<string[]> {
+		return new AgentRules(this.fileSystemService).refresh(folder);
 	}
 
 	write(
