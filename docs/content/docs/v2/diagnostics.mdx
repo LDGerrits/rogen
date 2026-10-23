@@ -7,7 +7,7 @@ Every diagnostic has a stable code, such as `route.strayAt`. The terminal prints
 
 An error stops the project file from being written. A warning never does, but it always names something to fix.
 
-A diagnostic is about one file, the one to fix, and every command gives it the same way, in `--json` and in `rogen check`. When a warning such as `route.strayAt` fires for several files, the commands that print a build (`build`, `serve`, `sourcemap`, `upload`, `syncback` and `watch`) head them as one block under the config, with a line for each of up to ten files.
+A diagnostic is about one file, the one to fix, and every command gives it the same way, in `--json` and in `rogen check`. When a warning such as `route.strayAt` fires for several files, the commands that print a build (`write`, `build`, `serve`, `sourcemap`, `upload` and `syncback`) head them as one block under the config, with a line for each of up to ten files.
 
 ## Config
 
@@ -801,7 +801,7 @@ Change a require that goes through the mounted node to the folder's own node. Se
 
 ### `init.settingsDropped` [#init-settingsdropped]
 
-Warning. `init` lifted a node of `default.project.json` that mounts a folder of your source, and that node carried settings (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` or child nodes) that `rogen.json` has no place for, since no route lands on it.
+Warning. `init` lifted a node of `default.project.json` that mounts a folder of your source, and that node carried settings (`$properties`, `$attributes`, `$className`, `$ignoreUnknownInstances`, `$id` or child nodes) that `default.rogen.json` has no place for, since no route lands on it.
 
 ```
 default.project.json - warning: Workspace/Map set $properties, which default.rogen.json doesn't carry, since no route lands on that node. Add them to the tree by hand. (init.settingsDropped)
