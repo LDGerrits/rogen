@@ -19,7 +19,7 @@ import { ServicesAccessor } from "../../platform/instantiation/instantiation.js"
 import { LogService } from "../../platform/log/log-service.js";
 import { WriteWatch } from "../write/write-watch.js";
 import {
-	watchLineShape,
+	writeLineShape,
 	writeDocument,
 	writeDocumentShape,
 } from "./write-document.js";
@@ -71,7 +71,7 @@ registerCommand(
 					options: WriteOptions,
 					output: {
 						document: writeDocumentShape,
-						lines: watchLineShape,
+						lines: writeLineShape,
 					},
 					effects: ["writesFiles"],
 					unknownWordOffer: "To write a project file",

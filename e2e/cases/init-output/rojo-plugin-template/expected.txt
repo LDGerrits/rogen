@@ -2,7 +2,7 @@ $ rogen init --non-interactive
 exit 0
 stdout:
   rogen init
-  Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build.
+  Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write.
   The root of default.project.json is not a DataModel, as in a model or a plugin, so default.rogen.json keeps the tree as Rojo reads it and adds no routes.
   Took the defaults: --kind place, --language luau, --no-darklua, --project-file lift, --agent-rules.
   Created default.rogen.json.

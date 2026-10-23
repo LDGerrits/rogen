@@ -73,7 +73,7 @@ export async function skippedNotes(
 	return skipped.map((one) => {
 		const path = relativeTo(cwd, one.path);
 		if (one.reason === "outsideSourcePaths")
-			return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so no build reads it.`;
+			return `note: ${path}: in no source path of ${relativeTo(cwd, one.config ?? "")}, so Rogen leaves it out of the project file.`;
 		const hint =
 			named.length > 0
 				? ` ${ask.lead} through one: rogen ${ask.command} ${joinedWithOr(named)}.`

@@ -13,12 +13,11 @@ import {
 	errorShape,
 } from "../../platform/diagnostics/diagnostic-json.js";
 import { OutputShape } from "../../platform/output/output-shape.js";
-import { buildRojoEntryShape } from "./rojo-entry.js";
 
 const S = OutputShape;
 
 export const writeEntryShape = S.named(
-	"BuildEntry",
+	"WriteEntry",
 	S.object({
 		config: S.string,
 		projectFile: S.nullable(S.string),
@@ -30,7 +29,7 @@ export const writeEntryShape = S.named(
 
 /** The lines `build --watch --json` and `serve --json` have in common, each keyed by what it reports. */
 export const watchLineShapes = {
-	build: S.object({ build: writeEntryShape }),
+	write: S.object({ write: writeEntryShape }),
 	notice: S.object({
 		notice: S.object({
 			kind: S.enum("added", "removed", "broken", "recovered"),
@@ -42,10 +41,9 @@ export const watchLineShapes = {
 	error: S.object({ error: errorShape }),
 };
 
-/** One line of `build --watch --json` and `write --watch --json`. */
-export const watchLineShape = S.union(
-	watchLineShapes.build,
-	S.object({ rojo: buildRojoEntryShape }),
+/** One line of `write --watch --json`. */
+export const writeLineShape = S.union(
+	watchLineShapes.write,
 	watchLineShapes.notice,
 	watchLineShapes.error
 );

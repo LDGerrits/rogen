@@ -38,7 +38,7 @@ const InitOptions = [
 		short: "n",
 		type: "boolean",
 		description:
-			"Plan without writing or building: print the files and choices, then stop.",
+			"Plan without writing: print the files and choices, then stop.",
 	},
 	{
 		name: "kind",

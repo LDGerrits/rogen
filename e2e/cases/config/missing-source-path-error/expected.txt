@@ -3,9 +3,9 @@ exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
-  srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
+  srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to write. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 
 $ rogen check
 exit 1
 stdout:
-  srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
+  srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to write. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)

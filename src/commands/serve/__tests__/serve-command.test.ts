@@ -110,7 +110,7 @@ describe("serve command", () => {
 
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
-			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial build$/),
+			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial write$/),
 			"success: default.project.json · wrote",
 			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo).",
 		]);
@@ -238,7 +238,7 @@ describe("serve command", () => {
 		expect(logService.lines).toEqual([
 			"intro: rogen serve · default.rogen.json",
 			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
-			"outro: Nothing to start: another rogen serve already serves this project, so nothing is built or watched here.",
+			"outro: Nothing to start: another rogen serve already serves this project, so nothing is written or watched here.",
 		]);
 	});
 
@@ -254,7 +254,7 @@ describe("serve command", () => {
 
 		expect(printed()).toEqual([
 			{
-				build: {
+				write: {
 					config: "default.rogen.json",
 					projectFile: "/repo/default.project.json",
 					outcome: "wrote",

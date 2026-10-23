@@ -38,7 +38,7 @@ stdout:
 stderr:
   rogen sourcemap · game.rogen.json
   game.project.json · unchanged
-  Built 1 project.
+  Wrote 1 project.
   sourcemap.json · wrote
 
 written:

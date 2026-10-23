@@ -320,7 +320,7 @@ describe("OutcomeLog report", () => {
 				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
-				"outro: build failed.",
+				"outro: write failed.",
 			]);
 		});
 
@@ -336,7 +336,7 @@ describe("OutcomeLog report", () => {
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
 				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written · same errors as arena/default.rogen.json",
-				"outro: build failed.",
+				"outro: write failed.",
 			]);
 		});
 
@@ -350,15 +350,15 @@ describe("OutcomeLog report", () => {
 				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
-				"outro: build failed.",
+				"outro: write failed.",
 			]);
 		});
 
-		it("should close the frame with the failure and not with the built line", () => {
+		it("should close the frame with the failure and not with the written line", () => {
 			expect(all([failedOf([shared], configNamed("arena"))])).toEqual([
 				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
-				"outro: build failed.",
+				"outro: write failed.",
 			]);
 		});
 	});
@@ -411,7 +411,7 @@ describe("OutcomeLog report, warnings", () => {
 			"diagnosticWarning: /repo/arena/default.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
 			"step: match/default.rogen.json",
 			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json",
-			"outro: Built 2 projects with 1 warning.",
+			"outro: Wrote 2 projects with 1 warning.",
 		]);
 	});
 
@@ -431,7 +431,7 @@ describe("OutcomeLog report, warnings", () => {
 			"step: match/default.rogen.json",
 			"success: match/default.project.json · wrote",
 			"diagnosticWarning: /repo/match/default.rogen.json - warning: only here. (x.own)",
-			"outro: Built 2 projects with 2 warnings.",
+			"outro: Wrote 2 projects with 2 warnings.",
 		]);
 	});
 
@@ -501,12 +501,12 @@ describe("OutcomeLog report, closing line", () => {
 	};
 
 	it("should count the configs it built", () => {
-		expect(closing(0)).toBe("outro: Built 1 project.");
+		expect(closing(0)).toBe("outro: Wrote 1 project.");
 	});
 
 	it("should count the warnings", () => {
-		expect(closing(1)).toBe("outro: Built 1 project with 1 warning.");
-		expect(closing(2)).toBe("outro: Built 1 project with 2 warnings.");
+		expect(closing(1)).toBe("outro: Wrote 1 project with 1 warning.");
+		expect(closing(2)).toBe("outro: Wrote 1 project with 2 warnings.");
 	});
 
 	it("should name what Rojo built in place of the count", () => {

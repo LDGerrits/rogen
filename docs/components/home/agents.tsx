@@ -35,7 +35,7 @@ export function Agents() {
 						},
 						{
 							title: "No generated file to break",
-							desc: "Rogen rewrites the project file on every build, so nobody, human or agent, edits it by hand.",
+							desc: "Rogen rewrites the project file on every write, so nobody, human or agent, edits it by hand.",
 						},
 						{
 							title: "It checks its own work",

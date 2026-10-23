@@ -48,7 +48,7 @@ export class MissingSourcePaths {
 			errorDiagnostic(
 				"scan.missingSourcePath",
 				{ resource: sourcePath },
-				`this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. ${path.basename(this.projectFile)} was left as it was. ${this.isDefault ? `Create ${path.basename(sourcePath)}, or set "sourcePaths" to where your code is.` : 'Check the spelling in "sourcePaths".'}`
+				`this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to write. ${path.basename(this.projectFile)} was left as it was. ${this.isDefault ? `Create ${path.basename(sourcePath)}, or set "sourcePaths" to where your code is.` : 'Check the spelling in "sourcePaths".'}`
 			)
 		);
 	}

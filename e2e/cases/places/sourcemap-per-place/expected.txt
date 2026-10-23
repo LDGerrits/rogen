@@ -10,7 +10,7 @@ stdout:
 stderr:
   rogen sourcemap · places/arena/default.rogen.json
   places/arena/default.project.json · wrote
-  Built 1 project.
+  Wrote 1 project.
   arena-sourcemap.json · wrote
 
 $ rogen sourcemap places/arena places/lobby

@@ -132,7 +132,7 @@ export class TreePlan {
 		return new TreePlan(
 			mounted.project.toConfig(),
 			[
-				`Lifting ${from} into ${DEFAULT_CONFIG_FILE}, since Rogen replaces ${from} on every build.`,
+				`Lifting ${from} into ${DEFAULT_CONFIG_FILE}, since Rogen replaces ${from} on every write.`,
 				...(project.takesRoutes
 					? []
 					: [

@@ -78,7 +78,7 @@ describe("init command", () => {
 			return { result, logService };
 		};
 
-		it("should print only the files written, the builds and the next steps as one document", async () => {
+		it("should print only the files written, the projects and the next steps as one document", async () => {
 			await write("tsconfig.json", "{}");
 
 			const { result, logService } = await runJson();
@@ -110,7 +110,7 @@ describe("init command", () => {
 					},
 				]),
 				directories: [path.join(cwd, "src")],
-				built: [
+				projects: [
 					{
 						config: "default.rogen.json",
 						projectFile: path.join(cwd, "default.project.json"),
@@ -284,14 +284,14 @@ describe("init command", () => {
 			expect(logService.lines).not.toContain("step: Next steps");
 		});
 
-		it("should list the build of the config in the JSON document", async () => {
+		it("should list the project of the config in the JSON document", async () => {
 			const logService = new MockLogService();
 
 			await runInit(new MockPromptService([], false), logService, {
 				json: true,
 			});
 
-			expect(JSON.parse(logService.entries[0].text).built).toEqual([
+			expect(JSON.parse(logService.entries[0].text).projects).toEqual([
 				{
 					config: "default.rogen.json",
 					projectFile: path.join(cwd, "default.project.json"),
@@ -460,7 +460,7 @@ describe("init command", () => {
 				value: "luau",
 				flag: "--language",
 			});
-			expect(document.built).toBeUndefined();
+			expect(document.projects).toBeUndefined();
 			expect(await exists("default.rogen.json")).toBe(false);
 		});
 
@@ -789,7 +789,7 @@ describe("init command", () => {
 				"hand-written"
 			);
 			expect(logService.lines).toContain(
-				"info: Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every build."
+				"info: Lifting default.project.json into default.rogen.json, since Rogen replaces default.project.json on every write."
 			);
 		});
 

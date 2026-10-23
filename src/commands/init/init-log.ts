@@ -64,7 +64,7 @@ export const initDocumentShape = S.object({
 		)
 	),
 	error: S.optional(errorShape),
-	built: S.optional(S.array(writeEntryShape)),
+	projects: S.optional(S.array(writeEntryShape)),
 	notes: S.optional(S.array(S.string)),
 	warnings: S.optional(S.array(diagnosticShape)),
 	nextSteps: S.optional(
@@ -231,7 +231,7 @@ export class InitLog implements InitReporter {
 		const files = plural(plan.files.length, "file");
 		if (run.errors.length > 0) {
 			this.logService.outro(
-				`Wrote ${files}, but the build failed.${
+				`Wrote ${files}, but writing the project file failed.${
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
@@ -267,7 +267,7 @@ interface InitDocument {
 	}[];
 	readonly decided?: readonly InitDecision[];
 	readonly error?: ErrorJson;
-	readonly built?: readonly WriteEntry[];
+	readonly projects?: readonly WriteEntry[];
 	readonly notes?: readonly string[];
 	readonly warnings?: readonly DiagnosticJson[];
 	readonly nextSteps?: NextSteps;
@@ -357,7 +357,7 @@ export class InitJsonLog implements InitReporter {
 			{
 				...written,
 				changed: written.changed || projects.changed,
-				built: projects.configs,
+				projects: projects.configs,
 				notes: plan.notes,
 				...warningsOf(plan),
 				nextSteps: plan.nextSteps,

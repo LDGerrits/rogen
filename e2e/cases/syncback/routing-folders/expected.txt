@@ -66,7 +66,7 @@ stdout:
 stderr:
   rogen syncback · default.rogen.json
   default.project.json · wrote
-  Built 1 project.
+  Wrote 1 project.
   Syncback wrote 5 changes.
 
 $ rogen where src

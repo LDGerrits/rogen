@@ -412,14 +412,14 @@ Give the root `"$className": "DataModel"`, or remove the routes if the project i
 
 ### `meta.unreadable` [#meta-unreadable]
 
-Error. A `.meta.json` file was found when Rogen scanned but couldn't be read from disk: it lacks the permissions, is a folder, or was removed while the build ran.
+Error. A `.meta.json` file was found when Rogen scanned but couldn't be read from disk: it lacks the permissions, is a folder, or was removed while the write ran.
 
 ```
 src/Combat/init.meta.json - error: the meta file could not be read: permission denied. (meta.unreadable)
-src/Combat/init.meta.json - error: the meta file does not exist any more; it was there when the build scanned and was removed while it ran. (meta.unreadable)
+src/Combat/init.meta.json - error: the meta file does not exist any more; it was there when the write scanned and was removed while it ran. (meta.unreadable)
 ```
 
-Fix the file's permissions, or run the build again. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
+Fix the file's permissions, or run the write again. See [Metadata Files](/docs/v2/core-concepts/project-layout#metadata-files).
 
 ### `meta.invalidSyntax` [#meta-invalidsyntax]
 
@@ -582,7 +582,7 @@ later - warning: this source path does not exist or is not a folder, so it contr
 ```
 
 ```
-srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to build. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
+srcc - error: this source path does not exist or is not a folder, and no other source path of the config does, so there is nothing to write. default.project.json was left as it was. Check the spelling in "sourcePaths". (scan.missingSourcePath)
 ```
 
 A config with no `sourcePaths` has the default `src`, and the error then says to create it, or to set `sourcePaths` to where your code is. Create the folder, fix the spelling, or remove it from `sourcePaths`. The path is relative to the `.rogen.json` that lists it. A running `rogen write --watch`, `rogen build --watch` or `rogen serve` keeps the last good project file and builds again once a source path is back. See [Configuration](/docs/v2/configuration#fields).
@@ -664,7 +664,7 @@ Rename the file with a name before the suffix.
 Warning. `rogen check <path>` was given a path that is in no source path, and its first folder is one edit from a source path (or differs from it only in letter case), so a typo is likely. Any other path outside the source paths passes, since hooks hand `check` every changed file.
 
 ```
-scr/Inventory/Server/Save.luau - warning: this path is in no source path, so no build reads it, and "scr" is one edit from the source path "src". Check the spelling. (scan.outsideSourcePaths)
+scr/Inventory/Server/Save.luau - warning: this path is in no source path, so Rogen leaves it out of the project file, and "scr" is one edit from the source path "src". Check the spelling. (scan.outsideSourcePaths)
 ```
 
 Fix the path, or the source path in `sourcePaths` if that is the typo.
@@ -732,10 +732,10 @@ Copy the `.meta.json` files unchanged into the compiled path after the compiler 
 
 ### `output.dataFileConverted` [#output-datafileconverted]
 
-Warning. A processor turned data files such as `.json` or `.txt` into Lua modules in the compiled path, so Rojo doesn't find them at the path the build expects.
+Warning. A processor turned data files such as `.json` or `.txt` into Lua modules in the compiled path, so Rojo doesn't find them at the path the write expects.
 
 ```
-default.project.json - warning: 1 data file was turned into a Lua module under "dist" (src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the build expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the compiled path after it runs, or require them as modules. (output.dataFileConverted)
+default.project.json - warning: 1 data file was turned into a Lua module under "dist" (src/Inventory/Rates.json: expected "dist/Inventory/Rates.json", found "dist/Inventory/Rates.lua"). Rojo finds nothing at the path the write expects, or a ModuleScript where a folder collapses. Darklua converts .txt, .json, .toml, .yaml and .yml files this way, and has no option to copy them. Copy the data files unchanged into the compiled path after it runs, or require them as modules. (output.dataFileConverted)
 ```
 
 Copy the data files unchanged into the compiled path after the processor runs, or require them as modules. See [Data Files](/docs/v2/setups/darklua#data-files).
@@ -860,7 +860,7 @@ Run the manager's install command: `rokit install`, `aftman install` or `foreman
 
 ### `serve.serverFailed` [#serve-serverfailed]
 
-Error. Rogen runs `<tool> --version` before it builds, and that failed, so Rojo can't start. The message ends with the first line Rojo printed. A toolchain shim on the PATH whose project doesn't pin the tool fails this way, and then the message adds the command that pins it.
+Error. Rogen runs `<tool> --version` before it writes, and that failed, so Rojo can't start. The message ends with the first line Rojo printed. A toolchain shim on the PATH whose project doesn't pin the tool fails this way, and then the message adds the command that pins it.
 
 ```
 default.rogen.json - error: 'rojo --version' failed, so Rojo can't start: Failed to find tool 'rojo' in any project manifest file. If Rojo isn't pinned yet, run 'rokit add rojo-rbx/rojo'. To set Rojo up by hand, see https://rogen-playfully.vercel.app/docs/v2/installation. (serve.serverFailed)
@@ -918,7 +918,7 @@ Change the pin, run the manager's install command, and run the command again. Se
 
 ### `rojo.windowsRules` [#rojo-windowsrules]
 
-Error. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, and a file Rogen wrote has one, so Rojo would serve a tree that differs from the one Rogen built. This happens when a file's patterns reach above its own folder, as those of a place that lists `../shared/src` can. Rojo 7.7.1 fixed it, and 7.5.0 to 7.6.1 are not affected.
+Error. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, and a file Rogen wrote has one, so Rojo would serve a tree that differs from the one Rogen wrote. This happens when a file's patterns reach above its own folder, as those of a place that lists `../shared/src` can. Rojo 7.7.1 fixed it, and 7.5.0 to 7.6.1 are not affected.
 
 ```
 shop/default.project.json - error: Rojo 7.7.0 on Windows applies no sync rule or ignore glob that starts with "../", and this file has 1: "../../src/*.md". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH. (rojo.windowsRules)
@@ -934,7 +934,7 @@ Error. Rojo exited with an error while Rogen ran it, such as `rojo build` for `r
 default.project.json - error: 'rojo build' failed (exit code 1): Failed to write to game.rbxl. (rojo.commandFailed)
 ```
 
-Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the build again.
+Rogen had written the project files by then. Fix what Rojo says, such as an output folder that doesn't exist, and run the command again.
 
 ### `rojo.commandUnsupported` [#rojo-commandunsupported]
 
