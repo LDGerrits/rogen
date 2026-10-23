@@ -44,11 +44,11 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 - Configs share nothing. A change to `routes`, `sourcePaths` or `tree` goes into every `*.rogen.json` it applies to.
 - Read `rogen doc routing` before you add a route or use a naming pattern the repo doesn't use yet.
 
-### Checking
+### Commands
 
 - After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints. In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
 - Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
-- roblox-ts: run `rogen write` before `rbxtsc`, which reads the project file.
+- After you add, move or rename a folder, run `rogen write`: Rojo, luau-lsp and `rbxtsc` see only the folders the project file lists. `rogen serve` writes on its own.
 - To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
 - `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
 ````
@@ -218,7 +218,7 @@ With the hook in place, the "run `rogen check` …" rule in the block is optiona
 
 ## Install the skill
 
-For a repo that doesn't use `init`, the same text ships as a skill in [`skills/rogen`](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format that most coding agents understand. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI:
+The block is how an agent works in a Rogen repo. Getting a repo there is a skill in [`skills/rogen`](https://github.com/LDGerrits/rogen), in the open [Agent Skills](https://agentskills.io) format that most coding agents understand. It starts a project or moves a Rojo project onto Rogen through `rogen init`, adds the block to a repo that has Rogen but not the block, and reorganises a Rojo layout into feature folders. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
 npx skills add LDGerrits/rogen
@@ -228,7 +228,7 @@ npx skills add LDGerrits/rogen
 
 The block is loaded in every session, so it holds only what an agent gets wrong without being told, and the commands that answer the rest:
 
-1. **The block**, about 600 tokens: the rules and the commands that check them.
+1. **The block**, about 500 tokens: the rules and the commands that check them.
 2. **`rogen doc <topic>`**, between 400 and 2,400 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.
 
