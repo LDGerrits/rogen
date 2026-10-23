@@ -161,7 +161,7 @@ export class TreePlan {
 					? [
 							`Couldn't route ${joinedWithOr(
 								unroutable.map(({ node }) => node)
-							)}, and a mount of a whole source path can't stay in the tree: ${unroutable[0].reason}. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker such as ${folderNameOf(unroutable[0].target)}@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
+							)}, and a mount of a whole source path can't stay in the tree: ${unroutable[0].reason}. Give ${unroutable.length === 1 ? "its folder" : "each folder"} a marker file such as ${folderNameOf(unroutable[0].target)}/@server, or move ${unroutable.length === 1 ? "it" : "them"} up into a source path.`,
 						]
 					: []),
 				...(added.length > 0
