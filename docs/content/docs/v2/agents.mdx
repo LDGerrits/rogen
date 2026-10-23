@@ -35,9 +35,9 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 
 ### Placing code
 
-- Route keys are the names in a config's `rogen.routes`, such as `Server`, `Client` and `Shared`. A folder named after a key (`Shop/Server/`) sends everything in it to that route's target; a name ending in `@` and a key (`Save@Server.luau`) sends that file or folder.
+- Name a new file like its neighbours: the same folders, the same `@` suffixes, the same casing. Then run `rogen where <path>` to see where it lands and the `require` that reaches it; it works before the file exists.
+- Where there is nothing to copy, the route keys in `rogen.routes` decide: `Server`, `Client`, `Shared` in Luau, lowercase in roblox-ts. A folder named after a key sends everything in it to that route (`Shop/Server/`), and an `@key` suffix sends one file or folder (`Save@Server.luau`).
 - The outermost route wins: `Shared/Server/Save.luau` still ships to clients. Put server-only code under a server route.
-- Put a new file next to similar files, then run `rogen where <path>` to see where it lands and the `require` that reaches it. It works before the file exists.
 - roblox-ts code imports by relative path.
 
 ### Changing the setup
