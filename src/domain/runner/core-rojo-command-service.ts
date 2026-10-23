@@ -55,9 +55,11 @@ export class CoreRojoCommandService implements RojoCommandService {
 					),
 				])
 			);
-		const problems = await this.compatibility.problemsIn(executable.value, [
-			projectFile,
-		]);
+		const problems = await this.compatibility.problemsIn(
+			executable.value,
+			[projectFile],
+			request.command
+		);
 		if (problems.length > 0) return err(new DiagnosticsError(problems));
 
 		const ran = await this.spawn(

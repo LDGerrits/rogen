@@ -918,13 +918,13 @@ Change the pin, run the manager's install command, and run the command again. Se
 
 ### `rojo.windowsRules` [#rojo-windowsrules]
 
-Error. Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, and a file Rogen wrote has one, so Rojo would serve a tree that differs from the one Rogen wrote. This happens when a file's patterns reach above its own folder, as those of a place that lists `../shared/src` can. Rojo 7.7.1 fixed it, and 7.5.0 to 7.6.1 are not affected.
+Error. Rojo 7.7.0 on Windows applies no sync rule or ignore glob to a file under a `$path` outside the project file's folder, whatever the pattern, so `rojo sourcemap` would list a tree that differs from the one Rogen wrote. This happens when a file mounts a folder above its own, as a place that lists `../shared/src` does, and has any sync rule or ignore glob. Only `sourcemap` stops with it: `build` and `serve` read the file right on 7.7.0. Rojo 7.7.1 fixed it, and 7.5.0 to 7.6.1 are not affected.
 
 ```
-shop/default.project.json - error: Rojo 7.7.0 on Windows applies no sync rule or ignore glob that starts with "../", and this file has 1: "../../src/*.md". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH. (rojo.windowsRules)
+shop/default.project.json - error: Rojo 7.7.0 on Windows applies no sync rule or ignore glob to a file under a "$path" outside this file's folder, and this file has 1: "../shared/src". Rojo 7.7.1 fixed it: change your Rojo pin, or update the Rojo on the PATH. (rojo.windowsRules)
 ```
 
-Move to Rojo 7.7.1 or newer. See [CLI](/docs/v2/cli#serve).
+Move to Rojo 7.7.1 or newer. See [CLI](/docs/v2/cli#sourcemap-project).
 
 ### `rojo.commandFailed` [#rojo-commandfailed]
 

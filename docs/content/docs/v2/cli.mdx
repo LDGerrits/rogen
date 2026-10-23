@@ -101,6 +101,8 @@ In a repo of [places](/docs/v2/setups/places), name the place or run it from the
 
 `--watch` writes the project files again whenever names or the config change, and writes the sourcemap after each write, as [`build --watch`](#build---watch) does for `-o`. Every edit of a file under the source paths writes it again, a script's contents included. `rojo sourcemap --watch` is lazier: it writes again only when an instance is added, removed, renamed or changes class, so it skips an edit inside a script or a meta file. Without `-o` it prints each sourcemap on standard output, one document per change, and nothing else there; Rogen's own lines go to standard error. `--json` needs `-o`, since a sourcemap that is printed has no room beside the JSON lines.
 
+Rojo 7.7.0 on Windows applies no sync rule or ignore glob to a file under a `$path` outside the project file's folder, so its sourcemap would list a tree that differs from the one Rogen wrote. `sourcemap` stops with [`rojo.windowsRules`](/docs/v2/diagnostics#rojo-windowsrules) when a file it wrote has such a `$path` and any sync rule or ignore glob. `build` and `serve` read it right. Rojo 7.7.1 fixed it.
+
 ### `upload [project]`
 
 Writes the project file, then runs Rojo's own `upload` on the project, as `rojo upload` does: Rojo builds it and uploads it to Roblox. Like `build -o`, it runs the Rojo your toolchain file pins, on the default project unless you name another.
@@ -177,7 +179,6 @@ Some Rojo versions stop `serve` with an error:
 
 - A Rojo before 7.5.0 does not read `syncRules`, so `serve` stops with [`rojo.syncRulesUnsupported`](/docs/v2/diagnostics#rojo-syncrulesunsupported) when a file it wrote has any.
 - A Rojo before 7.7.0 reads no `globIgnorePaths` glob that starts with `!`, so `serve` stops with [`rojo.negationUnsupported`](/docs/v2/diagnostics#rojo-negationunsupported) when a file it wrote has one.
-- Rojo 7.7.0 on Windows applies no sync rule or ignore glob whose pattern starts with `../`, so `serve` stops with [`rojo.windowsRules`](/docs/v2/diagnostics#rojo-windowsrules) when a file it wrote has one.
 
 **Port.** `--port` and `--address` are Rojo's own flags:
 

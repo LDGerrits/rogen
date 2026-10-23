@@ -643,7 +643,7 @@ describe("CoreServeService", () => {
 			]);
 		});
 
-		it("should not start Rojo 7.7.0 on Windows for a file with a glob that starts with ../", async () => {
+		it("should start Rojo 7.7.0 on Windows for a file with a glob that starts with ../, since serve reads it right", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
 				stdout: "Rojo 7.7.0",
@@ -657,30 +657,50 @@ describe("CoreServeService", () => {
 
 			const started = await start();
 
+			expect(started.isOk()).toBe(true);
+			expect(errored).toEqual([]);
+		});
+
+		it("should not start a Rojo before 7.5.0 for a file with sync rules", async () => {
+			processes.outputs.set("/bin/rojo", {
+				code: 0,
+				stdout: "Rojo 7.4.4",
+				stderr: "",
+			});
+			await memFs.writeFile(
+				"/repo/default.rogen.json",
+				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
+			);
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
+
+			const started = await start();
+
 			if (started.isOk()) throw new Error("expected a failure");
 			expect(
 				(started.error as DiagnosticsError).diagnostics.map(
 					({ code, resource }) => [code, resource]
 				)
-			).toEqual([["rojo.windowsRules", "/repo/default.project.json"]]);
+			).toEqual([
+				["rojo.syncRulesUnsupported", "/repo/default.project.json"],
+			]);
 			expect(errored).toEqual([started.error]);
 			expect(processes.spawned).toEqual([]);
 		});
 
-		it("should report a glob that starts with ../ once Rojo 7.7.0 is running on Windows", async () => {
+		it("should report sync rules once a Rojo before 7.5.0 is running", async () => {
 			processes.outputs.set("/bin/rojo", {
 				code: 0,
-				stdout: "Rojo 7.7.0",
+				stdout: "Rojo 7.4.4",
 				stderr: "",
 			});
-			service = serviceAt("/repo", new RojoCompatibility(memFs, true));
+			service = serviceAt("/repo", new RojoCompatibility(memFs, false));
 			await start();
 			const errors: Error[] = [];
 			session.onDidError((error) => errors.push(error));
 
 			await memFs.writeFile(
 				"/repo/default.rogen.json",
-				config({ globIgnorePaths: ["../shared/*.md"] })
+				config({ syncRules: [{ pattern: "*.md", use: "text" }] })
 			);
 			await settle();
 
@@ -690,7 +710,7 @@ describe("CoreServeService", () => {
 						({ code }) => code
 					)
 				)
-			).toEqual([["rojo.windowsRules"]]);
+			).toEqual([["rojo.syncRulesUnsupported"]]);
 		});
 
 		it("should tell when a Studio plugin connects to a server it started, and leaves it", async () => {

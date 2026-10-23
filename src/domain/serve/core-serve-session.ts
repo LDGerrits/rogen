@@ -138,7 +138,8 @@ export class CoreServeSession
 			this.plan.executable,
 			first.reports.flatMap(({ outcome }) =>
 				isWritten(outcome) ? [outcome.config.projectFile] : []
-			)
+			),
+			"serve"
 		);
 		if (incompatible.length > 0) {
 			const refusal = new DiagnosticsError(incompatible);
@@ -192,7 +193,8 @@ export class CoreServeSession
 			this.plan.executable,
 			update.reports.flatMap(({ outcome }) =>
 				isWritten(outcome) ? [outcome.config.projectFile] : []
-			)
+			),
+			"serve"
 		);
 		if (problems.length > 0)
 			this._onDidError.fire(new DiagnosticsError(problems));
