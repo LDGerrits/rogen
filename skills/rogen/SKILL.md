@@ -26,7 +26,7 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 - After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints. In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
 - Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
 - roblox-ts: run `rogen write` before `rbxtsc`, which reads the project file.
-- To sync to Studio, run `rogen serve --json` in the background and keep it running: it rewrites on every change and waits after a failed write. Studio has your edits once it prints a `connected` line; if none comes, ask the user to click Connect in the Rojo plugin.
+- To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
 - `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
 <!-- /rogen -->
 
