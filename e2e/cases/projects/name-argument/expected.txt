@@ -1,46 +1,46 @@
-$ rogen build dist
+$ rogen write dist
 exit 0
 stdout:
-  rogen build · Inventory
+  rogen write
   dist.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build release.project.json
+$ rogen write release.project.json
 exit 0
 stdout:
-  rogen build · Inventory
+  rogen write
   release.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build default.project.json
+$ rogen write default.project.json
 exit 0
 stdout:
-  rogen build · Inventory
+  rogen write
   default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 
-$ rogen build dist.rogen.json --json
+$ rogen write dist.rogen.json --json
 exit 0
 stdout:
   {
     "changed": false,
     "configs": [
       {
-        "config": "Inventory",
-        "file": "<dir>/dist.rogen.json",
+        "config": "dist.rogen.json",
         "projectFile": "<dir>/dist.project.json",
         "outcome": "unchanged",
         "diagnostics": []
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
-$ rogen build nope
+$ rogen write nope
 exit 1
 stderr:
   error: "nope" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
-$ rogen build nope.project.json
+$ rogen write nope.project.json
 exit 1
 stderr:
   error: "nope.project.json" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.

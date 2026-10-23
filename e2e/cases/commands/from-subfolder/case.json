@@ -1,13 +1,13 @@
 {
 	"cwd": "src/Inventory",
 	"steps": [
-		["build"],
-		["build", "../.."],
-		["build", "ghost"],
+		["write"],
+		["write", "../.."],
+		["write", "ghost"],
 		["check"],
 		["where", "Server/Save.luau"],
-		["build", "../../default.project.json", "--json"]
+		["write", "../../default.project.json", "--json"]
 	],
 	"rojo": false,
-	"output": ["build"]
+	"output": ["write"]
 }

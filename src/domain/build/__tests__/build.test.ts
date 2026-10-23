@@ -71,7 +71,7 @@ describe("domain/build/build", () => {
 			expect(run.diagnostics).toEqual([shared]);
 			expect(run.shares[1].warnings).toEqual({
 				fresh: [],
-				sameAs: ["lobby"],
+				sameAs: [lobby.file],
 			});
 		});
 
@@ -104,7 +104,7 @@ describe("domain/build/build", () => {
 			expect(run.failed).toBe(true);
 			expect(run.errors).toEqual([error, error]);
 			expect(run.diagnostics).toEqual([error]);
-			expect(run.shares[1].errors.sameAs).toEqual(["lobby"]);
+			expect(run.shares[1].errors.sameAs).toEqual([lobby.file]);
 		});
 
 		it("should not fail a run whose configs all built", () => {
@@ -199,7 +199,6 @@ describe("domain/build/build", () => {
 			expect(unloaded).toEqual([
 				new UnloadedBuild(abs("arena/default.rogen.json"), [failure]),
 			]);
-			expect(unloaded[0].label).toBe("arena");
 		});
 
 		it("should list the source paths of configs with routes, and the default source path of one without", () => {

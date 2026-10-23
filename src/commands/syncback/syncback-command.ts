@@ -66,6 +66,7 @@ const SyncbackOptions = [
 	{
 		name: "non-interactive",
 		short: "y",
+		aliases: ["yes"],
 		type: "boolean",
 		description:
 			"Write and remove without asking. A run without a terminal, or under a coding agent or CI, needs it, or --dry-run.",
@@ -116,12 +117,18 @@ registerCommand(
 			const tooMany = singleProjectError("syncback", line.positionals);
 			if (tooMany) return err(tooMany);
 			const { input, json } = line.options;
-			if (input === undefined)
+			if (input === undefined) {
+				const placeFile = accessor
+					.get(SyncbackService)
+					.placeFileAmong(line.positionals);
 				return err(
 					new UsageError(
-						"--input names the place or model file to bring changes from, and Rojo needs it."
+						"--input names the place or model file to bring changes from, and Rojo needs it.",
+						placeFile &&
+							`'${placeFile}' is a place or model file, not a project: pass it as --input ${placeFile}.`
 					)
 				);
+			}
 			const dryRun = line.options["dry-run"] === true;
 			const yes = line.options["non-interactive"] === true;
 			const promptService = accessor.get(PromptService);
@@ -146,6 +153,9 @@ registerCommand(
 			const project = selection.value.requireValid().isErr()
 				? undefined
 				: rojoService.choose(selection.value);
+			const syncbacks = accessor.get(SyncbackService);
+			const refusal = project && syncbacks.refusalFor(project);
+			if (refusal) return err(refusal);
 
 			const buildService = accessor.get(BuildService);
 			let build = dryRun
@@ -153,7 +163,6 @@ registerCommand(
 				: await buildService.build(selection.value);
 			const failure = build.failure();
 
-			const syncbacks = accessor.get(SyncbackService);
 			const request =
 				project &&
 				({ selection: selection.value, project, input, cwd } as const);
@@ -211,7 +220,8 @@ registerCommand(
 					logService,
 					syncbackDocument(
 						build.builds,
-						syncbackEntry(input, outcome)
+						cwd,
+						syncbackEntry(input, outcome, cwd)
 					),
 					failure ?? stopped
 				);

@@ -906,7 +906,7 @@ describe("InitQuestions askProject project file", () => {
 			prompts.prompts.find(({ message }) => message === "Project file")
 				?.description
 		).toBe(
-			"default.project.json exists, and Rogen replaces it on every build."
+			"default.project.json exists, and Rogen replaces it whenever it writes the project file."
 		);
 		expect(result?.tree).toMatchObject({
 			kind: "lift",

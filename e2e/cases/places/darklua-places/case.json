@@ -15,11 +15,11 @@
 			"places/lobby/dist/lobby/src"
 		],
 		[
-			"build",
+			"write",
 			"places/lobby/dist.rogen.json"
 		],
 		[
-			"build",
+			"write",
 			"places/lobby"
 		]
 	]

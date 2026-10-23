@@ -1,0 +1,6 @@
+$ rogen check
+exit 1
+stdout:
+  lobby.rogen.json:3:1 - error: invalid JSONC: expected a property name. (config.invalidSyntax)
+  lobby.rogen.json:3:1 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  lobby.rogen.json:3:1 - error: invalid JSONC: expected '}'. (config.invalidSyntax)

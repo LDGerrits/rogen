@@ -1,0 +1,128 @@
+$ rogen init game --non-interactive --skip-git --places --darklua
+exit 0
+stdout:
+  rogen init
+  The Greeter sample is the feature in game/src/common, which every place shares, Game in game/src/game, and Rojo's sample Baseplate and lighting in game/place/game. Pass --no-sample for empty source folders.
+  Took the defaults: --kind place, --language luau, --compiled-path dist, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
+  Created game/game.rogen.json.
+  Created game/game.dist.rogen.json.
+  Created game/.darklua.json.
+  Created game/src/common/Greeter/Shared/Greeting.luau.
+  Created game/src/common/Greeter/Server/Greeter.server.luau.
+  Created game/src/common/Greeter/Client/Greeter.client.luau.
+  Created game/src/game/Game/Server/Game.server.luau.
+  Created game/place/game/Lighting/init.meta.json.
+  Created game/place/game/SoundService/init.meta.json.
+  Created game/place/game/Workspace/Baseplate.model.json.
+  Created game/place/game/Workspace/init.meta.json.
+  Created game/README.md.
+  Created game/.vscode/settings.json.
+  Created game/AGENTS.md.
+  game/game.project.json · wrote
+  Next steps
+    In each terminal, start in the project folder:
+      cd game
+    Run each in its own terminal:
+      darklua process src/common dist/common --watch
+      darklua process src/game dist/game --watch
+      rogen serve game.dist.rogen.json
+    In Studio, press Connect in the Rojo plugin.
+    Add your own routes under "routes" in game.rogen.json.
+    Edit game.rogen.json and leave game.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write game' so the editor's game.project.json follows.
+    luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
+    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Do the same for game.dist.rogen.json, and for game.release.rogen.json if there is one, and run 'darklua process src/lobby dist/lobby --watch' beside the other darklua commands. Serve it from a second terminal with its own --port: 'rogen serve lobby.dist.rogen.json --port <port>'.
+  Wrote 14 files.
+
+written:
+  game/.darklua.json
+  game/.vscode/settings.json
+  game/AGENTS.md
+  game/README.md
+  game/game.dist.rogen.json
+  game/game.project.json
+  game/game.rogen.json
+  game/place/game/Lighting/init.meta.json
+  game/place/game/SoundService/init.meta.json
+  game/place/game/Workspace/Baseplate.model.json
+  game/place/game/Workspace/init.meta.json
+  game/src/common/Greeter/Client/Greeter.client.luau
+  game/src/common/Greeter/Server/Greeter.server.luau
+  game/src/common/Greeter/Shared/Greeting.luau
+  game/src/game/Game/Server/Game.server.luau
+
+game/game.dist.rogen.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$path": "place/game/Lighting"
+    },
+    "SoundService": {
+      "$path": "place/game/SoundService"
+    },
+    "Workspace": {
+      "$path": "place/game/Workspace"
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src/common",
+      "src/game"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    },
+    "compiledPath": "dist"
+  }
+}
+
+game/game.rogen.json:
+{
+  "name": "game",
+  "tree": {
+    "$className": "DataModel",
+    "Lighting": {
+      "$path": "place/game/Lighting"
+    },
+    "SoundService": {
+      "$path": "place/game/SoundService"
+    },
+    "Workspace": {
+      "$path": "place/game/Workspace"
+    }
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src/common",
+      "src/game"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    }
+  }
+}
+
+$ rojo sourcemap game/game.project.json
+game: DataModel
+  Lighting: Lighting  <- place/game/Lighting/init.meta.json
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Greeter: Folder
+        Greeting: ModuleScript  <- src/common/Greeter/Shared/Greeting.luau
+  ServerScriptService: ServerScriptService
+    Game: Folder
+      Game: Script  <- src/game/Game/Server/Game.server.luau
+    Greeter: Folder
+      Greeter: Script  <- src/common/Greeter/Server/Greeter.server.luau
+  SoundService: SoundService  <- place/game/SoundService/init.meta.json
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      Greeter: Folder
+        Greeter: LocalScript  <- src/common/Greeter/Client/Greeter.client.luau
+  Workspace: Workspace  <- place/game/Workspace/init.meta.json
+    Baseplate: Part  <- place/game/Workspace/Baseplate.model.json

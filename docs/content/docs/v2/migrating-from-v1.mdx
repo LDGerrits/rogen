@@ -6,7 +6,7 @@ description: Move a v1 project to v2, and what replaces each removed feature.
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Callout } from "fumadocs-ui/components/callout";
 
-v2 is a clean break. It won't read a v1 `.rogen.json`, and a `default.rogen.json` with v1's keys is an error that points here. There's no `migrate` command. A fresh config only takes `init` a few seconds; the real work is in how v2 reads your **tree** differently, which is what this page covers.
+v2 is a clean break. It won't read a v1 `.rogen.json`; a folder with only such a file, or any config file with v1's keys, fails every command with an error that points here, and `init` writes nothing beside it. There's no `migrate` command. A fresh config only takes `init` a few seconds; the real work is in how v2 reads your **tree** differently, which is what this page covers.
 
 <Steps>
 
@@ -62,13 +62,13 @@ v2 has fewer ways to route by name, so most projects have files to rename. The [
 ### Build and Compare
 
 ```bash
-rogen build
+rogen write
 ```
 
-Read the warnings. Files that used an old suffix no longer route, so they fall through to the `*` route. You can find them with:
+Read the warnings. Files that used an old suffix no longer route, so each is left out of the game with a [`route.unrouted`](/docs/v2/diagnostics#route-unrouted) warning until you rename or move it. You can list them all with:
 
 ```bash
-rogen where | grep fallback
+rogen check
 ```
 
 Then compare the result in Studio with your v1 build, and delete `.rogen.json.v1` once they match.
@@ -124,7 +124,7 @@ v2: src/Teleport/Teleport.luau, dev/Teleport/Teleport.luau (the dev source path)
 }
 ```
 
-`rogen build` writes `default.project.json` with the overlay, and `rogen build release` writes `release.project.json` without it. Each command writes only the file you name. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
+`rogen write` writes `default.project.json` with the overlay and `release.project.json` without it; `rogen write release` writes only the second. A file that is not an overlay of anything, such as a spec, is left out of a project with `globIgnorePaths` instead. See [Replacing a File](/docs/v2/core-concepts/project-layout#replacing-a-file).
 
 <Callout type="warn" title="Old tag names ship">
 	v1 dropped `TeleportDev.luau` when `dev` was off. In v2 it's an ordinary file that ships in every build, and a dot suffix such as `Teleport.dev.luau` is part of the name, so move these files before your first v2 release.
@@ -243,7 +243,7 @@ A repo that built several places from one config becomes a [folder per place](/d
 
 | v1 | v2 |
 |---|---|
-| `-m, --mode <mode>` | removed. Name a file: `rogen build release`, `rogen serve dist` |
+| `-m, --mode <mode>` | removed. Name a file: `rogen build release -o game.rbxl`, `rogen serve dist` |
 | `-b, --build <path>` | removed. Set `compiledPath` in the `rogen` block |
 | `-s, --source <path>` | removed. Set `sourcePaths` in the `rogen` block |
 | `-o, --output <path>` | not the same. Rogen writes the project file beside the `.rogen.json`; `rogen build -o game.rbxl` has Rojo build a place file from it |

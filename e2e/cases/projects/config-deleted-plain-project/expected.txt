@@ -1,15 +1,15 @@
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 
 $ rm default.rogen.json
 exit 0
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 
-$ rogen build default.project.json
+$ rogen write default.project.json
 exit 0
 stdout: (not shown)
 

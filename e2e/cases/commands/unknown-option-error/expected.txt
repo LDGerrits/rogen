@@ -11,7 +11,7 @@ stderr:
 $ rogen watch -w
 exit 2
 stderr:
-  error: Unknown command "watch". 'rogen watch' is now 'rogen build --watch'.
+  error: Unknown command "watch". 'rogen watch' is now 'rogen write --watch'.
 
 $ rogen build --out-file x.project.json
 exit 2
@@ -52,4 +52,4 @@ stderr:
 $ rogen --out-file x
 exit 2
 stderr:
-  error: Unknown command "x". To build a project, run 'rogen build x'; run 'rogen help' to see the commands.
+  error: Unknown command "x". To write a project file, run 'rogen write x'; run 'rogen help' to see the commands.

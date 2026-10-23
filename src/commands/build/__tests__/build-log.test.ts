@@ -2,6 +2,7 @@ import path from "path";
 import {
 	BuildRun,
 	BuildSummary,
+	CheckedBuild,
 	ConfigBuild,
 	FailedBuild,
 	UnwrittenBuild,
@@ -21,6 +22,8 @@ import { BuildLog } from "../build-log.js";
 
 const cwd = path.resolve("/repo");
 
+const matchFile = path.join(cwd, "match", "default.rogen.json");
+
 const debugLines = (dir: string, summary: BuildSummary): string[] => {
 	const logService = new MockLogService();
 	logService.setLevel(LogLevel.Debug);
@@ -37,14 +40,16 @@ const failed = failedOf();
 
 const builtOf = (
 	summary: BuildSummary,
-	outcome: "wrote" | "unchanged" | "notWritten" = "wrote",
+	outcome: "wrote" | "unchanged" | "wouldWrite" | "notWritten" = "wrote",
 	config: ResolvedConfig = mockConfig(),
-	blockedBy: readonly string[] = ["match"]
+	blockedBy: readonly string[] = [matchFile]
 ): ConfigBuild => {
 	const findings = { warnings: [], syncWarnings: [] };
-	return outcome === "notWritten"
-		? new UnwrittenBuild(config, findings, summary, [], blockedBy)
-		: new WrittenBuild(config, outcome, findings, summary, []);
+	if (outcome === "notWritten")
+		return new UnwrittenBuild(config, findings, summary, [], blockedBy);
+	if (outcome === "wouldWrite")
+		return new CheckedBuild(config, findings, summary, []);
+	return new WrittenBuild(config, outcome, findings, summary, []);
 };
 
 const summaryOf = (overrides: Partial<BuildSummary> = {}): BuildSummary => ({
@@ -201,22 +206,22 @@ describe("BuildLog report", () => {
 		expect(
 			report([
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					"match",
+					matchFile,
 				]),
 				failedOf([], configNamed("match")),
 			])
 		).toEqual([
-			"lobby/default.project.json · not written · match failed",
+			"lobby/default.project.json · not written · match/default.rogen.json failed",
 			"match/default.project.json · not written",
 		]);
 	});
 
-	it("should report a config that only a check built as checked, and close with a check", () => {
+	it("should report a config that only a check built as one that would be written, and close with a check", () => {
 		const logService = new MockLogService();
 
 		new BuildLog(logService, cwd).report(
 			new BuildRun([
-				builtOf(summaryOf(), "notWritten", configNamed("a"), []),
+				builtOf(summaryOf(), "wouldWrite", configNamed("a")),
 			]),
 			undefined,
 			"syncback",
@@ -228,9 +233,44 @@ describe("BuildLog report", () => {
 				.filter(({ kind }) => kind !== "intro")
 				.map(({ kind, text }) => `${kind}: ${text}`)
 		).toEqual([
-			"success: a/default.project.json · checked",
+			"success: a/default.project.json · would write",
 			"outro: Checked 1 project.",
 		]);
+	});
+
+	describe("configs that share a name", () => {
+		const twin = (folder: string) =>
+			mockConfig({
+				name: "game",
+				file: path.join(cwd, folder, "default.rogen.json"),
+			});
+
+		const entries = () => {
+			const logService = new MockLogService();
+			new BuildLog(logService, cwd).report(
+				new BuildRun([
+					builtOf(summaryOf(), "wrote", twin("lobby")),
+					builtOf(summaryOf(), "wrote", twin("arena")),
+				])
+			);
+			return logService.entries;
+		};
+
+		it("should head the report with each config's file", () => {
+			const [intro] = entries();
+
+			expect(intro.text).toBe(
+				"rogen build · lobby/default.rogen.json, arena/default.rogen.json"
+			);
+		});
+
+		it("should head each config's lines with its file", () => {
+			expect(
+				entries()
+					.filter(({ kind }) => kind === "step")
+					.map(({ text }) => text)
+			).toEqual(["lobby/default.rogen.json", "arena/default.rogen.json"]);
+		});
 	});
 
 	it("should name every config that failed", () => {
@@ -238,13 +278,13 @@ describe("BuildLog report", () => {
 			report([
 				failedOf([], configNamed("arena")),
 				builtOf(summaryOf(), "notWritten", configNamed("lobby"), [
-					"arena",
-					"match",
+					path.join(cwd, "arena", "default.rogen.json"),
+					matchFile,
 				]),
 				failedOf([], configNamed("match")),
 			])[1]
 		).toBe(
-			"lobby/default.project.json · not written · arena and match failed"
+			"lobby/default.project.json · not written · arena/default.rogen.json and match/default.rogen.json failed"
 		);
 	});
 
@@ -274,10 +314,10 @@ describe("BuildLog report", () => {
 					failedOf([other], configNamed("match")),
 				])
 			).toEqual([
-				"step: arena",
+				"step: arena/default.rogen.json",
 				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
-				"step: match",
+				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
@@ -291,11 +331,11 @@ describe("BuildLog report", () => {
 					failedOf([shared], configNamed("match")),
 				])
 			).toEqual([
-				"step: arena",
+				"step: arena/default.rogen.json",
 				"error: arena/default.project.json · not written",
 				"diagnosticError: /repo/a - error: shared. (x.shared)",
-				"step: match",
-				"error: match/default.project.json · not written · same errors as arena",
+				"step: match/default.rogen.json",
+				"error: match/default.project.json · not written · same errors as arena/default.rogen.json",
 				"outro: build failed.",
 			]);
 		});
@@ -307,7 +347,7 @@ describe("BuildLog report", () => {
 					failedOf([shared, other], configNamed("match")),
 				]).slice(3)
 			).toEqual([
-				"step: match",
+				"step: match/default.rogen.json",
 				"error: match/default.project.json · not written",
 				"diagnosticError: /repo/b - error: other. (x.other)",
 				"outro: build failed.",
@@ -366,11 +406,11 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("match", [aboutSrc("match")]),
 			])
 		).toEqual([
-			"step: arena",
+			"step: arena/default.rogen.json",
 			"success: arena/default.project.json · wrote",
 			"diagnosticWarning: /repo/arena/default.rogen.json - warning: 1 folder is odd: (x.folder)\n  src/Sever",
-			"step: match",
-			"success: match/default.project.json · wrote · same warnings as arena",
+			"step: match/default.rogen.json",
+			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json",
 			"outro: Built 2 projects with 1 warning.",
 		]);
 	});
@@ -388,7 +428,7 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("match", [aboutSrc("match"), own]),
 			]).slice(3)
 		).toEqual([
-			"step: match",
+			"step: match/default.rogen.json",
 			"success: match/default.project.json · wrote",
 			"diagnosticWarning: /repo/match/default.rogen.json - warning: only here. (x.own)",
 			"outro: Built 2 projects with 2 warnings.",
@@ -408,7 +448,7 @@ describe("BuildLog report, warnings", () => {
 				writtenWith("match", [], [shared]),
 			])[4]
 		).toBe(
-			"success: match/default.project.json · wrote · same warnings as arena"
+			"success: match/default.project.json · wrote · same warnings as arena/default.rogen.json"
 		);
 	});
 
@@ -429,7 +469,7 @@ describe("BuildLog report, warnings", () => {
 				line.startsWith("error: match")
 			)
 		).toBe(
-			"error: match/default.project.json · not written · same errors as arena · same warnings as arena"
+			"error: match/default.project.json · not written · same errors as arena/default.rogen.json · same warnings as arena/default.rogen.json"
 		);
 	});
 });
@@ -467,6 +507,48 @@ describe("BuildLog report, closing line", () => {
 	it("should count the warnings", () => {
 		expect(closing(1)).toBe("outro: Built 1 project with 1 warning.");
 		expect(closing(2)).toBe("outro: Built 1 project with 2 warnings.");
+	});
+
+	it("should name what Rojo built in place of the count", () => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				new WrittenBuild(
+					mockConfig(),
+					"wrote",
+					{ warnings: [], syncWarnings: [] },
+					summaryOf(),
+					[]
+				),
+			]),
+			undefined,
+			"build",
+			true,
+			{ name: "game.rbxl", failed: false }
+		);
+
+		expect(logService.lines.at(-1)).toBe("outro: Built game.rbxl.");
+	});
+
+	it("should claim nothing when Rojo failed", () => {
+		const logService = new MockLogService();
+		new BuildLog(logService, cwd).report(
+			new BuildRun([
+				new WrittenBuild(
+					mockConfig(),
+					"wrote",
+					{ warnings: [], syncWarnings: [] },
+					summaryOf(),
+					[]
+				),
+			]),
+			undefined,
+			"build",
+			true,
+			{ name: "game.rbxl", failed: true }
+		);
+
+		expect(logService.lines.at(-1)).toBe("outro: build failed.");
 	});
 });
 

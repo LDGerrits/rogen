@@ -30,12 +30,13 @@ describe("SyncSteps", () => {
 	describe("plan", () => {
 		const target = directoryOf();
 
-		const steps = (set: SyncSteps, luauLsp = false) => {
+		const steps = (set: SyncSteps, luauLsp = false, folder?: string) => {
 			const builder = new InitPlanBuilder(target, false, []);
 			set.plan(builder, target.path, {
 				processed: ["src"],
 				compiledPath: set.compiledPath,
 				luauLsp,
+				folder,
 			});
 			return builder.build().unwrap().nextSteps;
 		};
@@ -76,6 +77,19 @@ describe("SyncSteps", () => {
 					target.workspace.darklua.sourcemapCommand()
 				),
 			]);
+		});
+
+		it("should put the folder change on a line of its own, since PowerShell 5.1 has no &&", () => {
+			const { run, edits } = steps(
+				new SyncSteps(luau, darklua),
+				false,
+				"projects/game"
+			);
+
+			expect(run[0]).toBe(
+				"cd projects/game\ndarklua process src dist --watch"
+			);
+			expect([...run, ...edits].join("\n")).not.toContain("&&");
 		});
 
 		it("should leave the sourcemap out where luau-lsp keeps it", () => {

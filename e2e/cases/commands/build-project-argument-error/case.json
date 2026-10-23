@@ -1,10 +1,11 @@
 {
 	"steps": [
-		["build", "ghost.project.json"],
-		["build", "lobby/other.project.json"],
-		["build", "README.md"],
-		["build", "lobby", "lobby"],
-		["build", "lobby", "--json"]
+		["write", "ghost.project.json"],
+		["write", "lobby/other.project.json"],
+		["write", "README.md"],
+		["write", "lobby", "lobby"],
+		["build", "lobby", "lobby", "-o", "game.rbxl"],
+		["write", "lobby", "--json"]
 	],
 	"rojo": false
 }

@@ -1,0 +1,4 @@
+{
+	"steps": [["build"], ["build", "--watch"], ["build", "--json"]],
+	"rojo": false
+}

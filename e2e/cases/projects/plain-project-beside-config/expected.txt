@@ -1,13 +1,13 @@
-$ rogen build nested.project.json
+$ rogen write nested.project.json
 exit 0
 stdout:
-  rogen build · Nested
-  nested.project.json · unchanged
-  Built 1 project.
+  rogen write
+  nested.project.json · plain project, not written
+  Wrote 0 of 0 project files.
 
-$ rogen build nested
+$ rogen write nested
 exit 0
 stdout:
-  rogen build · Nested
-  nested.project.json · unchanged
-  Built 1 project.
+  rogen write
+  nested.project.json · plain project, not written
+  Wrote 0 of 0 project files.

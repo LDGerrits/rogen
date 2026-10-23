@@ -1,0 +1,28 @@
+$ rogen write
+exit 0
+stdout: (not shown)
+stderr:
+  out/server - warning: out/server/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+  out/shared - warning: out/shared/Gone.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+
+$ rogen check
+exit 1
+stdout:
+  out/server - warning: out/server/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+  out/shared - warning: out/shared/Gone.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder. (compiled.orphan)
+
+written:
+  default.project.json
+
+$ rojo sourcemap default.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    shared: Folder
+      Gone: ModuleScript  <- out/shared/Gone.luau
+      types: ModuleScript  <- out/shared/types.luau
+  ServerScriptService: ServerScriptService
+    inventory: ModuleScript  <- out/server/inventory.luau
+    main: Script  <- out/server/main.server.luau
+  StarterPlayer: StarterPlayer
+    StarterPlayerScripts: StarterPlayerScripts
+      hud: LocalScript  <- out/client/hud.client.luau

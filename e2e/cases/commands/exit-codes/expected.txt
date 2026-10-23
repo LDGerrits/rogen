@@ -1,0 +1,169 @@
+$ rogen write ok
+exit 0
+stdout: (not shown)
+
+$ rogen write broken
+exit 1
+stdout: (not shown)
+stderr:
+  error: broken/default.rogen.json · not loaded
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+
+$ rogen build ok -o game.rbxl
+exit 0
+stderr:
+  rogen build · ok/default.rogen.json
+  ok/default.project.json · unchanged
+  Built game.rbxl.
+
+$ rogen build broken -o game.rbxl
+exit 1
+stderr:
+  rogen build · broken/default.rogen.json
+  error: broken/default.rogen.json · not loaded
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  build failed.
+
+$ rogen build ok
+exit 2
+stderr:
+  error: build needs -o <file> or -p <name>, as 'rojo build' does. To write the project file only, run 'rogen write'.
+
+$ rogen build ok --nope
+exit 2
+stderr:
+  error: Unknown option '--nope'. Run 'rogen help build' to see what build accepts.
+
+$ rogen check ok
+exit 0
+
+$ rogen check warn
+exit 1
+stdout:
+  warn/src/Inventory/Save@sever.luau - warning: did you mean "@server"? (route.strayAt)
+
+$ rogen check --nope
+exit 2
+stderr:
+  error: Unknown option '--nope'. Run 'rogen help check' to see what check accepts.
+
+$ rogen where ok
+exit 0
+stdout:
+  ok/src/A.luau -> ReplicatedStorage/A · route * (fallback)
+
+$ rogen where broken
+exit 1
+stderr:
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+
+$ rogen where --nope
+exit 2
+stderr:
+  error: Unknown option '--nope'. Run 'rogen help where' to see what where accepts.
+
+$ rogen serve broken
+exit 1
+stderr:
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+
+$ rogen serve ok --port abc
+exit 2
+stderr:
+  error: --port takes a number from 1 to 65535.
+
+$ rogen syncback broken -i game.rbxl -y
+exit 1
+stderr:
+  rogen syncback · broken/default.rogen.json
+  error: broken/default.rogen.json · not loaded
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  build failed.
+
+$ rogen syncback ok
+exit 2
+stderr:
+  error: --input names the place or model file to bring changes from, and Rojo needs it.
+
+$ rogen upload broken --asset_id 1
+exit 1
+stderr:
+  rogen upload · broken/default.rogen.json
+  error: broken/default.rogen.json · not loaded
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected a value. (config.invalidSyntax)
+  broken/default.rogen.json:1:12 - error: invalid JSONC: expected '}'. (config.invalidSyntax)
+  build failed.
+
+$ rogen upload ok
+exit 2
+stderr:
+  error: --asset_id names the place or model to upload to, and Rojo needs it.
+
+$ rogen init fresh --non-interactive --skip-git --no-sample
+exit 0
+stdout: (not shown)
+
+$ rogen init broken --non-interactive --skip-git --no-sample
+exit 1
+stdout: (not shown)
+stderr:
+  broken/default.rogen.json - error: this config already exists, and init never overwrites or changes one. To change it, edit the .rogen.json and run 'rogen check'; for a new place, copy a config and edit the copy. To add the agent rules or the agent hook to this project, see https://rogen-playfully.vercel.app/docs/v2/agents; to set Rojo up, see https://rogen-playfully.vercel.app/docs/v2/installation. (init.configExists)
+
+$ rogen init a b
+exit 2
+stderr:
+  error: init takes one folder.
+
+$ rogen plugin install
+exit 0
+stderr:
+  Rojo's plugin installed
+
+$ rogen plugin uninstall
+exit 1
+stderr:
+  Rojo: Your platform is not currently supported
+  error: 'rojo plugin uninstall' failed (exit code 1).
+
+$ rogen plugin
+exit 2
+stderr:
+  error: 'rogen plugin' takes install, uninstall or help.
+
+ran:
+  rojo --version
+  rojo build ok/default.project.json --output game.rbxl
+  rojo --version
+  rojo --version
+  rojo --version
+  rojo plugin install
+  rojo --version
+  rojo plugin uninstall
+
+written:
+  fresh/AGENTS.md
+  fresh/default.project.json
+  fresh/default.rogen.json
+  ok/default.project.json
+
+fresh/default.rogen.json:
+{
+  "tree": {
+    "$className": "DataModel"
+  },
+  "rogen": {
+    "sourcePaths": [
+      "src"
+    ],
+    "routes": {
+      "Server": "ServerScriptService",
+      "Client": "StarterPlayer/StarterPlayerScripts",
+      "Shared": "ReplicatedStorage/Shared"
+    }
+  }
+}

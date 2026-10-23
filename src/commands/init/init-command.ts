@@ -27,6 +27,7 @@ const InitOptions = [
 	{
 		name: "non-interactive",
 		short: "y",
+		aliases: ["yes"],
 		type: "boolean",
 		description:
 			"Write the defaults without asking. A run without a terminal, or under a coding agent or CI, does so anyway. --json implies it. A flag below answers its question either way.",
@@ -183,9 +184,6 @@ registerCommand(
 					options: InitOptions,
 					output: { document: initDocumentShape },
 					effects: ["writesFiles"],
-					formerOptions: {
-						"--yes": "Use --non-interactive.",
-					},
 					examples: [
 						"rogen init",
 						"rogen init --non-interactive",
@@ -222,7 +220,12 @@ registerCommand(
 			if (!plan) return err(new CancelledError("init cancelled."));
 
 			const reporter: InitReporter = line.options.json
-				? new InitJsonLog(logService, plan.directory, dryRun)
+				? new InitJsonLog(
+						logService,
+						accessor.get(EnvironmentService).cwd,
+						plan.directory,
+						dryRun
+					)
 				: log;
 			reporter.begin(plan);
 			const written = await initService.write(

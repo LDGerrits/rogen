@@ -1,10 +1,10 @@
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Move it into src/Inventory/server. (route.unrouted)
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/server. (route.unrouted)
-  src/Util.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
+  src/Inventory/Hud.client.luau - warning: matched no route, so it is left out. Move it into src/Inventory/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/Util.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
 
 written:
   default.project.json

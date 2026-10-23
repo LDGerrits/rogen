@@ -1,28 +1,27 @@
-$ rogen build lobby --json
+$ rogen write lobby --json
 exit 0
 stdout:
   {
     "changed": true,
     "configs": [
       {
-        "config": "lobby",
-        "file": "<dir>/lobby/default.rogen.json",
+        "config": "lobby/default.rogen.json",
         "projectFile": "<dir>/lobby/default.project.json",
         "outcome": "wrote",
         "diagnostics": []
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
-$ rogen build match --json
+$ rogen write match --json
 exit 0
 stdout:
   {
     "changed": true,
     "configs": [
       {
-        "config": "match",
-        "file": "<dir>/match/default.rogen.json",
+        "config": "match/default.rogen.json",
         "projectFile": "<dir>/match/default.project.json",
         "outcome": "wrote",
         "diagnostics": [
@@ -30,33 +29,34 @@ stdout:
             "file": "<dir>/src/Util.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/Util.spec.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/client/Hud.client.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/client/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/client/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/match/lib/Signal.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/match/lib/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/match/lib/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           }
         ]
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 written:

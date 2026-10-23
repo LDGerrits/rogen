@@ -1,3 +1,4 @@
+import { configPath } from "../../platform/config/config-path.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import {
 	SyncbackChange,
@@ -20,8 +21,8 @@ const S = OutputShape;
 const syncbackEntryShape = S.named(
 	"SyncbackEntry",
 	S.object({
-		outcome: S.enum("written", "planned", "failed", "notRun"),
-		project: S.nullable(S.string),
+		outcome: S.enum("written", "wouldWrite", "failed", "notRun"),
+		config: S.nullable(S.string),
 		input: S.string,
 		changes: S.array(
 			S.object({ kind: S.enum("write", "remove"), file: S.string })
@@ -40,8 +41,9 @@ export const syncbackDocumentShape = S.object({
 });
 
 export interface SyncbackEntry {
-	readonly outcome: "written" | "planned" | "failed" | "notRun";
-	readonly project: string | null;
+	readonly outcome: "written" | "wouldWrite" | "failed" | "notRun";
+	/** The config file's path relative to the working folder. */
+	readonly config: string | null;
 	readonly input: string;
 	readonly changes: readonly SyncbackChange[];
 	readonly unplaced: readonly UnplacedInstance[];
@@ -60,12 +62,13 @@ export type SyncbackOutcome =
 
 export function syncbackEntry(
 	input: string,
-	outcome: SyncbackOutcome
+	outcome: SyncbackOutcome,
+	cwd: string
 ): SyncbackEntry {
 	if (outcome.kind === "notRun")
 		return {
 			outcome: "notRun",
-			project: null,
+			config: null,
 			input,
 			changes: [],
 			unplaced: [],
@@ -73,15 +76,15 @@ export function syncbackEntry(
 	if (outcome.kind === "failed")
 		return {
 			outcome: "failed",
-			project: null,
+			config: null,
 			input,
 			changes: [],
 			unplaced: [],
 			...failureToJson(outcome.error),
 		};
 	return {
-		outcome: outcome.kind,
-		project: outcome.plan.project.label,
+		outcome: outcome.kind === "planned" ? "wouldWrite" : outcome.kind,
+		config: configPath(cwd, outcome.plan.project.file),
 		input,
 		changes: outcome.plan.changes.map(({ kind, file }) => ({ kind, file })),
 		unplaced: outcome.plan.unplaced,
@@ -93,9 +96,10 @@ export function syncbackEntry(
 
 export function syncbackDocument(
 	builds: readonly ConfigBuild[],
+	cwd: string,
 	syncback: SyncbackEntry
 ) {
-	const built = buildDocument(builds);
+	const built = buildDocument(builds, cwd);
 	return {
 		changed: built.changed || syncback.outcome === "written",
 		configs: built.configs,

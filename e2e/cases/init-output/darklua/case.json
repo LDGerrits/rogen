@@ -4,10 +4,8 @@
 			"init"
 		],
 		[
-			"build"
+			"write"
 		]
 	],
-	"output": [
-		"init"
-	]
+	"output": ["init"]
 }

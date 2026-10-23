@@ -1,1 +1,1 @@
-{ "steps": [["init", "-y"], ["check"], ["build"]] }
+{ "steps": [["init", "-y"], ["check"], ["write"]] }

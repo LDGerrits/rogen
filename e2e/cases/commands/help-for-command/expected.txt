@@ -3,8 +3,8 @@ exit 0
 stdout:
   rogen-build
   Writes the project file of default.rogen.json here, or of the config you name, beside it
-  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
-  Rojo.
+  (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo,
+  as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.
   
   USAGE:
       rogen build [OPTIONS] [PROJECT]
@@ -19,25 +19,29 @@ stdout:
                                always, never]
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
-      -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
-                               .rbxlx, .rbxm or .rbxmx).
-      -p, --plugin <PLUGIN>    Also build the project into Roblox's plugins folder with Rojo, under
-                               this file name.
+      -o, --output <OUTPUT>    Build the project into this place or model file with Rojo (.rbxl,
+                               .rbxlx, .rbxm or .rbxmx). This or -p is required.
+      -p, --plugin <PLUGIN>    Build the project into Roblox's plugins folder with Rojo, under this
+                               file name. This or -o is required.
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
           --watch              Keep going: write the project file again whenever names or configs
-                               change. With -o or -p, build with Rojo after each write, and again
-                               after an edit inside a file under the source paths. Press Ctrl+C to
-                               stop; --json prints one JSON object per line.
+                               change. Build with Rojo after each write, and again after an edit
+                               inside a file under the source paths. Press Ctrl+C to stop; --json
+                               prints one JSON object per line.
+  
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
-      rogen build
-      rogen build places/lobby
       rogen build -o game.rbxl
-      rogen build --watch
-      rogen build --watch -o game.rbxl
-      rogen build --json
+      rogen build places/lobby -o lobby.rbxl
+      rogen build -p Tool.rbxm
+      rogen build -o game.rbxl --watch
+      rogen build -o game.rbxl --json
 
 $ rogen help watch
 exit 2
@@ -131,6 +135,11 @@ stdout:
       -v, --verbose                        Print debug output; -vv, trace output. (repeatable)
       -V, --version                        Print the version.
   
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
+  
   EXAMPLES:
       rogen init
       rogen init --non-interactive
@@ -148,20 +157,23 @@ stdout:
   ARGS:
       <PATH>...    A file, a directory, a Studio instance path, or '-' for text on stdin. A directory
                    gives the files in it, and a file that doesn't exist yet is placed as if it did. A
-                   :line or :line:col after a file, as a linter prints it, is ignored. An instance as
-                   Studio prints it (ServerScriptService.Inventory.Save:12) gives the files behind it.
-                   '-' alone reads text on stdin and prints it with each instance path Studio printed,
-                   as Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12, written as
-                   file:line; an instance that more than one file places stays as it is and is listed
-                   on stderr. A path is answered by the default config of the nearest folder at or
-                   above it; with none, by every .rogen.json at or above it whose source paths cover
-                   it, each answer headed by its config's name when they differ. A path that no build
-                   reads, in no source path of its config or covered by no config, gets a note on
-                   stderr and is listed under skipped in the JSON document; a .rogen.json lists every
-                   file of that config, and so does a name that is neither a file nor a folder holding
-                   a default config but names a config as build reads it (game for game.rogen.json,
-                   else game.project.json). Every file of the default config of the working directory
-                   when none is given, and an instance or '-' reads that config too.
+                   :line or :line:col after a file is ignored.
+                   - Instance: a path as Studio prints it (ServerScriptService.Inventory.Save:12)
+                     gives the files behind it.
+                   - '-': reads text on stdin and prints it with each Studio instance path
+                     (Service.Feature.Name:12 or Script 'Service.Feature.Name', Line 12) written as
+                     file:line; an instance that several files place stays as it is, and is listed on
+                     stderr.
+                   - Config: the default config of the nearest folder at or above the path; with none,
+                     every .rogen.json at or above it whose source paths cover it. A .rogen.json, or a
+                     config named as build reads it (game for game.rogen.json), lists every file of
+                     that config.
+                   - Several configs: each answer names its config file, and so does config in the
+                     JSON.
+                   - Skipped: a path no build reads gets a note on stderr, and is listed under skipped
+                     in the JSON document.
+                   - No path: every file of every config of the working directory. An instance or '-':
+                     its default config.
   
   OPTIONS:
           --color <COLOR>    Whether to colour the output. [default: auto] [possible values: auto,
@@ -174,7 +186,8 @@ stdout:
   
   EXIT CODES:
       0    every path answered, one that no file places included
-      1    no path was given, or the config has errors
+      1    the config has errors
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
       rogen where src/Inventory/Server/Save.luau
@@ -187,8 +200,8 @@ exit 0
 stdout:
   rogen-build
   Writes the project file of default.rogen.json here, or of the config you name, beside it
-  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
-  Rojo.
+  (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo,
+  as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.
   
   USAGE:
       rogen build [OPTIONS] [PROJECT]
@@ -203,22 +216,26 @@ stdout:
                                always, never]
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
-      -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
-                               .rbxlx, .rbxm or .rbxmx).
-      -p, --plugin <PLUGIN>    Also build the project into Roblox's plugins folder with Rojo, under
-                               this file name.
+      -o, --output <OUTPUT>    Build the project into this place or model file with Rojo (.rbxl,
+                               .rbxlx, .rbxm or .rbxmx). This or -p is required.
+      -p, --plugin <PLUGIN>    Build the project into Roblox's plugins folder with Rojo, under this
+                               file name. This or -o is required.
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
           --watch              Keep going: write the project file again whenever names or configs
-                               change. With -o or -p, build with Rojo after each write, and again
-                               after an edit inside a file under the source paths. Press Ctrl+C to
-                               stop; --json prints one JSON object per line.
+                               change. Build with Rojo after each write, and again after an edit
+                               inside a file under the source paths. Press Ctrl+C to stop; --json
+                               prints one JSON object per line.
+  
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
-      rogen build
-      rogen build places/lobby
       rogen build -o game.rbxl
-      rogen build --watch
-      rogen build --watch -o game.rbxl
-      rogen build --json
+      rogen build places/lobby -o lobby.rbxl
+      rogen build -p Tool.rbxm
+      rogen build -o game.rbxl --watch
+      rogen build -o game.rbxl --json

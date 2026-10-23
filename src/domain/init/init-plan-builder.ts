@@ -106,6 +106,13 @@ export class InitPlanBuilder {
 		this.directories.add(directory);
 	}
 
+	/** `relative`, a path in the plan's folder, as it is written from the folder the user ran in. */
+	fromHere(relative: string): string {
+		return toPosix(
+			path.relative(this.cwd, path.join(this.directory.path, relative))
+		);
+	}
+
 	addNote(note: string): void {
 		this.notes.push(note);
 	}
@@ -173,6 +180,7 @@ export class InitPlanBuilder {
 				liftedFrom: this.liftedFrom,
 			}),
 			nextSteps: {
+				...(this.fromHere("") && { directory: this.fromHere("") }),
 				setup: [...this.setup],
 				run: [...this.run],
 				edits: [

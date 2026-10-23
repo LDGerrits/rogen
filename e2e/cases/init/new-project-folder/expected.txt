@@ -2,7 +2,7 @@ $ rogen init newproj --non-interactive
 exit 0
 stdout:
   rogen init
-  Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.
+  The Greeter sample is in newproj/src/Greeter, and Rojo's sample Baseplate and lighting in newproj/place, which the tree mounts. Pass --no-sample for an empty newproj/src and no newproj/place.
   Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Created newproj/default.rogen.json.
   Created newproj/.gitignore.
@@ -18,14 +18,16 @@ stdout:
   Initialised a git repository.
   newproj/default.project.json · wrote
   Next steps
+    In each terminal, start in the project folder:
+      cd newproj
     Run:
       rogen serve
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in default.rogen.json.
-    Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
   Wrote 11 files.
 
-$ rogen build newproj
+$ rogen write newproj
 exit 0
 stdout: (not shown)
 

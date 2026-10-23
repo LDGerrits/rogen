@@ -27,7 +27,13 @@ describeWithRojo("end to end watch", () => {
 		sourcemapTree(project.dir, file);
 
 	const start = (args: readonly string[] = [], cwd?: string) => {
-		session = new RunningRogen(bundle.cli, project.dir, args, cwd);
+		session = new RunningRogen(
+			bundle.cli,
+			project.dir,
+			args,
+			cwd,
+			args.includes("-o") ? "build --watch" : "write --watch"
+		);
 		return session;
 	};
 
@@ -388,7 +394,9 @@ describeWithRojo("end to end watch", () => {
 		await eventually(async () => {
 			expect(await tree()).toContain("<- src/A.server.luau");
 		});
-		expect(running.output).toContain("rogen build --watch · project");
+		expect(running.output).toContain(
+			"rogen write --watch · ../default.rogen.json"
+		);
 
 		writeProjectFile(
 			project.dir,
@@ -466,8 +474,39 @@ describeWithRojo("end to end watch", () => {
 				"wrote",
 			]);
 			expect(
-				outputProblem(["build", "--watch", "--json"], watching.stdout)
+				outputProblem(["write", "--watch", "--json"], watching.stdout)
 			).toBeUndefined();
+		});
+	}, 30_000);
+
+	it("should keep the project file of every config of the folder current when it is write --watch", async () => {
+		fs.rmSync(path.join(project.dir, "default.rogen.json"));
+		for (const name of ["game", "lobby"])
+			writeProjectFile(
+				project.dir,
+				`${name}.rogen.json`,
+				JSON.stringify({ name, ...JSON.parse(CONFIG) })
+			);
+		session = new RunningRogen(
+			bundle.cli,
+			project.dir,
+			["--watch"],
+			undefined,
+			"write"
+		);
+		await eventually(async () => {
+			expect(await tree("game.project.json")).toContain(
+				"<- src/A.server.luau"
+			);
+			expect(await tree("lobby.project.json")).toContain(
+				"<- src/A.server.luau"
+			);
+		});
+
+		writeProjectFile(project.dir, "src/B.luau");
+		await eventually(async () => {
+			expect(await tree("game.project.json")).toContain("<- src/B.luau");
+			expect(await tree("lobby.project.json")).toContain("<- src/B.luau");
 		});
 	}, 30_000);
 

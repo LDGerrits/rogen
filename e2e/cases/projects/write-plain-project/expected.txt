@@ -1,0 +1,15 @@
+$ rogen write
+exit 0
+stdout:
+  rogen write
+  game.project.json · wrote
+  legacy.project.json · plain project, not written
+  Wrote 1 of 1 project file.
+
+written:
+  game.project.json
+
+$ rojo sourcemap game.project.json
+Game: DataModel
+  ServerScriptService: ServerScriptService
+    Save: ModuleScript  <- src/server/Save.luau

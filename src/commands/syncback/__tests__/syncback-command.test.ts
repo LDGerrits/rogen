@@ -78,6 +78,17 @@ describe("syncback command", () => {
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
 
+	it.each(["a.rbxl", "dir/a.RBXLX", "a.rbxm", "a.rbxmx"])(
+		"should say to pass the place file %s as --input when it is given as the project",
+		async (file) => {
+			const { running } = start({}, undefined, [file]);
+
+			expect(((await running) as ResultError<Error>).error.message).toBe(
+				`--input names the place or model file to bring changes from, and Rojo needs it. '${file}' is a place or model file, not a project: pass it as --input ${file}.`
+			);
+		}
+	);
+
 	it("should refuse a second project, as Rojo's syncback does, and run nothing", async () => {
 		const { running } = start(
 			{ input: "game.rbxl", "non-interactive": true },
@@ -100,6 +111,49 @@ describe("syncback command", () => {
 		expect(processes.spawned).toEqual([]);
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
 	});
+
+	it.each([
+		["a run", { "non-interactive": true }],
+		["a dry run", { "dry-run": true }],
+	])(
+		"should refuse a project with a compiled path in %s, and write and run nothing",
+		async (_, flags) => {
+			const log = new MockLogService();
+			const running = commandHarness({
+				fs,
+				log,
+				config: new MockConfigService([
+					mockEntry(
+						{
+							name: "repo",
+							sourcePaths: [abs("src")],
+							routes: { "*": "ReplicatedStorage" },
+							compiledPath: abs("dist"),
+						},
+						abs("default.rogen.json")
+					),
+				]),
+				processes,
+				prompt: new MockPromptService([], false),
+			}).run("syncback", {
+				positionals: [],
+				options: { input: "game.rbxl", ...flags },
+			});
+
+			const { error } = (await running) as ResultError<DiagnosticsError>;
+
+			expect(error.diagnostics).toMatchObject([
+				{
+					code: "syncback.compiledPath",
+					message: expect.stringContaining(
+						"reads compiled code from"
+					),
+				},
+			]);
+			expect(processes.spawned).toEqual([]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		}
+	);
 
 	/** What the test's Rojo does to the mirror it runs on: Loot added, Combat removed. */
 	const editMirror = async () => {
@@ -143,6 +197,34 @@ describe("syncback command", () => {
 		);
 		expect(await fs.exists(abs("src/Combat/Server/Loot.luau"))).toBe(false);
 		expect(await fs.exists(abs("rogen-syncback.project.json"))).toBe(false);
+	});
+
+	it("should say wouldWrite for the config and the syncback of a dry run, by the config file", async () => {
+		const { running, log } = start({
+			input: "game.rbxl",
+			"dry-run": true,
+			json: true,
+		});
+		const [rojo] = await rojoRuns(1);
+		await editMirror();
+		rojo.exit({ code: 0, signal: null });
+		await running;
+
+		const document = log.json();
+		expect(document.configs).toEqual([
+			{
+				config: "default.rogen.json",
+				projectFile: abs("default.project.json"),
+				outcome: "wouldWrite",
+				diagnostics: [],
+			},
+		]);
+		expect(document.syncback).toMatchObject({
+			outcome: "wouldWrite",
+			config: "default.rogen.json",
+		});
+		expect(document.syncback).not.toHaveProperty("project");
+		expect(document.changed).toBe(false);
 	});
 
 	it("should write no project file in a dry run, and leave a stale one as it was", async () => {

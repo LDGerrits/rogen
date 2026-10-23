@@ -1,1 +1,1 @@
-{ "steps": [["build", "--verbose"], ["where", "src/Net/Vendor/Signal.luau"]] }
+{ "steps": [["write", "--verbose"], ["where", "src/Net/Vendor/Signal.luau"]] }

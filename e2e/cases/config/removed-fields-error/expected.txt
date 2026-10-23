@@ -1,10 +1,10 @@
-$ rogen build
+$ rogen write
 exit 1
 stdout: (not shown)
 stderr:
   error: default.rogen.json · not loaded
-  default.rogen.json:2:2 - error: "mode" was removed. Modes are gone with "modes". Name a file instead, as 'rogen build <name>'. (config.removedField)
+  default.rogen.json:2:2 - error: "mode" was removed. Modes are gone with "modes". Name a file instead, as 'rogen write <name>'. (config.removedField)
   default.rogen.json:3:2 - error: "modes" was removed. Write what a mode set in <name>.rogen.json as a complete file with the keys that differ. (config.removedField)
   default.rogen.json:10:2 - error: "variants" was removed. A file that replaces another goes in a later source path, which wins a clash. (config.removedField)
   default.rogen.json:13:2 - error: "conflicts" was removed. Variants are gone, and so are their conflict groups. Sets that exclude each other are one complete <name>.rogen.json each, listing their own "sourcePaths". (config.removedField)
-  default.rogen.json:19:2 - error: "server" was removed. rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it. (config.removedField)
+  default.rogen.json:19:2 - error: "server" was removed. rogen serve starts Rojo. To serve with Argon, run 'rogen write --watch' to keep the project files current and 'argon serve' beside it. (config.removedField)

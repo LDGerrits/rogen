@@ -1,5 +1,7 @@
+import path from "path";
 import { DisposableStore } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
+import { relativeTo } from "../../base/path.js";
 import { Result, err, ok } from "../../base/result.js";
 import { BuildService } from "../../domain/build/build-service.js";
 
@@ -38,7 +40,7 @@ const OutputOption = {
 	type: "string",
 	placeholder: "output",
 	description:
-		"Also build the project into this place or model file with Rojo (.rbxl, .rbxlx, .rbxm or .rbxmx).",
+		"Build the project into this place or model file with Rojo (.rbxl, .rbxlx, .rbxm or .rbxmx). This or -p is required.",
 } as const satisfies OptionDescriptor;
 
 const PluginOption = {
@@ -47,14 +49,14 @@ const PluginOption = {
 	type: "string",
 	placeholder: "plugin",
 	description:
-		"Also build the project into Roblox's plugins folder with Rojo, under this file name.",
+		"Build the project into Roblox's plugins folder with Rojo, under this file name. This or -o is required.",
 } as const satisfies OptionDescriptor;
 
 const WatchOption = {
 	name: "watch",
 	type: "boolean",
 	description:
-		"Keep going: write the project file again whenever names or configs change. With -o or -p, build with Rojo after each write, and again after an edit inside a file under the source paths. Press Ctrl+C to stop; --json prints one JSON object per line.",
+		"Keep going: write the project file again whenever names or configs change. Build with Rojo after each write, and again after an edit inside a file under the source paths. Press Ctrl+C to stop; --json prints one JSON object per line.",
 } as const satisfies OptionDescriptor;
 
 const BuildOptions = [
@@ -70,10 +72,9 @@ registerCommand(
 			super({
 				id: "build",
 				metadata: {
-					summary:
-						"Writes the project file; with -o or -p, builds with Rojo",
+					summary: "Writes the project file, then builds with Rojo",
 					description:
-						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
+						"Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo, as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.",
 					args: ProjectArgument,
 					options: BuildOptions,
 					output: {
@@ -81,22 +82,20 @@ registerCommand(
 						lines: buildLineShape,
 					},
 					effects: ["writesFiles", "runsProcesses"],
-					unknownWordOffer: "To build a project",
 					longRunningWith: "watch",
 					formerCommands: {
-						watch: "'rogen watch' is now 'rogen build --watch'.",
+						watch: "'rogen watch' is now 'rogen write --watch'.",
 					},
 					formerOptions: {
 						"--deny-warnings":
 							"Run 'rogen check', which exits 1 on any diagnostic, warnings included.",
 					},
 					examples: [
-						"rogen build",
-						"rogen build places/lobby",
 						"rogen build -o game.rbxl",
-						"rogen build --watch",
-						"rogen build --watch -o game.rbxl",
-						"rogen build --json",
+						"rogen build places/lobby -o lobby.rbxl",
+						"rogen build -p Tool.rbxm",
+						"rogen build -o game.rbxl --watch",
+						"rogen build -o game.rbxl --json",
 					],
 				},
 			});
@@ -111,15 +110,13 @@ registerCommand(
 			const flags = this.rojoFlags(line);
 			if (flags.isErr()) return flags;
 			const cwd = accessor.get(EnvironmentService).cwd;
-			const step =
-				flags.value &&
-				new BuildStep(
-					accessor.get(RojoCommandService),
-					flags.value,
-					cwd,
-					line.options.output,
-					line.options.plugin
-				);
+			const step = new BuildStep(
+				accessor.get(RojoCommandService),
+				flags.value,
+				cwd,
+				line.options.output,
+				line.options.plugin
+			);
 			if (line.options.watch) {
 				const store = new DisposableStore();
 				const shutdown = this.untilShutdown(accessor, store);
@@ -138,19 +135,19 @@ registerCommand(
 			const configService = accessor.get(ConfigService);
 			const buildService = accessor.get(BuildService);
 			const logService = accessor.get(LogService);
-			if (flags.value && !line.options.json) logService.reserveStdout();
+			if (!line.options.json) logService.reserveStdout();
 
 			const selection = await configService.select(line.positionals);
 			if (selection.isErr()) return selection;
 			for (const note of selection.value.notes) logService.warn(note);
 
-			const planned = step?.plan(selection.value);
-			if (planned?.isErr()) return planned;
+			const planned = step.plan(selection.value);
+			if (planned.isErr()) return planned;
 
 			const run = await buildService.build(selection.value);
 
 			const failure = run.failure();
-			const plan = planned?.isOk() ? planned.value : undefined;
+			const plan = planned.value;
 			const built =
 				failure || plan === undefined
 					? undefined
@@ -172,22 +169,29 @@ registerCommand(
 				return this.printJson(
 					logService,
 					{
-						...buildDocument(run.builds),
-						...(flags.value && {
-							rojo: rojoEntry(
-								{
-									command: "build",
-									cwd,
-									output: line.options.output,
-									plugin: line.options.plugin,
-								},
-								built
-							),
-						}),
+						...buildDocument(run.builds, cwd),
+						rojo: rojoEntry(
+							{
+								command: "build",
+								cwd,
+								output: line.options.output,
+								plugin: line.options.plugin,
+							},
+							built
+						),
 					},
 					failure ?? rojoFailure
 				);
-			new BuildLog(logService, cwd).report(run, selection.value.home);
+			new BuildLog(logService, cwd).report(
+				run,
+				selection.value.home,
+				"build",
+				true,
+				{
+					name: this.builtName(line, cwd),
+					failed: rojoFailure !== undefined,
+				}
+			);
 			if (built?.isOk())
 				(rojoFailure ? reportRojoBesideFailure : reportRojo)(
 					logService,
@@ -198,10 +202,21 @@ registerCommand(
 			return failure ? this.reported(failure) : ok(undefined);
 		}
 
-		/** Rojo's flags for the build, or none when only the project files are wanted. */
+		/** The file or plugin the closing line says was built. */
+		private builtName(
+			line: CommandLine<typeof BuildOptions>,
+			cwd: string
+		): string {
+			const { output, plugin } = line.options;
+			return output !== undefined
+				? relativeTo(cwd, path.resolve(cwd, output))
+				: `plugin ${plugin}`;
+		}
+
+		/** Rojo's flags for the build, which needs one of `-o` and `-p`, as `rojo build` does. */
 		private rojoFlags(
 			line: CommandLine<typeof BuildOptions>
-		): Result<readonly string[] | undefined, UsageError> {
+		): Result<readonly string[], UsageError> {
 			const { output, plugin } = line.options;
 			if (output !== undefined && plugin !== undefined)
 				return err(
@@ -211,7 +226,12 @@ registerCommand(
 				);
 			if (output !== undefined) return ok(["--output", output]);
 			if (plugin !== undefined) return ok(["--plugin", plugin]);
-			return ok(undefined);
+			return err(
+				new UsageError(
+					"build needs -o <file> or -p <name>, as 'rojo build' does.",
+					"To write the project file only, run 'rogen write'."
+				)
+			);
 		}
 	}
 );

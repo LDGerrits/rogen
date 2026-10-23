@@ -1,4 +1,4 @@
 {
-	"steps": [["build", "--color", "sometimes"], ["build", "--color"]],
+	"steps": [["write", "--color", "sometimes"], ["write", "--color"]],
 	"rojo": false
 }

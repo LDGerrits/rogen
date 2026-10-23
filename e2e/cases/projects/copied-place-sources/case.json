@@ -1,0 +1,4 @@
+{
+	"steps": [["check"], ["write"]],
+	"output": ["write"]
+}

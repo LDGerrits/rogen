@@ -1,0 +1,26 @@
+$ rogen check
+exit 0
+
+$ rogen write
+exit 0
+stdout:
+  rogen write
+  game.project.json · wrote
+  lobby.project.json · wrote
+  Wrote 2 of 2 project files.
+
+written:
+  game.project.json
+  lobby.project.json
+
+$ rojo sourcemap game.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- src/game/Util.luau
+  Workspace: Workspace  <- place/game/Workspace/init.meta.json
+
+$ rojo sourcemap lobby.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- src/lobby/Util.luau
+  Workspace: Workspace  <- place/lobby/Workspace/init.meta.json

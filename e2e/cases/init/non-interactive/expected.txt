@@ -2,13 +2,13 @@ $ rogen init --non-interactive
 exit 0
 stdout: (not shown)
 stderr:
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared. (route.unrouted)
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared. (route.unrouted)
+  src/Inventory/Types.luau - warning: matched no route, so it is left out. Move it into src/Inventory/Server, Client or Shared, end its name with a route's @ marker (@Server, @Client or @Shared), or declare a "*" route. (route.unrouted)
 
 written:
   .git/

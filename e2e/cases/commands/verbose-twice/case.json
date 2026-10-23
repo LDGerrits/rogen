@@ -1,4 +1,4 @@
 {
-	"steps": [["build", "-vv"], ["build", "-v", "-v"]],
+	"steps": [["write", "-vv"], ["write", "-v", "-v"]],
 	"rojo": false
 }

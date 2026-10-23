@@ -1,30 +1,30 @@
-$ rogen build lobby -v
+$ rogen write lobby -v
 exit 0
 stdout:
-  rogen build · lobby
+  rogen write
   lobby/default.project.json · wrote
-  Built 1 project.
+  Wrote 1 of 1 project file.
 stderr:
   [debug] src: 5 files
   [debug] route server -> ServerScriptService: 2 files
   [debug] route client -> StarterPlayer/StarterPlayerScripts: 1 file
   [debug] route * -> ReplicatedStorage/shared: 2 files
 
-$ rogen build match -v
+$ rogen write match -v
 exit 0
 stdout:
-  rogen build · match
+  rogen write
   match/default.project.json · wrote
-  Built 1 project with 4 warnings.
+  Wrote 1 of 1 project file with 4 warnings.
 stderr:
   [debug] src: 5 files
   [debug] match/lib: 1 file
   [debug] route server -> ServerScriptService: 2 files
   [debug] left out: 4 unrouted
-  src/Util.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/Util.spec.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/client/Hud.client.luau - warning: matched no route, so it is left out. Move it into src/client/server. (route.unrouted)
-  match/lib/Signal.luau - warning: matched no route, so it is left out. Move it into match/lib/server. (route.unrouted)
+  src/Util.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/Util.spec.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/client/Hud.client.luau - warning: matched no route, so it is left out. Move it into src/client/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  match/lib/Signal.luau - warning: matched no route, so it is left out. Move it into match/lib/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
 
 written:
   lobby/default.project.json

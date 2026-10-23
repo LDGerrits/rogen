@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import "../build-command.js";
+import "../write-command.js";
 import { BuildService } from "../../../domain/build/build-service.js";
 import { ConfigService } from "../../../domain/config/config-service.js";
 import { CoreConfigService } from "../../../domain/config/core-config-service.js";
@@ -27,7 +27,7 @@ import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { buildServiceOf } from "../../../domain/build/__tests__/fixtures.js";
 
-describeWithRojo("build command against Rojo", () => {
+describeWithRojo("write command against Rojo", () => {
 	let dir: string;
 
 	const write = (file: string, content: string) => {
@@ -54,7 +54,7 @@ describeWithRojo("build command against Rojo", () => {
 			services,
 			logService,
 			Registry.as<CommandRegistry>(Extensions.Commands)
-		).executeCommand("build", line);
+		).executeCommand("write", line);
 	};
 
 	beforeEach(() => {

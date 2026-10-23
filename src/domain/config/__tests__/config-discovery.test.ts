@@ -1,7 +1,9 @@
+import path from "path";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { ConfigDiscovery } from "../config-discovery.js";
 import { MockEnvironmentService } from "../../../platform/environment/__tests__/mock-environment-service.js";
 import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
-import { ProjectError, UsageError } from "../../../base/errors.js";
+import { ProjectError } from "../../../base/errors.js";
 import { Result, ResultError } from "../../../base/result.js";
 
 function errorOf(result: Result<unknown, Error>): Error {
@@ -79,7 +81,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover([]);
 
 			expect(errorOf(result).message).toBe(
-				"No default.rogen.json or default.project.json in this folder (/repo). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen init' to create default.rogen.json."
+				"No default.rogen.json or default.project.json in this folder (/repo). It holds dist.rogen.json, release.rogen.jsonc. Name one of them, or run 'rogen write' to write them all."
 			);
 		});
 
@@ -96,6 +98,25 @@ describe("ConfigDiscovery", () => {
 				);
 			}
 		);
+
+		it("should name the stale config a registered check finds, in place of the rename advice", async () => {
+			await fs.writeFile("/repo/.rogen.json", "{}");
+			await fs.writeFile("/repo/rogen.json", "{}");
+			discovery.registerFolderCheck(async (folder) => [
+				errorDiagnostic(
+					"stale",
+					{ resource: path.join(folder, ".rogen.json") },
+					"is old."
+				),
+			]);
+
+			const result = await discovery.discover([]);
+
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
+			expect(errorOf(result).message).toBe(
+				".rogen.json in /repo: is old."
+			);
+		});
 
 		it("should not search the folders above", async () => {
 			await fs.writeFile("/repo/default.rogen.json", "{}");
@@ -163,9 +184,9 @@ describe("ConfigDiscovery", () => {
 
 			const result = await discovery.discover([]);
 
-			expect(errorOf(result)).toBeInstanceOf(UsageError);
+			expect(errorOf(result)).toBeInstanceOf(ProjectError);
 			expect(errorOf(result).message).toBe(
-				"/repo holds both default.rogen.json and default.rogen.jsonc; keep one."
+				"/repo holds both default.rogen.json and default.rogen.jsonc. Keep one of them: both write the same project file."
 			);
 		});
 
@@ -297,9 +318,9 @@ describe("ConfigDiscovery", () => {
 			]) {
 				const result = await discovery.discover([ref]);
 
-				expect(errorOf(result)).toBeInstanceOf(UsageError);
+				expect(errorOf(result)).toBeInstanceOf(ProjectError);
 				expect(errorOf(result).message).toBe(
-					"/repo holds both dist.rogen.json and dist.rogen.jsonc; keep one."
+					"/repo holds both dist.rogen.json and dist.rogen.jsonc. Keep one of them: both write the same project file."
 				);
 			}
 		});
@@ -349,7 +370,7 @@ describe("ConfigDiscovery", () => {
 			const result = await discovery.discover(["pkg"]);
 
 			expect(errorOf(result).message).toBe(
-				"No default.rogen.json or default.project.json in \"pkg\" (/repo/pkg). It holds dist.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json."
+				'No default.rogen.json or default.project.json in "pkg" (/repo/pkg). It holds dist.rogen.json. Name one of them.'
 			);
 		});
 	});
@@ -764,6 +785,41 @@ describe("ConfigDiscovery.fileNamedHere", () => {
 		await fs.writeFile("/repo/game.rogen.json", "{}");
 		await fs.writeFile("/repo/game.rogen.jsonc", "{}");
 
-		expect(errorOf(await named("game"))).toBeInstanceOf(UsageError);
+		expect(errorOf(await named("game"))).toBeInstanceOf(ProjectError);
+	});
+});
+
+describe("ConfigDiscovery.plainProjects", () => {
+	let fs: MemoryFileSystemService;
+
+	beforeEach(async () => {
+		fs = new MemoryFileSystemService();
+		await fs.createDirectory("/repo");
+	});
+
+	const plain = () =>
+		new ConfigDiscovery(
+			fs,
+			new MockEnvironmentService("/repo")
+		).plainProjects("/repo");
+
+	it("should list the project files that no config of that name writes", async () => {
+		await fs.writeFile("/repo/game.rogen.json", "{}");
+		await fs.writeFile("/repo/game.project.json", "{}");
+		await fs.writeFile("/repo/lobby.rogen.jsonc", "{}");
+		await fs.writeFile("/repo/lobby.project.json", "{}");
+		await fs.writeFile("/repo/legacy.project.json", "{}");
+		await fs.writeFile("/repo/arena.project.jsonc", "{}");
+
+		expect(await plain()).toEqual([
+			"/repo/arena.project.jsonc",
+			"/repo/legacy.project.json",
+		]);
+	});
+
+	it("should not list the file syncback writes while it runs", async () => {
+		await fs.writeFile("/repo/rogen-syncback.project.json", "{}");
+
+		expect(await plain()).toEqual([]);
 	});
 });

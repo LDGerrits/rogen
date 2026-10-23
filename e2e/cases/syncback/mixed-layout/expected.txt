@@ -4,7 +4,7 @@ stdout:
   Writing src/Inventory/Server/Mail.luau
   Writing src/Inventory/Save@server.luau
 stderr:
-  rogen syncback · Game
+  rogen syncback · default.rogen.json
   default.project.json · wrote
   Built 1 project.
   Syncback wrote 2 changes.

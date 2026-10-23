@@ -195,13 +195,6 @@ export class StartedServer extends AbstractDisposable {
 						)
 					: undefined;
 		const stop = { target: this.target, exit, interrupted };
-		return failure
-			? {
-					...stop,
-					failure,
-					exitCode:
-						exit.code !== null && exit.code !== 0 ? exit.code : 1,
-				}
-			: stop;
+		return failure ? { ...stop, failure } : stop;
 	}
 }

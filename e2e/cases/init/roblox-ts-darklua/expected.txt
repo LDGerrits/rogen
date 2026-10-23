@@ -2,7 +2,7 @@ $ rogen init
 exit 0
 stdout: (not shown)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 
@@ -12,6 +12,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  dist.project.json
   dist.rogen.json
 
 default.rogen.json:
@@ -86,3 +87,9 @@ project: DataModel
   ReplicatedStorage: ReplicatedStorage
   ServerScriptService: ServerScriptService
     main: Script  <- out/server/main.server.luau
+
+$ rojo sourcemap dist.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+  ServerScriptService: ServerScriptService
+    main: Script  <- dist/server/main.server.luau

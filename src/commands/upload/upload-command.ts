@@ -152,6 +152,7 @@ registerCommand(
 					logService,
 					uploadDocument(
 						build.builds,
+						cwd,
 						rojoEntry({ command: "upload", cwd }, uploaded)
 					),
 					failure ?? rojoFailure

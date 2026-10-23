@@ -14,7 +14,7 @@ stdout:
     }
   }
 
-$ rogen build --json nowhere
+$ rogen write --json nowhere
 exit 1
 stdout:
   {

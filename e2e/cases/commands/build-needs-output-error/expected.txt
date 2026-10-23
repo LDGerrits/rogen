@@ -1,0 +1,20 @@
+$ rogen build
+exit 2
+stderr:
+  error: build needs -o <file> or -p <name>, as 'rojo build' does. To write the project file only, run 'rogen write'.
+
+$ rogen build --watch
+exit 2
+stderr:
+  error: build needs -o <file> or -p <name>, as 'rojo build' does. To write the project file only, run 'rogen write'.
+
+$ rogen build --json
+exit 2
+stdout:
+  {
+    "error": {
+      "kind": "usage",
+      "message": "build needs -o <file> or -p <name>, as 'rojo build' does.",
+      "hint": "To write the project file only, run 'rogen write'."
+    }
+  }

@@ -1,4 +1,4 @@
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 stderr:
@@ -8,15 +8,14 @@ stderr:
     src/Inventory/Sever (did you mean "Server"?)
   Rename a folder to the route key if it should route; a folder named as it is stays an ordinary folder.
 
-$ rogen build --json
+$ rogen write --json
 exit 0
 stdout:
   {
     "changed": false,
     "configs": [
       {
-        "config": "project",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
@@ -67,7 +66,8 @@ stdout:
           }
         ]
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 written:

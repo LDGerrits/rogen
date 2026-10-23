@@ -20,7 +20,7 @@ stdout:
   {
     "locations": [
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/places/lobby/Lobby/Server/Queue.luau",
         "status": "placed",
         "exists": true,
@@ -35,7 +35,7 @@ stdout:
         "diagnostics": []
       },
       {
-        "config": "project",
+        "config": "default.rogen.json",
         "source": "<dir>/README.md",
         "status": "outside",
         "exists": false,
@@ -47,7 +47,7 @@ stdout:
       {
         "path": "<dir>/README.md",
         "reason": "outsideSourcePaths",
-        "config": "<dir>/default.rogen.json"
+        "config": "default.rogen.json"
       }
     ]
   }

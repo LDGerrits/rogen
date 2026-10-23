@@ -1,7 +1,7 @@
 $ rogen upload --asset_id abc
 exit 2
 stderr:
-  rogen upload · Game
+  rogen upload · default.rogen.json
   default.project.json · wrote
   Built 1 project.
   Rojo: For more information try --help

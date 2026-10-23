@@ -1,4 +1,5 @@
 import { relativeTo } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
 import { joinedWithAnd, plural, unlistedNote } from "../../base/strings.js";
 import { WHERE_SCRIPTS_RUN } from "../../domain/roblox/roblox.js";
 import {
@@ -175,18 +176,27 @@ function inFolder(cwd: string, home: string | undefined): string | undefined {
 		: `in ${relativeTo(cwd, home)}`;
 }
 
+/** What Rojo built from the project files, for the closing line. */
+export interface BuiltFile {
+	/** The file or plugin as the closing line names it. */
+	readonly name: string;
+	/** Whether Rojo failed, so there is nothing to claim. */
+	readonly failed: boolean;
+}
+
 export class BuildLog {
 	constructor(
 		private readonly logService: LogService,
 		private readonly cwd: string
 	) {}
 
-	static sameAs(
+	/** The note that a config's `kind` are the ones the configs at `files` raised. */
+	sameAs(
 		kind: "errors" | "warnings",
-		labels: readonly string[]
+		files: readonly string[]
 	): string | undefined {
-		return labels.length > 0
-			? `same ${kind} as ${joinedWithAnd(labels)}`
+		return files.length > 0
+			? `same ${kind} as ${joinedWithAnd(files.map((file) => configPath(this.cwd, file)))}`
 			: undefined;
 	}
 
@@ -202,36 +212,39 @@ export class BuildLog {
 		);
 	}
 
-	/** With `writes` false, the run only checked: a config that built is reported as checked, not as an error. */
+	/** With `writes` false, the run only checked: a config that built is reported as one that would be written. */
 	report(
 		run: BuildRun,
 		home?: string,
 		command = "build",
-		writes = true
+		writes = true,
+		built?: BuiltFile
 	): void {
 		this.begin(
 			command,
-			run.builds.map(({ label }) => label),
+			run.builds.map(({ file }) => configPath(this.cwd, file)),
 			home
 		);
 		for (const { build, warnings, errors } of run.shares) {
-			if (run.builds.length > 1) this.heading(build.label);
+			if (run.builds.length > 1)
+				this.heading(configPath(this.cwd, build.file));
 			this.outcome(build, [...warnings.fresh, ...errors.fresh], {
-				checked:
-					!writes &&
-					build.outcome === "notWritten" &&
-					build.blockedBy.length === 0,
 				notes: [
-					build.outcome === "notWritten" && build.blockedBy.length > 0
-						? `${joinedWithAnd(build.blockedBy)} failed`
+					build.outcome === "notWritten"
+						? `${joinedWithAnd(
+								build.blockedBy.map((file) =>
+									configPath(this.cwd, file)
+								)
+							)} failed`
 						: undefined,
-					BuildLog.sameAs("errors", errors.sameAs),
-					BuildLog.sameAs("warnings", warnings.sameAs),
+					this.sameAs("errors", errors.sameAs),
+					this.sameAs("warnings", warnings.sameAs),
 				],
 			});
 		}
-		if (run.failed) this.logService.closeFrame("build failed.");
-		else this.end(run.builds.length, run.warningCount, writes);
+		if (run.failed || built?.failed)
+			this.logService.closeFrame("build failed.");
+		else this.end(run.builds.length, run.warningCount, writes, built);
 	}
 
 	private heading(label: string): void {
@@ -243,10 +256,8 @@ export class BuildLog {
 		diagnostics: readonly Diagnostic[],
 		{
 			notes = [],
-			checked = false,
 		}: {
 			readonly notes?: readonly (string | undefined)[];
-			readonly checked?: boolean;
 		} = {}
 	): void {
 		const note =
@@ -270,9 +281,12 @@ export class BuildLog {
 				this.logService.success(line(build.outcome));
 				this.details(build.summary);
 				break;
+			case "wouldWrite":
+				this.logService.success(line("would write"));
+				this.details(build.summary);
+				break;
 			case "notWritten":
-				if (checked) this.logService.success(line("checked"));
-				else this.logService.error(line("not written"));
+				this.logService.error(line("not written"));
 				this.details(build.summary);
 				break;
 			case "failed":
@@ -294,8 +308,13 @@ export class BuildLog {
 			this.logService.diagnostic(diagnostic);
 	}
 
-	private end(projects: number, warnings: number, writes: boolean): void {
-		const built = `${writes ? "Built" : "Checked"} ${plural(projects, "project")}`;
+	private end(
+		projects: number,
+		warnings: number,
+		writes: boolean,
+		file?: BuiltFile
+	): void {
+		const built = `${writes ? "Built" : "Checked"} ${file?.name ?? plural(projects, "project")}`;
 		this.logService.outro(
 			warnings === 0
 				? `${built}.`

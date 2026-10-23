@@ -19,6 +19,7 @@ import "../../sourcemap/sourcemap-command.js";
 import "../../syncback/syncback-command.js";
 import "../../upload/upload-command.js";
 import "../../where/where-command.js";
+import "../../write/write-command.js";
 import { DisposableStore } from "../../../base/disposable.js";
 import { UsageError } from "../../../base/errors.js";
 import { Result, ResultError, ok } from "../../../base/result.js";
@@ -93,8 +94,17 @@ describe("help command", () => {
 			expect(
 				printed().trimEnd().split("\n\n").at(-1)?.replace(/\n/g, " ")
 			).toBe(
-				"Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong. 'check' also exits 1 on a warning."
+				"Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2 the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a warning."
 			);
+		});
+
+		it("should print the version as a JSON document for --version --json", async () => {
+			await harness.run("help", {
+				positionals: [],
+				options: { version: true, json: true },
+			});
+
+			expect(JSON.parse(printed())).toEqual({ version: "2.3.4" });
 		});
 
 		it("should print the version for --version, whatever the command", async () => {
@@ -321,6 +331,28 @@ describe("help command", () => {
 			expect(long).toBe(await helpFor("help", "init"));
 		});
 
+		it.each(["check", "where"])(
+			"should write the PATH argument of %s as bullets under one sentence, each on lines of its own",
+			async (name) => {
+				const text = await helpFor(name, "--help");
+				const lines = text.split("\n");
+				const start = lines.findIndex((line) =>
+					line.includes("<PATH>...")
+				);
+				const end = lines.findIndex(
+					(line, index) => index > start && line === ""
+				);
+				const argument = lines.slice(start, end);
+
+				expect(
+					argument.filter((line) => /^ +- /.test(line)).length
+				).toBeGreaterThanOrEqual(3);
+				expect(argument.join(" ").split(/\s+/).length).toBeLessThan(
+					200
+				);
+			}
+		);
+
 		it("should end the short help with a pointer to --help, and the long help without", async () => {
 			expect(await helpFor("where", "-h")).toMatch(
 				/\n\nRun with --help for details\.$/
@@ -336,6 +368,16 @@ describe("help command", () => {
 				expect(text).toContain("EXIT CODES:");
 				expect(text).toContain("EXAMPLES:");
 			}
+		});
+
+		it("should list the general exit codes in every command's help, with what the command says differently", async () => {
+			const fmt = await helpFor("fmt-project", "--help");
+			const check = await helpFor("check", "--help");
+
+			for (const code of ["0", "1", "2"])
+				expect(fmt).toMatch(new RegExp(`\\n {4}${code} {4}`));
+			expect(check).toContain("no diagnostics");
+			expect(check).not.toContain("done (warnings included)");
 		});
 
 		it("should fit 'where -h' in one screen", async () => {
@@ -468,20 +510,26 @@ describe("help command", () => {
 
 	describe("rogen help <topic>", () => {
 		it.each(["routing", "Config"])(
-			"should point %s to rogen doc rather than print it",
+			"should print the %s topic as rogen doc does",
 			async (topic) => {
 				const result = await help(topic);
 
-				expect(result.isErr()).toBe(true);
-				expect((result as ResultError<Error>).error).toBeInstanceOf(
-					UsageError
-				);
-				expect((result as ResultError<Error>).error.message).toBe(
-					`"${topic}" is a topic, not a command. Run 'rogen doc ${topic.toLowerCase()}'.`
-				);
-				expect(info).not.toHaveBeenCalled();
+				expect(result.isOk()).toBe(true);
+				expect(printed()).toBe(helpTexts.topics[topic.toLowerCase()]);
 			}
 		);
+
+		it("should print a topic as JSON as rogen doc does", async () => {
+			await harness.run("help", {
+				positionals: ["layout"],
+				options: { json: true },
+			});
+
+			expect(JSON.parse(printed())).toEqual({
+				topic: "layout",
+				text: helpTexts.topics.layout,
+			});
+		});
 
 		it("should list no topic in the overview", async () => {
 			await help();

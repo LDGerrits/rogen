@@ -115,6 +115,34 @@ describe("domain/roblox/roblox", () => {
 			}
 		);
 
+		it("should say to separate folders with a slash when a dot joins them", () => {
+			const result = Target.parse("ReplicatedStorage.Shared", location);
+
+			expect(result.isErr() && result.error[0]).toMatchObject({
+				code: "roblox.unsupportedService",
+				message:
+					'"ReplicatedStorage.Shared" is not a supported service; separate folders with "/", as in "ReplicatedStorage/Shared".',
+				fixes: [
+					{
+						replace: {
+							from: '"ReplicatedStorage.Shared"',
+							to: '"ReplicatedStorage/Shared"',
+						},
+					},
+				],
+			});
+		});
+
+		it("should name the target, not an empty service, when it starts with a slash", () => {
+			const result = Target.parse("/ReplicatedStorage", location);
+
+			expect(result.isErr() && result.error[0]).toMatchObject({
+				code: "roblox.unsupportedService",
+				message:
+					'"/ReplicatedStorage" is not a supported service; a target starts with the service, not with "/". Did you mean "ReplicatedStorage"?',
+			});
+		});
+
 		it("should offer no replacement when nothing is close", () => {
 			const result = Target.parse("Zzzzzzzzzz", location);
 

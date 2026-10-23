@@ -155,7 +155,7 @@ describe("CoreBuildService", () => {
 					expect.objectContaining({ code: "meta.invalidSyntax" }),
 				]),
 			});
-			expect(result[0]).toMatchObject({ blockedBy: [result[1].label] });
+			expect(result[0]).toMatchObject({ blockedBy: [result[1].file] });
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
@@ -186,12 +186,38 @@ describe("CoreBuildService", () => {
 				[abs("default.rogen.json"), "notWritten"],
 				[abs("broken/default.rogen.json"), "notLoaded"],
 			]);
-			expect(result[0]).toMatchObject({ blockedBy: ["broken"] });
+			expect(result[0]).toMatchObject({
+				blockedBy: [abs("broken/default.rogen.json")],
+			});
 			expect(result[1]).toMatchObject({
-				label: "broken",
+				file: abs("broken/default.rogen.json"),
 				errors: [{ code: "config.invalidSyntax" }],
 			});
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should write the configs that load beside one that doesn't, when they are independent", async () => {
+			await fs.writeFile(abs("lobby/src/init.meta.json"), "{ nope");
+
+			const result = (
+				await buildServiceOfFs().build(
+					new MockConfigSelection([
+						loadable(abs("default.rogen.json")),
+						brokenEntry([], abs("broken/default.rogen.json")),
+						loadable(abs("lobby/default.rogen.json"), {
+							sourcePaths: [abs("lobby/src")],
+						}),
+					]),
+					{ independent: true }
+				)
+			).builds;
+
+			expect(outcomesOf(result)).toEqual([
+				[abs("default.rogen.json"), "wrote"],
+				[abs("broken/default.rogen.json"), "notLoaded"],
+				[abs("lobby/default.rogen.json"), "failed"],
+			]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
 		it("should keep the selection order when a config that doesn't load comes first", async () => {
@@ -204,7 +230,10 @@ describe("CoreBuildService", () => {
 				)
 			).builds;
 
-			expect(result.map(({ label }) => label)).toEqual(["a", "repo"]);
+			expect(result.map(({ file }) => file)).toEqual([
+				abs("a/default.rogen.json"),
+				abs("default.rogen.json"),
+			]);
 		});
 
 		it("should block every other config on each one that fails or doesn't load", async () => {
@@ -223,7 +252,10 @@ describe("CoreBuildService", () => {
 			).builds;
 
 			expect(result[0]).toMatchObject({
-				blockedBy: ["broken", "lobby"],
+				blockedBy: [
+					abs("broken/default.rogen.json"),
+					abs("lobby/default.rogen.json"),
+				],
 			});
 		});
 
@@ -249,7 +281,7 @@ describe("CoreBuildService", () => {
 			expect(result[1]).toMatchObject({
 				errors: [{ code: "output.writeFailed" }],
 			});
-			expect(result[2]).toMatchObject({ blockedBy: [result[1].label] });
+			expect(result[2]).toMatchObject({ blockedBy: [result[1].file] });
 			expect(await fs.exists(abs("arena/default.project.json"))).toBe(
 				false
 			);
@@ -318,9 +350,8 @@ describe("CoreBuildService", () => {
 		it("should build every config and write none", async () => {
 			const result = await checkOf(configOf());
 
-			expect(result).toMatchObject([
-				{ outcome: "notWritten", blockedBy: [] },
-			]);
+			expect(result).toMatchObject([{ outcome: "wouldWrite" }]);
+			expect(result[0]).not.toHaveProperty("blockedBy");
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
@@ -471,7 +502,7 @@ describe("CoreBuildService", () => {
 						severity: DiagnosticSeverity.Warning,
 						code: "output.differs",
 						resource: abs("default.project.json"),
-						message: expect.stringContaining("rogen build"),
+						message: expect.stringContaining("rogen write"),
 					},
 				]);
 				expect(await fs.readFile(abs("default.project.json"))).toBe(
@@ -491,12 +522,12 @@ describe("CoreBuildService", () => {
 						code: "output.differs",
 						resource: abs("dist.project.json"),
 						message: expect.stringContaining(
-							"Run 'rogen build dist.rogen.json' to write it again; what it holds comes from dist.rogen.json"
+							"Run 'rogen write dist.rogen.json' to write it again; what it holds comes from dist.rogen.json"
 						),
 						fixes: [
 							{
 								run: {
-									command: "rogen build dist.rogen.json",
+									command: "rogen write dist.rogen.json",
 									cwd: abs(),
 								},
 							},
@@ -513,12 +544,12 @@ describe("CoreBuildService", () => {
 				expect(checked.warnings).toMatchObject([
 					{
 						message: expect.stringContaining(
-							"its sources changed since it was written. Run 'rogen build'"
+							"its sources changed since it was written. Run 'rogen write'"
 						),
 						fixes: [
 							{
 								run: {
-									command: "rogen build",
+									command: "rogen write",
 									cwd: abs("."),
 								},
 							},
@@ -722,8 +753,8 @@ describe("CoreBuildService", () => {
 				)
 			).unwrap();
 
-			expect(result.configs.map(({ config }) => config.label)).toEqual([
-				"repo",
+			expect(result.configs.map(({ config }) => config.file)).toEqual([
+				abs("default.rogen.json"),
 			]);
 			expect(result.errors).toEqual(errors);
 		});

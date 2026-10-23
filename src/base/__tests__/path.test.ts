@@ -15,6 +15,7 @@ import {
 	samePath,
 	stemOf,
 	toNative,
+	toShellWord,
 	toPosix,
 } from "../path.js";
 
@@ -301,5 +302,25 @@ describe("toNative", () => {
 		expect(toNative("/repo/src/a\\b.luau", path.posix)).toBe(
 			"/repo/src/a\\b.luau"
 		);
+	});
+});
+
+describe("toShellWord", () => {
+	it("should leave a plain path as it is", () => {
+		expect(toShellWord("projects/game-2", path.posix)).toBe(
+			"projects/game-2"
+		);
+		expect(toShellWord("projects\\game", path.win32)).toBe(
+			"projects\\game"
+		);
+	});
+
+	it("should single-quote a word that a POSIX shell would split or expand", () => {
+		expect(toShellWord("my game", path.posix)).toBe("'my game'");
+		expect(toShellWord("it's $HOME", path.posix)).toBe("'it'\\''s $HOME'");
+	});
+
+	it("should double-quote a word for cmd.exe and PowerShell, with the path in Windows form", () => {
+		expect(toShellWord("my game/sub", path.win32)).toBe('"my game\\sub"');
 	});
 });

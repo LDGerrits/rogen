@@ -37,6 +37,8 @@ import {
 	SyncbackRequest,
 	SyncbackResult,
 	UnplacedInstance,
+	compiledPathRefusal,
+	placeFileAmong,
 } from "./syncback.js";
 import { SyncbackService } from "./syncback-service.js";
 import { SyncbackLayout } from "./syncback-layout.js";
@@ -175,6 +177,14 @@ export class CoreSyncbackService implements SyncbackService {
 		private readonly buildService: BuildService,
 		private readonly rojoService: RojoCommandService
 	) {}
+
+	placeFileAmong(names: readonly string[]): string | undefined {
+		return placeFileAmong(names);
+	}
+
+	refusalFor(project: ResolvedConfig): DiagnosticsError | undefined {
+		return compiledPathRefusal(project);
+	}
 
 	async plan(request: SyncbackRequest): Promise<Result<SyncbackPlan, Error>> {
 		if (request.project.isAdopted) return this.planListed(request);
@@ -315,7 +325,7 @@ export class CoreSyncbackService implements SyncbackService {
 		if (!built)
 			return err(
 				new UsageError(
-					`${project.label} does not build, so there is no project file to read; run 'rogen build' to see why.`
+					`${project.label} does not build, so there is no project file to read; run 'rogen write' to see why.`
 				)
 			);
 		const written = JSON.parse(ProjectText.of(built)) as RojoProjectFile;

@@ -3,8 +3,8 @@ exit 0
 stdout:
   rogen-build
   Writes the project file of default.rogen.json here, or of the config you name, beside it
-  (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with
-  Rojo.
+  (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo,
+  as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.
   
   USAGE:
       rogen build [OPTIONS] [PROJECT]
@@ -19,33 +19,37 @@ stdout:
                                always, never]
       -h, --help               Print help.
           --json               Print one JSON document instead of text.
-      -o, --output <OUTPUT>    Also build the project into this place or model file with Rojo (.rbxl,
-                               .rbxlx, .rbxm or .rbxmx).
-      -p, --plugin <PLUGIN>    Also build the project into Roblox's plugins folder with Rojo, under
-                               this file name.
+      -o, --output <OUTPUT>    Build the project into this place or model file with Rojo (.rbxl,
+                               .rbxlx, .rbxm or .rbxmx). This or -p is required.
+      -p, --plugin <PLUGIN>    Build the project into Roblox's plugins folder with Rojo, under this
+                               file name. This or -o is required.
       -q, --quiet              Only print errors.
       -v, --verbose            Print debug output; -vv, trace output. (repeatable)
       -V, --version            Print the version.
           --watch              Keep going: write the project file again whenever names or configs
-                               change. With -o or -p, build with Rojo after each write, and again
-                               after an edit inside a file under the source paths. Press Ctrl+C to
-                               stop; --json prints one JSON object per line.
+                               change. Build with Rojo after each write, and again after an edit
+                               inside a file under the source paths. Press Ctrl+C to stop; --json
+                               prints one JSON object per line.
+  
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
-      rogen build
-      rogen build places/lobby
       rogen build -o game.rbxl
-      rogen build --watch
-      rogen build --watch -o game.rbxl
-      rogen build --json
+      rogen build places/lobby -o lobby.rbxl
+      rogen build -p Tool.rbxm
+      rogen build -o game.rbxl --watch
+      rogen build -o game.rbxl --json
 
 $ rogen build --json --help
 exit 0
 stdout:
   {
     "name": "build",
-    "summary": "Writes the project file; with -o or -p, builds with Rojo",
-    "description": "Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json); with -o or -p, also builds a place, model or plugin with Rojo.",
+    "summary": "Writes the project file, then builds with Rojo",
+    "description": "Writes the project file of default.rogen.json here, or of the config you name, beside it (dist.rogen.json writes dist.project.json), then builds a place, model or plugin from it with Rojo, as 'rojo build' does: -o or -p is required. To write the project file only, run 'rogen write'.",
     "args": [
       {
         "name": "project",
@@ -63,18 +67,18 @@ stdout:
         "name": "output",
         "short": "o",
         "type": "string",
-        "description": "Also build the project into this place or model file with Rojo (.rbxl, .rbxlx, .rbxm or .rbxmx)."
+        "description": "Build the project into this place or model file with Rojo (.rbxl, .rbxlx, .rbxm or .rbxmx). This or -p is required."
       },
       {
         "name": "plugin",
         "short": "p",
         "type": "string",
-        "description": "Also build the project into Roblox's plugins folder with Rojo, under this file name."
+        "description": "Build the project into Roblox's plugins folder with Rojo, under this file name. This or -o is required."
       },
       {
         "name": "watch",
         "type": "boolean",
-        "description": "Keep going: write the project file again whenever names or configs change. With -o or -p, build with Rojo after each write, and again after an edit inside a file under the source paths. Press Ctrl+C to stop; --json prints one JSON object per line."
+        "description": "Keep going: write the project file again whenever names or configs change. Build with Rojo after each write, and again after an edit inside a file under the source paths. Press Ctrl+C to stop; --json prints one JSON object per line."
       }
     ],
     "effects": [
@@ -83,25 +87,24 @@ stdout:
       "longRunning"
     ],
     "examples": [
-      "rogen build",
-      "rogen build places/lobby",
       "rogen build -o game.rbxl",
-      "rogen build --watch",
-      "rogen build --watch -o game.rbxl",
-      "rogen build --json"
+      "rogen build places/lobby -o lobby.rbxl",
+      "rogen build -p Tool.rbxm",
+      "rogen build -o game.rbxl --watch",
+      "rogen build -o game.rbxl --json"
     ],
     "exitCodes": {
       "0": "done (warnings included)",
-      "1": "the project has errors",
-      "2": "the command line is wrong"
+      "1": "the project has a problem: an error, or Rojo failing",
+      "2": "the command line is wrong, or a terminal is needed and there is none"
     },
     "output": {
       "document": "{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}",
-      "lines": "{build:BuildEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",file:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}"
+      "lines": "{build:BuildEntry}|{rojo:RojoEntry}|{notice:{kind:\"added\"|\"removed\"|\"broken\"|\"recovered\",config:string,keptLastValid?:bool,diagnostics?:[Diagnostic]}}|{error:Error}"
     },
     "failure": "{diagnostics:[Diagnostic]}|{error:Error}",
     "shapes": {
-      "BuildEntry": "{config:string,file:string,projectFile:string|null,outcome:\"wrote\"|\"unchanged\"|\"notWritten\",blockedBy?:[string],diagnostics:[Diagnostic]}",
+      "BuildEntry": "{config:string,projectFile:string|null,outcome:\"wrote\"|\"unchanged\"|\"wouldWrite\"|\"notWritten\",blockedBy?:[string],diagnostics:[Diagnostic]}",
       "Diagnostic": "{file:string,line?:int,column?:int,severity:\"error\"|\"warning\",code:string,message:string,url:string,related?:[{file:string,message:string}],fixes?:[Fix]}",
       "Fix": "{rename:{from:string,to:string}}|{replace:{file:string,line:int,column:int,from:string,to:string}}|{run:{command:string,cwd:string}}",
       "RojoEntry": "{command:\"build\",outcome:\"built\"|\"failed\"|\"notRun\",project:string|null,output?:string,plugin?:string,messages:[{severity:\"error\"|\"warning\"|\"info\",text:string}],diagnostics?:[Diagnostic],error?:Error}",
@@ -119,7 +122,7 @@ stdout:
       rogen help [OPTIONS] [NAME] [PREFIX]
   
   ARGS:
-      <NAME>      A command, a diagnostic code such as route.strayAt, or 'codes' for the list of every
+      <NAME>      A command, a topic such as routing, a diagnostic code, or 'codes' to list every
                   code.
       <PREFIX>    With 'codes': only the codes that start with it, such as route or route.stray.
   
@@ -131,6 +134,11 @@ stdout:
       -q, --quiet            Only print errors.
       -v, --verbose          Print debug output; -vv, trace output. (repeatable)
       -V, --version          Print the version.
+  
+  EXIT CODES:
+      0    done (warnings included)
+      1    the project has a problem: an error, or Rojo failing
+      2    the command line is wrong, or a terminal is needed and there is none
   
   EXAMPLES:
       rogen help where

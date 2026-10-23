@@ -23,14 +23,16 @@ import {
 	WatchReporter,
 } from "./watch-log.js";
 
-/** `rogen build --watch` and `rogen sourcemap --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo after each write when asked to. */
+/** `rogen build --watch`, `rogen write --watch` and `rogen sourcemap --watch`: builds, then rebuilds whenever sources or configs change, and runs Rojo after each write when asked to. */
 export class BuildWatch {
 	constructor(
 		private readonly accessor: ServicesAccessor,
 		private readonly refs: readonly string[],
 		private readonly json: boolean,
 		/** What to run Rojo for after each write, when the files are not all that is wanted. */
-		private readonly step: RojoStep | undefined
+		private readonly step: RojoStep | undefined,
+		/** The command the header names when no Rojo step does. */
+		private readonly command = "build"
 	) {}
 
 	/** What Rojo wrote to `file` in place of the screen, printed when its run succeeded. */
@@ -85,13 +87,13 @@ export class BuildWatch {
 		}
 		const printing = planned?.printed ?? false;
 		const log: WatchReporter = this.json
-			? new WatchJsonLog(logService)
+			? new WatchJsonLog(logService, cwd)
 			: printing
 				? new PrintedWatchLog(logService, cwd)
 				: new WatchLog(
 						logService,
 						cwd,
-						`${this.step?.command ?? "build"} --watch`
+						`${this.step?.command ?? this.command} --watch`
 					);
 		const watched = watchService.watch(
 			selection.value,

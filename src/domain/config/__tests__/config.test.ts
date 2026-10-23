@@ -2,7 +2,6 @@ import path from "path";
 import { mockConfig } from "./mock-config-service.js";
 import { DeclaredKeys } from "../declared-keys.js";
 import {
-	configLabel,
 	fieldOf,
 	isConfigFileName,
 	isDefaultProjectFile,
@@ -65,12 +64,6 @@ describe("domain/config/config", () => {
 			"dist.project.json",
 		])("should not accept %s", (name) => {
 			expect(isConfigFileName(name)).toBe(false);
-		});
-	});
-
-	describe("configLabel", () => {
-		it("should be the name of the folder the config lies in", () => {
-			expect(configLabel("/repo/lobby/default.rogen.json")).toBe("lobby");
 		});
 	});
 

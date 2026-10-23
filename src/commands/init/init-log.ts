@@ -1,7 +1,7 @@
 import path from "path";
 import { formatJsonDocument } from "../../base/json.js";
 import { Result, err, ok } from "../../base/result.js";
-import { toPosix } from "../../base/path.js";
+import { toPosix, toShellWord } from "../../base/path.js";
 import { plural } from "../../base/strings.js";
 import { BuildRun, ConfigBuild } from "../../domain/build/build.js";
 import {
@@ -69,6 +69,7 @@ export const initDocumentShape = S.object({
 	warnings: S.optional(S.array(diagnosticShape)),
 	nextSteps: S.optional(
 		S.object({
+			directory: S.optional(S.string),
 			setup: S.array(S.string),
 			run: S.array(S.string),
 			edits: S.array(S.string),
@@ -99,12 +100,18 @@ const indent = (line: string) => `  ${line}`;
 
 const STUDIO_STEP = "In Studio, press Connect in the Rojo plugin.";
 
-const stepLines = ({ setup, run, edits }: NextSteps): string[] => [
+const stepLines = ({ directory, setup, run, edits }: NextSteps): string[] => [
+	...(directory !== undefined
+		? [
+				"In each terminal, start in the project folder:",
+				indent(`cd ${toShellWord(directory)}`),
+			]
+		: []),
 	...setup,
 	...(run.length > 0
 		? [
 				run.length === 1 ? "Run:" : "Run each in its own terminal:",
-				...run.map(indent),
+				...run.flatMap((step) => step.split("\n").map(indent)),
 			]
 		: []),
 	...(run.some((line) => line.startsWith("rogen serve"))
@@ -228,7 +235,7 @@ export class InitLog implements InitReporter {
 					plan.liftedFrom
 						? ` ${plan.liftedFrom} is as it was, so Rojo still reads it.`
 						: ""
-				} Fix default.rogen.json and run rogen build.`
+				} Fix default.rogen.json and run rogen write.`
 			);
 			return err(new ReportedError(new DiagnosticsError(run.errors)));
 		}
@@ -276,6 +283,7 @@ export class InitJsonLog implements InitReporter {
 
 	constructor(
 		private readonly logService: LogService,
+		private readonly cwd: string,
 		private readonly directory: string,
 		private readonly dryRun = false
 	) {}
@@ -343,7 +351,7 @@ export class InitJsonLog implements InitReporter {
 	}
 
 	done(plan: InitPlan, run: BuildRun): Result<void, Error> {
-		const built = buildDocument(run.builds, foundBy);
+		const built = buildDocument(run.builds, this.cwd, foundBy);
 		const written = this.writtenSoFar();
 		return this.print(
 			{

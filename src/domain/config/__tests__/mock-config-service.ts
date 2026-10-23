@@ -9,6 +9,7 @@ import {
 	BrokenConfigEntry,
 	ConfigEntry,
 	ConfigFileCheck,
+	ConfigFolderCheck,
 	ConfigReload,
 	ReloadableSelection,
 	ConfigCover,
@@ -144,6 +145,14 @@ export class MockConfigService implements ConfigService {
 		return [];
 	}
 
+	async configsHere(): Promise<string[]> {
+		return this.entries.map(({ file }) => file);
+	}
+
+	async plainProjectsHere(): Promise<string[]> {
+		return [];
+	}
+
 	async resolveNames(
 		args: readonly string[]
 	): Promise<Result<string[], Error>> {
@@ -207,7 +216,15 @@ export class MockConfigService implements ConfigService {
 		return ok(false);
 	}
 
+	async staleConfigsIn(): Promise<readonly Diagnostic[]> {
+		return [];
+	}
+
 	registerFileCheck(_check: ConfigFileCheck): Disposable {
+		return { [Symbol.dispose]: () => {} };
+	}
+
+	registerFolderCheck(_check: ConfigFolderCheck): Disposable {
 		return { [Symbol.dispose]: () => {} };
 	}
 }

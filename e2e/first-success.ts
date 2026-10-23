@@ -155,8 +155,8 @@ export async function follow(cli: string, variant: Variant): Promise<Success> {
 		}
 
 		const project = variant.project ?? [];
-		const built = await rogen(["build", ...project]);
-		if (built.exitCode !== 0) throw fail("build", built);
+		const built = await rogen(["write", ...project]);
+		if (built.exitCode !== 0) throw fail("write", built);
 
 		const mappedPaths: Record<string, readonly string[]> = {};
 		for (const place of variant.mapped ?? []) {

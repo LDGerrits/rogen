@@ -21,6 +21,8 @@ import {
 	TextPromptOptions,
 } from "../../../platform/prompt/prompt-service.js";
 import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import { CoreConfigService } from "../../config/core-config-service.js";
+import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import { CoreInitService } from "../core-init-service.js";
 import { InitPlan, InitWritten } from "../init-service.js";
 
@@ -83,10 +85,16 @@ describe("CoreInitService", () => {
 	beforeEach(async () => {
 		fileSystem = new MemoryFileSystemService();
 		processes = new MockProcessService();
+		configs = new CoreConfigService(
+			fileSystem,
+			new NativeEnvironmentService({}, directory)
+		);
 		processes.installed.set("rojo", "/bin/rojo");
 		processes.outputs.set("/bin/rojo", ROJO_VERSION);
 		await fileSystem.createDirectory(directory);
 	});
+
+	let configs: CoreConfigService;
 
 	const serviceFor = (
 		promptService: PromptService = new MockPromptService([], false),
@@ -98,7 +106,9 @@ describe("CoreInitService", () => {
 			promptService,
 			environmentService,
 			new CoreToolchainService(fileSystem),
-			processes
+			processes,
+			undefined,
+			configs
 		);
 		return service;
 	};
@@ -154,7 +164,11 @@ describe("CoreInitService", () => {
 			);
 		};
 
-		it.each(["default.rogen.json", "default.rogen.jsonc"])(
+		it.each([
+			"default.rogen.json",
+			"default.rogen.jsonc",
+			"game.rogen.json",
+		])(
 			"should fail with init.configExists for %s, naming where to look",
 			async (name) => {
 				await write(name, "{}");
@@ -172,6 +186,26 @@ describe("CoreInitService", () => {
 				]);
 			}
 		);
+
+		it("should fail with what a folder check finds, and write nothing", async () => {
+			await write(".rogen.json", "{}");
+			configs.registerFolderCheck(async (folder) => [
+				errorDiagnostic(
+					"stale.config",
+					{ resource: path.join(folder, ".rogen.json") },
+					"is old."
+				),
+			]);
+
+			expect(
+				await refused(new MockPromptService([]), { ask: false })
+			).toMatchObject([
+				{
+					code: "stale.config",
+					resource: path.join(directory, ".rogen.json"),
+				},
+			]);
+		});
 
 		it("should ask nothing and plan nothing, whatever the flags ask for", async () => {
 			await write("default.rogen.json", "{}");

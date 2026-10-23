@@ -1,17 +1,15 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"lobby",
 			"-v"
 		],
 		[
-			"build",
+			"write",
 			"match",
 			"-v"
 		]
 	],
-	"output": [
-		"build"
-	]
+	"output": ["write"]
 }

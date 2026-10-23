@@ -1,18 +1,11 @@
 {
 	"steps": [
-		[
-			"build"
-		],
-		[
-			"build",
-			"dist"
-		]
+		["build", "-o", "game.rbxl"],
+		["build", "dist", "-o", "dist.rbxl"]
 	],
 	"show": [
 		"default.project.json",
 		"dist.project.json"
 	],
-	"output": [
-		"build"
-	]
+	"output": ["build"]
 }

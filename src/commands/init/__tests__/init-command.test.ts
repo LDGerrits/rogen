@@ -112,8 +112,7 @@ describe("init command", () => {
 				directories: [path.join(cwd, "src")],
 				built: [
 					{
-						config: "my-game",
-						file: path.join(cwd, "default.rogen.json"),
+						config: "default.rogen.json",
 						projectFile: path.join(cwd, "default.project.json"),
 						outcome: "wrote",
 						diagnostics: [],
@@ -125,7 +124,7 @@ describe("init command", () => {
 					run: ["rbxtsc -w", "rogen serve"],
 					edits: [
 						'Add your own routes under "routes" in default.rogen.json.',
-						"Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
+						"Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 					],
 				},
 			});
@@ -205,7 +204,7 @@ describe("init command", () => {
 
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
 				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Created default.rogen.json.",
 				"success: Created .gitignore.",
@@ -224,7 +223,7 @@ describe("init command", () => {
 				"info:   rogen serve",
 				"info: In Studio, press Connect in the Rojo plugin.",
 				'info: Add your own routes under "routes" in default.rogen.json.',
-				"info: Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.",
+				"info: Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.",
 				"outro: Wrote 11 files.",
 			]);
 		});
@@ -294,8 +293,7 @@ describe("init command", () => {
 
 			expect(JSON.parse(logService.entries[0].text).built).toEqual([
 				{
-					config: "my-game",
-					file: path.join(cwd, "default.rogen.json"),
+					config: "default.rogen.json",
 					projectFile: path.join(cwd, "default.project.json"),
 					outcome: "wrote",
 					diagnostics: [],
@@ -362,7 +360,7 @@ describe("init command", () => {
 			expect(await exists("default.project.json")).toBe(false);
 			expect(logService.lines).toEqual([
 				"intro: rogen init",
-				"info: Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
+				"info: The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.",
 				"info: Took the defaults: --kind place, --language luau, --no-darklua, --no-places, --source-path src, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.",
 				"success: Would create default.rogen.json.",
 				"success: Would create .gitignore.",
@@ -858,5 +856,78 @@ describe("init command", () => {
 			"success: Created lobby/default.rogen.json."
 		);
 		expect(await exists("lobby/default.project.json")).toBe(true);
+	});
+
+	it("should start the next steps by changing into the folder", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {}, [
+			"lobby",
+		]);
+
+		const lines = logService.lines;
+		const step = lines.indexOf("step: Next steps");
+		expect(lines.slice(step + 1, step + 4)).toEqual([
+			"info: In each terminal, start in the project folder:",
+			"info:   cd lobby",
+			"info: Run:",
+		]);
+	});
+
+	it("should quote a folder that a shell would split", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {}, [
+			"my game",
+		]);
+
+		expect(logService.lines).toContain("info:   cd 'my game'");
+	});
+
+	it("should not change folder when it ran in the project's own", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService);
+
+		expect(logService.lines.join("\n")).not.toContain("cd ");
+	});
+
+	it("should name the folder in --json, with the commands left as they are", async () => {
+		const logService = new MockLogService();
+
+		await runInit(
+			new MockPromptService([], false),
+			logService,
+			{ json: true },
+			["lobby"]
+		);
+
+		const { nextSteps } = JSON.parse(logService.entries[0].text);
+		expect(nextSteps.directory).toBe("lobby");
+		expect(nextSteps.run).toEqual(["rogen serve"]);
+	});
+
+	it("should leave the folder out of --json when it ran in the project's own", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {
+			json: true,
+		});
+
+		expect(
+			JSON.parse(logService.entries[0].text).nextSteps
+		).not.toHaveProperty("directory");
+	});
+
+	it("should name the sample where the user finds it from here, not from the new folder", async () => {
+		const logService = new MockLogService();
+
+		await runInit(new MockPromptService([], false), logService, {}, [
+			"lobby",
+		]);
+
+		expect(logService.lines).toContain(
+			"info: The Greeter sample is in lobby/src/Greeter, and Rojo's sample Baseplate and lighting in lobby/place, which the tree mounts. Pass --no-sample for an empty lobby/src and no lobby/place."
+		);
 	});
 });

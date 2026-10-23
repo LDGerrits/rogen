@@ -1,4 +1,5 @@
 import { relativeTo } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
 import { plural } from "../../base/strings.js";
 import {
 	RebuildReport,
@@ -11,7 +12,6 @@ import { LogService } from "../../platform/log/log-service.js";
 import { ConfigNotice } from "../../domain/config/config-service.js";
 import { ResolvedConfig } from "../../domain/config/resolved-config.js";
 import { SharedDiagnostics } from "../../domain/build/build.js";
-import { toNative } from "../../base/path.js";
 import {
 	diagnosticToJson,
 	errorToJson,
@@ -78,7 +78,7 @@ function titleOf(cause: WatchCause, cwd: string): string {
 			return describeChange({
 				sourceFiles: cause.sourceFiles,
 				configFiles: cause.configFiles.map((file) =>
-					relativeTo(cwd, file)
+					configPath(cwd, file)
 				),
 				reloaded: cause.reloaded,
 			});
@@ -121,7 +121,7 @@ export class WatchLog implements WatchReporter {
 	begin(configs: readonly ResolvedConfig[], home?: string): void {
 		this.buildLog.begin(
 			this.command,
-			configs.map(({ label }) => label),
+			configs.map(({ file }) => configPath(this.cwd, file)),
 			home
 		);
 	}
@@ -163,7 +163,7 @@ export class WatchLog implements WatchReporter {
 	}
 
 	protected notice(notice: ConfigNotice): void {
-		const name = relativeTo(this.cwd, notice.file);
+		const name = configPath(this.cwd, notice.file);
 		switch (notice.kind) {
 			case "recovered":
 				this.logService.info(`${name} loads again.`);
@@ -190,7 +190,6 @@ export class WatchLog implements WatchReporter {
 		sharedWarnings: SharedDiagnostics
 	): void {
 		const warnings = sharedWarnings.take(
-			build.label,
 			build.file,
 			unreported.filter((diagnostic) => !isError(diagnostic))
 		);
@@ -202,7 +201,7 @@ export class WatchLog implements WatchReporter {
 					repeatedFailure
 						? "same errors as before"
 						: counted(repeated, "as before"),
-					BuildLog.sameAs("warnings", warnings.sameAs),
+					this.buildLog.sameAs("warnings", warnings.sameAs),
 					counted(fixed, "fixed"),
 				],
 			}
@@ -239,7 +238,10 @@ export class PrintedWatchLog extends WatchLog {
 }
 
 export class WatchJsonLog implements WatchReporter {
-	constructor(private readonly logService: LogService) {}
+	constructor(
+		private readonly logService: LogService,
+		private readonly cwd: string
+	) {}
 
 	begin(): void {}
 
@@ -248,7 +250,7 @@ export class WatchJsonLog implements WatchReporter {
 	update(update: WatchUpdate): void {
 		update.notices.forEach((notice) => this.notice(notice));
 		for (const { build } of update.reports)
-			this.line({ build: buildEntry(build) });
+			this.line({ build: buildEntry(build, this.cwd) });
 	}
 
 	error(error: Error): void {
@@ -267,7 +269,7 @@ export class WatchJsonLog implements WatchReporter {
 		this.line({
 			notice: {
 				kind: notice.kind,
-				file: toNative(notice.file),
+				config: configPath(this.cwd, notice.file),
 				...(notice.kind === "broken" && {
 					keptLastValid: notice.keptLastValid,
 					diagnostics: notice.errors.map(diagnosticToJson),

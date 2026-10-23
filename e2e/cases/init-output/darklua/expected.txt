@@ -15,11 +15,11 @@ stdout:
       rogen serve dist
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in default.rogen.json.
-    Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
     Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
   Wrote 4 files.
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 
@@ -29,6 +29,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  dist.project.json
   dist.rogen.json
 
 default.rogen.json:
@@ -71,3 +72,8 @@ $ rojo sourcemap default.project.json
 project: DataModel
   ServerScriptService: ServerScriptService
     Save: Script  <- src/Save.server.luau
+
+$ rojo sourcemap dist.project.json
+project: DataModel
+  ServerScriptService: ServerScriptService
+    Save: Script  <- dist/Save.server.luau

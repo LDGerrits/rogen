@@ -13,6 +13,7 @@ import { ConfigLoader } from "./config-loader.js";
 import {
 	ConfigEntry,
 	ConfigFileCheck,
+	ConfigFolderCheck,
 	ReloadableSelection,
 	ConfigService,
 	ConfigCover,
@@ -128,6 +129,14 @@ export class CoreConfigService implements ConfigService {
 		);
 	}
 
+	configsHere(): Promise<string[]> {
+		return this.discovery.list(this.environmentService.cwd);
+	}
+
+	plainProjectsHere(): Promise<string[]> {
+		return this.discovery.plainProjects(this.environmentService.cwd);
+	}
+
 	async resolveNames(
 		args: readonly string[]
 	): Promise<Result<string[], Error>> {
@@ -219,6 +228,14 @@ export class CoreConfigService implements ConfigService {
 
 	async read(file: string): Promise<ConfigEntry> {
 		return (await ManagedConfig.open(file, this.loader)).entry;
+	}
+
+	registerFolderCheck(check: ConfigFolderCheck): Disposable {
+		return this.discovery.registerFolderCheck(check);
+	}
+
+	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
+		return this.discovery.staleConfigsIn(folder);
 	}
 
 	registerFileCheck(check: ConfigFileCheck): Disposable {

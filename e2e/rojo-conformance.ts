@@ -50,7 +50,7 @@ export function roundTrip(
 
 		const placeOfOriginal = placeOf("original.rbxmx");
 		fs.renameSync(file, path.join(project, "default.rogen.json"));
-		const [command, args] = invocation(cli, ["build"]);
+		const [command, args] = invocation(cli, ["write"]);
 		const rogen = spawnSync(command, [...args], {
 			cwd: project,
 			encoding: "utf8",

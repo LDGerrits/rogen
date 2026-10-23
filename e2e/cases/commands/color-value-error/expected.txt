@@ -1,9 +1,9 @@
-$ rogen build --color sometimes
+$ rogen write --color sometimes
 exit 2
 stderr:
   error: 'sometimes' is not a value of '--color'. The values are auto, always and never.
 
-$ rogen build --color
+$ rogen write --color
 exit 2
 stderr:
   error: Option '--color' needs a value.

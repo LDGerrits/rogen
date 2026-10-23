@@ -626,5 +626,227 @@ describe("CompiledPathCheck", () => {
 				});
 			});
 		});
+
+		describe("orphan compiled files", () => {
+			let fs: MemoryFileSystemService;
+
+			const write = (...paths: string[]) => writeFiles(fs, ...paths);
+
+			const check = async (overrides: ResolvedConfigSpec = {}) => {
+				const config = distConfigOf(overrides);
+				const index = await indexOf(fs, config.sourcePaths);
+				const warnings = await new CompiledPathCheck(fs).check(
+					placeFiles(index, config, syncTools).unwrap()
+				);
+				return warnings.filter(
+					({ code }) => code === "compiled.orphan"
+				);
+			};
+
+			beforeEach(() => {
+				fs = new MemoryFileSystemService();
+			});
+
+			it("should warn about a compiled file no source makes, naming its folder", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/A/Old.luau"
+				);
+
+				const [warning, ...others] = await check();
+
+				expect(others).toEqual([]);
+				expect(warning).toMatchObject({
+					code: "compiled.orphan",
+					resource: abs("dist/A"),
+					message:
+						"dist/A/Old.luau is in the compiled path and no source file makes it, so Rojo may still sync it. Delete it, or compile again from a clean folder.",
+				});
+			});
+
+			it("should warn in a folder that cannot collapse", async () => {
+				await write(
+					"src/A/Real.server.luau",
+					"src/A/Other.luau",
+					"dist/A/Real.server.luau",
+					"dist/A/Other.luau",
+					"dist/A/Old.luau"
+				);
+				await fs.writeFile(abs("src/A/Other.meta.json"), "{}");
+				await fs.writeFile(abs("dist/A/Other.meta.json"), "{}");
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain("dist/A/Old.luau");
+			});
+
+			it("should warn once per folder and list a few of its files", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/A/O1.luau",
+					"dist/A/O2.luau",
+					"dist/A/O3.luau",
+					"dist/A/O4.luau",
+					"dist/B/Gone.luau",
+					"src/B/Kept.luau",
+					"dist/B/Kept.luau"
+				);
+
+				const warnings = await check();
+
+				expect(warnings.map(({ resource }) => resource)).toEqual([
+					abs("dist/A"),
+					abs("dist/B"),
+				]);
+				expect(warnings[0].message).toBe(
+					"dist/A/O1.luau, dist/A/O2.luau, dist/A/O3.luau, … are in the compiled path and no source file makes them, so Rojo may still sync them. Delete them, or compile again from a clean folder."
+				);
+			});
+
+			it("should find an orphan in a nested folder", async () => {
+				await write(
+					"src/A/B/Real.luau",
+					"dist/A/B/Real.luau",
+					"dist/A/B/Old.luau"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.resource).toBe(abs("dist/A/B"));
+			});
+
+			it("should not warn about a compiled file that has its source", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"src/A/Server.server.luau",
+					"dist/A/Server.server.luau",
+					"src/A/Plain.lua",
+					"dist/A/Plain.luau"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should match a roblox-ts source to the .luau it compiles to", async () => {
+				await write(
+					"src/A/Real.ts",
+					"src/A/Comp.tsx",
+					"src/A/Tool.server.ts",
+					"src/A/index.ts",
+					"src/types.d.ts",
+					"dist/A/Real.luau",
+					"dist/A/Comp.luau",
+					"dist/A/Tool.server.luau",
+					"dist/A/init.luau"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should warn about a roblox-ts output no .ts makes", async () => {
+				await write(
+					"src/A/Real.ts",
+					"dist/A/Real.luau",
+					"dist/A/Old.luau"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain("dist/A/Old.luau");
+			});
+
+			it("should not warn about a file Rojo does not sync", async () => {
+				await write(
+					"src/A/Real.ts",
+					"dist/A/Real.luau",
+					"dist/A/Lib.d.ts",
+					"dist/tsconfig.tsbuildinfo",
+					"dist/A/notes.md"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should still warn about an orphan Rojo syncs beside files it does not", async () => {
+				await write(
+					"src/A/Real.ts",
+					"dist/A/Real.luau",
+					"dist/A/Lib.d.ts",
+					"dist/A/Old.luau"
+				);
+
+				const [warning] = await check();
+
+				expect(warning.message).toContain("dist/A/Old.luau");
+				expect(warning.message).not.toContain("Lib.d.ts");
+			});
+
+			it("should match the Lua modules a processor makes from data and meta files", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"src/A/Rates.json",
+					"dist/A/Rates.lua",
+					"src/A/Model.model.json",
+					"dist/A/Model.model.lua",
+					"src/A/Real.meta.json",
+					"dist/A/Real.meta.lua"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should count a source Rogen leaves out as making its compiled file", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"src/A/Spec.spec.luau",
+					"dist/A/Spec.spec.luau"
+				);
+
+				expect(await check({ ignored: ["**/*.spec.luau"] })).toEqual(
+					[]
+				);
+			});
+
+			it("should report nothing without a compiled path", async () => {
+				await write("src/A/Real.luau", "dist/A/Old.luau");
+
+				expect(await check({ compiledPath: undefined })).toEqual([]);
+			});
+
+			it("should leave a compiled file outside the source paths' folders alone", async () => {
+				await write(
+					"src/A/Real.luau",
+					"tests/T.luau",
+					"dist/src/A/Real.luau",
+					"dist/tests/T.luau",
+					"dist/other/X.luau"
+				);
+
+				expect(
+					await check({ sourcePaths: [abs("src"), abs("tests")] })
+				).toEqual([]);
+			});
+
+			it("should report nothing when nothing is emitted for the source path", async () => {
+				await write("src/A/Real.luau", "dist/Shifted/Real.luau");
+
+				expect(await check()).toEqual([]);
+			});
+
+			it("should ignore hidden compiled files", async () => {
+				await write(
+					"src/A/Real.luau",
+					"dist/A/Real.luau",
+					"dist/A/.gitkeep"
+				);
+
+				expect(await check()).toEqual([]);
+			});
+		});
 	});
 });

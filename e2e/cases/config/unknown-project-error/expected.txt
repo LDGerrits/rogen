@@ -1,9 +1,9 @@
-$ rogen build lobyy
+$ rogen write lobyy
 exit 1
 stderr:
   error: "lobyy" not found. Name a folder with a default.rogen.json, a .rogen.json file, or a *.project.json path.
 
-$ rogen build lobyy --json
+$ rogen write lobyy --json
 exit 1
 stdout:
   {

@@ -8,7 +8,7 @@ exit 0
 stdout:
   Created sourcemap at arena-sourcemap.json
 stderr:
-  rogen sourcemap · Arena
+  rogen sourcemap · places/arena/default.rogen.json
   places/arena/default.project.json · wrote
   Built 1 project.
   arena-sourcemap.json · wrote

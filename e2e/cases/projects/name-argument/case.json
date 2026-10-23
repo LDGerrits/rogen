@@ -1,32 +1,30 @@
 {
 	"steps": [
 		[
-			"build",
+			"write",
 			"dist"
 		],
 		[
-			"build",
+			"write",
 			"release.project.json"
 		],
 		[
-			"build",
+			"write",
 			"default.project.json"
 		],
 		[
-			"build",
+			"write",
 			"dist.rogen.json",
 			"--json"
 		],
 		[
-			"build",
+			"write",
 			"nope"
 		],
 		[
-			"build",
+			"write",
 			"nope.project.json"
 		]
 	],
-	"output": [
-		"build"
-	]
+	"output": ["write"]
 }

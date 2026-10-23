@@ -16,7 +16,7 @@ stdout:
       -V, --version          Print the version.
   
   SUBCOMMANDS:
-      build          Writes the project file; with -o or -p, builds with Rojo
+      build          Writes the project file, then builds with Rojo
       check          Prints the diagnostics, and exits 1 when there are any
       doc            Opens the documentation, or prints one topic offline
       fmt-project    Formats a .rogen.json the way 'rojo fmt-project' does
@@ -28,9 +28,10 @@ stdout:
       syncback       Brings a place file's changes back into the source files
       upload         Writes the project file, then uploads it with Rojo
       where          Prints where each file lands in the game, and why
+      write          Writes the project file of every config here
   
   EXAMPLES:
-      rogen build
+      rogen write
       rogen serve
       rogen help build
       rogen help route.strayAt
@@ -38,5 +39,6 @@ stdout:
   Run 'rogen help <command>' for details on a command, 'rogen doc <topic>' to read a topic, and 'rogen
   help <code>' to explain a diagnostic code.
   
-  Exit codes: 0 done (warnings included), 1 the project has errors, 2 the command line is wrong.
-  'check' also exits 1 on a warning.
+  Exit codes: 0 done (warnings included), 1 the project has a problem: an error, or Rojo failing, 2
+  the command line is wrong, or a terminal is needed and there is none. 'check' also exits 1 on a
+  warning.

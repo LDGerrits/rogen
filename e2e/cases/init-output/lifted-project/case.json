@@ -1,4 +1,4 @@
 {
-	"steps": [["init"], ["build"]],
+	"steps": [["init"], ["write"]],
 	"output": ["init"]
 }

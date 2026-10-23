@@ -210,7 +210,15 @@ registerCommand(
 					logService,
 					sourcemapDocument(
 						build.builds,
-						plan ? [rojoEntry(plan.target, ran)] : []
+						cwd,
+						rojoEntry(
+							plan?.target ?? {
+								command: "sourcemap",
+								cwd,
+								output,
+							},
+							ran
+						)
 					),
 					failure ?? rojoFailure
 				);

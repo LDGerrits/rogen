@@ -1,4 +1,5 @@
 import { DiagnosticSeverity } from "../../../platform/diagnostics/diagnostic.js";
+import { MemoryFileSystemService } from "../../../platform/fs/memory-file-system-service.js";
 import { LegacyConfig } from "../legacy-config.js";
 
 describe("LegacyConfig", () => {
@@ -68,6 +69,46 @@ describe("LegacyConfig", () => {
 					value: undefined,
 				})
 			).toEqual([]);
+		});
+	});
+
+	describe("find", () => {
+		let fs: MemoryFileSystemService;
+
+		beforeEach(async () => {
+			fs = new MemoryFileSystemService();
+			await fs.createDirectory("/repo");
+		});
+
+		it.each([".rogen.json", "rogen.json", "game.rogen.jsonc"])(
+			"should point to the migration page for a v1 %s",
+			async (name) => {
+				await fs.writeFile(
+					`/repo/${name}`,
+					'{ "source": ["src"] } // v1'
+				);
+
+				const [hint, ...others] = await LegacyConfig.find("/repo", fs);
+
+				expect(others).toEqual([]);
+				expect(hint).toMatchObject({
+					code: "legacy.config",
+					resource: `/repo/${name}`,
+				});
+				expect(hint.message).toContain(LegacyConfig.MIGRATION_URL);
+			}
+		);
+
+		it("should say nothing of a file without v1 keys, one that isn't JSON or one of another name", async () => {
+			await fs.writeFile("/repo/.rogen.json", '{ "sourcePaths": [] }');
+			await fs.writeFile("/repo/rogen.json", "not json");
+			await fs.writeFile("/repo/notes.json", '{ "source": [] }');
+
+			expect(await LegacyConfig.find("/repo", fs)).toEqual([]);
+		});
+
+		it("should say nothing of a folder that can't be read", async () => {
+			expect(await LegacyConfig.find("/missing", fs)).toEqual([]);
 		});
 	});
 });

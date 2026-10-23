@@ -1,0 +1,11 @@
+{
+	"name": "Game",
+	"tree": {
+		"$className": "DataModel",
+		"Workspace": { "$path": "place/game/Workspace" }
+	},
+	"rogen": {
+		"sourcePaths": ["src/game"],
+		"routes": { "server": "ServerScriptService", "*": "ReplicatedStorage" }
+	}
+}

@@ -1,0 +1,30 @@
+$ rogen write
+exit 0
+stdout:
+  rogen write
+  default.project.json · wrote
+  dist.project.json · wrote
+  release.project.json · wrote
+  Wrote 3 of 3 project files with 1 warning.
+stderr:
+  dist - warning: the compiled path "dist" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
+
+written:
+  default.project.json
+  dist.project.json
+  release.project.json
+
+$ rojo sourcemap default.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Dev: ModuleScript  <- dev/Dev.luau
+    Util: ModuleScript  <- src/Util.luau
+
+$ rojo sourcemap dist.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+
+$ rojo sourcemap release.project.json
+Game: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Util: ModuleScript  <- src/Util.luau

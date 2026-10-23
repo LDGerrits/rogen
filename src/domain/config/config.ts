@@ -92,10 +92,6 @@ export const SYNCBACK_FILES = {
 export const isSyncbackFileName = (name: string): boolean =>
 	name === SYNCBACK_FILES.project || name === SYNCBACK_FILES.staging;
 
-/** The name a config is asked for by: its folder's. */
-export const configLabel = (file: string): string =>
-	path.basename(path.dirname(file));
-
 /** The folder Rogen scans when a config declares routes and no source paths. */
 export const DEFAULT_SOURCE_PATH = "src";
 

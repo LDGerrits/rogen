@@ -360,9 +360,11 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				path.posix.dirname(gameFolder),
 				"lobby"
 			);
+			const edited =
+				'Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common.';
 			const copy = game
-				? `copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby, its source path ${places.placeSourcePath} to src/lobby and each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}.`
-				: `copy ${places.configFile} to ${lobby(places.configFile)}, change its "name" to lobby and its source path ${places.placeSourcePath} to src/lobby, and make src/lobby.`;
+				? `copy ${places.configFile} to ${lobby(places.configFile)}, point each ${gameFolder} in its tree to ${lobbyGame}, make src/lobby and copy ${gameFolder} to ${lobbyGame}. ${edited}`
+				: `copy ${places.configFile} to ${lobby(places.configFile)} and make src/lobby. ${edited}`;
 			return processed
 				? `Add another place: ${copy} Do the same for ${dist}, and for ${release} if there is one, and run 'darklua process src/lobby ${processed}/lobby --watch' beside the other darklua commands. Serve it ${port}: 'rogen serve ${lobby(dist)} --port <port>'.`
 				: `Add another place: ${copy} Serve it ${port}: 'rogen serve lobby --port <port>'.`;
@@ -373,7 +375,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			`${places.folder}/tsconfig.json`,
 			...(game ? [`${places.folder}/${places.gameFolder}`] : []),
 		];
-		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen build ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
+		return `Add another place: make ${lobby}/src, copy ${joinedWithAnd(copied)} into ${lobby} (with the dist and release configs and .darklua.json, if the place has them), and change the "name" in each config to lobby. Run 'rogen write ${lobby}' for its project file, add 'rbxtsc -p ${lobby}' and 'rbxtsc -w -p ${lobby}' to the build and watch scripts in package.json, and serve it ${port}: 'rogen serve ${lobby} --port <port>'.`;
 	}
 
 	/** An error when the first place has a config already, which init never overwrites. */
@@ -401,7 +403,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 		const later =
 			"Start with one place, then add more by hand, as the places guide shows.";
 		if (language.compiler && !scaffolded)
-			return `isn't set up for ${language.copy.label} yet. ${later}`;
+			return `starts a new ${language.copy.label} project with places, and this folder already has one. ${later}`;
 		if (this.directory.hasHandWrittenProject && given !== "new")
 			return `starts a new tree, and ${DEFAULT_PROJECT_FILE} is here. Pass --project-file new, or leave --places out to lift it.`;
 		return undefined;
@@ -639,12 +641,15 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 				`Syncing from ${compiledPath}, where ${compiler.name} compiles to.`
 			);
 		}
-		if (choices.sample)
+		if (choices.sample) {
+			const here = (...parts: string[]) =>
+				builder.fromHere(path.posix.join(...parts));
 			builder.addNote(
 				places
-					? `Wrote the Greeter sample: the feature in ${places.commonSourcePath}, which every place shares, Game in ${places.placeSourcePath}, and Rojo's sample Baseplate and lighting in ${path.posix.join(places.folder, places.gameFolder)}. Pass --no-sample for empty source folders.`
-					: `Wrote the Greeter sample in ${sourcePaths[0]}/Greeter, and Rojo's sample Baseplate and lighting in ${SAMPLE_GAME_FOLDER}, which the tree mounts. Pass --no-sample for an empty ${sourcePaths[0]} and no ${SAMPLE_GAME_FOLDER}.`
+					? `The Greeter sample is the feature in ${here(places.commonSourcePath)}, which every place shares, Game in ${here(places.placeSourcePath)}, and Rojo's sample Baseplate and lighting in ${here(places.folder, places.gameFolder)}. Pass --no-sample for empty source folders.`
+					: `The Greeter sample is in ${here(sourcePaths[0], "Greeter")}, and Rojo's sample Baseplate and lighting in ${here(SAMPLE_GAME_FOLDER)}, which the tree mounts. Pass --no-sample for an empty ${here(sourcePaths[0])} and no ${here(SAMPLE_GAME_FOLDER)}.`
 			);
+		}
 		this.planNextSteps(builder, choices, tree);
 	}
 
@@ -760,7 +765,7 @@ export class ProjectSetup implements Setup<ProjectChoices> {
 			);
 		const projectFile = places?.projectFile ?? DEFAULT_PROJECT_FILE;
 		builder.addEdit(
-			`Edit ${configFile} and leave ${projectFile} alone, since every build overwrites it. After you add a feature folder, run 'rogen build${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
+			`Edit ${configFile} and leave ${projectFile} alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write${places ? ` ${places.place}` : ""}' so the editor's ${projectFile} follows.`
 		);
 		if (places?.settings)
 			builder.addEdit(

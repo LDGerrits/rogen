@@ -2,7 +2,7 @@ $ rogen init --non-interactive --skip-git --places
 exit 0
 stdout:
   rogen init
-  Wrote the Greeter sample: the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
+  The Greeter sample is the feature in src/common, which every place shares, Game in src/game, and Rojo's sample Baseplate and lighting in place/game. Pass --no-sample for empty source folders.
   Took the defaults: --kind place, --language luau, --no-darklua, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Created game.rogen.json.
   Created src/common/Greeter/Shared/Greeting.luau.
@@ -22,12 +22,12 @@ stdout:
       rogen serve game
     In Studio, press Connect in the Rojo plugin.
     Add your own routes under "routes" in game.rogen.json.
-    Edit game.rogen.json and leave game.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build game' so the editor's game.project.json follows.
+    Edit game.rogen.json and leave game.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write game' so the editor's game.project.json follows.
     luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
-    Add another place: copy game.rogen.json to lobby.rogen.json, change its "name" to lobby, its source path src/game to src/lobby and each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
   Wrote 12 files.
 
-$ rogen build game
+$ rogen write game
 exit 0
 stdout: (not shown)
 
@@ -36,7 +36,7 @@ exit 0
 stdout:
   Created sourcemap at sourcemap.json
 stderr:
-  rogen sourcemap · game
+  rogen sourcemap · game.rogen.json
   game.project.json · unchanged
   Built 1 project.
   sourcemap.json · wrote
@@ -82,7 +82,7 @@ The folders inside a feature decide where its code runs: `Server` goes to Server
 rogen where src/common/Greeter/Shared/Greeting.luau
 ```
 
-`rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. With no path they find no `default.rogen.json` here, so name the place: `rogen check game.rogen.json`, `rogen where game.rogen.json`.
+`rogen check` and `rogen where` find the place a path belongs to, and a file in `src/common` belongs to every place. `rogen check` with no path checks every place. `rogen where` finds no `default.rogen.json` here, so name the place: `rogen where game.rogen.json`.
 
 ## Getting Started
 To serve the game place and connect to it from Roblox Studio, use:

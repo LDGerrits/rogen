@@ -1,1 +1,1 @@
-{ "steps": [["build", "test.project.json"], ["build", "tset.project.json"]], "rojo": false }
+{ "steps": [["write", "test.project.json"], ["write", "tset.project.json"]], "rojo": false }

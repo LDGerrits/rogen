@@ -1,5 +1,5 @@
 import "../check-command.js";
-import "../../build/build-command.js";
+import "../../write/write-command.js";
 import {
 	CommandHarness,
 	commandHarness,
@@ -106,7 +106,7 @@ describe("check command", () => {
 					{
 						path: "/repo/lib/x.luau",
 						reason: "outsideSourcePaths",
-						config: "/repo/default.rogen.json",
+						config: "default.rogen.json",
 					},
 				],
 			});
@@ -590,13 +590,67 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should name the configs a bare check can't choose between", async () => {
-			const result = await run({});
+		describe("bare, in a folder of several configs", () => {
+			const clean = async () => {
+				await fs.delete("/repo/src/common/Stray@sever.luau");
+				await fs.delete("/repo/src/game/Buy@sever.luau");
+			};
 
-			expect(result.isErr()).toBe(true);
-			expect((result as { error: Error }).error.message).toContain(
-				"It holds game.rogen.json, lobby.rogen.json."
-			);
+			it("should check every config of the folder", async () => {
+				const result = await run({});
+
+				expect(
+					new Set(found(failureOf(result)).map(([, file]) => file))
+				).toEqual(
+					new Set([
+						"src/common/Stray@sever.luau",
+						"src/game/Buy@sever.luau",
+					])
+				);
+			});
+
+			it("should fail on a config that does not load beside configs that do", async () => {
+				await clean();
+				await fs.writeFile("/repo/release.rogen.json", "{ nope");
+
+				const result = await run({});
+
+				expect(
+					new Set(found(failureOf(result)).map(([code]) => code))
+				).toEqual(new Set(["config.invalidSyntax"]));
+			});
+
+			it("should pass when every config is clean", async () => {
+				await clean();
+
+				const result = await run({});
+
+				expect(result.isOk()).toBe(true);
+			});
+
+			it("should report the stale project file of a config that is not the first", async () => {
+				await clean();
+				await fs.writeFile("/repo/lobby.project.json", "{}");
+
+				const result = await run({});
+
+				expect(found(failureOf(result))).toEqual([
+					["output.differs", "lobby.project.json"],
+				]);
+			});
+
+			it("should not report a project file that is not written yet", async () => {
+				await clean();
+				await harness.run("write", {
+					positionals: ["game"],
+					options: {},
+				});
+
+				const result = await run({});
+
+				expect(result.isOk()).toBe(true);
+				expect(await fs.exists("/repo/lobby.project.json")).toBe(false);
+			});
 		});
 	});
 
@@ -680,7 +734,7 @@ describe("check command", () => {
 
 		it("should pass when the project file is what a build would write", async () => {
 			await write("src/Clean.luau");
-			await harness.run("build");
+			await harness.run("write");
 			expect(await fs.exists("/repo/default.project.json")).toBe(true);
 
 			const result = await run({});
@@ -817,7 +871,7 @@ describe("check command", () => {
 				});
 				await write(...files);
 
-				await harness.run("build", {
+				await harness.run("write", {
 					positionals: [],
 					options: { json: true },
 				});

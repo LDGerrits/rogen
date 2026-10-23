@@ -15,8 +15,8 @@ const advisedCompiledPath =
 
 const removedFields: Readonly<Record<string, string>> = {
 	modes: "Write what a mode set in <name>.rogen.json as a complete file with the keys that differ.",
-	mode: "Modes are gone with \"modes\". Name a file instead, as 'rogen build <name>'.",
-	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen build --watch' to keep the project files current and 'argon serve' beside it.",
+	mode: "Modes are gone with \"modes\". Name a file instead, as 'rogen write <name>'.",
+	server: "rogen serve starts Rojo. To serve with Argon, run 'rogen write --watch' to keep the project files current and 'argon serve' beside it.",
 	variants:
 		"A file that replaces another goes in a later source path, which wins a clash.",
 	conflicts:
@@ -37,6 +37,12 @@ const removedFields: Readonly<Record<string, string>> = {
 	rootDirs: 'It is called "sourcePaths" now.',
 	syncDir: advisedCompiledPath,
 	syncPath: advisedCompiledPath,
+};
+
+/** The names people try for a Rogen key first. */
+const triedNames: Readonly<Record<string, string>> = {
+	outDir: "compiledPath",
+	outputPath: "compiledPath",
 };
 
 /** Advice for a field Rogen once read and no longer does, in place of the unknown-key error. */
@@ -128,10 +134,14 @@ export class ConfigKeys {
 				errors.push(found);
 				continue;
 			}
-			const suggestion = closestMatch(
-				key,
-				known.filter((other) => !keys.includes(other))
-			);
+			const open = known.filter((other) => !keys.includes(other));
+			const tried = Object.hasOwn(triedNames, key)
+				? triedNames[key]
+				: undefined;
+			const suggestion =
+				tried !== undefined && open.includes(tried)
+					? tried
+					: closestMatch(key, open);
 			errors.push(
 				errorDiagnostic(
 					"config.unknownField",

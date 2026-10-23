@@ -2,7 +2,7 @@ $ rogen init --non-interactive --darklua
 exit 0
 stdout:
   rogen init
-  Wrote the Greeter sample in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.
+  The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.
   Took the defaults: --kind place, --language luau, --no-places, --source-path src, --compiled-path dist, --route server, --route client, --route shared, --unmatched leave, --sample, --agent-rules.
   Created default.rogen.json.
   Created dist.rogen.json.
@@ -23,9 +23,9 @@ stdout:
       rogen serve dist
     In Studio, press Connect in the Rojo plugin.
     Add /dist to .gitignore so the processed code isn't committed.
-    Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen build' to make them.
+    Add *.project.json to .gitignore: Rogen writes those files, and they change with the tree. A clone runs 'rogen write' to make them.
     Add your own routes under "routes" in default.rogen.json.
-    Edit default.rogen.json and leave default.project.json alone, since every build overwrites it. After you add a feature folder, run 'rogen build' so the editor's default.project.json follows.
+    Edit default.rogen.json and leave default.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write' so the editor's default.project.json follows.
     Darklua reads sourcemap.json. Keep it current from default.project.json in a terminal of its own: rogen sourcemap --watch -o sourcemap.json
   Wrote 11 files.
 

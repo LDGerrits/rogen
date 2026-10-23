@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import "../build-command.js";
+import "../../write/write-command.js";
 import { commandHarness } from "../../__tests__/command-harness.js";
 import { DeferredPromise } from "../../../base/async.js";
 import { ResultError } from "../../../base/result.js";
@@ -13,7 +14,7 @@ import { MockLogService } from "../../../platform/log/__tests__/mock-log-service
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
 import { CommandLine } from "../../../platform/environment/args.js";
 
-describe("build --watch", () => {
+describe("watch", () => {
 	let memFs: MemoryFileSystemService;
 	let watcher: MemoryWatcher;
 	let configService: CoreConfigService;
@@ -56,7 +57,9 @@ describe("build --watch", () => {
 			watcher,
 			processes,
 		});
-		return harness.run("build", {
+		const builds =
+			options.output !== undefined || options.plugin !== undefined;
+		return harness.run(builds ? "build" : "write", {
 			positionals: names,
 			options: { watch: true, ...options },
 		});
@@ -131,13 +134,13 @@ describe("build --watch", () => {
 			).toEqual([
 				{
 					build: expect.objectContaining({
-						config: "repo",
+						config: "default.rogen.json",
 						outcome: "wrote",
 					}),
 				},
 				{
 					build: expect.objectContaining({
-						config: "repo",
+						config: "default.rogen.json",
 						outcome: "wrote",
 					}),
 				},
@@ -160,7 +163,7 @@ describe("build --watch", () => {
 			).toContainEqual({
 				notice: {
 					kind: "broken",
-					file: "/repo/default.rogen.json",
+					config: "default.rogen.json",
 					keptLastValid: true,
 					diagnostics: [
 						expect.objectContaining({
@@ -317,7 +320,7 @@ describe("build --watch", () => {
 
 		it("should start nothing when asked to shut down while the configs load", async () => {
 			const watch = jest.spyOn(watcher, "watch");
-			const running = startWatch();
+			const running = startWatch([], { output: "game.rbxl" });
 			lifecycle.shutdown();
 
 			const result = await running;
@@ -341,7 +344,9 @@ describe("build --watch", () => {
 			await writeProjects(["lobby"], ["arena"]);
 			const watch = jest.spyOn(watcher, "watch");
 
-			const result = await startWatch(["lobby", "arena"]);
+			const result = await startWatch(["lobby", "arena"], {
+				output: "game.rbxl",
+			});
 
 			expect((result as ResultError<Error>).error.message).toContain(
 				"unexpected argument 'arena'"
@@ -406,7 +411,7 @@ describe("build --watch", () => {
 
 			expect(logService.entries[0]).toEqual({
 				kind: "intro",
-				text: "rogen build --watch · lobby",
+				text: "rogen write --watch · lobby/default.rogen.json",
 			});
 		});
 

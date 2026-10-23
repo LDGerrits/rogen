@@ -23,8 +23,8 @@ export class ProjectFileStaleness {
 		if (config.isAdopted) return undefined;
 		const configName = path.basename(config.file);
 		const command = configName.startsWith(`${DEFAULT_PROJECT}.`)
-			? "rogen build"
-			: `rogen build ${configName}`;
+			? "rogen write"
+			: `rogen write ${configName}`;
 		const onDisk = await tryWithAsync(async () =>
 			(await this.fileSystemService.isFile(projectFile))
 				? await this.fileSystemService.readFile(projectFile)

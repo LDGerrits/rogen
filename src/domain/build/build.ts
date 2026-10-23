@@ -6,7 +6,6 @@ import {
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { configLabel } from "../config/config.js";
 import { ConfigSelection, buildableConfigs } from "../config/config-service.js";
 
 type MatchForm = "folder" | "marker" | "suffix";
@@ -62,7 +61,8 @@ export function isWritten(build: ConfigBuild): build is WrittenBuild {
 }
 
 /** What a run did for a config that loaded; narrow it on `outcome`. */
-export type LoadedBuild = WrittenBuild | UnwrittenBuild | FailedBuild;
+export type LoadedBuild =
+	WrittenBuild | CheckedBuild | UnwrittenBuild | FailedBuild;
 
 /** What a run did for one selected config; one that didn't load has no `config`. */
 export type ConfigBuild = LoadedBuild | UnloadedBuild;
@@ -74,10 +74,6 @@ abstract class AbstractConfigBuild {
 		/** Why it failed; none unless it did. */
 		readonly errors: readonly Diagnostic[] = []
 	) {}
-
-	get label(): string {
-		return this.config.label;
-	}
 
 	get file(): string {
 		return this.config.file;
@@ -121,10 +117,6 @@ export class UnloadedBuild {
 		readonly errors: readonly Diagnostic[]
 	) {}
 
-	get label(): string {
-		return configLabel(this.file);
-	}
-
 	get warnings(): readonly Diagnostic[] {
 		return [];
 	}
@@ -138,7 +130,21 @@ export class UnloadedBuild {
 	}
 }
 
-/** A config that built cleanly, but whose run stopped before writing it because the configs named in `blockedBy` failed or didn't load. */
+/** A config that built cleanly in a run that writes nothing, and that a run which writes would have written. */
+export class CheckedBuild extends AbstractConfigBuild {
+	readonly outcome = "wouldWrite";
+
+	constructor(
+		config: ResolvedConfig,
+		findings: BuildFindings,
+		readonly summary: BuildSummary,
+		readonly readFiles: readonly string[]
+	) {
+		super(config, findings);
+	}
+}
+
+/** A config that built cleanly, but whose run stopped before writing it because the configs whose files `blockedBy` lists failed or didn't load. */
 export class UnwrittenBuild extends AbstractConfigBuild {
 	readonly outcome = "notWritten";
 
@@ -182,7 +188,7 @@ export interface BuildFindings {
 
 interface SharedPart {
 	readonly fresh: readonly Diagnostic[];
-	/** The earlier configs that raised all of them, when the config added none; empty otherwise. */
+	/** The files of the earlier configs that raised all of them, when the config added none; empty otherwise. */
 	readonly sameAs: readonly string[];
 }
 
@@ -200,12 +206,8 @@ export class SharedDiagnostics {
 		return new SharedDiagnostics(true);
 	}
 
-	/** Splits `diagnostics` of the config `label`, whose file is `configFile`, into those no config raised yet and the configs that raised the rest. */
-	take(
-		label: string,
-		configFile: string,
-		diagnostics: readonly Diagnostic[]
-	): SharedPart {
+	/** Splits `diagnostics` of the config at `configFile` into those no config raised yet and the config files that raised the rest. */
+	take(configFile: string, diagnostics: readonly Diagnostic[]): SharedPart {
 		const owners = new Set<string>();
 		const fresh = diagnostics.filter((diagnostic) => {
 			const key = diagnosticKey(
@@ -213,8 +215,8 @@ export class SharedDiagnostics {
 				this.sameAcrossConfigs ? configFile : undefined
 			);
 			const owner = this.raisedBy.get(key);
-			if (owner === undefined) this.raisedBy.set(key, label);
-			else if (owner !== label) owners.add(owner);
+			if (owner === undefined) this.raisedBy.set(key, configFile);
+			else if (owner !== configFile) owners.add(owner);
 			return owner === undefined;
 		});
 		return {
@@ -240,11 +242,11 @@ export class BuildRun {
 		const errors = SharedDiagnostics.errors();
 		this.shares = builds.map((build) => ({
 			build,
-			warnings: warnings.take(build.label, build.file, [
+			warnings: warnings.take(build.file, [
 				...build.warnings,
 				...(build.syncWarnings ?? []),
 			]),
-			errors: errors.take(build.label, build.file, build.errors),
+			errors: errors.take(build.file, build.errors),
 		}));
 	}
 

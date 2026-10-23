@@ -6,6 +6,7 @@ import { EnvironmentService } from "../../platform/environment/environment-servi
 import { FileSystemService } from "../../platform/fs/file-system-service.js";
 import { ProcessService } from "../../platform/process/process-service.js";
 import { PromptService } from "../../platform/prompt/prompt-service.js";
+import { ConfigService } from "../config/config-service.js";
 import { ToolchainService } from "../toolchain/toolchain-service.js";
 import { CodeFinder } from "./code-finder.js";
 import { InitDirectory } from "./init-directory.js";
@@ -49,7 +50,8 @@ export class CoreInitService implements InitService {
 		private readonly environmentService: EnvironmentService,
 		private readonly toolchainService: ToolchainService,
 		private readonly processService: ProcessService,
-		private readonly locator: ToolLocator = new ToolLocator(processService)
+		private readonly locator: ToolLocator = new ToolLocator(processService),
+		private readonly configService: ConfigService
 	) {
 		this.agentReader = new AgentReader(fileSystemService);
 		this.git = new GitRepository(processService, fileSystemService);
@@ -137,6 +139,10 @@ export class CoreInitService implements InitService {
 		);
 		const directory = await this.prepare(folder, place !== undefined);
 		if (directory.isErr()) return directory;
+		const stale = await this.configService.staleConfigsIn(
+			directory.value.path
+		);
+		if (stale.length > 0) return err(new DiagnosticsError([...stale]));
 		if (directory.value.hasConfigs)
 			return err(
 				new DiagnosticsError(

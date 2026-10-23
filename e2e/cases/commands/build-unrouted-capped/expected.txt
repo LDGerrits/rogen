@@ -1,27 +1,26 @@
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 stderr:
-  src/F01.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F02.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F03.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F04.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F05.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F06.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F07.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F08.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F09.luau - warning: matched no route, so it is left out. Move it into src/server. (route.unrouted)
-  src/F10.luau - warning: matched no route, so it is left out. Move it into src/server. 2 more like it aren't listed. (route.unrouted)
+  src/F01.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F02.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F03.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F04.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F05.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F06.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F07.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F08.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F09.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. (route.unrouted)
+  src/F10.luau - warning: matched no route, so it is left out. Move it into src/server, end its name with a route's @ marker (@server), or declare a "*" route. 2 more like it aren't listed. (route.unrouted)
 
-$ rogen build --json
+$ rogen write --json
 exit 0
 stdout:
   {
     "changed": false,
     "configs": [
       {
-        "config": "project",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "unchanged",
         "diagnostics": [
@@ -29,89 +28,90 @@ stdout:
             "file": "<dir>/src/F01.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F02.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F03.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F04.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F05.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F06.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F07.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F08.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F09.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F10.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F11.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           },
           {
             "file": "<dir>/src/F12.luau",
             "severity": "warning",
             "code": "route.unrouted",
-            "message": "matched no route, so it is left out. Move it into <dir>/src/server.",
+            "message": "matched no route, so it is left out. Move it into <dir>/src/server, end its name with a route's @ marker (@server), or declare a \"*\" route.",
             "url": "https://rogen-playfully.vercel.app/docs/v2/diagnostics#route-unrouted"
           }
         ]
       }
-    ]
+    ],
+    "plainProjects": []
   }
 
 written:

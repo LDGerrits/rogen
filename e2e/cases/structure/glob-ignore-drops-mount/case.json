@@ -1,1 +1,1 @@
-{ "steps": [["build"], ["where", "DevPackages/D.luau", "Packages/P.luau"]], "show": ["default.project.json"] }
+{ "steps": [["write"], ["where", "DevPackages/D.luau", "Packages/P.luau"]], "show": ["default.project.json"] }

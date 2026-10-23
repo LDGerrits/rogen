@@ -13,10 +13,7 @@ import { MockProcessService } from "../../../platform/process/__tests__/mock-pro
 import { MockRequestService } from "../../../platform/request/__tests__/mock-request-service.js";
 import { recordFile } from "../../../domain/serve/__tests__/record-fixtures.js";
 import { MemoryWatcher } from "../../../platform/watcher/memory-watcher.js";
-import {
-	ExitCodeError,
-	ReportedError,
-} from "../../../platform/commands/commands.js";
+import { ReportedError } from "../../../platform/commands/commands.js";
 
 const ROJO_URL = "http://127.0.0.1:34872/api/rojo";
 
@@ -112,14 +109,14 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.lines).toEqual([
-			"intro: rogen serve · repo",
+			"intro: rogen serve · default.rogen.json",
 			expect.stringMatching(/^step: \d\d:\d\d:\d\d · initial build$/),
 			"success: default.project.json · wrote",
-			"success: Serving repo with Rojo 7.7.1 at 127.0.0.1:34872.",
+			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo).",
 		]);
 	});
 
-	it("should print the server's banner on stdout as the server printed it, and the rest on stderr", async () => {
+	it("should drop the server's banner, since the Serving line says where it listens", async () => {
 		void serve();
 		await settle();
 
@@ -136,13 +133,7 @@ describe("serve command", () => {
 		await settle();
 
 		expect(logService.reserved).toBe(true);
-		expect(logService.texts("print")).toEqual([
-			"Rojo server listening:",
-			"  Address: localhost",
-			"  Port:    34872",
-			"",
-			"Visit http://localhost:34872/ in your browser for more information.",
-		]);
+		expect(logService.texts("print")).toEqual([]);
 	});
 
 	it("should show what the server says as its own lines, besides its banner", async () => {
@@ -214,7 +205,7 @@ describe("serve command", () => {
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 	});
 
-	it("should exit with the server's code when it stops on its own", async () => {
+	it("should exit 1 when the server stops on its own with an error", async () => {
 		const result = serve();
 		await settle();
 
@@ -222,8 +213,7 @@ describe("serve command", () => {
 		const error = await failureOf(result);
 
 		expect(error).toBeInstanceOf(ReportedError);
-		expect((error as ReportedError).cause).toBeInstanceOf(ExitCodeError);
-		expect(exitCodeOf(error)).toBe(3);
+		expect(exitCodeOf(error)).toBe(1);
 		expect(logService.lines.slice(-2)).toEqual([
 			"diagnosticError: /repo/default.rogen.json - error: Rojo stopped serving repo with exit code 3, without saying why. (serve.serverExited)",
 			"outro: serve failed.",
@@ -246,8 +236,8 @@ describe("serve command", () => {
 		expect(processes.spawned).toEqual([]);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
 		expect(logService.lines).toEqual([
-			"intro: rogen serve · repo",
-			"info: repo is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
+			"intro: rogen serve · default.rogen.json",
+			"info: default.rogen.json is already served by another rogen serve: Rojo 7.7.1 serves a project named repo at 127.0.0.1:34872 (session s1).",
 			"outro: Nothing to start: another rogen serve already serves this project, so nothing is built or watched here.",
 		]);
 	});
@@ -265,8 +255,7 @@ describe("serve command", () => {
 		expect(printed()).toEqual([
 			{
 				build: {
-					config: "repo",
-					file: "/repo/default.rogen.json",
+					config: "default.rogen.json",
 					projectFile: "/repo/default.project.json",
 					outcome: "wrote",
 					diagnostics: [],
@@ -274,8 +263,7 @@ describe("serve command", () => {
 			},
 			{
 				serving: {
-					config: "repo",
-					server: "rojo",
+					config: "default.rogen.json",
 					version: "7.7.1",
 					project: "repo",
 					host: "127.0.0.1",
@@ -317,12 +305,14 @@ describe("serve command", () => {
 			await settle();
 
 			expect(
-				logService.lines.filter((line) => line.includes("Studio"))
+				logService.lines.filter((line) =>
+					line.startsWith("info: Studio")
+				)
 			).toEqual([
-				"info: Studio connected to repo.",
-				"info: Studio connected to repo (2 connected).",
-				"info: Studio disconnected from repo, 1 still connected.",
-				"info: Studio disconnected from repo.",
+				"info: Studio connected to default.rogen.json.",
+				"info: Studio connected to default.rogen.json (2 connected).",
+				"info: Studio disconnected from default.rogen.json, 1 still connected.",
+				"info: Studio disconnected from default.rogen.json.",
 			]);
 		});
 
@@ -337,8 +327,7 @@ describe("serve command", () => {
 			expect(printed().slice(2)).toEqual([
 				{
 					connected: {
-						config: "repo",
-						server: "rojo",
+						config: "default.rogen.json",
 						project: "repo",
 						port: 34872,
 						clients: 1,
@@ -346,8 +335,7 @@ describe("serve command", () => {
 				},
 				{
 					disconnected: {
-						config: "repo",
-						server: "rojo",
+						config: "default.rogen.json",
 						project: "repo",
 						port: 34872,
 						clients: 0,
@@ -377,8 +365,7 @@ describe("serve command", () => {
 		expect(printed().filter((line) => "output" in line)).toHaveLength(1);
 		expect(printed().at(-1)).toEqual({
 			output: {
-				config: "repo",
-				server: "rojo",
+				config: "default.rogen.json",
 				severity: "error",
 				message: "It broke",
 			},
@@ -393,7 +380,7 @@ describe("serve command", () => {
 		await result;
 
 		expect(printed().at(-1)).toEqual({
-			stopped: { config: "repo", server: "rojo", reason: "shutdown" },
+			stopped: { config: "default.rogen.json", reason: "shutdown" },
 		});
 	});
 
@@ -448,7 +435,7 @@ describe("serve command", () => {
 				printed()
 					.filter((line) => "stopped" in line)
 					.map(({ stopped }) => stopped)
-			).toEqual([{ config: "repo", server: "rojo", reason: "removed" }]);
+			).toEqual([{ config: "default.rogen.json", reason: "removed" }]);
 		});
 
 		it("should say a server moved when its config gives it another port", async () => {
@@ -458,7 +445,7 @@ describe("serve command", () => {
 			await writeConfig(34901);
 
 			expect(logService.lines).toContainEqual(
-				"info: Stopped serving repo at 127.0.0.1:34872: its address changed."
+				"info: Stopped serving default.rogen.json at 127.0.0.1:34872: its address changed."
 			);
 			expect(processes.spawned.map(({ args }) => args)).toEqual([
 				["serve", "default.project.json", "--port", "34872"],
@@ -479,8 +466,8 @@ describe("serve command", () => {
 					.filter((line) => "stopped" in line)
 					.map(({ stopped }) => [stopped.config, stopped.reason])
 			).toEqual([
-				["repo", "moved"],
-				["repo", "shutdown"],
+				["default.rogen.json", "moved"],
+				["default.rogen.json", "shutdown"],
 			]);
 		});
 
@@ -496,8 +483,7 @@ describe("serve command", () => {
 
 			expect(printed().at(-1)).toEqual({
 				refused: {
-					config: "repo",
-					server: "rojo",
+					config: "default.rogen.json",
 					diagnostics: [
 						expect.objectContaining({ code: "serve.portTaken" }),
 					],
@@ -519,7 +505,7 @@ describe("serve command", () => {
 		expect(printed()).toContainEqual({
 			notice: expect.objectContaining({
 				kind: "broken",
-				file: "/repo/default.rogen.json",
+				config: "default.rogen.json",
 				keptLastValid: true,
 				diagnostics: [expect.objectContaining({ severity: "error" })],
 			}),
@@ -540,7 +526,7 @@ describe("serve command", () => {
 				expect.objectContaining({
 					code: "serve.noServer",
 					message: expect.stringContaining(
-						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen build --watch' to keep the project files current, and 'argon serve' to serve them."
+						"Argon is pinned, but rogen serve only starts Rojo: run 'rogen write --watch' to keep the project files current, and 'argon serve' to serve them."
 					),
 				}),
 			],
@@ -595,8 +581,7 @@ describe("serve command", () => {
 		expect(printed().slice(1)).toEqual([
 			{
 				stopped: {
-					config: "repo",
-					server: "rojo",
+					config: "default.rogen.json",
 					reason: "exited",
 					code: 1,
 					signal: null,
@@ -673,7 +658,9 @@ describe("serve command", () => {
 			true
 		);
 		expect(await memFs.exists("/repo/default.project.json")).toBe(false);
-		expect(logService.lines[0]).toBe("intro: rogen serve · lobby");
+		expect(logService.lines[0]).toBe(
+			"intro: rogen serve · lobby/default.rogen.json"
+		);
 	});
 
 	it("should serve a second place on its own port from a second serve", async () => {
@@ -699,7 +686,7 @@ describe("serve command", () => {
 		]);
 	});
 
-	it("should fail with the build's errors and start nothing when the first build fails", async () => {
+	const clashing = async () => {
 		await memFs.writeFile(
 			"/repo/default.rogen.json",
 			JSON.stringify({
@@ -714,43 +701,67 @@ describe("serve command", () => {
 		);
 		await memFs.writeFile("/repo/src/X/@server", "");
 		await memFs.writeFile("/repo/src/X/@client", "");
+	};
 
-		const error = await failureOf(serve());
+	it("should print the build's errors once, start nothing and keep watching when the first build fails", async () => {
+		await clashing();
 
-		expect(exitCodeOf(error)).toBe(1);
+		const result = serve();
+		await settle();
+
 		expect(processes.spawned).toEqual([]);
-		expect(logService.lines.at(-1)).toBe("outro: serve failed.");
 		expect(
 			logService.lines.filter((line) =>
 				line.includes("route.markerClash")
 			)
 		).toHaveLength(1);
+		expect(logService.lines.at(-1)).not.toMatch(/^outro/);
+
+		lifecycle.shutdown();
+		expect((await result).isOk()).toBe(true);
 	});
 
-	it("should end the JSON lines with the build's errors when the first build fails", async () => {
-		await memFs.writeFile(
-			"/repo/default.rogen.json",
-			JSON.stringify({
-				rogen: {
-					sourcePaths: ["src"],
-					routes: {
-						server: "ServerScriptService",
-						client: "StarterPlayer/StarterPlayerScripts",
-					},
-				},
-			})
-		);
-		await memFs.writeFile("/repo/src/X/@server", "");
-		await memFs.writeFile("/repo/src/X/@client", "");
+	it("should exit 1 at once, starting nothing, when the config does not load", async () => {
+		await memFs.writeFile("/repo/default.rogen.json", "{ nope");
 
-		const error = await failureOf(serve([], { json: true }));
+		const error = await failureOf(serve());
 
 		expect(exitCodeOf(error)).toBe(1);
 		expect(processes.spawned).toEqual([]);
-		expect(printed().at(-1)).toEqual({
-			diagnostics: [
-				expect.objectContaining({ code: "route.markerClash" }),
-			],
+	});
+
+	it("should serve once a later build succeeds", async () => {
+		await clashing();
+		void serve();
+		await settle();
+
+		await memFs.delete("/repo/src/X/@client");
+		await settle();
+		requests.answer(ROJO_URL, {
+			projectName: "repo",
+			serverVersion: "7.7.1",
+			sessionId: "s1",
 		});
+		await settle();
+
+		expect(processes.spawned).toHaveLength(1);
+		expect(logService.lines.at(-1)).toBe(
+			"success: Serving default.rogen.json with Rojo 7.7.1 at 127.0.0.1:34872 (Studio lists it as repo)."
+		);
+	});
+
+	it("should print the build's errors once as JSON lines and wait for a fix when the first build fails", async () => {
+		await clashing();
+
+		void serve([], { json: true });
+		await settle();
+
+		expect(processes.spawned).toEqual([]);
+		expect(
+			printed().filter((line) =>
+				JSON.stringify(line).includes("route.markerClash")
+			)
+		).toHaveLength(1);
+		expect(printed().some((line) => "serving" in line)).toBe(false);
 	});
 });

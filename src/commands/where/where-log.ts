@@ -1,4 +1,5 @@
 import { unescapedGlob } from "../../base/glob.js";
+import { configPath } from "../../platform/config/config-path.js";
 import path from "path";
 import { relativeTo, toPosix } from "../../base/path.js";
 import {
@@ -98,7 +99,7 @@ export class WhereLog {
 			const answers = WhereAnswers.withoutOutside(all);
 			const lines = answers.map((answer) => this.describe(answer));
 			const agreed =
-				new Set(answers.map(({ label }) => label)).size ===
+				new Set(answers.map(({ config }) => config)).size ===
 					this.answers.configCount &&
 				lines.every((line) => line === lines[0]);
 			const requires = [
@@ -127,13 +128,13 @@ export class WhereLog {
 				};
 			return {
 				lines: answers.flatMap((answer, index) => [
-					`${answer.label}: ${lines[index]}`,
+					`${this.nameOf(answer)}: ${lines[index]}`,
 					...this.noted(answer),
 				]),
-				requireLines: answers.flatMap(({ label }, index) =>
+				requireLines: answers.flatMap((answer, index) =>
 					requirements[index] === undefined
 						? []
-						: [`  ${label}: ${requirements[index]}`]
+						: [`  ${this.nameOf(answer)}: ${requirements[index]}`]
 				),
 				requires,
 			};
@@ -170,6 +171,11 @@ export class WhereLog {
 			: undefined;
 	}
 
+	/** The config that answered, by its file. */
+	private nameOf(answer: Answer): string {
+		return configPath(this.cwd, answer.config);
+	}
+
 	private noted(answer: Answer): string[] {
 		if (answer.kind !== "file") return [];
 		return answer.diagnostics.map(
@@ -184,10 +190,13 @@ export class WhereLog {
 		);
 		return [
 			...new Set(shared),
-			...answers.flatMap(({ label }, index) =>
+			...answers.flatMap((answer, index) =>
 				notes[index]
 					.filter((note) => !shared.includes(note))
-					.map((note) => `  ${label}: ${note.trimStart()}`)
+					.map(
+						(note) =>
+							`  ${this.nameOf(answer)}: ${note.trimStart()}`
+					)
 			),
 		];
 	}

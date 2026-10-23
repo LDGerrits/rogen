@@ -44,5 +44,6 @@ stderr:
 
 $ rogen check
 exit 1
-stderr:
-  error: No default.rogen.json or default.project.json in this folder (<dir>). It holds game.rogen.json, lobby.rogen.json. Name one of them, or run 'rogen init' to create default.rogen.json.
+stdout:
+  src/common/Stray@sever.luau - warning: did you mean "@server"? (route.strayAt)
+  src/game/Server/Match@sever.luau - warning: did you mean "@server"? (route.strayAt)

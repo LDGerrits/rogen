@@ -7,7 +7,7 @@
 			"--places"
 		],
 		[
-			"build",
+			"write",
 			"game"
 		],
 		[
@@ -24,7 +24,5 @@
 		"src/game/Game/Server/Game.server.luau",
 		"src/common/Greeter/Shared/Greeting.luau"
 	],
-	"output": [
-		"init"
-	]
+	"output": ["init"]
 }

@@ -2,6 +2,7 @@ import { Disposable } from "../../base/disposable.js";
 import { UsageError } from "../../base/errors.js";
 import { Result } from "../../base/result.js";
 import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
+import { FileReader } from "../../platform/fs/file-system-service.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { createServiceIdentifier } from "../../platform/instantiation/instantiation.js";
 import { ResolvedConfig, ResolvedConfigFile } from "./resolved-config.js";
@@ -153,6 +154,12 @@ export interface FailedConfigFile {
 	readonly value: unknown;
 }
 
+/** Looks in a folder for the config files of another version of Rogen, which it doesn't read. */
+export type ConfigFolderCheck = (
+	folder: string,
+	files: FileReader
+) => Promise<readonly Diagnostic[]>;
+
 export type ConfigFileCheck = (
 	failed: FailedConfigFile
 ) => readonly Diagnostic[];
@@ -169,6 +176,10 @@ export interface ConfigService {
 	findEnclosing(from?: string): Promise<EnclosingConfigs | undefined>;
 	/** The named configs, those that are not a default, of the working directory, absolute and sorted. */
 	namedConfigs(): Promise<string[]>;
+	/** Every config file of the working directory, absolute and sorted. */
+	configsHere(): Promise<string[]>;
+	/** The project files of the working directory that no config of that name writes, absolute and sorted. */
+	plainProjectsHere(): Promise<string[]>;
 	/** Each argument that names a config as a bare name is replaced by its file; a file, or a folder with a default, stays a path. */
 	resolveNames(args: readonly string[]): Promise<Result<string[], Error>>;
 	/** The configs that answer for `target`, so a command run from the root can take a path of any place: the default of the nearest folder at or above it, else every named config there whose source paths cover it. */
@@ -183,6 +194,10 @@ export interface ConfigService {
 	format(file: string): Promise<Result<boolean, Diagnostic[]>>;
 	/** Runs `check` on every config file that is read, and on what a file holds that fails to load; what it returns is added to that file's errors. Dispose the result to remove it. */
 	registerFileCheck(check: ConfigFileCheck): Disposable;
+	/** Runs `check` on a folder that has no config to read, to tell what it holds from a missing config. Dispose the result to remove it. */
+	registerFolderCheck(check: ConfigFolderCheck): Disposable;
+	/** What the registered folder checks found in `folder`: configs it can't read. */
+	staleConfigsIn(folder: string): Promise<readonly Diagnostic[]>;
 }
 
 export const ConfigService =

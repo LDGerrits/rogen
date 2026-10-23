@@ -19,7 +19,7 @@ A key routes a file in four ways:
 
 `-`, `_`, `+` and a capital letter (`CombatServer`) don't route. Such a file is unrouted, or falls to `*` in a config that declares it, and `rogen where` says `route * (fallback)`.
 
-Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen build` warns. An `@` that nearly spells a route (`Save@sever.luau`) warns with the closest key; other `@` names, such as packages, stay silent.
+Matching is exact except for the first letter: key `Server` matches `server/` and `Server/`. `SERVER/` doesn't, and `rogen write` warns. An `@` that nearly spells a route (`Save@sever.luau`) warns with the closest key; other `@` names, such as packages, stay silent.
 
 The governing route is the first one found walking down from the source path. Every route after it is ignored whole: a nested `Server/` folder is an ordinary folder that keeps its name. A nested `@key` naming another route is an error (`server/Util@client.luau`), and one restating the governing route is fine. So `Shared/Server/Datastore.luau` stays in ReplicatedStorage; never put server code under `Shared/`. Rogen warns when that ships server modules to clients (a `Shared/Server/@shared` marker says the folder is meant to), and when a Script or LocalScript lands where it never runs.
 
@@ -31,7 +31,7 @@ Requires and imports:
 
 - `Shared/` code runs on both sides, so it can't require anything in `Server/`: the client can't see ServerScriptService.
 - Luau: require by instance path (`ReplicatedStorage.Shared.Inventory.InventoryTypes`). `rogen where <file>` prints the exact expression under the file's line (`--json` has it in `require`), with names that aren't identifiers written as indexes; under the Starter containers, whose contents are cloned at runtime, and for scripts, it says why there is none, and it prints nothing for roblox-ts sources. String requires resolve against the instance tree, so `./` only reaches files routed into the same folder.
-- roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen build` before compiling.
+- roblox-ts: import by relative file path; `rbxtsc` resolves it through the project file, so run `rogen write` before compiling.
 - Keep the import boundaries the repo states. A crossed boundary means the code is in the wrong place: move it, don't add an exception.
 
 `rogen where <path>` prints where a file lands and why, before or after it exists. Given an instance as Studio prints it (`ServerScriptService.Inventory.Save:12`), it prints the file behind it.

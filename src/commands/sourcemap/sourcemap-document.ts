@@ -16,7 +16,7 @@ const sourcemapEntryShape = rojoEntryShape("sourcemap");
 export const sourcemapDocumentShape = S.object({
 	changed: S.boolean,
 	configs: S.array(buildEntryShape),
-	sourcemaps: S.array(sourcemapEntryShape),
+	rojo: sourcemapEntryShape,
 });
 
 /** One line of `sourcemap --watch --json`. */
@@ -29,14 +29,13 @@ export const sourcemapLineShape = S.union(
 
 export function sourcemapDocument(
 	builds: readonly ConfigBuild[],
-	sourcemaps: readonly RojoEntry[]
+	cwd: string,
+	rojo: RojoEntry
 ) {
-	const built = buildDocument(builds);
+	const built = buildDocument(builds, cwd);
 	return {
-		changed:
-			built.changed ||
-			sourcemaps.some(({ outcome }) => outcome === "built"),
+		changed: built.changed || rojo.outcome === "built",
 		configs: built.configs,
-		sourcemaps,
+		rojo,
 	};
 }

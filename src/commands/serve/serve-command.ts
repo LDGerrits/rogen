@@ -145,7 +145,11 @@ registerCommand(
 				if (plan.isErr()) return plan;
 
 				const log: ServeReporter = line.options.json
-					? new ServeJsonLog(accessor.get(LogService), plan.value)
+					? new ServeJsonLog(
+							accessor.get(LogService),
+							accessor.get(EnvironmentService).cwd,
+							plan.value
+						)
 					: new ServeLog(
 							accessor.get(LogService),
 							accessor.get(EnvironmentService).cwd,
@@ -225,12 +229,7 @@ registerCommand(
 					return stop ? ok(undefined) : this.stoppedBy(lifecycle);
 				}
 				log.end("serve failed.");
-				return this.reported(
-					new ExitCodeError(
-						stop.exitCode,
-						new DiagnosticsError([stop.failure])
-					)
-				);
+				return this.reported(new DiagnosticsError([stop.failure]));
 			} finally {
 				await session.stop();
 				store[Symbol.dispose]();

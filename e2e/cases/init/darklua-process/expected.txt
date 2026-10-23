@@ -2,16 +2,18 @@ $ rogen init --non-interactive --skip-git --darklua
 exit 0
 stdout: (not shown)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
+stderr:
+  dist - warning: the compiled path "dist" doesn't exist yet, so Rojo has nothing to sync. Run your compiler or processor first. (output.nothingEmitted)
 
 $ rogen sourcemap -o sourcemap.json
 exit 0
 stdout:
   Created sourcemap at sourcemap.json
 stderr:
-  rogen sourcemap · project
+  rogen sourcemap · default.rogen.json
   default.project.json · unchanged
   Built 1 project.
   sourcemap.json · wrote
@@ -20,7 +22,7 @@ $ darklua process src dist
 exit 0
 stdout: (not shown)
 
-$ rogen build
+$ rogen write
 exit 0
 stdout: (not shown)
 
@@ -29,6 +31,7 @@ written:
   AGENTS.md
   default.project.json
   default.rogen.json
+  dist.project.json
   dist.rogen.json
   dist/Feature/Server/Feature.server.luau
   dist/Feature/Shared/Values.luau
@@ -101,3 +104,13 @@ project: DataModel
   ServerScriptService: ServerScriptService
     Feature: Folder
       Feature: Script  <- src/Feature/Server/Feature.server.luau
+
+$ rojo sourcemap dist.project.json
+project: DataModel
+  ReplicatedStorage: ReplicatedStorage
+    Shared: Folder
+      Feature: Folder
+        Values: ModuleScript  <- dist/Feature/Shared/Values.luau
+  ServerScriptService: ServerScriptService
+    Feature: Folder
+      Feature: Script  <- dist/Feature/Server/Feature.server.luau

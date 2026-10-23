@@ -4,7 +4,7 @@ stdout:
   Writing src/Net/init.luau
   Writing src/Net
 stderr:
-  rogen syncback · Game
-  default.project.json · checked
+  rogen syncback · default.rogen.json
+  default.project.json · would write
   Checked 1 project.
   Syncback would change 1 file (1 to write).

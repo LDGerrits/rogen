@@ -1,15 +1,8 @@
 {
 	"steps": [
-		[
-			"build"
-		],
-		[
-			"check"
-		],
-		[
-			"build",
-			"dist"
-		]
+		["build", "-o", "game.rbxl"],
+		["check"],
+		["build", "dist", "-o", "dist.rbxl"]
 	],
 	"rojo": false
 }

@@ -85,6 +85,15 @@ describe("domain/init/init-directory", () => {
 				expect(target.hasConfigs).toBe(true);
 			});
 
+			it("should list a named config, which init does not overwrite either", () => {
+				const target = directoryOf({
+					existing: ["game.rogen.json", "game.project.json"],
+				});
+
+				expect(target.configFiles).toEqual(["game.rogen.json"]);
+				expect(target.hasConfigs).toBe(true);
+			});
+
 			it("should find none beside a project file alone", () => {
 				const target = directoryOf({
 					existing: ["default.project.json"],

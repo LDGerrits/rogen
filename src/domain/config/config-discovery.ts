@@ -1,4 +1,6 @@
 import path from "path";
+import { Disposable, toDisposable } from "../../base/disposable.js";
+import { Diagnostic } from "../../platform/diagnostics/diagnostic.js";
 import { IoError, ProjectError, UsageError } from "../../base/errors.js";
 import { Result, err, ok, tryWithAsync } from "../../base/result.js";
 import { EnvironmentService } from "../../platform/environment/environment-service.js";
@@ -7,7 +9,7 @@ import {
 	FileType,
 	isFileType,
 } from "../../platform/fs/file-system-service.js";
-import { projectFileName } from "../rojo/rojo-project.js";
+import { isProjectFileName, projectFileName } from "../rojo/rojo-project.js";
 import {
 	DEFAULT_CONFIG_FILE,
 	DEFAULT_CONFIG_FILE_NAMES,
@@ -18,9 +20,14 @@ import {
 	isConfigFileName,
 	isDefaultConfigFileName,
 	isProjectFileConfig,
+	isSyncbackFileName,
 	projectStem,
 } from "./config.js";
-import { ConfigCover, EnclosingConfigs } from "./config-service.js";
+import {
+	ConfigCover,
+	ConfigFolderCheck,
+	EnclosingConfigs,
+} from "./config-service.js";
 
 export interface DiscoveredConfigs {
 	/** The working directory. */
@@ -42,18 +49,35 @@ const notFound = (ref: string): ProjectError =>
 		`Name a folder with a ${DEFAULT_CONFIG_FILE}, a .rogen.json file, or a *.project.json path.`
 	);
 
-const keepOne = (directory: string, names: readonly string[]): UsageError =>
-	new UsageError(`${directory} holds both ${names.join(" and ")}; keep one.`);
+const keepOne = (directory: string, names: readonly string[]): ProjectError =>
+	new ProjectError(
+		`${directory} holds both ${names.join(" and ")}.`,
+		"Keep one of them: both write the same project file."
+	);
 
 const isBareName = (ref: string): boolean =>
 	ref !== "" && ref !== "." && ref !== ".." && ref === path.basename(ref);
 
 /** Finds which config file a command reads: the one it names, else the default of the working directory. */
 export class ConfigDiscovery {
+	private readonly folderChecks = new Set<ConfigFolderCheck>();
+
 	constructor(
 		private readonly fileSystemService: FileReader,
 		private readonly environmentService: EnvironmentService
 	) {}
+
+	registerFolderCheck(check: ConfigFolderCheck): Disposable {
+		this.folderChecks.add(check);
+		return toDisposable(() => this.folderChecks.delete(check));
+	}
+
+	async staleConfigsIn(folder: string): Promise<readonly Diagnostic[]> {
+		const found: Diagnostic[] = [];
+		for (const check of this.folderChecks)
+			found.push(...(await check(folder, this.fileSystemService)));
+		return found;
+	}
 
 	/** The config files `refs` names, else the default of the working directory, as Rojo finds its project file. */
 	async discover(
@@ -250,6 +274,16 @@ export class ConfigDiscovery {
 		directory: string,
 		named: string | undefined
 	): Promise<ProjectError> {
+		const stale = await this.staleConfigsIn(directory);
+		if (stale.length > 0)
+			return new ProjectError(
+				stale
+					.map(
+						(found) =>
+							`${path.basename(found.resource)} in ${directory}: ${found.message}`
+					)
+					.join("\n")
+			);
 		for (const name of LEGACY_CONFIG_FILE_NAMES)
 			if (await this.fileSystemService.isFile(path.join(directory, name)))
 				return new ProjectError(
@@ -265,7 +299,9 @@ export class ConfigDiscovery {
 		return new ProjectError(
 			`No ${DEFAULT_CONFIG_FILE} or ${DEFAULT_PROJECT}.project.json in ${where} (${directory}).${holds}`,
 			others.length > 0
-				? `Name one of them, or run 'rogen init' to create ${DEFAULT_CONFIG_FILE}.`
+				? named === undefined
+					? "Name one of them, or run 'rogen write' to write them all."
+					: "Name one of them."
 				: "Run 'rogen init' to create one."
 		);
 	}
@@ -287,6 +323,27 @@ export class ConfigDiscovery {
 			: configFileNames(listing.value).map((name) =>
 					path.join(directory, name)
 				);
+	}
+
+	/** The project files of a folder that no config writes, absolute and sorted. */
+	async plainProjects(directory: string): Promise<string[]> {
+		const listing = await tryWithAsync(() =>
+			this.fileSystemService.readDirectory(directory)
+		);
+		if (listing.isErr()) return [];
+		const written = new Set(
+			(await this.list(directory)).map((file) => configStem(file))
+		);
+		return listing.value
+			.filter(
+				([name, type]) =>
+					isFileType(type) &&
+					isProjectFileName(name) &&
+					!isSyncbackFileName(name) &&
+					!written.has(projectStem(name))
+			)
+			.map(([name]) => path.join(directory, name))
+			.sort();
 	}
 
 	/** The Rojo project file of a folder with no config: Rogen reads it as a config whose output is itself, and writes nothing. */

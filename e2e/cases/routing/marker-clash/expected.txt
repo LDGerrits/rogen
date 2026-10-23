@@ -1,19 +1,18 @@
-$ rogen build
+$ rogen write
 exit 1
 stdout: (not shown)
 stderr:
   error: default.project.json · not written
   src/Inventory - error: "@client" and "@server" route this folder to different places, and nothing decides between them. Keep one. (route.markerClash)
 
-$ rogen build --json
+$ rogen write --json
 exit 1
 stdout:
   {
     "changed": false,
     "configs": [
       {
-        "config": "project",
-        "file": "<dir>/default.rogen.json",
+        "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",
         "outcome": "notWritten",
         "diagnostics": [
@@ -26,5 +25,6 @@ stdout:
           }
         ]
       }
-    ]
+    ],
+    "plainProjects": []
   }

@@ -1,0 +1,19 @@
+$ rogen write lobby
+exit 1
+stdout:
+  rogen write
+  Wrote 0 of 1 project file.
+stderr:
+  error: lobby.rogen.json · not loaded
+  lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it. (config.identicalConfig)
+
+$ rogen write
+exit 1
+stdout:
+  rogen write
+  Wrote 0 of 2 project files.
+stderr:
+  error: game.rogen.json · not loaded
+  game.rogen.json - error: lobby.rogen.json and game.rogen.json are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it. (config.identicalConfig)
+  error: lobby.rogen.json · not loaded
+  lobby.rogen.json - error: game.rogen.json and lobby.rogen.json are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it. (config.identicalConfig)

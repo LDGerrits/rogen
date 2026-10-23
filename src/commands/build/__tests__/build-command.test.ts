@@ -1,6 +1,9 @@
 import path from "path";
 import "../build-command.js";
-import { commandHarness } from "../../__tests__/command-harness.js";
+import {
+	commandHarness,
+	CommandHarnessOptions,
+} from "../../__tests__/command-harness.js";
 import { ResultError } from "../../../base/result.js";
 import { errorDiagnostic } from "../../../platform/diagnostics/diagnostic.js";
 import {
@@ -17,9 +20,43 @@ import { LogService } from "../../../platform/log/log-service.js";
 import { NullLogService } from "../../../platform/log/null-log-service.js";
 import { MockLogService } from "../../../platform/log/__tests__/mock-log-service.js";
 import { ReportedError } from "../../../platform/commands/commands.js";
-import { MockProcessService } from "../../../platform/process/__tests__/mock-process-service.js";
+import {
+	MockChildProcess,
+	MockProcessService,
+} from "../../../platform/process/__tests__/mock-process-service.js";
+import { SpawnOptions } from "../../../platform/process/process-service.js";
 
 const abs = (...segments: string[]) => path.resolve("/repo", ...segments);
+
+const toFile = { output: "game.rbxl" };
+
+class RojoThatBuilds extends MockProcessService {
+	override spawn(
+		file: string,
+		args: readonly string[],
+		options: SpawnOptions
+	): MockChildProcess {
+		const child = super.spawn(file, args, options);
+		setImmediate(() => child.exit({ code: 0, signal: null }));
+		return child;
+	}
+}
+
+const harness = <L extends LogService = MockLogService>(
+	options: CommandHarnessOptions<L> & { readonly log?: L } = {}
+) => {
+	const processes = new RojoThatBuilds();
+	processes.installed.set("rojo", "/bin/rojo");
+	processes.outputs.set("/bin/rojo", {
+		code: 0,
+		stdout: "Rojo 7.7.1\n",
+		stderr: "",
+	});
+	return commandHarness<L>({
+		processes,
+		...options,
+	} as CommandHarnessOptions<L> & { readonly log: L });
+};
 
 describe("build command", () => {
 	let fs: MemoryFileSystemService;
@@ -32,9 +69,9 @@ describe("build command", () => {
 	const run = async (
 		config: MockConfigService,
 		log: LogService,
-		line: CommandLine = { positionals: [], options: {} },
+		line: CommandLine = { positionals: [], options: toFile },
 		index?: IndexService
-	) => commandHarness({ fs, log, config, index }).run("build", line);
+	) => harness({ fs, log, config, index }).run("build", line);
 
 	const buildable = (overrides: ResolvedConfigSpec = {}, folder = "") =>
 		mockEntry(
@@ -53,7 +90,7 @@ describe("build command", () => {
 		const result = await run(
 			new MockConfigService([buildable()]),
 			new MockLogService(),
-			{ positionals: ["a", "b"], options: {} }
+			{ positionals: ["a", "b"], options: toFile }
 		);
 
 		expect((result as ResultError<Error>).error.message).toContain(
@@ -111,9 +148,12 @@ describe("build command", () => {
 		});
 
 		it("should write only the project file of the default with no argument", async () => {
-			const { run } = commandHarness({ fs });
+			const { run } = harness({ fs });
 
-			const result = await run("build");
+			const result = await run("build", {
+				positionals: [],
+				options: toFile,
+			});
 
 			expect(result.isOk()).toBe(true);
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
@@ -121,11 +161,11 @@ describe("build command", () => {
 		});
 
 		it("should write only the project file of the config named", async () => {
-			const { run } = commandHarness({ fs });
+			const { run } = harness({ fs });
 
 			const result = await run("build", {
 				positionals: ["dist"],
-				options: {},
+				options: toFile,
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -135,11 +175,11 @@ describe("build command", () => {
 
 		it("should build the named config though a sibling you did not name is broken", async () => {
 			await fs.writeFile(abs("release.rogen.json"), "{ broken");
-			const { run } = commandHarness({ fs });
+			const { run } = harness({ fs });
 
 			const result = await run("build", {
 				positionals: ["dist"],
-				options: {},
+				options: toFile,
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -149,9 +189,9 @@ describe("build command", () => {
 		it("should warn that a folder wins over the file of the same name", async () => {
 			await fs.writeFile(abs("dist/default.rogen.json"), config());
 			await fs.writeFile(abs("dist/src/B.luau"), "");
-			const { run, log } = commandHarness({ fs });
+			const { run, log } = harness({ fs });
 
-			await run("build", { positionals: ["dist"], options: {} });
+			await run("build", { positionals: ["dist"], options: toFile });
 
 			expect(log.texts("warn")).toContain(
 				'"dist" is a folder with a default config and also dist.rogen.json: using the folder. To use the file, name it: dist.rogen.json.'
@@ -171,9 +211,9 @@ describe("build command", () => {
 				},
 			})
 		);
-		const { run } = commandHarness({ fs });
+		const { run } = harness({ fs });
 
-		const result = await run("build");
+		const result = await run("build", { positionals: [], options: toFile });
 
 		expect(result.isErr()).toBe(true);
 		expect(await fs.exists(abs("default.project.json"))).toBe(false);
@@ -181,11 +221,11 @@ describe("build command", () => {
 
 	it("should fail for a name that is no folder or project file, and write nothing", async () => {
 		await fs.writeFile(abs("src/A.luau"), "");
-		const { run } = commandHarness({ fs });
+		const { run } = harness({ fs });
 
 		const result = await run("build", {
 			positionals: ["nope"],
-			options: {},
+			options: toFile,
 		});
 
 		expect((result as ResultError<Error>).error.message).toContain(
@@ -208,10 +248,10 @@ describe("build command", () => {
 		);
 
 		expect(logService.lines).toEqual([
-			"intro: rogen build · lobby, arena",
-			"step: lobby",
+			"intro: rogen build · lobby/default.rogen.json, arena/default.rogen.json",
+			"step: lobby/default.rogen.json",
 			"success: lobby/default.project.json · wrote",
-			"step: arena",
+			"step: arena/default.rogen.json",
 			"success: arena/default.project.json · wrote",
 			expect.stringMatching(/^outro: /),
 		]);
@@ -251,7 +291,7 @@ describe("build command", () => {
 		);
 
 		expect(logService.texts("error")).toEqual([
-			"lobby/default.project.json · not written · bad failed",
+			"lobby/default.project.json · not written · bad/default.rogen.json failed",
 			"bad/default.project.json · not written",
 		]);
 	});
@@ -259,10 +299,10 @@ describe("build command", () => {
 	describe("on GitHub Actions", () => {
 		const annotatedRun = async (
 			entries: ReturnType<typeof buildable>[],
-			line: CommandLine = { positionals: [], options: {} }
+			line: CommandLine = { positionals: [], options: toFile }
 		) => {
 			const logService = new MockLogService("/repo", "/repo");
-			const result = await commandHarness({
+			const result = await harness({
 				fs,
 				log: logService,
 				config: new MockConfigService(entries),
@@ -318,7 +358,7 @@ describe("build command", () => {
 
 		expect(result.isErr() && result.error).toBeInstanceOf(ReportedError);
 		expect(logService.lines).toEqual([
-			"intro: rogen build · repo",
+			"intro: rogen build · default.rogen.json",
 			"error: default.rogen.json · not loaded",
 			"diagnosticError: /repo/default.rogen.json - error: boom. (config.removedField)",
 			expect.stringMatching(/^outro: .*fail/),
@@ -348,7 +388,7 @@ describe("build command", () => {
 
 			const result = await run(await withWarning(), logService, {
 				positionals: [],
-				options: { json: true },
+				options: { ...toFile, json: true },
 			});
 
 			expect(result.isOk()).toBe(true);
@@ -371,7 +411,7 @@ describe("build command", () => {
 		) => {
 			const result = await run(configService, logService, {
 				positionals: [],
-				options: { json: true },
+				options: { ...toFile, json: true },
 			});
 			return {
 				result,
@@ -414,13 +454,19 @@ describe("build command", () => {
 				changed: true,
 				configs: [
 					{
-						config: "repo",
-						file: "/repo/default.rogen.json",
+						config: "default.rogen.json",
 						projectFile: "/repo/default.project.json",
 						outcome: "wrote",
 						diagnostics: [],
 					},
 				],
+				rojo: {
+					command: "build",
+					outcome: "built",
+					project: "/repo/default.project.json",
+					output: "/repo/game.rbxl",
+					messages: [],
+				},
 			});
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
@@ -457,14 +503,14 @@ describe("build command", () => {
 
 			expect(
 				document.configs.map(
-					({ file, outcome }: Record<string, string>) => [
-						file,
+					({ config, outcome }: Record<string, string>) => [
+						config,
 						outcome,
 					]
 				)
 			).toEqual([
-				["/repo/lobby/default.rogen.json", "notWritten"],
-				["/repo/arena/default.rogen.json", "notWritten"],
+				["lobby/default.rogen.json", "notWritten"],
+				["arena/default.rogen.json", "notWritten"],
 			]);
 			expect(document.configs[0].diagnostics).toEqual([
 				expect.objectContaining({
@@ -516,8 +562,7 @@ describe("build command", () => {
 				changed: false,
 				configs: [
 					{
-						config: "repo",
-						file: "/repo/default.rogen.json",
+						config: "default.rogen.json",
 						projectFile: null,
 						outcome: "notWritten",
 						diagnostics: [
@@ -527,6 +572,13 @@ describe("build command", () => {
 						],
 					},
 				],
+				rojo: {
+					command: "build",
+					outcome: "notRun",
+					project: null,
+					output: "/repo/game.rbxl",
+					messages: [],
+				},
 			});
 		});
 
@@ -540,11 +592,10 @@ describe("build command", () => {
 
 			expect(document.configs[0]).toMatchObject({
 				outcome: "notWritten",
-				blockedBy: ["broken"],
+				blockedBy: ["broken/default.rogen.json"],
 			});
 			expect(Object.keys(document.configs[0])).toEqual([
 				"config",
-				"file",
 				"projectFile",
 				"outcome",
 				"blockedBy",
@@ -603,7 +654,7 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(true);
 		});
 
-		it("should leave stdout to Rojo's lines when it builds, and keep its own there when it does not", async () => {
+		it("should leave stdout to Rojo's lines", async () => {
 			const { log, running } = await withRojo({ output: "game.rbxl" });
 			const rojo = await rojoStarted();
 			rojo.print("Built project to game.rbxl\n");
@@ -612,15 +663,6 @@ describe("build command", () => {
 
 			expect(log.reserved).toBe(true);
 			expect(log.texts("print")).toEqual(["Built project to game.rbxl"]);
-
-			const plain = new MockLogService();
-			await fs.writeFile(abs("src/A.luau"), "");
-			await commandHarness({
-				fs,
-				log: plain,
-				config: new MockConfigService([buildable()]),
-			}).run("build", { positionals: [], options: {} });
-			expect(plain.reserved).toBe(false);
 		});
 
 		it("should pass --plugin for -p", async () => {
@@ -785,13 +827,6 @@ describe("build command", () => {
 					messages: [],
 				});
 			});
-
-			it("should leave rojo out when no output was asked for", async () => {
-				const { running, log } = await withRojo({ json: true });
-				await running;
-
-				expect(document(log).rojo).toBeUndefined();
-			});
 		});
 
 		it("should refuse -o and -p together", async () => {
@@ -802,11 +837,71 @@ describe("build command", () => {
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
 		});
 
-		it("should run no Rojo without -o or -p", async () => {
+		it("should name the way out when neither -o nor -p is given, and write nothing", async () => {
 			const { running } = await withRojo({});
 
-			expect((await running).isOk()).toBe(true);
+			const result = await running;
+
+			expect(result.isErr()).toBe(true);
+			expect((result as ResultError<Error>).error).toMatchObject({
+				kind: "usage",
+				message: expect.stringContaining("rogen write"),
+			});
 			expect(processes.spawned).toEqual([]);
+			expect(await fs.exists(abs("default.project.json"))).toBe(false);
+		});
+
+		it("should refuse --watch without -o or -p", async () => {
+			const { running } = await withRojo({ watch: true });
+
+			expect((await running).isErr()).toBe(true);
+			expect(processes.spawned).toEqual([]);
+		});
+
+		it("should close with what it built once Rojo has built it", async () => {
+			const { log, running } = await withRojo({ output: "game.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.lines.at(-1)).toBe("outro: Built game.rbxl.");
+		});
+
+		it("should name a plugin by its name and count the warnings", async () => {
+			const { log, running } = await withRojo(
+				{ plugin: "Tool.rbxm" },
+				new MockConfigService([
+					buildable({ routes: { server: "ServerScriptService" } }),
+				])
+			);
+			const rojo = await rojoStarted();
+			rojo.exit({ code: 0, signal: null });
+			await running;
+
+			expect(log.lines.at(-1)).toBe(
+				"outro: Built plugin Tool.rbxm with 1 warning."
+			);
+		});
+
+		it("should print no success line when Rojo fails", async () => {
+			const { log, running } = await withRojo({ output: "g.rbxl" });
+			const rojo = await rojoStarted();
+			rojo.printError("ERROR: no such folder\n");
+			rojo.exit({ code: 1, signal: null });
+			await running;
+
+			expect(log.lines.at(-1)).toBe("outro: build failed.");
+			expect(log.texts("outro").join()).not.toContain("Built");
+		});
+
+		it("should print no success line when Rojo is not installed", async () => {
+			processes.installed.clear();
+			const { log, running } = await withRojo({ output: "g.rbxl" });
+
+			const result = await running;
+
+			expect(result.isErr()).toBe(true);
+			expect(log.texts("outro")).toEqual(["build failed."]);
 		});
 	});
 });
