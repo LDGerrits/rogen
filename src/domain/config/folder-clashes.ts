@@ -1,4 +1,5 @@
 import path from "path";
+import { samePath } from "../../base/path.js";
 import { isObject, isSameJson } from "../../base/objects.js";
 import {
 	Diagnostic,
@@ -27,7 +28,13 @@ function otherKeys(value: Readonly<Record<string, unknown>> | undefined) {
 const sourcesOf = (config: ResolvedConfig): string[] =>
 	[...config.sourcePaths].sort();
 
-/** The errors for `mine` where a sibling config of its folder is a forgotten copy: it names the same project and differs in nothing but, at most, its source paths. */
+/** Whether the two configs read at least one folder in common. */
+const sharesSourcePath = (a: ResolvedConfig, b: ResolvedConfig): boolean =>
+	a.sourcePaths.some((mine) =>
+		b.sourcePaths.some((theirs) => samePath(mine, theirs))
+	);
+
+/** The errors for `mine` where a sibling config of its folder is a forgotten copy: it names the same project and either repeats it entirely or reads none of its source paths. */
 export function folderClashes(
 	mine: FolderConfig,
 	siblings: readonly FolderConfig[]
@@ -35,23 +42,32 @@ export function folderClashes(
 	const found: Diagnostic[] = [];
 	for (const sibling of siblings) {
 		if (mine.config.projectName !== sibling.config.projectName) continue;
-		if (!isSameJson(otherKeys(mine.value), otherKeys(sibling.value)))
-			continue;
 		const files = `${path.basename(sibling.config.file)} and ${path.basename(mine.config.file)}`;
 		const location = { resource: mine.config.file };
-		found.push(
-			isSameJson(sourcesOf(mine.config), sourcesOf(sibling.config))
-				? errorDiagnostic(
-						"config.identicalConfig",
-						location,
-						`${files} are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it.`
-					)
-				: errorDiagnostic(
-						"config.duplicateName",
-						location,
-						`${files} are both named "${mine.config.projectName}" but read other source paths, so Studio and Rojo would list two games under one name. Change "name" in the copy.`
-					)
-		);
+		if (
+			isSameJson(sourcesOf(mine.config), sourcesOf(sibling.config)) &&
+			isSameJson(otherKeys(mine.value), otherKeys(sibling.value))
+		) {
+			found.push(
+				errorDiagnostic(
+					"config.identicalConfig",
+					location,
+					`${files} are the same config: a copy that was not edited. Change "name", "sourcePaths" and what else the copy is for, or delete it.`
+				)
+			);
+		} else if (
+			mine.config.sourcePaths.length > 0 &&
+			sibling.config.sourcePaths.length > 0 &&
+			!sharesSourcePath(mine.config, sibling.config)
+		) {
+			found.push(
+				errorDiagnostic(
+					"config.duplicateName",
+					location,
+					`${files} are both named "${mine.config.projectName}" but share no source path, so Studio and Rojo would list two games under one name. Change "name" in the copy.`
+				)
+			);
+		}
 	}
 	return found;
 }

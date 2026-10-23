@@ -24,7 +24,7 @@ stdout:
     Add your own routes under "routes" in game.rogen.json.
     Edit game.rogen.json and leave game.project.json alone, since 'rogen write' overwrites it. After you add a feature folder, run 'rogen write game' so the editor's game.project.json follows.
     luau-lsp reads the sourcemap of one place at a time, game here. To switch, change the name in the generatorCommand in .vscode/settings.json.
-    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Rogen errors until the copy has its own "name" and source path. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
+    Add another place: copy game.rogen.json to lobby.rogen.json, point each place/game in its tree to place/lobby, make src/lobby and copy place/game to place/lobby. Give the copy its own "name" and source path: Rogen errors while it is still the same config, or has the same name and no source path in common. Serve it from a second terminal with its own --port: 'rogen serve lobby --port <port>'.
   Wrote 12 files.
 
 $ rogen init lobby --non-interactive --skip-git
