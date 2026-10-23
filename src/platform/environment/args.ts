@@ -127,14 +127,23 @@ function tokenize(args: string[], options: readonly OptionDescriptor[]) {
 	});
 }
 
+/** `rewrite` applied to each argument before `--`; `--` and what follows it are left alone. */
+function beforeSeparator(
+	args: readonly string[],
+	rewrite: (arg: string) => string
+): string[] {
+	const end = args.indexOf("--");
+	const own = end === -1 ? args : args.slice(0, end);
+	const rewritten = own.map(rewrite);
+	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
+}
+
 /** `-o=value` for a short string option, as `--output=value`, which keeps a value that starts with `-`; past `--` the line is left alone. */
 function withShortValues(
 	args: readonly string[],
 	options: readonly OptionDescriptor[]
 ): string[] {
-	const end = args.indexOf("--");
-	const own = end === -1 ? args : args.slice(0, end);
-	const rewritten = own.map((arg) => {
+	return beforeSeparator(args, (arg) => {
 		const short = /^-([^-=])=(.*)$/s.exec(arg);
 		const option = options.find(
 			({ short: letter, type }) =>
@@ -142,7 +151,6 @@ function withShortValues(
 		);
 		return short && option ? `--${option.name}=${short[2]}` : arg;
 	});
-	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
 }
 
 /** `--alias` and `--alias=value` as the option they name; past `--` the line is left alone. */
@@ -150,16 +158,13 @@ function withAliases(
 	args: readonly string[],
 	options: readonly OptionDescriptor[]
 ): string[] {
-	const end = args.indexOf("--");
-	const own = end === -1 ? args : args.slice(0, end);
-	const rewritten = own.map((arg) => {
+	return beforeSeparator(args, (arg) => {
 		const alias = /^--([^=]+)(=.*)?$/s.exec(arg);
 		const option = options.find(({ aliases }) =>
 			aliases?.includes(alias?.[1] ?? "")
 		);
 		return alias && option ? `--${option.name}${alias[2] ?? ""}` : arg;
 	});
-	return end === -1 ? rewritten : [...rewritten, ...args.slice(end)];
 }
 
 /** The command a line runs, the one it names, whose options it is checked against, and whether the first positional is the word that runs: `rogen build --help` runs help on `build`, but must still be a valid build line. Help gets only the name, so `rogen plugin install --help` is help on `plugin`. */
