@@ -146,11 +146,11 @@ describe("rogen help --json", () => {
 			);
 			expect(build.shapes.Error).toContain("kind:");
 			expect(build.output.document).toBe(
-				"{changed:bool,configs:[BuildEntry],rojo?:RojoEntry}"
+				"{changed:bool,configs:[WriteEntry],rojo?:RojoEntry}"
 			);
 			expect(Object.keys(build.shapes)).toEqual(
 				expect.arrayContaining([
-					"BuildEntry",
+					"WriteEntry",
 					"RojoEntry",
 					"Diagnostic",
 				])

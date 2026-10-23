@@ -5,7 +5,7 @@ stdout:
 stderr:
   rogen syncback · default.rogen.json
   default.project.json · wrote
-  Built 1 project.
+  Wrote 1 project.
   default.rogen.json - warning: ServerScriptService/Inventory/Mail.spec is in the place and no folder of the project can take it, so it was left out: src/Inventory/Server/Mail.spec.luau matches an ignore glob of the project, so it is left alone. (syncback.unplaced)
   Syncback wrote 1 change.
 

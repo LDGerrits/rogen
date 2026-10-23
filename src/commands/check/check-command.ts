@@ -61,7 +61,7 @@ registerCommand(
 							description: [
 								"A file or a directory. A directory gives the files in it, and a file that doesn't exist yet is checked as if it did. A :line or :line:col after a file is ignored.",
 								"- Config: the default config of the nearest folder at or above the path; with none, every .rogen.json at or above it whose source paths cover it. Naming a .rogen.json, or a config as build reads it (game for game.rogen.json), checks that config whole.",
-								"- Skipped: a path no build reads, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document.",
+								"- Skipped: a path Rogen leaves out, in no source path of its config or covered by no config, gets a note on stderr and is listed under skipped in the JSON document.",
 								"- No path: every .rogen.json of the working directory, whole, compiled path warnings included; with none, the plain project file there.",
 							].join("\n"),
 							isOptional: true,
@@ -123,7 +123,7 @@ registerCommand(
 			}
 			if (stoppedBy.length > 0)
 				logService.warn(
-					`Checked as far as the build gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
+					`Checked as far as the write gets: it stops on ${joinedWithAnd(stoppedBy.map(({ resource, code }) => `${relativeTo(cwd, resource)} (${code})`))}. Run 'rogen check' to see everything.`
 				);
 			return failure ? this.reported(failure) : ok(undefined);
 		}

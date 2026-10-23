@@ -15,7 +15,7 @@ stdout:
 stderr:
   rogen sourcemap · default.rogen.json
   default.project.json · unchanged
-  Built 1 project.
+  Wrote 1 project.
   sourcemap.json · wrote
 
 $ darklua process src dist

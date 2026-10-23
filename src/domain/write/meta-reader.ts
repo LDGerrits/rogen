@@ -261,7 +261,7 @@ export class MetaReader {
 					"meta.unreadable",
 					{ resource: file },
 					isMissingPath(text.error)
-						? "the meta file does not exist any more; it was there when the build scanned and was removed while it ran."
+						? "the meta file does not exist any more; it was there when the write scanned and was removed while it ran."
 						: `the meta file could not be read: ${failureReason(text.error)}.`
 				),
 			]);

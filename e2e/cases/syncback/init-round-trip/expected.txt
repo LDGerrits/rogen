@@ -18,7 +18,7 @@ exit 0
 stderr:
   rogen syncback · default.rogen.json
   default.project.json · unchanged
-  Built 1 project.
+  Wrote 1 project.
   Syncback wrote 1 change.
 
 $ cmp before.json default.rogen.json

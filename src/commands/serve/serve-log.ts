@@ -36,7 +36,7 @@ const connectionFields = {
 
 /** One line of `serve --json`. */
 export const serveLineShape = S.union(
-	watchLineShapes.build,
+	watchLineShapes.write,
 	watchLineShapes.notice,
 	watchLineShapes.error,
 	S.object({

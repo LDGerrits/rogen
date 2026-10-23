@@ -81,7 +81,7 @@ describe("check command", () => {
 			]);
 		});
 
-		it("should say a file in no source path, that is no typo of one, is read by no build, and pass", async () => {
+		it("should say a file in no source path, that is no typo of one, is left out of the project file, and pass", async () => {
 			await write("src/Inventory/Server/Save.luau");
 			await write("lib/x.luau");
 
@@ -90,7 +90,7 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(logService.texts("warn")).toEqual([]);
 			expect(logService.texts("notice")).toEqual([
-				"note: lib/x.luau: in no source path of default.rogen.json, so no build reads it.",
+				"note: lib/x.luau: in no source path of default.rogen.json, so Rogen leaves it out of the project file.",
 			]);
 		});
 
@@ -148,7 +148,7 @@ describe("check command", () => {
 			expect(result.isOk()).toBe(true);
 			expect(printed()).toEqual([]);
 			expect(logService.texts("warn")).toEqual([
-				"Checked as far as the build gets: it stops on src/F/Shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.",
+				"Checked as far as the write gets: it stops on src/F/Shared/Bad@server.luau (route.ignoredAt). Run 'rogen check' to see everything.",
 			]);
 		});
 

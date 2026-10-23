@@ -68,7 +68,7 @@ stdout:
         "flag": "--agent-rules"
       }
     ],
-    "built": [
+    "projects": [
       {
         "config": "default.rogen.json",
         "projectFile": "<dir>/default.project.json",

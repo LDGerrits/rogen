@@ -5,7 +5,7 @@ stdout:
 stderr:
   rogen syncback · default.rogen.json
   default.project.json · wrote
-  Built 1 project.
+  Wrote 1 project.
   default.rogen.json - warning: ReplicatedStorage/Shared/Config is in the place and no folder of the project can take it, so it was left out: Rojo can't sync back a Json file, so its change stays in the place; copy it by hand. (syncback.unplaced)
   Syncback wrote 1 change.
 

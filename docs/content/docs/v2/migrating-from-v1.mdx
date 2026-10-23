@@ -232,12 +232,12 @@ A repo that built several places from one config becomes a [folder per place](/d
 
 | v1 | v2 |
 |---|---|
-| the mode is picked from the detected toolchain | only `init` detects anything; a build does what the config says |
+| the mode is picked from the detected toolchain | only `init` detects anything; a write does what the config says |
 | `build` replaces the first path segment | `compiledPath` replaces the [common root](/docs/v2/core-concepts/output#compiled-path) of the source paths |
 | Rogen adopts an existing project file | Rogen owns the project files it writes and replaces them; hand-written content goes in `tree` |
 | packages and `rbxts_include` injected from the toolchain | mounted in the `tree`, which `init` writes |
 | empty placeholder files for compiled toolchains | none: every emitted `$path` is optional |
-| a full rebuild on every change | incremental rebuilds, and the config reloads while watching |
+| a full rewrite on every change | incremental rewrites, and the config reloads while watching |
 
 ## CLI
 

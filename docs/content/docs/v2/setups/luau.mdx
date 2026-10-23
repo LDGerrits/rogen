@@ -48,7 +48,7 @@ In a terminal it asks only what it can't tell from the folder: the language in a
 
 The summary lists every file it will write and every command it will run, so nothing happens that wasn't shown. [`init`](/docs/v2/cli#init-path) explains Customise, the flags and the runs that skip the summary.
 
-A run without a terminal, or with `-y`, writes the same files, builds `default.project.json` from the config and prints this (in a terminal each line follows a check mark):
+A run without a terminal, or with `-y`, writes the same files, writes `default.project.json` from the config and prints this (in a terminal each line follows a check mark):
 
 ```
 The Greeter sample is in src/Greeter, and Rojo's sample Baseplate and lighting in place, which the tree mounts. Pass --no-sample for an empty src and no place.
@@ -131,7 +131,7 @@ Start Rogen:
 rogen serve
 ```
 
-It builds `default.project.json`, starts Rojo on it, and keeps it up to date as you add, move and rename files. Connect from the Studio plugin once it prints `Serving default.rogen.json with Rojo`, which ends with the project name Studio lists.
+It writes `default.project.json`, starts Rojo on it, and keeps it up to date as you add, move and rename files. Connect from the Studio plugin once it prints `Serving default.rogen.json with Rojo`, which ends with the project name Studio lists.
 
 </Step>
 

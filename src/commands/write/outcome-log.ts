@@ -243,7 +243,9 @@ export class OutcomeLog {
 			});
 		}
 		if (run.failed || built?.failed)
-			this.logService.closeFrame("build failed.");
+			this.logService.closeFrame(
+				run.failed ? "write failed." : `${command} failed.`
+			);
 		else this.end(run.outcomes.length, run.warningCount, writes, built);
 	}
 
@@ -314,7 +316,7 @@ export class OutcomeLog {
 		writes: boolean,
 		file?: BuiltFile
 	): void {
-		const built = `${writes ? "Built" : "Checked"} ${file?.name ?? plural(projects, "project")}`;
+		const built = `${writes ? (file ? "Built" : "Wrote") : "Checked"} ${file?.name ?? plural(projects, "project")}`;
 		this.logService.outro(
 			warnings === 0
 				? `${built}.`

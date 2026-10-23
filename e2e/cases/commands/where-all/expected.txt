@@ -12,7 +12,7 @@ stdout:
   src/Inventory/Server/Save.luau -> ServerScriptService/Inventory/Save · route Server (folder)
   README.md -> outside the source paths
 stderr:
-  note: README.md: in no source path of default.rogen.json, so no build reads it.
+  note: README.md: in no source path of default.rogen.json, so Rogen leaves it out of the project file.
 
 $ rogen where places/lobby/Lobby/Server/Queue.luau README.md --json
 exit 0
@@ -52,4 +52,4 @@ stdout:
     ]
   }
 stderr:
-  note: README.md: in no source path of default.rogen.json, so no build reads it.
+  note: README.md: in no source path of default.rogen.json, so Rogen leaves it out of the project file.

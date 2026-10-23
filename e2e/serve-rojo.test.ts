@@ -154,7 +154,7 @@ describeWithRojo("end to end serve", () => {
 		}, 20_000);
 	}, 40_000);
 
-	it("should keep building while it serves", async () => {
+	it("should keep writing while it serves", async () => {
 		const serving = serve.start();
 		await eventually(() => {
 			expect(serving.output).toContain("Serving default.rogen.json");
@@ -415,7 +415,7 @@ describeWithRojo("end to end serve", () => {
 		}
 	}, 60_000);
 
-	it("should print only JSON lines on stdout, the build and then the server", async () => {
+	it("should print only JSON lines on stdout, the write and then the server", async () => {
 		const serving = serve.start(["--json"]);
 
 		await eventually(() => {
@@ -427,7 +427,7 @@ describeWithRojo("end to end serve", () => {
 			.split("\n")
 			.map((line) => JSON.parse(line));
 		expect(lines.map((line) => Object.keys(line)[0])).toEqual([
-			"build",
+			"write",
 			"serving",
 		]);
 		expect(lines[1].serving).toEqual(

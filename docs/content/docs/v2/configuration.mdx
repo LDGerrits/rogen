@@ -102,9 +102,9 @@ A key on neither list is an error, since Rojo rejects a project file with a key 
 
 ---
 
-## Project Files Are as Fresh as Their Last Build
+## Project Files Are as Fresh as Their Last Write
 
-`default.project.json` is what the editor and your compiler read, and Rogen writes it only when a command builds that config. See [The project file is as fresh as its last build](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-build) for when to run `rogen write`.
+`default.project.json` is what the editor and your compiler read, and Rogen writes it only when a command writes that config. See [The project file is as fresh as its last write](/docs/v2/core-concepts/output#the-project-file-is-as-fresh-as-its-last-write) for when to run `rogen write`.
 
 `rogen init` adds `*.project.json` to the `.gitignore` it creates. See [Ignore or commit the project files](/docs/v2/core-concepts/output#ignore-or-commit-the-project-files).
 
@@ -283,7 +283,7 @@ Every diagnostic points at the problem:
 default.rogen.json:7:3 - error: "outDir" is not a Rojo key and not Rogen's, and Rojo rejects a project file with a key it doesn't know. (config.unknownField)
 ```
 
-Errors stop the build. Warnings don't, and the build still exits with 0. [`rogen check`](/docs/v2/cli#check-path) exits 1 on a warning too, so use it where a warning should stop a merge. You'll get warnings for:
+Errors stop the write. Warnings don't, and the write still exits with 0. [`rogen check`](/docs/v2/cli#check-path) exits 1 on a warning too, so use it where a warning should stop a merge. You'll get warnings for:
 
 - files that match no route,
 - names that look like a route key but aren't,

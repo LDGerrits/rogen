@@ -65,7 +65,7 @@ const ServeOptions = [
 	{
 		...JsonOption,
 		description:
-			"Print one JSON object per line: each build, each server when it serves, and failures.",
+			"Print one JSON object per line: each write, each server when it serves, and failures.",
 	},
 	AddressOption,
 	PortOption,
@@ -96,9 +96,9 @@ registerCommand(
 				metadata: {
 					longRunning: true,
 					summary:
-						"Builds, serves with Rojo, and rebuilds on changes",
+						"Writes, serves with Rojo, and rewrites on changes",
 					description:
-						"Builds the project file, serves it with Rojo, and rebuilds on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that.",
+						"Writes the project file, serves it with Rojo, and rewrites it on every change. With no project it serves default.rogen.json of this folder; name another file (rogen serve dist) to serve that.",
 					args: ProjectArgument,
 					options: ServeOptions,
 					output: { lines: serveLineShape },
@@ -160,7 +160,7 @@ registerCommand(
 				log.begin();
 				if (plan.value.isIdle) {
 					log.end(
-						"Nothing to start: another rogen serve already serves this project, so nothing is built or watched here."
+						"Nothing to start: another rogen serve already serves this project, so nothing is written or watched here."
 					);
 					return ok(undefined);
 				}

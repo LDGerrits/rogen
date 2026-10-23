@@ -29,7 +29,7 @@ import { reportRojo, reportRojoBesideFailure } from "../write/report-rojo.js";
 import { buildRojoEntryShape, rojoEntry } from "../write/rojo-entry.js";
 import {
 	configsDocument,
-	watchLineShape,
+	watchLineShapes,
 	writeEntryShape,
 } from "../write/write-document.js";
 import { WriteWatch } from "../write/write-watch.js";
@@ -43,6 +43,14 @@ const buildDocumentShape = S.object({
 	configs: S.array(writeEntryShape),
 	rojo: S.optional(buildRojoEntryShape),
 });
+
+/** One line of `build --watch --json`. */
+const buildLineShape = S.union(
+	watchLineShapes.write,
+	S.object({ rojo: buildRojoEntryShape }),
+	watchLineShapes.notice,
+	watchLineShapes.error
+);
 
 const OutputOption = {
 	name: "output",
@@ -89,7 +97,7 @@ registerCommand(
 					options: BuildOptions,
 					output: {
 						document: buildDocumentShape,
-						lines: watchLineShape,
+						lines: buildLineShape,
 					},
 					effects: ["writesFiles", "runsProcesses"],
 					longRunningWith: "watch",

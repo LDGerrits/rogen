@@ -20,7 +20,7 @@ export const sourcemapDocumentShape = S.object({
 
 /** One line of `sourcemap --watch --json`. */
 export const sourcemapLineShape = S.union(
-	watchLineShapes.build,
+	watchLineShapes.write,
 	S.object({ rojo: sourcemapEntryShape }),
 	watchLineShapes.notice,
 	watchLineShapes.error

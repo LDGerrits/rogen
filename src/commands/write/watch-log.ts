@@ -72,9 +72,9 @@ function describeFileChanges(
 function titleOf(cause: WatchCause, cwd: string): string {
 	switch (cause.kind) {
 		case "initial":
-			return "initial build";
+			return "initial write";
 		case "burst":
-			return "many changes · full rebuild";
+			return "many changes · full rewrite";
 		case "change":
 			return describeChange({
 				sourceFiles: cause.sourceFiles,
@@ -170,17 +170,17 @@ export class WatchLog implements WatchReporter {
 				this.logService.info(`${name} loads again.`);
 				return;
 			case "added":
-				this.logService.info(`${name} added. Building it too.`);
+				this.logService.info(`${name} added. Writing it too.`);
 				return;
 			case "removed":
-				this.logService.info(`${name} removed. No longer building it.`);
+				this.logService.info(`${name} removed. No longer writing it.`);
 				return;
 			case "broken":
 				this.outcomeLog.diagnostics(notice.errors, notice.file);
 				this.logService.error(
 					notice.keptLastValid
-						? `Still building from the last valid ${name}.`
-						: `Not building ${name} until it loads.`
+						? `Still writing from the last valid ${name}.`
+						: `Not writing ${name} until it loads.`
 				);
 				return;
 		}
@@ -257,7 +257,7 @@ export class WatchJsonLog implements WatchReporter {
 	update(update: WatchUpdate): void {
 		update.notices.forEach((notice) => this.notice(notice));
 		for (const { outcome } of update.reports)
-			this.line({ build: writeEntry(outcome, this.cwd) });
+			this.line({ write: writeEntry(outcome, this.cwd) });
 	}
 
 	error(error: Error): void {

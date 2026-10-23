@@ -133,13 +133,13 @@ describe("watch", () => {
 				logService.texts("print").map((line) => JSON.parse(line))
 			).toEqual([
 				{
-					build: expect.objectContaining({
+					write: expect.objectContaining({
 						config: "default.rogen.json",
 						outcome: "wrote",
 					}),
 				},
 				{
-					build: expect.objectContaining({
+					write: expect.objectContaining({
 						config: "default.rogen.json",
 						outcome: "wrote",
 					}),
@@ -422,7 +422,7 @@ describe("watch", () => {
 
 			expect(blocks()).toEqual([
 				{
-					title: "initial build",
+					title: "initial write",
 					lines: ["lobby/default.project.json · wrote"],
 				},
 			]);

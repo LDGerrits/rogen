@@ -5,7 +5,7 @@ stdout:
 stderr:
   rogen syncback · default.rogen.json
   default.project.json · wrote
-  Built 1 project.
+  Wrote 1 project.
   default.rogen.json - warning: ServerScriptService is in the place and no folder of the project can take it, so it was left out: a property or attribute changed in Studio, and the tree of default.rogen.json has no node for it, since routing made it; add a node for it to the tree. (syncback.unplaced)
   Syncback wrote 1 change.
 

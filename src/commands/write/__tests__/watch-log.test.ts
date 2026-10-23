@@ -66,11 +66,11 @@ describe("WatchLog.update", () => {
 		it("should start with the time, padded to two digits", () => {
 			expect(logged({})[0]).toEqual({
 				kind: "step",
-				text: "03:04:05 · initial build",
+				text: "03:04:05 · initial write",
 			});
 		});
 
-		it("should say a burst dropped the changes and rebuilt everything", () => {
+		it("should say a burst dropped the changes and rewrote everything", () => {
 			const lines = logged({
 				cause: {
 					kind: "burst",
@@ -85,7 +85,7 @@ describe("WatchLog.update", () => {
 					"warn",
 					"Threshold reached (250 > 200). Dropping the buffered changes.",
 				],
-				["step", "03:04:05 · many changes · full rebuild"],
+				["step", "03:04:05 · many changes · full rewrite"],
 			]);
 		});
 
@@ -401,7 +401,7 @@ describe("WatchLog.update", () => {
 			]);
 		});
 
-		it("should print a config's new errors and say its last valid version still builds", () => {
+		it("should print a config's new errors and say its last valid version is still written", () => {
 			const { log, logService } = session();
 			const error = errorDiagnostic(
 				"x.err",
@@ -430,12 +430,12 @@ describe("WatchLog.update", () => {
 				["diagnosticError", expect.stringContaining("bad.")],
 				[
 					"error",
-					"Still building from the last valid default.rogen.json.",
+					"Still writing from the last valid default.rogen.json.",
 				],
 			]);
 		});
 
-		it("should say a config that was never valid isn't built, and a config added or removed", () => {
+		it("should say a config that was never valid isn't written, and a config added or removed", () => {
 			const { log, logService } = session();
 			const error = errorDiagnostic(
 				"x.err",
@@ -469,15 +469,15 @@ describe("WatchLog.update", () => {
 					.filter(({ kind }) => kind !== "step")
 					.map(({ kind, text }) => [kind, text])
 			).toEqual([
-				["info", "match/default.rogen.json added. Building it too."],
+				["info", "match/default.rogen.json added. Writing it too."],
 				[
 					"info",
-					"arena/default.rogen.json removed. No longer building it.",
+					"arena/default.rogen.json removed. No longer writing it.",
 				],
 				["diagnosticError", expect.stringContaining("bad.")],
 				[
 					"error",
-					"Not building lobby/default.rogen.json until it loads.",
+					"Not writing lobby/default.rogen.json until it loads.",
 				],
 			]);
 		});
