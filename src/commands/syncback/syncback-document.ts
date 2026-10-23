@@ -1,4 +1,4 @@
-import { relativeTo } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
 import { ConfigBuild } from "../../domain/build/build.js";
 import {
 	SyncbackChange,
@@ -84,7 +84,7 @@ export function syncbackEntry(
 		};
 	return {
 		outcome: outcome.kind === "planned" ? "wouldWrite" : outcome.kind,
-		config: relativeTo(cwd, outcome.plan.project.file),
+		config: configPath(cwd, outcome.plan.project.file),
 		input,
 		changes: outcome.plan.changes.map(({ kind, file }) => ({ kind, file })),
 		unplaced: outcome.plan.unplaced,

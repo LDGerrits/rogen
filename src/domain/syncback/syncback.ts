@@ -45,6 +45,14 @@ export interface SyncbackResult extends SyncbackPlan {
 	readonly warnings: readonly Diagnostic[];
 }
 
+/** A name that is a place or model file, not a project. */
+const PLACE_FILE = /\.rbxlx?$|\.rbxmx?$/i;
+
+/** The first of `names` that is a place or model file, which a project argument is not. */
+export function placeFileAmong(names: readonly string[]): string | undefined {
+	return names.find((name) => PLACE_FILE.test(name));
+}
+
 /** The error for a project that reads compiled code, which syncback would write into and the next compile would delete; `undefined` for any other project. */
 export function compiledPathRefusal(
 	project: ResolvedConfig

@@ -1,5 +1,6 @@
 import { unescapedGlob } from "../../base/glob.js";
-import { relativeTo, toNative } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
+import { toNative } from "../../base/path.js";
 import {
 	FileLocation,
 	requireExpressionOf,
@@ -210,7 +211,7 @@ function entryOf(answer: Answer, cwd: string): WhereEntry {
 		const { location } = answer;
 		const { status, ...fields } = fieldsOf(location);
 		return {
-			config: relativeTo(cwd, answer.config),
+			config: configPath(cwd, answer.config),
 			source: toNative(location.source),
 			status,
 			exists: location.exists,
@@ -219,7 +220,7 @@ function entryOf(answer: Answer, cwd: string): WhereEntry {
 		} as WhereFileEntry;
 	}
 	return {
-		config: relativeTo(cwd, answer.config),
+		config: configPath(cwd, answer.config),
 		instance: answer.instance,
 		status: "noFile",
 		...(answer.folders.length > 0 && {

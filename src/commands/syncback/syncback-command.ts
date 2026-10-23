@@ -12,7 +12,6 @@ import { SyncbackService } from "../../domain/syncback/syncback-service.js";
 import {
 	SyncbackPlan,
 	SyncbackResult,
-	compiledPathRefusal,
 } from "../../domain/syncback/syncback.js";
 import {
 	AbstractCommand,
@@ -85,9 +84,6 @@ const counts = (plan: SyncbackPlan): string => {
 		.join(", ");
 };
 
-/** A name that is a place or model file, not a project. */
-const PLACE_FILE = /\.rbxlx?$|\.rbxmx?$/i;
-
 registerCommand(
 	class SyncbackCommand extends AbstractCommand<typeof SyncbackOptions> {
 		constructor() {
@@ -122,9 +118,9 @@ registerCommand(
 			if (tooMany) return err(tooMany);
 			const { input, json } = line.options;
 			if (input === undefined) {
-				const placeFile = line.positionals.find((positional) =>
-					PLACE_FILE.test(positional)
-				);
+				const placeFile = accessor
+					.get(SyncbackService)
+					.placeFileAmong(line.positionals);
 				return err(
 					new UsageError(
 						"--input names the place or model file to bring changes from, and Rojo needs it.",
@@ -157,7 +153,8 @@ registerCommand(
 			const project = selection.value.requireValid().isErr()
 				? undefined
 				: rojoService.choose(selection.value);
-			const refusal = project && compiledPathRefusal(project);
+			const syncbacks = accessor.get(SyncbackService);
+			const refusal = project && syncbacks.refusalFor(project);
 			if (refusal) return err(refusal);
 
 			const buildService = accessor.get(BuildService);
@@ -166,7 +163,6 @@ registerCommand(
 				: await buildService.build(selection.value);
 			const failure = build.failure();
 
-			const syncbacks = accessor.get(SyncbackService);
 			const request =
 				project &&
 				({ selection: selection.value, project, input, cwd } as const);

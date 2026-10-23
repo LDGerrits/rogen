@@ -1,7 +1,6 @@
 import path from "path";
 import { DisposableStore } from "./base/disposable.js";
 import { UsageError, setUnexpectedErrorHandler } from "./base/errors.js";
-import { err } from "./base/result.js";
 import {
 	CommandRegistry,
 	CommandService,
@@ -10,6 +9,7 @@ import {
 import {
 	CommandFailure,
 	exitCode,
+	exitCodeOf,
 } from "./platform/commands/command-failure.js";
 import { CoreCommandService } from "./platform/commands/core-command-service.js";
 import {
@@ -183,7 +183,7 @@ class RogenMain {
 				"cd to one that does, then run rogen again."
 			);
 			failure.report(gone, command);
-			process.exitCode = exitCode(err(gone));
+			process.exitCode = exitCodeOf(gone);
 			return;
 		}
 
@@ -275,7 +275,7 @@ class RogenMain {
 		);
 		services.set(ProductService, productService);
 
-		const configService = new CoreConfigService(
+		const configService: ConfigService = new CoreConfigService(
 			fileSystemService,
 			environmentService
 		);

@@ -1,4 +1,5 @@
 import { relativeTo } from "../../base/path.js";
+import { configPath } from "../../platform/config/config-path.js";
 import { plural } from "../../base/strings.js";
 import {
 	RebuildReport,
@@ -77,7 +78,7 @@ function titleOf(cause: WatchCause, cwd: string): string {
 			return describeChange({
 				sourceFiles: cause.sourceFiles,
 				configFiles: cause.configFiles.map((file) =>
-					relativeTo(cwd, file)
+					configPath(cwd, file)
 				),
 				reloaded: cause.reloaded,
 			});
@@ -162,7 +163,7 @@ export class WatchLog implements WatchReporter {
 	}
 
 	protected notice(notice: ConfigNotice): void {
-		const name = relativeTo(this.cwd, notice.file);
+		const name = configPath(this.cwd, notice.file);
 		switch (notice.kind) {
 			case "recovered":
 				this.logService.info(`${name} loads again.`);
@@ -269,7 +270,7 @@ export class WatchJsonLog implements WatchReporter {
 		this.line({
 			notice: {
 				kind: notice.kind,
-				config: relativeTo(this.cwd, notice.file),
+				config: configPath(this.cwd, notice.file),
 				...(notice.kind === "broken" && {
 					keptLastValid: notice.keptLastValid,
 					diagnostics: notice.errors.map(diagnosticToJson),
