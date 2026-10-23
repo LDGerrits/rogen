@@ -10,6 +10,7 @@ import {
 	CommandRegistry,
 	Extensions,
 } from "../src/platform/commands/commands.js";
+import { compareStrings } from "../src/base/collections.js";
 import { outputJsonSchema } from "../src/platform/output/__tests__/output-json-schema.js";
 import { OutputShape } from "../src/platform/output/output-shape.js";
 import { failureShape } from "../src/platform/diagnostics/diagnostic-json.js";
@@ -554,7 +555,7 @@ function renderNode(
 	const suffix = files.length > 0 ? `  <- ${files.join(", ")}` : "";
 	const line = `${"  ".repeat(depth)}${node.name}: ${node.className}${suffix}`;
 	const children = [...(node.children ?? [])].sort((a, b) =>
-		a.name < b.name ? -1 : a.name > b.name ? 1 : 0
+		compareStrings(a.name, b.name)
 	);
 	return [line, ...children.flatMap((child) => renderNode(child, depth + 1))];
 }

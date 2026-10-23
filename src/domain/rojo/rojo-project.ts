@@ -41,7 +41,8 @@ export const NODE_FIELDS: ReadonlySet<string> = new Set([
 	"$id",
 ]);
 
-function childNodes(node: RojoNode): [string, RojoNode][] {
+/** The child nodes of a node: its keys that are not `$` fields and hold an object. */
+export function childNodes(node: RojoNode): [string, RojoNode][] {
 	return Object.entries(node).filter(
 		(entry): entry is [string, RojoNode] =>
 			!entry[0].startsWith("$") && isObject(entry[1])
