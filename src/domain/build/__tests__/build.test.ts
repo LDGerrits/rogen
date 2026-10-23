@@ -199,7 +199,6 @@ describe("domain/build/build", () => {
 			expect(unloaded).toEqual([
 				new UnloadedBuild(abs("arena/default.rogen.json"), [failure]),
 			]);
-			expect(unloaded[0].label).toBe("arena");
 		});
 
 		it("should list the source paths of configs with routes, and the default source path of one without", () => {

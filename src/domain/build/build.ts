@@ -6,7 +6,6 @@ import {
 import { Result } from "../../base/result.js";
 import { DiagnosticsError } from "../../platform/diagnostics/diagnostics-error.js";
 import { ResolvedConfig } from "../config/resolved-config.js";
-import { configLabel } from "../config/config.js";
 import { ConfigSelection, buildableConfigs } from "../config/config-service.js";
 
 type MatchForm = "folder" | "marker" | "suffix";
@@ -76,10 +75,6 @@ abstract class AbstractConfigBuild {
 		readonly errors: readonly Diagnostic[] = []
 	) {}
 
-	get label(): string {
-		return this.config.label;
-	}
-
 	get file(): string {
 		return this.config.file;
 	}
@@ -121,10 +116,6 @@ export class UnloadedBuild {
 		readonly file: string,
 		readonly errors: readonly Diagnostic[]
 	) {}
-
-	get label(): string {
-		return configLabel(this.file);
-	}
 
 	get warnings(): readonly Diagnostic[] {
 		return [];

@@ -190,7 +190,7 @@ describe("CoreBuildService", () => {
 				blockedBy: [abs("broken/default.rogen.json")],
 			});
 			expect(result[1]).toMatchObject({
-				label: "broken",
+				file: abs("broken/default.rogen.json"),
 				errors: [{ code: "config.invalidSyntax" }],
 			});
 			expect(await fs.exists(abs("default.project.json"))).toBe(false);
@@ -230,7 +230,10 @@ describe("CoreBuildService", () => {
 				)
 			).builds;
 
-			expect(result.map(({ label }) => label)).toEqual(["a", "repo"]);
+			expect(result.map(({ file }) => file)).toEqual([
+				abs("a/default.rogen.json"),
+				abs("default.rogen.json"),
+			]);
 		});
 
 		it("should block every other config on each one that fails or doesn't load", async () => {
@@ -750,8 +753,8 @@ describe("CoreBuildService", () => {
 				)
 			).unwrap();
 
-			expect(result.configs.map(({ config }) => config.label)).toEqual([
-				"repo",
+			expect(result.configs.map(({ config }) => config.file)).toEqual([
+				abs("default.rogen.json"),
 			]);
 			expect(result.errors).toEqual(errors);
 		});
