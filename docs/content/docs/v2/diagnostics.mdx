@@ -693,7 +693,7 @@ Check that the folder is writable and that no other program locks the file. Roge
 
 ### `output.differs` [#output-differs]
 
-Warning. `rogen check`, with no path, found a `default.project.json` on disk that differs from what `rogen write` would write now, so the file is stale. Nothing is written. A file that doesn't exist yet isn't reported.
+Warning. `rogen check` found a `default.project.json` on disk that differs from what `rogen write` would write now, so the file is stale: with no path, for any config of the folder; with paths, for the configs they belong to. Nothing is written. A file that doesn't exist yet isn't reported.
 
 ```
 default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)

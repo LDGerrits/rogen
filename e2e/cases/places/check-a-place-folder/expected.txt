@@ -9,4 +9,6 @@ stdout:
   places/lobby/default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)
 
 $ rogen check places/lobby/src/Main.luau
-exit 0
+exit 1
+stdout:
+  places/lobby/default.project.json - warning: this file differs from what 'rogen write' would write: its sources changed since it was written. Run 'rogen write' to write it again; what it holds comes from default.rogen.json, so change that to change it. (output.differs)

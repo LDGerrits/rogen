@@ -308,6 +308,17 @@ export default defineConfig(
 		ignores: ["dist/", "node_modules/", "docs/"],
 	},
 	{
+		files: ["evals/**/*.mjs"],
+		languageOptions: {
+			globals: {
+				clearTimeout: "readonly",
+				console: "readonly",
+				process: "readonly",
+				setTimeout: "readonly",
+			},
+		},
+	},
+	{
 		files: ["src/**/*.ts", "src/**/*.js"],
 		languageOptions: {
 			parser: tseslint.parser,

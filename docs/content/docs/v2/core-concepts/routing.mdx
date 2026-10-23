@@ -184,6 +184,8 @@ The `*` route is the **fallback route**. Declare it to send every file no other 
 	`*` only catches leftovers. You still need the `shared` key for `shared/` to act as a routing folder and for `@shared` to route, otherwise both keep their names in the game.
 </Callout>
 
+With `*`, a file that forgets its route is placed without a word: a `Save.luau` meant for `@server` lands in the fallback's target, `ReplicatedStorage/Shared` above, where the client can read it. Without `*` it is left out with `route.unrouted`, which `rogen check` and the [agent hook](/docs/v2/agents#check-changed-files-automatically) report. Declare `*` when the fallback's target is where such a file belongs anyway, as in a layered layout; a repo that routes by suffix, where every file names its side, is safer without it.
+
 ## Hoisted Names
 
 A file lands at its route's target, followed by every folder above it. A name that starts with `^` lands **directly at the target** instead, and every folder in between is dropped:

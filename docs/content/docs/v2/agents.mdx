@@ -14,7 +14,7 @@ Coding agents work best when the context they need is in one place and their cha
 5. **No generated file to break.** Rogen rewrites the project file on every write, so there's nothing hand-maintained for an agent to corrupt.
 6. **It checks its own work.** `rogen where` shows where a file lands and why, and `rogen check` reports what is misplaced, with a non-zero exit.
 
-Left to itself, an agent assumes the path on disk is the instance path. It edits the generated project file, requires server code from shared code, or puts a `Server/` folder inside `Shared/` and ships it to every client. A short block of instructions prevents all of that.
+Left to itself, an agent reads the layout well enough to place code and write requires, but it doesn't know the project file has to be written again, so Rojo and the editor miss its new files. In [our runs](#what-we-measured), 12 of 20 tasks without instructions ended that way, and none of 20 with them. A short block of instructions closes that gap and tells the agent which commands answer the rest.
 
 ## Set it up
 
@@ -48,9 +48,8 @@ This repo uses Rogen. Each `*.rogen.json` generates the Rojo project file beside
 
 ### Commands
 
-- After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints. In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
+- After you add, move or rename files or edit a `*.rogen.json`, run `rogen check <paths>` from the repo root and fix what it prints; it says when to run `rogen write`. In roblox-ts, check `projects/common` through a place that uses it: `rogen check projects/game`.
 - Other commands read the `*.rogen.json` files of the current folder; run them there, or name the config: `rogen write projects/game`.
-- After you add, move or rename a folder, run `rogen write`: Rojo, luau-lsp and `rbxtsc` see only the folders the project file lists. `rogen serve` writes on its own.
 - To sync to Studio, run `rogen serve --json` in the background and keep it running; it rewrites on every change. `rogen help serve` explains its lines.
 - `rogen doc <topic>` prints `routing`, `config`, `layout` or `output` for the installed Rogen. `rogen help <command> --json` lists a command's flags and the shape of its `--json` output.
 ````
@@ -237,6 +236,19 @@ The block is loaded in every session, so it holds only what an agent gets wrong 
 1. **The block**, about 500 tokens: the rules and the commands that check them.
 2. **`rogen doc <topic>`**, between 400 and 2,400 tokens a topic, read when needed: `routing`, `config`, `layout` and `output`. It matches the installed version and works offline.
 3. **[`--json`](/docs/v2/cli#json-output) diagnostics**, when something's wrong: each has a stable code, the renames or commands that fix it, and a link to its [explanation](/docs/v2/diagnostics). `rogen help <code>` prints the same explanation.
+
+## What we measured
+
+On 2026-10-23, Claude Code with Sonnet 5.5 ran five tasks, twice each, in a fresh one-place Luau project from Rogen 2.0.0-beta.1's `init`. The tasks were: add a server-only module, add a secret only the server may read, put a server-only module "next to" a shared one, add a feature folder, and move a module into a new feature. Half the runs had the block above in `AGENTS.md` and half had no rules. Each was run on the Greeter routed by folder (`Server/`) and by suffix (`Greeter.server.luau`, `Greeting@shared.luau`). A run passes when `rogen check` is clean, the project file is what `rogen write` would write, every `require` resolves, and the agent never edited the project file.
+
+| Layout | With the block | Without |
+|---|---|---|
+| Folders | 10/10 | 6/10 |
+| Suffixes | 10/10 | 2/10 |
+
+Every failure was the same: a stale project file. Without the block, agents placed files and wrote requires correctly, but never ran `rogen check` or `rogen write`. A folder-routed project file lists folders, so only a new folder makes it stale. A suffix-routed one lists files, so every new file does. The 40 runs cost $3.01.
+
+The harness is in [`evals/agents`](https://github.com/LDGerrits/rogen/tree/main/evals/agents) of the repository: `npm run eval:agents` runs it with your own Claude Code login, with an empty config so your own instructions stay out.
 
 ## Exit codes
 
